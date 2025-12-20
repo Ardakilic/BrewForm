@@ -1,0 +1,772 @@
+// ============================================
+// BrewForm Prisma Schema
+// Coffee Dive-in Recipe Platform
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User & Authentication
+// ============================================
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String    @unique
+  displayName       String?
+  passwordHash      String
+  avatarUrl         String?
+  bio               String?
+  website           String?
+  isAdmin           Boolean   @default(false)
+  isBanned          Boolean   @default(false)
+  bannedAt          DateTime?
+  bannedReason      String?
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  lastLoginAt       DateTime?
+  preferredLocale   String    @default("en")
+  preferredTimezone String    @default("UTC")
+  preferredUnits    UnitSystem @default(METRIC)
+  preferredTheme    Theme      @default(SYSTEM)
+  
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  sessions          Session[]
+  passwordResets    PasswordReset[]
+  emailVerifications EmailVerification[]
+  recipes           Recipe[]
+  recipeVersions    RecipeVersion[]
+  favourites        UserFavourite[]
+  comments          Comment[]
+  setups            UserSetup[]
+  userEquipment     UserEquipment[]
+  userBeans         UserBean[]
+  auditLogs         AuditLog[]
+  analytics         UserAnalytics[]
+
+  @@index([email])
+  @@index([username])
+  @@index([isBanned])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String   @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_resets")
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("email_verifications")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum UnitSystem {
+  METRIC
+  IMPERIAL
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  COFFEE
+  SYSTEM
+}
+
+enum Visibility {
+  DRAFT
+  PRIVATE
+  UNLISTED
+  PUBLIC
+}
+
+enum EmojiRating {
+  SUPER_GOOD    // 🚀 Rocket
+  GOOD          // 👍 Thumbs up
+  OKAY          // 😐 Neutral
+  BAD           // 👎 Thumbs down
+  HORRIBLE      // 🤢 Nauseated
+}
+
+enum BrewMethodType {
+  ESPRESSO_MACHINE
+  MOKA_POT
+  FRENCH_PRESS
+  POUR_OVER_V60
+  POUR_OVER_CHEMEX
+  POUR_OVER_KALITA
+  AEROPRESS
+  COLD_BREW
+  DRIP_COFFEE
+  TURKISH_CEZVE
+  SIPHON
+  VIETNAMESE_PHIN
+  IBRIK
+  PERCOLATOR
+  OTHER
+}
+
+enum DrinkType {
+  ESPRESSO
+  RISTRETTO
+  LUNGO
+  AMERICANO
+  LATTE
+  CAPPUCCINO
+  FLAT_WHITE
+  CORTADO
+  MACCHIATO
+  MOCHA
+  POUR_OVER
+  FRENCH_PRESS
+  COLD_BREW
+  ICED_COFFEE
+  TURKISH_COFFEE
+  AFFOGATO
+  IRISH_COFFEE
+  VIETNAMESE_COFFEE
+  OTHER
+}
+
+enum ProcessingMethod {
+  WASHED
+  NATURAL
+  HONEY
+  SEMI_WASHED
+  WET_HULLED
+  ANAEROBIC
+  CARBONIC_MACERATION
+  OTHER
+}
+
+enum MilkPreparationType {
+  STEAMED
+  FROTHED
+  COLD
+  HEATED
+  NONE
+}
+
+// ============================================
+// Coffee & Vendors
+// ============================================
+
+model Vendor {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  website     String?
+  country     String?
+  description String?
+  logoUrl     String?
+  isVerified  Boolean   @default(false)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  coffees Coffee[]
+
+  @@index([slug])
+  @@index([name])
+  @@index([deletedAt])
+  @@map("vendors")
+}
+
+model Coffee {
+  id               String           @id @default(cuid())
+  name             String
+  slug             String           @unique
+  vendorId         String?
+  origin           String?
+  region           String?
+  farm             String?
+  altitude         Int?             // meters
+  variety          String?
+  processingMethod ProcessingMethod?
+  flavorNotes      String[]
+  description      String?
+  roastLevel       String?
+  
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+
+  vendor      Vendor?      @relation(fields: [vendorId], references: [id])
+  recipeVersions RecipeVersion[]
+  userBeans   UserBean[]
+
+  @@index([slug])
+  @@index([vendorId])
+  @@index([name])
+  @@index([deletedAt])
+  @@map("coffees")
+}
+
+// ============================================
+// Equipment (Normalized Tables)
+// ============================================
+
+model Grinder {
+  id          String    @id @default(cuid())
+  brand       String
+  model       String
+  slug        String    @unique
+  type        String?   // burr, blade, manual, electric
+  burrSize    Int?      // mm
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  recipeVersions RecipeVersion[]
+  userEquipment  UserEquipment[]
+
+  @@unique([brand, model])
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("grinders")
+}
+
+model Brewer {
+  id          String         @id @default(cuid())
+  brand       String
+  model       String
+  slug        String         @unique
+  brewMethod  BrewMethodType
+  type        String?        // manual, semi-auto, automatic
+  description String?
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  recipeVersions RecipeVersion[]
+  userEquipment  UserEquipment[]
+
+  @@unique([brand, model])
+  @@index([slug])
+  @@index([brewMethod])
+  @@index([deletedAt])
+  @@map("brewers")
+}
+
+model Portafilter {
+  id          String    @id @default(cuid())
+  brand       String?
+  model       String
+  slug        String    @unique
+  type        String    // bottomless, spouted, pressurized
+  size        Int?      // mm diameter
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  recipeVersions RecipeVersion[]
+  userEquipment  UserEquipment[]
+
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("portafilters")
+}
+
+model Basket {
+  id          String    @id @default(cuid())
+  brand       String
+  model       String
+  slug        String    @unique
+  size        Int?      // grams capacity
+  type        String?   // precision, ridged, ridgeless
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  recipeVersions RecipeVersion[]
+  userEquipment  UserEquipment[]
+
+  @@unique([brand, model])
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("baskets")
+}
+
+model PuckScreen {
+  id          String    @id @default(cuid())
+  brand       String?
+  model       String
+  slug        String    @unique
+  size        Int?      // mm diameter
+  mesh        String?   // mesh size
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  recipeVersions RecipeVersion[]
+  userEquipment  UserEquipment[]
+
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("puck_screens")
+}
+
+model PaperFilter {
+  id          String    @id @default(cuid())
+  brand       String
+  model       String
+  slug        String    @unique
+  type        String?   // bleached, unbleached, cone, flat
+  size        String?
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  recipeVersions RecipeVersion[]
+  userEquipment  UserEquipment[]
+
+  @@unique([brand, model])
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("paper_filters")
+}
+
+model Tamper {
+  id          String    @id @default(cuid())
+  brand       String?
+  model       String
+  slug        String    @unique
+  size        Int?      // mm diameter
+  type        String?   // flat, convex, calibrated
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  recipeVersions RecipeVersion[]
+  userEquipment  UserEquipment[]
+
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("tampers")
+}
+
+// ============================================
+// User Equipment & Setups
+// ============================================
+
+model UserEquipment {
+  id             String    @id @default(cuid())
+  userId         String
+  name           String?   // Custom name
+  notes          String?
+  
+  // Equipment references (only one will be set)
+  grinderId      String?
+  brewerId       String?
+  portafilterId  String?
+  basketId       String?
+  puckScreenId   String?
+  paperFilterId  String?
+  tamperId       String?
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grinder     Grinder?     @relation(fields: [grinderId], references: [id])
+  brewer      Brewer?      @relation(fields: [brewerId], references: [id])
+  portafilter Portafilter? @relation(fields: [portafilterId], references: [id])
+  basket      Basket?      @relation(fields: [basketId], references: [id])
+  puckScreen  PuckScreen?  @relation(fields: [puckScreenId], references: [id])
+  paperFilter PaperFilter? @relation(fields: [paperFilterId], references: [id])
+  tamper      Tamper?      @relation(fields: [tamperId], references: [id])
+  setups      UserSetupEquipment[]
+
+  @@index([userId])
+  @@index([deletedAt])
+  @@map("user_equipment")
+}
+
+model UserBean {
+  id           String    @id @default(cuid())
+  userId       String
+  coffeeId     String
+  roastDate    DateTime?
+  purchaseDate DateTime?
+  quantity     Int?      // grams
+  notes        String?
+  isActive     Boolean   @default(true)
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coffee Coffee @relation(fields: [coffeeId], references: [id])
+
+  @@index([userId])
+  @@index([coffeeId])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("user_beans")
+}
+
+model UserSetup {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isDefault   Boolean   @default(false)
+  
+  // Default values for auto-fill
+  defaultBrewMethod  BrewMethodType?
+  defaultDrinkType   DrinkType?
+  defaultDoseGrams   Float?
+  defaultGrindSize   String?
+  defaultTempCelsius Float?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equipment UserSetupEquipment[]
+
+  @@index([userId])
+  @@index([isDefault])
+  @@index([deletedAt])
+  @@map("user_setups")
+}
+
+model UserSetupEquipment {
+  id              String @id @default(cuid())
+  setupId         String
+  userEquipmentId String
+
+  setup         UserSetup     @relation(fields: [setupId], references: [id], onDelete: Cascade)
+  userEquipment UserEquipment @relation(fields: [userEquipmentId], references: [id], onDelete: Cascade)
+
+  @@unique([setupId, userEquipmentId])
+  @@map("user_setup_equipment")
+}
+
+// ============================================
+// Recipes (Immutable Versioned)
+// ============================================
+
+model Recipe {
+  id              String      @id @default(cuid())
+  userId          String
+  slug            String      @unique
+  currentVersionId String?    @unique
+  visibility      Visibility  @default(DRAFT)
+  isFeatured      Boolean     @default(false) // Featured on user profile
+  
+  // Social metadata (NOT versioned)
+  viewCount       Int         @default(0)
+  favouriteCount  Int         @default(0)
+  commentCount    Int         @default(0)
+  
+  // Fork tracking
+  forkedFromId    String?
+  forkCount       Int         @default(0)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  forkedFrom     Recipe?          @relation("RecipeForks", fields: [forkedFromId], references: [id])
+  forks          Recipe[]         @relation("RecipeForks")
+  currentVersion RecipeVersion?   @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions       RecipeVersion[]  @relation("RecipeVersions")
+  favourites     UserFavourite[]
+  comments       Comment[]
+  comparisonsA   Comparison[]     @relation("ComparisonRecipeA")
+  comparisonsB   Comparison[]     @relation("ComparisonRecipeB")
+
+  @@index([userId])
+  @@index([slug])
+  @@index([visibility])
+  @@index([forkedFromId])
+  @@index([deletedAt])
+  @@index([favouriteCount])
+  @@index([createdAt])
+  @@map("recipes")
+}
+
+model RecipeVersion {
+  id             String         @id @default(cuid())
+  recipeId       String
+  userId         String
+  versionNumber  Int
+  title          String
+  description    String?
+  
+  // Brew Category & Method
+  brewMethod     BrewMethodType
+  drinkType      DrinkType
+  
+  // Coffee details
+  coffeeId       String?
+  coffeeName     String?        // Denormalized for display
+  roastDate      DateTime?
+  grindDate      DateTime?
+  
+  // Equipment (references to normalized tables)
+  grinderId      String?
+  brewerId       String?
+  portafilterId  String?
+  basketId       String?
+  puckScreenId   String?
+  paperFilterId  String?
+  tamperId       String?
+  
+  // Grind settings
+  grindSize      String?        // Grinder-specific setting
+  
+  // Brew parameters (ALL stored in canonical units)
+  doseGrams      Float          // Weight in grams
+  yieldMl        Float?         // Volume in milliliters
+  yieldGrams     Float?         // Weight in grams (for gravimetric)
+  brewTimeSec    Int?           // Time in seconds
+  tempCelsius    Float?         // Temperature in Celsius
+  
+  // Derived metrics (computed from canonical values)
+  brewRatio      Float?         // dose:yield ratio
+  flowRate       Float?         // ml/sec
+  
+  // Additional preparations (JSON array)
+  preparations   Json?          // Array of { name, type, input, method }
+  
+  // Tasting notes
+  tastingNotes   String?
+  rating         Int?           // 1-10
+  emojiRating    EmojiRating?
+  isFavourite    Boolean        @default(false)
+  tags           String[]
+  
+  createdAt      DateTime       @default(now())
+
+  recipe        Recipe          @relation("RecipeVersions", fields: [recipeId], references: [id], onDelete: Cascade)
+  currentFor    Recipe?         @relation("CurrentVersion")
+  user          User            @relation(fields: [userId], references: [id])
+  coffee        Coffee?         @relation(fields: [coffeeId], references: [id])
+  grinder       Grinder?        @relation(fields: [grinderId], references: [id])
+  brewer        Brewer?         @relation(fields: [brewerId], references: [id])
+  portafilter   Portafilter?    @relation(fields: [portafilterId], references: [id])
+  basket        Basket?         @relation(fields: [basketId], references: [id])
+  puckScreen    PuckScreen?     @relation(fields: [puckScreenId], references: [id])
+  paperFilter   PaperFilter?    @relation(fields: [paperFilterId], references: [id])
+  tamper        Tamper?         @relation(fields: [tamperId], references: [id])
+
+  @@unique([recipeId, versionNumber])
+  @@index([recipeId])
+  @@index([userId])
+  @@index([brewMethod])
+  @@index([drinkType])
+  @@index([coffeeId])
+  @@index([rating])
+  @@index([createdAt])
+  @@map("recipe_versions")
+}
+
+// ============================================
+// Social Features
+// ============================================
+
+model UserFavourite {
+  id        String   @id @default(cuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@index([recipeId])
+  @@index([createdAt])
+  @@map("user_favourites")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  userId    String
+  recipeId  String
+  parentId  String?   // For replies
+  content   String
+  isEdited  Boolean   @default(false)
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe   Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([recipeId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([deletedAt])
+  @@map("comments")
+}
+
+model Comparison {
+  id         String   @id @default(cuid())
+  shareToken String   @unique @default(cuid())
+  recipeAId  String
+  recipeBId  String
+  createdAt  DateTime @default(now())
+
+  recipeA Recipe @relation("ComparisonRecipeA", fields: [recipeAId], references: [id], onDelete: Cascade)
+  recipeB Recipe @relation("ComparisonRecipeB", fields: [recipeBId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeAId, recipeBId])
+  @@index([shareToken])
+  @@map("comparisons")
+}
+
+// ============================================
+// Admin & Audit
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String
+  entityType  String
+  entityId    String?
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// Analytics
+// ============================================
+
+model UserAnalytics {
+  id          String   @id @default(cuid())
+  userId      String
+  eventType   String
+  eventData   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("user_analytics")
+}
+
+// ============================================
+// Brew Method Compatibility
+// ============================================
+
+model BrewMethodCompatibility {
+  id         String         @id @default(cuid())
+  brewMethod BrewMethodType
+  drinkType  DrinkType
+  isValid    Boolean        @default(true)
+
+  @@unique([brewMethod, drinkType])
+  @@map("brew_method_compatibility")
+}
+
+// ============================================
+// Rate Limiting
+// ============================================
+
+model RateLimit {
+  id         String   @id @default(cuid())
+  identifier String   // IP or user ID
+  action     String
+  count      Int      @default(1)
+  windowStart DateTime @default(now())
+  expiresAt  DateTime
+
+  @@unique([identifier, action])
+  @@index([expiresAt])
+  @@map("rate_limits")
+}

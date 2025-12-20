@@ -1,0 +1,146 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:18-trixie
+    container_name: brewform-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: brewform
+      POSTGRES_PASSWORD: brewform
+      POSTGRES_DB: brewform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brewform -d brewform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - brewform-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: brewform-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - brewform-network
+
+  # Mailpit (Email Testing)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: brewform-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    volumes:
+      - mailpit_data:/data
+    networks:
+      - brewform-network
+
+  # PgAdmin (Database Management)
+  pgadmin:
+    image: elestio/pgadmin:latest
+    container_name: brewform-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@brewform.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - brewform-network
+
+  # Backend API (Hono)
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    container_name: brewform-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://brewform:brewform@postgres:5432/brewform?schema=public
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+    env_file:
+      - .env
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/api/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - brewform-network
+
+  # Frontend (React)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+    container_name: brewform-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://localhost:3001
+    env_file:
+      - .env
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/web/node_modules
+    depends_on:
+      - api
+    networks:
+      - brewform-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  mailpit_data:
+  pgadmin_data:
+
+networks:
+  brewform-network:
+    driver: bridge

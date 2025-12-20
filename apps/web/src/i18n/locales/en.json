@@ -1,0 +1,214 @@
+{
+  "app": {
+    "name": "BrewForm",
+    "tagline": "Share Your Coffee Journey"
+  },
+  "nav": {
+    "home": "Home",
+    "recipes": "Recipes",
+    "explore": "Explore",
+    "login": "Log In",
+    "register": "Sign Up",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Log Out",
+    "admin": "Admin"
+  },
+  "home": {
+    "hero": {
+      "title": "Discover & Share Coffee Recipes",
+      "subtitle": "Document your coffee brewing journey. Share your perfect espresso, pour-over, and specialty coffee recipes with the world.",
+      "cta": "Start Brewing",
+      "explore": "Explore Recipes"
+    },
+    "features": {
+      "track": {
+        "title": "Track Your Brews",
+        "description": "Document every detail of your coffee recipes - from dose and yield to grind size and extraction time."
+      },
+      "share": {
+        "title": "Share & Discover",
+        "description": "Share your recipes with the community and discover new brewing techniques from coffee enthusiasts worldwide."
+      },
+      "compare": {
+        "title": "Compare & Improve",
+        "description": "Compare recipes side by side, track versions, and continuously improve your brewing skills."
+      }
+    },
+    "latest": "Latest Recipes",
+    "popular": "Popular Recipes",
+    "viewAll": "View All"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Log in to your BrewForm account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log In",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    },
+    "register": {
+      "title": "Join BrewForm",
+      "subtitle": "Create your account and start your coffee journey",
+      "email": "Email",
+      "username": "Username",
+      "displayName": "Display Name",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Create Account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Log in"
+    },
+    "forgotPassword": {
+      "title": "Reset Password",
+      "subtitle": "Enter your email to receive a reset link",
+      "email": "Email",
+      "submit": "Send Reset Link",
+      "backToLogin": "Back to login"
+    },
+    "resetPassword": {
+      "title": "Create New Password",
+      "subtitle": "Enter your new password",
+      "password": "New Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Reset Password"
+    },
+    "verifyEmail": {
+      "title": "Verify Email",
+      "verifying": "Verifying your email...",
+      "success": "Email verified successfully!",
+      "error": "Verification failed. The link may have expired."
+    }
+  },
+  "recipe": {
+    "create": "Create Recipe",
+    "edit": "Edit Recipe",
+    "delete": "Delete Recipe",
+    "fork": "Fork Recipe",
+    "share": "Share",
+    "compare": "Compare",
+    "favourite": "Favourite",
+    "unfavourite": "Remove from Favourites",
+    "versions": "Versions",
+    "newVersion": "Create New Version",
+    "visibility": {
+      "draft": "Draft",
+      "private": "Private",
+      "unlisted": "Unlisted",
+      "public": "Public"
+    },
+    "fields": {
+      "title": "Recipe Title",
+      "description": "Description",
+      "brewMethod": "Brew Method",
+      "drinkType": "Drink Type",
+      "coffee": "Coffee",
+      "roastDate": "Roast Date",
+      "grindDate": "Grind Date",
+      "grinder": "Grinder",
+      "grindSize": "Grind Size",
+      "brewer": "Brewer",
+      "dose": "Dose",
+      "yield": "Yield",
+      "time": "Time",
+      "temperature": "Temperature",
+      "ratio": "Ratio",
+      "tastingNotes": "Tasting Notes",
+      "rating": "Rating",
+      "tags": "Tags"
+    },
+    "empty": {
+      "title": "No recipes yet",
+      "description": "Be the first to share a recipe!"
+    },
+    "forkedFrom": "Forked from"
+  },
+  "profile": {
+    "recipes": "Recipes",
+    "favourites": "Favourites",
+    "equipment": "Equipment",
+    "beans": "Beans",
+    "setups": "Setups",
+    "editProfile": "Edit Profile",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "account": "Account",
+    "theme": "Theme",
+    "language": "Language",
+    "units": "Units",
+    "timezone": "Timezone",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "coffee": "Coffee",
+      "system": "System"
+    },
+    "units_options": {
+      "metric": "Metric (g, ml, °C)",
+      "imperial": "Imperial (oz, fl oz, °F)"
+    },
+    "deleteAccount": "Delete Account",
+    "deleteWarning": "This action cannot be undone."
+  },
+  "equipment": {
+    "grinder": "Grinder",
+    "brewer": "Brewer",
+    "portafilter": "Portafilter",
+    "basket": "Basket",
+    "puckScreen": "Puck Screen",
+    "paperFilter": "Paper Filter",
+    "tamper": "Tamper"
+  },
+  "rating": {
+    "superGood": "Super Good",
+    "good": "Good",
+    "okay": "Okay",
+    "bad": "Bad",
+    "horrible": "Horrible"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "noResults": "No results found",
+    "loadMore": "Load More",
+    "viewAll": "View All"
+  },
+  "errors": {
+    "notFound": {
+      "title": "Page Not Found",
+      "description": "Oops! Looks like this coffee got cold. The page you're looking for doesn't exist.",
+      "backHome": "Back to Home"
+    },
+    "generic": {
+      "title": "Something Went Wrong",
+      "description": "We spilled the coffee! Please try again later.",
+      "retry": "Try Again"
+    }
+  },
+  "footer": {
+    "tagline": "Share your coffee journey with the world.",
+    "links": {
+      "about": "About",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "contact": "Contact"
+    },
+    "copyright": "© {{year}} BrewForm. All rights reserved."
+  }
+}

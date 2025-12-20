@@ -1,0 +1,23 @@
+# Production overrides
+services:
+  api:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    volumes: []
+    restart: always
+
+  web:
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+    volumes: []
+    restart: always
+
+  postgres:
+    restart: always
+
+  redis:
+    restart: always
