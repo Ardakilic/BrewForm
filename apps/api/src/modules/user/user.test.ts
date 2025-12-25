@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
-import userModule from './index.js';
 
 // API Response type for testing
 interface ApiResponse {
@@ -17,38 +16,80 @@ interface ApiResponse {
 
 // Mock auth middleware
 vi.mock('../../middleware/auth', () => ({
-  authMiddleware: vi.fn((_c, next) => {
+  authMiddleware: vi.fn((_c: { set: (key: string, value: unknown) => void }, next: () => Promise<void>) => {
     _c.set('user', { id: 'user_123', isAdmin: false });
     return next();
   }),
-  requireAuth: vi.fn((_c, next) => next()),
+  requireAuth: vi.fn((_c: unknown, next: () => Promise<void>) => next()),
 }));
 
-// Mock Prisma
-vi.mock('../../utils/prisma', () => ({
-  prisma: {
-    user: {
-      findUnique: vi.fn(),
-      findFirst: vi.fn(),
-      update: vi.fn(),
-    },
-    recipe: {
-      findMany: vi.fn(),
-      count: vi.fn(),
-    },
-    userFavourite: {
-      findMany: vi.fn(),
-    },
+// Mock database module
+vi.mock('../../utils/database/index.js', () => ({
+  getPrisma: vi.fn(),
+  softDeleteFilter: vi.fn(() => ({ deletedAt: null })),
+  getPagination: vi.fn(({ page = 1, limit = 20 }: { page?: number; limit?: number }) => ({
+    skip: (page - 1) * limit,
+    take: limit,
+  })),
+  createPaginationMeta: vi.fn((page: number, limit: number, total: number) => ({
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+    hasNext: page < Math.ceil(total / limit),
+    hasPrev: page > 1,
+  })),
+}));
+
+// Mock logger
+vi.mock('../../utils/logger/index.js', () => ({
+  logAudit: vi.fn(),
+  getLogger: vi.fn(() => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  })),
+}));
+
+// Mock error handler
+vi.mock('../../middleware/errorHandler.js', () => ({
+  NotFoundError: class NotFoundError extends Error {
+    constructor(resource: string) {
+      super(`${resource} not found`);
+      this.name = 'NotFoundError';
+    }
+    statusCode = 404;
   },
 }));
 
-import { prisma } from '../../utils/prisma/index.js';
+import userModule from './index.js';
+import { getPrisma } from '../../utils/database/index.js';
+
+// Create mock prisma instance
+const mockPrisma = {
+  user: {
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    update: vi.fn(),
+  },
+  recipe: {
+    findMany: vi.fn(),
+    count: vi.fn(),
+  },
+  userFavourite: {
+    findMany: vi.fn(),
+    count: vi.fn(),
+  },
+};
 
 describe('User Module', () => {
   let app: Hono;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Set up getPrisma to return our mock
+    vi.mocked(getPrisma).mockReturnValue(mockPrisma as never);
     app = new Hono();
     app.route('/users', userModule);
   });
@@ -72,7 +113,7 @@ describe('User Module', () => {
         },
       };
 
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+      vi.mocked(mockPrisma.user.findUnique).mockResolvedValue(mockUser as never);
 
       const response = await app.request('/users/me');
       
@@ -92,7 +133,7 @@ describe('User Module', () => {
         bio: 'Updated bio',
       };
 
-      vi.mocked(prisma.user.update).mockResolvedValue(mockUser as never);
+      vi.mocked(mockPrisma.user.update).mockResolvedValue(mockUser as never);
 
       const response = await app.request('/users/me', {
         method: 'PATCH',
@@ -126,7 +167,7 @@ describe('User Module', () => {
         preferredUnits: 'IMPERIAL',
       };
 
-      vi.mocked(prisma.user.update).mockResolvedValue(mockUser as never);
+      vi.mocked(mockPrisma.user.update).mockResolvedValue(mockUser as never);
 
       const response = await app.request('/users/me', {
         method: 'PATCH',
@@ -157,7 +198,8 @@ describe('User Module', () => {
         },
       ];
 
-      vi.mocked(prisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
+      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
+      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(2);
 
       const response = await app.request('/users/me/recipes');
       
@@ -181,7 +223,8 @@ describe('User Module', () => {
         },
       ];
 
-      vi.mocked(prisma.userFavourite.findMany).mockResolvedValue(mockFavourites as never);
+      vi.mocked(mockPrisma.userFavourite.findMany).mockResolvedValue(mockFavourites as never);
+      vi.mocked(mockPrisma.userFavourite.count).mockResolvedValue(1);
 
       const response = await app.request('/users/me/favourites');
       
@@ -204,7 +247,7 @@ describe('User Module', () => {
         },
       };
 
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(mockUser as never);
+      vi.mocked(mockPrisma.user.findFirst).mockResolvedValue(mockUser as never);
 
       const response = await app.request('/users/coffeemaster');
       
@@ -216,7 +259,7 @@ describe('User Module', () => {
     });
 
     it('should return 404 for non-existent user', async () => {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      vi.mocked(mockPrisma.user.findFirst).mockResolvedValue(null);
 
       const response = await app.request('/users/nonexistent');
       
@@ -225,7 +268,7 @@ describe('User Module', () => {
 
     it('should not return banned users', async () => {
       // Banned users are filtered at query level, so findFirst returns null
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      vi.mocked(mockPrisma.user.findFirst).mockResolvedValue(null);
 
       const response = await app.request('/users/banneduser');
       
@@ -248,8 +291,9 @@ describe('User Module', () => {
         },
       ];
 
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(mockUser as never);
-      vi.mocked(prisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
+      vi.mocked(mockPrisma.user.findFirst).mockResolvedValue(mockUser as never);
+      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
+      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(1);
 
       const response = await app.request('/users/coffeemaster/recipes');
       

@@ -104,7 +104,7 @@ export async function getProfile(userId: string): Promise<UserProfile> {
 export async function getPublicProfile(username: string): Promise<PublicUserProfile> {
   const prisma = getPrisma();
 
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { 
       username: username.toLowerCase(),
       ...softDeleteFilter(),

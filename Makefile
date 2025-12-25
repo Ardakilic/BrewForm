@@ -53,7 +53,9 @@ help:
 # ============================================
 
 install:
+	@mkdir -p node_modules apps/api/node_modules apps/web/node_modules
 	docker compose run --rm api pnpm install
+	docker compose run --rm web pnpm install
 
 dev:
 	docker compose up -d postgres redis mailpit pgadmin
