@@ -1,0 +1,183 @@
+---
+trigger: auto
+category: rules
+---
+
+This rule enforces common coding guidelines across the project.
+
+## Guidelines
+
+- Follow consistent naming conventions
+- Write clear, concise comments
+- Maintain proper code formatting
+- Use meaningful variable and function names
+- Keep functions small and focused
+- Avoid code duplication
+- Prefer early returns over nested conditions
+- Use consistent indentation, refer to biome configuration
+- Follow the existing code style in the project
+- Always write tests for new functionality
+- Keep commit messages clear and descriptive
+- Follow semantic versioning for releases
+- Document public APIs with clear descriptions
+- Keep README files up to date with code changes
+- Use consistent error handling patterns
+- Avoid magic numbers and strings in code
+- Use descriptive names for variables and functions
+- Keep code comments up to date with changes
+- Follow infrastructure rules when working with Docker containers
+- Use proper TypeScript types and avoid 'any' when possible
+- Implement proper logging for debugging and monitoring
+- Use environment variables for configuration, never hardcode secrets
+- Follow security best practices for authentication and data handling
+- Optimize performance with proper caching and database queries
+- Handle edge cases and provide meaningful error messages
+- Use proper async/await patterns for asynchronous operations
+- Follow the principle of least privilege in permissions and access
+- Implement proper input validation and sanitization
+- Use consistent patterns for API responses and error handling
+- Keep dependencies updated and review security advisories
+- Use proper Git workflow with meaningful branches and pull requests
+- Follow accessibility guidelines for UI components
+- Implement proper error boundaries in React components
+- Use consistent patterns for state management and data flow
+- Follow mobile-first responsive design principles
+- Implement proper internationalization for user-facing text
+- Use proper monitoring and alerting for production issues
+- Follow data privacy regulations and best practices
+- Implement proper backup and recovery procedures
+- Use proper testing strategies including unit, integration, and E2E tests
+- Follow code review processes and provide constructive feedback
+- Use proper documentation for complex algorithms and business logic
+- Implement proper caching strategies for performance optimization
+- Follow database best practices including proper indexing and query optimization
+- Use proper error logging and monitoring for debugging production issues
+- Implement proper security headers and CORS configuration
+- Follow proper deployment procedures and environment management
+- Use proper dependency injection and modular architecture patterns
+- Implement proper retry mechanisms for external service calls
+- Follow proper data validation patterns throughout the application
+- Use proper session management and token refresh strategies
+- Implement proper rate limiting and throttling for API endpoints
+- Follow proper backup and disaster recovery procedures
+- Use proper monitoring and alerting for system health
+- Implement proper audit logging for security-sensitive operations
+- Follow proper data retention and cleanup policies
+- Use proper performance monitoring and optimization techniques
+- Implement proper testing for security vulnerabilities
+- Follow proper documentation standards for API endpoints
+- Use proper error handling and user feedback mechanisms
+- Implement proper caching strategies for database queries
+- Follow proper code organization and modular design principles
+- Use proper configuration management for different environments
+- Implement proper logging levels and structured logging
+- Follow proper security practices for file uploads and downloads
+- Use proper database connection pooling and optimization
+- Implement proper user experience patterns for loading and error states
+- Follow proper accessibility standards for screen readers and keyboard navigation
+- Use proper SEO optimization techniques for web pages
+- Implement proper analytics and user behavior tracking
+- Follow proper data migration strategies for schema changes
+- Use proper memory management and resource cleanup
+- Implement proper timeout handling for network requests
+- Follow proper version control practices for releases and hotfixes
+- Use proper error recovery mechanisms and graceful degradation
+- Implement proper monitoring for business metrics and KPIs
+- Follow proper data validation and sanitization for user inputs
+- Use proper caching strategies for static assets and API responses
+- Implement proper internationalization and localization support
+- Follow proper security practices for authentication and authorization
+- Use proper database transaction management for data consistency
+- Implement proper retry logic with exponential backoff for external services
+- Follow proper logging practices for debugging and auditing
+- Use proper performance monitoring and optimization techniques
+- Implement proper error handling and user feedback throughout the application
+- Follow proper testing strategies including edge cases and error scenarios
+- Use proper documentation practices for code and API endpoints
+- Implement proper security measures for data protection and privacy
+- Follow proper deployment practices with proper rollback procedures
+- Use proper monitoring and alerting for system health and performance
+- Implement proper caching strategies for improved performance
+- Follow proper code review processes and quality assurance practices
+- Use proper error handling patterns throughout the application
+- Implement proper logging and monitoring for production debugging
+- Follow proper security best practices for authentication and data handling
+- Use proper database optimization techniques and query performance
+- Implement proper user experience patterns and accessibility standards
+- Follow proper documentation standards for maintainability
+- Use proper testing strategies including unit, integration, and E2E tests
+- Implement proper error handling and user feedback mechanisms
+- Follow proper performance optimization techniques and monitoring
+- Use proper security practices for data protection and privacy
+- Implement proper caching strategies and database optimization
+- Follow proper code organization and modular design principles
+- Use proper configuration management and environment handling
+- Implement proper logging and monitoring for system health
+- Follow proper deployment practices with proper rollback procedures
+- Use proper testing strategies including performance and security testing
+- Implement proper error handling and user experience patterns
+- Follow proper documentation standards and code review processes
+- Use proper monitoring and alerting for system performance
+- Implement proper security measures and data protection practices
+- Follow proper database optimization and caching strategies
+- Use proper performance monitoring and optimization techniques
+- Implement proper error handling and user feedback throughout the application
+
+## Rule Management
+
+- If a rule needs to be added or updated, make sure to update it
+- If you get permission error when updating rules, warn the user
+- Create a new markdown file in the root folder with the changes so the user can save it
+- Always maintain consistency across all rule files
+- Review and update rules regularly to reflect current best practices
+- Ensure all rules are actionable and provide clear guidance
+- Use proper formatting and organization for rule files
+- Include examples and code snippets where helpful for clarification
+- Keep rules concise but comprehensive enough to be useful
+- Ensure rules are consistent with the project's technology stack and architecture
+- Validate that rules don't conflict with each other
+- Provide proper categorization and tagging for rules
+- Include proper metadata and frontmatter for rule files
+- Ensure rules are version controlled and properly tracked
+- Use proper naming conventions for rule files
+- Include proper documentation for complex rules
+- Test rules to ensure they are practical and implementable
+- Gather feedback from team members for rule improvements
+- Keep rules up to date with technology changes and best practices
+- Ensure rules are accessible and easy to understand for all team members
+- Use proper examples and code snippets to illustrate rule applications
+- Include proper references to external documentation when helpful
+- Ensure rules are consistent with industry standards and best practices
+- Regularly review and update rules based on project evolution
+- Use proper formatting and organization for readability
+- Include proper error handling and edge case considerations in rules
+- Ensure rules are testable and verifiable
+- Provide proper guidance for rule implementation and enforcement
+- Use proper versioning for rule changes and updates
+- Include proper change logs for rule modifications
+- Ensure rules are aligned with project goals and objectives
+- Use proper documentation tools and formats for rules
+- Include proper examples and anti-patterns to avoid confusion
+- Ensure rules are practical and not overly restrictive
+- Use proper feedback mechanisms for rule improvement
+- Include proper training and onboarding materials for new rules
+- Ensure rules are consistent across all development environments
+- Use proper automation tools for rule enforcement where possible
+- Include proper exceptions and special cases in rule documentation
+- Ensure rules are measurable and have clear success criteria
+- Use proper communication channels for rule updates and changes
+- Include proper impact analysis for rule changes
+- Ensure rules are backward compatible where possible
+- Use proper testing strategies for rule validation
+- Include proper documentation for rule dependencies and prerequisites
+- Ensure rules are aligned with team capabilities and resources
+- Use proper monitoring and compliance checking for rules
+- Include proper escalation procedures for rule violations
+- Ensure rules are regularly reviewed and updated based on feedback
+- Use proper metrics and KPIs to measure rule effectiveness
+- Include proper training and support for rule implementation
+- Ensure rules are consistent with legal and regulatory requirements
+- Use proper documentation standards for rule maintenance
+- Include proper change management processes for rule updates
+- Ensure rules are accessible to all team members regardless of role
+- Use proper tools and technologies for rule enforcement and monitoring
