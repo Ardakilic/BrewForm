@@ -1,5 +1,5 @@
 ---
-trigger: auto
+trigger: model_decision
 category: rules
 ---
 
@@ -85,62 +85,6 @@ make db-reset             # Reset database (development only)
 - Validate email formats and URLs
 - Implement proper enum values
 - Use check constraints for business rules
-
-## Coffee-Specific Data Models
-
-### Recipe Management
-```prisma
-model Recipe {
-  id          String   @id @default(cuid())
-  title       String   @db.VarChar(200)
-  description String?  @db.Text
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  versions    RecipeVersion[]
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
-  @@index([userId])
-  @@index([createdAt])
-}
-```
-
-### Equipment Tracking
-```prisma
-model Equipment {
-  id          String    @id @default(cuid())
-  name        String    @db.VarChar(100)
-  type        EquipmentType
-  brand       String?   @db.VarChar(50)
-  model       String?   @db.VarChar(50)
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  
-  @@index([userId, type])
-}
-```
-
-### Coffee Bean Management
-```prisma
-model CoffeeBean {
-  id           String       @id @default(cuid())
-  name         String       @db.VarChar(100)
-  roaster      String       @db.VarChar(100)
-  origin       String?      @db.VarChar(100)
-  process      ProcessType?
-  roastLevel   RoastLevel?
-  notes        String?      @db.Text
-  userId       String
-  user         User         @relation(fields: [userId], references: [id])
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-  
-  @@index([userId])
-  @@index([roaster])
-}
-```
 
 ## Data Integrity and Security
 

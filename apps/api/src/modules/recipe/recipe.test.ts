@@ -17,63 +17,143 @@ interface ApiResponse {
 
 // Mock auth middleware
 vi.mock('../../middleware/auth', () => ({
-  authMiddleware: vi.fn((_c, next) => {
+  authMiddleware: vi.fn((_c: { set: (key: string, value: unknown) => void }, next: () => Promise<void>) => {
     _c.set('user', { id: 'user_123', isAdmin: false });
     return next();
   }),
-  optionalAuth: vi.fn((_c, next) => next()),
+  requireAuth: vi.fn((_c: unknown, next: () => Promise<void>) => next()),
+  optionalAuth: vi.fn((_c: unknown, next: () => Promise<void>) => next()),
 }));
 
-// Mock Prisma
-vi.mock('../../utils/prisma', () => ({
-  prisma: {
-    recipe: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      count: vi.fn(),
-    },
-    recipeVersion: {
-      create: vi.fn(),
-      findMany: vi.fn(),
-    },
-    favourite: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      delete: vi.fn(),
-    },
-    $transaction: vi.fn((callback) => callback({
-      recipe: {
-        create: vi.fn(),
-        update: vi.fn(),
-      },
-      recipeVersion: {
-        create: vi.fn(),
-      },
-    })),
+// Mock database utilities
+vi.mock('../../utils/database/index.js', () => ({
+  getPrisma: vi.fn(),
+  softDeleteFilter: vi.fn(() => ({ deletedAt: null })),
+  getPagination: vi.fn(({ page = 1, limit = 20 }: { page?: number; limit?: number }) => ({
+    skip: (page - 1) * limit,
+    take: limit,
+  })),
+  createPaginationMeta: vi.fn((page: number, limit: number, total: number) => ({
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+    hasNext: page < Math.ceil(total / limit),
+    hasPrev: page > 1,
+  })),
+}));
+
+// Mock redis utilities
+vi.mock('../../utils/redis/index.js', () => ({
+  invalidateCache: vi.fn(),
+  cacheGetOrSet: vi.fn((_key: string, fetcher: () => Promise<unknown>) => fetcher()),
+  CacheKeys: {
+    recipe: (id: string) => `recipe:${id}`,
+    recipeBySlug: (slug: string) => `recipe:slug:${slug}`,
+    recipeList: (filters: string) => `recipes:list:${filters}`,
+    latestRecipes: () => 'recipes:latest',
+    popularRecipes: () => 'recipes:popular',
   },
 }));
 
-vi.mock('../../utils/redis', () => ({
-  redis: {
-    get: vi.fn(),
-    set: vi.fn(),
-    del: vi.fn(),
+// Mock logger
+vi.mock('../../utils/logger/index.js', () => ({
+  getLogger: vi.fn(() => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  })),
+  logAudit: vi.fn(),
+}));
+
+// Mock slug utility
+vi.mock('../../utils/slug/index.js', () => ({
+  createRecipeSlug: vi.fn((title: string) => title.toLowerCase().replace(/\s+/g, '-')),
+}));
+
+// Mock units utility
+vi.mock('../../utils/units/index.js', () => ({
+  calculateBrewRatio: vi.fn((dose: number, yieldGrams: number) => yieldGrams / dose),
+  calculateFlowRate: vi.fn((yieldMl: number, timeSec: number) => yieldMl / timeSec),
+}));
+
+// Mock error handler
+vi.mock('../../middleware/errorHandler.js', () => ({
+  NotFoundError: class NotFoundError extends Error {
+    constructor(resource: string) {
+      super(`${resource} not found`);
+      this.name = 'NotFoundError';
+    }
+    statusCode = 404;
+  },
+  ForbiddenError: class ForbiddenError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'ForbiddenError';
+    }
+    statusCode = 403;
+  },
+  ValidationError: class ValidationError extends Error {
+    constructor(_errors: Array<{ field: string; message: string }>) {
+      super('Validation failed');
+      this.name = 'ValidationError';
+    }
+    statusCode = 422;
   },
 }));
 
-import { prisma } from '../../utils/prisma/index.js';
+// Mock rate limiter
+vi.mock('../../middleware/rateLimit.js', () => ({
+  writeRateLimiter: vi.fn((_c: unknown, next: () => Promise<void>) => next()),
+}));
+
+import { getPrisma } from '../../utils/database/index.js';
+import type { Context } from 'hono';
+
+// Test error handler
+const testErrorHandler = (err: Error & { statusCode?: number }, c: Context) => {
+  const statusCode = err.statusCode || 500;
+  const code = err.name === 'NotFoundError' ? 'NOT_FOUND' 
+    : err.name === 'ForbiddenError' ? 'FORBIDDEN'
+    : err.name === 'ValidationError' ? 'VALIDATION_ERROR'
+    : 'INTERNAL_ERROR';
+  return c.json({ success: false, error: { code, message: err.message } }, statusCode as 400 | 403 | 404 | 422 | 500);
+};
+
+// Create mock prisma instance
+const mockPrisma = {
+  recipe: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  recipeVersion: {
+    create: vi.fn(),
+    findMany: vi.fn(),
+  },
+  userFavourite: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+  },
+  $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) => callback(mockPrisma)),
+};
 
 describe('Recipe Module', () => {
   let app: Hono;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Set up getPrisma to return our mock
+    vi.mocked(getPrisma).mockReturnValue(mockPrisma as never);
     app = new Hono();
     app.route('/recipes', recipeModule);
+    app.onError(testErrorHandler);
   });
 
   describe('GET /recipes', () => {
@@ -106,8 +186,8 @@ describe('Recipe Module', () => {
         },
       ];
 
-      vi.mocked(prisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
-      vi.mocked(prisma.recipe.count).mockResolvedValue(2);
+      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
+      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(2);
 
       const response = await app.request('/recipes?visibility=PUBLIC');
       
@@ -119,19 +199,19 @@ describe('Recipe Module', () => {
     });
 
     it('should filter by brew method', async () => {
-      vi.mocked(prisma.recipe.findMany).mockResolvedValue([]);
-      vi.mocked(prisma.recipe.count).mockResolvedValue(0);
+      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
+      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
 
       const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE');
       
       expect(response.status).toBe(200);
-      expect(prisma.recipe.findMany).toHaveBeenCalled();
+      expect(mockPrisma.recipe.findMany).toHaveBeenCalled();
     });
   });
 
   describe('GET /recipes/:slug', () => {
     it('should return a recipe by slug', async () => {
-      const mockRecipe = {
+      const fullRecipe = {
         id: 'recipe_1',
         slug: 'perfect-espresso',
         visibility: 'PUBLIC',
@@ -147,10 +227,14 @@ describe('Recipe Module', () => {
           description: 'My perfect morning espresso',
         },
         user: { username: 'coffeemaster', displayName: 'Coffee Master' },
-        _count: { favourites: 5 },
+        _count: { versions: 1, forks: 0, comments: 0 },
       };
 
-      vi.mocked(prisma.recipe.findFirst).mockResolvedValue(mockRecipe as never);
+      // First call for slug lookup, second call for full recipe fetch
+      vi.mocked(mockPrisma.recipe.findUnique)
+        .mockResolvedValueOnce({ id: 'recipe_1', slug: 'perfect-espresso' } as never)
+        .mockResolvedValueOnce(fullRecipe as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
 
       const response = await app.request('/recipes/perfect-espresso');
       
@@ -162,7 +246,7 @@ describe('Recipe Module', () => {
     });
 
     it('should return 404 for non-existent recipe', async () => {
-      vi.mocked(prisma.recipe.findFirst).mockResolvedValue(null);
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValueOnce(null);
 
       const response = await app.request('/recipes/nonexistent-recipe');
       
@@ -172,7 +256,16 @@ describe('Recipe Module', () => {
 
   describe('POST /recipes', () => {
     it('should create a new recipe', async () => {
-      const mockRecipe = {
+      const mockCreatedRecipe = {
+        id: 'recipe_new',
+        slug: 'my-new-espresso',
+        visibility: 'DRAFT',
+        userId: 'user_123',
+        versions: [{ id: 'version_1' }],
+        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+      };
+      
+      const mockUpdatedRecipe = {
         id: 'recipe_new',
         slug: 'my-new-espresso',
         visibility: 'DRAFT',
@@ -186,11 +279,11 @@ describe('Recipe Module', () => {
           doseGrams: 18,
           yieldGrams: 36,
         },
+        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
       };
 
-      vi.mocked(prisma.$transaction).mockImplementation(async () => {
-        return mockRecipe;
-      });
+      vi.mocked(mockPrisma.recipe.create).mockResolvedValue(mockCreatedRecipe as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue(mockUpdatedRecipe as never);
 
       const response = await app.request('/recipes', {
         method: 'POST',
@@ -230,19 +323,20 @@ describe('Recipe Module', () => {
 
   describe('PATCH /recipes/:id', () => {
     it('should update recipe visibility', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
       const mockRecipe = {
-        id: 'recipe_1',
+        id: recipeId,
         userId: 'user_123',
         visibility: 'DRAFT',
       };
 
-      vi.mocked(prisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(prisma.recipe.update).mockResolvedValue({
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({
         ...mockRecipe,
         visibility: 'PUBLIC',
       } as never);
 
-      const response = await app.request('/recipes/recipe_1', {
+      const response = await app.request(`/recipes/${recipeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -254,15 +348,16 @@ describe('Recipe Module', () => {
     });
 
     it('should reject update by non-owner', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
       const mockRecipe = {
-        id: 'recipe_1',
+        id: recipeId,
         userId: 'other_user', // Different from auth user
         visibility: 'DRAFT',
       };
 
-      vi.mocked(prisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
 
-      const response = await app.request('/recipes/recipe_1', {
+      const response = await app.request(`/recipes/${recipeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -276,18 +371,19 @@ describe('Recipe Module', () => {
 
   describe('DELETE /recipes/:id', () => {
     it('should soft delete recipe (owner)', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
       const mockRecipe = {
-        id: 'recipe_1',
+        id: recipeId,
         userId: 'user_123',
       };
 
-      vi.mocked(prisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(prisma.recipe.update).mockResolvedValue({
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({
         ...mockRecipe,
         deletedAt: new Date(),
       } as never);
 
-      const response = await app.request('/recipes/recipe_1', {
+      const response = await app.request(`/recipes/${recipeId}`, {
         method: 'DELETE',
       });
 
@@ -295,14 +391,15 @@ describe('Recipe Module', () => {
     });
 
     it('should reject delete by non-owner', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
       const mockRecipe = {
-        id: 'recipe_1',
+        id: recipeId,
         userId: 'other_user',
       };
 
-      vi.mocked(prisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
 
-      const response = await app.request('/recipes/recipe_1', {
+      const response = await app.request(`/recipes/${recipeId}`, {
         method: 'DELETE',
       });
 
@@ -312,15 +409,17 @@ describe('Recipe Module', () => {
 
   describe('POST /recipes/:id/versions', () => {
     it('should create a new version', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
       const mockRecipe = {
-        id: 'recipe_1',
+        id: recipeId,
         userId: 'user_123',
         currentVersionId: 'version_1',
+        versions: [{ versionNumber: 1 }],
       };
 
       const mockNewVersion = {
         id: 'version_2',
-        recipeId: 'recipe_1',
+        recipeId,
         versionNumber: 2,
         title: 'Updated Espresso',
         brewMethod: 'ESPRESSO_MACHINE',
@@ -329,11 +428,11 @@ describe('Recipe Module', () => {
         yieldGrams: 40,
       };
 
-      vi.mocked(prisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(prisma.recipeVersion.findMany).mockResolvedValue([{ versionNumber: 1 }] as never);
-      vi.mocked(prisma.$transaction).mockImplementation(async () => mockNewVersion);
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.recipeVersion.create).mockResolvedValue(mockNewVersion as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
 
-      const response = await app.request('/recipes/recipe_1/versions', {
+      const response = await app.request(`/recipes/${recipeId}/versions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -351,30 +450,58 @@ describe('Recipe Module', () => {
 
   describe('POST /recipes/:id/fork', () => {
     it('should fork a public recipe', async () => {
+      const originalRecipeId = 'clh1234567890abcdefghij01';
       const mockOriginalRecipe = {
-        id: 'recipe_original',
+        id: originalRecipeId,
         userId: 'other_user',
         visibility: 'PUBLIC',
         currentVersion: {
+          id: 'version_1',
           title: 'Original Espresso',
+          description: 'A great espresso',
           brewMethod: 'ESPRESSO_MACHINE',
           drinkType: 'ESPRESSO',
+          coffeeId: null,
+          coffeeName: null,
+          roastDate: null,
+          grindDate: null,
+          grinderId: null,
+          brewerId: null,
+          portafilterId: null,
+          basketId: null,
+          puckScreenId: null,
+          paperFilterId: null,
+          tamperId: null,
+          grindSize: null,
           doseGrams: 18,
+          yieldMl: null,
           yieldGrams: 36,
+          brewTimeSec: 28,
+          tempCelsius: 93,
+          brewRatio: 2.0,
+          flowRate: null,
+          preparations: null,
+          tastingNotes: null,
+          rating: null,
+          emojiRating: null,
+          isFavourite: false,
+          tags: [],
         },
       };
 
       const mockForkedRecipe = {
-        id: 'recipe_forked',
+        id: 'clh1234567890abcdefghij02',
         slug: 'forked-original-espresso',
         userId: 'user_123',
-        forkedFromId: 'recipe_original',
+        forkedFromId: originalRecipeId,
+        versions: [{ id: 'new_version_1' }],
       };
 
-      vi.mocked(prisma.recipe.findUnique).mockResolvedValue(mockOriginalRecipe as never);
-      vi.mocked(prisma.$transaction).mockImplementation(async () => mockForkedRecipe);
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockOriginalRecipe as never);
+      vi.mocked(mockPrisma.recipe.create).mockResolvedValue(mockForkedRecipe as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
 
-      const response = await app.request('/recipes/recipe_original/fork', {
+      const response = await app.request(`/recipes/${originalRecipeId}/fork`, {
         method: 'POST',
       });
 
@@ -382,15 +509,20 @@ describe('Recipe Module', () => {
     });
 
     it('should reject forking private recipes', async () => {
+      const recipeId = 'clh1234567890abcdefghij03';
       const mockRecipe = {
-        id: 'recipe_1',
+        id: recipeId,
         userId: 'other_user',
         visibility: 'PRIVATE',
+        currentVersion: {
+          id: 'version_1',
+          title: 'Private Recipe',
+        },
       };
 
-      vi.mocked(prisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
 
-      const response = await app.request('/recipes/recipe_1/fork', {
+      const response = await app.request(`/recipes/${recipeId}/fork`, {
         method: 'POST',
       });
 

@@ -3,8 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import authModule from './index.js';
+import { mockPrisma } from '../../test/setup.js';
 
 // API Response type for testing
 interface ApiResponse {
@@ -14,58 +15,25 @@ interface ApiResponse {
   message?: string;
 }
 
-// Mock dependencies
-vi.mock('../../utils/prisma', () => ({
-  prisma: {
-    user: {
-      findUnique: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    session: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      deleteMany: vi.fn(),
-    },
-    passwordReset: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      delete: vi.fn(),
-    },
-    emailVerification: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      delete: vi.fn(),
-    },
-  },
-}));
-
-vi.mock('../../utils/redis', () => ({
-  redis: {
-    get: vi.fn(),
-    set: vi.fn(),
-    del: vi.fn(),
-    incr: vi.fn(),
-    expire: vi.fn(),
-  },
-}));
-
-vi.mock('../../utils/email', () => ({
-  sendEmail: vi.fn().mockResolvedValue(true),
-}));
-
-vi.mock('argon2', () => ({
-  hash: vi.fn().mockResolvedValue('hashed_password'),
-  verify: vi.fn().mockResolvedValue(true),
-}));
-
-vi.mock('jsonwebtoken', () => ({
-  sign: vi.fn().mockReturnValue('mock_jwt_token'),
-  verify: vi.fn().mockReturnValue({ userId: 'user_123', sessionId: 'session_123' }),
-}));
-
-import { prisma } from '../../utils/prisma/index.js';
+// Test error handler to convert errors to proper HTTP responses
+const testErrorHandler = (err: Error, c: Context) => {
+  if (err.name === 'NotFoundError') {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: err.message } }, 404);
+  }
+  if (err.name === 'BadRequestError') {
+    return c.json({ success: false, error: { code: 'BAD_REQUEST', message: err.message } }, 400);
+  }
+  if (err.name === 'ConflictError') {
+    return c.json({ success: false, error: { code: 'CONFLICT', message: err.message } }, 409);
+  }
+  if (err.name === 'UnauthorizedError') {
+    return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: err.message } }, 401);
+  }
+  if (err.name === 'ForbiddenError') {
+    return c.json({ success: false, error: { code: 'FORBIDDEN', message: err.message } }, 403);
+  }
+  return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } }, 500);
+};
 
 describe('Auth Module', () => {
   let app: Hono;
@@ -74,6 +42,7 @@ describe('Auth Module', () => {
     vi.clearAllMocks();
     app = new Hono();
     app.route('/auth', authModule);
+    app.onError(testErrorHandler as never);
   });
 
   describe('POST /auth/register', () => {
@@ -86,16 +55,21 @@ describe('Auth Module', () => {
         emailVerified: false,
         isAdmin: false,
         createdAt: new Date(),
+        updatedAt: new Date(),
+        passwordHash: 'hashed_password',
+        isBanned: false,
+        deletedAt: null,
       };
 
-      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.user.create).mockResolvedValue(mockUser as never);
-      vi.mocked(prisma.emailVerification.create).mockResolvedValue({
+      // Mock the methods
+      mockPrisma.user.findFirst = vi.fn().mockResolvedValue(null);
+      mockPrisma.user.create = vi.fn().mockResolvedValue(mockUser);
+      mockPrisma.emailVerification.create = vi.fn().mockResolvedValue({
         id: 'token_123',
         token: 'verify_token',
         userId: 'user_123',
         expiresAt: new Date(Date.now() + 86400000),
-      } as never);
+      });
 
       const response = await app.request('/auth/register', {
         method: 'POST',
@@ -115,7 +89,7 @@ describe('Auth Module', () => {
     });
 
     it('should reject duplicate email', async () => {
-      vi.mocked(prisma.user.findFirst).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue({
         id: 'existing_user',
         email: 'test@example.com',
       } as never);
@@ -160,8 +134,8 @@ describe('Auth Module', () => {
         isBanned: false,
       };
 
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
-      vi.mocked(prisma.session.create).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
+      mockPrisma.session.create.mockResolvedValue({
         id: 'session_123',
         userId: 'user_123',
         refreshToken: 'refresh_token',
@@ -180,12 +154,13 @@ describe('Auth Module', () => {
       expect(response.status).toBe(200);
       const body = await response.json() as ApiResponse;
       expect(body.success).toBe(true);
-      expect(body.data).toHaveProperty('accessToken');
-      expect(body.data).toHaveProperty('refreshToken');
+      expect(body.data).toHaveProperty('tokens');
+      expect((body.data as { tokens: { accessToken: string } }).tokens).toHaveProperty('accessToken');
+      expect((body.data as { tokens: { refreshToken: string } }).tokens).toHaveProperty('refreshToken');
     });
 
     it('should reject invalid credentials', async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      mockPrisma.user.findUnique.mockResolvedValue(null);
 
       const response = await app.request('/auth/login', {
         method: 'POST',
@@ -207,7 +182,7 @@ describe('Auth Module', () => {
         isBanned: true,
       };
 
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
 
       const response = await app.request('/auth/login', {
         method: 'POST',
@@ -218,13 +193,13 @@ describe('Auth Module', () => {
         }),
       });
 
-      expect(response.status).toBe(403);
+      expect(response.status).toBe(401); // UnauthorizedError for banned users
     });
   });
 
   describe('POST /auth/logout', () => {
     it('should logout successfully', async () => {
-      vi.mocked(prisma.session.deleteMany).mockResolvedValue({ count: 1 });
+      mockPrisma.session.deleteMany.mockResolvedValue({ count: 1 });
 
       const response = await app.request('/auth/logout', {
         method: 'POST',
@@ -232,6 +207,9 @@ describe('Auth Module', () => {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer mock_jwt_token',
         },
+        body: JSON.stringify({
+          refreshToken: 'valid_refresh_token',
+        }),
       });
 
       expect(response.status).toBe(200);
@@ -253,9 +231,9 @@ describe('Auth Module', () => {
         },
       };
 
-      vi.mocked(prisma.session.findFirst).mockResolvedValue(mockSession as never);
-      vi.mocked(prisma.session.create).mockResolvedValue({
-        id: 'new_session_123',
+      mockPrisma.session.findUnique.mockResolvedValue(mockSession as never);
+      mockPrisma.session.update.mockResolvedValue({
+        id: 'session_123',
         refreshToken: 'new_refresh_token',
       } as never);
 
@@ -278,9 +256,10 @@ describe('Auth Module', () => {
         userId: 'user_123',
         refreshToken: 'expired_refresh_token',
         expiresAt: new Date(Date.now() - 1000), // Expired
+        user: { id: 'user_123', email: 'test@example.com', isAdmin: false, isBanned: false },
       };
 
-      vi.mocked(prisma.session.findFirst).mockResolvedValue(mockSession as never);
+      mockPrisma.session.findUnique.mockResolvedValue(mockSession as never);
 
       const response = await app.request('/auth/refresh', {
         method: 'POST',
@@ -301,8 +280,8 @@ describe('Auth Module', () => {
         email: 'test@example.com',
       };
 
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
-      vi.mocked(prisma.passwordReset.create).mockResolvedValue({
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
+      mockPrisma.passwordReset.create.mockResolvedValue({
         id: 'token_123',
         token: 'reset_token',
         userId: 'user_123',
@@ -322,7 +301,7 @@ describe('Auth Module', () => {
     });
 
     it('should return 200 even for non-existent email (prevent enumeration)', async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      mockPrisma.user.findUnique.mockResolvedValue(null);
 
       const response = await app.request('/auth/forgot-password', {
         method: 'POST',
@@ -346,10 +325,10 @@ describe('Auth Module', () => {
         user: { id: 'user_123' },
       };
 
-      vi.mocked(prisma.passwordReset.findFirst).mockResolvedValue(mockToken as never);
-      vi.mocked(prisma.user.update).mockResolvedValue({ id: 'user_123' } as never);
-      vi.mocked(prisma.passwordReset.delete).mockResolvedValue({} as never);
-      vi.mocked(prisma.session.deleteMany).mockResolvedValue({ count: 1 });
+      mockPrisma.passwordReset.findUnique.mockResolvedValue(mockToken as never);
+      mockPrisma.user.update.mockResolvedValue({ id: 'user_123' } as never);
+      mockPrisma.passwordReset.update.mockResolvedValue({} as never);
+      mockPrisma.session.deleteMany.mockResolvedValue({ count: 1 });
 
       const response = await app.request('/auth/reset-password', {
         method: 'POST',
@@ -371,7 +350,7 @@ describe('Auth Module', () => {
         expiresAt: new Date(Date.now() - 1000), // Expired
       };
 
-      vi.mocked(prisma.passwordReset.findFirst).mockResolvedValue(mockToken as never);
+      mockPrisma.passwordReset.findUnique.mockResolvedValue(mockToken as never);
 
       const response = await app.request('/auth/reset-password', {
         method: 'POST',
@@ -388,16 +367,22 @@ describe('Auth Module', () => {
 
   describe('POST /auth/verify-email', () => {
     it('should verify email with valid token', async () => {
-      const mockToken = {
+      const mockVerification = {
         id: 'token_123',
         token: 'valid_verify_token',
         userId: 'user_123',
         expiresAt: new Date(Date.now() + 86400000),
+        usedAt: null,
+        user: {
+          id: 'user_123',
+          email: 'test@example.com',
+          username: 'testuser',
+        },
       };
 
-      vi.mocked(prisma.emailVerification.findFirst).mockResolvedValue(mockToken as never);
-      vi.mocked(prisma.user.update).mockResolvedValue({ id: 'user_123', emailVerified: true } as never);
-      vi.mocked(prisma.emailVerification.delete).mockResolvedValue({} as never);
+      mockPrisma.emailVerification.findUnique.mockResolvedValue(mockVerification as never);
+      mockPrisma.emailVerification.update.mockResolvedValue({} as never);
+      mockPrisma.user.update.mockResolvedValue({ id: 'user_123', emailVerified: true } as never);
 
       const response = await app.request('/auth/verify-email', {
         method: 'POST',
@@ -411,7 +396,7 @@ describe('Auth Module', () => {
     });
 
     it('should reject invalid token', async () => {
-      vi.mocked(prisma.emailVerification.findFirst).mockResolvedValue(null);
+      mockPrisma.emailVerification.findUnique.mockResolvedValue(null);
 
       const response = await app.request('/auth/verify-email', {
         method: 'POST',

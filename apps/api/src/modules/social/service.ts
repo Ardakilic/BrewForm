@@ -77,7 +77,7 @@ export async function removeFavourite(userId: string, recipeId: string) {
   });
 
   if (!favourite) {
-    return { notFavourited: true };
+    throw new NotFoundError('Favourite');
   }
 
   await prisma.userFavourite.delete({
@@ -272,6 +272,11 @@ export async function getRecipeComments(
     throw new NotFoundError('Recipe');
   }
 
+  // Check visibility - only allow comments on public/unlisted recipes
+  if (recipe.visibility !== 'PUBLIC' && recipe.visibility !== 'UNLISTED') {
+    throw new ForbiddenError('Cannot view comments on private recipes');
+  }
+
   const [comments, total] = await Promise.all([
     prisma.comment.findMany({
       where: {
@@ -317,10 +322,10 @@ export async function getRecipeComments(
 
   // Add isAuthor flag
   const recipeAuthorId = recipe.userId;
-  const commentsWithAuthorFlag = comments.map((comment) => ({
+  const commentsWithAuthorFlag = comments.map((comment: any) => ({
     ...comment,
     isAuthor: comment.userId === recipeAuthorId,
-    replies: comment.replies.map((reply) => ({
+    replies: comment.replies.map((reply: any) => ({
       ...reply,
       isAuthor: reply.userId === recipeAuthorId,
     })),
@@ -341,6 +346,11 @@ export async function getRecipeComments(
  */
 export async function createComparison(recipeAId: string, recipeBId: string) {
   const prisma = getPrisma();
+
+  // Cannot compare same recipe
+  if (recipeAId === recipeBId) {
+    throw new BadRequestError('Cannot compare a recipe to itself');
+  }
 
   // Validate both recipes exist and are public
   const [recipeA, recipeB] = await Promise.all([

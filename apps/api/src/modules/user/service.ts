@@ -295,7 +295,7 @@ export async function getUserFavourites(userId: string, page = 1, limit = 20) {
   ]);
 
   return {
-    favourites: favourites.map((f) => f.recipe),
+    favourites: favourites.map((f: any) => f.recipe),
     pagination: createPaginationMeta(page, limit, total),
   };
 }

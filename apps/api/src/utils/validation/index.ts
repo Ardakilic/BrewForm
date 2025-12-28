@@ -5,6 +5,8 @@
 
 import { z } from 'zod';
 import { BrewMethodType, DrinkType, EmojiRating, ProcessingMethod, Visibility } from '@prisma/client';
+// Re-export CUID validation utilities
+export * from './cuid';
 
 // ============================================
 // Common Schemas
@@ -19,10 +21,10 @@ export const paginationSchema = z.object({
 });
 
 /**
- * ID parameter schema
+ * ID parameter schema (accepts both CUID and slug formats)
  */
 export const idParamSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).max(200),
 });
 
 /**
@@ -30,6 +32,20 @@ export const idParamSchema = z.object({
  */
 export const slugParamSchema = z.object({
   slug: z.string().min(1).max(200),
+});
+
+/**
+ * Recipe ID parameter schema (for routes using :recipeId)
+ */
+export const recipeIdParamSchema = z.object({
+  recipeId: z.string().cuid(),
+});
+
+/**
+ * Comment ID parameter schema (for routes using :commentId)
+ */
+export const commentIdParamSchema = z.object({
+  commentId: z.string().cuid(),
 });
 
 // ============================================
@@ -163,19 +179,19 @@ export const recipeVersionInputSchema = z.object({
   drinkType: z.nativeEnum(DrinkType),
   
   // Coffee
-  coffeeId: z.string().optional(),
+  coffeeId: z.string().cuid().optional(),
   coffeeName: z.string().max(200).optional(),
   roastDate: z.coerce.date().optional(),
   grindDate: z.coerce.date().optional(),
   
   // Equipment (IDs)
-  grinderId: z.string().optional(),
-  brewerId: z.string().optional(),
-  portafilterId: z.string().optional(),
-  basketId: z.string().optional(),
-  puckScreenId: z.string().optional(),
-  paperFilterId: z.string().optional(),
-  tamperId: z.string().optional(),
+  grinderId: z.string().cuid().optional(),
+  brewerId: z.string().cuid().optional(),
+  portafilterId: z.string().cuid().optional(),
+  basketId: z.string().cuid().optional(),
+  puckScreenId: z.string().cuid().optional(),
+  paperFilterId: z.string().cuid().optional(),
+  tamperId: z.string().cuid().optional(),
   
   // Grind settings
   grindSize: z.string().max(100).optional(),
@@ -326,7 +342,7 @@ export function validateRecipeSoft(input: RecipeVersionInput): SoftValidationRes
     DrinkType.CORTADO, DrinkType.MACCHIATO, DrinkType.MOCHA,
   ];
   
-  if (input.preparations?.some(p => p.name.toLowerCase().includes('milk'))) {
+  if (input.preparations?.some((p: { name: string }) => p.name.toLowerCase().includes('milk'))) {
     if (!milkDrinks.includes(input.drinkType)) {
       warnings.push(
         `Milk preparation noted for ${input.drinkType}, which is typically not a milk-based drink.`
@@ -428,9 +444,13 @@ export const vendorSchema = z.object({
   description: z.string().max(1000).optional(),
 });
 
+export const createVendorSchema = vendorSchema;
+
+export const updateVendorSchema = vendorSchema.partial();
+
 export const coffeeSchema = z.object({
   name: z.string().min(1).max(200),
-  vendorId: z.string().optional(),
+  vendorId: z.string().cuid().optional(),
   origin: z.string().max(100).optional(),
   region: z.string().max(100).optional(),
   farm: z.string().max(100).optional(),
@@ -441,6 +461,10 @@ export const coffeeSchema = z.object({
   description: z.string().max(2000).optional(),
   roastLevel: z.string().max(50).optional(),
 });
+
+export const createCoffeeSchema = coffeeSchema;
+
+export const updateCoffeeSchema = coffeeSchema.partial();
 
 // ============================================
 // Recipe Schemas
@@ -460,11 +484,11 @@ export const recipeFilterSchema = z.object({
   search: z.string().max(200).optional(),
   brewMethod: z.nativeEnum(BrewMethodType).optional(),
   drinkType: z.nativeEnum(DrinkType).optional(),
-  vendorId: z.string().optional(),
-  coffeeId: z.string().optional(),
-  grinderId: z.string().optional(),
-  brewerId: z.string().optional(),
-  userId: z.string().optional(),
+  vendorId: z.string().cuid().optional(),
+  coffeeId: z.string().cuid().optional(),
+  grinderId: z.string().cuid().optional(),
+  brewerId: z.string().cuid().optional(),
+  userId: z.string().cuid().optional(),
   visibility: z.nativeEnum(Visibility).optional(),
   minRating: z.coerce.number().int().min(1).max(10).optional(),
   tags: z.string().optional(), // comma-separated
@@ -478,6 +502,8 @@ export default {
   pagination: paginationSchema,
   idParam: idParamSchema,
   slugParam: slugParamSchema,
+  recipeIdParam: recipeIdParamSchema,
+  commentIdParam: commentIdParamSchema,
   recipeVersionInput: recipeVersionInputSchema,
   register: registerSchema,
   login: loginSchema,
@@ -487,7 +513,11 @@ export default {
   grinder: grinderSchema,
   brewer: brewerSchema,
   vendor: vendorSchema,
+  createVendor: createVendorSchema,
+  updateVendor: updateVendorSchema,
   coffee: coffeeSchema,
+  createCoffee: createCoffeeSchema,
+  updateCoffee: updateCoffeeSchema,
   createRecipe: createRecipeSchema,
   updateRecipe: updateRecipeSchema,
   recipeFilter: recipeFilterSchema,

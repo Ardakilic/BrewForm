@@ -5,7 +5,14 @@
 
 import { getPrisma } from '../database/index.js';
 
-// Re-export the prisma instance as a getter to avoid initialization issues
-export const prisma = getPrisma();
+// Re-export getPrisma for lazy initialization (important for testing)
+export { getPrisma };
+
+// Lazy getter for prisma instance
+export const prisma = new Proxy({} as ReturnType<typeof getPrisma>, {
+  get(_target, prop) {
+    return getPrisma()[prop as keyof ReturnType<typeof getPrisma>];
+  },
+});
 
 export default prisma;

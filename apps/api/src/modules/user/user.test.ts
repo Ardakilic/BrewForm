@@ -52,19 +52,38 @@ vi.mock('../../utils/logger/index.js', () => ({
   })),
 }));
 
-// Mock error handler
+// Custom error classes for testing
+class NotFoundError extends Error {
+  statusCode = 404;
+  code = 'NOT_FOUND';
+  constructor(resource: string) {
+    super(`${resource} not found`);
+    this.name = 'NotFoundError';
+  }
+}
+
+// Mock error handler module
 vi.mock('../../middleware/errorHandler.js', () => ({
   NotFoundError: class NotFoundError extends Error {
+    statusCode = 404;
+    code = 'NOT_FOUND';
     constructor(resource: string) {
       super(`${resource} not found`);
       this.name = 'NotFoundError';
     }
-    statusCode = 404;
   },
 }));
 
 import userModule from './index.js';
 import { getPrisma } from '../../utils/database/index.js';
+
+// Simple error handler for tests
+const testErrorHandler = (err: Error, c: { json: (body: unknown, status: number) => Response }) => {
+  if (err instanceof NotFoundError || err.name === 'NotFoundError') {
+    return c.json({ success: false, error: { code: 'NOT_FOUND', message: err.message } }, 404);
+  }
+  return c.json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } }, 500);
+};
 
 // Create mock prisma instance
 const mockPrisma = {
@@ -92,6 +111,8 @@ describe('User Module', () => {
     vi.mocked(getPrisma).mockReturnValue(mockPrisma as never);
     app = new Hono();
     app.route('/users', userModule);
+    // Attach error handler for proper error responses
+    app.onError(testErrorHandler as never);
   });
 
   describe('GET /users/me', () => {
@@ -129,8 +150,20 @@ describe('User Module', () => {
     it('should update user profile', async () => {
       const mockUser = {
         id: 'user_123',
+        email: 'test@example.com',
+        username: 'testuser',
         displayName: 'Updated Name',
+        avatarUrl: null,
         bio: 'Updated bio',
+        website: null,
+        isAdmin: false,
+        emailVerified: true,
+        preferredLocale: 'en',
+        preferredTimezone: 'UTC',
+        preferredUnits: 'METRIC',
+        preferredTheme: 'SYSTEM',
+        createdAt: new Date(),
+        _count: { recipes: 5, favourites: 10 },
       };
 
       vi.mocked(mockPrisma.user.update).mockResolvedValue(mockUser as never);
@@ -164,7 +197,20 @@ describe('User Module', () => {
     it('should update preferred units', async () => {
       const mockUser = {
         id: 'user_123',
+        email: 'test@example.com',
+        username: 'testuser',
+        displayName: 'Test User',
+        avatarUrl: null,
+        bio: null,
+        website: null,
+        isAdmin: false,
+        emailVerified: true,
+        preferredLocale: 'en',
+        preferredTimezone: 'UTC',
         preferredUnits: 'IMPERIAL',
+        preferredTheme: 'SYSTEM',
+        createdAt: new Date(),
+        _count: { recipes: 5, favourites: 10 },
       };
 
       vi.mocked(mockPrisma.user.update).mockResolvedValue(mockUser as never);
@@ -281,6 +327,12 @@ describe('User Module', () => {
       const mockUser = {
         id: 'user_456',
         username: 'coffeemaster',
+        displayName: 'Coffee Master',
+        avatarUrl: null,
+        bio: 'Professional barista',
+        website: null,
+        createdAt: new Date(),
+        _count: { recipes: 10 },
       };
 
       const mockRecipes = [

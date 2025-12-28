@@ -1,5 +1,5 @@
 ---
-trigger: auto
+trigger: model_decision
 category: rules
 ---
 

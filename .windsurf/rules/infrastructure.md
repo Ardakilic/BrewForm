@@ -1,5 +1,5 @@
 ---
-trigger: auto
+trigger: always_on
 category: rules
 ---
 
@@ -11,7 +11,7 @@ This rule governs all infrastructure-related operations, Docker usage, and deplo
 - **Container Runtime**: Docker with multi-stage builds
 - **Orchestration**: Docker Compose (development & production)
 - **Node.js Runtime**: Node.js 24 LTS on Debian Trixie Slim
-- **Package Manager**: pnpm 9.15.0 with workspaces
+- **Package Manager**: pnpm with workspaces
 - **Monorepo**: Turborepo for build orchestration
 
 ### Backend Stack
@@ -119,7 +119,6 @@ make prod-stop             # Stop production services
 - Regular security updates for base images
 
 ### Performance Optimization
-- Enable gzip compression in Nginx
 - Use Redis for caching frequently accessed data
 - Implement proper database indexing
 - Use connection pooling for database connections

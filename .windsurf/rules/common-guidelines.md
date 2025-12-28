@@ -1,5 +1,5 @@
 ---
-trigger: auto
+trigger: always_on
 category: rules
 ---
 

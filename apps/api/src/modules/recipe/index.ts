@@ -10,11 +10,11 @@ import {
   updateRecipeSchema,
   recipeFilterSchema,
   recipeVersionInputSchema,
-  type RecipeFilters,
-} from '../../utils/validation/index.js';
-import { recipeService } from './service.js';
-import { authMiddleware, requireAuth } from '../../middleware/auth.js';
-import { writeRateLimiter } from '../../middleware/rateLimit.js';
+  idParamSchema,
+} from '../../utils/validation';
+import { recipeService } from './service';
+import { authMiddleware, requireAuth } from '../../middleware/auth';
+import { writeRateLimiter } from '../../middleware/rateLimit';
 
 const recipes = new Hono();
 
@@ -32,11 +32,11 @@ recipes.get('/', zValidator('query', recipeFilterSchema), async (c) => {
   // Parse tags from comma-separated string if present
   const tagsParam = filters.tags;
   const parsedTags = typeof tagsParam === 'string' && tagsParam 
-    ? tagsParam.split(',').map((t) => t.trim()) 
+    ? tagsParam.split(',').map((t: string) => t.trim()) 
     : undefined;
 
   const result = await recipeService.listRecipes(
-    { ...filters, tags: parsedTags } as RecipeFilters & { tags?: string[] },
+    { ...filters, tags: parsedTags },
     viewer?.id
   );
 
@@ -104,20 +104,24 @@ recipes.post(
  * GET /recipes/:id
  * Get recipe by ID
  */
-recipes.get('/:id', async (c) => {
-  const id = c.req.param('id');
-  const viewer = c.get('user');
+recipes.get(
+  '/:id',
+  zValidator('param', idParamSchema),
+  async (c) => {
+    const { id } = c.req.valid('param');
+    const viewer = c.get('user');
 
-  // Check if it's a slug or ID
-  const recipe = id.includes('-')
-    ? await recipeService.getRecipeBySlug(id, viewer?.id)
-    : await recipeService.getRecipeById(id, viewer?.id);
+    // Check if it's a slug or ID (slugs contain hyphens)
+    const recipe = id.includes('-')
+      ? await recipeService.getRecipeBySlug(id, viewer?.id)
+      : await recipeService.getRecipeById(id, viewer?.id);
 
-  return c.json({
-    success: true,
-    data: recipe,
-  });
-});
+    return c.json({
+      success: true,
+      data: recipe,
+    });
+  }
+);
 
 /**
  * PATCH /recipes/:id
@@ -126,13 +130,14 @@ recipes.get('/:id', async (c) => {
 recipes.patch(
   '/:id',
   requireAuth,
+  zValidator('param', idParamSchema),
   zValidator('json', updateRecipeSchema),
   async (c) => {
     const user = c.get('user');
     if (!user) {
       return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
     }
-    const id = c.req.param('id');
+    const { id } = c.req.valid('param');
     const input = c.req.valid('json');
 
     const recipe = await recipeService.updateRecipe(id, user.id, input);
@@ -148,14 +153,18 @@ recipes.patch(
  * DELETE /recipes/:id
  * Delete a recipe
  */
-recipes.delete('/:id', requireAuth, async (c) => {
-  const user = c.get('user');
-  if (!user) {
-    return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
-  }
-  const id = c.req.param('id');
+recipes.delete(
+  '/:id',
+  requireAuth,
+  zValidator('param', idParamSchema),
+  async (c) => {
+    const user = c.get('user');
+    if (!user) {
+      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+    }
+    const { id } = c.req.valid('param');
 
-  await recipeService.deleteRecipe(id, user.id);
+    await recipeService.deleteRecipe(id, user.id);
 
   return c.json({
     success: true,
@@ -167,17 +176,21 @@ recipes.delete('/:id', requireAuth, async (c) => {
  * GET /recipes/:id/versions
  * Get all versions of a recipe
  */
-recipes.get('/:id/versions', async (c) => {
-  const id = c.req.param('id');
-  const viewer = c.get('user');
+recipes.get(
+  '/:id/versions',
+  zValidator('param', idParamSchema),
+  async (c) => {
+    const { id } = c.req.valid('param');
+    const viewer = c.get('user');
 
-  const versions = await recipeService.getRecipeVersions(id, viewer?.id);
+    const versions = await recipeService.getRecipeVersions(id, viewer?.id);
 
-  return c.json({
-    success: true,
-    data: versions,
-  });
-});
+    return c.json({
+      success: true,
+      data: versions,
+    });
+  }
+);
 
 /**
  * POST /recipes/:id/versions
@@ -187,13 +200,14 @@ recipes.post(
   '/:id/versions',
   requireAuth,
   writeRateLimiter,
+  zValidator('param', idParamSchema),
   zValidator('json', recipeVersionInputSchema),
   async (c) => {
     const user = c.get('user');
     if (!user) {
       return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
     }
-    const id = c.req.param('id');
+    const { id } = c.req.valid('param');
     const input = c.req.valid('json');
 
     const version = await recipeService.createRecipeVersion(id, user.id, input);
@@ -212,14 +226,22 @@ recipes.post(
  * POST /recipes/:id/fork
  * Fork a recipe
  */
-recipes.post('/:id/fork', requireAuth, writeRateLimiter, async (c) => {
-  const user = c.get('user');
-  if (!user) {
-    return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
-  }
-  const id = c.req.param('id');
+recipes.post(
+  '/:id/fork',
+  requireAuth,
+  writeRateLimiter,
+  zValidator('param', idParamSchema),
+  zValidator('json', recipeVersionInputSchema.partial()),
+  async (c) => {
+    const user = c.get('user');
+    if (!user) {
+      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+    }
+    const { id } = c.req.valid('param');
+    // Input is available but not used in the fork operation
+    // const input = c.req.valid('json');
 
-  const recipe = await recipeService.forkRecipe(id, user.id);
+    const recipe = await recipeService.forkRecipe(id, user.id);
 
   return c.json(
     {
