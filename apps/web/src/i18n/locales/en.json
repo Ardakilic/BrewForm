@@ -115,6 +115,7 @@
       "yield": "Yield",
       "time": "Time",
       "temperature": "Temperature",
+      "pressure": "Pressure",
       "ratio": "Ratio",
       "tastingNotes": "Tasting Notes",
       "rating": "Rating",

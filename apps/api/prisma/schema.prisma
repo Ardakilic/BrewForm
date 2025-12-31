@@ -284,13 +284,14 @@ model Grinder {
 }
 
 model Brewer {
-  id          String         @id @default(cuid())
-  brand       String
-  model       String
-  slug        String         @unique
-  brewMethod  BrewMethodType
-  type        String?        // manual, semi-auto, automatic
-  description String?
+  id              String         @id @default(cuid())
+  brand           String
+  model           String
+  slug            String         @unique
+  brewMethod      BrewMethodType
+  type            String?        // manual, semi-auto, automatic
+  defaultPressure String?        // Default pressure in bar (e.g., "9", "6-9", "variable")
+  description     String?
   
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
@@ -488,6 +489,7 @@ model UserSetup {
   defaultDoseGrams   Float?
   defaultGrindSize   String?
   defaultTempCelsius Float?
+  defaultPressure    String?        // Default pressure for shots
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -595,6 +597,7 @@ model RecipeVersion {
   yieldGrams     Float?         // Weight in grams (for gravimetric)
   brewTimeSec    Int?           // Time in seconds
   tempCelsius    Float?         // Temperature in Celsius
+  pressure       String?        // Pressure in bar (text for flexibility: "9", "6-9", "variable")
   
   // Derived metrics (computed from canonical values)
   brewRatio      Float?         // dose:yield ratio

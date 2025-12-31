@@ -305,6 +305,90 @@ describe('Recipe Module', () => {
       expect(body.success).toBe(true);
     });
 
+    it('should create a recipe with pressure field', async () => {
+      const mockCreatedRecipe = {
+        id: 'recipe_pressure',
+        slug: 'espresso-with-pressure',
+        visibility: 'DRAFT',
+        userId: 'user_123',
+        versions: [{ id: 'version_1' }],
+        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+      };
+      
+      const mockUpdatedRecipe = {
+        id: 'recipe_pressure',
+        slug: 'espresso-with-pressure',
+        visibility: 'DRAFT',
+        userId: 'user_123',
+        currentVersionId: 'version_1',
+        currentVersion: {
+          id: 'version_1',
+          title: 'Espresso with Pressure',
+          brewMethod: 'ESPRESSO_MACHINE',
+          drinkType: 'ESPRESSO',
+          doseGrams: 18,
+          yieldGrams: 36,
+          pressure: '9',
+        },
+        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+      };
+
+      vi.mocked(mockPrisma.recipe.create).mockResolvedValue(mockCreatedRecipe as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue(mockUpdatedRecipe as never);
+
+      const response = await app.request('/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visibility: 'DRAFT',
+          version: {
+            title: 'Espresso with Pressure',
+            brewMethod: 'ESPRESSO_MACHINE',
+            drinkType: 'ESPRESSO',
+            doseGrams: 18,
+            yieldGrams: 36,
+            pressure: '9',
+          },
+        }),
+      });
+
+      expect(response.status).toBe(201);
+      const body = await response.json() as ApiResponse;
+      expect(body.success).toBe(true);
+    });
+
+    it('should accept variable pressure values', async () => {
+      const mockCreatedRecipe = {
+        id: 'recipe_variable_pressure',
+        slug: 'gagguino-espresso',
+        visibility: 'DRAFT',
+        userId: 'user_123',
+        versions: [{ id: 'version_1' }],
+        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+      };
+
+      vi.mocked(mockPrisma.recipe.create).mockResolvedValue(mockCreatedRecipe as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+
+      const response = await app.request('/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visibility: 'DRAFT',
+          version: {
+            title: 'Gagguino Espresso',
+            brewMethod: 'ESPRESSO_MACHINE',
+            drinkType: 'ESPRESSO',
+            doseGrams: 18,
+            yieldGrams: 36,
+            pressure: '6-9',
+          },
+        }),
+      });
+
+      expect(response.status).toBe(201);
+    });
+
     it('should validate required fields', async () => {
       const response = await app.request('/recipes', {
         method: 'POST',
@@ -478,6 +562,7 @@ describe('Recipe Module', () => {
           yieldGrams: 36,
           brewTimeSec: 28,
           tempCelsius: 93,
+          pressure: '9',
           brewRatio: 2.0,
           flowRate: null,
           preparations: null,

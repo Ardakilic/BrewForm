@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Hono, Context } from 'hono';
+import { Hono, type Context } from 'hono';
 import authModule from './index.js';
 import { mockPrisma } from '../../test/setup.js';
 

@@ -57,6 +57,7 @@ function CreateRecipePage() {
     yieldGrams: '',
     brewTimeSec: '',
     tempCelsius: '',
+    pressure: '',
     tastingNotes: '',
     rating: '',
     tags: '',
@@ -92,6 +93,7 @@ function CreateRecipePage() {
           yieldGrams: formData.yieldGrams ? Number.parseFloat(formData.yieldGrams) : undefined,
           brewTimeSec: formData.brewTimeSec ? Number.parseInt(formData.brewTimeSec) : undefined,
           tempCelsius: formData.tempCelsius ? Number.parseFloat(formData.tempCelsius) : undefined,
+          pressure: formData.pressure || undefined,
           tastingNotes: formData.tastingNotes || undefined,
           rating: formData.rating ? Number.parseInt(formData.rating) : undefined,
           tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : undefined,
@@ -223,6 +225,14 @@ function CreateRecipePage() {
                 />
               </FormControl>
             </div>
+
+            <FormControl label={t('recipe.fields.pressure')} caption="e.g., 9, 6-9, variable">
+              <Input
+                value={formData.pressure}
+                onChange={handleChange('pressure')}
+                placeholder="9"
+              />
+            </FormControl>
 
             <FormControl label={t('recipe.fields.tastingNotes')}>
               <Textarea

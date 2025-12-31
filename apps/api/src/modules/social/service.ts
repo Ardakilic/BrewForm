@@ -322,10 +322,10 @@ export async function getRecipeComments(
 
   // Add isAuthor flag
   const recipeAuthorId = recipe.userId;
-  const commentsWithAuthorFlag = comments.map((comment: any) => ({
+  const commentsWithAuthorFlag = comments.map((comment) => ({
     ...comment,
     isAuthor: comment.userId === recipeAuthorId,
-    replies: comment.replies.map((reply: any) => ({
+    replies: comment.replies.map((reply) => ({
       ...reply,
       isAuthor: reply.userId === recipeAuthorId,
     })),

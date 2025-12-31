@@ -259,7 +259,7 @@ social.post(
  * GET /social/comparisons/:token
  * Get comparison by share token
  */
-social.get('/comparisons/:token', async (c: any) => {
+social.get('/comparisons/:token', async (c) => {
   const token = c.req.param('token');
 
   const comparison = await socialService.getComparisonByToken(token);

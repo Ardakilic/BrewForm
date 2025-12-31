@@ -236,6 +236,45 @@ describe('Validation Utilities', () => {
         });
         expect(result.brand).toBe('La Marzocco');
       });
+
+      it('should accept brewer with defaultPressure', () => {
+        const result = brewerSchema.parse({
+          brand: 'Gaggia',
+          model: 'Classic Pro',
+          brewMethod: 'ESPRESSO_MACHINE',
+          defaultPressure: '9',
+        });
+        expect(result.defaultPressure).toBe('9');
+      });
+
+      it('should accept variable defaultPressure for modified machines', () => {
+        const result = brewerSchema.parse({
+          brand: 'Gaggia',
+          model: 'Gagguino Modified',
+          brewMethod: 'ESPRESSO_MACHINE',
+          defaultPressure: 'variable',
+        });
+        expect(result.defaultPressure).toBe('variable');
+      });
+
+      it('should accept range defaultPressure for high-end machines', () => {
+        const result = brewerSchema.parse({
+          brand: 'Decent',
+          model: 'DE1',
+          brewMethod: 'ESPRESSO_MACHINE',
+          defaultPressure: '0-12',
+        });
+        expect(result.defaultPressure).toBe('0-12');
+      });
+
+      it('should allow undefined defaultPressure', () => {
+        const result = brewerSchema.parse({
+          brand: 'Hario',
+          model: 'V60',
+          brewMethod: 'POUR_OVER_V60',
+        });
+        expect(result.defaultPressure).toBeUndefined();
+      });
     });
 
     describe('vendorSchema', () => {
@@ -288,6 +327,37 @@ describe('Validation Utilities', () => {
         });
         expect(result.yieldGrams).toBe(36);
         expect(result.rating).toBe(8);
+      });
+
+      it('should accept pressure field', () => {
+        const result = recipeVersionInputSchema.parse({
+          ...validVersion,
+          pressure: '9',
+        });
+        expect(result.pressure).toBe('9');
+      });
+
+      it('should accept various pressure formats', () => {
+        const pressureFormats = ['9', '6-9', 'variable', '9 bar'];
+        for (const pressure of pressureFormats) {
+          const result = recipeVersionInputSchema.parse({
+            ...validVersion,
+            pressure,
+          });
+          expect(result.pressure).toBe(pressure);
+        }
+      });
+
+      it('should accept undefined pressure (optional field)', () => {
+        const result = recipeVersionInputSchema.parse(validVersion);
+        expect(result.pressure).toBeUndefined();
+      });
+
+      it('should reject pressure exceeding max length', () => {
+        expect(() => recipeVersionInputSchema.parse({
+          ...validVersion,
+          pressure: 'a'.repeat(51),
+        })).toThrow();
       });
 
       it('should reject invalid rating', () => {

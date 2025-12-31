@@ -202,6 +202,7 @@ export const recipeVersionInputSchema = z.object({
   yieldGrams: z.number().positive().max(1000).optional(),
   brewTimeSec: z.number().int().positive().max(86400).optional(),
   tempCelsius: z.number().min(0).max(100).optional(),
+  pressure: z.string().max(50).optional(), // Pressure in bar (e.g., "9", "6-9", "variable")
   
   // Additional preparations
   preparations: z.array(z.object({
@@ -434,6 +435,7 @@ export const brewerSchema = z.object({
   model: z.string().min(1).max(100),
   brewMethod: z.nativeEnum(BrewMethodType),
   type: z.string().max(50).optional(),
+  defaultPressure: z.string().max(50).optional(), // Default pressure in bar (e.g., "9", "6-9", "variable")
   description: z.string().max(1000).optional(),
 });
 
