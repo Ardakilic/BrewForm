@@ -34,25 +34,19 @@ const coffeeColors = {
   accent500: '#B8804A',
 };
 
-const CoffeeTheme = createTheme(
-  {
-    primary: coffeeColors.primary,
-    accent: coffeeColors.accent,
+const CoffeeTheme = createTheme({
+  colors: {
+    backgroundPrimary: coffeeColors.primary50,
+    backgroundSecondary: coffeeColors.primary100,
+    backgroundTertiary: coffeeColors.primary200,
+    buttonPrimaryFill: coffeeColors.primary,
+    buttonPrimaryHover: coffeeColors.primary600,
+    buttonPrimaryActive: coffeeColors.primary700,
+    contentPrimary: coffeeColors.primary900,
+    contentSecondary: coffeeColors.primary700,
+    contentTertiary: coffeeColors.primary500,
   },
-  {
-    colors: {
-      backgroundPrimary: coffeeColors.primary50,
-      backgroundSecondary: coffeeColors.primary100,
-      backgroundTertiary: coffeeColors.primary200,
-      buttonPrimaryFill: coffeeColors.primary,
-      buttonPrimaryHover: coffeeColors.primary600,
-      buttonPrimaryActive: coffeeColors.primary700,
-      contentPrimary: coffeeColors.primary900,
-      contentSecondary: coffeeColors.primary700,
-      contentTertiary: coffeeColors.primary500,
-    },
-  }
-);
+});
 
 // ============================================
 // Theme Types
@@ -113,7 +107,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         return DarkTheme;
       case 'coffee':
         return CoffeeTheme;
-      case 'system':
       default:
         return systemDark ? DarkTheme : LightTheme;
     }

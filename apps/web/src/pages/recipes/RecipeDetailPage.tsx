@@ -15,7 +15,45 @@ import { api } from '../../utils/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+interface RecipeVersion {
+  title: string;
+  description?: string;
+  brewMethod: string;
+  drinkType: string;
+  coffeeName?: string;
+  grindSize?: string;
+  doseGrams: number;
+  yieldGrams?: number;
+  brewTimeSec?: number;
+  tempCelsius?: number;
+  pressure?: string;
+  brewRatio?: number;
+  tastingNotes?: string;
+  rating?: number;
+  tags?: string[];
+}
+
+interface Recipe {
+  id: string;
+  userId: string;
+  slug: string;
+  currentVersion: RecipeVersion;
+  user?: {
+    username: string;
+  };
+  forkedFrom?: {
+    title: string;
+    slug: string;
+    user?: {
+      username: string;
+    };
+  };
+}
+
+const fetcher = async (url: string): Promise<Recipe> => {
+  const response = await api.get(url);
+  return response.data as Recipe;
+};
 
 function RecipeDetailPage() {
   const [css, theme] = useStyletron();
@@ -23,7 +61,7 @@ function RecipeDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
 
-  const { data: recipe, isLoading, error } = useSWR(
+  const { data: recipe, isLoading, error } = useSWR<Recipe>(
     slug ? `/recipes/${slug}` : null,
     fetcher
   );
@@ -145,6 +183,15 @@ function RecipeDetailPage() {
                 </>
               )}
 
+              {version?.pressure && (
+                <>
+                  <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
+                    {t('recipe.fields.pressure')}
+                  </LabelMedium>
+                  <ParagraphMedium marginBottom="16px">{version.pressure} bar</ParagraphMedium>
+                </>
+              )}
+
               {version?.brewRatio && (
                 <>
                   <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
@@ -189,14 +236,14 @@ function RecipeDetailPage() {
           )}
 
           {/* Tags */}
-          {version?.tags?.length > 0 && (
+          {version?.tags && version.tags.length > 0 && (
             <div className={css({ marginTop: '24px' })}>
               <LabelMedium color={theme.colors.contentSecondary} marginBottom="8px">
                 {t('recipe.fields.tags')}
               </LabelMedium>
               <div className={css({ display: 'flex', gap: '8px', flexWrap: 'wrap' })}>
-                {version.tags.map((tag: string) => (
-                  <Tag key={tag} closeable={false} kind="neutral">
+                {version.tags.map((tag) => (
+                  <Tag key={tag} closeable={false}>
                     {tag}
                   </Tag>
                 ))}
@@ -214,7 +261,7 @@ function RecipeDetailPage() {
                 to={`/recipes/${recipe.forkedFrom.slug}`}
                 className={css({ color: '#6F4E37' })}
               >
-                {recipe.forkedFrom.currentVersion?.title}
+                {recipe.forkedFrom.title}
               </Link>{' '}
               by @{recipe.forkedFrom.user?.username}
             </ParagraphMedium>

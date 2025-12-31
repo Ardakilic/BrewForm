@@ -115,12 +115,15 @@ async function request<T>(
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
+  // Build fetch options
+  const fetchOptions = {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  };
+
   try {
-    let response = await fetch(url.toString(), {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    let response = await fetch(url.toString(), fetchOptions);
 
     // Handle 401 - try to refresh token
     if (response.status === 401 && accessToken) {
@@ -128,9 +131,8 @@ async function request<T>(
       if (refreshed) {
         headers.Authorization = `Bearer ${getAccessToken()}`;
         response = await fetch(url.toString(), {
-          method,
+          ...fetchOptions,
           headers,
-          body: body ? JSON.stringify(body) : undefined,
         });
       }
     }

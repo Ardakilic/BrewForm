@@ -70,8 +70,11 @@ function CreateRecipePage() {
     setFormData({ ...formData, [field]: e.target.value });
   };
 
-  const handleSelectChange = (field: string) => (params: { value: { id: string; label: string }[] }) => {
-    setFormData({ ...formData, [field]: params.value });
+  const handleSelectChange = (field: string) => (params: { value: readonly { id?: string | number; label?: React.ReactNode }[] }) => {
+    const validOptions = params.value.filter((opt): opt is { id: string; label: string } => 
+      typeof opt.id === 'string' && typeof opt.label === 'string'
+    );
+    setFormData({ ...formData, [field]: validOptions });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,7 +83,7 @@ function CreateRecipePage() {
     setIsLoading(true);
 
     try {
-      const response = await api.post('/recipes', {
+      const recipeData = {
         visibility: 'PUBLIC',
         version: {
           title: formData.title,
@@ -98,7 +101,9 @@ function CreateRecipePage() {
           rating: formData.rating ? Number.parseInt(formData.rating) : undefined,
           tags: formData.tags ? formData.tags.split(',').map((t) => t.trim()) : undefined,
         },
-      });
+      };
+
+      const response = await api.post('/recipes', recipeData);
 
       if (response.success && response.data) {
         navigate(`/recipes/${(response.data as { slug: string }).slug}`);
@@ -186,7 +191,7 @@ function CreateRecipePage() {
               <FormControl label={`${t('recipe.fields.dose')} (g)`} caption="Required">
                 <Input
                   type="number"
-                  step="0.1"
+                  step={0.1}
                   value={formData.doseGrams}
                   onChange={handleChange('doseGrams')}
                   required
@@ -197,7 +202,7 @@ function CreateRecipePage() {
               <FormControl label={`${t('recipe.fields.yield')} (g)`}>
                 <Input
                   type="number"
-                  step="0.1"
+                  step={0.1}
                   value={formData.yieldGrams}
                   onChange={handleChange('yieldGrams')}
                   placeholder="36"
@@ -218,7 +223,7 @@ function CreateRecipePage() {
               <FormControl label={`${t('recipe.fields.temperature')} (°C)`}>
                 <Input
                   type="number"
-                  step="0.5"
+                  step={0.5}
                   value={formData.tempCelsius}
                   onChange={handleChange('tempCelsius')}
                   placeholder="93"
