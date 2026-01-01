@@ -2,13 +2,13 @@
  * BrewForm Settings Page
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStyletron } from 'baseui';
 import { Card } from 'baseui/card';
 import { FormControl } from 'baseui/form-control';
 import { Input } from 'baseui/input';
 import { Textarea } from 'baseui/textarea';
-import { Select } from 'baseui/select';
+import { Select, type OnChangeParams } from 'baseui/select';
 import { Button } from 'baseui/button';
 import { HeadingLarge, HeadingMedium } from 'baseui/typography';
 import { Notification, KIND } from 'baseui/notification';
@@ -18,8 +18,12 @@ import useSWR from 'swr';
 import { api } from '../../utils/api';
 import { useTheme, type ThemeMode } from '../../contexts/ThemeContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import type { UserProfile } from '../../types';
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+const fetcher = async (url: string): Promise<UserProfile> => {
+  const response = await api.get<UserProfile>(url);
+  return response.data as UserProfile;
+};
 
 const THEME_OPTIONS = [
   { id: 'light', label: 'Light' },
@@ -38,14 +42,25 @@ function SettingsPage() {
   const { t } = useTranslation();
   const { themeMode, setThemeMode } = useTheme();
 
-  const { data: profile, isLoading, mutate } = useSWR('/users/me', fetcher);
+  const { data: profile, isLoading, mutate } = useSWR<UserProfile>('/users/me', fetcher);
 
   const [formData, setFormData] = useState({
-    displayName: profile?.displayName || '',
-    bio: profile?.bio || '',
-    website: profile?.website || '',
-    preferredUnits: profile?.preferredUnits || 'METRIC',
+    displayName: '',
+    bio: '',
+    website: '',
+    preferredUnits: 'METRIC',
   });
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        displayName: profile.displayName || '',
+        bio: profile.bio || '',
+        website: profile.website || '',
+        preferredUnits: profile.preferredUnits || 'METRIC',
+      });
+    }
+  }, [profile]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -55,15 +70,15 @@ function SettingsPage() {
     setFormData({ ...formData, [field]: e.target.value });
   };
 
-  const handleThemeChange = (params: { value: { id: string }[] }) => {
+  const handleThemeChange = (params: OnChangeParams) => {
     if (params.value[0]) {
       setThemeMode(params.value[0].id as ThemeMode);
     }
   };
 
-  const handleUnitsChange = (params: { value: { id: string }[] }) => {
+  const handleUnitsChange = (params: OnChangeParams) => {
     if (params.value[0]) {
-      setFormData({ ...formData, preferredUnits: params.value[0].id });
+      setFormData({ ...formData, preferredUnits: String(params.value[0].id) });
     }
   };
 
@@ -124,7 +139,7 @@ function SettingsPage() {
             <Input
               value={formData.displayName}
               onChange={handleChange('displayName')}
-              placeholder={profile?.username}
+              placeholder={profile?.username || ''}
             />
           </FormControl>
 

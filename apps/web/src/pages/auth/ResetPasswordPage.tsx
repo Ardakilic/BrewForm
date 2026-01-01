@@ -84,13 +84,12 @@ function ResetPasswordPage() {
           )}
 
           <form onSubmit={handleSubmit}>
-            <FormControl label={t('auth.resetPassword.password')}>
+            <FormControl label={t('auth.resetPassword.password')} caption="Minimum 8 characters">
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.currentTarget.value)}
                 required
-                minLength={8}
               />
             </FormControl>
 

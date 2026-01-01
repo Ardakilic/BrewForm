@@ -15,8 +15,12 @@ import useSWR from 'swr';
 import { api } from '../../utils/api';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import type { UserProfile, RecipeListItem } from '../../types';
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+const fetcher = async <T,>(url: string): Promise<T> => {
+  const response = await api.get<T>(url);
+  return response.data as T;
+};
 
 function ProfilePage() {
   const [css, theme] = useStyletron();
@@ -24,9 +28,9 @@ function ProfilePage() {
   useAuth(); // Ensure user is authenticated
   const [activeTab, setActiveTab] = useState<React.Key>('0');
 
-  const { data: profile, isLoading } = useSWR('/users/me', fetcher);
-  const { data: recipesData } = useSWR('/users/me/recipes', fetcher);
-  const { data: favouritesData } = useSWR('/users/me/favourites', fetcher);
+  const { data: profile, isLoading } = useSWR<UserProfile>('/users/me', fetcher<UserProfile>);
+  const { data: recipesData } = useSWR<RecipeListItem[]>('/users/me/recipes', fetcher<RecipeListItem[]>);
+  const { data: favouritesData } = useSWR<RecipeListItem[]>('/users/me/favourites', fetcher<RecipeListItem[]>);
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -104,7 +108,7 @@ function ProfilePage() {
               <div className={css({ marginTop: '16px' })}>
                 {recipesData?.length ? (
                   <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
-                    {recipesData.map((recipe: { id: string; slug: string; currentVersion: { title: string }; visibility: string }) => (
+                    {recipesData.map((recipe) => (
                       <Link
                         key={recipe.id}
                         to={`/recipes/${recipe.slug}`}
@@ -133,7 +137,7 @@ function ProfilePage() {
               <div className={css({ marginTop: '16px' })}>
                 {favouritesData?.length ? (
                   <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
-                    {favouritesData.map((recipe: { id: string; slug: string; currentVersion: { title: string }; user: { username: string } }) => (
+                    {favouritesData.map((recipe) => (
                       <Link
                         key={recipe.id}
                         to={`/recipes/${recipe.slug}`}

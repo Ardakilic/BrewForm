@@ -14,44 +14,10 @@ import useSWR from 'swr';
 import { api } from '../../utils/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
-
-interface RecipeVersion {
-  title: string;
-  description?: string;
-  brewMethod: string;
-  drinkType: string;
-  coffeeName?: string;
-  grindSize?: string;
-  doseGrams: number;
-  yieldGrams?: number;
-  brewTimeSec?: number;
-  tempCelsius?: number;
-  pressure?: string;
-  brewRatio?: number;
-  tastingNotes?: string;
-  rating?: number;
-  tags?: string[];
-}
-
-interface Recipe {
-  id: string;
-  userId: string;
-  slug: string;
-  currentVersion: RecipeVersion;
-  user?: {
-    username: string;
-  };
-  forkedFrom?: {
-    title: string;
-    slug: string;
-    user?: {
-      username: string;
-    };
-  };
-}
+import type { Recipe } from '../../types';
 
 const fetcher = async (url: string): Promise<Recipe> => {
-  const response = await api.get(url);
+  const response = await api.get<Recipe>(url);
   return response.data as Recipe;
 };
 

@@ -3,34 +3,21 @@
  * Handles all API requests with auth token management
  */
 
+import type { ApiResponse } from '../types';
+
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // ============================================
 // Types
 // ============================================
 
-interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    errors?: Array<{ field: string; message: string }>;
-  };
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-}
-
 interface RequestOptions {
   headers?: Record<string, string>;
   params?: Record<string, string | number | boolean | undefined>;
 }
+
+// Re-export ApiResponse for convenience
+export type { ApiResponse };
 
 // ============================================
 // Token Management

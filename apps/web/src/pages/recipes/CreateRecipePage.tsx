@@ -247,11 +247,11 @@ function CreateRecipePage() {
               />
             </FormControl>
 
-            <FormControl label={`${t('recipe.fields.rating')} (1-10)`}>
+            <FormControl label={`${t('recipe.fields.rating')} (1-10)`} caption="Rate from 1 to 10">
               <Input
                 type="number"
-                min="1"
-                max="10"
+                min={1}
+                max={10}
                 value={formData.rating}
                 onChange={handleChange('rating')}
                 placeholder="8"

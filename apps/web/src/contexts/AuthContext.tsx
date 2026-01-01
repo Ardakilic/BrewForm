@@ -5,18 +5,11 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { api } from '../utils/api';
+import type { User, LoginResponse, RegisterResponse } from '../types';
 
 // ============================================
 // Types
 // ============================================
-
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  displayName: string | null;
-  isAdmin: boolean;
-}
 
 interface AuthContextType {
   user: User | null;
@@ -93,8 +86,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     try {
-      const response = await api.get('/auth/me');
-      if (response.success) {
+      const response = await api.get<User>('/auth/me');
+      if (response.success && response.data) {
         setUser(response.data);
       } else {
         clearTokens();
@@ -107,9 +100,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await api.post('/auth/login', { email, password });
+    const response = await api.post<LoginResponse>('/auth/login', { email, password });
     
-    if (!response.success) {
+    if (!response.success || !response.data) {
       throw new Error(response.error?.message || 'Login failed');
     }
 
@@ -118,9 +111,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const register = async (data: RegisterData) => {
-    const response = await api.post('/auth/register', data);
+    const response = await api.post<RegisterResponse>('/auth/register', data);
     
-    if (!response.success) {
+    if (!response.success || !response.data) {
       throw new Error(response.error?.message || 'Registration failed');
     }
 

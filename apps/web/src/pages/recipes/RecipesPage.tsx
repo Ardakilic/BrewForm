@@ -16,8 +16,12 @@ import useSWR from 'swr';
 import { api } from '../../utils/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
+import type { RecipeListItem } from '../../types';
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+const fetcher = async (url: string): Promise<RecipeListItem[]> => {
+  const response = await api.get<RecipeListItem[]>(url);
+  return response.data as RecipeListItem[];
+};
 
 function RecipesPage() {
   const [css, theme] = useStyletron();
@@ -26,7 +30,7 @@ function RecipesPage() {
   const [search, setSearch] = useState('');
   const [brewMethod, setBrewMethod] = useState<{ id: string; label: string }[]>([]);
 
-  const { data: recipes, isLoading } = useSWR('/recipes?visibility=PUBLIC', fetcher);
+  const { data: recipes, isLoading } = useSWR<RecipeListItem[]>('/recipes?visibility=PUBLIC', fetcher);
 
   return (
     <>
@@ -94,7 +98,7 @@ function RecipesPage() {
             gap: '24px',
           })}
         >
-          {recipes.map((recipe: { id: string; slug: string; currentVersion: { title: string; brewMethod: string; drinkType: string; rating?: number }; user: { username: string; displayName?: string } }) => (
+          {recipes.map((recipe) => (
             <Link
               key={recipe.id}
               to={`/recipes/${recipe.slug}`}

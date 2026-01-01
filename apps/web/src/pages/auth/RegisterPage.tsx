@@ -31,7 +31,7 @@ function RegisterPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [field]: e.target.value });
   };
 
@@ -110,14 +110,12 @@ function RegisterPage() {
               />
             </FormControl>
 
-            <FormControl label={t('auth.register.username')}>
+            <FormControl label={t('auth.register.username')} caption="Lowercase letters, numbers, and underscores only">
               <Input
                 value={formData.username}
                 onChange={handleChange('username')}
                 required
                 autoComplete="username"
-                pattern="[a-z0-9_]+"
-                title="Lowercase letters, numbers, and underscores only"
               />
             </FormControl>
 
@@ -129,14 +127,13 @@ function RegisterPage() {
               />
             </FormControl>
 
-            <FormControl label={t('auth.register.password')}>
+            <FormControl label={t('auth.register.password')} caption="Minimum 8 characters">
               <Input
                 type="password"
                 value={formData.password}
                 onChange={handleChange('password')}
                 required
                 autoComplete="new-password"
-                minLength={8}
               />
             </FormControl>
 

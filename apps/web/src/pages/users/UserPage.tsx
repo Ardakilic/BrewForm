@@ -11,21 +11,30 @@ import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
 import { api } from '../../utils/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import type { UserProfile, RecipeListItem } from '../../types';
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+const profileFetcher = async (url: string): Promise<UserProfile> => {
+  const response = await api.get<UserProfile>(url);
+  return response.data as UserProfile;
+};
+
+const recipesFetcher = async (url: string): Promise<RecipeListItem[]> => {
+  const response = await api.get<RecipeListItem[]>(url);
+  return response.data as RecipeListItem[];
+};
 
 function UserPage() {
   const [css, theme] = useStyletron();
   const { t } = useTranslation();
   const { username } = useParams<{ username: string }>();
 
-  const { data: profile, isLoading } = useSWR(
+  const { data: profile, isLoading } = useSWR<UserProfile>(
     username ? `/users/${username}` : null,
-    fetcher
+    profileFetcher
   );
-  const { data: recipesData } = useSWR(
+  const { data: recipesData } = useSWR<RecipeListItem[]>(
     username ? `/users/${username}/recipes` : null,
-    fetcher
+    recipesFetcher
   );
 
   if (isLoading) return <LoadingSpinner />;
@@ -82,7 +91,7 @@ function UserPage() {
 
         {recipesData?.length ? (
           <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
-            {recipesData.map((recipe: { id: string; slug: string; currentVersion: { title: string; brewMethod: string } }) => (
+            {recipesData.map((recipe) => (
               <Link key={recipe.id} to={`/recipes/${recipe.slug}`} className={css({ textDecoration: 'none' })}>
                 <Card>
                   <HeadingSmall>{recipe.currentVersion?.title}</HeadingSmall>

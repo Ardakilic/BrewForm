@@ -10,14 +10,18 @@ import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
 import { api } from '../../utils/api';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import type { Comparison } from '../../types';
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+const fetcher = async (url: string): Promise<Comparison> => {
+  const response = await api.get<Comparison>(url);
+  return response.data as Comparison;
+};
 
 function ComparePage() {
   const [css, theme] = useStyletron();
   const { token } = useParams<{ token: string }>();
 
-  const { data: comparison, isLoading, error } = useSWR(
+  const { data: comparison, isLoading, error } = useSWR<Comparison>(
     token ? `/social/comparisons/${token}` : null,
     fetcher
   );
