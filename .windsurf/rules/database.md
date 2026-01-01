@@ -1,139 +1,55 @@
 ---
-trigger: model_decision
-category: rules
+trigger: glob
+globs: 
+  - "**/prisma/**"
+  - "**/*.prisma"
 ---
 
-This rule governs all database-related operations, schema design, and data management practices for the BrewForm platform.
+<schema_conventions>
+- Model names: PascalCase (User, Recipe, CoffeeBean)
+- Field names: snake_case (created_at, user_id)
+- Include timestamps: `created_at` and `updated_at`
+- Use `@default(now())` and `@updatedAt` for timestamps
+</schema_conventions>
 
-## Prisma Schema Management
+<field_types>
+- String with `@db.VarChar(n)` for limited text
+- DateTime with `@db.Timestamptz` for timestamps
+- Use `@unique` for natural keys
+- Use `@default(cuid())` for IDs
+</field_types>
 
-### Schema Design Principles
-- Use descriptive model names in PascalCase (e.g., `User`, `Recipe`, `CoffeeBean`)
-- Use snake_case for field names (e.g., `created_at`, `user_id`)
-- Include proper timestamps: `created_at` and `updated_at`
-- Use `@default(now())` for timestamp fields
-- Add `@updatedAt` for automatic timestamp updates
-- Use proper relationships with `@relation` decorator
+<relationships>
+- Define foreign keys explicitly with `@relation`
+- Use `onDelete: Cascade` carefully
+- Add `@@index` on foreign keys
+- Use junction tables for many-to-many
+</relationships>
 
-### Field Types and Constraints
-- Use `String` for text fields with appropriate `@db.VarChar` limits
-- Use `Int` for numeric IDs and counters
-- Use `BigInt` for large IDs (Prisma default)
-- Use `DateTime` for timestamps with `@db.Timestamptz`
-- Use `Boolean` for flags and status fields
-- Use `Json` for flexible schema data
-- Add `@unique` constraints for natural keys
-- Use `@default(uuid())` for non-sequential IDs when needed
-
-### Relationship Best Practices
-- Always define foreign key relationships explicitly
-- Use `@relation` with proper field references
-- Define cascading deletes carefully (`onDelete: Cascade`)
-- Use many-to-many relationships for junction tables
-- Add proper indexing on foreign keys
-- Consider referential integrity in design
-
-## Migration Management
-
-### Migration Workflow
+<migrations>
 ```bash
-# Always run these commands in Docker container
-make db-generate          # Generate Prisma client
-make db-migrate           # Apply migrations to database
-make db-studio            # Open Prisma Studio for inspection
-make db-reset             # Reset database (development only)
+# Always run in Docker container
+make db-generate    # Generate Prisma client
+make db-migrate     # Apply migrations
+make db-studio      # Inspect database
+make db-reset       # Reset (dev only)
 ```
-
-### Migration Best Practices
 - Create descriptive migration names
-- Review generated migrations before applying
-- Test migrations on staging environment first
+- Review migrations before applying
 - Never modify existing migration files
-- Use `prisma migrate dev` for development changes
-- Use `prisma migrate deploy` for production deployments
+- Use `prisma migrate dev` for development
+</migrations>
 
-### Schema Changes
-- Add new fields as nullable first, then populate data
-- Use `@map` for legacy column name compatibility
-- Use `@@map` for legacy table name compatibility
-- Consider data migration scripts for complex changes
-- Document breaking changes properly
-- Test schema changes with sample data
-
-## Database Operations
-
-### Query Best Practices
-- Use Prisma's type-safe query methods
-- Leverage `include` and `select` for efficient queries
-- Use `where` clauses with proper indexing
+<query_patterns>
+- Use `include` and `select` for efficient queries
 - Implement pagination with `skip` and `take`
-- Use transactions for multi-table operations
-- Avoid N+1 query problems with proper includes
+- Use transactions for consistency
+- Add indexes on frequently queried fields
+</query_patterns>
 
-### Performance Optimization
-- Add database indexes on frequently queried fields
-- Use `@@index` for composite indexes
-- Consider `@@unique` for frequently queried combinations
-- Use `findMany` with proper filtering
-- Implement query result caching where appropriate
-- Monitor slow queries and optimize them
-
-### Data Validation
-- Use Zod schemas for input validation
-- Implement database constraints for data integrity
-- Use proper field length limits
-- Validate email formats and URLs
-- Implement proper enum values
-- Use check constraints for business rules
-
-## Data Integrity and Security
-
-### Data Privacy
-- Hash passwords with bcrypt (never store plain text)
-- Use proper data encryption for sensitive fields
-- Implement data retention policies
-- Use soft deletes for audit trails
-- Consider GDPR compliance for user data
-- Implement proper data anonymization for testing
-
-### Access Control
+<security>
+- Hash passwords (never store plain text)
 - Implement row-level security patterns
-- Use proper user ownership checks
-- Validate user permissions in queries
-- Use database transactions for consistency
-- Implement audit logging for data changes
-- Use proper error handling for data access
-
-### Backup and Recovery
-- Set up regular database backups
-- Test backup restoration procedures
-- Implement point-in-time recovery
-- Use proper backup encryption
-- Document backup and restore procedures
-- Monitor backup success/failure
-
-## Development Practices
-
-### Seeding and Testing Data
-- Create realistic seed data for development
-- Use factory patterns for test data generation
-- Include edge cases in test data
-- Keep seed data version controlled
-- Use separate databases for testing
-- Clean up test data properly
-
-### Environment Management
-- Use different databases for each environment
-- Never use production data in development
-- Use environment-specific database URLs
-- Implement proper database connection pooling
-- Use Docker for consistent database environments
-- Document database setup procedures
-
-### Monitoring and Maintenance
-- Monitor database performance metrics
-- Set up alerts for slow queries
-- Regular database maintenance (vacuum, analyze)
-- Monitor connection pool usage
-- Track database growth trends
-- Implement proper logging for database operations
+- Validate user ownership in queries
+- Use soft deletes for audit trails
+</security>

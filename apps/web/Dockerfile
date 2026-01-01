@@ -33,7 +33,7 @@ WORKDIR /app/apps/web
 RUN pnpm build
 
 # Production stage - serve with nginx
-FROM nginx:alpine AS production
+FROM nginx:trixie AS production
 
 # Copy custom nginx config
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
