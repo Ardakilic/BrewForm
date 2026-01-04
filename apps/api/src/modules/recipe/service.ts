@@ -110,11 +110,26 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
           emojiRating: input.version.emojiRating,
           isFavourite: input.version.isFavourite,
           tags: input.version.tags || [],
+          tasteNotes: input.version.tasteNoteIds?.length
+            ? {
+                create: input.version.tasteNoteIds.map((tasteNoteId) => ({
+                  tasteNoteId,
+                })),
+              }
+            : undefined,
         },
       },
     },
     include: {
-      versions: true,
+      versions: {
+        include: {
+          tasteNotes: {
+            include: {
+              tasteNote: true,
+            },
+          },
+        },
+      },
       user: {
         select: {
           id: true,
@@ -161,6 +176,11 @@ export async function getRecipeById(recipeId: string, viewerId?: string | null) 
           puckScreen: true,
           paperFilter: true,
           tamper: true,
+          tasteNotes: {
+            include: {
+              tasteNote: true,
+            },
+          },
         },
       },
       user: {
@@ -357,6 +377,20 @@ export async function createRecipeVersion(
       emojiRating: input.emojiRating,
       isFavourite: input.isFavourite,
       tags: input.tags || [],
+      tasteNotes: input.tasteNoteIds?.length
+        ? {
+            create: input.tasteNoteIds.map((tasteNoteId) => ({
+              tasteNoteId,
+            })),
+          }
+        : undefined,
+    },
+    include: {
+      tasteNotes: {
+        include: {
+          tasteNote: true,
+        },
+      },
     },
   });
 
@@ -382,7 +416,13 @@ export async function forkRecipe(recipeId: string, userId: string) {
 
   const original = await prisma.recipe.findUnique({
     where: { id: recipeId, ...softDeleteFilter() },
-    include: { currentVersion: true },
+    include: {
+      currentVersion: {
+        include: {
+          tasteNotes: true,
+        },
+      },
+    },
   });
 
   if (!original || !original.currentVersion) {
@@ -396,6 +436,11 @@ export async function forkRecipe(recipeId: string, userId: string) {
 
   const v = original.currentVersion;
   const slug = createRecipeSlug(`${v.title} fork`);
+
+  // Get taste note IDs from original version
+  const originalTasteNoteIds = (v.tasteNotes as { tasteNoteId: string }[])?.map(
+    (tn) => tn.tasteNoteId
+  ) || [];
 
   // Create forked recipe
   const forked = await prisma.recipe.create({
@@ -438,10 +483,27 @@ export async function forkRecipe(recipeId: string, userId: string) {
           emojiRating: null,
           isFavourite: false,
           tags: v.tags,
+          tasteNotes: originalTasteNoteIds.length
+            ? {
+                create: originalTasteNoteIds.map((tasteNoteId) => ({
+                  tasteNoteId,
+                })),
+              }
+            : undefined,
         },
       },
     },
-    include: { versions: true },
+    include: {
+      versions: {
+        include: {
+          tasteNotes: {
+            include: {
+              tasteNote: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   // Set current version
@@ -492,59 +554,68 @@ export async function deleteRecipe(recipeId: string, userId: string) {
 }
 
 /**
+ * Build visibility filter for recipe queries
+ */
+function buildVisibilityFilter(filters: RecipeFilters, viewerId?: string | null): string | undefined {
+  if (filters.visibility) return filters.visibility;
+  if (filters.userId && filters.userId === viewerId) return undefined;
+  return 'PUBLIC';
+}
+
+/**
+ * Build current version filter for recipe queries
+ */
+function buildVersionFilter(filters: RecipeFilters): Record<string, unknown> | undefined {
+  const hasVersionFilters = filters.brewMethod || filters.drinkType || filters.coffeeId || 
+    filters.grinderId || filters.brewerId || filters.minRating || filters.tags;
+  
+  if (!hasVersionFilters) return undefined;
+  
+  return {
+    ...(filters.brewMethod && { brewMethod: filters.brewMethod }),
+    ...(filters.drinkType && { drinkType: filters.drinkType }),
+    ...(filters.coffeeId && { coffeeId: filters.coffeeId }),
+    ...(filters.grinderId && { grinderId: filters.grinderId }),
+    ...(filters.brewerId && { brewerId: filters.brewerId }),
+    ...(filters.minRating && { rating: { gte: filters.minRating } }),
+    ...(filters.tags?.length && { tags: { hasSome: filters.tags } }),
+  };
+}
+
+/**
+ * Build search filter for recipe queries
+ */
+function buildSearchFilter(search?: string) {
+  if (!search) return undefined;
+  return [
+    { currentVersion: { title: { contains: search, mode: 'insensitive' } } },
+    { currentVersion: { description: { contains: search, mode: 'insensitive' } } },
+    { currentVersion: { coffeeName: { contains: search, mode: 'insensitive' } } },
+  ];
+}
+
+/**
  * List recipes with filters
  */
 export async function listRecipes(filters: RecipeFilters, viewerId?: string | null) {
   const prisma = getPrisma();
-  const pagination = getPagination({
-    page: filters.page,
-    limit: filters.limit,
-  });
+  const pagination = getPagination({ page: filters.page, limit: filters.limit });
 
-  // Build where clause
+  const visibility = buildVisibilityFilter(filters, viewerId);
+  const versionFilter = buildVersionFilter(filters);
+  const searchFilter = buildSearchFilter(filters.search);
+
   const where: Record<string, unknown> = {
     ...softDeleteFilter(),
+    ...(visibility && { visibility }),
+    ...(filters.userId && { userId: filters.userId }),
+    ...(versionFilter && { currentVersion: versionFilter }),
+    ...(searchFilter && { OR: searchFilter }),
   };
 
-  // Visibility logic
-  if (filters.visibility) {
-    where.visibility = filters.visibility;
-  } else if (filters.userId && filters.userId === viewerId) {
-    // Owner viewing their own - show all
-  } else {
-    // Public only
-    where.visibility = 'PUBLIC';
-  }
-
-  if (filters.userId) {
-    where.userId = filters.userId;
-  }
-
-  if (filters.brewMethod || filters.drinkType || filters.coffeeId || filters.grinderId || filters.brewerId || filters.minRating || filters.tags) {
-    where.currentVersion = {
-      ...(filters.brewMethod && { brewMethod: filters.brewMethod }),
-      ...(filters.drinkType && { drinkType: filters.drinkType }),
-      ...(filters.coffeeId && { coffeeId: filters.coffeeId }),
-      ...(filters.grinderId && { grinderId: filters.grinderId }),
-      ...(filters.brewerId && { brewerId: filters.brewerId }),
-      ...(filters.minRating && { rating: { gte: filters.minRating } }),
-      ...(filters.tags?.length && { tags: { hasSome: filters.tags } }),
-    };
-  }
-
-  if (filters.search) {
-    where.OR = [
-      { currentVersion: { title: { contains: filters.search, mode: 'insensitive' } } },
-      { currentVersion: { description: { contains: filters.search, mode: 'insensitive' } } },
-      { currentVersion: { coffeeName: { contains: filters.search, mode: 'insensitive' } } },
-    ];
-  }
-
-  // Build order by
-  const orderBy: Record<string, 'asc' | 'desc'> = {};
-  const sortBy = filters.sortBy || 'createdAt';
-  const sortOrder = filters.sortOrder || 'desc';
-  orderBy[sortBy] = sortOrder;
+  const orderBy: Record<string, 'asc' | 'desc'> = {
+    [filters.sortBy || 'createdAt']: filters.sortOrder || 'desc',
+  };
 
   const [recipes, total] = await Promise.all([
     prisma.recipe.findMany({

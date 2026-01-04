@@ -21,6 +21,25 @@ const fetcher = async (url: string): Promise<Recipe> => {
   return response.data as Recipe;
 };
 
+interface RecipeFieldProps {
+  label: string;
+  value: string | number | null | undefined;
+  suffix?: string;
+  theme: ReturnType<typeof useStyletron>[1];
+}
+
+function RecipeField({ label, value, suffix = '', theme }: RecipeFieldProps) {
+  if (!value) return null;
+  return (
+    <>
+      <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
+        {label}
+      </LabelMedium>
+      <ParagraphMedium marginBottom="16px">{value}{suffix}</ParagraphMedium>
+    </>
+  );
+}
+
 function RecipeDetailPage() {
   const [css, theme] = useStyletron();
   const { t } = useTranslation();
@@ -36,7 +55,7 @@ function RecipeDetailPage() {
   if (error || !recipe) {
     return (
       <div className={css({ textAlign: 'center', padding: '48px' })}>
-        <HeadingSmall>Recipe not found</HeadingSmall>
+        <HeadingSmall>{t('common.noResults')}</HeadingSmall>
       </div>
     );
   }
@@ -95,77 +114,19 @@ function RecipeDetailPage() {
           <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' })}>
             {/* Left Column */}
             <div>
-              <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                {t('recipe.fields.brewMethod')}
-              </LabelMedium>
-              <ParagraphMedium marginBottom="16px">{version?.brewMethod}</ParagraphMedium>
-
-              <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                {t('recipe.fields.drinkType')}
-              </LabelMedium>
-              <ParagraphMedium marginBottom="16px">{version?.drinkType}</ParagraphMedium>
-
-              {version?.coffeeName && (
-                <>
-                  <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                    {t('recipe.fields.coffee')}
-                  </LabelMedium>
-                  <ParagraphMedium marginBottom="16px">{version.coffeeName}</ParagraphMedium>
-                </>
-              )}
-
-              {version?.grindSize && (
-                <>
-                  <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                    {t('recipe.fields.grindSize')}
-                  </LabelMedium>
-                  <ParagraphMedium marginBottom="16px">{version.grindSize}</ParagraphMedium>
-                </>
-              )}
+              <RecipeField label={t('recipe.fields.brewMethod')} value={version?.brewMethod} theme={theme} />
+              <RecipeField label={t('recipe.fields.drinkType')} value={version?.drinkType} theme={theme} />
+              <RecipeField label={t('recipe.fields.coffee')} value={version?.coffeeName} theme={theme} />
+              <RecipeField label={t('recipe.fields.grindSize')} value={version?.grindSize} theme={theme} />
             </div>
 
             {/* Right Column - Brew Parameters */}
             <div>
-              <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                {t('recipe.fields.dose')}
-              </LabelMedium>
-              <ParagraphMedium marginBottom="16px">{version?.doseGrams}g</ParagraphMedium>
-
-              {version?.yieldGrams && (
-                <>
-                  <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                    {t('recipe.fields.yield')}
-                  </LabelMedium>
-                  <ParagraphMedium marginBottom="16px">{version.yieldGrams}g</ParagraphMedium>
-                </>
-              )}
-
-              {version?.brewTimeSec && (
-                <>
-                  <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                    {t('recipe.fields.time')}
-                  </LabelMedium>
-                  <ParagraphMedium marginBottom="16px">{version.brewTimeSec}s</ParagraphMedium>
-                </>
-              )}
-
-              {version?.pressure && (
-                <>
-                  <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                    {t('recipe.fields.pressure')}
-                  </LabelMedium>
-                  <ParagraphMedium marginBottom="16px">{version.pressure} bar</ParagraphMedium>
-                </>
-              )}
-
-              {version?.brewRatio && (
-                <>
-                  <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
-                    {t('recipe.fields.ratio')}
-                  </LabelMedium>
-                  <ParagraphMedium marginBottom="16px">1:{version.brewRatio.toFixed(1)}</ParagraphMedium>
-                </>
-              )}
+              <RecipeField label={t('recipe.fields.dose')} value={version?.doseGrams} suffix="g" theme={theme} />
+              <RecipeField label={t('recipe.fields.yield')} value={version?.yieldGrams} suffix="g" theme={theme} />
+              <RecipeField label={t('recipe.fields.time')} value={version?.brewTimeSec} suffix="s" theme={theme} />
+              <RecipeField label={t('recipe.fields.pressure')} value={version?.pressure} suffix=" bar" theme={theme} />
+              <RecipeField label={t('recipe.fields.ratio')} value={version?.brewRatio ? `1:${version.brewRatio.toFixed(1)}` : null} theme={theme} />
             </div>
           </div>
 

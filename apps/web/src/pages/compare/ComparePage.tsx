@@ -6,6 +6,7 @@ import { useParams } from 'react-router-dom';
 import { useStyletron } from 'baseui';
 import { Card } from 'baseui/card';
 import { HeadingLarge, HeadingSmall, ParagraphMedium, LabelMedium } from 'baseui/typography';
+import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
 import { api } from '../../utils/api';
@@ -19,6 +20,7 @@ const fetcher = async (url: string): Promise<Comparison> => {
 
 function ComparePage() {
   const [css, theme] = useStyletron();
+  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
 
   const { data: comparison, isLoading, error } = useSWR<Comparison>(
@@ -30,9 +32,9 @@ function ComparePage() {
   if (error || !comparison) {
     return (
       <div className={css({ textAlign: 'center', padding: '48px' })}>
-        <HeadingSmall>Comparison not found</HeadingSmall>
+        <HeadingSmall>{t('pages.compare.notFound')}</HeadingSmall>
         <ParagraphMedium color={theme.colors.contentSecondary}>
-          This comparison link may be invalid or expired.
+          {t('pages.compare.invalidLink')}
         </ParagraphMedium>
       </div>
     );
@@ -46,11 +48,11 @@ function ComparePage() {
   return (
     <>
       <Helmet>
-        <title>Compare Recipes - BrewForm</title>
+        <title>{t('pages.compare.title')}</title>
       </Helmet>
 
       <HeadingLarge marginBottom="24px" className={css({ textAlign: 'center' })}>
-        Recipe Comparison
+        {t('pages.compare.heading')}
       </HeadingLarge>
 
       <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' })}>

@@ -218,6 +218,7 @@ export const recipeVersionInputSchema = z.object({
   emojiRating: z.nativeEnum(EmojiRating).optional(),
   isFavourite: z.boolean().default(false),
   tags: z.array(z.string().max(50)).max(20).optional(),
+  tasteNoteIds: z.array(z.string().cuid()).max(20).optional(),
 });
 
 export type RecipeVersionInput = z.infer<typeof recipeVersionInputSchema>;
@@ -279,77 +280,93 @@ export function validateRecipeHard(input: RecipeVersionInput): HardValidationRes
 }
 
 /**
+ * Format time duration for display
+ */
+function formatTimeDuration(seconds: number): string {
+  if (seconds >= 3600) return `${Math.floor(seconds / 3600)}h`;
+  if (seconds >= 60) return `${Math.floor(seconds / 60)}m`;
+  return `${seconds}s`;
+}
+
+/**
+ * Check brew ratio and return warning if outside typical range
+ */
+function checkBrewRatio(input: RecipeVersionInput): string | null {
+  if (!input.yieldGrams || !input.doseGrams) return null;
+  
+  const ratio = input.yieldGrams / input.doseGrams;
+  const typical = TYPICAL_RATIOS[input.drinkType];
+  
+  if (ratio < typical.min || ratio > typical.max) {
+    return `Brew ratio (1:${ratio.toFixed(1)}) is outside the typical range (1:${typical.min} - 1:${typical.max}) for ${input.drinkType}.`;
+  }
+  return null;
+}
+
+/**
+ * Check extraction time and return warning if outside typical range
+ */
+function checkExtractionTime(input: RecipeVersionInput): string | null {
+  if (!input.brewTimeSec) return null;
+  
+  const typical = TYPICAL_EXTRACTION_TIMES[input.brewMethod];
+  if (input.brewTimeSec < typical.min || input.brewTimeSec > typical.max) {
+    return `Extraction time is outside typical range (${formatTimeDuration(typical.min)} - ${formatTimeDuration(typical.max)}) for ${input.brewMethod}.`;
+  }
+  return null;
+}
+
+/**
+ * Check temperature and return warning if outside typical range
+ */
+function checkTemperature(input: RecipeVersionInput): string | null {
+  if (!input.tempCelsius) return null;
+  
+  const typical = TYPICAL_TEMPERATURES[input.brewMethod];
+  if (input.tempCelsius < typical.min || input.tempCelsius > typical.max) {
+    return `Brew temperature (${input.tempCelsius}°C) is outside typical range (${typical.min}°C - ${typical.max}°C) for ${input.brewMethod}.`;
+  }
+  return null;
+}
+
+/**
+ * Check for milk preparation with non-milk drinks
+ */
+function checkMilkPreparation(input: RecipeVersionInput): string | null {
+  const milkDrinks: DrinkType[] = [
+    DrinkType.LATTE, DrinkType.CAPPUCCINO, DrinkType.FLAT_WHITE,
+    DrinkType.CORTADO, DrinkType.MACCHIATO, DrinkType.MOCHA,
+  ];
+  
+  const hasMilkPrep = input.preparations?.some((p: { name: string }) => p.name.toLowerCase().includes('milk'));
+  if (hasMilkPrep && !milkDrinks.includes(input.drinkType)) {
+    return `Milk preparation noted for ${input.drinkType}, which is typically not a milk-based drink.`;
+  }
+  return null;
+}
+
+/**
  * Perform soft validation on recipe input
  * These generate warnings but don't block saving
  */
 export function validateRecipeSoft(input: RecipeVersionInput): SoftValidationResult {
   const warnings: string[] = [];
 
-  // Check brew ratio
-  if (input.yieldGrams && input.doseGrams) {
-    const ratio = input.yieldGrams / input.doseGrams;
-    const typical = TYPICAL_RATIOS[input.drinkType];
-    
-    if (ratio < typical.min || ratio > typical.max) {
-      warnings.push(
-        `Brew ratio (1:${ratio.toFixed(1)}) is outside the typical range ` +
-        `(1:${typical.min} - 1:${typical.max}) for ${input.drinkType}.`
-      );
-    }
-  }
+  const ratioWarning = checkBrewRatio(input);
+  if (ratioWarning) warnings.push(ratioWarning);
 
-  // Check extraction time
-  if (input.brewTimeSec) {
-    const typical = TYPICAL_EXTRACTION_TIMES[input.brewMethod];
-    
-    if (input.brewTimeSec < typical.min || input.brewTimeSec > typical.max) {
-      const minFormatted = typical.min >= 3600 
-        ? `${Math.floor(typical.min / 3600)}h` 
-        : typical.min >= 60 
-          ? `${Math.floor(typical.min / 60)}m` 
-          : `${typical.min}s`;
-      const maxFormatted = typical.max >= 3600 
-        ? `${Math.floor(typical.max / 3600)}h` 
-        : typical.max >= 60 
-          ? `${Math.floor(typical.max / 60)}m` 
-          : `${typical.max}s`;
-      
-      warnings.push(
-        `Extraction time is outside typical range (${minFormatted} - ${maxFormatted}) for ${input.brewMethod}.`
-      );
-    }
-  }
+  const timeWarning = checkExtractionTime(input);
+  if (timeWarning) warnings.push(timeWarning);
 
-  // Check temperature
-  if (input.tempCelsius) {
-    const typical = TYPICAL_TEMPERATURES[input.brewMethod];
-    
-    if (input.tempCelsius < typical.min || input.tempCelsius > typical.max) {
-      warnings.push(
-        `Brew temperature (${input.tempCelsius}°C) is outside typical range ` +
-        `(${typical.min}°C - ${typical.max}°C) for ${input.brewMethod}.`
-      );
-    }
-  }
+  const tempWarning = checkTemperature(input);
+  if (tempWarning) warnings.push(tempWarning);
 
-  // Check for missing common fields
   if (!input.brewTimeSec && input.brewMethod === BrewMethodType.ESPRESSO_MACHINE) {
     warnings.push('Extraction time is commonly recorded for espresso shots.');
   }
 
-  // Check for milk with non-milk drinks
-  const milkDrinks: DrinkType[] = [
-    DrinkType.LATTE, DrinkType.CAPPUCCINO, DrinkType.FLAT_WHITE,
-    DrinkType.CORTADO, DrinkType.MACCHIATO, DrinkType.MOCHA,
-  ];
-  
-  if (input.preparations?.some((p: { name: string }) => p.name.toLowerCase().includes('milk'))) {
-    if (!milkDrinks.includes(input.drinkType)) {
-      warnings.push(
-        `Milk preparation noted for ${input.drinkType}, which is typically not a milk-based drink.`
-      );
-    }
-  }
+  const milkWarning = checkMilkPreparation(input);
+  if (milkWarning) warnings.push(milkWarning);
 
   return { warnings };
 }

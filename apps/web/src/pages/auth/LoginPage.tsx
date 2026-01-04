@@ -47,7 +47,7 @@ function LoginPage() {
   return (
     <>
       <Helmet>
-        <title>Log In - BrewForm</title>
+        <title>{t('pages.login.title')}</title>
       </Helmet>
 
       <div

@@ -7,6 +7,7 @@
  * - Brew method compatibility matrix
  */
 
+import process from 'node:process';
 import { PrismaClient, BrewMethodType, DrinkType, ProcessingMethod, EmojiRating } from '@prisma/client';
 import { hash } from '@node-rs/argon2';
 import { nanoid } from 'nanoid';
@@ -25,16 +26,6 @@ function generatePassword(length = 16): string {
   return password;
 }
 
-/**
- * Create slug from text
- */
-function createSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
 async function main() {
   console.log('🌱 Starting database seed...\n');
 
@@ -49,7 +40,7 @@ async function main() {
     parallelism: 4,
   });
 
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: 'admin@brewform.local' },
     update: {},
     create: {

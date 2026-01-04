@@ -19,6 +19,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:taste-notes": "tsx prisma/seed-taste-notes.ts",
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
     "clean": "rm -rf dist node_modules .turbo coverage"

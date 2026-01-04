@@ -30,13 +30,20 @@ function RecipesPage() {
   const [search, setSearch] = useState('');
   const [brewMethod, setBrewMethod] = useState<{ id: string; label: string }[]>([]);
 
+  const brewMethodOptions = [
+    { id: 'ESPRESSO_MACHINE', label: t('recipe.brewMethods.ESPRESSO_MACHINE') },
+    { id: 'POUR_OVER_V60', label: t('recipe.brewMethods.POUR_OVER_V60') },
+    { id: 'AEROPRESS', label: t('recipe.brewMethods.AEROPRESS') },
+    { id: 'FRENCH_PRESS', label: t('recipe.brewMethods.FRENCH_PRESS') },
+  ];
+
   const { data: recipes, isLoading } = useSWR<RecipeListItem[]>('/recipes?visibility=PUBLIC', fetcher);
 
   return (
     <>
       <Helmet>
-        <title>Recipes - BrewForm</title>
-        <meta name="description" content="Browse coffee brewing recipes from the community" />
+        <title>{t('pages.recipes.title')}</title>
+        <meta name="description" content={t('pages.recipes.description')} />
       </Helmet>
 
       {/* Header */}
@@ -74,13 +81,8 @@ function RecipesPage() {
         </div>
         <div className={css({ width: '200px' })}>
           <Select
-            placeholder="Brew Method"
-            options={[
-              { id: 'ESPRESSO_MACHINE', label: 'Espresso' },
-              { id: 'POUR_OVER_V60', label: 'V60' },
-              { id: 'AEROPRESS', label: 'AeroPress' },
-              { id: 'FRENCH_PRESS', label: 'French Press' },
-            ]}
+            placeholder={t('recipe.fields.brewMethod')}
+            options={brewMethodOptions}
             value={brewMethod}
             onChange={(params) => setBrewMethod(params.value as { id: string; label: string }[])}
           />

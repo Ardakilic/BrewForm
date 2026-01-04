@@ -4,20 +4,22 @@
 
 import { useStyletron } from 'baseui';
 import { HeadingLarge, ParagraphMedium } from 'baseui/typography';
+import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 
 function AdminUsersPage() {
   const [, theme] = useStyletron();
+  const { t } = useTranslation();
 
   return (
     <>
       <Helmet>
-        <title>Manage Users - Admin - BrewForm</title>
+        <title>{t('admin.users.title')}</title>
       </Helmet>
 
-      <HeadingLarge marginBottom="24px">Manage Users</HeadingLarge>
+      <HeadingLarge marginBottom="24px">{t('admin.users.heading')}</HeadingLarge>
       <ParagraphMedium color={theme.colors.contentSecondary}>
-        User management functionality coming soon.
+        {t('admin.users.comingSoon')}
       </ParagraphMedium>
     </>
   );

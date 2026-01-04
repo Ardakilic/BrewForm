@@ -64,7 +64,7 @@ function RegisterPage() {
   return (
     <>
       <Helmet>
-        <title>Sign Up - BrewForm</title>
+        <title>{t('pages.register.title')}</title>
       </Helmet>
 
       <div

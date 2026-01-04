@@ -37,7 +37,7 @@ function ProfilePage() {
   return (
     <>
       <Helmet>
-        <title>My Profile - BrewForm</title>
+        <title>{t('pages.profile.title')}</title>
       </Helmet>
 
       <div className={css({ maxWidth: '800px', margin: '0 auto' })}>

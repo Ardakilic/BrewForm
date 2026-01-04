@@ -95,6 +95,7 @@ services:
     volumes:
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages
+      - ./files:/app/files
       - ./node_modules:/app/node_modules
       - ./apps/api/node_modules:/app/apps/api/node_modules
     depends_on:

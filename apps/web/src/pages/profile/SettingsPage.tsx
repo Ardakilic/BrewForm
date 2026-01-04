@@ -113,7 +113,7 @@ function SettingsPage() {
   return (
     <>
       <Helmet>
-        <title>Settings - BrewForm</title>
+        <title>{t('pages.settings.title')}</title>
       </Helmet>
 
       <div className={css({ maxWidth: '600px', margin: '0 auto' })}>
@@ -125,7 +125,7 @@ function SettingsPage() {
 
           {success && (
             <Notification kind={KIND.positive} closeable={false}>
-              Profile updated successfully!
+              {t('settings.messages.profileUpdated')}
             </Notification>
           )}
 
@@ -135,7 +135,7 @@ function SettingsPage() {
             </Notification>
           )}
 
-          <FormControl label="Display Name">
+          <FormControl label={t('settings.displayName')}>
             <Input
               value={formData.displayName}
               onChange={handleChange('displayName')}
@@ -143,20 +143,20 @@ function SettingsPage() {
             />
           </FormControl>
 
-          <FormControl label="Bio">
+          <FormControl label={t('settings.bio')}>
             <Textarea
               value={formData.bio}
               onChange={handleChange('bio')}
-              placeholder="Tell us about yourself..."
+              placeholder={t('settings.placeholders.bio')}
             />
           </FormControl>
 
-          <FormControl label="Website">
+          <FormControl label={t('settings.website')}>
             <Input
               type="url"
               value={formData.website}
               onChange={handleChange('website')}
-              placeholder="https://..."
+              placeholder={t('settings.placeholders.website')}
             />
           </FormControl>
 

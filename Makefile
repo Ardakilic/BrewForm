@@ -25,6 +25,7 @@ help:
 	@echo "Database:"
 	@echo "  db-migrate    Run database migrations"
 	@echo "  db-seed       Seed database with sample data"
+	@echo "  db-seed-taste-notes  Seed taste notes from SCAA JSON file"
 	@echo "  db-studio     Open Prisma Studio"
 	@echo "  db-reset      Reset database (warning: destructive)"
 	@echo "  db-generate   Generate Prisma client"
@@ -99,6 +100,9 @@ db-migrate-dev:
 
 db-seed:
 	docker compose exec api pnpm --filter @brewform/api db:seed
+
+db-seed-taste-notes:
+	docker compose exec api pnpm --filter @brewform/api db:seed:taste-notes
 
 db-studio:
 	docker compose exec api pnpm --filter @brewform/api prisma studio

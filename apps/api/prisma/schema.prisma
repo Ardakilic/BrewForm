@@ -626,6 +626,7 @@ model RecipeVersion {
   puckScreen    PuckScreen?     @relation(fields: [puckScreenId], references: [id])
   paperFilter   PaperFilter?    @relation(fields: [paperFilterId], references: [id])
   tamper        Tamper?         @relation(fields: [tamperId], references: [id])
+  tasteNotes    RecipeVersionTasteNote[]
 
   @@unique([recipeId, versionNumber])
   @@index([recipeId])
@@ -755,6 +756,51 @@ model BrewMethodCompatibility {
 
   @@unique([brewMethod, drinkType])
   @@map("brew_method_compatibility")
+}
+
+// ============================================
+// Taste Notes (SCAA Flavor Wheel)
+// ============================================
+
+model TasteNote {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  parentId    String?
+  depth       Int       @default(0) // 0 = top level, 1 = second level, 2 = third level
+  colour      String?
+  definition  String?
+  sortOrder   Int       @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  parent      TasteNote?  @relation("TasteNoteHierarchy", fields: [parentId], references: [id])
+  children    TasteNote[] @relation("TasteNoteHierarchy")
+  recipeVersions RecipeVersionTasteNote[]
+
+  @@index([parentId])
+  @@index([slug])
+  @@index([depth])
+  @@index([name])
+  @@index([deletedAt])
+  @@map("taste_notes")
+}
+
+model RecipeVersionTasteNote {
+  id              String   @id @default(cuid())
+  recipeVersionId String
+  tasteNoteId     String
+  createdAt       DateTime @default(now())
+
+  recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
+  tasteNote     TasteNote     @relation(fields: [tasteNoteId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeVersionId, tasteNoteId])
+  @@index([recipeVersionId])
+  @@index([tasteNoteId])
+  @@map("recipe_version_taste_notes")
 }
 
 // ============================================

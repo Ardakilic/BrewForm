@@ -34,6 +34,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/DashboardPage'));
 const AdminUsersPage = lazy(() => import('./pages/admin/UsersPage'));
 const AdminRecipesPage = lazy(() => import('./pages/admin/RecipesPage'));
 const AdminEquipmentPage = lazy(() => import('./pages/admin/EquipmentPage'));
+const AdminTasteNotesPage = lazy(() => import('./pages/admin/TasteNotesPage'));
 
 function App() {
   const [css] = useStyletron();
@@ -125,6 +126,14 @@ function App() {
               element={
                 <AdminRoute>
                   <AdminEquipmentPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="admin/taste-notes"
+              element={
+                <AdminRoute>
+                  <AdminTasteNotesPage />
                 </AdminRoute>
               }
             />

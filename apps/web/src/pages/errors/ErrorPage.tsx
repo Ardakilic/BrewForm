@@ -19,7 +19,7 @@ function ErrorPage() {
   return (
     <>
       <Helmet>
-        <title>Error - BrewForm</title>
+        <title>{t('pages.error.title')}</title>
       </Helmet>
 
       <div

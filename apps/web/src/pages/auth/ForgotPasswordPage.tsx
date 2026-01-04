@@ -41,7 +41,7 @@ function ForgotPasswordPage() {
   return (
     <>
       <Helmet>
-        <title>Forgot Password - BrewForm</title>
+        <title>{t('pages.forgotPassword.title')}</title>
       </Helmet>
 
       <div

@@ -17,10 +17,10 @@ function HomePage() {
   return (
     <>
       <Helmet>
-        <title>BrewForm - Coffee Dive-In Recipes</title>
+        <title>{t('pages.home.title')}</title>
         <meta
           name="description"
-          content="Share and discover coffee brewing recipes. Track your espresso, pour-over, and specialty coffee dive-ins."
+          content={t('pages.home.description')}
         />
       </Helmet>
 

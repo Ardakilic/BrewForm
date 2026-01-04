@@ -14,6 +14,102 @@
     "logout": "Log Out",
     "admin": "Admin"
   },
+  "pages": {
+    "home": {
+      "title": "BrewForm - Coffee Dive-In Recipes",
+      "description": "Share and discover coffee brewing recipes. Track your espresso, pour-over, and specialty coffee dive-ins."
+    },
+    "recipes": {
+      "title": "Recipes - BrewForm",
+      "description": "Browse coffee brewing recipes from the community"
+    },
+    "createRecipe": {
+      "title": "Create Recipe - BrewForm"
+    },
+    "compare": {
+      "title": "Compare Recipes - BrewForm",
+      "heading": "Recipe Comparison",
+      "notFound": "Comparison not found",
+      "invalidLink": "This comparison link may be invalid or expired."
+    },
+    "profile": {
+      "title": "My Profile - BrewForm"
+    },
+    "settings": {
+      "title": "Settings - BrewForm"
+    },
+    "login": {
+      "title": "Log In - BrewForm"
+    },
+    "register": {
+      "title": "Sign Up - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "Forgot Password - BrewForm"
+    },
+    "resetPassword": {
+      "title": "Reset Password - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "Verify Email - BrewForm"
+    },
+    "notFound": {
+      "title": "Page Not Found - BrewForm"
+    },
+    "error": {
+      "title": "Error - BrewForm"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Admin Dashboard - BrewForm",
+      "heading": "Admin Dashboard",
+      "cards": {
+        "users": {
+          "title": "Users",
+          "description": "Manage user accounts, roles, and bans"
+        },
+        "recipes": {
+          "title": "Recipes",
+          "description": "Review and moderate recipe content"
+        },
+        "equipment": {
+          "title": "Equipment",
+          "description": "Manage equipment, vendors, and coffees"
+        }
+      }
+    },
+    "users": {
+      "title": "Manage Users - Admin - BrewForm",
+      "heading": "Manage Users",
+      "comingSoon": "User management functionality coming soon."
+    },
+    "recipes": {
+      "title": "Manage Recipes - Admin - BrewForm",
+      "heading": "Manage Recipes",
+      "comingSoon": "Recipe moderation functionality coming soon."
+    },
+    "equipment": {
+      "title": "Manage Equipment - Admin - BrewForm",
+      "heading": "Manage Equipment",
+      "comingSoon": "Equipment, vendor, and coffee management coming soon."
+    },
+    "tasteNotes": {
+      "title": "Manage Taste Notes - Admin - BrewForm",
+      "heading": "Manage Taste Notes",
+      "cacheWarning": "If any taste note is modified, added, or deleted, the cached taste notes must be flushed from Redis for changes to take effect. Use the \"Flush Taste Notes Cache\" button after making changes.",
+      "comingSoon": "Taste notes management coming soon. The taste notes are pre-populated from the SCAA 2016 flavor wheel and rarely need changes.",
+      "plannedFeatures": "Current features planned:",
+      "features": {
+        "view": "View all taste notes in hierarchical structure",
+        "add": "Add new taste notes",
+        "edit": "Edit existing taste notes",
+        "delete": "Delete taste notes (with cascade to recipes)",
+        "flushCache": "Flush Redis cache after modifications",
+        "reimport": "Re-import from SCAA JSON file"
+      }
+    }
+  },
   "home": {
     "hero": {
       "title": "Discover & Share Coffee Recipes",
@@ -118,14 +214,59 @@
       "pressure": "Pressure",
       "ratio": "Ratio",
       "tastingNotes": "Tasting Notes",
+      "tasteNotes": "Taste Notes",
       "rating": "Rating",
       "tags": "Tags"
+    },
+    "placeholders": {
+      "title": "My Perfect Espresso",
+      "description": "Describe your recipe...",
+      "select": "Select...",
+      "coffee": "e.g., Ethiopia Yirgacheffe",
+      "grindSize": "e.g., 2.5 or 18 clicks",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "Additional tasting notes...",
+      "rating": "8",
+      "tags": "espresso, morning, chocolate"
+    },
+    "captions": {
+      "required": "Required",
+      "tasteNotes": "Select taste profiles from the SCAA flavor wheel",
+      "pressure": "e.g., 9, 6-9, variable",
+      "rating": "Rate from 1 to 10",
+      "tags": "Comma separated"
     },
     "empty": {
       "title": "No recipes yet",
       "description": "Be the first to share a recipe!"
     },
-    "forkedFrom": "Forked from"
+    "forkedFrom": "Forked from",
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "Espresso Machine",
+      "POUR_OVER_V60": "V60 Pour Over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "French Press",
+      "MOKA_POT": "Moka Pot",
+      "COLD_BREW": "Cold Brew"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "Espresso",
+      "RISTRETTO": "Ristretto",
+      "LUNGO": "Lungo",
+      "AMERICANO": "Americano",
+      "LATTE": "Latte",
+      "CAPPUCCINO": "Cappuccino",
+      "FLAT_WHITE": "Flat White",
+      "CORTADO": "Cortado",
+      "POUR_OVER": "Pour Over",
+      "FRENCH_PRESS": "French Press"
+    }
   },
   "profile": {
     "recipes": "Recipes",
@@ -145,6 +286,9 @@
     "language": "Language",
     "units": "Units",
     "timezone": "Timezone",
+    "displayName": "Display Name",
+    "bio": "Bio",
+    "website": "Website",
     "themes": {
       "light": "Light",
       "dark": "Dark",
@@ -154,6 +298,13 @@
     "units_options": {
       "metric": "Metric (g, ml, °C)",
       "imperial": "Imperial (oz, fl oz, °F)"
+    },
+    "placeholders": {
+      "bio": "Tell us about yourself...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "Profile updated successfully!"
     },
     "deleteAccount": "Delete Account",
     "deleteWarning": "This action cannot be undone."
@@ -166,6 +317,13 @@
     "puckScreen": "Puck Screen",
     "paperFilter": "Paper Filter",
     "tamper": "Tamper"
+  },
+  "tasteNotes": {
+    "placeholder": "Search taste notes (min 3 characters)...",
+    "minChars": "Type at least {{count}} characters to search",
+    "noResults": "No matching taste notes found",
+    "selected": "{{count}}/{{max}} taste notes selected",
+    "scaaReference": "SCAA Flavor Wheel Reference"
   },
   "rating": {
     "superGood": "Super Good",
@@ -188,7 +346,9 @@
     "sort": "Sort",
     "noResults": "No results found",
     "loadMore": "Load More",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "important": "Important",
+    "by": "by"
   },
   "errors": {
     "notFound": {

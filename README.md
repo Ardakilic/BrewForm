@@ -88,6 +88,7 @@ make stop         # Stop services
 # Database
 make db-migrate   # Run migrations
 make db-seed      # Seed database
+make db-seed-taste-notes  # Seed taste notes from SCAA JSON
 make db-studio    # Open Prisma Studio
 
 # Testing & Linting
@@ -156,6 +157,12 @@ brewform/
 - `POST /api/v1/social/recipes/:recipeId/comments` - Add comment
 - `POST /api/v1/social/comparisons` - Create comparison
 
+### Taste Notes
+- `GET /api/v1/taste-notes` - List all taste notes
+- `GET /api/v1/taste-notes/hierarchy` - Get hierarchical structure
+- `GET /api/v1/taste-notes/search?q=` - Search taste notes (min 3 chars)
+- `GET /api/v1/taste-notes/:id` - Get single taste note
+
 ### Health
 - `GET /health` - Basic health check
 - `GET /health/ready` - Readiness probe
@@ -179,7 +186,19 @@ The database includes:
 - **Equipment**: Grinders, brewers, portafilters, baskets, etc.
 - **Coffees & Vendors**: With origin and processing details
 - **Social**: Favourites, comments, comparisons
+- **Taste Notes**: Hierarchical SCAA 2016 flavor wheel (110 notes, 3 levels deep)
 - **Admin**: Audit logs, rate limits
+
+### Taste Notes
+
+Taste notes are pre-populated from the [SCAA 2016 Coffee Flavor Wheel](https://notbadcoffee.com/flavor-wheel-en/). The data is included in the database migrations, so no additional seeding is required for most users.
+
+If you need to re-seed taste notes from the JSON source file:
+```bash
+make db-seed-taste-notes
+```
+
+The taste notes are cached in Redis (24h TTL) for performance. Admin panel includes cache invalidation when notes are modified.
 
 ## Contributing
 
@@ -188,6 +207,16 @@ The database includes:
 3. Commit changes (`git commit -m 'Add amazing feature'`)
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+### Support Development
+
+This project is actively developed using [Windsurf](https://windsurf.com), an AI-powered IDE that accelerates development.
+
+**Want to support BrewForm?** Sign up for Windsurf using our referral link:
+
+👉 **[Get Windsurf + 250 Bonus Credits](https://windsurf.com/refer?referral_code=0axr8brh72htjihx)**
+
+When you sign up through this link, both you and the project maintainer receive **250 bonus credits**. These credits are directly used to develop and improve BrewForm - helping us add new features, fix bugs, and make your coffee brewing experience even better!
 
 ## License
 

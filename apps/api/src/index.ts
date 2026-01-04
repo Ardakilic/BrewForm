@@ -24,6 +24,7 @@ import userRoutes from './modules/user/index.js';
 import recipeRoutes from './modules/recipe/index.js';
 import socialRoutes from './modules/social/index.js';
 import healthRoutes from './modules/health/index.js';
+import tasteNotesRoutes from './modules/taste-notes/index.js';
 
 // ============================================
 // Application Setup
@@ -82,6 +83,7 @@ api.route('/auth', authRoutes);
 api.route('/users', userRoutes);
 api.route('/recipes', recipeRoutes);
 api.route('/social', socialRoutes);
+api.route('/taste-notes', tasteNotesRoutes);
 
 // API version prefix
 app.route(`/api/${config.apiVersion}`, api);

@@ -16,7 +16,7 @@ function NotFoundPage() {
   return (
     <>
       <Helmet>
-        <title>Page Not Found - BrewForm</title>
+        <title>{t('pages.notFound.title')}</title>
       </Helmet>
 
       <div

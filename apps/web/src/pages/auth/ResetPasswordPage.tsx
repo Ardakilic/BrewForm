@@ -51,7 +51,7 @@ function ResetPasswordPage() {
   return (
     <>
       <Helmet>
-        <title>Reset Password - BrewForm</title>
+        <title>{t('pages.resetPassword.title')}</title>
       </Helmet>
 
       <div

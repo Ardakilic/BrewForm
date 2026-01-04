@@ -37,7 +37,7 @@ function VerifyEmailPage() {
   return (
     <>
       <Helmet>
-        <title>Verify Email - BrewForm</title>
+        <title>{t('pages.verifyEmail.title')}</title>
       </Helmet>
 
       <div
