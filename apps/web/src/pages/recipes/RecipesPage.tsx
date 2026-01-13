@@ -61,7 +61,8 @@ function RecipesPage() {
     { id: 'COLD_BREW', label: t('recipe.drinkTypes.COLD_BREW') },
   ];
 
-  // Initialize filters from URL params
+  // Initialize filters from URL params (runs once on mount)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally run only on mount
   useEffect(() => {
     const urlBrewMethod = searchParams.get('brewMethod');
     const urlDrinkType = searchParams.get('drinkType');
@@ -89,7 +90,9 @@ function RecipesPage() {
     const params = new URLSearchParams();
     if (brewMethod.length > 0) params.set('brewMethod', brewMethod[0].id);
     if (drinkType.length > 0) params.set('drinkType', drinkType[0].id);
-    tags.forEach(tag => params.append('tags', tag.id));
+    for (const tag of tags) {
+      params.append('tags', tag.id);
+    }
     if (search) params.set('search', search);
     setSearchParams(params, { replace: true });
   }, [brewMethod, drinkType, tags, search, setSearchParams]);

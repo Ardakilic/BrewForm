@@ -2,7 +2,7 @@
  * Shared test utilities for frontend tests
  */
 
-import React from 'react';
+import type React from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';

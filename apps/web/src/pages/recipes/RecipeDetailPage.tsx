@@ -191,6 +191,7 @@ function CommentItem({ comment, onReply }: CommentItemProps) {
   );
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: page component with multiple sections
 function RecipeDetailPage() {
   const [css, theme] = useStyletron();
   const { t } = useTranslation();
