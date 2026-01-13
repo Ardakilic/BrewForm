@@ -10,6 +10,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { Client as Styletron } from 'styletron-engine-monolithic';
 import { Provider as StyletronProvider } from 'styletron-react';
 import { BaseProvider } from 'baseui';
+import { SnackbarProvider } from 'baseui/snackbar';
 import { I18nextProvider } from 'react-i18next';
 
 import App from './App';
@@ -28,7 +29,9 @@ function ThemedApp() {
 
   return (
     <BaseProvider theme={theme}>
-      <App />
+      <SnackbarProvider>
+        <App />
+      </SnackbarProvider>
     </BaseProvider>
   );
 }

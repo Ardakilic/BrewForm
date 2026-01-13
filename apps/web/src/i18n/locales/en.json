@@ -216,7 +216,12 @@
       "tastingNotes": "Tasting Notes",
       "tasteNotes": "Taste Notes",
       "rating": "Rating",
-      "tags": "Tags"
+      "tags": "Tags",
+      "portafilter": "Portafilter",
+      "basket": "Basket",
+      "puckScreen": "Puck Screen",
+      "paperFilter": "Paper Filter",
+      "tamper": "Tamper"
     },
     "placeholders": {
       "title": "My Perfect Espresso",
@@ -240,11 +245,44 @@
       "rating": "Rate from 1 to 10",
       "tags": "Comma separated"
     },
+    "addTag": "Add tag...",
+    "selectTags": "Select tags...",
+    "tags": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "fruity": "Fruity",
+      "chocolatey": "Chocolatey",
+      "nutty": "Nutty",
+      "floral": "Floral",
+      "spicy": "Spicy",
+      "sweet": "Sweet",
+      "bold": "Bold",
+      "light": "Light",
+      "creamy": "Creamy",
+      "iced": "Iced",
+      "hot": "Hot",
+      "decaf": "Decaf",
+      "singleOrigin": "Single Origin",
+      "blend": "Blend",
+      "espresso": "Espresso"
+    },
     "empty": {
       "title": "No recipes yet",
       "description": "Be the first to share a recipe!"
     },
     "forkedFrom": "Forked from",
+    "forked": "Recipe forked successfully!",
+    "linkCopied": "Link copied to clipboard!",
+    "equipment": "Equipment",
+    "comments": "Comments",
+    "noComments": "No comments yet. Be the first to comment!",
+    "addComment": "Add a comment...",
+    "postComment": "Post Comment",
+    "commentAdded": "Comment posted successfully!",
+    "replyingTo": "Replying to comment",
+    "toComment": "to leave a comment",
+    "activeFilters": "Active filters",
     "brewMethods": {
       "ESPRESSO_MACHINE": "Espresso Machine",
       "POUR_OVER_V60": "V60 Pour Over",
@@ -253,7 +291,8 @@
       "AEROPRESS": "AeroPress",
       "FRENCH_PRESS": "French Press",
       "MOKA_POT": "Moka Pot",
-      "COLD_BREW": "Cold Brew"
+      "COLD_BREW": "Cold Brew",
+      "TURKISH_CEZVE": "Turkish Cezve"
     },
     "drinkTypes": {
       "ESPRESSO": "Espresso",
@@ -265,7 +304,12 @@
       "FLAT_WHITE": "Flat White",
       "CORTADO": "Cortado",
       "POUR_OVER": "Pour Over",
-      "FRENCH_PRESS": "French Press"
+      "FRENCH_PRESS": "French Press",
+      "COLD_BREW": "Cold Brew",
+      "MACCHIATO": "Macchiato",
+      "MOCHA": "Mocha",
+      "ICED_COFFEE": "Iced Coffee",
+      "TURKISH_COFFEE": "Turkish Coffee"
     }
   },
   "profile": {
@@ -348,7 +392,9 @@
     "loadMore": "Load More",
     "viewAll": "View All",
     "important": "Important",
-    "by": "by"
+    "by": "by",
+    "reply": "Reply",
+    "clearAll": "Clear all"
   },
   "errors": {
     "notFound": {
@@ -371,5 +417,12 @@
       "contact": "Contact"
     },
     "copyright": "© {{year}} BrewForm. All rights reserved."
+  },
+  "language": {
+    "select": "Select Language",
+    "en": "English",
+    "tr": "Türkçe",
+    "fr": "Français",
+    "de": "Deutsch"
   }
 }

@@ -74,6 +74,7 @@ function App() {
             
             {/* User routes */}
             <Route path="@:username" element={<UserPage />} />
+            <Route path="user/:username" element={<UserPage />} />
             
             {/* Compare route */}
             <Route path="compare/:token" element={<ComparePage />} />

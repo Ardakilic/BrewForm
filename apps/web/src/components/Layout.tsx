@@ -6,12 +6,14 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useStyletron } from 'baseui';
 import { Button } from 'baseui/button';
+import { Select } from 'baseui/select';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import { supportedLanguages, changeLanguage } from '../i18n';
 
 function Header() {
   const [css, theme] = useStyletron();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -19,6 +21,13 @@ function Header() {
     await logout();
     navigate('/');
   };
+
+  const languageOptions = supportedLanguages.map((lang) => ({
+    id: lang.code,
+    label: `${lang.flag} ${lang.name}`,
+  }));
+
+  const currentLanguage = languageOptions.find((l) => l.id === i18n.language) || languageOptions[0];
 
   return (
     <header
@@ -79,6 +88,26 @@ function Header() {
           >
             {t('nav.recipes')}
           </Link>
+
+          {/* Language Selector */}
+          <div className={css({ width: '140px' })}>
+            <Select
+              options={languageOptions}
+              value={[currentLanguage]}
+              onChange={(params) => {
+                if (params.value[0]) {
+                  changeLanguage(params.value[0].id as string);
+                }
+              }}
+              clearable={false}
+              searchable={false}
+              size="compact"
+              overrides={{
+                Root: { style: { width: '140px' } },
+                ControlContainer: { style: { borderRadius: '8px' } },
+              }}
+            />
+          </div>
 
           {isAuthenticated ? (
             <>

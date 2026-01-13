@@ -27,6 +27,27 @@ export interface UserProfile {
 }
 
 // ============================================
+// Equipment Types
+// ============================================
+
+export interface Equipment {
+  id: string;
+  brand?: string;
+  model: string;
+  slug: string;
+  type?: string;
+  description?: string | null;
+}
+
+export interface Grinder extends Equipment {
+  burrSize?: number;
+}
+
+export interface Brewer extends Equipment {
+  brewMethod?: string;
+}
+
+// ============================================
 // Recipe Types
 // ============================================
 
@@ -40,6 +61,7 @@ export interface RecipeVersion {
   grindSize?: string | null;
   doseGrams: number;
   yieldGrams?: number | null;
+  yieldMl?: number | null;
   brewTimeSec?: number | null;
   tempCelsius?: number | null;
   pressure?: string | null;
@@ -47,24 +69,84 @@ export interface RecipeVersion {
   tastingNotes?: string | null;
   rating?: number | null;
   tags?: string[];
+  grinder?: Grinder | null;
+  brewer?: Brewer | null;
+  portafilter?: Equipment | null;
+  basket?: Equipment | null;
+  puckScreen?: Equipment | null;
+  paperFilter?: Equipment | null;
+  tamper?: Equipment | null;
+  coffee?: {
+    id: string;
+    name: string;
+    origin?: string;
+    vendor?: { name: string } | null;
+  } | null;
 }
 
 export interface Recipe {
   id: string;
   userId: string;
   slug: string;
-  visibility: 'PUBLIC' | 'PRIVATE' | 'UNLISTED';
+  visibility: 'PUBLIC' | 'PRIVATE' | 'UNLISTED' | 'DRAFT';
   currentVersion: RecipeVersion;
+  commentCount?: number;
+  favouriteCount?: number;
+  viewCount?: number;
+  forkCount?: number;
   user?: {
+    id: string;
     username: string;
     displayName?: string | null;
+    avatarUrl?: string | null;
   };
   forkedFrom?: {
-    title: string;
+    id: string;
     slug: string;
+    currentVersion?: { title: string };
     user?: {
       username: string;
     };
+  };
+}
+
+// ============================================
+// Comment Types
+// ============================================
+
+export interface Comment {
+  id: string;
+  content: string;
+  isEdited: boolean;
+  isAuthor: boolean;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    username: string;
+    displayName?: string | null;
+    avatarUrl?: string | null;
+  };
+  replies?: Comment[];
+}
+
+// ============================================
+// Notification Types
+// ============================================
+
+export interface Notification {
+  id: string;
+  type: 'COMMENT_ON_RECIPE' | 'REPLY_TO_COMMENT' | 'RECIPE_FAVOURITED' | 'RECIPE_FORKED';
+  title: string;
+  message: string;
+  link?: string;
+  isRead: boolean;
+  createdAt: string;
+  actor?: {
+    id: string;
+    username: string;
+    displayName?: string | null;
+    avatarUrl?: string | null;
   };
 }
 
@@ -77,6 +159,7 @@ export interface RecipeListItem {
     brewMethod?: string;
     drinkType?: string;
     rating?: number;
+    tags?: string[];
   };
   user?: {
     username: string;

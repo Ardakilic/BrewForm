@@ -55,6 +55,8 @@ model User {
   userBeans         UserBean[]
   auditLogs         AuditLog[]
   analytics         UserAnalytics[]
+  notifications     Notification[]   @relation("UserNotifications")
+  notificationsTriggered Notification[] @relation("NotificationActor")
 
   @@index([email])
   @@index([username])
@@ -818,4 +820,43 @@ model RateLimit {
   @@unique([identifier, action])
   @@index([expiresAt])
   @@map("rate_limits")
+}
+
+// ============================================
+// Notifications
+// ============================================
+
+enum NotificationType {
+  COMMENT_ON_RECIPE
+  REPLY_TO_COMMENT
+  RECIPE_FAVOURITED
+  RECIPE_FORKED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String           // Recipient
+  type        NotificationType
+  isRead      Boolean          @default(false)
+  
+  // Related entities
+  recipeId    String?
+  commentId   String?
+  actorId     String?          // User who triggered the notification
+  
+  // Denormalized for display without joins
+  title       String
+  message     String
+  link        String?
+  
+  createdAt   DateTime         @default(now())
+  readAt      DateTime?
+
+  user        User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }

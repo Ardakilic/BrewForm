@@ -8,6 +8,7 @@ import { logAudit } from '../../utils/logger/index.js';
 import { createComparisonToken } from '../../utils/slug/index.js';
 import { invalidateCache, CacheKeys } from '../../utils/redis/index.js';
 import { NotFoundError, ForbiddenError, BadRequestError } from '../../middleware/errorHandler.js';
+import { notificationService } from '../notification/service.js';
 
 // ============================================
 // Favourites
@@ -175,6 +176,49 @@ export async function addComment(
   });
 
   logAudit('comment_added', 'comment', comment.id, userId);
+
+  // Get recipe details for notification
+  const recipeWithVersion = await prisma.recipe.findUnique({
+    where: { id: recipeId },
+    include: {
+      currentVersion: { select: { title: true } },
+    },
+  });
+
+  // Create notification for recipe owner
+  if (recipe.userId !== userId && recipeWithVersion?.currentVersion) {
+    await notificationService.createNotification({
+      userId: recipe.userId,
+      type: 'COMMENT_ON_RECIPE',
+      title: 'New comment on your recipe',
+      message: `${comment.user.displayName || comment.user.username} commented on "${recipeWithVersion.currentVersion.title}"`,
+      link: `/recipes/${recipe.slug || recipeId}`,
+      recipeId,
+      commentId: comment.id,
+      actorId: userId,
+    });
+  }
+
+  // If this is a reply, notify the parent comment author
+  if (parentId) {
+    const parentComment = await prisma.comment.findUnique({
+      where: { id: parentId },
+      select: { userId: true },
+    });
+
+    if (parentComment && parentComment.userId !== userId && parentComment.userId !== recipe.userId) {
+      await notificationService.createNotification({
+        userId: parentComment.userId,
+        type: 'REPLY_TO_COMMENT',
+        title: 'New reply to your comment',
+        message: `${comment.user.displayName || comment.user.username} replied to your comment`,
+        link: `/recipes/${recipe.slug || recipeId}`,
+        recipeId,
+        commentId: comment.id,
+        actorId: userId,
+      });
+    }
+  }
 
   return comment;
 }

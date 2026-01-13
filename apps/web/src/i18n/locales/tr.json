@@ -1,0 +1,378 @@
+{
+  "app": {
+    "name": "BrewForm",
+    "tagline": "Kahve Yolculuğunu Paylaş"
+  },
+  "nav": {
+    "home": "Ana Sayfa",
+    "recipes": "Tarifler",
+    "explore": "Keşfet",
+    "login": "Giriş Yap",
+    "register": "Kayıt Ol",
+    "profile": "Profil",
+    "settings": "Ayarlar",
+    "logout": "Çıkış Yap",
+    "admin": "Yönetici"
+  },
+  "pages": {
+    "home": {
+      "title": "BrewForm - Kahve Dalış Tarifleri",
+      "description": "Kahve demleme tariflerini paylaşın ve keşfedin."
+    },
+    "recipes": {
+      "title": "Tarifler - BrewForm",
+      "description": "Topluluktan kahve demleme tariflerine göz atın"
+    },
+    "createRecipe": {
+      "title": "Tarif Oluştur - BrewForm"
+    },
+    "compare": {
+      "title": "Tarifleri Karşılaştır - BrewForm",
+      "heading": "Tarif Karşılaştırması",
+      "notFound": "Karşılaştırma bulunamadı",
+      "invalidLink": "Bu karşılaştırma bağlantısı geçersiz veya süresi dolmuş olabilir."
+    },
+    "profile": {
+      "title": "Profilim - BrewForm"
+    },
+    "settings": {
+      "title": "Ayarlar - BrewForm"
+    },
+    "login": {
+      "title": "Giriş Yap - BrewForm"
+    },
+    "register": {
+      "title": "Kayıt Ol - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "Şifremi Unuttum - BrewForm"
+    },
+    "resetPassword": {
+      "title": "Şifre Sıfırla - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "E-posta Doğrula - BrewForm"
+    },
+    "notFound": {
+      "title": "Sayfa Bulunamadı - BrewForm"
+    },
+    "error": {
+      "title": "Hata - BrewForm"
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Kahve Tariflerini Keşfet ve Paylaş",
+      "subtitle": "Kahve demleme yolculuğunuzu belgeleyin. Mükemmel espresso, pour-over ve özel kahve tariflerinizi dünyayla paylaşın.",
+      "cta": "Demlemeye Başla",
+      "explore": "Tarifleri Keşfet"
+    },
+    "features": {
+      "track": {
+        "title": "Demlemelerini Takip Et",
+        "description": "Kahve tariflerinizin her detayını belgeleyin - dozdan verime, öğütme boyutundan ekstraksiyon süresine."
+      },
+      "share": {
+        "title": "Paylaş ve Keşfet",
+        "description": "Tariflerinizi toplulukla paylaşın ve dünya çapındaki kahve tutkunlarından yeni demleme teknikleri keşfedin."
+      },
+      "compare": {
+        "title": "Karşılaştır ve Geliştir",
+        "description": "Tarifleri yan yana karşılaştırın, versiyonları takip edin ve demleme becerilerinizi sürekli geliştirin."
+      }
+    },
+    "latest": "Son Tarifler",
+    "popular": "Popüler Tarifler",
+    "viewAll": "Tümünü Gör"
+  },
+  "auth": {
+    "login": {
+      "title": "Tekrar Hoş Geldiniz",
+      "subtitle": "BrewForm hesabınıza giriş yapın",
+      "email": "E-posta",
+      "password": "Şifre",
+      "submit": "Giriş Yap",
+      "forgotPassword": "Şifremi unuttum?",
+      "noAccount": "Hesabınız yok mu?",
+      "signUp": "Kayıt ol"
+    },
+    "register": {
+      "title": "BrewForm'a Katıl",
+      "subtitle": "Hesabınızı oluşturun ve kahve yolculuğunuza başlayın",
+      "email": "E-posta",
+      "username": "Kullanıcı Adı",
+      "displayName": "Görünen Ad",
+      "password": "Şifre",
+      "confirmPassword": "Şifreyi Onayla",
+      "submit": "Hesap Oluştur",
+      "hasAccount": "Zaten hesabınız var mı?",
+      "signIn": "Giriş yap"
+    },
+    "forgotPassword": {
+      "title": "Şifre Sıfırla",
+      "subtitle": "Sıfırlama bağlantısı almak için e-postanızı girin",
+      "email": "E-posta",
+      "submit": "Sıfırlama Bağlantısı Gönder",
+      "backToLogin": "Girişe dön"
+    },
+    "resetPassword": {
+      "title": "Yeni Şifre Oluştur",
+      "subtitle": "Yeni şifrenizi girin",
+      "password": "Yeni Şifre",
+      "confirmPassword": "Şifreyi Onayla",
+      "submit": "Şifreyi Sıfırla"
+    },
+    "verifyEmail": {
+      "title": "E-posta Doğrula",
+      "verifying": "E-postanız doğrulanıyor...",
+      "success": "E-posta başarıyla doğrulandı!",
+      "error": "Doğrulama başarısız. Bağlantının süresi dolmuş olabilir."
+    }
+  },
+  "recipe": {
+    "create": "Tarif Oluştur",
+    "edit": "Tarifi Düzenle",
+    "delete": "Tarifi Sil",
+    "fork": "Tarifi Çatalla",
+    "share": "Paylaş",
+    "compare": "Karşılaştır",
+    "favourite": "Favori",
+    "unfavourite": "Favorilerden Kaldır",
+    "versions": "Versiyonlar",
+    "newVersion": "Yeni Versiyon Oluştur",
+    "visibility": {
+      "draft": "Taslak",
+      "private": "Özel",
+      "unlisted": "Listelenmemiş",
+      "public": "Herkese Açık"
+    },
+    "fields": {
+      "title": "Tarif Başlığı",
+      "description": "Açıklama",
+      "brewMethod": "Demleme Yöntemi",
+      "drinkType": "İçecek Türü",
+      "coffee": "Kahve",
+      "roastDate": "Kavurma Tarihi",
+      "grindDate": "Öğütme Tarihi",
+      "grinder": "Öğütücü",
+      "grindSize": "Öğütme Boyutu",
+      "brewer": "Demleme Aleti",
+      "dose": "Doz",
+      "yield": "Verim",
+      "time": "Süre",
+      "temperature": "Sıcaklık",
+      "pressure": "Basınç",
+      "ratio": "Oran",
+      "tastingNotes": "Tadım Notları",
+      "tasteNotes": "Tat Notları",
+      "rating": "Değerlendirme",
+      "tags": "Etiketler",
+      "portafilter": "Portafiltre",
+      "basket": "Sepet",
+      "puckScreen": "Puck Ekranı",
+      "paperFilter": "Kağıt Filtre",
+      "tamper": "Tamper"
+    },
+    "placeholders": {
+      "title": "Mükemmel Espressom",
+      "description": "Tarifinizi açıklayın...",
+      "select": "Seçin...",
+      "coffee": "örn., Etiyopya Yirgacheffe",
+      "grindSize": "örn., 2.5 veya 18 tık",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "Ek tadım notları...",
+      "rating": "8",
+      "tags": "espresso, sabah, çikolata"
+    },
+    "captions": {
+      "required": "Zorunlu",
+      "tasteNotes": "SCAA lezzet çarkından tat profillerini seçin",
+      "pressure": "örn., 9, 6-9, değişken",
+      "rating": "1'den 10'a kadar değerlendirin",
+      "tags": "Virgülle ayrılmış"
+    },
+    "addTag": "Etiket ekle...",
+    "selectTags": "Etiket seç...",
+    "tags": {
+      "morning": "Sabah",
+      "afternoon": "Öğleden Sonra",
+      "evening": "Akşam",
+      "fruity": "Meyveli",
+      "chocolatey": "Çikolatalı",
+      "nutty": "Fındıklı",
+      "floral": "Çiçeksi",
+      "spicy": "Baharatlı",
+      "sweet": "Tatlı",
+      "bold": "Güçlü",
+      "light": "Hafif",
+      "creamy": "Kremalı",
+      "iced": "Buzlu",
+      "hot": "Sıcak",
+      "decaf": "Kafeinsiz",
+      "singleOrigin": "Tek Köken",
+      "blend": "Harman",
+      "espresso": "Espresso"
+    },
+    "empty": {
+      "title": "Henüz tarif yok",
+      "description": "İlk tarifi paylaşan siz olun!"
+    },
+    "forkedFrom": "Şuradan çatallandı",
+    "forked": "Tarif başarıyla çatallandı!",
+    "linkCopied": "Bağlantı panoya kopyalandı!",
+    "equipment": "Ekipman",
+    "comments": "Yorumlar",
+    "noComments": "Henüz yorum yok. İlk yorumu siz yapın!",
+    "addComment": "Yorum ekle...",
+    "postComment": "Yorum Gönder",
+    "commentAdded": "Yorum başarıyla gönderildi!",
+    "replyingTo": "Yoruma yanıt veriliyor",
+    "toComment": "yorum bırakmak için",
+    "activeFilters": "Aktif filtreler",
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "Espresso Makinesi",
+      "POUR_OVER_V60": "V60 Pour Over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "French Press",
+      "MOKA_POT": "Moka Pot",
+      "COLD_BREW": "Soğuk Demleme",
+      "TURKISH_CEZVE": "Türk Kahvesi Cezve"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "Espresso",
+      "RISTRETTO": "Ristretto",
+      "LUNGO": "Lungo",
+      "AMERICANO": "Americano",
+      "LATTE": "Latte",
+      "CAPPUCCINO": "Cappuccino",
+      "FLAT_WHITE": "Flat White",
+      "CORTADO": "Cortado",
+      "POUR_OVER": "Pour Over",
+      "FRENCH_PRESS": "French Press",
+      "COLD_BREW": "Soğuk Demleme",
+      "MACCHIATO": "Macchiato",
+      "MOCHA": "Mocha",
+      "ICED_COFFEE": "Buzlu Kahve",
+      "TURKISH_COFFEE": "Türk Kahvesi"
+    }
+  },
+  "profile": {
+    "recipes": "Tarifler",
+    "favourites": "Favoriler",
+    "equipment": "Ekipman",
+    "beans": "Çekirdekler",
+    "setups": "Kurulumlar",
+    "editProfile": "Profili Düzenle",
+    "settings": "Ayarlar"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "profile": "Profil",
+    "preferences": "Tercihler",
+    "account": "Hesap",
+    "theme": "Tema",
+    "language": "Dil",
+    "units": "Birimler",
+    "timezone": "Saat Dilimi",
+    "displayName": "Görünen Ad",
+    "bio": "Biyografi",
+    "website": "Web Sitesi",
+    "themes": {
+      "light": "Açık",
+      "dark": "Koyu",
+      "coffee": "Kahve",
+      "system": "Sistem"
+    },
+    "units_options": {
+      "metric": "Metrik (g, ml, °C)",
+      "imperial": "İmparatorluk (oz, fl oz, °F)"
+    },
+    "placeholders": {
+      "bio": "Kendinizden bahsedin...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "Profil başarıyla güncellendi!"
+    },
+    "deleteAccount": "Hesabı Sil",
+    "deleteWarning": "Bu işlem geri alınamaz."
+  },
+  "equipment": {
+    "grinder": "Öğütücü",
+    "brewer": "Demleme Aleti",
+    "portafilter": "Portafiltre",
+    "basket": "Sepet",
+    "puckScreen": "Puck Ekranı",
+    "paperFilter": "Kağıt Filtre",
+    "tamper": "Tamper"
+  },
+  "tasteNotes": {
+    "placeholder": "Tat notlarını ara (en az 3 karakter)...",
+    "minChars": "Aramak için en az {{count}} karakter yazın",
+    "noResults": "Eşleşen tat notu bulunamadı",
+    "selected": "{{count}}/{{max}} tat notu seçildi",
+    "scaaReference": "SCAA Lezzet Çarkı Referansı"
+  },
+  "rating": {
+    "superGood": "Süper İyi",
+    "good": "İyi",
+    "okay": "Fena Değil",
+    "bad": "Kötü",
+    "horrible": "Berbat"
+  },
+  "common": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "create": "Oluştur",
+    "loading": "Yükleniyor...",
+    "error": "Bir hata oluştu",
+    "success": "Başarılı",
+    "search": "Ara",
+    "filter": "Filtrele",
+    "sort": "Sırala",
+    "noResults": "Sonuç bulunamadı",
+    "loadMore": "Daha Fazla Yükle",
+    "viewAll": "Tümünü Gör",
+    "important": "Önemli",
+    "by": "tarafından",
+    "reply": "Yanıtla",
+    "clearAll": "Tümünü temizle"
+  },
+  "errors": {
+    "notFound": {
+      "title": "Sayfa Bulunamadı",
+      "description": "Oops! Bu kahve soğumuş gibi görünüyor. Aradığınız sayfa bulunamadı.",
+      "backHome": "Ana Sayfaya Dön"
+    },
+    "generic": {
+      "title": "Bir Şeyler Ters Gitti",
+      "description": "Kahveyi döktük! Lütfen daha sonra tekrar deneyin.",
+      "retry": "Tekrar Dene"
+    }
+  },
+  "footer": {
+    "tagline": "Kahve yolculuğunuzu dünyayla paylaşın.",
+    "links": {
+      "about": "Hakkında",
+      "privacy": "Gizlilik",
+      "terms": "Şartlar",
+      "contact": "İletişim"
+    },
+    "copyright": "© {{year}} BrewForm. Tüm hakları saklıdır."
+  },
+  "language": {
+    "select": "Dil Seçin",
+    "en": "English",
+    "tr": "Türkçe",
+    "fr": "Français",
+    "de": "Deutsch"
+  }
+}
