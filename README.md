@@ -42,9 +42,8 @@
 
 ### Prerequisites
 
-- Node.js 24+
-- pnpm 9+
 - Docker and Docker Compose
+- Make (optional, for convenient commands)
 
 ### Quick Start with Docker
 
@@ -56,6 +55,9 @@ cd brewform
 # Copy environment file
 cp .env.example .env
 
+# Install dependencies (creates node_modules on host for IDE)
+make install
+
 # Start all services
 make up
 
@@ -64,32 +66,45 @@ make db-migrate
 make db-seed
 ```
 
+**Access the services:**
+- Frontend: http://localhost:3000
+- API: http://localhost:3001
+- PgAdmin: http://localhost:8080 (pre-configured with PostgreSQL connection)
+- Mailpit: http://localhost:8025
+- Redis: localhost:6379
+
 ### Local Development
 
 ```bash
-# Install dependencies
-pnpm install
+# Install dependencies (creates node_modules on host for IDE)
+make install
 
 # Generate Prisma client
-pnpm db:generate
+make db-generate
 
 # Start development servers
-pnpm dev
+make dev
 ```
 
 ### Available Commands
 
 ```bash
 # Development
-make dev          # Start dev environment
+make up           # Start all services in detached mode
+make dev          # Start dev environment with logs
+make build        # Build all applications
+make rebuild      # Rebuild and restart all services
 make logs         # View logs
 make stop         # Stop services
 
 # Database
+make db-generate  # Generate Prisma client
 make db-migrate   # Run migrations
 make db-seed      # Seed database
 make db-seed-taste-notes  # Seed taste notes from SCAA JSON
 make db-studio    # Open Prisma Studio
+make db-reset     # Reset database (keeps schema)
+make db-reset-hard # Complete reset: drops DB, runs migrations and seeds
 
 # Testing & Linting
 make test         # Run tests
@@ -99,6 +114,39 @@ make lint-fix     # Fix lint issues
 # Cleanup
 make clean        # Remove containers and volumes
 ```
+
+## Troubleshooting
+
+### API container fails to start with Prisma errors
+
+If you see errors like `The requested module '@prisma/client' does not provide an export named 'BrewMethodType'`, it means the Docker container is using an outdated Prisma client. This can happen after schema changes.
+
+```bash
+# Rebuild the API container with the latest schema
+docker compose build api
+
+# Or rebuild all services
+make rebuild
+```
+
+This rebuilds the container with the current schema and regenerates the Prisma client.
+
+### Database Reset
+
+For a complete database reset (use with caution - all data will be lost):
+
+```bash
+# Soft reset: keeps the schema but removes all data
+make db-reset
+
+# Hard reset: completely drops and recreates the database, then runs all migrations and seeds
+make db-reset-hard
+```
+
+The `db-reset-hard` command is useful when:
+- You want a fresh start with all migrations applied from scratch
+- The database schema is corrupted or out of sync
+- You need to test the full migration and seeding process
 
 ## Project Structure
 

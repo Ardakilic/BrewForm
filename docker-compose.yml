@@ -58,17 +58,22 @@ services:
 
   # PgAdmin (Database Management)
   pgadmin:
-    image: elestio/pgadmin:latest
+    image: dpage/pgadmin4
     container_name: brewform-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@brewform.local
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_LISTEN_PORT: 8080
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     ports:
-      - "8080:8080"
+      - "8080:80"
+    user: root
+    entrypoint: /bin/sh -c "chmod 600 /pgpass; /entrypoint.sh;"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/pgpass:/pgpass
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json
     depends_on:
       - postgres
     networks:

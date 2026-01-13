@@ -1,0 +1,15 @@
+{
+  "Servers": {
+    "1": {
+      "Group": "Servers",
+      "Name": "BrewForm PostgreSQL",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "brewform",
+      "Username": "brewform",
+      "PassFile": "/pgpass",
+      "SSLMode": "prefer",
+      "Favorite": true
+    }
+  }
+}

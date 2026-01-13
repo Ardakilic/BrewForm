@@ -3,7 +3,7 @@
 # All commands run through Docker/Docker Compose
 # ============================================
 
-.PHONY: help install dev build start stop restart logs shell test lint format db-migrate db-seed db-studio clean prune
+.PHONY: help install dev build rebuild start stop restart logs shell test lint format db-migrate db-seed db-studio db-generate db-reset db-reset-hard clean prune up
 
 # Default target
 help:
@@ -13,8 +13,10 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  install       Install all dependencies"
+	@echo "  up            Start all services in detached mode"
 	@echo "  dev           Start development environment"
 	@echo "  build         Build all applications"
+	@echo "  rebuild       Rebuild and restart all services"
 	@echo "  start         Start production environment"
 	@echo "  stop          Stop all containers"
 	@echo "  restart       Restart all containers"
@@ -28,6 +30,7 @@ help:
 	@echo "  db-seed-taste-notes  Seed taste notes from SCAA JSON file"
 	@echo "  db-studio     Open Prisma Studio"
 	@echo "  db-reset      Reset database (warning: destructive)"
+	@echo "  db-reset-hard Complete database reset with migrations and seeds"
 	@echo "  db-generate   Generate Prisma client"
 	@echo ""
 	@echo "Testing:"
@@ -58,6 +61,9 @@ install:
 	docker compose run --rm api pnpm install
 	docker compose run --rm web pnpm install
 
+up:
+	docker compose up -d
+
 dev:
 	docker compose up -d postgres redis mailpit pgadmin
 	@echo "Waiting for services to be healthy..."
@@ -66,6 +72,9 @@ dev:
 
 build:
 	docker compose build --no-cache
+
+rebuild:
+	docker compose build --no-cache && docker compose up -d
 
 start:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
@@ -111,6 +120,26 @@ db-reset:
 	@echo "Warning: This will reset the database and delete all data!"
 	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
 	docker compose exec api pnpm --filter @brewform/api prisma migrate reset --force
+
+db-reset-hard:
+	@echo "Warning: This will completely reset the database, recreate it, and run all migrations and seeds!"
+	@echo "All data will be permanently lost."
+	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
+	@echo "Stopping services..."
+	docker compose stop api web
+	@echo "Resetting database volume..."
+	docker compose down -v postgres
+	@echo "Starting database..."
+	docker compose up -d postgres
+	@echo "Waiting for database to be ready..."
+	sleep 10
+	@echo "Running migrations..."
+	docker compose run --rm api pnpm --filter @brewform/api db:migrate
+	@echo "Seeding database..."
+	docker compose run --rm api pnpm --filter @brewform/api db:seed
+	@echo "Starting all services..."
+	docker compose up -d
+	@echo "Database reset complete!"
 
 db-push:
 	docker compose exec api pnpm --filter @brewform/api prisma db push
