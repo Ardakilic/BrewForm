@@ -29,7 +29,7 @@ function ThemedApp() {
 
   return (
     <BaseProvider theme={theme}>
-      <SnackbarProvider>
+      <SnackbarProvider overrides={{ Root: { style: { zIndex: 200 } } }}>
         <App />
       </SnackbarProvider>
     </BaseProvider>
