@@ -148,6 +148,53 @@ The `db-reset-hard` command is useful when:
 - The database schema is corrupted or out of sync
 - You need to test the full migration and seeding process
 
+### Reset User Password
+
+To reset a user's password (e.g., if you forgot the admin password):
+
+```bash
+# Reset password and generate a new random password
+make reset-password USER=admin@brewform.local
+
+# Reset password with a specific new password
+make reset-password USER=admin@brewform.local PASSWORD=MySecurePassword123!
+
+# You can also use username instead of email
+make reset-password USER=admin PASSWORD=NewPassword123!
+```
+
+**Example: Resetting Admin Password**
+
+If you forgot the admin password after seeding, run:
+
+```bash
+make reset-password USER=admin@brewform.local
+```
+
+Output:
+```
+🔐 Password reset successful!
+
+User details:
+   Email:    admin@brewform.local
+   Username: admin
+   Display:  Admin
+   Admin:    Yes
+
+New password (generated):
+   xK#9mNpQ2vR$bT5w
+
+⚠️  Please save this password - it will not be shown again!
+
+ℹ️  All existing sessions have been invalidated.
+   The user will need to log in again.
+```
+
+**Notes:**
+- All existing sessions are invalidated after password reset
+- If no password is provided, a secure 16-character password is generated
+- Password must be at least 8 characters if provided manually
+
 ## Project Structure
 
 ```

@@ -21,6 +21,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:taste-notes": "tsx prisma/seed-taste-notes.ts",
     "db:studio": "prisma studio",
+    "reset-password": "tsx prisma/reset-password.ts",
     "db:push": "prisma db push",
     "clean": "rm -rf dist node_modules .turbo coverage"
   },

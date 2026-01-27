@@ -3,7 +3,7 @@
 # All commands run through Docker/Docker Compose
 # ============================================
 
-.PHONY: help install dev build rebuild start stop restart logs shell test lint format db-migrate db-seed db-studio db-generate db-reset db-reset-hard clean prune up
+.PHONY: help install dev build rebuild start stop restart logs shell test lint format db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up
 
 # Default target
 help:
@@ -32,6 +32,7 @@ help:
 	@echo "  db-reset      Reset database (warning: destructive)"
 	@echo "  db-reset-hard Complete database reset with migrations and seeds"
 	@echo "  db-generate   Generate Prisma client"
+	@echo "  reset-password Reset user password (USER=email PASSWORD=optional)"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test          Run all tests"
@@ -143,6 +144,21 @@ db-reset-hard:
 
 db-push:
 	docker compose exec api pnpm --filter @brewform/api prisma db push
+
+reset-password:
+ifndef USER
+	@echo "Usage: make reset-password USER=<email-or-username> [PASSWORD=<new-password>]"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make reset-password USER=admin@brewform.local"
+	@echo "  make reset-password USER=admin PASSWORD=MySecurePassword123!"
+	@exit 1
+endif
+ifdef PASSWORD
+	docker compose exec api pnpm --filter @brewform/api reset-password $(USER) "$(PASSWORD)"
+else
+	docker compose exec api pnpm --filter @brewform/api reset-password $(USER)
+endif
 
 # ============================================
 # Testing Commands
