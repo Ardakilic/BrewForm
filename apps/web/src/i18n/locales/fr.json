@@ -3,9 +3,14 @@
     "name": "BrewForm",
     "tagline": "Partagez Votre Voyage Café"
   },
+  "theme": {
+    "switchToLight": "Passer au mode clair",
+    "switchToDark": "Passer au mode sombre"
+  },
   "nav": {
     "home": "Accueil",
     "recipes": "Recettes",
+    "baristas": "Baristas",
     "explore": "Explorer",
     "login": "Connexion",
     "register": "S'inscrire",
@@ -13,6 +18,11 @@
     "settings": "Paramètres",
     "logout": "Déconnexion",
     "admin": "Admin"
+  },
+  "baristas": {
+    "description": "Découvrez les amateurs de café et leurs recettes",
+    "result": "barista trouvé",
+    "results": "baristas trouvés"
   },
   "pages": {
     "home": {
@@ -221,6 +231,9 @@
       "title": "Pas encore de recettes",
       "description": "Soyez le premier à partager une recette!"
     },
+    "result": "recette trouvée",
+    "results": "recettes trouvées",
+    "createFirst": "Créez votre première recette",
     "forkedFrom": "Dupliqué de",
     "forked": "Recette dupliquée avec succès!",
     "linkCopied": "Lien copié dans le presse-papiers!",
@@ -373,6 +386,12 @@
     "en": "English",
     "tr": "Türkçe",
     "fr": "Français",
-    "de": "Deutsch"
+    "de": "Deutsch",
+    "es": "Español",
+    "pt": "Português",
+    "ru": "Русский",
+    "az": "Azərbaycan",
+    "ka": "ქართული",
+    "ar_f": "العربية"
   }
 }

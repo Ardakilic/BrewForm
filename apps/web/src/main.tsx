@@ -22,14 +22,34 @@ import './styles/global.css';
 const engine = new Styletron();
 
 /**
- * Inner app wrapper that uses theme context
+ * Inner app wrapper that uses theme context and applies background to document
  */
 function ThemedApp() {
   const { theme } = useTheme();
 
+  // Apply theme background color to document body
+  React.useEffect(() => {
+    document.body.style.backgroundColor = theme.colors.backgroundPrimary;
+    document.body.style.color = theme.colors.contentPrimary;
+    document.documentElement.style.backgroundColor = theme.colors.backgroundPrimary;
+  }, [theme.colors.backgroundPrimary, theme.colors.contentPrimary]);
+
   return (
     <BaseProvider theme={theme}>
-      <SnackbarProvider overrides={{ Root: { style: { zIndex: 200 } } }}>
+      <SnackbarProvider 
+        placement="topRight"
+        overrides={{ 
+          Root: { style: { zIndex: 9999, marginTop: '70px' } },
+          PlacementContainer: { style: { zIndex: 9999 } },
+          Content: { 
+            style: { 
+              backgroundColor: theme.colors.backgroundSecondary,
+              color: theme.colors.contentPrimary,
+            } 
+          },
+          Message: { style: { color: theme.colors.contentPrimary } },
+        }}
+      >
         <App />
       </SnackbarProvider>
     </BaseProvider>

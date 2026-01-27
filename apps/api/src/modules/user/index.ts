@@ -15,6 +15,26 @@ const users = new Hono();
 users.use('*', authMiddleware);
 
 /**
+ * GET /users
+ * List all public users with optional search
+ */
+users.get('/', async (c) => {
+  const search = c.req.query('search') || '';
+  const page = Number(c.req.query('page')) || 1;
+  const limit = Number(c.req.query('limit')) || 50;
+
+  const result = await userService.listUsers(search, page, limit);
+
+  return c.json({
+    success: true,
+    data: {
+      users: result.users,
+      total: result.total,
+    },
+  });
+});
+
+/**
  * GET /users/me
  * Get current user's profile
  */

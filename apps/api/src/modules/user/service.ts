@@ -319,6 +319,71 @@ export async function deleteAccount(userId: string): Promise<void> {
   logAudit('account_deleted', 'user', userId, userId);
 }
 
+/**
+ * List all public users with optional search
+ */
+export async function listUsers(
+  search?: string,
+  page = 1,
+  limit = 50
+): Promise<{ users: PublicUserProfile[]; total: number }> {
+  const prisma = getPrisma();
+  const pagination = getPagination({ page, limit });
+
+  // Build where clause
+  const baseWhere = {
+    ...softDeleteFilter(),
+    isBanned: false,
+    emailVerified: true,
+  };
+
+  const where = search
+    ? {
+        ...baseWhere,
+        OR: [
+          { username: { contains: search.toLowerCase(), mode: 'insensitive' as const } },
+          { displayName: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }
+    : baseWhere;
+
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      skip: pagination.skip,
+      take: pagination.take,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: {
+            recipes: {
+              where: {
+                ...softDeleteFilter(),
+                visibility: 'PUBLIC',
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    users: users.map((user) => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      website: user.website,
+      createdAt: user.createdAt,
+      recipeCount: user._count.recipes,
+    })),
+    total,
+  };
+}
+
 export const userService = {
   getProfile,
   getPublicProfile,
@@ -326,6 +391,7 @@ export const userService = {
   getUserRecipes,
   getUserFavourites,
   deleteAccount,
+  listUsers,
 };
 
 export default userService;

@@ -25,6 +25,7 @@ const CreateRecipePage = lazy(() => import('./pages/recipes/CreateRecipePage'));
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
 const SettingsPage = lazy(() => import('./pages/profile/SettingsPage'));
 const UserPage = lazy(() => import('./pages/users/UserPage'));
+const BaristasPage = lazy(() => import('./pages/users/BaristasPage'));
 const ComparePage = lazy(() => import('./pages/compare/ComparePage'));
 const NotFoundPage = lazy(() => import('./pages/errors/NotFoundPage'));
 const ErrorPage = lazy(() => import('./pages/errors/ErrorPage'));
@@ -73,6 +74,7 @@ function App() {
             />
             
             {/* User routes */}
+            <Route path="baristas" element={<BaristasPage />} />
             <Route path="@:username" element={<UserPage />} />
             <Route path="user/:username" element={<UserPage />} />
             

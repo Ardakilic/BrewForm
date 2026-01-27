@@ -60,8 +60,11 @@ model User {
 
   @@index([email])
   @@index([username])
+  @@index([displayName])
   @@index([isBanned])
+  @@index([emailVerified])
   @@index([deletedAt])
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -255,6 +258,8 @@ model Coffee {
   @@index([slug])
   @@index([vendorId])
   @@index([name])
+  @@index([origin])
+  @@index([variety])
   @@index([deletedAt])
   @@map("coffees")
 }
@@ -638,6 +643,8 @@ model RecipeVersion {
   @@index([coffeeId])
   @@index([rating])
   @@index([createdAt])
+  @@index([title])
+  @@index([tags])
   @@map("recipe_versions")
 }
 

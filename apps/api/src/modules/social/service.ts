@@ -11,6 +11,56 @@ import { NotFoundError, ForbiddenError, BadRequestError } from '../../middleware
 import { notificationService } from '../notification/service.js';
 
 // ============================================
+// Comment Notification Helpers
+// ============================================
+
+/**
+ * Notify recipe owner about a new comment
+ */
+async function notifyRecipeOwnerOfComment(
+  recipe: { userId: string; slug: string | null },
+  recipeId: string,
+  commentId: string,
+  commenter: { displayName: string | null; username: string },
+  recipeTitle: string,
+  actorId: string
+) {
+  await notificationService.createNotification({
+    userId: recipe.userId,
+    type: 'COMMENT_ON_RECIPE',
+    title: 'New comment on your recipe',
+    message: `${commenter.displayName || commenter.username} commented on "${recipeTitle}"`,
+    link: `/recipes/${recipe.slug || recipeId}`,
+    recipeId,
+    commentId,
+    actorId,
+  });
+}
+
+/**
+ * Notify parent comment author about a reply
+ */
+async function notifyParentCommentAuthor(
+  parentUserId: string,
+  recipe: { slug: string | null },
+  recipeId: string,
+  commentId: string,
+  commenter: { displayName: string | null; username: string },
+  actorId: string
+) {
+  await notificationService.createNotification({
+    userId: parentUserId,
+    type: 'REPLY_TO_COMMENT',
+    title: 'New reply to your comment',
+    message: `${commenter.displayName || commenter.username} replied to your comment`,
+    link: `/recipes/${recipe.slug || recipeId}`,
+    recipeId,
+    commentId,
+    actorId,
+  });
+}
+
+// ============================================
 // Favourites
 // ============================================
 
@@ -177,6 +227,23 @@ export async function addComment(
 
   logAudit('comment_added', 'comment', comment.id, userId);
 
+  // Send notifications asynchronously (don't await to avoid blocking)
+  sendCommentNotifications(prisma, recipe, recipeId, comment, userId, parentId);
+
+  return comment;
+}
+
+/**
+ * Handle comment notifications separately to reduce complexity
+ */
+async function sendCommentNotifications(
+  prisma: ReturnType<typeof getPrisma>,
+  recipe: { userId: string; slug: string | null },
+  recipeId: string,
+  comment: { id: string; user: { displayName: string | null; username: string } },
+  userId: string,
+  parentId?: string
+) {
   // Get recipe details for notification
   const recipeWithVersion = await prisma.recipe.findUnique({
     where: { id: recipeId },
@@ -185,42 +252,41 @@ export async function addComment(
     },
   });
 
-  // Create notification for recipe owner
-  if (recipe.userId !== userId && recipeWithVersion?.currentVersion) {
-    await notificationService.createNotification({
-      userId: recipe.userId,
-      type: 'COMMENT_ON_RECIPE',
-      title: 'New comment on your recipe',
-      message: `${comment.user.displayName || comment.user.username} commented on "${recipeWithVersion.currentVersion.title}"`,
-      link: `/recipes/${recipe.slug || recipeId}`,
+  // Notify recipe owner (if not self-commenting)
+  const recipeTitle = recipeWithVersion?.currentVersion?.title;
+  if (recipe.userId !== userId && recipeTitle) {
+    await notifyRecipeOwnerOfComment(
+      recipe,
       recipeId,
-      commentId: comment.id,
-      actorId: userId,
-    });
+      comment.id,
+      comment.user,
+      recipeTitle,
+      userId
+    );
   }
 
-  // If this is a reply, notify the parent comment author
+  // Notify parent comment author (if replying)
   if (parentId) {
     const parentComment = await prisma.comment.findUnique({
       where: { id: parentId },
       select: { userId: true },
     });
 
-    if (parentComment && parentComment.userId !== userId && parentComment.userId !== recipe.userId) {
-      await notificationService.createNotification({
-        userId: parentComment.userId,
-        type: 'REPLY_TO_COMMENT',
-        title: 'New reply to your comment',
-        message: `${comment.user.displayName || comment.user.username} replied to your comment`,
-        link: `/recipes/${recipe.slug || recipeId}`,
+    const shouldNotifyParent = parentComment && 
+      parentComment.userId !== userId && 
+      parentComment.userId !== recipe.userId;
+    
+    if (shouldNotifyParent) {
+      await notifyParentCommentAuthor(
+        parentComment.userId,
+        recipe,
         recipeId,
-        commentId: comment.id,
-        actorId: userId,
-      });
+        comment.id,
+        comment.user,
+        userId
+      );
     }
   }
-
-  return comment;
 }
 
 /**

@@ -3,9 +3,14 @@
     "name": "BrewForm",
     "tagline": "Teile Deine Kaffee-Reise"
   },
+  "theme": {
+    "switchToLight": "Zum hellen Modus wechseln",
+    "switchToDark": "Zum dunklen Modus wechseln"
+  },
   "nav": {
     "home": "Startseite",
     "recipes": "Rezepte",
+    "baristas": "Baristas",
     "explore": "Entdecken",
     "login": "Anmelden",
     "register": "Registrieren",
@@ -13,6 +18,11 @@
     "settings": "Einstellungen",
     "logout": "Abmelden",
     "admin": "Admin"
+  },
+  "baristas": {
+    "description": "Entdecken Sie Kaffeeliebhaber und ihre Rezepte",
+    "result": "Barista gefunden",
+    "results": "Baristas gefunden"
   },
   "pages": {
     "home": {
@@ -221,6 +231,9 @@
       "title": "Noch keine Rezepte",
       "description": "Sei der Erste, der ein Rezept teilt!"
     },
+    "result": "Rezept gefunden",
+    "results": "Rezepte gefunden",
+    "createFirst": "Erstelle dein erstes Rezept",
     "forkedFrom": "Kopiert von",
     "forked": "Rezept erfolgreich kopiert!",
     "linkCopied": "Link in Zwischenablage kopiert!",
@@ -373,6 +386,12 @@
     "en": "English",
     "tr": "Türkçe",
     "fr": "Français",
-    "de": "Deutsch"
+    "de": "Deutsch",
+    "es": "Español",
+    "pt": "Português",
+    "ru": "Русский",
+    "az": "Azərbaycan",
+    "ka": "ქართული",
+    "ar_f": "العربية"
   }
 }

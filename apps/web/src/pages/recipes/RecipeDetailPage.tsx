@@ -67,7 +67,7 @@ function ClickableField({ label, value, linkTo, theme }: ClickableFieldProps) {
         <ParagraphMedium
           marginBottom="16px"
           className={css({
-            color: '#6F4E37',
+            color: theme.colors.contentTertiary,
             ':hover': { textDecoration: 'underline' },
           })}
         >
@@ -126,7 +126,7 @@ function CommentItem({ comment, onReply }: CommentItemProps) {
         <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
           <Link
             to={`/user/${comment.user.username}`}
-            className={css({ color: '#6F4E37', textDecoration: 'none', fontWeight: 600 })}
+            className={css({ color: theme.colors.contentTertiary, textDecoration: 'none', fontWeight: 600 })}
           >
             {comment.user.displayName || comment.user.username}
           </Link>
@@ -168,7 +168,7 @@ function CommentItem({ comment, onReply }: CommentItemProps) {
                 <div className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}>
                   <Link
                     to={`/user/${reply.user.username}`}
-                    className={css({ color: '#6F4E37', textDecoration: 'none', fontWeight: 600, fontSize: '14px' })}
+                    className={css({ color: theme.colors.contentTertiary, textDecoration: 'none', fontWeight: 600, fontSize: '14px' })}
                   >
                     {reply.user.displayName || reply.user.username}
                   </Link>
@@ -297,7 +297,7 @@ function RecipeDetailPage() {
               by{' '}
               <Link
                 to={`/user/${recipe.user?.username}`}
-                className={css({ color: '#6F4E37', textDecoration: 'none', ':hover': { textDecoration: 'underline' } })}
+                className={css({ color: theme.colors.contentTertiary, textDecoration: 'none', ':hover': { textDecoration: 'underline' } })}
               >
                 @{recipe.user?.username}
               </Link>
@@ -327,12 +327,12 @@ function RecipeDetailPage() {
               🍴 {t('recipe.forkedFrom')}{' '}
               <Link
                 to={`/recipes/${recipe.forkedFrom.slug}`}
-                className={css({ color: '#6F4E37', fontWeight: 600 })}
+                className={css({ color: theme.colors.contentTertiary, fontWeight: 600 })}
               >
                 {recipe.forkedFrom.currentVersion?.title || 'Original Recipe'}
               </Link>{' '}
               by{' '}
-              <Link to={`/user/${recipe.forkedFrom.user?.username}`} className={css({ color: '#6F4E37' })}>
+              <Link to={`/user/${recipe.forkedFrom.user?.username}`} className={css({ color: theme.colors.contentTertiary })}>
                 @{recipe.forkedFrom.user?.username}
               </Link>
             </ParagraphMedium>
@@ -346,13 +346,13 @@ function RecipeDetailPage() {
             <div>
               <ClickableField
                 label={t('recipe.fields.brewMethod')}
-                value={version?.brewMethod}
+                value={version?.brewMethod ? t(`recipe.brewMethods.${version.brewMethod}`) : undefined}
                 linkTo={`/recipes?brewMethod=${version?.brewMethod}`}
                 theme={theme}
               />
               <ClickableField
                 label={t('recipe.fields.drinkType')}
-                value={version?.drinkType}
+                value={version?.drinkType ? t(`recipe.drinkTypes.${version.drinkType}`) : undefined}
                 linkTo={`/recipes?drinkType=${version?.drinkType}`}
                 theme={theme}
               />
@@ -412,7 +412,20 @@ function RecipeDetailPage() {
               <div className={css({ display: 'flex', gap: '8px', flexWrap: 'wrap' })}>
                 {version.tags.map((tag) => (
                   <Link key={tag} to={`/recipes?tags=${tag}`} className={css({ textDecoration: 'none', cursor: 'pointer' })}>
-                    <Tag closeable={false} kind={TAG_KIND.primary} overrides={{ Root: { style: { cursor: 'pointer' } } }}>
+                    <Tag 
+                      closeable={false} 
+                      kind={TAG_KIND.primary} 
+                      overrides={{ 
+                        Root: { 
+                          style: { 
+                            cursor: 'pointer',
+                            backgroundColor: theme.colors.backgroundTertiary,
+                            color: theme.colors.contentPrimary,
+                            borderColor: theme.colors.borderOpaque,
+                          } 
+                        } 
+                      }}
+                    >
                       {tag}
                     </Tag>
                   </Link>
@@ -479,7 +492,7 @@ function RecipeDetailPage() {
           ) : (
             <div className={css({ marginBottom: '24px', padding: '16px', backgroundColor: theme.colors.backgroundSecondary, borderRadius: '8px' })}>
               <ParagraphMedium>
-                <Link to="/login" className={css({ color: '#6F4E37' })}>
+                <Link to="/login" className={css({ color: theme.colors.contentTertiary })}>
                   {t('nav.login')}
                 </Link>{' '}
                 {t('recipe.toComment')}

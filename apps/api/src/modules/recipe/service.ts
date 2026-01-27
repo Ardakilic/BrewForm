@@ -23,8 +23,8 @@ export interface CreateRecipeInput {
 
 export interface RecipeFilters {
   search?: string;
-  brewMethod?: BrewMethodType;
-  drinkType?: DrinkType;
+  brewMethod?: BrewMethodType | BrewMethodType[];
+  drinkType?: DrinkType | DrinkType[];
   vendorId?: string;
   coffeeId?: string;
   grinderId?: string;
@@ -564,16 +564,31 @@ function buildVisibilityFilter(filters: RecipeFilters, viewerId?: string | null)
 
 /**
  * Build current version filter for recipe queries
+ * Supports arrays for brewMethod and drinkType with OR logic using Prisma's `in` operator
  */
 function buildVersionFilter(filters: RecipeFilters): Record<string, unknown> | undefined {
   const hasVersionFilters = filters.brewMethod || filters.drinkType || filters.coffeeId || 
     filters.grinderId || filters.brewerId || filters.minRating || filters.tags;
   
   if (!hasVersionFilters) return undefined;
+
+  // Handle brewMethod - single value or array (OR logic)
+  const brewMethodFilter = filters.brewMethod
+    ? Array.isArray(filters.brewMethod)
+      ? { in: filters.brewMethod }
+      : filters.brewMethod
+    : undefined;
+
+  // Handle drinkType - single value or array (OR logic)
+  const drinkTypeFilter = filters.drinkType
+    ? Array.isArray(filters.drinkType)
+      ? { in: filters.drinkType }
+      : filters.drinkType
+    : undefined;
   
   return {
-    ...(filters.brewMethod && { brewMethod: filters.brewMethod }),
-    ...(filters.drinkType && { drinkType: filters.drinkType }),
+    ...(brewMethodFilter && { brewMethod: brewMethodFilter }),
+    ...(drinkTypeFilter && { drinkType: drinkTypeFilter }),
     ...(filters.coffeeId && { coffeeId: filters.coffeeId }),
     ...(filters.grinderId && { grinderId: filters.grinderId }),
     ...(filters.brewerId && { brewerId: filters.brewerId }),

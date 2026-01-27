@@ -22,6 +22,8 @@ body {
     Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   line-height: 1.5;
   min-height: 100vh;
+  background-color: inherit;
+  transition: background-color 0.2s ease;
 }
 
 #root {

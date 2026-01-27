@@ -3,9 +3,14 @@
     "name": "BrewForm",
     "tagline": "Kahve Yolculuğunu Paylaş"
   },
+  "theme": {
+    "switchToLight": "Açık temaya geç",
+    "switchToDark": "Koyu temaya geç"
+  },
   "nav": {
     "home": "Ana Sayfa",
     "recipes": "Tarifler",
+    "baristas": "Baristalar",
     "explore": "Keşfet",
     "login": "Giriş Yap",
     "register": "Kayıt Ol",
@@ -13,6 +18,11 @@
     "settings": "Ayarlar",
     "logout": "Çıkış Yap",
     "admin": "Yönetici"
+  },
+  "baristas": {
+    "description": "Kahve tutkunlarını ve tariflerini keşfedin",
+    "result": "barista bulundu",
+    "results": "barista bulundu"
   },
   "pages": {
     "home": {
@@ -221,6 +231,9 @@
       "title": "Henüz tarif yok",
       "description": "İlk tarifi paylaşan siz olun!"
     },
+    "result": "tarif bulundu",
+    "results": "tarif bulundu",
+    "createFirst": "İlk Tarifinizi Oluşturun",
     "forkedFrom": "Şuradan çatallandı",
     "forked": "Tarif başarıyla çatallandı!",
     "linkCopied": "Bağlantı panoya kopyalandı!",
@@ -373,6 +386,12 @@
     "en": "English",
     "tr": "Türkçe",
     "fr": "Français",
-    "de": "Deutsch"
+    "de": "Deutsch",
+    "es": "Español",
+    "pt": "Português",
+    "ru": "Русский",
+    "az": "Azərbaycan",
+    "ka": "ქართული",
+    "ar_f": "العربية"
   }
 }

@@ -5,12 +5,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Button } from 'baseui/button';
+import { Button, KIND as BUTTON_KIND, SIZE as BUTTON_SIZE } from 'baseui/button';
 import { Card } from 'baseui/card';
-import { HeadingLarge, HeadingSmall, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
+import { HeadingMedium, HeadingSmall, LabelMedium, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
 import { Input } from 'baseui/input';
 import { Select } from 'baseui/select';
-import { Tag, KIND as TAG_KIND } from 'baseui/tag';
+import { Tag, KIND as TAG_KIND, VARIANT as TAG_VARIANT } from 'baseui/tag';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
@@ -64,17 +64,21 @@ function RecipesPage() {
   // Initialize filters from URL params (runs once on mount)
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally run only on mount
   useEffect(() => {
-    const urlBrewMethod = searchParams.get('brewMethod');
-    const urlDrinkType = searchParams.get('drinkType');
+    const urlBrewMethods = searchParams.getAll('brewMethod');
+    const urlDrinkTypes = searchParams.getAll('drinkType');
     const urlTags = searchParams.getAll('tags');
 
-    if (urlBrewMethod) {
-      const option = brewMethodOptions.find(o => o.id === urlBrewMethod);
-      if (option) setBrewMethod([option]);
+    if (urlBrewMethods.length > 0) {
+      const options = urlBrewMethods
+        .map(id => brewMethodOptions.find(o => o.id === id))
+        .filter((o): o is { id: string; label: string } => o !== undefined);
+      if (options.length > 0) setBrewMethod(options);
     }
-    if (urlDrinkType) {
-      const option = drinkTypeOptions.find(o => o.id === urlDrinkType);
-      if (option) setDrinkType([option]);
+    if (urlDrinkTypes.length > 0) {
+      const options = urlDrinkTypes
+        .map(id => drinkTypeOptions.find(o => o.id === id))
+        .filter((o): o is { id: string; label: string } => o !== undefined);
+      if (options.length > 0) setDrinkType(options);
     }
     if (urlTags.length > 0) {
       const selectedTags = urlTags.map(t => {
@@ -88,8 +92,12 @@ function RecipesPage() {
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
-    if (brewMethod.length > 0) params.set('brewMethod', brewMethod[0].id);
-    if (drinkType.length > 0) params.set('drinkType', drinkType[0].id);
+    for (const method of brewMethod) {
+      params.append('brewMethod', method.id);
+    }
+    for (const type of drinkType) {
+      params.append('drinkType', type.id);
+    }
     for (const tag of tags) {
       params.append('tags', tag.id);
     }
@@ -97,12 +105,12 @@ function RecipesPage() {
     setSearchParams(params, { replace: true });
   }, [brewMethod, drinkType, tags, search, setSearchParams]);
 
-  // Build API URL with filters
+  // Build API URL with filters (supports multiple values with OR logic)
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set('visibility', 'PUBLIC');
-    if (brewMethod.length > 0) params.set('brewMethod', brewMethod[0].id);
-    if (drinkType.length > 0) params.set('drinkType', drinkType[0].id);
+    if (brewMethod.length > 0) params.set('brewMethod', brewMethod.map(m => m.id).join(','));
+    if (drinkType.length > 0) params.set('drinkType', drinkType.map(t => t.id).join(','));
     if (tags.length > 0) params.set('tags', tags.map(t => t.id).join(','));
     if (search) params.set('search', search);
     return `/recipes?${params.toString()}`;
@@ -144,6 +152,16 @@ function RecipesPage() {
 
   const hasFilters = brewMethod.length > 0 || drinkType.length > 0 || tags.length > 0 || search;
 
+  // Remove a specific brew method from selection
+  const removeBrewMethod = (idToRemove: string) => {
+    setBrewMethod(brewMethod.filter(m => m.id !== idToRemove));
+  };
+
+  // Remove a specific drink type from selection
+  const removeDrinkType = (idToRemove: string) => {
+    setDrinkType(drinkType.filter(t => t.id !== idToRemove));
+  };
+
   return (
     <>
       <Helmet>
@@ -151,131 +169,330 @@ function RecipesPage() {
         <meta name="description" content={t('pages.recipes.description')} />
       </Helmet>
 
-      {/* Header */}
+      {/* Hero Header */}
       <div
         className={css({
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          background: `linear-gradient(135deg, ${theme.colors.backgroundTertiary} 0%, ${theme.colors.backgroundSecondary} 100%)`,
+          borderRadius: '16px',
+          padding: '32px',
           marginBottom: '32px',
         })}
       >
-        <HeadingLarge>{t('nav.recipes')}</HeadingLarge>
-        {isAuthenticated && (
-          <Link to="/recipes/new">
-            <Button>{t('recipe.create')}</Button>
-          </Link>
-        )}
+        <div
+          className={css({
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px',
+          })}
+        >
+          <div>
+            <HeadingMedium
+              $style={{
+                color: theme.colors.contentPrimary,
+                marginBottom: '8px',
+              }}
+            >
+              {t('nav.recipes')}
+            </HeadingMedium>
+            <ParagraphMedium $style={{ color: theme.colors.contentSecondary }}>
+              {t('pages.recipes.description')}
+            </ParagraphMedium>
+          </div>
+          {isAuthenticated && (
+            <Link to="/recipes/new">
+              <Button kind={BUTTON_KIND.primary} size={BUTTON_SIZE.large}>
+                {t('recipe.create')}
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        {/* Search and Filters */}
+        <div
+          className={css({
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap',
+          })}
+        >
+          <div className={css({ flex: '1', minWidth: '250px' })}>
+            <Input
+              placeholder={t('common.search')}
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+              startEnhancer={() => <span>🔍</span>}
+              overrides={{
+                Root: {
+                  style: {
+                    backgroundColor: theme.colors.backgroundPrimary,
+                    borderRadius: '8px',
+                  },
+                },
+              }}
+            />
+          </div>
+          <div className={css({ minWidth: '220px' })}>
+            <Select
+              multi
+              placeholder={t('recipe.fields.brewMethod')}
+              options={brewMethodOptions}
+              value={brewMethod}
+              onChange={(params) => setBrewMethod(params.value as { id: string; label: string }[])}
+              clearable
+              overrides={{
+                Root: {
+                  style: {
+                    backgroundColor: theme.colors.backgroundPrimary,
+                    borderRadius: '8px',
+                  },
+                },
+                ControlContainer: {
+                  style: {
+                    backgroundColor: theme.colors.backgroundPrimary,
+                  },
+                },
+                Popover: {
+                  props: {
+                    overrides: {
+                      Body: {
+                        style: {
+                          zIndex: 120,
+                        },
+                      },
+                    },
+                  },
+                },
+                Dropdown: {
+                  style: {
+                    backgroundColor: theme.colors.menuFill,
+                  },
+                },
+                DropdownListItem: {
+                  style: {
+                    backgroundColor: theme.colors.menuFill,
+                    color: theme.colors.contentInversePrimary,
+                    ':hover': {
+                      backgroundColor: theme.colors.menuFillHover,
+                    },
+                  },
+                },
+                OptionContent: {
+                  style: {
+                    color: theme.colors.contentInversePrimary,
+                  },
+                },
+              }}
+            />
+          </div>
+          <div className={css({ minWidth: '220px' })}>
+            <Select
+              multi
+              placeholder={t('recipe.fields.drinkType')}
+              options={drinkTypeOptions}
+              value={drinkType}
+              onChange={(params) => setDrinkType(params.value as { id: string; label: string }[])}
+              clearable
+              overrides={{
+                Root: {
+                  style: {
+                    backgroundColor: theme.colors.backgroundPrimary,
+                    borderRadius: '8px',
+                  },
+                },
+                ControlContainer: {
+                  style: {
+                    backgroundColor: theme.colors.backgroundPrimary,
+                  },
+                },
+                Popover: {
+                  props: {
+                    overrides: {
+                      Body: {
+                        style: {
+                          zIndex: 120,
+                        },
+                      },
+                    },
+                  },
+                },
+                Dropdown: {
+                  style: {
+                    backgroundColor: theme.colors.menuFill,
+                  },
+                },
+                DropdownListItem: {
+                  style: {
+                    backgroundColor: theme.colors.menuFill,
+                    color: theme.colors.contentInversePrimary,
+                    ':hover': {
+                      backgroundColor: theme.colors.menuFillHover,
+                    },
+                  },
+                },
+                OptionContent: {
+                  style: {
+                    color: theme.colors.contentInversePrimary,
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Tags Section */}
+        <div
+          className={css({
+            marginTop: '20px',
+            paddingTop: '16px',
+            borderTop: `1px solid ${theme.colors.borderOpaque}`,
+          })}
+        >
+          <LabelMedium
+            $style={{
+              color: theme.colors.contentSecondary,
+              marginBottom: '12px',
+              display: 'block',
+            }}
+          >
+            {t('recipe.selectTags')}
+          </LabelMedium>
+          <div
+            className={css({
+              display: 'flex',
+              gap: '8px',
+              flexWrap: 'wrap',
+            })}
+          >
+            {tagOptions.map((option) => {
+              const isSelected = tags.some(t => t.id === option.id);
+              return (
+                <Tag
+                  key={option.id}
+                  closeable={false}
+                  kind={isSelected ? TAG_KIND.primary : TAG_KIND.neutral}
+                  variant={isSelected ? TAG_VARIANT.solid : TAG_VARIANT.outlined}
+                  onClick={() => {
+                    if (isSelected) {
+                      setTags(tags.filter(t => t.id !== option.id));
+                    } else {
+                      setTags([...tags, option]);
+                    }
+                  }}
+                  overrides={{
+                    Root: {
+                      style: {
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        ':hover': {
+                          transform: 'scale(1.05)',
+                        },
+                      },
+                    },
+                  }}
+                >
+                  {option.label}
+                </Tag>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Active Filters */}
+      {/* Active Filters Summary */}
       {hasFilters && (
-        <div className={css({ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' })}>
-          <ParagraphSmall $style={{ fontWeight: 600, color: theme.colors.contentPrimary }}>{t('recipe.activeFilters')}:</ParagraphSmall>
-          {brewMethod.length > 0 && (
-            <Tag closeable onActionClick={() => setBrewMethod([])} kind={TAG_KIND.primary}>
-              {brewMethod[0].label}
+        <div
+          className={css({
+            display: 'flex',
+            gap: '8px',
+            marginBottom: '24px',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            padding: '12px 16px',
+            backgroundColor: theme.colors.backgroundSecondary,
+            borderRadius: '8px',
+          })}
+        >
+          <LabelMedium $style={{ color: theme.colors.contentSecondary, marginRight: '8px' }}>
+            {t('recipe.activeFilters')}:
+          </LabelMedium>
+          {brewMethod.map(method => (
+            <Tag
+              key={method.id}
+              closeable
+              onActionClick={() => removeBrewMethod(method.id)}
+              kind={TAG_KIND.blue}
+              variant={TAG_VARIANT.solid}
+            >
+              {method.label}
             </Tag>
-          )}
-          {drinkType.length > 0 && (
-            <Tag closeable onActionClick={() => setDrinkType([])} kind={TAG_KIND.primary}>
-              {drinkType[0].label}
+          ))}
+          {drinkType.map(type => (
+            <Tag
+              key={type.id}
+              closeable
+              onActionClick={() => removeDrinkType(type.id)}
+              kind={TAG_KIND.purple}
+              variant={TAG_VARIANT.solid}
+            >
+              {type.label}
             </Tag>
-          )}
+          ))}
           {tags.map(tag => (
-            <Tag key={tag.id} closeable onActionClick={() => removeTag(tag.id)} kind={TAG_KIND.accent}>
+            <Tag key={tag.id} closeable onActionClick={() => removeTag(tag.id)} kind={TAG_KIND.orange} variant={TAG_VARIANT.solid}>
               #{tag.label}
             </Tag>
           ))}
-          <Button kind="tertiary" size="mini" onClick={clearFilters}>
+          {search && (
+            <Tag closeable onActionClick={() => setSearch('')} kind={TAG_KIND.green} variant={TAG_VARIANT.solid}>
+              "{search}"
+            </Tag>
+          )}
+          <Button 
+            kind={BUTTON_KIND.tertiary} 
+            size={BUTTON_SIZE.mini} 
+            onClick={clearFilters}
+            overrides={{
+              BaseButton: {
+                style: {
+                  color: theme.colors.contentTertiary,
+                  ':hover': {
+                    color: theme.colors.contentPrimary,
+                  },
+                },
+              },
+            }}
+          >
             {t('common.clearAll')}
           </Button>
         </div>
       )}
 
-      {/* Filters Row 1: Search, Brew Method, Drink Type */}
-      <div
-        className={css({
-          display: 'flex',
-          gap: '16px',
-          marginBottom: '16px',
-          flexWrap: 'wrap',
-        })}
-      >
-        <div className={css({ flex: '1', minWidth: '200px' })}>
-          <Input
-            placeholder={t('common.search')}
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-          />
+      {/* Results Count */}
+      {!isLoading && recipes && (
+        <div
+          className={css({
+            marginBottom: '16px',
+            padding: '8px 16px',
+            backgroundColor: theme.colors.backgroundSecondary,
+            borderRadius: '8px',
+            display: 'inline-block',
+          })}
+        >
+          <ParagraphSmall
+            $style={{
+              color: theme.colors.contentPrimary,
+              fontWeight: 500,
+              margin: 0,
+            }}
+          >
+            <span className={css({ color: theme.colors.contentTertiary, fontWeight: 700 })}>
+              {recipes.length}
+            </span>{' '}
+            {recipes.length === 1 ? t('recipe.result') : t('recipe.results')}
+          </ParagraphSmall>
         </div>
-        <div className={css({ width: '200px' })}>
-          <Select
-            placeholder={t('recipe.fields.brewMethod')}
-            options={brewMethodOptions}
-            value={brewMethod}
-            onChange={(params) => setBrewMethod(params.value as { id: string; label: string }[])}
-            clearable
-          />
-        </div>
-        <div className={css({ width: '200px' })}>
-          <Select
-            placeholder={t('recipe.fields.drinkType')}
-            options={drinkTypeOptions}
-            value={drinkType}
-            onChange={(params) => setDrinkType(params.value as { id: string; label: string }[])}
-            clearable
-          />
-        </div>
-      </div>
-
-      {/* Filters Row 2: Tags as clickable chips */}
-      <div
-        className={css({
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '24px',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        })}
-      >
-        <ParagraphSmall $style={{ fontWeight: 600, marginRight: '8px', color: theme.colors.contentPrimary }}>
-          {t('recipe.selectTags')}:
-        </ParagraphSmall>
-        {tagOptions.map((option) => {
-          const isSelected = tags.some(t => t.id === option.id);
-          return (
-            <Tag
-              key={option.id}
-              closeable={false}
-              kind={isSelected ? TAG_KIND.accent : TAG_KIND.neutral}
-              onClick={() => {
-                if (isSelected) {
-                  setTags(tags.filter(t => t.id !== option.id));
-                } else {
-                  setTags([...tags, option]);
-                }
-              }}
-              overrides={{
-                Root: {
-                  style: {
-                    cursor: 'pointer',
-                    borderWidth: isSelected ? '2px' : '1px',
-                    borderStyle: 'solid',
-                    borderColor: isSelected ? theme.colors.accent : theme.colors.borderOpaque,
-                    backgroundColor: isSelected ? theme.colors.accent : 'transparent',
-                    ':hover': {
-                      borderColor: theme.colors.accent,
-                    },
-                  },
-                },
-              }}
-            >
-              {option.label}
-            </Tag>
-          );
-        })}
-      </div>
+      )}
 
       {/* Recipes Grid */}
       {isLoading ? (
@@ -284,77 +501,152 @@ function RecipesPage() {
         <div
           className={css({
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-            gap: '24px',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: '20px',
           })}
         >
           {recipes.map((recipe) => (
             <Link
               key={recipe.id}
               to={`/recipes/${recipe.slug}`}
-              className={css({ textDecoration: 'none' })}
+              className={css({ textDecoration: 'none', height: '100%', display: 'block' })}
             >
               <Card
                 overrides={{
                   Root: {
                     style: {
-                      ':hover': { transform: 'translateY(-4px)', transition: 'transform 0.2s' },
+                      borderRadius: '12px',
+                      transition: 'all 0.2s ease',
+                      border: `1px solid ${theme.colors.borderOpaque}`,
+                      backgroundColor: theme.colors.backgroundSecondary,
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      ':hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: theme.lighting.shadow600,
+                        borderColor: theme.colors.borderSelected,
+                      },
+                    },
+                  },
+                  Contents: {
+                    style: {
+                      padding: '20px',
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
                     },
                   },
                 }}
               >
-                <HeadingSmall marginBottom="8px">
+                <HeadingSmall
+                  $style={{
+                    marginBottom: '12px',
+                    color: theme.colors.contentPrimary,
+                    minHeight: '48px',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
                   {recipe.currentVersion?.title}
                 </HeadingSmall>
-                <ParagraphSmall color={theme.colors.contentSecondary}>
-                  {recipe.currentVersion?.brewMethod} • {recipe.currentVersion?.drinkType}
-                </ParagraphSmall>
-                <ParagraphSmall color={theme.colors.contentTertiary}>
-                  by @{recipe.user?.username}
-                </ParagraphSmall>
-                {recipe.currentVersion?.rating && (
-                  <ParagraphMedium marginTop="8px">
-                    {'⭐'.repeat(Math.round(recipe.currentVersion.rating / 2))}
-                  </ParagraphMedium>
-                )}
-                {recipe.currentVersion?.tags && recipe.currentVersion.tags.length > 0 && (
-                  <div className={css({ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '8px' })}>
-                    {recipe.currentVersion.tags.slice(0, 3).map((tag) => (
-                      <Tag
-                        key={tag}
-                        closeable={false}
-                        kind={TAG_KIND.neutral}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          const tagIds = tags.map(t => t.id);
-                          if (!tagIds.includes(tag)) {
-                            const existingOption = tagOptions.find(o => o.id === tag);
-                            setTags([...tags, existingOption || { id: tag, label: tag }]);
-                          }
-                        }}
-                        overrides={{ Root: { style: { cursor: 'pointer', transform: 'scale(0.85)' } } }}
-                      >
-                        {tag}
-                      </Tag>
-                    ))}
-                    {recipe.currentVersion.tags.length > 3 && (
-                      <ParagraphSmall color={theme.colors.contentTertiary}>
-                        +{recipe.currentVersion.tags.length - 3}
-                      </ParagraphSmall>
-                    )}
+                
+                {/* Card content - all items below title */}
+                <div className={css({ display: 'flex', flexDirection: 'column', flex: 1 })}>
+                  <div
+                    className={css({
+                      display: 'flex',
+                      gap: '8px',
+                      marginBottom: '12px',
+                      flexWrap: 'wrap',
+                    })}
+                  >
+                    <Tag closeable={false} kind={TAG_KIND.blue} variant={TAG_VARIANT.light}>
+                      {t(`recipe.brewMethods.${recipe.currentVersion?.brewMethod}`)}
+                    </Tag>
+                    <Tag closeable={false} kind={TAG_KIND.purple} variant={TAG_VARIANT.light}>
+                      {t(`recipe.drinkTypes.${recipe.currentVersion?.drinkType}`)}
+                    </Tag>
                   </div>
-                )}
+                  <ParagraphSmall $style={{ color: theme.colors.contentSecondary }}>
+                    by <span className={css({ fontWeight: 600 })}>@{recipe.user?.username}</span>
+                  </ParagraphSmall>
+                  
+                  {/* Spacer to push rating and tags to bottom */}
+                  <div className={css({ flex: 1, minHeight: '8px' })} />
+                  
+                  {recipe.currentVersion?.rating && (
+                    <div className={css({ marginBottom: '4px' })}>
+                      {'⭐'.repeat(Math.round(recipe.currentVersion.rating / 2))}
+                      {'☆'.repeat(5 - Math.round(recipe.currentVersion.rating / 2))}
+                    </div>
+                  )}
+                  {recipe.currentVersion?.tags && recipe.currentVersion.tags.length > 0 && (
+                    <div className={css({ display: 'flex', gap: '6px', flexWrap: 'wrap' })}>
+                      {recipe.currentVersion.tags.slice(0, 3).map((tag) => (
+                        <Tag
+                          key={tag}
+                          closeable={false}
+                          kind={TAG_KIND.neutral}
+                          variant={TAG_VARIANT.outlined}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const tagIds = tags.map(t => t.id);
+                            if (!tagIds.includes(tag)) {
+                              const existingOption = tagOptions.find(o => o.id === tag);
+                              setTags([...tags, existingOption || { id: tag, label: tag }]);
+                            }
+                          }}
+                          overrides={{
+                            Root: {
+                              style: {
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                ':hover': {
+                                  backgroundColor: theme.colors.backgroundTertiary,
+                                },
+                              },
+                            },
+                          }}
+                        >
+                          #{tag}
+                        </Tag>
+                      ))}
+                      {recipe.currentVersion.tags.length > 3 && (
+                        <ParagraphSmall $style={{ color: theme.colors.contentTertiary, alignSelf: 'center' }}>
+                          +{recipe.currentVersion.tags.length - 3}
+                        </ParagraphSmall>
+                      )}
+                    </div>
+                  )}
+                </div>
               </Card>
             </Link>
           ))}
         </div>
       ) : (
-        <div className={css({ textAlign: 'center', padding: '48px' })}>
-          <div className={css({ fontSize: '48px', marginBottom: '16px' })}>☕</div>
-          <HeadingSmall>{t('recipe.empty.title')}</HeadingSmall>
-          <ParagraphMedium color={theme.colors.contentSecondary}>
+        <div
+          className={css({
+            textAlign: 'center',
+            padding: '64px 24px',
+            backgroundColor: theme.colors.backgroundSecondary,
+            borderRadius: '16px',
+          })}
+        >
+          <div className={css({ fontSize: '64px', marginBottom: '24px' })}>☕</div>
+          <HeadingSmall $style={{ marginBottom: '12px', color: theme.colors.contentPrimary }}>
+            {t('recipe.empty.title')}
+          </HeadingSmall>
+          <ParagraphMedium $style={{ color: theme.colors.contentSecondary, maxWidth: '400px', margin: '0 auto' }}>
             {t('recipe.empty.description')}
           </ParagraphMedium>
+          {isAuthenticated && (
+            <Link to="/recipes/new" className={css({ display: 'inline-block', marginTop: '24px' })}>
+              <Button kind={BUTTON_KIND.primary}>{t('recipe.createFirst')}</Button>
+            </Link>
+          )}
         </div>
       )}
     </>

@@ -35,8 +35,25 @@ recipes.get('/', zValidator('query', recipeFilterSchema), async (c) => {
     ? tagsParam.split(',').map((t: string) => t.trim()) 
     : undefined;
 
+  // Parse brewMethod from comma-separated string (supports multiple values with OR logic)
+  const brewMethodParam = filters.brewMethod;
+  const parsedBrewMethods = typeof brewMethodParam === 'string' && brewMethodParam
+    ? brewMethodParam.split(',').map((m: string) => m.trim()) as unknown as string[]
+    : undefined;
+
+  // Parse drinkType from comma-separated string (supports multiple values with OR logic)
+  const drinkTypeParam = filters.drinkType;
+  const parsedDrinkTypes = typeof drinkTypeParam === 'string' && drinkTypeParam
+    ? drinkTypeParam.split(',').map((t: string) => t.trim()) as unknown as string[]
+    : undefined;
+
   const result = await recipeService.listRecipes(
-    { ...filters, tags: parsedTags },
+    { 
+      ...filters, 
+      tags: parsedTags,
+      brewMethod: parsedBrewMethods as never,
+      drinkType: parsedDrinkTypes as never,
+    },
     viewer?.id
   );
 

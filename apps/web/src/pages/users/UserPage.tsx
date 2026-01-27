@@ -5,7 +5,8 @@
 import { useParams, Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
 import { Card } from 'baseui/card';
-import { HeadingLarge, HeadingSmall, ParagraphMedium } from 'baseui/typography';
+import { HeadingLarge, HeadingSmall, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
+import { Tag, KIND as TAG_KIND, VARIANT as TAG_VARIANT } from 'baseui/tag';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
@@ -90,21 +91,80 @@ function UserPage() {
         </HeadingSmall>
 
         {recipesData?.length ? (
-          <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '20px',
+            })}
+          >
             {recipesData.map((recipe) => (
-              <Link key={recipe.id} to={`/recipes/${recipe.slug}`} className={css({ textDecoration: 'none' })}>
-                <Card>
-                  <HeadingSmall>{recipe.currentVersion?.title}</HeadingSmall>
-                  <ParagraphMedium color={theme.colors.contentSecondary}>
-                    {recipe.currentVersion?.brewMethod}
-                  </ParagraphMedium>
+              <Link
+                key={recipe.id}
+                to={`/recipes/${recipe.slug}`}
+                className={css({ textDecoration: 'none', height: '100%', display: 'block' })}
+              >
+                <Card
+                  overrides={{
+                    Root: {
+                      style: {
+                        borderRadius: '12px',
+                        transition: 'all 0.2s ease',
+                        border: `1px solid ${theme.colors.borderOpaque}`,
+                        backgroundColor: theme.colors.backgroundSecondary,
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        ':hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: theme.lighting.shadow600,
+                        },
+                      },
+                    },
+                    Contents: {
+                      style: {
+                        padding: '16px',
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                      },
+                    },
+                  }}
+                >
+                  <HeadingSmall
+                    $style={{
+                      marginBottom: '12px',
+                      color: theme.colors.contentPrimary,
+                      minHeight: '48px',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {recipe.currentVersion?.title}
+                  </HeadingSmall>
+                  <div className={css({ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' })}>
+                    <Tag closeable={false} kind={TAG_KIND.blue} variant={TAG_VARIANT.light}>
+                      {t(`recipe.brewMethods.${recipe.currentVersion?.brewMethod}`)}
+                    </Tag>
+                    <Tag closeable={false} kind={TAG_KIND.purple} variant={TAG_VARIANT.light}>
+                      {t(`recipe.drinkTypes.${recipe.currentVersion?.drinkType}`)}
+                    </Tag>
+                  </div>
+                  {recipe.currentVersion?.rating && (
+                    <ParagraphSmall $style={{ marginTop: 'auto' }}>
+                      {'⭐'.repeat(Math.round(recipe.currentVersion.rating / 2))}
+                      {'☆'.repeat(5 - Math.round(recipe.currentVersion.rating / 2))}
+                    </ParagraphSmall>
+                  )}
                 </Card>
               </Link>
             ))}
           </div>
         ) : (
           <ParagraphMedium color={theme.colors.contentSecondary}>
-            No public recipes yet.
+            {t('recipe.empty.title')}
           </ParagraphMedium>
         )}
       </div>

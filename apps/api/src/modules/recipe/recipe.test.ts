@@ -198,11 +198,41 @@ describe('Recipe Module', () => {
       expect(body.pagination).toBeDefined();
     });
 
-    it('should filter by brew method', async () => {
+    it('should filter by single brew method', async () => {
       vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
       vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
 
       const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE');
+      
+      expect(response.status).toBe(200);
+      expect(mockPrisma.recipe.findMany).toHaveBeenCalled();
+    });
+
+    it('should filter by multiple brew methods with OR logic (comma-separated)', async () => {
+      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
+      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+
+      const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE,POUR_OVER_V60');
+      
+      expect(response.status).toBe(200);
+      expect(mockPrisma.recipe.findMany).toHaveBeenCalled();
+    });
+
+    it('should filter by multiple drink types with OR logic (comma-separated)', async () => {
+      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
+      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+
+      const response = await app.request('/recipes?drinkType=ESPRESSO,LUNGO');
+      
+      expect(response.status).toBe(200);
+      expect(mockPrisma.recipe.findMany).toHaveBeenCalled();
+    });
+
+    it('should filter by combined multiple brew methods and drink types', async () => {
+      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
+      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+
+      const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE,AEROPRESS&drinkType=ESPRESSO,AMERICANO');
       
       expect(response.status).toBe(200);
       expect(mockPrisma.recipe.findMany).toHaveBeenCalled();

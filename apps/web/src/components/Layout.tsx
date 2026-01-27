@@ -9,12 +9,14 @@ import { Button } from 'baseui/button';
 import { Select } from 'baseui/select';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { supportedLanguages, changeLanguage } from '../i18n';
 
 function Header() {
   const [css, theme] = useStyletron();
   const { t, i18n } = useTranslation();
   const { user, isAuthenticated, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -88,6 +90,16 @@ function Header() {
           >
             {t('nav.recipes')}
           </Link>
+          <Link
+            to="/baristas"
+            className={css({
+              color: theme.colors.contentPrimary,
+              textDecoration: 'none',
+              ':hover': { color: '#6F4E37' },
+            })}
+          >
+            {t('nav.baristas')}
+          </Link>
 
           {/* Language Selector */}
           <div className={css({ width: '140px' })}>
@@ -105,9 +117,64 @@ function Header() {
               overrides={{
                 Root: { style: { width: '140px' } },
                 ControlContainer: { style: { borderRadius: '8px' } },
+                Popover: {
+                  props: {
+                    overrides: {
+                      Body: {
+                        style: {
+                          zIndex: 200,
+                        },
+                      },
+                    },
+                  },
+                },
+                Dropdown: {
+                  style: {
+                    backgroundColor: theme.colors.menuFill,
+                  },
+                },
+                DropdownListItem: {
+                  style: {
+                    backgroundColor: theme.colors.menuFill,
+                    color: theme.colors.contentInversePrimary,
+                    ':hover': {
+                      backgroundColor: theme.colors.menuFillHover,
+                    },
+                  },
+                },
+                OptionContent: {
+                  style: {
+                    color: theme.colors.contentInversePrimary,
+                  },
+                },
               }}
             />
           </div>
+
+          {/* Theme Toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
+            className={css({
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              transition: 'all 0.2s ease',
+              ':hover': {
+                backgroundColor: theme.colors.backgroundTertiary,
+                transform: 'scale(1.1)',
+              },
+            })}
+          >
+            {isDark ? '☀️' : '🌙'}
+          </button>
 
           {isAuthenticated ? (
             <>
@@ -241,7 +308,7 @@ function Footer() {
 }
 
 function Layout() {
-  const [css] = useStyletron();
+  const [css, theme] = useStyletron();
 
   return (
     <div
@@ -249,6 +316,8 @@ function Layout() {
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
+        backgroundColor: theme.colors.backgroundPrimary,
+        color: theme.colors.contentPrimary,
       })}
     >
       <Header />
@@ -256,6 +325,7 @@ function Layout() {
         className={css({
           flex: 1,
           padding: '24px',
+          backgroundColor: theme.colors.backgroundPrimary,
         })}
       >
         <div

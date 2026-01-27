@@ -1,0 +1,353 @@
+{
+  "app": {
+    "name": "BrewForm",
+    "tagline": "Поделитесь своим кофейным путешествием"
+  },
+  "theme": {
+    "switchToLight": "Переключить на светлую тему",
+    "switchToDark": "Переключить на тёмную тему"
+  },
+  "nav": {
+    "home": "Главная",
+    "recipes": "Рецепты",
+    "explore": "Исследовать",
+    "login": "Войти",
+    "register": "Регистрация",
+    "profile": "Профиль",
+    "settings": "Настройки",
+    "logout": "Выйти",
+    "admin": "Админ"
+  },
+  "pages": {
+    "home": {
+      "title": "BrewForm - Рецепты кофе",
+      "description": "Делитесь и открывайте рецепты приготовления кофе."
+    },
+    "recipes": {
+      "title": "Рецепты - BrewForm",
+      "description": "Изучайте рецепты кофе от сообщества"
+    },
+    "createRecipe": { "title": "Создать рецепт - BrewForm" },
+    "compare": {
+      "title": "Сравнить рецепты - BrewForm",
+      "heading": "Сравнение рецептов",
+      "notFound": "Сравнение не найдено",
+      "invalidLink": "Эта ссылка недействительна."
+    },
+    "profile": { "title": "Мой профиль - BrewForm" },
+    "settings": { "title": "Настройки - BrewForm" },
+    "login": { "title": "Войти - BrewForm" },
+    "register": { "title": "Регистрация - BrewForm" },
+    "forgotPassword": { "title": "Забыли пароль - BrewForm" },
+    "resetPassword": { "title": "Сбросить пароль - BrewForm" },
+    "verifyEmail": { "title": "Подтвердить email - BrewForm" },
+    "notFound": { "title": "Страница не найдена - BrewForm" },
+    "error": { "title": "Ошибка - BrewForm" }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Панель администратора - BrewForm",
+      "heading": "Панель администратора",
+      "cards": {
+        "users": { "title": "Пользователи", "description": "Управление пользователями" },
+        "recipes": { "title": "Рецепты", "description": "Модерация рецептов" },
+        "equipment": { "title": "Оборудование", "description": "Управление оборудованием" }
+      }
+    },
+    "users": { "title": "Пользователи - Админ", "heading": "Пользователи", "comingSoon": "Скоро." },
+    "recipes": { "title": "Рецепты - Админ", "heading": "Рецепты", "comingSoon": "Скоро." },
+    "equipment": { "title": "Оборудование - Админ", "heading": "Оборудование", "comingSoon": "Скоро." },
+    "tasteNotes": {
+      "title": "Заметки о вкусе - Админ",
+      "heading": "Заметки о вкусе",
+      "cacheWarning": "При изменении необходимо очистить кэш.",
+      "comingSoon": "Скоро.",
+      "plannedFeatures": "Планируемые функции:",
+      "features": {
+        "view": "Просмотр всех заметок",
+        "add": "Добавить новые",
+        "edit": "Редактировать",
+        "delete": "Удалить",
+        "flushCache": "Очистить кэш",
+        "reimport": "Переимпортировать"
+      }
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Открывайте и делитесь рецептами кофе",
+      "subtitle": "Документируйте своё кофейное путешествие.",
+      "cta": "Начать",
+      "explore": "Изучить рецепты"
+    },
+    "features": {
+      "track": { "title": "Отслеживайте", "description": "Документируйте каждую деталь." },
+      "share": { "title": "Делитесь", "description": "Делитесь рецептами с сообществом." },
+      "compare": { "title": "Сравнивайте", "description": "Сравнивайте и улучшайте." }
+    },
+    "latest": "Последние рецепты",
+    "popular": "Популярные рецепты",
+    "viewAll": "Все"
+  },
+  "auth": {
+    "login": {
+      "title": "С возвращением",
+      "subtitle": "Войдите в аккаунт",
+      "email": "Email",
+      "password": "Пароль",
+      "submit": "Войти",
+      "forgotPassword": "Забыли пароль?",
+      "noAccount": "Нет аккаунта?",
+      "signUp": "Зарегистрироваться"
+    },
+    "register": {
+      "title": "Присоединяйтесь",
+      "subtitle": "Создайте аккаунт",
+      "email": "Email",
+      "username": "Имя пользователя",
+      "displayName": "Отображаемое имя",
+      "password": "Пароль",
+      "confirmPassword": "Подтвердить пароль",
+      "submit": "Создать",
+      "hasAccount": "Уже есть аккаунт?",
+      "signIn": "Войти"
+    },
+    "forgotPassword": {
+      "title": "Сброс пароля",
+      "subtitle": "Введите email",
+      "email": "Email",
+      "submit": "Отправить ссылку",
+      "backToLogin": "Назад"
+    },
+    "resetPassword": {
+      "title": "Новый пароль",
+      "subtitle": "Введите новый пароль",
+      "password": "Новый пароль",
+      "confirmPassword": "Подтвердить",
+      "submit": "Сбросить"
+    },
+    "verifyEmail": {
+      "title": "Подтверждение email",
+      "verifying": "Проверка...",
+      "success": "Email подтверждён!",
+      "error": "Ошибка проверки."
+    }
+  },
+  "recipe": {
+    "create": "Создать рецепт",
+    "edit": "Редактировать",
+    "delete": "Удалить",
+    "fork": "Форкнуть",
+    "share": "Поделиться",
+    "compare": "Сравнить",
+    "favourite": "В избранное",
+    "unfavourite": "Убрать из избранного",
+    "versions": "Версии",
+    "newVersion": "Новая версия",
+    "visibility": { "draft": "Черновик", "private": "Приватный", "unlisted": "Скрытый", "public": "Публичный" },
+    "fields": {
+      "title": "Название",
+      "description": "Описание",
+      "brewMethod": "Метод приготовления",
+      "drinkType": "Тип напитка",
+      "coffee": "Кофе",
+      "roastDate": "Дата обжарки",
+      "grindDate": "Дата помола",
+      "grinder": "Кофемолка",
+      "grindSize": "Размер помола",
+      "brewer": "Кофеварка",
+      "dose": "Доза",
+      "yield": "Выход",
+      "time": "Время",
+      "temperature": "Температура",
+      "pressure": "Давление",
+      "ratio": "Соотношение",
+      "tastingNotes": "Заметки о вкусе",
+      "tasteNotes": "Ноты вкуса",
+      "rating": "Рейтинг",
+      "tags": "Теги",
+      "portafilter": "Портафильтр",
+      "basket": "Корзина",
+      "puckScreen": "Экран",
+      "paperFilter": "Бумажный фильтр",
+      "tamper": "Темпер"
+    },
+    "placeholders": {
+      "title": "Мой идеальный эспрессо",
+      "description": "Опишите рецепт...",
+      "select": "Выбрать...",
+      "coffee": "напр., Эфиопия",
+      "grindSize": "напр., 2.5",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "Дополнительные заметки...",
+      "rating": "8",
+      "tags": "эспрессо, утро"
+    },
+    "captions": {
+      "required": "Обязательно",
+      "tasteNotes": "Выберите ноты",
+      "pressure": "напр., 9",
+      "rating": "От 1 до 10",
+      "tags": "Через запятую"
+    },
+    "addTag": "Добавить тег...",
+    "selectTags": "Выбрать теги...",
+    "tags": {
+      "morning": "Утро",
+      "afternoon": "День",
+      "evening": "Вечер",
+      "fruity": "Фруктовый",
+      "chocolatey": "Шоколадный",
+      "nutty": "Ореховый",
+      "floral": "Цветочный",
+      "spicy": "Пряный",
+      "sweet": "Сладкий",
+      "bold": "Насыщенный",
+      "light": "Лёгкий",
+      "creamy": "Кремовый",
+      "iced": "Холодный",
+      "hot": "Горячий",
+      "decaf": "Без кофеина",
+      "singleOrigin": "Моносорт",
+      "blend": "Бленд",
+      "espresso": "Эспрессо"
+    },
+    "empty": { "title": "Рецептов пока нет", "description": "Будьте первым!" },
+    "result": "рецепт найден",
+    "results": "рецептов найдено",
+    "createFirst": "Создайте первый рецепт",
+    "forkedFrom": "Форк от",
+    "forked": "Форкнуто!",
+    "linkCopied": "Ссылка скопирована!",
+    "equipment": "Оборудование",
+    "comments": "Комментарии",
+    "noComments": "Комментариев пока нет.",
+    "addComment": "Добавить комментарий...",
+    "postComment": "Отправить",
+    "commentAdded": "Комментарий добавлен!",
+    "replyingTo": "Ответ на комментарий",
+    "toComment": "чтобы комментировать",
+    "activeFilters": "Активные фильтры",
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "Эспрессо-машина",
+      "POUR_OVER_V60": "V60",
+      "POUR_OVER_CHEMEX": "Кемекс",
+      "POUR_OVER_KALITA": "Калита",
+      "AEROPRESS": "Аэропресс",
+      "FRENCH_PRESS": "Френч-пресс",
+      "MOKA_POT": "Мока",
+      "COLD_BREW": "Колд брю",
+      "TURKISH_CEZVE": "Джезва"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "Эспрессо",
+      "RISTRETTO": "Ристретто",
+      "LUNGO": "Лунго",
+      "AMERICANO": "Американо",
+      "LATTE": "Латте",
+      "CAPPUCCINO": "Капучино",
+      "FLAT_WHITE": "Флэт уайт",
+      "CORTADO": "Кортадо",
+      "POUR_OVER": "Пуровер",
+      "FRENCH_PRESS": "Френч-пресс",
+      "COLD_BREW": "Колд брю",
+      "MACCHIATO": "Маккиато",
+      "MOCHA": "Мокко",
+      "ICED_COFFEE": "Айс кофе",
+      "TURKISH_COFFEE": "Турецкий кофе"
+    }
+  },
+  "profile": {
+    "recipes": "Рецепты",
+    "favourites": "Избранное",
+    "equipment": "Оборудование",
+    "beans": "Зёрна",
+    "setups": "Сетапы",
+    "editProfile": "Редактировать",
+    "settings": "Настройки"
+  },
+  "settings": {
+    "title": "Настройки",
+    "profile": "Профиль",
+    "preferences": "Предпочтения",
+    "account": "Аккаунт",
+    "theme": "Тема",
+    "language": "Язык",
+    "units": "Единицы",
+    "timezone": "Часовой пояс",
+    "displayName": "Имя",
+    "bio": "О себе",
+    "website": "Сайт",
+    "themes": { "light": "Светлая", "dark": "Тёмная", "coffee": "Кофе", "system": "Системная" },
+    "switchToLight": "Светлая тема",
+    "switchToDark": "Тёмная тема",
+    "units_options": { "metric": "Метрическая", "imperial": "Имперская" },
+    "placeholders": { "bio": "Расскажите о себе...", "website": "https://..." },
+    "messages": { "profileUpdated": "Профиль обновлён!" },
+    "deleteAccount": "Удалить аккаунт",
+    "deleteWarning": "Это действие нельзя отменить."
+  },
+  "equipment": {
+    "grinder": "Кофемолка",
+    "brewer": "Кофеварка",
+    "portafilter": "Портафильтр",
+    "basket": "Корзина",
+    "puckScreen": "Экран",
+    "paperFilter": "Бумажный фильтр",
+    "tamper": "Темпер"
+  },
+  "tasteNotes": {
+    "placeholder": "Поиск нот вкуса...",
+    "minChars": "Минимум {{count}} символов",
+    "noResults": "Не найдено",
+    "selected": "{{count}}/{{max}} выбрано",
+    "scaaReference": "Колесо вкусов SCAA"
+  },
+  "rating": { "superGood": "Отлично", "good": "Хорошо", "okay": "Нормально", "bad": "Плохо", "horrible": "Ужасно" },
+  "common": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "create": "Создать",
+    "loading": "Загрузка...",
+    "error": "Произошла ошибка",
+    "success": "Успех",
+    "search": "Поиск",
+    "filter": "Фильтр",
+    "sort": "Сортировка",
+    "noResults": "Ничего не найдено",
+    "loadMore": "Загрузить ещё",
+    "viewAll": "Все",
+    "important": "Важно",
+    "by": "от",
+    "reply": "Ответить",
+    "clearAll": "Очистить"
+  },
+  "errors": {
+    "notFound": { "title": "Страница не найдена", "description": "Страница не существует.", "backHome": "На главную" },
+    "generic": { "title": "Ошибка", "description": "Попробуйте позже.", "retry": "Повторить" }
+  },
+  "footer": {
+    "tagline": "Поделитесь кофейным путешествием.",
+    "links": { "about": "О нас", "privacy": "Конфиденциальность", "terms": "Условия", "contact": "Контакты" },
+    "copyright": "© {{year}} BrewForm. Все права защищены."
+  },
+  "language": {
+    "select": "Выбрать язык",
+    "en": "English",
+    "tr": "Türkçe",
+    "fr": "Français",
+    "de": "Deutsch",
+    "es": "Español",
+    "pt": "Português",
+    "ru": "Русский",
+    "az": "Azərbaycan",
+    "ka": "ქართული",
+    "ar_f": "العربية"
+  }
+}

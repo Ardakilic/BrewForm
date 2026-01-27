@@ -3,9 +3,14 @@
     "name": "BrewForm",
     "tagline": "Share Your Coffee Journey"
   },
+  "theme": {
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode"
+  },
   "nav": {
     "home": "Home",
     "recipes": "Recipes",
+    "baristas": "Baristas",
     "explore": "Explore",
     "login": "Log In",
     "register": "Sign Up",
@@ -13,6 +18,11 @@
     "settings": "Settings",
     "logout": "Log Out",
     "admin": "Admin"
+  },
+  "baristas": {
+    "description": "Discover coffee enthusiasts and their recipes",
+    "result": "barista found",
+    "results": "baristas found"
   },
   "pages": {
     "home": {
@@ -271,6 +281,9 @@
       "title": "No recipes yet",
       "description": "Be the first to share a recipe!"
     },
+    "result": "recipe found",
+    "results": "recipes found",
+    "createFirst": "Create Your First Recipe",
     "forkedFrom": "Forked from",
     "forked": "Recipe forked successfully!",
     "linkCopied": "Link copied to clipboard!",
@@ -339,6 +352,8 @@
       "coffee": "Coffee",
       "system": "System"
     },
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
     "units_options": {
       "metric": "Metric (g, ml, °C)",
       "imperial": "Imperial (oz, fl oz, °F)"
@@ -423,6 +438,12 @@
     "en": "English",
     "tr": "Türkçe",
     "fr": "Français",
-    "de": "Deutsch"
+    "de": "Deutsch",
+    "es": "Español",
+    "pt": "Português",
+    "ru": "Русский",
+    "az": "Azərbaycan",
+    "ka": "ქართული",
+    "ar_f": "العربية"
   }
 }

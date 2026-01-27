@@ -501,8 +501,8 @@ export const updateRecipeSchema = z.object({
 
 export const recipeFilterSchema = z.object({
   search: z.string().max(200).optional(),
-  brewMethod: z.nativeEnum(BrewMethodType).optional(),
-  drinkType: z.nativeEnum(DrinkType).optional(),
+  brewMethod: z.string().optional(), // comma-separated for multiple values (OR logic)
+  drinkType: z.string().optional(), // comma-separated for multiple values (OR logic)
   vendorId: z.string().cuid().optional(),
   coffeeId: z.string().cuid().optional(),
   grinderId: z.string().cuid().optional(),
