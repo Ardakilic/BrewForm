@@ -227,6 +227,7 @@
       "tasteNotes": "Taste Notes",
       "rating": "Rating",
       "tags": "Tags",
+      "processing": "Processing",
       "portafilter": "Portafilter",
       "basket": "Basket",
       "puckScreen": "Puck Screen",
@@ -275,7 +276,14 @@
       "decaf": "Decaf",
       "singleOrigin": "Single Origin",
       "blend": "Blend",
-      "espresso": "Espresso"
+      "espresso": "Espresso",
+      "balanced": "Balanced",
+      "bright": "Bright",
+      "complex": "Complex",
+      "smooth": "Smooth",
+      "intense": "Intense",
+      "clean": "Clean",
+      "syrupy": "Syrupy"
     },
     "empty": {
       "title": "No recipes yet",
@@ -323,6 +331,16 @@
       "MOCHA": "Mocha",
       "ICED_COFFEE": "Iced Coffee",
       "TURKISH_COFFEE": "Turkish Coffee"
+    },
+    "processingMethods": {
+      "WASHED": "Washed",
+      "NATURAL": "Natural",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "Semi-Washed",
+      "WET_HULLED": "Wet Hulled",
+      "ANAEROBIC": "Anaerobic",
+      "CARBONIC_MACERATION": "Carbonic Maceration",
+      "OTHER": "Other"
     }
   },
   "profile": {
@@ -436,14 +454,24 @@
   "language": {
     "select": "Select Language",
     "en": "English",
-    "tr": "Türkçe",
-    "fr": "Français",
-    "de": "Deutsch",
-    "es": "Español",
-    "pt": "Português",
-    "ru": "Русский",
-    "az": "Azərbaycan",
-    "ka": "ქართული",
-    "ar_f": "العربية"
+    "uk": "Ukrainian",
+    "sr": "Serbian",
+    "ro": "Romanian",
+    "tr": "Turkish",
+    "fr": "French",
+    "de": "German",
+    "es": "Spanish",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "az": "Azerbaijani",
+    "ka": "Georgian",
+    "ar_f": "Arabic",
+    "hy": "Armenian",
+    "ko": "Korean",
+    "zh_TW": "Chinese (Traditional)",
+    "th": "Thai",
+    "hi": "Hindi",
+    "ja": "Japanese",
+    "zh_CN": "Chinese (Simplified)"
   }
 }

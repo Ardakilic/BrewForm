@@ -8,7 +8,7 @@
  */
 
 import process from 'node:process';
-import { PrismaClient, BrewMethodType, DrinkType, ProcessingMethod, EmojiRating } from '@prisma/client';
+import { PrismaClient, BrewMethodType, DrinkType, EmojiRating } from '@prisma/client';
 import { hash } from '@node-rs/argon2';
 import { nanoid } from 'nanoid';
 
@@ -109,134 +109,6 @@ async function main() {
   ]);
 
   console.log(`👥 Created ${users.length} sample users\n`);
-
-  // ============================================
-  // Create Vendors
-  // ============================================
-
-  const vendors = await Promise.all([
-    prisma.vendor.upsert({
-      where: { slug: 'counter-culture-coffee' },
-      update: {},
-      create: {
-        name: 'Counter Culture Coffee',
-        slug: 'counter-culture-coffee',
-        country: 'USA',
-        website: 'https://counterculturecoffee.com',
-        description: 'Pioneering specialty coffee roaster since 1995',
-        isVerified: true,
-      },
-    }),
-    prisma.vendor.upsert({
-      where: { slug: 'intelligentsia-coffee' },
-      update: {},
-      create: {
-        name: 'Intelligentsia Coffee',
-        slug: 'intelligentsia-coffee',
-        country: 'USA',
-        website: 'https://www.intelligentsia.com',
-        description: 'Direct trade coffee pioneers',
-        isVerified: true,
-      },
-    }),
-    prisma.vendor.upsert({
-      where: { slug: 'square-mile-coffee' },
-      update: {},
-      create: {
-        name: 'Square Mile Coffee Roasters',
-        slug: 'square-mile-coffee',
-        country: 'UK',
-        website: 'https://shop.squaremilecoffee.com',
-        description: 'London-based specialty roaster',
-        isVerified: true,
-      },
-    }),
-    prisma.vendor.upsert({
-      where: { slug: 'onyx-coffee-lab' },
-      update: {},
-      create: {
-        name: 'Onyx Coffee Lab',
-        slug: 'onyx-coffee-lab',
-        country: 'USA',
-        website: 'https://onyxcoffeelab.com',
-        description: 'Award-winning Arkansas roaster',
-        isVerified: true,
-      },
-    }),
-  ]);
-
-  console.log(`🏪 Created ${vendors.length} vendors\n`);
-
-  // ============================================
-  // Create Coffees
-  // ============================================
-
-  const coffees = await Promise.all([
-    prisma.coffee.upsert({
-      where: { slug: 'counter-culture-hologram-' + nanoid(4) },
-      update: {},
-      create: {
-        name: 'Hologram',
-        slug: 'counter-culture-hologram-' + nanoid(4),
-        vendorId: vendors[0].id,
-        origin: 'Blend',
-        description: 'Our flagship espresso blend - sweet, balanced, and chocolatey',
-        flavorNotes: ['chocolate', 'caramel', 'nutty'],
-        roastLevel: 'Medium',
-      },
-    }),
-    prisma.coffee.upsert({
-      where: { slug: 'ethiopia-yirgacheffe-' + nanoid(4) },
-      update: {},
-      create: {
-        name: 'Ethiopia Yirgacheffe Kochere',
-        slug: 'ethiopia-yirgacheffe-' + nanoid(4),
-        vendorId: vendors[1].id,
-        origin: 'Ethiopia',
-        region: 'Yirgacheffe',
-        altitude: 1900,
-        variety: 'Heirloom',
-        processingMethod: ProcessingMethod.WASHED,
-        flavorNotes: ['jasmine', 'bergamot', 'lemon'],
-        roastLevel: 'Light',
-      },
-    }),
-    prisma.coffee.upsert({
-      where: { slug: 'colombia-huila-' + nanoid(4) },
-      update: {},
-      create: {
-        name: 'Colombia Huila El Paraiso',
-        slug: 'colombia-huila-' + nanoid(4),
-        vendorId: vendors[2].id,
-        origin: 'Colombia',
-        region: 'Huila',
-        farm: 'El Paraiso',
-        altitude: 1750,
-        variety: 'Caturra',
-        processingMethod: ProcessingMethod.HONEY,
-        flavorNotes: ['red apple', 'honey', 'milk chocolate'],
-        roastLevel: 'Medium-Light',
-      },
-    }),
-    prisma.coffee.upsert({
-      where: { slug: 'guatemala-antigua-' + nanoid(4) },
-      update: {},
-      create: {
-        name: 'Guatemala Antigua',
-        slug: 'guatemala-antigua-' + nanoid(4),
-        vendorId: vendors[3].id,
-        origin: 'Guatemala',
-        region: 'Antigua',
-        altitude: 1600,
-        variety: 'Bourbon',
-        processingMethod: ProcessingMethod.WASHED,
-        flavorNotes: ['dark chocolate', 'orange', 'brown sugar'],
-        roastLevel: 'Medium',
-      },
-    }),
-  ]);
-
-  console.log(`☕ Created ${coffees.length} coffees\n`);
 
   // ============================================
   // Create Grinders
@@ -488,8 +360,7 @@ async function main() {
           description: 'My go-to morning espresso recipe. Balanced and sweet with notes of chocolate.',
           brewMethod: BrewMethodType.ESPRESSO_MACHINE,
           drinkType: DrinkType.ESPRESSO,
-          coffeeId: coffees[0].id,
-          coffeeName: coffees[0].name,
+          coffeeName: 'Counter Culture Hologram',
           grinderId: grinders[2].id,
           brewerId: brewers[0].id,
           basketId: baskets[0].id,
@@ -533,8 +404,7 @@ async function main() {
           description: 'Single origin pour-over highlighting floral and citrus notes from Yirgacheffe.',
           brewMethod: BrewMethodType.POUR_OVER_V60,
           drinkType: DrinkType.POUR_OVER,
-          coffeeId: coffees[1].id,
-          coffeeName: coffees[1].name,
+          coffeeName: 'Ethiopia Yirgacheffe Kochere',
           grinderId: grinders[3].id,
           brewerId: brewers[1].id,
           grindSize: '22 clicks',
@@ -575,8 +445,7 @@ async function main() {
           description: 'Competition-inspired recipe with inverted method and long steep.',
           brewMethod: BrewMethodType.AEROPRESS,
           drinkType: DrinkType.POUR_OVER,
-          coffeeId: coffees[2].id,
-          coffeeName: coffees[2].name,
+          coffeeName: 'Colombia Huila El Paraiso',
           grinderId: grinders[3].id,
           brewerId: brewers[2].id,
           grindSize: '18 clicks',
@@ -619,8 +488,7 @@ async function main() {
           description: 'Balanced cortado with equal parts espresso and steamed milk.',
           brewMethod: BrewMethodType.ESPRESSO_MACHINE,
           drinkType: DrinkType.CORTADO,
-          coffeeId: coffees[3].id,
-          coffeeName: coffees[3].name,
+          coffeeName: 'Guatemala Antigua',
           grinderId: grinders[0].id,
           brewerId: brewers[0].id,
           basketId: baskets[1].id,

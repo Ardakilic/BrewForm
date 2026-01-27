@@ -67,20 +67,6 @@ export const userIdParamSchema = z.object({
   userId: z.string().cuid(),
 });
 
-/**
- * Vendor ID parameter validation
- */
-export const vendorIdParamSchema = z.object({
-  vendorId: z.string().cuid(),
-});
-
-/**
- * Coffee ID parameter validation
- */
-export const coffeeIdParamSchema = z.object({
-  coffeeId: z.string().cuid(),
-});
-
 // ============================================
 // Entity ID Schemas
 // ============================================
@@ -101,14 +87,6 @@ export const equipmentIdsSchema = z.object({
 // ============================================
 // Request Body Schemas
 // ============================================
-
-/**
- * Recipe reference IDs schema
- */
-export const recipeReferenceSchema = z.object({
-  coffeeId: z.string().cuid().optional(),
-  vendorId: z.string().cuid().optional(),
-});
 
 /**
  * Comparison schema with CUID validation

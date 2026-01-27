@@ -153,12 +153,28 @@ function TasteNoteAutocomplete({
               minHeight: '48px',
             },
           },
+          Dropdown: {
+            style: {
+              backgroundColor: theme.colors.backgroundPrimary,
+            },
+          },
           DropdownListItem: {
             style: ({ $isHighlighted }: { $isHighlighted: boolean }) => ({
               backgroundColor: $isHighlighted
                 ? theme.colors.backgroundSecondary
                 : 'transparent',
             }),
+          },
+          Popover: {
+            props: {
+              overrides: {
+                Body: {
+                  style: {
+                    backgroundColor: theme.colors.backgroundPrimary,
+                  },
+                },
+              },
+            },
           },
           ValueContainer: {
             style: {

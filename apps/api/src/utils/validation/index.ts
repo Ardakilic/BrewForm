@@ -178,9 +178,9 @@ export const recipeVersionInputSchema = z.object({
   brewMethod: z.nativeEnum(BrewMethodType),
   drinkType: z.nativeEnum(DrinkType),
   
-  // Coffee
-  coffeeId: z.string().cuid().optional(),
+  // Coffee (user-entered, not linked to a table)
   coffeeName: z.string().max(200).optional(),
+  coffeeProcessing: z.nativeEnum(ProcessingMethod).optional(),
   roastDate: z.coerce.date().optional(),
   grindDate: z.coerce.date().optional(),
   
@@ -467,24 +467,6 @@ export const createVendorSchema = vendorSchema;
 
 export const updateVendorSchema = vendorSchema.partial();
 
-export const coffeeSchema = z.object({
-  name: z.string().min(1).max(200),
-  vendorId: z.string().cuid().optional(),
-  origin: z.string().max(100).optional(),
-  region: z.string().max(100).optional(),
-  farm: z.string().max(100).optional(),
-  altitude: z.number().int().positive().max(5000).optional(),
-  variety: z.string().max(100).optional(),
-  processingMethod: z.nativeEnum(ProcessingMethod).optional(),
-  flavorNotes: z.array(z.string().max(50)).max(20).optional(),
-  description: z.string().max(2000).optional(),
-  roastLevel: z.string().max(50).optional(),
-});
-
-export const createCoffeeSchema = coffeeSchema;
-
-export const updateCoffeeSchema = coffeeSchema.partial();
-
 // ============================================
 // Recipe Schemas
 // ============================================
@@ -503,8 +485,6 @@ export const recipeFilterSchema = z.object({
   search: z.string().max(200).optional(),
   brewMethod: z.string().optional(), // comma-separated for multiple values (OR logic)
   drinkType: z.string().optional(), // comma-separated for multiple values (OR logic)
-  vendorId: z.string().cuid().optional(),
-  coffeeId: z.string().cuid().optional(),
   grinderId: z.string().cuid().optional(),
   brewerId: z.string().cuid().optional(),
   userId: z.string().cuid().optional(),
@@ -534,9 +514,6 @@ export default {
   vendor: vendorSchema,
   createVendor: createVendorSchema,
   updateVendor: updateVendorSchema,
-  coffee: coffeeSchema,
-  createCoffee: createCoffeeSchema,
-  updateCoffee: updateCoffeeSchema,
   createRecipe: createRecipeSchema,
   updateRecipe: updateRecipeSchema,
   recipeFilter: recipeFilterSchema,

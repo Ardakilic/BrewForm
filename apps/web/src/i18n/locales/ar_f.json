@@ -1,84 +1,211 @@
 {
-  "app": { "name": "BrewForm", "tagline": "شاركي رحلتكِ مع القهوة" },
-  "theme": { "switchToLight": "التبديل إلى الوضع الفاتح", "switchToDark": "التبديل إلى الوضع الداكن" },
+  "app": {
+    "name": "BrewForm",
+    "tagline": "شارك رحلتك مع القهوة"
+  },
+  "theme": {
+    "switchToLight": "التبديل إلى الوضع الفاتح",
+    "switchToDark": "التبديل إلى الوضع الداكن"
+  },
   "nav": {
     "home": "الرئيسية",
     "recipes": "الوصفات",
-    "explore": "استكشفي",
+    "baristas": "باريستا",
+    "explore": "استكشف",
     "login": "تسجيل الدخول",
     "register": "إنشاء حساب",
     "profile": "الملف الشخصي",
     "settings": "الإعدادات",
     "logout": "تسجيل الخروج",
-    "admin": "الإدارة"
+    "admin": "المسؤول"
+  },
+  "baristas": {
+    "description": "اكتشف عشاق القهوة ووصفاتهم",
+    "result": "باريستا تم العثور عليه",
+    "results": "تم العثور على باريستا"
   },
   "pages": {
-    "home": { "title": "BrewForm - وصفات القهوة", "description": "شاركي واكتشفي وصفات تحضير القهوة." },
-    "recipes": { "title": "الوصفات - BrewForm", "description": "تصفحي وصفات القهوة من المجتمع" },
-    "createRecipe": { "title": "إنشاء وصفة - BrewForm" },
-    "compare": { "title": "مقارنة الوصفات - BrewForm", "heading": "مقارنة الوصفات", "notFound": "لم يتم العثور على المقارنة", "invalidLink": "هذا الرابط غير صالح." },
-    "profile": { "title": "ملفي الشخصي - BrewForm" },
-    "settings": { "title": "الإعدادات - BrewForm" },
-    "login": { "title": "تسجيل الدخول - BrewForm" },
-    "register": { "title": "إنشاء حساب - BrewForm" },
-    "forgotPassword": { "title": "نسيتِ كلمة المرور - BrewForm" },
-    "resetPassword": { "title": "إعادة تعيين كلمة المرور - BrewForm" },
-    "verifyEmail": { "title": "تأكيد البريد الإلكتروني - BrewForm" },
-    "notFound": { "title": "الصفحة غير موجودة - BrewForm" },
-    "error": { "title": "خطأ - BrewForm" }
+    "home": {
+      "title": "BrewForm - وصفات القهوة",
+      "description": "شارك واكتشف وصفات تحضير القهوة. تتبع الإسبريسو والـ pour-over والوصفات الخاصة."
+    },
+    "recipes": {
+      "title": "الوصفات - BrewForm",
+      "description": "تصفح وصفات القهوة من المجتمع"
+    },
+    "createRecipe": {
+      "title": "إنشاء وصفة - BrewForm"
+    },
+    "compare": {
+      "title": "مقارنة الوصفات - BrewForm",
+      "heading": "مقارنة الوصفات",
+      "notFound": "المقارنة غير موجودة",
+      "invalidLink": "قد يكون رابط المقارنة غير صالح أو منتهي الصلاحية."
+    },
+    "profile": {
+      "title": "ملفي الشخصي - BrewForm"
+    },
+    "settings": {
+      "title": "الإعدادات - BrewForm"
+    },
+    "login": {
+      "title": "تسجيل الدخول - BrewForm"
+    },
+    "register": {
+      "title": "إنشاء حساب - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "نسيت كلمة المرور - BrewForm"
+    },
+    "resetPassword": {
+      "title": "إعادة تعيين كلمة المرور - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "تأكيد البريد الإلكتروني - BrewForm"
+    },
+    "notFound": {
+      "title": "الصفحة غير موجودة - BrewForm"
+    },
+    "error": {
+      "title": "خطأ - BrewForm"
+    }
   },
   "admin": {
     "dashboard": {
-      "title": "لوحة الإدارة - BrewForm",
-      "heading": "لوحة الإدارة",
+      "title": "لوحة تحكم المسؤول - BrewForm",
+      "heading": "لوحة تحكم المسؤول",
       "cards": {
-        "users": { "title": "المستخدمات", "description": "إدارة حسابات المستخدمات" },
-        "recipes": { "title": "الوصفات", "description": "مراجعة وإدارة الوصفات" },
-        "equipment": { "title": "المعدات", "description": "إدارة المعدات" }
+        "users": {
+          "title": "المستخدمون",
+          "description": "إدارة الحسابات والأدوار والحظر"
+        },
+        "recipes": {
+          "title": "الوصفات",
+          "description": "مراجعة ومراقبة محتوى الوصفات"
+        },
+        "equipment": {
+          "title": "المعدات",
+          "description": "إدارة المعدات والموردين والقهوة"
+        }
       }
     },
-    "users": { "title": "المستخدمات - الإدارة", "heading": "المستخدمات", "comingSoon": "قريباً." },
-    "recipes": { "title": "الوصفات - الإدارة", "heading": "الوصفات", "comingSoon": "قريباً." },
-    "equipment": { "title": "المعدات - الإدارة", "heading": "المعدات", "comingSoon": "قريباً." },
+    "users": {
+      "title": "إدارة المستخدمين - المسؤول - BrewForm",
+      "heading": "إدارة المستخدمين",
+      "comingSoon": "ميزة إدارة المستخدمين ستتوفر قريبًا."
+    },
+    "recipes": {
+      "title": "إدارة الوصفات - المسؤول - BrewForm",
+      "heading": "إدارة الوصفات",
+      "comingSoon": "ميزة مراقبة الوصفات ستتوفر قريبًا."
+    },
+    "equipment": {
+      "title": "إدارة المعدات - المسؤول - BrewForm",
+      "heading": "إدارة المعدات",
+      "comingSoon": "إدارة المعدات والموردين والقهوة ستتوفر قريبًا."
+    },
     "tasteNotes": {
-      "title": "ملاحظات التذوق - الإدارة",
-      "heading": "ملاحظات التذوق",
-      "cacheWarning": "يجب مسح ذاكرة التخزين المؤقت بعد التغييرات.",
-      "comingSoon": "قريباً.",
-      "plannedFeatures": "الميزات المخططة:",
-      "features": { "view": "عرض الكل", "add": "إضافة", "edit": "تعديل", "delete": "حذف", "flushCache": "مسح الذاكرة المؤقتة", "reimport": "إعادة الاستيراد" }
+      "title": "إدارة ملاحظات النكهة - المسؤول - BrewForm",
+      "heading": "إدارة ملاحظات النكهة",
+      "cacheWarning": "إذا تم تعديل أو إضافة أو حذف أي ملاحظة نكهة، يجب مسح ذاكرة Redis المؤقتة حتى تظهر التغييرات. استخدم زر \"مسح ذاكرة ملاحظات النكهة\" بعد التعديلات.",
+      "comingSoon": "ميزة إدارة ملاحظات النكهة ستتوفر قريبًا. الملاحظات مُسبقة من عجلة النكهة SCAA 2016 ونادرًا ما تحتاج إلى تغيير.",
+      "plannedFeatures": "الميزات المخطط لها:",
+      "features": {
+        "view": "عرض جميع ملاحظات النكهة في بنية هرمية",
+        "add": "إضافة ملاحظات نكهة جديدة",
+        "edit": "تعديل ملاحظات النكهة الحالية",
+        "delete": "حذف ملاحظات النكهة (مع حذف متسلسل للوصفات)",
+        "flushCache": "مسح ذاكرة Redis المؤقتة بعد التغييرات",
+        "reimport": "إعادة الاستيراد من ملف SCAA JSON"
+      }
     }
   },
   "home": {
-    "hero": { "title": "اكتشفي وشاركي وصفات القهوة", "subtitle": "وثّقي رحلتكِ مع القهوة.", "cta": "ابدئي", "explore": "استكشفي الوصفات" },
+    "hero": {
+      "title": "اكتشف وشارك وصفات القهوة",
+      "subtitle": "وثّق رحلتك مع القهوة. شارك إسبريسو مثاليًا ووصفات pour-over ووصفات خاصة مع العالم.",
+      "cta": "ابدأ التحضير",
+      "explore": "استكشف الوصفات"
+    },
     "features": {
-      "track": { "title": "تتبعي", "description": "وثّقي كل التفاصيل." },
-      "share": { "title": "شاركي", "description": "شاركي وصفاتكِ مع المجتمع." },
-      "compare": { "title": "قارني", "description": "قارني الوصفات وحسّني مهاراتكِ." }
+      "track": {
+        "title": "تتبّع تحضيراتك",
+        "description": "وثّق كل تفاصيل وصفاتك — من الجرعة والعائد إلى درجة الطحن وزمن الاستخلاص."
+      },
+      "share": {
+        "title": "شارك واكتشف",
+        "description": "شارك وصفاتك مع المجتمع واكتشف تقنيات جديدة من عشاق القهوة حول العالم."
+      },
+      "compare": {
+        "title": "قارن وطوّر",
+        "description": "قارن الوصفات جنبًا إلى جنب، وتتبع الإصدارات وطور مهاراتك باستمرار."
+      }
     },
     "latest": "أحدث الوصفات",
     "popular": "الوصفات الشائعة",
     "viewAll": "عرض الكل"
   },
   "auth": {
-    "login": { "title": "مرحباً بعودتكِ", "subtitle": "سجّلي الدخول إلى حسابكِ", "email": "البريد الإلكتروني", "password": "كلمة المرور", "submit": "تسجيل الدخول", "forgotPassword": "نسيتِ كلمة المرور؟", "noAccount": "ليس لديكِ حساب؟", "signUp": "أنشئي حساباً" },
-    "register": { "title": "انضمي إلى BrewForm", "subtitle": "أنشئي حسابكِ", "email": "البريد الإلكتروني", "username": "اسم المستخدمة", "displayName": "الاسم المعروض", "password": "كلمة المرور", "confirmPassword": "تأكيد كلمة المرور", "submit": "إنشاء حساب", "hasAccount": "لديكِ حساب بالفعل؟", "signIn": "سجّلي الدخول" },
-    "forgotPassword": { "title": "إعادة تعيين كلمة المرور", "subtitle": "أدخلي بريدكِ الإلكتروني", "email": "البريد الإلكتروني", "submit": "إرسال الرابط", "backToLogin": "العودة" },
-    "resetPassword": { "title": "كلمة مرور جديدة", "subtitle": "أدخلي كلمة المرور الجديدة", "password": "كلمة المرور الجديدة", "confirmPassword": "تأكيد", "submit": "إعادة التعيين" },
-    "verifyEmail": { "title": "تأكيد البريد الإلكتروني", "verifying": "جارٍ التحقق...", "success": "تم تأكيد البريد الإلكتروني!", "error": "فشل التحقق." }
+    "login": {
+      "title": "مرحبًا بعودتك",
+      "subtitle": "سجّل الدخول إلى حساب BrewForm",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "submit": "تسجيل الدخول",
+      "forgotPassword": "هل نسيت كلمة المرور؟",
+      "noAccount": "ليس لديك حساب؟",
+      "signUp": "إنشاء حساب"
+    },
+    "register": {
+      "title": "انضم إلى BrewForm",
+      "subtitle": "أنشئ حسابك وابدأ رحلتك مع القهوة",
+      "email": "البريد الإلكتروني",
+      "username": "اسم المستخدم",
+      "displayName": "الاسم المعروض",
+      "password": "كلمة المرور",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "submit": "إنشاء حساب",
+      "hasAccount": "لديك حساب بالفعل؟",
+      "signIn": "تسجيل الدخول"
+    },
+    "forgotPassword": {
+      "title": "إعادة تعيين كلمة المرور",
+      "subtitle": "أدخل بريدك الإلكتروني لتلقي رابط إعادة التعيين",
+      "email": "البريد الإلكتروني",
+      "submit": "إرسال الرابط",
+      "backToLogin": "العودة لتسجيل الدخول"
+    },
+    "resetPassword": {
+      "title": "إنشاء كلمة مرور جديدة",
+      "subtitle": "أدخل كلمة المرور الجديدة",
+      "password": "كلمة مرور جديدة",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "submit": "إعادة تعيين كلمة المرور"
+    },
+    "verifyEmail": {
+      "title": "تأكيد البريد الإلكتروني",
+      "verifying": "جارٍ التحقق من بريدك الإلكتروني...",
+      "success": "تم تأكيد البريد الإلكتروني بنجاح!",
+      "error": "فشل التأكيد. ربما انتهت صلاحية الرابط."
+    }
   },
   "recipe": {
     "create": "إنشاء وصفة",
-    "edit": "تعديل",
-    "delete": "حذف",
+    "edit": "تعديل الوصفة",
+    "delete": "حذف الوصفة",
     "fork": "نسخ الوصفة",
     "share": "مشاركة",
     "compare": "مقارنة",
-    "favourite": "مفضلة",
+    "favourite": "مفضل",
     "unfavourite": "إزالة من المفضلة",
     "versions": "الإصدارات",
-    "newVersion": "إصدار جديد",
-    "visibility": { "draft": "مسودة", "private": "خاص", "unlisted": "غير مدرج", "public": "عام" },
+    "newVersion": "إنشاء إصدار جديد",
+    "visibility": {
+      "draft": "مسودة",
+      "private": "خاص",
+      "unlisted": "غير مُدرج",
+      "public": "عام"
+    },
     "fields": {
       "title": "عنوان الوصفة",
       "description": "الوصف",
@@ -88,75 +215,263 @@
       "roastDate": "تاريخ التحميص",
       "grindDate": "تاريخ الطحن",
       "grinder": "المطحنة",
-      "grindSize": "حجم الطحن",
-      "brewer": "آلة القهوة",
+      "grindSize": "درجة الطحن",
+      "brewer": "أداة التحضير",
       "dose": "الجرعة",
-      "yield": "الناتج",
+      "yield": "العائد",
       "time": "الوقت",
       "temperature": "درجة الحرارة",
       "pressure": "الضغط",
       "ratio": "النسبة",
       "tastingNotes": "ملاحظات التذوق",
-      "tasteNotes": "نكهات التذوق",
+      "tasteNotes": "ملاحظات النكهة",
       "rating": "التقييم",
       "tags": "الوسوم",
-      "portafilter": "حامل الفلتر",
+      "processing": "المعالجة",
+      "portafilter": "حامل البورتافلتر",
       "basket": "السلة",
-      "puckScreen": "شاشة القرص",
+      "puckScreen": "Puck screen",
       "paperFilter": "فلتر ورقي",
-      "tamper": "الضاغط"
+      "tamper": "المكبس"
     },
-    "placeholders": { "title": "إسبرسو مثالي", "description": "صفي وصفتكِ...", "select": "اختاري...", "coffee": "مثل: إثيوبيا", "grindSize": "مثل: 2.5", "dose": "18", "yield": "36", "time": "28", "temperature": "93", "pressure": "9", "tastingNotes": "ملاحظات إضافية...", "rating": "8", "tags": "إسبرسو، صباحي" },
-    "captions": { "required": "مطلوب", "tasteNotes": "اختاري ملفات النكهة", "pressure": "مثل: 9", "rating": "من 1 إلى 10", "tags": "مفصولة بفواصل" },
+    "placeholders": {
+      "title": "إسبريسو المثالي",
+      "description": "صف وصفتك...",
+      "select": "اختر...",
+      "coffee": "مثال: إثيوبيا يرغاشيف",
+      "grindSize": "مثال: 2.5 أو 18 نقرة",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "ملاحظات تذوق إضافية...",
+      "rating": "8",
+      "tags": "إسبريسو، صباح، شوكولاتة"
+    },
+    "captions": {
+      "required": "إلزامي",
+      "tasteNotes": "اختر ملفات النكهة من عجلة SCAA",
+      "pressure": "مثال: 9، 6-9، متغير",
+      "rating": "قيّم من 1 إلى 10",
+      "tags": "مفصولة بفواصل"
+    },
     "addTag": "إضافة وسم...",
-    "selectTags": "اختاري الوسوم...",
-    "tags": { "morning": "صباحي", "afternoon": "ظهري", "evening": "مسائي", "fruity": "فاكهي", "chocolatey": "شوكولاتي", "nutty": "مكسرات", "floral": "زهري", "spicy": "حار", "sweet": "حلو", "bold": "قوي", "light": "خفيف", "creamy": "كريمي", "iced": "مثلج", "hot": "ساخن", "decaf": "منزوع الكافيين", "singleOrigin": "أصل واحد", "blend": "خلطة", "espresso": "إسبرسو" },
-    "empty": { "title": "لا توجد وصفات بعد", "description": "كوني الأولى في المشاركة!" },
-    "result": "وصفة موجودة",
-    "results": "وصفات موجودة",
-    "createFirst": "أنشئي وصفتكِ الأولى",
-    "forkedFrom": "منسوخة من",
-    "forked": "تم نسخ الوصفة!",
-    "linkCopied": "تم نسخ الرابط!",
+    "selectTags": "اختيار الوسوم...",
+    "tags": {
+      "morning": "صباح",
+      "afternoon": "بعد الظهر",
+      "evening": "مساء",
+      "fruity": "فاكهي",
+      "chocolatey": "شوكولاتي",
+      "nutty": "جوزي",
+      "floral": "زهري",
+      "spicy": "متبّل",
+      "sweet": "حلو",
+      "bold": "قوي",
+      "light": "خفيف",
+      "creamy": "كريمي",
+      "iced": "مثلج",
+      "hot": "ساخن",
+      "decaf": "منزوع الكافيين",
+      "singleOrigin": "أصل واحد",
+      "blend": "مزيج",
+      "espresso": "إسبريسو",
+      "balanced": "متوازن",
+      "bright": "مشرق",
+      "complex": "معقّد",
+      "smooth": "ناعم",
+      "intense": "مكثف",
+      "clean": "نظيف",
+      "syrupy": "شرابي"
+    },
+    "empty": {
+      "title": "لا توجد وصفات بعد",
+      "description": "كن أول من يشارك وصفة!"
+    },
+    "result": "تم العثور على وصفة",
+    "results": "تم العثور على وصفات",
+    "createFirst": "أنشئ أول وصفة لك",
+    "forkedFrom": "مفروك من",
+    "forked": "تم نسخ الوصفة بنجاح!",
+    "linkCopied": "تم نسخ الرابط إلى الحافظة!",
     "equipment": "المعدات",
     "comments": "التعليقات",
-    "noComments": "لا توجد تعليقات بعد.",
-    "addComment": "أضيفي تعليقاً...",
-    "postComment": "إرسال",
-    "commentAdded": "تم إضافة التعليق!",
-    "replyingTo": "الرد على التعليق",
-    "toComment": "للتعليق",
+    "noComments": "لا توجد تعليقات بعد. كن أول من يعلّق!",
+    "addComment": "أضف تعليقًا...",
+    "postComment": "نشر التعليق",
+    "commentAdded": "تم نشر التعليق بنجاح!",
+    "replyingTo": "الرد على تعليق",
+    "toComment": "لترك تعليق",
     "activeFilters": "الفلاتر النشطة",
-    "brewMethods": { "ESPRESSO_MACHINE": "آلة الإسبرسو", "POUR_OVER_V60": "V60", "POUR_OVER_CHEMEX": "كيمكس", "POUR_OVER_KALITA": "كاليتا", "AEROPRESS": "إيروبرس", "FRENCH_PRESS": "فرنش برس", "MOKA_POT": "موكا", "COLD_BREW": "كولد برو", "TURKISH_CEZVE": "الركوة" },
-    "drinkTypes": { "ESPRESSO": "إسبرسو", "RISTRETTO": "ريستريتو", "LUNGO": "لونغو", "AMERICANO": "أمريكانو", "LATTE": "لاتيه", "CAPPUCCINO": "كابتشينو", "FLAT_WHITE": "فلات وايت", "CORTADO": "كورتادو", "POUR_OVER": "بور أوفر", "FRENCH_PRESS": "فرنش برس", "COLD_BREW": "كولد برو", "MACCHIATO": "ماكياتو", "MOCHA": "موكا", "ICED_COFFEE": "قهوة مثلجة", "TURKISH_COFFEE": "قهوة تركية" }
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "آلة إسبريسو",
+      "POUR_OVER_V60": "V60 Pour Over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "فرنش برس",
+      "MOKA_POT": "Moka Pot",
+      "COLD_BREW": "Cold Brew",
+      "TURKISH_CEZVE": "جزوة تركية"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "إسبريسو",
+      "RISTRETTO": "ريستريتو",
+      "LUNGO": "لونغو",
+      "AMERICANO": "أمريكانو",
+      "LATTE": "لاتيه",
+      "CAPPUCCINO": "كابتشينو",
+      "FLAT_WHITE": "فلات وايت",
+      "CORTADO": "كورتادو",
+      "POUR_OVER": "بور أوفر",
+      "FRENCH_PRESS": "فرنش برس",
+      "COLD_BREW": "كولد برو",
+      "MACCHIATO": "ماكياتو",
+      "MOCHA": "موكا",
+      "ICED_COFFEE": "قهوة مثلجة",
+      "TURKISH_COFFEE": "قهوة تركية"
+    },
+    "processingMethods": {
+      "WASHED": "مغسولة",
+      "NATURAL": "طبيعية",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "شبه مغسولة",
+      "WET_HULLED": "مقشورة رطبة",
+      "ANAEROBIC": "لاهوائية",
+      "CARBONIC_MACERATION": "تخمير كربوني",
+      "OTHER": "أخرى"
+    }
   },
-  "profile": { "recipes": "الوصفات", "favourites": "المفضلة", "equipment": "المعدات", "beans": "حبوب القهوة", "setups": "الإعدادات", "editProfile": "تعديل الملف", "settings": "الإعدادات" },
+  "profile": {
+    "recipes": "الوصفات",
+    "favourites": "المفضلة",
+    "equipment": "المعدات",
+    "beans": "الحبوب",
+    "setups": "الإعدادات",
+    "editProfile": "تعديل الملف",
+    "settings": "الإعدادات"
+  },
   "settings": {
     "title": "الإعدادات",
-    "profile": "الملف الشخصي",
+    "profile": "الملف",
     "preferences": "التفضيلات",
     "account": "الحساب",
-    "theme": "المظهر",
+    "theme": "السمة",
     "language": "اللغة",
     "units": "الوحدات",
     "timezone": "المنطقة الزمنية",
     "displayName": "الاسم المعروض",
     "bio": "نبذة",
     "website": "الموقع",
-    "themes": { "light": "فاتح", "dark": "داكن", "coffee": "قهوة", "system": "النظام" },
-    "switchToLight": "الوضع الفاتح",
-    "switchToDark": "الوضع الداكن",
-    "units_options": { "metric": "متري", "imperial": "إمبراطوري" },
-    "placeholders": { "bio": "أخبرينا عن نفسكِ...", "website": "https://..." },
-    "messages": { "profileUpdated": "تم تحديث الملف الشخصي!" },
+    "themes": {
+      "light": "فاتح",
+      "dark": "داكن",
+      "coffee": "قهوة",
+      "system": "النظام"
+    },
+    "switchToLight": "التبديل إلى الوضع الفاتح",
+    "switchToDark": "التبديل إلى الوضع الداكن",
+    "units_options": {
+      "metric": "متري (غ، مل، °C)",
+      "imperial": "إمبراطوري (أونصة، أونصة سائلة، °F)"
+    },
+    "placeholders": {
+      "bio": "حدثنا عنك...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "تم تحديث الملف بنجاح!"
+    },
     "deleteAccount": "حذف الحساب",
     "deleteWarning": "لا يمكن التراجع عن هذا الإجراء."
   },
-  "equipment": { "grinder": "المطحنة", "brewer": "آلة القهوة", "portafilter": "حامل الفلتر", "basket": "السلة", "puckScreen": "شاشة القرص", "paperFilter": "فلتر ورقي", "tamper": "الضاغط" },
-  "tasteNotes": { "placeholder": "ابحثي عن ملاحظات التذوق...", "minChars": "أدخلي {{count}} أحرف على الأقل", "noResults": "لم يتم العثور على نتائج", "selected": "{{count}}/{{max}} محددة", "scaaReference": "عجلة نكهات SCAA" },
-  "rating": { "superGood": "ممتاز", "good": "جيد", "okay": "مقبول", "bad": "سيء", "horrible": "فظيع" },
-  "common": { "save": "حفظ", "cancel": "إلغاء", "delete": "حذف", "edit": "تعديل", "create": "إنشاء", "loading": "جارٍ التحميل...", "error": "حدث خطأ", "success": "نجاح", "search": "بحث", "filter": "تصفية", "sort": "ترتيب", "noResults": "لا توجد نتائج", "loadMore": "تحميل المزيد", "viewAll": "عرض الكل", "important": "مهم", "by": "بواسطة", "reply": "رد", "clearAll": "مسح الكل" },
-  "errors": { "notFound": { "title": "الصفحة غير موجودة", "description": "الصفحة التي تبحثين عنها غير موجودة.", "backHome": "العودة للرئيسية" }, "generic": { "title": "حدث خطأ", "description": "يرجى المحاولة لاحقاً.", "retry": "إعادة المحاولة" } },
-  "footer": { "tagline": "شاركي رحلتكِ مع القهوة.", "links": { "about": "عن", "privacy": "الخصوصية", "terms": "الشروط", "contact": "اتصلي بنا" }, "copyright": "© {{year}} BrewForm. جميع الحقوق محفوظة." },
-  "language": { "select": "اختاري اللغة", "en": "English", "tr": "Türkçe", "fr": "Français", "de": "Deutsch", "es": "Español", "pt": "Português", "ru": "Русский", "az": "Azərbaycan", "ka": "ქართული", "ar_f": "العربية" }
+  "equipment": {
+    "grinder": "مطحنة",
+    "brewer": "أداة التحضير",
+    "portafilter": "حامل البورتافلتر",
+    "basket": "السلة",
+    "puckScreen": "Puck screen",
+    "paperFilter": "فلتر ورقي",
+    "tamper": "المكبس"
+  },
+  "tasteNotes": {
+    "placeholder": "ابحث عن ملاحظات النكهة (حد أدنى 3 أحرف)...",
+    "minChars": "أدخل {{count}} أحرف على الأقل للبحث",
+    "noResults": "لم يتم العثور على ملاحظات نكهة",
+    "selected": "تم اختيار {{count}}/{{max}} من ملاحظات النكهة",
+    "scaaReference": "مرجع عجلة النكهة SCAA"
+  },
+  "rating": {
+    "superGood": "رائع جدًا",
+    "good": "جيد",
+    "okay": "مقبول",
+    "bad": "سيئ",
+    "horrible": "فظيع"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "loading": "جارٍ التحميل...",
+    "error": "حدث خطأ",
+    "success": "نجاح",
+    "search": "بحث",
+    "filter": "تصفية",
+    "sort": "ترتيب",
+    "noResults": "لا نتائج",
+    "loadMore": "تحميل المزيد",
+    "viewAll": "عرض الكل",
+    "important": "مهم",
+    "by": "بواسطة",
+    "reply": "رد",
+    "clearAll": "مسح الكل"
+  },
+  "errors": {
+    "notFound": {
+      "title": "الصفحة غير موجودة",
+      "description": "عفوًا! يبدو أن القهوة بردت. الصفحة التي تبحث عنها غير موجودة.",
+      "backHome": "العودة للرئيسية"
+    },
+    "generic": {
+      "title": "حدث خطأ ما",
+      "description": "لقد أَرقنا القهوة! حاول مرة أخرى لاحقًا.",
+      "retry": "حاول مرة أخرى"
+    }
+  },
+  "footer": {
+    "tagline": "شارك رحلتك مع القهوة مع العالم.",
+    "links": {
+      "about": "حول",
+      "privacy": "الخصوصية",
+      "terms": "الشروط",
+      "contact": "اتصل بنا"
+    },
+    "copyright": "© {{year}} BrewForm. جميع الحقوق محفوظة."
+  },
+  "language": {
+    "select": "اختر اللغة",
+    "en": "الإنجليزية",
+    "uk": "الأوكرانية",
+    "sr": "الصربية",
+    "ro": "الرومانية",
+    "tr": "التركية",
+    "fr": "الفرنسية",
+    "de": "الألمانية",
+    "es": "الإسبانية",
+    "pt": "البرتغالية",
+    "ru": "الروسية",
+    "az": "الأذربيجانية",
+    "ka": "الجورجية",
+    "ar_f": "العربية",
+    "hy": "الأرمينية",
+    "ko": "الكورية",
+    "zh_TW": "الصينية (التقليدية)",
+    "th": "التايلاندية",
+    "hi": "الهندية",
+    "ja": "اليابانية",
+    "zh_CN": "الصينية (المبسطة)"
+  }
 }

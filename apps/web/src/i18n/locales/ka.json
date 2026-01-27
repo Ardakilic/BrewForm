@@ -1,10 +1,17 @@
 {
-  "app": { "name": "BrewForm", "tagline": "გაუზიარე შენი ყავის მოგზაურობა" },
-  "theme": { "switchToLight": "ღია რეჟიმზე გადასვლა", "switchToDark": "მუქ რეჟიმზე გადასვლა" },
+  "app": {
+    "name": "BrewForm",
+    "tagline": "გააზიარე შენი ყავის მოგზაურობა"
+  },
+  "theme": {
+    "switchToLight": "გადართვა ნათელ რეჟიმზე",
+    "switchToDark": "გადართვა მუქ რეჟიმზე"
+  },
   "nav": {
     "home": "მთავარი",
     "recipes": "რეცეპტები",
-    "explore": "აღმოჩენა",
+    "baristas": "ბარისტები",
+    "explore": "გამოკვლევა",
     "login": "შესვლა",
     "register": "რეგისტრაცია",
     "profile": "პროფილი",
@@ -12,151 +19,459 @@
     "logout": "გამოსვლა",
     "admin": "ადმინი"
   },
+  "baristas": {
+    "description": "გაიცანით ყავის მოყვარულები და მათი რეცეპტები",
+    "result": "ბარისტა ნაპოვნია",
+    "results": "ბარისტა ნაპოვნია"
+  },
   "pages": {
-    "home": { "title": "BrewForm - ყავის რეცეპტები", "description": "გაუზიარე და აღმოაჩინე ყავის რეცეპტები." },
-    "recipes": { "title": "რეცეპტები - BrewForm", "description": "საზოგადოების ყავის რეცეპტები" },
-    "createRecipe": { "title": "რეცეპტის შექმნა - BrewForm" },
-    "compare": { "title": "რეცეპტების შედარება - BrewForm", "heading": "რეცეპტების შედარება", "notFound": "შედარება ვერ მოიძებნა", "invalidLink": "ეს ბმული არასწორია." },
-    "profile": { "title": "ჩემი პროფილი - BrewForm" },
-    "settings": { "title": "პარამეტრები - BrewForm" },
-    "login": { "title": "შესვლა - BrewForm" },
-    "register": { "title": "რეგისტრაცია - BrewForm" },
-    "forgotPassword": { "title": "პაროლის აღდგენა - BrewForm" },
-    "resetPassword": { "title": "პაროლის შეცვლა - BrewForm" },
-    "verifyEmail": { "title": "ელფოსტის დადასტურება - BrewForm" },
-    "notFound": { "title": "გვერდი ვერ მოიძებნა - BrewForm" },
-    "error": { "title": "შეცდომა - BrewForm" }
+    "home": {
+      "title": "BrewForm - ყავის რეცეპტები",
+      "description": "გააზიარე და აღმოაჩინე ყავის რეცეპტები. მოიშნე შენი ესპრესო, პურ-ოვერი და სპეციალური რეცეპტები."
+    },
+    "recipes": {
+      "title": "რეცეპტები - BrewForm",
+      "description": "დაათვალიერე საზოგადოების ყავის რეცეპტები"
+    },
+    "createRecipe": {
+      "title": "შექმენი რეცეპტი - BrewForm"
+    },
+    "compare": {
+      "title": "შეადარე რეცეპტები - BrewForm",
+      "heading": "რეცეპტების შედარება",
+      "notFound": "შედარება ვერ მოიძებნა",
+      "invalidLink": "ეს შედარების ბმული შესაძლოა არასწორი ან ვადაგასული იყოს."
+    },
+    "profile": {
+      "title": "ჩემი პროფილი - BrewForm"
+    },
+    "settings": {
+      "title": "პარამეტრები - BrewForm"
+    },
+    "login": {
+      "title": "შესვლა - BrewForm"
+    },
+    "register": {
+      "title": "რეგისტრაცია - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "დაგავიწყდა პაროლი - BrewForm"
+    },
+    "resetPassword": {
+      "title": "პაროლის აღდგენა - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "ელფოსტის დადასტურება - BrewForm"
+    },
+    "notFound": {
+      "title": "გვერდი ვერ მოიძებნა - BrewForm"
+    },
+    "error": {
+      "title": "შეცდომა - BrewForm"
+    }
   },
   "admin": {
     "dashboard": {
-      "title": "ადმინ პანელი - BrewForm",
-      "heading": "ადმინ პანელი",
+      "title": "ადმინის დაფა - BrewForm",
+      "heading": "ადმინის დაფა",
       "cards": {
-        "users": { "title": "მომხმარებლები", "description": "მომხმარებლების მართვა" },
-        "recipes": { "title": "რეცეპტები", "description": "რეცეპტების მართვა" },
-        "equipment": { "title": "აღჭურვილობა", "description": "აღჭურვილობის მართვა" }
+        "users": {
+          "title": "მომხმარებლები",
+          "description": "მართეთ ანგარიშები, როლები და ბლოკები"
+        },
+        "recipes": {
+          "title": "რეცეპტები",
+          "description": "რეცეპტების განხილვა და მოდერაცია"
+        },
+        "equipment": {
+          "title": "ინვენტარი",
+          "description": "მართეთ ინვენტარი, მიმწოდებლები და ყავა"
+        }
       }
     },
-    "users": { "title": "მომხმარებლები - ადმინი", "heading": "მომხმარებლები", "comingSoon": "მალე." },
-    "recipes": { "title": "რეცეპტები - ადმინი", "heading": "რეცეპტები", "comingSoon": "მალე." },
-    "equipment": { "title": "აღჭურვილობა - ადმინი", "heading": "აღჭურვილობა", "comingSoon": "მალე." },
+    "users": {
+      "title": "მომხმარებლების მართვა - ადმინი - BrewForm",
+      "heading": "მომხმარებლების მართვა",
+      "comingSoon": "მომხმარებლების მართვა მალე იქნება ხელმისაწვდომი."
+    },
+    "recipes": {
+      "title": "რეცეპტების მართვა - ადმინი - BrewForm",
+      "heading": "რეცეპტების მართვა",
+      "comingSoon": "რეცეპტების მოდერაცია მალე იქნება ხელმისაწვდომი."
+    },
+    "equipment": {
+      "title": "ინვენტარის მართვა - ადმინი - BrewForm",
+      "heading": "ინვენტარის მართვა",
+      "comingSoon": "ინვენტარის, მიმწოდებლებისა და ყავის მართვა მალე იქნება ხელმისაწვდომი."
+    },
     "tasteNotes": {
-      "title": "გემოს შენიშვნები - ადმინი",
-      "heading": "გემოს შენიშვნები",
-      "cacheWarning": "ცვლილებების შემდეგ გაასუფთავეთ ქეში.",
-      "comingSoon": "მალე.",
+      "title": "გემოს ნოტების მართვა - ადმინი - BrewForm",
+      "heading": "გემოს ნოტების მართვა",
+      "cacheWarning": "თუ გემოს ნოტი შეიცვლება, დაემატება ან წაიშლება, Redis-ის ქეში უნდა გასუფთავდეს ცვლილებების ძალაში შესასვლელად. ცვლილებების შემდეგ გამოიყენეთ ღილაკი \"გემოს ნოტების ქეშის გასუფთავება\".",
+      "comingSoon": "გემოს ნოტების მართვა მალე იქნება ხელმისაწვდომი. გემოს ნოტები წინასწარ არის შევსებული SCAA 2016 არომატის ბორბლიდან და იშვიათად საჭიროებს ცვლილებებს.",
       "plannedFeatures": "დაგეგმილი ფუნქციები:",
-      "features": { "view": "ყველას ნახვა", "add": "დამატება", "edit": "რედაქტირება", "delete": "წაშლა", "flushCache": "ქეშის გასუფთავება", "reimport": "ხელახლა იმპორტი" }
+      "features": {
+        "view": "ყველა გემოს ნოტის ნახვა იერარქიულ სტრუქტურაში",
+        "add": "ახალი გემოს ნოტების დამატება",
+        "edit": "არსებული გემოს ნოტების რედაქტირება",
+        "delete": "გემოს ნოტების წაშლა (რეცეპტებში კასკადით)",
+        "flushCache": "Redis-ის ქეშის გასუფთავება ცვლილებების შემდეგ",
+        "reimport": "ხელახლა იმპორტი SCAA JSON ფაილიდან"
+      }
     }
   },
   "home": {
-    "hero": { "title": "აღმოაჩინე ყავის რეცეპტები", "subtitle": "დოკუმენტირება გაუკეთე შენს ყავის მოგზაურობას.", "cta": "დაწყება", "explore": "რეცეპტების აღმოჩენა" },
-    "features": {
-      "track": { "title": "თვალყური", "description": "დოკუმენტირება გაუკეთე ყველა დეტალს." },
-      "share": { "title": "გაზიარება", "description": "გაუზიარე რეცეპტები." },
-      "compare": { "title": "შედარება", "description": "შეადარე რეცეპტები." }
+    "hero": {
+      "title": "აღმოაჩინე და გააზიარე ყავის რეცეპტები",
+      "subtitle": "დააფიქსირე შენი ყავის მოგზაურობა. გააზიარე შენი იდეალური ესპრესო, პურ-ოვერი და სპეციალური რეცეპტები მსოფლიოში.",
+      "cta": "დაიწყე მოხარშვა",
+      "explore": "აღმოაჩინე რეცეპტები"
     },
-    "latest": "ბოლო რეცეპტები",
+    "features": {
+      "track": {
+        "title": "დააკვირდი საკუთარ მომზადებებს",
+        "description": "დააფიქსირე შენი რეცეპტების ყველა დეტალი — დოზიდან და გამოსავლიდან, დაფქვის ზომამდე და ექსტრაქციის დრემდე."
+      },
+      "share": {
+        "title": "გააზიარე და აღმოაჩინე",
+        "description": "გააზიარე რეცეპტები საზოგადოებასთან და აღმოაჩინე ახალი ტექნიკები მსოფლიოში."
+      },
+      "compare": {
+        "title": "შეადარე და გააუმჯობესე",
+        "description": "შეადარე რეცეპტები გვერდიგვერდ, აკონტროლე ვერსიები და გააუმჯობესე უნარები."
+      }
+    },
+    "latest": "უახლესი რეცეპტები",
     "popular": "პოპულარული რეცეპტები",
     "viewAll": "ყველას ნახვა"
   },
   "auth": {
-    "login": { "title": "კეთილი იყოს შენი მობრუნება", "subtitle": "შედი ანგარიშზე", "email": "ელფოსტა", "password": "პაროლი", "submit": "შესვლა", "forgotPassword": "დაგავიწყდა პაროლი?", "noAccount": "არ გაქვს ანგარიში?", "signUp": "რეგისტრაცია" },
-    "register": { "title": "შემოგვიერთდი", "subtitle": "შექმენი ანგარიში", "email": "ელფოსტა", "username": "მომხმარებლის სახელი", "displayName": "საჩვენებელი სახელი", "password": "პაროლი", "confirmPassword": "პაროლის დადასტურება", "submit": "შექმნა", "hasAccount": "უკვე გაქვს ანგარიში?", "signIn": "შესვლა" },
-    "forgotPassword": { "title": "პაროლის აღდგენა", "subtitle": "შეიყვანე ელფოსტა", "email": "ელფოსტა", "submit": "ბმულის გაგზავნა", "backToLogin": "უკან" },
-    "resetPassword": { "title": "ახალი პაროლი", "subtitle": "შეიყვანე ახალი პაროლი", "password": "ახალი პაროლი", "confirmPassword": "დადასტურება", "submit": "შეცვლა" },
-    "verifyEmail": { "title": "ელფოსტის დადასტურება", "verifying": "დასტურდება...", "success": "ელფოსტა დადასტურებულია!", "error": "შეცდომა." }
+    "login": {
+      "title": "კეთილი დაბრუნება",
+      "subtitle": "შედით BrewForm ანგარიშში",
+      "email": "ელფოსტა",
+      "password": "პაროლი",
+      "submit": "შესვლა",
+      "forgotPassword": "დაგავიწყდა პაროლი?",
+      "noAccount": "არ გაქვს ანგარიში?",
+      "signUp": "რეგისტრაცია"
+    },
+    "register": {
+      "title": "შეუერთდი BrewForm-ს",
+      "subtitle": "შექმენი ანგარიში და დაიწყე ყავის მოგზაურობა",
+      "email": "ელფოსტა",
+      "username": "მომხმარებლის სახელი",
+      "displayName": "გამოსაჩენი სახელი",
+      "password": "პაროლი",
+      "confirmPassword": "დაადასტურე პაროლი",
+      "submit": "ანგარიშის შექმნა",
+      "hasAccount": "უკვე გაქვს ანგარიში?",
+      "signIn": "შესვლა"
+    },
+    "forgotPassword": {
+      "title": "პაროლის აღდგენა",
+      "subtitle": "შეიყვანეთ ელფოსტა აღდგენის ბმულის მისაღებად",
+      "email": "ელფოსტა",
+      "submit": "ბმულის გაგზავნა",
+      "backToLogin": "შესვლაზე დაბრუნება"
+    },
+    "resetPassword": {
+      "title": "ახალი პაროლის შექმნა",
+      "subtitle": "შეიყვანეთ ახალი პაროლი",
+      "password": "ახალი პაროლი",
+      "confirmPassword": "დაადასტურე პაროლი",
+      "submit": "პაროლის აღდგენა"
+    },
+    "verifyEmail": {
+      "title": "ელფოსტის დადასტურება",
+      "verifying": "ელფოსტა მოწმდება...",
+      "success": "ელფოსტა წარმატებით დადასტურდა!",
+      "error": "დადასტურება ვერ მოხერხდა. ბმული შესაძლოა ვადაგასული იყოს."
+    }
   },
   "recipe": {
     "create": "რეცეპტის შექმნა",
-    "edit": "რედაქტირება",
-    "delete": "წაშლა",
-    "fork": "ფორკი",
+    "edit": "რეცეპტის რედაქტირება",
+    "delete": "რეცეპტის წაშლა",
+    "fork": "რეცეპტის ფორკი",
     "share": "გაზიარება",
     "compare": "შედარება",
-    "favourite": "ფავორიტი",
-    "unfavourite": "ფავორიტებიდან წაშლა",
+    "favourite": "რჩეული",
+    "unfavourite": "რჩეულებიდან ამოღება",
     "versions": "ვერსიები",
-    "newVersion": "ახალი ვერსია",
-    "visibility": { "draft": "მონახაზი", "private": "პირადი", "unlisted": "არაჩამონათვალი", "public": "საჯარო" },
+    "newVersion": "ახალი ვერსიის შექმნა",
+    "visibility": {
+      "draft": "დრაფტი",
+      "private": "პირადი",
+      "unlisted": "არ არის ჩამონათვალში",
+      "public": "საჯარო"
+    },
     "fields": {
-      "title": "სათაური",
+      "title": "რეცეპტის სათაური",
       "description": "აღწერა",
       "brewMethod": "მომზადების მეთოდი",
       "drinkType": "სასმელის ტიპი",
       "coffee": "ყავა",
-      "roastDate": "შეწვის თარიღი",
+      "roastDate": "მოხალვის თარიღი",
       "grindDate": "დაფქვის თარიღი",
       "grinder": "საფქვავი",
       "grindSize": "დაფქვის ზომა",
-      "brewer": "ყავის აპარატი",
+      "brewer": "მომზადების მოწყობილობა",
       "dose": "დოზა",
       "yield": "გამოსავალი",
       "time": "დრო",
       "temperature": "ტემპერატურა",
       "pressure": "წნევა",
       "ratio": "თანაფარდობა",
-      "tastingNotes": "გემოს შენიშვნები",
+      "tastingNotes": "დეგუსტაციის ნოტები",
       "tasteNotes": "გემოს ნოტები",
       "rating": "რეიტინგი",
-      "tags": "ტეგები",
-      "portafilter": "პორტაფილტრი",
+      "tags": "თეგები",
+      "processing": "დამუშავება",
+      "portafilter": "პორტაფილტერი",
       "basket": "კალათა",
-      "puckScreen": "ეკრანი",
+      "puckScreen": "Puck screen",
       "paperFilter": "ქაღალდის ფილტრი",
-      "tamper": "ტემპერი"
+      "tamper": "ტამპერი"
     },
-    "placeholders": { "title": "ჩემი იდეალური ესპრესო", "description": "აღწერე რეცეპტი...", "select": "აირჩიე...", "coffee": "მაგ., ეთიოპია", "grindSize": "მაგ., 2.5", "dose": "18", "yield": "36", "time": "28", "temperature": "93", "pressure": "9", "tastingNotes": "დამატებითი შენიშვნები...", "rating": "8", "tags": "ესპრესო, დილა" },
-    "captions": { "required": "სავალდებულო", "tasteNotes": "აირჩიე გემოს პროფილები", "pressure": "მაგ., 9", "rating": "1-დან 10-მდე", "tags": "მძიმით გამოყოფილი" },
-    "addTag": "ტეგის დამატება...",
-    "selectTags": "ტეგების არჩევა...",
-    "tags": { "morning": "დილა", "afternoon": "შუადღე", "evening": "საღამო", "fruity": "ხილიანი", "chocolatey": "შოკოლადიანი", "nutty": "თხილიანი", "floral": "ყვავილოვანი", "spicy": "სანელებლიანი", "sweet": "ტკბილი", "bold": "ძლიერი", "light": "მსუბუქი", "creamy": "კრემიანი", "iced": "ყინულიანი", "hot": "ცხელი", "decaf": "უკოფეინო", "singleOrigin": "ერთი წარმოშობა", "blend": "ნაზავი", "espresso": "ესპრესო" },
-    "empty": { "title": "ჯერ რეცეპტები არ არის", "description": "იყავი პირველი!" },
+    "placeholders": {
+      "title": "ჩემი იდეალური ესპრესო",
+      "description": "აღწერეთ თქვენი რეცეპტი...",
+      "select": "აირჩიეთ...",
+      "coffee": "მაგ., ეთიოპია ირგაჩეფი",
+      "grindSize": "მაგ., 2.5 ან 18 კლიკი",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "დამატებითი დეგუსტაციის ნოტები...",
+      "rating": "8",
+      "tags": "ესპრესო, დილა, შოკოლადი"
+    },
+    "captions": {
+      "required": "სავალდებულო",
+      "tasteNotes": "აირჩიეთ პროფილები SCAA ბორბლიდან",
+      "pressure": "მაგ., 9, 6-9, ცვლადი",
+      "rating": "შეაფასეთ 1-დან 10-მდე",
+      "tags": " მძიმით გამოყოფილი"
+    },
+    "addTag": "თეგის დამატება...",
+    "selectTags": "თეგების არჩევა...",
+    "tags": {
+      "morning": "დილა",
+      "afternoon": "ნაშუადღევი",
+      "evening": "საღამო",
+      "fruity": "ხილოვანი",
+      "chocolatey": "შოკოლადიანი",
+      "nutty": "კაკლოვანი",
+      "floral": "ყვავილოვანი",
+      "spicy": "სანელებელი",
+      "sweet": "ტკბილი",
+      "bold": "ძლიერი",
+      "light": "მსუბუქი",
+      "creamy": "კრემიანი",
+      "iced": "ცივი",
+      "hot": "ცხელი",
+      "decaf": "დეკაფი",
+      "singleOrigin": "ერთი წარმომავლობა",
+      "blend": "ბლენდ",
+      "espresso": "ესპრესო",
+      "balanced": "დაბალანსებული",
+      "bright": "მკვეთრი",
+      "complex": "კომპლექსური",
+      "smooth": "გლუვი",
+      "intense": "ინტენსიური",
+      "clean": "სუფთა",
+      "syrupy": "სიროფიანი"
+    },
+    "empty": {
+      "title": "რეცეპტები ჯერ არ არის",
+      "description": "შექმენით პირველი რეცეპტი!"
+    },
     "result": "რეცეპტი ნაპოვნია",
-    "results": "რეცეპტი ნაპოვნია",
-    "createFirst": "შექმენი პირველი რეცეპტი",
-    "forkedFrom": "ფორკი აქედან",
-    "forked": "დაფორკილია!",
-    "linkCopied": "ბმული დაკოპირებულია!",
-    "equipment": "აღჭურვილობა",
+    "results": "რეცეპტები ნაპოვნია",
+    "createFirst": "შექმენით პირველი რეცეპტი",
+    "forkedFrom": "ფორკი",
+    "forked": "რეცეპტი წარმატებით დაფორკდა!",
+    "linkCopied": "ბმული კოპირებულია!",
+    "equipment": "ინვენტარი",
     "comments": "კომენტარები",
-    "noComments": "ჯერ კომენტარები არ არის.",
+    "noComments": "კომენტარები ჯერ არ არის. დაწერეთ პირველი!",
     "addComment": "კომენტარის დამატება...",
-    "postComment": "გაგზავნა",
-    "commentAdded": "კომენტარი დამატებულია!",
-    "replyingTo": "პასუხი კომენტარზე",
-    "toComment": "კომენტარისთვის",
+    "postComment": "კომენტარის გამოქვეყნება",
+    "commentAdded": "კომენტარი გამოქვეყნდა!",
+    "replyingTo": "პასუხი კომენტარს",
+    "toComment": "კომენტარის დასაწერად",
     "activeFilters": "აქტიური ფილტრები",
-    "brewMethods": { "ESPRESSO_MACHINE": "ესპრესო მანქანა", "POUR_OVER_V60": "V60", "POUR_OVER_CHEMEX": "ქემექსი", "POUR_OVER_KALITA": "კალიტა", "AEROPRESS": "აეროპრესი", "FRENCH_PRESS": "ფრენჩ პრესი", "MOKA_POT": "მოკა", "COLD_BREW": "კოლდ ბრუ", "TURKISH_CEZVE": "ჯეზვა" },
-    "drinkTypes": { "ESPRESSO": "ესპრესო", "RISTRETTO": "რისტრეტო", "LUNGO": "ლუნგო", "AMERICANO": "ამერიკანო", "LATTE": "ლატე", "CAPPUCCINO": "კაპუჩინო", "FLAT_WHITE": "ფლეთ უაით", "CORTADO": "კორტადო", "POUR_OVER": "პურ ოვერ", "FRENCH_PRESS": "ფრენჩ პრესი", "COLD_BREW": "კოლდ ბრუ", "MACCHIATO": "მაკიატო", "MOCHA": "მოკა", "ICED_COFFEE": "ყინულიანი ყავა", "TURKISH_COFFEE": "თურქული ყავა" }
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "ესპრესო მანქანა",
+      "POUR_OVER_V60": "V60 Pour Over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "French Press",
+      "MOKA_POT": "Moka Pot",
+      "COLD_BREW": "Cold Brew",
+      "TURKISH_CEZVE": "თურქული ჯეზვე"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "ესპრესო",
+      "RISTRETTO": "რისტრეტო",
+      "LUNGO": "ლუნგო",
+      "AMERICANO": "ამერიკანო",
+      "LATTE": "ლატე",
+      "CAPPUCCINO": "კაპუჩინო",
+      "FLAT_WHITE": "ფლეთ ვაით",
+      "CORTADO": "კორტადო",
+      "POUR_OVER": "Pour Over",
+      "FRENCH_PRESS": "French Press",
+      "COLD_BREW": "Cold Brew",
+      "MACCHIATO": "მაკიატო",
+      "MOCHA": "მოკა",
+      "ICED_COFFEE": "ცივი ყავა",
+      "TURKISH_COFFEE": "თურქული ყავა"
+    },
+    "processingMethods": {
+      "WASHED": "დარეცხილი",
+      "NATURAL": "ბუნებრივი",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "ნახევრად დარეცხილი",
+      "WET_HULLED": "სველი ჰულინგი",
+      "ANAEROBIC": "ანაერობული",
+      "CARBONIC_MACERATION": "ნახშირბადული მასერაცია",
+      "OTHER": "სხვა"
+    }
   },
-  "profile": { "recipes": "რეცეპტები", "favourites": "ფავორიტები", "equipment": "აღჭურვილობა", "beans": "მარცვლები", "setups": "კონფიგურაციები", "editProfile": "რედაქტირება", "settings": "პარამეტრები" },
+  "profile": {
+    "recipes": "რეცეპტები",
+    "favourites": "რჩეული",
+    "equipment": "ინვენტარი",
+    "beans": "მარცვლები",
+    "setups": "კონფიგურაციები",
+    "editProfile": "პროფილის რედაქტირება",
+    "settings": "პარამეტრები"
+  },
   "settings": {
     "title": "პარამეტრები",
     "profile": "პროფილი",
-    "preferences": "პრეფერენციები",
+    "preferences": "პირადი პარამეტრები",
     "account": "ანგარიში",
     "theme": "თემა",
     "language": "ენა",
     "units": "ერთეულები",
     "timezone": "დროის ზონა",
-    "displayName": "საჩვენებელი სახელი",
+    "displayName": "გამოსაჩენი სახელი",
     "bio": "ბიო",
-    "website": "ვებგვერდი",
-    "themes": { "light": "ღია", "dark": "მუქი", "coffee": "ყავა", "system": "სისტემა" },
-    "switchToLight": "ღია თემა",
-    "switchToDark": "მუქი თემა",
-    "units_options": { "metric": "მეტრული", "imperial": "იმპერიული" },
-    "placeholders": { "bio": "შენს შესახებ...", "website": "https://..." },
-    "messages": { "profileUpdated": "პროფილი განახლდა!" },
+    "website": "ვებსაიტი",
+    "themes": {
+      "light": "ნათელი",
+      "dark": "მუქი",
+      "coffee": "ყავა",
+      "system": "სისტემა"
+    },
+    "switchToLight": "გადართვა ნათელ რეჟიმზე",
+    "switchToDark": "გადართვა მუქ რეჟიმზე",
+    "units_options": {
+      "metric": "მეტრული (გ, მლ, °C)",
+      "imperial": "იმპერიული (უნცია, თხევადი უნცია, °F)"
+    },
+    "placeholders": {
+      "bio": "მოგვიყევით თქვენს შესახებ...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "პროფილი წარმატებით განახლდა!"
+    },
     "deleteAccount": "ანგარიშის წაშლა",
-    "deleteWarning": "ეს მოქმედება შეუქცევადია."
+    "deleteWarning": "ეს ქმედება შეუქცევადია."
   },
-  "equipment": { "grinder": "საფქვავი", "brewer": "ყავის აპარატი", "portafilter": "პორტაფილტრი", "basket": "კალათა", "puckScreen": "ეკრანი", "paperFilter": "ქაღალდის ფილტრი", "tamper": "ტემპერი" },
-  "tasteNotes": { "placeholder": "გემოს შენიშვნების ძებნა...", "minChars": "მინიმუმ {{count}} სიმბოლო", "noResults": "ვერ მოიძებნა", "selected": "{{count}}/{{max}} არჩეულია", "scaaReference": "SCAA გემოს ბორბალი" },
-  "rating": { "superGood": "შესანიშნავი", "good": "კარგი", "okay": "ნორმალური", "bad": "ცუდი", "horrible": "საშინელი" },
-  "common": { "save": "შენახვა", "cancel": "გაუქმება", "delete": "წაშლა", "edit": "რედაქტირება", "create": "შექმნა", "loading": "იტვირთება...", "error": "შეცდომა მოხდა", "success": "წარმატებით", "search": "ძებნა", "filter": "ფილტრი", "sort": "სორტირება", "noResults": "შედეგები არ არის", "loadMore": "მეტის ჩატვირთვა", "viewAll": "ყველას ნახვა", "important": "მნიშვნელოვანი", "by": "ავტორი", "reply": "პასუხი", "clearAll": "ყველას გასუფთავება" },
-  "errors": { "notFound": { "title": "ვერ მოიძებნა", "description": "ეს გვერდი არ არსებობს.", "backHome": "მთავარზე" }, "generic": { "title": "შეცდომა", "description": "სცადე თავიდან.", "retry": "თავიდან" } },
-  "footer": { "tagline": "გაუზიარე შენი ყავის მოგზაურობა.", "links": { "about": "შესახებ", "privacy": "კონფიდენციალურობა", "terms": "პირობები", "contact": "კონტაქტი" }, "copyright": "© {{year}} BrewForm. ყველა უფლება დაცულია." },
-  "language": { "select": "ენის არჩევა", "en": "English", "tr": "Türkçe", "fr": "Français", "de": "Deutsch", "es": "Español", "pt": "Português", "ru": "Русский", "az": "Azərbaycan", "ka": "ქართული", "ar_f": "العربية" }
+  "equipment": {
+    "grinder": "საფქვავი",
+    "brewer": "მომზადების მოწყობილობა",
+    "portafilter": "პორტაფილტერი",
+    "basket": "კალათა",
+    "puckScreen": "Puck screen",
+    "paperFilter": "ქაღალდის ფილტრი",
+    "tamper": "ტამპერი"
+  },
+  "tasteNotes": {
+    "placeholder": "გემოს ნოტების ძებნა (მინ 3 სიმბოლო)...",
+    "minChars": "შეიყვანეთ მინიმუმ {{count}} სიმბოლო",
+    "noResults": "გემოს ნოტები ვერ მოიძებნა",
+    "selected": "არჩეულია {{count}}/{{max}} გემოს ნოტი",
+    "scaaReference": "SCAA გემოს ბორბლის რეფერენსი"
+  },
+  "rating": {
+    "superGood": "ძალიან კარგი",
+    "good": "კარგი",
+    "okay": "ნორმალური",
+    "bad": "ცუდი",
+    "horrible": "საშინელი"
+  },
+  "common": {
+    "save": "შენახვა",
+    "cancel": "გაუქმება",
+    "delete": "წაშლა",
+    "edit": "რედაქტირება",
+    "create": "შექმნა",
+    "loading": "იტვირთება...",
+    "error": "შეცდომა მოხდა",
+    "success": "წარმატება",
+    "search": "ძიება",
+    "filter": "ფილტრი",
+    "sort": "დალაგება",
+    "noResults": "შედეგი არ არის",
+    "loadMore": "მეტი ჩატვირთვა",
+    "viewAll": "ყველას ნახვა",
+    "important": "მნიშვნელოვანი",
+    "by": "ავტორი",
+    "reply": "პასუხი",
+    "clearAll": "ყველაფრის გასუფთავება"
+  },
+  "errors": {
+    "notFound": {
+      "title": "გვერდი ვერ მოიძებნა",
+      "description": "უი! როგორც ჩანს, ყავა გაცივდა. მოთხოვნილი გვერდი არ არსებობს.",
+      "backHome": "მთავარზე დაბრუნება"
+    },
+    "generic": {
+      "title": "რაღაც არასწორად წავიდა",
+      "description": "ყავა გადაგვესხა! გთხოვთ, მოგვიანებით სცადოთ.",
+      "retry": "კიდევ სცადე"
+    }
+  },
+  "footer": {
+    "tagline": "გააზიარე შენი ყავის მოგზაურობა მსოფლიოსთან.",
+    "links": {
+      "about": "ჩვენ შესახებ",
+      "privacy": "კონფიდენციალურობა",
+      "terms": "პირობები",
+      "contact": "კონტაქტი"
+    },
+    "copyright": "© {{year}} BrewForm. ყველა უფლება დაცულია."
+  },
+  "language": {
+    "select": "ენის არჩევა",
+    "en": "ინგლისური",
+    "uk": "უკრაინული",
+    "sr": "სერბული",
+    "ro": "რუმინული",
+    "tr": "თურქული",
+    "fr": "ფრანგული",
+    "de": "გერმანული",
+    "es": "ესპანური",
+    "pt": "პორტუგალიური",
+    "ru": "რუსული",
+    "az": "აზერბაიჯანული",
+    "ka": "ქართული",
+    "ar_f": "არაბული",
+    "hy": "სომხური",
+    "ko": "კორეული",
+    "zh_TW": "ჩინური (ტრადიციული)",
+    "th": "ტაილანდური",
+    "hi": "ჰინდი",
+    "ja": "იაპონური",
+    "zh_CN": "ჩინური (გამარტივებული)"
+  }
 }

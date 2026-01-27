@@ -1,20 +1,477 @@
 {
-  "app": { "name": "BrewForm", "tagline": "Կիdelays Ձdelays Սdelays Rելdelays Delays" },
-  "theme": { "switchToLight": "Անdelays Փdelays Աdelays Լdelays Delays", "switchToDark": "Delays Delays Delays Delays" },
-  "nav": { "home": "Գdelays", "recipes": "Բdelays", "baristas": "Բdelays", "explore": "Հdelays", "login": "Մdelays", "register": "Գdelays", "profile": "Delays", "settings": "Կdelays", "logout": "Delays", "admin": "Ադdelays" },
-  "baristas": { "description": "Բdelays Սdelays Եdelays Delays", "result": "Delays", "results": "Delays" },
-  "pages": { "home": { "title": "BrewForm - Սdelays Բdelays", "description": "Delays" }, "recipes": { "title": "Բdelays - BrewForm", "description": "Delays" }, "createRecipe": { "title": "Սdelays Բdelays - BrewForm" }, "compare": { "title": "Հdelays - BrewForm", "heading": "Delays", "notFound": "Delays", "invalidLink": "Delays" }, "profile": { "title": "Delays - BrewForm" }, "settings": { "title": "Delays - BrewForm" }, "login": { "title": "Delays - BrewForm" }, "register": { "title": "Delays - BrewForm" }, "forgotPassword": { "title": "Delays - BrewForm" }, "resetPassword": { "title": "Delays - BrewForm" }, "verifyEmail": { "title": "Delays - BrewForm" }, "notFound": { "title": "Delays - BrewForm" }, "error": { "title": "Delays - BrewForm" } },
-  "admin": { "dashboard": { "title": " Delays - BrewForm", "heading": "Delays", "cards": { "users": { "title": "Delays", "description": "Delays" }, "recipes": { "title": "Delays", "description": "Delays" }, "equipment": { "title": "Delays", "description": "Delays" } } }, "users": { "title": "Delays", "heading": "Delays", "comingSoon": "Delays" }, "recipes": { "title": "Delays", "heading": "Delays", "comingSoon": "Delays" }, "equipment": { "title": "Delays", "heading": "Delays", "comingSoon": "Delays" }, "tasteNotes": { "title": "Delays", "heading": "Delays", "cacheWarning": "Delays", "comingSoon": "Delays", "plannedFeatures": "Delays", "features": { "view": "Delays", "add": "Delays", "edit": "Delays", "delete": "Delays", "flushCache": "Delays", "reimport": "Delays" } } },
-  "home": { "hero": { "title": "Բdelays Delays", "subtitle": "Delays", "cta": "Delays", "explore": "Delays" }, "features": { "track": { "title": "Delays", "description": "Delays" }, "share": { "title": "Delays", "description": "Delays" }, "compare": { "title": "Delays", "description": "Delays" } }, "latest": "Delays", "popular": "Delays", "viewAll": "Delays" },
-  "auth": { "login": { "title": "Delays", "subtitle": "Delays", "email": "Էdelays", "password": "Գdelays", "submit": "Delays", "forgotPassword": "Delays?", "noAccount": "Delays?", "signUp": "Delays" }, "register": { "title": "Delays", "subtitle": "Delays", "email": "Էdelays", "username": "Delays", "displayName": "Delays", "password": "Delays", "confirmPassword": "Delays", "submit": "Delays", "hasAccount": "Delays?", "signIn": "Delays" }, "forgotPassword": { "title": "Delays", "subtitle": "Delays", "email": "Էdelays", "submit": "Delays", "backToLogin": "Delays" }, "resetPassword": { "title": "Delays", "subtitle": "Delays", "password": "Delays", "confirmPassword": "Delays", "submit": "Delays" }, "verifyEmail": { "title": "Delays", "verifying": "Delays...", "success": "Delays!", "error": "Delays" } },
-  "recipe": { "create": "Delays", "edit": "Delays", "delete": "Delays", "fork": "Delays", "share": "Delays", "compare": "Delays", "favourite": "Delays", "unfavourite": "Delays", "versions": "Delays", "newVersion": "Delays", "visibility": { "draft": "Delays", "private": "Delays", "unlisted": "Delays", "public": "Delays" }, "fields": { "title": "Delays", "description": "Delays", "brewMethod": "Delays", "drinkType": "Delays", "coffee": "Delays", "roastDate": "Delays", "grindDate": "Delays", "grinder": "Delays", "grindSize": "Delays", "brewer": "Delays", "dose": "Delays", "yield": "Delays", "time": "Delays", "temperature": "Delays", "pressure": "Delays", "ratio": "Delays", "tastingNotes": "Delays", "tasteNotes": "Delays", "rating": "Delays", "tags": "Delays", "portafilter": "Delays", "basket": "Delays", "puckScreen": "Delays", "paperFilter": "Delays", "tamper": "Delays" }, "placeholders": { "title": "Delays", "description": "Delays", "select": "Delays", "coffee": "Delays", "grindSize": "Delays", "dose": "18", "yield": "36", "time": "28", "temperature": "93", "pressure": "9", "tastingNotes": "Delays", "rating": "8", "tags": "Delays" }, "captions": { "required": "Delays", "tasteNotes": "Delays", "pressure": "Delays", "rating": "Delays", "tags": "Delays" }, "addTag": "Delays", "selectTags": "Delays", "tags": { "morning": "Delays", "afternoon": "Delays", "evening": "Delays", "fruity": "Delays", "chocolatey": "Delays", "nutty": "Delays", "floral": "Delays", "spicy": "Delays", "sweet": "Delays", "bold": "Delays", "light": "Delays", "creamy": "Delays", "iced": "Delays", "hot": "Delays", "decaf": "Delays", "singleOrigin": "Delays", "blend": "Delays", "espresso": "Delays" }, "empty": { "title": "Delays", "description": "Delays" }, "result": "Delays", "results": "Delays", "createFirst": "Delays", "forkedFrom": "Delays", "forked": "Delays!", "linkCopied": "Delays!", "equipment": "Delays", "comments": "Delays", "noComments": "Delays", "addComment": "Delays", "postComment": "Delays", "commentAdded": "Delays!", "replyingTo": "Delays", "toComment": "Delays", "activeFilters": "Delays", "brewMethods": { "ESPRESSO_MACHINE": "Delays", "POUR_OVER_V60": "V60", "POUR_OVER_CHEMEX": "Chemex", "POUR_OVER_KALITA": "Kalita", "AEROPRESS": "AeroPress", "FRENCH_PRESS": "Delays", "MOKA_POT": "Delays", "COLD_BREW": "Delays", "TURKISH_CEZVE": "Delays" }, "drinkTypes": { "ESPRESSO": "Delays", "RISTRETTO": "Ristretto", "LUNGO": "Lungo", "AMERICANO": "Americano", "LATTE": "Latte", "CAPPUCCINO": "Cappuccino", "FLAT_WHITE": "Flat White", "CORTADO": "Cortado", "POUR_OVER": "Pour Over", "FRENCH_PRESS": "Delays", "COLD_BREW": "Delays", "MACCHIATO": "Macchiato", "MOCHA": "Mocha", "ICED_COFFEE": "Delays", "TURKISH_COFFEE": "Delays" } },
-  "profile": { "recipes": "Delays", "favourites": "Delays", "equipment": "Delays", "beans": "Delays", "setups": "Delays", "editProfile": "Delays", "settings": "Delays" },
-  "settings": { "title": "Delays", "profile": "Delays", "preferences": "Delays", "account": "Delays", "theme": "Delays", "language": "Delays", "units": "Delays", "timezone": "Delays", "displayName": "Delays", "bio": "Delays", "website": "Delays", "themes": { "light": "Delays", "dark": "Delays", "coffee": "Delays", "system": "Delays" }, "switchToLight": "Delays", "switchToDark": "Delays", "units_options": { "metric": "Delays", "imperial": "Delays" }, "placeholders": { "bio": "Delays", "website": "https://..." }, "messages": { "profileUpdated": "Delays!" }, "deleteAccount": "Delays", "deleteWarning": "Delays" },
-  "equipment": { "grinder": "Delays", "brewer": "Delays", "portafilter": "Delays", "basket": "Delays", "puckScreen": "Delays", "paperFilter": "Delays", "tamper": "Delays" },
-  "tasteNotes": { "placeholder": "Delays", "minChars": "Delays {{count}}", "noResults": "Delays", "selected": "{{count}}/{{max}} Delays", "scaaReference": "SCAA Delays" },
-  "rating": { "superGood": "Delays", "good": "Delays", "okay": "Delays", "bad": "Delays", "horrible": "Delays" },
-  "common": { "save": "Delays", "cancel": "Delays", "delete": "Delays", "edit": "Delays", "create": "Delays", "loading": "Delays...", "error": "Delays", "success": "Delays", "search": "Delays", "filter": "Delays", "sort": "Delays", "noResults": "Delays", "loadMore": "Delays", "viewAll": "Delays", "important": "Delays", "by": "Delays", "reply": "Delays", "clearAll": "Delays" },
-  "errors": { "notFound": { "title": "Delays", "description": "Delays", "backHome": "Delays" }, "generic": { "title": "Delays", "description": "Delays", "retry": "Delays" } },
-  "footer": { "tagline": "Delays", "links": { "about": "Delays", "privacy": "Delays", "terms": "Delays", "contact": "Delays" }, "copyright": "© {{year}} BrewForm. Delays" },
-  "language": { "select": "Delays", "en": "English", "tr": "Türkçe", "fr": "Français", "de": "Deutsch", "es": "Español", "pt": "Português", "ru": "Русский", "az": "Azərbaycan", "ka": "ქართული", "ar_f": "العربية", "hy": "Հայdelays", "ko": "한국어", "zh_TW": "繁體中文", "th": "ไทย", "hi": "हिन्दी", "ja": "日本語", "zh_CN": "简体中文" }
+  "app": {
+    "name": "BrewForm",
+    "tagline": "Կիսվեք ձեր սուրճի ճանապարհով"
+  },
+  "theme": {
+    "switchToLight": "Փոխել լուսավոր թեմայի",
+    "switchToDark": "Փոխել մուգ թեմայի"
+  },
+  "nav": {
+    "home": "Գլխավոր",
+    "recipes": "Բաղադրատոմսեր",
+    "baristas": "Բարիստաներ",
+    "explore": "Հետազոտել",
+    "login": "Մուտք",
+    "register": "Գրանցվել",
+    "profile": "Պրոֆիլ",
+    "settings": "Կարգավորումներ",
+    "logout": "Ելք",
+    "admin": "Ադմին"
+  },
+  "baristas": {
+    "description": "Բացահայտեք սուրճի սիրահարներին և նրանց բաղադրատոմսերը",
+    "result": "բարիստա գտնվեց",
+    "results": "բարիստաներ գտնվեցին"
+  },
+  "pages": {
+    "home": {
+      "title": "BrewForm - Սուրճի բաղադրատոմսեր",
+      "description": "Կիսվեք և բացահայտեք սուրճի բաղադրատոմսերը։ Հետևեք էսպրեսսոյին, փուր-օվերին և հատուկ բաղադրատոմսերին։"
+    },
+    "recipes": {
+      "title": "Բաղադրատոմսեր - BrewForm",
+      "description": "Դիտեք համայնքի սուրճի բաղադրատոմսերը"
+    },
+    "createRecipe": {
+      "title": "Ստեղծել բաղադրատոմս - BrewForm"
+    },
+    "compare": {
+      "title": "Համեմատել բաղադրատոմսերը - BrewForm",
+      "heading": "Բաղադրատոմսերի համեմատություն",
+      "notFound": "Համեմատություն չի գտնվել",
+      "invalidLink": "Այս հղումը կարող է անվավեր լինել կամ ժամկետանց։"
+    },
+    "profile": {
+      "title": "Իմ պրոֆիլը - BrewForm"
+    },
+    "settings": {
+      "title": "Կարգավորումներ - BrewForm"
+    },
+    "login": {
+      "title": "Մուտք - BrewForm"
+    },
+    "register": {
+      "title": "Գրանցվել - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "Մոռացել եք գաղտնաբառը - BrewForm"
+    },
+    "resetPassword": {
+      "title": "Վերականգնել գաղտնաբառը - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "Հաստատել էլ․փոստը - BrewForm"
+    },
+    "notFound": {
+      "title": "Էջը չի գտնվել - BrewForm"
+    },
+    "error": {
+      "title": "Սխալ - BrewForm"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Ադմին վահանակ - BrewForm",
+      "heading": "Ադմին վահանակ",
+      "cards": {
+        "users": {
+          "title": "Օգտվողներ",
+          "description": "Կառավարեք հաշիվները, դերերը և արգելքները"
+        },
+        "recipes": {
+          "title": "Բաղադրատոմսեր",
+          "description": "Վերանայեք և մոդերացրեք բաղադրատոմսերը"
+        },
+        "equipment": {
+          "title": "Սարքավորումներ",
+          "description": "Կառավարեք սարքավորումները, մատակարարներին և սուրճը"
+        }
+      }
+    },
+    "users": {
+      "title": "Օգտվողների կառավարում - Ադմին - BrewForm",
+      "heading": "Օգտվողների կառավարում",
+      "comingSoon": "Օգտվողների կառավարումը շուտով կլինի հասանելի։"
+    },
+    "recipes": {
+      "title": "Բաղադրատոմսերի կառավարում - Ադմին - BrewForm",
+      "heading": "Բաղադրատոմսերի կառավարում",
+      "comingSoon": "Բաղադրատոմսերի մոդերացիան շուտով կլինի հասանելի։"
+    },
+    "equipment": {
+      "title": "Սարքավորումների կառավարում - Ադմին - BrewForm",
+      "heading": "Սարքավորումների կառավարում",
+      "comingSoon": "Սարքավորումների, մատակարարների և սուրճի կառավարումը շուտով կլինի հասանելի։"
+    },
+    "tasteNotes": {
+      "title": "Համային նշումների կառավարում - Ադմին - BrewForm",
+      "heading": "Համային նշումների կառավարում",
+      "cacheWarning": "Եթե համային նշում փոփոխվում, ավելացվում կամ ջնջվում է, պետք է մաքրել Redis քեշը։ Օգտագործեք «Մաքրել համային նշումների քեշը» կոճակը փոփոխություններից հետո։",
+      "comingSoon": "Համային նշումների կառավարումը շուտով կլինի հասանելի։ Նշումները նախապես ներմուծված են SCAA 2016 համային անիվից և հազվադեպ են փոխվում։",
+      "plannedFeatures": "Պլանավորված ֆունկցիաներ:",
+      "features": {
+        "view": "Դիտել բոլոր համային նշումները հիերարխիկ կառուցվածքով",
+        "add": "Ավելացնել նոր համային նշումներ",
+        "edit": "Խմբագրել առկա համային նշումները",
+        "delete": "Ջնջել համային նշումները (կասկադով բաղադրատոմսերին)",
+        "flushCache": "Մաքրել Redis քեշը փոփոխություններից հետո",
+        "reimport": "Վերաիմպորտ SCAA JSON-ից"
+      }
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Բացահայտեք և կիսվեք սուրճի բաղադրատոմսերով",
+      "subtitle": "Փաստագրեք ձեր սուրճի ճանապարհը։ Կիսվեք կատարյալ էսպրեսսոյով, փուր-օվերով և հատուկ բաղադրատոմսերով։",
+      "cta": "Սկսել պատրաստել",
+      "explore": "Բացահայտել բաղադրատոմսերը"
+    },
+    "features": {
+      "track": {
+        "title": "Հետևեք ձեր պատրաստումներին",
+        "description": "Գրանցեք յուրաքանչյուր մանրամաս՝ դոզայից և ելքից մինչև աղացման չափը և էքստրակցիայի ժամանակը։"
+      },
+      "share": {
+        "title": "Կիսվեք և բացահայտեք",
+        "description": "Կիսվեք բաղադրատոմսերով և բացահայտեք նոր մեթոդներ աշխարհից։"
+      },
+      "compare": {
+        "title": "Համեմատեք և բարելավեք",
+        "description": "Համեմատեք բաղադրատոմսերը կողք-կողքի, հետևեք տարբերակներին և բարելավեք հմտությունները։"
+      }
+    },
+    "latest": "Վերջին բաղադրատոմսերը",
+    "popular": "Հանրաճանաչ բաղադրատոմսեր",
+    "viewAll": "Դիտել բոլորը"
+  },
+  "auth": {
+    "login": {
+      "title": "Բարի վերադարձ",
+      "subtitle": "Մուտք գործեք BrewForm հաշիվ",
+      "email": "Էլ․փոստ",
+      "password": "Գաղտնաբառ",
+      "submit": "Մուտք",
+      "forgotPassword": "Մոռացե՞լ եք գաղտնաբառը",
+      "noAccount": "Չկա՞ հաշիվ",
+      "signUp": "Գրանցվել"
+    },
+    "register": {
+      "title": "Միացեք BrewForm-ին",
+      "subtitle": "Ստեղծեք հաշիվ և սկսեք սուրճի ճանապարհը",
+      "email": "Էլ․փոստ",
+      "username": "Օգտվողի անուն",
+      "displayName": "Ցուցադրվող անուն",
+      "password": "Գաղտնաբառ",
+      "confirmPassword": "Հաստատեք գաղտնաբառը",
+      "submit": "Ստեղծել հաշիվ",
+      "hasAccount": "Արդեն ունե՞ք հաշիվ",
+      "signIn": "Մուտք"
+    },
+    "forgotPassword": {
+      "title": "Վերականգնել գաղտնաբառը",
+      "subtitle": "Մուտքագրեք էլ․փոստը՝ վերականգնման հղման համար",
+      "email": "Էլ․փոստ",
+      "submit": "Ուղարկել հղումը",
+      "backToLogin": "Վերադառնալ մուտքին"
+    },
+    "resetPassword": {
+      "title": "Ստեղծել նոր գաղտնաբառ",
+      "subtitle": "Մուտքագրեք նոր գաղտնաբառը",
+      "password": "Նոր գաղտնաբառ",
+      "confirmPassword": "Հաստատեք գաղտնաբառը",
+      "submit": "Վերականգնել գաղտնաբառը"
+    },
+    "verifyEmail": {
+      "title": "Հաստատել էլ․փոստը",
+      "verifying": "Ստուգվում է ձեր էլ․փոստը...",
+      "success": "Էլ․փոստը հաջողությամբ հաստատվեց!",
+      "error": "Հաստատումը ձախողվեց, հղումը կարող է ժամկետանց լինել։"
+    }
+  },
+  "recipe": {
+    "create": "Ստեղծել բաղադրատոմս",
+    "edit": "Խմբագրել բաղադրատոմսը",
+    "delete": "Ջնջել բաղադրատոմսը",
+    "fork": "Ֆորկել բաղադրատոմսը",
+    "share": "Կիսվել",
+    "compare": "Համեմատել",
+    "favourite": "Սիրված",
+    "unfavourite": "Հեռացնել սիրվածներից",
+    "versions": "Տարբերակներ",
+    "newVersion": "Ստեղծել նոր տարբերակ",
+    "visibility": {
+      "draft": "Սևագիր",
+      "private": "Մասնավոր",
+      "unlisted": "Չցուցադրվող",
+      "public": "Հանրային"
+    },
+    "fields": {
+      "title": "Բաղադրատոմսի վերնագիր",
+      "description": "Նկարագրություն",
+      "brewMethod": "Պատրաստման մեթոդ",
+      "drinkType": "Խմիչքի տեսակ",
+      "coffee": "Սուրճ",
+      "roastDate": "Թմբկման ամսաթիվ",
+      "grindDate": "Աղացման ամսաթիվ",
+      "grinder": "Սրճաղաց",
+      "grindSize": "Աղացման չափ",
+      "brewer": "Պատրաստման սարք",
+      "dose": "Դոզա",
+      "yield": "Ելք",
+      "time": "Ժամանակ",
+      "temperature": "Ջերմաստիճան",
+      "pressure": "Ճնշում",
+      "ratio": "Հարաբերություն",
+      "tastingNotes": "Դեգուստացիոն նշումներ",
+      "tasteNotes": "Համային նշումներ",
+      "rating": "Գնահատական",
+      "tags": "Պիտակներ",
+      "processing": "Մշակում",
+      "portafilter": "Պորտաֆիլտր",
+      "basket": "Զամբյուղ",
+      "puckScreen": "Puck screen",
+      "paperFilter": "Թղթե ֆիլտր",
+      "tamper": "Տամպեր"
+    },
+    "placeholders": {
+      "title": "Իմ կատարյալ էսպրեսսոն",
+      "description": "Նկարագրեք ձեր բաղադրատոմսը...",
+      "select": "Ընտրեք...",
+      "coffee": "օր. Եթովպիա Յիրգաչեֆ",
+      "grindSize": "օր. 2.5 կամ 18 կտտոց",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "Լրացուցիչ դեգուստացիոն նշումներ...",
+      "rating": "8",
+      "tags": "էսպրեսսո, առավոտ, շոկոլադ"
+    },
+    "captions": {
+      "required": "Պարտադիր",
+      "tasteNotes": "Ընտրեք պրոֆիլները SCAA համային անիվից",
+      "pressure": "օր. 9, 6-9, փոփոխական",
+      "rating": "Գնահատեք 1-ից 10",
+      "tags": "Կոմաներով բաժանված"
+    },
+    "addTag": "Ավելացնել պիտակ...",
+    "selectTags": "Ընտրել պիտակներ...",
+    "tags": {
+      "morning": "Առավոտ",
+      "afternoon": "Ցերեկ",
+      "evening": "Երեկո",
+      "fruity": "Մրգային",
+      "chocolatey": "Շոկոլադային",
+      "nutty": "Ընկույզային",
+      "floral": "Ծաղկային",
+      "spicy": "Կծու",
+      "sweet": "Քաղցր",
+      "bold": "Ուժեղ",
+      "light": "Թեթև",
+      "creamy": "Կրեմային",
+      "iced": "Սառը",
+      "hot": "Տաք",
+      "decaf": "Դեկաֆ",
+      "singleOrigin": "Մեկ ծագում",
+      "blend": "Խառնուրդ",
+      "espresso": "Էսպրեսսո",
+      "balanced": "Հավասարակշռված",
+      "bright": "Վառ",
+      "complex": "Բարդ",
+      "smooth": "Հարթ",
+      "intense": "Ինտենսիվ",
+      "clean": "Մաքուր",
+      "syrupy": "Օշարակային"
+    },
+    "empty": {
+      "title": "Դեռ բաղադրատոմսեր չկան",
+      "description": "Եղեք առաջինը, ով կկիսի բաղադրատոմս։"
+    },
+    "result": "բաղադրատոմս գտնվեց",
+    "results": "բաղադրատոմսեր գտնվեցին",
+    "createFirst": "Ստեղծեք ձեր առաջին բաղադրատոմսը",
+    "forkedFrom": "Ֆորկ՝",
+    "forked": "Բաղադրատոմսը հաջողությամբ ֆորկվեց!",
+    "linkCopied": "Հղումը պատճենվեց սեղմատախտակ։",
+    "equipment": "Սարքավորում",
+    "comments": "Մեկնաբանություններ",
+    "noComments": "Դեռ մեկնաբանություններ չկան։ Առաջինը թողեք դուք։",
+    "addComment": "Ավելացնել մեկնաբանություն...",
+    "postComment": "Տեղադրել մեկնաբանություն",
+    "commentAdded": "Մեկնաբանությունը հրապարակվեց։",
+    "replyingTo": "Պատասխանում եք մեկնաբանությանը",
+    "toComment": "մեկնաբանություն թողնելու համար",
+    "activeFilters": "Ակտիվ ֆիլտրեր",
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "Էսպրեսսո մեքենա",
+      "POUR_OVER_V60": "V60 Pour Over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "French Press",
+      "MOKA_POT": "Moka Pot",
+      "COLD_BREW": "Cold Brew",
+      "TURKISH_CEZVE": "Թուրքական ջեզվե"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "Էսպրեսսո",
+      "RISTRETTO": "Ռիստրետտո",
+      "LUNGO": "Լունգո",
+      "AMERICANO": "Ամերիկանո",
+      "LATTE": "Լատտե",
+      "CAPPUCCINO": "Կապուչինո",
+      "FLAT_WHITE": "Ֆլաթ Ուայթ",
+      "CORTADO": "Կորտադո",
+      "POUR_OVER": "Pour Over",
+      "FRENCH_PRESS": "French Press",
+      "COLD_BREW": "Cold Brew",
+      "MACCHIATO": "Մակքյատո",
+      "MOCHA": "Մոկա",
+      "ICED_COFFEE": "Սառը սուրճ",
+      "TURKISH_COFFEE": "Թուրքական սուրճ"
+    },
+    "processingMethods": {
+      "WASHED": "Լվացված",
+      "NATURAL": "Բնական",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "Կիսա լվացված",
+      "WET_HULLED": "Թաց մաքրված",
+      "ANAEROBIC": "Անաերոբ",
+      "CARBONIC_MACERATION": "Կարբոնային մացերացիա",
+      "OTHER": "Այլ"
+    }
+  },
+  "profile": {
+    "recipes": "Բաղադրատոմսեր",
+    "favourites": "Սիրվածներ",
+    "equipment": "Սարքավորում",
+    "beans": "Հատիկներ",
+    "setups": "Կարգավորումներ",
+    "editProfile": "Խմբագրել պրոֆիլը",
+    "settings": "Կարգավորումներ"
+  },
+  "settings": {
+    "title": "Կարգավորումներ",
+    "profile": "Պրոֆիլ",
+    "preferences": "Նախընտրություններ",
+    "account": "Հաշիվ",
+    "theme": "Թեմա",
+    "language": "Լեզու",
+    "units": "Միավորներ",
+    "timezone": "Ժամային գոտի",
+    "displayName": "Ցուցադրվող անուն",
+    "bio": "Կենսագրություն",
+    "website": "Կայք",
+    "themes": {
+      "light": "Լուսավոր",
+      "dark": "Մուգ",
+      "coffee": "Սուրճ",
+      "system": "Համակարգ"
+    },
+    "switchToLight": "Փոխել լուսավոր թեմայի",
+    "switchToDark": "Փոխել մուգ թեմայի",
+    "units_options": {
+      "metric": "Մետրիկ (գ, մլ, °C)",
+      "imperial": "Իմպերիալ (oz, fl oz, °F)"
+    },
+    "placeholders": {
+      "bio": "Պատմեք ձեր մասին...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "Պրոֆիլը հաջողությամբ թարմացվեց!"
+    },
+    "deleteAccount": "Ջնջել հաշիվը",
+    "deleteWarning": "Այս գործողությունը չի կարող հետ վերցվել։"
+  },
+  "equipment": {
+    "grinder": "Սրճաղաց",
+    "brewer": "Պատրաստման սարք",
+    "portafilter": "Պորտաֆիլտր",
+    "basket": "Զամբյուղ",
+    "puckScreen": "Puck screen",
+    "paperFilter": "Թղթե ֆիլտր",
+    "tamper": "Տամպեր"
+  },
+  "tasteNotes": {
+    "placeholder": "Փնտրել համային նշումներ (առնվազն 3 նիշ)...",
+    "minChars": "Գրեք առնվազն {{count}} նիշ որոնման համար",
+    "noResults": "Համային նշումներ չեն գտնվել",
+    "selected": "Ընտրված է {{count}}/{{max}} համային նշում",
+    "scaaReference": "SCAA համային անիվի հղում"
+  },
+  "rating": {
+    "superGood": "Գերազանց",
+    "good": "Լավ",
+    "okay": "Նորմալ",
+    "bad": "Վատ",
+    "horrible": "Սարսափելի"
+  },
+  "common": {
+    "save": "Պահպանել",
+    "cancel": "Չեղարկել",
+    "delete": "Ջնջել",
+    "edit": "Խմբագրել",
+    "create": "Ստեղծել",
+    "loading": "Բեռնվում է...",
+    "error": "Սխալ է տեղի ունեցել",
+    "success": "Հաջողություն",
+    "search": "Որոնում",
+    "filter": "Ֆիլտր",
+    "sort": "Դասավորել",
+    "noResults": "Արդյունքներ չկան",
+    "loadMore": "Բեռնել ավելին",
+    "viewAll": "Դիտել բոլորը",
+    "important": "Կարևոր",
+    "by": "կողմից",
+    "reply": "Պատասխանել",
+    "clearAll": "Մաքրել բոլորը"
+  },
+  "errors": {
+    "notFound": {
+      "title": "Էջը չի գտնվել",
+      "description": "Օփս։ Կարծես սուրճը սառել է։ Էջը գոյություն չունի։",
+      "backHome": "Վերադառնալ գլխավոր"
+    },
+    "generic": {
+      "title": "Ինչ-որ բան սխալ գնաց",
+      "description": "Մենք սուրճը թափեցինք։ Խնդրում ենք փորձել ավելի ուշ։",
+      "retry": "Կրկին փորձել"
+    }
+  },
+  "footer": {
+    "tagline": "Կիսվեք ձեր սուրճի ճանապարհով աշխարհի հետ։",
+    "links": {
+      "about": "Մեր մասին",
+      "privacy": "Գաղտնիություն",
+      "terms": "Պայմաններ",
+      "contact": "Կապ"
+    },
+    "copyright": "© {{year}} BrewForm. Բոլոր իրավունքները պաշտպանված են։"
+  },
+  "language": {
+    "select": "Ընտրել լեզուն",
+    "en": "Անգլերեն",
+    "uk": "Ուկրաիներեն",
+    "sr": "Սերբերեն",
+    "ro": "Ռումիներեն",
+    "tr": "Թուրքերեն",
+    "fr": "Ֆրանսերեն",
+    "de": "Գերմաներեն",
+    "es": "Իսպաներեն",
+    "pt": "Պորտուգալերեն",
+    "ru": "Ռուսերեն",
+    "az": "Ադրբեջաներեն",
+    "ka": "Վրացերեն",
+    "ar_f": "Արաբերեն",
+    "hy": "Հայերեն",
+    "ko": "Կորեերեն",
+    "zh_TW": "Չինարեն (ավանդական)",
+    "th": "Թայերեն",
+    "hi": "Հինդի",
+    "ja": "Ճապոներեն",
+    "zh_CN": "Չինարեն (պարզեցված)"
+  }
 }

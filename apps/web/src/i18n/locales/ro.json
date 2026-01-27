@@ -1,0 +1,477 @@
+{
+  "app": {
+    "name": "BrewForm",
+    "tagline": "Împărtășește-ți călătoria cafelei"
+  },
+  "theme": {
+    "switchToLight": "Comută pe tema deschisă",
+    "switchToDark": "Comută pe tema închisă"
+  },
+  "nav": {
+    "home": "Acasă",
+    "recipes": "Rețete",
+    "baristas": "Barista",
+    "explore": "Explorează",
+    "login": "Autentificare",
+    "register": "Înregistrare",
+    "profile": "Profil",
+    "settings": "Setări",
+    "logout": "Deconectare",
+    "admin": "Admin"
+  },
+  "baristas": {
+    "description": "Descoperă pasionați de cafea și rețetele lor",
+    "result": "barista găsit",
+    "results": "barista găsiți"
+  },
+  "pages": {
+    "home": {
+      "title": "BrewForm - Rețete de cafea",
+      "description": "Împărtășește și descoperă rețete de preparare a cafelei. Urmărește-ți espresso, pour-over și rețetele speciale de cafea."
+    },
+    "recipes": {
+      "title": "Rețete - BrewForm",
+      "description": "Răsfoiește rețete de preparare a cafelei din comunitate"
+    },
+    "createRecipe": {
+      "title": "Creează rețetă - BrewForm"
+    },
+    "compare": {
+      "title": "Compară rețete - BrewForm",
+      "heading": "Compararea rețetelor",
+      "notFound": "Comparația nu a fost găsită",
+      "invalidLink": "Acest link de comparație poate fi invalid sau expirat."
+    },
+    "profile": {
+      "title": "Profilul meu - BrewForm"
+    },
+    "settings": {
+      "title": "Setări - BrewForm"
+    },
+    "login": {
+      "title": "Autentificare - BrewForm"
+    },
+    "register": {
+      "title": "Înregistrare - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "Ai uitat parola - BrewForm"
+    },
+    "resetPassword": {
+      "title": "Resetează parola - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "Verifică emailul - BrewForm"
+    },
+    "notFound": {
+      "title": "Pagina nu a fost găsită - BrewForm"
+    },
+    "error": {
+      "title": "Eroare - BrewForm"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Panou de administrare - BrewForm",
+      "heading": "Panou de administrare",
+      "cards": {
+        "users": {
+          "title": "Utilizatori",
+          "description": "Gestionează conturile utilizatorilor, rolurile și interdicțiile"
+        },
+        "recipes": {
+          "title": "Rețete",
+          "description": "Revizuiește și moderează conținutul rețetelor"
+        },
+        "equipment": {
+          "title": "Echipament",
+          "description": "Gestionează echipamentele, furnizorii și cafeaua"
+        }
+      }
+    },
+    "users": {
+      "title": "Gestionare utilizatori - Admin - BrewForm",
+      "heading": "Gestionare utilizatori",
+      "comingSoon": "Funcționalitatea de gestionare a utilizatorilor va fi disponibilă în curând."
+    },
+    "recipes": {
+      "title": "Gestionare rețete - Admin - BrewForm",
+      "heading": "Gestionare rețete",
+      "comingSoon": "Funcționalitatea de moderare a rețetelor va fi disponibilă în curând."
+    },
+    "equipment": {
+      "title": "Gestionare echipamente - Admin - BrewForm",
+      "heading": "Gestionare echipamente",
+      "comingSoon": "Gestionarea echipamentelor, furnizorilor și cafelei va fi disponibilă în curând."
+    },
+    "tasteNotes": {
+      "title": "Gestionare note gustative - Admin - BrewForm",
+      "heading": "Gestionare note gustative",
+      "cacheWarning": "Dacă orice notă gustativă este modificată, adăugată sau ștearsă, cache-ul notelor gustative trebuie golit din Redis pentru ca schimbările să intre în vigoare. Folosește butonul \"Golește cache-ul notelor gustative\" după modificări.",
+      "comingSoon": "Gestionarea notelor gustative va fi disponibilă în curând. Notele gustative sunt prepopulate din roata de arome SCAA 2016 și rareori necesită modificări.",
+      "plannedFeatures": "Funcții planificate în prezent:",
+      "features": {
+        "view": "Vizualizează toate notele gustative într-o structură ierarhică",
+        "add": "Adaugă note gustative noi",
+        "edit": "Editează note gustative existente",
+        "delete": "Șterge note gustative (cu ștergere în cascadă în rețete)",
+        "flushCache": "Golește cache-ul Redis după modificări",
+        "reimport": "Reimportă din fișierul JSON SCAA"
+      }
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Descoperă și împărtășește rețete de cafea",
+      "subtitle": "Documentează-ți călătoria cafelei. Împărtășește-ți espresso-ul perfect, pour-over și rețetele speciale de cafea cu lumea.",
+      "cta": "Începe prepararea",
+      "explore": "Explorează rețete"
+    },
+    "features": {
+      "track": {
+        "title": "Urmărește-ți preparările",
+        "description": "Documentează fiecare detaliu al rețetelor tale de cafea — de la doză și randament la granulație și timpul de extracție."
+      },
+      "share": {
+        "title": "Împărtășește și descoperă",
+        "description": "Împărtășește rețetele cu comunitatea și descoperă tehnici noi de preparare de la pasionați de cafea din întreaga lume."
+      },
+      "compare": {
+        "title": "Compară și îmbunătățește",
+        "description": "Compară rețetele una lângă alta, urmărește versiunile și îmbunătățește-ți continuu abilitățile de preparare."
+      }
+    },
+    "latest": "Cele mai noi rețete",
+    "popular": "Rețete populare",
+    "viewAll": "Vezi toate"
+  },
+  "auth": {
+    "login": {
+      "title": "Bine ai revenit",
+      "subtitle": "Autentifică-te în contul tău BrewForm",
+      "email": "Email",
+      "password": "Parolă",
+      "submit": "Autentificare",
+      "forgotPassword": "Ai uitat parola?",
+      "noAccount": "Nu ai cont?",
+      "signUp": "Înregistrare"
+    },
+    "register": {
+      "title": "Alătură-te BrewForm",
+      "subtitle": "Creează-ți contul și începe călătoria cafelei",
+      "email": "Email",
+      "username": "Nume de utilizator",
+      "displayName": "Nume afișat",
+      "password": "Parolă",
+      "confirmPassword": "Confirmă parola",
+      "submit": "Creează cont",
+      "hasAccount": "Ai deja cont?",
+      "signIn": "Autentificare"
+    },
+    "forgotPassword": {
+      "title": "Resetează parola",
+      "subtitle": "Introdu emailul pentru a primi un link de resetare",
+      "email": "Email",
+      "submit": "Trimite link de resetare",
+      "backToLogin": "Înapoi la autentificare"
+    },
+    "resetPassword": {
+      "title": "Creează o parolă nouă",
+      "subtitle": "Introdu noua parolă",
+      "password": "Parolă nouă",
+      "confirmPassword": "Confirmă parola",
+      "submit": "Resetează parola"
+    },
+    "verifyEmail": {
+      "title": "Verifică emailul",
+      "verifying": "Se verifică emailul...",
+      "success": "Email verificat cu succes!",
+      "error": "Verificarea a eșuat. Linkul poate fi expirat."
+    }
+  },
+  "recipe": {
+    "create": "Creează rețetă",
+    "edit": "Editează rețetă",
+    "delete": "Șterge rețetă",
+    "fork": "Fork rețetă",
+    "share": "Distribuie",
+    "compare": "Compară",
+    "favourite": "Favorite",
+    "unfavourite": "Elimină din favorite",
+    "versions": "Versiuni",
+    "newVersion": "Creează versiune nouă",
+    "visibility": {
+      "draft": "Ciornă",
+      "private": "Privat",
+      "unlisted": "Nepublicat",
+      "public": "Public"
+    },
+    "fields": {
+      "title": "Titlul rețetei",
+      "description": "Descriere",
+      "brewMethod": "Metodă de preparare",
+      "drinkType": "Tip băutură",
+      "coffee": "Cafea",
+      "roastDate": "Data prăjirii",
+      "grindDate": "Data măcinării",
+      "grinder": "Râșniță",
+      "grindSize": "Granulație",
+      "brewer": "Aparat de preparare",
+      "dose": "Doză",
+      "yield": "Randament",
+      "time": "Timp",
+      "temperature": "Temperatură",
+      "pressure": "Presiune",
+      "ratio": "Raport",
+      "tastingNotes": "Note de degustare",
+      "tasteNotes": "Note gustative",
+      "rating": "Evaluare",
+      "tags": "Etichete",
+      "processing": "Procesare",
+      "portafilter": "Portafiltru",
+      "basket": "Coș",
+      "puckScreen": "Puck screen",
+      "paperFilter": "Filtru de hârtie",
+      "tamper": "Tamper"
+    },
+    "placeholders": {
+      "title": "Espresso-ul meu perfect",
+      "description": "Descrie rețeta ta...",
+      "select": "Selectează...",
+      "coffee": "ex., Etiopia Yirgacheffe",
+      "grindSize": "ex., 2.5 sau 18 clicuri",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "Note de degustare suplimentare...",
+      "rating": "8",
+      "tags": "espresso, dimineață, ciocolată"
+    },
+    "captions": {
+      "required": "Obligatoriu",
+      "tasteNotes": "Selectează profile gustative din roata de arome SCAA",
+      "pressure": "ex., 9, 6-9, variabil",
+      "rating": "Evaluează de la 1 la 10",
+      "tags": "Separate prin virgulă"
+    },
+    "addTag": "Adaugă etichetă...",
+    "selectTags": "Selectează etichete...",
+    "tags": {
+      "morning": "Dimineață",
+      "afternoon": "După-amiază",
+      "evening": "Seară",
+      "fruity": "Fructat",
+      "chocolatey": "Ciocolatos",
+      "nutty": "Nucă",
+      "floral": "Floral",
+      "spicy": "Condimentat",
+      "sweet": "Dulce",
+      "bold": "Puternic",
+      "light": "Ușor",
+      "creamy": "Cremos",
+      "iced": "Rece",
+      "hot": "Fierbinte",
+      "decaf": "Decafeinizat",
+      "singleOrigin": "Origine unică",
+      "blend": "Blend",
+      "espresso": "Espresso",
+      "balanced": "Echilibrat",
+      "bright": "Viu",
+      "complex": "Complex",
+      "smooth": "Catifelat",
+      "intense": "Intens",
+      "clean": "Curat",
+      "syrupy": "Siropoș"
+    },
+    "empty": {
+      "title": "Nu există rețete încă",
+      "description": "Fii primul care împarte o rețetă!"
+    },
+    "result": "rețetă găsită",
+    "results": "rețete găsite",
+    "createFirst": "Creează prima ta rețetă",
+    "forkedFrom": "Forkuit de la",
+    "forked": "Rețeta a fost forkuită cu succes!",
+    "linkCopied": "Link copiat în clipboard!",
+    "equipment": "Echipament",
+    "comments": "Comentarii",
+    "noComments": "Nu există comentarii încă. Fii primul care comentează!",
+    "addComment": "Adaugă un comentariu...",
+    "postComment": "Publică comentariul",
+    "commentAdded": "Comentariul a fost publicat cu succes!",
+    "replyingTo": "Răspunzi comentariului",
+    "toComment": "pentru a lăsa un comentariu",
+    "activeFilters": "Filtre active",
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "Mașină de espresso",
+      "POUR_OVER_V60": "V60 Pour Over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "Presă franceză",
+      "MOKA_POT": "Moka Pot",
+      "COLD_BREW": "Cold Brew",
+      "TURKISH_CEZVE": "Cezve turcească"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "Espresso",
+      "RISTRETTO": "Ristretto",
+      "LUNGO": "Lungo",
+      "AMERICANO": "Americano",
+      "LATTE": "Latte",
+      "CAPPUCCINO": "Cappuccino",
+      "FLAT_WHITE": "Flat White",
+      "CORTADO": "Cortado",
+      "POUR_OVER": "Pour Over",
+      "FRENCH_PRESS": "Presă franceză",
+      "COLD_BREW": "Cold Brew",
+      "MACCHIATO": "Macchiato",
+      "MOCHA": "Mocha",
+      "ICED_COFFEE": "Cafea cu gheață",
+      "TURKISH_COFFEE": "Cafea turcească"
+    },
+    "processingMethods": {
+      "WASHED": "Spălată",
+      "NATURAL": "Naturală",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "Semi-spălată",
+      "WET_HULLED": "Decojire umedă",
+      "ANAEROBIC": "Anaerobă",
+      "CARBONIC_MACERATION": "Macerare carbonică",
+      "OTHER": "Altul"
+    }
+  },
+  "profile": {
+    "recipes": "Rețete",
+    "favourites": "Favorite",
+    "equipment": "Echipament",
+    "beans": "Boabe",
+    "setups": "Configurații",
+    "editProfile": "Editează profilul",
+    "settings": "Setări"
+  },
+  "settings": {
+    "title": "Setări",
+    "profile": "Profil",
+    "preferences": "Preferințe",
+    "account": "Cont",
+    "theme": "Temă",
+    "language": "Limbă",
+    "units": "Unități",
+    "timezone": "Fus orar",
+    "displayName": "Nume afișat",
+    "bio": "Bio",
+    "website": "Site web",
+    "themes": {
+      "light": "Deschisă",
+      "dark": "Închisă",
+      "coffee": "Cafea",
+      "system": "Sistem"
+    },
+    "switchToLight": "Comută pe tema deschisă",
+    "switchToDark": "Comută pe tema închisă",
+    "units_options": {
+      "metric": "Metric (g, ml, °C)",
+      "imperial": "Imperial (oz, fl oz, °F)"
+    },
+    "placeholders": {
+      "bio": "Spune-ne despre tine...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "Profil actualizat cu succes!"
+    },
+    "deleteAccount": "Șterge contul",
+    "deleteWarning": "Această acțiune nu poate fi anulată."
+  },
+  "equipment": {
+    "grinder": "Râșniță",
+    "brewer": "Aparat de preparare",
+    "portafilter": "Portafiltru",
+    "basket": "Coș",
+    "puckScreen": "Puck screen",
+    "paperFilter": "Filtru de hârtie",
+    "tamper": "Tamper"
+  },
+  "tasteNotes": {
+    "placeholder": "Caută note gustative (min 3 caractere)...",
+    "minChars": "Introdu cel puțin {{count}} caractere pentru căutare",
+    "noResults": "Nu s-au găsit note gustative",
+    "selected": "{{count}}/{{max}} note gustative selectate",
+    "scaaReference": "Referință roată de arome SCAA"
+  },
+  "rating": {
+    "superGood": "Foarte bun",
+    "good": "Bun",
+    "okay": "Acceptabil",
+    "bad": "Rău",
+    "horrible": "Groaznic"
+  },
+  "common": {
+    "save": "Salvează",
+    "cancel": "Anulează",
+    "delete": "Șterge",
+    "edit": "Editează",
+    "create": "Creează",
+    "loading": "Se încarcă...",
+    "error": "A apărut o eroare",
+    "success": "Succes",
+    "search": "Căutare",
+    "filter": "Filtru",
+    "sort": "Sortează",
+    "noResults": "Nu s-au găsit rezultate",
+    "loadMore": "Încarcă mai mult",
+    "viewAll": "Vezi tot",
+    "important": "Important",
+    "by": "de",
+    "reply": "Răspunde",
+    "clearAll": "Șterge tot"
+  },
+  "errors": {
+    "notFound": {
+      "title": "Pagina nu a fost găsită",
+      "description": "Ups! Se pare că această cafea s-a răcit. Pagina pe care o cauți nu există.",
+      "backHome": "Înapoi acasă"
+    },
+    "generic": {
+      "title": "Ceva nu a mers bine",
+      "description": "Am vărsat cafeaua! Te rugăm să încerci din nou mai târziu.",
+      "retry": "Încearcă din nou"
+    }
+  },
+  "footer": {
+    "tagline": "Împărtășește-ți călătoria cafelei cu lumea.",
+    "links": {
+      "about": "Despre",
+      "privacy": "Confidențialitate",
+      "terms": "Termeni",
+      "contact": "Contact"
+    },
+    "copyright": "© {{year}} BrewForm. Toate drepturile rezervate."
+  },
+  "language": {
+    "select": "Selectează limba",
+    "en": "Engleză",
+    "uk": "Ucraineană",
+    "sr": "Sârbă",
+    "ro": "Română",
+    "tr": "Turcă",
+    "fr": "Franceză",
+    "de": "Germană",
+    "es": "Spaniolă",
+    "pt": "Portugheză",
+    "ru": "Rusă",
+    "az": "Azeră",
+    "ka": "Georgiană",
+    "ar_f": "Arabă",
+    "hy": "Armeană",
+    "ko": "Coreeană",
+    "zh_TW": "Chineză (tradițională)",
+    "th": "Tailandeză",
+    "hi": "Hindi",
+    "ja": "Japoneză",
+    "zh_CN": "Chineză (simplificată)"
+  }
+}

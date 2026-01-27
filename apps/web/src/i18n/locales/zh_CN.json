@@ -1,20 +1,477 @@
 {
-  "app": { "name": "BrewForm", "tagline": "分享你的咖啡之旅" },
-  "theme": { "switchToLight": "切换到浅色模式", "switchToDark": "切换到深色模式" },
-  "nav": { "home": "首页", "recipes": "配方", "baristas": "咖啡师", "explore": "探索", "login": "登录", "register": "注册", "profile": "个人资料", "settings": "设置", "logout": "退出", "admin": "管理" },
-  "baristas": { "description": "发现咖啡爱好者和他们的配方", "result": "位咖啡师", "results": "位咖啡师" },
-  "pages": { "home": { "title": "BrewForm - 咖啡配方", "description": "分享和发现咖啡配方" }, "recipes": { "title": "配方 - BrewForm", "description": "浏览社区的咖啡配方" }, "createRecipe": { "title": "创建配方 - BrewForm" }, "compare": { "title": "比较配方 - BrewForm", "heading": "配方比较", "notFound": "找不到比较", "invalidLink": "此链接无效" }, "profile": { "title": "我的个人资料 - BrewForm" }, "settings": { "title": "设置 - BrewForm" }, "login": { "title": "登录 - BrewForm" }, "register": { "title": "注册 - BrewForm" }, "forgotPassword": { "title": "忘记密码 - BrewForm" }, "resetPassword": { "title": "重置密码 - BrewForm" }, "verifyEmail": { "title": "验证邮箱 - BrewForm" }, "notFound": { "title": "找不到页面 - BrewForm" }, "error": { "title": "错误 - BrewForm" } },
-  "admin": { "dashboard": { "title": "管理面板 - BrewForm", "heading": "管理面板", "cards": { "users": { "title": "用户", "description": "管理用户" }, "recipes": { "title": "配方", "description": "管理配方" }, "equipment": { "title": "设备", "description": "管理设备" } } }, "users": { "title": "用户管理", "heading": "用户", "comingSoon": "即将推出" }, "recipes": { "title": "配方管理", "heading": "配方", "comingSoon": "即将推出" }, "equipment": { "title": "设备管理", "heading": "设备", "comingSoon": "即将推出" }, "tasteNotes": { "title": "风味笔记管理", "heading": "风味笔记", "cacheWarning": "更改后请清除缓存", "comingSoon": "即将推出", "plannedFeatures": "计划功能：", "features": { "view": "查看全部", "add": "添加", "edit": "编辑", "delete": "删除", "flushCache": "清除缓存", "reimport": "重新导入" } } },
-  "home": { "hero": { "title": "发现和分享咖啡配方", "subtitle": "记录你的咖啡之旅", "cta": "开始", "explore": "探索配方" }, "features": { "track": { "title": "追踪", "description": "记录每个细节" }, "share": { "title": "分享", "description": "分享配方" }, "compare": { "title": "比较", "description": "比较配方" } }, "latest": "最新配方", "popular": "热门配方", "viewAll": "查看全部" },
-  "auth": { "login": { "title": "欢迎回来", "subtitle": "登录你的账户", "email": "邮箱", "password": "密码", "submit": "登录", "forgotPassword": "忘记密码？", "noAccount": "没有账户？", "signUp": "注册" }, "register": { "title": "加入我们", "subtitle": "创建账户", "email": "邮箱", "username": "用户名", "displayName": "显示名称", "password": "密码", "confirmPassword": "确认密码", "submit": "创建", "hasAccount": "已有账户？", "signIn": "登录" }, "forgotPassword": { "title": "重置密码", "subtitle": "输入你的邮箱", "email": "邮箱", "submit": "发送链接", "backToLogin": "返回" }, "resetPassword": { "title": "新密码", "subtitle": "输入新密码", "password": "新密码", "confirmPassword": "确认", "submit": "重置" }, "verifyEmail": { "title": "验证邮箱", "verifying": "验证中...", "success": "邮箱已验证！", "error": "验证失败" } },
-  "recipe": { "create": "创建配方", "edit": "编辑", "delete": "删除", "fork": "分叉", "share": "分享", "compare": "比较", "favourite": "收藏", "unfavourite": "取消收藏", "versions": "版本", "newVersion": "新版本", "visibility": { "draft": "草稿", "private": "私人", "unlisted": "未列出", "public": "公开" }, "fields": { "title": "标题", "description": "描述", "brewMethod": "冲煮方法", "drinkType": "饮品类型", "coffee": "咖啡", "roastDate": "烘焙日期", "grindDate": "研磨日期", "grinder": "磨豆机", "grindSize": "研磨度", "brewer": "冲煮器", "dose": "粉量", "yield": "萃取量", "time": "时间", "temperature": "温度", "pressure": "压力", "ratio": "比例", "tastingNotes": "品尝笔记", "tasteNotes": "风味笔记", "rating": "评分", "tags": "标签", "portafilter": "手柄", "basket": "滤杯", "puckScreen": "粉饼筛", "paperFilter": "滤纸", "tamper": "压粉器" }, "placeholders": { "title": "完美的意式浓缩", "description": "描述你的配方...", "select": "选择...", "coffee": "例如：埃塞俄比亚", "grindSize": "例如：2.5", "dose": "18", "yield": "36", "time": "28", "temperature": "93", "pressure": "9", "tastingNotes": "额外笔记...", "rating": "8", "tags": "意式浓缩, 早晨" }, "captions": { "required": "必填", "tasteNotes": "选择风味", "pressure": "例如：9", "rating": "1到10", "tags": "用逗号分隔" }, "addTag": "添加标签...", "selectTags": "选择标签...", "tags": { "morning": "早晨", "afternoon": "下午", "evening": "晚上", "fruity": "果香", "chocolatey": "巧克力", "nutty": "坚果", "floral": "花香", "spicy": "香料", "sweet": "甜", "bold": "浓郁", "light": "清爽", "creamy": "奶香", "iced": "冰", "hot": "热", "decaf": "无咖啡因", "singleOrigin": "单品", "blend": "混合", "espresso": "意式浓缩" }, "empty": { "title": "尚无配方", "description": "成为第一个分享的人！" }, "result": "个配方", "results": "个配方", "createFirst": "创建第一个配方", "forkedFrom": "分叉自", "forked": "已分叉！", "linkCopied": "链接已复制！", "equipment": "设备", "comments": "评论", "noComments": "尚无评论", "addComment": "添加评论...", "postComment": "发送", "commentAdded": "评论已发送！", "replyingTo": "回复", "toComment": "登录后评论", "activeFilters": "启用的筛选", "brewMethods": { "ESPRESSO_MACHINE": "意式咖啡机", "POUR_OVER_V60": "V60", "POUR_OVER_CHEMEX": "Chemex", "POUR_OVER_KALITA": "Kalita", "AEROPRESS": "爱乐压", "FRENCH_PRESS": "法压壶", "MOKA_POT": "摩卡壶", "COLD_BREW": "冷萃", "TURKISH_CEZVE": "土耳其壶" }, "drinkTypes": { "ESPRESSO": "意式浓缩", "RISTRETTO": "Ristretto", "LUNGO": "Lungo", "AMERICANO": "美式", "LATTE": "拿铁", "CAPPUCCINO": "卡布奇诺", "FLAT_WHITE": "澳白", "CORTADO": "Cortado", "POUR_OVER": "手冲", "FRENCH_PRESS": "法压", "COLD_BREW": "冷萃", "MACCHIATO": "玛奇朵", "MOCHA": "摩卡", "ICED_COFFEE": "冰咖啡", "TURKISH_COFFEE": "土耳其咖啡" } },
-  "profile": { "recipes": "配方", "favourites": "收藏", "equipment": "设备", "beans": "咖啡豆", "setups": "设置", "editProfile": "编辑个人资料", "settings": "设置" },
-  "settings": { "title": "设置", "profile": "个人资料", "preferences": "偏好设置", "account": "账户", "theme": "主题", "language": "语言", "units": "单位", "timezone": "时区", "displayName": "显示名称", "bio": "简介", "website": "网站", "themes": { "light": "浅色", "dark": "深色", "coffee": "咖啡", "system": "系统" }, "switchToLight": "浅色模式", "switchToDark": "深色模式", "units_options": { "metric": "公制", "imperial": "英制" }, "placeholders": { "bio": "介绍自己...", "website": "https://..." }, "messages": { "profileUpdated": "个人资料已更新！" }, "deleteAccount": "删除账户", "deleteWarning": "此操作无法撤销" },
-  "equipment": { "grinder": "磨豆机", "brewer": "冲煮器", "portafilter": "手柄", "basket": "滤杯", "puckScreen": "粉饼筛", "paperFilter": "滤纸", "tamper": "压粉器" },
-  "tasteNotes": { "placeholder": "搜索风味笔记...", "minChars": "至少 {{count}} 个字", "noResults": "无结果", "selected": "已选 {{count}}/{{max}}", "scaaReference": "SCAA 风味轮" },
-  "rating": { "superGood": "非常好", "good": "好", "okay": "一般", "bad": "差", "horrible": "很差" },
-  "common": { "save": "保存", "cancel": "取消", "delete": "删除", "edit": "编辑", "create": "创建", "loading": "加载中...", "error": "发生错误", "success": "成功", "search": "搜索", "filter": "筛选", "sort": "排序", "noResults": "无结果", "loadMore": "加载更多", "viewAll": "查看全部", "important": "重要", "by": "by", "reply": "回复", "clearAll": "清除全部" },
-  "errors": { "notFound": { "title": "找不到页面", "description": "你要找的页面不存在", "backHome": "返回首页" }, "generic": { "title": "错误", "description": "请稍后再试", "retry": "重试" } },
-  "footer": { "tagline": "分享你的咖啡之旅", "links": { "about": "关于", "privacy": "隐私", "terms": "条款", "contact": "联系" }, "copyright": "© {{year}} BrewForm. 保留所有权利。" },
-  "language": { "select": "选择语言", "en": "English", "tr": "Türkçe", "fr": "Français", "de": "Deutsch", "es": "Español", "pt": "Português", "ru": "Русский", "az": "Azərbaycan", "ka": "ქართული", "ar_f": "العربية", "hy": "Հայdelays", "ko": "한국어", "zh_TW": "繁體中文", "th": "ไทย", "hi": "हिन्दी", "ja": "日本語", "zh_CN": "简体中文" }
+  "app": {
+    "name": "BrewForm",
+    "tagline": "分享你的咖啡旅程"
+  },
+  "theme": {
+    "switchToLight": "切换到浅色模式",
+    "switchToDark": "切换到深色模式"
+  },
+  "nav": {
+    "home": "首页",
+    "recipes": "配方",
+    "baristas": "咖啡师",
+    "explore": "探索",
+    "login": "登录",
+    "register": "注册",
+    "profile": "个人资料",
+    "settings": "设置",
+    "logout": "退出登录",
+    "admin": "管理"
+  },
+  "baristas": {
+    "description": "发现咖啡爱好者及其配方",
+    "result": "找到咖啡师",
+    "results": "找到咖啡师"
+  },
+  "pages": {
+    "home": {
+      "title": "BrewForm - 咖啡配方",
+      "description": "分享并发现咖啡冲煮配方。记录你的意式、手冲和特色咖啡配方。"
+    },
+    "recipes": {
+      "title": "配方 - BrewForm",
+      "description": "浏览社区咖啡配方"
+    },
+    "createRecipe": {
+      "title": "创建配方 - BrewForm"
+    },
+    "compare": {
+      "title": "配方对比 - BrewForm",
+      "heading": "配方对比",
+      "notFound": "未找到对比",
+      "invalidLink": "该对比链接可能无效或已过期。"
+    },
+    "profile": {
+      "title": "我的资料 - BrewForm"
+    },
+    "settings": {
+      "title": "设置 - BrewForm"
+    },
+    "login": {
+      "title": "登录 - BrewForm"
+    },
+    "register": {
+      "title": "注册 - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "忘记密码 - BrewForm"
+    },
+    "resetPassword": {
+      "title": "重置密码 - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "验证邮箱 - BrewForm"
+    },
+    "notFound": {
+      "title": "页面未找到 - BrewForm"
+    },
+    "error": {
+      "title": "错误 - BrewForm"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "管理员仪表盘 - BrewForm",
+      "heading": "管理员仪表盘",
+      "cards": {
+        "users": {
+          "title": "用户",
+          "description": "管理用户账户、角色和封禁"
+        },
+        "recipes": {
+          "title": "配方",
+          "description": "审核与管理配方内容"
+        },
+        "equipment": {
+          "title": "设备",
+          "description": "管理设备、供应商与咖啡"
+        }
+      }
+    },
+    "users": {
+      "title": "管理用户 - 管理员 - BrewForm",
+      "heading": "管理用户",
+      "comingSoon": "用户管理功能即将上线。"
+    },
+    "recipes": {
+      "title": "管理配方 - 管理员 - BrewForm",
+      "heading": "管理配方",
+      "comingSoon": "配方审核功能即将上线。"
+    },
+    "equipment": {
+      "title": "管理设备 - 管理员 - BrewForm",
+      "heading": "管理设备",
+      "comingSoon": "设备、供应商与咖啡管理即将上线。"
+    },
+    "tasteNotes": {
+      "title": "管理风味备注 - 管理员 - BrewForm",
+      "heading": "管理风味备注",
+      "cacheWarning": "如修改、添加或删除风味备注，需要清空 Redis 缓存后才会生效。更改后请使用“清空风味备注缓存”按钮。",
+      "comingSoon": "风味备注管理即将上线。风味备注预填自 SCAA 2016 风味轮，通常无需更改。",
+      "plannedFeatures": "计划功能：",
+      "features": {
+        "view": "以层级结构查看所有风味备注",
+        "add": "添加新的风味备注",
+        "edit": "编辑现有风味备注",
+        "delete": "删除风味备注（级联到配方）",
+        "flushCache": "更改后清空 Redis 缓存",
+        "reimport": "从 SCAA JSON 重新导入"
+      }
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "发现并分享咖啡配方",
+      "subtitle": "记录你的咖啡旅程。与世界分享你的完美意式、手冲与特色配方。",
+      "cta": "开始冲煮",
+      "explore": "探索配方"
+    },
+    "features": {
+      "track": {
+        "title": "记录冲煮",
+        "description": "记录配方的每个细节——从粉量与出杯到研磨粗细和萃取时间。"
+      },
+      "share": {
+        "title": "分享与发现",
+        "description": "与社区分享配方，发现来自全球咖啡爱好者的新技巧。"
+      },
+      "compare": {
+        "title": "对比与提升",
+        "description": "并排对比配方、跟踪版本，并持续提升冲煮技能。"
+      }
+    },
+    "latest": "最新配方",
+    "popular": "热门配方",
+    "viewAll": "查看全部"
+  },
+  "auth": {
+    "login": {
+      "title": "欢迎回来",
+      "subtitle": "登录你的 BrewForm 账户",
+      "email": "邮箱",
+      "password": "密码",
+      "submit": "登录",
+      "forgotPassword": "忘记密码？",
+      "noAccount": "没有账户？",
+      "signUp": "注册"
+    },
+    "register": {
+      "title": "加入 BrewForm",
+      "subtitle": "创建账户并开始你的咖啡旅程",
+      "email": "邮箱",
+      "username": "用户名",
+      "displayName": "显示名称",
+      "password": "密码",
+      "confirmPassword": "确认密码",
+      "submit": "创建账户",
+      "hasAccount": "已有账户？",
+      "signIn": "登录"
+    },
+    "forgotPassword": {
+      "title": "重置密码",
+      "subtitle": "输入邮箱以接收重置链接",
+      "email": "邮箱",
+      "submit": "发送重置链接",
+      "backToLogin": "返回登录"
+    },
+    "resetPassword": {
+      "title": "创建新密码",
+      "subtitle": "输入新密码",
+      "password": "新密码",
+      "confirmPassword": "确认密码",
+      "submit": "重置密码"
+    },
+    "verifyEmail": {
+      "title": "验证邮箱",
+      "verifying": "正在验证邮箱...",
+      "success": "邮箱验证成功！",
+      "error": "验证失败，链接可能已过期。"
+    }
+  },
+  "recipe": {
+    "create": "创建配方",
+    "edit": "编辑配方",
+    "delete": "删除配方",
+    "fork": "分叉配方",
+    "share": "分享",
+    "compare": "对比",
+    "favourite": "收藏",
+    "unfavourite": "取消收藏",
+    "versions": "版本",
+    "newVersion": "创建新版本",
+    "visibility": {
+      "draft": "草稿",
+      "private": "私有",
+      "unlisted": "不公开",
+      "public": "公开"
+    },
+    "fields": {
+      "title": "配方标题",
+      "description": "描述",
+      "brewMethod": "冲煮方式",
+      "drinkType": "饮品类型",
+      "coffee": "咖啡",
+      "roastDate": "烘焙日期",
+      "grindDate": "研磨日期",
+      "grinder": "磨豆机",
+      "grindSize": "研磨度",
+      "brewer": "冲煮器具",
+      "dose": "粉量",
+      "yield": "出杯量",
+      "time": "时间",
+      "temperature": "温度",
+      "pressure": "压力",
+      "ratio": "比例",
+      "tastingNotes": "品鉴备注",
+      "tasteNotes": "风味备注",
+      "rating": "评分",
+      "tags": "标签",
+      "processing": "处理方式",
+      "portafilter": "把手",
+      "basket": "粉碗",
+      "puckScreen": "Puck screen",
+      "paperFilter": "滤纸",
+      "tamper": "压粉器"
+    },
+    "placeholders": {
+      "title": "我完美的意式",
+      "description": "描述你的配方...",
+      "select": "选择...",
+      "coffee": "例如：埃塞俄比亚耶加雪菲",
+      "grindSize": "例如：2.5 或 18 格",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "额外品鉴备注...",
+      "rating": "8",
+      "tags": "意式, 早晨, 巧克力"
+    },
+    "captions": {
+      "required": "必填",
+      "tasteNotes": "从 SCAA 风味轮选择风味档案",
+      "pressure": "例如：9，6-9，可变",
+      "rating": "1 到 10 分",
+      "tags": "用逗号分隔"
+    },
+    "addTag": "添加标签...",
+    "selectTags": "选择标签...",
+    "tags": {
+      "morning": "早晨",
+      "afternoon": "下午",
+      "evening": "晚上",
+      "fruity": "果味",
+      "chocolatey": "巧克力味",
+      "nutty": "坚果味",
+      "floral": "花香",
+      "spicy": "香料味",
+      "sweet": "甜",
+      "bold": "浓郁",
+      "light": "清淡",
+      "creamy": "奶油感",
+      "iced": "冰",
+      "hot": "热",
+      "decaf": "无咖啡因",
+      "singleOrigin": "单一产地",
+      "blend": "拼配",
+      "espresso": "意式",
+      "balanced": "均衡",
+      "bright": "明亮",
+      "complex": "复杂",
+      "smooth": "顺滑",
+      "intense": "强烈",
+      "clean": "干净",
+      "syrupy": "糖浆感"
+    },
+    "empty": {
+      "title": "暂无配方",
+      "description": "成为第一个分享配方的人！"
+    },
+    "result": "找到配方",
+    "results": "找到配方",
+    "createFirst": "创建你的第一个配方",
+    "forkedFrom": "分叉自",
+    "forked": "配方分叉成功！",
+    "linkCopied": "链接已复制到剪贴板！",
+    "equipment": "设备",
+    "comments": "评论",
+    "noComments": "暂无评论。成为第一个评论的人！",
+    "addComment": "添加评论...",
+    "postComment": "发布评论",
+    "commentAdded": "评论发布成功！",
+    "replyingTo": "回复评论",
+    "toComment": "以发表评论",
+    "activeFilters": "已启用过滤器",
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "意式机",
+      "POUR_OVER_V60": "V60 手冲",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "法压",
+      "MOKA_POT": "摩卡壶",
+      "COLD_BREW": "冷萃",
+      "TURKISH_CEZVE": "土耳其咖啡壶"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "意式",
+      "RISTRETTO": "短萃",
+      "LUNGO": "长萃",
+      "AMERICANO": "美式",
+      "LATTE": "拿铁",
+      "CAPPUCCINO": "卡布奇诺",
+      "FLAT_WHITE": "馥芮白",
+      "CORTADO": "康朵",
+      "POUR_OVER": "手冲",
+      "FRENCH_PRESS": "法压",
+      "COLD_BREW": "冷萃",
+      "MACCHIATO": "玛奇朵",
+      "MOCHA": "摩卡",
+      "ICED_COFFEE": "冰咖啡",
+      "TURKISH_COFFEE": "土耳其咖啡"
+    },
+    "processingMethods": {
+      "WASHED": "水洗",
+      "NATURAL": "日晒",
+      "HONEY": "蜜处理",
+      "SEMI_WASHED": "半水洗",
+      "WET_HULLED": "湿刨",
+      "ANAEROBIC": "厌氧",
+      "CARBONIC_MACERATION": "二氧化碳浸渍",
+      "OTHER": "其他"
+    }
+  },
+  "profile": {
+    "recipes": "配方",
+    "favourites": "收藏",
+    "equipment": "设备",
+    "beans": "豆子",
+    "setups": "设备组合",
+    "editProfile": "编辑资料",
+    "settings": "设置"
+  },
+  "settings": {
+    "title": "设置",
+    "profile": "个人资料",
+    "preferences": "偏好",
+    "account": "账户",
+    "theme": "主题",
+    "language": "语言",
+    "units": "单位",
+    "timezone": "时区",
+    "displayName": "显示名称",
+    "bio": "简介",
+    "website": "网站",
+    "themes": {
+      "light": "浅色",
+      "dark": "深色",
+      "coffee": "咖啡",
+      "system": "系统"
+    },
+    "switchToLight": "切换到浅色模式",
+    "switchToDark": "切换到深色模式",
+    "units_options": {
+      "metric": "公制 (g, ml, °C)",
+      "imperial": "英制 (oz, fl oz, °F)"
+    },
+    "placeholders": {
+      "bio": "介绍一下你自己...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "资料更新成功！"
+    },
+    "deleteAccount": "删除账户",
+    "deleteWarning": "此操作无法撤销。"
+  },
+  "equipment": {
+    "grinder": "磨豆机",
+    "brewer": "冲煮器具",
+    "portafilter": "把手",
+    "basket": "粉碗",
+    "puckScreen": "Puck screen",
+    "paperFilter": "滤纸",
+    "tamper": "压粉器"
+  },
+  "tasteNotes": {
+    "placeholder": "搜索风味备注（至少 3 个字符）...",
+    "minChars": "请输入至少 {{count}} 个字符进行搜索",
+    "noResults": "未找到匹配的风味备注",
+    "selected": "已选择 {{count}}/{{max}} 个风味备注",
+    "scaaReference": "SCAA 风味轮参考"
+  },
+  "rating": {
+    "superGood": "非常好",
+    "good": "好",
+    "okay": "一般",
+    "bad": "差",
+    "horrible": "糟糕"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "loading": "加载中...",
+    "error": "发生错误",
+    "success": "成功",
+    "search": "搜索",
+    "filter": "筛选",
+    "sort": "排序",
+    "noResults": "无结果",
+    "loadMore": "加载更多",
+    "viewAll": "查看全部",
+    "important": "重要",
+    "by": "作者",
+    "reply": "回复",
+    "clearAll": "全部清除"
+  },
+  "errors": {
+    "notFound": {
+      "title": "页面未找到",
+      "description": "哎呀！咖啡似乎凉了。你要找的页面不存在。",
+      "backHome": "返回首页"
+    },
+    "generic": {
+      "title": "出错了",
+      "description": "我们把咖啡洒了！请稍后再试。",
+      "retry": "重试"
+    }
+  },
+  "footer": {
+    "tagline": "与世界分享你的咖啡旅程。",
+    "links": {
+      "about": "关于",
+      "privacy": "隐私",
+      "terms": "条款",
+      "contact": "联系"
+    },
+    "copyright": "© {{year}} BrewForm. 保留所有权利。"
+  },
+  "language": {
+    "select": "选择语言",
+    "en": "英语",
+    "uk": "乌克兰语",
+    "sr": "塞尔维亚语",
+    "ro": "罗马尼亚语",
+    "tr": "土耳其语",
+    "fr": "法语",
+    "de": "德语",
+    "es": "西班牙语",
+    "pt": "葡萄牙语",
+    "ru": "俄语",
+    "az": "阿塞拜疆语",
+    "ka": "格鲁吉亚语",
+    "ar_f": "阿拉伯语",
+    "hy": "亚美尼亚语",
+    "ko": "韩语",
+    "zh_TW": "中文（繁体）",
+    "th": "泰语",
+    "hi": "印地语",
+    "ja": "日语",
+    "zh_CN": "中文（简体）"
+  }
 }

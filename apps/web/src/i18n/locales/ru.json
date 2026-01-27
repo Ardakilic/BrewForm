@@ -1,15 +1,16 @@
 {
   "app": {
     "name": "BrewForm",
-    "tagline": "Поделитесь своим кофейным путешествием"
+    "tagline": "Делитесь своим кофейным путешествием"
   },
   "theme": {
-    "switchToLight": "Переключить на светлую тему",
-    "switchToDark": "Переключить на тёмную тему"
+    "switchToLight": "Переключиться на светлую тему",
+    "switchToDark": "Переключиться на темную тему"
   },
   "nav": {
     "home": "Главная",
     "recipes": "Рецепты",
+    "baristas": "Бариста",
     "explore": "Исследовать",
     "login": "Войти",
     "register": "Регистрация",
@@ -18,81 +19,136 @@
     "logout": "Выйти",
     "admin": "Админ"
   },
+  "baristas": {
+    "description": "Откройте для себя любителей кофе и их рецепты",
+    "result": "бариста найден",
+    "results": "бариста найдено"
+  },
   "pages": {
     "home": {
       "title": "BrewForm - Рецепты кофе",
-      "description": "Делитесь и открывайте рецепты приготовления кофе."
+      "description": "Делитесь и открывайте рецепты кофе. Отслеживайте эспрессо, пуровер и специальные рецепты."
     },
     "recipes": {
       "title": "Рецепты - BrewForm",
-      "description": "Изучайте рецепты кофе от сообщества"
+      "description": "Просматривайте кофейные рецепты сообщества"
     },
-    "createRecipe": { "title": "Создать рецепт - BrewForm" },
+    "createRecipe": {
+      "title": "Создать рецепт - BrewForm"
+    },
     "compare": {
       "title": "Сравнить рецепты - BrewForm",
       "heading": "Сравнение рецептов",
       "notFound": "Сравнение не найдено",
-      "invalidLink": "Эта ссылка недействительна."
+      "invalidLink": "Эта ссылка на сравнение может быть недействительной или просроченной."
     },
-    "profile": { "title": "Мой профиль - BrewForm" },
-    "settings": { "title": "Настройки - BrewForm" },
-    "login": { "title": "Войти - BrewForm" },
-    "register": { "title": "Регистрация - BrewForm" },
-    "forgotPassword": { "title": "Забыли пароль - BrewForm" },
-    "resetPassword": { "title": "Сбросить пароль - BrewForm" },
-    "verifyEmail": { "title": "Подтвердить email - BrewForm" },
-    "notFound": { "title": "Страница не найдена - BrewForm" },
-    "error": { "title": "Ошибка - BrewForm" }
+    "profile": {
+      "title": "Мой профиль - BrewForm"
+    },
+    "settings": {
+      "title": "Настройки - BrewForm"
+    },
+    "login": {
+      "title": "Войти - BrewForm"
+    },
+    "register": {
+      "title": "Регистрация - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "Забыли пароль - BrewForm"
+    },
+    "resetPassword": {
+      "title": "Сброс пароля - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "Подтвердить email - BrewForm"
+    },
+    "notFound": {
+      "title": "Страница не найдена - BrewForm"
+    },
+    "error": {
+      "title": "Ошибка - BrewForm"
+    }
   },
   "admin": {
     "dashboard": {
       "title": "Панель администратора - BrewForm",
       "heading": "Панель администратора",
       "cards": {
-        "users": { "title": "Пользователи", "description": "Управление пользователями" },
-        "recipes": { "title": "Рецепты", "description": "Модерация рецептов" },
-        "equipment": { "title": "Оборудование", "description": "Управление оборудованием" }
+        "users": {
+          "title": "Пользователи",
+          "description": "Управляйте аккаунтами, ролями и блокировками"
+        },
+        "recipes": {
+          "title": "Рецепты",
+          "description": "Проверяйте и модерируйте рецепты"
+        },
+        "equipment": {
+          "title": "Оборудование",
+          "description": "Управляйте оборудованием, поставщиками и кофе"
+        }
       }
     },
-    "users": { "title": "Пользователи - Админ", "heading": "Пользователи", "comingSoon": "Скоро." },
-    "recipes": { "title": "Рецепты - Админ", "heading": "Рецепты", "comingSoon": "Скоро." },
-    "equipment": { "title": "Оборудование - Админ", "heading": "Оборудование", "comingSoon": "Скоро." },
+    "users": {
+      "title": "Управление пользователями - Админ - BrewForm",
+      "heading": "Управление пользователями",
+      "comingSoon": "Функциональность управления пользователями скоро появится."
+    },
+    "recipes": {
+      "title": "Управление рецептами - Админ - BrewForm",
+      "heading": "Управление рецептами",
+      "comingSoon": "Модерация рецептов скоро появится."
+    },
+    "equipment": {
+      "title": "Управление оборудованием - Админ - BrewForm",
+      "heading": "Управление оборудованием",
+      "comingSoon": "Управление оборудованием, поставщиками и кофе скоро появится."
+    },
     "tasteNotes": {
-      "title": "Заметки о вкусе - Админ",
-      "heading": "Заметки о вкусе",
-      "cacheWarning": "При изменении необходимо очистить кэш.",
-      "comingSoon": "Скоро.",
+      "title": "Управление вкусовыми нотами - Админ - BrewForm",
+      "heading": "Управление вкусовыми нотами",
+      "cacheWarning": "Если какая-либо вкусовая нота изменена, добавлена или удалена, необходимо очистить кеш Redis, чтобы изменения вступили в силу. Используйте кнопку \"Очистить кеш вкусовых нот\" после изменений.",
+      "comingSoon": "Управление вкусовыми нотами скоро появится. Вкусовые ноты заранее заполнены по колесу SCAA 2016 и редко требуют изменений.",
       "plannedFeatures": "Планируемые функции:",
       "features": {
-        "view": "Просмотр всех заметок",
-        "add": "Добавить новые",
-        "edit": "Редактировать",
-        "delete": "Удалить",
-        "flushCache": "Очистить кэш",
-        "reimport": "Переимпортировать"
+        "view": "Просмотр всех вкусовых нот в иерархической структуре",
+        "add": "Добавление новых вкусовых нот",
+        "edit": "Редактирование существующих вкусовых нот",
+        "delete": "Удаление вкусовых нот (с каскадом в рецептах)",
+        "flushCache": "Очистка кеша Redis после изменений",
+        "reimport": "Повторный импорт из JSON SCAA"
       }
     }
   },
   "home": {
     "hero": {
-      "title": "Открывайте и делитесь рецептами кофе",
-      "subtitle": "Документируйте своё кофейное путешествие.",
-      "cta": "Начать",
-      "explore": "Изучить рецепты"
+      "title": "Открывайте и делитесь кофейными рецептами",
+      "subtitle": "Документируйте свою кофейную историю. Делитесь идеальным эспрессо, пуровером и специальными рецептами со всем миром.",
+      "cta": "Начать варить",
+      "explore": "Исследовать рецепты"
     },
     "features": {
-      "track": { "title": "Отслеживайте", "description": "Документируйте каждую деталь." },
-      "share": { "title": "Делитесь", "description": "Делитесь рецептами с сообществом." },
-      "compare": { "title": "Сравнивайте", "description": "Сравнивайте и улучшайте." }
+      "track": {
+        "title": "Отслеживайте свои заваривания",
+        "description": "Записывайте каждую деталь рецепта — от дозы и выхода до помола и времени экстракции."
+      },
+      "share": {
+        "title": "Делитесь и открывайте",
+        "description": "Делитесь рецептами с сообществом и открывайте новые техники заваривания по всему миру."
+      },
+      "compare": {
+        "title": "Сравнивайте и улучшайте",
+        "description": "Сравнивайте рецепты бок о бок, отслеживайте версии и улучшайте навыки."
+      }
     },
     "latest": "Последние рецепты",
     "popular": "Популярные рецепты",
-    "viewAll": "Все"
+    "viewAll": "Смотреть все"
   },
   "auth": {
     "login": {
       "title": "С возвращением",
-      "subtitle": "Войдите в аккаунт",
+      "subtitle": "Войдите в свой аккаунт BrewForm",
       "email": "Email",
       "password": "Пароль",
       "submit": "Войти",
@@ -101,97 +157,103 @@
       "signUp": "Зарегистрироваться"
     },
     "register": {
-      "title": "Присоединяйтесь",
-      "subtitle": "Создайте аккаунт",
+      "title": "Присоединяйтесь к BrewForm",
+      "subtitle": "Создайте аккаунт и начните кофейное путешествие",
       "email": "Email",
       "username": "Имя пользователя",
       "displayName": "Отображаемое имя",
       "password": "Пароль",
-      "confirmPassword": "Подтвердить пароль",
-      "submit": "Создать",
+      "confirmPassword": "Подтвердите пароль",
+      "submit": "Создать аккаунт",
       "hasAccount": "Уже есть аккаунт?",
       "signIn": "Войти"
     },
     "forgotPassword": {
-      "title": "Сброс пароля",
-      "subtitle": "Введите email",
+      "title": "Сбросить пароль",
+      "subtitle": "Введите email, чтобы получить ссылку сброса",
       "email": "Email",
       "submit": "Отправить ссылку",
-      "backToLogin": "Назад"
+      "backToLogin": "Назад ко входу"
     },
     "resetPassword": {
-      "title": "Новый пароль",
+      "title": "Создать новый пароль",
       "subtitle": "Введите новый пароль",
       "password": "Новый пароль",
-      "confirmPassword": "Подтвердить",
-      "submit": "Сбросить"
+      "confirmPassword": "Подтвердите пароль",
+      "submit": "Сбросить пароль"
     },
     "verifyEmail": {
-      "title": "Подтверждение email",
-      "verifying": "Проверка...",
-      "success": "Email подтверждён!",
-      "error": "Ошибка проверки."
+      "title": "Подтвердить email",
+      "verifying": "Проверяем ваш email...",
+      "success": "Email успешно подтвержден!",
+      "error": "Подтверждение не удалось. Ссылка могла истечь."
     }
   },
   "recipe": {
     "create": "Создать рецепт",
-    "edit": "Редактировать",
-    "delete": "Удалить",
-    "fork": "Форкнуть",
+    "edit": "Редактировать рецепт",
+    "delete": "Удалить рецепт",
+    "fork": "Сделать форк",
     "share": "Поделиться",
     "compare": "Сравнить",
-    "favourite": "В избранное",
-    "unfavourite": "Убрать из избранного",
+    "favourite": "Избранное",
+    "unfavourite": "Удалить из избранного",
     "versions": "Версии",
-    "newVersion": "Новая версия",
-    "visibility": { "draft": "Черновик", "private": "Приватный", "unlisted": "Скрытый", "public": "Публичный" },
+    "newVersion": "Создать новую версию",
+    "visibility": {
+      "draft": "Черновик",
+      "private": "Приватный",
+      "unlisted": "Не в списке",
+      "public": "Публичный"
+    },
     "fields": {
-      "title": "Название",
+      "title": "Название рецепта",
       "description": "Описание",
-      "brewMethod": "Метод приготовления",
+      "brewMethod": "Метод заваривания",
       "drinkType": "Тип напитка",
       "coffee": "Кофе",
       "roastDate": "Дата обжарки",
       "grindDate": "Дата помола",
       "grinder": "Кофемолка",
       "grindSize": "Размер помола",
-      "brewer": "Кофеварка",
+      "brewer": "Заварник",
       "dose": "Доза",
       "yield": "Выход",
       "time": "Время",
       "temperature": "Температура",
       "pressure": "Давление",
       "ratio": "Соотношение",
-      "tastingNotes": "Заметки о вкусе",
-      "tasteNotes": "Ноты вкуса",
-      "rating": "Рейтинг",
+      "tastingNotes": "Дегустационные заметки",
+      "tasteNotes": "Вкусовые ноты",
+      "rating": "Оценка",
       "tags": "Теги",
+      "processing": "Обработка",
       "portafilter": "Портафильтр",
       "basket": "Корзина",
-      "puckScreen": "Экран",
+      "puckScreen": "Пак-скрин",
       "paperFilter": "Бумажный фильтр",
       "tamper": "Темпер"
     },
     "placeholders": {
       "title": "Мой идеальный эспрессо",
-      "description": "Опишите рецепт...",
-      "select": "Выбрать...",
-      "coffee": "напр., Эфиопия",
-      "grindSize": "напр., 2.5",
+      "description": "Опишите свой рецепт...",
+      "select": "Выберите...",
+      "coffee": "например, Эфиопия Йиргачеф",
+      "grindSize": "например, 2.5 или 18 кликов",
       "dose": "18",
       "yield": "36",
       "time": "28",
       "temperature": "93",
       "pressure": "9",
-      "tastingNotes": "Дополнительные заметки...",
+      "tastingNotes": "Дополнительные дегустационные заметки...",
       "rating": "8",
-      "tags": "эспрессо, утро"
+      "tags": "эспрессо, утро, шоколад"
     },
     "captions": {
       "required": "Обязательно",
-      "tasteNotes": "Выберите ноты",
-      "pressure": "напр., 9",
-      "rating": "От 1 до 10",
+      "tasteNotes": "Выберите профили из колеса вкуса SCAA",
+      "pressure": "например, 9, 6-9, переменное",
+      "rating": "Оцените от 1 до 10",
       "tags": "Через запятую"
     },
     "addTag": "Добавить тег...",
@@ -207,41 +269,51 @@
       "spicy": "Пряный",
       "sweet": "Сладкий",
       "bold": "Насыщенный",
-      "light": "Лёгкий",
-      "creamy": "Кремовый",
+      "light": "Легкий",
+      "creamy": "Сливочный",
       "iced": "Холодный",
       "hot": "Горячий",
       "decaf": "Без кофеина",
-      "singleOrigin": "Моносорт",
+      "singleOrigin": "Одинарное происхождение",
       "blend": "Бленд",
-      "espresso": "Эспрессо"
+      "espresso": "Эспрессо",
+      "balanced": "Сбалансированный",
+      "bright": "Яркий",
+      "complex": "Сложный",
+      "smooth": "Нежный",
+      "intense": "Интенсивный",
+      "clean": "Чистый",
+      "syrupy": "Сиропный"
     },
-    "empty": { "title": "Рецептов пока нет", "description": "Будьте первым!" },
+    "empty": {
+      "title": "Пока нет рецептов",
+      "description": "Станьте первым, кто поделится рецептом!"
+    },
     "result": "рецепт найден",
     "results": "рецептов найдено",
-    "createFirst": "Создайте первый рецепт",
+    "createFirst": "Создайте свой первый рецепт",
     "forkedFrom": "Форк от",
-    "forked": "Форкнуто!",
-    "linkCopied": "Ссылка скопирована!",
+    "forked": "Рецепт успешно форкнут!",
+    "linkCopied": "Ссылка скопирована в буфер!",
     "equipment": "Оборудование",
     "comments": "Комментарии",
-    "noComments": "Комментариев пока нет.",
+    "noComments": "Комментариев пока нет. Будьте первым!",
     "addComment": "Добавить комментарий...",
-    "postComment": "Отправить",
-    "commentAdded": "Комментарий добавлен!",
+    "postComment": "Опубликовать комментарий",
+    "commentAdded": "Комментарий успешно опубликован!",
     "replyingTo": "Ответ на комментарий",
-    "toComment": "чтобы комментировать",
+    "toComment": "чтобы оставить комментарий",
     "activeFilters": "Активные фильтры",
     "brewMethods": {
       "ESPRESSO_MACHINE": "Эспрессо-машина",
-      "POUR_OVER_V60": "V60",
-      "POUR_OVER_CHEMEX": "Кемекс",
-      "POUR_OVER_KALITA": "Калита",
-      "AEROPRESS": "Аэропресс",
+      "POUR_OVER_V60": "V60 Pour Over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
       "FRENCH_PRESS": "Френч-пресс",
       "MOKA_POT": "Мока",
-      "COLD_BREW": "Колд брю",
-      "TURKISH_CEZVE": "Джезва"
+      "COLD_BREW": "Колд-брю",
+      "TURKISH_CEZVE": "Турецкая джезва"
     },
     "drinkTypes": {
       "ESPRESSO": "Эспрессо",
@@ -254,20 +326,30 @@
       "CORTADO": "Кортадо",
       "POUR_OVER": "Пуровер",
       "FRENCH_PRESS": "Френч-пресс",
-      "COLD_BREW": "Колд брю",
+      "COLD_BREW": "Колд-брю",
       "MACCHIATO": "Маккиато",
-      "MOCHA": "Мокко",
-      "ICED_COFFEE": "Айс кофе",
+      "MOCHA": "Мокка",
+      "ICED_COFFEE": "Айс-кофе",
       "TURKISH_COFFEE": "Турецкий кофе"
+    },
+    "processingMethods": {
+      "WASHED": "Мытый",
+      "NATURAL": "Натуральный",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "Полумытый",
+      "WET_HULLED": "Влажное шелушение",
+      "ANAEROBIC": "Анаэробный",
+      "CARBONIC_MACERATION": "Карбоническая мацерация",
+      "OTHER": "Другое"
     }
   },
   "profile": {
     "recipes": "Рецепты",
     "favourites": "Избранное",
     "equipment": "Оборудование",
-    "beans": "Зёрна",
-    "setups": "Сетапы",
-    "editProfile": "Редактировать",
+    "beans": "Зерна",
+    "setups": "Сеты",
+    "editProfile": "Редактировать профиль",
     "settings": "Настройки"
   },
   "settings": {
@@ -279,35 +361,54 @@
     "language": "Язык",
     "units": "Единицы",
     "timezone": "Часовой пояс",
-    "displayName": "Имя",
-    "bio": "О себе",
+    "displayName": "Отображаемое имя",
+    "bio": "Био",
     "website": "Сайт",
-    "themes": { "light": "Светлая", "dark": "Тёмная", "coffee": "Кофе", "system": "Системная" },
-    "switchToLight": "Светлая тема",
-    "switchToDark": "Тёмная тема",
-    "units_options": { "metric": "Метрическая", "imperial": "Имперская" },
-    "placeholders": { "bio": "Расскажите о себе...", "website": "https://..." },
-    "messages": { "profileUpdated": "Профиль обновлён!" },
+    "themes": {
+      "light": "Светлая",
+      "dark": "Темная",
+      "coffee": "Кофейная",
+      "system": "Системная"
+    },
+    "switchToLight": "Переключиться на светлую тему",
+    "switchToDark": "Переключиться на темную тему",
+    "units_options": {
+      "metric": "Метрическая (г, мл, °C)",
+      "imperial": "Имперская (унц., жидк. унц., °F)"
+    },
+    "placeholders": {
+      "bio": "Расскажите о себе...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "Профиль успешно обновлен!"
+    },
     "deleteAccount": "Удалить аккаунт",
     "deleteWarning": "Это действие нельзя отменить."
   },
   "equipment": {
     "grinder": "Кофемолка",
-    "brewer": "Кофеварка",
+    "brewer": "Заварник",
     "portafilter": "Портафильтр",
     "basket": "Корзина",
-    "puckScreen": "Экран",
+    "puckScreen": "Пак-скрин",
     "paperFilter": "Бумажный фильтр",
     "tamper": "Темпер"
   },
   "tasteNotes": {
-    "placeholder": "Поиск нот вкуса...",
-    "minChars": "Минимум {{count}} символов",
-    "noResults": "Не найдено",
-    "selected": "{{count}}/{{max}} выбрано",
-    "scaaReference": "Колесо вкусов SCAA"
+    "placeholder": "Поиск вкусовых нот (мин 3 символа)...",
+    "minChars": "Введите минимум {{count}} символов для поиска",
+    "noResults": "Вкусовые ноты не найдены",
+    "selected": "Выбрано {{count}}/{{max}} вкусовых нот",
+    "scaaReference": "Справочник колеса вкуса SCAA"
   },
-  "rating": { "superGood": "Отлично", "good": "Хорошо", "okay": "Нормально", "bad": "Плохо", "horrible": "Ужасно" },
+  "rating": {
+    "superGood": "Очень хорошо",
+    "good": "Хорошо",
+    "okay": "Нормально",
+    "bad": "Плохо",
+    "horrible": "Ужасно"
+  },
   "common": {
     "save": "Сохранить",
     "cancel": "Отмена",
@@ -319,35 +420,58 @@
     "success": "Успех",
     "search": "Поиск",
     "filter": "Фильтр",
-    "sort": "Сортировка",
-    "noResults": "Ничего не найдено",
-    "loadMore": "Загрузить ещё",
-    "viewAll": "Все",
+    "sort": "Сортировать",
+    "noResults": "Результатов нет",
+    "loadMore": "Загрузить еще",
+    "viewAll": "Посмотреть все",
     "important": "Важно",
     "by": "от",
     "reply": "Ответить",
-    "clearAll": "Очистить"
+    "clearAll": "Очистить все"
   },
   "errors": {
-    "notFound": { "title": "Страница не найдена", "description": "Страница не существует.", "backHome": "На главную" },
-    "generic": { "title": "Ошибка", "description": "Попробуйте позже.", "retry": "Повторить" }
+    "notFound": {
+      "title": "Страница не найдена",
+      "description": "Ой! Похоже, кофе остыл. Страница не существует.",
+      "backHome": "На главную"
+    },
+    "generic": {
+      "title": "Что-то пошло не так",
+      "description": "Мы пролили кофе! Попробуйте позже.",
+      "retry": "Попробовать снова"
+    }
   },
   "footer": {
-    "tagline": "Поделитесь кофейным путешествием.",
-    "links": { "about": "О нас", "privacy": "Конфиденциальность", "terms": "Условия", "contact": "Контакты" },
+    "tagline": "Делитесь своим кофейным путешествием с миром.",
+    "links": {
+      "about": "О нас",
+      "privacy": "Конфиденциальность",
+      "terms": "Условия",
+      "contact": "Контакты"
+    },
     "copyright": "© {{year}} BrewForm. Все права защищены."
   },
   "language": {
     "select": "Выбрать язык",
-    "en": "English",
-    "tr": "Türkçe",
-    "fr": "Français",
-    "de": "Deutsch",
-    "es": "Español",
-    "pt": "Português",
+    "en": "Английский",
+    "uk": "Украинский",
+    "sr": "Сербский",
+    "ro": "Румынский",
+    "tr": "Турецкий",
+    "fr": "Французский",
+    "de": "Немецкий",
+    "es": "Испанский",
+    "pt": "Португальский",
     "ru": "Русский",
-    "az": "Azərbaycan",
-    "ka": "ქართული",
-    "ar_f": "العربية"
+    "az": "Азербайджанский",
+    "ka": "Грузинский",
+    "ar_f": "Арабский",
+    "hy": "Армянский",
+    "ko": "Корейский",
+    "zh_TW": "Китайский (традиционный)",
+    "th": "Тайский",
+    "hi": "Хинди",
+    "ja": "Японский",
+    "zh_CN": "Китайский (упрощенный)"
   }
 }

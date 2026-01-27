@@ -1,162 +1,477 @@
 {
-  "app": { "name": "BrewForm", "tagline": "Qəhvə Səyahətinizi Paylaşın" },
-  "theme": { "switchToLight": "Açıq rejimə keç", "switchToDark": "Qaranlıq rejimə keç" },
+  "app": {
+    "name": "BrewForm",
+    "tagline": "Qəhvə səyahətinizi paylaşın"
+  },
+  "theme": {
+    "switchToLight": "Açıq rejimə keç",
+    "switchToDark": "Tünd rejimə keç"
+  },
   "nav": {
-    "home": "Ana Səhifə",
+    "home": "Ana səhifə",
     "recipes": "Reseptlər",
+    "baristas": "Baristalar",
     "explore": "Kəşf et",
     "login": "Daxil ol",
     "register": "Qeydiyyat",
     "profile": "Profil",
-    "settings": "Parametrlər",
+    "settings": "Ayarlar",
     "logout": "Çıxış",
     "admin": "Admin"
   },
+  "baristas": {
+    "description": "Qəhvə həvəskarlarını və reseptlərini kəşf edin",
+    "result": "barista tapıldı",
+    "results": "barista tapıldı"
+  },
   "pages": {
-    "home": { "title": "BrewForm - Qəhvə Reseptləri", "description": "Qəhvə reseptlərini paylaşın və kəşf edin." },
-    "recipes": { "title": "Reseptlər - BrewForm", "description": "Cəmiyyətdən qəhvə reseptləri" },
-    "createRecipe": { "title": "Resept Yarat - BrewForm" },
-    "compare": { "title": "Reseptləri Müqayisə Et - BrewForm", "heading": "Resept Müqayisəsi", "notFound": "Müqayisə tapılmadı", "invalidLink": "Bu link etibarsızdır." },
-    "profile": { "title": "Profilim - BrewForm" },
-    "settings": { "title": "Parametrlər - BrewForm" },
-    "login": { "title": "Daxil ol - BrewForm" },
-    "register": { "title": "Qeydiyyat - BrewForm" },
-    "forgotPassword": { "title": "Şifrəni Unutdum - BrewForm" },
-    "resetPassword": { "title": "Şifrəni Sıfırla - BrewForm" },
-    "verifyEmail": { "title": "E-poçtu Təsdiqlə - BrewForm" },
-    "notFound": { "title": "Səhifə Tapılmadı - BrewForm" },
-    "error": { "title": "Xəta - BrewForm" }
+    "home": {
+      "title": "BrewForm - Qəhvə reseptləri",
+      "description": "Qəhvə reseptlərini paylaşın və kəşf edin. Espresso, pour-over və xüsusi reseptləri izləyin."
+    },
+    "recipes": {
+      "title": "Reseptlər - BrewForm",
+      "description": "İcmanın qəhvə reseptlərinə baxın"
+    },
+    "createRecipe": {
+      "title": "Resept yarat - BrewForm"
+    },
+    "compare": {
+      "title": "Reseptləri müqayisə et - BrewForm",
+      "heading": "Resept müqayisəsi",
+      "notFound": "Müqayisə tapılmadı",
+      "invalidLink": "Bu müqayisə linki etibarsız və ya vaxtı bitmiş ola bilər."
+    },
+    "profile": {
+      "title": "Mənim profilim - BrewForm"
+    },
+    "settings": {
+      "title": "Ayarlar - BrewForm"
+    },
+    "login": {
+      "title": "Daxil ol - BrewForm"
+    },
+    "register": {
+      "title": "Qeydiyyat - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "Şifrəni unutdum - BrewForm"
+    },
+    "resetPassword": {
+      "title": "Şifrəni sıfırla - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "Emaili təsdiqlə - BrewForm"
+    },
+    "notFound": {
+      "title": "Səhifə tapılmadı - BrewForm"
+    },
+    "error": {
+      "title": "Xəta - BrewForm"
+    }
   },
   "admin": {
     "dashboard": {
-      "title": "Admin Paneli - BrewForm",
-      "heading": "Admin Paneli",
+      "title": "Admin paneli - BrewForm",
+      "heading": "Admin paneli",
       "cards": {
-        "users": { "title": "İstifadəçilər", "description": "İstifadəçiləri idarə et" },
-        "recipes": { "title": "Reseptlər", "description": "Reseptləri idarə et" },
-        "equipment": { "title": "Avadanlıq", "description": "Avadanlıqları idarə et" }
+        "users": {
+          "title": "İstifadəçilər",
+          "description": "Hesabları, rolları və qadağaları idarə edin"
+        },
+        "recipes": {
+          "title": "Reseptlər",
+          "description": "Resept məzmununu nəzərdən keçirin və moderasiya edin"
+        },
+        "equipment": {
+          "title": "Avadanlıq",
+          "description": "Avadanlıq, təchizatçı və qəhvəni idarə edin"
+        }
       }
     },
-    "users": { "title": "İstifadəçilər - Admin", "heading": "İstifadəçilər", "comingSoon": "Tezliklə." },
-    "recipes": { "title": "Reseptlər - Admin", "heading": "Reseptlər", "comingSoon": "Tezliklə." },
-    "equipment": { "title": "Avadanlıq - Admin", "heading": "Avadanlıq", "comingSoon": "Tezliklə." },
+    "users": {
+      "title": "İstifadəçiləri idarə et - Admin - BrewForm",
+      "heading": "İstifadəçiləri idarə et",
+      "comingSoon": "İstifadəçi idarəetməsi tezliklə gələcək."
+    },
+    "recipes": {
+      "title": "Reseptləri idarə et - Admin - BrewForm",
+      "heading": "Reseptləri idarə et",
+      "comingSoon": "Resept moderasiyası tezliklə gələcək."
+    },
+    "equipment": {
+      "title": "Avadanlığı idarə et - Admin - BrewForm",
+      "heading": "Avadanlığı idarə et",
+      "comingSoon": "Avadanlıq, təchizatçı və qəhvə idarəetməsi tezliklə gələcək."
+    },
     "tasteNotes": {
-      "title": "Dad Qeydləri - Admin",
-      "heading": "Dad Qeydləri",
-      "cacheWarning": "Dəyişikliklərdən sonra önbelleği təmizləyin.",
-      "comingSoon": "Tezliklə.",
+      "title": "Dad qeydlərini idarə et - Admin - BrewForm",
+      "heading": "Dad qeydlərini idarə et",
+      "cacheWarning": "Hər hansı dad qeydi dəyişdirilərsə, əlavə olunarsa və ya silinərsə, dəyişikliklərin qüvvəyə minməsi üçün Redis keşinin təmizlənməsi lazımdır. Dəyişikliklərdən sonra \"Dad qeydləri keşini təmizlə\" düyməsini istifadə edin.",
+      "comingSoon": "Dad qeydlərinin idarəsi tezliklə gələcək. Dad qeydləri SCAA 2016 dad çarxından əvvəlcədən doldurulub və nadir hallarda dəyişir.",
       "plannedFeatures": "Planlaşdırılan funksiyalar:",
-      "features": { "view": "Hamısını gör", "add": "Əlavə et", "edit": "Redaktə et", "delete": "Sil", "flushCache": "Önbelleği təmizlə", "reimport": "Yenidən idxal et" }
+      "features": {
+        "view": "Bütün dad qeydlərini iyerarxik quruluşda göstər",
+        "add": "Yeni dad qeydləri əlavə et",
+        "edit": "Mövcud dad qeydlərini redaktə et",
+        "delete": "Dad qeydlərini sil (reseptlərdə kaskad silinmə)",
+        "flushCache": "Dəyişikliklərdən sonra Redis keşini təmizlə",
+        "reimport": "SCAA JSON faylından yenidən idxal"
+      }
     }
   },
   "home": {
-    "hero": { "title": "Qəhvə Reseptlərini Kəşf Edin", "subtitle": "Qəhvə səyahətinizi sənədləşdirin.", "cta": "Başla", "explore": "Reseptləri Kəşf Et" },
-    "features": {
-      "track": { "title": "İzlə", "description": "Hər detalı sənədləşdirin." },
-      "share": { "title": "Paylaş", "description": "Reseptləri paylaşın." },
-      "compare": { "title": "Müqayisə Et", "description": "Reseptləri müqayisə edin." }
+    "hero": {
+      "title": "Qəhvə reseptlərini kəşf et və paylaş",
+      "subtitle": "Qəhvə səyahətinizi sənədləşdirin. Mükəmməl espresso, pour-over və xüsusi reseptləri dünyayla paylaşın.",
+      "cta": "Dəmləməyə başla",
+      "explore": "Reseptləri kəşf et"
     },
-    "latest": "Son Reseptlər",
-    "popular": "Populyar Reseptlər",
-    "viewAll": "Hamısını Gör"
+    "features": {
+      "track": {
+        "title": "Dəmləmələrinizi izləyin",
+        "description": "Reseptlərinizin hər detalını qeyd edin — dozadan çıxışa, üyütmə dərəcəsinə və ekstraksiya vaxtına qədər."
+      },
+      "share": {
+        "title": "Paylaş və kəşf et",
+        "description": "Reseptləri icma ilə paylaşın və dünyadan yeni üsullar kəşf edin."
+      },
+      "compare": {
+        "title": "Müqayisə et və yaxşılaşdır",
+        "description": "Reseptləri yan-yana müqayisə edin, versiyaları izləyin və bacarıqlarınızı inkişaf etdirin."
+      }
+    },
+    "latest": "Ən son reseptlər",
+    "popular": "Populyar reseptlər",
+    "viewAll": "Hamısına bax"
   },
   "auth": {
-    "login": { "title": "Xoş Gəldiniz", "subtitle": "Hesabınıza daxil olun", "email": "E-poçt", "password": "Şifrə", "submit": "Daxil ol", "forgotPassword": "Şifrəni unutdunuz?", "noAccount": "Hesabınız yoxdur?", "signUp": "Qeydiyyatdan keç" },
-    "register": { "title": "Qoşulun", "subtitle": "Hesab yaradın", "email": "E-poçt", "username": "İstifadəçi adı", "displayName": "Görünən ad", "password": "Şifrə", "confirmPassword": "Şifrəni təsdiqlə", "submit": "Yarat", "hasAccount": "Hesabınız var?", "signIn": "Daxil ol" },
-    "forgotPassword": { "title": "Şifrəni Sıfırla", "subtitle": "E-poçtunuzu daxil edin", "email": "E-poçt", "submit": "Link Göndər", "backToLogin": "Geri" },
-    "resetPassword": { "title": "Yeni Şifrə", "subtitle": "Yeni şifrənizi daxil edin", "password": "Yeni şifrə", "confirmPassword": "Təsdiqlə", "submit": "Sıfırla" },
-    "verifyEmail": { "title": "E-poçtu Təsdiqlə", "verifying": "Təsdiqlənir...", "success": "E-poçt təsdiqləndi!", "error": "Xəta baş verdi." }
+    "login": {
+      "title": "Yenidən xoş gəlmisiniz",
+      "subtitle": "BrewForm hesabınıza daxil olun",
+      "email": "Email",
+      "password": "Şifrə",
+      "submit": "Daxil ol",
+      "forgotPassword": "Şifrəni unutmusunuz?",
+      "noAccount": "Hesabınız yoxdur?",
+      "signUp": "Qeydiyyat"
+    },
+    "register": {
+      "title": "BrewForm-a qoşulun",
+      "subtitle": "Hesab yaradın və qəhvə səyahətinizə başlayın",
+      "email": "Email",
+      "username": "İstifadəçi adı",
+      "displayName": "Görünən ad",
+      "password": "Şifrə",
+      "confirmPassword": "Şifrəni təsdiqlə",
+      "submit": "Hesab yarat",
+      "hasAccount": "Artıq hesabınız var?",
+      "signIn": "Daxil ol"
+    },
+    "forgotPassword": {
+      "title": "Şifrəni sıfırla",
+      "subtitle": "Sıfırlama linki üçün emailinizi daxil edin",
+      "email": "Email",
+      "submit": "Link göndər",
+      "backToLogin": "Daxil olmağa qayıt"
+    },
+    "resetPassword": {
+      "title": "Yeni şifrə yaradın",
+      "subtitle": "Yeni şifrənizi daxil edin",
+      "password": "Yeni şifrə",
+      "confirmPassword": "Şifrəni təsdiqlə",
+      "submit": "Şifrəni sıfırla"
+    },
+    "verifyEmail": {
+      "title": "Emaili təsdiqlə",
+      "verifying": "Emailiniz yoxlanılır...",
+      "success": "Email uğurla təsdiqləndi!",
+      "error": "Təsdiqləmə alınmadı. Linkin vaxtı bitmiş ola bilər."
+    }
   },
   "recipe": {
-    "create": "Resept Yarat",
-    "edit": "Redaktə Et",
-    "delete": "Sil",
-    "fork": "Fork Et",
+    "create": "Resept yarat",
+    "edit": "Resepti redaktə et",
+    "delete": "Resepti sil",
+    "fork": "Resepti forkla",
     "share": "Paylaş",
-    "compare": "Müqayisə Et",
-    "favourite": "Favori",
-    "unfavourite": "Favorilərdən Çıxar",
+    "compare": "Müqayisə",
+    "favourite": "Seçilmiş",
+    "unfavourite": "Seçilmişlərdən çıxar",
     "versions": "Versiyalar",
-    "newVersion": "Yeni Versiya",
-    "visibility": { "draft": "Qaralama", "private": "Gizli", "unlisted": "Siyahıda Yox", "public": "Açıq" },
+    "newVersion": "Yeni versiya yarat",
+    "visibility": {
+      "draft": "Qaralama",
+      "private": "Məxfi",
+      "unlisted": "Siyahıda deyil",
+      "public": "İctimai"
+    },
     "fields": {
-      "title": "Başlıq",
+      "title": "Resept başlığı",
       "description": "Təsvir",
-      "brewMethod": "Hazırlama Metodu",
-      "drinkType": "İçki Növü",
+      "brewMethod": "Dəmləmə üsulu",
+      "drinkType": "İçki növü",
       "coffee": "Qəhvə",
-      "roastDate": "Qovurma Tarixi",
-      "grindDate": "Üyütmə Tarixi",
-      "grinder": "Dəyirman",
-      "grindSize": "Üyütmə Ölçüsü",
-      "brewer": "Qəhvə Maşını",
+      "roastDate": "Qovurma tarixi",
+      "grindDate": "Üyütmə tarixi",
+      "grinder": "Öyüdücü",
+      "grindSize": "Üyütmə dərəcəsi",
+      "brewer": "Dəmləyici",
       "dose": "Doza",
       "yield": "Çıxış",
       "time": "Vaxt",
       "temperature": "Temperatur",
       "pressure": "Təzyiq",
       "ratio": "Nisbət",
-      "tastingNotes": "Dad Qeydləri",
-      "tasteNotes": "Dad Notları",
+      "tastingNotes": "Dad notları",
+      "tasteNotes": "Dad qeydləri",
       "rating": "Reytinq",
       "tags": "Teqlər",
-      "portafilter": "Portafiltr",
+      "processing": "Emal",
+      "portafilter": "Portafilter",
       "basket": "Səbət",
-      "puckScreen": "Ekran",
-      "paperFilter": "Kağız Filtr",
+      "puckScreen": "Puck screen",
+      "paperFilter": "Kağız filtr",
       "tamper": "Tamper"
     },
-    "placeholders": { "title": "Mükəmməl Espressom", "description": "Reseptinizi təsvir edin...", "select": "Seçin...", "coffee": "məs., Efiopiya", "grindSize": "məs., 2.5", "dose": "18", "yield": "36", "time": "28", "temperature": "93", "pressure": "9", "tastingNotes": "Əlavə qeydlər...", "rating": "8", "tags": "espresso, səhər" },
-    "captions": { "required": "Tələb olunur", "tasteNotes": "Dad profilləri seçin", "pressure": "məs., 9", "rating": "1-dən 10-a qədər", "tags": "Vergüllə ayrılmış" },
+    "placeholders": {
+      "title": "Mənim mükəmməl espressom",
+      "description": "Reseptinizi təsvir edin...",
+      "select": "Seçin...",
+      "coffee": "məs., Efiopiya Yirgacheffe",
+      "grindSize": "məs., 2.5 və ya 18 klik",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "Əlavə dad qeydləri...",
+      "rating": "8",
+      "tags": "espresso, səhər, şokolad"
+    },
+    "captions": {
+      "required": "Mütləq",
+      "tasteNotes": "SCAA dad çarxından profillər seçin",
+      "pressure": "məs., 9, 6-9, dəyişkən",
+      "rating": "1-dən 10-a qiymətləndirin",
+      "tags": "Vergüllə ayrılmış"
+    },
     "addTag": "Teq əlavə et...",
-    "selectTags": "Teqlər seçin...",
-    "tags": { "morning": "Səhər", "afternoon": "Günorta", "evening": "Axşam", "fruity": "Meyvəli", "chocolatey": "Şokoladlı", "nutty": "Qozlu", "floral": "Çiçəkli", "spicy": "Ədviyyatlı", "sweet": "Şirin", "bold": "Güclü", "light": "Yüngül", "creamy": "Kremlı", "iced": "Buzlu", "hot": "İsti", "decaf": "Kofeinsiz", "singleOrigin": "Tək Mənşə", "blend": "Qarışıq", "espresso": "Espresso" },
-    "empty": { "title": "Hələ resept yoxdur", "description": "İlk siz paylaşın!" },
+    "selectTags": "Teqləri seç...",
+    "tags": {
+      "morning": "Səhər",
+      "afternoon": "Günorta",
+      "evening": "Axşam",
+      "fruity": "Meyvəli",
+      "chocolatey": "Şokoladlı",
+      "nutty": "Qozlu",
+      "floral": "Çiçəkli",
+      "spicy": "Ədviyyəli",
+      "sweet": "Şirin",
+      "bold": "Güclü",
+      "light": "Yüngül",
+      "creamy": "Kremli",
+      "iced": "Soyuq",
+      "hot": "İsti",
+      "decaf": "Kofeinsiz",
+      "singleOrigin": "Tək mənşə",
+      "blend": "Blend",
+      "espresso": "Espresso",
+      "balanced": "Tarazlı",
+      "bright": "Parlaq",
+      "complex": "Kompleks",
+      "smooth": "Yumşaq",
+      "intense": "İntensiv",
+      "clean": "Təmiz",
+      "syrupy": "Şərbətli"
+    },
+    "empty": {
+      "title": "Hələ resept yoxdur",
+      "description": "İlk resepti paylaşan siz olun!"
+    },
     "result": "resept tapıldı",
     "results": "resept tapıldı",
-    "createFirst": "İlk Reseptinizi Yaradın",
-    "forkedFrom": "Bundan fork edilib",
-    "forked": "Fork edildi!",
-    "linkCopied": "Link kopyalandı!",
+    "createFirst": "İlk reseptinizi yaradın",
+    "forkedFrom": "Buradan forklandı",
+    "forked": "Resept uğurla forklandı!",
+    "linkCopied": "Link buferə kopyalandı!",
     "equipment": "Avadanlıq",
     "comments": "Şərhlər",
-    "noComments": "Hələ şərh yoxdur.",
+    "noComments": "Hələ şərh yoxdur. İlk şərhi siz yazın!",
     "addComment": "Şərh əlavə et...",
-    "postComment": "Göndər",
-    "commentAdded": "Şərh əlavə edildi!",
+    "postComment": "Şərhi paylaş",
+    "commentAdded": "Şərh uğurla paylaşıldı!",
     "replyingTo": "Şərhə cavab",
-    "toComment": "şərh etmək üçün",
+    "toComment": "şərh yazmaq üçün",
     "activeFilters": "Aktiv filtrlər",
-    "brewMethods": { "ESPRESSO_MACHINE": "Espresso Maşını", "POUR_OVER_V60": "V60", "POUR_OVER_CHEMEX": "Chemex", "POUR_OVER_KALITA": "Kalita", "AEROPRESS": "AeroPress", "FRENCH_PRESS": "French Press", "MOKA_POT": "Moka", "COLD_BREW": "Cold Brew", "TURKISH_CEZVE": "Cəzva" },
-    "drinkTypes": { "ESPRESSO": "Espresso", "RISTRETTO": "Ristretto", "LUNGO": "Lungo", "AMERICANO": "Americano", "LATTE": "Latte", "CAPPUCCINO": "Cappuccino", "FLAT_WHITE": "Flat White", "CORTADO": "Cortado", "POUR_OVER": "Pour Over", "FRENCH_PRESS": "French Press", "COLD_BREW": "Cold Brew", "MACCHIATO": "Macchiato", "MOCHA": "Mocha", "ICED_COFFEE": "Buzlu Qəhvə", "TURKISH_COFFEE": "Türk Qəhvəsi" }
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "Espresso maşını",
+      "POUR_OVER_V60": "V60 Pour Over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "French Press",
+      "MOKA_POT": "Moka Pot",
+      "COLD_BREW": "Cold Brew",
+      "TURKISH_CEZVE": "Türk cezvesi"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "Espresso",
+      "RISTRETTO": "Ristretto",
+      "LUNGO": "Lungo",
+      "AMERICANO": "Amerikano",
+      "LATTE": "Latte",
+      "CAPPUCCINO": "Cappuccino",
+      "FLAT_WHITE": "Flat White",
+      "CORTADO": "Cortado",
+      "POUR_OVER": "Pour Over",
+      "FRENCH_PRESS": "French Press",
+      "COLD_BREW": "Cold Brew",
+      "MACCHIATO": "Macchiato",
+      "MOCHA": "Mocha",
+      "ICED_COFFEE": "Buzlu qəhvə",
+      "TURKISH_COFFEE": "Türk qəhvəsi"
+    },
+    "processingMethods": {
+      "WASHED": "Yuyulmuş",
+      "NATURAL": "Təbii",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "Yarı yuyulmuş",
+      "WET_HULLED": "Nəm qabıq",
+      "ANAEROBIC": "Anaerob",
+      "CARBONIC_MACERATION": "Karbonik maserasiya",
+      "OTHER": "Digər"
+    }
   },
-  "profile": { "recipes": "Reseptlər", "favourites": "Favorilər", "equipment": "Avadanlıq", "beans": "Dənlər", "setups": "Qurğular", "editProfile": "Redaktə Et", "settings": "Parametrlər" },
+  "profile": {
+    "recipes": "Reseptlər",
+    "favourites": "Seçilmişlər",
+    "equipment": "Avadanlıq",
+    "beans": "Dənələr",
+    "setups": "Qurğular",
+    "editProfile": "Profili redaktə et",
+    "settings": "Ayarlar"
+  },
   "settings": {
-    "title": "Parametrlər",
+    "title": "Ayarlar",
     "profile": "Profil",
-    "preferences": "Tərcihlər",
+    "preferences": "Seçimlər",
     "account": "Hesab",
-    "theme": "Tema",
+    "theme": "Mövzu",
     "language": "Dil",
     "units": "Vahidlər",
-    "timezone": "Saat Qurşağı",
-    "displayName": "Görünən Ad",
-    "bio": "Haqqında",
-    "website": "Veb sayt",
-    "themes": { "light": "Açıq", "dark": "Qaranlıq", "coffee": "Qəhvə", "system": "Sistem" },
-    "switchToLight": "Açıq tema",
-    "switchToDark": "Qaranlıq tema",
-    "units_options": { "metric": "Metrik", "imperial": "İmperial" },
-    "placeholders": { "bio": "Özünüz haqqında...", "website": "https://..." },
-    "messages": { "profileUpdated": "Profil yeniləndi!" },
-    "deleteAccount": "Hesabı Sil",
-    "deleteWarning": "Bu əməliyyat geri alına bilməz."
+    "timezone": "Saat qurşağı",
+    "displayName": "Görünən ad",
+    "bio": "Bio",
+    "website": "Vebsayt",
+    "themes": {
+      "light": "Açıq",
+      "dark": "Tünd",
+      "coffee": "Qəhvə",
+      "system": "Sistem"
+    },
+    "switchToLight": "Açıq rejimə keç",
+    "switchToDark": "Tünd rejimə keç",
+    "units_options": {
+      "metric": "Metik (g, ml, °C)",
+      "imperial": "İmperial (oz, fl oz, °F)"
+    },
+    "placeholders": {
+      "bio": "Özünüzdən danışın...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "Profil uğurla yeniləndi!"
+    },
+    "deleteAccount": "Hesabı sil",
+    "deleteWarning": "Bu əməliyyat geri qaytarıla bilməz."
   },
-  "equipment": { "grinder": "Dəyirman", "brewer": "Qəhvə Maşını", "portafilter": "Portafiltr", "basket": "Səbət", "puckScreen": "Ekran", "paperFilter": "Kağız Filtr", "tamper": "Tamper" },
-  "tasteNotes": { "placeholder": "Dad qeydləri axtar...", "minChars": "Minimum {{count}} simvol", "noResults": "Tapılmadı", "selected": "{{count}}/{{max}} seçildi", "scaaReference": "SCAA Dad Çarxı" },
-  "rating": { "superGood": "Əla", "good": "Yaxşı", "okay": "Normal", "bad": "Pis", "horrible": "Dəhşət" },
-  "common": { "save": "Yadda saxla", "cancel": "Ləğv et", "delete": "Sil", "edit": "Redaktə et", "create": "Yarat", "loading": "Yüklənir...", "error": "Xəta baş verdi", "success": "Uğurlu", "search": "Axtar", "filter": "Filtr", "sort": "Sırala", "noResults": "Nəticə yoxdur", "loadMore": "Daha çox", "viewAll": "Hamısı", "important": "Vacib", "by": "tərəfindən", "reply": "Cavab ver", "clearAll": "Hamısını təmizlə" },
-  "errors": { "notFound": { "title": "Tapılmadı", "description": "Bu səhifə mövcud deyil.", "backHome": "Ana Səhifəyə" }, "generic": { "title": "Xəta", "description": "Yenidən cəhd edin.", "retry": "Yenidən" } },
-  "footer": { "tagline": "Qəhvə səyahətinizi paylaşın.", "links": { "about": "Haqqında", "privacy": "Məxfilik", "terms": "Şərtlər", "contact": "Əlaqə" }, "copyright": "© {{year}} BrewForm. Bütün hüquqlar qorunur." },
-  "language": { "select": "Dil Seçin", "en": "English", "tr": "Türkçe", "fr": "Français", "de": "Deutsch", "es": "Español", "pt": "Português", "ru": "Русский", "az": "Azərbaycan", "ka": "ქართული", "ar_f": "العربية" }
+  "equipment": {
+    "grinder": "Öyüdücü",
+    "brewer": "Dəmləyici",
+    "portafilter": "Portafilter",
+    "basket": "Səbət",
+    "puckScreen": "Puck screen",
+    "paperFilter": "Kağız filtr",
+    "tamper": "Tamper"
+  },
+  "tasteNotes": {
+    "placeholder": "Dad qeydlərini axtar (min 3 simvol)...",
+    "minChars": "Axtarış üçün ən az {{count}} simvol daxil edin",
+    "noResults": "Uyğun dad qeydi tapılmadı",
+    "selected": "{{count}}/{{max}} dad qeydi seçildi",
+    "scaaReference": "SCAA dad çarxı istinadı"
+  },
+  "rating": {
+    "superGood": "Çox yaxşı",
+    "good": "Yaxşı",
+    "okay": "Normal",
+    "bad": "Pis",
+    "horrible": "Dəhşətli"
+  },
+  "common": {
+    "save": "Yadda saxla",
+    "cancel": "Ləğv et",
+    "delete": "Sil",
+    "edit": "Redaktə et",
+    "create": "Yarat",
+    "loading": "Yüklənir...",
+    "error": "Xəta baş verdi",
+    "success": "Uğur",
+    "search": "Axtarış",
+    "filter": "Filtr",
+    "sort": "Sırala",
+    "noResults": "Nəticə yoxdur",
+    "loadMore": "Daha çox yüklə",
+    "viewAll": "Hamısına bax",
+    "important": "Vacib",
+    "by": "tərəfindən",
+    "reply": "Cavab ver",
+    "clearAll": "Hamısını sil"
+  },
+  "errors": {
+    "notFound": {
+      "title": "Səhifə tapılmadı",
+      "description": "Ups! Görünür qəhvə soyudu. Axtardığınız səhifə mövcud deyil.",
+      "backHome": "Ana səhifəyə qayıt"
+    },
+    "generic": {
+      "title": "Nəsə səhv getdi",
+      "description": "Qəhvəni tökdük! Sonra yenidən yoxlayın.",
+      "retry": "Yenidən cəhd et"
+    }
+  },
+  "footer": {
+    "tagline": "Qəhvə səyahətinizi dünya ilə paylaşın.",
+    "links": {
+      "about": "Haqqında",
+      "privacy": "Məxfilik",
+      "terms": "Şərtlər",
+      "contact": "Əlaqə"
+    },
+    "copyright": "© {{year}} BrewForm. Bütün hüquqlar qorunur."
+  },
+  "language": {
+    "select": "Dil seç",
+    "en": "İngiliscə",
+    "uk": "Ukraynaca",
+    "sr": "Serb",
+    "ro": "Rumın",
+    "tr": "Türkcə",
+    "fr": "Fransızca",
+    "de": "Almanca",
+    "es": "İspan",
+    "pt": "Portuqal",
+    "ru": "Rus",
+    "az": "Azərbaycan",
+    "ka": "Gürcü",
+    "ar_f": "Ərəb",
+    "hy": "Erməni",
+    "ko": "Koreya",
+    "zh_TW": "Çin (ənənəvi)",
+    "th": "Tay",
+    "hi": "Hind",
+    "ja": "Yapon",
+    "zh_CN": "Çin (sadələşdirilmiş)"
+  }
 }

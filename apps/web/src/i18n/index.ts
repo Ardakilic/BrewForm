@@ -7,6 +7,9 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 import en from './locales/en.json';
+import uk from './locales/uk.json';
+import sr from './locales/sr.json';
+import ro from './locales/ro.json';
 import tr from './locales/tr.json';
 import fr from './locales/fr.json';
 import de from './locales/de.json';
@@ -26,6 +29,9 @@ import zh_CN from './locales/zh_CN.json';
 
 export const supportedLanguages = [
   { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'uk', name: 'Українська', flag: '🇺🇦' },
+  { code: 'sr', name: 'Srpski', flag: '🇷🇸' },
+  { code: 'ro', name: 'Română', flag: '🇷🇴' },
   { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
@@ -35,7 +41,7 @@ export const supportedLanguages = [
   { code: 'az', name: 'Azərbaycan', flag: '🇦🇿' },
   { code: 'ka', name: 'ქართული', flag: '🇬🇪' },
   { code: 'ar_f', name: 'العربية', flag: '🇸🇦' },
-  { code: 'hy', name: 'Հայերադdelays', flag: '🇦🇲' },
+  { code: 'hy', name: 'Հայերեն', flag: '🇦🇲' },
   { code: 'ko', name: '한국어', flag: '🇰🇷' },
   { code: 'zh_TW', name: '繁體中文', flag: '🇹🇼' },
   { code: 'th', name: 'ไทย', flag: '🇹🇭' },
@@ -46,6 +52,9 @@ export const supportedLanguages = [
 
 const resources = {
   en: { translation: en },
+  uk: { translation: uk },
+  sr: { translation: sr },
+  ro: { translation: ro },
   tr: { translation: tr },
   fr: { translation: fr },
   de: { translation: de },

@@ -42,6 +42,45 @@ const DRINK_TYPE_IDS = [
   'FRENCH_PRESS',
 ] as const;
 
+const PROCESSING_METHOD_IDS = [
+  'WASHED',
+  'NATURAL',
+  'HONEY',
+  'SEMI_WASHED',
+  'WET_HULLED',
+  'ANAEROBIC',
+  'CARBONIC_MACERATION',
+  'OTHER',
+] as const;
+
+const TAG_IDS = [
+  'morning',
+  'afternoon',
+  'evening',
+  'fruity',
+  'chocolatey',
+  'nutty',
+  'floral',
+  'spicy',
+  'sweet',
+  'bold',
+  'light',
+  'creamy',
+  'iced',
+  'hot',
+  'decaf',
+  'singleOrigin',
+  'blend',
+  'espresso',
+  'balanced',
+  'bright',
+  'complex',
+  'smooth',
+  'intense',
+  'clean',
+  'syrupy',
+] as const;
+
 function CreateRecipePage() {
   const [css] = useStyletron();
   const { t } = useTranslation();
@@ -57,12 +96,23 @@ function CreateRecipePage() {
     label: t(`recipe.drinkTypes.${id}`),
   }));
 
+  const PROCESSING_METHODS = PROCESSING_METHOD_IDS.map((id) => ({
+    id,
+    label: t(`recipe.processingMethods.${id}`),
+  }));
+
+  const TAGS = TAG_IDS.map((id) => ({
+    id,
+    label: t(`recipe.tags.${id}`),
+  }));
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     brewMethod: [] as { id: string; label: string }[],
     drinkType: [] as { id: string; label: string }[],
     coffeeName: '',
+    coffeeProcessing: [] as { id: string; label: string }[],
     grindSize: '',
     doseGrams: '',
     yieldGrams: '',
@@ -71,7 +121,7 @@ function CreateRecipePage() {
     pressure: '',
     tastingNotes: '',
     rating: '',
-    tags: '',
+    tags: [] as { id: string; label: string }[],
   });
   const [selectedTasteNotes, setSelectedTasteNotes] = useState<TasteNote[]>([]);
 
@@ -92,7 +142,6 @@ function CreateRecipePage() {
   const parseOptionalFloat = (value: string) => value ? Number.parseFloat(value) : undefined;
   const parseOptionalInt = (value: string) => value ? Number.parseInt(value) : undefined;
   const parseOptionalString = (value: string) => value || undefined;
-  const parseTags = (value: string) => value ? value.split(',').map((t) => t.trim()) : undefined;
 
   const buildRecipeData = () => ({
     visibility: 'PUBLIC',
@@ -102,6 +151,7 @@ function CreateRecipePage() {
       brewMethod: formData.brewMethod[0]?.id,
       drinkType: formData.drinkType[0]?.id,
       coffeeName: parseOptionalString(formData.coffeeName),
+      coffeeProcessing: formData.coffeeProcessing[0]?.id,
       grindSize: parseOptionalString(formData.grindSize),
       doseGrams: parseOptionalFloat(formData.doseGrams),
       yieldGrams: parseOptionalFloat(formData.yieldGrams),
@@ -110,7 +160,7 @@ function CreateRecipePage() {
       pressure: parseOptionalString(formData.pressure),
       tastingNotes: parseOptionalString(formData.tastingNotes),
       rating: parseOptionalInt(formData.rating),
-      tags: parseTags(formData.tags),
+      tags: formData.tags.length > 0 ? formData.tags.map((t) => t.id) : undefined,
       tasteNoteIds: selectedTasteNotes.length > 0 ? selectedTasteNotes.map((n) => n.id) : undefined,
     },
   });
@@ -188,13 +238,24 @@ function CreateRecipePage() {
               </FormControl>
             </div>
 
-            <FormControl label={t('recipe.fields.coffee')}>
-              <Input
-                value={formData.coffeeName}
-                onChange={handleChange('coffeeName')}
-                placeholder={t('recipe.placeholders.coffee')}
-              />
-            </FormControl>
+            <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' })}>
+              <FormControl label={t('recipe.fields.coffee')}>
+                <Input
+                  value={formData.coffeeName}
+                  onChange={handleChange('coffeeName')}
+                  placeholder={t('recipe.placeholders.coffee')}
+                />
+              </FormControl>
+
+              <FormControl label={t('recipe.fields.processing')}>
+                <Select
+                  options={PROCESSING_METHODS}
+                  value={formData.coffeeProcessing}
+                  onChange={handleSelectChange('coffeeProcessing')}
+                  placeholder={t('recipe.placeholders.select')}
+                />
+              </FormControl>
+            </div>
 
             <FormControl label={t('recipe.fields.grindSize')}>
               <Input
@@ -286,10 +347,12 @@ function CreateRecipePage() {
             </FormControl>
 
             <FormControl label={t('recipe.fields.tags')} caption={t('recipe.captions.tags')}>
-              <Input
+              <Select
+                options={TAGS}
                 value={formData.tags}
-                onChange={handleChange('tags')}
-                placeholder={t('recipe.placeholders.tags')}
+                onChange={handleSelectChange('tags')}
+                placeholder={t('recipe.selectTags')}
+                multi
               />
             </FormControl>
 

@@ -13,10 +13,7 @@ import {
   recipeIdParamSchema,
   commentIdParamSchema,
   userIdParamSchema,
-  vendorIdParamSchema,
-  coffeeIdParamSchema,
   equipmentIdsSchema,
-  recipeReferenceSchema,
   comparisonSchema,
   commentSchema,
   validateCuidFields,
@@ -133,19 +130,6 @@ describe('CUID Validation Utilities', () => {
       });
     });
 
-    describe('vendorIdParamSchema', () => {
-      it('should accept valid vendorId param', () => {
-        const result = vendorIdParamSchema.parse({ vendorId: validCuid });
-        expect(result.vendorId).toBe(validCuid);
-      });
-    });
-
-    describe('coffeeIdParamSchema', () => {
-      it('should accept valid coffeeId param', () => {
-        const result = coffeeIdParamSchema.parse({ coffeeId: validCuid });
-        expect(result.coffeeId).toBe(validCuid);
-      });
-    });
   });
 
   describe('Entity ID Schemas', () => {
@@ -171,21 +155,6 @@ describe('CUID Validation Utilities', () => {
   });
 
   describe('Request Body Schemas', () => {
-    describe('recipeReferenceSchema', () => {
-      it('should accept optional coffee and vendor IDs', () => {
-        const result = recipeReferenceSchema.parse({
-          coffeeId: validCuid,
-          vendorId: validCuid,
-        });
-        expect(result.coffeeId).toBe(validCuid);
-      });
-
-      it('should accept empty object', () => {
-        const result = recipeReferenceSchema.parse({});
-        expect(result).toBeDefined();
-      });
-    });
-
     describe('comparisonSchema', () => {
       it('should accept two recipe IDs', () => {
         const result = comparisonSchema.parse({

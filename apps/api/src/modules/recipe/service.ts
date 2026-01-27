@@ -25,8 +25,6 @@ export interface RecipeFilters {
   search?: string;
   brewMethod?: BrewMethodType | BrewMethodType[];
   drinkType?: DrinkType | DrinkType[];
-  vendorId?: string;
-  coffeeId?: string;
   grinderId?: string;
   brewerId?: string;
   userId?: string;
@@ -84,8 +82,8 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
           description: input.version.description,
           brewMethod: input.version.brewMethod,
           drinkType: input.version.drinkType,
-          coffeeId: input.version.coffeeId,
           coffeeName: input.version.coffeeName,
+          coffeeProcessing: input.version.coffeeProcessing,
           roastDate: input.version.roastDate,
           grindDate: input.version.grindDate,
           grinderId: input.version.grinderId,
@@ -351,8 +349,8 @@ export async function createRecipeVersion(
       description: input.description,
       brewMethod: input.brewMethod,
       drinkType: input.drinkType,
-      coffeeId: input.coffeeId,
       coffeeName: input.coffeeName,
+      coffeeProcessing: input.coffeeProcessing,
       roastDate: input.roastDate,
       grindDate: input.grindDate,
       grinderId: input.grinderId,
@@ -457,8 +455,8 @@ export async function forkRecipe(recipeId: string, userId: string) {
           description: v.description,
           brewMethod: v.brewMethod,
           drinkType: v.drinkType,
-          coffeeId: v.coffeeId,
           coffeeName: v.coffeeName,
+          coffeeProcessing: v.coffeeProcessing,
           roastDate: v.roastDate,
           grindDate: v.grindDate,
           grinderId: v.grinderId,
@@ -567,7 +565,7 @@ function buildVisibilityFilter(filters: RecipeFilters, viewerId?: string | null)
  * Supports arrays for brewMethod and drinkType with OR logic using Prisma's `in` operator
  */
 function buildVersionFilter(filters: RecipeFilters): Record<string, unknown> | undefined {
-  const hasVersionFilters = filters.brewMethod || filters.drinkType || filters.coffeeId || 
+  const hasVersionFilters = filters.brewMethod || filters.drinkType || 
     filters.grinderId || filters.brewerId || filters.minRating || filters.tags;
   
   if (!hasVersionFilters) return undefined;
@@ -589,7 +587,6 @@ function buildVersionFilter(filters: RecipeFilters): Record<string, unknown> | u
   return {
     ...(brewMethodFilter && { brewMethod: brewMethodFilter }),
     ...(drinkTypeFilter && { drinkType: drinkTypeFilter }),
-    ...(filters.coffeeId && { coffeeId: filters.coffeeId }),
     ...(filters.grinderId && { grinderId: filters.grinderId }),
     ...(filters.brewerId && { brewerId: filters.brewerId }),
     ...(filters.minRating && { rating: { gte: filters.minRating } }),

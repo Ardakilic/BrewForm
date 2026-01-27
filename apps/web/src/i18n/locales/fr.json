@@ -1,49 +1,49 @@
 {
   "app": {
     "name": "BrewForm",
-    "tagline": "Partagez Votre Voyage Café"
+    "tagline": "Partagez votre parcours café"
   },
   "theme": {
-    "switchToLight": "Passer au mode clair",
-    "switchToDark": "Passer au mode sombre"
+    "switchToLight": "Passer en mode clair",
+    "switchToDark": "Passer en mode sombre"
   },
   "nav": {
     "home": "Accueil",
     "recipes": "Recettes",
     "baristas": "Baristas",
     "explore": "Explorer",
-    "login": "Connexion",
+    "login": "Se connecter",
     "register": "S'inscrire",
     "profile": "Profil",
     "settings": "Paramètres",
-    "logout": "Déconnexion",
+    "logout": "Se déconnecter",
     "admin": "Admin"
   },
   "baristas": {
-    "description": "Découvrez les amateurs de café et leurs recettes",
+    "description": "Découvrez des passionnés de café et leurs recettes",
     "result": "barista trouvé",
     "results": "baristas trouvés"
   },
   "pages": {
     "home": {
-      "title": "BrewForm - Recettes de Café",
-      "description": "Partagez et découvrez des recettes de préparation de café."
+      "title": "BrewForm - Recettes de café",
+      "description": "Partagez et découvrez des recettes de café. Suivez vos espressos, pour-overs et recettes spéciales."
     },
     "recipes": {
       "title": "Recettes - BrewForm",
       "description": "Parcourez les recettes de café de la communauté"
     },
     "createRecipe": {
-      "title": "Créer une Recette - BrewForm"
+      "title": "Créer une recette - BrewForm"
     },
     "compare": {
-      "title": "Comparer les Recettes - BrewForm",
-      "heading": "Comparaison de Recettes",
-      "notFound": "Comparaison non trouvée",
+      "title": "Comparer des recettes - BrewForm",
+      "heading": "Comparaison de recettes",
+      "notFound": "Comparaison introuvable",
       "invalidLink": "Ce lien de comparaison peut être invalide ou expiré."
     },
     "profile": {
-      "title": "Mon Profil - BrewForm"
+      "title": "Mon profil - BrewForm"
     },
     "settings": {
       "title": "Paramètres - BrewForm"
@@ -55,101 +55,151 @@
       "title": "Inscription - BrewForm"
     },
     "forgotPassword": {
-      "title": "Mot de Passe Oublié - BrewForm"
+      "title": "Mot de passe oublié - BrewForm"
     },
     "resetPassword": {
-      "title": "Réinitialiser le Mot de Passe - BrewForm"
+      "title": "Réinitialiser le mot de passe - BrewForm"
     },
     "verifyEmail": {
-      "title": "Vérifier l'Email - BrewForm"
+      "title": "Vérifier l'email - BrewForm"
     },
     "notFound": {
-      "title": "Page Non Trouvée - BrewForm"
+      "title": "Page introuvable - BrewForm"
     },
     "error": {
       "title": "Erreur - BrewForm"
     }
   },
+  "admin": {
+    "dashboard": {
+      "title": "Tableau de bord admin - BrewForm",
+      "heading": "Tableau de bord admin",
+      "cards": {
+        "users": {
+          "title": "Utilisateurs",
+          "description": "Gérez les comptes, rôles et bannissements"
+        },
+        "recipes": {
+          "title": "Recettes",
+          "description": "Examinez et modérez les recettes"
+        },
+        "equipment": {
+          "title": "Équipement",
+          "description": "Gérez l'équipement, les fournisseurs et les cafés"
+        }
+      }
+    },
+    "users": {
+      "title": "Gérer les utilisateurs - Admin - BrewForm",
+      "heading": "Gérer les utilisateurs",
+      "comingSoon": "La gestion des utilisateurs arrive bientôt."
+    },
+    "recipes": {
+      "title": "Gérer les recettes - Admin - BrewForm",
+      "heading": "Gérer les recettes",
+      "comingSoon": "La modération des recettes arrive bientôt."
+    },
+    "equipment": {
+      "title": "Gérer l'équipement - Admin - BrewForm",
+      "heading": "Gérer l'équipement",
+      "comingSoon": "La gestion de l'équipement, des fournisseurs et des cafés arrive bientôt."
+    },
+    "tasteNotes": {
+      "title": "Gérer les notes de goût - Admin - BrewForm",
+      "heading": "Gérer les notes de goût",
+      "cacheWarning": "Si une note de goût est modifiée, ajoutée ou supprimée, le cache Redis doit être vidé pour que les changements prennent effet. Utilisez le bouton \"Vider le cache des notes de goût\" après les modifications.",
+      "comingSoon": "La gestion des notes de goût arrive bientôt. Les notes sont pré-remplies à partir de la roue SCAA 2016 et nécessitent rarement des changements.",
+      "plannedFeatures": "Fonctionnalités prévues :",
+      "features": {
+        "view": "Afficher toutes les notes de goût en structure hiérarchique",
+        "add": "Ajouter de nouvelles notes de goût",
+        "edit": "Modifier des notes de goût existantes",
+        "delete": "Supprimer des notes de goût (avec cascade sur les recettes)",
+        "flushCache": "Vider le cache Redis après modifications",
+        "reimport": "Réimporter depuis le fichier JSON SCAA"
+      }
+    }
+  },
   "home": {
     "hero": {
-      "title": "Découvrez et Partagez des Recettes de Café",
-      "subtitle": "Documentez votre voyage de préparation du café. Partagez vos recettes parfaites d'espresso et de café de spécialité avec le monde.",
-      "cta": "Commencer à Préparer",
-      "explore": "Explorer les Recettes"
+      "title": "Découvrez et partagez des recettes de café",
+      "subtitle": "Documentez votre parcours café. Partagez votre espresso parfait, vos pour-overs et vos recettes spéciales avec le monde.",
+      "cta": "Commencer à infuser",
+      "explore": "Explorer les recettes"
     },
     "features": {
       "track": {
-        "title": "Suivez Vos Préparations",
-        "description": "Documentez chaque détail de vos recettes de café - de la dose au rendement."
+        "title": "Suivez vos infusions",
+        "description": "Notez chaque détail de vos recettes : dose, rendement, mouture et temps d'extraction."
       },
       "share": {
-        "title": "Partagez et Découvrez",
-        "description": "Partagez vos recettes avec la communauté et découvrez de nouvelles techniques."
+        "title": "Partagez et découvrez",
+        "description": "Partagez vos recettes avec la communauté et découvrez de nouvelles techniques dans le monde entier."
       },
       "compare": {
-        "title": "Comparez et Améliorez",
-        "description": "Comparez les recettes côte à côte et améliorez continuellement vos compétences."
+        "title": "Comparez et améliorez",
+        "description": "Comparez des recettes côte à côte, suivez les versions et améliorez vos compétences."
       }
     },
-    "latest": "Dernières Recettes",
-    "popular": "Recettes Populaires",
-    "viewAll": "Voir Tout"
+    "latest": "Dernières recettes",
+    "popular": "Recettes populaires",
+    "viewAll": "Voir tout"
   },
   "auth": {
     "login": {
-      "title": "Bon Retour",
+      "title": "Bon retour",
       "subtitle": "Connectez-vous à votre compte BrewForm",
       "email": "Email",
       "password": "Mot de passe",
-      "submit": "Connexion",
-      "forgotPassword": "Mot de passe oublié?",
-      "noAccount": "Pas de compte?",
+      "submit": "Se connecter",
+      "forgotPassword": "Mot de passe oublié ?",
+      "noAccount": "Pas de compte ?",
       "signUp": "S'inscrire"
     },
     "register": {
       "title": "Rejoignez BrewForm",
-      "subtitle": "Créez votre compte et commencez votre voyage café",
+      "subtitle": "Créez votre compte et commencez votre parcours café",
       "email": "Email",
       "username": "Nom d'utilisateur",
       "displayName": "Nom affiché",
       "password": "Mot de passe",
       "confirmPassword": "Confirmer le mot de passe",
-      "submit": "Créer un Compte",
-      "hasAccount": "Déjà un compte?",
-      "signIn": "Connexion"
+      "submit": "Créer un compte",
+      "hasAccount": "Vous avez déjà un compte ?",
+      "signIn": "Se connecter"
     },
     "forgotPassword": {
-      "title": "Réinitialiser le Mot de Passe",
+      "title": "Réinitialiser le mot de passe",
       "subtitle": "Entrez votre email pour recevoir un lien de réinitialisation",
       "email": "Email",
-      "submit": "Envoyer le Lien",
+      "submit": "Envoyer le lien",
       "backToLogin": "Retour à la connexion"
     },
     "resetPassword": {
-      "title": "Créer un Nouveau Mot de Passe",
+      "title": "Créer un nouveau mot de passe",
       "subtitle": "Entrez votre nouveau mot de passe",
       "password": "Nouveau mot de passe",
       "confirmPassword": "Confirmer le mot de passe",
-      "submit": "Réinitialiser"
+      "submit": "Réinitialiser le mot de passe"
     },
     "verifyEmail": {
-      "title": "Vérifier l'Email",
+      "title": "Vérifier l'email",
       "verifying": "Vérification de votre email...",
-      "success": "Email vérifié avec succès!",
-      "error": "Échec de la vérification. Le lien a peut-être expiré."
+      "success": "Email vérifié avec succès !",
+      "error": "La vérification a échoué. Le lien a peut-être expiré."
     }
   },
   "recipe": {
-    "create": "Créer une Recette",
-    "edit": "Modifier la Recette",
-    "delete": "Supprimer la Recette",
-    "fork": "Dupliquer",
+    "create": "Créer une recette",
+    "edit": "Modifier la recette",
+    "delete": "Supprimer la recette",
+    "fork": "Forker la recette",
     "share": "Partager",
     "compare": "Comparer",
     "favourite": "Favori",
-    "unfavourite": "Retirer des Favoris",
+    "unfavourite": "Retirer des favoris",
     "versions": "Versions",
-    "newVersion": "Nouvelle Version",
+    "newVersion": "Créer une nouvelle version",
     "visibility": {
       "draft": "Brouillon",
       "private": "Privé",
@@ -157,38 +207,39 @@
       "public": "Public"
     },
     "fields": {
-      "title": "Titre de la Recette",
+      "title": "Titre de la recette",
       "description": "Description",
-      "brewMethod": "Méthode de Préparation",
-      "drinkType": "Type de Boisson",
+      "brewMethod": "Méthode d'infusion",
+      "drinkType": "Type de boisson",
       "coffee": "Café",
-      "roastDate": "Date de Torréfaction",
-      "grindDate": "Date de Mouture",
+      "roastDate": "Date de torréfaction",
+      "grindDate": "Date de mouture",
       "grinder": "Moulin",
-      "grindSize": "Taille de Mouture",
-      "brewer": "Machine",
+      "grindSize": "Taille de mouture",
+      "brewer": "Cafetière",
       "dose": "Dose",
       "yield": "Rendement",
       "time": "Temps",
       "temperature": "Température",
       "pressure": "Pression",
       "ratio": "Ratio",
-      "tastingNotes": "Notes de Dégustation",
-      "tasteNotes": "Notes Gustatives",
+      "tastingNotes": "Notes de dégustation",
+      "tasteNotes": "Notes de goût",
       "rating": "Note",
       "tags": "Tags",
+      "processing": "Traitement",
       "portafilter": "Porte-filtre",
       "basket": "Panier",
-      "puckScreen": "Écran Puck",
-      "paperFilter": "Filtre Papier",
+      "puckScreen": "Puck screen",
+      "paperFilter": "Filtre papier",
       "tamper": "Tamper"
     },
     "placeholders": {
-      "title": "Mon Espresso Parfait",
+      "title": "Mon espresso parfait",
       "description": "Décrivez votre recette...",
       "select": "Sélectionner...",
-      "coffee": "ex., Éthiopie Yirgacheffe",
-      "grindSize": "ex., 2.5 ou 18 clics",
+      "coffee": "ex. Éthiopie Yirgacheffe",
+      "grindSize": "ex. 2.5 ou 18 crans",
       "dose": "18",
       "yield": "36",
       "time": "28",
@@ -200,8 +251,8 @@
     },
     "captions": {
       "required": "Requis",
-      "tasteNotes": "Sélectionnez les profils gustatifs de la roue des saveurs SCAA",
-      "pressure": "ex., 9, 6-9, variable",
+      "tasteNotes": "Sélectionnez des profils du cercle SCAA",
+      "pressure": "ex. 9, 6-9, variable",
       "rating": "Notez de 1 à 10",
       "tags": "Séparés par des virgules"
     },
@@ -223,39 +274,46 @@
       "iced": "Glacé",
       "hot": "Chaud",
       "decaf": "Décaféiné",
-      "singleOrigin": "Origine Unique",
-      "blend": "Mélange",
-      "espresso": "Espresso"
+      "singleOrigin": "Origine unique",
+      "blend": "Assemblage",
+      "espresso": "Espresso",
+      "balanced": "Équilibré",
+      "bright": "Vif",
+      "complex": "Complexe",
+      "smooth": "Doux",
+      "intense": "Intense",
+      "clean": "Net",
+      "syrupy": "Sirupeux"
     },
     "empty": {
       "title": "Pas encore de recettes",
-      "description": "Soyez le premier à partager une recette!"
+      "description": "Soyez le premier à partager une recette !"
     },
     "result": "recette trouvée",
     "results": "recettes trouvées",
     "createFirst": "Créez votre première recette",
-    "forkedFrom": "Dupliqué de",
-    "forked": "Recette dupliquée avec succès!",
-    "linkCopied": "Lien copié dans le presse-papiers!",
+    "forkedFrom": "Forké de",
+    "forked": "Recette forkée avec succès !",
+    "linkCopied": "Lien copié dans le presse-papiers !",
     "equipment": "Équipement",
     "comments": "Commentaires",
-    "noComments": "Pas encore de commentaires. Soyez le premier!",
+    "noComments": "Pas encore de commentaires. Soyez le premier à commenter !",
     "addComment": "Ajouter un commentaire...",
-    "postComment": "Publier",
-    "commentAdded": "Commentaire publié!",
-    "replyingTo": "Répondre au commentaire",
+    "postComment": "Publier le commentaire",
+    "commentAdded": "Commentaire publié avec succès !",
+    "replyingTo": "Réponse au commentaire",
     "toComment": "pour laisser un commentaire",
     "activeFilters": "Filtres actifs",
     "brewMethods": {
-      "ESPRESSO_MACHINE": "Machine Espresso",
+      "ESPRESSO_MACHINE": "Machine à espresso",
       "POUR_OVER_V60": "V60 Pour Over",
       "POUR_OVER_CHEMEX": "Chemex",
       "POUR_OVER_KALITA": "Kalita Wave",
       "AEROPRESS": "AeroPress",
-      "FRENCH_PRESS": "Cafetière à Piston",
-      "MOKA_POT": "Cafetière Moka",
-      "COLD_BREW": "Cold Brew",
-      "TURKISH_CEZVE": "Cezve Turc"
+      "FRENCH_PRESS": "Presse française",
+      "MOKA_POT": "Moka",
+      "COLD_BREW": "Cold brew",
+      "TURKISH_CEZVE": "Cezve turc"
     },
     "drinkTypes": {
       "ESPRESSO": "Espresso",
@@ -267,12 +325,22 @@
       "FLAT_WHITE": "Flat White",
       "CORTADO": "Cortado",
       "POUR_OVER": "Pour Over",
-      "FRENCH_PRESS": "Cafetière à Piston",
-      "COLD_BREW": "Cold Brew",
+      "FRENCH_PRESS": "Presse française",
+      "COLD_BREW": "Cold brew",
       "MACCHIATO": "Macchiato",
-      "MOCHA": "Moka",
-      "ICED_COFFEE": "Café Glacé",
-      "TURKISH_COFFEE": "Café Turc"
+      "MOCHA": "Mocha",
+      "ICED_COFFEE": "Café glacé",
+      "TURKISH_COFFEE": "Café turc"
+    },
+    "processingMethods": {
+      "WASHED": "Lavé",
+      "NATURAL": "Naturel",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "Semi-lavé",
+      "WET_HULLED": "Décorticage humide",
+      "ANAEROBIC": "Anaérobie",
+      "CARBONIC_MACERATION": "Macération carbonique",
+      "OTHER": "Autre"
     }
   },
   "profile": {
@@ -281,7 +349,7 @@
     "equipment": "Équipement",
     "beans": "Grains",
     "setups": "Configurations",
-    "editProfile": "Modifier le Profil",
+    "editProfile": "Modifier le profil",
     "settings": "Paramètres"
   },
   "settings": {
@@ -292,16 +360,18 @@
     "theme": "Thème",
     "language": "Langue",
     "units": "Unités",
-    "timezone": "Fuseau Horaire",
-    "displayName": "Nom Affiché",
+    "timezone": "Fuseau horaire",
+    "displayName": "Nom affiché",
     "bio": "Bio",
-    "website": "Site Web",
+    "website": "Site web",
     "themes": {
       "light": "Clair",
       "dark": "Sombre",
       "coffee": "Café",
       "system": "Système"
     },
+    "switchToLight": "Passer en mode clair",
+    "switchToDark": "Passer en mode sombre",
     "units_options": {
       "metric": "Métrique (g, ml, °C)",
       "imperial": "Impérial (oz, fl oz, °F)"
@@ -311,29 +381,29 @@
       "website": "https://..."
     },
     "messages": {
-      "profileUpdated": "Profil mis à jour!"
+      "profileUpdated": "Profil mis à jour avec succès !"
     },
-    "deleteAccount": "Supprimer le Compte",
+    "deleteAccount": "Supprimer le compte",
     "deleteWarning": "Cette action est irréversible."
   },
   "equipment": {
     "grinder": "Moulin",
-    "brewer": "Machine",
+    "brewer": "Cafetière",
     "portafilter": "Porte-filtre",
     "basket": "Panier",
-    "puckScreen": "Écran Puck",
-    "paperFilter": "Filtre Papier",
+    "puckScreen": "Puck screen",
+    "paperFilter": "Filtre papier",
     "tamper": "Tamper"
   },
   "tasteNotes": {
-    "placeholder": "Rechercher des notes gustatives (min 3 caractères)...",
-    "minChars": "Tapez au moins {{count}} caractères",
-    "noResults": "Aucune note gustative trouvée",
+    "placeholder": "Rechercher des notes de goût (min 3 caractères)...",
+    "minChars": "Saisissez au moins {{count}} caractères pour rechercher",
+    "noResults": "Aucune note de goût trouvée",
     "selected": "{{count}}/{{max}} notes sélectionnées",
-    "scaaReference": "Référence Roue des Saveurs SCAA"
+    "scaaReference": "Référence de la roue SCAA"
   },
   "rating": {
-    "superGood": "Super Bon",
+    "superGood": "Excellent",
     "good": "Bon",
     "okay": "Correct",
     "bad": "Mauvais",
@@ -352,8 +422,8 @@
     "filter": "Filtrer",
     "sort": "Trier",
     "noResults": "Aucun résultat",
-    "loadMore": "Charger Plus",
-    "viewAll": "Voir Tout",
+    "loadMore": "Charger plus",
+    "viewAll": "Voir tout",
     "important": "Important",
     "by": "par",
     "reply": "Répondre",
@@ -361,20 +431,20 @@
   },
   "errors": {
     "notFound": {
-      "title": "Page Non Trouvée",
-      "description": "Oups! Ce café a refroidi. La page n'existe pas.",
-      "backHome": "Retour à l'Accueil"
+      "title": "Page introuvable",
+      "description": "Oups ! On dirait que le café a refroidi. La page demandée n'existe pas.",
+      "backHome": "Retour à l'accueil"
     },
     "generic": {
-      "title": "Quelque Chose s'est Mal Passé",
-      "description": "On a renversé le café! Veuillez réessayer plus tard.",
+      "title": "Un problème est survenu",
+      "description": "Nous avons renversé le café ! Réessayez plus tard.",
       "retry": "Réessayer"
     }
   },
   "footer": {
-    "tagline": "Partagez votre voyage café avec le monde.",
+    "tagline": "Partagez votre parcours café avec le monde.",
     "links": {
-      "about": "À Propos",
+      "about": "À propos",
       "privacy": "Confidentialité",
       "terms": "Conditions",
       "contact": "Contact"
@@ -382,16 +452,26 @@
     "copyright": "© {{year}} BrewForm. Tous droits réservés."
   },
   "language": {
-    "select": "Choisir la Langue",
-    "en": "English",
-    "tr": "Türkçe",
+    "select": "Choisir la langue",
+    "en": "Anglais",
+    "uk": "Ukrainien",
+    "sr": "Serbe",
+    "ro": "Roumain",
+    "tr": "Turc",
     "fr": "Français",
-    "de": "Deutsch",
-    "es": "Español",
-    "pt": "Português",
-    "ru": "Русский",
-    "az": "Azərbaycan",
-    "ka": "ქართული",
-    "ar_f": "العربية"
+    "de": "Allemand",
+    "es": "Espagnol",
+    "pt": "Portugais",
+    "ru": "Russe",
+    "az": "Azerbaïdjanais",
+    "ka": "Géorgien",
+    "ar_f": "Arabe",
+    "hy": "Arménien",
+    "ko": "Coréen",
+    "zh_TW": "Chinois (traditionnel)",
+    "th": "Thaï",
+    "hi": "Hindi",
+    "ja": "Japonais",
+    "zh_CN": "Chinois (simplifié)"
   }
 }

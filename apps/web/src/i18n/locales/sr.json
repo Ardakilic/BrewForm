@@ -1,0 +1,477 @@
+{
+  "app": {
+    "name": "BrewForm",
+    "tagline": "Podelite svoje kafe putovanje"
+  },
+  "theme": {
+    "switchToLight": "Prebaci na svetlu temu",
+    "switchToDark": "Prebaci na tamnu temu"
+  },
+  "nav": {
+    "home": "Početna",
+    "recipes": "Recepti",
+    "baristas": "Baristi",
+    "explore": "Istraži",
+    "login": "Prijavi se",
+    "register": "Registruj se",
+    "profile": "Profil",
+    "settings": "Podešavanja",
+    "logout": "Odjavi se",
+    "admin": "Admin"
+  },
+  "baristas": {
+    "description": "Otkrijte ljubitelje kafe i njihove recepte",
+    "result": "barista pronađen",
+    "results": "barista pronađeno"
+  },
+  "pages": {
+    "home": {
+      "title": "BrewForm - Recepti za kafu",
+      "description": "Podelite i otkrijte recepte za pripremu kafe. Pratite svoj espresso, pour-over i specijalne recepte za kafu."
+    },
+    "recipes": {
+      "title": "Recepti - BrewForm",
+      "description": "Pregledajte recepte za pripremu kafe iz zajednice"
+    },
+    "createRecipe": {
+      "title": "Kreiraj recept - BrewForm"
+    },
+    "compare": {
+      "title": "Uporedi recepte - BrewForm",
+      "heading": "Poređenje recepata",
+      "notFound": "Poređenje nije pronađeno",
+      "invalidLink": "Ovaj link za poređenje je možda nevažeći ili istekao."
+    },
+    "profile": {
+      "title": "Moj profil - BrewForm"
+    },
+    "settings": {
+      "title": "Podešavanja - BrewForm"
+    },
+    "login": {
+      "title": "Prijava - BrewForm"
+    },
+    "register": {
+      "title": "Registracija - BrewForm"
+    },
+    "forgotPassword": {
+      "title": "Zaboravljena lozinka - BrewForm"
+    },
+    "resetPassword": {
+      "title": "Resetuj lozinku - BrewForm"
+    },
+    "verifyEmail": {
+      "title": "Verifikuj email - BrewForm"
+    },
+    "notFound": {
+      "title": "Stranica nije pronađena - BrewForm"
+    },
+    "error": {
+      "title": "Greška - BrewForm"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Admin panel - BrewForm",
+      "heading": "Admin panel",
+      "cards": {
+        "users": {
+          "title": "Korisnici",
+          "description": "Upravljajte korisničkim nalozima, ulogama i zabranama"
+        },
+        "recipes": {
+          "title": "Recepti",
+          "description": "Pregled i moderacija sadržaja recepata"
+        },
+        "equipment": {
+          "title": "Oprema",
+          "description": "Upravljajte opremom, dobavljačima i kafom"
+        }
+      }
+    },
+    "users": {
+      "title": "Upravljanje korisnicima - Admin - BrewForm",
+      "heading": "Upravljanje korisnicima",
+      "comingSoon": "Funkcionalnost upravljanja korisnicima uskoro stiže."
+    },
+    "recipes": {
+      "title": "Upravljanje receptima - Admin - BrewForm",
+      "heading": "Upravljanje receptima",
+      "comingSoon": "Funkcionalnost moderacije recepata uskoro stiže."
+    },
+    "equipment": {
+      "title": "Upravljanje opremom - Admin - BrewForm",
+      "heading": "Upravljanje opremom",
+      "comingSoon": "Upravljanje opremom, dobavljačima i kafom uskoro stiže."
+    },
+    "tasteNotes": {
+      "title": "Upravljanje ukusnim notama - Admin - BrewForm",
+      "heading": "Upravljanje ukusnim notama",
+      "cacheWarning": "Ako je bilo koja ukusna nota izmenjena, dodata ili obrisana, keš ukusnih nota mora biti očišćen iz Redis-a kako bi promene stupile na snagu. Koristite dugme \"Očisti keš ukusnih nota\" nakon izmena.",
+      "comingSoon": "Upravljanje ukusnim notama uskoro stiže. Ukusne note su unapred popunjene iz SCAA 2016 točka ukusa i retko zahtevaju promene.",
+      "plannedFeatures": "Trenutno planirane funkcije:",
+      "features": {
+        "view": "Prikaz svih ukusnih nota u hijerarhijskoj strukturi",
+        "add": "Dodavanje novih ukusnih nota",
+        "edit": "Uređivanje postojećih ukusnih nota",
+        "delete": "Brisanje ukusnih nota (sa kaskadnim brisanjem recepata)",
+        "flushCache": "Čišćenje Redis keša nakon izmena",
+        "reimport": "Ponovni uvoz iz SCAA JSON fajla"
+      }
+    }
+  },
+  "home": {
+    "hero": {
+      "title": "Otkrijte i podelite recepte za kafu",
+      "subtitle": "Dokumentujte svoje kafe putovanje. Podelite svoj savršeni espresso, pour-over i specijalne recepte za kafu sa svetom.",
+      "cta": "Počni sa pripremom",
+      "explore": "Istraži recepte"
+    },
+    "features": {
+      "track": {
+        "title": "Pratite svoje pripreme",
+        "description": "Zabeležite svaki detalj svojih recepata za kafu — od doze i prinosa do granulacije i vremena ekstrakcije."
+      },
+      "share": {
+        "title": "Podelite i otkrijte",
+        "description": "Podelite recepte sa zajednicom i otkrijte nove tehnike pripreme od ljubitelja kafe širom sveta."
+      },
+      "compare": {
+        "title": "Uporedite i unapredite",
+        "description": "Uporedite recepte jedan pored drugog, pratite verzije i stalno unapređujte svoje veštine pripreme."
+      }
+    },
+    "latest": "Najnoviji recepti",
+    "popular": "Popularni recepti",
+    "viewAll": "Prikaži sve"
+  },
+  "auth": {
+    "login": {
+      "title": "Dobro došli nazad",
+      "subtitle": "Prijavite se na svoj BrewForm nalog",
+      "email": "Email",
+      "password": "Lozinka",
+      "submit": "Prijavi se",
+      "forgotPassword": "Zaboravljena lozinka?",
+      "noAccount": "Nemate nalog?",
+      "signUp": "Registruj se"
+    },
+    "register": {
+      "title": "Pridružite se BrewForm-u",
+      "subtitle": "Kreirajte nalog i započnite svoje kafe putovanje",
+      "email": "Email",
+      "username": "Korisničko ime",
+      "displayName": "Prikazano ime",
+      "password": "Lozinka",
+      "confirmPassword": "Potvrdite lozinku",
+      "submit": "Kreiraj nalog",
+      "hasAccount": "Već imate nalog?",
+      "signIn": "Prijavi se"
+    },
+    "forgotPassword": {
+      "title": "Resetuj lozinku",
+      "subtitle": "Unesite email da biste dobili link za resetovanje",
+      "email": "Email",
+      "submit": "Pošalji link za resetovanje",
+      "backToLogin": "Nazad na prijavu"
+    },
+    "resetPassword": {
+      "title": "Kreiraj novu lozinku",
+      "subtitle": "Unesite novu lozinku",
+      "password": "Nova lozinka",
+      "confirmPassword": "Potvrdite lozinku",
+      "submit": "Resetuj lozinku"
+    },
+    "verifyEmail": {
+      "title": "Verifikuj email",
+      "verifying": "Verifikujemo vaš email...",
+      "success": "Email je uspešno verifikovan!",
+      "error": "Verifikacija nije uspela. Link je možda istekao."
+    }
+  },
+  "recipe": {
+    "create": "Kreiraj recept",
+    "edit": "Uredi recept",
+    "delete": "Obriši recept",
+    "fork": "Forkuj recept",
+    "share": "Podeli",
+    "compare": "Uporedi",
+    "favourite": "Omiljeno",
+    "unfavourite": "Ukloni iz omiljenih",
+    "versions": "Verzije",
+    "newVersion": "Kreiraj novu verziju",
+    "visibility": {
+      "draft": "Nacrt",
+      "private": "Privatno",
+      "unlisted": "Nije javno",
+      "public": "Javno"
+    },
+    "fields": {
+      "title": "Naziv recepta",
+      "description": "Opis",
+      "brewMethod": "Metod pripreme",
+      "drinkType": "Vrsta napitka",
+      "coffee": "Kafa",
+      "roastDate": "Datum prženja",
+      "grindDate": "Datum mlevenja",
+      "grinder": "Mlin",
+      "grindSize": "Stepen mlevenja",
+      "brewer": "Aparat za pripremu",
+      "dose": "Doza",
+      "yield": "Prinos",
+      "time": "Vreme",
+      "temperature": "Temperatura",
+      "pressure": "Pritisak",
+      "ratio": "Odnos",
+      "tastingNotes": "Degustacione beleške",
+      "tasteNotes": "Ukusne note",
+      "rating": "Ocena",
+      "tags": "Oznake",
+      "processing": "Obrada",
+      "portafilter": "Portafilter",
+      "basket": "Korpa",
+      "puckScreen": "Puck screen",
+      "paperFilter": "Papirni filter",
+      "tamper": "Tamper"
+    },
+    "placeholders": {
+      "title": "Moj savršeni espresso",
+      "description": "Opišite svoj recept...",
+      "select": "Izaberite...",
+      "coffee": "npr., Etiopija Yirgacheffe",
+      "grindSize": "npr., 2.5 ili 18 klikova",
+      "dose": "18",
+      "yield": "36",
+      "time": "28",
+      "temperature": "93",
+      "pressure": "9",
+      "tastingNotes": "Dodatne degustacione beleške...",
+      "rating": "8",
+      "tags": "espresso, jutro, čokolada"
+    },
+    "captions": {
+      "required": "Obavezno",
+      "tasteNotes": "Izaberite ukusne profile sa SCAA točka ukusa",
+      "pressure": "npr., 9, 6-9, promenljiv",
+      "rating": "Ocenite od 1 do 10",
+      "tags": "Odvojeno zarezima"
+    },
+    "addTag": "Dodaj oznaku...",
+    "selectTags": "Izaberi oznake...",
+    "tags": {
+      "morning": "Jutro",
+      "afternoon": "Popodne",
+      "evening": "Veče",
+      "fruity": "Voćno",
+      "chocolatey": "Čokoladno",
+      "nutty": "Orašasto",
+      "floral": "Cvetno",
+      "spicy": "Začinjeno",
+      "sweet": "Slatko",
+      "bold": "Intenzivno",
+      "light": "Lagano",
+      "creamy": "Kremasto",
+      "iced": "Hladno",
+      "hot": "Toplo",
+      "decaf": "Bez kofeina",
+      "singleOrigin": "Jedno poreklo",
+      "blend": "Blend",
+      "espresso": "Espresso",
+      "balanced": "Uravnoteženo",
+      "bright": "Živahno",
+      "complex": "Kompleksno",
+      "smooth": "Glatko",
+      "intense": "Jako",
+      "clean": "Čisto",
+      "syrupy": "Sirupasto"
+    },
+    "empty": {
+      "title": "Nema recepata još",
+      "description": "Budite prvi koji će podeliti recept!"
+    },
+    "result": "recept pronađen",
+    "results": "recepta pronađeno",
+    "createFirst": "Kreirajte svoj prvi recept",
+    "forkedFrom": "Forkovano od",
+    "forked": "Recept uspešno forkovan!",
+    "linkCopied": "Link kopiran u privremenu memoriju!",
+    "equipment": "Oprema",
+    "comments": "Komentari",
+    "noComments": "Još nema komentara. Budite prvi koji će komentarisati!",
+    "addComment": "Dodaj komentar...",
+    "postComment": "Objavi komentar",
+    "commentAdded": "Komentar uspešno objavljen!",
+    "replyingTo": "Odgovor na komentar",
+    "toComment": "da biste ostavili komentar",
+    "activeFilters": "Aktivni filteri",
+    "brewMethods": {
+      "ESPRESSO_MACHINE": "Espresso aparat",
+      "POUR_OVER_V60": "V60 Pour-over",
+      "POUR_OVER_CHEMEX": "Chemex",
+      "POUR_OVER_KALITA": "Kalita Wave",
+      "AEROPRESS": "AeroPress",
+      "FRENCH_PRESS": "Francuska presa",
+      "MOKA_POT": "Moka pot",
+      "COLD_BREW": "Cold brew",
+      "TURKISH_CEZVE": "Turska džezva"
+    },
+    "drinkTypes": {
+      "ESPRESSO": "Espresso",
+      "RISTRETTO": "Ristretto",
+      "LUNGO": "Lungo",
+      "AMERICANO": "Americano",
+      "LATTE": "Latte",
+      "CAPPUCCINO": "Cappuccino",
+      "FLAT_WHITE": "Flat White",
+      "CORTADO": "Cortado",
+      "POUR_OVER": "Pour-over",
+      "FRENCH_PRESS": "Francuska presa",
+      "COLD_BREW": "Cold brew",
+      "MACCHIATO": "Macchiato",
+      "MOCHA": "Mocha",
+      "ICED_COFFEE": "Ledena kafa",
+      "TURKISH_COFFEE": "Turska kafa"
+    },
+    "processingMethods": {
+      "WASHED": "Oprana",
+      "NATURAL": "Prirodna",
+      "HONEY": "Honey",
+      "SEMI_WASHED": "Poluoprana",
+      "WET_HULLED": "Mokra obrada",
+      "ANAEROBIC": "Anaerobna",
+      "CARBONIC_MACERATION": "Karbonska maceracija",
+      "OTHER": "Ostalo"
+    }
+  },
+  "profile": {
+    "recipes": "Recepti",
+    "favourites": "Omiljeni",
+    "equipment": "Oprema",
+    "beans": "Zrna",
+    "setups": "Postavke",
+    "editProfile": "Uredi profil",
+    "settings": "Podešavanja"
+  },
+  "settings": {
+    "title": "Podešavanja",
+    "profile": "Profil",
+    "preferences": "Preferencije",
+    "account": "Nalog",
+    "theme": "Tema",
+    "language": "Jezik",
+    "units": "Jedinice",
+    "timezone": "Vremenska zona",
+    "displayName": "Prikazano ime",
+    "bio": "Biografija",
+    "website": "Veb-sajt",
+    "themes": {
+      "light": "Svetla",
+      "dark": "Tamna",
+      "coffee": "Kafa",
+      "system": "Sistemska"
+    },
+    "switchToLight": "Prebaci na svetlu temu",
+    "switchToDark": "Prebaci na tamnu temu",
+    "units_options": {
+      "metric": "Metrički (g, ml, °C)",
+      "imperial": "Imperijalni (oz, fl oz, °F)"
+    },
+    "placeholders": {
+      "bio": "Recite nešto o sebi...",
+      "website": "https://..."
+    },
+    "messages": {
+      "profileUpdated": "Profil je uspešno ažuriran!"
+    },
+    "deleteAccount": "Obriši nalog",
+    "deleteWarning": "Ova radnja se ne može opozvati."
+  },
+  "equipment": {
+    "grinder": "Mlin",
+    "brewer": "Aparat za pripremu",
+    "portafilter": "Portafilter",
+    "basket": "Korpa",
+    "puckScreen": "Puck screen",
+    "paperFilter": "Papirni filter",
+    "tamper": "Tamper"
+  },
+  "tasteNotes": {
+    "placeholder": "Pretraži ukusne note (min 3 karaktera)...",
+    "minChars": "Unesite najmanje {{count}} karaktera za pretragu",
+    "noResults": "Nema odgovarajućih ukusnih nota",
+    "selected": "{{count}}/{{max}} ukusnih nota izabrano",
+    "scaaReference": "SCAA referenca točka ukusa"
+  },
+  "rating": {
+    "superGood": "Odlično",
+    "good": "Dobro",
+    "okay": "U redu",
+    "bad": "Loše",
+    "horrible": "Užasno"
+  },
+  "common": {
+    "save": "Sačuvaj",
+    "cancel": "Otkaži",
+    "delete": "Obriši",
+    "edit": "Uredi",
+    "create": "Kreiraj",
+    "loading": "Učitavanje...",
+    "error": "Došlo je do greške",
+    "success": "Uspešno",
+    "search": "Pretraga",
+    "filter": "Filter",
+    "sort": "Sortiraj",
+    "noResults": "Nema rezultata",
+    "loadMore": "Učitaj još",
+    "viewAll": "Prikaži sve",
+    "important": "Važno",
+    "by": "od",
+    "reply": "Odgovori",
+    "clearAll": "Očisti sve"
+  },
+  "errors": {
+    "notFound": {
+      "title": "Stranica nije pronađena",
+      "description": "Ups! Izgleda da se kafa ohladila. Stranica koju tražite ne postoji.",
+      "backHome": "Nazad na početnu"
+    },
+    "generic": {
+      "title": "Nešto nije u redu",
+      "description": "Prosuli smo kafu! Pokušajte ponovo kasnije.",
+      "retry": "Pokušaj ponovo"
+    }
+  },
+  "footer": {
+    "tagline": "Podelite svoje kafe putovanje sa svetom.",
+    "links": {
+      "about": "O nama",
+      "privacy": "Privatnost",
+      "terms": "Uslovi",
+      "contact": "Kontakt"
+    },
+    "copyright": "© {{year}} BrewForm. Sva prava zadržana."
+  },
+  "language": {
+    "select": "Izaberi jezik",
+    "en": "Engleski",
+    "uk": "Ukrajinski",
+    "sr": "Srpski",
+    "ro": "Rumunski",
+    "tr": "Turski",
+    "fr": "Francuski",
+    "de": "Nemački",
+    "es": "Španski",
+    "pt": "Portugalski",
+    "ru": "Ruski",
+    "az": "Azerbejdžanski",
+    "ka": "Gruzijski",
+    "ar_f": "Arapski",
+    "hy": "Jermenski",
+    "ko": "Korejski",
+    "zh_TW": "Kineski (tradicionalni)",
+    "th": "Tajlandski",
+    "hi": "Hindi",
+    "ja": "Japanski",
+    "zh_CN": "Kineski (pojednostavljeni)"
+  }
+}

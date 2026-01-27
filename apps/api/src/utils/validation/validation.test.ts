@@ -14,7 +14,6 @@ import {
   grinderSchema,
   brewerSchema,
   vendorSchema,
-  coffeeSchema,
   recipeVersionInputSchema,
   createRecipeSchema,
   updateRecipeSchema,
@@ -288,17 +287,6 @@ describe('Validation Utilities', () => {
       });
     });
 
-    describe('coffeeSchema', () => {
-      it('should accept valid coffee data', () => {
-        const result = coffeeSchema.parse({
-          name: 'Ethiopia Yirgacheffe',
-          origin: 'Ethiopia',
-          processingMethod: 'WASHED',
-          flavorNotes: ['citrus', 'floral'],
-        });
-        expect(result.name).toBe('Ethiopia Yirgacheffe');
-      });
-    });
   });
 
   describe('Recipe Schemas', () => {

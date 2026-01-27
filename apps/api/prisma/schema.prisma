@@ -52,7 +52,6 @@ model User {
   comments          Comment[]
   setups            UserSetup[]
   userEquipment     UserEquipment[]
-  userBeans         UserBean[]
   auditLogs         AuditLog[]
   analytics         UserAnalytics[]
   notifications     Notification[]   @relation("UserNotifications")
@@ -204,64 +203,6 @@ enum MilkPreparationType {
   COLD
   HEATED
   NONE
-}
-
-// ============================================
-// Coffee & Vendors
-// ============================================
-
-model Vendor {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  slug        String    @unique
-  website     String?
-  country     String?
-  description String?
-  logoUrl     String?
-  isVerified  Boolean   @default(false)
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-
-  coffees Coffee[]
-
-  @@index([slug])
-  @@index([name])
-  @@index([deletedAt])
-  @@map("vendors")
-}
-
-model Coffee {
-  id               String           @id @default(cuid())
-  name             String
-  slug             String           @unique
-  vendorId         String?
-  origin           String?
-  region           String?
-  farm             String?
-  altitude         Int?             // meters
-  variety          String?
-  processingMethod ProcessingMethod?
-  flavorNotes      String[]
-  description      String?
-  roastLevel       String?
-  
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  deletedAt        DateTime?
-
-  vendor      Vendor?      @relation(fields: [vendorId], references: [id])
-  recipeVersions RecipeVersion[]
-  userBeans   UserBean[]
-
-  @@index([slug])
-  @@index([vendorId])
-  @@index([name])
-  @@index([origin])
-  @@index([variety])
-  @@index([deletedAt])
-  @@map("coffees")
 }
 
 // ============================================
@@ -459,30 +400,6 @@ model UserEquipment {
   @@map("user_equipment")
 }
 
-model UserBean {
-  id           String    @id @default(cuid())
-  userId       String
-  coffeeId     String
-  roastDate    DateTime?
-  purchaseDate DateTime?
-  quantity     Int?      // grams
-  notes        String?
-  isActive     Boolean   @default(true)
-  
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  coffee Coffee @relation(fields: [coffeeId], references: [id])
-
-  @@index([userId])
-  @@index([coffeeId])
-  @@index([isActive])
-  @@index([deletedAt])
-  @@map("user_beans")
-}
-
 model UserSetup {
   id          String    @id @default(cuid())
   userId      String
@@ -580,9 +497,9 @@ model RecipeVersion {
   brewMethod     BrewMethodType
   drinkType      DrinkType
   
-  // Coffee details
-  coffeeId       String?
-  coffeeName     String?        // Denormalized for display
+  // Coffee details (user-entered, not linked to a table)
+  coffeeName     String?
+  coffeeProcessing ProcessingMethod?
   roastDate      DateTime?
   grindDate      DateTime?
   
@@ -625,7 +542,6 @@ model RecipeVersion {
   recipe        Recipe          @relation("RecipeVersions", fields: [recipeId], references: [id], onDelete: Cascade)
   currentFor    Recipe?         @relation("CurrentVersion")
   user          User            @relation(fields: [userId], references: [id])
-  coffee        Coffee?         @relation(fields: [coffeeId], references: [id])
   grinder       Grinder?        @relation(fields: [grinderId], references: [id])
   brewer        Brewer?         @relation(fields: [brewerId], references: [id])
   portafilter   Portafilter?    @relation(fields: [portafilterId], references: [id])
@@ -640,7 +556,6 @@ model RecipeVersion {
   @@index([userId])
   @@index([brewMethod])
   @@index([drinkType])
-  @@index([coffeeId])
   @@index([rating])
   @@index([createdAt])
   @@index([title])
