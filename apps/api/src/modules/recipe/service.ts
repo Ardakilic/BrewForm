@@ -166,7 +166,6 @@ export async function getRecipeById(recipeId: string, viewerId?: string | null) 
     include: {
       currentVersion: {
         include: {
-          coffee: { include: { vendor: true } },
           grinder: true,
           brewer: true,
           portafilter: true,
