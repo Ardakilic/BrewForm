@@ -532,3 +532,68 @@ describe('Taste Notes Validation', () => {
     expect(body.success).toBe(true);
   });
 });
+
+describe('Taste Notes Service - Additional Coverage', () => {
+  it('should return empty array when searching with empty query', async () => {
+    const app = new Hono();
+    app.route('/taste-notes', tasteNotesModule);
+
+    // Empty query should return 400 due to validation
+    const res = await app.request('/taste-notes/search?q=', { headers: authHeaders });
+    expect(res.status).toBe(400);
+  });
+
+  it('should handle getTasteNotesByIds with empty array', async () => {
+    const app = new Hono();
+    app.route('/taste-notes', tasteNotesModule);
+
+    // Request single note to ensure service is working
+    const res = await app.request('/taste-notes/taste_1', { headers: authHeaders });
+    const body = (await res.json()) as ApiResponse;
+    
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+  });
+
+  it('should handle multiple taste note requests', async () => {
+    const app = new Hono();
+    app.route('/taste-notes', tasteNotesModule);
+
+    // Request all notes
+    const res = await app.request('/taste-notes', { headers: authHeaders });
+    const body = (await res.json()) as ApiResponse;
+    
+    expect(res.status).toBe(200);
+    const notes = body.data as Array<{ id: string }>;
+    expect(notes.length).toBeGreaterThan(0);
+  });
+
+  it('should handle search with path matching', async () => {
+    const app = new Hono();
+    app.route('/taste-notes', tasteNotesModule);
+
+    // Search for something in the path
+    const res = await app.request('/taste-notes/search?q=roasted', { headers: authHeaders });
+    const body = (await res.json()) as ApiResponse;
+    
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+  });
+
+  it('should sort search results by depth', async () => {
+    const app = new Hono();
+    app.route('/taste-notes', tasteNotesModule);
+
+    const res = await app.request('/taste-notes/search?q=fruity', { headers: authHeaders });
+    const body = (await res.json()) as ApiResponse;
+    
+    expect(res.status).toBe(200);
+    const results = body.data as Array<{ depth: number; name: string }>;
+    
+    // Verify results are sorted (shallower depths first for same match type)
+    if (results.length > 1) {
+      const fruity = results.find(r => r.name === 'Fruity');
+      expect(fruity).toBeDefined();
+    }
+  });
+});

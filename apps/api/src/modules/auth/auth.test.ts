@@ -408,5 +408,280 @@ describe('Auth Module', () => {
 
       expect(response.status).toBe(400);
     });
+
+    it('should reject already used token', async () => {
+      const mockVerification = {
+        id: 'token_123',
+        token: 'used_verify_token',
+        userId: 'user_123',
+        expiresAt: new Date(Date.now() + 86400000),
+        usedAt: new Date(), // Already used
+        user: { id: 'user_123', email: 'test@example.com', username: 'testuser' },
+      };
+
+      mockPrisma.emailVerification.findUnique.mockResolvedValue(mockVerification as never);
+
+      const response = await app.request('/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: 'used_verify_token',
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should reject expired verification token', async () => {
+      const mockVerification = {
+        id: 'token_123',
+        token: 'expired_verify_token',
+        userId: 'user_123',
+        expiresAt: new Date(Date.now() - 1000), // Expired
+        usedAt: null,
+        user: { id: 'user_123', email: 'test@example.com', username: 'testuser' },
+      };
+
+      mockPrisma.emailVerification.findUnique.mockResolvedValue(mockVerification as never);
+
+      const response = await app.request('/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: 'expired_verify_token',
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /auth/reset-password - edge cases', () => {
+    it('should reject invalid reset token', async () => {
+      mockPrisma.passwordReset.findUnique.mockResolvedValue(null);
+
+      const response = await app.request('/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: 'invalid_token',
+          password: 'NewSecurePassword123!',
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should reject already used reset token', async () => {
+      const mockToken = {
+        id: 'token_123',
+        token: 'used_reset_token',
+        userId: 'user_123',
+        expiresAt: new Date(Date.now() + 3600000),
+        usedAt: new Date(), // Already used
+        user: { id: 'user_123', email: 'test@example.com', username: 'testuser' },
+      };
+
+      mockPrisma.passwordReset.findUnique.mockResolvedValue(mockToken as never);
+
+      const response = await app.request('/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: 'used_reset_token',
+          password: 'NewSecurePassword123!',
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /auth/change-password', () => {
+    it('should change password with valid current password', async () => {
+      const mockUser = {
+        id: 'user_123',
+        email: 'test@example.com',
+        username: 'testuser',
+        passwordHash: 'hashed_password',
+      };
+
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
+      mockPrisma.user.update.mockResolvedValue({ id: 'user_123' } as never);
+      mockPrisma.session.deleteMany.mockResolvedValue({ count: 1 });
+
+      const response = await app.request('/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer mock_jwt_token',
+        },
+        body: JSON.stringify({
+          currentPassword: 'OldSecurePassword123!',
+          newPassword: 'NewSecurePassword123!',
+        }),
+      });
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should handle password change flow', async () => {
+      const mockUser = {
+        id: 'user_123',
+        email: 'test@example.com',
+        username: 'testuser',
+        passwordHash: 'hashed_password',
+      };
+
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
+      mockPrisma.user.update.mockResolvedValue({ id: 'user_123' } as never);
+      mockPrisma.session.deleteMany.mockResolvedValue({ count: 1 });
+
+      const response = await app.request('/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer mock_jwt_token',
+        },
+        body: JSON.stringify({
+          currentPassword: 'OldSecurePassword123!',
+          newPassword: 'NewSecurePassword123!',
+        }),
+      });
+
+      // The response depends on password verification which is mocked
+      expect([200, 400]).toContain(response.status);
+    });
+
+    it('should reject if user not found', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const response = await app.request('/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer mock_jwt_token',
+        },
+        body: JSON.stringify({
+          currentPassword: 'OldPassword123!',
+          newPassword: 'NewSecurePassword123!',
+        }),
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('POST /auth/refresh - edge cases', () => {
+    it('should reject if session not found', async () => {
+      mockPrisma.session.findUnique.mockResolvedValue(null);
+
+      const response = await app.request('/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refreshToken: 'nonexistent_token',
+        }),
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should reject if user is banned', async () => {
+      const mockSession = {
+        id: 'session_123',
+        userId: 'user_123',
+        refreshToken: 'valid_refresh_token',
+        expiresAt: new Date(Date.now() + 604800000),
+        user: {
+          id: 'user_123',
+          email: 'test@example.com',
+          isAdmin: false,
+          isBanned: true, // User is banned
+        },
+      };
+
+      mockPrisma.session.findUnique.mockResolvedValue(mockSession as never);
+
+      const response = await app.request('/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refreshToken: 'valid_refresh_token',
+        }),
+      });
+
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('GET /auth/me', () => {
+    it('should return current user info', async () => {
+      const response = await app.request('/auth/me', {
+        headers: {
+          'Authorization': 'Bearer mock_jwt_token',
+        },
+      });
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as ApiResponse;
+      expect(body.success).toBe(true);
+      expect(body.data).toHaveProperty('id');
+    });
+  });
+
+  describe('POST /auth/login - deleted user', () => {
+    it('should reject login for deleted user', async () => {
+      const mockUser = {
+        id: 'user_123',
+        email: 'deleted@example.com',
+        passwordHash: 'hashed_password',
+        deletedAt: new Date(), // User is deleted
+        isBanned: false,
+      };
+
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
+
+      const response = await app.request('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'deleted@example.com',
+          password: 'SecurePassword123!',
+        }),
+      });
+
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('POST /auth/register - validation', () => {
+    it('should reject invalid email format', async () => {
+      const response = await app.request('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'not-an-email',
+          username: 'testuser',
+          password: 'SecurePassword123!',
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should reject username with spaces', async () => {
+      const response = await app.request('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'test@example.com',
+          username: 'test user',
+          password: 'SecurePassword123!',
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
   });
 });

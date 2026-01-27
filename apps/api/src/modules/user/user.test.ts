@@ -90,7 +90,9 @@ const mockPrisma = {
   user: {
     findUnique: vi.fn(),
     findFirst: vi.fn(),
+    findMany: vi.fn(),
     update: vi.fn(),
+    count: vi.fn(),
   },
   recipe: {
     findMany: vi.fn(),
@@ -99,6 +101,9 @@ const mockPrisma = {
   userFavourite: {
     findMany: vi.fn(),
     count: vi.fn(),
+  },
+  session: {
+    deleteMany: vi.fn(),
   },
 };
 
@@ -352,6 +357,112 @@ describe('User Module', () => {
       expect(response.status).toBe(200);
       const body = await response.json() as ApiResponse;
       expect(body.data).toHaveLength(1);
+    });
+  });
+
+  describe('DELETE /users/me', () => {
+    it('should soft delete user account', async () => {
+      vi.mocked(mockPrisma.user.update).mockResolvedValue({ id: 'user_123' } as never);
+      vi.mocked(mockPrisma.session.deleteMany).mockResolvedValue({ count: 2 } as never);
+
+      const response = await app.request('/users/me', {
+        method: 'DELETE',
+      });
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as ApiResponse;
+      expect(body.success).toBe(true);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user_123' },
+          data: { deletedAt: expect.any(Date) },
+        })
+      );
+      expect(mockPrisma.session.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user_123' },
+      });
+    });
+  });
+
+  describe('GET /users', () => {
+    it('should list all public users', async () => {
+      const mockUsers = [
+        {
+          id: 'user_1',
+          username: 'barista1',
+          displayName: 'Barista One',
+          avatarUrl: null,
+          bio: 'Coffee lover',
+          website: null,
+          createdAt: new Date(),
+          _count: { recipes: 5 },
+        },
+        {
+          id: 'user_2',
+          username: 'barista2',
+          displayName: 'Barista Two',
+          avatarUrl: null,
+          bio: null,
+          website: null,
+          createdAt: new Date(),
+          _count: { recipes: 3 },
+        },
+      ];
+
+      vi.mocked(mockPrisma.user.findMany).mockResolvedValue(mockUsers as never);
+      vi.mocked(mockPrisma.user.count).mockResolvedValue(2);
+
+      const response = await app.request('/users');
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as ApiResponse;
+      expect(body.success).toBe(true);
+      expect(body.data).toBeDefined();
+    });
+
+    it('should filter users by search term', async () => {
+      const mockUsers = [
+        {
+          id: 'user_1',
+          username: 'coffeemaster',
+          displayName: 'Coffee Master',
+          avatarUrl: null,
+          bio: null,
+          website: null,
+          createdAt: new Date(),
+          _count: { recipes: 10 },
+        },
+      ];
+
+      vi.mocked(mockPrisma.user.findMany).mockResolvedValue(mockUsers as never);
+      vi.mocked(mockPrisma.user.count).mockResolvedValue(1);
+
+      const response = await app.request('/users?search=coffee');
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as ApiResponse;
+      expect(body.success).toBe(true);
+    });
+
+    it('should return empty list when no users match', async () => {
+      vi.mocked(mockPrisma.user.findMany).mockResolvedValue([]);
+      vi.mocked(mockPrisma.user.count).mockResolvedValue(0);
+
+      const response = await app.request('/users?search=nonexistent');
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as ApiResponse;
+      expect(body.success).toBe(true);
+    });
+  });
+
+  describe('GET /users/me - edge cases', () => {
+    it('should return 404 when user not found', async () => {
+      vi.mocked(mockPrisma.user.findUnique).mockResolvedValue(null);
+
+      const response = await app.request('/users/me');
+
+      expect(response.status).toBe(404);
     });
   });
 });

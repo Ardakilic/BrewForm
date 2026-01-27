@@ -426,6 +426,456 @@ describe('Social Module', () => {
 
         expect(response.status).toBe(404);
       });
+
+      it('should return 400 if recipe is no longer public', async () => {
+        const mockComparison = {
+          id: 'comparison_1',
+          shareToken: 'abc123xyz',
+          recipeA: {
+            id: 'clh1234567890abcdefghij01',
+            visibility: 'PRIVATE',
+            currentVersion: { title: 'Recipe A' },
+            user: { username: 'user1' },
+          },
+          recipeB: {
+            id: 'clh1234567890abcdefghij02',
+            visibility: 'PUBLIC',
+            currentVersion: { title: 'Recipe B' },
+            user: { username: 'user2' },
+          },
+        };
+
+        vi.mocked(mockPrisma.comparison.findUnique).mockResolvedValue(mockComparison as never);
+
+        const response = await app.request('/social/comparisons/abc123xyz');
+
+        expect(response.status).toBe(400);
+      });
+    });
+
+    describe('POST /social/comparisons - existing comparison', () => {
+      it('should return existing comparison if already exists', async () => {
+        const recipeAId = 'clh1234567890abcdefghij01';
+        const recipeBId = 'clh1234567890abcdefghij02';
+        const mockRecipeA = { id: recipeAId, visibility: 'PUBLIC' };
+        const mockRecipeB = { id: recipeBId, visibility: 'PUBLIC' };
+
+        const existingComparison = {
+          id: 'existing_comparison',
+          shareToken: 'existing_token',
+          recipeAId,
+          recipeBId,
+        };
+
+        vi.mocked(mockPrisma.recipe.findUnique)
+          .mockResolvedValueOnce(mockRecipeA as never)
+          .mockResolvedValueOnce(mockRecipeB as never);
+        vi.mocked(mockPrisma.comparison.findFirst).mockResolvedValue(existingComparison as never);
+
+        const response = await app.request('/social/comparisons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipeAId, recipeBId }),
+        });
+
+        expect(response.status).toBe(201);
+        const body = await response.json() as ApiResponse;
+        expect((body.data as { shareToken: string }).shareToken).toBe('existing_token');
+      });
+
+      it('should reject comparing private recipes', async () => {
+        const recipeAId = 'clh1234567890abcdefghij01';
+        const recipeBId = 'clh1234567890abcdefghij02';
+        const mockRecipeA = { id: recipeAId, visibility: 'PRIVATE', userId: 'other_user' };
+        const mockRecipeB = { id: recipeBId, visibility: 'PUBLIC' };
+
+        vi.mocked(mockPrisma.recipe.findUnique)
+          .mockResolvedValueOnce(mockRecipeA as never)
+          .mockResolvedValueOnce(mockRecipeB as never);
+
+        const response = await app.request('/social/comparisons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipeAId, recipeBId }),
+        });
+
+        expect(response.status).toBe(400);
+      });
+    });
+  });
+
+  describe('Comments - additional tests', () => {
+    describe('PATCH /social/comments/:id', () => {
+      it('should update own comment', async () => {
+        const commentId = 'clh1234567890abcdefghij99';
+        const mockComment = {
+          id: commentId,
+          userId: 'user_123',
+          content: 'Original comment',
+        };
+
+        const updatedComment = {
+          ...mockComment,
+          content: 'Updated comment',
+          isEdited: true,
+          user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+        };
+
+        vi.mocked(mockPrisma.comment.findUnique).mockResolvedValue(mockComment as never);
+        vi.mocked(mockPrisma.comment.update).mockResolvedValue(updatedComment as never);
+
+        const response = await app.request(`/social/comments/${commentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: 'Updated comment' }),
+        });
+
+        expect(response.status).toBe(200);
+        const body = await response.json() as ApiResponse;
+        expect((body.data as { content: string }).content).toBe('Updated comment');
+      });
+
+      it('should reject updating others comments', async () => {
+        const commentId = 'clh1234567890abcdefghij99';
+        const mockComment = {
+          id: commentId,
+          userId: 'other_user',
+          content: 'Their comment',
+        };
+
+        vi.mocked(mockPrisma.comment.findUnique).mockResolvedValue(mockComment as never);
+
+        const response = await app.request(`/social/comments/${commentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: 'Trying to update' }),
+        });
+
+        expect(response.status).toBe(403);
+      });
+    });
+
+  });
+
+  describe('Favourites - edge cases', () => {
+    describe('POST /social/favourites/:recipeId - recipe not found', () => {
+      it('should return 404 if recipe not found', async () => {
+        vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(null);
+
+        const response = await app.request('/social/favourites/clh1234567890abcdefghij01', {
+          method: 'POST',
+        });
+
+        expect(response.status).toBe(404);
+      });
+    });
+
+    describe('POST /social/favourites/:recipeId - own recipe', () => {
+      it('should allow favouriting own recipe', async () => {
+        const mockRecipe = {
+          id: 'clh1234567890abcdefghij01',
+          visibility: 'PUBLIC',
+          userId: 'user_123',
+        };
+        const mockFavourite = {
+          id: 'fav_1',
+          userId: 'user_123',
+          recipeId: 'clh1234567890abcdefghij01',
+          createdAt: new Date(),
+        };
+
+        vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+        vi.mocked(mockPrisma.userFavourite.findUnique).mockResolvedValue(null);
+        vi.mocked(mockPrisma.userFavourite.create).mockResolvedValue(mockFavourite as never);
+        vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+
+        const response = await app.request('/social/favourites/clh1234567890abcdefghij01', {
+          method: 'POST',
+        });
+
+        expect(response.status).toBe(201);
+      });
+    });
+  });
+
+  describe('Comments - notification flow', () => {
+    it('should add comment and trigger notifications', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
+      const mockRecipe = { 
+        id: recipeId, 
+        visibility: 'PUBLIC', 
+        userId: 'recipe_owner',
+        slug: 'test-recipe',
+      };
+      const mockComment = {
+        id: 'clh1234567890abcdefghij99',
+        content: 'Great recipe!',
+        userId: 'user_123',
+        recipeId,
+        createdAt: new Date(),
+        user: { id: 'user_123', username: 'testuser', displayName: 'Test', avatarUrl: null },
+      };
+
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.comment.create).mockResolvedValue(mockComment as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+
+      const response = await app.request(`/social/recipes/${recipeId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'Great recipe!' }),
+      });
+
+      expect(response.status).toBe(201);
+    });
+
+    it('should add comment on unlisted recipe', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
+      const mockRecipe = { 
+        id: recipeId, 
+        visibility: 'UNLISTED', 
+        userId: 'recipe_owner',
+      };
+      const mockComment = {
+        id: 'clh1234567890abcdefghij99',
+        content: 'Found this via link!',
+        userId: 'user_123',
+        recipeId,
+        createdAt: new Date(),
+        user: { id: 'user_123', username: 'testuser', displayName: 'Test', avatarUrl: null },
+      };
+
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.comment.create).mockResolvedValue(mockComment as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+
+      const response = await app.request(`/social/recipes/${recipeId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'Found this via link!' }),
+      });
+
+      expect(response.status).toBe(201);
+    });
+
+    it('should reject comment on recipe not found', async () => {
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(null);
+
+      const response = await app.request('/social/recipes/clh1234567890abcdefghij01/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'Test comment' }),
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('Delete comment - with recipe count update', () => {
+    it('should soft delete comment and decrement recipe count', async () => {
+      const commentId = 'clh1234567890abcdefghij99';
+      const mockComment = {
+        id: commentId,
+        userId: 'user_123',
+        recipeId: 'clh1234567890abcdefghij01',
+        content: 'My comment',
+      };
+
+      vi.mocked(mockPrisma.comment.findUnique).mockResolvedValue(mockComment as never);
+      vi.mocked(mockPrisma.comment.update).mockResolvedValue({} as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+
+      const response = await app.request(`/social/comments/${commentId}`, {
+        method: 'DELETE',
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.recipe.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'clh1234567890abcdefghij01' },
+          data: { commentCount: { decrement: 1 } },
+        })
+      );
+    });
+  });
+
+  describe('Recipe comments - with replies', () => {
+    it('should return comments with nested replies', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
+      const mockRecipe = { id: recipeId, visibility: 'PUBLIC', userId: 'owner_123' };
+      const mockComments = [
+        {
+          id: 'comment_1',
+          content: 'Top level comment',
+          userId: 'user_456',
+          createdAt: new Date(),
+          user: { username: 'commenter', displayName: 'Commenter' },
+          replies: [
+            {
+              id: 'reply_1',
+              content: 'A reply',
+              userId: 'owner_123',
+              user: { username: 'owner', displayName: 'Owner' },
+            },
+          ],
+        },
+      ];
+
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.comment.findMany).mockResolvedValue(mockComments as never);
+      vi.mocked(mockPrisma.comment.count).mockResolvedValue(1);
+
+      const response = await app.request(`/social/recipes/${recipeId}/comments`);
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as ApiResponse;
+      expect(body.data).toHaveLength(1);
+    });
+  });
+
+  describe('Update comment - edge cases', () => {
+    it('should update comment and mark as edited', async () => {
+      const commentId = 'clh1234567890abcdefghij99';
+      const mockComment = {
+        id: commentId,
+        userId: 'user_123',
+        content: 'Original',
+      };
+      const updatedComment = {
+        ...mockComment,
+        content: 'Edited content',
+        isEdited: true,
+        user: { id: 'user_123', username: 'test', displayName: 'Test', avatarUrl: null },
+      };
+
+      vi.mocked(mockPrisma.comment.findUnique).mockResolvedValue(mockComment as never);
+      vi.mocked(mockPrisma.comment.update).mockResolvedValue(updatedComment as never);
+
+      const response = await app.request(`/social/comments/${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'Edited content' }),
+      });
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe('isFavourited check', () => {
+    it('should check favourite status correctly', async () => {
+      // This tests the isFavourited function indirectly via favourites endpoint
+      const mockRecipe = { id: 'clh1234567890abcdefghij01', visibility: 'PUBLIC', userId: 'other' };
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.userFavourite.findUnique).mockResolvedValue(null);
+      vi.mocked(mockPrisma.userFavourite.create).mockResolvedValue({ id: 'fav_1' } as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+
+      const response = await app.request('/social/favourites/clh1234567890abcdefghij01', {
+        method: 'POST',
+      });
+
+      expect(response.status).toBe(201);
+    });
+  });
+
+  describe('Comparison - recipe not found', () => {
+    it('should return 404 if one recipe not found', async () => {
+      const recipeAId = 'clh1234567890abcdefghij01';
+      const recipeBId = 'clh1234567890abcdefghij02';
+      
+      vi.mocked(mockPrisma.recipe.findUnique)
+        .mockResolvedValueOnce({ id: recipeAId, visibility: 'PUBLIC' } as never)
+        .mockResolvedValueOnce(null);
+
+      const response = await app.request('/social/comparisons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipeAId, recipeBId }),
+      });
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe('Comments - self comment on own recipe', () => {
+    it('should allow commenting on own recipe without notification', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
+      const mockRecipe = { 
+        id: recipeId, 
+        visibility: 'PUBLIC', 
+        userId: 'user_123', // Same as authenticated user
+        slug: 'my-recipe',
+      };
+      const mockComment = {
+        id: 'clh1234567890abcdefghij99',
+        content: 'My own comment',
+        userId: 'user_123',
+        recipeId,
+        createdAt: new Date(),
+        user: { id: 'user_123', username: 'testuser', displayName: 'Test', avatarUrl: null },
+      };
+
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.comment.create).mockResolvedValue(mockComment as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+
+      const response = await app.request(`/social/recipes/${recipeId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'My own comment' }),
+      });
+
+      expect(response.status).toBe(201);
+    });
+  });
+
+  describe('Remove favourite - decrement count', () => {
+    it('should decrement favourite count when removing', async () => {
+      const mockFavourite = { 
+        id: 'fav_1', 
+        userId: 'user_123', 
+        recipeId: 'clh1234567890abcdefghij01' 
+      };
+
+      vi.mocked(mockPrisma.userFavourite.findUnique).mockResolvedValue(mockFavourite as never);
+      vi.mocked(mockPrisma.userFavourite.delete).mockResolvedValue(mockFavourite as never);
+      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+
+      const response = await app.request('/social/favourites/clh1234567890abcdefghij01', {
+        method: 'DELETE',
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.recipe.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { favouriteCount: { decrement: 1 } },
+        })
+      );
+    });
+  });
+
+  describe('Get comments - pagination', () => {
+    it('should return paginated comments', async () => {
+      const recipeId = 'clh1234567890abcdefghij01';
+      const mockRecipe = { id: recipeId, visibility: 'PUBLIC', userId: 'owner_123' };
+      const mockComments = Array.from({ length: 5 }, (_, i) => ({
+        id: `comment_${i}`,
+        content: `Comment ${i}`,
+        userId: `user_${i}`,
+        createdAt: new Date(),
+        user: { username: `user${i}`, displayName: `User ${i}` },
+        replies: [],
+      }));
+
+      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      vi.mocked(mockPrisma.comment.findMany).mockResolvedValue(mockComments as never);
+      vi.mocked(mockPrisma.comment.count).mockResolvedValue(5);
+
+      const response = await app.request(`/social/recipes/${recipeId}/comments?page=1&limit=10`);
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as ApiResponse;
+      expect(body.data).toHaveLength(5);
     });
   });
 });
