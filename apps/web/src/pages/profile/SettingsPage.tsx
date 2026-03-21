@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { useStyletron } from 'baseui';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { FormControl } from 'baseui/form-control';
 import { Input } from 'baseui/input';
 import { Textarea } from 'baseui/textarea';

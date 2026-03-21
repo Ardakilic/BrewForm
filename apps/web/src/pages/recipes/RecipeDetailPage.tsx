@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useStyletron } from 'baseui';
 import { Button } from 'baseui/button';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { HeadingLarge, HeadingSmall, HeadingXSmall, ParagraphMedium, ParagraphSmall, LabelMedium } from 'baseui/typography';
 import { Tag, KIND as TAG_KIND } from 'baseui/tag';
 import { Textarea } from 'baseui/textarea';

@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { HeadingMedium, ParagraphMedium } from 'baseui/typography';
 import { Button } from 'baseui/button';
 import { useTranslation } from 'react-i18next';

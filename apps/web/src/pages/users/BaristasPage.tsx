@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { Input } from 'baseui/input';
 import { HeadingLarge, HeadingSmall, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
 import { useTranslation } from 'react-i18next';

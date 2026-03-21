@@ -4,9 +4,9 @@
 
 import { useParams, Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { HeadingLarge, HeadingSmall, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
-import { Tag, KIND as TAG_KIND, VARIANT as TAG_VARIANT } from 'baseui/tag';
+import { Tag, KIND as TAG_KIND, HIERARCHY as TAG_HIERARCHY } from 'baseui/tag';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
@@ -145,10 +145,10 @@ function UserPage() {
                     {recipe.currentVersion?.title}
                   </HeadingSmall>
                   <div className={css({ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' })}>
-                    <Tag closeable={false} kind={TAG_KIND.blue} variant={TAG_VARIANT.light}>
+                    <Tag closeable={false} kind={TAG_KIND.blue} hierarchy={TAG_HIERARCHY.secondary}>
                       {t(`recipe.brewMethods.${recipe.currentVersion?.brewMethod}`)}
                     </Tag>
-                    <Tag closeable={false} kind={TAG_KIND.purple} variant={TAG_VARIANT.light}>
+                    <Tag closeable={false} kind={TAG_KIND.purple} hierarchy={TAG_HIERARCHY.secondary}>
                       {t(`recipe.drinkTypes.${recipe.currentVersion?.drinkType}`)}
                     </Tag>
                   </div>

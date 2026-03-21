@@ -77,7 +77,75 @@ onlyBuiltDependencies:
   - esbuild
 ```
 
-### 3. Docker containers not seeing root workspace config changes
+### 3. `make test` failing when containers are not running
+
+`make test` used `docker compose exec` for both `api` and `web`, which requires the target service to already be running. Running `make test` with only the API container up (the default dev state) produced:
+
+```
+docker compose exec web pnpm test
+service "web" is not running
+make: *** [test] Error 1
+```
+
+**Fix:** All test targets in `Makefile` (`test`, `test-api`, `test-web`, `test-coverage`, `test-watch`) switched from `docker compose exec` to `docker compose run --rm`. This spins up a temporary container on demand and removes it after the command finishes — no pre-running service required.
+
+### 4. baseui v14 → v16 runtime breaking changes
+
+The `baseui` upgrade from `14.0.0` to `16.1.1` introduced two runtime-breaking API changes that caused **32 out of 70 web tests to fail**.
+
+#### 4a. `VARIANT` removed from `baseui/tag`
+
+baseui v16 removed the `VARIANT` export from `baseui/tag` entirely. The tag styling API is now controlled exclusively via `HIERARCHY` (`primary` / `secondary`), which replaces the old `solid` / `outlined` / `light` values:
+
+| Old (`VARIANT`) | New (`HIERARCHY`) |
+|---|---|
+| `VARIANT.solid` | `HIERARCHY.primary` |
+| `VARIANT.outlined` | `HIERARCHY.secondary` |
+| `VARIANT.light` | `HIERARCHY.secondary` |
+
+Affected files: `RecipesPage.tsx`, `UserPage.tsx`, `TasteNoteAutocomplete.tsx`.
+
+#### 4b. `Card.defaultProps` ignored by React 19
+
+React 19 dropped support for `defaultProps` on function components. baseui v16's `Card` component relies on this pattern to provide two internal defaults:
+
+```js
+Card.defaultProps = {
+  hasThumbnail,  // internal function, called as hasThumbnail(props) at render time
+  overrides: {}
+};
+```
+
+With React 19, `hasThumbnail` is `undefined` when not explicitly passed, causing every `<Card>` render to throw:
+
+```
+TypeError: hasThumbnail is not a function
+  at Card (baseui/card/card.js:69)
+```
+
+**Fix:** A thin wrapper component was created at `src/components/Card.tsx` that supplies these defaults via standard parameter defaults (React 19–safe), and makes both props optional for callers:
+
+```tsx
+import { Card as BaseuiCard, hasThumbnail as defaultHasThumbnail } from 'baseui/card';
+import type { CardProps } from 'baseui/card';
+
+type Props = Omit<CardProps, 'hasThumbnail' | 'overrides'> & {
+  hasThumbnail?: CardProps['hasThumbnail'];
+  overrides?: CardProps['overrides'];
+};
+
+export function Card({ hasThumbnail = defaultHasThumbnail, overrides = {}, ...rest }: Props) {
+  return <BaseuiCard hasThumbnail={hasThumbnail} overrides={overrides} {...rest} />;
+}
+```
+
+All 14 page files that imported `Card` from `baseui/card` were updated to import from `../../components/Card` instead.
+
+#### 4c. Tag close button `aria-label` changed
+
+baseui v16 changed the accessible label on the Tag close/action button from `"close"` to `"Remove ${children}"`. Two tests in `RecipesPage.test.tsx` that queried `getAllByRole('button', { name: /close/i })` were updated to use `/remove/i`.
+
+### 5. Docker containers not seeing root workspace config changes
 
 The `docker-compose.yml` volume mounts only covered `apps/api`, `apps/web`, `packages`, and `node_modules`. The root `package.json` and `pnpm-workspace.yaml` were **baked into the Docker image at build time** and not reflected as live files. This meant:
 
@@ -181,10 +249,26 @@ This ensures `pnpm install` (via `make install`) always reads the live host vers
 | `apps/web/Dockerfile` | Updated `corepack prepare pnpm@9.15.0` → `pnpm@10.32.1` |
 | `apps/api/package.json` | All dependencies upgraded (see table above) |
 | `apps/web/package.json` | All dependencies upgraded (see table above) |
+| `Makefile` | All test targets (`test`, `test-api`, `test-web`, `test-coverage`, `test-watch`) switched from `docker compose exec` to `docker compose run --rm` |
+| `apps/web/src/components/Card.tsx` | **New file.** Wrapper for baseui `Card` that restores `hasThumbnail` and `overrides` defaults dropped by React 19's removal of `defaultProps` support |
+| `apps/web/src/pages/*/` (14 files) | `from 'baseui/card'` imports repointed to `from '../../components/Card'` |
+| `apps/web/src/pages/recipes/RecipesPage.tsx` | `VARIANT` → `HIERARCHY` for all Tag `variant` props |
+| `apps/web/src/pages/users/UserPage.tsx` | `VARIANT` → `HIERARCHY` for Tag `variant` props |
+| `apps/web/src/components/TasteNoteAutocomplete.tsx` | `VARIANT` → `HIERARCHY` for Tag `variant` prop |
+| `apps/web/src/pages/recipes/RecipesPage.test.tsx` | Updated close button queries from `/close/i` to `/remove/i` to match baseui v16 Tag aria-label |
 
 ---
 
 ## Migration Notes for Major Version Bumps
+
+### baseui 14 → 16
+
+**`VARIANT` removed from `baseui/tag`** — the `variant` prop on `Tag` no longer accepts `VARIANT.*` values. Replace all usages with `hierarchy={HIERARCHY.primary}` (solid/filled) or `hierarchy={HIERARCHY.secondary}` (outlined/light). Import `HIERARCHY` instead of `VARIANT`.
+
+**`Card.defaultProps` incompatible with React 19** — baseui v16 still ships with `Card.defaultProps`, which React 19 silently ignores for function components. Any project rendering `<Card>` with React 19 must either pass `hasThumbnail` and `overrides` explicitly or use the wrapper at `src/components/Card.tsx` introduced in this update.
+
+**Tag close button aria-label** — changed from `"close"` to `"Remove ${label}"`. Update any test selectors querying by the old label.
+
 
 ### Prisma 6 → 7
 

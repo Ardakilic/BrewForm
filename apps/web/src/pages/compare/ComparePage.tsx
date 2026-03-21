@@ -4,7 +4,7 @@
 
 import { useParams } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { HeadingLarge, HeadingSmall, ParagraphMedium, LabelMedium } from 'baseui/typography';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';

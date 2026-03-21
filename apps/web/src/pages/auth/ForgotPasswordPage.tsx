@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { FormControl } from 'baseui/form-control';
 import { Input } from 'baseui/input';
 import { Button } from 'baseui/button';

@@ -151,7 +151,7 @@ describe('RecipesPage Filtering', () => {
       // Active filters section should be visible with multiple brew methods
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
       // Multiple closeable tags should be present (for each brew method)
-      const closeableTags = screen.getAllByRole('button', { name: /close/i });
+      const closeableTags = screen.getAllByRole('button', { name: /remove/i });
       expect(closeableTags.length).toBeGreaterThanOrEqual(2);
     });
 
@@ -236,7 +236,7 @@ describe('RecipesPage Filtering', () => {
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
       
       // Find closeable tags in the active filters section (they have close buttons)
-      const closeableTags = screen.getAllByRole('button', { name: /close/i });
+      const closeableTags = screen.getAllByRole('button', { name: /remove/i });
       
       // Click the first close button to remove one tag
       if (closeableTags.length > 0) {

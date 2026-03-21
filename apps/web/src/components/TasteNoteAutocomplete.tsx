@@ -7,7 +7,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useStyletron } from 'baseui';
 import { Select, TYPE } from 'baseui/select';
-import { Tag, VARIANT } from 'baseui/tag';
+import { Tag, HIERARCHY } from 'baseui/tag';
 import { StyledLink } from 'baseui/link';
 import { ParagraphSmall } from 'baseui/typography';
 import { useTranslation } from 'react-i18next';
@@ -199,7 +199,7 @@ function TasteNoteAutocomplete({
           {selectedNotes.map((note) => (
             <Tag
               key={note.id}
-              variant={VARIANT.solid}
+              hierarchy={HIERARCHY.primary}
               onActionClick={() => handleRemove(note.id)}
               overrides={{
                 Root: {

@@ -6,11 +6,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useStyletron } from 'baseui';
 import { Button, KIND as BUTTON_KIND, SIZE as BUTTON_SIZE } from 'baseui/button';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { HeadingMedium, HeadingSmall, LabelMedium, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
 import { Input } from 'baseui/input';
 import { Select } from 'baseui/select';
-import { Tag, KIND as TAG_KIND, VARIANT as TAG_VARIANT } from 'baseui/tag';
+import { Tag, KIND as TAG_KIND, HIERARCHY as TAG_HIERARCHY } from 'baseui/tag';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
@@ -371,7 +371,7 @@ function RecipesPage() {
                   key={option.id}
                   closeable={false}
                   kind={isSelected ? TAG_KIND.primary : TAG_KIND.neutral}
-                  variant={isSelected ? TAG_VARIANT.solid : TAG_VARIANT.outlined}
+                  hierarchy={isSelected ? TAG_HIERARCHY.primary : TAG_HIERARCHY.secondary}
                   onClick={() => {
                     if (isSelected) {
                       setTags(tags.filter(t => t.id !== option.id));
@@ -422,7 +422,7 @@ function RecipesPage() {
               closeable
               onActionClick={() => removeBrewMethod(method.id)}
               kind={TAG_KIND.blue}
-              variant={TAG_VARIANT.solid}
+              hierarchy={TAG_HIERARCHY.primary}
             >
               {method.label}
             </Tag>
@@ -433,18 +433,18 @@ function RecipesPage() {
               closeable
               onActionClick={() => removeDrinkType(type.id)}
               kind={TAG_KIND.purple}
-              variant={TAG_VARIANT.solid}
+              hierarchy={TAG_HIERARCHY.primary}
             >
               {type.label}
             </Tag>
           ))}
           {tags.map(tag => (
-            <Tag key={tag.id} closeable onActionClick={() => removeTag(tag.id)} kind={TAG_KIND.orange} variant={TAG_VARIANT.solid}>
+            <Tag key={tag.id} closeable onActionClick={() => removeTag(tag.id)} kind={TAG_KIND.orange} hierarchy={TAG_HIERARCHY.primary}>
               #{tag.label}
             </Tag>
           ))}
           {search && (
-            <Tag closeable onActionClick={() => setSearch('')} kind={TAG_KIND.green} variant={TAG_VARIANT.solid}>
+            <Tag closeable onActionClick={() => setSearch('')} kind={TAG_KIND.green} hierarchy={TAG_HIERARCHY.primary}>
               "{search}"
             </Tag>
           )}
@@ -563,10 +563,10 @@ function RecipesPage() {
                       flexWrap: 'wrap',
                     })}
                   >
-                    <Tag closeable={false} kind={TAG_KIND.blue} variant={TAG_VARIANT.light}>
+                    <Tag closeable={false} kind={TAG_KIND.blue} hierarchy={TAG_HIERARCHY.secondary}>
                       {t(`recipe.brewMethods.${recipe.currentVersion?.brewMethod}`)}
                     </Tag>
-                    <Tag closeable={false} kind={TAG_KIND.purple} variant={TAG_VARIANT.light}>
+                    <Tag closeable={false} kind={TAG_KIND.purple} hierarchy={TAG_HIERARCHY.secondary}>
                       {t(`recipe.drinkTypes.${recipe.currentVersion?.drinkType}`)}
                     </Tag>
                   </div>
@@ -590,7 +590,7 @@ function RecipesPage() {
                           key={tag}
                           closeable={false}
                           kind={TAG_KIND.neutral}
-                          variant={TAG_VARIANT.outlined}
+                          hierarchy={TAG_HIERARCHY.secondary}
                           onClick={(e) => {
                             e.preventDefault();
                             const tagIds = tags.map(t => t.id);

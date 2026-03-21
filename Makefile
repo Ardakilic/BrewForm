@@ -165,21 +165,21 @@ endif
 # ============================================
 
 test:
-	docker compose exec api pnpm test
-	docker compose exec web pnpm test
+	docker compose run --rm api pnpm test
+	docker compose run --rm web pnpm test
 
 test-api:
-	docker compose exec api pnpm test
+	docker compose run --rm api pnpm test
 
 test-web:
-	docker compose exec web pnpm test
+	docker compose run --rm web pnpm test
 
 test-coverage:
-	docker compose exec api pnpm test:coverage
-	docker compose exec web pnpm test:coverage
+	docker compose run --rm api pnpm test:coverage
+	docker compose run --rm web pnpm test:coverage
 
 test-watch:
-	docker compose exec api pnpm test -- --watch
+	docker compose run --rm api pnpm test -- --watch
 
 # ============================================
 # Code Quality Commands

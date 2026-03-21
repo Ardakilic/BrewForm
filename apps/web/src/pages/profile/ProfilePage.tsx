@@ -4,7 +4,7 @@
 
 import { Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from 'baseui/card';
+import { Card } from '../../components/Card';
 import { Button } from 'baseui/button';
 import { HeadingLarge, HeadingSmall, ParagraphMedium } from 'baseui/typography';
 import { Tabs, Tab } from 'baseui/tabs-motion';
