@@ -5,7 +5,7 @@
 
 # Base stage with pnpm
 FROM node:24-trixie-slim AS base
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /app
 
 # Development dependencies stage
@@ -35,7 +35,7 @@ RUN pnpm db:generate && pnpm build
 
 # Production stage
 FROM node:24-trixie-slim AS production
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /app
 
 # Create non-root user

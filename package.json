@@ -24,12 +24,19 @@
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "turbo": "^2.3.3",
-    "typescript": "^5.7.2"
+    "@biomejs/biome": "^2.4.8",
+    "turbo": "^2.8.20",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=24.0.0"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@10.32.1",
+  "pnpm": {
+    "overrides": {
+      "react-virtualized-auto-sizer": "^2.0.3",
+      "react-window": "^2.2.7",
+      "react-uid": "^2.4.0"
+    }
+  }
 }

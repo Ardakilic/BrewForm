@@ -1,3 +1,11 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
+  - "@node-rs/argon2"
+  - "@biomejs/biome"
+  - esbuild
