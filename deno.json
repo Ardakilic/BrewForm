@@ -1,6 +1,13 @@
 {
+  "name": "brewform",
+  "version": "1.0.0",
+  "description": "Coffee dive-in recipe sharing platform",
+  "license": "MIT",
   "nodeModulesDir": "auto",
   "lock": "deno.lock",
+  "imports": {
+    "typescript": "npm:typescript@^5.9.3"
+  },
   "fmt": {
     "useTabs": false,
     "lineWidth": 100,
