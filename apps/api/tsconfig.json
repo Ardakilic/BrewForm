@@ -28,6 +28,6 @@
       "@config/*": ["./src/config/*"]
     }
   },
-  "include": ["src/**/*", "prisma/**/*"],
+  "include": ["src/**/*", "prisma/**/*", "prisma.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

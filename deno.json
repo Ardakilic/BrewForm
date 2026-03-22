@@ -1,0 +1,8 @@
+{
+  "nodeModulesDir": "auto",
+  "lock": "deno.lock",
+  "tasks": {
+    "format": "deno fmt .",
+    "check": "biome check ."
+  }
+}

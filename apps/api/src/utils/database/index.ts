@@ -3,7 +3,7 @@
  * Prisma client singleton with logging integration
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../prisma/generated/prisma';
 import { getConfig } from '../../config/index.js';
 import { getLogger } from '../logger/index.js';
 

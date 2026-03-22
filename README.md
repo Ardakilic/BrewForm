@@ -15,7 +15,7 @@
 ## Tech Stack
 
 ### Backend
-- **Runtime**: Node.js 24
+- **Runtime**: [Deno 2](https://deno.com/) — native TypeScript, no build step
 - **Framework**: [Hono](https://hono.dev/) - Fast, lightweight web framework
 - **Database**: PostgreSQL with [Prisma ORM](https://prisma.io/)
 - **Caching**: Redis for sessions and rate limiting
@@ -25,7 +25,8 @@
 - **Logging**: [Pino](https://getpino.io/) for structured JSON logging
 
 ### Frontend
-- **Framework**: React 18
+- **Runtime**: [Deno 2](https://deno.com/) for build tooling
+- **Framework**: React 19
 - **UI Library**: [BaseUI](https://baseweb.design/) by Uber
 - **Styling**: Styletron CSS-in-JS
 - **State**: SWR for data fetching, React Context for auth/theme
@@ -33,10 +34,10 @@
 - **Routing**: React Router v7
 
 ### DevOps
-- **Monorepo**: Turborepo with pnpm workspaces
+- **Monorepo**: Deno tasks per app (`deno.json`)
 - **Linting**: Biome.js
 - **Testing**: Vitest
-- **Containerization**: Docker with multi-stage builds
+- **Containerization**: Docker with multi-stage builds (`denoland/deno:debian-2.7.7`)
 
 ## Getting Started
 
@@ -44,6 +45,8 @@
 
 - Docker and Docker Compose
 - Make (optional, for convenient commands)
+
+> **No local runtime required.** All commands run inside Docker containers via `make`. Deno is only needed locally if you want to run tasks outside Docker.
 
 ### Quick Start with Docker
 
@@ -55,7 +58,7 @@ cd brewform
 # Copy environment file
 cp .env.example .env
 
-# Install dependencies (creates node_modules on host for IDE)
+# Install dependencies (creates node_modules on host for IDE type-checking)
 make install
 
 # Start all services
@@ -76,13 +79,13 @@ make db-seed
 ### Local Development
 
 ```bash
-# Install dependencies (creates node_modules on host for IDE)
+# Install dependencies (populates node_modules on host for IDE)
 make install
 
-# Generate Prisma client
+# Generate Prisma client inside the API container
 make db-generate
 
-# Start development servers
+# Start development servers with live reload
 make dev
 ```
 
@@ -119,17 +122,15 @@ make clean        # Remove containers and volumes
 
 ### API container fails to start with Prisma errors
 
-If you see errors like `The requested module '@prisma/client' does not provide an export named 'BrewMethodType'`, it means the Docker container is using an outdated Prisma client. This can happen after schema changes.
+If you see errors like `The requested module '@prisma/client' does not provide an export named 'BrewMethodType'`, the Prisma client is outdated. This can happen after schema changes.
 
 ```bash
-# Rebuild the API container with the latest schema
+# Regenerate the Prisma client
+make db-generate
+
+# Or rebuild the API container from scratch
 docker compose build api
-
-# Or rebuild all services
-make rebuild
 ```
-
-This rebuilds the container with the current schema and regenerates the Prisma client.
 
 ### Database Reset
 
@@ -216,8 +217,10 @@ brewform/
 │           └── utils/       # Frontend utilities
 ├── docker-compose.yml       # Development Docker setup
 ├── docker-compose.prod.yml  # Production overrides
+├── deno.json                # Root Deno config
 ├── Makefile                 # Development commands
-└── turbo.json               # Turborepo configuration
+└── docs/
+    └── updates/             # Changelog / migration notes
 ```
 
 ## API Endpoints

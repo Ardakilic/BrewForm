@@ -101,10 +101,8 @@ services:
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages
       - ./files:/app/files
-      - ./node_modules:/app/node_modules
       - ./apps/api/node_modules:/app/apps/api/node_modules
-      - ./package.json:/app/package.json
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./deno.json:/app/deno.json
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,10 +134,8 @@ services:
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages
-      - ./node_modules:/app/node_modules
       - ./apps/web/node_modules:/app/apps/web/node_modules
-      - ./package.json:/app/package.json
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml
+      - ./deno.json:/app/deno.json
     depends_on:
       - api
     networks:

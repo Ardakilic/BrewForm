@@ -2,8 +2,13 @@
  * Taste Notes Module Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
+import { mockFn } from '../../test/mock-fn.js';
+import { setPrisma } from '../../test/mocks/database.js';
+import { setCheckHeaderMode } from '../../test/mocks/auth-middleware.js';
+import { cacheGetOrSet } from '../../test/mocks/redis.js';
 import tasteNotesModule from './index.js';
 
 // API Response type for testing
@@ -104,116 +109,46 @@ const mockTasteNotes = [
   },
 ];
 
-// Mock database utilities
-vi.mock('../../utils/database/index.js', () => ({
-  getPrisma: vi.fn(() => ({
-    tasteNote: {
-      findMany: vi.fn(() => Promise.resolve(mockTasteNotes)),
-      findUnique: vi.fn((args: { where: { id?: string; slug?: string } }) => {
-        const note = mockTasteNotes.find(
-          (n) => n.id === args.where.id || n.slug === args.where.slug
-        );
-        return Promise.resolve(note || null);
-      }),
-      groupBy: vi.fn(() =>
-        Promise.resolve([
-          { depth: 0, _count: 2 },
-          { depth: 1, _count: 2 },
-          { depth: 2, _count: 2 },
-        ])
-      ),
-    },
-    user: {
-      findUnique: vi.fn((args: { where: { id: string } }) => {
-        if (args.where.id === mockAuthUser.id) {
-          return Promise.resolve({ ...mockAuthUser, deletedAt: null });
-        }
-        return Promise.resolve(null);
-      }),
-    },
-  })),
-  softDeleteFilter: vi.fn(() => ({ deletedAt: null })),
-}));
-
-// Mock redis utilities
-const mockRedisGet = vi.fn(() => null);
-const mockRedisSetex = vi.fn();
-const mockRedisDel = vi.fn();
-
-vi.mock('../../utils/redis/index.js', () => ({
-  getRedis: vi.fn(() => ({
-    get: mockRedisGet,
-    setex: mockRedisSetex,
-    del: mockRedisDel,
-  })),
-  cacheGetOrSet: vi.fn(async (_key: string, fetcher: () => Promise<unknown>) => {
-    return fetcher();
-  }),
-  invalidateCache: vi.fn(),
-}));
-
-// Mock logger
-vi.mock('../../utils/logger/index.js', () => ({
-  getLogger: vi.fn(() => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  })),
-  logSecurity: vi.fn(),
-}));
-
-// Mock auth utilities
-vi.mock('../../utils/auth/index.js', () => ({
-  verifyAccessToken: vi.fn((token: string) => {
-    if (token === 'valid_token') {
-      return Promise.resolve({ userId: mockAuthUser.id });
-    }
-    return Promise.resolve(null);
-  }),
-}));
-
-// Mock auth middleware - this is important for testing authentication
-vi.mock('../../middleware/auth.js', async () => {
-  const { createMiddleware } = await import('hono/factory');
-  
-  return {
-    authMiddleware: createMiddleware(async (c, next) => {
-      const authHeader = c.req.header('Authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        c.set('user', null);
-        return next();
-      }
-      
-      const token = authHeader.slice(7);
-      if (token === 'valid_token') {
-        c.set('user', mockAuthUser);
-      } else {
-        c.set('user', null);
-      }
-      return next();
+const createLocalMockPrisma = () => ({
+  tasteNote: {
+    findMany: mockFn(() => Promise.resolve(mockTasteNotes)),
+    findUnique: mockFn((...args: unknown[]) => {
+      const where = (args[0] as { where: { id?: string; slug?: string } }).where;
+      const note = mockTasteNotes.find((n) => n.id === where.id || n.slug === where.slug);
+      return Promise.resolve(note ?? null);
     }),
-    requireAuth: createMiddleware(async (c, next) => {
-      const user = c.get('user');
-      if (!user) {
-        return c.json({
-          success: false,
-          error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
-        }, 401);
+    groupBy: mockFn(() =>
+      Promise.resolve([
+        { depth: 0, _count: 2 },
+        { depth: 1, _count: 2 },
+        { depth: 2, _count: 2 },
+      ])
+    ),
+  },
+  user: {
+    findUnique: mockFn((...args: unknown[]) => {
+      const where = (args[0] as { where: { id: string } }).where;
+      if (where.id === mockAuthUser.id) {
+        return Promise.resolve({ ...mockAuthUser, deletedAt: null });
       }
-      return next();
+      return Promise.resolve(null);
     }),
-  };
+  },
 });
 
 // Helper to create authenticated request
 const authHeaders = { Authorization: 'Bearer valid_token' };
 
+// Enable header-based auth and set up prisma for all tests in this file
+setCheckHeaderMode(true);
+setPrisma(createLocalMockPrisma());
+
 describe('Taste Notes Module', () => {
   let app: Hono;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    setPrisma(createLocalMockPrisma());
+    cacheGetOrSet.mockReset();
     app = new Hono();
     app.route('/taste-notes', tasteNotesModule);
   });
@@ -496,8 +431,7 @@ describe('Taste Notes Caching', () => {
     await app.request('/taste-notes', { headers: authHeaders });
 
     // cacheGetOrSet should have been called
-    const { cacheGetOrSet } = await import('../../utils/redis/index.js');
-    expect(cacheGetOrSet).toHaveBeenCalled();
+    expect(cacheGetOrSet.calls.length).toBeGreaterThan(0);
   });
 });
 

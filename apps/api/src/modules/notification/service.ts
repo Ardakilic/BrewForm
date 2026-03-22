@@ -4,7 +4,7 @@
  */
 
 import { getPrisma, getPagination, createPaginationMeta } from '../../utils/database/index.js';
-import type { NotificationType } from '@prisma/client';
+import type { NotificationType } from '../../../prisma/generated/prisma';
 
 // ============================================
 // Types

@@ -1,0 +1,19 @@
+{
+  "imports": {
+    "swr": "./mocks/swr.ts",
+    "../i18n": "./mocks/i18n.ts",
+    "../utils/api": "./mocks/api.ts",
+    "baseui/button": "../../node_modules/baseui/button/index.js",
+    "baseui/typography": "../../node_modules/baseui/typography/index.js",
+    "baseui/form-control": "../../node_modules/baseui/form-control/index.js",
+    "baseui/input": "../../node_modules/baseui/input/index.js",
+    "baseui/textarea": "../../node_modules/baseui/textarea/index.js",
+    "baseui/select": "../../node_modules/baseui/select/index.js",
+    "baseui/notification": "../../node_modules/baseui/notification/index.js",
+    "baseui/tabs-motion": "../../node_modules/baseui/tabs-motion/index.js",
+    "baseui/tag": "../../node_modules/baseui/tag/index.js",
+    "baseui/snackbar": "../../node_modules/baseui/snackbar/index.js",
+    "baseui/card": "../../node_modules/baseui/card/index.js",
+    "baseui/link": "../../node_modules/baseui/link/index.js"
+  }
+}

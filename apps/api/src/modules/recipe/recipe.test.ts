@@ -2,9 +2,13 @@
  * Recipe Module Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
+import { mockFn } from '../../test/mock-fn.js';
+import { setPrisma } from '../../test/mocks/database.js';
 import recipeModule from './index.js';
+import type { Context } from 'hono';
 
 // API Response type for testing
 interface ApiResponse {
@@ -15,142 +19,50 @@ interface ApiResponse {
   pagination?: { page: number; limit: number; total: number; pages: number };
 }
 
-// Mock auth middleware
-vi.mock('../../middleware/auth', () => ({
-  authMiddleware: vi.fn((_c: { set: (key: string, value: unknown) => void }, next: () => Promise<void>) => {
-    _c.set('user', { id: 'user_123', isAdmin: false });
-    return next();
-  }),
-  requireAuth: vi.fn((_c: unknown, next: () => Promise<void>) => next()),
-  optionalAuth: vi.fn((_c: unknown, next: () => Promise<void>) => next()),
-}));
-
-// Mock database utilities
-vi.mock('../../utils/database/index.js', () => ({
-  getPrisma: vi.fn(),
-  softDeleteFilter: vi.fn(() => ({ deletedAt: null })),
-  getPagination: vi.fn(({ page = 1, limit = 20 }: { page?: number; limit?: number }) => ({
-    skip: (page - 1) * limit,
-    take: limit,
-  })),
-  createPaginationMeta: vi.fn((page: number, limit: number, total: number) => ({
-    page,
-    limit,
-    total,
-    totalPages: Math.ceil(total / limit),
-    hasNext: page < Math.ceil(total / limit),
-    hasPrev: page > 1,
-  })),
-}));
-
-// Mock redis utilities
-vi.mock('../../utils/redis/index.js', () => ({
-  invalidateCache: vi.fn(),
-  cacheGetOrSet: vi.fn((_key: string, fetcher: () => Promise<unknown>) => fetcher()),
-  CacheKeys: {
-    recipe: (id: string) => `recipe:${id}`,
-    recipeBySlug: (slug: string) => `recipe:slug:${slug}`,
-    recipeList: (filters: string) => `recipes:list:${filters}`,
-    latestRecipes: () => 'recipes:latest',
-    popularRecipes: () => 'recipes:popular',
-  },
-}));
-
-// Mock logger
-vi.mock('../../utils/logger/index.js', () => ({
-  getLogger: vi.fn(() => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  })),
-  logAudit: vi.fn(),
-}));
-
-// Mock slug utility
-vi.mock('../../utils/slug/index.js', () => ({
-  createRecipeSlug: vi.fn((title: string) => title.toLowerCase().replace(/\s+/g, '-')),
-}));
-
-// Mock units utility
-vi.mock('../../utils/units/index.js', () => ({
-  calculateBrewRatio: vi.fn((dose: number, yieldGrams: number) => yieldGrams / dose),
-  calculateFlowRate: vi.fn((yieldMl: number, timeSec: number) => yieldMl / timeSec),
-}));
-
-// Mock error handler
-vi.mock('../../middleware/errorHandler.js', () => ({
-  NotFoundError: class NotFoundError extends Error {
-    constructor(resource: string) {
-      super(`${resource} not found`);
-      this.name = 'NotFoundError';
-    }
-    statusCode = 404;
-  },
-  ForbiddenError: class ForbiddenError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = 'ForbiddenError';
-    }
-    statusCode = 403;
-  },
-  ValidationError: class ValidationError extends Error {
-    constructor(_errors: Array<{ field: string; message: string }>) {
-      super('Validation failed');
-      this.name = 'ValidationError';
-    }
-    statusCode = 422;
-  },
-}));
-
-// Mock rate limiter
-vi.mock('../../middleware/rateLimit.js', () => ({
-  writeRateLimiter: vi.fn((_c: unknown, next: () => Promise<void>) => next()),
-}));
-
-import { getPrisma } from '../../utils/database/index.js';
-import type { Context } from 'hono';
-
 // Test error handler
 const testErrorHandler = (err: Error & { statusCode?: number }, c: Context) => {
   const statusCode = err.statusCode || 500;
-  const code = err.name === 'NotFoundError' ? 'NOT_FOUND' 
+  const code = err.name === 'NotFoundError' ? 'NOT_FOUND'
     : err.name === 'ForbiddenError' ? 'FORBIDDEN'
     : err.name === 'ValidationError' ? 'VALIDATION_ERROR'
     : 'INTERNAL_ERROR';
   return c.json({ success: false, error: { code, message: err.message } }, statusCode as 400 | 403 | 404 | 422 | 500);
 };
 
-// Create mock prisma instance
-const mockPrisma = {
-  recipe: {
-    findMany: vi.fn(),
-    findUnique: vi.fn(),
-    findFirst: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn(),
-  },
-  recipeVersion: {
-    create: vi.fn(),
-    findMany: vi.fn(),
-  },
-  userFavourite: {
-    findFirst: vi.fn(),
-    create: vi.fn(),
-    delete: vi.fn(),
-  },
-  $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) => callback(mockPrisma)),
+const createLocalMockPrisma = () => {
+  // deno-lint-ignore no-explicit-any
+  const mp: any = {
+    recipe: {
+      findMany: mockFn(),
+      findUnique: mockFn(),
+      findFirst: mockFn(),
+      create: mockFn(),
+      update: mockFn(),
+      delete: mockFn(),
+      count: mockFn(),
+    },
+    recipeVersion: {
+      create: mockFn(),
+      findMany: mockFn(),
+    },
+    userFavourite: {
+      findFirst: mockFn(),
+      create: mockFn(),
+      delete: mockFn(),
+    },
+  };
+  // deno-lint-ignore no-explicit-any
+  mp.$transaction = mockFn((...args: unknown[]) => (args[0] as (tx: unknown) => Promise<unknown>)(mp));
+  return mp;
 };
 
 describe('Recipe Module', () => {
   let app: Hono;
+  let mockPrisma: ReturnType<typeof createLocalMockPrisma>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    // Set up getPrisma to return our mock
-    vi.mocked(getPrisma).mockReturnValue(mockPrisma as never);
+    mockPrisma = createLocalMockPrisma();
+    setPrisma(mockPrisma);
     app = new Hono();
     app.route('/recipes', recipeModule);
     app.onError(testErrorHandler);
@@ -186,8 +98,8 @@ describe('Recipe Module', () => {
         },
       ];
 
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(2);
+      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
+      mockPrisma.recipe.count.mockResolvedValue(2);
 
       const response = await app.request('/recipes?visibility=PUBLIC');
       
@@ -199,43 +111,43 @@ describe('Recipe Module', () => {
     });
 
     it('should filter by single brew method', async () => {
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+      mockPrisma.recipe.findMany.mockResolvedValue([]);
+      mockPrisma.recipe.count.mockResolvedValue(0);
 
       const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE');
       
       expect(response.status).toBe(200);
-      expect(mockPrisma.recipe.findMany).toHaveBeenCalled();
+      expect(mockPrisma.recipe.findMany.calls.length).toBeGreaterThan(0);
     });
 
     it('should filter by multiple brew methods with OR logic (comma-separated)', async () => {
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+      mockPrisma.recipe.findMany.mockResolvedValue([]);
+      mockPrisma.recipe.count.mockResolvedValue(0);
 
       const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE,POUR_OVER_V60');
       
       expect(response.status).toBe(200);
-      expect(mockPrisma.recipe.findMany).toHaveBeenCalled();
+      expect(mockPrisma.recipe.findMany.calls.length).toBeGreaterThan(0);
     });
 
     it('should filter by multiple drink types with OR logic (comma-separated)', async () => {
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+      mockPrisma.recipe.findMany.mockResolvedValue([]);
+      mockPrisma.recipe.count.mockResolvedValue(0);
 
       const response = await app.request('/recipes?drinkType=ESPRESSO,LUNGO');
       
       expect(response.status).toBe(200);
-      expect(mockPrisma.recipe.findMany).toHaveBeenCalled();
+      expect(mockPrisma.recipe.findMany.calls.length).toBeGreaterThan(0);
     });
 
     it('should filter by combined multiple brew methods and drink types', async () => {
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+      mockPrisma.recipe.findMany.mockResolvedValue([]);
+      mockPrisma.recipe.count.mockResolvedValue(0);
 
       const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE,AEROPRESS&drinkType=ESPRESSO,AMERICANO');
       
       expect(response.status).toBe(200);
-      expect(mockPrisma.recipe.findMany).toHaveBeenCalled();
+      expect(mockPrisma.recipe.findMany.calls.length).toBeGreaterThan(0);
     });
   });
 
@@ -261,10 +173,10 @@ describe('Recipe Module', () => {
       };
 
       // First call for slug lookup, second call for full recipe fetch
-      vi.mocked(mockPrisma.recipe.findUnique)
-        .mockResolvedValueOnce({ id: 'recipe_1', slug: 'perfect-espresso' } as never)
-        .mockResolvedValueOnce(fullRecipe as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+      mockPrisma.recipe.findUnique
+        .mockResolvedValueOnce({ id: 'recipe_1', slug: 'perfect-espresso' })
+        .mockResolvedValueOnce(fullRecipe);
+      mockPrisma.recipe.update.mockResolvedValue({});
 
       const response = await app.request('/recipes/perfect-espresso');
       
@@ -276,7 +188,7 @@ describe('Recipe Module', () => {
     });
 
     it('should return 404 for non-existent recipe', async () => {
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValueOnce(null);
+      mockPrisma.recipe.findUnique.mockResolvedValueOnce(null);
 
       const response = await app.request('/recipes/nonexistent-recipe');
       
@@ -312,8 +224,8 @@ describe('Recipe Module', () => {
         user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
       };
 
-      vi.mocked(mockPrisma.recipe.create).mockResolvedValue(mockCreatedRecipe as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue(mockUpdatedRecipe as never);
+      mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
+      mockPrisma.recipe.update.mockResolvedValue(mockUpdatedRecipe);
 
       const response = await app.request('/recipes', {
         method: 'POST',
@@ -363,8 +275,8 @@ describe('Recipe Module', () => {
         user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
       };
 
-      vi.mocked(mockPrisma.recipe.create).mockResolvedValue(mockCreatedRecipe as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue(mockUpdatedRecipe as never);
+      mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
+      mockPrisma.recipe.update.mockResolvedValue(mockUpdatedRecipe);
 
       const response = await app.request('/recipes', {
         method: 'POST',
@@ -397,8 +309,8 @@ describe('Recipe Module', () => {
         user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
       };
 
-      vi.mocked(mockPrisma.recipe.create).mockResolvedValue(mockCreatedRecipe as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+      mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
+      mockPrisma.recipe.update.mockResolvedValue({});
 
       const response = await app.request('/recipes', {
         method: 'POST',
@@ -444,11 +356,11 @@ describe('Recipe Module', () => {
         visibility: 'DRAFT',
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipe.update.mockResolvedValue({
         ...mockRecipe,
         visibility: 'PUBLIC',
-      } as never);
+      });
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: 'PATCH',
@@ -469,7 +381,7 @@ describe('Recipe Module', () => {
         visibility: 'DRAFT',
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: 'PATCH',
@@ -491,11 +403,11 @@ describe('Recipe Module', () => {
         userId: 'user_123',
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipe.update.mockResolvedValue({
         ...mockRecipe,
         deletedAt: new Date(),
-      } as never);
+      });
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: 'DELETE',
@@ -511,7 +423,7 @@ describe('Recipe Module', () => {
         userId: 'other_user',
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: 'DELETE',
@@ -542,9 +454,9 @@ describe('Recipe Module', () => {
         yieldGrams: 40,
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(mockPrisma.recipeVersion.create).mockResolvedValue(mockNewVersion as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipeVersion.create.mockResolvedValue(mockNewVersion);
+      mockPrisma.recipe.update.mockResolvedValue({});
 
       const response = await app.request(`/recipes/${recipeId}/versions`, {
         method: 'POST',
@@ -612,9 +524,9 @@ describe('Recipe Module', () => {
         versions: [{ id: 'new_version_1' }],
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockOriginalRecipe as never);
-      vi.mocked(mockPrisma.recipe.create).mockResolvedValue(mockForkedRecipe as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockOriginalRecipe);
+      mockPrisma.recipe.create.mockResolvedValue(mockForkedRecipe);
+      mockPrisma.recipe.update.mockResolvedValue({});
 
       const response = await app.request(`/recipes/${originalRecipeId}/fork`, {
         method: 'POST',
@@ -635,7 +547,7 @@ describe('Recipe Module', () => {
         },
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}/fork`, {
         method: 'POST',
@@ -645,7 +557,7 @@ describe('Recipe Module', () => {
     });
 
     it('should reject forking non-existent recipes', async () => {
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(null);
+      mockPrisma.recipe.findUnique.mockResolvedValue(null);
 
       const response = await app.request('/recipes/nonexistent/fork', {
         method: 'POST',
@@ -673,7 +585,7 @@ describe('Recipe Module', () => {
         },
       ];
 
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
+      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
 
       const response = await app.request('/recipes/latest');
 
@@ -703,7 +615,7 @@ describe('Recipe Module', () => {
         },
       ];
 
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
+      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
 
       const response = await app.request('/recipes/popular');
 
@@ -727,8 +639,8 @@ describe('Recipe Module', () => {
         { id: 'v1', versionNumber: 1, title: 'Original Recipe' },
       ];
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(mockPrisma.recipeVersion.findMany).mockResolvedValue(mockVersions as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipeVersion.findMany.mockResolvedValue(mockVersions);
 
       const response = await app.request(`/recipes/${recipeId}/versions`);
 
@@ -749,8 +661,8 @@ describe('Recipe Module', () => {
         { id: 'v1', versionNumber: 1, title: 'Public Recipe' },
       ];
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(mockPrisma.recipeVersion.findMany).mockResolvedValue(mockVersions as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipeVersion.findMany.mockResolvedValue(mockVersions);
 
       const response = await app.request(`/recipes/${recipeId}/versions`);
 
@@ -765,7 +677,7 @@ describe('Recipe Module', () => {
         visibility: 'PRIVATE',
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}/versions`);
 
@@ -773,7 +685,7 @@ describe('Recipe Module', () => {
     });
 
     it('should return 404 for non-existent recipe', async () => {
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(null);
+      mockPrisma.recipe.findUnique.mockResolvedValue(null);
 
       const response = await app.request('/recipes/nonexistent/versions');
 
@@ -792,8 +704,8 @@ describe('Recipe Module', () => {
         },
       ];
 
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(1);
+      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
+      mockPrisma.recipe.count.mockResolvedValue(1);
 
       const response = await app.request('/recipes?brewMethod=POUR_OVER_V60');
 
@@ -810,8 +722,8 @@ describe('Recipe Module', () => {
         },
       ];
 
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(1);
+      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
+      mockPrisma.recipe.count.mockResolvedValue(1);
 
       const response = await app.request('/recipes?drinkType=LATTE');
 
@@ -819,8 +731,8 @@ describe('Recipe Module', () => {
     });
 
     it('should filter recipes by minimum rating', async () => {
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+      mockPrisma.recipe.findMany.mockResolvedValue([]);
+      mockPrisma.recipe.count.mockResolvedValue(0);
 
       const response = await app.request('/recipes?minRating=8');
 
@@ -828,8 +740,8 @@ describe('Recipe Module', () => {
     });
 
     it('should filter recipes by tags', async () => {
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue([]);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(0);
+      mockPrisma.recipe.findMany.mockResolvedValue([]);
+      mockPrisma.recipe.count.mockResolvedValue(0);
 
       const response = await app.request('/recipes?tags=morning,espresso');
 
@@ -846,8 +758,8 @@ describe('Recipe Module', () => {
         },
       ];
 
-      vi.mocked(mockPrisma.recipe.findMany).mockResolvedValue(mockRecipes as never);
-      vi.mocked(mockPrisma.recipe.count).mockResolvedValue(1);
+      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
+      mockPrisma.recipe.count.mockResolvedValue(1);
 
       const response = await app.request('/recipes?search=espresso');
 
@@ -864,8 +776,8 @@ describe('Recipe Module', () => {
         visibility: 'PUBLIC',
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
-      vi.mocked(mockPrisma.recipe.update).mockResolvedValue({} as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipe.update.mockResolvedValue({});
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: 'DELETE',
@@ -882,7 +794,7 @@ describe('Recipe Module', () => {
         visibility: 'PUBLIC',
       };
 
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(mockRecipe as never);
+      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: 'DELETE',
@@ -892,7 +804,7 @@ describe('Recipe Module', () => {
     });
 
     it('should return 404 for non-existent recipe', async () => {
-      vi.mocked(mockPrisma.recipe.findUnique).mockResolvedValue(null);
+      mockPrisma.recipe.findUnique.mockResolvedValue(null);
 
       const response = await app.request('/recipes/nonexistent', {
         method: 'DELETE',

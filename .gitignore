@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-.pnpm-store/
 
 # Build outputs
 dist/
@@ -25,7 +24,6 @@ out/
 logs/
 *.log
 npm-debug.log*
-pnpm-debug.log*
 
 # Testing
 coverage/
@@ -34,6 +32,7 @@ coverage/
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+apps/api/prisma/generated/
 
 # Temporary files
 tmp/
@@ -43,9 +42,6 @@ temp/
 # OS files
 Thumbs.db
 .DS_Store
-
-# Turbo
-.turbo/
 
 # Docker
 docker-compose.override.yml

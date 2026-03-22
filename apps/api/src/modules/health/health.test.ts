@@ -2,9 +2,12 @@
  * Health Module Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
 import healthModule from './index.js';
+import { checkDbConnection } from '../../test/mocks/database.js';
+import { checkRedisConnection } from '../../test/mocks/redis.js';
 
 // API Response type for testing
 interface HealthResponse {
@@ -16,34 +19,12 @@ interface HealthResponse {
   };
 }
 
-// Mock database utilities
-vi.mock('../../utils/database/index.js', () => ({
-  checkDbConnection: vi.fn(),
-}));
-
-// Mock Redis utilities
-vi.mock('../../utils/redis/index.js', () => ({
-  checkRedisConnection: vi.fn(),
-}));
-
-// Mock logger
-vi.mock('../../utils/logger/index.js', () => ({
-  getLogger: vi.fn(() => ({
-    error: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn(),
-    warn: vi.fn(),
-  })),
-}));
-
-import { checkDbConnection } from '../../utils/database/index.js';
-import { checkRedisConnection } from '../../utils/redis/index.js';
-
 describe('Health Module', () => {
   let app: Hono;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    checkDbConnection.mockReset();
+    checkRedisConnection.mockReset();
     app = new Hono();
     app.route('/health', healthModule);
   });
@@ -81,8 +62,8 @@ describe('Health Module', () => {
 
   describe('GET /health/ready', () => {
     it('should return ok when all dependencies are healthy', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(true);
-      vi.mocked(checkRedisConnection).mockResolvedValue(true);
+      checkDbConnection.mockResolvedValue(true);
+      checkRedisConnection.mockResolvedValue(true);
 
       const response = await app.request('/health/ready');
 
@@ -94,8 +75,8 @@ describe('Health Module', () => {
     });
 
     it('should return degraded status when database is down', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(false);
-      vi.mocked(checkRedisConnection).mockResolvedValue(true);
+      checkDbConnection.mockResolvedValue(false);
+      checkRedisConnection.mockResolvedValue(true);
 
       const response = await app.request('/health/ready');
 
@@ -107,8 +88,8 @@ describe('Health Module', () => {
     });
 
     it('should return degraded status when redis is down', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(true);
-      vi.mocked(checkRedisConnection).mockResolvedValue(false);
+      checkDbConnection.mockResolvedValue(true);
+      checkRedisConnection.mockResolvedValue(false);
 
       const response = await app.request('/health/ready');
 
@@ -120,8 +101,8 @@ describe('Health Module', () => {
     });
 
     it('should return degraded status when all dependencies are down', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(false);
-      vi.mocked(checkRedisConnection).mockResolvedValue(false);
+      checkDbConnection.mockResolvedValue(false);
+      checkRedisConnection.mockResolvedValue(false);
 
       const response = await app.request('/health/ready');
 
@@ -133,8 +114,8 @@ describe('Health Module', () => {
     });
 
     it('should handle database check errors gracefully', async () => {
-      vi.mocked(checkDbConnection).mockRejectedValue(new Error('Connection timeout'));
-      vi.mocked(checkRedisConnection).mockResolvedValue(true);
+      checkDbConnection.mockRejectedValue(new Error('Connection timeout'));
+      checkRedisConnection.mockResolvedValue(true);
 
       const response = await app.request('/health/ready');
 
@@ -145,8 +126,8 @@ describe('Health Module', () => {
     });
 
     it('should handle redis check errors gracefully', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(true);
-      vi.mocked(checkRedisConnection).mockRejectedValue(new Error('Redis unavailable'));
+      checkDbConnection.mockResolvedValue(true);
+      checkRedisConnection.mockRejectedValue(new Error('Redis unavailable'));
 
       const response = await app.request('/health/ready');
 
@@ -159,8 +140,8 @@ describe('Health Module', () => {
 
   describe('GET /health/startup', () => {
     it('should return ok when application has started successfully', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(true);
-      vi.mocked(checkRedisConnection).mockResolvedValue(true);
+      checkDbConnection.mockResolvedValue(true);
+      checkRedisConnection.mockResolvedValue(true);
 
       const response = await app.request('/health/startup');
 
@@ -170,8 +151,8 @@ describe('Health Module', () => {
     });
 
     it('should return starting status when database is not ready', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(false);
-      vi.mocked(checkRedisConnection).mockResolvedValue(true);
+      checkDbConnection.mockResolvedValue(false);
+      checkRedisConnection.mockResolvedValue(true);
 
       const response = await app.request('/health/startup');
 
@@ -181,8 +162,8 @@ describe('Health Module', () => {
     });
 
     it('should return starting status when redis is not ready', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(true);
-      vi.mocked(checkRedisConnection).mockResolvedValue(false);
+      checkDbConnection.mockResolvedValue(true);
+      checkRedisConnection.mockResolvedValue(false);
 
       const response = await app.request('/health/startup');
 
@@ -192,8 +173,8 @@ describe('Health Module', () => {
     });
 
     it('should return starting status when no dependencies are ready', async () => {
-      vi.mocked(checkDbConnection).mockResolvedValue(false);
-      vi.mocked(checkRedisConnection).mockResolvedValue(false);
+      checkDbConnection.mockResolvedValue(false);
+      checkRedisConnection.mockResolvedValue(false);
 
       const response = await app.request('/health/startup');
 

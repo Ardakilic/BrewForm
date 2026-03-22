@@ -1,22 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import '../../test/setup.js';
 import { renderWithProviders } from '../../test/test-utils';
 import DashboardPage from './DashboardPage';
 
-vi.mock('swr', () => ({
-  default: vi.fn(() => ({
-    data: { users: 10, recipes: 20, equipment: 5 },
-    isLoading: false,
-    error: undefined,
-    mutate: vi.fn(),
-    isValidating: false,
-  })),
-}));
-
 describe('Admin DashboardPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   it('renders without crashing', () => {
     renderWithProviders(<DashboardPage />);

@@ -1,0 +1,32 @@
+{
+  "name": "@brewform/api",
+  "version": "1.0.0",
+  "exports": "./src/index.ts",
+  "compilerOptions": {
+    "lib": ["ES2022", "deno.ns"],
+    "types": ["node"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "tasks": {
+    "dev": "deno run --watch --allow-all src/index.ts",
+    "start": "deno run --allow-all src/index.ts",
+    "test": "deno test --allow-all --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
+    "test:watch": "deno test --allow-all --watch --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
+    "lint": "biome lint ./src",
+    "lint:fix": "biome lint --write ./src",
+    "format": "biome format --write ./src",
+    "typecheck": "deno check src/index.ts",
+    "check": "biome check ./src",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "deno run --allow-all prisma/seed.ts",
+    "db:seed:taste-notes": "deno run --allow-all prisma/seed-taste-notes.ts",
+    "db:studio": "prisma studio",
+    "db:push": "prisma db push",
+    "reset-password": "deno run --allow-all prisma/reset-password.ts",
+    "clean": "rm -rf dist node_modules coverage"
+  }
+}

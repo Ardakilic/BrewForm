@@ -2,27 +2,31 @@
  * ThemeContext Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
+import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import '../test/setup.js';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Client as Styletron } from 'styletron-engine-monolithic';
 import { Provider as StyletronProvider } from 'styletron-react';
 import { BaseProvider } from 'baseui';
+import { mockFn } from '../test/mock-fn.js';
 import { ThemeProvider, useTheme } from './ThemeContext';
 
 // Mock matchMedia for JSDOM
-Object.defineProperty(window, 'matchMedia', {
+const mockMatchMedia = mockFn((query: unknown) => ({
+  matches: (query as string) === '(prefers-color-scheme: dark)',
+  media: query as string,
+  onchange: null,
+  addListener: () => {},
+  removeListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  dispatchEvent: () => false,
+}));
+
+Object.defineProperty(globalThis, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
-    matches: query === '(prefers-color-scheme: dark)',
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+  value: mockMatchMedia,
 });
 
 const engine = new Styletron();
@@ -55,7 +59,7 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 describe('ThemeContext', () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.clearAllMocks();
+    mockMatchMedia.mockReset();
   });
 
   it('should provide default theme mode as system', () => {
@@ -65,7 +69,7 @@ describe('ThemeContext', () => {
       </TestWrapper>
     );
 
-    expect(screen.getByTestId('theme-mode')).toHaveTextContent('system');
+    expect(screen.getByTestId('theme-mode').textContent).toBe('system');
   });
 
   it('should toggle between light and dark themes', () => {
@@ -108,11 +112,12 @@ describe('ThemeContext', () => {
       </TestWrapper>
     );
 
-    expect(screen.getByTestId('theme-mode')).toHaveTextContent('dark');
+    expect(screen.getByTestId('theme-mode').textContent).toBe('dark');
   });
 
   it('should throw error when useTheme is used outside of ThemeProvider', () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const originalConsoleError = console.error;
+    console.error = () => {};
 
     expect(() => {
       render(
@@ -122,6 +127,6 @@ describe('ThemeContext', () => {
       );
     }).toThrow('useTheme must be used within a ThemeProvider');
 
-    consoleError.mockRestore();
+    console.error = originalConsoleError;
   });
 });

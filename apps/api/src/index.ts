@@ -3,7 +3,6 @@
  * Main entry point for the Hono backend
  */
 
-import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
@@ -125,10 +124,7 @@ async function startServer() {
     logger.info('Redis connection initialized');
 
     // Start HTTP server
-    const server = serve({
-      fetch: app.fetch,
-      port: config.port,
-    });
+    const server = Deno.serve({ port: config.port }, app.fetch);
 
     logger.info({
       type: 'server',
@@ -143,9 +139,8 @@ async function startServer() {
       logger.info({ type: 'server', message: `Received ${signal}, shutting down...` });
 
       // Close HTTP server
-      server.close(() => {
-        logger.info('HTTP server closed');
-      });
+      await server.shutdown();
+      logger.info('HTTP server closed');
 
       // Close database connection
       await disconnectDb();
@@ -154,11 +149,11 @@ async function startServer() {
       await disconnectRedis();
 
       logger.info('Graceful shutdown complete');
-      process.exit(0);
+      Deno.exit(0);
     };
 
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
+    Deno.addSignalListener('SIGTERM', () => { shutdown('SIGTERM'); });
+    Deno.addSignalListener('SIGINT', () => { shutdown('SIGINT'); });
   } catch (error) {
     logger.error({
       type: 'server',

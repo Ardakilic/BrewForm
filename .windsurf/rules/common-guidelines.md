@@ -4,9 +4,9 @@ trigger: always_on
 
 <project_context>
 BrewForm is a coffee recipe sharing platform built with:
-- **Backend**: Hono + Node.js 24 + Prisma + PostgreSQL + Redis
-- **Frontend**: React 18 + BaseUI + Styletron + SWR + React Router v7
-- **Tooling**: pnpm workspaces + Turborepo + Biome.js + Vitest + Docker
+- **Backend**: Hono + Deno 2 + Prisma + PostgreSQL + Redis
+- **Frontend**: React 19 + BaseUI + Styletron + SWR + React Router v7
+- **Tooling**: Deno tasks (per-app deno.json) + Biome.js + Vitest + Docker
 </project_context>
 
 <coding_standards>

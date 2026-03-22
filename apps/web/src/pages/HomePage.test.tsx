@@ -2,24 +2,14 @@
  * HomePage Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import '../test/setup.js';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../test/test-utils';
 import HomePage from './HomePage';
 
-vi.mock('swr', () => ({
-  default: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-    error: undefined,
-  })),
-}));
-
 describe('HomePage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   it('renders without crashing', () => {
     renderWithProviders(<HomePage />);

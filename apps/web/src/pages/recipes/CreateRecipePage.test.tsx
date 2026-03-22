@@ -2,40 +2,14 @@
  * CreateRecipePage Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import '../../test/setup.js';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../../test/test-utils';
 import CreateRecipePage from './CreateRecipePage';
 
-vi.mock('swr', () => ({
-  default: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-    error: undefined,
-  })),
-}));
-
-vi.mock('../../utils/api', () => ({
-  api: {
-    get: vi.fn().mockResolvedValue({ data: [] }),
-    post: vi.fn(),
-  },
-}));
-
-vi.mock('../../contexts/AuthContext', () => ({
-  useAuth: vi.fn(() => ({
-    user: { id: 'user_1', username: 'testuser' },
-    isAuthenticated: true,
-    isLoading: false,
-  })),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
-}));
-
 describe('CreateRecipePage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   it('renders without crashing', () => {
     renderWithProviders(<CreateRecipePage />);

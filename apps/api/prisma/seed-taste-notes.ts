@@ -4,7 +4,7 @@
  */
 
 import process from 'node:process';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './generated/prisma';
 import { readFileSync, existsSync } from 'node:fs';
 
 const prisma = new PrismaClient();

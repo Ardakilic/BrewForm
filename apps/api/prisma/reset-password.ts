@@ -3,17 +3,18 @@
  * Resets a user's password by email or username
  *
  * Usage:
- *   pnpm --filter @brewform/api reset-password <email-or-username> [new-password]
+ *   make reset-password USER=<email-or-username>
+ *   make reset-password USER=<email-or-username> PASSWORD=<new-password>
  *
  * Examples:
- *   pnpm --filter @brewform/api reset-password admin@brewform.local
- *   pnpm --filter @brewform/api reset-password admin MySecurePassword123!
+ *   make reset-password USER=admin@brewform.local
+ *   make reset-password USER=admin PASSWORD=MySecurePassword123!
  *
  * If no password is provided, a secure random password will be generated.
  */
 
 import process from 'node:process';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './generated/prisma';
 import { resetUserPassword } from '../src/modules/auth/cli.js';
 
 const prisma = new PrismaClient();
@@ -64,21 +65,18 @@ async function main() {
 BrewForm Password Reset CLI
 
 Usage:
-  pnpm --filter @brewform/api reset-password <email-or-username> [new-password]
+  make reset-password USER=<email-or-username>
+  make reset-password USER=<email-or-username> PASSWORD=<new-password>
 
 Arguments:
-  email-or-username  User's email address or username
-  new-password       Optional. If not provided, a secure password will be generated.
+  USER      User's email address or username
+  PASSWORD  Optional. If not provided, a secure password will be generated.
 
 Examples:
   # Reset admin password (generates new password)
-  pnpm --filter @brewform/api reset-password admin@brewform.local
+  make reset-password USER=admin@brewform.local
 
   # Reset by username with specific password
-  pnpm --filter @brewform/api reset-password admin MySecurePassword123!
-
-  # Via Makefile (Docker)
-  make reset-password USER=admin@brewform.local
   make reset-password USER=admin PASSWORD=MySecurePassword123!
 `);
     process.exit(0);

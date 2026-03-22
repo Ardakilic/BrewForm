@@ -2,24 +2,8 @@
  * i18n Utilities Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// Mock config and logger before importing i18n utils
-vi.mock('../../config/index.js', () => ({
-  getConfig: vi.fn(() => ({
-    defaultLocale: 'en',
-    supportedLocales: 'en,es,de',
-  })),
-}));
-
-vi.mock('../logger/index.js', () => ({
-  getLogger: vi.fn(() => ({
-    debug: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
-  })),
-}));
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
 
 import {
   t,
@@ -31,9 +15,6 @@ import {
 } from './index.js';
 
 describe('i18n Utilities', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   describe('t (translate)', () => {
     it('should translate common keys', () => {

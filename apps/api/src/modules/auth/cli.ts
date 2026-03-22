@@ -3,7 +3,7 @@
  * Password reset functionality for CLI usage
  */
 
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../../prisma/generated/prisma';
 import { hashPassword } from '../../utils/auth/index.js';
 
 export interface ResetPasswordResult {

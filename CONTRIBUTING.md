@@ -10,22 +10,21 @@ Please be respectful and constructive in all interactions. We're all here to bui
 
 ### Prerequisites
 
-- Node.js 24+
-- pnpm 9+
 - Docker and Docker Compose
 - Git
+- Deno 2.7.7+ (optional, for running tasks outside Docker)
 
 ### Development Setup
 
 1. **Fork and clone the repository**
    ```bash
-   git clone https://github.com/yourusername/brewform.git
-   cd brewform
+   git clone https://github.com/Ardakilic/BrewForm.git
+   cd BrewForm
    ```
 
 2. **Install dependencies**
    ```bash
-   pnpm install
+   make install
    ```
 
 3. **Set up environment**
@@ -87,24 +86,24 @@ docs(readme): update installation instructions
 
 1. Create a feature branch from `develop`
 2. Make your changes
-3. Ensure all tests pass: `pnpm test`
-4. Ensure linting passes: `pnpm lint`
+3. Ensure all tests pass: `make test`
+4. Ensure linting passes: `make lint`
 5. Update documentation if needed
 6. Submit a PR to `develop`
 
 ### Code Style
 
 - We use [Biome](https://biomejs.dev/) for linting and formatting
-- Run `pnpm lint` to check for issues
-- Run `pnpm lint:fix` to auto-fix issues
+- Run `make lint` to check for issues
+- Run `make lint:fix` to auto-fix issues
 - Follow existing code patterns and conventions
 
 ### Testing
 
 - Write tests for new features
 - Maintain 85%+ code coverage
-- Run tests with `pnpm test`
-- Run coverage with `pnpm test:coverage`
+- Run tests with `make test`
+- Run coverage with `make test:coverage`
 
 ## Project Structure
 
@@ -150,8 +149,8 @@ Key directories:
 ## Database Changes
 
 1. Modify `apps/api/prisma/schema.prisma`
-2. Create a migration: `pnpm --filter @brewform/api db:migrate:dev --name your_migration_name`
-3. Generate client: `pnpm --filter @brewform/api db:generate`
+2. Create a migration: `make db-migrate-dev NAME=your_migration_name`
+3. Generate client: `make db-generate`
 
 ## Adding New Features
 
@@ -162,7 +161,7 @@ Key directories:
 
 ## Questions?
 
-- Open a [GitHub Issue](https://github.com/yourusername/brewform/issues)
+- Open a [GitHub Issue](https://github.com/Ardakilic/BrewForm/issues)
 - Join our community discussions
 
 Thank you for contributing! ☕

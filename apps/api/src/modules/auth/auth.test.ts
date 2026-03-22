@@ -2,10 +2,12 @@
  * Auth Module Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
 import { Hono, type Context } from 'hono';
 import authModule from './index.js';
-import { mockPrisma } from '../../test/setup.js';
+import { createMockPrisma } from '../../test/setup.js';
+import { setPrisma } from '../../test/mocks/database.js';
 
 // API Response type for testing
 interface ApiResponse {
@@ -37,9 +39,11 @@ const testErrorHandler = (err: Error, c: Context) => {
 
 describe('Auth Module', () => {
   let app: Hono;
+  let mockPrisma: ReturnType<typeof createMockPrisma>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockPrisma = createMockPrisma();
+    setPrisma(mockPrisma);
     app = new Hono();
     app.route('/auth', authModule);
     app.onError(testErrorHandler as never);
@@ -62,9 +66,9 @@ describe('Auth Module', () => {
       };
 
       // Mock the methods
-      mockPrisma.user.findFirst = vi.fn().mockResolvedValue(null);
-      mockPrisma.user.create = vi.fn().mockResolvedValue(mockUser);
-      mockPrisma.emailVerification.create = vi.fn().mockResolvedValue({
+      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.user.create.mockResolvedValue(mockUser);
+      mockPrisma.emailVerification.create.mockResolvedValue({
         id: 'token_123',
         token: 'verify_token',
         userId: 'user_123',
@@ -92,7 +96,7 @@ describe('Auth Module', () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'existing_user',
         email: 'test@example.com',
-      } as never);
+      });
 
       const response = await app.request('/auth/register', {
         method: 'POST',

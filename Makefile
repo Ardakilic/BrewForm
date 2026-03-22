@@ -58,9 +58,9 @@ help:
 # ============================================
 
 install:
-	@mkdir -p node_modules apps/api/node_modules apps/web/node_modules
-	docker compose run --rm api pnpm install
-	docker compose run --rm web pnpm install
+	@mkdir -p apps/api/node_modules apps/web/node_modules
+	docker compose run --rm api deno install --allow-scripts=npm:@prisma/engines,npm:prisma,npm:@node-rs/argon2,npm:@biomejs/biome,npm:esbuild
+	docker compose run --rm web deno install --allow-scripts=npm:@biomejs/biome,npm:esbuild
 
 up:
 	docker compose up -d
@@ -100,27 +100,27 @@ logs-web:
 # ============================================
 
 db-generate:
-	docker compose exec api pnpm --filter @brewform/api db:generate
+	docker compose exec api deno task db:generate
 
 db-migrate:
-	docker compose exec api pnpm --filter @brewform/api db:migrate
+	docker compose exec api deno task db:migrate
 
 db-migrate-dev:
-	docker compose exec api pnpm --filter @brewform/api prisma migrate dev
+	docker compose exec api deno task db:migrate:dev
 
 db-seed:
-	docker compose exec api pnpm --filter @brewform/api db:seed
+	docker compose exec api deno task db:seed
 
 db-seed-taste-notes:
-	docker compose exec api pnpm --filter @brewform/api db:seed:taste-notes
+	docker compose exec api deno task db:seed:taste-notes
 
 db-studio:
-	docker compose exec api pnpm --filter @brewform/api prisma studio
+	docker compose exec api deno task db:studio
 
 db-reset:
 	@echo "Warning: This will reset the database and delete all data!"
 	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
-	docker compose exec api pnpm --filter @brewform/api prisma migrate reset --force
+	docker compose exec api deno run --allow-all node_modules/.bin/prisma migrate reset --force
 
 db-reset-hard:
 	@echo "Warning: This will completely reset the database, recreate it, and run all migrations and seeds!"
@@ -135,15 +135,15 @@ db-reset-hard:
 	@echo "Waiting for database to be ready..."
 	sleep 10
 	@echo "Running migrations..."
-	docker compose run --rm api pnpm --filter @brewform/api db:migrate
+	docker compose run --rm api deno task db:migrate
 	@echo "Seeding database..."
-	docker compose run --rm api pnpm --filter @brewform/api db:seed
+	docker compose run --rm api deno task db:seed
 	@echo "Starting all services..."
 	docker compose up -d
 	@echo "Database reset complete!"
 
 db-push:
-	docker compose exec api pnpm --filter @brewform/api prisma db push
+	docker compose exec api deno task db:push
 
 reset-password:
 ifndef USER
@@ -155,9 +155,9 @@ ifndef USER
 	@exit 1
 endif
 ifdef PASSWORD
-	docker compose exec api pnpm --filter @brewform/api reset-password $(USER) "$(PASSWORD)"
+	docker compose exec api deno run --allow-all prisma/reset-password.ts $(USER) "$(PASSWORD)"
 else
-	docker compose exec api pnpm --filter @brewform/api reset-password $(USER)
+	docker compose exec api deno run --allow-all prisma/reset-password.ts $(USER)
 endif
 
 # ============================================
@@ -165,43 +165,43 @@ endif
 # ============================================
 
 test:
-	docker compose run --rm api pnpm test
-	docker compose run --rm web pnpm test
+	docker compose run --rm api deno task test
+	docker compose run --rm web deno task test
 
 test-api:
-	docker compose run --rm api pnpm test
+	docker compose run --rm api deno task test
 
 test-web:
-	docker compose run --rm web pnpm test
+	docker compose run --rm web deno task test
 
 test-coverage:
-	docker compose run --rm api pnpm test:coverage
-	docker compose run --rm web pnpm test:coverage
+	docker compose run --rm api deno task test:coverage
+	docker compose run --rm web deno task test:coverage
 
 test-watch:
-	docker compose run --rm api pnpm test -- --watch
+	docker compose run --rm api deno task test:watch
 
 # ============================================
 # Code Quality Commands
 # ============================================
 
 lint:
-	docker compose exec api pnpm lint
-	docker compose exec web pnpm lint
+	docker compose exec api deno task lint
+	docker compose exec web deno task lint
 
 lint-fix:
-	docker compose exec api pnpm lint:fix
-	docker compose exec web pnpm lint:fix
+	docker compose exec api deno task lint:fix
+	docker compose exec web deno task lint:fix
 
 format:
-	docker compose exec api pnpm format
+	docker compose exec api deno task format
 
 check:
-	docker compose exec api pnpm check
+	docker compose exec api deno task check
 
 typecheck:
-	docker compose exec api pnpm typecheck
-	docker compose exec web pnpm typecheck
+	docker compose exec api deno task typecheck
+	docker compose exec web deno task typecheck
 
 # ============================================
 # Shell Commands

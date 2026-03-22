@@ -1,0 +1,45 @@
+# Dependencies (installed inside container)
+node_modules/
+**/node_modules/
+
+# Generated Prisma client (generated inside deps stage)
+apps/api/prisma/generated/
+
+# Lock files
+deno.lock
+**/deno.lock
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Logs
+logs/
+*.log
+
+# Testing
+coverage/
+.nyc_output/
+
+# Docs
+docs/
+
+# Temp files
+tmp/
+temp/

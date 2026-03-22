@@ -1,0 +1,23 @@
+{
+  "name": "@brewform/web",
+  "version": "1.0.0",
+  "exports": "./src/main.tsx",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "strict": true,
+    "lib": ["ES2022", "DOM"]
+  },
+  "tasks": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "deno test --allow-all --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
+    "test:watch": "deno test --allow-all --watch --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
+    "lint": "biome lint ./src",
+    "lint:fix": "biome lint --write ./src",
+    "format": "biome format --write ./src",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules coverage"
+  }
+}

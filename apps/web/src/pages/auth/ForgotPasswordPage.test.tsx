@@ -2,22 +2,14 @@
  * ForgotPasswordPage Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import '../../test/setup.js';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../../test/test-utils';
 import ForgotPasswordPage from './ForgotPasswordPage';
 
-vi.mock('../../utils/api', () => ({
-  api: {
-    post: vi.fn(),
-  },
-}));
-
 describe('ForgotPasswordPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   it('renders without crashing', () => {
     renderWithProviders(<ForgotPasswordPage />);

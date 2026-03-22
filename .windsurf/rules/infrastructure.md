@@ -10,7 +10,7 @@ globs:
 
 <critical_rule>
 **All commands MUST be executed through Docker Compose or Makefile.**
-Never run pnpm/npx commands directly on the host system.
+Never run deno/node commands directly on the host system.
 </critical_rule>
 
 <development_commands>

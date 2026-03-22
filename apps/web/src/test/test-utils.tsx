@@ -13,6 +13,7 @@ import { SnackbarProvider } from 'baseui/snackbar';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../i18n';
 import { AuthProvider } from '../contexts/AuthContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 
 const engine = new Styletron();
 
@@ -25,17 +26,19 @@ export function TestWrapper({ children, initialEntries = ['/'] }: WrapperProps) 
   return (
     <HelmetProvider>
       <StyletronProvider value={engine}>
-        <BaseProvider theme={LightTheme}>
-          <SnackbarProvider>
-            <I18nextProvider i18n={i18n}>
-              <AuthProvider>
-                <MemoryRouter initialEntries={initialEntries}>
-                  {children}
-                </MemoryRouter>
-              </AuthProvider>
-            </I18nextProvider>
-          </SnackbarProvider>
-        </BaseProvider>
+        <ThemeProvider>
+          <BaseProvider theme={LightTheme}>
+            <SnackbarProvider>
+              <I18nextProvider i18n={i18n}>
+                <AuthProvider>
+                  <MemoryRouter initialEntries={initialEntries}>
+                    {children}
+                  </MemoryRouter>
+                </AuthProvider>
+              </I18nextProvider>
+            </SnackbarProvider>
+          </BaseProvider>
+        </ThemeProvider>
       </StyletronProvider>
     </HelmetProvider>
   );

@@ -2,8 +2,9 @@
  * RecipesPage Tests - Filtering Functionality
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import '@testing-library/jest-dom';
+import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import '../../test/setup.js';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -14,13 +15,11 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from '../../i18n';
 import RecipesPage from './RecipesPage';
 import { AuthProvider } from '../../contexts/AuthContext';
+import type { MockFn } from '../../test/mock-fn.js';
+import _useSWR from '../../test/mocks/swr.js';
 
-// Mock SWR
-vi.mock('swr', () => ({
-  default: vi.fn(),
-}));
-
-import useSWR from 'swr';
+// deno-lint-ignore no-explicit-any
+const useSWR = _useSWR as any as MockFn;
 
 const engine = new Styletron();
 
@@ -71,16 +70,16 @@ const TestWrapper = ({ children, initialRoute = '/recipes' }: { children: React.
 
 describe('RecipesPage Filtering', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    useSWR.mockReset();
   });
 
   describe('Initial URL params', () => {
     it('should load with single tag filter from URL', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -95,11 +94,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should load with multiple tag filters from URL', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -115,11 +114,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should load with single brew method filter from URL', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -134,11 +133,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should load with multiple brew method filters from URL', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -156,11 +155,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should load with single drink type filter from URL', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -175,11 +174,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should load with multiple drink type filters from URL', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -196,11 +195,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should load with combined filters from URL', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -218,11 +217,11 @@ describe('RecipesPage Filtering', () => {
 
   describe('Filter removal', () => {
     it('should remove single tag when clicking close button', async () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -250,11 +249,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should have Clear All button when filters are active', async () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -275,11 +274,11 @@ describe('RecipesPage Filtering', () => {
 
   describe('Recipe display', () => {
     it('should display recipes when loaded', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -294,11 +293,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should show loading spinner while loading', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: undefined,
         isLoading: true,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -313,11 +312,11 @@ describe('RecipesPage Filtering', () => {
     });
 
     it('should show empty state when no recipes', () => {
-      vi.mocked(useSWR).mockReturnValue({
+      useSWR.mockReturnValue({
         data: [],
         isLoading: false,
         error: undefined,
-        mutate: vi.fn(),
+        mutate: () => Promise.resolve(undefined),
         isValidating: false,
       });
 
@@ -334,16 +333,16 @@ describe('RecipesPage Filtering', () => {
   describe('API URL construction', () => {
     it('should build correct API URL with multiple tags', () => {
       let capturedUrl = '';
-      vi.mocked(useSWR).mockImplementation(((url: unknown) => {
+      useSWR.mockImplementation((url: unknown) => {
         capturedUrl = url as string;
         return {
           data: mockRecipes,
           isLoading: false,
           error: undefined,
-          mutate: vi.fn(),
+          mutate: () => Promise.resolve(undefined),
           isValidating: false,
         };
-      }) as typeof useSWR);
+      });
 
       render(
         <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
@@ -357,16 +356,16 @@ describe('RecipesPage Filtering', () => {
 
     it('should build correct API URL with single brew method', () => {
       let capturedUrl = '';
-      vi.mocked(useSWR).mockImplementation(((url: unknown) => {
+      useSWR.mockImplementation((url: unknown) => {
         capturedUrl = url as string;
         return {
           data: mockRecipes,
           isLoading: false,
           error: undefined,
-          mutate: vi.fn(),
+          mutate: () => Promise.resolve(undefined),
           isValidating: false,
         };
-      }) as typeof useSWR);
+      });
 
       render(
         <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE">
@@ -379,16 +378,16 @@ describe('RecipesPage Filtering', () => {
 
     it('should build correct API URL with multiple brew methods (comma-separated for OR logic)', () => {
       let capturedUrl = '';
-      vi.mocked(useSWR).mockImplementation(((url: unknown) => {
+      useSWR.mockImplementation((url: unknown) => {
         capturedUrl = url as string;
         return {
           data: mockRecipes,
           isLoading: false,
           error: undefined,
-          mutate: vi.fn(),
+          mutate: () => Promise.resolve(undefined),
           isValidating: false,
         };
-      }) as typeof useSWR);
+      });
 
       render(
         <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE&brewMethod=POUR_OVER_V60">
@@ -403,16 +402,16 @@ describe('RecipesPage Filtering', () => {
 
     it('should build correct API URL with multiple drink types (comma-separated for OR logic)', () => {
       let capturedUrl = '';
-      vi.mocked(useSWR).mockImplementation(((url: unknown) => {
+      useSWR.mockImplementation((url: unknown) => {
         capturedUrl = url as string;
         return {
           data: mockRecipes,
           isLoading: false,
           error: undefined,
-          mutate: vi.fn(),
+          mutate: () => Promise.resolve(undefined),
           isValidating: false,
         };
-      }) as typeof useSWR);
+      });
 
       render(
         <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">

@@ -10,7 +10,7 @@ import { validateRecipe, type RecipeVersionInput } from '../../utils/validation/
 import { invalidateCache, CacheKeys, cacheGetOrSet } from '../../utils/redis/index.js';
 import { NotFoundError, ForbiddenError, ValidationError } from '../../middleware/errorHandler.js';
 import { calculateBrewRatio, calculateFlowRate } from '../../utils/units/index.js';
-import type { Visibility, BrewMethodType, DrinkType } from '@prisma/client';
+import type { Visibility, BrewMethodType, DrinkType } from '../../../prisma/generated/prisma';
 
 // ============================================
 // Types

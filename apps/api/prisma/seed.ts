@@ -8,7 +8,7 @@
  */
 
 import process from 'node:process';
-import { PrismaClient, BrewMethodType, DrinkType, EmojiRating } from '@prisma/client';
+import { PrismaClient, BrewMethodType, DrinkType, EmojiRating } from './generated/prisma';
 import { hash } from '@node-rs/argon2';
 import { nanoid } from 'nanoid';
 

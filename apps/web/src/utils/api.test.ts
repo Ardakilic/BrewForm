@@ -2,15 +2,16 @@
  * API Utility Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import { mockFn } from '../test/mock-fn.js';
 
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+type MockResponse = { ok: boolean; status?: number; json: () => Promise<unknown> };
+const mockFetch = mockFn<Promise<MockResponse>>();
+globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
 describe('API Utility', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockFetch.mockReset();
   });
 
@@ -24,7 +25,7 @@ describe('API Utility', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse,
-      });
+      } as MockResponse);
 
       const response = await fetch('/api/v1/recipes');
       const data = await response.json();
@@ -43,7 +44,7 @@ describe('API Utility', () => {
         ok: false,
         status: 404,
         json: async () => mockError,
-      });
+      } as MockResponse);
 
       const response = await fetch('/api/v1/recipes/invalid');
       const data = await response.json();
@@ -55,7 +56,7 @@ describe('API Utility', () => {
     it('should handle network errors', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(fetch('/api/v1/recipes')).rejects.toThrow('Network error');
+      await expect(fetch('/api/v1/recipes')).rejects.toThrow('Network error' as never);
     });
   });
 

@@ -5,7 +5,8 @@
  * These tests verify the mocked interface is callable.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
@@ -14,9 +15,6 @@ import {
 } from './index.js';
 
 describe('Email Utilities', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   describe('sendVerificationEmail', () => {
     it('should be callable and return boolean', async () => {

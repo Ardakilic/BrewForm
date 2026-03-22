@@ -2,8 +2,9 @@
  * ErrorPage Tests
  */
 
-import { describe, it, expect } from 'vitest';
-import '@testing-library/jest-dom';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import '../../test/setup.js';
 import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../../test/test-utils';
 import ErrorPage from './ErrorPage';

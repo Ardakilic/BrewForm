@@ -2,7 +2,8 @@
  * Slug Utilities Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
 import {
   createSlug,
   createUniqueSlug,

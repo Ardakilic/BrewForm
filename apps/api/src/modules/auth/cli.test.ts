@@ -3,24 +3,23 @@
  * Tests for password reset CLI functionality
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
+import { mockFn } from '../../test/mock-fn.js';
 import { generatePassword, findUser, resetUserPassword } from './cli.js';
 
 // Create mock Prisma client
 const createMockPrisma = () => ({
   user: {
-    findUnique: vi.fn(),
-    update: vi.fn(),
+    findUnique: mockFn(),
+    update: mockFn(),
   },
   session: {
-    deleteMany: vi.fn(),
+    deleteMany: mockFn(),
   },
 });
 
 describe('Auth CLI', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   describe('generatePassword', () => {
     it('should generate a password of default length 16', () => {
@@ -63,10 +62,10 @@ describe('Auth CLI', () => {
       const user = await findUser(mockPrisma as never, 'admin@brewform.local');
 
       expect(user).toEqual(mockUser);
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+      expect(mockPrisma.user.findUnique.calls[0]).toEqual([{
         where: { email: 'admin@brewform.local' },
         select: { id: true, email: true, username: true, displayName: true, isAdmin: true },
-      });
+      }]);
     });
 
     it('should find user by username when email not found', async () => {
@@ -85,7 +84,7 @@ describe('Auth CLI', () => {
       const user = await findUser(mockPrisma as never, 'admin');
 
       expect(user).toEqual(mockUser);
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.user.findUnique.calls.length).toBe(2);
     });
 
     it('should return null when user not found', async () => {
@@ -103,10 +102,10 @@ describe('Auth CLI', () => {
 
       await findUser(mockPrisma as never, 'ADMIN@BREWFORM.LOCAL');
 
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+      expect(mockPrisma.user.findUnique.calls[0]).toEqual([{
         where: { email: 'admin@brewform.local' },
         select: { id: true, email: true, username: true, displayName: true, isAdmin: true },
-      });
+      }]);
     });
   });
 
@@ -169,10 +168,10 @@ describe('Auth CLI', () => {
 
       await resetUserPassword(mockPrisma as never, 'admin@brewform.local', 'NewPassword123!');
 
-      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+      expect(mockPrisma.user.update.calls[0]).toEqual([{
         where: { id: 'user_123' },
         data: { passwordHash: expect.any(String) },
-      });
+      }]);
     });
 
     it('should invalidate all sessions after password reset', async () => {
@@ -190,9 +189,9 @@ describe('Auth CLI', () => {
 
       await resetUserPassword(mockPrisma as never, 'admin@brewform.local', 'NewPassword123!');
 
-      expect(mockPrisma.session.deleteMany).toHaveBeenCalledWith({
+      expect(mockPrisma.session.deleteMany.calls[0]).toEqual([{
         where: { userId: 'user_123' },
-      });
+      }]);
     });
 
     it('should return error when user not found', async () => {
@@ -213,7 +212,7 @@ describe('Auth CLI', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Password must be at least 8 characters long');
-      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+      expect(mockPrisma.user.findUnique.calls.length).toBe(0);
     });
 
     it('should accept password of exactly 8 characters', async () => {

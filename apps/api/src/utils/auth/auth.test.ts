@@ -5,7 +5,8 @@
  * These tests verify the mocked interface is callable.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it } from 'jsr:@std/testing/bdd';
+import { expect } from 'jsr:@std/expect';
 import {
   hashPassword,
   verifyPassword,
@@ -13,9 +14,6 @@ import {
 } from './index.js';
 
 describe('Auth Utilities', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   describe('Password Hashing', () => {
     describe('hashPassword', () => {

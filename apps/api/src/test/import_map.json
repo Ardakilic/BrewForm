@@ -1,0 +1,15 @@
+{
+  "imports": {
+    "../utils/database/index.js": "./mocks/database.ts",
+    "../utils/redis/index.js": "./mocks/redis.ts",
+    "../utils/logger/index.js": "./mocks/logger.ts",
+    "../middleware/auth.js": "./mocks/auth-middleware.ts",
+    "../middleware/auth": "./mocks/auth-middleware.ts",
+    "../middleware/errorHandler.js": "./mocks/error-handler.ts",
+    "../middleware/rateLimit.js": "./mocks/rate-limit.ts",
+    "../utils/auth/index.js": "./mocks/auth-utils.ts",
+    "../utils/email/index.js": "./mocks/email.ts",
+    "../config/index.js": "./mocks/config.ts",
+    "../../prisma/generated/prisma": "./mocks/prisma-enums.ts"
+  }
+}

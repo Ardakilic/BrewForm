@@ -6,7 +6,7 @@
 import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.js';
 import { logAudit } from '../../utils/logger/index.js';
 import { NotFoundError, } from '../../middleware/errorHandler.js';
-import type { UnitSystem, Theme } from '@prisma/client';
+import type { UnitSystem, Theme } from '../../../prisma/generated/prisma';
 
 // ============================================
 // Types

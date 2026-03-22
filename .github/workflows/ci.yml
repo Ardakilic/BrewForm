@@ -7,8 +7,7 @@ on:
     branches: [main, develop]
 
 env:
-  NODE_VERSION: '24'
-  PNPM_VERSION: '9'
+  DENO_VERSION: '2.7.7'
 
 jobs:
   lint:
@@ -18,86 +17,51 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
         with:
-          version: ${{ env.PNPM_VERSION }}
+          deno-version: ${{ env.DENO_VERSION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+      - name: Install API dependencies
+        run: deno install --allow-scripts
+        working-directory: apps/api
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install Web dependencies
+        run: deno install --allow-scripts
+        working-directory: apps/web
 
       - name: Run linter
-        run: pnpm lint
+        run: |
+          cd apps/api && deno task lint
+          cd apps/web && deno task lint
 
   test-api:
     name: Test API
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18-trixie
-        env:
-          POSTGRES_USER: brewform
-          POSTGRES_PASSWORD: brewform
-          POSTGRES_DB: brewform_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
         with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          deno-version: ${{ env.DENO_VERSION }}
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: deno install --allow-scripts
+        working-directory: apps/api
 
       - name: Generate Prisma client
-        run: pnpm --filter @brewform/api db:generate
+        run: deno task db:generate
+        working-directory: apps/api
 
       - name: Run API tests
-        run: pnpm --filter @brewform/api test:coverage
+        run: deno task test
+        working-directory: apps/api
         env:
-          DATABASE_URL: postgresql://brewform:brewform@localhost:5432/brewform_test
-          REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-jwt-secret-key-for-ci
           JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci
           NODE_ENV: test
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./apps/api/coverage/lcov.info
-          flags: api
-          name: api-coverage
 
   test-web:
     name: Test Web
@@ -106,29 +70,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
         with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          deno-version: ${{ env.DENO_VERSION }}
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: deno install --allow-scripts
+        working-directory: apps/web
 
       - name: Run Web tests
-        run: pnpm --filter @brewform/web test:coverage
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./apps/web/coverage/lcov.info
-          flags: web
-          name: web-coverage
+        run: deno task test
+        working-directory: apps/web
 
   build:
     name: Build
@@ -138,25 +91,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
         with:
-          version: ${{ env.PNPM_VERSION }}
+          deno-version: ${{ env.DENO_VERSION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+      - name: Install API dependencies
+        run: deno install --allow-scripts
+        working-directory: apps/api
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install Web dependencies
+        run: deno install --allow-scripts
+        working-directory: apps/web
 
       - name: Generate Prisma client
-        run: pnpm --filter @brewform/api db:generate
+        run: deno task db:generate
+        working-directory: apps/api
 
-      - name: Build all packages
-        run: pnpm build
+      - name: Build web app
+        run: deno task build
+        working-directory: apps/web
 
   docker:
     name: Build Docker Images

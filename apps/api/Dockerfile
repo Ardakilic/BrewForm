@@ -1,54 +1,44 @@
 # ============================================
 # BrewForm API Dockerfile
-# Using Node.js 24 with Debian Trixie Slim
+# Using Deno 2.7.7 with Debian
 # ============================================
 
-# Base stage with pnpm
-FROM node:24-trixie-slim AS base
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+# Base stage
+FROM denoland/deno:debian-2.7.7 AS base
 WORKDIR /app
 
-# Development dependencies stage
+# Dependencies stage — install npm packages for the API
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
-COPY apps/api/package.json ./apps/api/
-COPY packages* ./packages/
-RUN pnpm install --frozen-lockfile || pnpm install
+COPY apps/api/package.json apps/api/deno.json apps/api/prisma.config.ts ./apps/api/
+COPY apps/api/prisma ./apps/api/prisma
+RUN cd apps/api && deno install --allow-scripts
+RUN cd apps/api && deno task db:generate
 
 # Development stage
 FROM base AS development
-COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
 WORKDIR /app/apps/api
-RUN pnpm db:generate
 EXPOSE 3001
-CMD ["pnpm", "dev"]
+CMD ["deno", "task", "dev"]
 
-# Builder stage
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY . .
-WORKDIR /app/apps/api
-RUN pnpm db:generate && pnpm build
-
-# Production stage
-FROM node:24-trixie-slim AS production
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+# Production stage — no compilation needed; Deno runs TypeScript directly
+FROM denoland/deno:debian-2.7.7 AS production
 WORKDIR /app
 
 # Create non-root user
 RUN groupadd --gid 1001 nodejs && \
     useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home hono
 
-# Copy production files
-COPY --from=builder --chown=hono:nodejs /app/apps/api/dist ./dist
-COPY --from=builder --chown=hono:nodejs /app/apps/api/package.json ./
-COPY --from=builder --chown=hono:nodejs /app/apps/api/node_modules ./node_modules
-COPY --from=builder --chown=hono:nodejs /app/apps/api/prisma ./prisma
+# Copy installed packages and source
+COPY --from=deps --chown=hono:nodejs /app/apps/api/node_modules ./apps/api/node_modules
+COPY --chown=hono:nodejs apps/api/src ./apps/api/src
+COPY --from=deps --chown=hono:nodejs /app/apps/api/prisma ./apps/api/prisma
+COPY --chown=hono:nodejs apps/api/deno.json apps/api/package.json apps/api/prisma.config.ts ./apps/api/
+COPY --chown=hono:nodejs package.json deno.json ./
 
 USER hono
+WORKDIR /app/apps/api
 EXPOSE 3001
 ENV NODE_ENV=production
 
@@ -56,4 +46,4 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3001/health || exit 1
 
-CMD ["node", "dist/index.js"]
+CMD ["deno", "run", "--allow-all", "src/index.ts"]

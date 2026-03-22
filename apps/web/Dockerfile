@@ -1,36 +1,32 @@
 # ============================================
 # BrewForm Web Dockerfile
-# Using Node.js 24 with Debian Trixie Slim
+# Using Deno 2.7.7 with Debian (build stages)
+# Nginx for production static serving
 # ============================================
 
-# Base stage with pnpm
-FROM node:24-trixie-slim AS base
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+# Base stage
+FROM denoland/deno:debian-2.7.7 AS base
 WORKDIR /app
 
-# Development dependencies stage
+# Dependencies stage — install npm packages for the web app
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
-COPY apps/web/package.json ./apps/web/
-COPY packages* ./packages/
-RUN pnpm install --frozen-lockfile || pnpm install
+COPY apps/web/package.json apps/web/deno.json ./apps/web/
+RUN cd apps/web && deno install --allow-scripts
 
 # Development stage
 FROM base AS development
-COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 WORKDIR /app/apps/web
 EXPOSE 3000
-CMD ["pnpm", "dev"]
+CMD ["deno", "task", "dev"]
 
 # Builder stage
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 WORKDIR /app/apps/web
-RUN pnpm build
+RUN deno task build
 
 # Production stage - serve with nginx
 FROM nginx:trixie AS production
