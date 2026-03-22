@@ -1,8 +1,8 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import '../../test/setup.js';
-import { renderWithProviders } from '../../test/test-utils';
-import UsersPage from './UsersPage';
+import '../../test/setup.ts';
+import { renderWithProviders } from '../../test/test-utils.tsx';
+import UsersPage from './UsersPage.tsx';
 
 describe('Admin UsersPage', () => {
 

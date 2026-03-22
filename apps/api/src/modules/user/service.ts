@@ -3,9 +3,9 @@
  * Handles user profile and preferences
  */
 
-import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.js';
-import { logAudit } from '../../utils/logger/index.js';
-import { NotFoundError, } from '../../middleware/errorHandler.js';
+import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.ts';
+import { logAudit } from '../../utils/logger/index.ts';
+import { NotFoundError, } from '../../middleware/errorHandler.ts';
 import type { UnitSystem, Theme } from '../../../prisma/generated/prisma';
 
 // ============================================

@@ -6,7 +6,7 @@ trigger: always_on
 BrewForm is a coffee recipe sharing platform built with:
 - **Backend**: Hono + Deno 2 + Prisma + PostgreSQL + Redis
 - **Frontend**: React 19 + BaseUI + Styletron + SWR + React Router v7
-- **Tooling**: Deno tasks (per-app deno.json) + Deno formatter/linter + Vitest + Docker
+- **Tooling**: Deno tasks (per-app deno.json) + Deno formatter/linter + Deno test + Docker
 </project_context>
 
 <coding_standards>

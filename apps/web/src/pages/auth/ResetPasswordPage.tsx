@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { FormControl } from 'baseui/form-control';
 import { Input } from 'baseui/input';
 import { Button } from 'baseui/button';
@@ -13,7 +13,7 @@ import { HeadingMedium, ParagraphMedium } from 'baseui/typography';
 import { Notification, KIND } from 'baseui/notification';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
-import { api } from '../../utils/api';
+import { api } from '../../utils/api.ts';
 
 function ResetPasswordPage() {
   const [css, theme] = useStyletron();

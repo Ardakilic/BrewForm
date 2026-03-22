@@ -5,9 +5,9 @@
 
 import { createMiddleware } from 'hono/factory';
 import type { Context, Next } from 'hono';
-import { checkRateLimit } from '../utils/redis/index.js';
-import { getConfig } from '../config/index.js';
-import { logSecurity } from '../utils/logger/index.js';
+import { checkRateLimit } from '../utils/redis/index.ts';
+import { getConfig } from '../config/index.ts';
+import { logSecurity } from '../utils/logger/index.ts';
 
 // ============================================
 // Types

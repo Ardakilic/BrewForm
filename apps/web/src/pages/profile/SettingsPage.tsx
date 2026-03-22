@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { useStyletron } from 'baseui';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { FormControl } from 'baseui/form-control';
 import { Input } from 'baseui/input';
 import { Textarea } from 'baseui/textarea';
@@ -15,9 +15,9 @@ import { Notification, KIND } from 'baseui/notification';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
-import { api } from '../../utils/api';
-import { useTheme, type ThemeMode } from '../../contexts/ThemeContext';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { api } from '../../utils/api.ts';
+import { useTheme, type ThemeMode } from '../../contexts/ThemeContext.tsx';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 import type { UserProfile } from '../../types';
 
 const fetcher = async (url: string): Promise<UserProfile> => {

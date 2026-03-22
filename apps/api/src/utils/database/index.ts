@@ -4,8 +4,8 @@
  */
 
 import { PrismaClient } from '../../../prisma/generated/prisma';
-import { getConfig } from '../../config/index.js';
-import { getLogger } from '../logger/index.js';
+import { getConfig } from '../../config/index.ts';
+import { getLogger } from '../logger/index.ts';
 
 // Singleton instance
 let prismaInstance: PrismaClient | null = null;

@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { FormControl } from 'baseui/form-control';
 import { Input } from 'baseui/input';
 import { Textarea } from 'baseui/textarea';
@@ -15,8 +15,8 @@ import { HeadingLarge, } from 'baseui/typography';
 import { Notification, KIND } from 'baseui/notification';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
-import { api } from '../../utils/api';
-import TasteNoteAutocomplete, { type TasteNote } from '../../components/TasteNoteAutocomplete';
+import { api } from '../../utils/api.ts';
+import TasteNoteAutocomplete, { type TasteNote } from '../../components/TasteNoteAutocomplete.tsx';
 
 const BREW_METHOD_IDS = [
   'ESPRESSO_MACHINE',

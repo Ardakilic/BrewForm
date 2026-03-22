@@ -5,11 +5,11 @@
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { mockFn } from '../../test/mock-fn.js';
-import { setPrisma } from '../../test/mocks/database.js';
-import { setCheckHeaderMode } from '../../test/mocks/auth-middleware.js';
-import { cacheGetOrSet } from '../../test/mocks/redis.js';
-import tasteNotesModule from './index.js';
+import { mockFn } from '../../test/mock-fn.ts';
+import { setPrisma } from '../../test/mocks/database.ts';
+import { setCheckHeaderMode } from '../../test/mocks/auth-middleware.ts';
+import { cacheGetOrSet } from '../../test/mocks/redis.ts';
+import tasteNotesModule from './index.ts';
 
 // API Response type for testing
 interface ApiResponse {

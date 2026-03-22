@@ -4,7 +4,7 @@
  */
 
 import pino, { type Logger, type LoggerOptions } from 'pino';
-import { getConfig } from '../../config/index.js';
+import { getConfig } from '../../config/index.ts';
 
 /**
  * Logger context interface for structured logging

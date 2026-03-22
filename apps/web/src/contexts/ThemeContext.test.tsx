@@ -4,13 +4,13 @@
 
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import '../test/setup.js';
+import '../test/setup.ts';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Client as Styletron } from 'styletron-engine-monolithic';
 import { Provider as StyletronProvider } from 'styletron-react';
 import { BaseProvider } from 'baseui';
-import { mockFn } from '../test/mock-fn.js';
-import { ThemeProvider, useTheme } from './ThemeContext';
+import { mockFn } from '../test/mock-fn.ts';
+import { ThemeProvider, useTheme } from './ThemeContext.tsx';
 
 // Mock matchMedia for JSDOM
 const mockMatchMedia = mockFn((query: unknown) => ({

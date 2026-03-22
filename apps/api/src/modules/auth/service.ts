@@ -3,7 +3,7 @@
  * Handles user authentication logic
  */
 
-import { getPrisma } from '../../utils/database/index.js';
+import { getPrisma } from '../../utils/database/index.ts';
 import {
   hashPassword,
   verifyPassword,
@@ -12,21 +12,21 @@ import {
   generatePasswordResetToken,
   generateSessionToken,
   type TokenPair,
-} from '../../utils/auth/index.js';
+} from '../../utils/auth/index.ts';
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendWelcomeEmail,
   sendPasswordChangedEmail,
-} from '../../utils/email/index.js';
-import { getLogger, logAudit, logSecurity } from '../../utils/logger/index.js';
-import { getConfig } from '../../config/index.js';
+} from '../../utils/email/index.ts';
+import { getLogger, logAudit, logSecurity } from '../../utils/logger/index.ts';
+import { getConfig } from '../../config/index.ts';
 import {
   BadRequestError,
   ConflictError,
   NotFoundError,
   UnauthorizedError,
-} from '../../middleware/errorHandler.js';
+} from '../../middleware/errorHandler.ts';
 
 // ============================================
 // Types

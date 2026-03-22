@@ -26,7 +26,7 @@ import {
   TYPICAL_RATIOS,
   TYPICAL_EXTRACTION_TIMES,
   TYPICAL_TEMPERATURES,
-} from './index.js';
+} from './index.ts';
 
 describe('Validation Utilities', () => {
   describe('Common Schemas', () => {

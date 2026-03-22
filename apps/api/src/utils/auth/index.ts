@@ -6,7 +6,7 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { hash, verify } from '@node-rs/argon2';
 import { nanoid } from 'nanoid';
-import { getConfig } from '../../config/index.js';
+import { getConfig } from '../../config/index.ts';
 
 // ============================================
 // Types

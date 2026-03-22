@@ -4,7 +4,7 @@
 
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { mockFn } from '../test/mock-fn.js';
+import { mockFn } from '../test/mock-fn.ts';
 
 type MockResponse = { ok: boolean; status?: number; json: () => Promise<unknown> };
 const mockFetch = mockFn<Promise<MockResponse>>();

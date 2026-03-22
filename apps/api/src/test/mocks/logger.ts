@@ -3,7 +3,7 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from '../mock-fn.js';
+import { mockFn } from '../mock-fn.ts';
 
 const _logger = {
   debug: mockFn<void>(),

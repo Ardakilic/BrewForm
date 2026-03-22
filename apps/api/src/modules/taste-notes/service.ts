@@ -3,9 +3,9 @@
  * Handles taste notes retrieval and search with Redis caching
  */
 
-import { getPrisma, softDeleteFilter } from '../../utils/database/index.js';
-import { getRedis, cacheGetOrSet } from '../../utils/redis/index.js';
-import { getLogger } from '../../utils/logger/index.js';
+import { getPrisma, softDeleteFilter } from '../../utils/database/index.ts';
+import { getRedis, cacheGetOrSet } from '../../utils/redis/index.ts';
+import { getLogger } from '../../utils/logger/index.ts';
 
 // Cache TTL for taste notes (24 hours since they rarely change)
 const TASTE_NOTES_CACHE_TTL = 86400;

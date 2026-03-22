@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import type { Cuid } from '../../types/index';
+import type { Cuid } from '../../types/index.ts';
 
 // ============================================
 // CUID Validation Schemas

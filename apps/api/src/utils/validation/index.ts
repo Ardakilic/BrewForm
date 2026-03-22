@@ -6,7 +6,7 @@
 import { z } from 'zod';
 import { BrewMethodType, DrinkType, EmojiRating, ProcessingMethod, Visibility } from '../../../prisma/generated/prisma';
 // Re-export CUID validation utilities
-export * from './cuid';
+export * from './cuid.ts';
 
 // ============================================
 // Common Schemas

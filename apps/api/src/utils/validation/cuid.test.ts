@@ -21,7 +21,7 @@ import {
   transformToCuid,
   createCuidRefine,
   CUID_ERROR_MESSAGES,
-} from './cuid.js';
+} from './cuid.ts';
 
 describe('CUID Validation Utilities', () => {
   const validCuid = 'clh1234567890abcdefghij01';

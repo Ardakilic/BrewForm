@@ -3,12 +3,12 @@
  * Handles likes, comments, comparisons
  */
 
-import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.js';
-import { logAudit } from '../../utils/logger/index.js';
-import { createComparisonToken } from '../../utils/slug/index.js';
-import { invalidateCache, CacheKeys } from '../../utils/redis/index.js';
-import { NotFoundError, ForbiddenError, BadRequestError } from '../../middleware/errorHandler.js';
-import { notificationService } from '../notification/service.js';
+import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.ts';
+import { logAudit } from '../../utils/logger/index.ts';
+import { createComparisonToken } from '../../utils/slug/index.ts';
+import { invalidateCache, CacheKeys } from '../../utils/redis/index.ts';
+import { NotFoundError, ForbiddenError, BadRequestError } from '../../middleware/errorHandler.ts';
+import { notificationService } from '../notification/service.ts';
 
 // ============================================
 // Comment Notification Helpers

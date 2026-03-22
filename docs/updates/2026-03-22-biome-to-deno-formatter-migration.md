@@ -148,7 +148,35 @@ Create or update `.vscode/settings.json` in the project root:
 }
 ```
 
-#### 3. Per-App Settings (Optional)
+#### 3. TypeScript Configuration for `.ts` Imports
+
+Both `tsconfig.json` files are configured to allow `.ts` extensions in imports:
+
+**`apps/api/tsconfig.json`:**
+```json
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    // ... other options
+  }
+}
+```
+
+**`apps/web/tsconfig.json`:**
+```json
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    // ... other options
+  }
+}
+```
+
+**Note:** `allowImportingTsExtensions` requires `noEmit: true` because TypeScript cannot emit files with `.ts` import paths (they would break at runtime in Node.js). This is fine for Deno since it runs TypeScript directly.
+
+#### 4. Per-App Settings (Optional)
 
 For finer control, you can add `.vscode/settings.json` in each app directory:
 
@@ -247,34 +275,28 @@ Import maps enable **module-level mocking** in Deno tests:
 - No need to modify source code or use dependency injection everywhere
 - Mocks are isolated to test runs only via `--import-map` flag
 
-### Understanding Deno's `.js` Import Convention
+### TypeScript Import Convention
 
-**Important:** Deno runs TypeScript files directly **without compilation**. The `.js` extensions in imports are a **Deno convention**, not a mistake.
+**Important:** Deno runs TypeScript files directly **without compilation**. We use explicit `.ts` extensions in all imports.
 
-#### How Deno Handles TypeScript
+#### Import Style
 
 ```typescript
-// In your .ts file, you write:
-import { getPrisma } from '../utils/database/index.js'
+// ✅ Use explicit .ts extensions
+import { getPrisma } from '../utils/database/index.ts'
+import { getLogger } from '../logger/index.ts'
 
-// Deno resolves this to:
-// → ../utils/database/index.ts (at runtime)
+// ✅ No extension needed for external packages
+import { Hono } from 'hono'
+import { z } from 'zod'
+
+// ✅ Prisma generated types (no extension)
+import { PrismaClient } from '../../../prisma/generated/prisma'
 ```
-
-**Why `.js` extensions?**
-- ES module spec requires explicit file extensions
-- Deno follows browser-compatible import resolution
-- `.js` imports work with both `.ts` and `.js` files
-- Future-proof: works when TS is eventually compiled to JS
 
 See Dockerfile line 25: *"Production stage — no compilation needed; Deno runs TypeScript directly"*
 
-#### Why `--sloppy-imports` for Tests?
-
-**`--sloppy-imports`:**
-- Allows flexible `.js` → `.ts` resolution
-- Required because import maps redirect before resolution
-- Enables test mocking without modifying source code
+#### Why Only `--no-check` for Tests?
 
 **`--no-check`:**
 - Skips type checking during test runs
@@ -284,7 +306,9 @@ See Dockerfile line 25: *"Production stage — no compilation needed; Deno runs 
 **`--import-map`:**
 - Redirects imports to mock implementations (e.g., database → mock)
 - Only active during test runs via `--import-map` flag
-- Enables module-level mocking
+- Enables module-level mocking without code changes
+
+**No `--sloppy-imports` needed** - we use explicit `.ts` extensions throughout.
 
 #### Production Type Safety
 
@@ -318,8 +342,8 @@ deno task test:watch
 ```json
 {
   "tasks": {
-    "test": "deno test --allow-all --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
-    "test:watch": "deno test --allow-all --no-check --sloppy-imports --watch --import-map=src/test/import_map.json src/"
+    "test": "deno test --allow-all --no-check --import-map=src/test/import_map.json src/",
+    "test:watch": "deno test --allow-all --no-check --watch --import-map=src/test/import_map.json src/"
   }
 }
 ```
@@ -328,14 +352,13 @@ deno task test:watch
 ```json
 {
   "tasks": {
-    "test": "deno test --allow-all --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
-    "test:watch": "deno test --allow-all --no-check --sloppy-imports --watch --import-map=src/test/import_map.json src/"
+    "test": "deno test --allow-all --no-check --import-map=src/test/import_map.json src/",
+    "test:watch": "deno test --allow-all --no-check --watch --import-map=src/test/import_map.json src/"
   }
 }
 ```
 
-**Note:** All three flags are required:
-- `--sloppy-imports`: Allows `.js` imports to resolve to `.ts` files
+**Note:** Only two flags are needed:
 - `--no-check`: Skips type checking (runs before import maps)
 - `--import-map`: Redirects imports to mock implementations
 

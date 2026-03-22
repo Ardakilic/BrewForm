@@ -11,7 +11,7 @@ import {
   hashPassword,
   verifyPassword,
   generateTokenPair,
-} from './index.js';
+} from './index.ts';
 
 describe('Auth Utilities', () => {
 

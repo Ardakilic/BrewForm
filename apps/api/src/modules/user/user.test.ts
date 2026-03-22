@@ -5,8 +5,8 @@
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { mockFn } from '../../test/mock-fn.js';
-import { setPrisma } from '../../test/mocks/database.js';
+import { mockFn } from '../../test/mock-fn.ts';
+import { setPrisma } from '../../test/mocks/database.ts';
 
 // API Response type for testing
 interface ApiResponse {
@@ -17,7 +17,7 @@ interface ApiResponse {
   pagination?: { page: number; limit: number; total: number; pages: number };
 }
 
-import userModule from './index.js';
+import userModule from './index.ts';
 
 // Simple error handler for tests
 const testErrorHandler = (err: Error, c: { json: (body: unknown, status: number) => Response }) => {

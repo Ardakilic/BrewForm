@@ -5,9 +5,9 @@
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { mockFn } from '../../test/mock-fn.js';
-import { setPrisma } from '../../test/mocks/database.js';
-import notificationModule from './index.js';
+import { mockFn } from '../../test/mock-fn.ts';
+import { setPrisma } from '../../test/mocks/database.ts';
+import notificationModule from './index.ts';
 
 // API Response type for testing
 interface ApiResponse {
@@ -267,7 +267,7 @@ describe('Notification Service', () => {
 
   describe('createNotification', () => {
     it('should create a notification', async () => {
-      const { createNotification } = await import('./service.js');
+      const { createNotification } = await import('./service.ts');
       
       const mockNotification = {
         id: 'notif_1',
@@ -296,7 +296,7 @@ describe('Notification Service', () => {
     });
 
     it('should not create notification when user notifies themselves', async () => {
-      const { createNotification } = await import('./service.js');
+      const { createNotification } = await import('./service.ts');
 
       const result = await createNotification({
         userId: 'user_123',
@@ -314,7 +314,7 @@ describe('Notification Service', () => {
 
   describe('getUnreadCount', () => {
     it('should return count of unread notifications', async () => {
-      const { getUnreadCount } = await import('./service.js');
+      const { getUnreadCount } = await import('./service.ts');
       
       mockPrisma.notification.count.mockResolvedValue(3);
 
@@ -329,7 +329,7 @@ describe('Notification Service', () => {
 
   describe('markAsRead', () => {
     it('should mark notification as read', async () => {
-      const { markAsRead } = await import('./service.js');
+      const { markAsRead } = await import('./service.ts');
       
       const mockNotification = { id: 'notif_1', userId: 'user_123', isRead: false };
       const updatedNotification = { ...mockNotification, isRead: true, readAt: new Date() };
@@ -344,7 +344,7 @@ describe('Notification Service', () => {
     });
 
     it('should return null for notification belonging to different user', async () => {
-      const { markAsRead } = await import('./service.js');
+      const { markAsRead } = await import('./service.ts');
       
       const mockNotification = { id: 'notif_1', userId: 'other_user', isRead: false };
 
@@ -358,7 +358,7 @@ describe('Notification Service', () => {
 
   describe('markAllAsRead', () => {
     it('should mark all notifications as read', async () => {
-      const { markAllAsRead } = await import('./service.js');
+      const { markAllAsRead } = await import('./service.ts');
       
       mockPrisma.notification.updateMany.mockResolvedValue({ count: 5 });
 
@@ -374,7 +374,7 @@ describe('Notification Service', () => {
 
   describe('deleteNotification', () => {
     it('should delete notification', async () => {
-      const { deleteNotification } = await import('./service.js');
+      const { deleteNotification } = await import('./service.ts');
       
       const mockNotification = { id: 'notif_1', userId: 'user_123' };
 
@@ -387,7 +387,7 @@ describe('Notification Service', () => {
     });
 
     it('should return null when notification not found', async () => {
-      const { deleteNotification } = await import('./service.js');
+      const { deleteNotification } = await import('./service.ts');
       
       mockPrisma.notification.findUnique.mockResolvedValue(null);
 

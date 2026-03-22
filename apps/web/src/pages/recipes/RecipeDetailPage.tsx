@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useStyletron } from 'baseui';
 import { Button } from 'baseui/button';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { HeadingLarge, HeadingSmall, HeadingXSmall, ParagraphMedium, ParagraphSmall, LabelMedium } from 'baseui/typography';
 import { Tag, KIND as TAG_KIND } from 'baseui/tag';
 import { Textarea } from 'baseui/textarea';
@@ -14,9 +14,9 @@ import { useSnackbar, DURATION } from 'baseui/snackbar';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR, { mutate } from 'swr';
-import { api } from '../../utils/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../utils/api.ts';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import type { Recipe, Comment } from '../../types';
 
 const fetcher = async (url: string): Promise<Recipe> => {

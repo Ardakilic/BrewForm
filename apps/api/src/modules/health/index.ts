@@ -4,9 +4,9 @@
  */
 
 import { Hono } from 'hono';
-import { checkDbConnection } from '../../utils/database/index.js';
-import { checkRedisConnection } from '../../utils/redis/index.js';
-import { getLogger } from '../../utils/logger/index.js';
+import { checkDbConnection } from '../../utils/database/index.ts';
+import { checkRedisConnection } from '../../utils/redis/index.ts';
+import { getLogger } from '../../utils/logger/index.ts';
 
 const health = new Hono();
 

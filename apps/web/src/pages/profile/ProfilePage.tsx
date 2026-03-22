@@ -4,7 +4,7 @@
 
 import { Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { Button } from 'baseui/button';
 import { HeadingLarge, HeadingSmall, ParagraphMedium } from 'baseui/typography';
 import { Tabs, Tab } from 'baseui/tabs-motion';
@@ -12,9 +12,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
-import { api } from '../../utils/api';
-import { useAuth } from '../../contexts/AuthContext';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { api } from '../../utils/api.ts';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 import type { UserProfile, RecipeListItem } from '../../types';
 
 const fetcher = async <T,>(url: string): Promise<T> => {

@@ -57,9 +57,9 @@ const { data, error, mutate } = useSWR(
 </swr_patterns>
 
 <form_handling>
-- Use react-hook-form with @hookform/resolvers
-- Validate with Zod schemas
-- Show proper error messages
+- Use controlled components with useState
+- Validate inputs before submission
+- Show proper error messages with BaseUI Notification
 - Implement loading states on submit
 </form_handling>
 

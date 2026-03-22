@@ -4,14 +4,14 @@
 
 import { useParams, Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { HeadingLarge, HeadingSmall, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
 import { Tag, KIND as TAG_KIND, HIERARCHY as TAG_HIERARCHY } from 'baseui/tag';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
-import { api } from '../../utils/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { api } from '../../utils/api.ts';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 import type { UserProfile, RecipeListItem } from '../../types';
 
 const profileFetcher = async (url: string): Promise<UserProfile> => {

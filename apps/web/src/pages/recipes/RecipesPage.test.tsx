@@ -4,7 +4,7 @@
 
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import '../../test/setup.js';
+import '../../test/setup.ts';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -12,11 +12,11 @@ import { Client as Styletron } from 'styletron-engine-monolithic';
 import { Provider as StyletronProvider } from 'styletron-react';
 import { BaseProvider, LightTheme } from 'baseui';
 import { I18nextProvider } from 'react-i18next';
-import i18n from '../../i18n';
-import RecipesPage from './RecipesPage';
-import { AuthProvider } from '../../contexts/AuthContext';
-import type { MockFn } from '../../test/mock-fn.js';
-import _useSWR from '../../test/mocks/swr.js';
+import i18n from '../../i18n.ts';
+import RecipesPage from './RecipesPage.tsx';
+import { AuthProvider } from '../../contexts/AuthContext.tsx';
+import type { MockFn } from '../../test/mock-fn.ts';
+import _useSWR from '../../test/mocks/swr.ts';
 
 // deno-lint-ignore no-explicit-any
 const useSWR = _useSWR as any as MockFn;

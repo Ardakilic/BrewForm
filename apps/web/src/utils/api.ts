@@ -3,7 +3,7 @@
  * Handles all API requests with auth token management
  */
 
-import type { ApiResponse } from '../types';
+import type { ApiResponse } from '../types.ts';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 

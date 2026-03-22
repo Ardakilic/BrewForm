@@ -5,9 +5,9 @@
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono, type Context } from 'hono';
-import authModule from './index.js';
-import { createMockPrisma } from '../../test/setup.js';
-import { setPrisma } from '../../test/mocks/database.js';
+import authModule from './index.ts';
+import { createMockPrisma } from '../../test/setup.ts';
+import { setPrisma } from '../../test/mocks/database.ts';
 
 // API Response type for testing
 interface ApiResponse {

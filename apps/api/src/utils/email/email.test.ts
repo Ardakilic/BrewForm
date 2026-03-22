@@ -12,7 +12,7 @@ import {
   sendPasswordResetEmail,
   sendWelcomeEmail,
   sendPasswordChangedEmail,
-} from './index.js';
+} from './index.ts';
 
 describe('Email Utilities', () => {
 

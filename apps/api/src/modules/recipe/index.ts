@@ -11,10 +11,10 @@ import {
   recipeFilterSchema,
   recipeVersionInputSchema,
   idParamSchema,
-} from '../../utils/validation';
-import { recipeService } from './service';
-import { authMiddleware, requireAuth } from '../../middleware/auth';
-import { writeRateLimiter } from '../../middleware/rateLimit';
+} from '../../utils/validation/index.ts';
+import { recipeService } from './service.ts';
+import { authMiddleware, requireAuth } from '../../middleware/auth.ts';
+import { writeRateLimiter } from '../../middleware/rateLimit.ts';
 
 const recipes = new Hono();
 

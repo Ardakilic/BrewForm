@@ -8,9 +8,9 @@ import { useStyletron } from 'baseui';
 import { Button } from 'baseui/button';
 import { Select } from 'baseui/select';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { supportedLanguages, changeLanguage } from '../i18n';
+import { useAuth } from '../contexts/AuthContext.tsx';
+import { useTheme } from '../contexts/ThemeContext.ts';
+import { supportedLanguages, changeLanguage } from '../i18n.ts';
 
 function Header() {
   const [css, theme] = useStyletron();

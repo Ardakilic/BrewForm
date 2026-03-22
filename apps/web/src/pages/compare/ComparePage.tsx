@@ -4,13 +4,13 @@
 
 import { useParams } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { HeadingLarge, HeadingSmall, ParagraphMedium, LabelMedium } from 'baseui/typography';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
-import { api } from '../../utils/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { api } from '../../utils/api.ts';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 import type { Comparison } from '../../types';
 
 const fetcher = async (url: string): Promise<Comparison> => {

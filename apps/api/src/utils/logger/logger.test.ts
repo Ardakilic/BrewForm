@@ -11,7 +11,7 @@ import {
   getLogger,
   logAudit,
   logSecurity,
-} from './index.js';
+} from './index.ts';
 
 describe('Logger Utilities', () => {
 

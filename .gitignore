@@ -15,7 +15,8 @@ out/
 
 # IDE
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json.example
 *.swp
 *.swo
 .DS_Store

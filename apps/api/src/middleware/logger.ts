@@ -4,7 +4,7 @@
  */
 
 import { createMiddleware } from 'hono/factory';
-import { getLogger } from '../utils/logger/index.js';
+import { getLogger } from '../utils/logger/index.ts';
 
 /**
  * Request logging middleware

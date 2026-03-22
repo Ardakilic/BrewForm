@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useStyletron } from 'baseui';
 import { Button, KIND as BUTTON_KIND, SIZE as BUTTON_SIZE } from 'baseui/button';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { HeadingMedium, HeadingSmall, LabelMedium, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
 import { Input } from 'baseui/input';
 import { Select } from 'baseui/select';
@@ -14,9 +14,9 @@ import { Tag, KIND as TAG_KIND, HIERARCHY as TAG_HIERARCHY } from 'baseui/tag';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import useSWR from 'swr';
-import { api } from '../../utils/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../utils/api.ts';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import type { RecipeListItem } from '../../types';
 
 const fetcher = async (url: string): Promise<RecipeListItem[]> => {

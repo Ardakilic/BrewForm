@@ -5,13 +5,13 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useStyletron } from 'baseui';
-import { Card } from '../../components/Card';
+import { Card } from '../../components/Card.tsx';
 import { HeadingMedium, ParagraphMedium } from 'baseui/typography';
 import { Button } from 'baseui/button';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
-import { api } from '../../utils/api';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { api } from '../../utils/api.ts';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
 
 function VerifyEmailPage() {
   const [css, theme] = useStyletron();

@@ -3,13 +3,13 @@
  * Handles recipe CRUD, versioning, forking, and social features
  */
 
-import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.js';
-import { getLogger, logAudit } from '../../utils/logger/index.js';
-import { createRecipeSlug } from '../../utils/slug/index.js';
-import { validateRecipe, type RecipeVersionInput } from '../../utils/validation/index.js';
-import { invalidateCache, CacheKeys, cacheGetOrSet } from '../../utils/redis/index.js';
-import { NotFoundError, ForbiddenError, ValidationError } from '../../middleware/errorHandler.js';
-import { calculateBrewRatio, calculateFlowRate } from '../../utils/units/index.js';
+import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.ts';
+import { getLogger, logAudit } from '../../utils/logger/index.ts';
+import { createRecipeSlug } from '../../utils/slug/index.ts';
+import { validateRecipe, type RecipeVersionInput } from '../../utils/validation/index.ts';
+import { invalidateCache, CacheKeys, cacheGetOrSet } from '../../utils/redis/index.ts';
+import { NotFoundError, ForbiddenError, ValidationError } from '../../middleware/errorHandler.ts';
+import { calculateBrewRatio, calculateFlowRate } from '../../utils/units/index.ts';
 import type { Visibility, BrewMethodType, DrinkType } from '../../../prisma/generated/prisma';
 
 // ============================================

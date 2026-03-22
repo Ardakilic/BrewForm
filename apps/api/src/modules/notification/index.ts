@@ -6,9 +6,9 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { paginationSchema } from '../../utils/validation/index.js';
-import { notificationService } from './service.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { paginationSchema } from '../../utils/validation/index.ts';
+import { notificationService } from './service.ts';
+import { requireAuth } from '../../middleware/auth.ts';
 
 const notifications = new Hono();
 

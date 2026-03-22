@@ -6,8 +6,8 @@
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { ZodError } from 'zod';
-import { getLogger } from '../utils/logger/index.js';
-import { getConfig } from '../config/index.js';
+import { getLogger } from '../utils/logger/index.ts';
+import { getConfig } from '../config/index.ts';
 
 // ============================================
 // Custom Error Types

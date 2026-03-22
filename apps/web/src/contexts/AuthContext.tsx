@@ -4,8 +4,8 @@
  */
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { api } from '../utils/api';
-import type { User, LoginResponse, RegisterResponse } from '../types';
+import { api } from '../utils/api.ts';
+import type { User, LoginResponse, RegisterResponse } from '../types.ts';
 
 // ============================================
 // Types

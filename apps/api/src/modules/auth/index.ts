@@ -10,10 +10,10 @@ import {
   loginSchema,
   resetPasswordRequestSchema,
   resetPasswordSchema,
-} from '../../utils/validation/index.js';
-import { authService } from './service.js';
-import { requireAuth, authMiddleware } from '../../middleware/auth.js';
-import { authRateLimiter } from '../../middleware/rateLimit.js';
+} from '../../utils/validation/index.ts';
+import { authService } from './service.ts';
+import { requireAuth, authMiddleware } from '../../middleware/auth.ts';
+import { authRateLimiter } from '../../middleware/rateLimit.ts';
 import { z } from 'zod';
 
 const auth = new Hono();

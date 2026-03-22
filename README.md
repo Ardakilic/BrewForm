@@ -89,10 +89,36 @@ make db-generate
 make dev
 ```
 
+### IDE Setup (VSCode)
+
+**Recommended:** Install the [Deno extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) for VSCode.
+
+```bash
+# Setup VSCode settings (one-time setup)
+make vscode-setup
+```
+
+This command copies `.vscode/settings.json.example` to `.vscode/settings.json`, which configures:
+- Deno language server for TypeScript/JavaScript files
+- Deno formatter as the default formatter
+- Format on save enabled
+- Proper support for `.ts` import extensions
+
+**Manual setup:** If you prefer to customize, copy and modify `.vscode/settings.json.example` manually.
+
+**TypeScript Configuration:**
+- Both `apps/api/tsconfig.json` and `apps/web/tsconfig.json` include `"allowImportingTsExtensions": true`
+- This allows `.ts` extensions in imports (required for Deno's runtime)
+- Example: `import { getPrisma } from '../utils/database/index.ts'`
+
+After setup, **reload VSCode** (`Cmd+Shift+P` → "Developer: Reload Window") to apply settings.
+
 ### Available Commands
 
 ```bash
 # Development
+make install      # Install dependencies
+make vscode-setup # Setup VSCode settings (one-time)
 make up           # Start all services in detached mode
 make dev          # Start dev environment with logs
 make build        # Build all applications

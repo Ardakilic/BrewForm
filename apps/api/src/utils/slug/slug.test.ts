@@ -16,7 +16,7 @@ import {
   createCoffeeSlug,
   extractBaseSlug,
   createComparisonToken,
-} from './index.js';
+} from './index.ts';
 
 describe('Slug Utilities', () => {
   describe('createSlug', () => {

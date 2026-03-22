@@ -5,9 +5,9 @@
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import healthModule from './index.js';
-import { checkDbConnection } from '../../test/mocks/database.js';
-import { checkRedisConnection } from '../../test/mocks/redis.js';
+import healthModule from './index.ts';
+import { checkDbConnection } from '../../test/mocks/database.ts';
+import { checkRedisConnection } from '../../test/mocks/redis.ts';
 
 // API Response type for testing
 interface HealthResponse {

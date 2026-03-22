@@ -3,8 +3,8 @@
  * Basic translation layer with JSON locale support
  */
 
-import { getConfig } from '../../config/index.js';
-import { getLogger } from '../logger/index.js';
+import { getConfig } from '../../config/index.ts';
+import { getLogger } from '../logger/index.ts';
 
 // ============================================
 // Types

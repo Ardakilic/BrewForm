@@ -12,7 +12,7 @@ import {
   isLocaleSupported,
   createTranslator,
   getTranslations,
-} from './index.js';
+} from './index.ts';
 
 describe('i18n Utilities', () => {
 

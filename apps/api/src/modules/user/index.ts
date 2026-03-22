@@ -5,9 +5,9 @@
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { updateProfileSchema, paginationSchema } from '../../utils/validation/index.js';
-import { userService } from './service.js';
-import { authMiddleware, requireAuth } from '../../middleware/auth.js';
+import { updateProfileSchema, paginationSchema } from '../../utils/validation/index.ts';
+import { userService } from './service.ts';
+import { authMiddleware, requireAuth } from '../../middleware/auth.ts';
 
 const users = new Hono();
 

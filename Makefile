@@ -3,7 +3,7 @@
 # All commands run through Docker/Docker Compose
 # ============================================
 
-.PHONY: help install dev build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up
+.PHONY: help install vscode-setup dev build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up
 
 # Default target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  install       Install all dependencies"
+	@echo "  vscode-setup  Setup VSCode settings (copies .vscode/settings.json.example)"
 	@echo "  up            Start all services in detached mode"
 	@echo "  dev           Start development environment"
 	@echo "  build         Build all applications"
@@ -62,6 +63,15 @@ install:
 	@mkdir -p apps/api/node_modules apps/web/node_modules
 	docker compose run --rm api deno install --allow-scripts=npm:@prisma/engines,npm:prisma,npm:@node-rs/argon2,npm:esbuild
 	docker compose run --rm web deno install --allow-scripts=npm:esbuild
+
+vscode-setup:
+	@if [ ! -f .vscode/settings.json ]; then \
+		mkdir -p .vscode && \
+		cp .vscode/settings.json.example .vscode/settings.json && \
+		echo "✅ VSCode settings created from template"; \
+	else \
+		echo "⚠️  .vscode/settings.json already exists. Remove it first to recreate."; \
+	fi
 
 up:
 	docker compose up -d

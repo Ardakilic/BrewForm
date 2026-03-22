@@ -5,9 +5,9 @@
 import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { mockFn } from '../../test/mock-fn.js';
-import { setPrisma } from '../../test/mocks/database.js';
-import socialModule from './index.js';
+import { mockFn } from '../../test/mock-fn.ts';
+import { setPrisma } from '../../test/mocks/database.ts';
+import socialModule from './index.ts';
 
 // API Response type for testing
 interface ApiResponse {

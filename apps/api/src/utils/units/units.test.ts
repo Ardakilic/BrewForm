@@ -23,7 +23,7 @@ import {
   estimateExtractionYield,
   toCanonicalUnits,
   fromCanonicalUnits,
-} from './index.js';
+} from './index.ts';
 
 describe('Units Utilities', () => {
   describe('Weight Conversions', () => {

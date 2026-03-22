@@ -8,23 +8,23 @@ import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { compress } from 'hono/compress';
 
-import { getConfig } from './config/index.js';
-import { getLogger } from './utils/logger/index.js';
-import { getPrisma, disconnectDb } from './utils/database/index.js';
-import { getRedis, disconnectRedis } from './utils/redis/index.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import { requestIdMiddleware } from './middleware/requestId.js';
-import { loggerMiddleware } from './middleware/logger.js';
-import { apiRateLimiter } from './middleware/rateLimit.js';
+import { getConfig } from './config/index.ts';
+import { getLogger } from './utils/logger/index.ts';
+import { getPrisma, disconnectDb } from './utils/database/index.ts';
+import { getRedis, disconnectRedis } from './utils/redis/index.ts';
+import { errorHandler } from './middleware/errorHandler.ts';
+import { requestIdMiddleware } from './middleware/requestId.ts';
+import { loggerMiddleware } from './middleware/logger.ts';
+import { apiRateLimiter } from './middleware/rateLimit.ts';
 
 // Import routes
-import authRoutes from './modules/auth/index.js';
-import userRoutes from './modules/user/index.js';
-import recipeRoutes from './modules/recipe/index.js';
-import socialRoutes from './modules/social/index.js';
-import healthRoutes from './modules/health/index.js';
-import tasteNotesRoutes from './modules/taste-notes/index.js';
-import notificationRoutes from './modules/notification/index.js';
+import authRoutes from './modules/auth/index.ts';
+import userRoutes from './modules/user/index.ts';
+import recipeRoutes from './modules/recipe/index.ts';
+import socialRoutes from './modules/social/index.ts';
+import healthRoutes from './modules/health/index.ts';
+import tasteNotesRoutes from './modules/taste-notes/index.ts';
+import notificationRoutes from './modules/notification/index.ts';
 
 // ============================================
 // Application Setup

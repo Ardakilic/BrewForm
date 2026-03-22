@@ -7,8 +7,8 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { tasteNoteService } from './service.js';
-import { authMiddleware, requireAuth } from '../../middleware/auth.js';
+import { tasteNoteService } from './service.ts';
+import { authMiddleware, requireAuth } from '../../middleware/auth.ts';
 
 const tasteNotes = new Hono();
 

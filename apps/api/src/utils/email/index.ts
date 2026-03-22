@@ -5,8 +5,8 @@
 
 import nodemailer, { type Transporter } from 'nodemailer';
 import mjml2html from 'mjml';
-import { getConfig } from '../../config/index.js';
-import { getLogger } from '../logger/index.js';
+import { getConfig } from '../../config/index.ts';
+import { getLogger } from '../logger/index.ts';
 
 // Singleton transporter
 let transporterInstance: Transporter | null = null;

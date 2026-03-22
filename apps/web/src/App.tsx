@@ -7,10 +7,10 @@ import { Routes, Route } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { useStyletron } from 'baseui';
 
-import Layout from './components/Layout';
-import LoadingSpinner from './components/LoadingSpinner';
-import ProtectedRoute from './components/ProtectedRoute';
-import AdminRoute from './components/AdminRoute';
+import Layout from './components/Layout.tsx';
+import LoadingSpinner from './components/LoadingSpinner.tsx';
+import ProtectedRoute from './components/ProtectedRoute.tsx';
+import AdminRoute from './components/AdminRoute.tsx';
 
 // Lazy load pages for better performance
 const HomePage = lazy(() => import('./pages/HomePage'));

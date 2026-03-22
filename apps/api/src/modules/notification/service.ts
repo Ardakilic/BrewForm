@@ -3,7 +3,7 @@
  * Handles notification creation and management
  */
 
-import { getPrisma, getPagination, createPaginationMeta } from '../../utils/database/index.js';
+import { getPrisma, getPagination, createPaginationMeta } from '../../utils/database/index.ts';
 import type { NotificationType } from '../../../prisma/generated/prisma';
 
 // ============================================

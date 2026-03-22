@@ -3,7 +3,7 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from '../mock-fn.js';
+import { mockFn } from '../mock-fn.ts';
 
 let _mockUser = {
   id: 'user_123',

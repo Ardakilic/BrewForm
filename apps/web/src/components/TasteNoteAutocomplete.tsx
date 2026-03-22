@@ -11,7 +11,7 @@ import { Tag, HIERARCHY } from 'baseui/tag';
 import { StyledLink } from 'baseui/link';
 import { ParagraphSmall } from 'baseui/typography';
 import { useTranslation } from 'react-i18next';
-import { api } from '../utils/api';
+import { api } from '../utils/api.ts';
 
 export interface TasteNote {
   id: string;

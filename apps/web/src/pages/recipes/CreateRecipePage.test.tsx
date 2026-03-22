@@ -4,10 +4,10 @@
 
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import '../../test/setup.js';
+import '../../test/setup.ts';
 import { screen } from '@testing-library/react';
-import { renderWithProviders } from '../../test/test-utils';
-import CreateRecipePage from './CreateRecipePage';
+import { renderWithProviders } from '../../test/test-utils.tsx';
+import CreateRecipePage from './CreateRecipePage.tsx';
 
 describe('CreateRecipePage', () => {
 

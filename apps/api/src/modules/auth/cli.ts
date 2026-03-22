@@ -4,7 +4,7 @@
  */
 
 import type { PrismaClient } from '../../../prisma/generated/prisma';
-import { hashPassword } from '../../utils/auth/index.js';
+import { hashPassword } from '../../utils/auth/index.ts';
 
 export interface ResetPasswordResult {
   success: boolean;

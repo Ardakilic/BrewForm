@@ -5,8 +5,8 @@
 
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { mockFn } from '../../test/mock-fn.js';
-import { generatePassword, findUser, resetUserPassword } from './cli.js';
+import { mockFn } from '../../test/mock-fn.ts';
+import { generatePassword, findUser, resetUserPassword } from './cli.ts';
 
 // Create mock Prisma client
 const createMockPrisma = () => ({

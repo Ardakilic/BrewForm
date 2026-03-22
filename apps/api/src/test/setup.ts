@@ -4,7 +4,7 @@
  * Module-level mocks are handled via src/test/import_map.json.
  */
 
-import { mockFn, type MockFn } from './mock-fn.js';
+import { mockFn, type MockFn } from './mock-fn.ts';
 
 export { mockFn, type MockFn };
 

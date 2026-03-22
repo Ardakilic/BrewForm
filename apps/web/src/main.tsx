@@ -13,10 +13,10 @@ import { BaseProvider } from 'baseui';
 import { SnackbarProvider } from 'baseui/snackbar';
 import { I18nextProvider } from 'react-i18next';
 
-import App from './App';
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
-import { AuthProvider } from './contexts/AuthContext';
-import i18n from './i18n';
+import App from './App.tsx';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext.tsx';
+import { AuthProvider } from './contexts/AuthContext.tsx';
+import i18n from './i18n.ts';
 import './styles/global.css';
 
 const engine = new Styletron();
