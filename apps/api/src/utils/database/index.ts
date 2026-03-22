@@ -3,66 +3,80 @@
  * Prisma client singleton with logging integration
  */
 
-import { PrismaClient } from '../../../prisma/generated/prisma';
-import { getConfig } from '../../config/index.ts';
-import { getLogger } from '../logger/index.ts';
+import { PrismaClient } from "../../../prisma/generated/prisma/index.js";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { getConfig } from "../../config/index.ts";
+import { getLogger } from "../logger/index.ts";
 
 // Singleton instance
-let prismaInstance: PrismaClient | null = null;
+let prismaInstance:
+  | ReturnType<typeof PrismaClient.prototype.constructor>
+  | null = null;
 
 /**
  * Get the Prisma client instance (singleton pattern)
  */
-export function getPrisma(): PrismaClient {
+export function getPrisma(): ReturnType<
+  typeof PrismaClient.prototype.constructor
+> {
   if (!prismaInstance) {
     const config = getConfig();
     const logger = getLogger();
 
+    // Create PostgreSQL adapter
+    const adapter = new PrismaPg({
+      connectionString: config.databaseUrl,
+    });
+
     prismaInstance = new PrismaClient({
-      log: config.nodeEnv === 'development'
+      adapter,
+      log: config.nodeEnv === "development"
         ? [
-            { level: 'query', emit: 'event' },
-            { level: 'error', emit: 'event' },
-            { level: 'warn', emit: 'event' },
-          ]
+          { level: "query", emit: "event" },
+          { level: "error", emit: "event" },
+          { level: "warn", emit: "event" },
+        ]
         : [
-            { level: 'error', emit: 'event' },
-            { level: 'warn', emit: 'event' },
-          ],
+          { level: "error", emit: "event" },
+          { level: "warn", emit: "event" },
+        ],
     });
 
     // Log queries in development
-    if (config.nodeEnv === 'development') {
-      prismaInstance.$on('query' as never, (e: { query: string; params: string; duration: number }) => {
-        logger.debug({
-          type: 'database',
-          operation: 'query',
-          query: e.query,
-          params: e.params,
-          duration: e.duration,
-        });
-      });
+    if (config.nodeEnv === "development") {
+      prismaInstance.$on(
+        "query" as never,
+        (e: { query: string; params: string; duration: number }) => {
+          logger.debug({
+            type: "database",
+            operation: "query",
+            query: e.query,
+            params: e.params,
+            duration: e.duration,
+          });
+        },
+      );
     }
 
     // Log errors
-    prismaInstance.$on('error' as never, (e: { message: string }) => {
+    prismaInstance.$on("error" as never, (e: { message: string }) => {
       logger.error({
-        type: 'database',
-        operation: 'error',
+        type: "database",
+        operation: "error",
         message: e.message,
       });
     });
 
     // Log warnings
-    prismaInstance.$on('warn' as never, (e: { message: string }) => {
+    prismaInstance.$on("warn" as never, (e: { message: string }) => {
       logger.warn({
-        type: 'database',
-        operation: 'warning',
+        type: "database",
+        operation: "warning",
         message: e.message,
       });
     });
 
-    logger.info('Database client initialized');
+    logger.info("Database client initialized");
   }
 
   return prismaInstance;
@@ -75,7 +89,7 @@ export async function disconnectDb(): Promise<void> {
   if (prismaInstance) {
     await prismaInstance.$disconnect();
     prismaInstance = null;
-    getLogger().info('Database client disconnected');
+    getLogger().info("Database client disconnected");
   }
 }
 
@@ -89,9 +103,9 @@ export async function checkDbConnection(): Promise<boolean> {
     return true;
   } catch (error) {
     getLogger().error({
-      type: 'database',
-      operation: 'health_check',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      type: "database",
+      operation: "health_check",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
     return false;
   }
@@ -101,7 +115,7 @@ export async function checkDbConnection(): Promise<boolean> {
  * Soft delete helper - adds deletedAt timestamp
  */
 export function softDeleteFilter(
-  includeDeleted = false
+  includeDeleted = false,
 ): { deletedAt: null } | Record<string, never> {
   return includeDeleted ? {} : { deletedAt: null };
 }
@@ -121,13 +135,13 @@ export interface PaginationResult {
 
 export function getPagination(
   params: PaginationParams,
-  maxLimit = 100
+  maxLimit = 100,
 ): PaginationResult {
   const config = getConfig();
   const page = Math.max(1, params.page || 1);
   const limit = Math.min(
     Math.max(1, params.limit || config.defaultPageSize),
-    maxLimit
+    maxLimit,
   );
 
   return {
@@ -151,10 +165,10 @@ export interface PaginationMeta {
 export function createPaginationMeta(
   page: number,
   limit: number,
-  total: number
+  total: number,
 ): PaginationMeta {
   const totalPages = Math.ceil(total / limit);
-  
+
   return {
     page,
     limit,

@@ -5,7 +5,7 @@
 
 import { createMiddleware } from 'hono/factory';
 import type { Context, Next } from 'hono';
-import { verifyAccessToken, } from '../utils/auth/index.ts';
+import { verifyAccessToken } from '../utils/auth/index.ts';
 import { getPrisma } from '../utils/database/index.ts';
 import { getLogger, logSecurity } from '../utils/logger/index.ts';
 

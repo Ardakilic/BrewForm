@@ -4,10 +4,14 @@
  */
 
 import process from "node:process";
-import { PrismaClient } from "./generated/prisma";
+import { PrismaClient } from "./generated/prisma/index.js";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { existsSync, readFileSync } from "node:fs";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
+const prisma = new PrismaClient({ adapter });
 
 interface TasteNoteJson {
   name: string;

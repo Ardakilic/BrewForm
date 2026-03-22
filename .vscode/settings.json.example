@@ -1,15 +1,11 @@
 {
   "deno.enable": true,
-  "deno.enablePaths": [
-    "apps/api/src",
-    "apps/web/src"
-  ],
   "deno.lint": true,
   "deno.unstable": [],
-  // Tread json as jsonc because deno.json has comments for dev dependencies
   "files.associations": {
     "deno.json": "jsonc"
   },
+
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno",
     "editor.formatOnSave": true
@@ -44,7 +40,5 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "never"
   },
-  
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "files.eol": "\n"
+ "files.eol": "\n"
 }
