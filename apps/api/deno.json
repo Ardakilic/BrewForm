@@ -9,16 +9,20 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
+  "fmt": {
+    "exclude": ["prisma/generated", "prisma/migrations"]
+  },
   "tasks": {
     "dev": "deno run --watch --allow-all src/index.ts",
     "start": "deno run --allow-all src/index.ts",
-    "test": "deno test --allow-all --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
-    "test:watch": "deno test --allow-all --watch --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
-    "lint": "biome lint ./src",
-    "lint:fix": "biome lint --write ./src",
-    "format": "biome format --write ./src",
+    "test": "deno test --allow-all --no-check --import-map=src/test/import_map.json src/",
+    "test:watch": "deno test --allow-all --no-check --watch --import-map=src/test/import_map.json src/",
+    "lint": "deno lint src/",
+    "lint:fix": "deno lint --fix src/",
+    "format": "deno fmt",
+    "format:check": "deno fmt --check",
     "typecheck": "deno check src/index.ts",
-    "check": "biome check ./src",
+    "check": "deno task lint && deno task format:check && deno task typecheck",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",

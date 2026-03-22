@@ -13,54 +13,57 @@
  * If no password is provided, a secure random password will be generated.
  */
 
-import process from 'node:process';
-import { PrismaClient } from './generated/prisma';
-import { resetUserPassword } from '../src/modules/auth/cli.js';
+import process from "node:process";
+import { PrismaClient } from "./generated/prisma";
+import { resetUserPassword } from "../src/modules/auth/cli.js";
 
 const prisma = new PrismaClient();
 
 /**
  * Reset user password and print results
  */
-async function resetPassword(identifier: string, newPassword?: string): Promise<void> {
+async function resetPassword(
+  identifier: string,
+  newPassword?: string,
+): Promise<void> {
   const result = await resetUserPassword(prisma, identifier, newPassword);
 
   if (!result.success) {
     console.error(`❌ ${result.error}`);
-    if (result.error?.includes('User not found')) {
-      console.error('   Please provide a valid email or username.');
+    if (result.error?.includes("User not found")) {
+      console.error("   Please provide a valid email or username.");
     }
     process.exit(1);
   }
 
   const { user, password } = result;
 
-  console.log('\n🔐 Password reset successful!\n');
-  console.log('User details:');
+  console.log("\n🔐 Password reset successful!\n");
+  console.log("User details:");
   console.log(`   Email:    ${user!.email}`);
   console.log(`   Username: ${user!.username}`);
   console.log(`   Display:  ${user!.displayName || user!.username}`);
-  console.log(`   Admin:    ${user!.isAdmin ? 'Yes' : 'No'}`);
-  console.log('');
-  
+  console.log(`   Admin:    ${user!.isAdmin ? "Yes" : "No"}`);
+  console.log("");
+
   if (password) {
-    console.log('New password (generated):');
+    console.log("New password (generated):");
     console.log(`   ${password}`);
-    console.log('');
-    console.log('⚠️  Please save this password - it will not be shown again!');
+    console.log("");
+    console.log("⚠️  Please save this password - it will not be shown again!");
   } else {
-    console.log('Password has been updated to the provided value.');
+    console.log("Password has been updated to the provided value.");
   }
-  
-  console.log('');
-  console.log('ℹ️  All existing sessions have been invalidated.');
-  console.log('   The user will need to log in again.\n');
+
+  console.log("");
+  console.log("ℹ️  All existing sessions have been invalidated.");
+  console.log("   The user will need to log in again.\n");
 }
 
 async function main() {
   const args = process.argv.slice(2);
 
-  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+  if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
     console.log(`
 BrewForm Password Reset CLI
 
@@ -86,7 +89,7 @@ Examples:
   const newPassword = args[1];
 
   if (newPassword && newPassword.length < 8) {
-    console.error('❌ Password must be at least 8 characters long.');
+    console.error("❌ Password must be at least 8 characters long.");
     process.exit(1);
   }
 
@@ -95,10 +98,9 @@ Examples:
 
 main()
   .catch((e) => {
-    console.error('❌ Password reset failed:', e);
+    console.error("❌ Password reset failed:", e);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-

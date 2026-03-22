@@ -35,7 +35,7 @@
 
 ### DevOps
 - **Monorepo**: Deno tasks per app (`deno.json`)
-- **Linting**: Biome.js
+- **Linting & Formatting**: Deno built-in tools
 - **Testing**: Vitest
 - **Containerization**: Docker with multi-stage builds (`denoland/deno:debian-2.7.7`)
 
@@ -109,14 +109,76 @@ make db-studio    # Open Prisma Studio
 make db-reset     # Reset database (keeps schema)
 make db-reset-hard # Complete reset: drops DB, runs migrations and seeds
 
-# Testing & Linting
+# Testing & Code Quality
 make test         # Run tests
 make lint         # Lint code
 make lint-fix     # Fix lint issues
+make format       # Format code
+make format-check # Check code formatting
+make check        # Run all checks (lint + format + typecheck)
 
 # Cleanup
 make clean        # Remove containers and volumes
 ```
+
+## Code Formatting & Linting
+
+BrewForm uses Deno's built-in formatter and linter for consistent code style.
+
+### Formatting Commands
+
+```bash
+# Format all code (API + Web)
+make format
+
+# Check formatting without making changes
+make format-check
+
+# Lint all code
+make lint
+
+# Auto-fix linting issues
+make lint-fix
+
+# Run all checks (lint, format, typecheck)
+make check
+```
+
+### IDE Setup (VSCode/Cursor/Windsurf)
+
+1. **Install Deno Extension**
+   - Install "Deno" extension by Denoland from marketplace
+   - Extension ID: `denoland.vscode-deno`
+
+2. **Configure Workspace**
+   
+   Create `.vscode/settings.json` in project root:
+   ```json
+   {
+     "deno.enable": true,
+     "deno.enablePaths": ["./apps/api", "./apps/web"],
+     "editor.defaultFormatter": "denoland.vscode-deno",
+     "editor.formatOnSave": true,
+     "[typescript]": {
+       "editor.defaultFormatter": "denoland.vscode-deno"
+     },
+     "[typescriptreact]": {
+       "editor.defaultFormatter": "denoland.vscode-deno"
+     }
+   }
+   ```
+
+3. **Restart IDE** to apply changes
+
+### Formatter Configuration
+
+Deno formatter is configured in `deno.json`:
+- **Line width**: 100 characters
+- **Indentation**: 2 spaces
+- **Quotes**: Single quotes
+- **Semicolons**: Enabled
+
+See `docs/updates/2026-03-22-biome-to-deno-formatter-migration.md` for migration details.
 
 ## Troubleshooting
 

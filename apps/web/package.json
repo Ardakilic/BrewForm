@@ -8,9 +8,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "deno task test",
-    "lint": "biome lint ./src",
-    "lint:fix": "biome lint --write ./src",
-    "format": "biome format --write ./src",
+    "lint": "deno task lint",
+    "lint:fix": "deno task lint:fix",
+    "format": "deno task format",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist node_modules .turbo coverage"
   },

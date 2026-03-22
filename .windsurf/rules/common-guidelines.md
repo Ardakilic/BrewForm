@@ -6,12 +6,12 @@ trigger: always_on
 BrewForm is a coffee recipe sharing platform built with:
 - **Backend**: Hono + Deno 2 + Prisma + PostgreSQL + Redis
 - **Frontend**: React 19 + BaseUI + Styletron + SWR + React Router v7
-- **Tooling**: Deno tasks (per-app deno.json) + Biome.js + Vitest + Docker
+- **Tooling**: Deno tasks (per-app deno.json) + Deno formatter/linter + Vitest + Docker
 </project_context>
 
 <coding_standards>
 - Use TypeScript with strict types; avoid `any`
-- Follow existing code style and Biome configuration
+- Follow existing code style and Deno formatter configuration
 - Prefer early returns over nested conditions
 - Use meaningful variable/function names
 - Keep functions small and focused

@@ -3,7 +3,7 @@
 # All commands run through Docker/Docker Compose
 # ============================================
 
-.PHONY: help install dev build rebuild start stop restart logs shell test lint format db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up
+.PHONY: help install dev build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up
 
 # Default target
 help:
@@ -44,7 +44,8 @@ help:
 	@echo "  lint          Run linter"
 	@echo "  lint-fix      Fix linting issues"
 	@echo "  format        Format code"
-	@echo "  check         Run all checks"
+	@echo "  format-check  Check code formatting"
+	@echo "  check         Run all checks (lint, typecheck, format-check)"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  shell-api     Open shell in API container"
@@ -59,8 +60,8 @@ help:
 
 install:
 	@mkdir -p apps/api/node_modules apps/web/node_modules
-	docker compose run --rm api deno install --allow-scripts=npm:@prisma/engines,npm:prisma,npm:@node-rs/argon2,npm:@biomejs/biome,npm:esbuild
-	docker compose run --rm web deno install --allow-scripts=npm:@biomejs/biome,npm:esbuild
+	docker compose run --rm api deno install --allow-scripts=npm:@prisma/engines,npm:prisma,npm:@node-rs/argon2,npm:esbuild
+	docker compose run --rm web deno install --allow-scripts=npm:esbuild
 
 up:
 	docker compose up -d
@@ -195,9 +196,15 @@ lint-fix:
 
 format:
 	docker compose exec api deno task format
+	docker compose exec web deno task format
+
+format-check:
+	docker compose exec api deno task format:check
+	docker compose exec web deno task format:check
 
 check:
 	docker compose exec api deno task check
+	docker compose exec web deno task check
 
 typecheck:
 	docker compose exec api deno task typecheck

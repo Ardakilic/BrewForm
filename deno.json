@@ -1,8 +1,23 @@
 {
   "nodeModulesDir": "auto",
   "lock": "deno.lock",
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": true,
+    "exclude": [
+      "node_modules",
+      "dist",
+      ".next",
+      "coverage",
+      "apps/api/prisma/migrations",
+      "apps/api/prisma/generated"
+    ]
+  },
   "tasks": {
     "format": "deno fmt .",
-    "check": "biome check ."
+    "format:check": "deno fmt --check ."
   }
 }

@@ -12,12 +12,14 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "deno test --allow-all --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
-    "test:watch": "deno test --allow-all --watch --no-check --sloppy-imports --import-map=src/test/import_map.json src/",
-    "lint": "biome lint ./src",
-    "lint:fix": "biome lint --write ./src",
-    "format": "biome format --write ./src",
+    "test": "deno test --allow-all --no-check --import-map=src/test/import_map.json src/",
+    "test:watch": "deno test --allow-all --no-check --watch --import-map=src/test/import_map.json src/",
+    "lint": "deno lint src/",
+    "lint:fix": "deno lint --fix src/",
+    "format": "deno fmt",
+    "format:check": "deno fmt --check",
     "typecheck": "tsc --noEmit",
+    "check": "deno task lint && deno task format:check && deno task typecheck",
     "clean": "rm -rf dist node_modules coverage"
   }
 }
