@@ -26,7 +26,6 @@
     "@types/react-dom": "npm:@types/react-dom@^19.2.3", // dev
     "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^6.0.1", // dev
     "jsdom": "npm:jsdom@^29.0.1", // dev
-    "typescript": "npm:typescript@^5.9.3", // dev
     "vite": "npm:vite@^8.0.1" // dev
   },
   "compilerOptions": {
@@ -37,7 +36,7 @@
   },
   "tasks": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "test": "deno test --allow-all --no-check --import-map=src/test/import_map.json src/",
     "test:watch": "deno test --allow-all --no-check --watch --import-map=src/test/import_map.json src/",
@@ -45,7 +44,7 @@
     "lint:fix": "deno lint --fix src/",
     "format": "deno fmt",
     "format:check": "deno fmt --check",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "deno check src/main.tsx",
     "check": "deno task lint && deno task format:check && deno task typecheck",
     "clean": "rm -rf dist node_modules coverage"
   }

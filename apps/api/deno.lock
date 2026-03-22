@@ -26,7 +26,6 @@
     "npm:pino@^10.3.1": "10.3.1",
     "npm:prisma@^7.5.0": "7.5.0_typescript@5.9.3_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:slugify@^1.6.8": "1.6.8",
-    "npm:typescript@^5.9.3": "5.9.3",
     "npm:zod@^4.3.6": "4.3.6"
   },
   "jsr": {
@@ -1855,7 +1854,6 @@
       "npm:pino@^10.3.1",
       "npm:prisma@^7.5.0",
       "npm:slugify@^1.6.8",
-      "npm:typescript@^5.9.3",
       "npm:zod@^4.3.6"
     ]
   }

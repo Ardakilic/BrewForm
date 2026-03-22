@@ -5,9 +5,7 @@
   "license": "MIT",
   "nodeModulesDir": "auto",
   "lock": "deno.lock",
-  "imports": {
-    "typescript": "npm:typescript@^5.9.3" // dev
-  },
+  "imports": {},
   "fmt": {
     "useTabs": false,
     "lineWidth": 100,
@@ -25,6 +23,9 @@
   },
   "tasks": {
     "format": "deno fmt .",
-    "format:check": "deno fmt --check ."
+    "format:check": "deno fmt --check .",
+    "typecheck": "deno check apps/api/src/index.ts apps/web/src/main.tsx",
+    "typecheck:api": "deno check apps/api/src/index.ts",
+    "typecheck:web": "deno check apps/web/src/main.tsx"
   }
 }
