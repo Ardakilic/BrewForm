@@ -5,8 +5,11 @@
     "apps/web/src"
   ],
   "deno.lint": true,
-  "deno.unstable": false,
-  
+  "deno.unstable": [],
+  // Tread json as jsonc because deno.json has comments for dev dependencies
+  "files.associations": {
+    "deno.json": "jsonc"
+  },
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno",
     "editor.formatOnSave": true

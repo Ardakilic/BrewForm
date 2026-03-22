@@ -9,7 +9,7 @@ import { Button } from 'baseui/button';
 import { Select } from 'baseui/select';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext.tsx';
-import { useTheme } from '../contexts/ThemeContext.ts';
+import { useTheme } from '../contexts/ThemeContext.tsx';
 import { supportedLanguages, changeLanguage } from '../i18n.ts';
 
 function Header() {

@@ -6,7 +6,7 @@
   "nodeModulesDir": "auto",
   "lock": "deno.lock",
   "imports": {
-    "typescript": "npm:typescript@^5.9.3"
+    "typescript": "npm:typescript@^5.9.3" // dev
   },
   "fmt": {
     "useTabs": false,
