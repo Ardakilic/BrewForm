@@ -20,6 +20,7 @@ out/
 *.swp
 *.swo
 .DS_Store
+.kilocode/mcp.json
 
 # Logs
 logs/
