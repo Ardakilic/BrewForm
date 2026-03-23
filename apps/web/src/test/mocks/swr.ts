@@ -3,7 +3,7 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from '../mock-fn.ts';
+import { mockFn } from "../mock-fn.ts";
 
 const useSWR = mockFn(() => ({
   data: undefined,

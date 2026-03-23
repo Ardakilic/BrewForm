@@ -3,33 +3,33 @@
  * Handles user authentication endpoints
  */
 
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
 import {
-  registerSchema,
   loginSchema,
+  registerSchema,
   resetPasswordRequestSchema,
   resetPasswordSchema,
-} from '../../utils/validation/index.ts';
-import { authService } from './service.ts';
-import { requireAuth, authMiddleware } from '../../middleware/auth.ts';
-import { authRateLimiter } from '../../middleware/rateLimit.ts';
-import { z } from 'zod';
+} from "../../utils/validation/index.ts";
+import { authService } from "./service.ts";
+import { authMiddleware, requireAuth } from "../../middleware/auth.ts";
+import { authRateLimiter } from "../../middleware/rateLimit.ts";
+import { z } from "zod";
 
 const auth = new Hono();
 
 // Apply rate limiting to all auth routes
-auth.use('*', authRateLimiter);
+auth.use("*", authRateLimiter);
 
 /**
  * POST /auth/register
  * Register a new user
  */
 auth.post(
-  '/register',
-  zValidator('json', registerSchema),
+  "/register",
+  zValidator("json", registerSchema),
   async (c) => {
-    const input = c.req.valid('json');
+    const input = c.req.valid("json");
     const result = await authService.register(input);
 
     return c.json(
@@ -37,9 +37,9 @@ auth.post(
         success: true,
         data: result,
       },
-      201
+      201,
     );
-  }
+  },
 );
 
 /**
@@ -47,13 +47,14 @@ auth.post(
  * Login user
  */
 auth.post(
-  '/login',
-  zValidator('json', loginSchema),
+  "/login",
+  zValidator("json", loginSchema),
   async (c) => {
-    const input = c.req.valid('json');
-    const userAgent = c.req.header('user-agent');
-    const forwarded = c.req.header('x-forwarded-for');
-    const ipAddress = forwarded?.split(',')[0]?.trim() || c.req.header('x-real-ip');
+    const input = c.req.valid("json");
+    const userAgent = c.req.header("user-agent");
+    const forwarded = c.req.header("x-forwarded-for");
+    const ipAddress = forwarded?.split(",")[0]?.trim() ||
+      c.req.header("x-real-ip");
 
     const result = await authService.login(input, userAgent, ipAddress);
 
@@ -61,7 +62,7 @@ auth.post(
       success: true,
       data: result,
     });
-  }
+  },
 );
 
 /**
@@ -69,24 +70,27 @@ auth.post(
  * Logout user
  */
 auth.post(
-  '/logout',
+  "/logout",
   authMiddleware,
   requireAuth,
-  zValidator('json', z.object({ refreshToken: z.string() })),
+  zValidator("json", z.object({ refreshToken: z.string() })),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { refreshToken } = c.req.valid('json');
+    const { refreshToken } = c.req.valid("json");
 
     await authService.logout(user.id, refreshToken);
 
     return c.json({
       success: true,
-      message: 'Logged out successfully',
+      message: "Logged out successfully",
     });
-  }
+  },
 );
 
 /**
@@ -94,17 +98,17 @@ auth.post(
  * Refresh access token
  */
 auth.post(
-  '/refresh',
-  zValidator('json', z.object({ refreshToken: z.string() })),
+  "/refresh",
+  zValidator("json", z.object({ refreshToken: z.string() })),
   async (c) => {
-    const { refreshToken } = c.req.valid('json');
+    const { refreshToken } = c.req.valid("json");
     const tokens = await authService.refreshTokens(refreshToken);
 
     return c.json({
       success: true,
       data: tokens,
     });
-  }
+  },
 );
 
 /**
@@ -112,17 +116,17 @@ auth.post(
  * Verify email address
  */
 auth.post(
-  '/verify-email',
-  zValidator('json', z.object({ token: z.string() })),
+  "/verify-email",
+  zValidator("json", z.object({ token: z.string() })),
   async (c) => {
-    const { token } = c.req.valid('json');
+    const { token } = c.req.valid("json");
     await authService.verifyEmail(token);
 
     return c.json({
       success: true,
-      message: 'Email verified successfully',
+      message: "Email verified successfully",
     });
-  }
+  },
 );
 
 /**
@@ -130,18 +134,19 @@ auth.post(
  * Request password reset
  */
 auth.post(
-  '/forgot-password',
-  zValidator('json', resetPasswordRequestSchema),
+  "/forgot-password",
+  zValidator("json", resetPasswordRequestSchema),
   async (c) => {
-    const { email } = c.req.valid('json');
+    const { email } = c.req.valid("json");
     await authService.requestPasswordReset(email);
 
     // Always return success to prevent email enumeration
     return c.json({
       success: true,
-      message: 'If an account exists with this email, a reset link has been sent',
+      message:
+        "If an account exists with this email, a reset link has been sent",
     });
-  }
+  },
 );
 
 /**
@@ -149,17 +154,17 @@ auth.post(
  * Reset password with token
  */
 auth.post(
-  '/reset-password',
-  zValidator('json', resetPasswordSchema),
+  "/reset-password",
+  zValidator("json", resetPasswordSchema),
   async (c) => {
-    const { token, password } = c.req.valid('json');
+    const { token, password } = c.req.valid("json");
     await authService.resetPassword(token, password);
 
     return c.json({
       success: true,
-      message: 'Password reset successfully',
+      message: "Password reset successfully",
     });
-  }
+  },
 );
 
 /**
@@ -167,51 +172,62 @@ auth.post(
  * Change password (while logged in)
  */
 auth.post(
-  '/change-password',
+  "/change-password",
   authMiddleware,
   requireAuth,
   zValidator(
-    'json',
+    "json",
     z.object({
       currentPassword: z.string().min(1),
       newPassword: z.string().min(8).max(128),
-    })
+    }),
   ),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { currentPassword, newPassword } = c.req.valid('json');
+    const { currentPassword, newPassword } = c.req.valid("json");
 
     await authService.changePassword(user.id, currentPassword, newPassword);
 
     return c.json({
       success: true,
-      message: 'Password changed successfully',
+      message: "Password changed successfully",
     });
-  }
+  },
 );
 
 /**
  * GET /auth/me
  * Get current user info
  */
-auth.get('/me', authMiddleware, requireAuth, async (c) => {
-  const user = c.get('user');
-  if (!user) {
-    return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
-  }
+auth.get(
+  "/me",
+  authMiddleware,
+  requireAuth, // deno-lint-ignore require-await
+  async (c) => {
+    const user = c.get("user");
+    if (!user) {
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
+    }
 
-  return c.json({
-    success: true,
-    data: {
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      isAdmin: user.isAdmin,
-    },
-  });
-});
+    return c.json({
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        isAdmin: user.isAdmin,
+      },
+    });
+  },
+);
 
 export default auth;

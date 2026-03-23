@@ -3,7 +3,7 @@
  * Provides direct access to prisma instance for convenience
  */
 
-import { getPrisma } from '../database/index.ts';
+import { getPrisma } from "../database/index.ts";
 
 // Re-export getPrisma for lazy initialization (important for testing)
 export { getPrisma };

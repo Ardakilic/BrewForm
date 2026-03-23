@@ -4,9 +4,11 @@
     "jsr:@std/assert@^1.0.17": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/expect@*": "1.0.18",
+    "jsr:@std/expect@1": "1.0.18",
     "jsr:@std/internal@^1.0.12": "1.0.12",
     "jsr:@std/path@^1.1.4": "1.1.4",
     "jsr:@std/testing@*": "1.0.17",
+    "jsr:@std/testing@1": "1.0.17",
     "npm:@hono/zod-validator@~0.7.6": "0.7.6_hono@4.12.8_zod@4.3.6",
     "npm:@node-rs/argon2@^2.0.2": "2.0.2",
     "npm:@prisma/adapter-pg@^7.5.0": "7.5.0",
@@ -1960,6 +1962,8 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@std/expect@1",
+      "jsr:@std/testing@1",
       "npm:@hono/zod-validator@~0.7.6",
       "npm:@node-rs/argon2@^2.0.2",
       "npm:@prisma/adapter-pg@^7.5.0",

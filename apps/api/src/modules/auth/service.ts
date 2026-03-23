@@ -3,30 +3,30 @@
  * Handles user authentication logic
  */
 
-import { getPrisma } from '../../utils/database/index.ts';
+import { getPrisma } from "../../utils/database/index.ts";
 import {
-  hashPassword,
-  verifyPassword,
-  generateTokenPair,
-  generateVerificationToken,
   generatePasswordResetToken,
   generateSessionToken,
+  generateTokenPair,
+  generateVerificationToken,
+  hashPassword,
   type TokenPair,
-} from '../../utils/auth/index.ts';
+  verifyPassword,
+} from "../../utils/auth/index.ts";
 import {
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-  sendWelcomeEmail,
   sendPasswordChangedEmail,
-} from '../../utils/email/index.ts';
-import { getLogger, logAudit, logSecurity } from '../../utils/logger/index.ts';
-import { getConfig } from '../../config/index.ts';
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+  sendWelcomeEmail,
+} from "../../utils/email/index.ts";
+import { getLogger, logAudit, logSecurity } from "../../utils/logger/index.ts";
+import { getConfig } from "../../config/index.ts";
 import {
   BadRequestError,
   ConflictError,
   NotFoundError,
   UnauthorizedError,
-} from '../../middleware/errorHandler.ts';
+} from "../../middleware/errorHandler.ts";
 
 // ============================================
 // Types
@@ -73,7 +73,7 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
   });
 
   if (existingEmail) {
-    throw new ConflictError('Email already registered');
+    throw new ConflictError("Email already registered");
   }
 
   // Check if username already exists
@@ -82,7 +82,7 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
   });
 
   if (existingUsername) {
-    throw new ConflictError('Username already taken');
+    throw new ConflictError("Username already taken");
   }
 
   // Hash password
@@ -128,8 +128,8 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
     await sendVerificationEmail(user.email, user.username, verificationToken);
   }
 
-  logAudit('user_registered', 'user', user.id, user.id);
-  logger.info({ type: 'auth', action: 'register', userId: user.id });
+  logAudit("user_registered", "user", user.id, user.id);
+  logger.info({ type: "auth", action: "register", userId: user.id });
 
   return {
     user: {
@@ -149,7 +149,7 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
 export async function login(
   input: LoginInput,
   userAgent?: string,
-  ipAddress?: string
+  ipAddress?: string,
 ): Promise<AuthResult> {
   const prisma = getPrisma();
   const logger = getLogger();
@@ -160,22 +160,22 @@ export async function login(
   });
 
   if (!user || user.deletedAt) {
-    logSecurity('login_failed_user_not_found', { email: input.email });
-    throw new UnauthorizedError('Invalid email or password');
+    logSecurity("login_failed_user_not_found", { email: input.email });
+    throw new UnauthorizedError("Invalid email or password");
   }
 
   // Check if banned
   if (user.isBanned) {
-    logSecurity('login_failed_banned', { userId: user.id });
-    throw new UnauthorizedError('Your account has been suspended');
+    logSecurity("login_failed_banned", { userId: user.id });
+    throw new UnauthorizedError("Your account has been suspended");
   }
 
   // Verify password
   const isValid = await verifyPassword(input.password, user.passwordHash);
 
   if (!isValid) {
-    logSecurity('login_failed_invalid_password', { userId: user.id });
-    throw new UnauthorizedError('Invalid email or password');
+    logSecurity("login_failed_invalid_password", { userId: user.id });
+    throw new UnauthorizedError("Invalid email or password");
   }
 
   // Generate tokens
@@ -199,8 +199,8 @@ export async function login(
     data: { lastLoginAt: new Date() },
   });
 
-  logAudit('user_logged_in', 'user', user.id, user.id);
-  logger.info({ type: 'auth', action: 'login', userId: user.id });
+  logAudit("user_logged_in", "user", user.id, user.id);
+  logger.info({ type: "auth", action: "login", userId: user.id });
 
   return {
     user: {
@@ -217,7 +217,10 @@ export async function login(
 /**
  * Logout user (invalidate session)
  */
-export async function logout(userId: string, refreshToken: string): Promise<void> {
+export async function logout(
+  userId: string,
+  refreshToken: string,
+): Promise<void> {
   const prisma = getPrisma();
 
   await prisma.session.deleteMany({
@@ -227,7 +230,7 @@ export async function logout(userId: string, refreshToken: string): Promise<void
     },
   });
 
-  logAudit('user_logged_out', 'user', userId, userId);
+  logAudit("user_logged_out", "user", userId, userId);
 }
 
 /**
@@ -243,18 +246,18 @@ export async function refreshTokens(refreshToken: string): Promise<TokenPair> {
   });
 
   if (!session || session.expiresAt < new Date()) {
-    throw new UnauthorizedError('Invalid or expired refresh token');
+    throw new UnauthorizedError("Invalid or expired refresh token");
   }
 
   if (session.user.isBanned || session.user.deletedAt) {
-    throw new UnauthorizedError('Account is not available');
+    throw new UnauthorizedError("Account is not available");
   }
 
   // Generate new tokens
   const tokens = await generateTokenPair(
     session.userId,
     session.user.email,
-    session.user.isAdmin
+    session.user.isAdmin,
   );
 
   // Update session with new refresh token
@@ -281,15 +284,15 @@ export async function verifyEmail(token: string): Promise<void> {
   });
 
   if (!verification) {
-    throw new BadRequestError('Invalid verification token');
+    throw new BadRequestError("Invalid verification token");
   }
 
   if (verification.usedAt) {
-    throw new BadRequestError('Token has already been used');
+    throw new BadRequestError("Token has already been used");
   }
 
   if (verification.expiresAt < new Date()) {
-    throw new BadRequestError('Token has expired');
+    throw new BadRequestError("Token has expired");
   }
 
   // Mark verification as used
@@ -310,7 +313,7 @@ export async function verifyEmail(token: string): Promise<void> {
   // Send welcome email
   await sendWelcomeEmail(verification.user.email, verification.user.username);
 
-  logAudit('email_verified', 'user', verification.userId, verification.userId);
+  logAudit("email_verified", "user", verification.userId, verification.userId);
 }
 
 /**
@@ -321,7 +324,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
   const config = getConfig();
 
   if (!config.enablePasswordReset) {
-    throw new BadRequestError('Password reset is disabled');
+    throw new BadRequestError("Password reset is disabled");
   }
 
   const user = await prisma.user.findUnique({
@@ -358,13 +361,16 @@ export async function requestPasswordReset(email: string): Promise<void> {
   // Send reset email
   await sendPasswordResetEmail(user.email, user.username, token);
 
-  logAudit('password_reset_requested', 'user', user.id, user.id);
+  logAudit("password_reset_requested", "user", user.id, user.id);
 }
 
 /**
  * Reset password
  */
-export async function resetPassword(token: string, newPassword: string): Promise<void> {
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<void> {
   const prisma = getPrisma();
 
   const reset = await prisma.passwordReset.findUnique({
@@ -373,15 +379,15 @@ export async function resetPassword(token: string, newPassword: string): Promise
   });
 
   if (!reset) {
-    throw new BadRequestError('Invalid reset token');
+    throw new BadRequestError("Invalid reset token");
   }
 
   if (reset.usedAt) {
-    throw new BadRequestError('Token has already been used');
+    throw new BadRequestError("Token has already been used");
   }
 
   if (reset.expiresAt < new Date()) {
-    throw new BadRequestError('Token has expired');
+    throw new BadRequestError("Token has expired");
   }
 
   // Hash new password
@@ -407,7 +413,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
   // Send notification
   await sendPasswordChangedEmail(reset.user.email, reset.user.username);
 
-  logAudit('password_reset', 'user', reset.userId, reset.userId);
+  logAudit("password_reset", "user", reset.userId, reset.userId);
 }
 
 /**
@@ -416,7 +422,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 export async function changePassword(
   userId: string,
   currentPassword: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<void> {
   const prisma = getPrisma();
 
@@ -425,14 +431,14 @@ export async function changePassword(
   });
 
   if (!user) {
-    throw new NotFoundError('User');
+    throw new NotFoundError("User");
   }
 
   // Verify current password
   const isValid = await verifyPassword(currentPassword, user.passwordHash);
 
   if (!isValid) {
-    throw new BadRequestError('Current password is incorrect');
+    throw new BadRequestError("Current password is incorrect");
   }
 
   // Hash new password
@@ -455,7 +461,7 @@ export async function changePassword(
   // Send notification
   await sendPasswordChangedEmail(user.email, user.username);
 
-  logAudit('password_changed', 'user', userId, userId);
+  logAudit("password_changed", "user", userId, userId);
 }
 
 export const authService = {

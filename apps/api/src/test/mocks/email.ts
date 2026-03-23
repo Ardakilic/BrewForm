@@ -3,7 +3,7 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from '../mock-fn.ts';
+import { mockFn } from "../mock-fn.ts";
 
 export const sendEmail = mockFn(() => Promise.resolve(true));
 export const sendVerificationEmail = mockFn(() => Promise.resolve(true));

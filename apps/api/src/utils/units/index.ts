@@ -35,10 +35,10 @@ export function ouncesToGrams(ounces: number): number {
  */
 export function formatWeight(
   grams: number,
-  unit: 'metric' | 'imperial' = 'metric',
-  precision = 1
+  unit: "metric" | "imperial" = "metric",
+  precision = 1,
 ): string {
-  if (unit === 'imperial') {
+  if (unit === "imperial") {
     const ounces = gramsToOunces(grams);
     return `${ounces.toFixed(precision)} oz`;
   }
@@ -68,10 +68,10 @@ export function flOzToMl(flOz: number): number {
  */
 export function formatVolume(
   ml: number,
-  unit: 'metric' | 'imperial' = 'metric',
-  precision = 1
+  unit: "metric" | "imperial" = "metric",
+  precision = 1,
 ): string {
-  if (unit === 'imperial') {
+  if (unit === "imperial") {
     const flOz = mlToFlOz(ml);
     return `${flOz.toFixed(precision)} fl oz`;
   }
@@ -101,10 +101,10 @@ export function fahrenheitToCelsius(fahrenheit: number): number {
  */
 export function formatTemperature(
   celsius: number,
-  unit: 'metric' | 'imperial' = 'metric',
-  precision = 0
+  unit: "metric" | "imperial" = "metric",
+  precision = 0,
 ): string {
-  if (unit === 'imperial') {
+  if (unit === "imperial") {
     const fahrenheit = celsiusToFahrenheit(celsius);
     return `${fahrenheit.toFixed(precision)}°F`;
   }
@@ -122,20 +122,18 @@ export function formatTime(seconds: number): string {
   if (seconds < 60) {
     return `${seconds}s`;
   }
-  
+
   if (seconds < 3600) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return remainingSeconds > 0 
+    return remainingSeconds > 0
       ? `${minutes}m ${remainingSeconds}s`
       : `${minutes}m`;
   }
-  
+
   const hours = Math.floor(seconds / 3600);
   const remainingMinutes = Math.floor((seconds % 3600) / 60);
-  return remainingMinutes > 0 
-    ? `${hours}h ${remainingMinutes}m`
-    : `${hours}h`;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
 /**
@@ -174,7 +172,10 @@ export function parseTimeToSeconds(timeStr: string): number | null {
 /**
  * Calculate brew ratio
  */
-export function calculateBrewRatio(doseGrams: number, yieldGrams: number): number {
+export function calculateBrewRatio(
+  doseGrams: number,
+  yieldGrams: number,
+): number {
   return yieldGrams / doseGrams;
 }
 
@@ -189,7 +190,10 @@ export function formatBrewRatio(doseGrams: number, yieldGrams: number): string {
 /**
  * Calculate flow rate (ml/sec)
  */
-export function calculateFlowRate(yieldMl: number, brewTimeSec: number): number {
+export function calculateFlowRate(
+  yieldMl: number,
+  brewTimeSec: number,
+): number {
   return yieldMl / brewTimeSec;
 }
 
@@ -208,7 +212,7 @@ export function formatFlowRate(yieldMl: number, brewTimeSec: number): string {
 export function estimateExtractionYield(
   doseGrams: number,
   yieldGrams: number,
-  tds = 1.35 // Typical TDS for espresso
+  tds = 1.35, // Typical TDS for espresso
 ): number {
   return (yieldGrams * tds) / doseGrams;
 }
@@ -217,26 +221,26 @@ export function estimateExtractionYield(
 // Unit System Type
 // ============================================
 
-export type UnitSystem = 'metric' | 'imperial';
+export type UnitSystem = "metric" | "imperial";
 
 /**
  * Convert input values from user's unit system to canonical (metric) units
  */
 export function toCanonicalUnits(
   value: number,
-  type: 'weight' | 'volume' | 'temperature',
-  fromSystem: UnitSystem
+  type: "weight" | "volume" | "temperature",
+  fromSystem: UnitSystem,
 ): number {
-  if (fromSystem === 'metric') {
+  if (fromSystem === "metric") {
     return value;
   }
 
   switch (type) {
-    case 'weight':
+    case "weight":
       return ouncesToGrams(value);
-    case 'volume':
+    case "volume":
       return flOzToMl(value);
-    case 'temperature':
+    case "temperature":
       return fahrenheitToCelsius(value);
   }
 }
@@ -246,19 +250,19 @@ export function toCanonicalUnits(
  */
 export function fromCanonicalUnits(
   value: number,
-  type: 'weight' | 'volume' | 'temperature',
-  toSystem: UnitSystem
+  type: "weight" | "volume" | "temperature",
+  toSystem: UnitSystem,
 ): number {
-  if (toSystem === 'metric') {
+  if (toSystem === "metric") {
     return value;
   }
 
   switch (type) {
-    case 'weight':
+    case "weight":
       return gramsToOunces(value);
-    case 'volume':
+    case "volume":
       return mlToFlOz(value);
-    case 'temperature':
+    case "temperature":
       return celsiusToFahrenheit(value);
   }
 }
@@ -268,28 +272,28 @@ export const units = {
   gramsToOunces,
   ouncesToGrams,
   formatWeight,
-  
+
   // Volume
   mlToFlOz,
   flOzToMl,
   formatVolume,
-  
+
   // Temperature
   celsiusToFahrenheit,
   fahrenheitToCelsius,
   formatTemperature,
-  
+
   // Time
   formatTime,
   parseTimeToSeconds,
-  
+
   // Brew metrics
   calculateBrewRatio,
   formatBrewRatio,
   calculateFlowRate,
   formatFlowRate,
   estimateExtractionYield,
-  
+
   // Conversions
   toCanonicalUnits,
   fromCanonicalUnits,

@@ -3,10 +3,9 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from '../mock-fn.ts';
+import { mockFn } from "../mock-fn.ts";
 
-const passThrough = (...args: unknown[]) =>
-  (args[1] as () => Promise<void>)();
+const passThrough = (...args: unknown[]) => (args[1] as () => Promise<void>)();
 
 export const authRateLimiter = mockFn(passThrough);
 export const writeRateLimiter = mockFn(passThrough);

@@ -4,23 +4,23 @@
  */
 
 const _defaultConfig = {
-  nodeEnv: 'test',
+  nodeEnv: "test",
   port: 3000,
-  appUrl: 'http://localhost:3000',
-  databaseUrl: 'postgresql://test:test@localhost:5432/test',
-  jwtSecret: 'test_jwt_secret',
-  jwtAccessExpiry: '15m',
-  jwtRefreshExpiry: '7d',
-  redisUrl: 'redis://localhost:6379',
+  appUrl: "http://localhost:3000",
+  databaseUrl: "postgresql://test:test@localhost:5432/test",
+  jwtSecret: "test_jwt_secret",
+  jwtAccessExpiry: "15m",
+  jwtRefreshExpiry: "7d",
+  redisUrl: "redis://localhost:6379",
   enablePasswordReset: true,
   enableEmailVerification: false,
-  defaultLocale: 'en',
-  supportedLocales: 'en,es,de',
-  smtpHost: 'localhost',
+  defaultLocale: "en",
+  supportedLocales: "en,es,de",
+  smtpHost: "localhost",
   smtpPort: 1025,
-  smtpUser: '',
-  smtpPassword: '',
-  emailFrom: 'noreply@brewform.local',
+  smtpUser: "",
+  smtpPassword: "",
+  emailFrom: "noreply@brewform.local",
 };
 
 // deno-lint-ignore no-explicit-any

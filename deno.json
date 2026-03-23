@@ -5,7 +5,6 @@
   "license": "MIT",
   "nodeModulesDir": "auto",
   "lock": "deno.lock",
-  "imports": {},
   "fmt": {
     "useTabs": false,
     "lineWidth": 100,

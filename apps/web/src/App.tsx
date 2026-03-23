@@ -3,39 +3,41 @@
  * Main routing and layout
  */
 
-import { Routes, Route } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
-import { useStyletron } from 'baseui';
+import { Route, Routes } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { useStyletron } from "baseui";
 
-import Layout from './components/Layout.tsx';
-import LoadingSpinner from './components/LoadingSpinner.tsx';
-import ProtectedRoute from './components/ProtectedRoute.tsx';
-import AdminRoute from './components/AdminRoute.tsx';
+import Layout from "./components/Layout.tsx";
+import LoadingSpinner from "./components/LoadingSpinner.tsx";
+import ProtectedRoute from "./components/ProtectedRoute.tsx";
+import AdminRoute from "./components/AdminRoute.tsx";
 
 // Lazy load pages for better performance
-const HomePage = lazy(() => import('./pages/HomePage'));
-const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
-const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
-const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage'));
-const RecipesPage = lazy(() => import('./pages/recipes/RecipesPage'));
-const RecipeDetailPage = lazy(() => import('./pages/recipes/RecipeDetailPage'));
-const CreateRecipePage = lazy(() => import('./pages/recipes/CreateRecipePage'));
-const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
-const SettingsPage = lazy(() => import('./pages/profile/SettingsPage'));
-const UserPage = lazy(() => import('./pages/users/UserPage'));
-const BaristasPage = lazy(() => import('./pages/users/BaristasPage'));
-const ComparePage = lazy(() => import('./pages/compare/ComparePage'));
-const NotFoundPage = lazy(() => import('./pages/errors/NotFoundPage'));
-const ErrorPage = lazy(() => import('./pages/errors/ErrorPage'));
+const HomePage = lazy(() => import("./pages/HomePage"));
+const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
+const ForgotPasswordPage = lazy(() =>
+  import("./pages/auth/ForgotPasswordPage")
+);
+const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
+const VerifyEmailPage = lazy(() => import("./pages/auth/VerifyEmailPage"));
+const RecipesPage = lazy(() => import("./pages/recipes/RecipesPage"));
+const RecipeDetailPage = lazy(() => import("./pages/recipes/RecipeDetailPage"));
+const CreateRecipePage = lazy(() => import("./pages/recipes/CreateRecipePage"));
+const ProfilePage = lazy(() => import("./pages/profile/ProfilePage"));
+const SettingsPage = lazy(() => import("./pages/profile/SettingsPage"));
+const UserPage = lazy(() => import("./pages/users/UserPage"));
+const BaristasPage = lazy(() => import("./pages/users/BaristasPage"));
+const ComparePage = lazy(() => import("./pages/compare/ComparePage"));
+const NotFoundPage = lazy(() => import("./pages/errors/NotFoundPage"));
+const ErrorPage = lazy(() => import("./pages/errors/ErrorPage"));
 
 // Admin pages
-const AdminDashboard = lazy(() => import('./pages/admin/DashboardPage'));
-const AdminUsersPage = lazy(() => import('./pages/admin/UsersPage'));
-const AdminRecipesPage = lazy(() => import('./pages/admin/RecipesPage'));
-const AdminEquipmentPage = lazy(() => import('./pages/admin/EquipmentPage'));
-const AdminTasteNotesPage = lazy(() => import('./pages/admin/TasteNotesPage'));
+const AdminDashboard = lazy(() => import("./pages/admin/DashboardPage"));
+const AdminUsersPage = lazy(() => import("./pages/admin/UsersPage"));
+const AdminRecipesPage = lazy(() => import("./pages/admin/RecipesPage"));
+const AdminEquipmentPage = lazy(() => import("./pages/admin/EquipmentPage"));
+const AdminTasteNotesPage = lazy(() => import("./pages/admin/TasteNotesPage"));
 
 function App() {
   const [css] = useStyletron();
@@ -43,9 +45,9 @@ function App() {
   return (
     <div
       className={css({
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
       })}
     >
       <Suspense fallback={<LoadingSpinner fullScreen />}>
@@ -53,14 +55,14 @@ function App() {
           {/* Public routes */}
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
-            
+
             {/* Auth routes */}
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />
             <Route path="forgot-password" element={<ForgotPasswordPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route path="verify-email" element={<VerifyEmailPage />} />
-            
+
             {/* Recipe routes */}
             <Route path="recipes" element={<RecipesPage />} />
             <Route path="recipes/:slug" element={<RecipeDetailPage />} />
@@ -72,15 +74,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* User routes */}
             <Route path="baristas" element={<BaristasPage />} />
             <Route path="@:username" element={<UserPage />} />
             <Route path="user/:username" element={<UserPage />} />
-            
+
             {/* Compare route */}
             <Route path="compare/:token" element={<ComparePage />} />
-            
+
             {/* Protected routes */}
             <Route
               path="profile"
@@ -98,7 +100,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Admin routes */}
             <Route
               path="admin"
@@ -140,7 +142,7 @@ function App() {
                 </AdminRoute>
               }
             />
-            
+
             {/* Error routes */}
             <Route path="error" element={<ErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />

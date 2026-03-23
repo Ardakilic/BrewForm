@@ -20,6 +20,8 @@
     "@testing-library/jest-dom": "npm:@testing-library/jest-dom@^6.9.1",
     "@testing-library/react": "npm:@testing-library/react@^16.3.2",
     "jsdom": "npm:jsdom@^29.0.1",
+    "@std/testing": "jsr:@std/testing@^1.0.0/bdd",
+    "@std/expect": "jsr:@std/expect@^1.0.0",
     "baseui/button": "../../node_modules/baseui/button/index.js",
     "baseui/typography": "../../node_modules/baseui/typography/index.js",
     "baseui/form-control": "../../node_modules/baseui/form-control/index.js",

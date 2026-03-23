@@ -3,14 +3,37 @@
  * Handles recipe CRUD, versioning, forking, and social features
  */
 
-import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.ts';
-import { getLogger, logAudit } from '../../utils/logger/index.ts';
-import { createRecipeSlug } from '../../utils/slug/index.ts';
-import { validateRecipe, type RecipeVersionInput } from '../../utils/validation/index.ts';
-import { invalidateCache, CacheKeys, cacheGetOrSet } from '../../utils/redis/index.ts';
-import { NotFoundError, ForbiddenError, ValidationError } from '../../middleware/errorHandler.ts';
-import { calculateBrewRatio, calculateFlowRate } from '../../utils/units/index.ts';
-import type { Visibility, BrewMethodType, DrinkType } from '../../../prisma/generated/prisma';
+import {
+  createPaginationMeta,
+  getPagination,
+  getPrisma,
+  softDeleteFilter,
+} from "../../utils/database/index.ts";
+import { getLogger, logAudit } from "../../utils/logger/index.ts";
+import { createRecipeSlug } from "../../utils/slug/index.ts";
+import {
+  type RecipeVersionInput,
+  validateRecipe,
+} from "../../utils/validation/index.ts";
+import {
+  cacheGetOrSet,
+  CacheKeys,
+  invalidateCache,
+} from "../../utils/redis/index.ts";
+import {
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../../middleware/errorHandler.ts";
+import {
+  calculateBrewRatio,
+  calculateFlowRate,
+} from "../../utils/units/index.ts";
+import type {
+  BrewMethodType,
+  DrinkType,
+  Visibility,
+} from "../../../prisma/generated/prisma/index.d.ts";
 
 // ============================================
 // Types
@@ -31,8 +54,8 @@ export interface RecipeFilters {
   visibility?: Visibility;
   minRating?: number;
   tags?: string[];
-  sortBy?: 'createdAt' | 'rating' | 'favouriteCount' | 'viewCount';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "createdAt" | "rating" | "favouriteCount" | "viewCount";
+  sortOrder?: "asc" | "desc";
   page?: number;
   limit?: number;
 }
@@ -52,7 +75,7 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
   const validation = validateRecipe(input.version);
   if (!validation.valid) {
     throw new ValidationError(
-      validation.errors.map((e) => ({ field: 'version', message: e }))
+      validation.errors.map((e) => ({ field: "version", message: e })),
     );
   }
 
@@ -63,17 +86,16 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
   const brewRatio = input.version.yieldGrams
     ? calculateBrewRatio(input.version.doseGrams, input.version.yieldGrams)
     : null;
-  const flowRate =
-    input.version.yieldMl && input.version.brewTimeSec
-      ? calculateFlowRate(input.version.yieldMl, input.version.brewTimeSec)
-      : null;
+  const flowRate = input.version.yieldMl && input.version.brewTimeSec
+    ? calculateFlowRate(input.version.yieldMl, input.version.brewTimeSec)
+    : null;
 
   // Create recipe with first version
   const recipe = await prisma.recipe.create({
     data: {
       userId,
       slug,
-      visibility: input.visibility || 'DRAFT',
+      visibility: input.visibility || "DRAFT",
       versions: {
         create: {
           userId,
@@ -110,10 +132,10 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
           tags: input.version.tags || [],
           tasteNotes: input.version.tasteNoteIds?.length
             ? {
-                create: input.version.tasteNoteIds.map((tasteNoteId) => ({
-                  tasteNoteId,
-                })),
-              }
+              create: input.version.tasteNoteIds.map((tasteNoteId) => ({
+                tasteNoteId,
+              })),
+            }
             : undefined,
         },
       },
@@ -145,12 +167,17 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
     data: { currentVersionId: recipe.versions[0].id },
   });
 
-  logAudit('recipe_created', 'recipe', recipe.id, userId);
-  logger.info({ type: 'recipe', action: 'create', recipeId: recipe.id, userId });
+  logAudit("recipe_created", "recipe", recipe.id, userId);
+  logger.info({
+    type: "recipe",
+    action: "create",
+    recipeId: recipe.id,
+    userId,
+  });
 
   // Invalidate caches
   await invalidateCache(CacheKeys.latestRecipes());
-  await invalidateCache(`${CacheKeys.recipeList('*')}`);
+  await invalidateCache(`${CacheKeys.recipeList("*")}`);
 
   return { ...recipe, currentVersionId: recipe.versions[0].id };
 }
@@ -158,7 +185,10 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
 /**
  * Get recipe by ID
  */
-export async function getRecipeById(recipeId: string, viewerId?: string | null) {
+export async function getRecipeById(
+  recipeId: string,
+  viewerId?: string | null,
+) {
   const prisma = getPrisma();
 
   const recipe = await prisma.recipe.findUnique({
@@ -207,14 +237,14 @@ export async function getRecipeById(recipeId: string, viewerId?: string | null) 
   });
 
   if (!recipe) {
-    throw new NotFoundError('Recipe');
+    throw new NotFoundError("Recipe");
   }
 
   // Check visibility
   const isOwner = viewerId === recipe.userId;
   if (!isOwner) {
-    if (recipe.visibility === 'DRAFT' || recipe.visibility === 'PRIVATE') {
-      throw new NotFoundError('Recipe');
+    if (recipe.visibility === "DRAFT" || recipe.visibility === "PRIVATE") {
+      throw new NotFoundError("Recipe");
     }
   }
 
@@ -242,7 +272,7 @@ export async function getRecipeBySlug(slug: string, viewerId?: string | null) {
   });
 
   if (!recipe) {
-    throw new NotFoundError('Recipe');
+    throw new NotFoundError("Recipe");
   }
 
   return getRecipeById(recipe.id, viewerId);
@@ -254,7 +284,7 @@ export async function getRecipeBySlug(slug: string, viewerId?: string | null) {
 export async function updateRecipe(
   recipeId: string,
   userId: string,
-  input: { visibility?: Visibility; isFeatured?: boolean }
+  input: { visibility?: Visibility; isFeatured?: boolean },
 ) {
   const prisma = getPrisma();
 
@@ -263,11 +293,11 @@ export async function updateRecipe(
   });
 
   if (!recipe) {
-    throw new NotFoundError('Recipe');
+    throw new NotFoundError("Recipe");
   }
 
   if (recipe.userId !== userId) {
-    throw new ForbiddenError('You can only update your own recipes');
+    throw new ForbiddenError("You can only update your own recipes");
   }
 
   const updated = await prisma.recipe.update({
@@ -288,7 +318,7 @@ export async function updateRecipe(
     },
   });
 
-  logAudit('recipe_updated', 'recipe', recipeId, userId);
+  logAudit("recipe_updated", "recipe", recipeId, userId);
 
   // Invalidate caches
   await invalidateCache(CacheKeys.recipe(recipeId));
@@ -303,28 +333,28 @@ export async function updateRecipe(
 export async function createRecipeVersion(
   recipeId: string,
   userId: string,
-  input: RecipeVersionInput
+  input: RecipeVersionInput,
 ) {
   const prisma = getPrisma();
 
   const recipe = await prisma.recipe.findUnique({
     where: { id: recipeId, ...softDeleteFilter() },
-    include: { versions: { orderBy: { versionNumber: 'desc' }, take: 1 } },
+    include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
   });
 
   if (!recipe) {
-    throw new NotFoundError('Recipe');
+    throw new NotFoundError("Recipe");
   }
 
   if (recipe.userId !== userId) {
-    throw new ForbiddenError('You can only update your own recipes');
+    throw new ForbiddenError("You can only update your own recipes");
   }
 
   // Validate
   const validation = validateRecipe(input);
   if (!validation.valid) {
     throw new ValidationError(
-      validation.errors.map((e) => ({ field: 'version', message: e }))
+      validation.errors.map((e) => ({ field: "version", message: e })),
     );
   }
 
@@ -334,10 +364,9 @@ export async function createRecipeVersion(
   const brewRatio = input.yieldGrams
     ? calculateBrewRatio(input.doseGrams, input.yieldGrams)
     : null;
-  const flowRate =
-    input.yieldMl && input.brewTimeSec
-      ? calculateFlowRate(input.yieldMl, input.brewTimeSec)
-      : null;
+  const flowRate = input.yieldMl && input.brewTimeSec
+    ? calculateFlowRate(input.yieldMl, input.brewTimeSec)
+    : null;
 
   const version = await prisma.recipeVersion.create({
     data: {
@@ -376,10 +405,10 @@ export async function createRecipeVersion(
       tags: input.tags || [],
       tasteNotes: input.tasteNoteIds?.length
         ? {
-            create: input.tasteNoteIds.map((tasteNoteId) => ({
-              tasteNoteId,
-            })),
-          }
+          create: input.tasteNoteIds.map((tasteNoteId) => ({
+            tasteNoteId,
+          })),
+        }
         : undefined,
     },
     include: {
@@ -397,7 +426,7 @@ export async function createRecipeVersion(
     data: { currentVersionId: version.id },
   });
 
-  logAudit('recipe_version_created', 'recipe_version', version.id, userId);
+  logAudit("recipe_version_created", "recipe_version", version.id, userId);
 
   // Invalidate caches
   await invalidateCache(CacheKeys.recipe(recipeId));
@@ -423,12 +452,12 @@ export async function forkRecipe(recipeId: string, userId: string) {
   });
 
   if (!original || !original.currentVersion) {
-    throw new NotFoundError('Recipe');
+    throw new NotFoundError("Recipe");
   }
 
   // Check if public or unlisted
-  if (original.visibility === 'DRAFT' || original.visibility === 'PRIVATE') {
-    throw new ForbiddenError('Cannot fork private recipes');
+  if (original.visibility === "DRAFT" || original.visibility === "PRIVATE") {
+    throw new ForbiddenError("Cannot fork private recipes");
   }
 
   const v = original.currentVersion;
@@ -436,7 +465,7 @@ export async function forkRecipe(recipeId: string, userId: string) {
 
   // Get taste note IDs from original version
   const originalTasteNoteIds = (v.tasteNotes as { tasteNoteId: string }[])?.map(
-    (tn) => tn.tasteNoteId
+    (tn) => tn.tasteNoteId,
   ) || [];
 
   // Create forked recipe
@@ -444,7 +473,7 @@ export async function forkRecipe(recipeId: string, userId: string) {
     data: {
       userId,
       slug,
-      visibility: 'DRAFT',
+      visibility: "DRAFT",
       forkedFromId: recipeId,
       versions: {
         create: {
@@ -482,10 +511,10 @@ export async function forkRecipe(recipeId: string, userId: string) {
           tags: v.tags,
           tasteNotes: originalTasteNoteIds.length
             ? {
-                create: originalTasteNoteIds.map((tasteNoteId) => ({
-                  tasteNoteId,
-                })),
-              }
+              create: originalTasteNoteIds.map((tasteNoteId) => ({
+                tasteNoteId,
+              })),
+            }
             : undefined,
         },
       },
@@ -515,7 +544,7 @@ export async function forkRecipe(recipeId: string, userId: string) {
     data: { forkCount: { increment: 1 } },
   });
 
-  logAudit('recipe_forked', 'recipe', forked.id, userId);
+  logAudit("recipe_forked", "recipe", forked.id, userId);
 
   return { ...forked, currentVersionId: forked.versions[0].id };
 }
@@ -531,11 +560,11 @@ export async function deleteRecipe(recipeId: string, userId: string) {
   });
 
   if (!recipe) {
-    throw new NotFoundError('Recipe');
+    throw new NotFoundError("Recipe");
   }
 
   if (recipe.userId !== userId) {
-    throw new ForbiddenError('You can only delete your own recipes');
+    throw new ForbiddenError("You can only delete your own recipes");
   }
 
   await prisma.recipe.update({
@@ -543,7 +572,7 @@ export async function deleteRecipe(recipeId: string, userId: string) {
     data: { deletedAt: new Date() },
   });
 
-  logAudit('recipe_deleted', 'recipe', recipeId, userId);
+  logAudit("recipe_deleted", "recipe", recipeId, userId);
 
   // Invalidate caches
   await invalidateCache(CacheKeys.recipe(recipeId));
@@ -553,20 +582,25 @@ export async function deleteRecipe(recipeId: string, userId: string) {
 /**
  * Build visibility filter for recipe queries
  */
-function buildVisibilityFilter(filters: RecipeFilters, viewerId?: string | null): string | undefined {
+function buildVisibilityFilter(
+  filters: RecipeFilters,
+  viewerId?: string | null,
+): string | undefined {
   if (filters.visibility) return filters.visibility;
   if (filters.userId && filters.userId === viewerId) return undefined;
-  return 'PUBLIC';
+  return "PUBLIC";
 }
 
 /**
  * Build current version filter for recipe queries
  * Supports arrays for brewMethod and drinkType with OR logic using Prisma's `in` operator
  */
-function buildVersionFilter(filters: RecipeFilters): Record<string, unknown> | undefined {
-  const hasVersionFilters = filters.brewMethod || filters.drinkType || 
+function buildVersionFilter(
+  filters: RecipeFilters,
+): Record<string, unknown> | undefined {
+  const hasVersionFilters = filters.brewMethod || filters.drinkType ||
     filters.grinderId || filters.brewerId || filters.minRating || filters.tags;
-  
+
   if (!hasVersionFilters) return undefined;
 
   // Handle brewMethod - single value or array (OR logic)
@@ -582,7 +616,7 @@ function buildVersionFilter(filters: RecipeFilters): Record<string, unknown> | u
       ? { in: filters.drinkType }
       : filters.drinkType
     : undefined;
-  
+
   return {
     ...(brewMethodFilter && { brewMethod: brewMethodFilter }),
     ...(drinkTypeFilter && { drinkType: drinkTypeFilter }),
@@ -599,18 +633,30 @@ function buildVersionFilter(filters: RecipeFilters): Record<string, unknown> | u
 function buildSearchFilter(search?: string) {
   if (!search) return undefined;
   return [
-    { currentVersion: { title: { contains: search, mode: 'insensitive' } } },
-    { currentVersion: { description: { contains: search, mode: 'insensitive' } } },
-    { currentVersion: { coffeeName: { contains: search, mode: 'insensitive' } } },
+    { currentVersion: { title: { contains: search, mode: "insensitive" } } },
+    {
+      currentVersion: {
+        description: { contains: search, mode: "insensitive" },
+      },
+    },
+    {
+      currentVersion: { coffeeName: { contains: search, mode: "insensitive" } },
+    },
   ];
 }
 
 /**
  * List recipes with filters
  */
-export async function listRecipes(filters: RecipeFilters, viewerId?: string | null) {
+export async function listRecipes(
+  filters: RecipeFilters,
+  viewerId?: string | null,
+) {
   const prisma = getPrisma();
-  const pagination = getPagination({ page: filters.page, limit: filters.limit });
+  const pagination = getPagination({
+    page: filters.page,
+    limit: filters.limit,
+  });
 
   const visibility = buildVisibilityFilter(filters, viewerId);
   const versionFilter = buildVersionFilter(filters);
@@ -624,8 +670,8 @@ export async function listRecipes(filters: RecipeFilters, viewerId?: string | nu
     ...(searchFilter && { OR: searchFilter }),
   };
 
-  const orderBy: Record<string, 'asc' | 'desc'> = {
-    [filters.sortBy || 'createdAt']: filters.sortOrder || 'desc',
+  const orderBy: Record<string, "asc" | "desc"> = {
+    [filters.sortBy || "createdAt"]: filters.sortOrder || "desc",
   };
 
   const [recipes, total] = await Promise.all([
@@ -664,7 +710,11 @@ export async function listRecipes(filters: RecipeFilters, viewerId?: string | nu
 
   return {
     recipes,
-    pagination: createPaginationMeta(filters.page || 1, filters.limit || 20, total),
+    pagination: createPaginationMeta(
+      filters.page || 1,
+      filters.limit || 20,
+      total,
+    ),
   };
 }
 
@@ -672,14 +722,14 @@ export async function listRecipes(filters: RecipeFilters, viewerId?: string | nu
  * Get latest public recipes
  */
 export async function getLatestRecipes(limit = 10) {
-  return cacheGetOrSet(
+  return await cacheGetOrSet(
     CacheKeys.latestRecipes(),
     async () => {
       const prisma = getPrisma();
-      return prisma.recipe.findMany({
+      return await prisma.recipe.findMany({
         where: {
           ...softDeleteFilter(),
-          visibility: 'PUBLIC',
+          visibility: "PUBLIC",
         },
         include: {
           currentVersion: {
@@ -700,11 +750,11 @@ export async function getLatestRecipes(limit = 10) {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: limit,
       });
     },
-    300 // 5 minutes
+    300, // 5 minutes
   );
 }
 
@@ -712,14 +762,14 @@ export async function getLatestRecipes(limit = 10) {
  * Get popular recipes
  */
 export async function getPopularRecipes(limit = 10) {
-  return cacheGetOrSet(
+  return await cacheGetOrSet(
     CacheKeys.popularRecipes(),
     async () => {
       const prisma = getPrisma();
-      return prisma.recipe.findMany({
+      return await prisma.recipe.findMany({
         where: {
           ...softDeleteFilter(),
-          visibility: 'PUBLIC',
+          visibility: "PUBLIC",
         },
         include: {
           currentVersion: {
@@ -740,18 +790,21 @@ export async function getPopularRecipes(limit = 10) {
             },
           },
         },
-        orderBy: { favouriteCount: 'desc' },
+        orderBy: { favouriteCount: "desc" },
         take: limit,
       });
     },
-    300
+    300,
   );
 }
 
 /**
  * Get recipe versions
  */
-export async function getRecipeVersions(recipeId: string, viewerId?: string | null) {
+export async function getRecipeVersions(
+  recipeId: string,
+  viewerId?: string | null,
+) {
   const prisma = getPrisma();
 
   const recipe = await prisma.recipe.findUnique({
@@ -759,18 +812,21 @@ export async function getRecipeVersions(recipeId: string, viewerId?: string | nu
   });
 
   if (!recipe) {
-    throw new NotFoundError('Recipe');
+    throw new NotFoundError("Recipe");
   }
 
   // Check access
   const isOwner = viewerId === recipe.userId;
-  if (!isOwner && (recipe.visibility === 'DRAFT' || recipe.visibility === 'PRIVATE')) {
-    throw new NotFoundError('Recipe');
+  if (
+    !isOwner &&
+    (recipe.visibility === "DRAFT" || recipe.visibility === "PRIVATE")
+  ) {
+    throw new NotFoundError("Recipe");
   }
 
   return prisma.recipeVersion.findMany({
     where: { recipeId },
-    orderBy: { versionNumber: 'desc' },
+    orderBy: { versionNumber: "desc" },
   });
 }
 

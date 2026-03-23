@@ -22,6 +22,8 @@
     "pino-http": "npm:pino-http@^11.0.0",
     "slugify": "npm:slugify@^1.6.8",
     "zod": "npm:zod@^4.3.6",
+    "@std/testing": "jsr:@std/testing@^1.0.0/bdd",
+    "@std/expect": "jsr:@std/expect@^1.0.0",
     "@types/mjml": "npm:@types/mjml@^4.7.4", // dev
     "@types/node": "npm:@types/node@^25.5.0", // dev
     "@types/nodemailer": "npm:@types/nodemailer@^7.0.11", // dev
@@ -34,6 +36,9 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
+  },
+  "lint": {
+    "exclude": ["prisma/generated", "prisma/migrations"]
   },
   "fmt": {
     "exclude": ["prisma/generated", "prisma/migrations"]

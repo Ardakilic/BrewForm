@@ -4,14 +4,14 @@
  * Uses BaseUI Select with async search capability
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useStyletron } from 'baseui';
-import { Select, TYPE } from 'baseui/select';
-import { Tag, HIERARCHY } from 'baseui/tag';
-import { StyledLink } from 'baseui/link';
-import { ParagraphSmall } from 'baseui/typography';
-import { useTranslation } from 'react-i18next';
-import { api } from '../utils/api.ts';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useStyletron } from "baseui";
+import { Select, TYPE } from "baseui/select";
+import { HIERARCHY, Tag } from "baseui/tag";
+import { StyledLink } from "baseui/link";
+import { ParagraphSmall } from "baseui/typography";
+import { useTranslation } from "react-i18next";
+import { api } from "../utils/api.ts";
 
 export interface TasteNote {
   id: string;
@@ -30,7 +30,7 @@ interface TasteNoteAutocompleteProps {
   maxSelections?: number;
 }
 
-const SCAA_REFERENCE_URL = 'https://notbadcoffee.com/flavor-wheel-en/';
+const SCAA_REFERENCE_URL = "https://notbadcoffee.com/flavor-wheel-en/";
 const MIN_SEARCH_LENGTH = 3;
 const DEBOUNCE_MS = 500;
 
@@ -45,10 +45,10 @@ function TasteNoteAutocomplete({
   const { t } = useTranslation();
   const [options, setOptions] = useState<TasteNote[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
-  const actualPlaceholder = placeholder || t('tasteNotes.placeholder');
+
+  const actualPlaceholder = placeholder || t("tasteNotes.placeholder");
 
   const searchTasteNotes = useCallback(async (query: string) => {
     if (query.length < MIN_SEARCH_LENGTH) {
@@ -58,18 +58,20 @@ function TasteNoteAutocomplete({
 
     setIsLoading(true);
     try {
-      const response = await api.get<TasteNote[]>('/taste-notes/search', {
+      const response = await api.get<TasteNote[]>("/taste-notes/search", {
         params: { q: query },
       });
 
       if (response.success && response.data) {
         // Filter out already selected notes
         const selectedIds = new Set(selectedNotes.map((n) => n.id));
-        const filteredOptions = response.data.filter((n) => !selectedIds.has(n.id));
+        const filteredOptions = response.data.filter((n) =>
+          !selectedIds.has(n.id)
+        );
         setOptions(filteredOptions);
       }
     } catch (error) {
-      console.error('Failed to search taste notes:', error);
+      console.error("Failed to search taste notes:", error);
       setOptions([]);
     } finally {
       setIsLoading(false);
@@ -110,19 +112,19 @@ function TasteNoteAutocomplete({
         onChange(newValue);
       }
     },
-    [onChange, maxSelections]
+    [onChange, maxSelections],
   );
 
   const handleRemove = useCallback(
     (noteId: string) => {
       onChange(selectedNotes.filter((n) => n.id !== noteId));
     },
-    [selectedNotes, onChange]
+    [selectedNotes, onChange],
   );
 
   const getOptionLabel = (args: { option?: Record<string, unknown> }) => {
     const option = args?.option as TasteNote | undefined;
-    return option?.fullPath || '';
+    return option?.fullPath || "";
   };
 
   return (
@@ -142,15 +144,13 @@ function TasteNoteAutocomplete({
         getValueLabel={getOptionLabel}
         labelKey="fullPath"
         valueKey="id"
-        noResultsMsg={
-          inputValue.length < MIN_SEARCH_LENGTH
-            ? t('tasteNotes.minChars', { count: MIN_SEARCH_LENGTH })
-            : t('tasteNotes.noResults')
-        }
+        noResultsMsg={inputValue.length < MIN_SEARCH_LENGTH
+          ? t("tasteNotes.minChars", { count: MIN_SEARCH_LENGTH })
+          : t("tasteNotes.noResults")}
         overrides={{
           ControlContainer: {
             style: {
-              minHeight: '48px',
+              minHeight: "48px",
             },
           },
           Dropdown: {
@@ -162,7 +162,7 @@ function TasteNoteAutocomplete({
             style: ({ $isHighlighted }: { $isHighlighted: boolean }) => ({
               backgroundColor: $isHighlighted
                 ? theme.colors.backgroundSecondary
-                : 'transparent',
+                : "transparent",
             }),
           },
           Popover: {
@@ -178,10 +178,10 @@ function TasteNoteAutocomplete({
           },
           ValueContainer: {
             style: {
-              flexWrap: 'wrap',
-              gap: '4px',
-              paddingTop: '4px',
-              paddingBottom: '4px',
+              flexWrap: "wrap",
+              gap: "4px",
+              paddingTop: "4px",
+              paddingBottom: "4px",
             },
           },
         }}
@@ -190,10 +190,10 @@ function TasteNoteAutocomplete({
       {selectedNotes.length > 0 && (
         <div
           className={css({
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '8px',
-            marginTop: '12px',
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "8px",
+            marginTop: "12px",
           })}
         >
           {selectedNotes.map((note) => (
@@ -205,8 +205,8 @@ function TasteNoteAutocomplete({
                 Root: {
                   style: {
                     backgroundColor: note.colour || theme.colors.accent,
-                    marginRight: '0',
-                    marginBottom: '0',
+                    marginRight: "0",
+                    marginBottom: "0",
                   },
                 },
                 Text: {
@@ -224,14 +224,21 @@ function TasteNoteAutocomplete({
 
       <div
         className={css({
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '8px',
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: "8px",
         })}
       >
-        <ParagraphSmall color={theme.colors.contentSecondary} marginTop="0" marginBottom="0">
-          {t('tasteNotes.selected', { count: selectedNotes.length, max: maxSelections })}
+        <ParagraphSmall
+          color={theme.colors.contentSecondary}
+          marginTop="0"
+          marginBottom="0"
+        >
+          {t("tasteNotes.selected", {
+            count: selectedNotes.length,
+            max: maxSelections,
+          })}
         </ParagraphSmall>
         <StyledLink
           href={SCAA_REFERENCE_URL}
@@ -241,7 +248,7 @@ function TasteNoteAutocomplete({
             fontSize: theme.typography.ParagraphSmall.fontSize,
           }}
         >
-          {t('tasteNotes.scaaReference')} ↗
+          {t("tasteNotes.scaaReference")} ↗
         </StyledLink>
       </div>
     </div>

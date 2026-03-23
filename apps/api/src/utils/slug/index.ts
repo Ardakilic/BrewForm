@@ -3,8 +3,8 @@
  * URL-safe slug generation with uniqueness
  */
 
-import slugify from 'slugify';
-import { nanoid } from 'nanoid';
+import slugify from "slugify";
+import { nanoid } from "nanoid";
 
 /**
  * Slugify options
@@ -89,7 +89,7 @@ export function createCoffeeSlug(name: string, vendorName?: string): string {
  */
 export function extractBaseSlug(slug: string): string {
   // Remove trailing -xxxxx where x is alphanumeric (nanoid suffix)
-  return slug.replace(/-[a-zA-Z0-9]{8}$/, '');
+  return slug.replace(/-[a-zA-Z0-9]{8}$/, "");
 }
 
 /**

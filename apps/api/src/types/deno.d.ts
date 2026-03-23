@@ -19,29 +19,29 @@ declare namespace Deno {
   }
 
   interface NetAddr {
-    transport: 'tcp' | 'udp';
+    transport: "tcp" | "udp";
     hostname: string;
     port: number;
   }
 
   function serve(
     options: ServeOptions,
-    handler: (req: Request) => Response | Promise<Response>
+    handler: (req: Request) => Response | Promise<Response>,
   ): HttpServer;
   function serve(
-    handler: (req: Request) => Response | Promise<Response>
+    handler: (req: Request) => Response | Promise<Response>,
   ): HttpServer;
 
   function exit(code?: number): never;
 
   type Signal =
-    | 'SIGTERM'
-    | 'SIGINT'
-    | 'SIGKILL'
-    | 'SIGHUP'
-    | 'SIGQUIT'
-    | 'SIGUSR1'
-    | 'SIGUSR2';
+    | "SIGTERM"
+    | "SIGINT"
+    | "SIGKILL"
+    | "SIGHUP"
+    | "SIGQUIT"
+    | "SIGUSR1"
+    | "SIGUSR2";
 
   function addSignalListener(signal: Signal, handler: () => void): void;
   function removeSignalListener(signal: Signal, handler: () => void): void;

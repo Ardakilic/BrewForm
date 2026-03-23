@@ -3,9 +3,9 @@
  * Redis client singleton for caching and rate limiting
  */
 
-import Redis from 'ioredis';
-import { getConfig } from '../../config/index.ts';
-import { getLogger } from '../logger/index.ts';
+import Redis from "ioredis";
+import { getConfig } from "../../config/index.ts";
+import { getLogger } from "../logger/index.ts";
 
 // Singleton instance
 let redisInstance: Redis | null = null;
@@ -24,9 +24,9 @@ export function getRedis(): Redis {
       retryStrategy: (times) => {
         if (times > 3) {
           logger.error({
-            type: 'redis',
-            operation: 'connection',
-            message: 'Max retries reached',
+            type: "redis",
+            operation: "connection",
+            message: "Max retries reached",
           });
           return null;
         }
@@ -35,20 +35,28 @@ export function getRedis(): Redis {
       lazyConnect: true,
     });
 
-    redisInstance.on('connect', () => {
-      logger.info({ type: 'redis', operation: 'connect', message: 'Connected to Redis' });
+    redisInstance.on("connect", () => {
+      logger.info({
+        type: "redis",
+        operation: "connect",
+        message: "Connected to Redis",
+      });
     });
 
-    redisInstance.on('error', (error) => {
+    redisInstance.on("error", (error) => {
       logger.error({
-        type: 'redis',
-        operation: 'error',
+        type: "redis",
+        operation: "error",
         error: error.message,
       });
     });
 
-    redisInstance.on('close', () => {
-      logger.info({ type: 'redis', operation: 'close', message: 'Redis connection closed' });
+    redisInstance.on("close", () => {
+      logger.info({
+        type: "redis",
+        operation: "close",
+        message: "Redis connection closed",
+      });
     });
   }
 
@@ -62,7 +70,7 @@ export async function disconnectRedis(): Promise<void> {
   if (redisInstance) {
     await redisInstance.quit();
     redisInstance = null;
-    getLogger().info('Redis client disconnected');
+    getLogger().info("Redis client disconnected");
   }
 }
 
@@ -73,12 +81,12 @@ export async function checkRedisConnection(): Promise<boolean> {
   try {
     const redis = getRedis();
     const result = await redis.ping();
-    return result === 'PONG';
+    return result === "PONG";
   } catch (error) {
     getLogger().error({
-      type: 'redis',
-      operation: 'health_check',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      type: "redis",
+      operation: "health_check",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
     return false;
   }
@@ -90,7 +98,7 @@ export async function checkRedisConnection(): Promise<boolean> {
 export async function cacheGetOrSet<T>(
   key: string,
   fetcher: () => Promise<T>,
-  ttlSeconds = 300
+  ttlSeconds = 300,
 ): Promise<T> {
   const redis = getRedis();
   const cached = await redis.get(key);
@@ -110,7 +118,7 @@ export async function cacheGetOrSet<T>(
 export async function invalidateCache(pattern: string): Promise<number> {
   const redis = getRedis();
   const keys = await redis.keys(pattern);
-  
+
   if (keys.length === 0) {
     return 0;
   }
@@ -125,7 +133,7 @@ export async function checkRateLimit(
   identifier: string,
   action: string,
   maxRequests: number,
-  windowMs: number
+  windowMs: number,
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
   const redis = getRedis();
   const key = `ratelimit:${action}:${identifier}`;
@@ -139,9 +147,11 @@ export async function checkRateLimit(
   const count = await redis.zcard(key);
 
   if (count >= maxRequests) {
-    const oldestEntry = await redis.zrange(key, 0, 0, 'WITHSCORES');
-    const resetAt = oldestEntry.length > 1 ? Number.parseInt(oldestEntry[1]) + windowMs : now + windowMs;
-    
+    const oldestEntry = await redis.zrange(key, 0, 0, "WITHSCORES");
+    const resetAt = oldestEntry.length > 1
+      ? Number.parseInt(oldestEntry[1]) + windowMs
+      : now + windowMs;
+
     return {
       allowed: false,
       remaining: 0,
@@ -172,10 +182,10 @@ export const CacheKeys = {
   equipment: (type: string, id: string) => `equipment:${type}:${id}`,
   vendor: (id: string) => `vendor:${id}`,
   coffee: (id: string) => `coffee:${id}`,
-  latestRecipes: () => 'recipes:latest',
-  popularRecipes: () => 'recipes:popular',
-  brewMethods: () => 'brew-methods',
-  drinkTypes: () => 'drink-types',
+  latestRecipes: () => "recipes:latest",
+  popularRecipes: () => "recipes:popular",
+  brewMethods: () => "brew-methods",
+  drinkTypes: () => "drink-types",
 };
 
 export const redis = {

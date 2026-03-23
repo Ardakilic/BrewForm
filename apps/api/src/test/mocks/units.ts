@@ -3,7 +3,7 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from '../mock-fn.ts';
+import { mockFn } from "../mock-fn.ts";
 
 export const calculateBrewRatio = mockFn(
   (...args: unknown[]) => (args[1] as number) / (args[0] as number),

@@ -2,13 +2,13 @@
  * Recipe Module Tests
  */
 
-import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { Hono } from 'hono';
-import { mockFn } from '../../test/mock-fn.ts';
-import { setPrisma } from '../../test/mocks/database.ts';
-import recipeModule from './index.ts';
-import type { Context } from 'hono';
+import { beforeEach, describe, it } from "@std/testing";
+import { expect } from "@std/expect";
+import { Hono } from "hono";
+import { mockFn } from "../../test/mock-fn.ts";
+import { setPrisma } from "../../test/mocks/database.ts";
+import recipeModule from "./index.ts";
+import type { Context } from "hono";
 
 // API Response type for testing
 interface ApiResponse {
@@ -22,11 +22,17 @@ interface ApiResponse {
 // Test error handler
 const testErrorHandler = (err: Error & { statusCode?: number }, c: Context) => {
   const statusCode = err.statusCode || 500;
-  const code = err.name === 'NotFoundError' ? 'NOT_FOUND'
-    : err.name === 'ForbiddenError' ? 'FORBIDDEN'
-    : err.name === 'ValidationError' ? 'VALIDATION_ERROR'
-    : 'INTERNAL_ERROR';
-  return c.json({ success: false, error: { code, message: err.message } }, statusCode as 400 | 403 | 404 | 422 | 500);
+  const code = err.name === "NotFoundError"
+    ? "NOT_FOUND"
+    : err.name === "ForbiddenError"
+    ? "FORBIDDEN"
+    : err.name === "ValidationError"
+    ? "VALIDATION_ERROR"
+    : "INTERNAL_ERROR";
+  return c.json(
+    { success: false, error: { code, message: err.message } },
+    statusCode as 400 | 403 | 404 | 422 | 500,
+  );
 };
 
 const createLocalMockPrisma = () => {
@@ -51,12 +57,13 @@ const createLocalMockPrisma = () => {
       delete: mockFn(),
     },
   };
-  // deno-lint-ignore no-explicit-any
-  mp.$transaction = mockFn((...args: unknown[]) => (args[0] as (tx: unknown) => Promise<unknown>)(mp));
+  mp.$transaction = mockFn((...args: unknown[]) =>
+    (args[0] as (tx: unknown) => Promise<unknown>)(mp)
+  );
   return mp;
 };
 
-describe('Recipe Module', () => {
+describe("Recipe Module", () => {
   let app: Hono;
   let mockPrisma: ReturnType<typeof createLocalMockPrisma>;
 
@@ -64,45 +71,45 @@ describe('Recipe Module', () => {
     mockPrisma = createLocalMockPrisma();
     setPrisma(mockPrisma);
     app = new Hono();
-    app.route('/recipes', recipeModule);
+    app.route("/recipes", recipeModule);
     app.onError(testErrorHandler);
   });
 
-  describe('GET /recipes', () => {
-    it('should return paginated public recipes', async () => {
+  describe("GET /recipes", () => {
+    it("should return paginated public recipes", async () => {
       const mockRecipes = [
         {
-          id: 'recipe_1',
-          slug: 'perfect-espresso',
-          visibility: 'PUBLIC',
+          id: "recipe_1",
+          slug: "perfect-espresso",
+          visibility: "PUBLIC",
           currentVersion: {
-            title: 'Perfect Espresso',
-            brewMethod: 'ESPRESSO_MACHINE',
-            drinkType: 'ESPRESSO',
+            title: "Perfect Espresso",
+            brewMethod: "ESPRESSO_MACHINE",
+            drinkType: "ESPRESSO",
             doseGrams: 18,
             yieldGrams: 36,
           },
-          user: { username: 'coffeemaster', displayName: 'Coffee Master' },
+          user: { username: "coffeemaster", displayName: "Coffee Master" },
         },
         {
-          id: 'recipe_2',
-          slug: 'morning-v60',
-          visibility: 'PUBLIC',
+          id: "recipe_2",
+          slug: "morning-v60",
+          visibility: "PUBLIC",
           currentVersion: {
-            title: 'Morning V60',
-            brewMethod: 'POUR_OVER_V60',
-            drinkType: 'POUR_OVER',
+            title: "Morning V60",
+            brewMethod: "POUR_OVER_V60",
+            drinkType: "POUR_OVER",
             doseGrams: 15,
           },
-          user: { username: 'barista', displayName: 'Barista' },
+          user: { username: "barista", displayName: "Barista" },
         },
       ];
 
       mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
       mockPrisma.recipe.count.mockResolvedValue(2);
 
-      const response = await app.request('/recipes?visibility=PUBLIC');
-      
+      const response = await app.request("/recipes?visibility=PUBLIC");
+
       expect(response.status).toBe(200);
       const body = await response.json() as ApiResponse;
       expect(body.success).toBe(true);
@@ -110,132 +117,151 @@ describe('Recipe Module', () => {
       expect(body.pagination).toBeDefined();
     });
 
-    it('should filter by single brew method', async () => {
+    it("should filter by single brew method", async () => {
       mockPrisma.recipe.findMany.mockResolvedValue([]);
       mockPrisma.recipe.count.mockResolvedValue(0);
 
-      const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE');
-      
+      const response = await app.request(
+        "/recipes?brewMethod=ESPRESSO_MACHINE",
+      );
+
       expect(response.status).toBe(200);
       expect(mockPrisma.recipe.findMany.calls.length).toBeGreaterThan(0);
     });
 
-    it('should filter by multiple brew methods with OR logic (comma-separated)', async () => {
+    it("should filter by multiple brew methods with OR logic (comma-separated)", async () => {
       mockPrisma.recipe.findMany.mockResolvedValue([]);
       mockPrisma.recipe.count.mockResolvedValue(0);
 
-      const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE,POUR_OVER_V60');
-      
+      const response = await app.request(
+        "/recipes?brewMethod=ESPRESSO_MACHINE,POUR_OVER_V60",
+      );
+
       expect(response.status).toBe(200);
       expect(mockPrisma.recipe.findMany.calls.length).toBeGreaterThan(0);
     });
 
-    it('should filter by multiple drink types with OR logic (comma-separated)', async () => {
+    it("should filter by multiple drink types with OR logic (comma-separated)", async () => {
       mockPrisma.recipe.findMany.mockResolvedValue([]);
       mockPrisma.recipe.count.mockResolvedValue(0);
 
-      const response = await app.request('/recipes?drinkType=ESPRESSO,LUNGO');
-      
+      const response = await app.request("/recipes?drinkType=ESPRESSO,LUNGO");
+
       expect(response.status).toBe(200);
       expect(mockPrisma.recipe.findMany.calls.length).toBeGreaterThan(0);
     });
 
-    it('should filter by combined multiple brew methods and drink types', async () => {
+    it("should filter by combined multiple brew methods and drink types", async () => {
       mockPrisma.recipe.findMany.mockResolvedValue([]);
       mockPrisma.recipe.count.mockResolvedValue(0);
 
-      const response = await app.request('/recipes?brewMethod=ESPRESSO_MACHINE,AEROPRESS&drinkType=ESPRESSO,AMERICANO');
-      
+      const response = await app.request(
+        "/recipes?brewMethod=ESPRESSO_MACHINE,AEROPRESS&drinkType=ESPRESSO,AMERICANO",
+      );
+
       expect(response.status).toBe(200);
       expect(mockPrisma.recipe.findMany.calls.length).toBeGreaterThan(0);
     });
   });
 
-  describe('GET /recipes/:slug', () => {
-    it('should return a recipe by slug', async () => {
+  describe("GET /recipes/:slug", () => {
+    it("should return a recipe by slug", async () => {
       const fullRecipe = {
-        id: 'recipe_1',
-        slug: 'perfect-espresso',
-        visibility: 'PUBLIC',
-        userId: 'user_456',
+        id: "recipe_1",
+        slug: "perfect-espresso",
+        visibility: "PUBLIC",
+        userId: "user_456",
         currentVersion: {
-          id: 'version_1',
-          title: 'Perfect Espresso',
-          brewMethod: 'ESPRESSO_MACHINE',
-          drinkType: 'ESPRESSO',
+          id: "version_1",
+          title: "Perfect Espresso",
+          brewMethod: "ESPRESSO_MACHINE",
+          drinkType: "ESPRESSO",
           doseGrams: 18,
           yieldGrams: 36,
           brewTimeSec: 28,
-          description: 'My perfect morning espresso',
+          description: "My perfect morning espresso",
         },
-        user: { username: 'coffeemaster', displayName: 'Coffee Master' },
+        user: { username: "coffeemaster", displayName: "Coffee Master" },
         _count: { versions: 1, forks: 0, comments: 0 },
       };
 
       // First call for slug lookup, second call for full recipe fetch
       mockPrisma.recipe.findUnique
-        .mockResolvedValueOnce({ id: 'recipe_1', slug: 'perfect-espresso' })
+        .mockResolvedValueOnce({ id: "recipe_1", slug: "perfect-espresso" })
         .mockResolvedValueOnce(fullRecipe);
       mockPrisma.recipe.update.mockResolvedValue({});
 
-      const response = await app.request('/recipes/perfect-espresso');
-      
+      const response = await app.request("/recipes/perfect-espresso");
+
       expect(response.status).toBe(200);
       const body = await response.json() as ApiResponse;
       expect(body.success).toBe(true);
-      expect((body.data as { slug: string }).slug).toBe('perfect-espresso');
-      expect((body.data as { currentVersion: { title: string } }).currentVersion.title).toBe('Perfect Espresso');
+      expect((body.data as { slug: string }).slug).toBe("perfect-espresso");
+      expect(
+        (body.data as { currentVersion: { title: string } }).currentVersion
+          .title,
+      ).toBe("Perfect Espresso");
     });
 
-    it('should return 404 for non-existent recipe', async () => {
+    it("should return 404 for non-existent recipe", async () => {
       mockPrisma.recipe.findUnique.mockResolvedValueOnce(null);
 
-      const response = await app.request('/recipes/nonexistent-recipe');
-      
+      const response = await app.request("/recipes/nonexistent-recipe");
+
       expect(response.status).toBe(404);
     });
   });
 
-  describe('POST /recipes', () => {
-    it('should create a new recipe', async () => {
+  describe("POST /recipes", () => {
+    it("should create a new recipe", async () => {
       const mockCreatedRecipe = {
-        id: 'recipe_new',
-        slug: 'my-new-espresso',
-        visibility: 'DRAFT',
-        userId: 'user_123',
-        versions: [{ id: 'version_1' }],
-        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+        id: "recipe_new",
+        slug: "my-new-espresso",
+        visibility: "DRAFT",
+        userId: "user_123",
+        versions: [{ id: "version_1" }],
+        user: {
+          id: "user_123",
+          username: "testuser",
+          displayName: "Test User",
+          avatarUrl: null,
+        },
       };
-      
+
       const mockUpdatedRecipe = {
-        id: 'recipe_new',
-        slug: 'my-new-espresso',
-        visibility: 'DRAFT',
-        userId: 'user_123',
-        currentVersionId: 'version_1',
+        id: "recipe_new",
+        slug: "my-new-espresso",
+        visibility: "DRAFT",
+        userId: "user_123",
+        currentVersionId: "version_1",
         currentVersion: {
-          id: 'version_1',
-          title: 'My New Espresso',
-          brewMethod: 'ESPRESSO_MACHINE',
-          drinkType: 'ESPRESSO',
+          id: "version_1",
+          title: "My New Espresso",
+          brewMethod: "ESPRESSO_MACHINE",
+          drinkType: "ESPRESSO",
           doseGrams: 18,
           yieldGrams: 36,
         },
-        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+        user: {
+          id: "user_123",
+          username: "testuser",
+          displayName: "Test User",
+          avatarUrl: null,
+        },
       };
 
       mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
       mockPrisma.recipe.update.mockResolvedValue(mockUpdatedRecipe);
 
-      const response = await app.request('/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await app.request("/recipes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          visibility: 'DRAFT',
+          visibility: "DRAFT",
           version: {
-            title: 'My New Espresso',
-            brewMethod: 'ESPRESSO_MACHINE',
-            drinkType: 'ESPRESSO',
+            title: "My New Espresso",
+            brewMethod: "ESPRESSO_MACHINE",
+            drinkType: "ESPRESSO",
             doseGrams: 18,
             yieldGrams: 36,
           },
@@ -247,49 +273,59 @@ describe('Recipe Module', () => {
       expect(body.success).toBe(true);
     });
 
-    it('should create a recipe with pressure field', async () => {
+    it("should create a recipe with pressure field", async () => {
       const mockCreatedRecipe = {
-        id: 'recipe_pressure',
-        slug: 'espresso-with-pressure',
-        visibility: 'DRAFT',
-        userId: 'user_123',
-        versions: [{ id: 'version_1' }],
-        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+        id: "recipe_pressure",
+        slug: "espresso-with-pressure",
+        visibility: "DRAFT",
+        userId: "user_123",
+        versions: [{ id: "version_1" }],
+        user: {
+          id: "user_123",
+          username: "testuser",
+          displayName: "Test User",
+          avatarUrl: null,
+        },
       };
-      
+
       const mockUpdatedRecipe = {
-        id: 'recipe_pressure',
-        slug: 'espresso-with-pressure',
-        visibility: 'DRAFT',
-        userId: 'user_123',
-        currentVersionId: 'version_1',
+        id: "recipe_pressure",
+        slug: "espresso-with-pressure",
+        visibility: "DRAFT",
+        userId: "user_123",
+        currentVersionId: "version_1",
         currentVersion: {
-          id: 'version_1',
-          title: 'Espresso with Pressure',
-          brewMethod: 'ESPRESSO_MACHINE',
-          drinkType: 'ESPRESSO',
+          id: "version_1",
+          title: "Espresso with Pressure",
+          brewMethod: "ESPRESSO_MACHINE",
+          drinkType: "ESPRESSO",
           doseGrams: 18,
           yieldGrams: 36,
-          pressure: '9',
+          pressure: "9",
         },
-        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+        user: {
+          id: "user_123",
+          username: "testuser",
+          displayName: "Test User",
+          avatarUrl: null,
+        },
       };
 
       mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
       mockPrisma.recipe.update.mockResolvedValue(mockUpdatedRecipe);
 
-      const response = await app.request('/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await app.request("/recipes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          visibility: 'DRAFT',
+          visibility: "DRAFT",
           version: {
-            title: 'Espresso with Pressure',
-            brewMethod: 'ESPRESSO_MACHINE',
-            drinkType: 'ESPRESSO',
+            title: "Espresso with Pressure",
+            brewMethod: "ESPRESSO_MACHINE",
+            drinkType: "ESPRESSO",
             doseGrams: 18,
             yieldGrams: 36,
-            pressure: '9',
+            pressure: "9",
           },
         }),
       });
@@ -299,31 +335,36 @@ describe('Recipe Module', () => {
       expect(body.success).toBe(true);
     });
 
-    it('should accept variable pressure values', async () => {
+    it("should accept variable pressure values", async () => {
       const mockCreatedRecipe = {
-        id: 'recipe_variable_pressure',
-        slug: 'gagguino-espresso',
-        visibility: 'DRAFT',
-        userId: 'user_123',
-        versions: [{ id: 'version_1' }],
-        user: { id: 'user_123', username: 'testuser', displayName: 'Test User', avatarUrl: null },
+        id: "recipe_variable_pressure",
+        slug: "gagguino-espresso",
+        visibility: "DRAFT",
+        userId: "user_123",
+        versions: [{ id: "version_1" }],
+        user: {
+          id: "user_123",
+          username: "testuser",
+          displayName: "Test User",
+          avatarUrl: null,
+        },
       };
 
       mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
       mockPrisma.recipe.update.mockResolvedValue({});
 
-      const response = await app.request('/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await app.request("/recipes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          visibility: 'DRAFT',
+          visibility: "DRAFT",
           version: {
-            title: 'Gagguino Espresso',
-            brewMethod: 'ESPRESSO_MACHINE',
-            drinkType: 'ESPRESSO',
+            title: "Gagguino Espresso",
+            brewMethod: "ESPRESSO_MACHINE",
+            drinkType: "ESPRESSO",
             doseGrams: 18,
             yieldGrams: 36,
-            pressure: '6-9',
+            pressure: "6-9",
           },
         }),
       });
@@ -331,12 +372,12 @@ describe('Recipe Module', () => {
       expect(response.status).toBe(201);
     });
 
-    it('should validate required fields', async () => {
-      const response = await app.request('/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    it("should validate required fields", async () => {
+      const response = await app.request("/recipes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          visibility: 'PUBLIC',
+          visibility: "PUBLIC",
           version: {
             // Missing required fields
           },
@@ -347,47 +388,47 @@ describe('Recipe Module', () => {
     });
   });
 
-  describe('PATCH /recipes/:id', () => {
-    it('should update recipe visibility', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+  describe("PATCH /recipes/:id", () => {
+    it("should update recipe visibility", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'user_123',
-        visibility: 'DRAFT',
+        userId: "user_123",
+        visibility: "DRAFT",
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
       mockPrisma.recipe.update.mockResolvedValue({
         ...mockRecipe,
-        visibility: 'PUBLIC',
+        visibility: "PUBLIC",
       });
 
       const response = await app.request(`/recipes/${recipeId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          visibility: 'PUBLIC',
+          visibility: "PUBLIC",
         }),
       });
 
       expect(response.status).toBe(200);
     });
 
-    it('should reject update by non-owner', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+    it("should reject update by non-owner", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'other_user', // Different from auth user
-        visibility: 'DRAFT',
+        userId: "other_user", // Different from auth user
+        visibility: "DRAFT",
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          visibility: 'PUBLIC',
+          visibility: "PUBLIC",
         }),
       });
 
@@ -395,12 +436,12 @@ describe('Recipe Module', () => {
     });
   });
 
-  describe('DELETE /recipes/:id', () => {
-    it('should soft delete recipe (owner)', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+  describe("DELETE /recipes/:id", () => {
+    it("should soft delete recipe (owner)", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'user_123',
+        userId: "user_123",
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
@@ -410,46 +451,46 @@ describe('Recipe Module', () => {
       });
 
       const response = await app.request(`/recipes/${recipeId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       expect(response.status).toBe(200);
     });
 
-    it('should reject delete by non-owner', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+    it("should reject delete by non-owner", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'other_user',
+        userId: "other_user",
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       expect(response.status).toBe(403);
     });
   });
 
-  describe('POST /recipes/:id/versions', () => {
-    it('should create a new version', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+  describe("POST /recipes/:id/versions", () => {
+    it("should create a new version", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'user_123',
-        currentVersionId: 'version_1',
+        userId: "user_123",
+        currentVersionId: "version_1",
         versions: [{ versionNumber: 1 }],
       };
 
       const mockNewVersion = {
-        id: 'version_2',
+        id: "version_2",
         recipeId,
         versionNumber: 2,
-        title: 'Updated Espresso',
-        brewMethod: 'ESPRESSO_MACHINE',
-        drinkType: 'ESPRESSO',
+        title: "Updated Espresso",
+        brewMethod: "ESPRESSO_MACHINE",
+        drinkType: "ESPRESSO",
         doseGrams: 18,
         yieldGrams: 40,
       };
@@ -459,12 +500,12 @@ describe('Recipe Module', () => {
       mockPrisma.recipe.update.mockResolvedValue({});
 
       const response = await app.request(`/recipes/${recipeId}/versions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: 'Updated Espresso',
-          brewMethod: 'ESPRESSO_MACHINE',
-          drinkType: 'ESPRESSO',
+          title: "Updated Espresso",
+          brewMethod: "ESPRESSO_MACHINE",
+          drinkType: "ESPRESSO",
           doseGrams: 18,
           yieldGrams: 40,
         }),
@@ -474,19 +515,19 @@ describe('Recipe Module', () => {
     });
   });
 
-  describe('POST /recipes/:id/fork', () => {
-    it('should fork a public recipe', async () => {
-      const originalRecipeId = 'clh1234567890abcdefghij01';
+  describe("POST /recipes/:id/fork", () => {
+    it("should fork a public recipe", async () => {
+      const originalRecipeId = "clh1234567890abcdefghij01";
       const mockOriginalRecipe = {
         id: originalRecipeId,
-        userId: 'other_user',
-        visibility: 'PUBLIC',
+        userId: "other_user",
+        visibility: "PUBLIC",
         currentVersion: {
-          id: 'version_1',
-          title: 'Original Espresso',
-          description: 'A great espresso',
-          brewMethod: 'ESPRESSO_MACHINE',
-          drinkType: 'ESPRESSO',
+          id: "version_1",
+          title: "Original Espresso",
+          description: "A great espresso",
+          brewMethod: "ESPRESSO_MACHINE",
+          drinkType: "ESPRESSO",
           coffeeId: null,
           coffeeName: null,
           roastDate: null,
@@ -504,7 +545,7 @@ describe('Recipe Module', () => {
           yieldGrams: 36,
           brewTimeSec: 28,
           tempCelsius: 93,
-          pressure: '9',
+          pressure: "9",
           brewRatio: 2.0,
           flowRate: null,
           preparations: null,
@@ -517,11 +558,11 @@ describe('Recipe Module', () => {
       };
 
       const mockForkedRecipe = {
-        id: 'clh1234567890abcdefghij02',
-        slug: 'forked-original-espresso',
-        userId: 'user_123',
+        id: "clh1234567890abcdefghij02",
+        slug: "forked-original-espresso",
+        userId: "user_123",
         forkedFromId: originalRecipeId,
-        versions: [{ id: 'new_version_1' }],
+        versions: [{ id: "new_version_1" }],
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockOriginalRecipe);
@@ -529,65 +570,70 @@ describe('Recipe Module', () => {
       mockPrisma.recipe.update.mockResolvedValue({});
 
       const response = await app.request(`/recipes/${originalRecipeId}/fork`, {
-        method: 'POST',
+        method: "POST",
       });
 
       expect(response.status).toBe(201);
     });
 
-    it('should reject forking private recipes', async () => {
-      const recipeId = 'clh1234567890abcdefghij03';
+    it("should reject forking private recipes", async () => {
+      const recipeId = "clh1234567890abcdefghij03";
       const mockRecipe = {
         id: recipeId,
-        userId: 'other_user',
-        visibility: 'PRIVATE',
+        userId: "other_user",
+        visibility: "PRIVATE",
         currentVersion: {
-          id: 'version_1',
-          title: 'Private Recipe',
+          id: "version_1",
+          title: "Private Recipe",
         },
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}/fork`, {
-        method: 'POST',
+        method: "POST",
       });
 
       expect(response.status).toBe(403);
     });
 
-    it('should reject forking non-existent recipes', async () => {
+    it("should reject forking non-existent recipes", async () => {
       mockPrisma.recipe.findUnique.mockResolvedValue(null);
 
-      const response = await app.request('/recipes/nonexistent/fork', {
-        method: 'POST',
+      const response = await app.request("/recipes/nonexistent/fork", {
+        method: "POST",
       });
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe('GET /recipes/latest', () => {
-    it('should return latest public recipes', async () => {
+  describe("GET /recipes/latest", () => {
+    it("should return latest public recipes", async () => {
       const mockRecipes = [
         {
-          id: 'recipe_1',
-          slug: 'latest-espresso',
-          visibility: 'PUBLIC',
+          id: "recipe_1",
+          slug: "latest-espresso",
+          visibility: "PUBLIC",
           currentVersion: {
-            id: 'v1',
-            title: 'Latest Espresso',
-            brewMethod: 'ESPRESSO_MACHINE',
-            drinkType: 'ESPRESSO',
+            id: "v1",
+            title: "Latest Espresso",
+            brewMethod: "ESPRESSO_MACHINE",
+            drinkType: "ESPRESSO",
             rating: 9,
           },
-          user: { id: 'user_1', username: 'barista1', displayName: 'Barista One', avatarUrl: null },
+          user: {
+            id: "user_1",
+            username: "barista1",
+            displayName: "Barista One",
+            avatarUrl: null,
+          },
         },
       ];
 
       mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
 
-      const response = await app.request('/recipes/latest');
+      const response = await app.request("/recipes/latest");
 
       expect(response.status).toBe(200);
       const body = await response.json() as ApiResponse;
@@ -596,28 +642,33 @@ describe('Recipe Module', () => {
     });
   });
 
-  describe('GET /recipes/popular', () => {
-    it('should return popular public recipes', async () => {
+  describe("GET /recipes/popular", () => {
+    it("should return popular public recipes", async () => {
       const mockRecipes = [
         {
-          id: 'recipe_1',
-          slug: 'popular-v60',
-          visibility: 'PUBLIC',
+          id: "recipe_1",
+          slug: "popular-v60",
+          visibility: "PUBLIC",
           favouriteCount: 100,
           currentVersion: {
-            id: 'v1',
-            title: 'Popular V60',
-            brewMethod: 'POUR_OVER_V60',
-            drinkType: 'POUR_OVER',
+            id: "v1",
+            title: "Popular V60",
+            brewMethod: "POUR_OVER_V60",
+            drinkType: "POUR_OVER",
             rating: 10,
           },
-          user: { id: 'user_1', username: 'master', displayName: 'Coffee Master', avatarUrl: null },
+          user: {
+            id: "user_1",
+            username: "master",
+            displayName: "Coffee Master",
+            avatarUrl: null,
+          },
         },
       ];
 
       mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
 
-      const response = await app.request('/recipes/popular');
+      const response = await app.request("/recipes/popular");
 
       expect(response.status).toBe(200);
       const body = await response.json() as ApiResponse;
@@ -625,18 +676,18 @@ describe('Recipe Module', () => {
     });
   });
 
-  describe('GET /recipes/:id/versions', () => {
-    it('should return recipe versions for owner', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+  describe("GET /recipes/:id/versions", () => {
+    it("should return recipe versions for owner", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'user_123',
-        visibility: 'PRIVATE',
+        userId: "user_123",
+        visibility: "PRIVATE",
       };
 
       const mockVersions = [
-        { id: 'v2', versionNumber: 2, title: 'Updated Recipe' },
-        { id: 'v1', versionNumber: 1, title: 'Original Recipe' },
+        { id: "v2", versionNumber: 2, title: "Updated Recipe" },
+        { id: "v1", versionNumber: 1, title: "Original Recipe" },
       ];
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
@@ -649,16 +700,16 @@ describe('Recipe Module', () => {
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    it('should return recipe versions for public recipes', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+    it("should return recipe versions for public recipes", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'other_user',
-        visibility: 'PUBLIC',
+        userId: "other_user",
+        visibility: "PUBLIC",
       };
 
       const mockVersions = [
-        { id: 'v1', versionNumber: 1, title: 'Public Recipe' },
+        { id: "v1", versionNumber: 1, title: "Public Recipe" },
       ];
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
@@ -669,12 +720,12 @@ describe('Recipe Module', () => {
       expect(response.status).toBe(200);
     });
 
-    it('should reject viewing versions of private recipes by non-owner', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+    it("should reject viewing versions of private recipes by non-owner", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'other_user',
-        visibility: 'PRIVATE',
+        userId: "other_user",
+        visibility: "PRIVATE",
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
@@ -684,130 +735,142 @@ describe('Recipe Module', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should return 404 for non-existent recipe', async () => {
+    it("should return 404 for non-existent recipe", async () => {
       mockPrisma.recipe.findUnique.mockResolvedValue(null);
 
-      const response = await app.request('/recipes/nonexistent/versions');
+      const response = await app.request("/recipes/nonexistent/versions");
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe('GET /recipes - filtering', () => {
-    it('should filter recipes by brew method', async () => {
+  describe("GET /recipes - filtering", () => {
+    it("should filter recipes by brew method", async () => {
       const mockRecipes = [
         {
-          id: 'recipe_1',
-          visibility: 'PUBLIC',
-          currentVersion: { title: 'V60 Recipe', brewMethod: 'POUR_OVER_V60', drinkType: 'POUR_OVER' },
-          user: { username: 'user1' },
+          id: "recipe_1",
+          visibility: "PUBLIC",
+          currentVersion: {
+            title: "V60 Recipe",
+            brewMethod: "POUR_OVER_V60",
+            drinkType: "POUR_OVER",
+          },
+          user: { username: "user1" },
         },
       ];
 
       mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
       mockPrisma.recipe.count.mockResolvedValue(1);
 
-      const response = await app.request('/recipes?brewMethod=POUR_OVER_V60');
+      const response = await app.request("/recipes?brewMethod=POUR_OVER_V60");
 
       expect(response.status).toBe(200);
     });
 
-    it('should filter recipes by drink type', async () => {
+    it("should filter recipes by drink type", async () => {
       const mockRecipes = [
         {
-          id: 'recipe_1',
-          visibility: 'PUBLIC',
-          currentVersion: { title: 'Latte Recipe', brewMethod: 'ESPRESSO_MACHINE', drinkType: 'LATTE' },
-          user: { username: 'user1' },
+          id: "recipe_1",
+          visibility: "PUBLIC",
+          currentVersion: {
+            title: "Latte Recipe",
+            brewMethod: "ESPRESSO_MACHINE",
+            drinkType: "LATTE",
+          },
+          user: { username: "user1" },
         },
       ];
 
       mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
       mockPrisma.recipe.count.mockResolvedValue(1);
 
-      const response = await app.request('/recipes?drinkType=LATTE');
+      const response = await app.request("/recipes?drinkType=LATTE");
 
       expect(response.status).toBe(200);
     });
 
-    it('should filter recipes by minimum rating', async () => {
+    it("should filter recipes by minimum rating", async () => {
       mockPrisma.recipe.findMany.mockResolvedValue([]);
       mockPrisma.recipe.count.mockResolvedValue(0);
 
-      const response = await app.request('/recipes?minRating=8');
+      const response = await app.request("/recipes?minRating=8");
 
       expect(response.status).toBe(200);
     });
 
-    it('should filter recipes by tags', async () => {
+    it("should filter recipes by tags", async () => {
       mockPrisma.recipe.findMany.mockResolvedValue([]);
       mockPrisma.recipe.count.mockResolvedValue(0);
 
-      const response = await app.request('/recipes?tags=morning,espresso');
+      const response = await app.request("/recipes?tags=morning,espresso");
 
       expect(response.status).toBe(200);
     });
 
-    it('should search recipes by title', async () => {
+    it("should search recipes by title", async () => {
       const mockRecipes = [
         {
-          id: 'recipe_1',
-          visibility: 'PUBLIC',
-          currentVersion: { title: 'Perfect Espresso', brewMethod: 'ESPRESSO_MACHINE', drinkType: 'ESPRESSO' },
-          user: { username: 'user1' },
+          id: "recipe_1",
+          visibility: "PUBLIC",
+          currentVersion: {
+            title: "Perfect Espresso",
+            brewMethod: "ESPRESSO_MACHINE",
+            drinkType: "ESPRESSO",
+          },
+          user: { username: "user1" },
         },
       ];
 
       mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
       mockPrisma.recipe.count.mockResolvedValue(1);
 
-      const response = await app.request('/recipes?search=espresso');
+      const response = await app.request("/recipes?search=espresso");
 
       expect(response.status).toBe(200);
     });
   });
 
-  describe('DELETE /recipes/:id', () => {
-    it('should soft delete own recipe', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+  describe("DELETE /recipes/:id", () => {
+    it("should soft delete own recipe", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'user_123',
-        visibility: 'PUBLIC',
+        userId: "user_123",
+        visibility: "PUBLIC",
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
       mockPrisma.recipe.update.mockResolvedValue({});
 
       const response = await app.request(`/recipes/${recipeId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       expect(response.status).toBe(200);
     });
 
-    it('should reject deleting others recipes', async () => {
-      const recipeId = 'clh1234567890abcdefghij01';
+    it("should reject deleting others recipes", async () => {
+      const recipeId = "clh1234567890abcdefghij01";
       const mockRecipe = {
         id: recipeId,
-        userId: 'other_user',
-        visibility: 'PUBLIC',
+        userId: "other_user",
+        visibility: "PUBLIC",
       };
 
       mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
 
       const response = await app.request(`/recipes/${recipeId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       expect(response.status).toBe(403);
     });
 
-    it('should return 404 for non-existent recipe', async () => {
+    it("should return 404 for non-existent recipe", async () => {
       mockPrisma.recipe.findUnique.mockResolvedValue(null);
 
-      const response = await app.request('/recipes/nonexistent', {
-        method: 'DELETE',
+      const response = await app.request("/recipes/nonexistent", {
+        method: "DELETE",
       });
 
       expect(response.status).toBe(404);

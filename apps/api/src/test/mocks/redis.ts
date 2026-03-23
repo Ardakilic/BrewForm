@@ -3,11 +3,11 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from '../mock-fn.ts';
+import { mockFn } from "../mock-fn.ts";
 
 export const redis = {
   get: mockFn<Promise<string | null>>(() => Promise.resolve(null)),
-  set: mockFn<Promise<'OK'>>(() => Promise.resolve('OK' as 'OK')),
+  set: mockFn<Promise<"OK">>(() => Promise.resolve("OK" as const)),
   del: mockFn<Promise<number>>(() => Promise.resolve(1)),
   incr: mockFn<Promise<number>>(() => Promise.resolve(1)),
   expire: mockFn<Promise<number>>(() => Promise.resolve(1)),
@@ -42,10 +42,10 @@ export const CacheKeys = {
   equipment: (type: string, id: string) => `equipment:${type}:${id}`,
   vendor: (id: string) => `vendor:${id}`,
   coffee: (id: string) => `coffee:${id}`,
-  latestRecipes: () => 'recipes:latest',
-  popularRecipes: () => 'recipes:popular',
-  brewMethods: () => 'brew-methods',
-  drinkTypes: () => 'drink-types',
+  latestRecipes: () => "recipes:latest",
+  popularRecipes: () => "recipes:popular",
+  brewMethods: () => "brew-methods",
+  drinkTypes: () => "drink-types",
 };
 
 export function resetRedisMocks(): void {

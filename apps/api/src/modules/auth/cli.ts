@@ -3,8 +3,8 @@
  * Password reset functionality for CLI usage
  */
 
-import type { PrismaClient } from '../../../prisma/generated/prisma';
-import { hashPassword } from '../../utils/auth/index.ts';
+import type { PrismaClient } from "../../../prisma/generated/prisma";
+import { hashPassword } from "../../utils/auth/index.ts";
 
 export interface ResetPasswordResult {
   success: boolean;
@@ -23,8 +23,9 @@ export interface ResetPasswordResult {
  * Generate a secure random password
  */
 export function generatePassword(length = 16): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let password = '';
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let password = "";
   for (let i = 0; i < length; i++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -38,14 +39,26 @@ export async function findUser(prisma: PrismaClient, identifier: string) {
   // Try to find by email first
   let user = await prisma.user.findUnique({
     where: { email: identifier.toLowerCase() },
-    select: { id: true, email: true, username: true, displayName: true, isAdmin: true },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      displayName: true,
+      isAdmin: true,
+    },
   });
 
   // If not found, try by username
   if (!user) {
     user = await prisma.user.findUnique({
       where: { username: identifier.toLowerCase() },
-      select: { id: true, email: true, username: true, displayName: true, isAdmin: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        displayName: true,
+        isAdmin: true,
+      },
     });
   }
 
@@ -59,13 +72,13 @@ export async function findUser(prisma: PrismaClient, identifier: string) {
 export async function resetUserPassword(
   prisma: PrismaClient,
   identifier: string,
-  newPassword?: string
+  newPassword?: string,
 ): Promise<ResetPasswordResult> {
   // Validate password length if provided
   if (newPassword && newPassword.length < 8) {
     return {
       success: false,
-      error: 'Password must be at least 8 characters long',
+      error: "Password must be at least 8 characters long",
     };
   }
 

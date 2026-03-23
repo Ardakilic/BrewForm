@@ -3,10 +3,10 @@
  * JWT token handling and password hashing
  */
 
-import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
-import { hash, verify } from '@node-rs/argon2';
-import { nanoid } from 'nanoid';
-import { getConfig } from '../../config/index.ts';
+import { type JWTPayload, jwtVerify, SignJWT } from "jose";
+import { hash, verify } from "@node-rs/argon2";
+import { nanoid } from "nanoid";
+import { getConfig } from "../../config/index.ts";
 
 // ============================================
 // Types
@@ -16,7 +16,7 @@ export interface TokenPayload extends JWTPayload {
   userId: string;
   email: string;
   isAdmin: boolean;
-  type: 'access' | 'refresh';
+  type: "access" | "refresh";
 }
 
 export interface TokenPair {
@@ -32,7 +32,7 @@ export interface TokenPair {
 /**
  * Hash a password using Argon2
  */
-export async function hashPassword(password: string): Promise<string> {
+export function hashPassword(password: string): Promise<string> {
   return hash(password, {
     memoryCost: 65536,
     timeCost: 3,
@@ -45,7 +45,7 @@ export async function hashPassword(password: string): Promise<string> {
  */
 export async function verifyPassword(
   password: string,
-  passwordHash: string
+  passwordHash: string,
 ): Promise<boolean> {
   try {
     return await verify(passwordHash, password);
@@ -71,13 +71,13 @@ function parseDuration(duration: string): number {
   const unit = match[2];
 
   switch (unit) {
-    case 's':
+    case "s":
       return value * 1000;
-    case 'm':
+    case "m":
       return value * 60 * 1000;
-    case 'h':
+    case "h":
       return value * 60 * 60 * 1000;
-    case 'd':
+    case "d":
       return value * 24 * 60 * 60 * 1000;
     default:
       throw new Error(`Unknown duration unit: ${unit}`);
@@ -87,15 +87,15 @@ function parseDuration(duration: string): number {
 /**
  * Create a JWT token
  */
-async function createToken(
-  payload: Omit<TokenPayload, 'iat' | 'exp'>,
-  expiresIn: string
+function createToken(
+  payload: Omit<TokenPayload, "iat" | "exp">,
+  expiresIn: string,
 ): Promise<string> {
   const config = getConfig();
   const secret = new TextEncoder().encode(config.jwtSecret);
-  
+
   return new SignJWT(payload as unknown as JWTPayload)
-    .setProtectedHeader({ alg: 'HS256' })
+    .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(expiresIn)
     .setIssuer(config.appName)
@@ -108,22 +108,22 @@ async function createToken(
 export async function generateTokenPair(
   userId: string,
   email: string,
-  isAdmin: boolean
+  isAdmin: boolean,
 ): Promise<TokenPair> {
   const config = getConfig();
 
   const accessToken = await createToken(
-    { userId, email, isAdmin, type: 'access' },
-    config.jwtAccessExpiresIn
+    { userId, email, isAdmin, type: "access" },
+    config.jwtAccessExpiresIn,
   );
 
   const refreshToken = await createToken(
-    { userId, email, isAdmin, type: 'refresh' },
-    config.jwtRefreshExpiresIn
+    { userId, email, isAdmin, type: "refresh" },
+    config.jwtRefreshExpiresIn,
   );
 
   const expiresAt = new Date(
-    Date.now() + parseDuration(config.jwtAccessExpiresIn)
+    Date.now() + parseDuration(config.jwtAccessExpiresIn),
   );
 
   return {
@@ -155,11 +155,11 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
  * Verify an access token
  */
 export async function verifyAccessToken(
-  token: string
+  token: string,
 ): Promise<TokenPayload | null> {
   const payload = await verifyToken(token);
-  
-  if (!payload || payload.type !== 'access') {
+
+  if (!payload || payload.type !== "access") {
     return null;
   }
 
@@ -170,11 +170,11 @@ export async function verifyAccessToken(
  * Verify a refresh token
  */
 export async function verifyRefreshToken(
-  token: string
+  token: string,
 ): Promise<TokenPayload | null> {
   const payload = await verifyToken(token);
-  
-  if (!payload || payload.type !== 'refresh') {
+
+  if (!payload || payload.type !== "refresh") {
     return null;
   }
 

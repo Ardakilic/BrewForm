@@ -111,27 +111,27 @@ logs-web:
 # ============================================
 
 db-generate:
-	docker compose exec api deno task db:generate
+	docker compose run --rm api deno task db:generate
 
 db-migrate:
-	docker compose exec api deno task db:migrate
+	docker compose run --rm api deno task db:migrate
 
 db-migrate-dev:
-	docker compose exec api deno task db:migrate:dev
+	docker compose run --rm api deno task db:migrate:dev
 
 db-seed:
-	docker compose exec api deno task db:seed
+	docker compose run --rm api deno task db:seed
 
 db-seed-taste-notes:
-	docker compose exec api deno task db:seed:taste-notes
+	docker compose run --rm api deno task db:seed:taste-notes
 
 db-studio:
-	docker compose exec api deno task db:studio
+	docker compose run --rm api deno task db:studio
 
 db-reset:
 	@echo "Warning: This will reset the database and delete all data!"
-	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
-	docker compose exec api deno run --allow-all node_modules/.bin/prisma migrate reset --force
+	@read -p "Are you sure? [y/N] " confirm && [ "$confirm" = "y" ] || exit 1
+	docker compose run --rm api deno run --allow-all node_modules/.bin/prisma migrate reset --force
 
 db-reset-hard:
 	@echo "Warning: This will completely reset the database, recreate it, and run all migrations and seeds!"
@@ -154,7 +154,7 @@ db-reset-hard:
 	@echo "Database reset complete!"
 
 db-push:
-	docker compose exec api deno task db:push
+	docker compose run --rm api deno task db:push
 
 reset-password:
 ifndef USER
@@ -166,9 +166,9 @@ ifndef USER
 	@exit 1
 endif
 ifdef PASSWORD
-	docker compose exec api deno run --allow-all prisma/reset-password.ts $(USER) "$(PASSWORD)"
+	docker compose run --rm api deno run --allow-all prisma/reset-password.ts $(USER) "$(PASSWORD)"
 else
-	docker compose exec api deno run --allow-all prisma/reset-password.ts $(USER)
+	docker compose run --rm api deno run --allow-all prisma/reset-password.ts $(USER)
 endif
 
 # ============================================
@@ -180,45 +180,45 @@ test:
 	docker compose run --rm web deno task test
 
 test-api:
-	docker compose run --rm api deno task test
+	docker compose run --rm --service-ports api deno task test
 
 test-web:
-	docker compose run --rm web deno task test
+	docker compose run --rm --service-ports web deno task test
 
 test-coverage:
-	docker compose run --rm api deno task test:coverage
-	docker compose run --rm web deno task test:coverage
+	docker compose run --rm --service-ports api deno task test:coverage
+	docker compose run --rm --service-ports web deno task test:coverage
 
 test-watch:
-	docker compose run --rm api deno task test:watch
+	docker compose run --rm --service-ports api deno task test:watch
 
 # ============================================
 # Code Quality Commands
 # ============================================
 
 lint:
-	docker compose exec api deno task lint
-	docker compose exec web deno task lint
+	docker compose run --rm api deno task lint
+	docker compose run --rm web deno task lint
 
 lint-fix:
-	docker compose exec api deno task lint:fix
-	docker compose exec web deno task lint:fix
+	docker compose run --rm api deno task lint:fix
+	docker compose run --rm web deno task lint:fix
 
 format:
-	docker compose exec api deno task format
-	docker compose exec web deno task format
+	docker compose run --rm api deno task format
+	docker compose run --rm web deno task format
 
 format-check:
-	docker compose exec api deno task format:check
-	docker compose exec web deno task format:check
+	docker compose run --rm api deno task format:check
+	docker compose run --rm web deno task format:check
 
 check:
-	docker compose exec api deno task check
-	docker compose exec web deno task check
+	docker compose run --rm api deno task check
+	docker compose run --rm web deno task check
 
 typecheck:
-	docker compose exec api deno task typecheck
-	docker compose exec web deno task typecheck
+	docker compose run --rm api deno task typecheck
+	docker compose run --rm web deno task typecheck
 
 # ============================================
 # Shell Commands

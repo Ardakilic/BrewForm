@@ -4,9 +4,9 @@
  * Module-level mocks are handled via src/test/import_map.json.
  */
 
-import { mockFn, type MockFn } from './mock-fn.ts';
+import { type MockFn, mockFn } from "./mock-fn.ts";
 
-export { mockFn, type MockFn };
+export { type MockFn, mockFn };
 
 export interface MockPrismaUser {
   findUnique: MockFn;

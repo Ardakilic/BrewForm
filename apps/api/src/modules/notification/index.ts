@@ -3,12 +3,12 @@
  * Handles notification endpoints
  */
 
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
-import { paginationSchema } from '../../utils/validation/index.ts';
-import { notificationService } from './service.ts';
-import { requireAuth } from '../../middleware/auth.ts';
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
+import { paginationSchema } from "../../utils/validation/index.ts";
+import { notificationService } from "./service.ts";
+import { requireAuth } from "../../middleware/auth.ts";
 
 const notifications = new Hono();
 
@@ -17,26 +17,29 @@ const notifications = new Hono();
  * Get user's notifications
  */
 notifications.get(
-  '/',
+  "/",
   requireAuth,
   zValidator(
-    'query',
+    "query",
     paginationSchema.extend({
-      unreadOnly: z.enum(['true', 'false']).optional(),
-    })
+      unreadOnly: z.enum(["true", "false"]).optional(),
+    }),
   ),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { page, limit, unreadOnly } = c.req.valid('query');
+    const { page, limit, unreadOnly } = c.req.valid("query");
 
     const result = await notificationService.getUserNotifications(
       user.id,
       page,
       limit,
-      unreadOnly === 'true'
+      unreadOnly === "true",
     );
 
     return c.json({
@@ -44,17 +47,20 @@ notifications.get(
       data: result.notifications,
       pagination: result.pagination,
     });
-  }
+  },
 );
 
 /**
  * GET /notifications/unread-count
  * Get unread notification count
  */
-notifications.get('/unread-count', requireAuth, async (c) => {
-  const user = c.get('user');
+notifications.get("/unread-count", requireAuth, async (c) => {
+  const user = c.get("user");
   if (!user) {
-    return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+    return c.json({
+      success: false,
+      error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+    }, 401);
   }
 
   const count = await notificationService.getUnreadCount(user.id);
@@ -70,22 +76,28 @@ notifications.get('/unread-count', requireAuth, async (c) => {
  * Mark a notification as read
  */
 notifications.post(
-  '/:id/read',
+  "/:id/read",
   requireAuth,
-  zValidator('param', z.object({ id: z.string().cuid() })),
+  zValidator("param", z.object({ id: z.string().cuid() })),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { id } = c.req.valid('param');
+    const { id } = c.req.valid("param");
 
     const notification = await notificationService.markAsRead(id, user.id);
 
     if (!notification) {
       return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Notification not found' } },
-        404
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: "Notification not found" },
+        },
+        404,
       );
     }
 
@@ -93,24 +105,27 @@ notifications.post(
       success: true,
       data: notification,
     });
-  }
+  },
 );
 
 /**
  * POST /notifications/read-all
  * Mark all notifications as read
  */
-notifications.post('/read-all', requireAuth, async (c) => {
-  const user = c.get('user');
+notifications.post("/read-all", requireAuth, async (c) => {
+  const user = c.get("user");
   if (!user) {
-    return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+    return c.json({
+      success: false,
+      error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+    }, 401);
   }
 
   await notificationService.markAllAsRead(user.id);
 
   return c.json({
     success: true,
-    message: 'All notifications marked as read',
+    message: "All notifications marked as read",
   });
 });
 
@@ -119,30 +134,36 @@ notifications.post('/read-all', requireAuth, async (c) => {
  * Delete a notification
  */
 notifications.delete(
-  '/:id',
+  "/:id",
   requireAuth,
-  zValidator('param', z.object({ id: z.string().cuid() })),
+  zValidator("param", z.object({ id: z.string().cuid() })),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { id } = c.req.valid('param');
+    const { id } = c.req.valid("param");
 
     const result = await notificationService.deleteNotification(id, user.id);
 
     if (!result) {
       return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Notification not found' } },
-        404
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: "Notification not found" },
+        },
+        404,
       );
     }
 
     return c.json({
       success: true,
-      message: 'Notification deleted',
+      message: "Notification deleted",
     });
-  }
+  },
 );
 
 export default notifications;

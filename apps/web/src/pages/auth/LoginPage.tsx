@@ -2,18 +2,22 @@
  * BrewForm Login Page
  */
 
-import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useStyletron } from 'baseui';
-import { Card } from '../../components/Card.tsx';
-import { FormControl } from 'baseui/form-control';
-import { Input } from 'baseui/input';
-import { Button } from 'baseui/button';
-import { HeadingMedium, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
-import { Notification, KIND } from 'baseui/notification';
-import { useTranslation } from 'react-i18next';
-import { Helmet } from 'react-helmet-async';
-import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useStyletron } from "baseui";
+import { Card } from "../../components/Card.tsx";
+import { FormControl } from "baseui/form-control";
+import { Input } from "baseui/input";
+import { Button } from "baseui/button";
+import {
+  HeadingMedium,
+  ParagraphMedium,
+  ParagraphSmall,
+} from "baseui/typography";
+import { KIND, Notification } from "baseui/notification";
+import { useTranslation } from "react-i18next";
+import { Helmet } from "react-helmet-async";
+import { useAuth } from "../../contexts/AuthContext.tsx";
 
 function LoginPage() {
   const [css, theme] = useStyletron();
@@ -22,23 +26,23 @@ function LoginPage() {
   const location = useLocation();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const from = (location.state as { from?: Location })?.from?.pathname || '/';
+  const from = (location.state as { from?: Location })?.from?.pathname || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
       await login(email, password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setIsLoading(false);
     }
@@ -47,33 +51,35 @@ function LoginPage() {
   return (
     <>
       <Helmet>
-        <title>{t('pages.login.title')}</title>
+        <title>{t("pages.login.title")}</title>
       </Helmet>
 
       <div
         className={css({
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '60vh',
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "60vh",
         })}
       >
         <Card
           overrides={{
             Root: {
               style: {
-                width: '400px',
-                maxWidth: '100%',
+                width: "400px",
+                maxWidth: "100%",
               },
             },
           }}
         >
-          <HeadingMedium marginBottom="8px">{t('auth.login.title')}</HeadingMedium>
+          <HeadingMedium marginBottom="8px">
+            {t("auth.login.title")}
+          </HeadingMedium>
           <ParagraphMedium
             color={theme.colors.contentSecondary}
             marginBottom="24px"
           >
-            {t('auth.login.subtitle')}
+            {t("auth.login.subtitle")}
           </ParagraphMedium>
 
           {error && (
@@ -83,7 +89,7 @@ function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit}>
-            <FormControl label={t('auth.login.email')}>
+            <FormControl label={t("auth.login.email")}>
               <Input
                 type="email"
                 value={email}
@@ -93,7 +99,7 @@ function LoginPage() {
               />
             </FormControl>
 
-            <FormControl label={t('auth.login.password')}>
+            <FormControl label={t("auth.login.password")}>
               <Input
                 type="password"
                 value={password}
@@ -106,13 +112,13 @@ function LoginPage() {
             <Link
               to="/forgot-password"
               className={css({
-                display: 'block',
-                marginBottom: '16px',
-                color: '#6F4E37',
-                fontSize: '14px',
+                display: "block",
+                marginBottom: "16px",
+                color: "#6F4E37",
+                fontSize: "14px",
               })}
             >
-              {t('auth.login.forgotPassword')}
+              {t("auth.login.forgotPassword")}
             </Link>
 
             <Button
@@ -120,26 +126,26 @@ function LoginPage() {
               isLoading={isLoading}
               overrides={{
                 BaseButton: {
-                  style: { width: '100%' },
+                  style: { width: "100%" },
                 },
               }}
             >
-              {t('auth.login.submit')}
+              {t("auth.login.submit")}
             </Button>
           </form>
 
           <ParagraphSmall
             className={css({
-              textAlign: 'center',
-              marginTop: '24px',
+              textAlign: "center",
+              marginTop: "24px",
             })}
           >
-            {t('auth.login.noAccount')}{' '}
+            {t("auth.login.noAccount")}{" "}
             <Link
               to="/register"
-              className={css({ color: '#6F4E37', fontWeight: 600 })}
+              className={css({ color: "#6F4E37", fontWeight: 600 })}
             >
-              {t('auth.login.signUp')}
+              {t("auth.login.signUp")}
             </Link>
           </ParagraphSmall>
         </Card>

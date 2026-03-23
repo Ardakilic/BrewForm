@@ -21,7 +21,7 @@ export interface UserProfile {
   displayName: string | null;
   bio: string | null;
   website: string | null;
-  preferredUnits: 'METRIC' | 'IMPERIAL';
+  preferredUnits: "METRIC" | "IMPERIAL";
   recipeCount?: number;
   favouriteCount?: number;
 }
@@ -88,7 +88,7 @@ export interface Recipe {
   id: string;
   userId: string;
   slug: string;
-  visibility: 'PUBLIC' | 'PRIVATE' | 'UNLISTED' | 'DRAFT';
+  visibility: "PUBLIC" | "PRIVATE" | "UNLISTED" | "DRAFT";
   currentVersion: RecipeVersion;
   commentCount?: number;
   favouriteCount?: number;
@@ -136,7 +136,11 @@ export interface Comment {
 
 export interface Notification {
   id: string;
-  type: 'COMMENT_ON_RECIPE' | 'REPLY_TO_COMMENT' | 'RECIPE_FAVOURITED' | 'RECIPE_FORKED';
+  type:
+    | "COMMENT_ON_RECIPE"
+    | "REPLY_TO_COMMENT"
+    | "RECIPE_FAVOURITED"
+    | "RECIPE_FORKED";
   title: string;
   message: string;
   link?: string;

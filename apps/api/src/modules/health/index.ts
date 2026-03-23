@@ -3,10 +3,10 @@
  * Kubernetes-ready health and readiness probes
  */
 
-import { Hono } from 'hono';
-import { checkDbConnection } from '../../utils/database/index.ts';
-import { checkRedisConnection } from '../../utils/redis/index.ts';
-import { getLogger } from '../../utils/logger/index.ts';
+import { Hono } from "hono";
+import { checkDbConnection } from "../../utils/database/index.ts";
+import { checkRedisConnection } from "../../utils/redis/index.ts";
+import { getLogger } from "../../utils/logger/index.ts";
 
 const health = new Hono();
 
@@ -14,29 +14,35 @@ const health = new Hono();
  * GET /health
  * Basic health check - is the server running?
  */
-health.get('/', async (c) => {
-  return c.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-  });
-});
+health.get(
+  "/", // deno-lint-ignore require-await
+  async (c) => {
+    return c.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+    });
+  },
+);
 
 /**
  * GET /health/live
  * Liveness probe - is the application alive?
  */
-health.get('/live', async (c) => {
-  return c.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-  });
-});
+health.get(
+  "/live", // deno-lint-ignore require-await
+  async (c) => {
+    return c.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+    });
+  },
+);
 
 /**
  * GET /health/ready
  * Readiness probe - is the application ready to accept traffic?
  */
-health.get('/ready', async (c) => {
+health.get("/ready", async (c) => {
   const logger = getLogger();
   const checks: Record<string, boolean> = {};
   let isReady = true;
@@ -49,9 +55,9 @@ health.get('/ready', async (c) => {
     checks.database = false;
     isReady = false;
     logger.error({
-      type: 'health',
-      check: 'database',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      type: "health",
+      check: "database",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 
@@ -63,13 +69,13 @@ health.get('/ready', async (c) => {
     checks.redis = false;
     isReady = false;
     logger.error({
-      type: 'health',
-      check: 'redis',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      type: "health",
+      check: "redis",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 
-  const status = isReady ? 'ok' : 'degraded';
+  const status = isReady ? "ok" : "degraded";
   const statusCode = isReady ? 200 : 503;
 
   return c.json(
@@ -78,7 +84,7 @@ health.get('/ready', async (c) => {
       timestamp: new Date().toISOString(),
       checks,
     },
-    statusCode as 200 | 503
+    statusCode as 200 | 503,
   );
 });
 
@@ -86,7 +92,7 @@ health.get('/ready', async (c) => {
  * GET /health/startup
  * Startup probe - has the application finished starting?
  */
-health.get('/startup', async (c) => {
+health.get("/startup", async (c) => {
   // Same as ready for now
   const dbOk = await checkDbConnection();
   const redisOk = await checkRedisConnection();
@@ -94,10 +100,10 @@ health.get('/startup', async (c) => {
 
   return c.json(
     {
-      status: isStarted ? 'ok' : 'starting',
+      status: isStarted ? "ok" : "starting",
       timestamp: new Date().toISOString(),
     },
-    isStarted ? 200 : 503
+    isStarted ? 200 : 503,
   );
 });
 

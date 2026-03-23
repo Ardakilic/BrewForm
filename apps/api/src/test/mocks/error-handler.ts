@@ -5,55 +5,55 @@
 
 export class NotFoundError extends Error {
   statusCode = 404;
-  code = 'NOT_FOUND';
+  code = "NOT_FOUND";
   constructor(resource: string) {
     super(`${resource} not found`);
-    this.name = 'NotFoundError';
+    this.name = "NotFoundError";
   }
 }
 
 export class UnauthorizedError extends Error {
   statusCode = 401;
-  code = 'UNAUTHORIZED';
-  constructor(message = 'Unauthorized') {
+  code = "UNAUTHORIZED";
+  constructor(message = "Unauthorized") {
     super(message);
-    this.name = 'UnauthorizedError';
+    this.name = "UnauthorizedError";
   }
 }
 
 export class ForbiddenError extends Error {
   statusCode = 403;
-  code = 'FORBIDDEN';
+  code = "FORBIDDEN";
   constructor(message: string) {
     super(message);
-    this.name = 'ForbiddenError';
+    this.name = "ForbiddenError";
   }
 }
 
 export class BadRequestError extends Error {
   statusCode = 400;
-  code = 'BAD_REQUEST';
+  code = "BAD_REQUEST";
   constructor(message: string) {
     super(message);
-    this.name = 'BadRequestError';
+    this.name = "BadRequestError";
   }
 }
 
 export class ConflictError extends Error {
   statusCode = 409;
-  code = 'CONFLICT';
+  code = "CONFLICT";
   constructor(message: string) {
     super(message);
-    this.name = 'ConflictError';
+    this.name = "ConflictError";
   }
 }
 
 export class ValidationError extends Error {
   statusCode = 422;
-  code = 'VALIDATION_ERROR';
+  code = "VALIDATION_ERROR";
   constructor(_errors: Array<{ field: string; message: string }>) {
-    super('Validation failed');
-    this.name = 'ValidationError';
+    super("Validation failed");
+    this.name = "ValidationError";
   }
 }
 

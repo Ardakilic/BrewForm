@@ -3,8 +3,8 @@
  * Shared validation patterns for CUID and other common validations
  */
 
-import { z } from 'zod';
-import type { Cuid } from '../../types/index.ts';
+import { z } from "zod";
+import type { Cuid } from "../../types/index.ts";
 
 // ============================================
 // CUID Validation Schemas
@@ -113,19 +113,19 @@ export const commentSchema = z.object({
  */
 export function validateCuidFields<T extends Record<string, unknown>>(
   obj: T,
-  fields: (keyof T)[]
+  fields: (keyof T)[],
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
-  
+
   for (const field of fields) {
     const value = obj[field];
     if (value !== null && value !== undefined) {
-      if (typeof value !== 'string' || !cuidSchema.safeParse(value).success) {
+      if (typeof value !== "string" || !cuidSchema.safeParse(value).success) {
         errors.push(`${String(field)} must be a valid CUID`);
       }
     }
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -145,7 +145,7 @@ export function transformToCuid(value: string): Cuid {
 export function createCuidRefine(message?: string) {
   return z.string().refine(
     (val: string) => /^c[0-9a-z]{24}$/i.test(val),
-    { message: message || 'Invalid CUID format' }
+    { message: message || "Invalid CUID format" },
   );
 }
 
@@ -154,19 +154,16 @@ export function createCuidRefine(message?: string) {
 // ============================================
 
 export const CUID_ERROR_MESSAGES = {
-  INVALID_CUID: 'Invalid CUID format',
-  REQUIRED: 'ID is required',
-  INVALID_FORMAT: 'ID must be a valid CUID (starts with "c" followed by 24 characters)',
+  INVALID_CUID: "Invalid CUID format",
+  REQUIRED: "ID is required",
+  INVALID_FORMAT:
+    'ID must be a valid CUID (starts with "c" followed by 24 characters)',
 } as const;
 
 // ============================================
 // Exports
 // ============================================
 
-export {
-  cuidSchema as default,
-};
+export { cuidSchema as default };
 
-export type {
-  Cuid,
-};
+export type { Cuid };

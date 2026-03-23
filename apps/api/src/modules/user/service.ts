@@ -3,10 +3,15 @@
  * Handles user profile and preferences
  */
 
-import { getPrisma, softDeleteFilter, getPagination, createPaginationMeta } from '../../utils/database/index.ts';
-import { logAudit } from '../../utils/logger/index.ts';
-import { NotFoundError, } from '../../middleware/errorHandler.ts';
-import type { UnitSystem, Theme } from '../../../prisma/generated/prisma';
+import {
+  createPaginationMeta,
+  getPagination,
+  getPrisma,
+  softDeleteFilter,
+} from "../../utils/database/index.ts";
+import { logAudit } from "../../utils/logger/index.ts";
+import { NotFoundError } from "../../middleware/errorHandler.ts";
+import type { Theme, UnitSystem } from "../../../prisma/generated/prisma";
 
 // ============================================
 // Types
@@ -75,7 +80,7 @@ export async function getProfile(userId: string): Promise<UserProfile> {
   });
 
   if (!user) {
-    throw new NotFoundError('User');
+    throw new NotFoundError("User");
   }
 
   return {
@@ -101,11 +106,13 @@ export async function getProfile(userId: string): Promise<UserProfile> {
 /**
  * Get public user profile by username
  */
-export async function getPublicProfile(username: string): Promise<PublicUserProfile> {
+export async function getPublicProfile(
+  username: string,
+): Promise<PublicUserProfile> {
   const prisma = getPrisma();
 
   const user = await prisma.user.findFirst({
-    where: { 
+    where: {
       username: username.toLowerCase(),
       ...softDeleteFilter(),
       isBanned: false,
@@ -116,7 +123,7 @@ export async function getPublicProfile(username: string): Promise<PublicUserProf
           recipes: {
             where: {
               ...softDeleteFilter(),
-              visibility: 'PUBLIC',
+              visibility: "PUBLIC",
             },
           },
         },
@@ -125,7 +132,7 @@ export async function getPublicProfile(username: string): Promise<PublicUserProf
   });
 
   if (!user) {
-    throw new NotFoundError('User');
+    throw new NotFoundError("User");
   }
 
   return {
@@ -145,7 +152,7 @@ export async function getPublicProfile(username: string): Promise<PublicUserProf
  */
 export async function updateProfile(
   userId: string,
-  input: UpdateProfileInput
+  input: UpdateProfileInput,
 ): Promise<UserProfile> {
   const prisma = getPrisma();
 
@@ -170,7 +177,7 @@ export async function updateProfile(
     },
   });
 
-  logAudit('profile_updated', 'user', userId, userId);
+  logAudit("profile_updated", "user", userId, userId);
 
   return {
     id: user.id,
@@ -199,7 +206,7 @@ export async function getUserRecipes(
   userId: string,
   viewerId: string | null,
   page = 1,
-  limit = 20
+  limit = 20,
 ) {
   const prisma = getPrisma();
   const pagination = getPagination({ page, limit });
@@ -207,7 +214,7 @@ export async function getUserRecipes(
   // Determine visibility filter based on viewer
   const visibilityFilter = viewerId === userId
     ? {} // Owner can see all their recipes
-    : { visibility: 'PUBLIC' as const };
+    : { visibility: "PUBLIC" as const };
 
   const [recipes, total] = await Promise.all([
     prisma.recipe.findMany({
@@ -237,7 +244,7 @@ export async function getUserRecipes(
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       ...pagination,
     }),
     prisma.recipe.count({
@@ -288,7 +295,7 @@ export async function getUserFavourites(userId: string, page = 1, limit = 20) {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       ...pagination,
     }),
     prisma.userFavourite.count({ where: { userId } }),
@@ -316,7 +323,7 @@ export async function deleteAccount(userId: string): Promise<void> {
     where: { userId },
   });
 
-  logAudit('account_deleted', 'user', userId, userId);
+  logAudit("account_deleted", "user", userId, userId);
 }
 
 /**
@@ -325,7 +332,7 @@ export async function deleteAccount(userId: string): Promise<void> {
 export async function listUsers(
   search?: string,
   page = 1,
-  limit = 50
+  limit = 50,
 ): Promise<{ users: PublicUserProfile[]; total: number }> {
   const prisma = getPrisma();
   const pagination = getPagination({ page, limit });
@@ -339,12 +346,17 @@ export async function listUsers(
 
   const where = search
     ? {
-        ...baseWhere,
-        OR: [
-          { username: { contains: search.toLowerCase(), mode: 'insensitive' as const } },
-          { displayName: { contains: search, mode: 'insensitive' as const } },
-        ],
-      }
+      ...baseWhere,
+      OR: [
+        {
+          username: {
+            contains: search.toLowerCase(),
+            mode: "insensitive" as const,
+          },
+        },
+        { displayName: { contains: search, mode: "insensitive" as const } },
+      ],
+    }
     : baseWhere;
 
   const [users, total] = await Promise.all([
@@ -352,14 +364,14 @@ export async function listUsers(
       where,
       skip: pagination.skip,
       take: pagination.take,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         _count: {
           select: {
             recipes: {
               where: {
                 ...softDeleteFilter(),
-                visibility: 'PUBLIC',
+                visibility: "PUBLIC",
               },
             },
           },

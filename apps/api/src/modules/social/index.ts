@@ -3,22 +3,22 @@
  * Handles favourites, comments, and comparisons
  */
 
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 import {
+  commentIdParamSchema,
   paginationSchema,
   recipeIdParamSchema,
-  commentIdParamSchema,
-} from '../../utils/validation/index.ts';
-import { socialService } from './service.ts';
-import { authMiddleware, requireAuth } from '../../middleware/auth.ts';
-import { writeRateLimiter } from '../../middleware/rateLimit.ts';
+} from "../../utils/validation/index.ts";
+import { socialService } from "./service.ts";
+import { authMiddleware, requireAuth } from "../../middleware/auth.ts";
+import { writeRateLimiter } from "../../middleware/rateLimit.ts";
 
 const social = new Hono();
 
 // Apply auth middleware
-social.use('*', authMiddleware);
+social.use("*", authMiddleware);
 
 // ============================================
 // Favourites
@@ -29,22 +29,28 @@ social.use('*', authMiddleware);
  * Add recipe to favourites
  */
 social.post(
-  '/favourites/:recipeId',
+  "/favourites/:recipeId",
   requireAuth,
-  zValidator('param', recipeIdParamSchema),
+  zValidator("param", recipeIdParamSchema),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { recipeId } = c.req.valid('param');
+    const { recipeId } = c.req.valid("param");
 
     const result = await socialService.addFavourite(user.id, recipeId);
 
     if (result.alreadyFavourited) {
       return c.json(
-        { success: false, error: { code: 'CONFLICT', message: 'Recipe already favourited' } },
-        409
+        {
+          success: false,
+          error: { code: "CONFLICT", message: "Recipe already favourited" },
+        },
+        409,
       );
     }
 
@@ -53,9 +59,9 @@ social.post(
         success: true,
         data: result,
       },
-      201
+      201,
     );
-  }
+  },
 );
 
 /**
@@ -63,15 +69,18 @@ social.post(
  * Remove recipe from favourites
  */
 social.delete(
-  '/favourites/:recipeId',
+  "/favourites/:recipeId",
   requireAuth,
-  zValidator('param', recipeIdParamSchema),
+  zValidator("param", recipeIdParamSchema),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { recipeId } = c.req.valid('param');
+    const { recipeId } = c.req.valid("param");
 
     const result = await socialService.removeFavourite(user.id, recipeId);
 
@@ -79,7 +88,7 @@ social.delete(
       success: true,
       data: result,
     });
-  }
+  },
 );
 
 /**
@@ -87,15 +96,18 @@ social.delete(
  * Check if recipe is favourited
  */
 social.get(
-  '/favourites/:recipeId/check',
+  "/favourites/:recipeId/check",
   requireAuth,
-  zValidator('param', recipeIdParamSchema),
+  zValidator("param", recipeIdParamSchema),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { recipeId } = c.req.valid('param');
+    const { recipeId } = c.req.valid("param");
 
     const isFavourited = await socialService.isFavourited(user.id, recipeId);
 
@@ -103,7 +115,7 @@ social.get(
       success: true,
       data: { isFavourited },
     });
-  }
+  },
 );
 
 // ============================================
@@ -115,12 +127,12 @@ social.get(
  * Get comments for a recipe
  */
 social.get(
-  '/recipes/:recipeId/comments',
-  zValidator('param', recipeIdParamSchema),
-  zValidator('query', paginationSchema),
+  "/recipes/:recipeId/comments",
+  zValidator("param", recipeIdParamSchema),
+  zValidator("query", paginationSchema),
   async (c) => {
-    const { recipeId } = c.req.valid('param');
-    const { page, limit } = c.req.valid('query');
+    const { recipeId } = c.req.valid("param");
+    const { page, limit } = c.req.valid("query");
 
     const result = await socialService.getRecipeComments(recipeId, page, limit);
 
@@ -129,7 +141,7 @@ social.get(
       data: result.comments,
       pagination: result.pagination,
     });
-  }
+  },
 );
 
 /**
@@ -137,30 +149,33 @@ social.get(
  * Add a comment to a recipe
  */
 social.post(
-  '/recipes/:recipeId/comments',
+  "/recipes/:recipeId/comments",
   requireAuth,
   writeRateLimiter,
-  zValidator('param', recipeIdParamSchema),
+  zValidator("param", recipeIdParamSchema),
   zValidator(
-    'json',
+    "json",
     z.object({
       content: z.string().min(1).max(2000),
       parentId: z.string().cuid().optional(),
-    })
+    }),
   ),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { recipeId } = c.req.valid('param');
-    const { content, parentId } = c.req.valid('json');
+    const { recipeId } = c.req.valid("param");
+    const { content, parentId } = c.req.valid("json");
 
     const comment = await socialService.addComment(
       user.id,
       recipeId,
       content,
-      parentId
+      parentId,
     );
 
     return c.json(
@@ -168,9 +183,9 @@ social.post(
         success: true,
         data: comment,
       },
-      201
+      201,
     );
-  }
+  },
 );
 
 /**
@@ -178,25 +193,32 @@ social.post(
  * Update a comment
  */
 social.patch(
-  '/comments/:commentId',
+  "/comments/:commentId",
   requireAuth,
-  zValidator('param', commentIdParamSchema),
-  zValidator('json', z.object({ content: z.string().min(1).max(2000) })),
+  zValidator("param", commentIdParamSchema),
+  zValidator("json", z.object({ content: z.string().min(1).max(2000) })),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { commentId } = c.req.valid('param');
-    const { content } = c.req.valid('json');
+    const { commentId } = c.req.valid("param");
+    const { content } = c.req.valid("json");
 
-    const comment = await socialService.updateComment(commentId, user.id, content);
+    const comment = await socialService.updateComment(
+      commentId,
+      user.id,
+      content,
+    );
 
     return c.json({
       success: true,
       data: comment,
     });
-  }
+  },
 );
 
 /**
@@ -204,23 +226,26 @@ social.patch(
  * Delete a comment
  */
 social.delete(
-  '/comments/:commentId',
+  "/comments/:commentId",
   requireAuth,
-  zValidator('param', commentIdParamSchema),
+  zValidator("param", commentIdParamSchema),
   async (c) => {
-    const user = c.get('user');
+    const user = c.get("user");
     if (!user) {
-      return c.json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
+      return c.json({
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Not authenticated" },
+      }, 401);
     }
-    const { commentId } = c.req.valid('param');
+    const { commentId } = c.req.valid("param");
 
     await socialService.deleteComment(commentId, user.id, user.isAdmin);
 
     return c.json({
       success: true,
-      message: 'Comment deleted successfully',
+      message: "Comment deleted successfully",
     });
-  }
+  },
 );
 
 // ============================================
@@ -232,35 +257,38 @@ social.delete(
  * Create a recipe comparison
  */
 social.post(
-  '/comparisons',
+  "/comparisons",
   zValidator(
-    'json',
+    "json",
     z.object({
       recipeAId: z.string().cuid(),
       recipeBId: z.string().cuid(),
-    })
+    }),
   ),
   async (c) => {
-    const { recipeAId, recipeBId } = c.req.valid('json');
+    const { recipeAId, recipeBId } = c.req.valid("json");
 
-    const comparison = await socialService.createComparison(recipeAId, recipeBId);
+    const comparison = await socialService.createComparison(
+      recipeAId,
+      recipeBId,
+    );
 
     return c.json(
       {
         success: true,
         data: comparison,
       },
-      201
+      201,
     );
-  }
+  },
 );
 
 /**
  * GET /social/comparisons/:token
  * Get comparison by share token
  */
-social.get('/comparisons/:token', async (c) => {
-  const token = c.req.param('token');
+social.get("/comparisons/:token", async (c) => {
+  const token = c.req.param("token");
 
   const comparison = await socialService.getComparisonByToken(token);
 

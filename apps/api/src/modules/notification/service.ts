@@ -3,8 +3,12 @@
  * Handles notification creation and management
  */
 
-import { getPrisma, getPagination, createPaginationMeta } from '../../utils/database/index.ts';
-import type { NotificationType } from '../../../prisma/generated/prisma';
+import {
+  createPaginationMeta,
+  getPagination,
+  getPrisma,
+} from "../../utils/database/index.ts";
+import type { NotificationType } from "../../../prisma/generated/prisma";
 
 // ============================================
 // Types
@@ -59,7 +63,7 @@ export async function getUserNotifications(
   userId: string,
   page = 1,
   limit = 20,
-  unreadOnly = false
+  unreadOnly = false,
 ) {
   const prisma = getPrisma();
   const pagination = getPagination({ page, limit });
@@ -82,7 +86,7 @@ export async function getUserNotifications(
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       ...pagination,
     }),
     prisma.notification.count({ where }),
@@ -156,7 +160,10 @@ export async function markAllAsRead(userId: string) {
 /**
  * Delete a notification
  */
-export async function deleteNotification(notificationId: string, userId: string) {
+export async function deleteNotification(
+  notificationId: string,
+  userId: string,
+) {
   const prisma = getPrisma();
 
   const notification = await prisma.notification.findUnique({

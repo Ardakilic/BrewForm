@@ -26,7 +26,9 @@
     "@types/react-dom": "npm:@types/react-dom@^19.2.3", // dev
     "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^6.0.1", // dev
     "jsdom": "npm:jsdom@^29.0.1", // dev
-    "vite": "npm:vite@^8.0.1" // dev
+    "vite": "npm:vite@^8.0.1", // dev
+    "@std/testing": "jsr:@std/testing@^1.0.0/bdd",
+    "@std/expect": "jsr:@std/expect@^1.0.0"
   },
   "compilerOptions": {
     "jsx": "react-jsx",

@@ -4,9 +4,9 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from '../mock-fn.ts';
+import { mockFn } from "../mock-fn.ts";
 
-export type { ApiResponse } from '../../types';
+export type { ApiResponse } from "../../types";
 
 export const api = {
   get: mockFn(() => Promise.resolve({ success: true, data: null })),
