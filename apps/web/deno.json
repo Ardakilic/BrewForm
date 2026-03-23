@@ -28,7 +28,8 @@
     "jsdom": "npm:jsdom@^29.0.1", // dev
     "vite": "npm:vite@^8.0.1", // dev
     "@std/testing": "jsr:@std/testing@^1.0.0/bdd",
-    "@std/expect": "jsr:@std/expect@^1.0.0"
+    "@std/expect": "jsr:@std/expect@^1.0.0",
+    "@std/testing/mock": "jsr:@std/testing@^1.0.0/mock"
   },
   "compilerOptions": {
     "jsx": "react-jsx",
@@ -42,6 +43,8 @@
     "preview": "vite preview",
     "test": "deno test --allow-all --no-check --import-map=src/test/import_map.json src/",
     "test:watch": "deno test --allow-all --no-check --watch --import-map=src/test/import_map.json src/",
+    "test:coverage": "deno test --allow-all --no-check --import-map=src/test/import_map.json --coverage=coverage src/",
+    "test:coverage:report": "deno coverage coverage --lcov --output=coverage/lcov.info",
     "lint": "deno lint src/",
     "lint:fix": "deno lint --fix src/",
     "format": "deno fmt",

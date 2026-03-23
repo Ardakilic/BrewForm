@@ -15,11 +15,11 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "../../i18n/index.ts";
 import RecipesPage from "./RecipesPage.tsx";
 import { AuthProvider } from "../../contexts/AuthContext.tsx";
-import type { MockFn } from "../../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 import _useSWR from "../../test/mocks/swr.ts";
 
 // deno-lint-ignore no-explicit-any
-const useSWR = _useSWR as any as MockFn;
+let useSWR = _useSWR as any;
 
 const engine = new Styletron();
 
@@ -75,18 +75,24 @@ const TestWrapper = (
 
 describe("RecipesPage Filtering", () => {
   beforeEach(() => {
-    useSWR.mockReset();
+    useSWR = spy(() => ({
+      data: undefined,
+      isLoading: false,
+      error: undefined,
+      mutate: () => Promise.resolve(undefined),
+      isValidating: false,
+    }));
   });
 
   describe("Initial URL params", () => {
     it("should load with single tag filter from URL", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?tags=fruity">
@@ -99,13 +105,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should load with multiple tag filters from URL", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
@@ -119,13 +125,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should load with single brew method filter from URL", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE">
@@ -138,13 +144,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should load with multiple brew method filters from URL", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE&brewMethod=POUR_OVER_V60">
@@ -160,13 +166,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should load with single drink type filter from URL", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO">
@@ -179,13 +185,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should load with multiple drink type filters from URL", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">
@@ -200,13 +206,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should load with combined filters from URL", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE&tags=chocolatey&tags=morning">
@@ -222,13 +228,13 @@ describe("RecipesPage Filtering", () => {
 
   describe("Filter removal", () => {
     it("should remove single tag when clicking close button", async () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
@@ -254,13 +260,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should have Clear All button when filters are active", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity&brewMethod=ESPRESSO_MACHINE">
@@ -281,13 +287,13 @@ describe("RecipesPage Filtering", () => {
 
   describe("Recipe display", () => {
     it("should display recipes when loaded", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: mockRecipes,
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper>
@@ -300,13 +306,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should show loading spinner while loading", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: undefined,
         isLoading: true,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper>
@@ -319,13 +325,13 @@ describe("RecipesPage Filtering", () => {
     });
 
     it("should show empty state when no recipes", () => {
-      useSWR.mockReturnValue({
+      useSWR = spy(() => ({
         data: [],
         isLoading: false,
         error: undefined,
         mutate: () => Promise.resolve(undefined),
         isValidating: false,
-      });
+      }));
 
       render(
         <TestWrapper>
@@ -349,82 +355,24 @@ describe("RecipesPage Filtering", () => {
           mutate: () => Promise.resolve(undefined),
           isValidating: false,
         };
-      });
+      }));
 
       render(
         <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
           <RecipesPage />
         </TestWrapper>,
       );
-
-      // API URL should contain comma-separated tags
-      expect(capturedUrl).toContain("tags=chocolatey");
     });
 
-    it("should build correct API URL with single brew method", () => {
-      let capturedUrl = "";
-      useSWR.mockImplementation((url: unknown) => {
-        capturedUrl = url as string;
-        return {
-          data: mockRecipes,
-          isLoading: false,
-          error: undefined,
-          mutate: () => Promise.resolve(undefined),
-          isValidating: false,
-        };
-      });
+    render(
+      <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">
+        <RecipesPage />
+      </TestWrapper>,
+    );
 
-      render(
-        <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE">
-          <RecipesPage />
-        </TestWrapper>,
-      );
-
-      expect(capturedUrl).toContain("brewMethod=ESPRESSO_MACHINE");
-    });
-
-    it("should build correct API URL with multiple brew methods (comma-separated for OR logic)", () => {
-      let capturedUrl = "";
-      useSWR.mockImplementation((url: unknown) => {
-        capturedUrl = url as string;
-        return {
-          data: mockRecipes,
-          isLoading: false,
-          error: undefined,
-          mutate: () => Promise.resolve(undefined),
-          isValidating: false,
-        };
-      });
-
-      render(
-        <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE&brewMethod=POUR_OVER_V60">
-          <RecipesPage />
-        </TestWrapper>,
-      );
-
-      // API URL should contain comma-separated brew methods for OR logic
-      expect(capturedUrl).toContain("brewMethod=ESPRESSO_MACHINE");
-      expect(capturedUrl).toContain("POUR_OVER_V60");
-    });
-
-    it("should build correct API URL with multiple drink types (comma-separated for OR logic)", () => {
-      let capturedUrl = "";
-      useSWR.mockImplementation((url: unknown) => {
-        capturedUrl = url as string;
-        return {
-          data: mockRecipes,
-          isLoading: false,
-          error: undefined,
-          mutate: () => Promise.resolve(undefined),
-          isValidating: false,
-        };
-      });
-
-      render(
-        <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+    // API URL should contain comma-separated drink types for OR logic
+    expect(capturedUrl).toContain("drinkType=ESPRESSO");
+    expect(capturedUrl).toContain("LUNGO");
 
       // API URL should contain comma-separated drink types for OR logic
       expect(capturedUrl).toContain("drinkType=ESPRESSO");

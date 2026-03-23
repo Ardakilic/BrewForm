@@ -5,17 +5,18 @@
 
 import { describe, it } from "@std/testing";
 import { expect } from "@std/expect";
-import { mockFn } from "../../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 import { findUser, generatePassword, resetUserPassword } from "./cli.ts";
 
 // Create mock Prisma client
-const createMockPrisma = () => ({
+// deno-lint-ignore no-explicit-any
+const createMockPrisma = (): any => ({
   user: {
-    findUnique: mockFn(),
-    update: mockFn(),
+    findUnique: spy(() => Promise.resolve(null)),
+    update: spy(() => Promise.resolve(null)),
   },
   session: {
-    deleteMany: mockFn(),
+    deleteMany: spy(() => Promise.resolve({ count: 0 })),
   },
 });
 
@@ -57,12 +58,12 @@ describe("Auth CLI", () => {
         displayName: "Admin",
         isAdmin: true,
       };
-      mockPrisma.user.findUnique.mockResolvedValueOnce(mockUser);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
 
       const user = await findUser(mockPrisma as never, "admin@brewform.local");
 
       expect(user).toEqual(mockUser);
-      expect(mockPrisma.user.findUnique.calls[0]).toEqual([{
+      expect(mockPrisma.user.findUnique.calls[0].args).toEqual([{
         where: { email: "admin@brewform.local" },
         select: {
           id: true,
@@ -83,9 +84,11 @@ describe("Auth CLI", () => {
         displayName: "Admin",
         isAdmin: true,
       };
-      mockPrisma.user.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockUser);
+      let callCount = 0;
+      mockPrisma.user.findUnique = spy(() => {
+        callCount++;
+        return Promise.resolve(callCount === 1 ? null : mockUser);
+      });
 
       const user = await findUser(mockPrisma as never, "admin");
 
@@ -95,7 +98,7 @@ describe("Auth CLI", () => {
 
     it("should return null when user not found", async () => {
       const mockPrisma = createMockPrisma();
-      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       const user = await findUser(
         mockPrisma as never,
@@ -107,11 +110,11 @@ describe("Auth CLI", () => {
 
     it("should lowercase the identifier for search", async () => {
       const mockPrisma = createMockPrisma();
-      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       await findUser(mockPrisma as never, "ADMIN@BREWFORM.LOCAL");
 
-      expect(mockPrisma.user.findUnique.calls[0]).toEqual([{
+      expect(mockPrisma.user.findUnique.calls[0].args).toEqual([{
         where: { email: "admin@brewform.local" },
         select: {
           id: true,
@@ -134,9 +137,9 @@ describe("Auth CLI", () => {
         displayName: "Admin",
         isAdmin: true,
       };
-      mockPrisma.user.findUnique.mockResolvedValueOnce(mockUser);
-      mockPrisma.user.update.mockResolvedValue(mockUser);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 2 });
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
+      mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 2 }));
 
       const result = await resetUserPassword(
         mockPrisma as never,
@@ -159,9 +162,9 @@ describe("Auth CLI", () => {
         displayName: "Admin",
         isAdmin: true,
       };
-      mockPrisma.user.findUnique.mockResolvedValueOnce(mockUser);
-      mockPrisma.user.update.mockResolvedValue(mockUser);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 2 });
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
+      mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 2 }));
 
       const result = await resetUserPassword(
         mockPrisma as never,
@@ -184,9 +187,9 @@ describe("Auth CLI", () => {
         displayName: "Admin",
         isAdmin: true,
       };
-      mockPrisma.user.findUnique.mockResolvedValueOnce(mockUser);
-      mockPrisma.user.update.mockResolvedValue(mockUser);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 0 });
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
+      mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 0 }));
 
       await resetUserPassword(
         mockPrisma as never,
@@ -194,7 +197,7 @@ describe("Auth CLI", () => {
         "NewPassword123!",
       );
 
-      expect(mockPrisma.user.update.calls[0]).toEqual([{
+      expect(mockPrisma.user.update.calls[0].args).toEqual([{
         where: { id: "user_123" },
         data: { passwordHash: expect.any(String) },
       }]);
@@ -209,9 +212,9 @@ describe("Auth CLI", () => {
         displayName: "Admin",
         isAdmin: true,
       };
-      mockPrisma.user.findUnique.mockResolvedValueOnce(mockUser);
-      mockPrisma.user.update.mockResolvedValue(mockUser);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 3 });
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
+      mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 3 }));
 
       await resetUserPassword(
         mockPrisma as never,
@@ -219,14 +222,14 @@ describe("Auth CLI", () => {
         "NewPassword123!",
       );
 
-      expect(mockPrisma.session.deleteMany.calls[0]).toEqual([{
+      expect(mockPrisma.session.deleteMany.calls[0].args).toEqual([{
         where: { userId: "user_123" },
       }]);
     });
 
     it("should return error when user not found", async () => {
       const mockPrisma = createMockPrisma();
-      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       const result = await resetUserPassword(
         mockPrisma as never,
@@ -261,9 +264,9 @@ describe("Auth CLI", () => {
         displayName: "Admin",
         isAdmin: true,
       };
-      mockPrisma.user.findUnique.mockResolvedValueOnce(mockUser);
-      mockPrisma.user.update.mockResolvedValue(mockUser);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 0 });
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
+      mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 0 }));
 
       const result = await resetUserPassword(
         mockPrisma as never,
@@ -283,11 +286,13 @@ describe("Auth CLI", () => {
         displayName: "Admin",
         isAdmin: true,
       };
-      mockPrisma.user.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockUser);
-      mockPrisma.user.update.mockResolvedValue(mockUser);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 0 });
+      let callCount = 0;
+      mockPrisma.user.findUnique = spy(() => {
+        callCount++;
+        return Promise.resolve(callCount === 1 ? null : mockUser);
+      });
+      mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 0 }));
 
       const result = await resetUserPassword(mockPrisma as never, "admin");
 

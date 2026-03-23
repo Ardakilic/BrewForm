@@ -4,7 +4,7 @@
  */
 
 import type { Context } from "hono";
-import { mockFn } from "../mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
 let _mockUser = {
   id: "user_123",
@@ -26,7 +26,7 @@ export function setCheckHeaderMode(enabled: boolean): void {
   _checkHeader = enabled;
 }
 
-export const authMiddleware = mockFn((...args: unknown[]) => {
+export const authMiddleware = spy((...args: unknown[]) => {
   const c = args[0] as Context;
   const next = args[1] as () => Promise<void>;
   if (_checkHeader && c.req?.header) {
@@ -43,7 +43,7 @@ export const authMiddleware = mockFn((...args: unknown[]) => {
   return next();
 });
 
-export const requireAuth = mockFn((...args: unknown[]) => {
+export const requireAuth = spy((...args: unknown[]) => {
   const c = args[0] as Context;
   const next = args[1] as () => Promise<void>;
   if (_checkHeader) {
@@ -76,10 +76,10 @@ export const requireAuth = mockFn((...args: unknown[]) => {
   return next();
 });
 
-export const requireAdmin = mockFn(
+export const requireAdmin = spy(
   (...args: unknown[]) => (args[1] as () => Promise<void>)(),
 );
 
-export const optionalAuth = mockFn(
+export const optionalAuth = spy(
   (...args: unknown[]) => (args[1] as () => Promise<void>)(),
 );

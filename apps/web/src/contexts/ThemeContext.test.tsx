@@ -9,11 +9,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { Client as Styletron } from "styletron-engine-monolithic";
 import { Provider as StyletronProvider } from "styletron-react";
 import { BaseProvider } from "baseui";
-import { mockFn } from "../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 import { ThemeProvider, useTheme } from "./ThemeContext.tsx";
 
 // Mock matchMedia for JSDOM
-const mockMatchMedia = mockFn((query: unknown) => ({
+const mockMatchMedia = spy((query: unknown) => ({
   matches: (query as string) === "(prefers-color-scheme: dark)",
   media: query as string,
   onchange: null,
@@ -59,7 +59,6 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 describe("ThemeContext", () => {
   beforeEach(() => {
     localStorage.clear();
-    mockMatchMedia.mockReset();
   });
 
   it("should provide default theme mode as system", () => {

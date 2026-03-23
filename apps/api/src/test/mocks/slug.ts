@@ -3,40 +3,40 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from "../mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
-export const createSlug = mockFn((title: unknown) =>
+export const createSlug = spy((title: unknown) =>
   String(title).toLowerCase().replace(/\s+/g, "-")
 );
 
-export const createRecipeSlug = mockFn((title: unknown) =>
+export const createRecipeSlug = spy((title: unknown) =>
   String(title).toLowerCase().replace(/\s+/g, "-")
 );
 
-export const createEquipmentSlug = mockFn((name: unknown) =>
+export const createEquipmentSlug = spy((name: unknown) =>
   String(name).toLowerCase().replace(/\s+/g, "-")
 );
 
-export const createVendorSlug = mockFn((name: unknown) =>
+export const createVendorSlug = spy((name: unknown) =>
   String(name).toLowerCase().replace(/\s+/g, "-")
 );
 
-export const createCoffeeSlug = mockFn((name: unknown) =>
+export const createCoffeeSlug = spy((name: unknown) =>
   String(name).toLowerCase().replace(/\s+/g, "-")
 );
 
-export const createComparisonToken = mockFn(() => "abc123xyz");
+export const createComparisonToken = spy(() => "abc123xyz");
 
-export const createUniqueSlug = mockFn((title: unknown) =>
+export const createUniqueSlug = spy((title: unknown) =>
   String(title).toLowerCase().replace(/\s+/g, "-")
 );
 
-export const createNumberedSlug = mockFn((base: unknown, n: unknown) =>
+export const createNumberedSlug = spy((base: unknown, n: unknown) =>
   `${String(base)}-${String(n)}`
 );
 
-export const isValidSlug = mockFn(() => true);
+export const isValidSlug = spy(() => true);
 
-export const sanitizeSlug = mockFn((s: unknown) => String(s));
+export const sanitizeSlug = spy((s: unknown) => String(s));
 
-export const extractBaseSlug = mockFn((s: unknown) => String(s));
+export const extractBaseSlug = spy((s: unknown) => String(s));

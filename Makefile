@@ -189,6 +189,13 @@ test-coverage:
 	docker compose run --rm --service-ports api deno task test:coverage
 	docker compose run --rm --service-ports web deno task test:coverage
 
+test-coverage-report:
+	docker compose run --rm api deno task test:coverage:report
+	docker compose run --rm web deno task test:coverage:report
+	@echo "Coverage reports generated:"
+	@echo "  - API: apps/api/coverage/lcov.info"
+	@echo "  - Web: apps/web/coverage/lcov.info"
+
 test-watch:
 	docker compose run --rm --service-ports api deno task test:watch
 

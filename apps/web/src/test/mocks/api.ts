@@ -4,16 +4,16 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from "../mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
-export type { ApiResponse } from "../../types";
+export type { ApiResponse } from "../../types/index.ts";
 
 export const api = {
-  get: mockFn(() => Promise.resolve({ success: true, data: null })),
-  post: mockFn(() => Promise.resolve({ success: true, data: null })),
-  put: mockFn(() => Promise.resolve({ success: true, data: null })),
-  patch: mockFn(() => Promise.resolve({ success: true, data: null })),
-  delete: mockFn(() => Promise.resolve({ success: true, data: null })),
+  get: spy(() => Promise.resolve({ data: null, error: null })),
+  post: spy(() => Promise.resolve({ data: null, error: null })),
+  put: spy(() => Promise.resolve({ data: null, error: null })),
+  patch: spy(() => Promise.resolve({ data: null, error: null })),
+  delete: spy(() => Promise.resolve({ data: null, error: null })),
 };
 
 export default api;

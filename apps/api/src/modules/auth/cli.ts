@@ -3,7 +3,7 @@
  * Password reset functionality for CLI usage
  */
 
-import type { PrismaClient } from "../../../prisma/generated/prisma";
+import type { getPrisma } from "../../utils/database/index.ts";
 import { hashPassword } from "../../utils/auth/index.ts";
 
 export interface ResetPasswordResult {
@@ -35,7 +35,10 @@ export function generatePassword(length = 16): string {
 /**
  * Find user by email or username
  */
-export async function findUser(prisma: PrismaClient, identifier: string) {
+export async function findUser(
+  prisma: ReturnType<typeof getPrisma>,
+  identifier: string,
+) {
   // Try to find by email first
   let user = await prisma.user.findUnique({
     where: { email: identifier.toLowerCase() },
@@ -70,7 +73,7 @@ export async function findUser(prisma: PrismaClient, identifier: string) {
  * Returns a result object for CLI usage
  */
 export async function resetUserPassword(
-  prisma: PrismaClient,
+  prisma: ReturnType<typeof getPrisma>,
   identifier: string,
   newPassword?: string,
 ): Promise<ResetPasswordResult> {

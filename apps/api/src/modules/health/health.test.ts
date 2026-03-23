@@ -4,10 +4,11 @@
 
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
+import { type Stub, stub } from "@std/testing/mock";
 import { Hono } from "hono";
 import healthModule from "./index.ts";
-import { checkDbConnection } from "../../test/mocks/database.ts";
-import { checkRedisConnection } from "../../test/mocks/redis.ts";
+import * as databaseMock from "../../test/mocks/database.ts";
+import * as redisMock from "../../test/mocks/redis.ts";
 
 // API Response type for testing
 interface HealthResponse {
@@ -21,10 +22,12 @@ interface HealthResponse {
 
 describe("Health Module", () => {
   let app: Hono;
+  let dbStub: Stub;
+  let redisStub: Stub;
 
   beforeEach(() => {
-    checkDbConnection.mockReset();
-    checkRedisConnection.mockReset();
+    dbStub?.restore();
+    redisStub?.restore();
     app = new Hono();
     app.route("/health", healthModule);
   });
@@ -62,8 +65,16 @@ describe("Health Module", () => {
 
   describe("GET /health/ready", () => {
     it("should return ok when all dependencies are healthy", async () => {
-      checkDbConnection.mockResolvedValue(true);
-      checkRedisConnection.mockResolvedValue(true);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(true),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(true),
+      );
 
       const response = await app.request("/health/ready");
 
@@ -75,8 +86,16 @@ describe("Health Module", () => {
     });
 
     it("should return degraded status when database is down", async () => {
-      checkDbConnection.mockResolvedValue(false);
-      checkRedisConnection.mockResolvedValue(true);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(false),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(true),
+      );
 
       const response = await app.request("/health/ready");
 
@@ -88,8 +107,16 @@ describe("Health Module", () => {
     });
 
     it("should return degraded status when redis is down", async () => {
-      checkDbConnection.mockResolvedValue(true);
-      checkRedisConnection.mockResolvedValue(false);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(true),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(false),
+      );
 
       const response = await app.request("/health/ready");
 
@@ -101,8 +128,16 @@ describe("Health Module", () => {
     });
 
     it("should return degraded status when all dependencies are down", async () => {
-      checkDbConnection.mockResolvedValue(false);
-      checkRedisConnection.mockResolvedValue(false);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(false),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(false),
+      );
 
       const response = await app.request("/health/ready");
 
@@ -114,8 +149,16 @@ describe("Health Module", () => {
     });
 
     it("should handle database check errors gracefully", async () => {
-      checkDbConnection.mockRejectedValue(new Error("Connection timeout"));
-      checkRedisConnection.mockResolvedValue(true);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.reject(new Error("Connection timeout")),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(true),
+      );
 
       const response = await app.request("/health/ready");
 
@@ -126,8 +169,16 @@ describe("Health Module", () => {
     });
 
     it("should handle redis check errors gracefully", async () => {
-      checkDbConnection.mockResolvedValue(true);
-      checkRedisConnection.mockRejectedValue(new Error("Redis unavailable"));
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(true),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.reject(new Error("Redis unavailable")),
+      );
 
       const response = await app.request("/health/ready");
 
@@ -140,8 +191,16 @@ describe("Health Module", () => {
 
   describe("GET /health/startup", () => {
     it("should return ok when application has started successfully", async () => {
-      checkDbConnection.mockResolvedValue(true);
-      checkRedisConnection.mockResolvedValue(true);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(true),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(true),
+      );
 
       const response = await app.request("/health/startup");
 
@@ -151,8 +210,16 @@ describe("Health Module", () => {
     });
 
     it("should return starting status when database is not ready", async () => {
-      checkDbConnection.mockResolvedValue(false);
-      checkRedisConnection.mockResolvedValue(true);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(false),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(true),
+      );
 
       const response = await app.request("/health/startup");
 
@@ -162,8 +229,16 @@ describe("Health Module", () => {
     });
 
     it("should return starting status when redis is not ready", async () => {
-      checkDbConnection.mockResolvedValue(true);
-      checkRedisConnection.mockResolvedValue(false);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(true),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(false),
+      );
 
       const response = await app.request("/health/startup");
 
@@ -173,8 +248,16 @@ describe("Health Module", () => {
     });
 
     it("should return starting status when no dependencies are ready", async () => {
-      checkDbConnection.mockResolvedValue(false);
-      checkRedisConnection.mockResolvedValue(false);
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(false),
+      );
+      redisStub = stub(
+        redisMock,
+        "checkRedisConnection",
+        () => Promise.resolve(false),
+      );
 
       const response = await app.request("/health/startup");
 

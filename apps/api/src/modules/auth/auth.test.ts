@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
+import { spy } from "@std/testing/mock";
 import { type Context, Hono } from "hono";
 import authModule from "./index.ts";
 import { createMockPrisma } from "../../test/setup.ts";
@@ -84,14 +85,16 @@ describe("Auth Module", () => {
       };
 
       // Mock the methods
-      mockPrisma.user.findFirst.mockResolvedValue(null);
-      mockPrisma.user.create.mockResolvedValue(mockUser);
-      mockPrisma.emailVerification.create.mockResolvedValue({
-        id: "token_123",
-        token: "verify_token",
-        userId: "user_123",
-        expiresAt: new Date(Date.now() + 86400000),
-      });
+      mockPrisma.user.findFirst = spy(() => Promise.resolve(null));
+      mockPrisma.user.create = spy(() => Promise.resolve(mockUser));
+      mockPrisma.emailVerification.create = spy(() =>
+        Promise.resolve({
+          id: "token_123",
+          token: "verify_token",
+          userId: "user_123",
+          expiresAt: new Date(Date.now() + 86400000),
+        })
+      );
 
       const response = await app.request("/auth/register", {
         method: "POST",
@@ -113,10 +116,12 @@ describe("Auth Module", () => {
     });
 
     it("should reject duplicate email", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: "existing_user",
-        email: "test@example.com",
-      });
+      mockPrisma.user.findUnique = spy(() =>
+        Promise.resolve({
+          id: "existing_user",
+          email: "test@example.com",
+        })
+      );
 
       const response = await app.request("/auth/register", {
         method: "POST",
@@ -158,13 +163,17 @@ describe("Auth Module", () => {
         isBanned: false,
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
-      mockPrisma.session.create.mockResolvedValue({
-        id: "session_123",
-        userId: "user_123",
-        refreshToken: "refresh_token",
-        expiresAt: new Date(Date.now() + 604800000),
-      } as never);
+      mockPrisma.user.findUnique = spy(() =>
+        Promise.resolve(mockUser as never)
+      );
+      mockPrisma.session.create = spy(() =>
+        Promise.resolve({
+          id: "session_123",
+          userId: "user_123",
+          refreshToken: "refresh_token",
+          expiresAt: new Date(Date.now() + 604800000),
+        } as never)
+      );
 
       const response = await app.request("/auth/login", {
         method: "POST",
@@ -186,7 +195,7 @@ describe("Auth Module", () => {
     });
 
     it("should reject invalid credentials", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/auth/login", {
         method: "POST",
@@ -208,7 +217,9 @@ describe("Auth Module", () => {
         isBanned: true,
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
+      mockPrisma.user.findUnique = spy(() =>
+        Promise.resolve(mockUser as never)
+      );
 
       const response = await app.request("/auth/login", {
         method: "POST",
@@ -225,7 +236,7 @@ describe("Auth Module", () => {
 
   describe("POST /auth/logout", () => {
     it("should logout successfully", async () => {
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 1 });
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 1 }));
 
       const response = await app.request("/auth/logout", {
         method: "POST",
@@ -257,11 +268,15 @@ describe("Auth Module", () => {
         },
       };
 
-      mockPrisma.session.findUnique.mockResolvedValue(mockSession as never);
-      mockPrisma.session.update.mockResolvedValue({
-        id: "session_123",
-        refreshToken: "new_refresh_token",
-      } as never);
+      mockPrisma.session.findUnique = spy(() =>
+        Promise.resolve(mockSession as never)
+      );
+      mockPrisma.session.update = spy(() =>
+        Promise.resolve({
+          id: "session_123",
+          refreshToken: "new_refresh_token",
+        } as never)
+      );
 
       const response = await app.request("/auth/refresh", {
         method: "POST",
@@ -290,13 +305,58 @@ describe("Auth Module", () => {
         },
       };
 
-      mockPrisma.session.findUnique.mockResolvedValue(mockSession as never);
+      mockPrisma.session.findUnique = spy(() =>
+        Promise.resolve(mockSession as never)
+      );
 
       const response = await app.request("/auth/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           refreshToken: "expired_refresh_token",
+        }),
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    it("should reject if session not found", async () => {
+      mockPrisma.session.findUnique = spy(() => Promise.resolve(null));
+
+      const response = await app.request("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refreshToken: "nonexistent_token",
+        }),
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    it("should reject if user is banned", async () => {
+      const mockSession = {
+        id: "session_123",
+        userId: "user_123",
+        refreshToken: "valid_refresh_token",
+        expiresAt: new Date(Date.now() + 604800000),
+        user: {
+          id: "user_123",
+          email: "test@example.com",
+          isAdmin: false,
+          isBanned: true, // User is banned
+        },
+      };
+
+      mockPrisma.session.findUnique = spy(() =>
+        Promise.resolve(mockSession as never)
+      );
+
+      const response = await app.request("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refreshToken: "valid_refresh_token",
         }),
       });
 
@@ -311,13 +371,17 @@ describe("Auth Module", () => {
         email: "test@example.com",
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
-      mockPrisma.passwordReset.create.mockResolvedValue({
-        id: "token_123",
-        token: "reset_token",
-        userId: "user_123",
-        expiresAt: new Date(Date.now() + 3600000),
-      } as never);
+      mockPrisma.user.findUnique = spy(() =>
+        Promise.resolve(mockUser as never)
+      );
+      mockPrisma.passwordReset.create = spy(() =>
+        Promise.resolve({
+          id: "token_123",
+          token: "reset_token",
+          userId: "user_123",
+          expiresAt: new Date(Date.now() + 3600000),
+        } as never)
+      );
 
       const response = await app.request("/auth/forgot-password", {
         method: "POST",
@@ -332,7 +396,7 @@ describe("Auth Module", () => {
     });
 
     it("should return 200 even for non-existent email (prevent enumeration)", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/auth/forgot-password", {
         method: "POST",
@@ -356,10 +420,14 @@ describe("Auth Module", () => {
         user: { id: "user_123" },
       };
 
-      mockPrisma.passwordReset.findUnique.mockResolvedValue(mockToken as never);
-      mockPrisma.user.update.mockResolvedValue({ id: "user_123" } as never);
-      mockPrisma.passwordReset.update.mockResolvedValue({} as never);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 1 });
+      mockPrisma.passwordReset.findUnique = spy(() =>
+        Promise.resolve(mockToken as never)
+      );
+      mockPrisma.user.update = spy(() =>
+        Promise.resolve({ id: "user_123" } as never)
+      );
+      mockPrisma.passwordReset.update = spy(() => Promise.resolve({} as never));
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 1 }));
 
       const response = await app.request("/auth/reset-password", {
         method: "POST",
@@ -381,7 +449,9 @@ describe("Auth Module", () => {
         expiresAt: new Date(Date.now() - 1000), // Expired
       };
 
-      mockPrisma.passwordReset.findUnique.mockResolvedValue(mockToken as never);
+      mockPrisma.passwordReset.findUnique = spy(() =>
+        Promise.resolve(mockToken as never)
+      );
 
       const response = await app.request("/auth/reset-password", {
         method: "POST",
@@ -411,12 +481,18 @@ describe("Auth Module", () => {
         },
       };
 
-      mockPrisma.emailVerification.findUnique.mockResolvedValue(
-        mockVerification as never,
+      mockPrisma.emailVerification.findUnique = spy(() =>
+        Promise.resolve(
+          mockVerification as never,
+        )
       );
-      mockPrisma.emailVerification.update.mockResolvedValue({} as never);
-      mockPrisma.user.update.mockResolvedValue(
-        { id: "user_123", emailVerified: true } as never,
+      mockPrisma.emailVerification.update = spy(() =>
+        Promise.resolve({} as never)
+      );
+      mockPrisma.user.update = spy(() =>
+        Promise.resolve(
+          { id: "user_123", emailVerified: true } as never,
+        )
       );
 
       const response = await app.request("/auth/verify-email", {
@@ -431,7 +507,9 @@ describe("Auth Module", () => {
     });
 
     it("should reject invalid token", async () => {
-      mockPrisma.emailVerification.findUnique.mockResolvedValue(null);
+      mockPrisma.emailVerification.findUnique = spy(() =>
+        Promise.resolve(null)
+      );
 
       const response = await app.request("/auth/verify-email", {
         method: "POST",
@@ -458,8 +536,10 @@ describe("Auth Module", () => {
         },
       };
 
-      mockPrisma.emailVerification.findUnique.mockResolvedValue(
-        mockVerification as never,
+      mockPrisma.emailVerification.findUnique = spy(() =>
+        Promise.resolve(
+          mockVerification as never,
+        )
       );
 
       const response = await app.request("/auth/verify-email", {
@@ -487,8 +567,10 @@ describe("Auth Module", () => {
         },
       };
 
-      mockPrisma.emailVerification.findUnique.mockResolvedValue(
-        mockVerification as never,
+      mockPrisma.emailVerification.findUnique = spy(() =>
+        Promise.resolve(
+          mockVerification as never,
+        )
       );
 
       const response = await app.request("/auth/verify-email", {
@@ -505,7 +587,7 @@ describe("Auth Module", () => {
 
   describe("POST /auth/reset-password - edge cases", () => {
     it("should reject invalid reset token", async () => {
-      mockPrisma.passwordReset.findUnique.mockResolvedValue(null);
+      mockPrisma.passwordReset.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/auth/reset-password", {
         method: "POST",
@@ -533,7 +615,9 @@ describe("Auth Module", () => {
         },
       };
 
-      mockPrisma.passwordReset.findUnique.mockResolvedValue(mockToken as never);
+      mockPrisma.passwordReset.findUnique = spy(() =>
+        Promise.resolve(mockToken as never)
+      );
 
       const response = await app.request("/auth/reset-password", {
         method: "POST",
@@ -557,9 +641,13 @@ describe("Auth Module", () => {
         passwordHash: "hashed_password",
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
-      mockPrisma.user.update.mockResolvedValue({ id: "user_123" } as never);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 1 });
+      mockPrisma.user.findUnique = spy(() =>
+        Promise.resolve(mockUser as never)
+      );
+      mockPrisma.user.update = spy(() =>
+        Promise.resolve({ id: "user_123" } as never)
+      );
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 1 }));
 
       const response = await app.request("/auth/change-password", {
         method: "POST",
@@ -584,9 +672,13 @@ describe("Auth Module", () => {
         passwordHash: "hashed_password",
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
-      mockPrisma.user.update.mockResolvedValue({ id: "user_123" } as never);
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 1 });
+      mockPrisma.user.findUnique = spy(() =>
+        Promise.resolve(mockUser as never)
+      );
+      mockPrisma.user.update = spy(() =>
+        Promise.resolve({ id: "user_123" } as never)
+      );
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 1 }));
 
       const response = await app.request("/auth/change-password", {
         method: "POST",
@@ -605,7 +697,7 @@ describe("Auth Module", () => {
     });
 
     it("should reject if user not found", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/auth/change-password", {
         method: "POST",
@@ -625,7 +717,7 @@ describe("Auth Module", () => {
 
   describe("POST /auth/refresh - edge cases", () => {
     it("should reject if session not found", async () => {
-      mockPrisma.session.findUnique.mockResolvedValue(null);
+      mockPrisma.session.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/auth/refresh", {
         method: "POST",
@@ -652,7 +744,9 @@ describe("Auth Module", () => {
         },
       };
 
-      mockPrisma.session.findUnique.mockResolvedValue(mockSession as never);
+      mockPrisma.session.findUnique = spy(() =>
+        Promise.resolve(mockSession as never)
+      );
 
       const response = await app.request("/auth/refresh", {
         method: "POST",
@@ -691,7 +785,9 @@ describe("Auth Module", () => {
         isBanned: false,
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser as never);
+      mockPrisma.user.findUnique = spy(() =>
+        Promise.resolve(mockUser as never)
+      );
 
       const response = await app.request("/auth/login", {
         method: "POST",

@@ -60,13 +60,24 @@ jobs:
         run: deno task db:generate
         working-directory: apps/api
 
-      - name: Run API tests
-        run: deno task test
+      - name: Run API tests with coverage
+        run: deno task test:coverage
         working-directory: apps/api
         env:
           JWT_SECRET: test-jwt-secret-key-for-ci
           JWT_REFRESH_SECRET: test-jwt-refresh-secret-for-ci
           NODE_ENV: test
+
+      - name: Generate API coverage report
+        run: deno task test:coverage:report
+        working-directory: apps/api
+
+      - name: Upload API coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./apps/api/coverage/lcov.info
+          flags: api
+          name: api-coverage
 
   test-web:
     name: Test Web
@@ -84,9 +95,20 @@ jobs:
         run: deno install --allow-scripts
         working-directory: apps/web
 
-      - name: Run Web tests
-        run: deno task test
+      - name: Run Web tests with coverage
+        run: deno task test:coverage
         working-directory: apps/web
+
+      - name: Generate Web coverage report
+        run: deno task test:coverage:report
+        working-directory: apps/web
+
+      - name: Upload Web coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./apps/web/coverage/lcov.info
+          flags: web
+          name: web-coverage
 
   build:
     name: Build

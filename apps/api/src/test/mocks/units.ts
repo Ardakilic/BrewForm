@@ -3,20 +3,18 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from "../mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
-export const calculateBrewRatio = mockFn(
-  (...args: unknown[]) => (args[1] as number) / (args[0] as number),
-);
+export const calculateBrewRatio = spy(() => 16.67);
 
-export const calculateFlowRate = mockFn(
-  (...args: unknown[]) => (args[0] as number) / (args[1] as number),
-);
+export const calculateFlowRate = spy(() => 2.0);
 
-export const convertTemperature = mockFn(
-  (...args: unknown[]) => args[0] as number,
-);
+export const convertTemperature = spy((v: number) => v);
 
-export const convertWeight = mockFn(
-  (...args: unknown[]) => args[0] as number,
-);
+export const convertWeight = spy((v: number) => v);
+
+export const formatWeight = spy((v: number) => `${v}g`);
+
+export const formatVolume = spy((v: number) => `${v}ml`);
+
+export const formatTemperature = spy((v: number) => `${v}°C`);

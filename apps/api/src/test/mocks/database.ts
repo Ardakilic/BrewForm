@@ -3,7 +3,7 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from "../mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
 // deno-lint-ignore no-explicit-any
 let _prisma: any = null;
@@ -49,6 +49,4 @@ export function softDeleteFilter() {
   return { deletedAt: null };
 }
 
-export const checkDbConnection = mockFn<Promise<boolean>>(
-  () => Promise.resolve(true),
-);
+export const checkDbConnection = spy(() => Promise.resolve(true));

@@ -5,7 +5,7 @@
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { Hono } from "hono";
-import { mockFn } from "../../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 import { setPrisma } from "../../test/mocks/database.ts";
 
 // API Response type for testing
@@ -39,22 +39,22 @@ const testErrorHandler = (
 // Create mock prisma instance factory
 const createLocalMockPrisma = () => ({
   user: {
-    findUnique: mockFn(),
-    findFirst: mockFn(),
-    findMany: mockFn(),
-    update: mockFn(),
-    count: mockFn(),
+    findUnique: spy(),
+    findFirst: spy(),
+    findMany: spy(),
+    update: spy(),
+    count: spy(),
   },
   recipe: {
-    findMany: mockFn(),
-    count: mockFn(),
+    findMany: spy(),
+    count: spy(),
   },
   userFavourite: {
-    findMany: mockFn(),
-    count: mockFn(),
+    findMany: spy(),
+    count: spy(),
   },
   session: {
-    deleteMany: mockFn(),
+    deleteMany: spy(),
   },
 });
 
@@ -89,7 +89,7 @@ describe("User Module", () => {
         },
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
 
       const response = await app.request("/users/me");
 
@@ -121,7 +121,7 @@ describe("User Module", () => {
         _count: { recipes: 5, favourites: 10 },
       };
 
-      mockPrisma.user.update.mockResolvedValue(mockUser);
+      mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
 
       const response = await app.request("/users/me", {
         method: "PATCH",
@@ -168,7 +168,7 @@ describe("User Module", () => {
         _count: { recipes: 5, favourites: 10 },
       };
 
-      mockPrisma.user.update.mockResolvedValue(mockUser);
+      mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
 
       const response = await app.request("/users/me", {
         method: "PATCH",
@@ -199,8 +199,8 @@ describe("User Module", () => {
         },
       ];
 
-      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
-      mockPrisma.recipe.count.mockResolvedValue(2);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve(mockRecipes));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(2));
 
       const response = await app.request("/users/me/recipes");
 
@@ -224,8 +224,10 @@ describe("User Module", () => {
         },
       ];
 
-      mockPrisma.userFavourite.findMany.mockResolvedValue(mockFavourites);
-      mockPrisma.userFavourite.count.mockResolvedValue(1);
+      mockPrisma.userFavourite.findMany = spy(() =>
+        Promise.resolve(mockFavourites)
+      );
+      mockPrisma.userFavourite.count = spy(() => Promise.resolve(1));
 
       const response = await app.request("/users/me/favourites");
 
@@ -248,7 +250,7 @@ describe("User Module", () => {
         },
       };
 
-      mockPrisma.user.findFirst.mockResolvedValue(mockUser);
+      mockPrisma.user.findFirst = spy(() => Promise.resolve(mockUser));
 
       const response = await app.request("/users/coffeemaster");
 
@@ -260,7 +262,7 @@ describe("User Module", () => {
     });
 
     it("should return 404 for non-existent user", async () => {
-      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.user.findFirst = spy(() => Promise.resolve(null));
 
       const response = await app.request("/users/nonexistent");
 
@@ -269,7 +271,7 @@ describe("User Module", () => {
 
     it("should not return banned users", async () => {
       // Banned users are filtered at query level, so findFirst returns null
-      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.user.findFirst = spy(() => Promise.resolve(null));
 
       const response = await app.request("/users/banneduser");
 
@@ -298,9 +300,9 @@ describe("User Module", () => {
         },
       ];
 
-      mockPrisma.user.findFirst.mockResolvedValue(mockUser);
-      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
-      mockPrisma.recipe.count.mockResolvedValue(1);
+      mockPrisma.user.findFirst = spy(() => Promise.resolve(mockUser));
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve(mockRecipes));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(1));
 
       const response = await app.request("/users/coffeemaster/recipes");
 
@@ -312,8 +314,8 @@ describe("User Module", () => {
 
   describe("DELETE /users/me", () => {
     it("should soft delete user account", async () => {
-      mockPrisma.user.update.mockResolvedValue({ id: "user_123" });
-      mockPrisma.session.deleteMany.mockResolvedValue({ count: 2 });
+      mockPrisma.user.update = spy(() => Promise.resolve({ id: "user_123" }));
+      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 2 }));
 
       const response = await app.request("/users/me", {
         method: "DELETE",
@@ -322,15 +324,17 @@ describe("User Module", () => {
       expect(response.status).toBe(200);
       const body = await response.json() as ApiResponse;
       expect(body.success).toBe(true);
-      expect(mockPrisma.user.update.calls[0]).toEqual([
+      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "user_123" },
           data: { deletedAt: expect.any(Date) },
         }),
-      ]);
-      expect(mockPrisma.session.deleteMany.calls[0]).toEqual([{
+      );
+      expect(mockPrisma.session.deleteMany).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.session.deleteMany).toHaveBeenCalledWith({
         where: { userId: "user_123" },
-      }]);
+      });
     });
   });
 
@@ -359,8 +363,8 @@ describe("User Module", () => {
         },
       ];
 
-      mockPrisma.user.findMany.mockResolvedValue(mockUsers);
-      mockPrisma.user.count.mockResolvedValue(2);
+      mockPrisma.user.findMany = spy(() => Promise.resolve(mockUsers));
+      mockPrisma.user.count = spy(() => Promise.resolve(2));
 
       const response = await app.request("/users");
 
@@ -384,8 +388,8 @@ describe("User Module", () => {
         },
       ];
 
-      mockPrisma.user.findMany.mockResolvedValue(mockUsers);
-      mockPrisma.user.count.mockResolvedValue(1);
+      mockPrisma.user.findMany = spy(() => Promise.resolve(mockUsers));
+      mockPrisma.user.count = spy(() => Promise.resolve(1));
 
       const response = await app.request("/users?search=coffee");
 
@@ -395,8 +399,8 @@ describe("User Module", () => {
     });
 
     it("should return empty list when no users match", async () => {
-      mockPrisma.user.findMany.mockResolvedValue([]);
-      mockPrisma.user.count.mockResolvedValue(0);
+      mockPrisma.user.findMany = spy(() => Promise.resolve([]));
+      mockPrisma.user.count = spy(() => Promise.resolve(0));
 
       const response = await app.request("/users?search=nonexistent");
 
@@ -408,7 +412,7 @@ describe("User Module", () => {
 
   describe("GET /users/me - edge cases", () => {
     it("should return 404 when user not found", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/users/me");
 

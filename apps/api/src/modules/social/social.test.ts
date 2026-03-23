@@ -5,7 +5,7 @@
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { Hono } from "hono";
-import { mockFn } from "../../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 import { setPrisma } from "../../test/mocks/database.ts";
 import socialModule from "./index.ts";
 
@@ -32,27 +32,27 @@ const testErrorHandler = (
 
 const createLocalMockPrisma = () => ({
   recipe: {
-    findUnique: mockFn(),
-    update: mockFn(),
+    findUnique: spy(),
+    update: spy(),
   },
   userFavourite: {
-    findUnique: mockFn(),
-    findFirst: mockFn(),
-    create: mockFn(),
-    delete: mockFn(),
+    findUnique: spy(),
+    findFirst: spy(),
+    create: spy(),
+    delete: spy(),
   },
   comment: {
-    findMany: mockFn(),
-    create: mockFn(),
-    findUnique: mockFn(),
-    update: mockFn(),
-    delete: mockFn(),
-    count: mockFn(),
+    findMany: spy(),
+    create: spy(),
+    findUnique: spy(),
+    update: spy(),
+    delete: spy(),
+    count: spy(),
   },
   comparison: {
-    create: mockFn(),
-    findFirst: mockFn(),
-    findUnique: mockFn(),
+    create: spy(),
+    findFirst: spy(),
+    findUnique: spy(),
   },
 });
 
@@ -83,10 +83,10 @@ describe("Social Module", () => {
           createdAt: new Date(),
         };
 
-        mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-        mockPrisma.userFavourite.findUnique.mockResolvedValue(null);
-        mockPrisma.userFavourite.create.mockResolvedValue(mockFavourite);
-        mockPrisma.recipe.update.mockResolvedValue({});
+        mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+        mockPrisma.userFavourite.findUnique = spy(() => Promise.resolve(null));
+        mockPrisma.userFavourite.create = spy(() => Promise.resolve(mockFavourite);
+        mockPrisma.recipe.update = spy(() => Promise.resolve({});
 
         const response = await app.request(
           "/social/favourites/clh1234567890abcdefghij01",
@@ -109,10 +109,10 @@ describe("Social Module", () => {
           recipeId: "clh1234567890abcdefghij01",
         };
 
-        mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-        mockPrisma.userFavourite.findUnique.mockResolvedValue(
+        mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+        mockPrisma.userFavourite.findUnique = spy(() => Promise.resolve(
           existingFavourite,
-        );
+        ));
 
         const response = await app.request(
           "/social/favourites/clh1234567890abcdefghij01",
@@ -131,7 +131,7 @@ describe("Social Module", () => {
           userId: "other_user",
         };
 
-        mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+        mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
 
         const response = await app.request(
           "/social/favourites/clh1234567890abcdefghij01",
@@ -152,9 +152,9 @@ describe("Social Module", () => {
           recipeId: "clh1234567890abcdefghij01",
         };
 
-        mockPrisma.userFavourite.findUnique.mockResolvedValue(mockFavourite);
-        mockPrisma.userFavourite.delete.mockResolvedValue(mockFavourite);
-        mockPrisma.recipe.update.mockResolvedValue({});
+        mockPrisma.userFavourite.findUnique = spy(() => Promise.resolve(mockFavourite);
+        mockPrisma.userFavourite.delete = spy(() => Promise.resolve(mockFavourite);
+        mockPrisma.recipe.update = spy(() => Promise.resolve({});
 
         const response = await app.request(
           "/social/favourites/clh1234567890abcdefghij01",
@@ -167,7 +167,7 @@ describe("Social Module", () => {
       });
 
       it("should return 404 if not favourited", async () => {
-        mockPrisma.userFavourite.findUnique.mockResolvedValue(null);
+        mockPrisma.userFavourite.findUnique = spy(() => Promise.resolve(null));
 
         const response = await app.request(
           "/social/favourites/clh1234567890abcdefghij01",
@@ -211,9 +211,9 @@ describe("Social Module", () => {
           },
         ];
 
-        mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-        mockPrisma.comment.findMany.mockResolvedValue(mockComments);
-        mockPrisma.comment.count.mockResolvedValue(2);
+        mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+        mockPrisma.comment.findMany = spy(() => Promise.resolve(mockComments));
+        mockPrisma.comment.count = spy(() => Promise.resolve(2));
 
         const response = await app.request(
           "/social/recipes/clh1234567890abcdefghij01/comments",
@@ -231,7 +231,7 @@ describe("Social Module", () => {
           userId: "other_user",
         };
 
-        mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+        mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
 
         const response = await app.request(
           "/social/recipes/clh1234567890abcdefghij01/comments",
@@ -253,8 +253,8 @@ describe("Social Module", () => {
           createdAt: new Date(),
         };
 
-        mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-        mockPrisma.comment.create.mockResolvedValue(mockComment);
+        mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+        mockPrisma.comment.create = spy(() => Promise.resolve(mockComment));
 
         const response = await app.request(
           `/social/recipes/${recipeId}/comments`,
@@ -291,8 +291,8 @@ describe("Social Module", () => {
           content: "My comment",
         };
 
-        mockPrisma.comment.findUnique.mockResolvedValue(mockComment);
-        mockPrisma.comment.delete.mockResolvedValue(mockComment);
+        mockPrisma.comment.findUnique = spy(() => Promise.resolve(mockComment));
+        mockPrisma.comment.delete = spy(() => Promise.resolve(mockComment));
 
         const response = await app.request("/social/comments/comment_1", {
           method: "DELETE",
@@ -308,7 +308,7 @@ describe("Social Module", () => {
           content: "Their comment",
         };
 
-        mockPrisma.comment.findUnique.mockResolvedValue(mockComment);
+        mockPrisma.comment.findUnique = spy(() => Promise.resolve(mockComment));
 
         const response = await app.request("/social/comments/comment_1", {
           method: "DELETE",
@@ -336,10 +336,12 @@ describe("Social Module", () => {
           createdAt: new Date(),
         };
 
-        mockPrisma.recipe.findUnique
-          .mockResolvedValueOnce(mockRecipeA)
-          .mockResolvedValueOnce(mockRecipeB);
-        mockPrisma.comparison.create.mockResolvedValue(mockComparison);
+        let callCount = 0;
+        mockPrisma.recipe.findUnique = spy(() => {
+          callCount++;
+          return Promise.resolve(callCount === 1 ? mockRecipeA : mockRecipeB);
+        });
+        mockPrisma.comparison.create = spy(() => Promise.resolve(mockComparison));
 
         const response = await app.request("/social/comparisons", {
           method: "POST",
@@ -389,7 +391,7 @@ describe("Social Module", () => {
           },
         };
 
-        mockPrisma.comparison.findUnique.mockResolvedValue(mockComparison);
+        mockPrisma.comparison.findUnique = spy(() => Promise.resolve(mockComparison));
 
         const response = await app.request("/social/comparisons/abc123xyz");
 
@@ -400,7 +402,7 @@ describe("Social Module", () => {
       });
 
       it("should return 404 for invalid token", async () => {
-        mockPrisma.comparison.findUnique.mockResolvedValue(null);
+        mockPrisma.comparison.findUnique = spy(() => Promise.resolve(null));
 
         const response = await app.request("/social/comparisons/invalid-token");
 
@@ -425,7 +427,7 @@ describe("Social Module", () => {
           },
         };
 
-        mockPrisma.comparison.findUnique.mockResolvedValue(mockComparison);
+        mockPrisma.comparison.findUnique = spy(() => Promise.resolve(mockComparison));
 
         const response = await app.request("/social/comparisons/abc123xyz");
 
@@ -447,10 +449,12 @@ describe("Social Module", () => {
           recipeBId,
         };
 
-        mockPrisma.recipe.findUnique
-          .mockResolvedValueOnce(mockRecipeA)
-          .mockResolvedValueOnce(mockRecipeB);
-        mockPrisma.comparison.findFirst.mockResolvedValue(existingComparison);
+        let callCount2 = 0;
+        mockPrisma.recipe.findUnique = spy(() => {
+          callCount2++;
+          return Promise.resolve(callCount2 === 1 ? mockRecipeA : mockRecipeB);
+        });
+        mockPrisma.comparison.findFirst = spy(() => Promise.resolve(existingComparison));
 
         const response = await app.request("/social/comparisons", {
           method: "POST",
@@ -475,9 +479,11 @@ describe("Social Module", () => {
         };
         const mockRecipeB = { id: recipeBId, visibility: "PUBLIC" };
 
-        mockPrisma.recipe.findUnique
-          .mockResolvedValueOnce(mockRecipeA)
-          .mockResolvedValueOnce(mockRecipeB);
+        let callCount3 = 0;
+        mockPrisma.recipe.findUnique = spy(() => {
+          callCount3++;
+          return Promise.resolve(callCount3 === 1 ? mockRecipeA : mockRecipeB);
+        });
 
         const response = await app.request("/social/comparisons", {
           method: "POST",
@@ -512,8 +518,8 @@ describe("Social Module", () => {
           },
         };
 
-        mockPrisma.comment.findUnique.mockResolvedValue(mockComment);
-        mockPrisma.comment.update.mockResolvedValue(updatedComment);
+        mockPrisma.comment.findUnique = spy(() => Promise.resolve(mockComment));
+        mockPrisma.comment.update = spy(() => Promise.resolve(updatedComment));
 
         const response = await app.request(`/social/comments/${commentId}`, {
           method: "PATCH",
@@ -536,7 +542,7 @@ describe("Social Module", () => {
           content: "Their comment",
         };
 
-        mockPrisma.comment.findUnique.mockResolvedValue(mockComment);
+        mockPrisma.comment.findUnique = spy(() => Promise.resolve(mockComment));
 
         const response = await app.request(`/social/comments/${commentId}`, {
           method: "PATCH",
@@ -552,7 +558,7 @@ describe("Social Module", () => {
   describe("Favourites - edge cases", () => {
     describe("POST /social/favourites/:recipeId - recipe not found", () => {
       it("should return 404 if recipe not found", async () => {
-        mockPrisma.recipe.findUnique.mockResolvedValue(null);
+        mockPrisma.recipe.findUnique = spy(() => Promise.resolve(null));
 
         const response = await app.request(
           "/social/favourites/clh1234567890abcdefghij01",
@@ -579,10 +585,10 @@ describe("Social Module", () => {
           createdAt: new Date(),
         };
 
-        mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-        mockPrisma.userFavourite.findUnique.mockResolvedValue(null);
-        mockPrisma.userFavourite.create.mockResolvedValue(mockFavourite);
-        mockPrisma.recipe.update.mockResolvedValue({});
+        mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+        mockPrisma.userFavourite.findUnique = spy(() => Promise.resolve(null));
+        mockPrisma.userFavourite.create = spy(() => Promise.resolve(mockFavourite));
+        mockPrisma.recipe.update = spy(() => Promise.resolve({}));
 
         const response = await app.request(
           "/social/favourites/clh1234567890abcdefghij01",
@@ -619,9 +625,9 @@ describe("Social Module", () => {
         },
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.comment.create.mockResolvedValue(mockComment);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.comment.create = spy(() => Promise.resolve(mockComment));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({});
 
       const response = await app.request(
         `/social/recipes/${recipeId}/comments`,
@@ -656,9 +662,9 @@ describe("Social Module", () => {
         },
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.comment.create.mockResolvedValue(mockComment);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.comment.create = spy(() => Promise.resolve(mockComment));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({});
 
       const response = await app.request(
         `/social/recipes/${recipeId}/comments`,
@@ -673,7 +679,7 @@ describe("Social Module", () => {
     });
 
     it("should reject comment on recipe not found", async () => {
-      mockPrisma.recipe.findUnique.mockResolvedValue(null);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request(
         "/social/recipes/clh1234567890abcdefghij01/comments",
@@ -698,9 +704,9 @@ describe("Social Module", () => {
         content: "My comment",
       };
 
-      mockPrisma.comment.findUnique.mockResolvedValue(mockComment);
-      mockPrisma.comment.update.mockResolvedValue({});
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.comment.findUnique = spy(() => Promise.resolve(mockComment));
+      mockPrisma.comment.update = spy(() => Promise.resolve({}));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({}));
 
       const response = await app.request(`/social/comments/${commentId}`, {
         method: "DELETE",
@@ -742,9 +748,9 @@ describe("Social Module", () => {
         },
       ];
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.comment.findMany.mockResolvedValue(mockComments);
-      mockPrisma.comment.count.mockResolvedValue(1);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.comment.findMany = spy(() => Promise.resolve(mockComments));
+      mockPrisma.comment.count = spy(() => Promise.resolve(1));
 
       const response = await app.request(
         `/social/recipes/${recipeId}/comments`,
@@ -776,8 +782,8 @@ describe("Social Module", () => {
         },
       };
 
-      mockPrisma.comment.findUnique.mockResolvedValue(mockComment);
-      mockPrisma.comment.update.mockResolvedValue(updatedComment);
+      mockPrisma.comment.findUnique = spy(() => Promise.resolve(mockComment));
+      mockPrisma.comment.update = spy(() => Promise.resolve(updatedComment));
 
       const response = await app.request(`/social/comments/${commentId}`, {
         method: "PATCH",
@@ -797,10 +803,10 @@ describe("Social Module", () => {
         visibility: "PUBLIC",
         userId: "other",
       };
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.userFavourite.findUnique.mockResolvedValue(null);
-      mockPrisma.userFavourite.create.mockResolvedValue({ id: "fav_1" });
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.userFavourite.findUnique = spy(() => Promise.resolve(null));
+      mockPrisma.userFavourite.create = spy(() => Promise.resolve({ id: "fav_1" }));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({});
 
       const response = await app.request(
         "/social/favourites/clh1234567890abcdefghij01",
@@ -818,9 +824,11 @@ describe("Social Module", () => {
       const recipeAId = "clh1234567890abcdefghij01";
       const recipeBId = "clh1234567890abcdefghij02";
 
-      mockPrisma.recipe.findUnique
-        .mockResolvedValueOnce({ id: recipeAId, visibility: "PUBLIC" })
-        .mockResolvedValueOnce(null);
+      let callCount4 = 0;
+      mockPrisma.recipe.findUnique = spy(() => {
+        callCount4++;
+        return Promise.resolve(callCount4 === 1 ? { id: recipeAId, visibility: "PUBLIC" } : null);
+      });
 
       const response = await app.request("/social/comparisons", {
         method: "POST",
@@ -855,9 +863,9 @@ describe("Social Module", () => {
         },
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.comment.create.mockResolvedValue(mockComment);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.comment.create = spy(() => Promise.resolve(mockComment));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({});
 
       const response = await app.request(
         `/social/recipes/${recipeId}/comments`,
@@ -880,9 +888,9 @@ describe("Social Module", () => {
         recipeId: "clh1234567890abcdefghij01",
       };
 
-      mockPrisma.userFavourite.findUnique.mockResolvedValue(mockFavourite);
-      mockPrisma.userFavourite.delete.mockResolvedValue(mockFavourite);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.userFavourite.findUnique = spy(() => Promise.resolve(mockFavourite));
+      mockPrisma.userFavourite.delete = spy(() => Promise.resolve(mockFavourite));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({}));
 
       const response = await app.request(
         "/social/favourites/clh1234567890abcdefghij01",
@@ -915,11 +923,11 @@ describe("Social Module", () => {
         createdAt: new Date(),
         user: { username: `user${i}`, displayName: `User ${i}` },
         replies: [],
-      }));
+      })));
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.comment.findMany.mockResolvedValue(mockComments);
-      mockPrisma.comment.count.mockResolvedValue(5);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.comment.findMany = spy(() => Promise.resolve(mockComments));
+      mockPrisma.comment.count = spy(() => Promise.resolve(5);
 
       const response = await app.request(
         `/social/recipes/${recipeId}/comments?page=1&limit=10`,

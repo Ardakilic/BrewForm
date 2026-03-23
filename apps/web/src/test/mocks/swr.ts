@@ -3,9 +3,9 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from "../mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
-const useSWR = mockFn(() => ({
+const useSWR = spy(() => ({
   data: undefined,
   isLoading: false,
   error: undefined,
@@ -15,4 +15,4 @@ const useSWR = mockFn(() => ({
 
 export default useSWR;
 
-export const mutate = mockFn(() => Promise.resolve(undefined));
+export const mutate = spy(() => Promise.resolve(undefined));

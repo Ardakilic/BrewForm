@@ -4,19 +4,20 @@
 
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
-import { mockFn } from "../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
 type MockResponse = {
   ok: boolean;
   status?: number;
   json: () => Promise<unknown>;
 };
-const mockFetch = mockFn<Promise<MockResponse>>();
+let mockFetch = spy<typeof globalThis.fetch>();
 globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
 describe("API Utility", () => {
   beforeEach(() => {
-    mockFetch.mockReset();
+    mockFetch = spy<typeof globalThis.fetch>();
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
   });
 
   describe("API Response Handling", () => {
@@ -26,10 +27,13 @@ describe("API Utility", () => {
         data: { id: "123", title: "Test Recipe" },
       };
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as MockResponse);
+      mockFetch = spy(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockResponse),
+        } as MockResponse)
+      );
+      globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
       const response = await fetch("/api/v1/recipes");
       const data = await response.json();
@@ -44,11 +48,14 @@ describe("API Utility", () => {
         error: { code: "NOT_FOUND", message: "Recipe not found" },
       };
 
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: () => Promise.resolve(mockError),
-      } as MockResponse);
+      mockFetch = spy(() =>
+        Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve(mockError),
+        } as MockResponse)
+      );
+      globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
       const response = await fetch("/api/v1/recipes/invalid");
       const data = await response.json();
@@ -58,7 +65,8 @@ describe("API Utility", () => {
     });
 
     it("should handle network errors", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+      mockFetch = spy(() => Promise.reject(new Error("Network error")));
+      globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
       await expect(fetch("/api/v1/recipes")).rejects.toThrow(
         "Network error" as never,

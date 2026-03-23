@@ -5,7 +5,7 @@
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { Hono } from "hono";
-import { mockFn } from "../../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 import { setPrisma } from "../../test/mocks/database.ts";
 import recipeModule from "./index.ts";
 import type { Context } from "hono";
@@ -39,25 +39,25 @@ const createLocalMockPrisma = () => {
   // deno-lint-ignore no-explicit-any
   const mp: any = {
     recipe: {
-      findMany: mockFn(),
-      findUnique: mockFn(),
-      findFirst: mockFn(),
-      create: mockFn(),
-      update: mockFn(),
-      delete: mockFn(),
-      count: mockFn(),
+      findMany: spy(),
+      findUnique: spy(),
+      findFirst: spy(),
+      create: spy(),
+      update: spy(),
+      delete: spy(),
+      count: spy(),
     },
     recipeVersion: {
-      create: mockFn(),
-      findMany: mockFn(),
+      create: spy(),
+      findMany: spy(),
     },
     userFavourite: {
-      findFirst: mockFn(),
-      create: mockFn(),
-      delete: mockFn(),
+      findFirst: spy(),
+      create: spy(),
+      delete: spy(),
     },
   };
-  mp.$transaction = mockFn((...args: unknown[]) =>
+  mp.$transaction = spy((...args: unknown[]) =>
     (args[0] as (tx: unknown) => Promise<unknown>)(mp)
   );
   return mp;
@@ -105,8 +105,8 @@ describe("Recipe Module", () => {
         },
       ];
 
-      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
-      mockPrisma.recipe.count.mockResolvedValue(2);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve(mockRecipes));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(2));
 
       const response = await app.request("/recipes?visibility=PUBLIC");
 
@@ -118,8 +118,8 @@ describe("Recipe Module", () => {
     });
 
     it("should filter by single brew method", async () => {
-      mockPrisma.recipe.findMany.mockResolvedValue([]);
-      mockPrisma.recipe.count.mockResolvedValue(0);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve([]));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(0));
 
       const response = await app.request(
         "/recipes?brewMethod=ESPRESSO_MACHINE",
@@ -130,8 +130,8 @@ describe("Recipe Module", () => {
     });
 
     it("should filter by multiple brew methods with OR logic (comma-separated)", async () => {
-      mockPrisma.recipe.findMany.mockResolvedValue([]);
-      mockPrisma.recipe.count.mockResolvedValue(0);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve([]));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(0));
 
       const response = await app.request(
         "/recipes?brewMethod=ESPRESSO_MACHINE,POUR_OVER_V60",
@@ -142,8 +142,8 @@ describe("Recipe Module", () => {
     });
 
     it("should filter by multiple drink types with OR logic (comma-separated)", async () => {
-      mockPrisma.recipe.findMany.mockResolvedValue([]);
-      mockPrisma.recipe.count.mockResolvedValue(0);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve([]));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(0));
 
       const response = await app.request("/recipes?drinkType=ESPRESSO,LUNGO");
 
@@ -152,8 +152,8 @@ describe("Recipe Module", () => {
     });
 
     it("should filter by combined multiple brew methods and drink types", async () => {
-      mockPrisma.recipe.findMany.mockResolvedValue([]);
-      mockPrisma.recipe.count.mockResolvedValue(0);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve([]));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(0));
 
       const response = await app.request(
         "/recipes?brewMethod=ESPRESSO_MACHINE,AEROPRESS&drinkType=ESPRESSO,AMERICANO",
@@ -186,10 +186,11 @@ describe("Recipe Module", () => {
       };
 
       // First call for slug lookup, second call for full recipe fetch
-      mockPrisma.recipe.findUnique
-        .mockResolvedValueOnce({ id: "recipe_1", slug: "perfect-espresso" })
-        .mockResolvedValueOnce(fullRecipe);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.findUnique = spy(() =>
+        Promise.resolve({ id: "recipe_1", slug: "perfect-espresso" })
+      );
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(fullRecipe));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({}));
 
       const response = await app.request("/recipes/perfect-espresso");
 
@@ -204,7 +205,7 @@ describe("Recipe Module", () => {
     });
 
     it("should return 404 for non-existent recipe", async () => {
-      mockPrisma.recipe.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/recipes/nonexistent-recipe");
 
@@ -250,8 +251,8 @@ describe("Recipe Module", () => {
         },
       };
 
-      mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
-      mockPrisma.recipe.update.mockResolvedValue(mockUpdatedRecipe);
+      mockPrisma.recipe.create = spy(() => Promise.resolve(mockCreatedRecipe));
+      mockPrisma.recipe.update = spy(() => Promise.resolve(mockUpdatedRecipe));
 
       const response = await app.request("/recipes", {
         method: "POST",
@@ -311,8 +312,8 @@ describe("Recipe Module", () => {
         },
       };
 
-      mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
-      mockPrisma.recipe.update.mockResolvedValue(mockUpdatedRecipe);
+      mockPrisma.recipe.create = spy(() => Promise.resolve(mockCreatedRecipe));
+      mockPrisma.recipe.update = spy(() => Promise.resolve(mockUpdatedRecipe));
 
       const response = await app.request("/recipes", {
         method: "POST",
@@ -350,8 +351,8 @@ describe("Recipe Module", () => {
         },
       };
 
-      mockPrisma.recipe.create.mockResolvedValue(mockCreatedRecipe);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.create = spy(() => Promise.resolve(mockCreatedRecipe));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({}));
 
       const response = await app.request("/recipes", {
         method: "POST",
@@ -397,11 +398,13 @@ describe("Recipe Module", () => {
         visibility: "DRAFT",
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.recipe.update.mockResolvedValue({
-        ...mockRecipe,
-        visibility: "PUBLIC",
-      });
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.recipe.update = spy(() =>
+        Promise.resolve({
+          ...mockRecipe,
+          visibility: "PUBLIC",
+        })
+      );
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: "PATCH",
@@ -422,7 +425,7 @@ describe("Recipe Module", () => {
         visibility: "DRAFT",
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: "PATCH",
@@ -444,11 +447,13 @@ describe("Recipe Module", () => {
         userId: "user_123",
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.recipe.update.mockResolvedValue({
-        ...mockRecipe,
-        deletedAt: new Date(),
-      });
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.recipe.update = spy(() =>
+        Promise.resolve({
+          ...mockRecipe,
+          deletedAt: new Date(),
+        })
+      );
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: "DELETE",
@@ -464,7 +469,7 @@ describe("Recipe Module", () => {
         userId: "other_user",
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: "DELETE",
@@ -495,9 +500,11 @@ describe("Recipe Module", () => {
         yieldGrams: 40,
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.recipeVersion.create.mockResolvedValue(mockNewVersion);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.recipeVersion.create = spy(() =>
+        Promise.resolve(mockNewVersion)
+      );
+      mockPrisma.recipe.update = spy(() => Promise.resolve({}));
 
       const response = await app.request(`/recipes/${recipeId}/versions`, {
         method: "POST",
@@ -565,9 +572,11 @@ describe("Recipe Module", () => {
         versions: [{ id: "new_version_1" }],
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockOriginalRecipe);
-      mockPrisma.recipe.create.mockResolvedValue(mockForkedRecipe);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.findUnique = spy(() =>
+        Promise.resolve(mockOriginalRecipe)
+      );
+      mockPrisma.recipe.create = spy(() => Promise.resolve(mockForkedRecipe));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({}));
 
       const response = await app.request(`/recipes/${originalRecipeId}/fork`, {
         method: "POST",
@@ -588,7 +597,7 @@ describe("Recipe Module", () => {
         },
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
 
       const response = await app.request(`/recipes/${recipeId}/fork`, {
         method: "POST",
@@ -598,7 +607,7 @@ describe("Recipe Module", () => {
     });
 
     it("should reject forking non-existent recipes", async () => {
-      mockPrisma.recipe.findUnique.mockResolvedValue(null);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/recipes/nonexistent/fork", {
         method: "POST",
@@ -631,7 +640,7 @@ describe("Recipe Module", () => {
         },
       ];
 
-      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve(mockRecipes));
 
       const response = await app.request("/recipes/latest");
 
@@ -666,7 +675,7 @@ describe("Recipe Module", () => {
         },
       ];
 
-      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve(mockRecipes));
 
       const response = await app.request("/recipes/popular");
 
@@ -690,8 +699,10 @@ describe("Recipe Module", () => {
         { id: "v1", versionNumber: 1, title: "Original Recipe" },
       ];
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.recipeVersion.findMany.mockResolvedValue(mockVersions);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.recipeVersion.findMany = spy(() =>
+        Promise.resolve(mockVersions)
+      );
 
       const response = await app.request(`/recipes/${recipeId}/versions`);
 
@@ -712,8 +723,10 @@ describe("Recipe Module", () => {
         { id: "v1", versionNumber: 1, title: "Public Recipe" },
       ];
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.recipeVersion.findMany.mockResolvedValue(mockVersions);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.recipeVersion.findMany = spy(() =>
+        Promise.resolve(mockVersions)
+      );
 
       const response = await app.request(`/recipes/${recipeId}/versions`);
 
@@ -728,7 +741,7 @@ describe("Recipe Module", () => {
         visibility: "PRIVATE",
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
 
       const response = await app.request(`/recipes/${recipeId}/versions`);
 
@@ -736,7 +749,7 @@ describe("Recipe Module", () => {
     });
 
     it("should return 404 for non-existent recipe", async () => {
-      mockPrisma.recipe.findUnique.mockResolvedValue(null);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/recipes/nonexistent/versions");
 
@@ -759,8 +772,8 @@ describe("Recipe Module", () => {
         },
       ];
 
-      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
-      mockPrisma.recipe.count.mockResolvedValue(1);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve(mockRecipes));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(1));
 
       const response = await app.request("/recipes?brewMethod=POUR_OVER_V60");
 
@@ -781,8 +794,8 @@ describe("Recipe Module", () => {
         },
       ];
 
-      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
-      mockPrisma.recipe.count.mockResolvedValue(1);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve(mockRecipes));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(1));
 
       const response = await app.request("/recipes?drinkType=LATTE");
 
@@ -790,8 +803,8 @@ describe("Recipe Module", () => {
     });
 
     it("should filter recipes by minimum rating", async () => {
-      mockPrisma.recipe.findMany.mockResolvedValue([]);
-      mockPrisma.recipe.count.mockResolvedValue(0);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve([]));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(0));
 
       const response = await app.request("/recipes?minRating=8");
 
@@ -799,8 +812,8 @@ describe("Recipe Module", () => {
     });
 
     it("should filter recipes by tags", async () => {
-      mockPrisma.recipe.findMany.mockResolvedValue([]);
-      mockPrisma.recipe.count.mockResolvedValue(0);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve([]));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(0));
 
       const response = await app.request("/recipes?tags=morning,espresso");
 
@@ -821,8 +834,8 @@ describe("Recipe Module", () => {
         },
       ];
 
-      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes);
-      mockPrisma.recipe.count.mockResolvedValue(1);
+      mockPrisma.recipe.findMany = spy(() => Promise.resolve(mockRecipes));
+      mockPrisma.recipe.count = spy(() => Promise.resolve(1));
 
       const response = await app.request("/recipes?search=espresso");
 
@@ -839,8 +852,8 @@ describe("Recipe Module", () => {
         visibility: "PUBLIC",
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
-      mockPrisma.recipe.update.mockResolvedValue({});
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
+      mockPrisma.recipe.update = spy(() => Promise.resolve({}));
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: "DELETE",
@@ -857,7 +870,7 @@ describe("Recipe Module", () => {
         visibility: "PUBLIC",
       };
 
-      mockPrisma.recipe.findUnique.mockResolvedValue(mockRecipe);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(mockRecipe));
 
       const response = await app.request(`/recipes/${recipeId}`, {
         method: "DELETE",
@@ -867,7 +880,7 @@ describe("Recipe Module", () => {
     });
 
     it("should return 404 for non-existent recipe", async () => {
-      mockPrisma.recipe.findUnique.mockResolvedValue(null);
+      mockPrisma.recipe.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request("/recipes/nonexistent", {
         method: "DELETE",

@@ -5,7 +5,7 @@
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { Hono } from "hono";
-import { mockFn } from "../../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 import { setPrisma } from "../../test/mocks/database.ts";
 import { setCheckHeaderMode } from "../../test/mocks/auth-middleware.ts";
 import { cacheGetOrSet } from "../../test/mocks/redis.ts";
@@ -114,8 +114,8 @@ const mockTasteNotes = [
 
 const createLocalMockPrisma = () => ({
   tasteNote: {
-    findMany: mockFn(() => Promise.resolve(mockTasteNotes)),
-    findUnique: mockFn((...args: unknown[]) => {
+    findMany: spy(() => Promise.resolve(mockTasteNotes)),
+    findUnique: spy((...args: unknown[]) => {
       const where =
         (args[0] as { where: { id?: string; slug?: string } }).where;
       const note = mockTasteNotes.find((n) =>
@@ -123,16 +123,16 @@ const createLocalMockPrisma = () => ({
       );
       return Promise.resolve(note ?? null);
     }),
-    groupBy: mockFn(() =>
+    groupBy: spy(() =>
       Promise.resolve([
         { depth: 0, _count: 2 },
         { depth: 1, _count: 2 },
-        { depth: 2, _count: 2 },
+        { depth: 2, _count: 0 },
       ])
     ),
   },
   user: {
-    findUnique: mockFn((...args: unknown[]) => {
+    findUnique: spy((...args: unknown[]) => {
       const where = (args[0] as { where: { id: string } }).where;
       if (where.id === mockAuthUser.id) {
         return Promise.resolve({ ...mockAuthUser, deletedAt: null });
@@ -154,7 +154,6 @@ describe("Taste Notes Module", () => {
 
   beforeEach(() => {
     setPrisma(createLocalMockPrisma());
-    cacheGetOrSet.mockReset();
     app = new Hono();
     app.route("/taste-notes", tasteNotesModule);
   });

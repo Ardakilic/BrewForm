@@ -4,78 +4,78 @@
  * Module-level mocks are handled via src/test/import_map.json.
  */
 
-import { type MockFn, mockFn } from "./mock-fn.ts";
+import { type Spy, spy } from "@std/testing/mock";
 
-export { type MockFn, mockFn };
+export { type Spy, spy };
 
 export interface MockPrismaUser {
-  findUnique: MockFn;
-  findFirst: MockFn;
-  create: MockFn;
-  update: MockFn;
-  count?: MockFn;
-  findMany?: MockFn;
+  findUnique: Spy;
+  findFirst: Spy;
+  create: Spy;
+  update: Spy;
+  count?: Spy;
+  findMany?: Spy;
 }
 
 export interface MockPrisma {
-  $on: MockFn;
-  $disconnect: MockFn;
+  $on: Spy;
+  $disconnect: Spy;
   user: MockPrismaUser;
   session: {
-    create: MockFn;
-    findFirst: MockFn;
-    findUnique: MockFn;
-    deleteMany: MockFn;
-    update: MockFn;
+    create: Spy;
+    findFirst: Spy;
+    findUnique: Spy;
+    deleteMany: Spy;
+    update: Spy;
   };
   passwordReset: {
-    create: MockFn;
-    findFirst: MockFn;
-    findUnique: MockFn;
-    update: MockFn;
-    updateMany: MockFn;
-    delete: MockFn;
+    create: Spy;
+    findFirst: Spy;
+    findUnique: Spy;
+    update: Spy;
+    updateMany: Spy;
+    delete: Spy;
   };
   emailVerification: {
-    create: MockFn;
-    findFirst: MockFn;
-    findUnique: MockFn;
-    update: MockFn;
-    delete: MockFn;
+    create: Spy;
+    findFirst: Spy;
+    findUnique: Spy;
+    update: Spy;
+    delete: Spy;
   };
 }
 
 export function createMockPrisma(): MockPrisma {
   return {
-    $on: mockFn(),
-    $disconnect: mockFn(() => Promise.resolve()),
+    $on: spy(),
+    $disconnect: spy(() => Promise.resolve()),
     user: {
-      findUnique: mockFn(() => Promise.resolve(null)),
-      findFirst: mockFn(() => Promise.resolve(null)),
-      create: mockFn(() => Promise.resolve(null)),
-      update: mockFn(() => Promise.resolve(null)),
+      findUnique: spy(() => Promise.resolve(null)),
+      findFirst: spy(() => Promise.resolve(null)),
+      create: spy(() => Promise.resolve(null)),
+      update: spy(() => Promise.resolve(null)),
     },
     session: {
-      create: mockFn(() => Promise.resolve(null)),
-      findFirst: mockFn(() => Promise.resolve(null)),
-      findUnique: mockFn(() => Promise.resolve(null)),
-      deleteMany: mockFn(() => Promise.resolve({ count: 0 })),
-      update: mockFn(() => Promise.resolve(null)),
+      create: spy(() => Promise.resolve(null)),
+      findFirst: spy(() => Promise.resolve(null)),
+      findUnique: spy(() => Promise.resolve(null)),
+      deleteMany: spy(() => Promise.resolve({ count: 0 })),
+      update: spy(() => Promise.resolve(null)),
     },
     passwordReset: {
-      create: mockFn(() => Promise.resolve(null)),
-      findFirst: mockFn(() => Promise.resolve(null)),
-      findUnique: mockFn(() => Promise.resolve(null)),
-      update: mockFn(() => Promise.resolve(null)),
-      updateMany: mockFn(() => Promise.resolve({ count: 0 })),
-      delete: mockFn(() => Promise.resolve(null)),
+      create: spy(() => Promise.resolve(null)),
+      findFirst: spy(() => Promise.resolve(null)),
+      findUnique: spy(() => Promise.resolve(null)),
+      update: spy(() => Promise.resolve(null)),
+      updateMany: spy(() => Promise.resolve({ count: 0 })),
+      delete: spy(() => Promise.resolve(null)),
     },
     emailVerification: {
-      create: mockFn(() => Promise.resolve(null)),
-      findFirst: mockFn(() => Promise.resolve(null)),
-      findUnique: mockFn(() => Promise.resolve(null)),
-      update: mockFn(() => Promise.resolve(null)),
-      delete: mockFn(() => Promise.resolve(null)),
+      create: spy(() => Promise.resolve(null)),
+      findFirst: spy(() => Promise.resolve(null)),
+      findUnique: spy(() => Promise.resolve(null)),
+      update: spy(() => Promise.resolve(null)),
+      delete: spy(() => Promise.resolve(null)),
     },
   };
 }

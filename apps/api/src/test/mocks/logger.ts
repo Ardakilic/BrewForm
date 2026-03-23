@@ -3,19 +3,19 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from "../mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
 const _logger = {
-  debug: mockFn<void>(),
-  info: mockFn<void>(),
-  warn: mockFn<void>(),
-  error: mockFn<void>(),
+  debug: spy(),
+  info: spy(),
+  warn: spy(),
+  error: spy(),
 };
 
 export function getLogger(_name?: string) {
   return _logger;
 }
 
-export const logAudit = mockFn<void>();
-export const logSecurity = mockFn<void>();
-export const logRequest = mockFn<void>();
+export const logAudit = spy();
+export const logSecurity = spy();
+export const logRequest = spy();

@@ -3,33 +3,29 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { mockFn } from "../mock-fn.ts";
+import { spy } from "@std/testing/mock";
 
 export const redis = {
-  get: mockFn<Promise<string | null>>(() => Promise.resolve(null)),
-  set: mockFn<Promise<"OK">>(() => Promise.resolve("OK" as const)),
-  del: mockFn<Promise<number>>(() => Promise.resolve(1)),
-  incr: mockFn<Promise<number>>(() => Promise.resolve(1)),
-  expire: mockFn<Promise<number>>(() => Promise.resolve(1)),
+  get: spy(() => Promise.resolve(null)),
+  set: spy(() => Promise.resolve("OK" as const)),
+  del: spy(() => Promise.resolve(1)),
+  incr: spy(() => Promise.resolve(1)),
+  expire: spy(() => Promise.resolve(1)),
 };
 
 export function getRedis() {
   return redis;
 }
 
-export const checkRedisConnection = mockFn<Promise<boolean>>(
-  () => Promise.resolve(true),
-);
+export const checkRedisConnection = spy(() => Promise.resolve(true));
 
-export const checkRateLimit = mockFn(() =>
+export const checkRateLimit = spy(() =>
   Promise.resolve({ allowed: true, remaining: 99, resetAt: Date.now() + 60000 })
 );
 
-export const invalidateCache = mockFn<Promise<void>>(
-  () => Promise.resolve(undefined),
-);
+export const invalidateCache = spy(() => Promise.resolve(undefined));
 
-export const cacheGetOrSet = mockFn(
+export const cacheGetOrSet = spy(
   (...args: unknown[]) => (args[1] as () => Promise<unknown>)(),
 );
 
@@ -47,15 +43,3 @@ export const CacheKeys = {
   brewMethods: () => "brew-methods",
   drinkTypes: () => "drink-types",
 };
-
-export function resetRedisMocks(): void {
-  redis.get.mockReset();
-  redis.set.mockReset();
-  redis.del.mockReset();
-  redis.incr.mockReset();
-  redis.expire.mockReset();
-  checkRedisConnection.mockReset();
-  checkRateLimit.mockReset();
-  invalidateCache.mockReset();
-  cacheGetOrSet.mockReset();
-}

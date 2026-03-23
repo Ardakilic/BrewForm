@@ -1,6 +1,7 @@
 # BrewForm ☕
 
-> Share and discover coffee brewing recipes. Track your espresso, pour-over, and specialty coffee dive-ins.
+> Share and discover coffee brewing recipes. Track your espresso, pour-over, and specialty coffee
+> dive-ins.
 
 ## Features
 
@@ -15,6 +16,7 @@
 ## Tech Stack
 
 ### Backend
+
 - **Runtime**: [Deno 2](https://deno.com/) — native TypeScript, no build step
 - **Framework**: [Hono](https://hono.dev/) - Fast, lightweight web framework
 - **Database**: PostgreSQL with [Prisma ORM](https://prisma.io/)
@@ -25,6 +27,7 @@
 - **Logging**: [Pino](https://getpino.io/) for structured JSON logging
 
 ### Frontend
+
 - **Runtime**: [Deno 2](https://deno.com/) for build tooling
 - **Framework**: React 19
 - **UI Library**: [BaseUI](https://baseweb.design/) by Uber
@@ -34,9 +37,10 @@
 - **Routing**: React Router v7
 
 ### DevOps
+
 - **Monorepo**: Deno tasks per app (`deno.json`)
 - **Linting & Formatting**: Deno built-in tools
-- **Testing**: Vitest
+- **Testing**: Deno native test runner with `@std/testing`
 - **Containerization**: Docker with multi-stage builds (`denoland/deno:debian-2.7.7`)
 
 ## Getting Started
@@ -46,7 +50,8 @@
 - Docker and Docker Compose
 - Make (optional, for convenient commands)
 
-> **No local runtime required.** All commands run inside Docker containers via `make`. Deno is only needed locally if you want to run tasks outside Docker.
+> **No local runtime required.** All commands run inside Docker containers via `make`. Deno is only
+> needed locally if you want to run tasks outside Docker.
 
 ### Quick Start with Docker
 
@@ -70,6 +75,7 @@ make db-seed
 ```
 
 **Access the services:**
+
 - Frontend: http://localhost:3000
 - API: http://localhost:3001
 - PgAdmin: http://localhost:8080 (pre-configured with PostgreSQL connection)
@@ -91,7 +97,9 @@ make dev
 
 ### IDE Setup (VSCode)
 
-**Recommended:** Install the [Deno extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) for VSCode.
+**Recommended:** Install the
+[Deno extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) for
+VSCode.
 
 ```bash
 # Setup VSCode settings (one-time setup)
@@ -99,15 +107,19 @@ make vscode-setup
 ```
 
 This command copies `.vscode/settings.json.example` to `.vscode/settings.json`, which configures:
+
 - Deno language server for TypeScript/JavaScript files
 - Deno formatter as the default formatter
 - Format on save enabled
 - Proper support for `.ts` import extensions
 
-**Manual setup:** If you prefer to customize, copy and modify `.vscode/settings.json.example` manually.
+**Manual setup:** If you prefer to customize, copy and modify `.vscode/settings.json.example`
+manually.
 
 **TypeScript Configuration:**
-- Both `apps/api/tsconfig.json` and `apps/web/tsconfig.json` include `"allowImportingTsExtensions": true`
+
+- Both `apps/api/tsconfig.json` and `apps/web/tsconfig.json` include
+  `"allowImportingTsExtensions": true`
 - This allows `.ts` extensions in imports (required for Deno's runtime)
 - Example: `import { getPrisma } from '../utils/database/index.ts'`
 
@@ -177,7 +189,7 @@ make check
    - Extension ID: `denoland.vscode-deno`
 
 2. **Configure Workspace**
-   
+
    Create `.vscode/settings.json` in project root:
    ```json
    {
@@ -199,6 +211,7 @@ make check
 ### Formatter Configuration
 
 Deno formatter is configured in `deno.json`:
+
 - **Line width**: 100 characters
 - **Indentation**: 2 spaces
 - **Quotes**: Single quotes
@@ -210,7 +223,9 @@ See `docs/updates/2026-03-22-biome-to-deno-formatter-migration.md` for migration
 
 ### API container fails to start with Prisma errors
 
-If you see errors like `The requested module '@prisma/client' does not provide an export named 'BrewMethodType'`, the Prisma client is outdated. This can happen after schema changes.
+If you see errors like
+`The requested module '@prisma/client' does not provide an export named 'BrewMethodType'`, the
+Prisma client is outdated. This can happen after schema changes.
 
 ```bash
 # Regenerate the Prisma client
@@ -233,6 +248,7 @@ make db-reset-hard
 ```
 
 The `db-reset-hard` command is useful when:
+
 - You want a fresh start with all migrations applied from scratch
 - The database schema is corrupted or out of sync
 - You need to test the full migration and seeding process
@@ -261,6 +277,7 @@ make reset-password USER=admin@brewform.local
 ```
 
 Output:
+
 ```
 🔐 Password reset successful!
 
@@ -280,6 +297,7 @@ New password (generated):
 ```
 
 **Notes:**
+
 - All existing sessions are invalidated after password reset
 - If no password is provided, a secure 16-character password is generated
 - Password must be at least 8 characters if provided manually
@@ -314,6 +332,7 @@ brewform/
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/register` - Register new user
 - `POST /api/v1/auth/login` - Login
 - `POST /api/v1/auth/logout` - Logout
@@ -323,6 +342,7 @@ brewform/
 - `POST /api/v1/auth/verify-email` - Verify email
 
 ### Recipes
+
 - `GET /api/v1/recipes` - List recipes
 - `POST /api/v1/recipes` - Create recipe
 - `GET /api/v1/recipes/:id` - Get recipe
@@ -332,11 +352,13 @@ brewform/
 - `POST /api/v1/recipes/:id/fork` - Fork recipe
 
 ### Users
+
 - `GET /api/v1/users/me` - Get current user
 - `PATCH /api/v1/users/me` - Update profile
 - `GET /api/v1/users/:username` - Get public profile
 
 ### Social
+
 - `POST /api/v1/social/favourites/:recipeId` - Favourite recipe
 - `DELETE /api/v1/social/favourites/:recipeId` - Unfavourite
 - `GET /api/v1/social/recipes/:recipeId/comments` - Get comments
@@ -344,12 +366,14 @@ brewform/
 - `POST /api/v1/social/comparisons` - Create comparison
 
 ### Taste Notes
+
 - `GET /api/v1/taste-notes` - List all taste notes
 - `GET /api/v1/taste-notes/hierarchy` - Get hierarchical structure
 - `GET /api/v1/taste-notes/search?q=` - Search taste notes (min 3 chars)
 - `GET /api/v1/taste-notes/:id` - Get single taste note
 
 ### Health
+
 - `GET /health` - Basic health check
 - `GET /health/ready` - Readiness probe
 - `GET /health/live` - Liveness probe
@@ -359,6 +383,7 @@ brewform/
 See `.env.example` for all required environment variables.
 
 Key variables:
+
 - `DATABASE_URL` - PostgreSQL connection string
 - `REDIS_URL` - Redis connection string
 - `JWT_SECRET` - Secret for JWT signing
@@ -367,6 +392,7 @@ Key variables:
 ## Database Schema
 
 The database includes:
+
 - **Users**: Authentication, profiles, preferences
 - **Recipes**: With versioning and forking
 - **Equipment**: Grinders, brewers, portafilters, baskets, etc.
@@ -377,14 +403,18 @@ The database includes:
 
 ### Taste Notes
 
-Taste notes are pre-populated from the [SCAA 2016 Coffee Flavor Wheel](https://notbadcoffee.com/flavor-wheel-en/). The data is included in the database migrations, so no additional seeding is required for most users.
+Taste notes are pre-populated from the
+[SCAA 2016 Coffee Flavor Wheel](https://notbadcoffee.com/flavor-wheel-en/). The data is included in
+the database migrations, so no additional seeding is required for most users.
 
 If you need to re-seed taste notes from the JSON source file:
+
 ```bash
 make db-seed-taste-notes
 ```
 
-The taste notes are cached in Redis (24h TTL) for performance. Admin panel includes cache invalidation when notes are modified.
+The taste notes are cached in Redis (24h TTL) for performance. Admin panel includes cache
+invalidation when notes are modified.
 
 ## Contributing
 
@@ -396,13 +426,16 @@ The taste notes are cached in Redis (24h TTL) for performance. Admin panel inclu
 
 ### Support Development
 
-This project is actively developed using [Windsurf](https://windsurf.com), an AI-powered IDE that accelerates development.
+This project is actively developed using [Windsurf](https://windsurf.com), an AI-powered IDE that
+accelerates development.
 
 **Want to support BrewForm?** Sign up for Windsurf using our referral link:
 
 👉 **[Get Windsurf + 250 Bonus Credits](https://windsurf.com/refer?referral_code=0axr8brh72htjihx)**
 
-When you sign up through this link, both you and the project maintainer receive **250 bonus credits**. These credits are directly used to develop and improve BrewForm - helping us add new features, fix bugs, and make your coffee brewing experience even better!
+When you sign up through this link, both you and the project maintainer receive **250 bonus
+credits**. These credits are directly used to develop and improve BrewForm - helping us add new
+features, fix bugs, and make your coffee brewing experience even better!
 
 ## License
 

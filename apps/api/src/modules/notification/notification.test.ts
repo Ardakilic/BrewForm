@@ -5,7 +5,7 @@
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { Hono } from "hono";
-import { mockFn } from "../../test/mock-fn.ts";
+import { spy } from "@std/testing/mock";
 import { setPrisma } from "../../test/mocks/database.ts";
 import notificationModule from "./index.ts";
 
@@ -31,17 +31,21 @@ const testErrorHandler = (
   );
 };
 
-const createLocalMockPrisma = () => ({
-  notification: {
-    findMany: mockFn(),
-    findUnique: mockFn(),
-    create: mockFn(),
-    update: mockFn(),
-    updateMany: mockFn(),
-    delete: mockFn(),
-    count: mockFn(),
-  },
-});
+const createLocalMockPrisma = () => {
+  // deno-lint-ignore no-explicit-any
+  const mp: any = {
+    notification: {
+      findMany: spy(),
+      findUnique: spy(),
+      create: spy(),
+      update: spy(),
+      updateMany: spy(),
+      delete: spy(),
+      count: spy(),
+    },
+  };
+  return mp;
+};
 
 describe("Notification Module", () => {
   let app: Hono;
@@ -88,8 +92,10 @@ describe("Notification Module", () => {
         },
       ];
 
-      mockPrisma.notification.findMany.mockResolvedValue(mockNotifications);
-      mockPrisma.notification.count.mockResolvedValue(2);
+      mockPrisma.notification.findMany = spy(() =>
+        Promise.resolve(mockNotifications)
+      );
+      mockPrisma.notification.count = spy(() => Promise.resolve(2));
 
       const response = await app.request("/notifications");
 
@@ -113,8 +119,10 @@ describe("Notification Module", () => {
         },
       ];
 
-      mockPrisma.notification.findMany.mockResolvedValue(mockNotifications);
-      mockPrisma.notification.count.mockResolvedValue(1);
+      mockPrisma.notification.findMany = spy(() =>
+        Promise.resolve(mockNotifications)
+      );
+      mockPrisma.notification.count = spy(() => Promise.resolve(1));
 
       const response = await app.request("/notifications?unreadOnly=true");
 
@@ -124,8 +132,8 @@ describe("Notification Module", () => {
     });
 
     it("should support pagination", async () => {
-      mockPrisma.notification.findMany.mockResolvedValue([]);
-      mockPrisma.notification.count.mockResolvedValue(50);
+      mockPrisma.notification.findMany = spy(() => Promise.resolve([]));
+      mockPrisma.notification.count = spy(() => Promise.resolve(50));
 
       const response = await app.request("/notifications?page=2&limit=10");
 
@@ -137,7 +145,7 @@ describe("Notification Module", () => {
 
   describe("GET /notifications/unread-count", () => {
     it("should return unread notification count", async () => {
-      mockPrisma.notification.count.mockResolvedValue(5);
+      mockPrisma.notification.count = spy(() => Promise.resolve(5));
 
       const response = await app.request("/notifications/unread-count");
 
@@ -148,7 +156,7 @@ describe("Notification Module", () => {
     });
 
     it("should return zero when no unread notifications", async () => {
-      mockPrisma.notification.count.mockResolvedValue(0);
+      mockPrisma.notification.count = spy(() => Promise.resolve(0));
 
       const response = await app.request("/notifications/unread-count");
 
@@ -165,15 +173,18 @@ describe("Notification Module", () => {
         userId: "user_123",
         isRead: false,
       };
-
       const updatedNotification = {
         ...mockNotification,
         isRead: true,
         readAt: new Date(),
       };
 
-      mockPrisma.notification.findUnique.mockResolvedValue(mockNotification);
-      mockPrisma.notification.update.mockResolvedValue(updatedNotification);
+      mockPrisma.notification.findUnique = spy(() =>
+        Promise.resolve(mockNotification)
+      );
+      mockPrisma.notification.update = spy(() =>
+        Promise.resolve(updatedNotification)
+      );
 
       const response = await app.request(
         "/notifications/clh1234567890abcdefghij01/read",
@@ -188,7 +199,7 @@ describe("Notification Module", () => {
     });
 
     it("should return 404 for non-existent notification", async () => {
-      mockPrisma.notification.findUnique.mockResolvedValue(null);
+      mockPrisma.notification.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request(
         "/notifications/clh1234567890abcdefghij99/read",
@@ -207,7 +218,9 @@ describe("Notification Module", () => {
         isRead: false,
       };
 
-      mockPrisma.notification.findUnique.mockResolvedValue(mockNotification);
+      mockPrisma.notification.findUnique = spy(() =>
+        Promise.resolve(mockNotification)
+      );
 
       const response = await app.request(
         "/notifications/clh1234567890abcdefghij01/read",
@@ -222,7 +235,9 @@ describe("Notification Module", () => {
 
   describe("POST /notifications/read-all", () => {
     it("should mark all notifications as read", async () => {
-      mockPrisma.notification.updateMany.mockResolvedValue({ count: 5 });
+      mockPrisma.notification.updateMany = spy(() =>
+        Promise.resolve({ count: 5 })
+      );
 
       const response = await app.request("/notifications/read-all", {
         method: "POST",
@@ -241,8 +256,12 @@ describe("Notification Module", () => {
         userId: "user_123",
       };
 
-      mockPrisma.notification.findUnique.mockResolvedValue(mockNotification);
-      mockPrisma.notification.delete.mockResolvedValue(mockNotification);
+      mockPrisma.notification.findUnique = spy(() =>
+        Promise.resolve(mockNotification)
+      );
+      mockPrisma.notification.delete = spy(() =>
+        Promise.resolve(mockNotification)
+      );
 
       const response = await app.request(
         "/notifications/clh1234567890abcdefghij01",
@@ -257,7 +276,7 @@ describe("Notification Module", () => {
     });
 
     it("should return 404 for non-existent notification", async () => {
-      mockPrisma.notification.findUnique.mockResolvedValue(null);
+      mockPrisma.notification.findUnique = spy(() => Promise.resolve(null));
 
       const response = await app.request(
         "/notifications/clh1234567890abcdefghij99",
@@ -275,7 +294,9 @@ describe("Notification Module", () => {
         userId: "other_user",
       };
 
-      mockPrisma.notification.findUnique.mockResolvedValue(mockNotification);
+      mockPrisma.notification.findUnique = spy(() =>
+        Promise.resolve(mockNotification)
+      );
 
       const response = await app.request(
         "/notifications/clh1234567890abcdefghij01",
@@ -312,7 +333,9 @@ describe("Notification Service", () => {
         createdAt: new Date(),
       };
 
-      mockPrisma.notification.create.mockResolvedValue(mockNotification);
+      mockPrisma.notification.create = spy(() =>
+        Promise.resolve(mockNotification)
+      );
 
       const result = await createNotification({
         userId: "user_456",
@@ -324,7 +347,7 @@ describe("Notification Service", () => {
       });
 
       expect(result).toBeDefined();
-      expect(mockPrisma.notification.create.calls.length).toBeGreaterThan(0);
+      expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
     });
 
     it("should not create notification when user notifies themselves", async () => {
@@ -340,7 +363,7 @@ describe("Notification Service", () => {
       });
 
       expect(result).toBeNull();
-      expect(mockPrisma.notification.create.calls.length).toBe(0);
+      expect(mockPrisma.notification.create).not.toHaveBeenCalled();
     });
   });
 
@@ -348,14 +371,15 @@ describe("Notification Service", () => {
     it("should return count of unread notifications", async () => {
       const { getUnreadCount } = await import("./service.ts");
 
-      mockPrisma.notification.count.mockResolvedValue(3);
+      mockPrisma.notification.count = spy(() => Promise.resolve(3));
 
       const count = await getUnreadCount("user_123");
 
       expect(count).toBe(3);
-      expect(mockPrisma.notification.count.calls[0]).toEqual([{
+      expect(mockPrisma.notification.count).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.notification.count).toHaveBeenCalledWith({
         where: { userId: "user_123", isRead: false },
-      }]);
+      });
     });
   });
 
@@ -374,8 +398,12 @@ describe("Notification Service", () => {
         readAt: new Date(),
       };
 
-      mockPrisma.notification.findUnique.mockResolvedValue(mockNotification);
-      mockPrisma.notification.update.mockResolvedValue(updatedNotification);
+      mockPrisma.notification.findUnique = spy(() =>
+        Promise.resolve(mockNotification)
+      );
+      mockPrisma.notification.update = spy(() =>
+        Promise.resolve(updatedNotification)
+      );
 
       const result = await markAsRead("notif_1", "user_123");
 
@@ -392,7 +420,9 @@ describe("Notification Service", () => {
         isRead: false,
       };
 
-      mockPrisma.notification.findUnique.mockResolvedValue(mockNotification);
+      mockPrisma.notification.findUnique = spy(() =>
+        Promise.resolve(mockNotification)
+      );
 
       const result = await markAsRead("notif_1", "user_123");
 
@@ -404,15 +434,18 @@ describe("Notification Service", () => {
     it("should mark all notifications as read", async () => {
       const { markAllAsRead } = await import("./service.ts");
 
-      mockPrisma.notification.updateMany.mockResolvedValue({ count: 5 });
+      mockPrisma.notification.updateMany = spy(() =>
+        Promise.resolve({ count: 5 })
+      );
 
       const result = await markAllAsRead("user_123");
 
       expect(result.success).toBe(true);
-      expect(mockPrisma.notification.updateMany.calls[0]).toEqual([{
+      expect(mockPrisma.notification.updateMany).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.notification.updateMany).toHaveBeenCalledWith({
         where: { userId: "user_123", isRead: false },
         data: expect.objectContaining({ isRead: true }),
-      }]);
+      });
     });
   });
 
@@ -422,8 +455,12 @@ describe("Notification Service", () => {
 
       const mockNotification = { id: "notif_1", userId: "user_123" };
 
-      mockPrisma.notification.findUnique.mockResolvedValue(mockNotification);
-      mockPrisma.notification.delete.mockResolvedValue(mockNotification);
+      mockPrisma.notification.findUnique = spy(() =>
+        Promise.resolve(mockNotification)
+      );
+      mockPrisma.notification.delete = spy(() =>
+        Promise.resolve(mockNotification)
+      );
 
       const result = await deleteNotification("notif_1", "user_123");
 
@@ -433,7 +470,7 @@ describe("Notification Service", () => {
     it("should return null when notification not found", async () => {
       const { deleteNotification } = await import("./service.ts");
 
-      mockPrisma.notification.findUnique.mockResolvedValue(null);
+      mockPrisma.notification.findUnique = spy(() => Promise.resolve(null));
 
       const result = await deleteNotification("notif_1", "user_123");
 
