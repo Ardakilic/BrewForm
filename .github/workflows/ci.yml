@@ -73,7 +73,7 @@ jobs:
         working-directory: apps/api
 
       - name: Upload API coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./apps/api/coverage/lcov.info
           flags: api
@@ -104,7 +104,7 @@ jobs:
         working-directory: apps/web
 
       - name: Upload Web coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./apps/web/coverage/lcov.info
           flags: web
