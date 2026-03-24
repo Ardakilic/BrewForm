@@ -3,6 +3,8 @@
  * Configures DOM environment and suppresses known warnings.
  */
 
+/// <reference types="./matchers.d.ts" />
+
 import { JSDOM } from "jsdom";
 import { afterEach } from "@std/testing";
 import { expect } from "@std/expect";

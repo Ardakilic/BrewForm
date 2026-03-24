@@ -345,6 +345,26 @@ describe("RecipesPage Filtering", () => {
 
   describe("API URL construction", () => {
     it("should build correct API URL with multiple tags", () => {
+      let _capturedUrl = "";
+      useSWR.mockImplementation((url: unknown) => {
+        _capturedUrl = url as string;
+        return {
+          data: mockRecipes,
+          isLoading: false,
+          error: undefined,
+          mutate: () => Promise.resolve(undefined),
+          isValidating: false,
+        };
+      });
+
+      render(
+        <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
+          <RecipesPage />
+        </TestWrapper>,
+      );
+    });
+
+    it("should build correct API URL with multiple drink types", () => {
       let capturedUrl = "";
       useSWR.mockImplementation((url: unknown) => {
         capturedUrl = url as string;
@@ -355,26 +375,14 @@ describe("RecipesPage Filtering", () => {
           mutate: () => Promise.resolve(undefined),
           isValidating: false,
         };
-      }));
+      });
 
       render(
-        <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
+        <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">
           <RecipesPage />
         </TestWrapper>,
       );
-    });
 
-    render(
-      <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">
-        <RecipesPage />
-      </TestWrapper>,
-    );
-
-    // API URL should contain comma-separated drink types for OR logic
-    expect(capturedUrl).toContain("drinkType=ESPRESSO");
-    expect(capturedUrl).toContain("LUNGO");
-
-      // API URL should contain comma-separated drink types for OR logic
       expect(capturedUrl).toContain("drinkType=ESPRESSO");
       expect(capturedUrl).toContain("LUNGO");
     });
