@@ -30,31 +30,35 @@ const testErrorHandler = (
   );
 };
 
-const createLocalMockPrisma = () => ({
-  recipe: {
-    findUnique: spy(),
-    update: spy(),
-  },
-  userFavourite: {
-    findUnique: spy(),
-    findFirst: spy(),
-    create: spy(),
-    delete: spy(),
-  },
-  comment: {
-    findMany: spy(),
-    create: spy(),
-    findUnique: spy(),
-    update: spy(),
-    delete: spy(),
-    count: spy(),
-  },
-  comparison: {
-    create: spy(),
-    findFirst: spy(),
-    findUnique: spy(),
-  },
-});
+const createLocalMockPrisma = () => {
+  // deno-lint-ignore no-explicit-any
+  const mp: any = {
+    recipe: {
+      findUnique: spy(),
+      update: spy(),
+    },
+    userFavourite: {
+      findUnique: spy(),
+      findFirst: spy(),
+      create: spy(),
+      delete: spy(),
+    },
+    comment: {
+      findMany: spy(),
+      create: spy(),
+      findUnique: spy(),
+      update: spy(),
+      delete: spy(),
+      count: spy(),
+    },
+    comparison: {
+      create: spy(),
+      findFirst: spy(),
+      findUnique: spy(),
+    },
+  };
+  return mp;
+};
 
 describe("Social Module", () => {
   let app: Hono;
