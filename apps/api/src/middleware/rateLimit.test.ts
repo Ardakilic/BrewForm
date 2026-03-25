@@ -58,8 +58,8 @@ describe("Rate Limit Middleware", () => {
 
       const newCalls = redisMock.checkRateLimit.calls.slice(callCountBefore);
       expect(newCalls.length).toBeGreaterThan(0);
-      // deno-lint-ignore no-explicit-any
-      expect((newCalls[0] as any).args[0]).toBe("user:user_123");
+      // @ts-expect-error - Accessing spy call args
+      expect(newCalls[0].args[0]).toBe("user:user_123");
     });
 
     it("should use IP from X-Forwarded-For header for unauthenticated requests", async () => {
@@ -77,8 +77,8 @@ describe("Rate Limit Middleware", () => {
       });
 
       expect(redisMock.checkRateLimit.calls.length).toBeGreaterThan(0);
-      // deno-lint-ignore no-explicit-any
-      expect((redisMock.checkRateLimit.calls[0] as any).args[0]).toBe(
+      // @ts-expect-error - Accessing spy call args
+      expect(redisMock.checkRateLimit.calls[0].args[0]).toBe(
         "ip:192.168.1.100",
       );
     });
@@ -99,8 +99,8 @@ describe("Rate Limit Middleware", () => {
 
       const newCalls = redisMock.checkRateLimit.calls.slice(callCountBefore);
       expect(newCalls.length).toBeGreaterThan(0);
-      // deno-lint-ignore no-explicit-any
-      expect((newCalls[0] as any).args[0]).toBe("ip:192.168.1.200");
+      // @ts-expect-error - Accessing spy call args
+      expect(newCalls[0].args[0]).toBe("ip:192.168.1.200");
     });
 
     it("should skip rate limiting for authenticated users when configured", async () => {
@@ -143,12 +143,12 @@ describe("Rate Limit Middleware", () => {
       await app.request("/test");
 
       expect(redisMock.checkRateLimit.calls.length).toBeGreaterThan(0);
-      // deno-lint-ignore no-explicit-any
-      expect((redisMock.checkRateLimit.calls[0] as any).args[1]).toBe("custom");
-      // deno-lint-ignore no-explicit-any
-      expect((redisMock.checkRateLimit.calls[0] as any).args[2]).toBe(5);
-      // deno-lint-ignore no-explicit-any
-      expect((redisMock.checkRateLimit.calls[0] as any).args[3]).toBe(30000);
+      // @ts-expect-error - Accessing spy call args
+      expect(redisMock.checkRateLimit.calls[0].args[1]).toBe("custom");
+      // @ts-expect-error - Accessing spy call args
+      expect(redisMock.checkRateLimit.calls[0].args[2]).toBe(5);
+      // @ts-expect-error - Accessing spy call args
+      expect(redisMock.checkRateLimit.calls[0].args[3]).toBe(30000);
     });
   });
 

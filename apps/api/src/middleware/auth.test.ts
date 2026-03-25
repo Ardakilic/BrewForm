@@ -57,7 +57,8 @@ describe("Auth Middleware", () => {
       verifyTokenStub = stub(
         authUtilsMock,
         "verifyAccessToken",
-        () => Promise.resolve(null) as any,
+        // @ts-expect-error - Mock returns null but type expects non-null
+        () => Promise.resolve(null),
       );
 
       const app = new Hono();
