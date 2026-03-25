@@ -3,8 +3,6 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { spy } from "@std/testing/mock";
-
 // deno-lint-ignore no-explicit-any
 let _prisma: any = null;
 
@@ -49,4 +47,18 @@ export function softDeleteFilter() {
   return { deletedAt: null };
 }
 
-export const checkDbConnection = spy(() => Promise.resolve(true));
+// Create object with methods that can be stubbed
+const databaseUtils = {
+  checkDbConnection(): Promise<boolean> {
+    return Promise.resolve(true);
+  },
+};
+
+// Export wrapper function that calls the object method
+// This allows stubbing to work correctly
+export function checkDbConnection(): Promise<boolean> {
+  return databaseUtils.checkDbConnection();
+}
+
+// Export the object for stubbing
+export default databaseUtils;

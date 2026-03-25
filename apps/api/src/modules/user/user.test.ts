@@ -314,8 +314,8 @@ describe("User Module", () => {
 
   describe("DELETE /users/me", () => {
     it("should soft delete user account", async () => {
-      mockPrisma.user.update = spy(() => Promise.resolve({ id: "user_123" }));
-      mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 2 }));
+      const updateCallsBefore = mockPrisma.user.update.calls.length;
+      const deleteManyCallsBefore = mockPrisma.session.deleteMany.calls.length;
 
       const response = await app.request("/users/me", {
         method: "DELETE",
@@ -324,15 +324,21 @@ describe("User Module", () => {
       expect(response.status).toBe(200);
       const body = await response.json() as ApiResponse;
       expect(body.success).toBe(true);
-      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+
+      const updateCalls = mockPrisma.user.update.calls.slice(updateCallsBefore);
+      expect(updateCalls.length).toBe(1);
+      expect(updateCalls[0].args[0]).toEqual(
         expect.objectContaining({
           where: { id: "user_123" },
           data: { deletedAt: expect.any(Date) },
         }),
       );
-      expect(mockPrisma.session.deleteMany).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.session.deleteMany).toHaveBeenCalledWith({
+
+      const deleteManyCalls = mockPrisma.session.deleteMany.calls.slice(
+        deleteManyCallsBefore,
+      );
+      expect(deleteManyCalls.length).toBe(1);
+      expect(deleteManyCalls[0].args[0]).toEqual({
         where: { userId: "user_123" },
       });
     });

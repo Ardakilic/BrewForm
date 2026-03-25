@@ -35,13 +35,13 @@ const createLocalMockPrisma = () => {
   // deno-lint-ignore no-explicit-any
   const mp: any = {
     notification: {
-      findMany: spy(),
-      findUnique: spy(),
-      create: spy(),
-      update: spy(),
-      updateMany: spy(),
-      delete: spy(),
-      count: spy(),
+      findMany: spy(() => Promise.resolve([])),
+      findUnique: spy(() => Promise.resolve(null)),
+      create: spy(() => Promise.resolve({})),
+      update: spy(() => Promise.resolve({})),
+      updateMany: spy(() => Promise.resolve({ count: 0 })),
+      delete: spy(() => Promise.resolve({})),
+      count: spy(() => Promise.resolve(0)),
     },
   };
   return mp;
@@ -322,20 +322,7 @@ describe("Notification Service", () => {
     it("should create a notification", async () => {
       const { createNotification } = await import("./service.ts");
 
-      const mockNotification = {
-        id: "notif_1",
-        userId: "user_456",
-        type: "COMMENT_ON_RECIPE",
-        title: "New comment",
-        message: "Someone commented on your recipe",
-        actorId: "user_123",
-        recipeId: "recipe_1",
-        createdAt: new Date(),
-      };
-
-      mockPrisma.notification.create = spy(() =>
-        Promise.resolve(mockNotification)
-      );
+      const callCountBefore = mockPrisma.notification.create.calls.length;
 
       const result = await createNotification({
         userId: "user_456",
@@ -347,11 +334,15 @@ describe("Notification Service", () => {
       });
 
       expect(result).toBeDefined();
-      expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1);
+      const newCalls = mockPrisma.notification.create.calls.slice(
+        callCountBefore,
+      );
+      expect(newCalls.length).toBe(1);
     });
 
     it("should not create notification when user notifies themselves", async () => {
       const { createNotification } = await import("./service.ts");
+      const callCountBefore = mockPrisma.notification.create.calls.length;
 
       const result = await createNotification({
         userId: "user_123",
@@ -363,21 +354,26 @@ describe("Notification Service", () => {
       });
 
       expect(result).toBeNull();
-      expect(mockPrisma.notification.create).not.toHaveBeenCalled();
+      const newCalls = mockPrisma.notification.create.calls.slice(
+        callCountBefore,
+      );
+      expect(newCalls.length).toBe(0);
     });
   });
 
   describe("getUnreadCount", () => {
     it("should return count of unread notifications", async () => {
       const { getUnreadCount } = await import("./service.ts");
-
-      mockPrisma.notification.count = spy(() => Promise.resolve(3));
+      const callCountBefore = mockPrisma.notification.count.calls.length;
 
       const count = await getUnreadCount("user_123");
 
-      expect(count).toBe(3);
-      expect(mockPrisma.notification.count).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.notification.count).toHaveBeenCalledWith({
+      expect(count).toBe(0);
+      const newCalls = mockPrisma.notification.count.calls.slice(
+        callCountBefore,
+      );
+      expect(newCalls.length).toBe(1);
+      expect(newCalls[0].args[0]).toEqual({
         where: { userId: "user_123", isRead: false },
       });
     });
@@ -433,19 +429,21 @@ describe("Notification Service", () => {
   describe("markAllAsRead", () => {
     it("should mark all notifications as read", async () => {
       const { markAllAsRead } = await import("./service.ts");
-
-      mockPrisma.notification.updateMany = spy(() =>
-        Promise.resolve({ count: 5 })
-      );
+      const callCountBefore = mockPrisma.notification.updateMany.calls.length;
 
       const result = await markAllAsRead("user_123");
 
       expect(result.success).toBe(true);
-      expect(mockPrisma.notification.updateMany).toHaveBeenCalledTimes(1);
-      expect(mockPrisma.notification.updateMany).toHaveBeenCalledWith({
-        where: { userId: "user_123", isRead: false },
-        data: expect.objectContaining({ isRead: true }),
-      });
+      const newCalls = mockPrisma.notification.updateMany.calls.slice(
+        callCountBefore,
+      );
+      expect(newCalls.length).toBe(1);
+      expect(newCalls[0].args[0]).toEqual(
+        expect.objectContaining({
+          where: { userId: "user_123", isRead: false },
+          data: expect.objectContaining({ isRead: true }),
+        }),
+      );
     });
   });
 

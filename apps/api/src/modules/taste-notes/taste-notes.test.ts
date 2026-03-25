@@ -5,10 +5,10 @@
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { Hono } from "hono";
-import { spy } from "@std/testing/mock";
+import { spy, stub } from "@std/testing/mock";
 import { setPrisma } from "../../test/mocks/database.ts";
 import { setCheckHeaderMode } from "../../test/mocks/auth-middleware.ts";
-import { cacheGetOrSet } from "../../test/mocks/redis.ts";
+import redisMock from "../../test/mocks/redis.ts";
 import tasteNotesModule from "./index.ts";
 
 // API Response type for testing
@@ -456,6 +456,12 @@ describe("Taste Notes Service", () => {
 
 describe("Taste Notes Caching", () => {
   it("should use cache for repeated requests", async () => {
+    const cacheStub = stub(
+      redisMock,
+      "cacheGetOrSet",
+      (_key, fetcher) => fetcher(),
+    );
+
     const app = new Hono();
     app.route("/taste-notes", tasteNotesModule);
 
@@ -466,7 +472,9 @@ describe("Taste Notes Caching", () => {
     await app.request("/taste-notes", { headers: authHeaders });
 
     // cacheGetOrSet should have been called
-    expect(cacheGetOrSet.calls.length).toBeGreaterThan(0);
+    expect(cacheStub.calls.length).toBeGreaterThan(0);
+
+    cacheStub.restore();
   });
 });
 

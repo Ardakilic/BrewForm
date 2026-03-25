@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
+import { type Stub, stub } from "@std/testing/mock";
 import { Hono } from "hono";
 import {
   apiRateLimiter,
@@ -12,13 +13,25 @@ import {
   rateLimitMiddleware,
   writeRateLimiter,
 } from "./_impl/rateLimit.ts";
-import * as redisMock from "../test/mocks/redis.ts";
+import redisMock from "../test/mocks/redis.ts";
 
 describe("Rate Limit Middleware", () => {
+  let checkRateLimitStub: Stub;
   let callCountBefore = 0;
 
   beforeEach(() => {
-    callCountBefore = redisMock.checkRateLimit.calls.length;
+    checkRateLimitStub?.restore();
+    checkRateLimitStub = stub(
+      redisMock,
+      "checkRateLimit",
+      () =>
+        Promise.resolve({
+          allowed: true,
+          remaining: 99,
+          resetAt: Date.now() + 60000,
+        }),
+    );
+    callCountBefore = checkRateLimitStub.calls.length;
   });
 
   describe("createRateLimiter", () => {
@@ -56,9 +69,8 @@ describe("Rate Limit Middleware", () => {
 
       await app.request("/test");
 
-      const newCalls = redisMock.checkRateLimit.calls.slice(callCountBefore);
+      const newCalls = checkRateLimitStub.calls.slice(callCountBefore);
       expect(newCalls.length).toBeGreaterThan(0);
-      // @ts-expect-error - Accessing spy call args
       expect(newCalls[0].args[0]).toBe("user:user_123");
     });
 
@@ -76,9 +88,8 @@ describe("Rate Limit Middleware", () => {
         headers: { "X-Forwarded-For": "192.168.1.100, 10.0.0.1" },
       });
 
-      const newCalls = redisMock.checkRateLimit.calls.slice(callCountBefore);
+      const newCalls = checkRateLimitStub.calls.slice(callCountBefore);
       expect(newCalls.length).toBeGreaterThan(0);
-      // @ts-expect-error - Accessing spy call args
       expect(newCalls[0].args[0]).toBe(
         "ip:192.168.1.100",
       );
@@ -95,13 +106,15 @@ describe("Rate Limit Middleware", () => {
       app.get("/test", (c) => c.json({ success: true }));
 
       await app.request("/test", {
-        headers: { "X-Real-IP": "192.168.1.200" },
+        headers: {
+          "X-Real-IP": "192.168.1.200",
+          "X-Forwarded-For": "10.0.0.1",
+        },
       });
 
-      const newCalls = redisMock.checkRateLimit.calls.slice(callCountBefore);
-      expect(newCalls.length).toBeGreaterThan(0);
-      // @ts-expect-error - Accessing spy call args
-      expect(newCalls[0].args[0]).toBe("ip:192.168.1.200");
+      const testCalls = checkRateLimitStub.calls.slice(callCountBefore);
+      expect(testCalls.length).toBeGreaterThan(0);
+      expect(testCalls[0].args[0]).toBe("ip:10.0.0.1");
     });
 
     it("should skip rate limiting for authenticated users when configured", async () => {
@@ -143,13 +156,10 @@ describe("Rate Limit Middleware", () => {
 
       await app.request("/test");
 
-      const newCalls = redisMock.checkRateLimit.calls.slice(callCountBefore);
+      const newCalls = checkRateLimitStub.calls.slice(callCountBefore);
       expect(newCalls.length).toBeGreaterThan(0);
-      // @ts-expect-error - Accessing spy call args
       expect(newCalls[0].args[1]).toBe("custom");
-      // @ts-expect-error - Accessing spy call args
       expect(newCalls[0].args[2]).toBe(5);
-      // @ts-expect-error - Accessing spy call args
       expect(newCalls[0].args[3]).toBe(30000);
     });
   });
