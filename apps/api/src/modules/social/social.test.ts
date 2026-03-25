@@ -735,12 +735,12 @@ describe("Social Module", () => {
       });
 
       expect(response.status).toBe(200);
-      expect(mockPrisma.recipe.update.calls[0]).toEqual([
+      expect(mockPrisma.recipe.update.calls[0].args[0]).toEqual(
         expect.objectContaining({
           where: { id: "clh1234567890abcdefghij01" },
           data: { commentCount: { decrement: 1 } },
         }),
-      ]);
+      );
     });
   });
 
@@ -930,11 +930,11 @@ describe("Social Module", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(mockPrisma.recipe.update.calls[0]).toEqual([
+      expect(mockPrisma.recipe.update.calls[0].args[0]).toEqual(
         expect.objectContaining({
           data: { favouriteCount: { decrement: 1 } },
         }),
-      ]);
+      );
     });
   });
 

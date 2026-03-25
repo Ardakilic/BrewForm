@@ -7,8 +7,8 @@ import { expect } from "@std/expect";
 import { type Stub, stub } from "@std/testing/mock";
 import { Hono } from "hono";
 import healthModule from "./index.ts";
-import * as databaseMock from "../../test/mocks/database.ts";
-import * as redisMock from "../../test/mocks/redis.ts";
+import databaseMock from "../../test/mocks/database.ts";
+import redisMock from "../../test/mocks/redis.ts";
 
 // API Response type for testing
 interface HealthResponse {

@@ -6,26 +6,26 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-import en from "./locales/en.json";
-import uk from "./locales/uk.json";
-import sr from "./locales/sr.json";
-import ro from "./locales/ro.json";
-import tr from "./locales/tr.json";
-import fr from "./locales/fr.json";
-import de from "./locales/de.json";
-import es from "./locales/es.json";
-import pt from "./locales/pt.json";
-import ru from "./locales/ru.json";
-import az from "./locales/az.json";
-import ka from "./locales/ka.json";
-import ar_f from "./locales/ar_f.json";
-import hy from "./locales/hy.json";
-import ko from "./locales/ko.json";
-import zh_TW from "./locales/zh_TW.json";
-import th from "./locales/th.json";
-import hi from "./locales/hi.json";
-import ja from "./locales/ja.json";
-import zh_CN from "./locales/zh_CN.json";
+import en from "./locales/en.json" with { type: "json" };
+import uk from "./locales/uk.json" with { type: "json" };
+import sr from "./locales/sr.json" with { type: "json" };
+import ro from "./locales/ro.json" with { type: "json" };
+import tr from "./locales/tr.json" with { type: "json" };
+import fr from "./locales/fr.json" with { type: "json" };
+import de from "./locales/de.json" with { type: "json" };
+import es from "./locales/es.json" with { type: "json" };
+import pt from "./locales/pt.json" with { type: "json" };
+import ru from "./locales/ru.json" with { type: "json" };
+import az from "./locales/az.json" with { type: "json" };
+import ka from "./locales/ka.json" with { type: "json" };
+import ar_f from "./locales/ar_f.json" with { type: "json" };
+import hy from "./locales/hy.json" with { type: "json" };
+import ko from "./locales/ko.json" with { type: "json" };
+import zh_TW from "./locales/zh_TW.json" with { type: "json" };
+import th from "./locales/th.json" with { type: "json" };
+import hi from "./locales/hi.json" with { type: "json" };
+import ja from "./locales/ja.json" with { type: "json" };
+import zh_CN from "./locales/zh_CN.json" with { type: "json" };
 
 export const supportedLanguages = [
   { code: "en", name: "English", flag: "🇬🇧" },

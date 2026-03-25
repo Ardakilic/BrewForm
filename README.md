@@ -148,16 +148,96 @@ make db-reset     # Reset database (keeps schema)
 make db-reset-hard # Complete reset: drops DB, runs migrations and seeds
 
 # Testing & Code Quality
-make test         # Run tests
-make lint         # Lint code
-make lint-fix     # Fix lint issues
-make format       # Format code
-make format-check # Check code formatting
-make check        # Run all checks (lint + format + typecheck)
+make test                 # Run all tests (API + Web)
+make test-api             # Run API tests only
+make test-web             # Run Web tests only
+make test-coverage        # Run tests with coverage collection
+make test-coverage-report # Generate LCOV coverage reports
+make lint                 # Lint code
+make lint-fix             # Fix lint issues
+make format               # Format code
+make format-check         # Check code formatting
+make check                # Run all checks (lint + format + typecheck)
 
 # Cleanup
 make clean        # Remove containers and volumes
 ```
+
+## Testing
+
+BrewForm uses Deno's native test runner with comprehensive test coverage for both API and Web
+applications.
+
+### Running Tests
+
+```bash
+# Run all tests (API + Web)
+make test
+
+# Run API tests only
+make test-api
+
+# Run Web tests only
+make test-web
+
+# Run tests in watch mode (API only)
+make test-watch
+```
+
+### Test Coverage
+
+Generate coverage reports in LCOV format for both applications:
+
+```bash
+# Run tests with coverage collection
+make test-coverage
+
+# Generate LCOV reports
+make test-coverage-report
+```
+
+**Coverage output locations:**
+
+- API: `apps/api/coverage/lcov.info`
+- Web: `apps/web/coverage/lcov.info`
+
+**Coverage visualization:** You can use tools like
+[Coverage Gutters](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters)
+for VSCode to visualize coverage in your editor.
+
+### Test Structure
+
+**API Tests:**
+
+- Unit tests for utilities and services
+- Integration tests for modules (auth, recipes, users, social)
+- Middleware tests (authentication, rate limiting, error handling, logging)
+- Tests use mocked dependencies (Prisma, Redis, Logger)
+
+**Web Tests:**
+
+- Component tests with React Testing Library
+- Hook tests
+- Utility function tests
+
+**Test Conventions:**
+
+- Test files: `*.test.ts` or `*.test.tsx`
+- Located alongside source files
+- Use `@std/testing` for test framework
+- Use `@std/expect` for assertions
+- Use `@std/testing/mock` for mocking
+
+### Middleware Testing Pattern
+
+The API uses a specialized `_impl/` pattern for middleware testing. See
+[`docs/middleware-testing-pattern.md`](./docs/middleware-testing-pattern.md) for detailed
+documentation on:
+
+- Why the pattern exists
+- How it enables comprehensive middleware testing
+- Implementation examples
+- Migration guide for new middleware
 
 ## Code Formatting & Linting
 

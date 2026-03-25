@@ -17,17 +17,71 @@ export function getRedis() {
   return redis;
 }
 
-export const checkRedisConnection = spy(() => Promise.resolve(true));
+// Create object with methods that can be stubbed
+const redisUtils = {
+  checkRedisConnection(): Promise<boolean> {
+    return Promise.resolve(true);
+  },
 
-export const checkRateLimit = spy(() =>
-  Promise.resolve({ allowed: true, remaining: 99, resetAt: Date.now() + 60000 })
-);
+  checkRateLimit(
+    _identifier: string,
+    _action: string,
+    _maxRequests: number,
+    _windowMs: number,
+  ): Promise<{
+    allowed: boolean;
+    remaining: number;
+    resetAt: number;
+  }> {
+    return Promise.resolve({
+      allowed: true,
+      remaining: 99,
+      resetAt: Date.now() + 60000,
+    });
+  },
 
-export const invalidateCache = spy(() => Promise.resolve(undefined));
+  invalidateCache(_pattern: string): Promise<void> {
+    return Promise.resolve(undefined);
+  },
 
-export const cacheGetOrSet = spy(
-  (...args: unknown[]) => (args[1] as () => Promise<unknown>)(),
-);
+  cacheGetOrSet<T>(
+    _key: string,
+    fetcher: () => Promise<T>,
+    _ttl?: number,
+  ): Promise<T> {
+    return fetcher();
+  },
+};
+
+// Export wrapper functions that call the object methods
+// This allows stubbing to work correctly
+export function checkRedisConnection(): Promise<boolean> {
+  return redisUtils.checkRedisConnection();
+}
+
+export function checkRateLimit(
+  identifier: string,
+  action: string,
+  maxRequests: number,
+  windowMs: number,
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  return redisUtils.checkRateLimit(identifier, action, maxRequests, windowMs);
+}
+
+export function invalidateCache(pattern: string): Promise<void> {
+  return redisUtils.invalidateCache(pattern);
+}
+
+export function cacheGetOrSet<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttl?: number,
+): Promise<T> {
+  return redisUtils.cacheGetOrSet(key, fetcher, ttl);
+}
+
+// Export the object for stubbing
+export default redisUtils;
 
 export const CacheKeys = {
   user: (id: string) => `user:${id}`,
