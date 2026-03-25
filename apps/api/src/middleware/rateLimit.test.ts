@@ -136,6 +136,8 @@ describe("Rate Limit Middleware", () => {
       const response = await app.request("/test");
       const body = await response.json();
 
+      const newCalls = checkRateLimitStub.calls.slice(callCountBefore);
+      expect(newCalls.length).toBe(0);
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
     });
