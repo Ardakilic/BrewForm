@@ -21,6 +21,8 @@ const _defaultConfig = {
   smtpUser: "",
   smtpPassword: "",
   emailFrom: "noreply@brewform.local",
+  rateLimitWindowMs: 60000,
+  rateLimitMaxRequests: 100,
 };
 
 // deno-lint-ignore no-explicit-any
