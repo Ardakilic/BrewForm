@@ -14,7 +14,7 @@ import {
 } from "./_impl/auth.ts";
 import { createMockPrisma } from "../test/setup.ts";
 import * as databaseMock from "../test/mocks/database.ts";
-import * as authUtilsMock from "../test/mocks/auth-utils.ts";
+import authUtilsMock from "../test/mocks/auth-utils.ts";
 
 describe("Auth Middleware", () => {
   let mockPrisma: ReturnType<typeof createMockPrisma>;
