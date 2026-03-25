@@ -23,7 +23,10 @@ describe("Auth Middleware", () => {
   beforeEach(() => {
     mockPrisma = createMockPrisma();
     databaseMock.setPrisma(mockPrisma);
+    // Restore previous stub if exists
     verifyTokenStub?.restore?.();
+    // Restore the spy to its original state
+    authUtilsMock.verifyAccessToken.restore?.();
   });
 
   describe("authMiddleware", () => {

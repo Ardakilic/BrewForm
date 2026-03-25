@@ -76,9 +76,10 @@ describe("Rate Limit Middleware", () => {
         headers: { "X-Forwarded-For": "192.168.1.100, 10.0.0.1" },
       });
 
-      expect(redisMock.checkRateLimit.calls.length).toBeGreaterThan(0);
+      const newCalls = redisMock.checkRateLimit.calls.slice(callCountBefore);
+      expect(newCalls.length).toBeGreaterThan(0);
       // @ts-expect-error - Accessing spy call args
-      expect(redisMock.checkRateLimit.calls[0].args[0]).toBe(
+      expect(newCalls[0].args[0]).toBe(
         "ip:192.168.1.100",
       );
     });
@@ -142,13 +143,14 @@ describe("Rate Limit Middleware", () => {
 
       await app.request("/test");
 
-      expect(redisMock.checkRateLimit.calls.length).toBeGreaterThan(0);
+      const newCalls = redisMock.checkRateLimit.calls.slice(callCountBefore);
+      expect(newCalls.length).toBeGreaterThan(0);
       // @ts-expect-error - Accessing spy call args
-      expect(redisMock.checkRateLimit.calls[0].args[1]).toBe("custom");
+      expect(newCalls[0].args[1]).toBe("custom");
       // @ts-expect-error - Accessing spy call args
-      expect(redisMock.checkRateLimit.calls[0].args[2]).toBe(5);
+      expect(newCalls[0].args[2]).toBe(5);
       // @ts-expect-error - Accessing spy call args
-      expect(redisMock.checkRateLimit.calls[0].args[3]).toBe(30000);
+      expect(newCalls[0].args[3]).toBe(30000);
     });
   });
 
