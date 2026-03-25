@@ -21,11 +21,13 @@ describe("Auth Middleware", () => {
   let mockPrisma: ReturnType<typeof createMockPrisma>;
   let verifyTokenStub: Stub | undefined;
   let logSecurityCallsBefore: number;
+  let loggerErrorCallsBefore: number;
 
   beforeEach(() => {
     mockPrisma = createMockPrisma();
     databaseMock.setPrisma(mockPrisma);
     logSecurityCallsBefore = loggerMock.logSecurity.calls.length;
+    loggerErrorCallsBefore = loggerMock.getLogger().error.calls.length;
     if (verifyTokenStub) {
       verifyTokenStub.restore();
       verifyTokenStub = undefined;
@@ -225,6 +227,11 @@ describe("Auth Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.user).toBeNull();
+
+      const loggerErrorCalls = loggerMock.getLogger().error.calls.slice(
+        loggerErrorCallsBefore,
+      );
+      expect(loggerErrorCalls.length).toBeGreaterThan(0);
     });
   });
 

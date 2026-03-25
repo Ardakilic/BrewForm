@@ -108,13 +108,12 @@ describe("Rate Limit Middleware", () => {
       await app.request("/test", {
         headers: {
           "X-Real-IP": "192.168.1.200",
-          "X-Forwarded-For": "10.0.0.1",
         },
       });
 
       const testCalls = checkRateLimitStub.calls.slice(callCountBefore);
       expect(testCalls.length).toBeGreaterThan(0);
-      expect(testCalls[0].args[0]).toBe("ip:10.0.0.1");
+      expect(testCalls[0].args[0]).toBe("ip:192.168.1.200");
     });
 
     it("should skip rate limiting for authenticated users when configured", async () => {

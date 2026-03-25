@@ -49,18 +49,47 @@ const authUtils = {
 };
 
 // Export individual functions that delegate to the object
-export const hashPassword = authUtils.hashPassword.bind(authUtils);
-export const verifyPassword = authUtils.verifyPassword.bind(authUtils);
-export const generateTokenPair = authUtils.generateTokenPair.bind(authUtils);
-export const generateVerificationToken = authUtils.generateVerificationToken
-  .bind(authUtils);
-export const generatePasswordResetToken = authUtils.generatePasswordResetToken
-  .bind(authUtils);
-export const generateSessionToken = authUtils.generateSessionToken.bind(
-  authUtils,
-);
-export const verifyAccessToken = authUtils.verifyAccessToken.bind(authUtils);
-export const verifyRefreshToken = authUtils.verifyRefreshToken.bind(authUtils);
+export function hashPassword(password: string): Promise<string> {
+  return authUtils.hashPassword(password);
+}
+
+export function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
+  return authUtils.verifyPassword(password, hash);
+}
+
+export function generateTokenPair(
+  userId: string,
+  sessionId: string,
+): { accessToken: string; refreshToken: string } {
+  return authUtils.generateTokenPair(userId, sessionId);
+}
+
+export function generateVerificationToken(): string {
+  return authUtils.generateVerificationToken();
+}
+
+export function generatePasswordResetToken(): string {
+  return authUtils.generatePasswordResetToken();
+}
+
+export function generateSessionToken(): string {
+  return authUtils.generateSessionToken();
+}
+
+export function verifyAccessToken(
+  token: string,
+): Promise<{ userId: string; sessionId: string }> {
+  return authUtils.verifyAccessToken(token);
+}
+
+export function verifyRefreshToken(
+  token: string,
+): Promise<{ userId: string; sessionId: string }> {
+  return authUtils.verifyRefreshToken(token);
+}
 
 // Export the object for stubbing
 export default authUtils;

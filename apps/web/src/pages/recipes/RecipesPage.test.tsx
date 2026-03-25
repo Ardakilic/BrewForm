@@ -335,13 +335,17 @@ describe("RecipesPage Filtering", () => {
 
   describe("API URL construction", () => {
     it("should build correct API URL with multiple tags", () => {
-      useSWR.mockImplementation(() => ({
-        data: mockRecipes,
-        isLoading: false,
-        error: undefined,
-        mutate: () => Promise.resolve(undefined),
-        isValidating: false,
-      }));
+      let capturedUrl: unknown;
+      useSWR.mockImplementation((url, ..._rest) => {
+        capturedUrl = url;
+        return {
+          data: mockRecipes,
+          isLoading: false,
+          error: undefined,
+          mutate: () => Promise.resolve(undefined),
+          isValidating: false,
+        };
+      });
 
       render(
         <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
@@ -349,18 +353,24 @@ describe("RecipesPage Filtering", () => {
         </TestWrapper>,
       );
 
-      // Verify the component renders with recipes
+      // Verify the URL passed to useSWR contains the expected tag parameters
+      expect(typeof capturedUrl).toBe("string");
+      expect(capturedUrl as string).toContain("tags=chocolatey%2Cfruity");
       expect(screen.getByText("Morning Espresso")).toBeInTheDocument();
     });
 
     it("should build correct API URL with multiple drink types", () => {
-      useSWR.mockImplementation(() => ({
-        data: mockRecipes,
-        isLoading: false,
-        error: undefined,
-        mutate: () => Promise.resolve(undefined),
-        isValidating: false,
-      }));
+      let capturedUrl: unknown;
+      useSWR.mockImplementation((url, ..._rest) => {
+        capturedUrl = url;
+        return {
+          data: mockRecipes,
+          isLoading: false,
+          error: undefined,
+          mutate: () => Promise.resolve(undefined),
+          isValidating: false,
+        };
+      });
 
       render(
         <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">
@@ -368,7 +378,9 @@ describe("RecipesPage Filtering", () => {
         </TestWrapper>,
       );
 
-      // Verify the component renders with recipes
+      // Verify the URL passed to useSWR contains the expected drinkType parameters
+      expect(typeof capturedUrl).toBe("string");
+      expect(capturedUrl as string).toContain("drinkType=ESPRESSO%2CLUNGO");
       expect(screen.getByText("Morning Espresso")).toBeInTheDocument();
     });
   });
