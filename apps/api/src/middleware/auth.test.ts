@@ -18,15 +18,16 @@ import * as authUtilsMock from "../test/mocks/auth-utils.ts";
 
 describe("Auth Middleware", () => {
   let mockPrisma: ReturnType<typeof createMockPrisma>;
-  let verifyTokenStub: Stub;
+  let verifyTokenStub: Stub | undefined;
 
   beforeEach(() => {
     mockPrisma = createMockPrisma();
     databaseMock.setPrisma(mockPrisma);
     // Restore previous stub if exists
-    verifyTokenStub?.restore?.();
-    // Restore the spy to its original state
-    authUtilsMock.verifyAccessToken.restore?.();
+    if (verifyTokenStub) {
+      verifyTokenStub.restore();
+      verifyTokenStub = undefined;
+    }
   });
 
   describe("authMiddleware", () => {

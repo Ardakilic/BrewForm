@@ -30,15 +30,21 @@ jobs:
         run: deno install --allow-scripts
         working-directory: apps/web
 
-      - name: Run linter
-        run: |
-          cd apps/api && deno task lint
-          cd apps/web && deno task lint
+      - name: Run linter (API)
+        run: deno task lint
+        working-directory: apps/api
 
-      - name: Check formatting
-        run: |
-          cd apps/api && deno task format:check
-          cd apps/web && deno task format:check
+      - name: Run linter (Web)
+        run: deno task lint
+        working-directory: apps/web
+
+      - name: Check formatting (API)
+        run: deno task format:check
+        working-directory: apps/api
+
+      - name: Check formatting (Web)
+        run: deno task format:check
+        working-directory: apps/web
 
   test-api:
     name: Test API
