@@ -15,14 +15,17 @@ import {
 import { createMockPrisma } from "../test/setup.ts";
 import * as databaseMock from "../test/mocks/database.ts";
 import authUtilsMock from "../test/mocks/auth-utils.ts";
+import * as loggerMock from "../test/mocks/logger.ts";
 
 describe("Auth Middleware", () => {
   let mockPrisma: ReturnType<typeof createMockPrisma>;
   let verifyTokenStub: Stub | undefined;
+  let logSecurityCallsBefore: number;
 
   beforeEach(() => {
     mockPrisma = createMockPrisma();
     databaseMock.setPrisma(mockPrisma);
+    logSecurityCallsBefore = loggerMock.logSecurity.calls.length;
     if (verifyTokenStub) {
       verifyTokenStub.restore();
       verifyTokenStub = undefined;
@@ -156,6 +159,16 @@ describe("Auth Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.user).toBeNull();
+
+      const logSecurityCalls = loggerMock.logSecurity.calls.slice(
+        logSecurityCallsBefore,
+      );
+      expect(logSecurityCalls.length).toBe(1);
+      expect(logSecurityCalls[0].args[0]).toBe("banned_user_access_attempt");
+      expect(logSecurityCalls[0].args[1]).toEqual({
+        userId: "user_123",
+        email: "banned@example.com",
+      });
     });
 
     it("should set user context when token is valid and user exists", async () => {
