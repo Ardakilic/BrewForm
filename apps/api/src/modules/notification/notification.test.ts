@@ -364,11 +364,12 @@ describe("Notification Service", () => {
   describe("getUnreadCount", () => {
     it("should return count of unread notifications", async () => {
       const { getUnreadCount } = await import("./service.ts");
+      mockPrisma.notification.count = spy(() => Promise.resolve(7));
       const callCountBefore = mockPrisma.notification.count.calls.length;
 
       const count = await getUnreadCount("user_123");
 
-      expect(count).toBe(0);
+      expect(count).toBe(7);
       const newCalls = mockPrisma.notification.count.calls.slice(
         callCountBefore,
       );
