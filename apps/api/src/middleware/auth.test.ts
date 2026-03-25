@@ -23,7 +23,6 @@ describe("Auth Middleware", () => {
   beforeEach(() => {
     mockPrisma = createMockPrisma();
     databaseMock.setPrisma(mockPrisma);
-    // Restore previous stub if exists
     if (verifyTokenStub) {
       verifyTokenStub.restore();
       verifyTokenStub = undefined;
@@ -76,7 +75,6 @@ describe("Auth Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.user).toBeNull();
-      verifyTokenStub.restore();
     });
 
     it("should set user to null when user is not found in database", async () => {
@@ -98,18 +96,13 @@ describe("Auth Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.user).toBeNull();
-      verifyTokenStub.restore();
     });
 
     it("should set user to null when user is deleted", async () => {
       verifyTokenStub = stub(
         authUtilsMock,
         "verifyAccessToken",
-        () =>
-          Promise.resolve({
-            userId: "user_123",
-            sessionId: "session_123",
-          }),
+        () => Promise.resolve({ userId: "user_123", sessionId: "session_123" }),
       );
       mockPrisma.user.findUnique = spy(() =>
         Promise.resolve({
@@ -133,7 +126,6 @@ describe("Auth Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.user).toBeNull();
-      verifyTokenStub.restore();
     });
 
     it("should set user to null and log security event when user is banned", async () => {
@@ -164,7 +156,6 @@ describe("Auth Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.user).toBeNull();
-      verifyTokenStub.restore();
     });
 
     it("should set user context when token is valid and user exists", async () => {
@@ -201,7 +192,6 @@ describe("Auth Middleware", () => {
         isAdmin: false,
         isBanned: false,
       });
-      verifyTokenStub.restore();
     });
 
     it("should catch and log errors during token verification", async () => {
@@ -222,7 +212,6 @@ describe("Auth Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.user).toBeNull();
-      verifyTokenStub.restore();
     });
   });
 
