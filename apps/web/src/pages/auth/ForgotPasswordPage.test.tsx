@@ -17,7 +17,9 @@ describe("ForgotPasswordPage", () => {
 
   it("renders submit button", () => {
     renderWithProviders(<ForgotPasswordPage />);
-    expect(screen.getByRole("button", { name: /submit|send|reset/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /submit|send|reset/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders back to login link", () => {

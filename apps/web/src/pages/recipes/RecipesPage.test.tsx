@@ -139,7 +139,11 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?brewMethod=ESPRESSO_MACHINE&tags=chocolatey&tags=morning"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: [
+          "/recipes?brewMethod=ESPRESSO_MACHINE&tags=chocolatey&tags=morning",
+        ],
+      });
 
       expect(screen.getByText("#Chocolatey")).toBeInTheDocument();
       expect(screen.getByText("#Morning")).toBeInTheDocument();
@@ -156,7 +160,9 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=chocolatey&tags=fruity"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: ["/recipes?tags=chocolatey&tags=fruity"],
+      });
 
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
 
@@ -180,7 +186,11 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=chocolatey&tags=fruity&brewMethod=ESPRESSO_MACHINE"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: [
+          "/recipes?tags=chocolatey&tags=fruity&brewMethod=ESPRESSO_MACHINE",
+        ],
+      });
 
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
 
@@ -250,7 +260,9 @@ describe("RecipesPage Filtering", () => {
         };
       });
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=chocolatey&tags=fruity"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: ["/recipes?tags=chocolatey&tags=fruity"],
+      });
 
       expect(typeof capturedUrl).toBe("string");
       expect(capturedUrl as string).toContain("tags=chocolatey%2Cfruity");
@@ -270,7 +282,9 @@ describe("RecipesPage Filtering", () => {
         };
       });
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?drinkType=ESPRESSO&drinkType=LUNGO"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: ["/recipes?drinkType=ESPRESSO&drinkType=LUNGO"],
+      });
 
       expect(typeof capturedUrl).toBe("string");
       expect(capturedUrl as string).toContain("drinkType=ESPRESSO%2CLUNGO");
