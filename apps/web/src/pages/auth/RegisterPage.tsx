@@ -115,7 +115,9 @@ function RegisterPage() {
                 onChange={handleChange("email")}
                 required
                 autoComplete="email"
-                overrides={{ Input: { props: { "aria-label": t("auth.register.email") } } }}
+                overrides={{
+                  Input: { props: { "aria-label": t("auth.register.email") } },
+                }}
               />
             </FormControl>
 
@@ -129,7 +131,9 @@ function RegisterPage() {
                 required
                 autoComplete="username"
                 overrides={{
-                  Input: { props: { "aria-label": t("auth.register.username") } },
+                  Input: {
+                    props: { "aria-label": t("auth.register.username") },
+                  },
                 }}
               />
             </FormControl>
@@ -153,7 +157,9 @@ function RegisterPage() {
                 required
                 autoComplete="new-password"
                 overrides={{
-                  Input: { props: { "aria-label": t("auth.register.password") } },
+                  Input: {
+                    props: { "aria-label": t("auth.register.password") },
+                  },
                 }}
               />
             </FormControl>

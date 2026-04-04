@@ -50,7 +50,9 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=fruity"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: ["/recipes?tags=fruity"],
+      });
 
       expect(screen.getByText("#Fruity")).toBeInTheDocument();
     });
@@ -64,7 +66,9 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=chocolatey&tags=fruity"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: ["/recipes?tags=chocolatey&tags=fruity"],
+      });
 
       expect(screen.getByText("#Chocolatey")).toBeInTheDocument();
       expect(screen.getByText("#Fruity")).toBeInTheDocument();
@@ -79,7 +83,9 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?brewMethod=ESPRESSO_MACHINE"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: ["/recipes?brewMethod=ESPRESSO_MACHINE"],
+      });
 
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
     });
@@ -93,7 +99,11 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?brewMethod=ESPRESSO_MACHINE&brewMethod=POUR_OVER_V60"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: [
+          "/recipes?brewMethod=ESPRESSO_MACHINE&brewMethod=POUR_OVER_V60",
+        ],
+      });
 
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
       const closeableTags = screen.getAllByRole("button", { name: /remove/i });
@@ -109,7 +119,9 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?drinkType=ESPRESSO"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: ["/recipes?drinkType=ESPRESSO"],
+      });
 
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
     });
@@ -123,7 +135,9 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?drinkType=ESPRESSO&drinkType=LUNGO"] });
+      renderWithProviders(<RecipesPage />, {
+        initialEntries: ["/recipes?drinkType=ESPRESSO&drinkType=LUNGO"],
+      });
 
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
       expect(screen.getAllByText("Espresso").length).toBeGreaterThan(0);

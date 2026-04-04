@@ -24,7 +24,8 @@ describe("ForgotPasswordPage", () => {
 
   it("renders back to login link", () => {
     renderWithProviders(<ForgotPasswordPage />);
-    const links = screen.getAllByRole("link");
-    expect(links.length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("link", { name: /back to login/i }),
+    ).toBeInTheDocument();
   });
 });
