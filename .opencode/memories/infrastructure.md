@@ -1,13 +1,3 @@
----
-trigger: glob
-globs:
-  - "**/Dockerfile*"
-  - "**/docker-compose*.yml"
-  - "**/Makefile"
-  - "**/.env*"
-  - "**/nginx.conf"
----
-
 <critical_rule>
 **All commands MUST be executed through Docker Compose or Makefile.**
 Never run deno/node commands directly on the host system.

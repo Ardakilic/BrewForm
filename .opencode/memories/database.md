@@ -1,10 +1,3 @@
----
-trigger: glob
-globs: 
-  - "**/prisma/**"
-  - "**/*.prisma"
----
-
 <schema_conventions>
 - Model names: PascalCase (User, Recipe, CoffeeBean)
 - Field names: snake_case (created_at, user_id)

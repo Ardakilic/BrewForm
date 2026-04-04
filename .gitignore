@@ -50,3 +50,7 @@ docker-compose.override.yml
 
 # Generated files
 *.generated.*
+
+# Personal
+plan.md
+pr_description.md

@@ -1,8 +1,3 @@
----
-trigger: glob
-globs: apps/api/**/*.ts
----
-
 <hono_guidelines>
 - Use Hono's built-in middleware (cors, logger)
 - Use `@hono/zod-validator` for request validation

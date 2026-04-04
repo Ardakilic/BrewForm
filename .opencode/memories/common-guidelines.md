@@ -1,7 +1,3 @@
----
-trigger: always_on
----
-
 <project_context>
 BrewForm is a coffee recipe sharing platform built with:
 - **Backend**: Hono + Deno 2 + Prisma + PostgreSQL + Redis
