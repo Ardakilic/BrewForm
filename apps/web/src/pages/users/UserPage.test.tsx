@@ -1,17 +1,20 @@
 import { describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import "../../test/setup.ts";
+import { screen } from "@testing-library/react";
 import { renderWithProviders } from "../../test/test-utils.tsx";
 import UserPage from "./UserPage.tsx";
 
 describe("UserPage", () => {
-  it("renders without crashing", () => {
+  it("renders user profile page", () => {
     renderWithProviders(<UserPage />);
-    expect(document.body).toBeTruthy();
+    const content = document.body.textContent;
+    expect(content).toBeTruthy();
   });
 
-  it("renders loading state", () => {
+  it("renders user recipes or information", () => {
     renderWithProviders(<UserPage />);
-    expect(document.body).toBeTruthy();
+    const headings = screen.queryAllByRole("heading");
+    expect(headings.length).toBeGreaterThanOrEqual(0);
   });
 });

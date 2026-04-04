@@ -10,21 +10,21 @@ import { renderWithProviders } from "../../test/test-utils.tsx";
 import LoginPage from "./LoginPage.tsx";
 
 describe("LoginPage", () => {
-  it("renders without crashing", () => {
+  it("renders login form with email and password fields", () => {
     renderWithProviders(<LoginPage />);
-    expect(document.body).toBeTruthy();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
   });
 
-  it("renders form elements", () => {
+  it("renders submit button", () => {
     renderWithProviders(<LoginPage />);
-    const inputs = screen.queryAllByRole("textbox");
-    const buttons = screen.queryAllByRole("button");
-    expect(inputs.length + buttons.length).toBeGreaterThan(0);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.length).toBeGreaterThan(0);
   });
 
-  it("renders links", () => {
+  it("renders forgot password and signup links", () => {
     renderWithProviders(<LoginPage />);
-    const links = screen.queryAllByRole("link");
-    expect(links.length).toBeGreaterThan(0);
+    const links = screen.getAllByRole("link");
+    expect(links.length).toBeGreaterThanOrEqual(2);
   });
 });

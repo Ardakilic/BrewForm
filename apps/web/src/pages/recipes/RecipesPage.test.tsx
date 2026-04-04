@@ -5,19 +5,10 @@
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import "../../test/setup.ts";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { HelmetProvider } from "react-helmet-async";
-import { Client as Styletron } from "styletron-engine-monolithic";
-import { Provider as StyletronProvider } from "styletron-react";
-import { BaseProvider, LightTheme } from "baseui";
-import { I18nextProvider } from "react-i18next";
-import i18n from "../../i18n/index.ts";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { renderWithProviders } from "../../test/test-utils.tsx";
 import RecipesPage from "./RecipesPage.tsx";
-import { AuthProvider } from "../../contexts/AuthContext.tsx";
 import useSWR from "../../test/mocks/swr.ts";
-
-const engine = new Styletron();
 
 const mockRecipes = [
   {
@@ -44,31 +35,6 @@ const mockRecipes = [
   },
 ];
 
-const TestWrapper = (
-  { children, initialRoute = "/recipes" }: {
-    children: React.ReactNode;
-    initialRoute?: string;
-  },
-) => {
-  return (
-    <HelmetProvider>
-      <StyletronProvider value={engine}>
-        <BaseProvider theme={LightTheme}>
-          <I18nextProvider i18n={i18n}>
-            <AuthProvider>
-              <MemoryRouter initialEntries={[initialRoute]}>
-                <Routes>
-                  <Route path="/recipes" element={children} />
-                </Routes>
-              </MemoryRouter>
-            </AuthProvider>
-          </I18nextProvider>
-        </BaseProvider>
-      </StyletronProvider>
-    </HelmetProvider>
-  );
-};
-
 describe("RecipesPage Filtering", () => {
   beforeEach(() => {
     useSWR.mockReset();
@@ -84,13 +50,8 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?tags=fruity">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=fruity"] });
 
-      // Should display the tag filter with translated label
       expect(screen.getByText("#Fruity")).toBeInTheDocument();
     });
 
@@ -103,13 +64,8 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=chocolatey&tags=fruity"] });
 
-      // Should display both tag filters with translated labels
       expect(screen.getByText("#Chocolatey")).toBeInTheDocument();
       expect(screen.getByText("#Fruity")).toBeInTheDocument();
     });
@@ -123,13 +79,8 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?brewMethod=ESPRESSO_MACHINE"] });
 
-      // Active filters section should be visible with brew method
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
     });
 
@@ -142,15 +93,9 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE&brewMethod=POUR_OVER_V60">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?brewMethod=ESPRESSO_MACHINE&brewMethod=POUR_OVER_V60"] });
 
-      // Active filters section should be visible with multiple brew methods
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
-      // Multiple closeable tags should be present (for each brew method)
       const closeableTags = screen.getAllByRole("button", { name: /remove/i });
       expect(closeableTags.length).toBeGreaterThanOrEqual(2);
     });
@@ -164,13 +109,8 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?drinkType=ESPRESSO"] });
 
-      // Active filters section should be visible
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
     });
 
@@ -183,13 +123,8 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?drinkType=ESPRESSO&drinkType=LUNGO"] });
 
-      // Active filters section should be visible with multiple drink types
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
       expect(screen.getAllByText("Espresso").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Lungo").length).toBeGreaterThan(0);
@@ -204,13 +139,8 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?brewMethod=ESPRESSO_MACHINE&tags=chocolatey&tags=morning">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?brewMethod=ESPRESSO_MACHINE&tags=chocolatey&tags=morning"] });
 
-      // Should display all filters with translated labels
       expect(screen.getByText("#Chocolatey")).toBeInTheDocument();
       expect(screen.getByText("#Morning")).toBeInTheDocument();
     });
@@ -226,24 +156,16 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=chocolatey&tags=fruity"] });
 
-      // Active filters section should be visible initially
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
 
-      // Find closeable tags in the active filters section (they have close buttons)
       const closeableTags = screen.getAllByRole("button", { name: /remove/i });
 
-      // Click the first close button to remove one tag
       if (closeableTags.length > 0) {
         fireEvent.click(closeableTags[0]);
       }
 
-      // After removal, active filters section should still be visible (one tag remains)
       await waitFor(() => {
         expect(screen.getByText(/Active/i)).toBeInTheDocument();
       });
@@ -258,16 +180,10 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity&brewMethod=ESPRESSO_MACHINE">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=chocolatey&tags=fruity&brewMethod=ESPRESSO_MACHINE"] });
 
-      // Active filters section should be visible
       expect(screen.getByText(/Active/i)).toBeInTheDocument();
 
-      // Clear All button should be present
       const clearAllButtons = screen.getAllByRole("button", {
         name: /clear all/i,
       });
@@ -285,11 +201,7 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper>
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />);
 
       expect(screen.getByText("Morning Espresso")).toBeInTheDocument();
       expect(screen.getByText("Afternoon Pour Over")).toBeInTheDocument();
@@ -304,13 +216,8 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper>
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />);
 
-      // Loading spinner is shown
       expect(screen.queryByText("Morning Espresso")).not.toBeInTheDocument();
     });
 
@@ -323,11 +230,7 @@ describe("RecipesPage Filtering", () => {
         isValidating: false,
       }));
 
-      render(
-        <TestWrapper>
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />);
 
       expect(screen.getByText(/no recipes/i)).toBeInTheDocument();
     });
@@ -347,13 +250,8 @@ describe("RecipesPage Filtering", () => {
         };
       });
 
-      render(
-        <TestWrapper initialRoute="/recipes?tags=chocolatey&tags=fruity">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?tags=chocolatey&tags=fruity"] });
 
-      // Verify the URL passed to useSWR contains the expected tag parameters
       expect(typeof capturedUrl).toBe("string");
       expect(capturedUrl as string).toContain("tags=chocolatey%2Cfruity");
       expect(screen.getByText("Morning Espresso")).toBeInTheDocument();
@@ -372,13 +270,8 @@ describe("RecipesPage Filtering", () => {
         };
       });
 
-      render(
-        <TestWrapper initialRoute="/recipes?drinkType=ESPRESSO&drinkType=LUNGO">
-          <RecipesPage />
-        </TestWrapper>,
-      );
+      renderWithProviders(<RecipesPage />, { initialEntries: ["/recipes?drinkType=ESPRESSO&drinkType=LUNGO"] });
 
-      // Verify the URL passed to useSWR contains the expected drinkType parameters
       expect(typeof capturedUrl).toBe("string");
       expect(capturedUrl as string).toContain("drinkType=ESPRESSO%2CLUNGO");
       expect(screen.getByText("Morning Espresso")).toBeInTheDocument();
