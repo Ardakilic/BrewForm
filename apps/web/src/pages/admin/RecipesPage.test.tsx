@@ -15,6 +15,6 @@ describe("Admin RecipesPage", () => {
   it("renders recipe list or search", () => {
     renderWithProviders(<RecipesPage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });

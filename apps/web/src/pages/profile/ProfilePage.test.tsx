@@ -19,6 +19,6 @@ describe("ProfilePage", () => {
   it("renders navigation or user actions", () => {
     renderWithProviders(<ProfilePage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });

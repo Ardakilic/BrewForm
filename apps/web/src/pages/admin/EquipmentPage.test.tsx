@@ -15,6 +15,6 @@ describe("Admin EquipmentPage", () => {
   it("renders equipment list or management", () => {
     renderWithProviders(<EquipmentPage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });

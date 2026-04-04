@@ -15,6 +15,6 @@ describe("RecipeDetailPage", () => {
   it("renders recipe information", () => {
     renderWithProviders(<RecipeDetailPage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });
