@@ -12,7 +12,12 @@ import HomePage from "./HomePage.tsx";
 describe("HomePage", () => {
   it("renders hero section with title and subtitle", () => {
     renderWithProviders(<HomePage />);
-    expect(screen.getByText(/BrewForm/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Discover & Share Coffee Recipes/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Document your coffee brewing journey/i),
+    ).toBeInTheDocument();
   });
 
   it("renders CTA buttons", () => {
