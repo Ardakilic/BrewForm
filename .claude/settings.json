@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(credentials/)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.rulesync/hooks/format.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
