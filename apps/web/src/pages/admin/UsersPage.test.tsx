@@ -15,6 +15,6 @@ describe("Admin UsersPage", () => {
   it("renders user list or search", () => {
     renderWithProviders(<UsersPage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });

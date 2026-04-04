@@ -15,6 +15,6 @@ describe("UserPage", () => {
   it("renders user recipes or information", () => {
     renderWithProviders(<UserPage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });

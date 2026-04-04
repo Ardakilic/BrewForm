@@ -15,6 +15,6 @@ describe("Admin DashboardPage", () => {
   it("renders statistics or overview", () => {
     renderWithProviders(<DashboardPage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });

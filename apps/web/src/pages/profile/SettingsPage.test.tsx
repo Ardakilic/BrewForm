@@ -14,7 +14,7 @@ describe("SettingsPage", () => {
 
   it("renders save or update button", () => {
     renderWithProviders(<SettingsPage />);
-    const buttons = screen.queryAllByRole("button");
-    expect(buttons.length).toBeGreaterThanOrEqual(0);
+    const button = screen.getByRole("button", { name: /save/i });
+    expect(button).toBeInTheDocument();
   });
 });

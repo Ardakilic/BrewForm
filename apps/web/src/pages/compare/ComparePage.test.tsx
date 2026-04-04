@@ -15,6 +15,6 @@ describe("ComparePage", () => {
   it("renders recipe selection or comparison view", () => {
     renderWithProviders(<ComparePage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });

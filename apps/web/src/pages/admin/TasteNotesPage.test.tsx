@@ -15,6 +15,6 @@ describe("Admin TasteNotesPage", () => {
   it("renders taste notes list or management", () => {
     renderWithProviders(<TasteNotesPage />);
     const headings = screen.queryAllByRole("heading");
-    expect(headings.length).toBeGreaterThanOrEqual(0);
+    expect(headings.length).toBeGreaterThan(0);
   });
 });
