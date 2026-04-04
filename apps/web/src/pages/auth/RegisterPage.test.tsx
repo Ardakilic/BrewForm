@@ -12,9 +12,10 @@ import RegisterPage from "./RegisterPage.tsx";
 describe("RegisterPage", () => {
   it("renders registration form with required fields", () => {
     renderWithProviders(<RegisterPage />);
-    const inputs = screen.getAllByRole("textbox");
-    const passwordInputs = screen.getAllByLabelText(/password/i);
-    expect(inputs.length + passwordInputs.length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^username$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
   });
 
   it("renders submit button", () => {
