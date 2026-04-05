@@ -41,7 +41,7 @@
 - **Monorepo**: Deno tasks per app (`deno.json`)
 - **Linting & Formatting**: Deno built-in tools
 - **Testing**: Deno native test runner with `@std/testing`
-- **Containerization**: Docker with multi-stage builds (`denoland/deno:debian-2.7.7`)
+- **Containerization**: Docker with multi-stage builds (`denoland/deno:debian-2.7.11`)
 
 ## Getting Started
 

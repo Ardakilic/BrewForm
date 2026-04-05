@@ -1,15 +1,15 @@
 # ============================================
 # BrewForm API Dockerfile
-# Using Deno 2.7.7 with Debian
+# Using Deno 2.7.11 with Debian
 # ============================================
 
 # Base stage
-FROM denoland/deno:debian-2.7.7 AS base
+FROM denoland/deno:debian-2.7.11 AS base
 WORKDIR /app
 
 # Dependencies stage — install npm packages for the API
 FROM base AS deps
-COPY apps/api/package.json apps/api/deno.json apps/api/prisma.config.ts ./apps/api/
+COPY apps/api/deno.json apps/api/prisma.config.ts ./apps/api/
 COPY apps/api/prisma ./apps/api/prisma
 RUN cd apps/api && deno install --allow-scripts
 RUN cd apps/api && deno task db:generate
@@ -23,7 +23,7 @@ EXPOSE 3001
 CMD ["deno", "task", "dev"]
 
 # Production stage — no compilation needed; Deno runs TypeScript directly
-FROM denoland/deno:debian-2.7.7 AS production
+FROM denoland/deno:debian-2.7.11 AS production
 WORKDIR /app
 
 # Create non-root user
@@ -34,8 +34,8 @@ RUN groupadd --gid 1001 nodejs && \
 COPY --from=deps --chown=hono:nodejs /app/apps/api/node_modules ./apps/api/node_modules
 COPY --chown=hono:nodejs apps/api/src ./apps/api/src
 COPY --from=deps --chown=hono:nodejs /app/apps/api/prisma ./apps/api/prisma
-COPY --chown=hono:nodejs apps/api/deno.json apps/api/package.json apps/api/prisma.config.ts ./apps/api/
-COPY --chown=hono:nodejs package.json deno.json ./
+COPY --chown=hono:nodejs apps/api/deno.json apps/api/prisma.config.ts ./apps/api/
+COPY --chown=hono:nodejs deno.json ./
 
 USER hono
 WORKDIR /app/apps/api

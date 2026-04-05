@@ -12,7 +12,7 @@ Please be respectful and constructive in all interactions. We're all here to bui
 
 - Docker and Docker Compose
 - Git
-- Deno 2.7.7+ (optional, for running tasks outside Docker)
+- Deno 2.7.11+ (optional, for running tasks outside Docker)
 
 ### Development Setup
 

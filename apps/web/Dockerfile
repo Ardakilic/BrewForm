@@ -1,16 +1,16 @@
 # ============================================
 # BrewForm Web Dockerfile
-# Using Deno 2.7.7 with Debian (build stages)
+# Using Deno 2.7.11 with Debian (build stages)
 # Nginx for production static serving
 # ============================================
 
 # Base stage
-FROM denoland/deno:debian-2.7.7 AS base
+FROM denoland/deno:debian-2.7.11 AS base
 WORKDIR /app
 
 # Dependencies stage — install npm packages for the web app
 FROM base AS deps
-COPY apps/web/package.json apps/web/deno.json ./apps/web/
+COPY apps/web/deno.json ./apps/web/
 RUN cd apps/web && deno install --allow-scripts
 
 # Development stage
