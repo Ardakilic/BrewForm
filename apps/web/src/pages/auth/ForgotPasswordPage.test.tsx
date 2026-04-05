@@ -10,20 +10,22 @@ import { renderWithProviders } from "../../test/test-utils.tsx";
 import ForgotPasswordPage from "./ForgotPasswordPage.tsx";
 
 describe("ForgotPasswordPage", () => {
-  it("renders without crashing", () => {
+  it("renders email input field", () => {
     renderWithProviders(<ForgotPasswordPage />);
-    expect(document.body).toBeTruthy();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 
-  it("renders form elements", () => {
+  it("renders submit button", () => {
     renderWithProviders(<ForgotPasswordPage />);
-    const buttons = screen.queryAllByRole("button");
-    expect(buttons.length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("button", { name: /submit|send|reset/i }),
+    ).toBeInTheDocument();
   });
 
-  it("renders links", () => {
+  it("renders back to login link", () => {
     renderWithProviders(<ForgotPasswordPage />);
-    const links = screen.queryAllByRole("link");
-    expect(links.length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("link", { name: /back to login/i }),
+    ).toBeInTheDocument();
   });
 });

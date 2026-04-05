@@ -10,20 +10,24 @@ import { renderWithProviders } from "../test/test-utils.tsx";
 import HomePage from "./HomePage.tsx";
 
 describe("HomePage", () => {
-  it("renders without crashing", () => {
+  it("renders hero section with title and subtitle", () => {
     renderWithProviders(<HomePage />);
-    expect(document.body).toBeTruthy();
+    expect(
+      screen.getByText(/Discover & Share Coffee Recipes/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Document your coffee brewing journey/i),
+    ).toBeInTheDocument();
   });
 
-  it("renders content", () => {
+  it("renders CTA buttons", () => {
     renderWithProviders(<HomePage />);
-    const content = document.body.textContent;
-    expect(content?.length).toBeGreaterThan(0);
+    const links = screen.getAllByRole("link");
+    expect(links.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("renders links", () => {
+  it("renders features section", () => {
     renderWithProviders(<HomePage />);
-    const links = screen.queryAllByRole("link");
-    expect(links.length).toBeGreaterThan(0);
+    expect(screen.getByText(/Why BrewForm/i)).toBeInTheDocument();
   });
 });

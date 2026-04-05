@@ -10,20 +10,13 @@ import { renderWithProviders } from "../../test/test-utils.tsx";
 import NotFoundPage from "./NotFoundPage.tsx";
 
 describe("NotFoundPage", () => {
-  it("renders without crashing", () => {
+  it("renders not found message", () => {
     renderWithProviders(<NotFoundPage />);
-    expect(document.body).toBeTruthy();
+    expect(screen.getByText(/not found|404/i)).toBeInTheDocument();
   });
 
-  it("renders content", () => {
+  it("renders link back to home", () => {
     renderWithProviders(<NotFoundPage />);
-    const content = document.body.textContent;
-    expect(content?.length).toBeGreaterThan(0);
-  });
-
-  it("renders link", () => {
-    renderWithProviders(<NotFoundPage />);
-    const links = screen.queryAllByRole("link");
-    expect(links.length).toBeGreaterThan(0);
+    expect(screen.getByRole("link")).toBeInTheDocument();
   });
 });

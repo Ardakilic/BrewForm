@@ -89,7 +89,7 @@ export default recipes
 - 2-space indentation
 - Single quotes for strings
 - Semicolons required
-- Max line length: 80 (auto-wrapped by formatter)
+- Max line length: 100 (auto-wrapped by formatter)
 - Run `make format` before committing
 </deno_formatting>
 

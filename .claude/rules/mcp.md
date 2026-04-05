@@ -1,1 +1,1 @@
-If available, always use Context7 MCP server for up-to-date library and framework documentation.
+Always use Context7 when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.

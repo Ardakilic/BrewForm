@@ -1,7 +1,3 @@
----
-trigger: always_on
----
-
 <typescript_imports>
 **CRITICAL**: All local imports must include explicit `.ts` or `.tsx` extensions.
 

@@ -1,8 +1,3 @@
----
-trigger: glob
-globs: apps/web/**/*.{ts,tsx}
----
-
 <component_structure>
 ```
 apps/web/src/

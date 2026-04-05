@@ -1,17 +1,20 @@
 import { describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import "../../test/setup.ts";
+import { screen } from "@testing-library/react";
 import { renderWithProviders } from "../../test/test-utils.tsx";
 import RecipeDetailPage from "./RecipeDetailPage.tsx";
 
 describe("RecipeDetailPage", () => {
-  it("renders without crashing", () => {
+  it("renders recipe detail page", () => {
     renderWithProviders(<RecipeDetailPage />);
-    expect(document.body).toBeTruthy();
+    const content = document.body.textContent;
+    expect(content).toBeTruthy();
   });
 
-  it("renders loading state", () => {
+  it("renders recipe information", () => {
     renderWithProviders(<RecipeDetailPage />);
-    expect(document.body).toBeTruthy();
+    const headings = screen.queryAllByRole("heading");
+    expect(headings.length).toBeGreaterThan(0);
   });
 });

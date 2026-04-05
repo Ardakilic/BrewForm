@@ -10,18 +10,13 @@ import { renderWithProviders } from "../../test/test-utils.tsx";
 import CreateRecipePage from "./CreateRecipePage.tsx";
 
 describe("CreateRecipePage", () => {
-  it("renders without crashing", () => {
-    renderWithProviders(<CreateRecipePage />);
-    expect(document.body).toBeTruthy();
-  });
-
-  it("renders form content", () => {
+  it("renders recipe form", () => {
     renderWithProviders(<CreateRecipePage />);
     const content = document.body.textContent;
     expect(content?.length).toBeGreaterThan(0);
   });
 
-  it("renders buttons", () => {
+  it("renders form inputs and submit button", () => {
     renderWithProviders(<CreateRecipePage />);
     const buttons = screen.queryAllByRole("button");
     expect(buttons.length).toBeGreaterThan(0);

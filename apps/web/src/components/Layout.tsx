@@ -10,7 +10,7 @@ import { Select } from "baseui/select";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext.tsx";
 import { useTheme } from "../contexts/ThemeContext.tsx";
-import { changeLanguage, supportedLanguages } from "../i18n.ts";
+import { changeLanguage, supportedLanguages } from "../i18n/index.ts";
 
 function Header() {
   const [css, theme] = useStyletron();

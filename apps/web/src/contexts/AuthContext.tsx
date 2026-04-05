@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import { api } from "../utils/api.ts";
-import type { LoginResponse, RegisterResponse, User } from "../types.ts";
+import type { LoginResponse, RegisterResponse, User } from "../types/index.ts";
 
 // ============================================
 // Types

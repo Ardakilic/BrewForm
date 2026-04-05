@@ -10,21 +10,23 @@ import { renderWithProviders } from "../../test/test-utils.tsx";
 import RegisterPage from "./RegisterPage.tsx";
 
 describe("RegisterPage", () => {
-  it("renders without crashing", () => {
+  it("renders registration form with required fields", () => {
     renderWithProviders(<RegisterPage />);
-    expect(document.body).toBeTruthy();
+    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^username$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
   });
 
-  it("renders form elements", () => {
+  it("renders submit button", () => {
     renderWithProviders(<RegisterPage />);
-    const inputs = screen.queryAllByRole("textbox");
-    const buttons = screen.queryAllByRole("button");
-    expect(inputs.length + buttons.length).toBeGreaterThan(0);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.length).toBeGreaterThan(0);
   });
 
-  it("renders links", () => {
+  it("renders login link", () => {
     renderWithProviders(<RegisterPage />);
-    const links = screen.queryAllByRole("link");
+    const links = screen.getAllByRole("link");
     expect(links.length).toBeGreaterThan(0);
   });
 });

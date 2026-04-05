@@ -5,7 +5,7 @@
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext.tsx";
-import LoadingSpinner from "./LoadingSpinner.ts";
+import LoadingSpinner from "./LoadingSpinner.tsx";
 
 interface AdminRouteProps {
   children: React.ReactNode;
