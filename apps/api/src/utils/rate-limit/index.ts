@@ -82,7 +82,7 @@ export async function checkRateLimit(
         return {
           allowed: true,
           remaining: maxRequests - updated.count,
-          resetAt: existing.windowStart.getTime() + windowMs,
+          resetAt: updated.windowStart.getTime() + windowMs,
         };
       }
 

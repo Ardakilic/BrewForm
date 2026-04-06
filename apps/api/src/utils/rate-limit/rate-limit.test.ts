@@ -3,7 +3,7 @@
  * Tests the Prisma-backed checkRateLimit function directly.
  */
 
-import { afterEach, beforeEach, describe, it } from "@std/testing";
+import { afterEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { checkRateLimit } from "./index.ts";
 import { resetPrisma, setPrisma } from "../../test/mocks/database.ts";
@@ -75,10 +75,6 @@ function buildMockPrisma(options: {
 // ---------------------------------------------------------------------------
 
 describe("checkRateLimit", () => {
-  beforeEach(() => {
-    setPrisma(buildMockPrisma({ existing: null }));
-  });
-
   afterEach(() => {
     resetPrisma();
   });
