@@ -28,7 +28,6 @@ make db-reset     # Reset database (destructive)
 make shell-api    # Shell in API container
 make shell-web    # Shell in web container
 make shell-db     # PostgreSQL shell
-make shell-redis  # Redis CLI
 ```
 </shell_access>
 
@@ -45,7 +44,6 @@ make prod-stop    # Stop production services
 | Service  | Dev Port | Description                    |
 |----------|----------|--------------------------------|
 | postgres | 5432     | PostgreSQL 18                  |
-| redis    | 6379     | Redis 7                        |
 | api      | 3001     | Hono backend                   |
 | web      | 3000     | React frontend                 |
 | mailpit  | 8025     | Email testing UI               |
@@ -63,5 +61,5 @@ make prod-stop    # Stop production services
 <environment>
 - Never commit secrets to version control
 - Use .env.example as template
-- Database/Redis URLs must use container names in Docker
+- Database URLs must use container names in Docker
 </environment>

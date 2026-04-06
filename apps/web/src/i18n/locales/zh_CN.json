@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "管理风味备注 - 管理员 - BrewForm",
       "heading": "管理风味备注",
-      "cacheWarning": "如修改、添加或删除风味备注，需要清空 Redis 缓存后才会生效。更改后请使用“清空风味备注缓存”按钮。",
       "comingSoon": "风味备注管理即将上线。风味备注预填自 SCAA 2016 风味轮，通常无需更改。",
       "plannedFeatures": "计划功能：",
       "features": {
@@ -115,7 +114,6 @@
         "add": "添加新的风味备注",
         "edit": "编辑现有风味备注",
         "delete": "删除风味备注（级联到配方）",
-        "flushCache": "更改后清空 Redis 缓存",
         "reimport": "从 SCAA JSON 重新导入"
       }
     }

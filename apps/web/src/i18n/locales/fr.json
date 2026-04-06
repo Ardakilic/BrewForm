@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "Gérer les notes de goût - Admin - BrewForm",
       "heading": "Gérer les notes de goût",
-      "cacheWarning": "Si une note de goût est modifiée, ajoutée ou supprimée, le cache Redis doit être vidé pour que les changements prennent effet. Utilisez le bouton \"Vider le cache des notes de goût\" après les modifications.",
       "comingSoon": "La gestion des notes de goût arrive bientôt. Les notes sont pré-remplies à partir de la roue SCAA 2016 et nécessitent rarement des changements.",
       "plannedFeatures": "Fonctionnalités prévues :",
       "features": {
@@ -115,7 +114,6 @@
         "add": "Ajouter de nouvelles notes de goût",
         "edit": "Modifier des notes de goût existantes",
         "delete": "Supprimer des notes de goût (avec cascade sur les recettes)",
-        "flushCache": "Vider le cache Redis après modifications",
         "reimport": "Réimporter depuis le fichier JSON SCAA"
       }
     }

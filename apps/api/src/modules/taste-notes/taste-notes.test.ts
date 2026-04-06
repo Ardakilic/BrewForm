@@ -5,10 +5,9 @@
 import { beforeEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { Hono } from "hono";
-import { spy, stub } from "@std/testing/mock";
+import { spy } from "@std/testing/mock";
 import { setPrisma } from "../../test/mocks/database.ts";
 import { setCheckHeaderMode } from "../../test/mocks/auth-middleware.ts";
-import redisMock from "../../test/mocks/redis.ts";
 import tasteNotesModule from "./index.ts";
 
 // API Response type for testing
@@ -451,30 +450,6 @@ describe("Taste Notes Service", () => {
       // Should include Raspberry
       expect(results.some((r) => r.name === "Raspberry")).toBe(true);
     });
-  });
-});
-
-describe("Taste Notes Caching", () => {
-  it("should use cache for repeated requests", async () => {
-    const cacheStub = stub(
-      redisMock,
-      "cacheGetOrSet",
-      (_key, fetcher) => fetcher(),
-    );
-
-    const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
-
-    // First request (authenticated)
-    await app.request("/taste-notes", { headers: authHeaders });
-
-    // Second request should use cached data
-    await app.request("/taste-notes", { headers: authHeaders });
-
-    // cacheGetOrSet should have been called
-    expect(cacheStub.calls.length).toBeGreaterThan(0);
-
-    cacheStub.restore();
   });
 });
 

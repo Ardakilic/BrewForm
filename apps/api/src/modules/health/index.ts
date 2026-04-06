@@ -5,7 +5,6 @@
 
 import { Hono } from "hono";
 import { checkDbConnection } from "../../utils/database/index.ts";
-import { checkRedisConnection } from "../../utils/redis/index.ts";
 import { getLogger } from "../../utils/logger/index.ts";
 
 const health = new Hono();
@@ -61,20 +60,6 @@ health.get("/ready", async (c) => {
     });
   }
 
-  // Check Redis
-  try {
-    checks.redis = await checkRedisConnection();
-    if (!checks.redis) isReady = false;
-  } catch (error) {
-    checks.redis = false;
-    isReady = false;
-    logger.error({
-      type: "health",
-      check: "redis",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-
   const status = isReady ? "ok" : "degraded";
   const statusCode = isReady ? 200 : 503;
 
@@ -93,10 +78,8 @@ health.get("/ready", async (c) => {
  * Startup probe - has the application finished starting?
  */
 health.get("/startup", async (c) => {
-  // Same as ready for now
   const dbOk = await checkDbConnection();
-  const redisOk = await checkRedisConnection();
-  const isStarted = dbOk && redisOk;
+  const isStarted = dbOk;
 
   return c.json(
     {

@@ -20,7 +20,6 @@
 - **Runtime**: [Deno 2](https://deno.com/) — native TypeScript, no build step
 - **Framework**: [Hono](https://hono.dev/) - Fast, lightweight web framework
 - **Database**: PostgreSQL with [Prisma ORM](https://prisma.io/)
-- **Caching**: Redis for sessions and rate limiting
 - **Validation**: [Zod](https://zod.dev/) for runtime type validation
 - **Authentication**: JWT with refresh tokens
 - **Email**: Nodemailer with MJML templates
@@ -80,7 +79,6 @@ make db-seed
 - API: http://localhost:3001
 - PgAdmin: http://localhost:8080 (pre-configured with PostgreSQL connection)
 - Mailpit: http://localhost:8025
-- Redis: localhost:6379
 
 ### Local Development
 
@@ -212,7 +210,7 @@ for VSCode to visualize coverage in your editor.
 - Unit tests for utilities and services
 - Integration tests for modules (auth, recipes, users, social)
 - Middleware tests (authentication, rate limiting, error handling, logging)
-- Tests use mocked dependencies (Prisma, Redis, Logger)
+- Tests use mocked dependencies (Prisma, Logger)
 
 **Web Tests:**
 
@@ -465,7 +463,6 @@ See `.env.example` for all required environment variables.
 Key variables:
 
 - `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis connection string
 - `JWT_SECRET` - Secret for JWT signing
 - `SMTP_*` - Email configuration
 
@@ -493,8 +490,7 @@ If you need to re-seed taste notes from the JSON source file:
 make db-seed-taste-notes
 ```
 
-The taste notes are cached in Redis (24h TTL) for performance. Admin panel includes cache
-invalidation when notes are modified.
+The taste notes are stored in PostgreSQL and retrieved directly from the database.
 
 ## Contributing
 

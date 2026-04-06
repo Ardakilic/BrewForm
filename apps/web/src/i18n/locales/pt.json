@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "Gerenciar notas de sabor - Admin - BrewForm",
       "heading": "Gerenciar notas de sabor",
-      "cacheWarning": "Se alguma nota de sabor for modificada, adicionada ou excluída, o cache de notas de sabor deve ser limpo no Redis para que as alterações tenham efeito. Use o botão \"Limpar cache de notas de sabor\" após alterações.",
       "comingSoon": "A gestão de notas de sabor estará disponível em breve. As notas são pré-preenchidas com a roda SCAA 2016 e raramente precisam de mudanças.",
       "plannedFeatures": "Funcionalidades planejadas:",
       "features": {
@@ -115,7 +114,6 @@
         "add": "Adicionar novas notas de sabor",
         "edit": "Editar notas existentes",
         "delete": "Excluir notas (com cascata para receitas)",
-        "flushCache": "Limpar cache do Redis após alterações",
         "reimport": "Reimportar do arquivo JSON SCAA"
       }
     }

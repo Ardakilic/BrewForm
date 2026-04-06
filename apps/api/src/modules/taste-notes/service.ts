@@ -1,16 +1,10 @@
 /**
  * BrewForm Taste Notes Service
- * Handles taste notes retrieval and search with Redis caching
+ * Handles taste notes retrieval and search
  */
 
 import { getPrisma, softDeleteFilter } from "../../utils/database/index.ts";
-import { cacheGetOrSet, getRedis } from "../../utils/redis/index.ts";
 import { getLogger } from "../../utils/logger/index.ts";
-
-// Cache TTL for taste notes (24 hours since they rarely change)
-const TASTE_NOTES_CACHE_TTL = 86400;
-const TASTE_NOTES_CACHE_KEY = "taste-notes:all";
-const TASTE_NOTES_HIERARCHY_KEY = "taste-notes:hierarchy";
 
 export interface TasteNoteWithPath {
   id: string;
@@ -54,104 +48,92 @@ function buildFullPath(
 }
 
 /**
- * Get all taste notes with their full paths (cached)
+ * Get all taste notes with their full paths
  */
 export async function getAllTasteNotesWithPaths(): Promise<
   TasteNoteWithPath[]
 > {
-  return await cacheGetOrSet(
-    TASTE_NOTES_CACHE_KEY,
-    async () => {
-      const prisma = getPrisma();
-      const logger = getLogger();
+  const prisma = getPrisma();
+  const logger = getLogger();
 
-      const notes = await prisma.tasteNote.findMany({
-        where: softDeleteFilter(),
-        orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
-      });
+  const notes = await prisma.tasteNote.findMany({
+    where: softDeleteFilter(),
+    orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+  });
 
-      // Build a map for path construction
-      type NoteType = { id: string; name: string; parentId: string | null };
-      const notesMap = new Map<string, NoteType>(
-        notes.map((n: NoteType) => [n.id, n]),
-      );
-
-      // Add full paths
-      const notesWithPaths: TasteNoteWithPath[] = notes.map((
-        note: typeof notes[0],
-      ) => ({
-        id: note.id,
-        name: note.name,
-        slug: note.slug,
-        depth: note.depth,
-        colour: note.colour,
-        definition: note.definition,
-        parentId: note.parentId,
-        fullPath: buildFullPath(note, notesMap),
-      }));
-
-      logger.debug({
-        type: "taste-notes",
-        action: "cache_miss",
-        count: notesWithPaths.length,
-      });
-
-      return notesWithPaths;
-    },
-    TASTE_NOTES_CACHE_TTL,
+  // Build a map for path construction
+  type NoteType = { id: string; name: string; parentId: string | null };
+  const notesMap = new Map<string, NoteType>(
+    notes.map((n: NoteType) => [n.id, n]),
   );
+
+  // Add full paths
+  const notesWithPaths: TasteNoteWithPath[] = notes.map((
+    note: typeof notes[0],
+  ) => ({
+    id: note.id,
+    name: note.name,
+    slug: note.slug,
+    depth: note.depth,
+    colour: note.colour,
+    definition: note.definition,
+    parentId: note.parentId,
+    fullPath: buildFullPath(note, notesMap),
+  }));
+
+  logger.debug({
+    type: "taste-notes",
+    action: "fetched",
+    count: notesWithPaths.length,
+  });
+
+  return notesWithPaths;
 }
 
 /**
- * Get hierarchical taste notes structure (cached)
+ * Get hierarchical taste notes structure
  */
 export async function getTasteNotesHierarchy(): Promise<TasteNoteHierarchy[]> {
-  return await cacheGetOrSet(
-    TASTE_NOTES_HIERARCHY_KEY,
-    async () => {
-      const prisma = getPrisma();
+  const prisma = getPrisma();
 
-      const notes = await prisma.tasteNote.findMany({
-        where: softDeleteFilter(),
-        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      });
+  const notes = await prisma.tasteNote.findMany({
+    where: softDeleteFilter(),
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+  });
 
-      // Build hierarchy
-      const notesMap = new Map<string, TasteNoteHierarchy>();
-      const rootNotes: TasteNoteHierarchy[] = [];
+  // Build hierarchy
+  const notesMap = new Map<string, TasteNoteHierarchy>();
+  const rootNotes: TasteNoteHierarchy[] = [];
 
-      // First pass: create all nodes
-      for (const note of notes) {
-        notesMap.set(note.id, {
-          id: note.id,
-          name: note.name,
-          slug: note.slug,
-          depth: note.depth,
-          colour: note.colour,
-          definition: note.definition,
-          children: [],
-        });
+  // First pass: create all nodes
+  for (const note of notes) {
+    notesMap.set(note.id, {
+      id: note.id,
+      name: note.name,
+      slug: note.slug,
+      depth: note.depth,
+      colour: note.colour,
+      definition: note.definition,
+      children: [],
+    });
+  }
+
+  // Second pass: build hierarchy
+  for (const note of notes) {
+    const node = notesMap.get(note.id);
+    if (!node) continue;
+
+    if (note.parentId) {
+      const parent = notesMap.get(note.parentId);
+      if (parent) {
+        parent.children.push(node);
       }
+    } else {
+      rootNotes.push(node);
+    }
+  }
 
-      // Second pass: build hierarchy
-      for (const note of notes) {
-        const node = notesMap.get(note.id);
-        if (!node) continue;
-
-        if (note.parentId) {
-          const parent = notesMap.get(note.parentId);
-          if (parent) {
-            parent.children.push(node);
-          }
-        } else {
-          rootNotes.push(node);
-        }
-      }
-
-      return rootNotes;
-    },
-    TASTE_NOTES_CACHE_TTL,
-  );
+  return rootNotes;
 }
 
 /**
@@ -238,29 +220,12 @@ export async function getTasteNotesByIds(
   return allNotes.filter((note) => idSet.has(note.id));
 }
 
-/**
- * Invalidate taste notes cache
- * Should be called when taste notes are modified in admin panel
- */
-export async function invalidateTasteNotesCache(): Promise<void> {
-  const redis = getRedis();
-  const logger = getLogger();
-
-  await Promise.all([
-    redis.del(TASTE_NOTES_CACHE_KEY),
-    redis.del(TASTE_NOTES_HIERARCHY_KEY),
-  ]);
-
-  logger.info({ type: "taste-notes", action: "cache_invalidated" });
-}
-
 export const tasteNoteService = {
   getAllTasteNotesWithPaths,
   getTasteNotesHierarchy,
   searchTasteNotes,
   getTasteNoteById,
   getTasteNotesByIds,
-  invalidateTasteNotesCache,
 };
 
 export default tasteNoteService;

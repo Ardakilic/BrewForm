@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "Tat Notlarını Yönet - Admin - BrewForm",
       "heading": "Tat Notlarını Yönet",
-      "cacheWarning": "Herhangi bir tat notu değiştirildiğinde, eklendiğinde veya silindiğinde, değişikliklerin geçerli olması için Redis önbelleği temizlenmelidir. Değişikliklerden sonra \"Tat Notları Önbelleğini Temizle\" düğmesini kullanın.",
       "comingSoon": "Tat notları yönetimi yakında gelecek. Tat notları SCAA 2016 lezzet çarkından alınmıştır ve nadiren değişiklik gerektirir.",
       "plannedFeatures": "Planlanan özellikler:",
       "features": {
@@ -115,7 +114,6 @@
         "add": "Yeni tat notları ekle",
         "edit": "Mevcut tat notlarını düzenle",
         "delete": "Tat notlarını sil (tariflere kaskad etkisiyle)",
-        "flushCache": "Değişikliklerden sonra Redis önbelleğini temizle",
         "reimport": "SCAA JSON dosyasından yeniden içe aktar"
       }
     }

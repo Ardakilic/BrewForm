@@ -4,7 +4,6 @@
 
 import { useStyletron } from "baseui";
 import { HeadingLarge, ParagraphMedium } from "baseui/typography";
-import { KIND, Notification } from "baseui/notification";
 import { useTranslation } from "react-i18next";
 import { Helmet } from "react-helmet-async";
 
@@ -22,11 +21,6 @@ function AdminTasteNotesPage() {
         {t("admin.tasteNotes.heading")}
       </HeadingLarge>
 
-      <Notification kind={KIND.warning} closeable={false}>
-        <strong>{t("common.important")}:</strong>{" "}
-        {t("admin.tasteNotes.cacheWarning")}
-      </Notification>
-
       <ParagraphMedium
         color={theme.colors.contentSecondary}
         marginTop="24px"
@@ -42,7 +36,6 @@ function AdminTasteNotesPage() {
         <li>{t("admin.tasteNotes.features.add")}</li>
         <li>{t("admin.tasteNotes.features.edit")}</li>
         <li>{t("admin.tasteNotes.features.delete")}</li>
-        <li>{t("admin.tasteNotes.features.flushCache")}</li>
         <li>{t("admin.tasteNotes.features.reimport")}</li>
       </ul>
     </>

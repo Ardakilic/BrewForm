@@ -11,7 +11,6 @@ import {
 } from "../../utils/database/index.ts";
 import { logAudit } from "../../utils/logger/index.ts";
 import { createComparisonToken } from "../../utils/slug/index.ts";
-import { CacheKeys, invalidateCache } from "../../utils/redis/index.ts";
 import {
   BadRequestError,
   ForbiddenError,
@@ -121,9 +120,6 @@ export async function addFavourite(userId: string, recipeId: string) {
   });
 
   logAudit("recipe_favourited", "recipe", recipeId, userId);
-
-  // Invalidate caches
-  await invalidateCache(CacheKeys.popularRecipes());
 
   return { success: true };
 }

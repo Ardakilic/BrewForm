@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "Gestionare note gustative - Admin - BrewForm",
       "heading": "Gestionare note gustative",
-      "cacheWarning": "Dacă orice notă gustativă este modificată, adăugată sau ștearsă, cache-ul notelor gustative trebuie golit din Redis pentru ca schimbările să intre în vigoare. Folosește butonul \"Golește cache-ul notelor gustative\" după modificări.",
       "comingSoon": "Gestionarea notelor gustative va fi disponibilă în curând. Notele gustative sunt prepopulate din roata de arome SCAA 2016 și rareori necesită modificări.",
       "plannedFeatures": "Funcții planificate în prezent:",
       "features": {
@@ -115,7 +114,6 @@
         "add": "Adaugă note gustative noi",
         "edit": "Editează note gustative existente",
         "delete": "Șterge note gustative (cu ștergere în cascadă în rețete)",
-        "flushCache": "Golește cache-ul Redis după modificări",
         "reimport": "Reimportă din fișierul JSON SCAA"
       }
     }

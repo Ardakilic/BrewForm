@@ -12,7 +12,6 @@ import { compress } from "hono/compress";
 import { getConfig } from "./config/index.ts";
 import { getLogger } from "./utils/logger/index.ts";
 import { disconnectDb, getPrisma } from "./utils/database/index.ts";
-import { disconnectRedis, getRedis } from "./utils/redis/index.ts";
 import { errorHandler } from "./middleware/errorHandler.ts";
 import { requestIdMiddleware } from "./middleware/requestId.ts";
 import { loggerMiddleware } from "./middleware/logger.ts";
@@ -125,19 +124,19 @@ async function startServer() {
     getPrisma();
     logger.info("Database connection initialized");
 
-    // Initialize Redis connection
-    await getRedis().connect();
-    logger.info("Redis connection initialized");
-
     // Start HTTP server
-    const server = Deno.serve({ port: config.port }, app.fetch);
-
-    logger.info({
-      type: "server",
-      message: "Server started",
+    const server = Deno.serve({
       port: config.port,
-      env: config.nodeEnv,
-      version: config.apiVersion,
+      handler: app.fetch,
+      onListen: ({ port }) => {
+        logger.info({
+          type: "server",
+          message: "Server started",
+          port,
+          env: config.nodeEnv,
+          version: config.apiVersion,
+        });
+      },
     });
 
     // Graceful shutdown
@@ -154,9 +153,6 @@ async function startServer() {
       // Close database connection
       await disconnectDb();
 
-      // Close Redis connection
-      await disconnectRedis();
-
       logger.info("Graceful shutdown complete");
       Deno.exit(0);
     };
@@ -167,6 +163,9 @@ async function startServer() {
     Deno.addSignalListener("SIGINT", () => {
       shutdown("SIGINT");
     });
+
+    // Keep the server running by awaiting the server promise
+    await server;
   } catch (error) {
     logger.error({
       type: "server",

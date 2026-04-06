@@ -11,7 +11,6 @@ const _defaultConfig = {
   jwtSecret: "test_jwt_secret",
   jwtAccessExpiry: "15m",
   jwtRefreshExpiry: "7d",
-  redisUrl: "redis://localhost:6379",
   enablePasswordReset: true,
   enableEmailVerification: false,
   defaultLocale: "en",

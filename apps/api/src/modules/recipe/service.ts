@@ -16,11 +16,6 @@ import {
   validateRecipe,
 } from "../../utils/validation/index.ts";
 import {
-  cacheGetOrSet,
-  CacheKeys,
-  invalidateCache,
-} from "../../utils/redis/index.ts";
-import {
   ForbiddenError,
   NotFoundError,
   ValidationError,
@@ -175,10 +170,6 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
     userId,
   });
 
-  // Invalidate caches
-  await invalidateCache(CacheKeys.latestRecipes());
-  await invalidateCache(`${CacheKeys.recipeList("*")}`);
-
   return { ...recipe, currentVersionId: recipe.versions[0].id };
 }
 
@@ -320,10 +311,6 @@ export async function updateRecipe(
 
   logAudit("recipe_updated", "recipe", recipeId, userId);
 
-  // Invalidate caches
-  await invalidateCache(CacheKeys.recipe(recipeId));
-  await invalidateCache(CacheKeys.recipeBySlug(recipe.slug));
-
   return updated;
 }
 
@@ -427,9 +414,6 @@ export async function createRecipeVersion(
   });
 
   logAudit("recipe_version_created", "recipe_version", version.id, userId);
-
-  // Invalidate caches
-  await invalidateCache(CacheKeys.recipe(recipeId));
 
   return version;
 }
@@ -573,10 +557,6 @@ export async function deleteRecipe(recipeId: string, userId: string) {
   });
 
   logAudit("recipe_deleted", "recipe", recipeId, userId);
-
-  // Invalidate caches
-  await invalidateCache(CacheKeys.recipe(recipeId));
-  await invalidateCache(CacheKeys.recipeBySlug(recipe.slug));
 }
 
 /**
@@ -722,80 +702,68 @@ export async function listRecipes(
  * Get latest public recipes
  */
 export async function getLatestRecipes(limit = 10) {
-  return await cacheGetOrSet(
-    CacheKeys.latestRecipes(),
-    async () => {
-      const prisma = getPrisma();
-      return await prisma.recipe.findMany({
-        where: {
-          ...softDeleteFilter(),
-          visibility: "PUBLIC",
-        },
-        include: {
-          currentVersion: {
-            select: {
-              id: true,
-              title: true,
-              brewMethod: true,
-              drinkType: true,
-              rating: true,
-            },
-          },
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              avatarUrl: true,
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: limit,
-      });
+  const prisma = getPrisma();
+  return await prisma.recipe.findMany({
+    where: {
+      ...softDeleteFilter(),
+      visibility: "PUBLIC",
     },
-    300, // 5 minutes
-  );
+    include: {
+      currentVersion: {
+        select: {
+          id: true,
+          title: true,
+          brewMethod: true,
+          drinkType: true,
+          rating: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
 }
 
 /**
  * Get popular recipes
  */
 export async function getPopularRecipes(limit = 10) {
-  return await cacheGetOrSet(
-    CacheKeys.popularRecipes(),
-    async () => {
-      const prisma = getPrisma();
-      return await prisma.recipe.findMany({
-        where: {
-          ...softDeleteFilter(),
-          visibility: "PUBLIC",
-        },
-        include: {
-          currentVersion: {
-            select: {
-              id: true,
-              title: true,
-              brewMethod: true,
-              drinkType: true,
-              rating: true,
-            },
-          },
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              avatarUrl: true,
-            },
-          },
-        },
-        orderBy: { favouriteCount: "desc" },
-        take: limit,
-      });
+  const prisma = getPrisma();
+  return await prisma.recipe.findMany({
+    where: {
+      ...softDeleteFilter(),
+      visibility: "PUBLIC",
     },
-    300,
-  );
+    include: {
+      currentVersion: {
+        select: {
+          id: true,
+          title: true,
+          brewMethod: true,
+          drinkType: true,
+          rating: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+        },
+      },
+    },
+    orderBy: { favouriteCount: "desc" },
+    take: limit,
+  });
 }
 
 /**

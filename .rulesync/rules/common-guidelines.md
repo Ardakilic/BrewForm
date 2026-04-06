@@ -8,7 +8,7 @@ globs: []
 
 <project_context>
 BrewForm is a coffee recipe sharing platform built with:
-- **Backend**: Hono + Deno 2 + Prisma + PostgreSQL + Redis
+- **Backend**: Hono + Deno 2 + Prisma + PostgreSQL
 - **Frontend**: React 19 + BaseUI + Styletron + SWR + React Router v7
 - **Tooling**: Deno tasks (per-app deno.json) + Deno formatter/linter + Deno test + Docker
 </project_context>
