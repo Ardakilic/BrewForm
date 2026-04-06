@@ -3,12 +3,30 @@
  * Redirected via import_map.json during deno test runs.
  */
 
+interface CallRecord {
+  identifier: string;
+  action: string;
+  maxRequests: number;
+  windowMs: number;
+}
+
+let _calls: CallRecord[] = [];
+
+export function getCheckRateLimitCalls(): CallRecord[] {
+  return [..._calls];
+}
+
+export function resetCheckRateLimitCalls(): void {
+  _calls = [];
+}
+
 export function checkRateLimit(
-  _identifier: string,
-  _action: string,
+  identifier: string,
+  action: string,
   maxRequests: number,
-  _windowMs: number,
+  windowMs: number,
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  _calls.push({ identifier, action, maxRequests, windowMs });
   return Promise.resolve({
     allowed: true,
     remaining: maxRequests - 1,

@@ -2,7 +2,7 @@
  * Rate Limit Middleware Tests
  */
 
-import { describe, it } from "@std/testing";
+import { afterEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
 import { Hono } from "hono";
 import {
@@ -12,8 +12,16 @@ import {
   rateLimitMiddleware,
   writeRateLimiter,
 } from "./_impl/rateLimit.ts";
+import {
+  getCheckRateLimitCalls,
+  resetCheckRateLimitCalls,
+} from "../test/mocks/rate-limit-util.ts";
 
 describe("Rate Limit Middleware", () => {
+  afterEach(() => {
+    resetCheckRateLimitCalls();
+  });
+
   describe("createRateLimiter", () => {
     it("should allow request and set rate limit headers", async () => {
       const limiter = createRateLimiter();
@@ -27,11 +35,11 @@ describe("Rate Limit Middleware", () => {
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
       expect(response.headers.get("X-RateLimit-Limit")).toBe("100");
-      expect(response.headers.get("X-RateLimit-Remaining")).toBeDefined();
+      expect(response.headers.get("X-RateLimit-Remaining")).toBe("99");
       expect(response.headers.get("X-RateLimit-Reset")).toBeDefined();
     });
 
-    it("should allow authenticated user requests", async () => {
+    it("should allow authenticated user requests and use user ID as identifier", async () => {
       const limiter = createRateLimiter();
       const app = new Hono();
       app.use("*", async (c, next) => {
@@ -52,6 +60,9 @@ describe("Rate Limit Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
+      const calls = getCheckRateLimitCalls();
+      expect(calls.length).toBe(1);
+      expect(calls[0].identifier).toBe("user:user_123");
     });
 
     it("should allow unauthenticated requests with IP from X-Forwarded-For header", async () => {
@@ -71,6 +82,9 @@ describe("Rate Limit Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
+      const calls = getCheckRateLimitCalls();
+      expect(calls.length).toBe(1);
+      expect(calls[0].identifier).toBe("ip:192.168.1.100");
     });
 
     it("should allow unauthenticated requests with IP from X-Real-IP header", async () => {
@@ -92,6 +106,9 @@ describe("Rate Limit Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
+      const calls = getCheckRateLimitCalls();
+      expect(calls.length).toBe(1);
+      expect(calls[0].identifier).toBe("ip:192.168.1.200");
     });
 
     it("should skip rate limiting for authenticated users when configured", async () => {
@@ -115,6 +132,9 @@ describe("Rate Limit Middleware", () => {
 
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
+      // skipIfAuthenticated must prevent checkRateLimit from being called
+      const calls = getCheckRateLimitCalls();
+      expect(calls.length).toBe(0);
     });
 
     it("should allow custom options", async () => {
@@ -137,6 +157,11 @@ describe("Rate Limit Middleware", () => {
       expect(response.status).toBe(200);
       expect(body.success).toBe(true);
       expect(response.headers.get("X-RateLimit-Limit")).toBe("5");
+      const calls = getCheckRateLimitCalls();
+      expect(calls.length).toBe(1);
+      expect(calls[0].action).toBe("custom");
+      expect(calls[0].maxRequests).toBe(5);
+      expect(calls[0].windowMs).toBe(30000);
     });
   });
 
