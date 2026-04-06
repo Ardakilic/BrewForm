@@ -127,6 +127,9 @@ export async function getTasteNotesHierarchy(): Promise<TasteNoteHierarchy[]> {
       const parent = notesMap.get(note.parentId);
       if (parent) {
         parent.children.push(node);
+      } else {
+        // Parent is missing (filtered out), treat as orphan
+        rootNotes.push(node);
       }
     } else {
       rootNotes.push(node);
