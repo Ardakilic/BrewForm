@@ -5,7 +5,7 @@
 
 import { createMiddleware } from "hono/factory";
 import type { Context, Next } from "hono";
-import { checkRateLimit } from "../../utils/redis/index.ts";
+import { checkRateLimit } from "../../utils/rate-limit/index.ts";
 import { getConfig } from "../../config/index.ts";
 import { logSecurity } from "../../utils/logger/index.ts";
 

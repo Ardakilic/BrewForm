@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "管理風味註記 - 管理員 - BrewForm",
       "heading": "管理風味註記",
-      "cacheWarning": "若風味註記被修改、新增或刪除，需清空 Redis 快取後才會生效。請於變更後使用「清空風味註記快取」按鈕。",
       "comingSoon": "風味註記管理即將推出。風味註記預填自 SCAA 2016 風味輪，通常不需更改。",
       "plannedFeatures": "規劃功能：",
       "features": {
@@ -115,7 +114,6 @@
         "add": "新增風味註記",
         "edit": "編輯現有風味註記",
         "delete": "刪除風味註記（連帶影響配方）",
-        "flushCache": "變更後清空 Redis 快取",
         "reimport": "從 SCAA JSON 重新匯入"
       }
     }

@@ -13,7 +13,6 @@
     "date-fns": "npm:date-fns@^4.1.0",
     "date-fns-tz": "npm:date-fns-tz@^3.2.0",
     "hono": "npm:hono@^4.12.8",
-    "ioredis": "npm:ioredis@^5.10.1",
     "jose": "npm:jose@^6.2.2",
     "mjml": "npm:mjml@^4.18.0",
     "nanoid": "npm:nanoid@^5.1.7",

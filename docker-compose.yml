@@ -20,24 +20,6 @@ services:
     networks:
       - brewform-network
 
-  # Redis Cache
-  redis:
-    image: redis:8-alpine
-    container_name: brewform-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - brewform-network
-
   # Mailpit (Email Testing)
   mailpit:
     image: axllent/mailpit:latest
@@ -92,7 +74,6 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://brewform:brewform@postgres:5432/brewform?schema=public
-      REDIS_URL: redis://redis:6379
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
     env_file:
@@ -105,8 +86,6 @@ services:
       - ./deno.json:/app/deno.json
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
@@ -143,7 +122,6 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
   mailpit_data:
   pgadmin_data:
 

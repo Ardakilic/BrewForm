@@ -58,9 +58,3 @@ app.post('/recipes',
 - Implement pagination with skip/take
 - Use proper includes/selects to avoid N+1
 </database_operations>
-
-<caching>
-- Use Redis for caching (ioredis)
-- Cache frequently accessed data (popular recipes)
-- Implement rate limiting with Redis
-</caching>

@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "향미 노트 관리 - 관리자 - BrewForm",
       "heading": "향미 노트 관리",
-      "cacheWarning": "향미 노트를 수정/추가/삭제하면 변경 사항 적용을 위해 Redis 캐시를 비워야 합니다. 변경 후 “향미 노트 캐시 비우기” 버튼을 사용하세요.",
       "comingSoon": "향미 노트 관리 기능이 곧 제공됩니다. 향미 노트는 SCAA 2016 향미 휠에서 미리 채워져 있으며 드물게 변경이 필요합니다.",
       "plannedFeatures": "계획된 기능:",
       "features": {
@@ -115,7 +114,6 @@
         "add": "새 향미 노트 추가",
         "edit": "기존 향미 노트 편집",
         "delete": "향미 노트 삭제(레시피에 연쇄 적용)",
-        "flushCache": "변경 후 Redis 캐시 비우기",
         "reimport": "SCAA JSON에서 재가져오기"
       }
     }

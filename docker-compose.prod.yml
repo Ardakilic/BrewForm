@@ -18,6 +18,3 @@ services:
 
   postgres:
     restart: always
-
-  redis:
-    restart: always

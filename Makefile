@@ -79,7 +79,7 @@ up:
 	docker compose up -d
 
 dev:
-	docker compose up -d postgres redis mailpit pgadmin
+	docker compose up -d postgres mailpit pgadmin
 	@echo "Waiting for services to be healthy..."
 	@sleep 5
 	docker compose up api web
@@ -241,9 +241,6 @@ shell-web:
 
 shell-db:
 	docker compose exec postgres psql -U brewform -d brewform
-
-shell-redis:
-	docker compose exec redis redis-cli
 
 # ============================================
 # Cleanup Commands

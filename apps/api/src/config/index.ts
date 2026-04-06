@@ -24,10 +24,6 @@ const configSchema = z.object({
   databasePoolMin: z.coerce.number().default(2),
   databasePoolMax: z.coerce.number().default(10),
 
-  // Redis
-  redisUrl: z.string().default("redis://localhost:6379"),
-  redisPassword: z.string().optional(),
-
   // JWT
   jwtSecret: z.string().min(32),
   jwtAccessExpiresIn: z.string().default("15m"),
@@ -97,8 +93,6 @@ function loadConfig(): Config {
     databaseUrl: process.env.DATABASE_URL,
     databasePoolMin: process.env.DATABASE_POOL_MIN,
     databasePoolMax: process.env.DATABASE_POOL_MAX,
-    redisUrl: process.env.REDIS_URL,
-    redisPassword: process.env.REDIS_PASSWORD,
     jwtSecret: process.env.JWT_SECRET,
     jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN,
     jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN,

@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "Geschmacksnoten verwalten - Admin - BrewForm",
       "heading": "Geschmacksnoten verwalten",
-      "cacheWarning": "Wenn eine Geschmacksnote geändert, hinzugefügt oder gelöscht wird, muss der Redis-Cache geleert werden, damit Änderungen wirksam werden. Verwende den Button \"Geschmacksnoten-Cache leeren\" nach Änderungen.",
       "comingSoon": "Die Verwaltung der Geschmacksnoten ist bald verfügbar. Die Noten stammen aus dem SCAA-Geschmacksrad 2016 und müssen selten geändert werden.",
       "plannedFeatures": "Geplante Funktionen:",
       "features": {
@@ -115,7 +114,6 @@
         "add": "Neue Geschmacksnoten hinzufügen",
         "edit": "Vorhandene Geschmacksnoten bearbeiten",
         "delete": "Geschmacksnoten löschen (mit Kaskade zu Rezepten)",
-        "flushCache": "Redis-Cache nach Änderungen leeren",
         "reimport": "Neuimport aus SCAA-JSON-Datei"
       }
     }

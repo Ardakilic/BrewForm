@@ -8,26 +8,21 @@ import { type Stub, stub } from "@std/testing/mock";
 import { Hono } from "hono";
 import healthModule from "./index.ts";
 import databaseMock from "../../test/mocks/database.ts";
-import redisMock from "../../test/mocks/redis.ts";
 
-// API Response type for testing
 interface HealthResponse {
   status: string;
   timestamp: string;
   checks?: {
     database?: boolean;
-    redis?: boolean;
   };
 }
 
 describe("Health Module", () => {
   let app: Hono;
   let dbStub: Stub;
-  let redisStub: Stub;
 
   beforeEach(() => {
     dbStub?.restore();
-    redisStub?.restore();
     app = new Hono();
     app.route("/health", healthModule);
   });
@@ -46,7 +41,6 @@ describe("Health Module", () => {
       const response = await app.request("/health");
       const body = await response.json() as HealthResponse;
 
-      // Verify timestamp is valid ISO format
       const timestamp = new Date(body.timestamp);
       expect(timestamp.toISOString()).toBe(body.timestamp);
     });
@@ -64,15 +58,10 @@ describe("Health Module", () => {
   });
 
   describe("GET /health/ready", () => {
-    it("should return ok when all dependencies are healthy", async () => {
+    it("should return ok when database is healthy", async () => {
       dbStub = stub(
         databaseMock,
         "checkDbConnection",
-        () => Promise.resolve(true),
-      );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
         () => Promise.resolve(true),
       );
 
@@ -82,7 +71,6 @@ describe("Health Module", () => {
       const body = await response.json() as HealthResponse;
       expect(body.status).toBe("ok");
       expect(body.checks?.database).toBe(true);
-      expect(body.checks?.redis).toBe(true);
     });
 
     it("should return degraded status when database is down", async () => {
@@ -91,11 +79,6 @@ describe("Health Module", () => {
         "checkDbConnection",
         () => Promise.resolve(false),
       );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
-        () => Promise.resolve(true),
-      );
 
       const response = await app.request("/health/ready");
 
@@ -103,49 +86,6 @@ describe("Health Module", () => {
       const body = await response.json() as HealthResponse;
       expect(body.status).toBe("degraded");
       expect(body.checks?.database).toBe(false);
-      expect(body.checks?.redis).toBe(true);
-    });
-
-    it("should return degraded status when redis is down", async () => {
-      dbStub = stub(
-        databaseMock,
-        "checkDbConnection",
-        () => Promise.resolve(true),
-      );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
-        () => Promise.resolve(false),
-      );
-
-      const response = await app.request("/health/ready");
-
-      expect(response.status).toBe(503);
-      const body = await response.json() as HealthResponse;
-      expect(body.status).toBe("degraded");
-      expect(body.checks?.database).toBe(true);
-      expect(body.checks?.redis).toBe(false);
-    });
-
-    it("should return degraded status when all dependencies are down", async () => {
-      dbStub = stub(
-        databaseMock,
-        "checkDbConnection",
-        () => Promise.resolve(false),
-      );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
-        () => Promise.resolve(false),
-      );
-
-      const response = await app.request("/health/ready");
-
-      expect(response.status).toBe(503);
-      const body = await response.json() as HealthResponse;
-      expect(body.status).toBe("degraded");
-      expect(body.checks?.database).toBe(false);
-      expect(body.checks?.redis).toBe(false);
     });
 
     it("should handle database check errors gracefully", async () => {
@@ -154,11 +94,6 @@ describe("Health Module", () => {
         "checkDbConnection",
         () => Promise.reject(new Error("Connection timeout")),
       );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
-        () => Promise.resolve(true),
-      );
 
       const response = await app.request("/health/ready");
 
@@ -167,26 +102,6 @@ describe("Health Module", () => {
       expect(body.status).toBe("degraded");
       expect(body.checks?.database).toBe(false);
     });
-
-    it("should handle redis check errors gracefully", async () => {
-      dbStub = stub(
-        databaseMock,
-        "checkDbConnection",
-        () => Promise.resolve(true),
-      );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
-        () => Promise.reject(new Error("Redis unavailable")),
-      );
-
-      const response = await app.request("/health/ready");
-
-      expect(response.status).toBe(503);
-      const body = await response.json() as HealthResponse;
-      expect(body.status).toBe("degraded");
-      expect(body.checks?.redis).toBe(false);
-    });
   });
 
   describe("GET /health/startup", () => {
@@ -194,11 +109,6 @@ describe("Health Module", () => {
       dbStub = stub(
         databaseMock,
         "checkDbConnection",
-        () => Promise.resolve(true),
-      );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
         () => Promise.resolve(true),
       );
 
@@ -213,49 +123,6 @@ describe("Health Module", () => {
       dbStub = stub(
         databaseMock,
         "checkDbConnection",
-        () => Promise.resolve(false),
-      );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
-        () => Promise.resolve(true),
-      );
-
-      const response = await app.request("/health/startup");
-
-      expect(response.status).toBe(503);
-      const body = await response.json() as HealthResponse;
-      expect(body.status).toBe("starting");
-    });
-
-    it("should return starting status when redis is not ready", async () => {
-      dbStub = stub(
-        databaseMock,
-        "checkDbConnection",
-        () => Promise.resolve(true),
-      );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
-        () => Promise.resolve(false),
-      );
-
-      const response = await app.request("/health/startup");
-
-      expect(response.status).toBe(503);
-      const body = await response.json() as HealthResponse;
-      expect(body.status).toBe("starting");
-    });
-
-    it("should return starting status when no dependencies are ready", async () => {
-      dbStub = stub(
-        databaseMock,
-        "checkDbConnection",
-        () => Promise.resolve(false),
-      );
-      redisStub = stub(
-        redisMock,
-        "checkRedisConnection",
         () => Promise.resolve(false),
       );
 

@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "Upravljanje ukusnim notama - Admin - BrewForm",
       "heading": "Upravljanje ukusnim notama",
-      "cacheWarning": "Ako je bilo koja ukusna nota izmenjena, dodata ili obrisana, keš ukusnih nota mora biti očišćen iz Redis-a kako bi promene stupile na snagu. Koristite dugme \"Očisti keš ukusnih nota\" nakon izmena.",
       "comingSoon": "Upravljanje ukusnim notama uskoro stiže. Ukusne note su unapred popunjene iz SCAA 2016 točka ukusa i retko zahtevaju promene.",
       "plannedFeatures": "Trenutno planirane funkcije:",
       "features": {
@@ -115,7 +114,6 @@
         "add": "Dodavanje novih ukusnih nota",
         "edit": "Uređivanje postojećih ukusnih nota",
         "delete": "Brisanje ukusnih nota (sa kaskadnim brisanjem recepata)",
-        "flushCache": "Čišćenje Redis keša nakon izmena",
         "reimport": "Ponovni uvoz iz SCAA JSON fajla"
       }
     }

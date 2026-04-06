@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "Manage Taste Notes - Admin - BrewForm",
       "heading": "Manage Taste Notes",
-      "cacheWarning": "If any taste note is modified, added, or deleted, the cached taste notes must be flushed from Redis for changes to take effect. Use the \"Flush Taste Notes Cache\" button after making changes.",
       "comingSoon": "Taste notes management coming soon. The taste notes are pre-populated from the SCAA 2016 flavor wheel and rarely need changes.",
       "plannedFeatures": "Current features planned:",
       "features": {
@@ -115,7 +114,6 @@
         "add": "Add new taste notes",
         "edit": "Edit existing taste notes",
         "delete": "Delete taste notes (with cascade to recipes)",
-        "flushCache": "Flush Redis cache after modifications",
         "reimport": "Re-import from SCAA JSON file"
       }
     }

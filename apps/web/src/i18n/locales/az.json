@@ -107,7 +107,6 @@
     "tasteNotes": {
       "title": "Dad qeydlərini idarə et - Admin - BrewForm",
       "heading": "Dad qeydlərini idarə et",
-      "cacheWarning": "Hər hansı dad qeydi dəyişdirilərsə, əlavə olunarsa və ya silinərsə, dəyişikliklərin qüvvəyə minməsi üçün Redis keşinin təmizlənməsi lazımdır. Dəyişikliklərdən sonra \"Dad qeydləri keşini təmizlə\" düyməsini istifadə edin.",
       "comingSoon": "Dad qeydlərinin idarəsi tezliklə gələcək. Dad qeydləri SCAA 2016 dad çarxından əvvəlcədən doldurulub və nadir hallarda dəyişir.",
       "plannedFeatures": "Planlaşdırılan funksiyalar:",
       "features": {
@@ -115,7 +114,6 @@
         "add": "Yeni dad qeydləri əlavə et",
         "edit": "Mövcud dad qeydlərini redaktə et",
         "delete": "Dad qeydlərini sil (reseptlərdə kaskad silinmə)",
-        "flushCache": "Dəyişikliklərdən sonra Redis keşini təmizlə",
         "reimport": "SCAA JSON faylından yenidən idxal"
       }
     }

@@ -129,7 +129,7 @@ apps/api/coverage/lcov.info
 
 ### 3. Isolated Testing
 - Middleware tests use **real middleware code**
-- Dependencies (database, redis, logger) are **mocked**
+- Dependencies (database, logger) are **mocked**
 - Tests verify actual middleware behavior without external dependencies
 
 ### 4. Zero Production Impact
