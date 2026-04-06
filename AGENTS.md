@@ -1,14 +1,3 @@
-Please also reference the following rules as needed. The list below is provided in TOON format, and `@` stands for the project root directory.
-
-rules[7]{path}:
-  @.opencode/memories/api-development.md
-  @.opencode/memories/common-guidelines.md
-  @.opencode/memories/database.md
-  @.opencode/memories/frontend.md
-  @.opencode/memories/infrastructure.md
-  @.opencode/memories/mcp.md
-  @.opencode/memories/style-guidelines.md
-
 # Project Overview
 
 ## General Guidelines

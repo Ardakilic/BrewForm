@@ -19,6 +19,7 @@
     "@std/testing": "jsr:@std/testing@^1.0.0/bdd",
     "@std/expect": "jsr:@std/expect@^1.0.0",
     "@std/testing/mock": "jsr:@std/testing@^1.0.0/mock",
+    "@test/rate-limit": "../utils/rate-limit/index.ts",
     "../utils/database/index.ts": "./mocks/database.ts",
     "../utils/rate-limit/index.ts": "./mocks/rate-limit-util.ts",
     "../../utils/rate-limit/index.ts": "./mocks/rate-limit-util.ts",

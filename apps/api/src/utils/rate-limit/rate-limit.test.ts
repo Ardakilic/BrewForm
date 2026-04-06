@@ -5,7 +5,7 @@
 
 import { afterEach, describe, it } from "@std/testing";
 import { expect } from "@std/expect";
-import { checkRateLimit } from "./index.ts";
+import { checkRateLimit } from "@test/rate-limit";
 import { resetPrisma, setPrisma } from "../../test/mocks/database.ts";
 
 // ---------------------------------------------------------------------------
