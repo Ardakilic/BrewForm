@@ -44,7 +44,8 @@ export async function checkRateLimit(
       }) as { id: string; count: number; windowStart: Date } | null;
 
       if (existing) {
-        const isExpired = existing.windowStart.getTime() < windowStart.getTime();
+        const isExpired =
+          existing.windowStart.getTime() < windowStart.getTime();
 
         if (isExpired) {
           // Window expired — reset the window in place with a new start time

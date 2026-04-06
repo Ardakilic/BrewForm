@@ -23,11 +23,11 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - name: Install API dependencies
-        run: deno install --allow-scripts=npm:@prisma/engines,npm:prisma,npm:@node-rs/argon2,npm:esbuild
+        run: deno install --allow-scripts
         working-directory: apps/api
 
       - name: Install Web dependencies
-        run: deno install --allow-scripts=npm:esbuild
+        run: deno install --allow-scripts
         working-directory: apps/web
 
       - name: Run linter (API)
@@ -59,7 +59,7 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - name: Install dependencies
-        run: deno install --allow-scripts=npm:@prisma/engines,npm:prisma,npm:@node-rs/argon2,npm:esbuild
+        run: deno install --allow-scripts
         working-directory: apps/api
 
       - name: Generate Prisma client
@@ -98,7 +98,7 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - name: Install dependencies
-        run: deno install --allow-scripts=npm:esbuild
+        run: deno install --allow-scripts
         working-directory: apps/web
 
       - name: Run Web tests with coverage
@@ -130,11 +130,11 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
 
       - name: Install API dependencies
-        run: deno install --allow-scripts=npm:@prisma/engines,npm:prisma,npm:@node-rs/argon2,npm:esbuild
+        run: deno install --allow-scripts
         working-directory: apps/api
 
       - name: Install Web dependencies
-        run: deno install --allow-scripts=npm:esbuild
+        run: deno install --allow-scripts
         working-directory: apps/web
 
       - name: Generate Prisma client
