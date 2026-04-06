@@ -3,8 +3,8 @@
  * Database-backed rate limiting using RateLimit model
  */
 
-import { getPrisma } from '../database/index.ts';
-import { getLogger } from '../logger/index.ts';
+import { getPrisma } from "../database/index.ts";
+import { getLogger } from "../logger/index.ts";
 
 interface PrismaTx {
   rateLimit: {
@@ -79,13 +79,13 @@ export async function checkRateLimit(
             };
           }
 
-          // Atomic increment with guard condition
+          // Atomic increment
           await tx.rateLimit.update({
             where: {
               id: existing.id,
             },
             data: {
-              count: existing.count + 1,
+              count: { increment: 1 },
               // Keep windowStart fixed for the duration of the window
               expiresAt: new Date(existing.windowStart.getTime() + windowMs),
             },
@@ -119,22 +119,51 @@ export async function checkRateLimit(
 
       return result;
     } catch (error) {
-      // Check for unique constraint violation
-      if (
-        error instanceof Error &&
-        (error.message.includes('unique constraint') ||
-          error.message.includes('Unique constraint'))
-      ) {
+      // Detect Prisma unique constraint violation via error code P2002
+      const isUniqueConstraintError = error instanceof Error &&
+        (error as { code?: string }).code === "P2002";
+
+      if (isUniqueConstraintError) {
         attempt++;
         if (attempt >= maxRetries) {
           getLogger().error({
-            type: 'rate_limit',
-            operation: 'check',
-            error: 'Max retries exceeded on unique constraint conflict',
+            type: "rate_limit",
+            operation: "check",
+            error: "Max retries exceeded on unique constraint conflict",
           });
+
+          // Re-read the existing row to compute a correct decision
+          try {
+            const reReadNow = new Date();
+            const reReadWindowStart = new Date(reReadNow.getTime() - windowMs);
+            const existing = await prisma.rateLimit.findUnique({
+              where: { identifier_action: { identifier, action } },
+            });
+
+            if (existing) {
+              const isExpired =
+                existing.windowStart.getTime() < reReadWindowStart.getTime();
+              if (!isExpired && existing.count >= maxRequests) {
+                return {
+                  allowed: false,
+                  remaining: 0,
+                  resetAt: existing.windowStart.getTime() + windowMs,
+                };
+              }
+              return {
+                allowed: true,
+                remaining: Math.max(0, maxRequests - existing.count),
+                resetAt: existing.windowStart.getTime() + windowMs,
+              };
+            }
+          } catch {
+            // Re-read failed; fall through to conservative deny
+          }
+
+          // Conservatively deny when we cannot reliably enforce limits
           return {
-            allowed: true,
-            remaining: maxRequests,
+            allowed: false,
+            remaining: 0,
             resetAt: now.getTime() + windowMs,
           };
         }
@@ -144,23 +173,24 @@ export async function checkRateLimit(
       }
 
       getLogger().error({
-        type: 'rate_limit',
-        operation: 'check',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        type: "rate_limit",
+        operation: "check",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
 
+      // Conservatively deny on unexpected DB errors to avoid bypassing limits
       return {
-        allowed: true,
-        remaining: maxRequests,
+        allowed: false,
+        remaining: 0,
         resetAt: now.getTime() + windowMs,
       };
     }
   }
 
-  // Fallback (should never reach here)
+  // Fallback: conservatively deny when max retries are exhausted
   return {
-    allowed: true,
-    remaining: maxRequests,
+    allowed: false,
+    remaining: 0,
     resetAt: now.getTime() + windowMs,
   };
 }
@@ -180,9 +210,9 @@ export async function cleanupExpiredRateLimits(): Promise<number> {
     return result.count;
   } catch (error) {
     getLogger().error({
-      type: 'rate_limit',
-      operation: 'cleanup',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      type: "rate_limit",
+      operation: "cleanup",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
     return 0;
   }
