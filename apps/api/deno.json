@@ -11,12 +11,12 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "exclude": ["prisma/generated", "prisma/migrations"],
+  "exclude": ["prisma/generated", "prisma/migrations", "coverage"],
   "lint": {
     "rules": {
       "tags": ["recommended"]
     },
-    "exclude": ["prisma/generated", "prisma/migrations"]
+    "exclude": ["prisma/generated", "prisma/migrations", "coverage"]
   },
   "fmt": {
     "useTabs": false,
@@ -24,6 +24,6 @@
     "indentWidth": 2,
     "semiColons": true,
     "singleQuote": true,
-    "exclude": ["prisma/generated", "prisma/migrations"]
+    "exclude": ["prisma/generated", "prisma/migrations", "coverage"]
   }
 }

@@ -36,11 +36,11 @@ export class RedisBackend implements CacheBackend {
       redisModule = await import('redis');
     } catch {
       throw new Error(
-          "CACHE_DRIVER=redis but the 'redis' package is not installed. " +
+        "CACHE_DRIVER=redis but the 'redis' package is not installed. " +
           'To fix: (1) add it with `deno add npm:redis` or install the optional npm dependencies, ' +
           '(2) ensure Redis is reachable at CACHE_REDIS_URL, ' +
           'or (3) set CACHE_DRIVER=deno-kv to use the built-in backend.',
-        );
+      );
     }
 
     this.client = redisModule.createClient({
