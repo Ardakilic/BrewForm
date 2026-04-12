@@ -3413,7 +3413,9 @@
       "apps/api": {
         "dependencies": [
           "jsr:@std/expect@1",
-          "jsr:@std/testing@1"
+          "jsr:@std/testing@1",
+          "npm:@prisma/adapter-pg@^7.5.0",
+          "npm:@prisma/client@^7.5.0"
         ],
         "packageJson": {
           "dependencies": [

@@ -5,9 +5,8 @@ node_modules/
 # Generated Prisma client (generated inside deps stage)
 apps/api/prisma/generated/
 
-# Lock files
+# Lock files (root level is auto-generated)
 deno.lock
-**/deno.lock
 
 # Build outputs
 dist/

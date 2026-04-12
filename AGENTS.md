@@ -14,6 +14,7 @@
 - Use semicolons
 - Use double quotes for strings
 - Use trailing commas in multi-line objects and arrays
+- Honor Deno's recommended coding style
 
 ## Architecture Principles
 

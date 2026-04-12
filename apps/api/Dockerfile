@@ -9,14 +9,15 @@ WORKDIR /app
 
 # Dependencies stage — install npm packages for the API
 FROM base AS deps
-COPY apps/api/deno.json apps/api/prisma.config.ts ./apps/api/
+COPY deno.json ./deno.json
+COPY apps/api/deno.json apps/api/deno.lock apps/api/prisma.config.ts ./apps/api/
 COPY apps/api/prisma ./apps/api/prisma
-RUN cd apps/api && deno install --allow-scripts
-RUN cd apps/api && deno task db:generate
+RUN cd /app/apps/api && deno install --allow-scripts && mkdir -p /app/node_modules
+RUN cd /app/apps/api && deno task db:generate
 
 # Development stage
 FROM base AS development
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps /app/node_modules ./apps/api/node_modules
 COPY . .
 WORKDIR /app/apps/api
 EXPOSE 3001
@@ -31,7 +32,7 @@ RUN groupadd --gid 1001 nodejs && \
     useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home hono
 
 # Copy installed packages and source
-COPY --from=deps --chown=hono:nodejs /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps --chown=hono:nodejs /app/node_modules ./apps/api/node_modules
 COPY --chown=hono:nodejs apps/api/src ./apps/api/src
 COPY --from=deps --chown=hono:nodejs /app/apps/api/prisma ./apps/api/prisma
 COPY --chown=hono:nodejs apps/api/deno.json apps/api/prisma.config.ts ./apps/api/
