@@ -155,7 +155,8 @@ db-reset-hard:
 	@echo "Resetting database volume..."
 	docker compose down -v postgres
 	@echo "Clearing cache volume..."
-	docker volume rm brewform_deno_kv_data 2>/dev/null || true
+	@VOLUMES=$$(docker volume ls --filter name=deno_kv_data -q); \
+	if [ -n "$$VOLUMES" ]; then docker volume rm $$VOLUMES; fi
 	@echo "Starting database..."
 	docker compose up -d postgres
 	@echo "Waiting for database to be ready..."
@@ -201,8 +202,8 @@ test-web:
 	docker compose run --rm --service-ports web deno task test
 
 test-coverage:
-	docker compose run --rm --service-ports api deno task test:coverage
-	docker compose run --rm --service-ports web deno task test:coverage
+	docker compose run --rm api deno task test:coverage
+	docker compose run --rm web deno task test:coverage
 
 test-coverage-report:
 	docker compose run --rm api deno task test:coverage:report
@@ -261,7 +262,14 @@ shell-redis:
 	docker compose --profile cache-redis exec redis redis-cli
 
 cache-flush:
-	@DRIVER=$$(grep '^CACHE_DRIVER=' .env 2>/dev/null | cut -d= -f2); \
+	@DRIVER=$$CACHE_DRIVER; \
+	if [ -z "$$DRIVER" ]; then \
+		CONTAINER_DRIVER=$$(docker compose exec -T api sh -c 'echo $$CACHE_DRIVER' 2>/dev/null | tr -d '\r\n'); \
+		if [ -n "$$CONTAINER_DRIVER" ]; then DRIVER=$$CONTAINER_DRIVER; fi; \
+	fi; \
+	if [ -z "$$DRIVER" ]; then \
+		DRIVER=$$(grep '^CACHE_DRIVER=' .env 2>/dev/null | cut -d= -f2); \
+	fi; \
 	DRIVER=$${DRIVER:-deno-kv}; \
 	if [ "$$DRIVER" = "redis" ]; then \
 		echo "Flushing Redis cache..."; \

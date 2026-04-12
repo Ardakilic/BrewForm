@@ -86,6 +86,13 @@ export async function disconnectCache(): Promise<void> {
 }
 
 /**
+ * Test-only helper to inject a cache backend directly, bypassing initCache().
+ */
+export function _setTestCache(backend: CacheBackend): void {
+  _instance = backend;
+}
+
+/**
  * Returns true if the cache backend is reachable.
  */
 export async function checkCacheConnection(): Promise<boolean> {
@@ -113,10 +120,9 @@ function keyStr(key: CacheKey): string {
 
 function buildEnvelope<T>(value: T, options?: CacheOptions): CacheEnvelope<T> {
   const ttl = options?.ttlSeconds ?? 0;
-  const freshWindow = options?.staleWhileRevalidateSeconds ?? ttl;
   return {
     v: value,
-    f: ttl > 0 ? Date.now() + freshWindow * 1000 : Infinity,
+    f: ttl > 0 ? Date.now() + ttl * 1000 : Infinity,
   };
 }
 
@@ -294,7 +300,13 @@ export async function cacheGetManyOrSet<T>(
   const missingKeys = missingIndices.map((i) => keys[i]);
   const fetched = await fetcher(missingKeys);
 
-  // Write back
+  if (fetched.length !== missingKeys.length) {
+    throw new Error(
+      `cacheGetManyOrSet: fetcher returned ${fetched.length} results for ${missingKeys.length} keys` +
+        ` (expected keys: ${JSON.stringify(missingKeys)})`,
+    );
+  }
+
   const writeEntries: {
     key: CacheKey;
     value: CacheEnvelope<T>;

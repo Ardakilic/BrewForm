@@ -126,13 +126,16 @@ export class RedisBackend implements CacheBackend {
     const chunk: string[] = [];
 
     for await (
-      const key of this.client.scanIterator({ MATCH: pattern, COUNT: 500 })
+      const batch of this.client.scanIterator({ MATCH: pattern, COUNT: 500 })
     ) {
-      chunk.push(key as string);
-      if (chunk.length >= CHUNK_SIZE) {
-        await this.client.del(chunk);
-        count += chunk.length;
-        chunk.length = 0;
+      const keys: string[] = Array.isArray(batch) ? batch : [batch];
+      for (const key of keys) {
+        chunk.push(key as string);
+        if (chunk.length >= CHUNK_SIZE) {
+          await this.client.del(chunk);
+          count += chunk.length;
+          chunk.length = 0;
+        }
       }
     }
 

@@ -64,7 +64,14 @@ const configSchema = z.object({
 
   // Cache
   cacheDriver: z.enum(["deno-kv", "redis"]).default("deno-kv"),
-  cacheRequired: z.coerce.boolean().default(false),
+  cacheRequired: z.preprocess(
+    (val: unknown) => {
+      if (typeof val === "boolean") return val;
+      if (typeof val === "string") return val === "true" || val === "1";
+      return false;
+    },
+    z.boolean(),
+  ).default(false),
   cacheDenoKvPath: z.string().default("/data/deno-kv/brewform.kv"),
   cacheRedisUrl: z.string().url().default("redis://redis:6379"),
   cacheRedisPassword: z.string().optional(),

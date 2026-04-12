@@ -56,8 +56,20 @@ export class DenoKvBackend implements CacheBackend {
   async getMany<T>(keys: readonly CacheKey[]): Promise<(T | undefined)[]> {
     const kv = this.openKv();
     const kvKeys = keys.map(toKvKey) as Parameters<typeof kv.getMany>[0];
-    const entries = await kv.getMany(kvKeys);
-    return entries.map((e) => (e.value as T) ?? undefined);
+    const CHUNK_SIZE = 10;
+    const results: (T | undefined)[] = new Array(keys.length).fill(undefined);
+
+    for (let i = 0; i < kvKeys.length; i += CHUNK_SIZE) {
+      const chunk = kvKeys.slice(i, i + CHUNK_SIZE);
+      const entries = await kv.getMany(
+        chunk as Parameters<typeof kv.getMany>[0],
+      );
+      for (let j = 0; j < entries.length; j++) {
+        results[i + j] = (entries[j].value as T) ?? undefined;
+      }
+    }
+
+    return results;
   }
 
   async set<T>(key: CacheKey, value: T, options?: CacheOptions): Promise<void> {

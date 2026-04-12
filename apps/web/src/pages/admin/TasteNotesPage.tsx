@@ -31,20 +31,20 @@ function AdminTasteNotesPage() {
       if (res.success) {
         setResult({
           kind: "positive",
-          message: `Cache invalidated (${
-            res.data?.invalidated ?? 0
-          } entries cleared). Next request will re-fetch from the database.`,
+          message: t("tasteNotes.cache.success", {
+            count: res.data?.invalidated ?? 0,
+          }),
         });
       } else {
         setResult({
           kind: "negative",
-          message: res.error?.message ?? "Failed to invalidate cache",
+          message: res.error?.message ?? t("tasteNotes.cache.failure"),
         });
       }
     } catch {
       setResult({
         kind: "negative",
-        message: "Network error. Could not reach API.",
+        message: t("tasteNotes.cache.networkError"),
       });
     } finally {
       setInvalidating(false);
@@ -71,10 +71,11 @@ function AdminTasteNotesPage() {
           border: `1px solid ${theme.colors.borderOpaque}`,
         })}
       >
-        <LabelMedium marginBottom="8px">Taste Notes Cache</LabelMedium>
+        <LabelMedium marginBottom="8px">
+          {t("tasteNotes.cache.label")}
+        </LabelMedium>
         <ParagraphMedium color={theme.colors.contentSecondary} marginTop="0">
-          Taste notes are cached for 24 hours. Use this button to force a
-          refresh after importing new data or making manual database changes.
+          {t("tasteNotes.cache.description")}
         </ParagraphMedium>
 
         {result && (
@@ -98,7 +99,7 @@ function AdminTasteNotesPage() {
           onClick={handleInvalidateCache}
           isLoading={invalidating}
         >
-          Invalidate Cache
+          {t("tasteNotes.cache.invalidateButton")}
         </Button>
       </div>
 

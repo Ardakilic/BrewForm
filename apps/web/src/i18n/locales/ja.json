@@ -398,7 +398,16 @@
     "minChars": "検索には {{count}} 文字以上入力してください",
     "noResults": "一致するフレーバーノートがありません",
     "selected": "{{count}}/{{max}} 件選択済み",
-    "scaaReference": "SCAA フレーバーホイール参照"
+    "scaaReference": "SCAA フレーバーホイール参照",
+    "cache": {
+      "label": "Taste Notes Cache",
+      "description": "Taste notes are cached for 24 hours. Use this button to force a refresh after importing new data or making manual database changes.",
+      "invalidateButton": "Invalidate Cache",
+      "invalidating": "Invalidating cache...",
+      "success": "Cache invalidated ({{count}} entries cleared). Next request will re-fetch from the database.",
+      "failure": "Failed to invalidate cache",
+      "networkError": "Network error. Could not reach API."
+    }
   },
   "rating": {
     "superGood": "とても良い",

@@ -41,5 +41,5 @@ export function keyToString(key: readonly (string | number)[]): string {
  * Build a Redis SCAN pattern from a prefix key array.
  */
 export function prefixToPattern(prefix: readonly (string | number)[]): string {
-  return prefix.length === 0 ? "*" : `${keyToString(prefix)}:*`;
+  return prefix.length === 0 ? "*" : `${keyToString(prefix)}*`;
 }

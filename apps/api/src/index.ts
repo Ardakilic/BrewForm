@@ -155,10 +155,26 @@ async function startServer() {
       logger.info("HTTP server closed");
 
       // Disconnect cache
-      await disconnectCache();
+      try {
+        await disconnectCache();
+      } catch (err) {
+        logger.error?.({
+          type: "server",
+          message: "Failed to disconnect cache",
+          error: err instanceof Error ? err.message : String(err),
+        }) ?? console.error("Failed to disconnect cache", err);
+      }
 
       // Close database connection
-      await disconnectDb();
+      try {
+        await disconnectDb();
+      } catch (err) {
+        logger.error?.({
+          type: "server",
+          message: "Failed to disconnect database",
+          error: err instanceof Error ? err.message : String(err),
+        }) ?? console.error("Failed to disconnect database", err);
+      }
 
       logger.info("Graceful shutdown complete");
       Deno.exit(0);

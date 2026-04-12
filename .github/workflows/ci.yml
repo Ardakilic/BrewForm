@@ -46,6 +46,14 @@ jobs:
         run: deno task format:check
         working-directory: apps/web
 
+      - name: Typecheck (API)
+        run: deno task typecheck
+        working-directory: apps/api
+
+      - name: Typecheck (Web)
+        run: deno task typecheck
+        working-directory: apps/web
+
   test-api:
     name: Test API
     runs-on: ubuntu-latest

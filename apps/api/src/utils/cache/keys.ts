@@ -19,8 +19,14 @@ export const CacheKeys = {
   recipeBySlug: (slug: string): CacheKey => ["recipe", "slug", slug] as const,
   recipeList: (filterHash: string): CacheKey =>
     ["recipes", "list", filterHash] as const,
-  latestRecipes: (): CacheKey => ["recipes", "latest"] as const,
-  popularRecipes: (): CacheKey => ["recipes", "popular"] as const,
+  latestRecipes: (limit?: number): CacheKey =>
+    limit !== undefined
+      ? ["recipes", "latest", limit] as const
+      : ["recipes", "latest"] as const,
+  popularRecipes: (limit?: number): CacheKey =>
+    limit !== undefined
+      ? ["recipes", "popular", limit] as const
+      : ["recipes", "popular"] as const,
 
   // Taste Notes
   tasteNotesAll: (): CacheKey => ["taste-notes", "all"] as const,

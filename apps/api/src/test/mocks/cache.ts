@@ -116,10 +116,15 @@ export function getCache() {
     },
     invalidateByPrefix(prefix: CacheKey): Promise<number> {
       _calls.push({ op: "invalidate", key: prefix });
-      const prefixStr = JSON.stringify(prefix).slice(0, -1); // strip trailing ']'
+      const prefixArr = JSON.parse(JSON.stringify(prefix));
       let count = 0;
-      for (const storedKey of _store.keys()) {
-        if (storedKey.startsWith(prefixStr)) {
+      for (const storedKey of [..._store.keys()]) {
+        const storedArr = JSON.parse(storedKey);
+        if (
+          Array.isArray(storedArr) &&
+          prefixArr.length <= storedArr.length &&
+          prefixArr.every((seg: unknown, i: number) => seg === storedArr[i])
+        ) {
           _store.delete(storedKey);
           count++;
         }
@@ -178,6 +183,9 @@ export async function cacheGetManyOrSet<T>(
   fetcher: (missingKeys: readonly CacheKey[]) => Promise<T[]>,
   _options?: CacheOptions,
 ): Promise<T[]> {
+  if (_passthrough) {
+    return await fetcher(keys);
+  }
   const results: T[] = [];
   const missing: number[] = [];
   for (let i = 0; i < keys.length; i++) {
@@ -200,10 +208,15 @@ export async function cacheGetManyOrSet<T>(
 
 export function invalidateCache(prefix: CacheKey): Promise<number> {
   _calls.push({ op: "invalidate", key: prefix });
-  const prefixStr = JSON.stringify(prefix).slice(0, -1);
+  const prefixArr = JSON.parse(JSON.stringify(prefix));
   let count = 0;
-  for (const storedKey of _store.keys()) {
-    if (storedKey.startsWith(prefixStr)) {
+  for (const storedKey of [..._store.keys()]) {
+    const storedArr = JSON.parse(storedKey);
+    if (
+      Array.isArray(storedArr) &&
+      prefixArr.length <= storedArr.length &&
+      prefixArr.every((seg: unknown, i: number) => seg === storedArr[i])
+    ) {
       _store.delete(storedKey);
       count++;
     }

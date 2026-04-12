@@ -35,8 +35,9 @@ export class MemoryBackend implements CacheBackend {
   }
 
   set<T>(key: CacheKey, value: T, options?: CacheOptions): Promise<void> {
-    const ttl = (options?.ttlSeconds ?? 0) +
-      (options?.staleWhileRevalidateSeconds ?? 0);
+    const swr = options?.staleWhileRevalidateSeconds ?? options?.ttlSeconds ??
+      0;
+    const ttl = (options?.ttlSeconds ?? 0) + swr;
     this.store.set(keyToString(key), {
       value,
       expiresAt: ttl > 0 ? Date.now() + ttl * 1000 : undefined,
@@ -57,16 +58,14 @@ export class MemoryBackend implements CacheBackend {
 
   invalidateByPrefix(prefix: CacheKey): Promise<number> {
     const pattern = prefixToPattern(prefix);
-    // Convert glob pattern to a simple prefix match (all our patterns end with :*)
-    const matchPrefix = pattern.endsWith(":*")
-      ? pattern.slice(0, -1) // strip trailing '*', keep the ':'
-      : pattern === "*"
-      ? ""
-      : pattern;
+    const matchPrefix = pattern === "*" ? "" : pattern.slice(0, -1);
 
     let count = 0;
     for (const k of this.store.keys()) {
-      if (k.startsWith(matchPrefix)) {
+      if (
+        matchPrefix === "" || k === matchPrefix ||
+        k.startsWith(matchPrefix + ":")
+      ) {
         this.store.delete(k);
         count++;
       }

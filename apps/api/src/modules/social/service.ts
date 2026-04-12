@@ -10,7 +10,7 @@ import {
   softDeleteFilter,
 } from "../../utils/database/index.ts";
 import { logAudit } from "../../utils/logger/index.ts";
-import { invalidateCache } from "../../utils/cache/index.ts";
+import { CacheKeys, invalidateCache } from "../../utils/cache/index.ts";
 import { createComparisonToken } from "../../utils/slug/index.ts";
 import {
   BadRequestError,
@@ -121,7 +121,7 @@ export async function addFavourite(userId: string, recipeId: string) {
   });
 
   // Invalidate popular recipes cache since favourite count changed
-  await invalidateCache(["recipes", "popular"]);
+  await invalidateCache(CacheKeys.popularRecipes());
 
   logAudit("recipe_favourited", "recipe", recipeId, userId);
 
@@ -155,7 +155,7 @@ export async function removeFavourite(userId: string, recipeId: string) {
   });
 
   // Invalidate popular recipes cache since favourite count changed
-  await invalidateCache(["recipes", "popular"]);
+  await invalidateCache(CacheKeys.popularRecipes());
 
   logAudit("recipe_unfavourited", "recipe", recipeId, userId);
 

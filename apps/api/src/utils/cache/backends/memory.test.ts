@@ -100,6 +100,17 @@ describe("MemoryBackend", () => {
       expect(await cache.get(["taste-notes", "all"])).toBe("d");
     });
 
+    it("also deletes the exact prefix key", async () => {
+      await cache.set(["recipes"], "exact-key");
+      await cache.set(["recipes", "latest"], "child-key");
+
+      const count = await cache.invalidateByPrefix(["recipes"]);
+
+      expect(count).toBe(2);
+      expect(await cache.get(["recipes"])).toBeUndefined();
+      expect(await cache.get(["recipes", "latest"])).toBeUndefined();
+    });
+
     it("returns 0 when no keys match", async () => {
       await cache.set(["other"], "x");
       const count = await cache.invalidateByPrefix(["recipes"]);

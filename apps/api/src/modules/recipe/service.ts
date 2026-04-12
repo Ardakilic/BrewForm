@@ -171,6 +171,7 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
   // Invalidate cached lists so the new recipe appears
   await invalidateCache(["recipes", "latest"]);
   await invalidateCache(["recipes", "list"]);
+  await invalidateCache(["recipes", "popular"]);
 
   logAudit("recipe_created", "recipe", recipe.id, userId);
   logger.info({
@@ -332,6 +333,7 @@ export async function updateRecipe(
   }
   await invalidateCache(["recipes", "latest"]);
   await invalidateCache(["recipes", "list"]);
+  await invalidateCache(["recipes", "popular"]);
 
   logAudit("recipe_updated", "recipe", recipeId, userId);
 
@@ -437,8 +439,11 @@ export async function createRecipeVersion(
     data: { currentVersionId: version.id },
   });
 
-  // Invalidate cached recipe detail
+  // Invalidate cached recipe detail and feeds
   await invalidateCache(CacheKeys.recipe(recipeId));
+  await invalidateCache(["recipes", "latest"]);
+  await invalidateCache(["recipes", "list"]);
+  await invalidateCache(["recipes", "popular"]);
 
   logAudit("recipe_version_created", "recipe_version", version.id, userId);
 
@@ -590,6 +595,7 @@ export async function deleteRecipe(recipeId: string, userId: string) {
   }
   await invalidateCache(["recipes", "latest"]);
   await invalidateCache(["recipes", "list"]);
+  await invalidateCache(["recipes", "popular"]);
 
   logAudit("recipe_deleted", "recipe", recipeId, userId);
 }
@@ -740,7 +746,7 @@ export async function getLatestRecipes(limit = 10) {
   const prisma = getPrisma();
   const cfg = getConfig();
   return await cacheGetOrSet(
-    CacheKeys.latestRecipes(),
+    CacheKeys.latestRecipes(limit),
     () =>
       prisma.recipe.findMany({
         where: {
@@ -780,7 +786,7 @@ export async function getPopularRecipes(limit = 10) {
   const prisma = getPrisma();
   const cfg = getConfig();
   return await cacheGetOrSet(
-    CacheKeys.popularRecipes(),
+    CacheKeys.popularRecipes(limit),
     () =>
       prisma.recipe.findMany({
         where: {

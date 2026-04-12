@@ -398,7 +398,16 @@
     "minChars": "검색하려면 최소 {{count}}자 입력",
     "noResults": "일치하는 향미 노트가 없습니다",
     "selected": "{{count}}/{{max}} 향미 노트 선택됨",
-    "scaaReference": "SCAA 향미 휠 참조"
+    "scaaReference": "SCAA 향미 휠 참조",
+    "cache": {
+      "label": "Taste Notes Cache",
+      "description": "Taste notes are cached for 24 hours. Use this button to force a refresh after importing new data or making manual database changes.",
+      "invalidateButton": "Invalidate Cache",
+      "invalidating": "Invalidating cache...",
+      "success": "Cache invalidated ({{count}} entries cleared). Next request will re-fetch from the database.",
+      "failure": "Failed to invalidate cache",
+      "networkError": "Network error. Could not reach API."
+    }
   },
   "rating": {
     "superGood": "아주 좋음",

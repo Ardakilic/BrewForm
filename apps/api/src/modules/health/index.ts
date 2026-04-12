@@ -97,7 +97,7 @@ health.get("/ready", async (c) => {
 health.get("/startup", async (c) => {
   const config = getConfig();
   const dbOk = await checkDbConnection();
-  const cacheOk = await checkCacheConnection();
+  const cacheOk = config.cacheRequired ? await checkCacheConnection() : true;
   const isStarted = dbOk && (cacheOk || !config.cacheRequired);
 
   return c.json(
