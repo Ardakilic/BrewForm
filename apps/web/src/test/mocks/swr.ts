@@ -28,9 +28,9 @@ const swrMock = {
 // Export a function that calls the current implementation
 function useSWR<T = unknown>(...args: unknown[]): SWRResponse<T> {
   if (swrMock.implementationOnce) {
-    const result = swrMock.implementationOnce(...args) as SWRResponse<T>;
+    const once = swrMock.implementationOnce;
     swrMock.implementationOnce = null;
-    return result;
+    return once(...args) as SWRResponse<T>;
   }
   return swrMock.implementation(...args) as SWRResponse<T>;
 }

@@ -9,7 +9,7 @@ import {
   getPrisma,
   softDeleteFilter,
 } from "../../utils/database/index.ts";
-import { logAudit } from "../../utils/logger/index.ts";
+import { getLogger, logAudit } from "../../utils/logger/index.ts";
 import { CacheKeys, invalidateCache } from "../../utils/cache/index.ts";
 import { createComparisonToken } from "../../utils/slug/index.ts";
 import {
@@ -121,7 +121,7 @@ export async function addFavourite(userId: string, recipeId: string) {
   });
 
   // Invalidate popular recipes cache since favourite count changed
-  await invalidateCache(CacheKeys.popularRecipes());
+  await invalidatePopularRecipesCache();
 
   logAudit("recipe_favourited", "recipe", recipeId, userId);
 
@@ -155,11 +155,24 @@ export async function removeFavourite(userId: string, recipeId: string) {
   });
 
   // Invalidate popular recipes cache since favourite count changed
-  await invalidateCache(CacheKeys.popularRecipes());
+  await invalidatePopularRecipesCache();
 
   logAudit("recipe_unfavourited", "recipe", recipeId, userId);
 
   return { success: true };
+}
+
+async function invalidatePopularRecipesCache(): Promise<void> {
+  try {
+    await invalidateCache(CacheKeys.popularRecipes());
+  } catch (error) {
+    const logger = getLogger();
+    logger.warn({
+      type: "cache",
+      key: "recipes:popular",
+      error: error instanceof Error ? error.message : "Unknown error",
+    }, "Popular recipes cache invalidation failed");
+  }
 }
 
 /**
