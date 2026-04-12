@@ -62,6 +62,18 @@ const configSchema = z.object({
   // Admin
   adminEmail: z.string().email().default("admin@brewform.local"),
 
+  // Cache
+  cacheDriver: z.enum(["deno-kv", "redis"]).default("deno-kv"),
+  cacheRequired: z.coerce.boolean().default(false),
+  cacheDenoKvPath: z.string().default("/data/deno-kv/brewform.kv"),
+  cacheRedisUrl: z.string().url().default("redis://redis:6379"),
+  cacheRedisPassword: z.string().optional(),
+  cacheTtlRecipesLatest: z.coerce.number().int().positive().default(300),
+  cacheTtlRecipesPopular: z.coerce.number().int().positive().default(300),
+  cacheTtlRecipesList: z.coerce.number().int().positive().default(120),
+  cacheTtlTasteNotes: z.coerce.number().int().positive().default(86_400),
+  cacheTtlRecipeDetail: z.coerce.number().int().positive().default(600),
+
   // Analytics
   enableAnalytics: z.coerce.boolean().default(true),
 
@@ -114,6 +126,16 @@ function loadConfig(): Config {
     sessionSecret: process.env.SESSION_SECRET,
     sessionMaxAge: process.env.SESSION_MAX_AGE,
     adminEmail: process.env.ADMIN_EMAIL,
+    cacheDriver: process.env.CACHE_DRIVER,
+    cacheRequired: process.env.CACHE_REQUIRED,
+    cacheDenoKvPath: process.env.CACHE_DENO_KV_PATH,
+    cacheRedisUrl: process.env.CACHE_REDIS_URL,
+    cacheRedisPassword: process.env.CACHE_REDIS_PASSWORD,
+    cacheTtlRecipesLatest: process.env.CACHE_TTL_RECIPES_LATEST,
+    cacheTtlRecipesPopular: process.env.CACHE_TTL_RECIPES_POPULAR,
+    cacheTtlRecipesList: process.env.CACHE_TTL_RECIPES_LIST,
+    cacheTtlTasteNotes: process.env.CACHE_TTL_TASTE_NOTES,
+    cacheTtlRecipeDetail: process.env.CACHE_TTL_RECIPE_DETAIL,
     enableAnalytics: process.env.ENABLE_ANALYTICS,
     enableRegistration: process.env.ENABLE_REGISTRATION,
     enableEmailVerification: process.env.ENABLE_EMAIL_VERIFICATION,

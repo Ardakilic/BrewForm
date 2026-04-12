@@ -10,6 +10,12 @@ import {
   softDeleteFilter,
 } from "../../utils/database/index.ts";
 import { getLogger, logAudit } from "../../utils/logger/index.ts";
+import {
+  cacheGetOrSet,
+  CacheKeys,
+  invalidateCache,
+} from "../../utils/cache/index.ts";
+import { getConfig } from "../../config/index.ts";
 import { createRecipeSlug } from "../../utils/slug/index.ts";
 import {
   type RecipeVersionInput,
@@ -162,6 +168,10 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
     data: { currentVersionId: recipe.versions[0].id },
   });
 
+  // Invalidate cached lists so the new recipe appears
+  await invalidateCache(["recipes", "latest"]);
+  await invalidateCache(["recipes", "list"]);
+
   logAudit("recipe_created", "recipe", recipe.id, userId);
   logger.info({
     type: "recipe",
@@ -174,58 +184,64 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
 }
 
 /**
- * Get recipe by ID
+ * Get recipe by ID (opportunistically cached)
  */
 export async function getRecipeById(
   recipeId: string,
   viewerId?: string | null,
 ) {
   const prisma = getPrisma();
+  const cfg = getConfig();
 
-  const recipe = await prisma.recipe.findUnique({
-    where: { id: recipeId, ...softDeleteFilter() },
-    include: {
-      currentVersion: {
+  const recipe = await cacheGetOrSet(
+    CacheKeys.recipe(recipeId),
+    () =>
+      prisma.recipe.findUnique({
+        where: { id: recipeId, ...softDeleteFilter() },
         include: {
-          grinder: true,
-          brewer: true,
-          portafilter: true,
-          basket: true,
-          puckScreen: true,
-          paperFilter: true,
-          tamper: true,
-          tasteNotes: {
+          currentVersion: {
             include: {
-              tasteNote: true,
+              grinder: true,
+              brewer: true,
+              portafilter: true,
+              basket: true,
+              puckScreen: true,
+              paperFilter: true,
+              tamper: true,
+              tasteNotes: {
+                include: {
+                  tasteNote: true,
+                },
+              },
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+            },
+          },
+          forkedFrom: {
+            select: {
+              id: true,
+              slug: true,
+              currentVersion: { select: { title: true } },
+              user: { select: { username: true } },
+            },
+          },
+          _count: {
+            select: {
+              versions: true,
+              forks: true,
+              comments: { where: softDeleteFilter() },
             },
           },
         },
-      },
-      user: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          avatarUrl: true,
-        },
-      },
-      forkedFrom: {
-        select: {
-          id: true,
-          slug: true,
-          currentVersion: { select: { title: true } },
-          user: { select: { username: true } },
-        },
-      },
-      _count: {
-        select: {
-          versions: true,
-          forks: true,
-          comments: { where: softDeleteFilter() },
-        },
-      },
-    },
-  });
+      }),
+    { ttlSeconds: cfg.cacheTtlRecipeDetail },
+  );
 
   if (!recipe) {
     throw new NotFoundError("Recipe");
@@ -308,6 +324,14 @@ export async function updateRecipe(
       },
     },
   });
+
+  // Invalidate recipe detail cache and lists
+  await invalidateCache(CacheKeys.recipe(recipeId));
+  if (recipe.slug) {
+    await invalidateCache(CacheKeys.recipeBySlug(recipe.slug));
+  }
+  await invalidateCache(["recipes", "latest"]);
+  await invalidateCache(["recipes", "list"]);
 
   logAudit("recipe_updated", "recipe", recipeId, userId);
 
@@ -412,6 +436,9 @@ export async function createRecipeVersion(
     where: { id: recipeId },
     data: { currentVersionId: version.id },
   });
+
+  // Invalidate cached recipe detail
+  await invalidateCache(CacheKeys.recipe(recipeId));
 
   logAudit("recipe_version_created", "recipe_version", version.id, userId);
 
@@ -556,6 +583,14 @@ export async function deleteRecipe(recipeId: string, userId: string) {
     data: { deletedAt: new Date() },
   });
 
+  // Invalidate cached recipe and lists
+  await invalidateCache(CacheKeys.recipe(recipeId));
+  if (recipe.slug) {
+    await invalidateCache(CacheKeys.recipeBySlug(recipe.slug));
+  }
+  await invalidateCache(["recipes", "latest"]);
+  await invalidateCache(["recipes", "list"]);
+
   logAudit("recipe_deleted", "recipe", recipeId, userId);
 }
 
@@ -699,71 +734,83 @@ export async function listRecipes(
 }
 
 /**
- * Get latest public recipes
+ * Get latest public recipes (cached)
  */
 export async function getLatestRecipes(limit = 10) {
   const prisma = getPrisma();
-  return await prisma.recipe.findMany({
-    where: {
-      ...softDeleteFilter(),
-      visibility: "PUBLIC",
-    },
-    include: {
-      currentVersion: {
-        select: {
-          id: true,
-          title: true,
-          brewMethod: true,
-          drinkType: true,
-          rating: true,
+  const cfg = getConfig();
+  return await cacheGetOrSet(
+    CacheKeys.latestRecipes(),
+    () =>
+      prisma.recipe.findMany({
+        where: {
+          ...softDeleteFilter(),
+          visibility: "PUBLIC",
         },
-      },
-      user: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          avatarUrl: true,
+        include: {
+          currentVersion: {
+            select: {
+              id: true,
+              title: true,
+              brewMethod: true,
+              drinkType: true,
+              rating: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+            },
+          },
         },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      }),
+    { ttlSeconds: cfg.cacheTtlRecipesLatest },
+  );
 }
 
 /**
- * Get popular recipes
+ * Get popular recipes (cached)
  */
 export async function getPopularRecipes(limit = 10) {
   const prisma = getPrisma();
-  return await prisma.recipe.findMany({
-    where: {
-      ...softDeleteFilter(),
-      visibility: "PUBLIC",
-    },
-    include: {
-      currentVersion: {
-        select: {
-          id: true,
-          title: true,
-          brewMethod: true,
-          drinkType: true,
-          rating: true,
+  const cfg = getConfig();
+  return await cacheGetOrSet(
+    CacheKeys.popularRecipes(),
+    () =>
+      prisma.recipe.findMany({
+        where: {
+          ...softDeleteFilter(),
+          visibility: "PUBLIC",
         },
-      },
-      user: {
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          avatarUrl: true,
+        include: {
+          currentVersion: {
+            select: {
+              id: true,
+              title: true,
+              brewMethod: true,
+              drinkType: true,
+              rating: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+            },
+          },
         },
-      },
-    },
-    orderBy: { favouriteCount: "desc" },
-    take: limit,
-  });
+        orderBy: { favouriteCount: "desc" },
+        take: limit,
+      }),
+    { ttlSeconds: cfg.cacheTtlRecipesPopular },
+  );
 }
 
 /**

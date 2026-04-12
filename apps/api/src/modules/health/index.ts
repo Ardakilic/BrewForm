@@ -6,6 +6,8 @@
 import { Hono } from "hono";
 import { checkDbConnection } from "../../utils/database/index.ts";
 import { getLogger } from "../../utils/logger/index.ts";
+import { checkCacheConnection } from "../../utils/cache/index.ts";
+import { getConfig } from "../../config/index.ts";
 
 const health = new Hono();
 
@@ -43,6 +45,7 @@ health.get(
  */
 health.get("/ready", async (c) => {
   const logger = getLogger();
+  const config = getConfig();
   const checks: Record<string, boolean> = {};
   let isReady = true;
 
@@ -56,6 +59,20 @@ health.get("/ready", async (c) => {
     logger.error({
       type: "health",
       check: "database",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+
+  // Check cache
+  try {
+    checks.cache = await checkCacheConnection();
+    if (!checks.cache && config.cacheRequired) isReady = false;
+  } catch (error) {
+    checks.cache = false;
+    if (config.cacheRequired) isReady = false;
+    logger.error({
+      type: "health",
+      check: "cache",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
@@ -78,8 +95,10 @@ health.get("/ready", async (c) => {
  * Startup probe - has the application finished starting?
  */
 health.get("/startup", async (c) => {
+  const config = getConfig();
   const dbOk = await checkDbConnection();
-  const isStarted = dbOk;
+  const cacheOk = await checkCacheConnection();
+  const isStarted = dbOk && (cacheOk || !config.cacheRequired);
 
   return c.json(
     {

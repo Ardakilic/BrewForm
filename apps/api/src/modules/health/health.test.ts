@@ -8,12 +8,18 @@ import { type Stub, stub } from "@std/testing/mock";
 import { Hono } from "hono";
 import healthModule from "./index.ts";
 import databaseMock from "../../test/mocks/database.ts";
+import {
+  resetCacheMock,
+  setCacheConnectionResult,
+} from "../../test/mocks/cache.ts";
+import { setConfig } from "../../test/mocks/config.ts";
 
 interface HealthResponse {
   status: string;
   timestamp: string;
   checks?: {
     database?: boolean;
+    cache?: boolean;
   };
 }
 
@@ -23,6 +29,8 @@ describe("Health Module", () => {
 
   beforeEach(() => {
     dbStub?.restore();
+    resetCacheMock();
+    setConfig({ cacheRequired: false });
     app = new Hono();
     app.route("/health", healthModule);
   });
@@ -58,7 +66,7 @@ describe("Health Module", () => {
   });
 
   describe("GET /health/ready", () => {
-    it("should return ok when database is healthy", async () => {
+    it("should return ok when database and cache are healthy", async () => {
       dbStub = stub(
         databaseMock,
         "checkDbConnection",
@@ -71,6 +79,7 @@ describe("Health Module", () => {
       const body = await response.json() as HealthResponse;
       expect(body.status).toBe("ok");
       expect(body.checks?.database).toBe(true);
+      expect(body.checks?.cache).toBe(true);
     });
 
     it("should return degraded status when database is down", async () => {
@@ -86,6 +95,41 @@ describe("Health Module", () => {
       const body = await response.json() as HealthResponse;
       expect(body.status).toBe("degraded");
       expect(body.checks?.database).toBe(false);
+    });
+
+    it("should remain ready when cache is down and cacheRequired=false", async () => {
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(true),
+      );
+      setCacheConnectionResult(false);
+      setConfig({ cacheRequired: false });
+
+      const response = await app.request("/health/ready");
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as HealthResponse;
+      expect(body.status).toBe("ok");
+      expect(body.checks?.database).toBe(true);
+      expect(body.checks?.cache).toBe(false);
+    });
+
+    it("should return degraded when cache is down and cacheRequired=true", async () => {
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(true),
+      );
+      setCacheConnectionResult(false);
+      setConfig({ cacheRequired: true });
+
+      const response = await app.request("/health/ready");
+
+      expect(response.status).toBe(503);
+      const body = await response.json() as HealthResponse;
+      expect(body.status).toBe("degraded");
+      expect(body.checks?.cache).toBe(false);
     });
 
     it("should handle database check errors gracefully", async () => {
@@ -131,6 +175,22 @@ describe("Health Module", () => {
       expect(response.status).toBe(503);
       const body = await response.json() as HealthResponse;
       expect(body.status).toBe("starting");
+    });
+
+    it("should return ok when cache down but cacheRequired=false", async () => {
+      dbStub = stub(
+        databaseMock,
+        "checkDbConnection",
+        () => Promise.resolve(true),
+      );
+      setCacheConnectionResult(false);
+      setConfig({ cacheRequired: false });
+
+      const response = await app.request("/health/startup");
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as HealthResponse;
+      expect(body.status).toBe("ok");
     });
   });
 });

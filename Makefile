@@ -3,7 +3,7 @@
 # All commands run through Docker/Docker Compose
 # ============================================
 
-.PHONY: help install vscode-setup dev build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up
+.PHONY: help install vscode-setup dev dev-redis build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up shell-redis cache-flush
 
 # Default target
 help:
@@ -50,6 +50,11 @@ help:
 	@echo "  format-check  Check code formatting"
 	@echo "  check         Run all checks (lint, typecheck, format-check)"
 	@echo ""
+	@echo "Cache:"
+	@echo "  dev-redis     Start dev environment with Redis cache backend"
+	@echo "  shell-redis   Open redis-cli in Redis container"
+	@echo "  cache-flush   Flush the active cache (detects CACHE_DRIVER from .env)"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  shell-api     Open shell in API container"
 	@echo "  shell-web     Open shell in Web container"
@@ -83,6 +88,12 @@ dev:
 	@echo "Waiting for services to be healthy..."
 	@sleep 5
 	docker compose up api web
+
+dev-redis:
+	docker compose --profile cache-redis up -d postgres mailpit pgadmin redis
+	@echo "Waiting for services to be healthy..."
+	@sleep 5
+	CACHE_DRIVER=redis docker compose --profile cache-redis up api web
 
 build:
 	docker compose build --no-cache
@@ -143,6 +154,8 @@ db-reset-hard:
 	docker compose stop api web
 	@echo "Resetting database volume..."
 	docker compose down -v postgres
+	@echo "Clearing cache volume..."
+	docker volume rm brewform_deno_kv_data 2>/dev/null || true
 	@echo "Starting database..."
 	docker compose up -d postgres
 	@echo "Waiting for database to be ready..."
@@ -243,6 +256,20 @@ shell-web:
 
 shell-db:
 	docker compose exec postgres psql -U brewform -d brewform
+
+shell-redis:
+	docker compose --profile cache-redis exec redis redis-cli
+
+cache-flush:
+	@DRIVER=$$(grep '^CACHE_DRIVER=' .env 2>/dev/null | cut -d= -f2); \
+	DRIVER=$${DRIVER:-deno-kv}; \
+	if [ "$$DRIVER" = "redis" ]; then \
+		echo "Flushing Redis cache..."; \
+		docker compose --profile cache-redis exec redis redis-cli FLUSHDB; \
+	else \
+		echo "Flushing Deno KV cache..."; \
+		docker compose exec api sh -c "rm -f /data/deno-kv/brewform.kv && echo Done"; \
+	fi
 
 # ============================================
 # Cleanup Commands

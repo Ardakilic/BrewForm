@@ -22,6 +22,17 @@ const _defaultConfig = {
   emailFrom: "noreply@brewform.local",
   rateLimitWindowMs: 60000,
   rateLimitMaxRequests: 100,
+  // Cache defaults
+  cacheDriver: "deno-kv",
+  cacheRequired: false,
+  cacheDenoKvPath: undefined,
+  cacheRedisUrl: "redis://localhost:6379",
+  cacheRedisPassword: undefined,
+  cacheTtlRecipesLatest: 300,
+  cacheTtlRecipesPopular: 300,
+  cacheTtlRecipesList: 120,
+  cacheTtlTasteNotes: 86_400,
+  cacheTtlRecipeDetail: 600,
 };
 
 // deno-lint-ignore no-explicit-any

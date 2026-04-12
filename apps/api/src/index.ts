@@ -12,6 +12,7 @@ import { compress } from "hono/compress";
 import { getConfig } from "./config/index.ts";
 import { getLogger } from "./utils/logger/index.ts";
 import { disconnectDb, getPrisma } from "./utils/database/index.ts";
+import { disconnectCache, initCache } from "./utils/cache/index.ts";
 import { errorHandler } from "./middleware/errorHandler.ts";
 import { requestIdMiddleware } from "./middleware/requestId.ts";
 import { loggerMiddleware } from "./middleware/logger.ts";
@@ -124,6 +125,9 @@ async function startServer() {
     getPrisma();
     logger.info("Database connection initialized");
 
+    // Initialize cache backend
+    await initCache(true /* fallbackToMemory */);
+
     // Start HTTP server
     const server = Deno.serve({
       port: config.port,
@@ -149,6 +153,9 @@ async function startServer() {
       // Close HTTP server
       await server.shutdown();
       logger.info("HTTP server closed");
+
+      // Disconnect cache
+      await disconnectCache();
 
       // Close database connection
       await disconnectDb();

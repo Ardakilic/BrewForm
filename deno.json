@@ -1,8 +1,4 @@
 {
-  "name": "brewform",
-  "version": "1.0.0",
-  "description": "Coffee dive-in recipe sharing platform",
-  "license": "MIT",
   "nodeModulesDir": "auto",
   "lock": "deno.lock",
   "fmt": {
@@ -19,12 +15,5 @@
       "apps/api/prisma/migrations",
       "apps/api/prisma/generated"
     ]
-  },
-  "tasks": {
-    "format": "deno fmt .",
-    "format:check": "deno fmt --check .",
-    "typecheck": "deno check apps/api/src/index.ts apps/web/src/main.tsx",
-    "typecheck:api": "deno check apps/api/src/index.ts",
-    "typecheck:web": "deno check apps/web/src/main.tsx"
   }
 }

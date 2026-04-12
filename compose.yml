@@ -61,6 +61,25 @@ services:
     networks:
       - brewform-network
 
+  # Redis Cache (optional — activate with: docker compose --profile cache-redis up)
+  redis:
+    profiles: ["cache-redis"]
+    image: redis:7-alpine
+    container_name: brewform-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - brewform-network
+
   # Backend API (Hono)
   api:
     build:
@@ -76,6 +95,9 @@ services:
       DATABASE_URL: postgresql://brewform:brewform@postgres:5432/brewform?schema=public
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
+      CACHE_DRIVER: ${CACHE_DRIVER:-deno-kv}
+      CACHE_DENO_KV_PATH: /data/deno-kv/brewform.kv
+      CACHE_REDIS_URL: redis://redis:6379
     env_file:
       - .env
     volumes:
@@ -84,6 +106,7 @@ services:
       - ./files:/app/files
       - ./apps/api/node_modules:/app/apps/api/node_modules
       - ./deno.json:/app/deno.json
+      - deno_kv_data:/data/deno-kv
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,6 +147,8 @@ volumes:
   postgres_data:
   mailpit_data:
   pgadmin_data:
+  deno_kv_data:
+  redis_data:
 
 networks:
   brewform-network:

@@ -8,7 +8,11 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { tasteNoteService } from "./service.ts";
-import { authMiddleware, requireAuth } from "../../middleware/auth.ts";
+import {
+  authMiddleware,
+  requireAdmin,
+  requireAuth,
+} from "../../middleware/auth.ts";
 
 const tasteNotes = new Hono();
 
@@ -64,6 +68,24 @@ tasteNotes.get("/search", zValidator("query", searchQuerySchema), async (c) => {
     data: results,
   });
 });
+
+/**
+ * POST /taste-notes/cache/invalidate
+ * Invalidate the taste notes cache (admin only)
+ */
+tasteNotes.post(
+  "/cache/invalidate",
+  requireAdmin,
+  async (c) => {
+    const count = await tasteNoteService.invalidateTasteNotesCache();
+
+    return c.json({
+      success: true,
+      data: { invalidated: count },
+      message: "Taste notes cache invalidated",
+    });
+  },
+);
 
 /**
  * GET /taste-notes/:id
