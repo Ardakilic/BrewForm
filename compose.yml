@@ -64,7 +64,7 @@ services:
   # Redis Cache (optional — activate with: docker compose --profile cache-redis up)
   redis:
     profiles: ["cache-redis"]
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: brewform-redis
     restart: unless-stopped
     ports:
