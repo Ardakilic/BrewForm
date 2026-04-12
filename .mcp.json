@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "serena": {
-      "transport": "sse",
+      "type": "sse",
       "url": "http://localhost:10121/sse"
     },
     "context7": {
