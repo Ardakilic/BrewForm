@@ -118,6 +118,30 @@ services:
     networks:
       - brewform-network
 
+  # Serena MCP (semantic code retrieval for AI tools)
+  serena:
+    image: ghcr.io/oraios/serena:latest
+    container_name: brewform-serena
+    restart: unless-stopped
+    environment:
+      - SERENA_DOCKER=1
+    ports:
+      - "10121:9121"   # SSE endpoint (non-standard to avoid cross-project conflicts)
+      - "34282:24282"  # Web dashboard (non-standard to avoid cross-project conflicts)
+    volumes:
+      - ./apps/api:/workspace/api
+      - ./apps/web:/workspace/web
+      - ./packages:/workspace/packages
+      - serena_index:/root/.serena
+    command: >
+      uv run --directory . serena-mcp-server
+        --transport sse
+        --port 9121
+        --host 0.0.0.0
+        --context desktop-app
+    networks:
+      - brewform-network
+
   # Frontend (React)
   web:
     build:
@@ -149,6 +173,7 @@ volumes:
   pgadmin_data:
   deno_kv_data:
   redis_data:
+  serena_index:
 
 networks:
   brewform-network:

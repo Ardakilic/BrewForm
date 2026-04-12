@@ -3,7 +3,7 @@
 # All commands run through Docker/Docker Compose
 # ============================================
 
-.PHONY: help install vscode-setup dev dev-redis build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up shell-redis cache-flush
+.PHONY: help install vscode-setup dev dev-redis build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up shell-redis cache-flush serena-up serena-stop serena-logs serena-index serena-index-api serena-index-web serena-health-api serena-health-web
 
 # Default target
 help:
@@ -54,6 +54,16 @@ help:
 	@echo "  dev-redis     Start dev environment with Redis cache backend"
 	@echo "  shell-redis   Open redis-cli in Redis container"
 	@echo "  cache-flush   Flush the active cache (detects CACHE_DRIVER from .env)"
+	@echo ""
+	@echo "Serena MCP:"
+	@echo "  serena-up          Start Serena MCP service"
+	@echo "  serena-stop        Stop Serena MCP service"
+	@echo "  serena-logs        View Serena logs"
+	@echo "  serena-index       Force index both API and Web workspaces"
+	@echo "  serena-index-api   Force index API workspace only"
+	@echo "  serena-index-web   Force index Web workspace only"
+	@echo "  serena-health-api  Health check API workspace"
+	@echo "  serena-health-web  Health check Web workspace"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  shell-api     Open shell in API container"
@@ -305,6 +315,33 @@ prod-logs:
 
 prod-stop:
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+
+# ============================================
+# Serena MCP Commands
+# ============================================
+
+serena-up:
+	docker compose up -d serena
+
+serena-stop:
+	docker compose stop serena
+
+serena-logs:
+	docker compose logs -f serena
+
+serena-index-api:
+	docker compose exec serena serena project index /workspace/api
+
+serena-index-web:
+	docker compose exec serena serena project index /workspace/web
+
+serena-index: serena-index-api serena-index-web
+
+serena-health-api:
+	docker compose exec serena serena project health-check /workspace/api
+
+serena-health-web:
+	docker compose exec serena serena project health-check /workspace/web
 
 # ============================================
 # Initialization

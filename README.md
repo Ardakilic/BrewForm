@@ -75,10 +75,14 @@ make db-seed
 
 **Access the services:**
 
-- Frontend: http://localhost:3000
-- API: http://localhost:3001
-- PgAdmin: http://localhost:8080 (pre-configured with PostgreSQL connection)
-- Mailpit: http://localhost:8025
+| Service | URL | Description |
+|---------|-----|-------------|
+| Frontend | http://localhost:3000 | React web app |
+| API | http://localhost:3001 | Hono REST API |
+| PgAdmin | http://localhost:8080 | Database admin (pre-configured) |
+| Mailpit | http://localhost:8025 | Email testing UI |
+| Serena SSE | http://localhost:10121/sse | Serena MCP endpoint |
+| Serena Dashboard | http://localhost:34282 | Serena web dashboard |
 
 ### Local Development
 
@@ -92,6 +96,95 @@ make db-generate
 # Start development servers with live reload
 make dev
 ```
+
+### Serena MCP (Semantic Code Retrieval)
+
+BrewForm ships with [Serena](https://github.com/oraios/serena) — a semantic code retrieval MCP
+server that gives AI coding tools (Claude Code, VSCode Copilot, OpenCode, Kilo Code) deep
+understanding of the codebase through symbol indexing and semantic search.
+
+Serena runs as a Docker service with two workspaces: `api` and `web`.
+
+**Start Serena:**
+
+```bash
+make serena-up
+```
+
+**Serena commands:**
+
+```bash
+make serena-up           # Start Serena MCP service
+make serena-stop         # Stop Serena MCP service
+make serena-logs         # View Serena logs
+make serena-index        # Force index both API and Web workspaces
+make serena-index-api    # Force index API workspace only
+make serena-index-web    # Force index Web workspace only
+make serena-health-api   # Health check API workspace
+make serena-health-web   # Health check Web workspace
+```
+
+**Ports** (non-standard to avoid conflicts with other projects' Serena instances):
+
+| Endpoint | Host Port | Purpose |
+|----------|-----------|---------|
+| SSE | 10121 | MCP client connection |
+| Dashboard | 34282 | Web UI for inspection |
+
+#### Connecting AI clients to Serena
+
+All clients connect to the SSE endpoint at `http://localhost:10121/sse`.
+
+**VSCode / Cursor / Windsurf** — `.vscode/mcp.json` is pre-configured:
+
+```json
+{
+  "servers": {
+    "serena": {
+      "type": "sse",
+      "url": "http://localhost:10121/sse"
+    }
+  }
+}
+```
+
+**Claude Code** — run once to register globally:
+
+```bash
+claude mcp add serena --transport sse --url http://localhost:10121/sse
+```
+
+Or use the per-project `.rulesync/mcp.json` (already configured).
+
+**Kilo Code** — add to `kilo.json` or via the Kilo Code MCP settings UI:
+
+```json
+{
+  "mcpServers": {
+    "serena": {
+      "type": "sse",
+      "url": "http://localhost:10121/sse"
+    }
+  }
+}
+```
+
+**OpenCode** — `opencode.jsonc` is pre-configured:
+
+```jsonc
+{
+  "mcp": {
+    "serena": {
+      "type": "remote",
+      "url": "http://localhost:10121/sse",
+      "enabled": true
+    }
+  }
+}
+```
+
+> **Tip:** The index persists in the `serena_index` Docker volume. After pulling new code or
+> making structural changes, run `make serena-index` to keep the index fresh.
 
 ### IDE Setup (VSCode)
 
@@ -156,6 +249,15 @@ make lint-fix             # Fix lint issues
 make format               # Format code
 make format-check         # Check code formatting
 make check                # Run all checks (lint + format + typecheck)
+
+# Serena MCP
+make serena-up           # Start Serena MCP service
+make serena-stop         # Stop Serena MCP service
+make serena-index        # Force index both workspaces
+make serena-index-api    # Force index API workspace
+make serena-index-web    # Force index Web workspace
+make serena-health-api   # Health check API workspace
+make serena-health-web   # Health check Web workspace
 
 # Cleanup
 make clean        # Remove containers and volumes
