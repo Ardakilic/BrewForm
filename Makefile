@@ -337,7 +337,7 @@ serena-index-api: serena-up
 serena-index-web: serena-up
 	docker compose exec serena serena project index /workspace/web
 
-serena-index-packages:
+serena-index-packages: serena-up
 	docker compose exec serena serena project index /workspace/packages
 
 serena-index: serena-index-api serena-index-web serena-index-packages
