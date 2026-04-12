@@ -7,16 +7,11 @@
  * - Brew method compatibility matrix
  */
 
-import process from "node:process";
-import {
-  BrewMethodType,
-  DrinkType,
-  EmojiRating,
-  PrismaClient,
-} from "./generated/prisma/index.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { hash } from "@node-rs/argon2";
-import { nanoid } from "nanoid";
+import process from 'node:process';
+import { BrewMethodType, DrinkType, EmojiRating, PrismaClient } from './generated/prisma/index.js';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { hash } from '@node-rs/argon2';
+import { nanoid } from 'nanoid';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -27,9 +22,8 @@ const prisma = new PrismaClient({ adapter });
  * Generate a secure random password
  */
 function generatePassword(length = 16): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-  let password = "";
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
   for (let i = 0; i < length; i++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -37,7 +31,7 @@ function generatePassword(length = 16): string {
 }
 
 async function main() {
-  console.log("🌱 Starting database seed...\n");
+  console.log('🌱 Starting database seed...\n');
 
   // ============================================
   // Create Admin User
@@ -51,12 +45,12 @@ async function main() {
   });
 
   await prisma.user.upsert({
-    where: { email: "admin@brewform.local" },
+    where: { email: 'admin@brewform.local' },
     update: {},
     create: {
-      email: "admin@brewform.local",
-      username: "admin",
-      displayName: "Admin",
+      email: 'admin@brewform.local',
+      username: 'admin',
+      displayName: 'Admin',
       passwordHash: adminPasswordHash,
       isAdmin: true,
       emailVerified: true,
@@ -64,7 +58,7 @@ async function main() {
     },
   });
 
-  console.log("👤 Admin user created:");
+  console.log('👤 Admin user created:');
   console.log(`   Email: admin@brewform.local`);
   console.log(`   Password: ${adminPassword}`);
   console.log(`   ⚠️  Please change this password immediately!\n`);
@@ -73,7 +67,7 @@ async function main() {
   // Create Sample Users
   // ============================================
 
-  const samplePasswordHash = await hash("Password123!", {
+  const samplePasswordHash = await hash('Password123!', {
     memoryCost: 65536,
     timeCost: 3,
     parallelism: 4,
@@ -81,40 +75,39 @@ async function main() {
 
   const users = await Promise.all([
     prisma.user.upsert({
-      where: { email: "coffee.lover@example.com" },
+      where: { email: 'coffee.lover@example.com' },
       update: {},
       create: {
-        email: "coffee.lover@example.com",
-        username: "coffeelover",
-        displayName: "Coffee Lover",
+        email: 'coffee.lover@example.com',
+        username: 'coffeelover',
+        displayName: 'Coffee Lover',
         passwordHash: samplePasswordHash,
         emailVerified: true,
-        bio:
-          "Passionate about specialty coffee and espresso. Always chasing the perfect shot!",
+        bio: 'Passionate about specialty coffee and espresso. Always chasing the perfect shot!',
       },
     }),
     prisma.user.upsert({
-      where: { email: "barista.pro@example.com" },
+      where: { email: 'barista.pro@example.com' },
       update: {},
       create: {
-        email: "barista.pro@example.com",
-        username: "baristapro",
-        displayName: "Barista Pro",
+        email: 'barista.pro@example.com',
+        username: 'baristapro',
+        displayName: 'Barista Pro',
         passwordHash: samplePasswordHash,
         emailVerified: true,
-        bio: "Professional barista with 10 years experience. SCA certified.",
+        bio: 'Professional barista with 10 years experience. SCA certified.',
       },
     }),
     prisma.user.upsert({
-      where: { email: "home.brewer@example.com" },
+      where: { email: 'home.brewer@example.com' },
       update: {},
       create: {
-        email: "home.brewer@example.com",
-        username: "homebrewer",
-        displayName: "Home Brewer",
+        email: 'home.brewer@example.com',
+        username: 'homebrewer',
+        displayName: 'Home Brewer',
         passwordHash: samplePasswordHash,
         emailVerified: true,
-        bio: "V60 enthusiast exploring different origins and methods.",
+        bio: 'V60 enthusiast exploring different origins and methods.',
       },
     }),
   ]);
@@ -127,51 +120,51 @@ async function main() {
 
   const grinders = await Promise.all([
     prisma.grinder.upsert({
-      where: { slug: "niche-zero" },
+      where: { slug: 'niche-zero' },
       update: {},
       create: {
-        brand: "Niche",
-        model: "Zero",
-        slug: "niche-zero",
-        type: "conical burr",
+        brand: 'Niche',
+        model: 'Zero',
+        slug: 'niche-zero',
+        type: 'conical burr',
         burrSize: 63,
-        description: "Single dose conical burr grinder",
+        description: 'Single dose conical burr grinder',
       },
     }),
     prisma.grinder.upsert({
-      where: { slug: "baratza-encore" },
+      where: { slug: 'baratza-encore' },
       update: {},
       create: {
-        brand: "Baratza",
-        model: "Encore",
-        slug: "baratza-encore",
-        type: "conical burr",
+        brand: 'Baratza',
+        model: 'Encore',
+        slug: 'baratza-encore',
+        type: 'conical burr',
         burrSize: 40,
-        description: "Entry-level home grinder",
+        description: 'Entry-level home grinder',
       },
     }),
     prisma.grinder.upsert({
-      where: { slug: "eureka-mignon-specialita" },
+      where: { slug: 'eureka-mignon-specialita' },
       update: {},
       create: {
-        brand: "Eureka",
-        model: "Mignon Specialita",
-        slug: "eureka-mignon-specialita",
-        type: "flat burr",
+        brand: 'Eureka',
+        model: 'Mignon Specialita',
+        slug: 'eureka-mignon-specialita',
+        type: 'flat burr',
         burrSize: 55,
-        description: "Premium home espresso grinder",
+        description: 'Premium home espresso grinder',
       },
     }),
     prisma.grinder.upsert({
-      where: { slug: "comandante-c40" },
+      where: { slug: 'comandante-c40' },
       update: {},
       create: {
-        brand: "Comandante",
-        model: "C40 MK4",
-        slug: "comandante-c40",
-        type: "conical burr",
+        brand: 'Comandante',
+        model: 'C40 MK4',
+        slug: 'comandante-c40',
+        type: 'conical burr',
         burrSize: 39,
-        description: "Premium hand grinder",
+        description: 'Premium hand grinder',
       },
     }),
   ]);
@@ -184,51 +177,51 @@ async function main() {
 
   const brewers = await Promise.all([
     prisma.brewer.upsert({
-      where: { slug: "la-marzocco-linea-mini" },
+      where: { slug: 'la-marzocco-linea-mini' },
       update: {},
       create: {
-        brand: "La Marzocco",
-        model: "Linea Mini",
-        slug: "la-marzocco-linea-mini",
+        brand: 'La Marzocco',
+        model: 'Linea Mini',
+        slug: 'la-marzocco-linea-mini',
         brewMethod: BrewMethodType.ESPRESSO_MACHINE,
-        type: "semi-automatic",
-        description: "Prosumer dual boiler espresso machine",
+        type: 'semi-automatic',
+        description: 'Prosumer dual boiler espresso machine',
       },
     }),
     prisma.brewer.upsert({
-      where: { slug: "hario-v60-02" },
+      where: { slug: 'hario-v60-02' },
       update: {},
       create: {
-        brand: "Hario",
-        model: "V60 02 Ceramic",
-        slug: "hario-v60-02",
+        brand: 'Hario',
+        model: 'V60 02 Ceramic',
+        slug: 'hario-v60-02',
         brewMethod: BrewMethodType.POUR_OVER_V60,
-        type: "manual",
-        description: "Classic pour-over dripper",
+        type: 'manual',
+        description: 'Classic pour-over dripper',
       },
     }),
     prisma.brewer.upsert({
-      where: { slug: "aeropress-original" },
+      where: { slug: 'aeropress-original' },
       update: {},
       create: {
-        brand: "AeroPress",
-        model: "Original",
-        slug: "aeropress-original",
+        brand: 'AeroPress',
+        model: 'Original',
+        slug: 'aeropress-original',
         brewMethod: BrewMethodType.AEROPRESS,
-        type: "manual",
-        description: "Versatile pressure brewer",
+        type: 'manual',
+        description: 'Versatile pressure brewer',
       },
     }),
     prisma.brewer.upsert({
-      where: { slug: "chemex-6-cup" },
+      where: { slug: 'chemex-6-cup' },
       update: {},
       create: {
-        brand: "Chemex",
-        model: "6-Cup Classic",
-        slug: "chemex-6-cup",
+        brand: 'Chemex',
+        model: '6-Cup Classic',
+        slug: 'chemex-6-cup',
         brewMethod: BrewMethodType.POUR_OVER_CHEMEX,
-        type: "manual",
-        description: "Elegant pour-over brewer",
+        type: 'manual',
+        description: 'Elegant pour-over brewer',
       },
     }),
   ]);
@@ -241,27 +234,27 @@ async function main() {
 
   const baskets = await Promise.all([
     prisma.basket.upsert({
-      where: { slug: "ims-h24" },
+      where: { slug: 'ims-h24' },
       update: {},
       create: {
-        brand: "IMS",
-        model: "Competition H24",
-        slug: "ims-h24",
+        brand: 'IMS',
+        model: 'Competition H24',
+        slug: 'ims-h24',
         size: 24,
-        type: "precision",
-        description: "24g competition basket",
+        type: 'precision',
+        description: '24g competition basket',
       },
     }),
     prisma.basket.upsert({
-      where: { slug: "vst-18" },
+      where: { slug: 'vst-18' },
       update: {},
       create: {
-        brand: "VST",
-        model: "18g Precision",
-        slug: "vst-18",
+        brand: 'VST',
+        model: '18g Precision',
+        slug: 'vst-18',
         size: 18,
-        type: "precision",
-        description: "18g precision basket",
+        type: 'precision',
+        description: '18g precision basket',
       },
     }),
   ]);
@@ -274,25 +267,25 @@ async function main() {
 
   const portafilters = await Promise.all([
     prisma.portafilter.upsert({
-      where: { slug: "bottomless-58mm" },
+      where: { slug: 'bottomless-58mm' },
       update: {},
       create: {
-        model: "58mm Bottomless",
-        slug: "bottomless-58mm",
-        type: "bottomless",
+        model: '58mm Bottomless',
+        slug: 'bottomless-58mm',
+        type: 'bottomless',
         size: 58,
-        description: "Standard bottomless portafilter",
+        description: 'Standard bottomless portafilter',
       },
     }),
     prisma.portafilter.upsert({
-      where: { slug: "double-spout-58mm" },
+      where: { slug: 'double-spout-58mm' },
       update: {},
       create: {
-        model: "58mm Double Spout",
-        slug: "double-spout-58mm",
-        type: "spouted",
+        model: '58mm Double Spout',
+        slug: 'double-spout-58mm',
+        type: 'spouted',
         size: 58,
-        description: "Traditional double spout portafilter",
+        description: 'Traditional double spout portafilter',
       },
     }),
   ]);
@@ -401,23 +394,23 @@ async function main() {
   const espressoRecipe = await prisma.recipe.create({
     data: {
       userId: users[0].id,
-      slug: "classic-morning-espresso-" + nanoid(8),
-      visibility: "PUBLIC",
+      slug: 'classic-morning-espresso-' + nanoid(8),
+      visibility: 'PUBLIC',
       versions: {
         create: {
           userId: users[0].id,
           versionNumber: 1,
-          title: "Classic Morning Espresso",
+          title: 'Classic Morning Espresso',
           description:
-            "My go-to morning espresso recipe. Balanced and sweet with notes of chocolate.",
+            'My go-to morning espresso recipe. Balanced and sweet with notes of chocolate.',
           brewMethod: BrewMethodType.ESPRESSO_MACHINE,
           drinkType: DrinkType.ESPRESSO,
-          coffeeName: "Counter Culture Hologram",
+          coffeeName: 'Counter Culture Hologram',
           grinderId: grinders[2].id,
           brewerId: brewers[0].id,
           basketId: baskets[0].id,
           portafilterId: portafilters[0].id,
-          grindSize: "2.5",
+          grindSize: '2.5',
           doseGrams: 18,
           yieldGrams: 36,
           yieldMl: 40,
@@ -426,11 +419,11 @@ async function main() {
           brewRatio: 2.0,
           flowRate: 1.43,
           tastingNotes:
-            "Sweet and balanced with dark chocolate notes. Silky mouthfeel with a pleasant caramel finish.",
+            'Sweet and balanced with dark chocolate notes. Silky mouthfeel with a pleasant caramel finish.',
           rating: 9,
           emojiRating: EmojiRating.SUPER_GOOD,
           isFavourite: true,
-          tags: ["espresso", "morning", "chocolate"],
+          tags: ['espresso', 'morning', 'chocolate'],
         },
       },
     },
@@ -447,21 +440,21 @@ async function main() {
   const v60Recipe = await prisma.recipe.create({
     data: {
       userId: users[2].id,
-      slug: "ethiopian-v60-" + nanoid(8),
-      visibility: "PUBLIC",
+      slug: 'ethiopian-v60-' + nanoid(8),
+      visibility: 'PUBLIC',
       versions: {
         create: {
           userId: users[2].id,
           versionNumber: 1,
-          title: "Ethiopian V60 - Floral Notes",
+          title: 'Ethiopian V60 - Floral Notes',
           description:
-            "Single origin pour-over highlighting floral and citrus notes from Yirgacheffe.",
+            'Single origin pour-over highlighting floral and citrus notes from Yirgacheffe.',
           brewMethod: BrewMethodType.POUR_OVER_V60,
           drinkType: DrinkType.POUR_OVER,
-          coffeeName: "Ethiopia Yirgacheffe Kochere",
+          coffeeName: 'Ethiopia Yirgacheffe Kochere',
           grinderId: grinders[3].id,
           brewerId: brewers[1].id,
-          grindSize: "22 clicks",
+          grindSize: '22 clicks',
           doseGrams: 15,
           yieldGrams: 250,
           yieldMl: 250,
@@ -470,10 +463,10 @@ async function main() {
           brewRatio: 16.67,
           flowRate: 1.39,
           tastingNotes:
-            "Bright and complex with jasmine and bergamot aromatics. Clean lemon acidity with a tea-like body.",
+            'Bright and complex with jasmine and bergamot aromatics. Clean lemon acidity with a tea-like body.',
           rating: 8,
           emojiRating: EmojiRating.GOOD,
-          tags: ["v60", "pourover", "floral", "ethiopian"],
+          tags: ['v60', 'pourover', 'floral', 'ethiopian'],
         },
       },
     },
@@ -490,21 +483,20 @@ async function main() {
   const aeropressRecipe = await prisma.recipe.create({
     data: {
       userId: users[1].id,
-      slug: "competition-aeropress-" + nanoid(8),
-      visibility: "PUBLIC",
+      slug: 'competition-aeropress-' + nanoid(8),
+      visibility: 'PUBLIC',
       versions: {
         create: {
           userId: users[1].id,
           versionNumber: 1,
-          title: "Competition-Style AeroPress",
-          description:
-            "Competition-inspired recipe with inverted method and long steep.",
+          title: 'Competition-Style AeroPress',
+          description: 'Competition-inspired recipe with inverted method and long steep.',
           brewMethod: BrewMethodType.AEROPRESS,
           drinkType: DrinkType.POUR_OVER,
-          coffeeName: "Colombia Huila El Paraiso",
+          coffeeName: 'Colombia Huila El Paraiso',
           grinderId: grinders[3].id,
           brewerId: brewers[2].id,
-          grindSize: "18 clicks",
+          grindSize: '18 clicks',
           doseGrams: 17,
           yieldGrams: 200,
           yieldMl: 200,
@@ -513,17 +505,17 @@ async function main() {
           brewRatio: 11.76,
           preparations: [
             {
-              name: "Water",
-              type: "Filtered",
-              input: "220ml",
-              method: "Kettle",
+              name: 'Water',
+              type: 'Filtered',
+              input: '220ml',
+              method: 'Kettle',
             },
           ],
           tastingNotes:
-            "Sweet and clean with notes of red apple and honey. Medium body with a smooth finish.",
+            'Sweet and clean with notes of red apple and honey. Medium body with a smooth finish.',
           rating: 8,
           emojiRating: EmojiRating.GOOD,
-          tags: ["aeropress", "competition", "inverted"],
+          tags: ['aeropress', 'competition', 'inverted'],
         },
       },
     },
@@ -540,23 +532,22 @@ async function main() {
   const cortadoRecipe = await prisma.recipe.create({
     data: {
       userId: users[0].id,
-      slug: "afternoon-cortado-" + nanoid(8),
-      visibility: "PUBLIC",
+      slug: 'afternoon-cortado-' + nanoid(8),
+      visibility: 'PUBLIC',
       versions: {
         create: {
           userId: users[0].id,
           versionNumber: 1,
-          title: "Perfect Afternoon Cortado",
-          description:
-            "Balanced cortado with equal parts espresso and steamed milk.",
+          title: 'Perfect Afternoon Cortado',
+          description: 'Balanced cortado with equal parts espresso and steamed milk.',
           brewMethod: BrewMethodType.ESPRESSO_MACHINE,
           drinkType: DrinkType.CORTADO,
-          coffeeName: "Guatemala Antigua",
+          coffeeName: 'Guatemala Antigua',
           grinderId: grinders[0].id,
           brewerId: brewers[0].id,
           basketId: baskets[1].id,
           portafilterId: portafilters[0].id,
-          grindSize: "15",
+          grindSize: '15',
           doseGrams: 18,
           yieldGrams: 40,
           yieldMl: 42,
@@ -565,18 +556,18 @@ async function main() {
           brewRatio: 2.22,
           preparations: [
             {
-              name: "Milk",
-              type: "Whole milk",
-              input: "60ml",
-              method: "Steamed to 55°C",
+              name: 'Milk',
+              type: 'Whole milk',
+              input: '60ml',
+              method: 'Steamed to 55°C',
             },
           ],
           tastingNotes:
-            "Perfect balance of espresso and milk. Dark chocolate and orange notes shine through.",
+            'Perfect balance of espresso and milk. Dark chocolate and orange notes shine through.',
           rating: 9,
           emojiRating: EmojiRating.SUPER_GOOD,
           isFavourite: true,
-          tags: ["cortado", "milk", "afternoon"],
+          tags: ['cortado', 'milk', 'afternoon'],
         },
       },
     },
@@ -630,7 +621,7 @@ async function main() {
       userId: users[1].id,
       recipeId: espressoRecipe.id,
       content:
-        "Great recipe! I tried it with the IMS basket and got even better results. The chocolate notes really come through.",
+        'Great recipe! I tried it with the IMS basket and got even better results. The chocolate notes really come through.',
     },
   });
 
@@ -639,7 +630,7 @@ async function main() {
       userId: users[2].id,
       recipeId: v60Recipe.id,
       content:
-        "Love the floral notes from this Yirgacheffe. What water temperature do you use for the bloom?",
+        'Love the floral notes from this Yirgacheffe. What water temperature do you use for the bloom?',
     },
   });
 
@@ -654,12 +645,12 @@ async function main() {
 
   console.log(`💬 Added sample comments\n`);
 
-  console.log("✅ Database seed completed successfully!\n");
+  console.log('✅ Database seed completed successfully!\n');
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seed failed:", e);
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

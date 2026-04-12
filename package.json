@@ -1,0 +1,15 @@
+{
+  "name": "brewform",
+  "version": "1.0.0",
+  "description": "Coffee dive-in recipe sharing platform",
+  "private": true,
+  "license": "MIT",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "format": "deno fmt .",
+    "format:check": "deno fmt --check .",
+    "typecheck": "deno check apps/api/src/index.ts apps/web/src/main.tsx",
+    "typecheck:api": "deno check apps/api/src/index.ts",
+    "typecheck:web": "deno check apps/web/src/main.tsx"
+  }
+}

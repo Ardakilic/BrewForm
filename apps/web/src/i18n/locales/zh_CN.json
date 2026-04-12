@@ -398,7 +398,16 @@
     "minChars": "请输入至少 {{count}} 个字符进行搜索",
     "noResults": "未找到匹配的风味备注",
     "selected": "已选择 {{count}}/{{max}} 个风味备注",
-    "scaaReference": "SCAA 风味轮参考"
+    "scaaReference": "SCAA 风味轮参考",
+    "cache": {
+      "label": "Taste Notes Cache",
+      "description": "Taste notes are cached for 24 hours. Use this button to force a refresh after importing new data or making manual database changes.",
+      "invalidateButton": "Invalidate Cache",
+      "invalidating": "Invalidating cache...",
+      "success": "Cache invalidated ({{count}} entries cleared). Next request will re-fetch from the database.",
+      "failure": "Failed to invalidate cache",
+      "networkError": "Network error. Could not reach API."
+    }
   },
   "rating": {
     "superGood": "非常好",

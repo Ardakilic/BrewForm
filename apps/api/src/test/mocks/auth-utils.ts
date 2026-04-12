@@ -6,7 +6,7 @@
 // Create an object with methods that can be stubbed
 const authUtils = {
   hashPassword(_password: string): Promise<string> {
-    return Promise.resolve("hashed_password");
+    return Promise.resolve('hashed_password');
   },
 
   verifyPassword(_password: string, _hash: string): Promise<boolean> {
@@ -18,33 +18,33 @@ const authUtils = {
     refreshToken: string;
   } {
     return {
-      accessToken: "mock_access_token",
-      refreshToken: "mock_refresh_token",
+      accessToken: 'mock_access_token',
+      refreshToken: 'mock_refresh_token',
     };
   },
 
   generateVerificationToken(): string {
-    return "mock_verification_token";
+    return 'mock_verification_token';
   },
 
   generatePasswordResetToken(): string {
-    return "mock_reset_token";
+    return 'mock_reset_token';
   },
 
   generateSessionToken(): string {
-    return "mock_session_token";
+    return 'mock_session_token';
   },
 
   verifyAccessToken(
     _token: string,
   ): Promise<{ userId: string; sessionId: string }> {
-    return Promise.resolve({ userId: "user_123", sessionId: "session_123" });
+    return Promise.resolve({ userId: 'user_123', sessionId: 'session_123' });
   },
 
   verifyRefreshToken(
     _token: string,
   ): Promise<{ userId: string; sessionId: string }> {
-    return Promise.resolve({ userId: "user_123", sessionId: "session_123" });
+    return Promise.resolve({ userId: 'user_123', sessionId: 'session_123' });
   },
 };
 

@@ -2,23 +2,23 @@
  * BrewForm Settings Page
  */
 
-import { useEffect, useState } from "react";
-import { useStyletron } from "baseui";
-import { Card } from "../../components/Card.tsx";
-import { FormControl } from "baseui/form-control";
-import { Input } from "baseui/input";
-import { Textarea } from "baseui/textarea";
-import { type OnChangeParams, Select } from "baseui/select";
-import { Button } from "baseui/button";
-import { HeadingLarge, HeadingMedium } from "baseui/typography";
-import { KIND, Notification } from "baseui/notification";
-import { useTranslation } from "react-i18next";
-import { Helmet } from "react-helmet-async";
-import useSWR from "swr";
-import { api } from "../../utils/api.ts";
-import { type ThemeMode, useTheme } from "../../contexts/ThemeContext.tsx";
-import LoadingSpinner from "../../components/LoadingSpinner.tsx";
-import type { UserProfile } from "../../types";
+import { useEffect, useState } from 'react';
+import { useStyletron } from 'baseui';
+import { Card } from '../../components/Card.tsx';
+import { FormControl } from 'baseui/form-control';
+import { Input } from 'baseui/input';
+import { Textarea } from 'baseui/textarea';
+import { type OnChangeParams, Select } from 'baseui/select';
+import { Button } from 'baseui/button';
+import { HeadingLarge, HeadingMedium } from 'baseui/typography';
+import { KIND, Notification } from 'baseui/notification';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
+import useSWR from 'swr';
+import { api } from '../../utils/api.ts';
+import { type ThemeMode, useTheme } from '../../contexts/ThemeContext.tsx';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
+import type { UserProfile } from '../../types';
 
 const fetcher = async (url: string): Promise<UserProfile> => {
   const response = await api.get<UserProfile>(url);
@@ -26,15 +26,15 @@ const fetcher = async (url: string): Promise<UserProfile> => {
 };
 
 const THEME_OPTIONS = [
-  { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
-  { id: "coffee", label: "Coffee" },
-  { id: "system", label: "System" },
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'coffee', label: 'Coffee' },
+  { id: 'system', label: 'System' },
 ];
 
 const UNIT_OPTIONS = [
-  { id: "METRIC", label: "Metric (g, ml, °C)" },
-  { id: "IMPERIAL", label: "Imperial (oz, fl oz, °F)" },
+  { id: 'METRIC', label: 'Metric (g, ml, °C)' },
+  { id: 'IMPERIAL', label: 'Imperial (oz, fl oz, °F)' },
 ];
 
 function SettingsPage() {
@@ -43,35 +43,34 @@ function SettingsPage() {
   const { themeMode, setThemeMode } = useTheme();
 
   const { data: profile, isLoading, mutate } = useSWR<UserProfile>(
-    "/users/me",
+    '/users/me',
     fetcher,
   );
 
   const [formData, setFormData] = useState({
-    displayName: "",
-    bio: "",
-    website: "",
-    preferredUnits: "METRIC",
+    displayName: '',
+    bio: '',
+    website: '',
+    preferredUnits: 'METRIC',
   });
 
   useEffect(() => {
     if (profile) {
       setFormData({
-        displayName: profile.displayName || "",
-        bio: profile.bio || "",
-        website: profile.website || "",
-        preferredUnits: profile.preferredUnits || "METRIC",
+        displayName: profile.displayName || '',
+        bio: profile.bio || '',
+        website: profile.website || '',
+        preferredUnits: profile.preferredUnits || 'METRIC',
       });
     }
   }, [profile]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleChange =
-    (field: string) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setFormData({ ...formData, [field]: e.target.value });
     };
 
@@ -88,12 +87,12 @@ function SettingsPage() {
   };
 
   const handleSave = async () => {
-    setError("");
+    setError('');
     setSuccess(false);
     setIsSaving(true);
 
     try {
-      const response = await api.patch("/users/me", {
+      const response = await api.patch('/users/me', {
         displayName: formData.displayName || undefined,
         bio: formData.bio || undefined,
         website: formData.website || undefined,
@@ -104,10 +103,10 @@ function SettingsPage() {
         setSuccess(true);
         mutate();
       } else {
-        setError(response.error?.message || "Failed to update profile");
+        setError(response.error?.message || 'Failed to update profile');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update profile");
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
     } finally {
       setIsSaving(false);
     }
@@ -118,21 +117,21 @@ function SettingsPage() {
   return (
     <>
       <Helmet>
-        <title>{t("pages.settings.title")}</title>
+        <title>{t('pages.settings.title')}</title>
       </Helmet>
 
-      <div className={css({ maxWidth: "600px", margin: "0 auto" })}>
-        <HeadingLarge marginBottom="24px">{t("settings.title")}</HeadingLarge>
+      <div className={css({ maxWidth: '600px', margin: '0 auto' })}>
+        <HeadingLarge marginBottom='24px'>{t('settings.title')}</HeadingLarge>
 
         {/* Profile Settings */}
         <Card>
-          <HeadingMedium marginBottom="16px">
-            {t("settings.profile")}
+          <HeadingMedium marginBottom='16px'>
+            {t('settings.profile')}
           </HeadingMedium>
 
           {success && (
             <Notification kind={KIND.positive} closeable={false}>
-              {t("settings.messages.profileUpdated")}
+              {t('settings.messages.profileUpdated')}
             </Notification>
           )}
 
@@ -142,43 +141,43 @@ function SettingsPage() {
             </Notification>
           )}
 
-          <FormControl label={t("settings.displayName")}>
+          <FormControl label={t('settings.displayName')}>
             <Input
               value={formData.displayName}
-              onChange={handleChange("displayName")}
-              placeholder={profile?.username || ""}
+              onChange={handleChange('displayName')}
+              placeholder={profile?.username || ''}
             />
           </FormControl>
 
-          <FormControl label={t("settings.bio")}>
+          <FormControl label={t('settings.bio')}>
             <Textarea
               value={formData.bio}
-              onChange={handleChange("bio")}
-              placeholder={t("settings.placeholders.bio")}
+              onChange={handleChange('bio')}
+              placeholder={t('settings.placeholders.bio')}
             />
           </FormControl>
 
-          <FormControl label={t("settings.website")}>
+          <FormControl label={t('settings.website')}>
             <Input
-              type="url"
+              type='url'
               value={formData.website}
-              onChange={handleChange("website")}
-              placeholder={t("settings.placeholders.website")}
+              onChange={handleChange('website')}
+              placeholder={t('settings.placeholders.website')}
             />
           </FormControl>
 
           <Button onClick={handleSave} isLoading={isSaving}>
-            {t("common.save")}
+            {t('common.save')}
           </Button>
         </Card>
 
         {/* Preferences */}
-        <Card overrides={{ Root: { style: { marginTop: "24px" } } }}>
-          <HeadingMedium marginBottom="16px">
-            {t("settings.preferences")}
+        <Card overrides={{ Root: { style: { marginTop: '24px' } } }}>
+          <HeadingMedium marginBottom='16px'>
+            {t('settings.preferences')}
           </HeadingMedium>
 
-          <FormControl label={t("settings.theme")}>
+          <FormControl label={t('settings.theme')}>
             <Select
               options={THEME_OPTIONS}
               value={THEME_OPTIONS.filter((o) => o.id === themeMode)}
@@ -186,12 +185,10 @@ function SettingsPage() {
             />
           </FormControl>
 
-          <FormControl label={t("settings.units")}>
+          <FormControl label={t('settings.units')}>
             <Select
               options={UNIT_OPTIONS}
-              value={UNIT_OPTIONS.filter((o) =>
-                o.id === formData.preferredUnits
-              )}
+              value={UNIT_OPTIONS.filter((o) => o.id === formData.preferredUnits)}
               onChange={handleUnitsChange}
             />
           </FormControl>
@@ -200,25 +197,25 @@ function SettingsPage() {
         {/* Danger Zone */}
         <Card
           overrides={{
-            Root: { style: { marginTop: "24px", borderColor: "#dc3545" } },
+            Root: { style: { marginTop: '24px', borderColor: '#dc3545' } },
           }}
         >
-          <HeadingMedium marginBottom="8px" color="#dc3545">
-            {t("settings.deleteAccount")}
+          <HeadingMedium marginBottom='8px' color='#dc3545'>
+            {t('settings.deleteAccount')}
           </HeadingMedium>
           <p
             className={css({
               color: theme.colors.contentSecondary,
-              marginBottom: "16px",
+              marginBottom: '16px',
             })}
           >
-            {t("settings.deleteWarning")}
+            {t('settings.deleteWarning')}
           </p>
           <Button
-            kind="secondary"
-            overrides={{ BaseButton: { style: { color: "#dc3545" } } }}
+            kind='secondary'
+            overrides={{ BaseButton: { style: { color: '#dc3545' } } }}
           >
-            {t("settings.deleteAccount")}
+            {t('settings.deleteAccount')}
           </Button>
         </Card>
       </div>

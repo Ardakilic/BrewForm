@@ -3,7 +3,7 @@
  * Extends the expect() return type with custom DOM matchers
  */
 
-declare module "@std/expect" {
+declare module '@std/expect' {
   interface Expected {
     toBeInTheDocument(): void;
   }

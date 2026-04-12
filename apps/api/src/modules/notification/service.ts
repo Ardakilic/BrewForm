@@ -3,12 +3,8 @@
  * Handles notification creation and management
  */
 
-import {
-  createPaginationMeta,
-  getPagination,
-  getPrisma,
-} from "../../utils/database/index.ts";
-import type { NotificationType } from "../../../prisma/generated/prisma";
+import { createPaginationMeta, getPagination, getPrisma } from '../../utils/database/index.ts';
+import { NotificationType } from '../../types/enums.ts';
 
 // ============================================
 // Types
@@ -16,7 +12,7 @@ import type { NotificationType } from "../../../prisma/generated/prisma";
 
 export interface CreateNotificationInput {
   userId: string;
-  type: NotificationType;
+  type: typeof NotificationType[keyof typeof NotificationType];
   title: string;
   message: string;
   link?: string;
@@ -86,7 +82,7 @@ export async function getUserNotifications(
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       ...pagination,
     }),
     prisma.notification.count({ where }),

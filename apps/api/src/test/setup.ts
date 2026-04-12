@@ -4,7 +4,7 @@
  * Module-level mocks are handled via src/test/import_map.json.
  */
 
-import { type Spy, spy } from "@std/testing/mock";
+import { type Spy, spy } from '@std/testing/mock';
 
 export { type Spy, spy };
 

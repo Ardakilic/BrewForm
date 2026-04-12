@@ -24,12 +24,15 @@
     "../utils/rate-limit/index.ts": "./mocks/rate-limit-util.ts",
     "../../utils/rate-limit/index.ts": "./mocks/rate-limit-util.ts",
     "../utils/logger/index.ts": "./mocks/logger.ts",
+    "../utils/cache/index.ts": "./mocks/cache.ts",
+    "../../utils/cache/index.ts": "./mocks/cache.ts",
     "../middleware/auth.ts": "./mocks/auth-middleware.ts",
     "../middleware/errorHandler.ts": "./mocks/error-handler.ts",
     "../middleware/rateLimit.ts": "./mocks/rate-limit.ts",
     "../utils/auth/index.ts": "./mocks/auth-utils.ts",
     "../utils/email/index.ts": "./mocks/email.ts",
     "../config/index.ts": "./mocks/config.ts",
+    "../../config/index.ts": "./mocks/config.ts",
     "../../prisma/generated/prisma": "./mocks/prisma-enums.ts"
   }
 }

@@ -3,10 +3,10 @@
  * Prisma client singleton with logging integration
  */
 
-import { PrismaClient } from "../../../prisma/generated/prisma/index.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { getConfig } from "../../config/index.ts";
-import { getLogger } from "../logger/index.ts";
+import { PrismaClient } from '../../../prisma/generated/prisma/index.js';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { getConfig } from '../../config/index.ts';
+import { getLogger } from '../logger/index.ts';
 
 // Singleton instance
 let prismaInstance:
@@ -30,26 +30,26 @@ export function getPrisma(): ReturnType<
 
     prismaInstance = new PrismaClient({
       adapter,
-      log: config.nodeEnv === "development"
+      log: config.nodeEnv === 'development'
         ? [
-          { level: "query", emit: "event" },
-          { level: "error", emit: "event" },
-          { level: "warn", emit: "event" },
+          { level: 'query', emit: 'event' },
+          { level: 'error', emit: 'event' },
+          { level: 'warn', emit: 'event' },
         ]
         : [
-          { level: "error", emit: "event" },
-          { level: "warn", emit: "event" },
+          { level: 'error', emit: 'event' },
+          { level: 'warn', emit: 'event' },
         ],
     });
 
     // Log queries in development
-    if (config.nodeEnv === "development") {
+    if (config.nodeEnv === 'development') {
       prismaInstance.$on(
-        "query" as never,
+        'query' as never,
         (e: { query: string; params: string; duration: number }) => {
           logger.debug({
-            type: "database",
-            operation: "query",
+            type: 'database',
+            operation: 'query',
             query: e.query,
             params: e.params,
             duration: e.duration,
@@ -59,24 +59,24 @@ export function getPrisma(): ReturnType<
     }
 
     // Log errors
-    prismaInstance.$on("error" as never, (e: { message: string }) => {
+    prismaInstance.$on('error' as never, (e: { message: string }) => {
       logger.error({
-        type: "database",
-        operation: "error",
+        type: 'database',
+        operation: 'error',
         message: e.message,
       });
     });
 
     // Log warnings
-    prismaInstance.$on("warn" as never, (e: { message: string }) => {
+    prismaInstance.$on('warn' as never, (e: { message: string }) => {
       logger.warn({
-        type: "database",
-        operation: "warning",
+        type: 'database',
+        operation: 'warning',
         message: e.message,
       });
     });
 
-    logger.info("Database client initialized");
+    logger.info('Database client initialized');
   }
 
   return prismaInstance;
@@ -89,7 +89,7 @@ export async function disconnectDb(): Promise<void> {
   if (prismaInstance) {
     await prismaInstance.$disconnect();
     prismaInstance = null;
-    getLogger().info("Database client disconnected");
+    getLogger().info('Database client disconnected');
   }
 }
 
@@ -103,9 +103,9 @@ export async function checkDbConnection(): Promise<boolean> {
     return true;
   } catch (error) {
     getLogger().error({
-      type: "database",
-      operation: "health_check",
-      error: error instanceof Error ? error.message : "Unknown error",
+      type: 'database',
+      operation: 'health_check',
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     return false;
   }

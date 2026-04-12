@@ -3,9 +3,9 @@
  * Handles all API requests with auth token management
  */
 
-import type { ApiResponse } from "../types/index.ts";
+import type { ApiResponse } from '../types/index.ts';
 
-const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // ============================================
 // Types
@@ -24,21 +24,21 @@ export type { ApiResponse };
 // ============================================
 
 function getAccessToken(): string | null {
-  return localStorage.getItem("brewform-access-token");
+  return localStorage.getItem('brewform-access-token');
 }
 
 function getRefreshToken(): string | null {
-  return localStorage.getItem("brewform-refresh-token");
+  return localStorage.getItem('brewform-refresh-token');
 }
 
 function setTokens(accessToken: string, refreshToken: string) {
-  localStorage.setItem("brewform-access-token", accessToken);
-  localStorage.setItem("brewform-refresh-token", refreshToken);
+  localStorage.setItem('brewform-access-token', accessToken);
+  localStorage.setItem('brewform-refresh-token', refreshToken);
 }
 
 function clearTokens() {
-  localStorage.removeItem("brewform-access-token");
-  localStorage.removeItem("brewform-refresh-token");
+  localStorage.removeItem('brewform-access-token');
+  localStorage.removeItem('brewform-refresh-token');
 }
 
 // ============================================
@@ -51,8 +51,8 @@ async function refreshAccessToken(): Promise<boolean> {
 
   try {
     const response = await fetch(`${API_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
 
@@ -93,7 +93,7 @@ async function request<T>(
   }
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...options.headers,
   };
 
@@ -130,8 +130,8 @@ async function request<T>(
     return {
       success: false,
       error: {
-        code: "NETWORK_ERROR",
-        message: "Network error. Please check your connection.",
+        code: 'NETWORK_ERROR',
+        message: 'Network error. Please check your connection.',
       },
     };
   }
@@ -142,20 +142,19 @@ async function request<T>(
 // ============================================
 
 export const api = {
-  get: <T>(path: string, options?: RequestOptions) =>
-    request<T>("GET", path, undefined, options),
+  get: <T>(path: string, options?: RequestOptions) => request<T>('GET', path, undefined, options),
 
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
-    request<T>("POST", path, body, options),
+    request<T>('POST', path, body, options),
 
   put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
-    request<T>("PUT", path, body, options),
+    request<T>('PUT', path, body, options),
 
   patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
-    request<T>("PATCH", path, body, options),
+    request<T>('PATCH', path, body, options),
 
   delete: <T>(path: string, options?: RequestOptions) =>
-    request<T>("DELETE", path, undefined, options),
+    request<T>('DELETE', path, undefined, options),
 };
 
 export default api;

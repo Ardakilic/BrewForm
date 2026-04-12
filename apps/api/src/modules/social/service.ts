@@ -8,15 +8,12 @@ import {
   getPagination,
   getPrisma,
   softDeleteFilter,
-} from "../../utils/database/index.ts";
-import { logAudit } from "../../utils/logger/index.ts";
-import { createComparisonToken } from "../../utils/slug/index.ts";
-import {
-  BadRequestError,
-  ForbiddenError,
-  NotFoundError,
-} from "../../middleware/errorHandler.ts";
-import { notificationService } from "../notification/service.ts";
+} from '../../utils/database/index.ts';
+import { getLogger, logAudit } from '../../utils/logger/index.ts';
+import { CacheKeys, invalidateCache } from '../../utils/cache/index.ts';
+import { createComparisonToken } from '../../utils/slug/index.ts';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../../middleware/errorHandler.ts';
+import { notificationService } from '../notification/service.ts';
 
 // ============================================
 // Comment Notification Helpers
@@ -35,11 +32,9 @@ async function notifyRecipeOwnerOfComment(
 ) {
   await notificationService.createNotification({
     userId: recipe.userId,
-    type: "COMMENT_ON_RECIPE",
-    title: "New comment on your recipe",
-    message: `${
-      commenter.displayName || commenter.username
-    } commented on "${recipeTitle}"`,
+    type: 'COMMENT_ON_RECIPE',
+    title: 'New comment on your recipe',
+    message: `${commenter.displayName || commenter.username} commented on "${recipeTitle}"`,
     link: `/recipes/${recipe.slug || recipeId}`,
     recipeId,
     commentId,
@@ -60,11 +55,9 @@ async function notifyParentCommentAuthor(
 ) {
   await notificationService.createNotification({
     userId: parentUserId,
-    type: "REPLY_TO_COMMENT",
-    title: "New reply to your comment",
-    message: `${
-      commenter.displayName || commenter.username
-    } replied to your comment`,
+    type: 'REPLY_TO_COMMENT',
+    title: 'New reply to your comment',
+    message: `${commenter.displayName || commenter.username} replied to your comment`,
     link: `/recipes/${recipe.slug || recipeId}`,
     recipeId,
     commentId,
@@ -87,13 +80,13 @@ export async function addFavourite(userId: string, recipeId: string) {
   });
 
   if (!recipe) {
-    throw new NotFoundError("Recipe");
+    throw new NotFoundError('Recipe');
   }
 
   // Check visibility
-  if (recipe.visibility !== "PUBLIC" && recipe.visibility !== "UNLISTED") {
+  if (recipe.visibility !== 'PUBLIC' && recipe.visibility !== 'UNLISTED') {
     if (recipe.userId !== userId) {
-      throw new ForbiddenError("Cannot favourite private recipes");
+      throw new ForbiddenError('Cannot favourite private recipes');
     }
   }
 
@@ -119,7 +112,10 @@ export async function addFavourite(userId: string, recipeId: string) {
     data: { favouriteCount: { increment: 1 } },
   });
 
-  logAudit("recipe_favourited", "recipe", recipeId, userId);
+  // Invalidate popular recipes cache since favourite count changed
+  await invalidatePopularRecipesCache();
+
+  logAudit('recipe_favourited', 'recipe', recipeId, userId);
 
   return { success: true };
 }
@@ -137,7 +133,7 @@ export async function removeFavourite(userId: string, recipeId: string) {
   });
 
   if (!favourite) {
-    throw new NotFoundError("Favourite");
+    throw new NotFoundError('Favourite');
   }
 
   await prisma.userFavourite.delete({
@@ -150,9 +146,25 @@ export async function removeFavourite(userId: string, recipeId: string) {
     data: { favouriteCount: { decrement: 1 } },
   });
 
-  logAudit("recipe_unfavourited", "recipe", recipeId, userId);
+  // Invalidate popular recipes cache since favourite count changed
+  await invalidatePopularRecipesCache();
+
+  logAudit('recipe_unfavourited', 'recipe', recipeId, userId);
 
   return { success: true };
+}
+
+async function invalidatePopularRecipesCache(): Promise<void> {
+  try {
+    await invalidateCache(CacheKeys.popularRecipes());
+  } catch (error) {
+    const logger = getLogger();
+    logger.warn({
+      type: 'cache',
+      key: 'recipes:popular',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }, 'Popular recipes cache invalidation failed');
+  }
 }
 
 /**
@@ -190,12 +202,12 @@ export async function addComment(
   });
 
   if (!recipe) {
-    throw new NotFoundError("Recipe");
+    throw new NotFoundError('Recipe');
   }
 
   // Check visibility
-  if (recipe.visibility !== "PUBLIC" && recipe.visibility !== "UNLISTED") {
-    throw new ForbiddenError("Cannot comment on private recipes");
+  if (recipe.visibility !== 'PUBLIC' && recipe.visibility !== 'UNLISTED') {
+    throw new ForbiddenError('Cannot comment on private recipes');
   }
 
   // Validate parent comment if provided
@@ -205,7 +217,7 @@ export async function addComment(
     });
 
     if (!parent) {
-      throw new NotFoundError("Parent comment");
+      throw new NotFoundError('Parent comment');
     }
   }
 
@@ -234,7 +246,7 @@ export async function addComment(
     data: { commentCount: { increment: 1 } },
   });
 
-  logAudit("comment_added", "comment", comment.id, userId);
+  logAudit('comment_added', 'comment', comment.id, userId);
 
   // Send notifications asynchronously (don't await to avoid blocking)
   sendCommentNotifications(prisma, recipe, recipeId, comment, userId, parentId);
@@ -316,11 +328,11 @@ export async function updateComment(
   });
 
   if (!comment) {
-    throw new NotFoundError("Comment");
+    throw new NotFoundError('Comment');
   }
 
   if (comment.userId !== userId) {
-    throw new ForbiddenError("You can only edit your own comments");
+    throw new ForbiddenError('You can only edit your own comments');
   }
 
   const updated = await prisma.comment.update({
@@ -338,7 +350,7 @@ export async function updateComment(
     },
   });
 
-  logAudit("comment_updated", "comment", commentId, userId);
+  logAudit('comment_updated', 'comment', commentId, userId);
 
   return updated;
 }
@@ -358,11 +370,11 @@ export async function deleteComment(
   });
 
   if (!comment) {
-    throw new NotFoundError("Comment");
+    throw new NotFoundError('Comment');
   }
 
   if (comment.userId !== userId && !isAdmin) {
-    throw new ForbiddenError("You can only delete your own comments");
+    throw new ForbiddenError('You can only delete your own comments');
   }
 
   await prisma.comment.update({
@@ -376,7 +388,7 @@ export async function deleteComment(
     data: { commentCount: { decrement: 1 } },
   });
 
-  logAudit("comment_deleted", "comment", commentId, userId);
+  logAudit('comment_deleted', 'comment', commentId, userId);
 }
 
 /**
@@ -395,12 +407,12 @@ export async function getRecipeComments(
   });
 
   if (!recipe) {
-    throw new NotFoundError("Recipe");
+    throw new NotFoundError('Recipe');
   }
 
   // Check visibility - only allow comments on public/unlisted recipes
-  if (recipe.visibility !== "PUBLIC" && recipe.visibility !== "UNLISTED") {
-    throw new ForbiddenError("Cannot view comments on private recipes");
+  if (recipe.visibility !== 'PUBLIC' && recipe.visibility !== 'UNLISTED') {
+    throw new ForbiddenError('Cannot view comments on private recipes');
   }
 
   const [comments, total] = await Promise.all([
@@ -431,10 +443,10 @@ export async function getRecipeComments(
               },
             },
           },
-          orderBy: { createdAt: "asc" },
+          orderBy: { createdAt: 'asc' },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       ...pagination,
     }),
     prisma.comment.count({
@@ -448,10 +460,10 @@ export async function getRecipeComments(
 
   // Add isAuthor flag
   const recipeAuthorId = recipe.userId;
-  const commentsWithAuthorFlag = comments.map((comment) => ({
+  const commentsWithAuthorFlag = comments.map((comment: typeof comments[number]) => ({
     ...comment,
     isAuthor: comment.userId === recipeAuthorId,
-    replies: comment.replies.map((reply) => ({
+    replies: comment.replies.map((reply: typeof comment.replies[number]) => ({
       ...reply,
       isAuthor: reply.userId === recipeAuthorId,
     })),
@@ -475,7 +487,7 @@ export async function createComparison(recipeAId: string, recipeBId: string) {
 
   // Cannot compare same recipe
   if (recipeAId === recipeBId) {
-    throw new BadRequestError("Cannot compare a recipe to itself");
+    throw new BadRequestError('Cannot compare a recipe to itself');
   }
 
   // Validate both recipes exist and are public
@@ -489,11 +501,11 @@ export async function createComparison(recipeAId: string, recipeBId: string) {
   ]);
 
   if (!recipeA || !recipeB) {
-    throw new NotFoundError("One or both recipes not found");
+    throw new NotFoundError('One or both recipes not found');
   }
 
-  if (recipeA.visibility !== "PUBLIC" || recipeB.visibility !== "PUBLIC") {
-    throw new BadRequestError("Both recipes must be public to compare");
+  if (recipeA.visibility !== 'PUBLIC' || recipeB.visibility !== 'PUBLIC') {
+    throw new BadRequestError('Both recipes must be public to compare');
   }
 
   // Check if comparison already exists
@@ -559,15 +571,15 @@ export async function getComparisonByToken(token: string) {
   });
 
   if (!comparison) {
-    throw new NotFoundError("Comparison");
+    throw new NotFoundError('Comparison');
   }
 
   // Check both recipes are still public
   if (
-    comparison.recipeA.visibility !== "PUBLIC" ||
-    comparison.recipeB.visibility !== "PUBLIC"
+    comparison.recipeA.visibility !== 'PUBLIC' ||
+    comparison.recipeB.visibility !== 'PUBLIC'
   ) {
-    throw new BadRequestError("One or both recipes are no longer public");
+    throw new BadRequestError('One or both recipes are no longer public');
   }
 
   return comparison;

@@ -398,7 +398,16 @@
     "minChars": "Digite pelo menos {{count}} caracteres para pesquisar",
     "noResults": "Nenhuma nota de sabor encontrada",
     "selected": "{{count}}/{{max}} notas selecionadas",
-    "scaaReference": "Referência da roda SCAA"
+    "scaaReference": "Referência da roda SCAA",
+    "cache": {
+      "label": "Cache de Notas de Degustacao",
+      "description": "As notas de degustacao sao armazenadas em cache por 24 horas. Use este botao para forcar uma atualizacao apos importar novos dados ou fazer alteracoes manuais no banco de dados.",
+      "invalidateButton": "Invalidar Cache",
+      "invalidating": "Invalidando cache...",
+      "success": "Cache invalidado ({{count}} entradas removidas). A proxima requisicao buscara novamente no banco de dados.",
+      "failure": "Falha ao invalidar o cache",
+      "networkError": "Erro de rede. Nao foi possivel contactar a API."
+    }
   },
   "rating": {
     "superGood": "Excelente",

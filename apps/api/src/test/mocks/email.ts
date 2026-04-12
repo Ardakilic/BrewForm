@@ -3,7 +3,7 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { spy } from "@std/testing/mock";
+import { spy } from '@std/testing/mock';
 
 export const sendEmail = spy(() => Promise.resolve(true));
 export const sendVerificationEmail = spy(() => Promise.resolve(true));
