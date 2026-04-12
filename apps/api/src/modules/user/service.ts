@@ -11,7 +11,7 @@ import {
 } from '../../utils/database/index.ts';
 import { logAudit } from '../../utils/logger/index.ts';
 import { NotFoundError } from '../../middleware/errorHandler.ts';
-import type { Theme, UnitSystem } from '../../../prisma/generated/prisma/index.js';
+import type { Theme, UnitSystem } from '../../types/enums.ts';
 
 // ============================================
 // Types

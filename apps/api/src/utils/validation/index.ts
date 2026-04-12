@@ -10,7 +10,7 @@ import {
   EmojiRating,
   ProcessingMethod,
   Visibility,
-} from '../../../prisma/generated/prisma/index.js';
+} from '../../types/enums.ts';
 // Re-export CUID validation utilities
 export * from './cuid.ts';
 

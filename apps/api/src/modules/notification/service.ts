@@ -4,7 +4,7 @@
  */
 
 import { createPaginationMeta, getPagination, getPrisma } from '../../utils/database/index.ts';
-import { NotificationType } from '../../../prisma/generated/prisma/index.js';
+import { NotificationType } from '../../types/enums.ts';
 
 // ============================================
 // Types
