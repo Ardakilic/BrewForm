@@ -2,11 +2,11 @@
  * BrewForm Recipe Detail Page
  */
 
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { useStyletron } from "baseui";
-import { Button } from "baseui/button";
-import { Card } from "../../components/Card.tsx";
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useStyletron } from 'baseui';
+import { Button } from 'baseui/button';
+import { Card } from '../../components/Card.tsx';
 import {
   HeadingLarge,
   HeadingSmall,
@@ -14,17 +14,17 @@ import {
   LabelMedium,
   ParagraphMedium,
   ParagraphSmall,
-} from "baseui/typography";
-import { KIND as TAG_KIND, Tag } from "baseui/tag";
-import { Textarea } from "baseui/textarea";
-import { DURATION, useSnackbar } from "baseui/snackbar";
-import { useTranslation } from "react-i18next";
-import { Helmet } from "react-helmet-async";
-import useSWR, { mutate } from "swr";
-import { api } from "../../utils/api.ts";
-import LoadingSpinner from "../../components/LoadingSpinner.tsx";
-import { useAuth } from "../../contexts/AuthContext.tsx";
-import type { Comment, Recipe } from "../../types/index.ts";
+} from 'baseui/typography';
+import { KIND as TAG_KIND, Tag } from 'baseui/tag';
+import { Textarea } from 'baseui/textarea';
+import { DURATION, useSnackbar } from 'baseui/snackbar';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
+import useSWR, { mutate } from 'swr';
+import { api } from '../../utils/api.ts';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import type { Comment, Recipe } from '../../types/index.ts';
 
 const fetcher = async (url: string): Promise<Recipe> => {
   const response = await api.get<Recipe>(url);
@@ -43,14 +43,14 @@ interface RecipeFieldProps {
   theme: ReturnType<typeof useStyletron>[1];
 }
 
-function RecipeField({ label, value, suffix = "", theme }: RecipeFieldProps) {
+function RecipeField({ label, value, suffix = '', theme }: RecipeFieldProps) {
   if (!value) return null;
   return (
     <>
-      <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
+      <LabelMedium color={theme.colors.contentSecondary} marginBottom='4px'>
         {label}
       </LabelMedium>
-      <ParagraphMedium marginBottom="16px">{value}{suffix}</ParagraphMedium>
+      <ParagraphMedium marginBottom='16px'>{value}{suffix}</ParagraphMedium>
     </>
   );
 }
@@ -67,15 +67,15 @@ function ClickableField({ label, value, linkTo, theme }: ClickableFieldProps) {
   if (!value) return null;
   return (
     <>
-      <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
+      <LabelMedium color={theme.colors.contentSecondary} marginBottom='4px'>
         {label}
       </LabelMedium>
-      <Link to={linkTo} className={css({ textDecoration: "none" })}>
+      <Link to={linkTo} className={css({ textDecoration: 'none' })}>
         <ParagraphMedium
-          marginBottom="16px"
+          marginBottom='16px'
           className={css({
             color: theme.colors.contentTertiary,
-            ":hover": { textDecoration: "underline" },
+            ':hover': { textDecoration: 'underline' },
           })}
         >
           {value}
@@ -93,15 +93,13 @@ interface EquipmentFieldProps {
 
 function EquipmentField({ label, equipment, theme }: EquipmentFieldProps) {
   if (!equipment) return null;
-  const displayName = equipment.brand
-    ? `${equipment.brand} ${equipment.model}`
-    : equipment.model;
+  const displayName = equipment.brand ? `${equipment.brand} ${equipment.model}` : equipment.model;
   return (
     <>
-      <LabelMedium color={theme.colors.contentSecondary} marginBottom="4px">
+      <LabelMedium color={theme.colors.contentSecondary} marginBottom='4px'>
         {label}
       </LabelMedium>
-      <ParagraphMedium marginBottom="16px">{displayName}</ParagraphMedium>
+      <ParagraphMedium marginBottom='16px'>{displayName}</ParagraphMedium>
     </>
   );
 }
@@ -118,34 +116,34 @@ function CommentItem({ comment, onReply }: CommentItemProps) {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   };
 
   return (
     <div
       className={css({
-        padding: "16px",
+        padding: '16px',
         borderBottom: `1px solid ${theme.colors.borderOpaque}`,
       })}
     >
       <div
         className={css({
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: "8px",
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginBottom: '8px',
         })}
       >
         <div
-          className={css({ display: "flex", alignItems: "center", gap: "8px" })}
+          className={css({ display: 'flex', alignItems: 'center', gap: '8px' })}
         >
           <Link
             to={`/user/${comment.user.username}`}
             className={css({
               color: theme.colors.contentTertiary,
-              textDecoration: "none",
+              textDecoration: 'none',
               fontWeight: 600,
             })}
           >
@@ -155,7 +153,7 @@ function CommentItem({ comment, onReply }: CommentItemProps) {
             <Tag
               closeable={false}
               kind={TAG_KIND.accent}
-              overrides={{ Root: { style: { marginLeft: "4px" } } }}
+              overrides={{ Root: { style: { marginLeft: '4px' } } }}
             >
               Author
             </Tag>
@@ -163,53 +161,53 @@ function CommentItem({ comment, onReply }: CommentItemProps) {
         </div>
         <ParagraphSmall color={theme.colors.contentTertiary}>
           {formatDate(comment.createdAt)}
-          {comment.isEdited && " (edited)"}
+          {comment.isEdited && ' (edited)'}
         </ParagraphSmall>
       </div>
       <ParagraphMedium>{comment.content}</ParagraphMedium>
       <Button
-        kind="tertiary"
-        size="mini"
+        kind='tertiary'
+        size='mini'
         onClick={() => onReply(comment.id)}
-        overrides={{ Root: { style: { marginTop: "8px" } } }}
+        overrides={{ Root: { style: { marginTop: '8px' } } }}
       >
-        {t("common.reply")}
+        {t('common.reply')}
       </Button>
 
       {/* Replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className={css({ marginLeft: "24px", marginTop: "16px" })}>
+        <div className={css({ marginLeft: '24px', marginTop: '16px' })}>
           {comment.replies.map((reply) => (
             <div
               key={reply.id}
               className={css({
-                padding: "12px",
+                padding: '12px',
                 backgroundColor: theme.colors.backgroundSecondary,
-                borderRadius: "8px",
-                marginBottom: "8px",
+                borderRadius: '8px',
+                marginBottom: '8px',
               })}
             >
               <div
                 className={css({
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "4px",
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px',
                 })}
               >
                 <div
                   className={css({
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
                   })}
                 >
                   <Link
                     to={`/user/${reply.user.username}`}
                     className={css({
                       color: theme.colors.contentTertiary,
-                      textDecoration: "none",
+                      textDecoration: 'none',
                       fontWeight: 600,
-                      fontSize: "14px",
+                      fontSize: '14px',
                     })}
                   >
                     {reply.user.displayName || reply.user.username}
@@ -219,7 +217,7 @@ function CommentItem({ comment, onReply }: CommentItemProps) {
                       closeable={false}
                       kind={TAG_KIND.accent}
                       overrides={{
-                        Root: { style: { transform: "scale(0.85)" } },
+                        Root: { style: { transform: 'scale(0.85)' } },
                       }}
                     >
                       Author
@@ -247,7 +245,7 @@ function RecipeDetailPage() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { enqueue } = useSnackbar();
-  const [commentText, setCommentText] = useState("");
+  const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -266,12 +264,12 @@ function RecipeDetailPage() {
     try {
       await navigator.clipboard.writeText(url);
       enqueue(
-        { message: t("recipe.linkCopied"), startEnhancer: () => "📋" },
+        { message: t('recipe.linkCopied'), startEnhancer: () => '📋' },
         DURATION.short,
       );
     } catch {
       enqueue(
-        { message: t("common.error"), startEnhancer: () => "❌" },
+        { message: t('common.error'), startEnhancer: () => '❌' },
         DURATION.short,
       );
     }
@@ -279,21 +277,21 @@ function RecipeDetailPage() {
 
   const handleFork = async () => {
     if (!isAuthenticated) {
-      navigate("/login");
+      navigate('/login');
       return;
     }
     try {
       const response = await api.post(`/recipes/${recipe?.id}/fork`, {});
       if (response.data) {
         enqueue(
-          { message: t("recipe.forked"), startEnhancer: () => "🍴" },
+          { message: t('recipe.forked'), startEnhancer: () => '🍴' },
           DURATION.short,
         );
         navigate(`/recipes/${(response.data as Recipe).slug}`);
       }
     } catch {
       enqueue(
-        { message: t("common.error"), startEnhancer: () => "❌" },
+        { message: t('common.error'), startEnhancer: () => '❌' },
         DURATION.short,
       );
     }
@@ -308,16 +306,16 @@ function RecipeDetailPage() {
         content: commentText,
         parentId: replyTo || undefined,
       });
-      setCommentText("");
+      setCommentText('');
       setReplyTo(null);
       mutate(`/social/recipes/${recipe.id}/comments`);
       enqueue(
-        { message: t("recipe.commentAdded"), startEnhancer: () => "💬" },
+        { message: t('recipe.commentAdded'), startEnhancer: () => '💬' },
         DURATION.short,
       );
     } catch {
       enqueue(
-        { message: t("common.error"), startEnhancer: () => "❌" },
+        { message: t('common.error'), startEnhancer: () => '❌' },
         DURATION.short,
       );
     } finally {
@@ -328,8 +326,8 @@ function RecipeDetailPage() {
   if (isLoading) return <LoadingSpinner />;
   if (error || !recipe) {
     return (
-      <div className={css({ textAlign: "center", padding: "48px" })}>
-        <HeadingSmall>{t("common.noResults")}</HeadingSmall>
+      <div className={css({ textAlign: 'center', padding: '48px' })}>
+        <HeadingSmall>{t('common.noResults')}</HeadingSmall>
       </div>
     );
   }
@@ -347,50 +345,50 @@ function RecipeDetailPage() {
       <Helmet>
         <title>{version?.title} - BrewForm</title>
         <meta
-          name="description"
+          name='description'
           content={version?.description || `${version?.brewMethod} recipe`}
         />
       </Helmet>
 
-      <div className={css({ maxWidth: "800px", margin: "0 auto" })}>
+      <div className={css({ maxWidth: '800px', margin: '0 auto' })}>
         {/* Header */}
         <div
           className={css({
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: "24px",
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: '24px',
           })}
         >
           <div>
             <HeadingLarge>{version?.title}</HeadingLarge>
             <ParagraphMedium color={theme.colors.contentSecondary}>
-              by{" "}
+              by{' '}
               <Link
                 to={`/user/${recipe.user?.username}`}
                 className={css({
                   color: theme.colors.contentTertiary,
-                  textDecoration: "none",
-                  ":hover": { textDecoration: "underline" },
+                  textDecoration: 'none',
+                  ':hover': { textDecoration: 'underline' },
                 })}
               >
                 @{recipe.user?.username}
               </Link>
             </ParagraphMedium>
           </div>
-          <div className={css({ display: "flex", gap: "8px" })}>
+          <div className={css({ display: 'flex', gap: '8px' })}>
             {isOwner && (
               <Link to={`/recipes/${slug}/edit`}>
-                <Button kind="secondary" size="compact">
-                  {t("common.edit")}
+                <Button kind='secondary' size='compact'>
+                  {t('common.edit')}
                 </Button>
               </Link>
             )}
-            <Button kind="secondary" size="compact" onClick={handleShare}>
-              {t("recipe.share")}
+            <Button kind='secondary' size='compact' onClick={handleShare}>
+              {t('recipe.share')}
             </Button>
-            <Button kind="secondary" size="compact" onClick={handleFork}>
-              {t("recipe.fork")}
+            <Button kind='secondary' size='compact' onClick={handleFork}>
+              {t('recipe.fork')}
             </Button>
           </div>
         </div>
@@ -401,14 +399,14 @@ function RecipeDetailPage() {
             overrides={{
               Root: {
                 style: {
-                  marginBottom: "24px",
+                  marginBottom: '24px',
                   backgroundColor: theme.colors.backgroundSecondary,
                 },
               },
             }}
           >
             <ParagraphMedium>
-              🍴 {t("recipe.forkedFrom")}{" "}
+              🍴 {t('recipe.forkedFrom')}{' '}
               <Link
                 to={`/recipes/${recipe.forkedFrom.slug}`}
                 className={css({
@@ -416,9 +414,9 @@ function RecipeDetailPage() {
                   fontWeight: 600,
                 })}
               >
-                {recipe.forkedFrom.currentVersion?.title || "Original Recipe"}
-              </Link>{" "}
-              by{" "}
+                {recipe.forkedFrom.currentVersion?.title || 'Original Recipe'}
+              </Link>{' '}
+              by{' '}
               <Link
                 to={`/user/${recipe.forkedFrom.user?.username}`}
                 className={css({ color: theme.colors.contentTertiary })}
@@ -433,15 +431,15 @@ function RecipeDetailPage() {
         <Card>
           <div
             className={css({
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "24px",
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '24px',
             })}
           >
             {/* Left Column */}
             <div>
               <ClickableField
-                label={t("recipe.fields.brewMethod")}
+                label={t('recipe.fields.brewMethod')}
                 value={version?.brewMethod
                   ? t(`recipe.brewMethods.${version.brewMethod}`)
                   : undefined}
@@ -449,20 +447,18 @@ function RecipeDetailPage() {
                 theme={theme}
               />
               <ClickableField
-                label={t("recipe.fields.drinkType")}
-                value={version?.drinkType
-                  ? t(`recipe.drinkTypes.${version.drinkType}`)
-                  : undefined}
+                label={t('recipe.fields.drinkType')}
+                value={version?.drinkType ? t(`recipe.drinkTypes.${version.drinkType}`) : undefined}
                 linkTo={`/recipes?drinkType=${version?.drinkType}`}
                 theme={theme}
               />
               <RecipeField
-                label={t("recipe.fields.coffee")}
+                label={t('recipe.fields.coffee')}
                 value={version?.coffeeName}
                 theme={theme}
               />
               <RecipeField
-                label={t("recipe.fields.grindSize")}
+                label={t('recipe.fields.grindSize')}
                 value={version?.grindSize}
                 theme={theme}
               />
@@ -471,40 +467,38 @@ function RecipeDetailPage() {
             {/* Right Column - Brew Parameters */}
             <div>
               <RecipeField
-                label={t("recipe.fields.dose")}
+                label={t('recipe.fields.dose')}
                 value={version?.doseGrams}
-                suffix="g"
+                suffix='g'
                 theme={theme}
               />
               <RecipeField
-                label={t("recipe.fields.yield")}
+                label={t('recipe.fields.yield')}
                 value={version?.yieldGrams}
-                suffix="g"
+                suffix='g'
                 theme={theme}
               />
               <RecipeField
-                label={t("recipe.fields.time")}
+                label={t('recipe.fields.time')}
                 value={version?.brewTimeSec}
-                suffix="s"
+                suffix='s'
                 theme={theme}
               />
               <RecipeField
-                label={t("recipe.fields.temperature")}
+                label={t('recipe.fields.temperature')}
                 value={version?.tempCelsius}
-                suffix="°C"
+                suffix='°C'
                 theme={theme}
               />
               <RecipeField
-                label={t("recipe.fields.pressure")}
+                label={t('recipe.fields.pressure')}
                 value={version?.pressure}
-                suffix=" bar"
+                suffix=' bar'
                 theme={theme}
               />
               <RecipeField
-                label={t("recipe.fields.ratio")}
-                value={version?.brewRatio
-                  ? `1:${version.brewRatio.toFixed(1)}`
-                  : null}
+                label={t('recipe.fields.ratio')}
+                value={version?.brewRatio ? `1:${version.brewRatio.toFixed(1)}` : null}
                 theme={theme}
               />
             </div>
@@ -512,12 +506,12 @@ function RecipeDetailPage() {
 
           {/* Description */}
           {version?.description && (
-            <div className={css({ marginTop: "24px" })}>
+            <div className={css({ marginTop: '24px' })}>
               <LabelMedium
                 color={theme.colors.contentSecondary}
-                marginBottom="8px"
+                marginBottom='8px'
               >
-                {t("recipe.fields.description")}
+                {t('recipe.fields.description')}
               </LabelMedium>
               <ParagraphMedium>{version.description}</ParagraphMedium>
             </div>
@@ -525,12 +519,12 @@ function RecipeDetailPage() {
 
           {/* Tasting Notes */}
           {version?.tastingNotes && (
-            <div className={css({ marginTop: "24px" })}>
+            <div className={css({ marginTop: '24px' })}>
               <LabelMedium
                 color={theme.colors.contentSecondary}
-                marginBottom="8px"
+                marginBottom='8px'
               >
-                {t("recipe.fields.tastingNotes")}
+                {t('recipe.fields.tastingNotes')}
               </LabelMedium>
               <ParagraphMedium>{version.tastingNotes}</ParagraphMedium>
             </div>
@@ -538,34 +532,33 @@ function RecipeDetailPage() {
 
           {/* Rating */}
           {version?.rating && (
-            <div className={css({ marginTop: "24px" })}>
+            <div className={css({ marginTop: '24px' })}>
               <LabelMedium
                 color={theme.colors.contentSecondary}
-                marginBottom="8px"
+                marginBottom='8px'
               >
-                {t("recipe.fields.rating")}
+                {t('recipe.fields.rating')}
               </LabelMedium>
               <ParagraphMedium>
-                {version.rating}/10{" "}
-                {"⭐".repeat(Math.round(version.rating / 2))}
+                {version.rating}/10 {'⭐'.repeat(Math.round(version.rating / 2))}
               </ParagraphMedium>
             </div>
           )}
 
           {/* Tags */}
           {version?.tags && version.tags.length > 0 && (
-            <div className={css({ marginTop: "24px" })}>
+            <div className={css({ marginTop: '24px' })}>
               <LabelMedium
                 color={theme.colors.contentSecondary}
-                marginBottom="8px"
+                marginBottom='8px'
               >
-                {t("recipe.fields.tags")}
+                {t('recipe.fields.tags')}
               </LabelMedium>
               <div
                 className={css({
-                  display: "flex",
-                  gap: "8px",
-                  flexWrap: "wrap",
+                  display: 'flex',
+                  gap: '8px',
+                  flexWrap: 'wrap',
                 })}
               >
                 {version.tags.map((tag) => (
@@ -573,8 +566,8 @@ function RecipeDetailPage() {
                     key={tag}
                     to={`/recipes?tags=${tag}`}
                     className={css({
-                      textDecoration: "none",
-                      cursor: "pointer",
+                      textDecoration: 'none',
+                      cursor: 'pointer',
                     })}
                   >
                     <Tag
@@ -583,7 +576,7 @@ function RecipeDetailPage() {
                       overrides={{
                         Root: {
                           style: {
-                            cursor: "pointer",
+                            cursor: 'pointer',
                             backgroundColor: theme.colors.backgroundTertiary,
                             color: theme.colors.contentPrimary,
                             borderColor: theme.colors.borderOpaque,
@@ -602,52 +595,52 @@ function RecipeDetailPage() {
 
         {/* Equipment Card */}
         {hasEquipment && (
-          <Card overrides={{ Root: { style: { marginTop: "24px" } } }}>
-            <HeadingXSmall marginBottom="16px">
-              {t("recipe.equipment")}
+          <Card overrides={{ Root: { style: { marginTop: '24px' } } }}>
+            <HeadingXSmall marginBottom='16px'>
+              {t('recipe.equipment')}
             </HeadingXSmall>
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px',
               })}
             >
               <div>
                 <EquipmentField
-                  label={t("recipe.fields.grinder")}
+                  label={t('recipe.fields.grinder')}
                   equipment={version?.grinder}
                   theme={theme}
                 />
                 <EquipmentField
-                  label={t("recipe.fields.brewer")}
+                  label={t('recipe.fields.brewer')}
                   equipment={version?.brewer}
                   theme={theme}
                 />
                 <EquipmentField
-                  label={t("recipe.fields.portafilter")}
+                  label={t('recipe.fields.portafilter')}
                   equipment={version?.portafilter}
                   theme={theme}
                 />
                 <EquipmentField
-                  label={t("recipe.fields.basket")}
+                  label={t('recipe.fields.basket')}
                   equipment={version?.basket}
                   theme={theme}
                 />
               </div>
               <div>
                 <EquipmentField
-                  label={t("recipe.fields.tamper")}
+                  label={t('recipe.fields.tamper')}
                   equipment={version?.tamper}
                   theme={theme}
                 />
                 <EquipmentField
-                  label={t("recipe.fields.puckScreen")}
+                  label={t('recipe.fields.puckScreen')}
                   equipment={version?.puckScreen}
                   theme={theme}
                 />
                 <EquipmentField
-                  label={t("recipe.fields.paperFilter")}
+                  label={t('recipe.fields.paperFilter')}
                   equipment={version?.paperFilter}
                   theme={theme}
                 />
@@ -657,77 +650,75 @@ function RecipeDetailPage() {
         )}
 
         {/* Comments Section */}
-        <Card overrides={{ Root: { style: { marginTop: "24px" } } }}>
-          <HeadingXSmall marginBottom="16px">
-            {t("recipe.comments")} ({recipe.commentCount || 0})
+        <Card overrides={{ Root: { style: { marginTop: '24px' } } }}>
+          <HeadingXSmall marginBottom='16px'>
+            {t('recipe.comments')} ({recipe.commentCount || 0})
           </HeadingXSmall>
 
           {/* Comment Form */}
           {isAuthenticated
             ? (
-              <div className={css({ marginBottom: "24px" })}>
+              <div className={css({ marginBottom: '24px' })}>
                 {replyTo && (
                   <div
                     className={css({
-                      marginBottom: "8px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
                     })}
                   >
                     <ParagraphSmall color={theme.colors.contentSecondary}>
-                      {t("recipe.replyingTo")}
+                      {t('recipe.replyingTo')}
                     </ParagraphSmall>
                     <Button
-                      kind="tertiary"
-                      size="mini"
+                      kind='tertiary'
+                      size='mini'
                       onClick={() => setReplyTo(null)}
                     >
-                      {t("common.cancel")}
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 )}
                 <Textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.currentTarget.value)}
-                  placeholder={t("recipe.addComment")}
-                  overrides={{ Root: { style: { marginBottom: "8px" } } }}
+                  placeholder={t('recipe.addComment')}
+                  overrides={{ Root: { style: { marginBottom: '8px' } } }}
                 />
                 <Button
-                  size="compact"
+                  size='compact'
                   onClick={handleSubmitComment}
                   isLoading={isSubmitting}
                   disabled={!commentText.trim()}
                 >
-                  {replyTo ? t("common.reply") : t("recipe.postComment")}
+                  {replyTo ? t('common.reply') : t('recipe.postComment')}
                 </Button>
               </div>
             )
             : (
               <div
                 className={css({
-                  marginBottom: "24px",
-                  padding: "16px",
+                  marginBottom: '24px',
+                  padding: '16px',
                   backgroundColor: theme.colors.backgroundSecondary,
-                  borderRadius: "8px",
+                  borderRadius: '8px',
                 })}
               >
                 <ParagraphMedium>
                   <Link
-                    to="/login"
+                    to='/login'
                     className={css({ color: theme.colors.contentTertiary })}
                   >
-                    {t("nav.login")}
-                  </Link>{" "}
-                  {t("recipe.toComment")}
+                    {t('nav.login')}
+                  </Link>{' '}
+                  {t('recipe.toComment')}
                 </ParagraphMedium>
               </div>
             )}
 
           {/* Comments List */}
-          {commentsLoading
-            ? <LoadingSpinner />
-            : comments && comments.length > 0
+          {commentsLoading ? <LoadingSpinner /> : comments && comments.length > 0
             ? (
               <div>
                 {comments.map((comment) => (
@@ -741,7 +732,7 @@ function RecipeDetailPage() {
             )
             : (
               <ParagraphMedium color={theme.colors.contentSecondary}>
-                {t("recipe.noComments")}
+                {t('recipe.noComments')}
               </ParagraphMedium>
             )}
         </Card>

@@ -3,10 +3,10 @@
  * Tests for password reset CLI functionality
  */
 
-import { describe, it } from "@std/testing";
-import { expect } from "@std/expect";
-import { spy } from "@std/testing/mock";
-import { findUser, generatePassword, resetUserPassword } from "./cli.ts";
+import { describe, it } from '@std/testing';
+import { expect } from '@std/expect';
+import { spy } from '@std/testing/mock';
+import { findUser, generatePassword, resetUserPassword } from './cli.ts';
 
 // Create mock Prisma client
 // deno-lint-ignore no-explicit-any
@@ -20,27 +20,26 @@ const createMockPrisma = (): any => ({
   },
 });
 
-describe("Auth CLI", () => {
-  describe("generatePassword", () => {
-    it("should generate a password of default length 16", () => {
+describe('Auth CLI', () => {
+  describe('generatePassword', () => {
+    it('should generate a password of default length 16', () => {
       const password = generatePassword();
       expect(password).toHaveLength(16);
     });
 
-    it("should generate a password of specified length", () => {
+    it('should generate a password of specified length', () => {
       const password = generatePassword(24);
       expect(password).toHaveLength(24);
     });
 
-    it("should generate different passwords on each call", () => {
+    it('should generate different passwords on each call', () => {
       const password1 = generatePassword();
       const password2 = generatePassword();
       expect(password1).not.toBe(password2);
     });
 
-    it("should only contain valid characters", () => {
-      const validChars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    it('should only contain valid characters', () => {
+      const validChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
       const password = generatePassword(100);
       for (const char of password) {
         expect(validChars).toContain(char);
@@ -48,23 +47,23 @@ describe("Auth CLI", () => {
     });
   });
 
-  describe("findUser", () => {
-    it("should find user by email", async () => {
+  describe('findUser', () => {
+    it('should find user by email', async () => {
       const mockPrisma = createMockPrisma();
       const mockUser = {
-        id: "user_123",
-        email: "admin@brewform.local",
-        username: "admin",
-        displayName: "Admin",
+        id: 'user_123',
+        email: 'admin@brewform.local',
+        username: 'admin',
+        displayName: 'Admin',
         isAdmin: true,
       };
       mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
 
-      const user = await findUser(mockPrisma as never, "admin@brewform.local");
+      const user = await findUser(mockPrisma as never, 'admin@brewform.local');
 
       expect(user).toEqual(mockUser);
       expect(mockPrisma.user.findUnique.calls[0].args).toEqual([{
-        where: { email: "admin@brewform.local" },
+        where: { email: 'admin@brewform.local' },
         select: {
           id: true,
           email: true,
@@ -75,13 +74,13 @@ describe("Auth CLI", () => {
       }]);
     });
 
-    it("should find user by username when email not found", async () => {
+    it('should find user by username when email not found', async () => {
       const mockPrisma = createMockPrisma();
       const mockUser = {
-        id: "user_123",
-        email: "admin@brewform.local",
-        username: "admin",
-        displayName: "Admin",
+        id: 'user_123',
+        email: 'admin@brewform.local',
+        username: 'admin',
+        displayName: 'Admin',
         isAdmin: true,
       };
       let callCount = 0;
@@ -90,32 +89,32 @@ describe("Auth CLI", () => {
         return Promise.resolve(callCount === 1 ? null : mockUser);
       });
 
-      const user = await findUser(mockPrisma as never, "admin");
+      const user = await findUser(mockPrisma as never, 'admin');
 
       expect(user).toEqual(mockUser);
       expect(mockPrisma.user.findUnique.calls.length).toBe(2);
     });
 
-    it("should return null when user not found", async () => {
+    it('should return null when user not found', async () => {
       const mockPrisma = createMockPrisma();
       mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       const user = await findUser(
         mockPrisma as never,
-        "nonexistent@example.com",
+        'nonexistent@example.com',
       );
 
       expect(user).toBeNull();
     });
 
-    it("should lowercase the identifier for search", async () => {
+    it('should lowercase the identifier for search', async () => {
       const mockPrisma = createMockPrisma();
       mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
-      await findUser(mockPrisma as never, "ADMIN@BREWFORM.LOCAL");
+      await findUser(mockPrisma as never, 'ADMIN@BREWFORM.LOCAL');
 
       expect(mockPrisma.user.findUnique.calls[0].args).toEqual([{
-        where: { email: "admin@brewform.local" },
+        where: { email: 'admin@brewform.local' },
         select: {
           id: true,
           email: true,
@@ -127,14 +126,14 @@ describe("Auth CLI", () => {
     });
   });
 
-  describe("resetUserPassword", () => {
-    it("should successfully reset password with generated password", async () => {
+  describe('resetUserPassword', () => {
+    it('should successfully reset password with generated password', async () => {
       const mockPrisma = createMockPrisma();
       const mockUser = {
-        id: "user_123",
-        email: "admin@brewform.local",
-        username: "admin",
-        displayName: "Admin",
+        id: 'user_123',
+        email: 'admin@brewform.local',
+        username: 'admin',
+        displayName: 'Admin',
         isAdmin: true,
       };
       mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
@@ -143,7 +142,7 @@ describe("Auth CLI", () => {
 
       const result = await resetUserPassword(
         mockPrisma as never,
-        "admin@brewform.local",
+        'admin@brewform.local',
       );
 
       expect(result.success).toBe(true);
@@ -153,13 +152,13 @@ describe("Auth CLI", () => {
       expect(result.error).toBeUndefined();
     });
 
-    it("should successfully reset password with provided password", async () => {
+    it('should successfully reset password with provided password', async () => {
       const mockPrisma = createMockPrisma();
       const mockUser = {
-        id: "user_123",
-        email: "admin@brewform.local",
-        username: "admin",
-        displayName: "Admin",
+        id: 'user_123',
+        email: 'admin@brewform.local',
+        username: 'admin',
+        displayName: 'Admin',
         isAdmin: true,
       };
       mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
@@ -168,8 +167,8 @@ describe("Auth CLI", () => {
 
       const result = await resetUserPassword(
         mockPrisma as never,
-        "admin@brewform.local",
-        "NewSecurePassword123!",
+        'admin@brewform.local',
+        'NewSecurePassword123!',
       );
 
       expect(result.success).toBe(true);
@@ -178,13 +177,13 @@ describe("Auth CLI", () => {
       expect(result.error).toBeUndefined();
     });
 
-    it("should update the password hash in database", async () => {
+    it('should update the password hash in database', async () => {
       const mockPrisma = createMockPrisma();
       const mockUser = {
-        id: "user_123",
-        email: "admin@brewform.local",
-        username: "admin",
-        displayName: "Admin",
+        id: 'user_123',
+        email: 'admin@brewform.local',
+        username: 'admin',
+        displayName: 'Admin',
         isAdmin: true,
       };
       mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
@@ -193,23 +192,23 @@ describe("Auth CLI", () => {
 
       await resetUserPassword(
         mockPrisma as never,
-        "admin@brewform.local",
-        "NewPassword123!",
+        'admin@brewform.local',
+        'NewPassword123!',
       );
 
       expect(mockPrisma.user.update.calls[0].args).toEqual([{
-        where: { id: "user_123" },
+        where: { id: 'user_123' },
         data: { passwordHash: expect.any(String) },
       }]);
     });
 
-    it("should invalidate all sessions after password reset", async () => {
+    it('should invalidate all sessions after password reset', async () => {
       const mockPrisma = createMockPrisma();
       const mockUser = {
-        id: "user_123",
-        email: "admin@brewform.local",
-        username: "admin",
-        displayName: "Admin",
+        id: 'user_123',
+        email: 'admin@brewform.local',
+        username: 'admin',
+        displayName: 'Admin',
         isAdmin: true,
       };
       mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
@@ -218,50 +217,50 @@ describe("Auth CLI", () => {
 
       await resetUserPassword(
         mockPrisma as never,
-        "admin@brewform.local",
-        "NewPassword123!",
+        'admin@brewform.local',
+        'NewPassword123!',
       );
 
       expect(mockPrisma.session.deleteMany.calls[0].args).toEqual([{
-        where: { userId: "user_123" },
+        where: { userId: 'user_123' },
       }]);
     });
 
-    it("should return error when user not found", async () => {
+    it('should return error when user not found', async () => {
       const mockPrisma = createMockPrisma();
       mockPrisma.user.findUnique = spy(() => Promise.resolve(null));
 
       const result = await resetUserPassword(
         mockPrisma as never,
-        "nonexistent@example.com",
+        'nonexistent@example.com',
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe("User not found: nonexistent@example.com");
+      expect(result.error).toBe('User not found: nonexistent@example.com');
       expect(result.user).toBeUndefined();
     });
 
-    it("should return error when password is too short", async () => {
+    it('should return error when password is too short', async () => {
       const mockPrisma = createMockPrisma();
 
       const result = await resetUserPassword(
         mockPrisma as never,
-        "admin@brewform.local",
-        "short",
+        'admin@brewform.local',
+        'short',
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe("Password must be at least 8 characters long");
+      expect(result.error).toBe('Password must be at least 8 characters long');
       expect(mockPrisma.user.findUnique.calls.length).toBe(0);
     });
 
-    it("should accept password of exactly 8 characters", async () => {
+    it('should accept password of exactly 8 characters', async () => {
       const mockPrisma = createMockPrisma();
       const mockUser = {
-        id: "user_123",
-        email: "admin@brewform.local",
-        username: "admin",
-        displayName: "Admin",
+        id: 'user_123',
+        email: 'admin@brewform.local',
+        username: 'admin',
+        displayName: 'Admin',
         isAdmin: true,
       };
       mockPrisma.user.findUnique = spy(() => Promise.resolve(mockUser));
@@ -270,20 +269,20 @@ describe("Auth CLI", () => {
 
       const result = await resetUserPassword(
         mockPrisma as never,
-        "admin@brewform.local",
-        "12345678",
+        'admin@brewform.local',
+        '12345678',
       );
 
       expect(result.success).toBe(true);
     });
 
-    it("should work with username identifier", async () => {
+    it('should work with username identifier', async () => {
       const mockPrisma = createMockPrisma();
       const mockUser = {
-        id: "user_123",
-        email: "admin@brewform.local",
-        username: "admin",
-        displayName: "Admin",
+        id: 'user_123',
+        email: 'admin@brewform.local',
+        username: 'admin',
+        displayName: 'Admin',
         isAdmin: true,
       };
       let callCount = 0;
@@ -294,7 +293,7 @@ describe("Auth CLI", () => {
       mockPrisma.user.update = spy(() => Promise.resolve(mockUser));
       mockPrisma.session.deleteMany = spy(() => Promise.resolve({ count: 0 }));
 
-      const result = await resetUserPassword(mockPrisma as never, "admin");
+      const result = await resetUserPassword(mockPrisma as never, 'admin');
 
       expect(result.success).toBe(true);
       expect(result.user).toEqual(mockUser);

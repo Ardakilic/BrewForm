@@ -3,10 +3,10 @@
  * Uses Nodemailer with MJML templates
  */
 
-import nodemailer, { type Transporter } from "nodemailer";
-import mjml2html from "mjml";
-import { getConfig } from "../../config/index.ts";
-import { getLogger } from "../logger/index.ts";
+import nodemailer, { type Transporter } from 'nodemailer';
+import mjml2html from 'mjml';
+import { getConfig } from '../../config/index.ts';
+import { getLogger } from '../logger/index.ts';
 
 // Singleton transporter
 let transporterInstance: Transporter | null = null;
@@ -31,8 +31,8 @@ function getTransporter(): Transporter {
     });
 
     getLogger().info({
-      type: "email",
-      message: "Email transporter initialized",
+      type: 'email',
+      message: 'Email transporter initialized',
     });
   }
 
@@ -87,14 +87,14 @@ function wrapInTemplate(content: string, title: string): string {
  */
 function compileMjml(mjmlContent: string): string {
   const result = mjml2html(mjmlContent, {
-    validationLevel: "soft",
+    validationLevel: 'soft',
     minify: true,
   });
 
   if (result.errors.length > 0) {
     getLogger().warn({
-      type: "email",
-      operation: "compile",
+      type: 'email',
+      operation: 'compile',
       errors: result.errors,
     });
   }
@@ -135,7 +135,7 @@ export const EmailTemplates = {
         </mj-column>
       </mj-section>
     `;
-    return compileMjml(wrapInTemplate(content, "Verify Your Email - BrewForm"));
+    return compileMjml(wrapInTemplate(content, 'Verify Your Email - BrewForm'));
   },
 
   /**
@@ -169,7 +169,7 @@ export const EmailTemplates = {
       </mj-section>
     `;
     return compileMjml(
-      wrapInTemplate(content, "Reset Your Password - BrewForm"),
+      wrapInTemplate(content, 'Reset Your Password - BrewForm'),
     );
   },
 
@@ -205,7 +205,7 @@ export const EmailTemplates = {
         </mj-column>
       </mj-section>
     `;
-    return compileMjml(wrapInTemplate(content, "Welcome to BrewForm!"));
+    return compileMjml(wrapInTemplate(content, 'Welcome to BrewForm!'));
   },
 
   /**
@@ -231,7 +231,7 @@ export const EmailTemplates = {
         </mj-column>
       </mj-section>
     `;
-    return compileMjml(wrapInTemplate(content, "Password Changed - BrewForm"));
+    return compileMjml(wrapInTemplate(content, 'Password Changed - BrewForm'));
   },
 };
 
@@ -256,8 +256,8 @@ export async function sendEmail(
     });
 
     logger.info({
-      type: "email",
-      operation: "send",
+      type: 'email',
+      operation: 'send',
       to,
       subject,
       messageId: result.messageId,
@@ -266,11 +266,11 @@ export async function sendEmail(
     return true;
   } catch (error) {
     logger.error({
-      type: "email",
-      operation: "send",
+      type: 'email',
+      operation: 'send',
       to,
       subject,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
 
     return false;
@@ -289,7 +289,7 @@ export function sendVerificationEmail(
   const verifyUrl = `${config.appUrl}/verify-email?token=${token}`;
   const html = EmailTemplates.verification(username, verifyUrl);
 
-  return sendEmail(to, "Verify Your Email - BrewForm", html);
+  return sendEmail(to, 'Verify Your Email - BrewForm', html);
 }
 
 /**
@@ -304,7 +304,7 @@ export function sendPasswordResetEmail(
   const resetUrl = `${config.appUrl}/reset-password?token=${token}`;
   const html = EmailTemplates.passwordReset(username, resetUrl);
 
-  return sendEmail(to, "Reset Your Password - BrewForm", html);
+  return sendEmail(to, 'Reset Your Password - BrewForm', html);
 }
 
 /**
@@ -315,7 +315,7 @@ export function sendWelcomeEmail(
   username: string,
 ): Promise<boolean> {
   const html = EmailTemplates.welcome(username);
-  return sendEmail(to, "Welcome to BrewForm! ☕", html);
+  return sendEmail(to, 'Welcome to BrewForm! ☕', html);
 }
 
 /**
@@ -326,7 +326,7 @@ export function sendPasswordChangedEmail(
   username: string,
 ): Promise<boolean> {
   const html = EmailTemplates.passwordChanged(username);
-  return sendEmail(to, "Password Changed - BrewForm", html);
+  return sendEmail(to, 'Password Changed - BrewForm', html);
 }
 
 export const email = {

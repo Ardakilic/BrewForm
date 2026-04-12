@@ -3,10 +3,10 @@
  * Populates the database with SCAA 2016 flavor wheel taste notes
  */
 
-import process from "node:process";
-import { PrismaClient } from "./generated/prisma/index.js";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { existsSync, readFileSync } from "node:fs";
+import process from 'node:process';
+import { PrismaClient } from './generated/prisma/index.js';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { existsSync, readFileSync } from 'node:fs';
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -35,8 +35,8 @@ interface ScaaJson {
 function createSlug(text: string, parentSlug?: string): string {
   const baseSlug = text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 
   return parentSlug ? `${parentSlug}-${baseSlug}` : baseSlug;
 }
@@ -88,16 +88,16 @@ async function seedTasteNotes(
 }
 
 async function main() {
-  console.log("🍵 Seeding taste notes from SCAA 2016 flavor wheel...\n");
+  console.log('🍵 Seeding taste notes from SCAA 2016 flavor wheel...\n');
 
   // Read the JSON file - /app/files in Docker container
-  const jsonPath = "/app/files/scaa-2016-taste-wheel.json";
+  const jsonPath = '/app/files/scaa-2016-taste-wheel.json';
 
   if (!existsSync(jsonPath)) {
     throw new Error(`Taste wheel JSON file not found at: ${jsonPath}`);
   }
 
-  const jsonContent = readFileSync(jsonPath, "utf-8");
+  const jsonContent = readFileSync(jsonPath, 'utf-8');
   const scaaData: ScaaJson = JSON.parse(jsonContent);
 
   console.log(`📖 Loaded ${scaaData.meta.name} flavor wheel`);
@@ -111,25 +111,25 @@ async function main() {
 
   // Print summary by depth
   const depthCounts = await prisma.tasteNote.groupBy({
-    by: ["depth"],
+    by: ['depth'],
     _count: true,
-    orderBy: { depth: "asc" },
+    orderBy: { depth: 'asc' },
   });
 
-  console.log("📊 Taste notes by depth:");
+  console.log('📊 Taste notes by depth:');
   for (const item of depthCounts) {
     const depthLabel = item.depth === 0
-      ? "Top level"
+      ? 'Top level'
       : item.depth === 1
-      ? "Second level"
-      : "Third level";
+      ? 'Second level'
+      : 'Third level';
     console.log(`   ${depthLabel} (depth ${item.depth}): ${item._count} notes`);
   }
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Taste notes seed failed:", e);
+    console.error('❌ Taste notes seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

@@ -3,7 +3,7 @@
  * Redirected via import_map.json during deno test runs.
  */
 
-import { spy } from "@std/testing/mock";
+import { spy } from '@std/testing/mock';
 
 const passThrough = (...args: unknown[]) => (args[1] as () => Promise<void>)();
 

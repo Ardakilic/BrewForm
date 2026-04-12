@@ -5,8 +5,8 @@
  * (NODE_ENV=test) — never selectable via CACHE_DRIVER in production.
  */
 
-import type { CacheBackend, CacheKey, CacheOptions } from "../types.ts";
-import { keyToString, prefixToPattern } from "../serialize.ts";
+import type { CacheBackend, CacheKey, CacheOptions } from '../types.ts';
+import { keyToString, prefixToPattern } from '../serialize.ts';
 
 interface MemoryEntry {
   value: unknown;
@@ -58,13 +58,13 @@ export class MemoryBackend implements CacheBackend {
 
   invalidateByPrefix(prefix: CacheKey): Promise<number> {
     const pattern = prefixToPattern(prefix);
-    const matchPrefix = pattern === "*" ? "" : pattern.slice(0, -1);
+    const matchPrefix = pattern === '*' ? '' : pattern.slice(0, -1);
 
     let count = 0;
     for (const k of this.store.keys()) {
       if (
-        matchPrefix === "" || k === matchPrefix ||
-        k.startsWith(matchPrefix + ":")
+        matchPrefix === '' || k === matchPrefix ||
+        k.startsWith(matchPrefix + ':')
       ) {
         this.store.delete(k);
         count++;

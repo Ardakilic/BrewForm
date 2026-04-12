@@ -2,21 +2,16 @@
  * BrewForm Recipe Comparison Page
  */
 
-import { useParams } from "react-router-dom";
-import { useStyletron } from "baseui";
-import { Card } from "../../components/Card.tsx";
-import {
-  HeadingLarge,
-  HeadingSmall,
-  LabelMedium,
-  ParagraphMedium,
-} from "baseui/typography";
-import { useTranslation } from "react-i18next";
-import { Helmet } from "react-helmet-async";
-import useSWR from "swr";
-import { api } from "../../utils/api.ts";
-import LoadingSpinner from "../../components/LoadingSpinner.tsx";
-import type { Comparison } from "../../types";
+import { useParams } from 'react-router-dom';
+import { useStyletron } from 'baseui';
+import { Card } from '../../components/Card.tsx';
+import { HeadingLarge, HeadingSmall, LabelMedium, ParagraphMedium } from 'baseui/typography';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
+import useSWR from 'swr';
+import { api } from '../../utils/api.ts';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
+import type { Comparison } from '../../types';
 
 const fetcher = async (url: string): Promise<Comparison> => {
   const response = await api.get<Comparison>(url);
@@ -36,10 +31,10 @@ function ComparePage() {
   if (isLoading) return <LoadingSpinner />;
   if (error || !comparison) {
     return (
-      <div className={css({ textAlign: "center", padding: "48px" })}>
-        <HeadingSmall>{t("pages.compare.notFound")}</HeadingSmall>
+      <div className={css({ textAlign: 'center', padding: '48px' })}>
+        <HeadingSmall>{t('pages.compare.notFound')}</HeadingSmall>
         <ParagraphMedium color={theme.colors.contentSecondary}>
-          {t("pages.compare.invalidLink")}
+          {t('pages.compare.invalidLink')}
         </ParagraphMedium>
       </div>
     );
@@ -53,29 +48,29 @@ function ComparePage() {
   return (
     <>
       <Helmet>
-        <title>{t("pages.compare.title")}</title>
+        <title>{t('pages.compare.title')}</title>
       </Helmet>
 
       <HeadingLarge
-        marginBottom="24px"
-        className={css({ textAlign: "center" })}
+        marginBottom='24px'
+        className={css({ textAlign: 'center' })}
       >
-        {t("pages.compare.heading")}
+        {t('pages.compare.heading')}
       </HeadingLarge>
 
       <div
         className={css({
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "24px",
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '24px',
         })}
       >
         {/* Recipe A */}
         <Card>
-          <HeadingSmall marginBottom="16px">{versionA?.title}</HeadingSmall>
+          <HeadingSmall marginBottom='16px'>{versionA?.title}</HeadingSmall>
           <ParagraphMedium
             color={theme.colors.contentSecondary}
-            marginBottom="16px"
+            marginBottom='16px'
           >
             by @{recipeA?.user?.username}
           </ParagraphMedium>
@@ -83,27 +78,27 @@ function ComparePage() {
           <LabelMedium color={theme.colors.contentSecondary}>
             Brew Method
           </LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             {versionA?.brewMethod}
           </ParagraphMedium>
 
           <LabelMedium color={theme.colors.contentSecondary}>Dose</LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             {versionA?.doseGrams}g
           </ParagraphMedium>
 
           <LabelMedium color={theme.colors.contentSecondary}>Yield</LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             {versionA?.yieldGrams}g
           </ParagraphMedium>
 
           <LabelMedium color={theme.colors.contentSecondary}>Time</LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             {versionA?.brewTimeSec}s
           </ParagraphMedium>
 
           <LabelMedium color={theme.colors.contentSecondary}>Ratio</LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             1:{versionA?.brewRatio?.toFixed(1)}
           </ParagraphMedium>
 
@@ -119,10 +114,10 @@ function ComparePage() {
 
         {/* Recipe B */}
         <Card>
-          <HeadingSmall marginBottom="16px">{versionB?.title}</HeadingSmall>
+          <HeadingSmall marginBottom='16px'>{versionB?.title}</HeadingSmall>
           <ParagraphMedium
             color={theme.colors.contentSecondary}
-            marginBottom="16px"
+            marginBottom='16px'
           >
             by @{recipeB?.user?.username}
           </ParagraphMedium>
@@ -130,27 +125,27 @@ function ComparePage() {
           <LabelMedium color={theme.colors.contentSecondary}>
             Brew Method
           </LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             {versionB?.brewMethod}
           </ParagraphMedium>
 
           <LabelMedium color={theme.colors.contentSecondary}>Dose</LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             {versionB?.doseGrams}g
           </ParagraphMedium>
 
           <LabelMedium color={theme.colors.contentSecondary}>Yield</LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             {versionB?.yieldGrams}g
           </ParagraphMedium>
 
           <LabelMedium color={theme.colors.contentSecondary}>Time</LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             {versionB?.brewTimeSec}s
           </ParagraphMedium>
 
           <LabelMedium color={theme.colors.contentSecondary}>Ratio</LabelMedium>
-          <ParagraphMedium marginBottom="12px">
+          <ParagraphMedium marginBottom='12px'>
             1:{versionB?.brewRatio?.toFixed(1)}
           </ParagraphMedium>
 

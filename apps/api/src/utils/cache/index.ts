@@ -10,19 +10,14 @@
  *   - Fail-open reads: cache errors never break a request
  */
 
-import { getConfig } from "../../config/index.ts";
-import { getLogger } from "../logger/index.ts";
-import { createCache } from "./factory.ts";
-import { MemoryBackend } from "./backends/memory.ts";
-import type {
-  CacheBackend,
-  CacheEnvelope,
-  CacheKey,
-  CacheOptions,
-} from "./types.ts";
+import { getConfig } from '../../config/index.ts';
+import { getLogger } from '../logger/index.ts';
+import { createCache } from './factory.ts';
+import { MemoryBackend } from './backends/memory.ts';
+import type { CacheBackend, CacheEnvelope, CacheKey, CacheOptions } from './types.ts';
 
 export type { CacheBackend, CacheKey, CacheOptions };
-export { CacheKeys } from "./keys.ts";
+export { CacheKeys } from './keys.ts';
 
 // ============================================
 // Singleton
@@ -36,7 +31,7 @@ let _instance: CacheBackend | null = null;
  */
 export function getCache(): CacheBackend {
   if (!_instance) {
-    throw new Error("Cache not initialized — call initCache() during startup");
+    throw new Error('Cache not initialized — call initCache() during startup');
   }
   return _instance;
 }
@@ -55,8 +50,8 @@ export async function initCache(fallbackToMemory = false): Promise<void> {
   try {
     _instance = await createCache(cfg);
     logger.info(
-      { type: "cache", driver: cfg.cacheDriver },
-      "Cache backend initialized",
+      { type: 'cache', driver: cfg.cacheDriver },
+      'Cache backend initialized',
     );
   } catch (err) {
     if (cfg.cacheRequired) {
@@ -64,11 +59,11 @@ export async function initCache(fallbackToMemory = false): Promise<void> {
     }
     logger.warn(
       {
-        type: "cache",
+        type: 'cache',
         driver: cfg.cacheDriver,
         error: err instanceof Error ? err.message : String(err),
       },
-      "Cache backend failed to initialize — falling back to in-memory cache",
+      'Cache backend failed to initialize — falling back to in-memory cache',
     );
     if (fallbackToMemory) {
       _instance = new MemoryBackend();
@@ -158,12 +153,12 @@ export async function cacheGetOrSet<T>(
   } catch (err) {
     logger.warn(
       {
-        type: "cache",
-        event: "cache_error",
+        type: 'cache',
+        event: 'cache_error',
         key,
         error: (err as Error).message,
       },
-      "Cache get error — falling through to fetcher",
+      'Cache get error — falling through to fetcher',
     );
   }
 
@@ -171,20 +166,20 @@ export async function cacheGetOrSet<T>(
     const isFresh = Date.now() < envelope.f;
 
     if (isFresh) {
-      logger.debug({ type: "cache", event: "cache_hit", key }, "Cache hit");
+      logger.debug({ type: 'cache', event: 'cache_hit', key }, 'Cache hit');
       return envelope.v;
     }
 
     // Stale — return immediately, refresh in background
     logger.debug(
-      { type: "cache", event: "cache_stale", key },
-      "Cache stale — background refresh",
+      { type: 'cache', event: 'cache_stale', key },
+      'Cache stale — background refresh',
     );
     scheduleBackgroundRefresh(key, fetcher, options, k);
     return envelope.v;
   }
 
-  logger.debug({ type: "cache", event: "cache_miss", key }, "Cache miss");
+  logger.debug({ type: 'cache', event: 'cache_miss', key }, 'Cache miss');
 
   // --- Single-flight ---
   const existing = _inFlight.get(k);
@@ -199,12 +194,12 @@ export async function cacheGetOrSet<T>(
     } catch (err) {
       logger.warn(
         {
-          type: "cache",
-          event: "cache_set_error",
+          type: 'cache',
+          event: 'cache_set_error',
           key,
           error: (err as Error).message,
         },
-        "Cache set error — value still returned",
+        'Cache set error — value still returned',
       );
     }
     return value;
@@ -231,18 +226,18 @@ function scheduleBackgroundRefresh<T>(
       const value = await fetcher();
       await getCache().set(key, buildEnvelope(value, options), options);
       logger.debug(
-        { type: "cache", event: "cache_swr_refresh", key },
-        "Background SWR refresh",
+        { type: 'cache', event: 'cache_swr_refresh', key },
+        'Background SWR refresh',
       );
     } catch (err) {
       logger.warn(
         {
-          type: "cache",
-          event: "cache_swr_error",
+          type: 'cache',
+          event: 'cache_swr_error',
           key,
           error: (err as Error).message,
         },
-        "Background SWR refresh failed",
+        'Background SWR refresh failed',
       );
     }
   })().finally(() => {
@@ -277,8 +272,8 @@ export async function cacheGetManyOrSet<T>(
     envelopes = await getCache().getMany<CacheEnvelope<T>>(keys);
   } catch (err) {
     logger.warn(
-      { type: "cache", event: "cache_error", error: (err as Error).message },
-      "Cache getMany error — fetching all from source",
+      { type: 'cache', event: 'cache_error', error: (err as Error).message },
+      'Cache getMany error — fetching all from source',
     );
     envelopes = new Array(keys.length).fill(undefined);
   }
@@ -327,11 +322,11 @@ export async function cacheGetManyOrSet<T>(
   } catch (err) {
     logger.warn(
       {
-        type: "cache",
-        event: "cache_set_error",
+        type: 'cache',
+        event: 'cache_set_error',
         error: (err as Error).message,
       },
-      "Cache setMany error — values still returned",
+      'Cache setMany error — values still returned',
     );
   }
 
@@ -351,19 +346,19 @@ export async function invalidateCache(prefix: CacheKey): Promise<number> {
   try {
     const count = await getCache().invalidateByPrefix(prefix);
     logger.debug(
-      { type: "cache", event: "cache_invalidate", prefix, count },
-      "Cache invalidated",
+      { type: 'cache', event: 'cache_invalidate', prefix, count },
+      'Cache invalidated',
     );
     return count;
   } catch (err) {
     logger.warn(
       {
-        type: "cache",
-        event: "cache_invalidate_error",
+        type: 'cache',
+        event: 'cache_invalidate_error',
         prefix,
         error: (err as Error).message,
       },
-      "Cache invalidation failed",
+      'Cache invalidation failed',
     );
     return 0;
   }

@@ -8,10 +8,10 @@ import {
   getPagination,
   getPrisma,
   softDeleteFilter,
-} from "../../utils/database/index.ts";
-import { logAudit } from "../../utils/logger/index.ts";
-import { NotFoundError } from "../../middleware/errorHandler.ts";
-import type { Theme, UnitSystem } from "../../../prisma/generated/prisma";
+} from '../../utils/database/index.ts';
+import { logAudit } from '../../utils/logger/index.ts';
+import { NotFoundError } from '../../middleware/errorHandler.ts';
+import type { Theme, UnitSystem } from '../../../prisma/generated/prisma';
 
 // ============================================
 // Types
@@ -80,7 +80,7 @@ export async function getProfile(userId: string): Promise<UserProfile> {
   });
 
   if (!user) {
-    throw new NotFoundError("User");
+    throw new NotFoundError('User');
   }
 
   return {
@@ -123,7 +123,7 @@ export async function getPublicProfile(
           recipes: {
             where: {
               ...softDeleteFilter(),
-              visibility: "PUBLIC",
+              visibility: 'PUBLIC',
             },
           },
         },
@@ -132,7 +132,7 @@ export async function getPublicProfile(
   });
 
   if (!user) {
-    throw new NotFoundError("User");
+    throw new NotFoundError('User');
   }
 
   return {
@@ -177,7 +177,7 @@ export async function updateProfile(
     },
   });
 
-  logAudit("profile_updated", "user", userId, userId);
+  logAudit('profile_updated', 'user', userId, userId);
 
   return {
     id: user.id,
@@ -214,7 +214,7 @@ export async function getUserRecipes(
   // Determine visibility filter based on viewer
   const visibilityFilter = viewerId === userId
     ? {} // Owner can see all their recipes
-    : { visibility: "PUBLIC" as const };
+    : { visibility: 'PUBLIC' as const };
 
   const [recipes, total] = await Promise.all([
     prisma.recipe.findMany({
@@ -244,7 +244,7 @@ export async function getUserRecipes(
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       ...pagination,
     }),
     prisma.recipe.count({
@@ -295,7 +295,7 @@ export async function getUserFavourites(userId: string, page = 1, limit = 20) {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       ...pagination,
     }),
     prisma.userFavourite.count({ where: { userId } }),
@@ -323,7 +323,7 @@ export async function deleteAccount(userId: string): Promise<void> {
     where: { userId },
   });
 
-  logAudit("account_deleted", "user", userId, userId);
+  logAudit('account_deleted', 'user', userId, userId);
 }
 
 /**
@@ -351,10 +351,10 @@ export async function listUsers(
         {
           username: {
             contains: search.toLowerCase(),
-            mode: "insensitive" as const,
+            mode: 'insensitive' as const,
           },
         },
-        { displayName: { contains: search, mode: "insensitive" as const } },
+        { displayName: { contains: search, mode: 'insensitive' as const } },
       ],
     }
     : baseWhere;
@@ -364,14 +364,14 @@ export async function listUsers(
       where,
       skip: pagination.skip,
       take: pagination.take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       include: {
         _count: {
           select: {
             recipes: {
               where: {
                 ...softDeleteFilter(),
-                visibility: "PUBLIC",
+                visibility: 'PUBLIC',
               },
             },
           },

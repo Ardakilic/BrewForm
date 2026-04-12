@@ -3,14 +3,10 @@
  * Handles taste notes retrieval and search
  */
 
-import { getPrisma, softDeleteFilter } from "../../utils/database/index.ts";
-import { getLogger } from "../../utils/logger/index.ts";
-import {
-  cacheGetOrSet,
-  CacheKeys,
-  invalidateCache,
-} from "../../utils/cache/index.ts";
-import { getConfig } from "../../config/index.ts";
+import { getPrisma, softDeleteFilter } from '../../utils/database/index.ts';
+import { getLogger } from '../../utils/logger/index.ts';
+import { cacheGetOrSet, CacheKeys, invalidateCache } from '../../utils/cache/index.ts';
+import { getConfig } from '../../config/index.ts';
 
 export interface TasteNoteWithPath {
   id: string;
@@ -50,7 +46,7 @@ function buildFullPath(
     currentNote = parent;
   }
 
-  return path.join(" > ");
+  return path.join(' > ');
 }
 
 /**
@@ -68,7 +64,7 @@ export async function getAllTasteNotesWithPaths(): Promise<
     async () => {
       const notes = await prisma.tasteNote.findMany({
         where: softDeleteFilter(),
-        orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+        orderBy: [{ depth: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
       });
 
       // Build a map for path construction
@@ -92,8 +88,8 @@ export async function getAllTasteNotesWithPaths(): Promise<
       }));
 
       logger.debug({
-        type: "taste-notes",
-        action: "fetched",
+        type: 'taste-notes',
+        action: 'fetched',
         count: notesWithPaths.length,
       });
 
@@ -107,7 +103,7 @@ export async function getAllTasteNotesWithPaths(): Promise<
  * Invalidate all taste notes caches (called by admin panel)
  */
 export async function invalidateTasteNotesCache(): Promise<number> {
-  return await invalidateCache(["taste-notes"]);
+  return await invalidateCache(['taste-notes']);
 }
 
 /**
@@ -122,7 +118,7 @@ export async function getTasteNotesHierarchy(): Promise<TasteNoteHierarchy[]> {
     async () => {
       const notes = await prisma.tasteNote.findMany({
         where: softDeleteFilter(),
-        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       });
 
       // Build hierarchy

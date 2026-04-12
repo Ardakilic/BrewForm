@@ -5,7 +5,7 @@
  * Requires `"unstable": ["kv"]` in deno.json.
  */
 
-import type { CacheBackend, CacheKey, CacheOptions } from "../types.ts";
+import type { CacheBackend, CacheKey, CacheOptions } from '../types.ts';
 
 /** Subset of config fields consumed by this backend. */
 export interface DenoKvConfig {
@@ -34,7 +34,7 @@ export class DenoKvBackend implements CacheBackend {
   /** Returns the open KV instance or throws if not initialized. */
   private openKv(): Deno.Kv {
     if (!this.kv) {
-      throw new Error("DenoKvBackend not initialized — call init() first");
+      throw new Error('DenoKvBackend not initialized — call init() first');
     }
     return this.kv;
   }
@@ -140,7 +140,7 @@ export class DenoKvBackend implements CacheBackend {
   async ping(): Promise<boolean> {
     try {
       const kv = this.openKv();
-      await kv.get(["__ping__"]);
+      await kv.get(['__ping__']);
       return true;
     } catch {
       return false;

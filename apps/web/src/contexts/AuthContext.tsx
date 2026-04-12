@@ -3,15 +3,9 @@
  * Manages user authentication state
  */
 
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-import { api } from "../utils/api.ts";
-import type { LoginResponse, RegisterResponse, User } from "../types/index.ts";
+import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
+import { api } from '../utils/api.ts';
+import type { LoginResponse, RegisterResponse, User } from '../types/index.ts';
 
 // ============================================
 // Types
@@ -46,8 +40,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Token Management
 // ============================================
 
-const TOKEN_KEY = "brewform-access-token";
-const REFRESH_TOKEN_KEY = "brewform-refresh-token";
+const TOKEN_KEY = 'brewform-access-token';
+const REFRESH_TOKEN_KEY = 'brewform-refresh-token';
 
 function getStoredTokens(): {
   accessToken: string | null;
@@ -95,7 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     try {
-      const response = await api.get<User>("/auth/me");
+      const response = await api.get<User>('/auth/me');
       if (response.success && response.data) {
         setUser(response.data);
       } else {
@@ -109,13 +103,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await api.post<LoginResponse>("/auth/login", {
+    const response = await api.post<LoginResponse>('/auth/login', {
       email,
       password,
     });
 
     if (!response.success || !response.data) {
-      throw new Error(response.error?.message || "Login failed");
+      throw new Error(response.error?.message || 'Login failed');
     }
 
     storeTokens(response.data.tokens);
@@ -123,10 +117,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const register = async (data: RegisterData) => {
-    const response = await api.post<RegisterResponse>("/auth/register", data);
+    const response = await api.post<RegisterResponse>('/auth/register', data);
 
     if (!response.success || !response.data) {
-      throw new Error(response.error?.message || "Registration failed");
+      throw new Error(response.error?.message || 'Registration failed');
     }
 
     storeTokens(response.data.tokens);
@@ -138,7 +132,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     try {
       if (refreshToken) {
-        await api.post("/auth/logout", { refreshToken });
+        await api.post('/auth/logout', { refreshToken });
       }
     } finally {
       clearTokens();
@@ -174,7 +168,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }

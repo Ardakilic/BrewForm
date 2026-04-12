@@ -2,21 +2,21 @@
  * BrewForm Admin Taste Notes Page
  */
 
-import { useState } from "react";
-import { useStyletron } from "baseui";
-import { Button, KIND, SIZE } from "baseui/button";
-import { KIND as NotificationKind, Notification } from "baseui/notification";
-import { HeadingLarge, LabelMedium, ParagraphMedium } from "baseui/typography";
-import { useTranslation } from "react-i18next";
-import { Helmet } from "react-helmet-async";
-import { api } from "../../utils/api.ts";
+import { useState } from 'react';
+import { useStyletron } from 'baseui';
+import { Button, KIND, SIZE } from 'baseui/button';
+import { KIND as NotificationKind, Notification } from 'baseui/notification';
+import { HeadingLarge, LabelMedium, ParagraphMedium } from 'baseui/typography';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
+import { api } from '../../utils/api.ts';
 
 function AdminTasteNotesPage() {
   const [css, theme] = useStyletron();
   const { t } = useTranslation();
   const [invalidating, setInvalidating] = useState(false);
   const [result, setResult] = useState<
-    { kind: "positive" | "negative"; message: string } | null
+    { kind: 'positive' | 'negative'; message: string } | null
   >(
     null,
   );
@@ -26,25 +26,25 @@ function AdminTasteNotesPage() {
     setResult(null);
     try {
       const res = await api.post<{ invalidated: number }>(
-        "/taste-notes/cache/invalidate",
+        '/taste-notes/cache/invalidate',
       );
       if (res.success) {
         setResult({
-          kind: "positive",
-          message: t("tasteNotes.cache.success", {
+          kind: 'positive',
+          message: t('tasteNotes.cache.success', {
             count: res.data?.invalidated ?? 0,
           }),
         });
       } else {
         setResult({
-          kind: "negative",
-          message: res.error?.message ?? t("tasteNotes.cache.failure"),
+          kind: 'negative',
+          message: res.error?.message ?? t('tasteNotes.cache.failure'),
         });
       }
     } catch {
       setResult({
-        kind: "negative",
-        message: t("tasteNotes.cache.networkError"),
+        kind: 'negative',
+        message: t('tasteNotes.cache.networkError'),
       });
     } finally {
       setInvalidating(false);
@@ -54,11 +54,11 @@ function AdminTasteNotesPage() {
   return (
     <>
       <Helmet>
-        <title>{t("admin.tasteNotes.title")}</title>
+        <title>{t('admin.tasteNotes.title')}</title>
       </Helmet>
 
-      <HeadingLarge marginBottom="24px">
-        {t("admin.tasteNotes.heading")}
+      <HeadingLarge marginBottom='24px'>
+        {t('admin.tasteNotes.heading')}
       </HeadingLarge>
 
       {/* Cache invalidation card */}
@@ -71,21 +71,21 @@ function AdminTasteNotesPage() {
           border: `1px solid ${theme.colors.borderOpaque}`,
         })}
       >
-        <LabelMedium marginBottom="8px">
-          {t("tasteNotes.cache.label")}
+        <LabelMedium marginBottom='8px'>
+          {t('tasteNotes.cache.label')}
         </LabelMedium>
-        <ParagraphMedium color={theme.colors.contentSecondary} marginTop="0">
-          {t("tasteNotes.cache.description")}
+        <ParagraphMedium color={theme.colors.contentSecondary} marginTop='0'>
+          {t('tasteNotes.cache.description')}
         </ParagraphMedium>
 
         {result && (
           <Notification
-            kind={result.kind === "positive"
+            kind={result.kind === 'positive'
               ? NotificationKind.positive
               : NotificationKind.negative}
             overrides={{
               Body: {
-                style: { width: "auto", marginBottom: theme.sizing.scale500 },
+                style: { width: 'auto', marginBottom: theme.sizing.scale500 },
               },
             }}
           >
@@ -99,26 +99,26 @@ function AdminTasteNotesPage() {
           onClick={handleInvalidateCache}
           isLoading={invalidating}
         >
-          {t("tasteNotes.cache.invalidateButton")}
+          {t('tasteNotes.cache.invalidateButton')}
         </Button>
       </div>
 
       <ParagraphMedium
         color={theme.colors.contentSecondary}
-        marginTop="24px"
+        marginTop='24px'
       >
-        {t("admin.tasteNotes.comingSoon")}
+        {t('admin.tasteNotes.comingSoon')}
       </ParagraphMedium>
 
       <ParagraphMedium color={theme.colors.contentSecondary}>
-        {t("admin.tasteNotes.plannedFeatures")}
+        {t('admin.tasteNotes.plannedFeatures')}
       </ParagraphMedium>
-      <ul style={{ color: theme.colors.contentSecondary, marginLeft: "20px" }}>
-        <li>{t("admin.tasteNotes.features.view")}</li>
-        <li>{t("admin.tasteNotes.features.add")}</li>
-        <li>{t("admin.tasteNotes.features.edit")}</li>
-        <li>{t("admin.tasteNotes.features.delete")}</li>
-        <li>{t("admin.tasteNotes.features.reimport")}</li>
+      <ul style={{ color: theme.colors.contentSecondary, marginLeft: '20px' }}>
+        <li>{t('admin.tasteNotes.features.view')}</li>
+        <li>{t('admin.tasteNotes.features.add')}</li>
+        <li>{t('admin.tasteNotes.features.edit')}</li>
+        <li>{t('admin.tasteNotes.features.delete')}</li>
+        <li>{t('admin.tasteNotes.features.reimport')}</li>
       </ul>
     </>
   );

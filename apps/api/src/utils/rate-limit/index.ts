@@ -3,8 +3,8 @@
  * Database-backed rate limiting using RateLimit model
  */
 
-import { getPrisma } from "../database/index.ts";
-import { getLogger } from "../logger/index.ts";
+import { getPrisma } from '../database/index.ts';
+import { getLogger } from '../logger/index.ts';
 
 interface PrismaTx {
   rateLimit: {
@@ -44,8 +44,7 @@ export async function checkRateLimit(
       }) as { id: string; count: number; windowStart: Date } | null;
 
       if (existing) {
-        const isExpired =
-          existing.windowStart.getTime() < windowStart.getTime();
+        const isExpired = existing.windowStart.getTime() < windowStart.getTime();
 
         if (isExpired) {
           // Window expired — reset the window in place with a new start time
@@ -108,9 +107,9 @@ export async function checkRateLimit(
     return result;
   } catch (error) {
     getLogger().error({
-      type: "rate_limit",
-      operation: "check",
-      error: error instanceof Error ? error.message : "Unknown error",
+      type: 'rate_limit',
+      operation: 'check',
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
 
     // Fail closed: deny requests on DB errors to prevent abuse during outages
@@ -137,9 +136,9 @@ export async function cleanupExpiredRateLimits(): Promise<number> {
     return result.count;
   } catch (error) {
     getLogger().error({
-      type: "rate_limit",
-      operation: "cleanup",
-      error: error instanceof Error ? error.message : "Unknown error",
+      type: 'rate_limit',
+      operation: 'cleanup',
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     return 0;
   }

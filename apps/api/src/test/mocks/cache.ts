@@ -12,9 +12,9 @@
  *   simulateCacheError(true)   — make the next get/set throw
  */
 
-import type { CacheKey, CacheOptions } from "../../utils/cache/types.ts";
+import type { CacheKey, CacheOptions } from '../../utils/cache/types.ts';
 export type { CacheKey, CacheOptions };
-export { CacheKeys } from "../../utils/cache/keys.ts";
+export { CacheKeys } from '../../utils/cache/keys.ts';
 
 // ============================================
 // In-process mock store
@@ -31,7 +31,7 @@ const _store = new Map<string, any>();
 let _passthrough = true;
 
 interface CacheCall {
-  op: "get" | "set" | "invalidate" | "getOrSet";
+  op: 'get' | 'set' | 'invalidate' | 'getOrSet';
   key: unknown;
 }
 
@@ -93,10 +93,10 @@ export function setCacheConnectionResult(healthy: boolean): void {
 export function getCache() {
   return {
     get<T>(key: CacheKey): Promise<T | undefined> {
-      _calls.push({ op: "get", key });
+      _calls.push({ op: 'get', key });
       if (_errorOnNext) {
         _errorOnNext = false;
-        return Promise.reject(new Error("Mock cache error"));
+        return Promise.reject(new Error('Mock cache error'));
       }
       return Promise.resolve(_store.get(k(key)) as T | undefined);
     },
@@ -104,10 +104,10 @@ export function getCache() {
       return Promise.all(keys.map((key) => this.get<T>(key)));
     },
     set<T>(key: CacheKey, value: T, _opts?: CacheOptions): Promise<void> {
-      _calls.push({ op: "set", key });
+      _calls.push({ op: 'set', key });
       if (_errorOnNextAll) {
         _errorOnNextAll = false;
-        return Promise.reject(new Error("Mock cache error"));
+        return Promise.reject(new Error('Mock cache error'));
       }
       _store.set(k(key), value);
       return Promise.resolve();
@@ -117,7 +117,7 @@ export function getCache() {
     ): Promise<void> {
       if (_errorOnNextAll) {
         _errorOnNextAll = false;
-        return Promise.reject(new Error("Mock cache error"));
+        return Promise.reject(new Error('Mock cache error'));
       }
       for (const e of entries) {
         _store.set(k(e.key), e.value);
@@ -129,10 +129,10 @@ export function getCache() {
       return Promise.resolve();
     },
     invalidateByPrefix(prefix: CacheKey): Promise<number> {
-      _calls.push({ op: "invalidate", key: prefix });
+      _calls.push({ op: 'invalidate', key: prefix });
       if (_errorOnNextAll) {
         _errorOnNextAll = false;
-        return Promise.reject(new Error("Mock cache error"));
+        return Promise.reject(new Error('Mock cache error'));
       }
       const prefixArr = JSON.parse(JSON.stringify(prefix));
       let count = 0;
@@ -178,10 +178,10 @@ export async function cacheGetOrSet<T>(
   fetcher: () => Promise<T>,
   _options?: CacheOptions,
 ): Promise<T> {
-  _calls.push({ op: "getOrSet", key });
+  _calls.push({ op: 'getOrSet', key });
   if (_errorOnNext) {
     _errorOnNext = false;
-    throw new Error("Mock cache error");
+    throw new Error('Mock cache error');
   }
   if (!_passthrough) {
     const stored = _store.get(k(key));
@@ -201,10 +201,10 @@ export async function cacheGetManyOrSet<T>(
   fetcher: (missingKeys: readonly CacheKey[]) => Promise<T[]>,
   _options?: CacheOptions,
 ): Promise<T[]> {
-  _calls.push({ op: "getOrSet", key: keys });
+  _calls.push({ op: 'getOrSet', key: keys });
   if (_errorOnNextAll) {
     _errorOnNextAll = false;
-    throw new Error("Mock cache error");
+    throw new Error('Mock cache error');
   }
   if (_passthrough) {
     return await fetcher(keys);
@@ -230,10 +230,10 @@ export async function cacheGetManyOrSet<T>(
 }
 
 export function invalidateCache(prefix: CacheKey): Promise<number> {
-  _calls.push({ op: "invalidate", key: prefix });
+  _calls.push({ op: 'invalidate', key: prefix });
   if (_errorOnNextAll) {
     _errorOnNextAll = false;
-    return Promise.reject(new Error("Mock cache error"));
+    return Promise.reject(new Error('Mock cache error'));
   }
   const prefixArr = JSON.parse(JSON.stringify(prefix));
   let count = 0;

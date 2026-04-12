@@ -20,9 +20,11 @@ const swrMock = {
     mutate: () => Promise.resolve(undefined),
     isValidating: false,
   }),
-  implementationOnce: null as ((
-    ...args: unknown[]
-  ) => SWRResponse<unknown>) | null,
+  implementationOnce: null as
+    | ((
+      ...args: unknown[]
+    ) => SWRResponse<unknown>)
+    | null,
 };
 
 // Export a function that calls the current implementation

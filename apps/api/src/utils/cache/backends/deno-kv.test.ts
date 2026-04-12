@@ -6,15 +6,14 @@
  * Automatically skipped when Deno KV is not available.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, it } from "@std/testing";
-import { expect } from "@std/expect";
-import { DenoKvBackend } from "./deno-kv.ts";
+import { afterAll, beforeAll, beforeEach, describe, it } from '@std/testing';
+import { expect } from '@std/expect';
+import { DenoKvBackend } from './deno-kv.ts';
 
-const kvAvailable =
-  typeof (Deno as Record<string, unknown>).openKv === "function";
+const kvAvailable = typeof (Deno as Record<string, unknown>).openKv === 'function';
 
 if (kvAvailable) {
-  describe("DenoKvBackend", () => {
+  describe('DenoKvBackend', () => {
     let backend: DenoKvBackend;
 
     beforeAll(async () => {
@@ -30,100 +29,100 @@ if (kvAvailable) {
       await backend.invalidateByPrefix([]);
     });
 
-    describe("get / set", () => {
-      it("returns undefined for missing key", async () => {
-        expect(await backend.get(["missing"])).toBeUndefined();
+    describe('get / set', () => {
+      it('returns undefined for missing key', async () => {
+        expect(await backend.get(['missing'])).toBeUndefined();
       });
 
-      it("stores and retrieves a value", async () => {
-        await backend.set(["kv", "hello"], { v: 42 });
-        expect(await backend.get(["kv", "hello"])).toEqual({ v: 42 });
+      it('stores and retrieves a value', async () => {
+        await backend.set(['kv', 'hello'], { v: 42 });
+        expect(await backend.get(['kv', 'hello'])).toEqual({ v: 42 });
       });
 
-      it("overwrites an existing value", async () => {
-        await backend.set(["kv", "ow"], "first");
-        await backend.set(["kv", "ow"], "second");
-        expect(await backend.get<string>(["kv", "ow"])).toBe("second");
+      it('overwrites an existing value', async () => {
+        await backend.set(['kv', 'ow'], 'first');
+        await backend.set(['kv', 'ow'], 'second');
+        expect(await backend.get<string>(['kv', 'ow'])).toBe('second');
       });
     });
 
-    describe("getMany", () => {
-      it("returns array with undefined for missing keys", async () => {
-        await backend.set(["kv", "a"], 1);
-        const results = await backend.getMany<number>([["kv", "a"], [
-          "kv",
-          "b",
+    describe('getMany', () => {
+      it('returns array with undefined for missing keys', async () => {
+        await backend.set(['kv', 'a'], 1);
+        const results = await backend.getMany<number>([['kv', 'a'], [
+          'kv',
+          'b',
         ]]);
         expect(results).toEqual([1, undefined]);
       });
 
-      it("returns empty array for empty input", async () => {
+      it('returns empty array for empty input', async () => {
         expect(await backend.getMany([])).toEqual([]);
       });
     });
 
-    describe("setMany", () => {
-      it("stores multiple entries atomically", async () => {
+    describe('setMany', () => {
+      it('stores multiple entries atomically', async () => {
         await backend.setMany([
-          { key: ["kv", "x"], value: 10 },
-          { key: ["kv", "y"], value: 20 },
+          { key: ['kv', 'x'], value: 10 },
+          { key: ['kv', 'y'], value: 20 },
         ]);
-        expect(await backend.get<number>(["kv", "x"])).toBe(10);
-        expect(await backend.get<number>(["kv", "y"])).toBe(20);
+        expect(await backend.get<number>(['kv', 'x'])).toBe(10);
+        expect(await backend.get<number>(['kv', 'y'])).toBe(20);
       });
     });
 
-    describe("delete", () => {
-      it("removes a stored key", async () => {
-        await backend.set(["kv", "del"], "bye");
-        await backend.delete(["kv", "del"]);
-        expect(await backend.get(["kv", "del"])).toBeUndefined();
+    describe('delete', () => {
+      it('removes a stored key', async () => {
+        await backend.set(['kv', 'del'], 'bye');
+        await backend.delete(['kv', 'del']);
+        expect(await backend.get(['kv', 'del'])).toBeUndefined();
       });
 
-      it("does not throw when deleting a non-existent key", async () => {
-        await expect(backend.delete(["kv", "ghost"])).resolves.toBeUndefined();
-      });
-    });
-
-    describe("has", () => {
-      it("returns true for existing key", async () => {
-        await backend.set(["kv", "h"], true);
-        expect(await backend.has(["kv", "h"])).toBe(true);
-      });
-
-      it("returns false for missing key", async () => {
-        expect(await backend.has(["kv", "missing"])).toBe(false);
+      it('does not throw when deleting a non-existent key', async () => {
+        await expect(backend.delete(['kv', 'ghost'])).resolves.toBeUndefined();
       });
     });
 
-    describe("invalidateByPrefix", () => {
-      it("deletes all keys with matching prefix", async () => {
-        await backend.set(["recipes", "latest"], "a");
-        await backend.set(["recipes", "popular"], "b");
-        await backend.set(["taste-notes", "all"], "c");
+    describe('has', () => {
+      it('returns true for existing key', async () => {
+        await backend.set(['kv', 'h'], true);
+        expect(await backend.has(['kv', 'h'])).toBe(true);
+      });
 
-        const count = await backend.invalidateByPrefix(["recipes"]);
+      it('returns false for missing key', async () => {
+        expect(await backend.has(['kv', 'missing'])).toBe(false);
+      });
+    });
+
+    describe('invalidateByPrefix', () => {
+      it('deletes all keys with matching prefix', async () => {
+        await backend.set(['recipes', 'latest'], 'a');
+        await backend.set(['recipes', 'popular'], 'b');
+        await backend.set(['taste-notes', 'all'], 'c');
+
+        const count = await backend.invalidateByPrefix(['recipes']);
 
         expect(count).toBe(2);
-        expect(await backend.get(["recipes", "latest"])).toBeUndefined();
-        expect(await backend.get(["taste-notes", "all"])).toBe("c");
+        expect(await backend.get(['recipes', 'latest'])).toBeUndefined();
+        expect(await backend.get(['taste-notes', 'all'])).toBe('c');
       });
 
-      it("returns 0 when no keys match", async () => {
-        await backend.set(["other", "key"], "x");
-        const count = await backend.invalidateByPrefix(["nope"]);
+      it('returns 0 when no keys match', async () => {
+        await backend.set(['other', 'key'], 'x');
+        const count = await backend.invalidateByPrefix(['nope']);
         expect(count).toBe(0);
       });
     });
 
-    describe("ping", () => {
-      it("returns true for healthy backend", async () => {
+    describe('ping', () => {
+      it('returns true for healthy backend', async () => {
         expect(await backend.ping()).toBe(true);
       });
     });
 
-    describe("close", () => {
-      it("is idempotent — calling close twice does not throw", async () => {
+    describe('close', () => {
+      it('is idempotent — calling close twice does not throw', async () => {
         const b = new DenoKvBackend({ cacheDenoKvPath: undefined });
         await b.init();
         await b.close();
@@ -132,8 +131,8 @@ if (kvAvailable) {
     });
   });
 } else {
-  describe("DenoKvBackend", () => {
-    it("is skipped — Deno KV not available in this environment", () => {
+  describe('DenoKvBackend', () => {
+    it('is skipped — Deno KV not available in this environment', () => {
       expect(kvAvailable).toBe(false);
     });
   });

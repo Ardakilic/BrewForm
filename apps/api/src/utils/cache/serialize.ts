@@ -6,7 +6,7 @@
  * interchangeable without data-format surprises.
  */
 
-import type { CacheEnvelope } from "./types.ts";
+import type { CacheEnvelope } from './types.ts';
 
 /**
  * Serialize a cache envelope to a JSON string.
@@ -34,12 +34,12 @@ export function decode<T>(
  * Convert an array cache key to a Redis-compatible colon-joined string.
  */
 export function keyToString(key: readonly (string | number)[]): string {
-  return key.join(":");
+  return key.join(':');
 }
 
 /**
  * Build a Redis SCAN pattern from a prefix key array.
  */
 export function prefixToPattern(prefix: readonly (string | number)[]): string {
-  return prefix.length === 0 ? "*" : `${keyToString(prefix)}*`;
+  return prefix.length === 0 ? '*' : `${keyToString(prefix)}*`;
 }

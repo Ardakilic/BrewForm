@@ -3,20 +3,20 @@
  * Loads and validates environment variables using Zod
  */
 
-import process from "node:process";
-import { z } from "zod";
+import process from 'node:process';
+import { z } from 'zod';
 
 /**
  * Environment configuration schema with validation
  */
 const configSchema = z.object({
   // Application
-  nodeEnv: z.enum(["development", "production", "test"]).default("development"),
-  appName: z.string().default("BrewForm"),
-  appUrl: z.string().url().default("http://localhost:3000"),
-  apiUrl: z.string().url().default("http://localhost:3001"),
+  nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
+  appName: z.string().default('BrewForm'),
+  appUrl: z.string().url().default('http://localhost:3000'),
+  apiUrl: z.string().url().default('http://localhost:3001'),
   appSecret: z.string().min(32),
-  apiVersion: z.string().default("v1"),
+  apiVersion: z.string().default('v1'),
   port: z.coerce.number().default(3001),
 
   // Database
@@ -26,22 +26,22 @@ const configSchema = z.object({
 
   // JWT
   jwtSecret: z.string().min(32),
-  jwtAccessExpiresIn: z.string().default("15m"),
-  jwtRefreshExpiresIn: z.string().default("7d"),
+  jwtAccessExpiresIn: z.string().default('15m'),
+  jwtRefreshExpiresIn: z.string().default('7d'),
 
   // Email
-  smtpHost: z.string().default("localhost"),
+  smtpHost: z.string().default('localhost'),
   smtpPort: z.coerce.number().default(1025),
   smtpSecure: z.coerce.boolean().default(false),
   smtpUser: z.string().optional(),
   smtpPass: z.string().optional(),
-  smtpFromName: z.string().default("BrewForm"),
-  smtpFromEmail: z.string().email().default("noreply@brewform.local"),
+  smtpFromName: z.string().default('BrewForm'),
+  smtpFromEmail: z.string().email().default('noreply@brewform.local'),
 
   // Logging
-  logLevel: z.enum(["fatal", "error", "warn", "info", "debug", "trace"])
-    .default("info"),
-  logFormat: z.enum(["json", "pretty"]).default("json"),
+  logLevel: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+    .default('info'),
+  logFormat: z.enum(['json', 'pretty']).default('json'),
 
   // Rate Limiting
   rateLimitWindowMs: z.coerce.number().default(60000),
@@ -53,31 +53,31 @@ const configSchema = z.object({
 
   // File Upload
   maxFileSize: z.coerce.number().default(5242880), // 5MB
-  allowedFileTypes: z.string().default("image/jpeg,image/png,image/webp"),
+  allowedFileTypes: z.string().default('image/jpeg,image/png,image/webp'),
 
   // Session
   sessionSecret: z.string().min(32),
   sessionMaxAge: z.coerce.number().default(604800000), // 7 days
 
   // Admin
-  adminEmail: z.string().email().default("admin@brewform.local"),
+  adminEmail: z.string().email().default('admin@brewform.local'),
 
   // Cache
-  cacheDriver: z.enum(["deno-kv", "redis"]).default("deno-kv"),
+  cacheDriver: z.enum(['deno-kv', 'redis']).default('deno-kv'),
   cacheRequired: z.preprocess(
     (val: unknown) => {
-      if (typeof val === "boolean") return val;
-      if (typeof val === "string") {
-        if (val === "true" || val === "1") return true;
-        if (val === "false" || val === "0") return false;
+      if (typeof val === 'boolean') return val;
+      if (typeof val === 'string') {
+        if (val === 'true' || val === '1') return true;
+        if (val === 'false' || val === '0') return false;
         return val;
       }
       return val;
     },
     z.boolean(),
   ).default(false),
-  cacheDenoKvPath: z.string().default("/data/deno-kv/brewform.kv"),
-  cacheRedisUrl: z.string().url().default("redis://redis:6379"),
+  cacheDenoKvPath: z.string().default('/data/deno-kv/brewform.kv'),
+  cacheRedisUrl: z.string().url().default('redis://redis:6379'),
   cacheRedisPassword: z.string().optional(),
   cacheTtlRecipesLatest: z.coerce.number().int().positive().default(300),
   cacheTtlRecipesPopular: z.coerce.number().int().positive().default(300),
@@ -94,9 +94,9 @@ const configSchema = z.object({
   enablePasswordReset: z.coerce.boolean().default(true),
 
   // Timezone & Locale
-  defaultTimezone: z.string().default("UTC"),
-  defaultLocale: z.string().default("en"),
-  supportedLocales: z.string().default("en,es,de,fr,it,tr,ja,ko,zh"),
+  defaultTimezone: z.string().default('UTC'),
+  defaultLocale: z.string().default('en'),
+  supportedLocales: z.string().default('en,es,de,fr,it,tr,ja,ko,zh'),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -159,9 +159,9 @@ function loadConfig(): Config {
   const result = configSchema.safeParse(envMap);
 
   if (!result.success) {
-    console.error("❌ Invalid configuration:");
+    console.error('❌ Invalid configuration:');
     console.error(result.error.format());
-    throw new Error("Invalid configuration. Check environment variables.");
+    throw new Error('Invalid configuration. Check environment variables.');
   }
 
   return result.data;

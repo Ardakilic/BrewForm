@@ -8,9 +8,9 @@
  * Uses node-redis v4 API (createClient, connect, get/set/mGet, etc.)
  */
 
-import type { CacheBackend, CacheKey, CacheOptions } from "../types.ts";
-import { keyToString, prefixToPattern } from "../serialize.ts";
-import { getLogger } from "../../logger/index.ts";
+import type { CacheBackend, CacheKey, CacheOptions } from '../types.ts';
+import { keyToString, prefixToPattern } from '../serialize.ts';
+import { getLogger } from '../../logger/index.ts';
 
 export interface RedisConfig {
   cacheRedisUrl: string;
@@ -33,11 +33,11 @@ export class RedisBackend implements CacheBackend {
     let redisModule: RedisClient;
 
     try {
-      redisModule = await import("redis");
+      redisModule = await import('redis');
     } catch {
       throw new Error(
         "CACHE_DRIVER=redis but the 'redis' package is not installed. " +
-          "Run `deno install npm:redis` or set CACHE_DRIVER=deno-kv.",
+          'Run `deno install npm:redis` or set CACHE_DRIVER=deno-kv.',
       );
     }
 
@@ -46,15 +46,15 @@ export class RedisBackend implements CacheBackend {
       password: this.config.cacheRedisPassword || undefined,
     });
 
-    this.client.on("error", (err: Error) => {
+    this.client.on('error', (err: Error) => {
       logger.warn(
-        { type: "cache", backend: "redis", error: err.message },
-        "Redis client error",
+        { type: 'cache', backend: 'redis', error: err.message },
+        'Redis client error',
       );
     });
 
     await this.client.connect();
-    logger.info({ type: "cache", backend: "redis" }, "Redis cache connected");
+    logger.info({ type: 'cache', backend: 'redis' }, 'Redis cache connected');
   }
 
   private toKey(key: CacheKey): string {
@@ -160,7 +160,7 @@ export class RedisBackend implements CacheBackend {
   async ping(): Promise<boolean> {
     try {
       const result = await this.client.ping();
-      return result === "PONG";
+      return result === 'PONG';
     } catch {
       return false;
     }

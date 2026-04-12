@@ -3,10 +3,10 @@
  * JWT token handling and password hashing
  */
 
-import { type JWTPayload, jwtVerify, SignJWT } from "jose";
-import { hash, verify } from "@node-rs/argon2";
-import { nanoid } from "nanoid";
-import { getConfig } from "../../config/index.ts";
+import { type JWTPayload, jwtVerify, SignJWT } from 'jose';
+import { hash, verify } from '@node-rs/argon2';
+import { nanoid } from 'nanoid';
+import { getConfig } from '../../config/index.ts';
 
 // ============================================
 // Types
@@ -16,7 +16,7 @@ export interface TokenPayload extends JWTPayload {
   userId: string;
   email: string;
   isAdmin: boolean;
-  type: "access" | "refresh";
+  type: 'access' | 'refresh';
 }
 
 export interface TokenPair {
@@ -71,13 +71,13 @@ function parseDuration(duration: string): number {
   const unit = match[2];
 
   switch (unit) {
-    case "s":
+    case 's':
       return value * 1000;
-    case "m":
+    case 'm':
       return value * 60 * 1000;
-    case "h":
+    case 'h':
       return value * 60 * 60 * 1000;
-    case "d":
+    case 'd':
       return value * 24 * 60 * 60 * 1000;
     default:
       throw new Error(`Unknown duration unit: ${unit}`);
@@ -88,14 +88,14 @@ function parseDuration(duration: string): number {
  * Create a JWT token
  */
 function createToken(
-  payload: Omit<TokenPayload, "iat" | "exp">,
+  payload: Omit<TokenPayload, 'iat' | 'exp'>,
   expiresIn: string,
 ): Promise<string> {
   const config = getConfig();
   const secret = new TextEncoder().encode(config.jwtSecret);
 
   return new SignJWT(payload as unknown as JWTPayload)
-    .setProtectedHeader({ alg: "HS256" })
+    .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(expiresIn)
     .setIssuer(config.appName)
@@ -113,12 +113,12 @@ export async function generateTokenPair(
   const config = getConfig();
 
   const accessToken = await createToken(
-    { userId, email, isAdmin, type: "access" },
+    { userId, email, isAdmin, type: 'access' },
     config.jwtAccessExpiresIn,
   );
 
   const refreshToken = await createToken(
-    { userId, email, isAdmin, type: "refresh" },
+    { userId, email, isAdmin, type: 'refresh' },
     config.jwtRefreshExpiresIn,
   );
 
@@ -159,7 +159,7 @@ export async function verifyAccessToken(
 ): Promise<TokenPayload | null> {
   const payload = await verifyToken(token);
 
-  if (!payload || payload.type !== "access") {
+  if (!payload || payload.type !== 'access') {
     return null;
   }
 
@@ -174,7 +174,7 @@ export async function verifyRefreshToken(
 ): Promise<TokenPayload | null> {
   const payload = await verifyToken(token);
 
-  if (!payload || payload.type !== "refresh") {
+  if (!payload || payload.type !== 'refresh') {
     return null;
   }
 
