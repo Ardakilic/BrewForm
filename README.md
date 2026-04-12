@@ -137,7 +137,7 @@ make serena-health-packages   # Health check Packages workspace
 
 All clients connect to the SSE endpoint at `http://localhost:10121/sse`.
 
-**VSCode / Cursor / Windsurf** — `.vscode/mcp.json` is pre-configured:
+**VSCode / Cursor / Windsurf** — add to `.vscode/mcp.json` in your project root:
 
 ```json
 {
