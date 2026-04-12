@@ -6,7 +6,9 @@
   "imports": {
     "@std/testing": "jsr:@std/testing@^1.0.0/bdd",
     "@std/expect": "jsr:@std/expect@^1.0.0",
-    "@std/testing/mock": "jsr:@std/testing@^1.0.0/mock"
+    "@std/testing/mock": "jsr:@std/testing@^1.0.0/mock",
+    "@prisma/client": "npm:@prisma/client@^7.5.0",
+    "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.5.0"
   },
   "compilerOptions": {
     "lib": ["ES2022", "ES2022.Full", "deno.ns", "deno.unstable"],
