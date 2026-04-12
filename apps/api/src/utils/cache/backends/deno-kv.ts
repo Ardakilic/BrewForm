@@ -50,7 +50,7 @@ export class DenoKvBackend implements CacheBackend {
   async get<T>(key: CacheKey): Promise<T | undefined> {
     const kv = this.openKv();
     const entry = await kv.get<T>(toKvKey(key));
-    return entry.value ?? undefined;
+    return entry.versionstamp !== null ? entry.value : undefined;
   }
 
   async getMany<T>(keys: readonly CacheKey[]): Promise<(T | undefined)[]> {
@@ -65,7 +65,8 @@ export class DenoKvBackend implements CacheBackend {
         chunk as Parameters<typeof kv.getMany>[0],
       );
       for (let j = 0; j < entries.length; j++) {
-        results[i + j] = (entries[j].value as T) ?? undefined;
+        const entry = entries[j];
+        results[i + j] = entry.versionstamp !== null ? entry.value as T : undefined;
       }
     }
 
@@ -134,7 +135,7 @@ export class DenoKvBackend implements CacheBackend {
   async has(key: CacheKey): Promise<boolean> {
     const kv = this.openKv();
     const entry = await kv.get(toKvKey(key));
-    return entry.value !== null;
+    return entry.versionstamp !== null;
   }
 
   async ping(): Promise<boolean> {
