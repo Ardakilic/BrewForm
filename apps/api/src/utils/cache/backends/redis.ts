@@ -125,10 +125,14 @@ export class RedisBackend implements CacheBackend {
     const pattern = prefixToPattern(prefix);
     const prefixKey = this.toKey(prefix);
     const prefixWithSeparator = prefixKey + ':';
+    const isEmptyPrefix = prefixKey === '';
     let count = 0;
 
-    const deleted = await this.client.del(prefixKey);
-    if (deleted === 1) count++;
+    // `DEL ''` is not a valid Redis command (empty key); skip for the match-all case.
+    if (!isEmptyPrefix) {
+      const deleted = await this.client.del(prefixKey);
+      if (deleted === 1) count++;
+    }
 
     const CHUNK_SIZE = 500;
     const chunk: string[] = [];
@@ -138,8 +142,10 @@ export class RedisBackend implements CacheBackend {
     ) {
       const keys: string[] = Array.isArray(batch) ? batch : [batch];
       for (const key of keys) {
-        // Only delete keys that are exactly the prefix or have the prefix as a namespace segment
-        if (key === prefixKey || key.startsWith(prefixWithSeparator)) {
+        // Empty prefix ⇒ match-all: accept every scanned key.
+        // Non-empty prefix ⇒ only delete keys that are exactly the prefix or
+        // share its namespace (e.g. "recipes:123" but not "recipes2:foo").
+        if (isEmptyPrefix || key === prefixKey || key.startsWith(prefixWithSeparator)) {
           chunk.push(key as string);
           if (chunk.length >= CHUNK_SIZE) {
             const numDeleted: number = await this.client.del(chunk);
