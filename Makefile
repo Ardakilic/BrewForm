@@ -331,10 +331,10 @@ serena-stop:
 serena-logs:
 	docker compose logs -f serena
 
-serena-index-api:
+serena-index-api: serena-up
 	docker compose exec serena serena project index /workspace/api
 
-serena-index-web:
+serena-index-web: serena-up
 	docker compose exec serena serena project index /workspace/web
 
 serena-index-packages:
@@ -342,10 +342,10 @@ serena-index-packages:
 
 serena-index: serena-index-api serena-index-web serena-index-packages
 
-serena-health-api:
+serena-health-api: serena-up
 	docker compose exec serena serena project health-check /workspace/api
 
-serena-health-web:
+serena-health-web: serena-up
 	docker compose exec serena serena project health-check /workspace/web
 
 serena-health-packages:
