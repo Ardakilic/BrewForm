@@ -348,7 +348,7 @@ serena-health-api: serena-up
 serena-health-web: serena-up
 	docker compose exec serena serena project health-check /workspace/web
 
-serena-health-packages:
+serena-health-packages: serena-up
 	docker compose exec serena serena project health-check /workspace/packages
 
 # ============================================
