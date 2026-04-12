@@ -1,11 +1,10 @@
 {
-  "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/mcp-schema.json",
   "mcpServers": {
     "serena": {
       "type": "sse",
       "url": "http://localhost:10121/sse"
     },
-    "context7": {
+    "context7_local": {
       "url": "https://mcp.context7.com/mcp",
       "headers": {
         "CONTEXT7_API_KEY": "YOUR_API_KEY_HERE"
