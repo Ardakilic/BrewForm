@@ -253,6 +253,7 @@ make check                # Run all checks (lint + format + typecheck)
 # Serena MCP
 make serena-up           # Start Serena MCP service
 make serena-stop         # Stop Serena MCP service
+make serena-logs         # View Serena logs
 make serena-index        # Force index both workspaces
 make serena-index-api    # Force index API workspace
 make serena-index-web    # Force index Web workspace
