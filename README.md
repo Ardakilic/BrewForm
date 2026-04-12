@@ -103,7 +103,7 @@ BrewForm ships with [Serena](https://github.com/oraios/serena) — a semantic co
 server that gives AI coding tools (Claude Code, VSCode Copilot, OpenCode, Kilo Code) deep
 understanding of the codebase through symbol indexing and semantic search.
 
-Serena runs as a Docker service with two workspaces: `api` and `web`.
+Serena runs as a Docker service with three workspaces: `api`, `web`, and `packages`.
 
 **Start Serena:**
 
