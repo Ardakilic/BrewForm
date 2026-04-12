@@ -46,6 +46,10 @@ jobs:
         run: deno task format:check
         working-directory: apps/web
 
+      - name: Generate Prisma client
+        run: deno task db:generate
+        working-directory: apps/api
+
       - name: Typecheck (API)
         run: deno task typecheck
         working-directory: apps/api
