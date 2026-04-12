@@ -1,4 +1,5 @@
 {
+  "nodeModulesDir": "auto",
   "imports": {
     "@std/testing": "jsr:@std/testing@^1.0.0/bdd",
     "@std/expect": "jsr:@std/expect@^1.0.0",
