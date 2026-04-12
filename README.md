@@ -100,7 +100,7 @@ make dev
 ### Serena MCP (Semantic Code Retrieval)
 
 BrewForm ships with [Serena](https://github.com/oraios/serena) — a semantic code retrieval MCP
-server that gives AI coding tools (Claude Code, VSCode Copilot, OpenCode, Kilo Code) deep
+server that gives AI coding tools (Claude Code, GitHub Copilot (VS Code), OpenCode, Kilo Code) deep
 understanding of the codebase through symbol indexing and semantic search.
 
 Serena runs as a Docker service with three workspaces: `api`, `web`, and `packages`.
