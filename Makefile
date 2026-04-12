@@ -3,7 +3,7 @@
 # All commands run through Docker/Docker Compose
 # ============================================
 
-.PHONY: help install vscode-setup dev build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up
+.PHONY: help install vscode-setup dev dev-redis build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up shell-redis cache-flush
 
 # Default target
 help:
@@ -50,6 +50,11 @@ help:
 	@echo "  format-check  Check code formatting"
 	@echo "  check         Run all checks (lint, typecheck, format-check)"
 	@echo ""
+	@echo "Cache:"
+	@echo "  dev-redis     Start dev environment with Redis cache backend"
+	@echo "  shell-redis   Open redis-cli in Redis container"
+	@echo "  cache-flush   Flush the active cache (detects CACHE_DRIVER from .env)"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  shell-api     Open shell in API container"
 	@echo "  shell-web     Open shell in Web container"
@@ -83,6 +88,12 @@ dev:
 	@echo "Waiting for services to be healthy..."
 	@sleep 5
 	docker compose up api web
+
+dev-redis:
+	docker compose --profile cache-redis up -d postgres mailpit pgadmin redis
+	@echo "Waiting for services to be healthy..."
+	@sleep 5
+	CACHE_DRIVER=redis docker compose --profile cache-redis up api web
 
 build:
 	docker compose build --no-cache
@@ -143,6 +154,9 @@ db-reset-hard:
 	docker compose stop api web
 	@echo "Resetting database volume..."
 	docker compose down -v postgres
+	@echo "Clearing cache volume..."
+	@VOLUMES=$$(docker volume ls --filter name=deno_kv_data -q); \
+	if [ -n "$$VOLUMES" ]; then docker volume rm $$VOLUMES; fi
 	@echo "Starting database..."
 	docker compose up -d postgres
 	@echo "Waiting for database to be ready..."
@@ -188,8 +202,8 @@ test-web:
 	docker compose run --rm --service-ports web deno task test
 
 test-coverage:
-	docker compose run --rm --service-ports api deno task test:coverage
-	docker compose run --rm --service-ports web deno task test:coverage
+	docker compose run --rm api deno task test:coverage
+	docker compose run --rm web deno task test:coverage
 
 test-coverage-report:
 	docker compose run --rm api deno task test:coverage:report
@@ -207,9 +221,7 @@ test-watch:
 
 lint:
 	docker compose run --rm api deno task lint
-	docker compose run --rm api deno task format:check
 	docker compose run --rm web deno task lint
-	docker compose run --rm web deno task format:check
 
 lint-fix:
 	docker compose run --rm api deno task lint:fix
@@ -243,6 +255,27 @@ shell-web:
 
 shell-db:
 	docker compose exec postgres psql -U brewform -d brewform
+
+shell-redis:
+	docker compose --profile cache-redis exec redis redis-cli
+
+cache-flush:
+	@DRIVER=$$CACHE_DRIVER; \
+	if [ -z "$$DRIVER" ]; then \
+		CONTAINER_DRIVER=$$(docker compose exec -T api sh -c 'echo $$CACHE_DRIVER' 2>/dev/null | tr -d '\r\n'); \
+		if [ -n "$$CONTAINER_DRIVER" ]; then DRIVER=$$CONTAINER_DRIVER; fi; \
+	fi; \
+	if [ -z "$$DRIVER" ]; then \
+		DRIVER=$$(grep '^CACHE_DRIVER=' .env 2>/dev/null | cut -d= -f2); \
+	fi; \
+	DRIVER=$${DRIVER:-deno-kv}; \
+	if [ "$$DRIVER" = "redis" ]; then \
+		echo "Flushing Redis cache..."; \
+		docker compose --profile cache-redis exec redis redis-cli FLUSHDB; \
+	else \
+		echo "Flushing Deno KV cache..."; \
+		docker compose exec api sh -c "rm -f $${CACHE_DENO_KV_PATH:-/data/deno-kv/brewform.kv} && echo Done"; \
+	fi
 
 # ============================================
 # Cleanup Commands

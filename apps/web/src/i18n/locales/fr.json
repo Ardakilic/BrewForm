@@ -398,7 +398,16 @@
     "minChars": "Saisissez au moins {{count}} caractères pour rechercher",
     "noResults": "Aucune note de goût trouvée",
     "selected": "{{count}}/{{max}} notes sélectionnées",
-    "scaaReference": "Référence de la roue SCAA"
+    "scaaReference": "Référence de la roue SCAA",
+    "cache": {
+      "label": "Cache des notes de degustation",
+      "description": "Les notes de degustation sont mises en cache pendant 24 heures. Utilisez ce bouton pour forcer une actualisation apres avoir importe de nouvelles donnees ou effectue des modifications manuelles dans la base de donnees.",
+      "invalidateButton": "Invalider le cache",
+      "invalidating": "Invalidation du cache...",
+      "success": "Cache invalide ({{count}} entrees effacees). La prochaine demande recuperera les donnees de la base de donnees.",
+      "failure": "Echec de l'invalidation du cache",
+      "networkError": "Erreur reseau. Impossible de contacter l'API."
+    }
   },
   "rating": {
     "superGood": "Excellent",

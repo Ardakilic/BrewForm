@@ -3,16 +3,16 @@
  * Shared validation schemas and helpers using Zod
  */
 
-import { z } from "zod";
+import { z } from 'zod';
 import {
   BrewMethodType,
   DrinkType,
   EmojiRating,
   ProcessingMethod,
   Visibility,
-} from "../../../prisma/generated/prisma";
+} from '../../types/enums.ts';
 // Re-export CUID validation utilities
-export * from "./cuid.ts";
+export * from './cuid.ts';
 
 // ============================================
 // Common Schemas
@@ -63,8 +63,8 @@ export const commentIdParamSchema = z.object({
  * This is used for hard validation
  */
 export const BREW_METHOD_DRINK_COMPATIBILITY: Record<
-  BrewMethodType,
-  DrinkType[]
+  (typeof BrewMethodType)[keyof typeof BrewMethodType],
+  Array<(typeof DrinkType)[keyof typeof DrinkType]>
 > = {
   ESPRESSO_MACHINE: [
     DrinkType.ESPRESSO,
@@ -110,8 +110,8 @@ export const BREW_METHOD_DRINK_COMPATIBILITY: Record<
  * Check if brew method and drink type are compatible
  */
 export function isBrewMethodCompatible(
-  brewMethod: BrewMethodType,
-  drinkType: DrinkType,
+  brewMethod: (typeof BrewMethodType)[keyof typeof BrewMethodType],
+  drinkType: (typeof DrinkType)[keyof typeof DrinkType],
 ): boolean {
   const compatibleDrinks = BREW_METHOD_DRINK_COMPATIBILITY[brewMethod];
   return compatibleDrinks.includes(drinkType);
@@ -124,7 +124,10 @@ export function isBrewMethodCompatible(
 /**
  * Typical brew ratio ranges by drink type
  */
-export const TYPICAL_RATIOS: Record<DrinkType, { min: number; max: number }> = {
+export const TYPICAL_RATIOS: Record<
+  (typeof DrinkType)[keyof typeof DrinkType],
+  { min: number; max: number }
+> = {
   ESPRESSO: { min: 1.5, max: 2.5 },
   RISTRETTO: { min: 1, max: 1.5 },
   LUNGO: { min: 2.5, max: 4 },
@@ -150,7 +153,7 @@ export const TYPICAL_RATIOS: Record<DrinkType, { min: number; max: number }> = {
  * Typical extraction times by brew method (in seconds)
  */
 export const TYPICAL_EXTRACTION_TIMES: Record<
-  BrewMethodType,
+  (typeof BrewMethodType)[keyof typeof BrewMethodType],
   { min: number; max: number }
 > = {
   ESPRESSO_MACHINE: { min: 20, max: 35 },
@@ -174,7 +177,7 @@ export const TYPICAL_EXTRACTION_TIMES: Record<
  * Typical brew temperatures by brew method (in Celsius)
  */
 export const TYPICAL_TEMPERATURES: Record<
-  BrewMethodType,
+  (typeof BrewMethodType)[keyof typeof BrewMethodType],
   { min: number; max: number }
 > = {
   ESPRESSO_MACHINE: { min: 88, max: 96 },
@@ -293,13 +296,13 @@ export function validateRecipeHard(
   // Check grind date is not before roast date
   if (input.roastDate && input.grindDate) {
     if (input.grindDate < input.roastDate) {
-      errors.push("Grind date cannot be before roast date.");
+      errors.push('Grind date cannot be before roast date.');
     }
   }
 
   // Check required fields
   if (!input.doseGrams || input.doseGrams <= 0) {
-    errors.push("Dose (grams) is required and must be positive.");
+    errors.push('Dose (grams) is required and must be positive.');
   }
 
   return {
@@ -342,9 +345,9 @@ function checkExtractionTime(input: RecipeVersionInput): string | null {
 
   const typical = TYPICAL_EXTRACTION_TIMES[input.brewMethod];
   if (input.brewTimeSec < typical.min || input.brewTimeSec > typical.max) {
-    return `Extraction time is outside typical range (${
-      formatTimeDuration(typical.min)
-    } - ${formatTimeDuration(typical.max)}) for ${input.brewMethod}.`;
+    return `Extraction time is outside typical range (${formatTimeDuration(typical.min)} - ${
+      formatTimeDuration(typical.max)
+    }) for ${input.brewMethod}.`;
   }
   return null;
 }
@@ -366,7 +369,7 @@ function checkTemperature(input: RecipeVersionInput): string | null {
  * Check for milk preparation with non-milk drinks
  */
 function checkMilkPreparation(input: RecipeVersionInput): string | null {
-  const milkDrinks: DrinkType[] = [
+  const milkDrinks: Array<(typeof DrinkType)[keyof typeof DrinkType]> = [
     DrinkType.LATTE,
     DrinkType.CAPPUCCINO,
     DrinkType.FLAT_WHITE,
@@ -376,7 +379,7 @@ function checkMilkPreparation(input: RecipeVersionInput): string | null {
   ];
 
   const hasMilkPrep = input.preparations?.some((p: { name: string }) =>
-    p.name.toLowerCase().includes("milk")
+    p.name.toLowerCase().includes('milk')
   );
   if (hasMilkPrep && !milkDrinks.includes(input.drinkType)) {
     return `Milk preparation noted for ${input.drinkType}, which is typically not a milk-based drink.`;
@@ -405,7 +408,7 @@ export function validateRecipeSoft(
   if (
     !input.brewTimeSec && input.brewMethod === BrewMethodType.ESPRESSO_MACHINE
   ) {
-    warnings.push("Extraction time is commonly recorded for espresso shots.");
+    warnings.push('Extraction time is commonly recorded for espresso shots.');
   }
 
   const milkWarning = checkMilkPreparation(input);
@@ -439,14 +442,14 @@ export const registerSchema = z.object({
     .max(30)
     .regex(
       /^[a-zA-Z0-9_-]+$/,
-      "Username can only contain letters, numbers, underscores, and hyphens",
+      'Username can only contain letters, numbers, underscores, and hyphens',
     ),
   password: z.string()
     .min(8)
     .max(128)
     .regex(
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      "Password must contain at least one lowercase letter, one uppercase letter, and one number",
+      'Password must contain at least one lowercase letter, one uppercase letter, and one number',
     ),
   displayName: z.string().max(100).optional(),
 });
@@ -467,18 +470,18 @@ export const resetPasswordSchema = z.object({
     .max(128)
     .regex(
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      "Password must contain at least one lowercase letter, one uppercase letter, and one number",
+      'Password must contain at least one lowercase letter, one uppercase letter, and one number',
     ),
 });
 
 export const updateProfileSchema = z.object({
   displayName: z.string().max(100).optional(),
   bio: z.string().max(500).optional(),
-  website: z.string().url().max(255).optional().or(z.literal("")),
+  website: z.string().url().max(255).optional().or(z.literal('')),
   preferredLocale: z.string().max(10).optional(),
   preferredTimezone: z.string().max(50).optional(),
-  preferredUnits: z.enum(["METRIC", "IMPERIAL"]).optional(),
-  preferredTheme: z.enum(["LIGHT", "DARK", "COFFEE", "SYSTEM"]).optional(),
+  preferredUnits: z.enum(['METRIC', 'IMPERIAL']).optional(),
+  preferredTheme: z.enum(['LIGHT', 'DARK', 'COFFEE', 'SYSTEM']).optional(),
 });
 
 // ============================================
@@ -537,9 +540,9 @@ export const recipeFilterSchema = z.object({
   visibility: z.nativeEnum(Visibility).optional(),
   minRating: z.coerce.number().int().min(1).max(10).optional(),
   tags: z.string().optional(), // comma-separated
-  sortBy: z.enum(["createdAt", "rating", "favouriteCount", "viewCount"])
-    .default("createdAt"),
-  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  sortBy: z.enum(['createdAt', 'rating', 'favouriteCount', 'viewCount'])
+    .default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
 }).merge(paginationSchema);
 
 export type RecipeFilters = z.infer<typeof recipeFilterSchema>;

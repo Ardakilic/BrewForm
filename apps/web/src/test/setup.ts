@@ -5,9 +5,9 @@
 
 /// <reference types="./matchers.d.ts" />
 
-import { JSDOM } from "jsdom";
-import { afterEach } from "@std/testing";
-import { expect } from "@std/expect";
+import { JSDOM } from 'jsdom';
+import { afterEach } from '@std/testing';
+import { expect } from '@std/expect';
 
 // Custom DOM matchers compatible with @std/expect's calling convention.
 // @testing-library/jest-dom uses Jest's convention (this=context, first arg=received)
@@ -23,15 +23,15 @@ expect.extend({
       pass,
       message: () =>
         pass
-          ? "Expected element NOT to be in the document, but it was found"
-          : "Expected element to be in the document, but it was not found",
+          ? 'Expected element NOT to be in the document, but it was found'
+          : 'Expected element to be in the document, but it was not found',
     };
   },
 });
 
 // Set up DOM environment for tests
-const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
-  url: "http://localhost:3000",
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+  url: 'http://localhost:3000',
   pretendToBeVisual: true,
 });
 
@@ -56,7 +56,7 @@ const defaultMatchMedia = (_query: string) => ({
 // Make win.matchMedia delegate to globalThis.matchMedia so tests that set
 // globalThis.matchMedia (e.g. ThemeContext.test.tsx) are seen by components
 // that access window.matchMedia (where window === win).
-Object.defineProperty(win, "matchMedia", {
+Object.defineProperty(win, 'matchMedia', {
   // deno-lint-ignore no-explicit-any
   get: () => (globalThis as any).matchMedia,
   configurable: true,
@@ -87,7 +87,7 @@ Object.assign(globalThis, {
 // Auto-cleanup after each test to prevent DOM leaking between tests.
 // Uses dynamic import so @testing-library/dom loads AFTER globalThis.document is set.
 afterEach(async () => {
-  const { cleanup } = await import("@testing-library/react");
+  const { cleanup } = await import('@testing-library/react');
   cleanup();
 });
 
@@ -96,8 +96,8 @@ const originalError = console.error;
 console.error = (...args: unknown[]) => {
   const message = args[0];
   if (
-    typeof message === "string" &&
-    message.includes("Support for defaultProps will be removed")
+    typeof message === 'string' &&
+    message.includes('Support for defaultProps will be removed')
   ) {
     return;
   }
@@ -108,8 +108,8 @@ const originalWarn = console.warn;
 console.warn = (...args: unknown[]) => {
   const message = args[0];
   if (
-    typeof message === "string" &&
-    message.includes("Support for defaultProps will be removed")
+    typeof message === 'string' &&
+    message.includes('Support for defaultProps will be removed')
   ) {
     return;
   }

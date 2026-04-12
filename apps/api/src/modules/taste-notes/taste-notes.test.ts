@@ -2,13 +2,13 @@
  * Taste Notes Module Tests
  */
 
-import { beforeEach, describe, it } from "@std/testing";
-import { expect } from "@std/expect";
-import { Hono } from "hono";
-import { spy } from "@std/testing/mock";
-import { setPrisma } from "../../test/mocks/database.ts";
-import { setCheckHeaderMode } from "../../test/mocks/auth-middleware.ts";
-import tasteNotesModule from "./index.ts";
+import { beforeEach, describe, it } from '@std/testing';
+import { expect } from '@std/expect';
+import { Hono } from 'hono';
+import { spy } from '@std/testing/mock';
+import { setPrisma } from '../../test/mocks/database.ts';
+import { setCheckHeaderMode } from '../../test/mocks/auth-middleware.ts';
+import tasteNotesModule from './index.ts';
 
 // API Response type for testing
 interface ApiResponse {
@@ -19,9 +19,9 @@ interface ApiResponse {
 
 // Mock user for authenticated requests
 const mockAuthUser = {
-  id: "user_123",
-  email: "test@example.com",
-  username: "testuser",
+  id: 'user_123',
+  email: 'test@example.com',
+  username: 'testuser',
   isAdmin: false,
   isBanned: false,
 };
@@ -29,12 +29,12 @@ const mockAuthUser = {
 // Mock taste note data
 const mockTasteNotes = [
   {
-    id: "taste_1",
-    name: "Fruity",
-    slug: "fruity",
+    id: 'taste_1',
+    name: 'Fruity',
+    slug: 'fruity',
     depth: 0,
-    colour: "#DA1D23",
-    definition: "A sweet, floral, aromatic blend of a variety of ripe fruits.",
+    colour: '#DA1D23',
+    definition: 'A sweet, floral, aromatic blend of a variety of ripe fruits.',
     parentId: null,
     sortOrder: 0,
     createdAt: new Date(),
@@ -42,53 +42,51 @@ const mockTasteNotes = [
     deletedAt: null,
   },
   {
-    id: "taste_2",
-    name: "Berry",
-    slug: "fruity-berry",
+    id: 'taste_2',
+    name: 'Berry',
+    slug: 'fruity-berry',
     depth: 1,
-    colour: "#DD4C51",
-    definition: "The sweet, sour, floral aromatic associated with berries.",
-    parentId: "taste_1",
+    colour: '#DD4C51',
+    definition: 'The sweet, sour, floral aromatic associated with berries.',
+    parentId: 'taste_1',
     sortOrder: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
   },
   {
-    id: "taste_3",
-    name: "Raspberry",
-    slug: "fruity-berry-raspberry",
+    id: 'taste_3',
+    name: 'Raspberry',
+    slug: 'fruity-berry-raspberry',
     depth: 2,
-    colour: "#E52968",
-    definition:
-      "The lightly sweet, fruity, floral aromatic associated with raspberries.",
-    parentId: "taste_2",
+    colour: '#E52968',
+    definition: 'The lightly sweet, fruity, floral aromatic associated with raspberries.',
+    parentId: 'taste_2',
     sortOrder: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
   },
   {
-    id: "taste_4",
-    name: "Blackberry",
-    slug: "fruity-berry-blackberry",
+    id: 'taste_4',
+    name: 'Blackberry',
+    slug: 'fruity-berry-blackberry',
     depth: 2,
-    colour: "#3E0317",
-    definition:
-      "The sweet, dark, fruity aromatic associated with blackberries.",
-    parentId: "taste_2",
+    colour: '#3E0317',
+    definition: 'The sweet, dark, fruity aromatic associated with blackberries.',
+    parentId: 'taste_2',
     sortOrder: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
   },
   {
-    id: "taste_5",
-    name: "Roasted",
-    slug: "roasted",
+    id: 'taste_5',
+    name: 'Roasted',
+    slug: 'roasted',
     depth: 0,
-    colour: "#894810",
-    definition: "A rich, full aromatic associated with roasted products.",
+    colour: '#894810',
+    definition: 'A rich, full aromatic associated with roasted products.',
     parentId: null,
     sortOrder: 1,
     createdAt: new Date(),
@@ -96,14 +94,13 @@ const mockTasteNotes = [
     deletedAt: null,
   },
   {
-    id: "taste_6",
-    name: "Brown, Roast",
-    slug: "roasted-brown-roast",
+    id: 'taste_6',
+    name: 'Brown, Roast',
+    slug: 'roasted-brown-roast',
     depth: 1,
-    colour: "#894810",
-    definition:
-      "A rich, full, round aromatic characterized as some degree of darkness.",
-    parentId: "taste_5",
+    colour: '#894810',
+    definition: 'A rich, full, round aromatic characterized as some degree of darkness.',
+    parentId: 'taste_5',
     sortOrder: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -115,11 +112,8 @@ const createLocalMockPrisma = () => ({
   tasteNote: {
     findMany: spy(() => Promise.resolve(mockTasteNotes)),
     findUnique: spy((...args: unknown[]) => {
-      const where =
-        (args[0] as { where: { id?: string; slug?: string } }).where;
-      const note = mockTasteNotes.find((n) =>
-        n.id === where.id || n.slug === where.slug
-      );
+      const where = (args[0] as { where: { id?: string; slug?: string } }).where;
+      const note = mockTasteNotes.find((n) => n.id === where.id || n.slug === where.slug);
       return Promise.resolve(note ?? null);
     }),
     groupBy: spy(() =>
@@ -142,73 +136,73 @@ const createLocalMockPrisma = () => ({
 });
 
 // Helper to create authenticated request
-const authHeaders = { Authorization: "Bearer valid_token" };
+const authHeaders = { Authorization: 'Bearer valid_token' };
 
 // Enable header-based auth and set up prisma for all tests in this file
 setCheckHeaderMode(true);
 setPrisma(createLocalMockPrisma());
 
-describe("Taste Notes Module", () => {
+describe('Taste Notes Module', () => {
   let app: Hono;
 
   beforeEach(() => {
     setPrisma(createLocalMockPrisma());
     app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
   });
 
-  describe("Authentication", () => {
-    it("should return 401 when no authentication is provided", async () => {
-      const res = await app.request("/taste-notes");
+  describe('Authentication', () => {
+    it('should return 401 when no authentication is provided', async () => {
+      const res = await app.request('/taste-notes');
       const body = (await res.json()) as ApiResponse;
 
       expect(res.status).toBe(401);
       expect(body.success).toBe(false);
-      expect(body.error?.code).toBe("UNAUTHORIZED");
+      expect(body.error?.code).toBe('UNAUTHORIZED');
     });
 
-    it("should return 401 with invalid token", async () => {
-      const res = await app.request("/taste-notes", {
-        headers: { Authorization: "Bearer invalid_token" },
+    it('should return 401 with invalid token', async () => {
+      const res = await app.request('/taste-notes', {
+        headers: { Authorization: 'Bearer invalid_token' },
       });
       const body = (await res.json()) as ApiResponse;
 
       expect(res.status).toBe(401);
       expect(body.success).toBe(false);
-      expect(body.error?.code).toBe("UNAUTHORIZED");
+      expect(body.error?.code).toBe('UNAUTHORIZED');
     });
 
-    it("should return 401 for search without authentication", async () => {
-      const res = await app.request("/taste-notes/search?q=fruity");
+    it('should return 401 for search without authentication', async () => {
+      const res = await app.request('/taste-notes/search?q=fruity');
       const body = (await res.json()) as ApiResponse;
 
       expect(res.status).toBe(401);
       expect(body.success).toBe(false);
-      expect(body.error?.code).toBe("UNAUTHORIZED");
+      expect(body.error?.code).toBe('UNAUTHORIZED');
     });
 
-    it("should return 401 for hierarchy without authentication", async () => {
-      const res = await app.request("/taste-notes/hierarchy");
+    it('should return 401 for hierarchy without authentication', async () => {
+      const res = await app.request('/taste-notes/hierarchy');
       const body = (await res.json()) as ApiResponse;
 
       expect(res.status).toBe(401);
       expect(body.success).toBe(false);
-      expect(body.error?.code).toBe("UNAUTHORIZED");
+      expect(body.error?.code).toBe('UNAUTHORIZED');
     });
 
-    it("should return 401 for single note without authentication", async () => {
-      const res = await app.request("/taste-notes/taste_1");
+    it('should return 401 for single note without authentication', async () => {
+      const res = await app.request('/taste-notes/taste_1');
       const body = (await res.json()) as ApiResponse;
 
       expect(res.status).toBe(401);
       expect(body.success).toBe(false);
-      expect(body.error?.code).toBe("UNAUTHORIZED");
+      expect(body.error?.code).toBe('UNAUTHORIZED');
     });
   });
 
-  describe("GET /taste-notes", () => {
-    it("should return all taste notes with full paths when authenticated", async () => {
-      const res = await app.request("/taste-notes", { headers: authHeaders });
+  describe('GET /taste-notes', () => {
+    it('should return all taste notes with full paths when authenticated', async () => {
+      const res = await app.request('/taste-notes', { headers: authHeaders });
       const body = (await res.json()) as ApiResponse;
 
       expect(res.status).toBe(200);
@@ -216,28 +210,28 @@ describe("Taste Notes Module", () => {
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    it("should include fullPath for each taste note", async () => {
-      const res = await app.request("/taste-notes", { headers: authHeaders });
+    it('should include fullPath for each taste note', async () => {
+      const res = await app.request('/taste-notes', { headers: authHeaders });
       const body = (await res.json()) as ApiResponse;
 
       expect(body.success).toBe(true);
       const notes = body.data as Array<{ fullPath: string; name: string }>;
 
       // Check that fullPath is constructed correctly
-      const fruityNote = notes.find((n) => n.name === "Fruity");
-      expect(fruityNote?.fullPath).toBe("Fruity");
+      const fruityNote = notes.find((n) => n.name === 'Fruity');
+      expect(fruityNote?.fullPath).toBe('Fruity');
 
-      const berryNote = notes.find((n) => n.name === "Berry");
-      expect(berryNote?.fullPath).toBe("Fruity > Berry");
+      const berryNote = notes.find((n) => n.name === 'Berry');
+      expect(berryNote?.fullPath).toBe('Fruity > Berry');
 
-      const raspberryNote = notes.find((n) => n.name === "Raspberry");
-      expect(raspberryNote?.fullPath).toBe("Fruity > Berry > Raspberry");
+      const raspberryNote = notes.find((n) => n.name === 'Raspberry');
+      expect(raspberryNote?.fullPath).toBe('Fruity > Berry > Raspberry');
     });
   });
 
-  describe("GET /taste-notes/hierarchy", () => {
-    it("should return taste notes in hierarchical structure", async () => {
-      const res = await app.request("/taste-notes/hierarchy", {
+  describe('GET /taste-notes/hierarchy', () => {
+    it('should return taste notes in hierarchical structure', async () => {
+      const res = await app.request('/taste-notes/hierarchy', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
@@ -247,8 +241,8 @@ describe("Taste Notes Module", () => {
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    it("should have correct parent-child relationships", async () => {
-      const res = await app.request("/taste-notes/hierarchy", {
+    it('should have correct parent-child relationships', async () => {
+      const res = await app.request('/taste-notes/hierarchy', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
@@ -259,32 +253,32 @@ describe("Taste Notes Module", () => {
       }>;
 
       // Top level should only have root notes
-      const fruity = hierarchy.find((n) => n.name === "Fruity");
+      const fruity = hierarchy.find((n) => n.name === 'Fruity');
       expect(fruity).toBeDefined();
       expect(fruity?.children.length).toBeGreaterThan(0);
 
       // Berry should be a child of Fruity
-      const berry = fruity?.children.find((n) => n.name === "Berry");
+      const berry = fruity?.children.find((n) => n.name === 'Berry');
       expect(berry).toBeDefined();
       expect(berry?.children.length).toBeGreaterThan(0);
 
       // Raspberry should be a child of Berry
-      const raspberry = berry?.children.find((n) => n.name === "Raspberry");
+      const raspberry = berry?.children.find((n) => n.name === 'Raspberry');
       expect(raspberry).toBeDefined();
     });
   });
 
-  describe("GET /taste-notes/search", () => {
-    it("should require minimum 3 characters for search", async () => {
-      const res = await app.request("/taste-notes/search?q=fr", {
+  describe('GET /taste-notes/search', () => {
+    it('should require minimum 3 characters for search', async () => {
+      const res = await app.request('/taste-notes/search?q=fr', {
         headers: authHeaders,
       });
 
       expect(res.status).toBe(400);
     });
 
-    it("should return matching taste notes for valid query", async () => {
-      const res = await app.request("/taste-notes/search?q=fruit", {
+    it('should return matching taste notes for valid query', async () => {
+      const res = await app.request('/taste-notes/search?q=fruit', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
@@ -294,8 +288,8 @@ describe("Taste Notes Module", () => {
       expect(Array.isArray(body.data)).toBe(true);
     });
 
-    it("should include children when parent matches", async () => {
-      const res = await app.request("/taste-notes/search?q=fruity", {
+    it('should include children when parent matches', async () => {
+      const res = await app.request('/taste-notes/search?q=fruity', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
@@ -305,19 +299,19 @@ describe("Taste Notes Module", () => {
 
       // Should include Fruity and all its descendants
       const names = results.map((r) => r.name);
-      expect(names).toContain("Fruity");
-      expect(names).toContain("Berry");
-      expect(names).toContain("Raspberry");
-      expect(names).toContain("Blackberry");
+      expect(names).toContain('Fruity');
+      expect(names).toContain('Berry');
+      expect(names).toContain('Raspberry');
+      expect(names).toContain('Blackberry');
     });
 
-    it("should be case insensitive", async () => {
-      const res1 = await app.request("/taste-notes/search?q=FRUITY", {
+    it('should be case insensitive', async () => {
+      const res1 = await app.request('/taste-notes/search?q=FRUITY', {
         headers: authHeaders,
       });
       const body1 = (await res1.json()) as ApiResponse;
 
-      const res2 = await app.request("/taste-notes/search?q=fruity", {
+      const res2 = await app.request('/taste-notes/search?q=fruity', {
         headers: authHeaders,
       });
       const body2 = (await res2.json()) as ApiResponse;
@@ -331,8 +325,8 @@ describe("Taste Notes Module", () => {
       expect(results1.length).toBe(results2.length);
     });
 
-    it("should search across full path", async () => {
-      const res = await app.request("/taste-notes/search?q=berry", {
+    it('should search across full path', async () => {
+      const res = await app.request('/taste-notes/search?q=berry', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
@@ -342,13 +336,13 @@ describe("Taste Notes Module", () => {
 
       // Should include Berry and its children
       const names = results.map((r) => r.name);
-      expect(names).toContain("Berry");
-      expect(names).toContain("Raspberry");
-      expect(names).toContain("Blackberry");
+      expect(names).toContain('Berry');
+      expect(names).toContain('Raspberry');
+      expect(names).toContain('Blackberry');
     });
 
-    it("should return empty array for no matches", async () => {
-      const res = await app.request("/taste-notes/search?q=chocolate", {
+    it('should return empty array for no matches', async () => {
+      const res = await app.request('/taste-notes/search?q=chocolate', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
@@ -358,9 +352,9 @@ describe("Taste Notes Module", () => {
     });
   });
 
-  describe("GET /taste-notes/:id", () => {
-    it("should return a single taste note by ID", async () => {
-      const res = await app.request("/taste-notes/taste_1", {
+  describe('GET /taste-notes/:id', () => {
+    it('should return a single taste note by ID', async () => {
+      const res = await app.request('/taste-notes/taste_1', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
@@ -369,30 +363,30 @@ describe("Taste Notes Module", () => {
       expect(body.success).toBe(true);
 
       const note = body.data as { id: string; name: string };
-      expect(note.id).toBe("taste_1");
-      expect(note.name).toBe("Fruity");
+      expect(note.id).toBe('taste_1');
+      expect(note.name).toBe('Fruity');
     });
 
-    it("should return 404 for non-existent taste note", async () => {
-      const res = await app.request("/taste-notes/nonexistent", {
+    it('should return 404 for non-existent taste note', async () => {
+      const res = await app.request('/taste-notes/nonexistent', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
 
       expect(res.status).toBe(404);
       expect(body.success).toBe(false);
-      expect(body.error?.code).toBe("NOT_FOUND");
+      expect(body.error?.code).toBe('NOT_FOUND');
     });
   });
 });
 
-describe("Taste Notes Service", () => {
-  describe("buildFullPath", () => {
-    it("should build correct path for top-level note", async () => {
+describe('Taste Notes Service', () => {
+  describe('buildFullPath', () => {
+    it('should build correct path for top-level note', async () => {
       const app = new Hono();
-      app.route("/taste-notes", tasteNotesModule);
+      app.route('/taste-notes', tasteNotesModule);
 
-      const res = await app.request("/taste-notes", { headers: authHeaders });
+      const res = await app.request('/taste-notes', { headers: authHeaders });
       const body = (await res.json()) as ApiResponse;
       const notes = body.data as Array<
         { name: string; fullPath: string; depth: number }
@@ -404,28 +398,28 @@ describe("Taste Notes Service", () => {
       }
     });
 
-    it("should build correct path for nested notes", async () => {
+    it('should build correct path for nested notes', async () => {
       const app = new Hono();
-      app.route("/taste-notes", tasteNotesModule);
+      app.route('/taste-notes', tasteNotesModule);
 
-      const res = await app.request("/taste-notes", { headers: authHeaders });
+      const res = await app.request('/taste-notes', { headers: authHeaders });
       const body = (await res.json()) as ApiResponse;
       const notes = body.data as Array<
         { name: string; fullPath: string; depth: number }
       >;
 
-      const raspberryNote = notes.find((n) => n.name === "Raspberry");
-      expect(raspberryNote?.fullPath).toBe("Fruity > Berry > Raspberry");
+      const raspberryNote = notes.find((n) => n.name === 'Raspberry');
+      expect(raspberryNote?.fullPath).toBe('Fruity > Berry > Raspberry');
       expect(raspberryNote?.depth).toBe(2);
     });
   });
 
-  describe("searchTasteNotes", () => {
-    it("should sort results with exact matches first", async () => {
+  describe('searchTasteNotes', () => {
+    it('should sort results with exact matches first', async () => {
       const app = new Hono();
-      app.route("/taste-notes", tasteNotesModule);
+      app.route('/taste-notes', tasteNotesModule);
 
-      const res = await app.request("/taste-notes/search?q=berry", {
+      const res = await app.request('/taste-notes/search?q=berry', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
@@ -433,43 +427,43 @@ describe("Taste Notes Service", () => {
 
       // Exact match "Berry" should be first
       if (results.length > 0) {
-        expect(results[0].name).toBe("Berry");
+        expect(results[0].name).toBe('Berry');
       }
     });
 
-    it("should include parent categories when searching for child", async () => {
+    it('should include parent categories when searching for child', async () => {
       const app = new Hono();
-      app.route("/taste-notes", tasteNotesModule);
+      app.route('/taste-notes', tasteNotesModule);
 
-      const res = await app.request("/taste-notes/search?q=raspberry", {
+      const res = await app.request('/taste-notes/search?q=raspberry', {
         headers: authHeaders,
       });
       const body = (await res.json()) as ApiResponse;
       const results = body.data as Array<{ name: string }>;
 
       // Should include Raspberry
-      expect(results.some((r) => r.name === "Raspberry")).toBe(true);
+      expect(results.some((r) => r.name === 'Raspberry')).toBe(true);
     });
   });
 });
 
-describe("Taste Notes Validation", () => {
-  it("should validate search query minimum length", async () => {
+describe('Taste Notes Validation', () => {
+  it('should validate search query minimum length', async () => {
     const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
 
-    const res = await app.request("/taste-notes/search?q=ab", {
+    const res = await app.request('/taste-notes/search?q=ab', {
       headers: authHeaders,
     });
 
     expect(res.status).toBe(400);
   });
 
-  it("should validate search query maximum length", async () => {
+  it('should validate search query maximum length', async () => {
     const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
 
-    const longQuery = "a".repeat(101);
+    const longQuery = 'a'.repeat(101);
     const res = await app.request(`/taste-notes/search?q=${longQuery}`, {
       headers: authHeaders,
     });
@@ -477,11 +471,11 @@ describe("Taste Notes Validation", () => {
     expect(res.status).toBe(400);
   });
 
-  it("should accept valid search queries", async () => {
+  it('should accept valid search queries', async () => {
     const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
 
-    const res = await app.request("/taste-notes/search?q=fruity", {
+    const res = await app.request('/taste-notes/search?q=fruity', {
       headers: authHeaders,
     });
     const body = (await res.json()) as ApiResponse;
@@ -491,24 +485,24 @@ describe("Taste Notes Validation", () => {
   });
 });
 
-describe("Taste Notes Service - Additional Coverage", () => {
-  it("should return empty array when searching with empty query", async () => {
+describe('Taste Notes Service - Additional Coverage', () => {
+  it('should return empty array when searching with empty query', async () => {
     const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
 
     // Empty query should return 400 due to validation
-    const res = await app.request("/taste-notes/search?q=", {
+    const res = await app.request('/taste-notes/search?q=', {
       headers: authHeaders,
     });
     expect(res.status).toBe(400);
   });
 
-  it("should handle getTasteNotesByIds with empty array", async () => {
+  it('should handle getTasteNotesByIds with empty array', async () => {
     const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
 
     // Request single note to ensure service is working
-    const res = await app.request("/taste-notes/taste_1", {
+    const res = await app.request('/taste-notes/taste_1', {
       headers: authHeaders,
     });
     const body = (await res.json()) as ApiResponse;
@@ -517,12 +511,12 @@ describe("Taste Notes Service - Additional Coverage", () => {
     expect(body.success).toBe(true);
   });
 
-  it("should handle multiple taste note requests", async () => {
+  it('should handle multiple taste note requests', async () => {
     const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
 
     // Request all notes
-    const res = await app.request("/taste-notes", { headers: authHeaders });
+    const res = await app.request('/taste-notes', { headers: authHeaders });
     const body = (await res.json()) as ApiResponse;
 
     expect(res.status).toBe(200);
@@ -530,12 +524,12 @@ describe("Taste Notes Service - Additional Coverage", () => {
     expect(notes.length).toBeGreaterThan(0);
   });
 
-  it("should handle search with path matching", async () => {
+  it('should handle search with path matching', async () => {
     const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
 
     // Search for something in the path
-    const res = await app.request("/taste-notes/search?q=roasted", {
+    const res = await app.request('/taste-notes/search?q=roasted', {
       headers: authHeaders,
     });
     const body = (await res.json()) as ApiResponse;
@@ -544,11 +538,11 @@ describe("Taste Notes Service - Additional Coverage", () => {
     expect(body.success).toBe(true);
   });
 
-  it("should sort search results by depth", async () => {
+  it('should sort search results by depth', async () => {
     const app = new Hono();
-    app.route("/taste-notes", tasteNotesModule);
+    app.route('/taste-notes', tasteNotesModule);
 
-    const res = await app.request("/taste-notes/search?q=fruity", {
+    const res = await app.request('/taste-notes/search?q=fruity', {
       headers: authHeaders,
     });
     const body = (await res.json()) as ApiResponse;
@@ -558,7 +552,7 @@ describe("Taste Notes Service - Additional Coverage", () => {
 
     // Verify results are sorted (shallower depths first for same match type)
     if (results.length > 1) {
-      const fruity = results.find((r) => r.name === "Fruity");
+      const fruity = results.find((r) => r.name === 'Fruity');
       expect(fruity).toBeDefined();
     }
   });

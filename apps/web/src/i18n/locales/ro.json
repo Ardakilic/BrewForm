@@ -398,7 +398,16 @@
     "minChars": "Introdu cel puțin {{count}} caractere pentru căutare",
     "noResults": "Nu s-au găsit note gustative",
     "selected": "{{count}}/{{max}} note gustative selectate",
-    "scaaReference": "Referință roată de arome SCAA"
+    "scaaReference": "Referință roată de arome SCAA",
+    "cache": {
+      "label": "Cache note de degustare",
+      "description": "Notele de degustare sunt memorate in cache timp de 24 de ore. Folositi acest buton pentru a forta reincarcarea dupa importarea datelor sau modificari manuale ale bazei de date.",
+      "invalidateButton": "Invalidare cache",
+      "invalidating": "Se invalideaza cache-ul...",
+      "success": "Cache invalidat ({{count}} intrari eliminate). Urmatoarea cerere va reincarca datele din baza de date.",
+      "failure": "Eroare la invalidarea cache-ului",
+      "networkError": "Eroare de retea. Nu s-a putut contacta API-ul."
+    }
   },
   "rating": {
     "superGood": "Foarte bun",

@@ -398,7 +398,16 @@
     "minChars": "Axtarış üçün ən az {{count}} simvol daxil edin",
     "noResults": "Uyğun dad qeydi tapılmadı",
     "selected": "{{count}}/{{max}} dad qeydi seçildi",
-    "scaaReference": "SCAA dad çarxı istinadı"
+    "scaaReference": "SCAA dad çarxı istinadı",
+    "cache": {
+      "label": "Taste Notes Cache",
+      "description": "Taste notes are cached for 24 hours. Use this button to force a refresh after importing new data or making manual database changes.",
+      "invalidateButton": "Invalidate Cache",
+      "invalidating": "Invalidating cache...",
+      "success": "Cache invalidated ({{count}} entries cleared). Next request will re-fetch from the database.",
+      "failure": "Failed to invalidate cache",
+      "networkError": "Network error. Could not reach API."
+    }
   },
   "rating": {
     "superGood": "Çox yaxşı",

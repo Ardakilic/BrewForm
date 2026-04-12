@@ -2,85 +2,83 @@
  * BrewForm Create Recipe Page
  */
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useStyletron } from "baseui";
-import { Card } from "../../components/Card.tsx";
-import { FormControl } from "baseui/form-control";
-import { Input } from "baseui/input";
-import { Textarea } from "baseui/textarea";
-import { Select } from "baseui/select";
-import { Button } from "baseui/button";
-import { HeadingLarge } from "baseui/typography";
-import { KIND, Notification } from "baseui/notification";
-import { useTranslation } from "react-i18next";
-import { Helmet } from "react-helmet-async";
-import { api } from "../../utils/api.ts";
-import TasteNoteAutocomplete, {
-  type TasteNote,
-} from "../../components/TasteNoteAutocomplete.tsx";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useStyletron } from 'baseui';
+import { Card } from '../../components/Card.tsx';
+import { FormControl } from 'baseui/form-control';
+import { Input } from 'baseui/input';
+import { Textarea } from 'baseui/textarea';
+import { Select } from 'baseui/select';
+import { Button } from 'baseui/button';
+import { HeadingLarge } from 'baseui/typography';
+import { KIND, Notification } from 'baseui/notification';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
+import { api } from '../../utils/api.ts';
+import TasteNoteAutocomplete, { type TasteNote } from '../../components/TasteNoteAutocomplete.tsx';
 
 const BREW_METHOD_IDS = [
-  "ESPRESSO_MACHINE",
-  "POUR_OVER_V60",
-  "POUR_OVER_CHEMEX",
-  "POUR_OVER_KALITA",
-  "AEROPRESS",
-  "FRENCH_PRESS",
-  "MOKA_POT",
-  "COLD_BREW",
+  'ESPRESSO_MACHINE',
+  'POUR_OVER_V60',
+  'POUR_OVER_CHEMEX',
+  'POUR_OVER_KALITA',
+  'AEROPRESS',
+  'FRENCH_PRESS',
+  'MOKA_POT',
+  'COLD_BREW',
 ] as const;
 
 const DRINK_TYPE_IDS = [
-  "ESPRESSO",
-  "RISTRETTO",
-  "LUNGO",
-  "AMERICANO",
-  "LATTE",
-  "CAPPUCCINO",
-  "FLAT_WHITE",
-  "CORTADO",
-  "POUR_OVER",
-  "FRENCH_PRESS",
+  'ESPRESSO',
+  'RISTRETTO',
+  'LUNGO',
+  'AMERICANO',
+  'LATTE',
+  'CAPPUCCINO',
+  'FLAT_WHITE',
+  'CORTADO',
+  'POUR_OVER',
+  'FRENCH_PRESS',
 ] as const;
 
 const PROCESSING_METHOD_IDS = [
-  "WASHED",
-  "NATURAL",
-  "HONEY",
-  "SEMI_WASHED",
-  "WET_HULLED",
-  "ANAEROBIC",
-  "CARBONIC_MACERATION",
-  "OTHER",
+  'WASHED',
+  'NATURAL',
+  'HONEY',
+  'SEMI_WASHED',
+  'WET_HULLED',
+  'ANAEROBIC',
+  'CARBONIC_MACERATION',
+  'OTHER',
 ] as const;
 
 const TAG_IDS = [
-  "morning",
-  "afternoon",
-  "evening",
-  "fruity",
-  "chocolatey",
-  "nutty",
-  "floral",
-  "spicy",
-  "sweet",
-  "bold",
-  "light",
-  "creamy",
-  "iced",
-  "hot",
-  "decaf",
-  "singleOrigin",
-  "blend",
-  "espresso",
-  "balanced",
-  "bright",
-  "complex",
-  "smooth",
-  "intense",
-  "clean",
-  "syrupy",
+  'morning',
+  'afternoon',
+  'evening',
+  'fruity',
+  'chocolatey',
+  'nutty',
+  'floral',
+  'spicy',
+  'sweet',
+  'bold',
+  'light',
+  'creamy',
+  'iced',
+  'hot',
+  'decaf',
+  'singleOrigin',
+  'blend',
+  'espresso',
+  'balanced',
+  'bright',
+  'complex',
+  'smooth',
+  'intense',
+  'clean',
+  'syrupy',
 ] as const;
 
 function CreateRecipePage() {
@@ -109,30 +107,29 @@ function CreateRecipePage() {
   }));
 
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
+    title: '',
+    description: '',
     brewMethod: [] as { id: string; label: string }[],
     drinkType: [] as { id: string; label: string }[],
-    coffeeName: "",
+    coffeeName: '',
     coffeeProcessing: [] as { id: string; label: string }[],
-    grindSize: "",
-    doseGrams: "",
-    yieldGrams: "",
-    brewTimeSec: "",
-    tempCelsius: "",
-    pressure: "",
-    tastingNotes: "",
-    rating: "",
+    grindSize: '',
+    doseGrams: '',
+    yieldGrams: '',
+    brewTimeSec: '',
+    tempCelsius: '',
+    pressure: '',
+    tastingNotes: '',
+    rating: '',
     tags: [] as { id: string; label: string }[],
   });
   const [selectedTasteNotes, setSelectedTasteNotes] = useState<TasteNote[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleChange =
-    (field: string) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setFormData({ ...formData, [field]: e.target.value });
     };
 
@@ -145,19 +142,17 @@ function CreateRecipePage() {
     const validOptions = params.value.filter((
       opt,
     ): opt is { id: string; label: string } =>
-      typeof opt.id === "string" && typeof opt.label === "string"
+      typeof opt.id === 'string' && typeof opt.label === 'string'
     );
     setFormData({ ...formData, [field]: validOptions });
   };
 
-  const parseOptionalFloat = (value: string) =>
-    value ? Number.parseFloat(value) : undefined;
-  const parseOptionalInt = (value: string) =>
-    value ? Number.parseInt(value) : undefined;
+  const parseOptionalFloat = (value: string) => value ? Number.parseFloat(value) : undefined;
+  const parseOptionalInt = (value: string) => value ? Number.parseInt(value) : undefined;
   const parseOptionalString = (value: string) => value || undefined;
 
   const buildRecipeData = () => ({
-    visibility: "PUBLIC",
+    visibility: 'PUBLIC',
     version: {
       title: formData.title,
       description: formData.description,
@@ -173,29 +168,25 @@ function CreateRecipePage() {
       pressure: parseOptionalString(formData.pressure),
       tastingNotes: parseOptionalString(formData.tastingNotes),
       rating: parseOptionalInt(formData.rating),
-      tags: formData.tags.length > 0
-        ? formData.tags.map((t) => t.id)
-        : undefined,
-      tasteNoteIds: selectedTasteNotes.length > 0
-        ? selectedTasteNotes.map((n) => n.id)
-        : undefined,
+      tags: formData.tags.length > 0 ? formData.tags.map((t) => t.id) : undefined,
+      tasteNoteIds: selectedTasteNotes.length > 0 ? selectedTasteNotes.map((n) => n.id) : undefined,
     },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setIsLoading(true);
 
     try {
-      const response = await api.post("/recipes", buildRecipeData());
+      const response = await api.post('/recipes', buildRecipeData());
       if (response.success && response.data) {
         navigate(`/recipes/${(response.data as { slug: string }).slug}`);
       } else {
-        setError(response.error?.message || "Failed to create recipe");
+        setError(response.error?.message || 'Failed to create recipe');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create recipe");
+      setError(err instanceof Error ? err.message : 'Failed to create recipe');
     } finally {
       setIsLoading(false);
     }
@@ -204,11 +195,11 @@ function CreateRecipePage() {
   return (
     <>
       <Helmet>
-        <title>{t("pages.createRecipe.title")}</title>
+        <title>{t('pages.createRecipe.title')}</title>
       </Helmet>
 
-      <div className={css({ maxWidth: "700px", margin: "0 auto" })}>
-        <HeadingLarge marginBottom="24px">{t("recipe.create")}</HeadingLarge>
+      <div className={css({ maxWidth: '700px', margin: '0 auto' })}>
+        <HeadingLarge marginBottom='24px'>{t('recipe.create')}</HeadingLarge>
 
         <Card>
           {error && (
@@ -219,163 +210,163 @@ function CreateRecipePage() {
 
           <form onSubmit={handleSubmit}>
             <FormControl
-              label={t("recipe.fields.title")}
-              caption={t("recipe.captions.required")}
+              label={t('recipe.fields.title')}
+              caption={t('recipe.captions.required')}
             >
               <Input
                 value={formData.title}
-                onChange={handleChange("title")}
+                onChange={handleChange('title')}
                 required
-                placeholder={t("recipe.placeholders.title")}
+                placeholder={t('recipe.placeholders.title')}
               />
             </FormControl>
 
-            <FormControl label={t("recipe.fields.description")}>
+            <FormControl label={t('recipe.fields.description')}>
               <Textarea
                 value={formData.description}
-                onChange={handleChange("description")}
-                placeholder={t("recipe.placeholders.description")}
+                onChange={handleChange('description')}
+                placeholder={t('recipe.placeholders.description')}
               />
             </FormControl>
 
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px',
               })}
             >
               <FormControl
-                label={t("recipe.fields.brewMethod")}
-                caption={t("recipe.captions.required")}
+                label={t('recipe.fields.brewMethod')}
+                caption={t('recipe.captions.required')}
               >
                 <Select
                   options={BREW_METHODS}
                   value={formData.brewMethod}
-                  onChange={handleSelectChange("brewMethod")}
-                  placeholder={t("recipe.placeholders.select")}
+                  onChange={handleSelectChange('brewMethod')}
+                  placeholder={t('recipe.placeholders.select')}
                 />
               </FormControl>
 
               <FormControl
-                label={t("recipe.fields.drinkType")}
-                caption={t("recipe.captions.required")}
+                label={t('recipe.fields.drinkType')}
+                caption={t('recipe.captions.required')}
               >
                 <Select
                   options={DRINK_TYPES}
                   value={formData.drinkType}
-                  onChange={handleSelectChange("drinkType")}
-                  placeholder={t("recipe.placeholders.select")}
+                  onChange={handleSelectChange('drinkType')}
+                  placeholder={t('recipe.placeholders.select')}
                 />
               </FormControl>
             </div>
 
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px',
               })}
             >
-              <FormControl label={t("recipe.fields.coffee")}>
+              <FormControl label={t('recipe.fields.coffee')}>
                 <Input
                   value={formData.coffeeName}
-                  onChange={handleChange("coffeeName")}
-                  placeholder={t("recipe.placeholders.coffee")}
+                  onChange={handleChange('coffeeName')}
+                  placeholder={t('recipe.placeholders.coffee')}
                 />
               </FormControl>
 
-              <FormControl label={t("recipe.fields.processing")}>
+              <FormControl label={t('recipe.fields.processing')}>
                 <Select
                   options={PROCESSING_METHODS}
                   value={formData.coffeeProcessing}
-                  onChange={handleSelectChange("coffeeProcessing")}
-                  placeholder={t("recipe.placeholders.select")}
+                  onChange={handleSelectChange('coffeeProcessing')}
+                  placeholder={t('recipe.placeholders.select')}
                 />
               </FormControl>
             </div>
 
-            <FormControl label={t("recipe.fields.grindSize")}>
+            <FormControl label={t('recipe.fields.grindSize')}>
               <Input
                 value={formData.grindSize}
-                onChange={handleChange("grindSize")}
-                placeholder={t("recipe.placeholders.grindSize")}
+                onChange={handleChange('grindSize')}
+                placeholder={t('recipe.placeholders.grindSize')}
               />
             </FormControl>
 
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px',
               })}
             >
               <FormControl
-                label={`${t("recipe.fields.dose")} (g)`}
-                caption={t("recipe.captions.required")}
+                label={`${t('recipe.fields.dose')} (g)`}
+                caption={t('recipe.captions.required')}
               >
                 <Input
-                  type="number"
+                  type='number'
                   step={0.1}
                   value={formData.doseGrams}
-                  onChange={handleChange("doseGrams")}
+                  onChange={handleChange('doseGrams')}
                   required
-                  placeholder={t("recipe.placeholders.dose")}
+                  placeholder={t('recipe.placeholders.dose')}
                 />
               </FormControl>
 
-              <FormControl label={`${t("recipe.fields.yield")} (g)`}>
+              <FormControl label={`${t('recipe.fields.yield')} (g)`}>
                 <Input
-                  type="number"
+                  type='number'
                   step={0.1}
                   value={formData.yieldGrams}
-                  onChange={handleChange("yieldGrams")}
-                  placeholder={t("recipe.placeholders.yield")}
+                  onChange={handleChange('yieldGrams')}
+                  placeholder={t('recipe.placeholders.yield')}
                 />
               </FormControl>
             </div>
 
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "16px",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px',
               })}
             >
-              <FormControl label={`${t("recipe.fields.time")} (seconds)`}>
+              <FormControl label={`${t('recipe.fields.time')} (seconds)`}>
                 <Input
-                  type="number"
+                  type='number'
                   value={formData.brewTimeSec}
-                  onChange={handleChange("brewTimeSec")}
-                  placeholder={t("recipe.placeholders.time")}
+                  onChange={handleChange('brewTimeSec')}
+                  placeholder={t('recipe.placeholders.time')}
                 />
               </FormControl>
 
-              <FormControl label={`${t("recipe.fields.temperature")} (°C)`}>
+              <FormControl label={`${t('recipe.fields.temperature')} (°C)`}>
                 <Input
-                  type="number"
+                  type='number'
                   step={0.5}
                   value={formData.tempCelsius}
-                  onChange={handleChange("tempCelsius")}
-                  placeholder={t("recipe.placeholders.temperature")}
+                  onChange={handleChange('tempCelsius')}
+                  placeholder={t('recipe.placeholders.temperature')}
                 />
               </FormControl>
             </div>
 
             <FormControl
-              label={t("recipe.fields.pressure")}
-              caption={t("recipe.captions.pressure")}
+              label={t('recipe.fields.pressure')}
+              caption={t('recipe.captions.pressure')}
             >
               <Input
                 value={formData.pressure}
-                onChange={handleChange("pressure")}
-                placeholder={t("recipe.placeholders.pressure")}
+                onChange={handleChange('pressure')}
+                placeholder={t('recipe.placeholders.pressure')}
               />
             </FormControl>
 
             <FormControl
-              label={t("recipe.fields.tasteNotes")}
-              caption={t("recipe.captions.tasteNotes")}
+              label={t('recipe.fields.tasteNotes')}
+              caption={t('recipe.captions.tasteNotes')}
             >
               <TasteNoteAutocomplete
                 selectedNotes={selectedTasteNotes}
@@ -383,57 +374,57 @@ function CreateRecipePage() {
               />
             </FormControl>
 
-            <FormControl label={t("recipe.fields.tastingNotes")}>
+            <FormControl label={t('recipe.fields.tastingNotes')}>
               <Textarea
                 value={formData.tastingNotes}
-                onChange={handleChange("tastingNotes")}
-                placeholder={t("recipe.placeholders.tastingNotes")}
+                onChange={handleChange('tastingNotes')}
+                placeholder={t('recipe.placeholders.tastingNotes')}
               />
             </FormControl>
 
             <FormControl
-              label={`${t("recipe.fields.rating")} (1-10)`}
-              caption={t("recipe.captions.rating")}
+              label={`${t('recipe.fields.rating')} (1-10)`}
+              caption={t('recipe.captions.rating')}
             >
               <Input
-                type="number"
+                type='number'
                 min={1}
                 max={10}
                 value={formData.rating}
-                onChange={handleChange("rating")}
-                placeholder={t("recipe.placeholders.rating")}
+                onChange={handleChange('rating')}
+                placeholder={t('recipe.placeholders.rating')}
               />
             </FormControl>
 
             <FormControl
-              label={t("recipe.fields.tags")}
-              caption={t("recipe.captions.tags")}
+              label={t('recipe.fields.tags')}
+              caption={t('recipe.captions.tags')}
             >
               <Select
                 options={TAGS}
                 value={formData.tags}
-                onChange={handleSelectChange("tags")}
-                placeholder={t("recipe.selectTags")}
+                onChange={handleSelectChange('tags')}
+                placeholder={t('recipe.selectTags')}
                 multi
               />
             </FormControl>
 
             <div
               className={css({
-                display: "flex",
-                gap: "16px",
-                marginTop: "24px",
+                display: 'flex',
+                gap: '16px',
+                marginTop: '24px',
               })}
             >
-              <Button type="submit" isLoading={isLoading}>
-                {t("recipe.create")}
+              <Button type='submit' isLoading={isLoading}>
+                {t('recipe.create')}
               </Button>
               <Button
-                type="button"
-                kind="secondary"
+                type='button'
+                kind='secondary'
                 onClick={() => navigate(-1)}
               >
-                {t("common.cancel")}
+                {t('common.cancel')}
               </Button>
             </div>
           </form>

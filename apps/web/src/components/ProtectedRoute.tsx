@@ -3,9 +3,9 @@
  * Redirects to login if user is not authenticated
  */
 
-import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext.tsx";
-import LoadingSpinner from "./LoadingSpinner.tsx";
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext.tsx';
+import LoadingSpinner from './LoadingSpinner.tsx';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -20,7 +20,7 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to='/login' state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

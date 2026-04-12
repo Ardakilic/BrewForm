@@ -1,32 +1,5 @@
 {
-  "name": "@brewform/web",
-  "version": "1.0.0",
-  "description": "BrewForm Web - React frontend",
-  "exports": "./src/main.tsx",
-  "nodeModulesDir": "auto",
-  "lock": "deno.lock",
   "imports": {
-    "baseui": "npm:baseui@^16.1.1",
-    "date-fns": "npm:date-fns@^4.1.0",
-    "react": "npm:react@^19.2.4",
-    "react-dom": "npm:react-dom@^19.2.4",
-    "react-helmet-async": "npm:react-helmet-async@^3.0.0",
-    "react-hook-form": "npm:react-hook-form@^7.71.2",
-    "react-i18next": "npm:react-i18next@^16.6.0",
-    "react-router-dom": "npm:react-router-dom@^7.13.1",
-    "styletron-engine-monolithic": "npm:styletron-engine-monolithic@^1.0.0",
-    "styletron-react": "npm:styletron-react@^6.1.1",
-    "swr": "npm:swr@^2.4.1",
-    "zod": "npm:zod@^4.3.6",
-    "@hookform/resolvers": "npm:@hookform/resolvers@^5.2.2",
-    "i18next": "npm:i18next@^25.10.2",
-    "@testing-library/jest-dom": "npm:@testing-library/jest-dom@^6.9.1", // dev
-    "@testing-library/react": "npm:@testing-library/react@^16.3.2", // dev
-    "@types/react": "npm:@types/react@^19.2.14", // dev
-    "@types/react-dom": "npm:@types/react-dom@^19.2.3", // dev
-    "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^6.0.1", // dev
-    "jsdom": "npm:jsdom@^29.0.1", // dev
-    "vite": "npm:vite@^8.0.1", // dev
     "@std/testing": "jsr:@std/testing@^1.0.0/bdd",
     "@std/expect": "jsr:@std/expect@^1.0.0",
     "@std/testing/mock": "jsr:@std/testing@^1.0.0/mock"
@@ -35,22 +8,21 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "strict": true,
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2022", "DOM"],
+    "types": ["vite/client"]
   },
-  "tasks": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "deno test --allow-all --no-check --import-map=src/test/import_map.json src/",
-    "test:watch": "deno test --allow-all --no-check --watch --import-map=src/test/import_map.json src/",
-    "test:coverage": "deno test --allow-all --no-check --import-map=src/test/import_map.json --coverage=coverage src/",
-    "test:coverage:report": "deno coverage coverage --lcov --output=coverage/lcov.info",
-    "lint": "deno lint src/",
-    "lint:fix": "deno lint --fix src/",
-    "format": "deno fmt",
-    "format:check": "deno fmt --check",
-    "typecheck": "deno check src/main.tsx",
-    "check": "deno task lint && deno task format:check && deno task typecheck",
-    "clean": "rm -rf dist node_modules coverage"
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    },
+    "exclude": ["coverage", "dist"]
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": true,
+    "exclude": ["coverage", "dist"]
   }
 }

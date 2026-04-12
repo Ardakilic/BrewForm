@@ -2,22 +2,18 @@
  * BrewForm Register Page
  */
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useStyletron } from "baseui";
-import { Card } from "../../components/Card.tsx";
-import { FormControl } from "baseui/form-control";
-import { Input } from "baseui/input";
-import { Button } from "baseui/button";
-import {
-  HeadingMedium,
-  ParagraphMedium,
-  ParagraphSmall,
-} from "baseui/typography";
-import { KIND, Notification } from "baseui/notification";
-import { useTranslation } from "react-i18next";
-import { Helmet } from "react-helmet-async";
-import { useAuth } from "../../contexts/AuthContext.tsx";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useStyletron } from 'baseui';
+import { Card } from '../../components/Card.tsx';
+import { FormControl } from 'baseui/form-control';
+import { Input } from 'baseui/input';
+import { Button } from 'baseui/button';
+import { HeadingMedium, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
+import { KIND, Notification } from 'baseui/notification';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 
 function RegisterPage() {
   const [css, theme] = useStyletron();
@@ -26,27 +22,26 @@ function RegisterPage() {
   const { register } = useAuth();
 
   const [formData, setFormData] = useState({
-    email: "",
-    username: "",
-    displayName: "",
-    password: "",
-    confirmPassword: "",
+    email: '',
+    username: '',
+    displayName: '',
+    password: '',
+    confirmPassword: '',
   });
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange =
-    (field: string) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setFormData({ ...formData, [field]: e.target.value });
     };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError('Passwords do not match');
       return;
     }
 
@@ -59,9 +54,9 @@ function RegisterPage() {
         password: formData.password,
         displayName: formData.displayName || undefined,
       });
-      navigate("/");
+      navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -70,35 +65,35 @@ function RegisterPage() {
   return (
     <>
       <Helmet>
-        <title>{t("pages.register.title")}</title>
+        <title>{t('pages.register.title')}</title>
       </Helmet>
 
       <div
         className={css({
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "60vh",
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '60vh',
         })}
       >
         <Card
           overrides={{
             Root: {
               style: {
-                width: "400px",
-                maxWidth: "100%",
+                width: '400px',
+                maxWidth: '100%',
               },
             },
           }}
         >
-          <HeadingMedium marginBottom="8px">
-            {t("auth.register.title")}
+          <HeadingMedium marginBottom='8px'>
+            {t('auth.register.title')}
           </HeadingMedium>
           <ParagraphMedium
             color={theme.colors.contentSecondary}
-            marginBottom="24px"
+            marginBottom='24px'
           >
-            {t("auth.register.subtitle")}
+            {t('auth.register.subtitle')}
           </ParagraphMedium>
 
           {error && (
@@ -108,102 +103,102 @@ function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit}>
-            <FormControl label={t("auth.register.email")}>
+            <FormControl label={t('auth.register.email')}>
               <Input
-                type="email"
+                type='email'
                 value={formData.email}
-                onChange={handleChange("email")}
+                onChange={handleChange('email')}
                 required
-                autoComplete="email"
+                autoComplete='email'
                 overrides={{
-                  Input: { props: { "aria-label": t("auth.register.email") } },
+                  Input: { props: { 'aria-label': t('auth.register.email') } },
                 }}
               />
             </FormControl>
 
             <FormControl
-              label={t("auth.register.username")}
-              caption="Lowercase letters, numbers, and underscores only"
+              label={t('auth.register.username')}
+              caption='Lowercase letters, numbers, and underscores only'
             >
               <Input
                 value={formData.username}
-                onChange={handleChange("username")}
+                onChange={handleChange('username')}
                 required
-                autoComplete="username"
+                autoComplete='username'
                 overrides={{
                   Input: {
-                    props: { "aria-label": t("auth.register.username") },
+                    props: { 'aria-label': t('auth.register.username') },
                   },
                 }}
               />
             </FormControl>
 
-            <FormControl label={t("auth.register.displayName")}>
+            <FormControl label={t('auth.register.displayName')}>
               <Input
                 value={formData.displayName}
-                onChange={handleChange("displayName")}
-                autoComplete="name"
+                onChange={handleChange('displayName')}
+                autoComplete='name'
               />
             </FormControl>
 
             <FormControl
-              label={t("auth.register.password")}
-              caption="Minimum 8 characters"
+              label={t('auth.register.password')}
+              caption='Minimum 8 characters'
             >
               <Input
-                type="password"
+                type='password'
                 value={formData.password}
-                onChange={handleChange("password")}
+                onChange={handleChange('password')}
                 required
-                autoComplete="new-password"
+                autoComplete='new-password'
                 overrides={{
                   Input: {
-                    props: { "aria-label": t("auth.register.password") },
+                    props: { 'aria-label': t('auth.register.password') },
                   },
                 }}
               />
             </FormControl>
 
-            <FormControl label={t("auth.register.confirmPassword")}>
+            <FormControl label={t('auth.register.confirmPassword')}>
               <Input
-                type="password"
+                type='password'
                 value={formData.confirmPassword}
-                onChange={handleChange("confirmPassword")}
+                onChange={handleChange('confirmPassword')}
                 required
-                autoComplete="new-password"
+                autoComplete='new-password'
                 overrides={{
                   Input: {
-                    props: { "aria-label": t("auth.register.confirmPassword") },
+                    props: { 'aria-label': t('auth.register.confirmPassword') },
                   },
                 }}
               />
             </FormControl>
 
             <Button
-              type="submit"
+              type='submit'
               isLoading={isLoading}
               overrides={{
                 BaseButton: {
-                  style: { width: "100%" },
+                  style: { width: '100%' },
                 },
               }}
             >
-              {t("auth.register.submit")}
+              {t('auth.register.submit')}
             </Button>
           </form>
 
           <ParagraphSmall
             className={css({
-              textAlign: "center",
-              marginTop: "24px",
+              textAlign: 'center',
+              marginTop: '24px',
             })}
           >
-            {t("auth.register.hasAccount")}{" "}
+            {t('auth.register.hasAccount')}{' '}
             <Link
-              to="/login"
-              className={css({ color: "#6F4E37", fontWeight: 600 })}
+              to='/login'
+              className={css({ color: '#6F4E37', fontWeight: 600 })}
             >
-              {t("auth.register.signIn")}
+              {t('auth.register.signIn')}
             </Link>
           </ParagraphSmall>
         </Card>

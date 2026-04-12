@@ -3,9 +3,9 @@
  * Redirects non-admin users to home
  */
 
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext.tsx";
-import LoadingSpinner from "./LoadingSpinner.tsx";
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext.tsx';
+import LoadingSpinner from './LoadingSpinner.tsx';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -19,11 +19,11 @@ function AdminRoute({ children }: AdminRouteProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to='/login' replace />;
   }
 
   if (!user?.isAdmin) {
-    return <Navigate to="/" replace />;
+    return <Navigate to='/' replace />;
   }
 
   return <>{children}</>;

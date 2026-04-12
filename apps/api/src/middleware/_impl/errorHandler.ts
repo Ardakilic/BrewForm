@@ -3,11 +3,11 @@
  * Catches and formats all errors
  */
 
-import type { Context } from "hono";
-import { HTTPException } from "hono/http-exception";
-import { ZodError } from "zod";
-import { getLogger } from "../../utils/logger/index.ts";
-import { getConfig } from "../../config/index.ts";
+import type { Context } from 'hono';
+import { HTTPException } from 'hono/http-exception';
+import { ZodError } from 'zod';
+import { getLogger } from '../../utils/logger/index.ts';
+import { getConfig } from '../../config/index.ts';
 
 // ============================================
 // Custom Error Types
@@ -21,11 +21,11 @@ export class AppError extends Error {
   constructor(
     message: string,
     statusCode = 500,
-    code = "INTERNAL_ERROR",
+    code = 'INTERNAL_ERROR',
     details?: Record<string, unknown>,
   ) {
     super(message);
-    this.name = "AppError";
+    this.name = 'AppError';
     this.statusCode = statusCode;
     this.code = code;
     this.details = details;
@@ -33,38 +33,38 @@ export class AppError extends Error {
 }
 
 export class NotFoundError extends AppError {
-  constructor(resource = "Resource") {
-    super(`${resource} not found`, 404, "NOT_FOUND");
+  constructor(resource = 'Resource') {
+    super(`${resource} not found`, 404, 'NOT_FOUND');
   }
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message = "Unauthorized") {
-    super(message, 401, "UNAUTHORIZED");
+  constructor(message = 'Unauthorized') {
+    super(message, 401, 'UNAUTHORIZED');
   }
 }
 
 export class ForbiddenError extends AppError {
-  constructor(message = "Access denied") {
-    super(message, 403, "FORBIDDEN");
+  constructor(message = 'Access denied') {
+    super(message, 403, 'FORBIDDEN');
   }
 }
 
 export class BadRequestError extends AppError {
   constructor(message: string, details?: Record<string, unknown>) {
-    super(message, 400, "BAD_REQUEST", details);
+    super(message, 400, 'BAD_REQUEST', details);
   }
 }
 
 export class ConflictError extends AppError {
   constructor(message: string) {
-    super(message, 409, "CONFLICT");
+    super(message, 409, 'CONFLICT');
   }
 }
 
 export class ValidationError extends AppError {
   constructor(errors: Array<{ field: string; message: string }>) {
-    super("Validation failed", 422, "VALIDATION_ERROR", { errors });
+    super('Validation failed', 422, 'VALIDATION_ERROR', { errors });
   }
 }
 
@@ -79,7 +79,7 @@ function formatZodErrors(
   error: ZodError,
 ): Array<{ field: string; message: string }> {
   return error.issues.map((err) => ({
-    field: err.path.join("."),
+    field: err.path.join('.'),
     message: err.message,
   }));
 }
@@ -90,16 +90,16 @@ function formatZodErrors(
 export function errorHandler(err: Error, c: Context) {
   const logger = getLogger();
   const config = getConfig();
-  const requestId = c.get("requestId");
+  const requestId = c.get('requestId');
 
   // Log the error
   logger.error({
-    type: "error",
+    type: 'error',
     requestId,
     error: {
       name: err.name,
       message: err.message,
-      stack: config.nodeEnv === "development" ? err.stack : undefined,
+      stack: config.nodeEnv === 'development' ? err.stack : undefined,
     },
   });
 
@@ -109,8 +109,8 @@ export function errorHandler(err: Error, c: Context) {
       {
         success: false,
         error: {
-          code: "VALIDATION_ERROR",
-          message: "Validation failed",
+          code: 'VALIDATION_ERROR',
+          message: 'Validation failed',
           errors: formatZodErrors(err),
         },
       },
@@ -139,7 +139,7 @@ export function errorHandler(err: Error, c: Context) {
       {
         success: false,
         error: {
-          code: "HTTP_ERROR",
+          code: 'HTTP_ERROR',
           message: err.message,
         },
       },
@@ -148,17 +148,15 @@ export function errorHandler(err: Error, c: Context) {
   }
 
   // Handle unknown errors
-  const message = config.nodeEnv === "production"
-    ? "An unexpected error occurred"
-    : err.message;
+  const message = config.nodeEnv === 'production' ? 'An unexpected error occurred' : err.message;
 
   return c.json(
     {
       success: false,
       error: {
-        code: "INTERNAL_ERROR",
+        code: 'INTERNAL_ERROR',
         message,
-        ...(config.nodeEnv === "development" && { stack: err.stack }),
+        ...(config.nodeEnv === 'development' && { stack: err.stack }),
       },
     },
     500,

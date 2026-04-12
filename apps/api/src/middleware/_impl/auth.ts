@@ -3,11 +3,11 @@
  * Handles JWT token verification and user context
  */
 
-import { createMiddleware } from "hono/factory";
-import type { Context, Next } from "hono";
-import { verifyAccessToken } from "../../utils/auth/index.ts";
-import { getPrisma } from "../../utils/database/index.ts";
-import { getLogger, logSecurity } from "../../utils/logger/index.ts";
+import { createMiddleware } from 'hono/factory';
+import type { Context, Next } from 'hono';
+import { verifyAccessToken } from '../../utils/auth/index.ts';
+import { getPrisma } from '../../utils/database/index.ts';
+import { getLogger, logSecurity } from '../../utils/logger/index.ts';
 
 // ============================================
 // Types
@@ -21,7 +21,7 @@ export interface AuthUser {
   isBanned: boolean;
 }
 
-declare module "hono" {
+declare module 'hono' {
   interface ContextVariableMap {
     user: AuthUser | null;
     requestId: string;
@@ -36,7 +36,7 @@ declare module "hono" {
  * Extract bearer token from authorization header
  */
 function extractBearerToken(authHeader: string | undefined): string | null {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
   return authHeader.slice(7);
@@ -48,11 +48,11 @@ function extractBearerToken(authHeader: string | undefined): string | null {
  */
 export const authMiddleware = createMiddleware(
   async (c: Context, next: Next) => {
-    const authHeader = c.req.header("Authorization");
+    const authHeader = c.req.header('Authorization');
     const token = extractBearerToken(authHeader);
 
     if (!token) {
-      c.set("user", null);
+      c.set('user', null);
       return next();
     }
 
@@ -60,7 +60,7 @@ export const authMiddleware = createMiddleware(
       const payload = await verifyAccessToken(token);
 
       if (!payload) {
-        c.set("user", null);
+        c.set('user', null);
         return next();
       }
 
@@ -79,20 +79,20 @@ export const authMiddleware = createMiddleware(
       });
 
       if (!user || user.deletedAt) {
-        c.set("user", null);
+        c.set('user', null);
         return next();
       }
 
       if (user.isBanned) {
-        logSecurity("banned_user_access_attempt", {
+        logSecurity('banned_user_access_attempt', {
           userId: user.id,
           email: user.email,
         });
-        c.set("user", null);
+        c.set('user', null);
         return next();
       }
 
-      c.set("user", {
+      c.set('user', {
         id: user.id,
         email: user.email,
         username: user.username,
@@ -101,11 +101,11 @@ export const authMiddleware = createMiddleware(
       });
     } catch (error) {
       getLogger().error({
-        type: "auth",
-        operation: "verify",
-        error: error instanceof Error ? error.message : "Unknown error",
+        type: 'auth',
+        operation: 'verify',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
-      c.set("user", null);
+      c.set('user', null);
     }
 
     return next();
@@ -119,15 +119,15 @@ export const authMiddleware = createMiddleware(
 export const requireAuth = createMiddleware(
   // deno-lint-ignore require-await
   async (c: Context, next: Next) => {
-    const user = c.get("user");
+    const user = c.get('user');
 
     if (!user) {
       return c.json(
         {
           success: false,
           error: {
-            code: "UNAUTHORIZED",
-            message: "Authentication required",
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
           },
         },
         401,
@@ -145,15 +145,15 @@ export const requireAuth = createMiddleware(
 export const requireAdmin = createMiddleware(
   // deno-lint-ignore require-await
   async (c: Context, next: Next) => {
-    const user = c.get("user");
+    const user = c.get('user');
 
     if (!user) {
       return c.json(
         {
           success: false,
           error: {
-            code: "UNAUTHORIZED",
-            message: "Authentication required",
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required',
           },
         },
         401,
@@ -161,7 +161,7 @@ export const requireAdmin = createMiddleware(
     }
 
     if (!user.isAdmin) {
-      logSecurity("admin_access_denied", {
+      logSecurity('admin_access_denied', {
         userId: user.id,
         path: c.req.path,
       });
@@ -170,8 +170,8 @@ export const requireAdmin = createMiddleware(
         {
           success: false,
           error: {
-            code: "FORBIDDEN",
-            message: "Admin access required",
+            code: 'FORBIDDEN',
+            message: 'Admin access required',
           },
         },
         403,

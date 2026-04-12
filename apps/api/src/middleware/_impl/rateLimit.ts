@@ -3,11 +3,11 @@
  * Protects endpoints from abuse
  */
 
-import { createMiddleware } from "hono/factory";
-import type { Context, Next } from "hono";
-import { checkRateLimit } from "../../utils/rate-limit/index.ts";
-import { getConfig } from "../../config/index.ts";
-import { logSecurity } from "../../utils/logger/index.ts";
+import { createMiddleware } from 'hono/factory';
+import type { Context, Next } from 'hono';
+import { checkRateLimit } from '../../utils/rate-limit/index.ts';
+import { getConfig } from '../../config/index.ts';
+import { logSecurity } from '../../utils/logger/index.ts';
 
 // ============================================
 // Types
@@ -30,16 +30,16 @@ export interface RateLimitOptions {
  */
 function getClientIdentifier(c: Context): string {
   // Use user ID if authenticated
-  const user = c.get("user");
+  const user = c.get('user');
   if (user) {
     return `user:${user.id}`;
   }
 
   // Otherwise use IP
-  const forwarded = c.req.header("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() ||
-    c.req.header("x-real-ip") ||
-    "unknown";
+  const forwarded = c.req.header('x-forwarded-for');
+  const ip = forwarded?.split(',')[0]?.trim() ||
+    c.req.header('x-real-ip') ||
+    'unknown';
 
   return `ip:${ip}`;
 }
@@ -52,13 +52,13 @@ export function createRateLimiter(options: RateLimitOptions = {}) {
 
   const windowMs = options.windowMs ?? config.rateLimitWindowMs;
   const maxRequests = options.maxRequests ?? config.rateLimitMaxRequests;
-  const action = options.action ?? "default";
+  const action = options.action ?? 'default';
   const keyGenerator = options.keyGenerator ?? getClientIdentifier;
   const skipIfAuthenticated = options.skipIfAuthenticated ?? false;
 
   return createMiddleware(async (c: Context, next: Next) => {
     // Skip if authenticated and configured to do so
-    if (skipIfAuthenticated && c.get("user")) {
+    if (skipIfAuthenticated && c.get('user')) {
       return next();
     }
 
@@ -71,12 +71,12 @@ export function createRateLimiter(options: RateLimitOptions = {}) {
     );
 
     // Set rate limit headers
-    c.header("X-RateLimit-Limit", maxRequests.toString());
-    c.header("X-RateLimit-Remaining", result.remaining.toString());
-    c.header("X-RateLimit-Reset", new Date(result.resetAt).toISOString());
+    c.header('X-RateLimit-Limit', maxRequests.toString());
+    c.header('X-RateLimit-Remaining', result.remaining.toString());
+    c.header('X-RateLimit-Reset', new Date(result.resetAt).toISOString());
 
     if (!result.allowed) {
-      logSecurity("rate_limit_exceeded", {
+      logSecurity('rate_limit_exceeded', {
         identifier,
         action,
         path: c.req.path,
@@ -86,8 +86,8 @@ export function createRateLimiter(options: RateLimitOptions = {}) {
         {
           success: false,
           error: {
-            code: "RATE_LIMITED",
-            message: "Too many requests. Please try again later.",
+            code: 'RATE_LIMITED',
+            message: 'Too many requests. Please try again later.',
             retryAfter: Math.ceil((result.resetAt - Date.now()) / 1000),
           },
         },
@@ -110,7 +110,7 @@ export const rateLimitMiddleware = createRateLimiter();
 export const authRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
   maxRequests: 10,
-  action: "auth",
+  action: 'auth',
 });
 
 /**
@@ -119,7 +119,7 @@ export const authRateLimiter = createRateLimiter({
 export const apiRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
   maxRequests: 100,
-  action: "api",
+  action: 'api',
   skipIfAuthenticated: true,
 });
 
@@ -129,7 +129,7 @@ export const apiRateLimiter = createRateLimiter({
 export const writeRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
   maxRequests: 30,
-  action: "write",
+  action: 'write',
 });
 
 export default {

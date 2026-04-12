@@ -398,7 +398,16 @@
     "minChars": "Unesite najmanje {{count}} karaktera za pretragu",
     "noResults": "Nema odgovarajućih ukusnih nota",
     "selected": "{{count}}/{{max}} ukusnih nota izabrano",
-    "scaaReference": "SCAA referenca točka ukusa"
+    "scaaReference": "SCAA referenca točka ukusa",
+    "cache": {
+      "label": "Taste Notes Cache",
+      "description": "Taste notes are cached for 24 hours. Use this button to force a refresh after importing new data or making manual database changes.",
+      "invalidateButton": "Invalidate Cache",
+      "invalidating": "Invalidating cache...",
+      "success": "Cache invalidated ({{count}} entries cleared). Next request will re-fetch from the database.",
+      "failure": "Failed to invalidate cache",
+      "networkError": "Network error. Could not reach API."
+    }
   },
   "rating": {
     "superGood": "Odlično",

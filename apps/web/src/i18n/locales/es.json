@@ -398,7 +398,16 @@
     "minChars": "Escribe al menos {{count}} caracteres para buscar",
     "noResults": "No se encontraron notas de sabor",
     "selected": "{{count}}/{{max}} notas seleccionadas",
-    "scaaReference": "Referencia de la rueda SCAA"
+    "scaaReference": "Referencia de la rueda SCAA",
+    "cache": {
+      "label": "Caché de notas de cata",
+      "description": "Las notas de cata se almacenan en caché durante 24 horas. Usa este botón para forzar una actualización después de importar datos nuevos o realizar cambios manuales en la base de datos.",
+      "invalidateButton": "Invalidar caché",
+      "invalidating": "Invalidando caché...",
+      "success": "Caché invalidada (se borraron {{count}} entradas). La próxima solicitud volverá a obtener datos de la base de datos.",
+      "failure": "Error al invalidar la caché",
+      "networkError": "Error de red. No se pudo contactar con la API."
+    }
   },
   "rating": {
     "superGood": "Excelente",

@@ -3,14 +3,14 @@
  * Main layout with header, footer, and content area
  */
 
-import { Link, Outlet, useNavigate } from "react-router-dom";
-import { useStyletron } from "baseui";
-import { Button } from "baseui/button";
-import { Select } from "baseui/select";
-import { useTranslation } from "react-i18next";
-import { useAuth } from "../contexts/AuthContext.tsx";
-import { useTheme } from "../contexts/ThemeContext.tsx";
-import { changeLanguage, supportedLanguages } from "../i18n/index.ts";
+import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { useStyletron } from 'baseui';
+import { Button } from 'baseui/button';
+import { Select } from 'baseui/select';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext.tsx';
+import { useTheme } from '../contexts/ThemeContext.tsx';
+import { changeLanguage, supportedLanguages } from '../i18n/index.ts';
 
 function Header() {
   const [css, theme] = useStyletron();
@@ -21,7 +21,7 @@ function Header() {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/");
+    navigate('/');
   };
 
   const languageOptions = supportedLanguages.map((lang) => ({
@@ -37,35 +37,35 @@ function Header() {
       className={css({
         backgroundColor: theme.colors.backgroundPrimary,
         borderBottom: `1px solid ${theme.colors.borderOpaque}`,
-        padding: "16px 24px",
-        position: "sticky",
+        padding: '16px 24px',
+        position: 'sticky',
         top: 0,
         zIndex: 100,
       })}
     >
       <div
         className={css({
-          maxWidth: "1200px",
-          margin: "0 auto",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          maxWidth: '1200px',
+          margin: '0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         })}
       >
         {/* Logo */}
-        <Link to="/" className={css({ textDecoration: "none" })}>
+        <Link to='/' className={css({ textDecoration: 'none' })}>
           <div
             className={css({
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
             })}
           >
             <span
               className={css({
-                fontSize: "24px",
+                fontSize: '24px',
                 fontWeight: 700,
-                color: "#6F4E37",
+                color: '#6F4E37',
               })}
             >
               ☕ BrewForm
@@ -76,34 +76,34 @@ function Header() {
         {/* Navigation */}
         <nav
           className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "24px",
+            display: 'flex',
+            alignItems: 'center',
+            gap: '24px',
           })}
         >
           <Link
-            to="/recipes"
+            to='/recipes'
             className={css({
               color: theme.colors.contentPrimary,
-              textDecoration: "none",
-              ":hover": { color: "#6F4E37" },
+              textDecoration: 'none',
+              ':hover': { color: '#6F4E37' },
             })}
           >
-            {t("nav.recipes")}
+            {t('nav.recipes')}
           </Link>
           <Link
-            to="/baristas"
+            to='/baristas'
             className={css({
               color: theme.colors.contentPrimary,
-              textDecoration: "none",
-              ":hover": { color: "#6F4E37" },
+              textDecoration: 'none',
+              ':hover': { color: '#6F4E37' },
             })}
           >
-            {t("nav.baristas")}
+            {t('nav.baristas')}
           </Link>
 
           {/* Language Selector */}
-          <div className={css({ width: "140px" })}>
+          <div className={css({ width: '140px' })}>
             <Select
               options={languageOptions}
               value={[currentLanguage]}
@@ -114,10 +114,10 @@ function Header() {
               }}
               clearable={false}
               searchable={false}
-              size="compact"
+              size='compact'
               overrides={{
-                Root: { style: { width: "140px" } },
-                ControlContainer: { style: { borderRadius: "8px" } },
+                Root: { style: { width: '140px' } },
+                ControlContainer: { style: { borderRadius: '8px' } },
                 Popover: {
                   props: {
                     overrides: {
@@ -138,7 +138,7 @@ function Header() {
                   style: {
                     backgroundColor: theme.colors.menuFill,
                     color: theme.colors.contentInversePrimary,
-                    ":hover": {
+                    ':hover': {
                       backgroundColor: theme.colors.menuFillHover,
                     },
                   },
@@ -154,80 +154,78 @@ function Header() {
 
           {/* Theme Toggle */}
           <button
-            type="button"
+            type='button'
             onClick={toggleTheme}
-            aria-label={isDark
-              ? t("theme.switchToLight")
-              : t("theme.switchToDark")}
+            aria-label={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
             className={css({
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "8px",
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "20px",
-              transition: "all 0.2s ease",
-              ":hover": {
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              transition: 'all 0.2s ease',
+              ':hover': {
                 backgroundColor: theme.colors.backgroundTertiary,
-                transform: "scale(1.1)",
+                transform: 'scale(1.1)',
               },
             })}
           >
-            {isDark ? "☀️" : "🌙"}
+            {isDark ? '☀️' : '🌙'}
           </button>
 
           {isAuthenticated
             ? (
               <>
                 <Link
-                  to="/recipes/new"
+                  to='/recipes/new'
                   className={css({
                     color: theme.colors.contentPrimary,
-                    textDecoration: "none",
-                    ":hover": { color: "#6F4E37" },
+                    textDecoration: 'none',
+                    ':hover': { color: '#6F4E37' },
                   })}
                 >
-                  {t("recipe.create")}
+                  {t('recipe.create')}
                 </Link>
                 <Link
-                  to="/profile"
+                  to='/profile'
                   className={css({
                     color: theme.colors.contentPrimary,
-                    textDecoration: "none",
-                    ":hover": { color: "#6F4E37" },
+                    textDecoration: 'none',
+                    ':hover': { color: '#6F4E37' },
                   })}
                 >
-                  {t("nav.profile")}
+                  {t('nav.profile')}
                 </Link>
                 {user?.isAdmin && (
                   <Link
-                    to="/admin"
+                    to='/admin'
                     className={css({
                       color: theme.colors.contentPrimary,
-                      textDecoration: "none",
-                      ":hover": { color: "#6F4E37" },
+                      textDecoration: 'none',
+                      ':hover': { color: '#6F4E37' },
                     })}
                   >
-                    {t("nav.admin")}
+                    {t('nav.admin')}
                   </Link>
                 )}
-                <Button size="compact" onClick={handleLogout}>
-                  {t("nav.logout")}
+                <Button size='compact' onClick={handleLogout}>
+                  {t('nav.logout')}
                 </Button>
               </>
             )
             : (
               <>
-                <Link to="/login">
-                  <Button size="compact" kind="secondary">
-                    {t("nav.login")}
+                <Link to='/login'>
+                  <Button size='compact' kind='secondary'>
+                    {t('nav.login')}
                   </Button>
                 </Link>
-                <Link to="/register">
-                  <Button size="compact">{t("nav.register")}</Button>
+                <Link to='/register'>
+                  <Button size='compact'>{t('nav.register')}</Button>
                 </Link>
               </>
             )}
@@ -247,65 +245,65 @@ function Footer() {
       className={css({
         backgroundColor: theme.colors.backgroundSecondary,
         borderTop: `1px solid ${theme.colors.borderOpaque}`,
-        padding: "32px 24px",
-        marginTop: "auto",
+        padding: '32px 24px',
+        marginTop: 'auto',
       })}
     >
       <div
         className={css({
-          maxWidth: "1200px",
-          margin: "0 auto",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "16px",
-          textAlign: "center",
+          maxWidth: '1200px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px',
+          textAlign: 'center',
         })}
       >
         <div
           className={css({
-            display: "flex",
-            gap: "24px",
+            display: 'flex',
+            gap: '24px',
           })}
         >
           <Link
-            to="/about"
+            to='/about'
             className={css({
               color: theme.colors.contentSecondary,
-              textDecoration: "none",
-              ":hover": { color: "#6F4E37" },
+              textDecoration: 'none',
+              ':hover': { color: '#6F4E37' },
             })}
           >
-            {t("footer.links.about")}
+            {t('footer.links.about')}
           </Link>
           <Link
-            to="/privacy"
+            to='/privacy'
             className={css({
               color: theme.colors.contentSecondary,
-              textDecoration: "none",
-              ":hover": { color: "#6F4E37" },
+              textDecoration: 'none',
+              ':hover': { color: '#6F4E37' },
             })}
           >
-            {t("footer.links.privacy")}
+            {t('footer.links.privacy')}
           </Link>
           <Link
-            to="/terms"
+            to='/terms'
             className={css({
               color: theme.colors.contentSecondary,
-              textDecoration: "none",
-              ":hover": { color: "#6F4E37" },
+              textDecoration: 'none',
+              ':hover': { color: '#6F4E37' },
             })}
           >
-            {t("footer.links.terms")}
+            {t('footer.links.terms')}
           </Link>
         </div>
         <p
           className={css({
             color: theme.colors.contentTertiary,
-            fontSize: "14px",
+            fontSize: '14px',
           })}
         >
-          {t("footer.copyright", { year })}
+          {t('footer.copyright', { year })}
         </p>
       </div>
     </footer>
@@ -318,9 +316,9 @@ function Layout() {
   return (
     <div
       className={css({
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "100vh",
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
         backgroundColor: theme.colors.backgroundPrimary,
         color: theme.colors.contentPrimary,
       })}
@@ -329,14 +327,14 @@ function Layout() {
       <main
         className={css({
           flex: 1,
-          padding: "24px",
+          padding: '24px',
           backgroundColor: theme.colors.backgroundPrimary,
         })}
       >
         <div
           className={css({
-            maxWidth: "1200px",
-            margin: "0 auto",
+            maxWidth: '1200px',
+            margin: '0 auto',
           })}
         >
           <Outlet />

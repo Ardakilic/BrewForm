@@ -3,23 +3,18 @@
  * Lists all users/baristas with search and filters
  */
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useStyletron } from "baseui";
-import { Card } from "../../components/Card.tsx";
-import { Input } from "baseui/input";
-import {
-  HeadingLarge,
-  HeadingSmall,
-  ParagraphMedium,
-  ParagraphSmall,
-} from "baseui/typography";
-import { useTranslation } from "react-i18next";
-import { Helmet } from "react-helmet-async";
-import useSWR from "swr";
-import { api } from "../../utils/api.ts";
-import LoadingSpinner from "../../components/LoadingSpinner.tsx";
-import type { UserProfile } from "../../types";
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useStyletron } from 'baseui';
+import { Card } from '../../components/Card.tsx';
+import { Input } from 'baseui/input';
+import { HeadingLarge, HeadingSmall, ParagraphMedium, ParagraphSmall } from 'baseui/typography';
+import { useTranslation } from 'react-i18next';
+import { Helmet } from 'react-helmet-async';
+import useSWR from 'swr';
+import { api } from '../../utils/api.ts';
+import LoadingSpinner from '../../components/LoadingSpinner.tsx';
+import type { UserProfile } from '../../types';
 
 interface BaristasData {
   users: UserProfile[];
@@ -39,7 +34,7 @@ const baristasFetcher = async (url: string): Promise<BaristasData> => {
 function BaristasPage() {
   const [css, theme] = useStyletron();
   const { t } = useTranslation();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
 
   const { data, isLoading } = useSWR<BaristasData>(
     `/users?search=${encodeURIComponent(search)}`,
@@ -51,30 +46,30 @@ function BaristasPage() {
   return (
     <>
       <Helmet>
-        <title>{t("nav.baristas")} - BrewForm</title>
+        <title>{t('nav.baristas')} - BrewForm</title>
       </Helmet>
 
-      <div className={css({ maxWidth: "1200px", margin: "0 auto" })}>
+      <div className={css({ maxWidth: '1200px', margin: '0 auto' })}>
         <Card
           overrides={{
             Root: {
               style: {
                 backgroundColor: theme.colors.backgroundSecondary,
-                marginBottom: "24px",
+                marginBottom: '24px',
               },
             },
           }}
         >
-          <HeadingLarge>{t("nav.baristas")}</HeadingLarge>
+          <HeadingLarge>{t('nav.baristas')}</HeadingLarge>
           <ParagraphMedium color={theme.colors.contentSecondary}>
-            {t("baristas.description")}
+            {t('baristas.description')}
           </ParagraphMedium>
 
-          <div className={css({ marginTop: "24px" })}>
+          <div className={css({ marginTop: '24px' })}>
             <Input
               value={search}
               onChange={(e) => setSearch(e.currentTarget.value)}
-              placeholder={t("common.search")}
+              placeholder={t('common.search')}
               clearable
               overrides={{
                 Root: {
@@ -90,11 +85,11 @@ function BaristasPage() {
         {data && (
           <div
             className={css({
-              display: "inline-block",
+              display: 'inline-block',
               backgroundColor: theme.colors.backgroundSecondary,
-              padding: "8px 16px",
-              borderRadius: "20px",
-              marginBottom: "20px",
+              padding: '8px 16px',
+              borderRadius: '20px',
+              marginBottom: '20px',
             })}
           >
             <ParagraphSmall
@@ -111,10 +106,8 @@ function BaristasPage() {
                 })}
               >
                 {users.length}
-              </span>{" "}
-              {users.length === 1
-                ? t("baristas.result")
-                : t("baristas.results")}
+              </span>{' '}
+              {users.length === 1 ? t('baristas.result') : t('baristas.results')}
             </ParagraphSmall>
           </div>
         )}
@@ -123,9 +116,9 @@ function BaristasPage() {
           ? (
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                gap: "20px",
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '20px',
               })}
             >
               {users.map((user: UserProfile) => (
@@ -133,22 +126,22 @@ function BaristasPage() {
                   key={user.id}
                   to={`/user/${user.username}`}
                   className={css({
-                    textDecoration: "none",
-                    height: "100%",
-                    display: "block",
+                    textDecoration: 'none',
+                    height: '100%',
+                    display: 'block',
                   })}
                 >
                   <Card
                     overrides={{
                       Root: {
                         style: {
-                          borderRadius: "12px",
-                          transition: "all 0.2s ease",
+                          borderRadius: '12px',
+                          transition: 'all 0.2s ease',
                           border: `1px solid ${theme.colors.borderOpaque}`,
                           backgroundColor: theme.colors.backgroundSecondary,
-                          height: "100%",
-                          ":hover": {
-                            transform: "translateY(-4px)",
+                          height: '100%',
+                          ':hover': {
+                            transform: 'translateY(-4px)',
                             boxShadow: theme.lighting.shadow600,
                             borderColor: theme.colors.borderSelected,
                           },
@@ -156,42 +149,42 @@ function BaristasPage() {
                       },
                       Contents: {
                         style: {
-                          padding: "20px",
+                          padding: '20px',
                         },
                       },
                     }}
                   >
                     <div
                       className={css({
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "16px",
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
                       })}
                     >
                       <div
                         className={css({
-                          width: "56px",
-                          height: "56px",
-                          borderRadius: "50%",
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '50%',
                           backgroundColor: theme.colors.contentTertiary,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "24px",
-                          color: "white",
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '24px',
+                          color: 'white',
                           flexShrink: 0,
                         })}
                       >
-                        {user.displayName?.[0] || user.username?.[0] || "☕"}
+                        {user.displayName?.[0] || user.username?.[0] || '☕'}
                       </div>
-                      <div className={css({ overflow: "hidden" })}>
+                      <div className={css({ overflow: 'hidden' })}>
                         <HeadingSmall
                           $style={{
                             color: theme.colors.contentPrimary,
-                            marginBottom: "4px",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
+                            marginBottom: '4px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                           }}
                         >
                           {user.displayName || user.username}
@@ -210,11 +203,11 @@ function BaristasPage() {
                       <ParagraphSmall
                         $style={{
                           color: theme.colors.contentSecondary,
-                          marginTop: "12px",
-                          display: "-webkit-box",
+                          marginTop: '12px',
+                          display: '-webkit-box',
                           WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
                         }}
                       >
                         {user.bio}
@@ -223,10 +216,10 @@ function BaristasPage() {
                     <ParagraphSmall
                       $style={{
                         color: theme.colors.contentTertiary,
-                        marginTop: "8px",
+                        marginTop: '8px',
                       }}
                     >
-                      {user.recipeCount || 0} {t("profile.recipes")}
+                      {user.recipeCount || 0} {t('profile.recipes')}
                     </ParagraphSmall>
                   </Card>
                 </Link>
@@ -236,14 +229,14 @@ function BaristasPage() {
           : (
             <div
               className={css({
-                textAlign: "center",
-                padding: "64px 24px",
+                textAlign: 'center',
+                padding: '64px 24px',
                 backgroundColor: theme.colors.backgroundSecondary,
-                borderRadius: "16px",
+                borderRadius: '16px',
               })}
             >
               <HeadingSmall color={theme.colors.contentSecondary}>
-                {t("common.noResults")}
+                {t('common.noResults')}
               </HeadingSmall>
             </div>
           )}

@@ -3,8 +3,8 @@
  * Uses Pino for high-performance JSON logging
  */
 
-import pino, { type Logger, type LoggerOptions } from "pino";
-import { getConfig } from "../../config/index.ts";
+import pino, { type Logger, type LoggerOptions } from 'pino';
+import { getConfig } from '../../config/index.ts';
 
 /**
  * Logger context interface for structured logging
@@ -39,29 +39,29 @@ function createLoggerOptions(): LoggerOptions {
     },
     redact: {
       paths: [
-        "password",
-        "passwordHash",
-        "token",
-        "refreshToken",
-        "authorization",
-        "cookie",
-        "req.headers.authorization",
-        "req.headers.cookie",
+        'password',
+        'passwordHash',
+        'token',
+        'refreshToken',
+        'authorization',
+        'cookie',
+        'req.headers.authorization',
+        'req.headers.cookie',
       ],
-      censor: "[REDACTED]",
+      censor: '[REDACTED]',
     },
   };
 
   // Use pretty printing in development
-  if (config.logFormat === "pretty" && config.nodeEnv === "development") {
+  if (config.logFormat === 'pretty' && config.nodeEnv === 'development') {
     return {
       ...baseOptions,
       transport: {
-        target: "pino-pretty",
+        target: 'pino-pretty',
         options: {
           colorize: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname",
+          translateTime: 'SYS:standard',
+          ignore: 'pid,hostname',
         },
       },
     };
@@ -102,14 +102,10 @@ export function logRequest(
 ): void {
   const logger = context ? createChildLogger(context) : getLogger();
 
-  const level = statusCode >= 500
-    ? "error"
-    : statusCode >= 400
-    ? "warn"
-    : "info";
+  const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
   logger[level]({
-    type: "http",
+    type: 'http',
     method,
     path,
     statusCode,
@@ -129,7 +125,7 @@ export function logDbOperation(
   const logger = context ? createChildLogger(context) : getLogger();
 
   logger.debug({
-    type: "database",
+    type: 'database',
     operation,
     model,
     duration,
@@ -149,7 +145,7 @@ export function logAudit(
   const logger = context ? createChildLogger(context) : getLogger();
 
   logger.info({
-    type: "audit",
+    type: 'audit',
     action,
     entityType,
     entityId,
@@ -168,7 +164,7 @@ export function logSecurity(
   const logger = context ? createChildLogger(context) : getLogger();
 
   logger.warn({
-    type: "security",
+    type: 'security',
     event,
     ...details,
   });
@@ -185,7 +181,7 @@ export function logError(
   const logger = context ? createChildLogger(context) : getLogger();
 
   logger.error({
-    type: "error",
+    type: 'error',
     err: {
       message: error.message,
       name: error.name,

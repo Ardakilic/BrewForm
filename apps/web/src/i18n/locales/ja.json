@@ -398,7 +398,16 @@
     "minChars": "検索には {{count}} 文字以上入力してください",
     "noResults": "一致するフレーバーノートがありません",
     "selected": "{{count}}/{{max}} 件選択済み",
-    "scaaReference": "SCAA フレーバーホイール参照"
+    "scaaReference": "SCAA フレーバーホイール参照",
+    "cache": {
+      "label": "フレーバーノートキャッシュ",
+      "description": "フレーバーノートは24時間キャッシュされます。新しいデータをインポートしたりデータベースの手動変更後に強制的に更新するには、このボタンを使用してください。",
+      "invalidateButton": "キャッシュを無効化",
+      "invalidating": "キャッシュを無効化中...",
+      "success": "キャッシュが無効化されました（{{count}}件削除）。次のリクエストでデータベースから再取得します。",
+      "failure": "キャッシュの無効化に失敗しました",
+      "networkError": "ネットワークエラー。APIに接続できませんでした。"
+    }
   },
   "rating": {
     "superGood": "とても良い",
