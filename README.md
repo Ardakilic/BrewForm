@@ -114,14 +114,16 @@ make serena-up
 **Serena commands:**
 
 ```bash
-make serena-up           # Start Serena MCP service
-make serena-stop         # Stop Serena MCP service
-make serena-logs         # View Serena logs
-make serena-index        # Force index both API and Web workspaces
-make serena-index-api    # Force index API workspace only
-make serena-index-web    # Force index Web workspace only
-make serena-health-api   # Health check API workspace
-make serena-health-web   # Health check Web workspace
+make serena-up                # Start Serena MCP service
+make serena-stop              # Stop Serena MCP service
+make serena-logs              # View Serena logs
+make serena-index             # Force index all workspaces (api, web, packages)
+make serena-index-api         # Force index API workspace only
+make serena-index-web         # Force index Web workspace only
+make serena-index-packages    # Force index Packages workspace only
+make serena-health-api        # Health check API workspace
+make serena-health-web        # Health check Web workspace
+make serena-health-packages   # Health check Packages workspace
 ```
 
 **Ports** (non-standard to avoid conflicts with other projects' Serena instances):
@@ -251,14 +253,16 @@ make format-check         # Check code formatting
 make check                # Run all checks (lint + format + typecheck)
 
 # Serena MCP
-make serena-up           # Start Serena MCP service
-make serena-stop         # Stop Serena MCP service
-make serena-logs         # View Serena logs
-make serena-index        # Force index both workspaces
-make serena-index-api    # Force index API workspace
-make serena-index-web    # Force index Web workspace
-make serena-health-api   # Health check API workspace
-make serena-health-web   # Health check Web workspace
+make serena-up                # Start Serena MCP service
+make serena-stop              # Stop Serena MCP service
+make serena-logs              # View Serena logs
+make serena-index             # Force index all workspaces (api, web, packages)
+make serena-index-api         # Force index API workspace
+make serena-index-web         # Force index Web workspace
+make serena-index-packages    # Force index Packages workspace
+make serena-health-api        # Health check API workspace
+make serena-health-web        # Health check Web workspace
+make serena-health-packages   # Health check Packages workspace
 
 # Cleanup
 make clean        # Remove containers and volumes

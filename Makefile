@@ -3,7 +3,7 @@
 # All commands run through Docker/Docker Compose
 # ============================================
 
-.PHONY: help install vscode-setup dev dev-redis build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up shell-redis cache-flush serena-up serena-stop serena-logs serena-index serena-index-api serena-index-web serena-health-api serena-health-web
+.PHONY: help install vscode-setup dev dev-redis build rebuild start stop restart logs shell test lint format format-check db-migrate db-seed db-studio db-generate db-reset db-reset-hard reset-password clean prune up shell-redis cache-flush serena-up serena-stop serena-logs serena-index serena-index-api serena-index-web serena-index-packages serena-health-api serena-health-web serena-health-packages
 
 # Default target
 help:
@@ -56,14 +56,16 @@ help:
 	@echo "  cache-flush   Flush the active cache (detects CACHE_DRIVER from .env)"
 	@echo ""
 	@echo "Serena MCP:"
-	@echo "  serena-up          Start Serena MCP service"
-	@echo "  serena-stop        Stop Serena MCP service"
-	@echo "  serena-logs        View Serena logs"
-	@echo "  serena-index       Force index both API and Web workspaces"
-	@echo "  serena-index-api   Force index API workspace only"
-	@echo "  serena-index-web   Force index Web workspace only"
-	@echo "  serena-health-api  Health check API workspace"
-	@echo "  serena-health-web  Health check Web workspace"
+	@echo "  serena-up               Start Serena MCP service"
+	@echo "  serena-stop             Stop Serena MCP service"
+	@echo "  serena-logs             View Serena logs"
+	@echo "  serena-index            Force index all workspaces (api, web, packages)"
+	@echo "  serena-index-api        Force index API workspace only"
+	@echo "  serena-index-web        Force index Web workspace only"
+	@echo "  serena-index-packages   Force index Packages workspace only"
+	@echo "  serena-health-api       Health check API workspace"
+	@echo "  serena-health-web       Health check Web workspace"
+	@echo "  serena-health-packages  Health check Packages workspace"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  shell-api     Open shell in API container"
@@ -335,13 +337,19 @@ serena-index-api:
 serena-index-web:
 	docker compose exec serena serena project index /workspace/web
 
-serena-index: serena-index-api serena-index-web
+serena-index-packages:
+	docker compose exec serena serena project index /workspace/packages
+
+serena-index: serena-index-api serena-index-web serena-index-packages
 
 serena-health-api:
 	docker compose exec serena serena project health-check /workspace/api
 
 serena-health-web:
 	docker compose exec serena serena project health-check /workspace/web
+
+serena-health-packages:
+	docker compose exec serena serena project health-check /workspace/packages
 
 # ============================================
 # Initialization
