@@ -36,9 +36,11 @@ export class RedisBackend implements CacheBackend {
       redisModule = await import('redis');
     } catch {
       throw new Error(
-        "CACHE_DRIVER=redis but the 'redis' package is not installed. " +
-          'Run `deno install npm:redis` or set CACHE_DRIVER=deno-kv.',
-      );
+          "CACHE_DRIVER=redis but the 'redis' package is not installed. " +
+          'To fix: (1) add it with `deno add npm:redis` or install the optional npm dependencies, ' +
+          '(2) ensure Redis is reachable at CACHE_REDIS_URL, ' +
+          'or (3) set CACHE_DRIVER=deno-kv to use the built-in backend.',
+        );
     }
 
     this.client = redisModule.createClient({
@@ -122,10 +124,15 @@ export class RedisBackend implements CacheBackend {
   async invalidateByPrefix(prefix: CacheKey): Promise<number> {
     const pattern = prefixToPattern(prefix);
     const prefixKey = this.toKey(prefix);
+    const prefixWithSeparator = prefixKey + ':';
+    const isEmptyPrefix = prefixKey === '';
     let count = 0;
 
-    const deleted = await this.client.del(prefixKey);
-    if (deleted === 1) count++;
+    // `DEL ''` is not a valid Redis command (empty key); skip for the match-all case.
+    if (!isEmptyPrefix) {
+      const deleted = await this.client.del(prefixKey);
+      if (deleted === 1) count++;
+    }
 
     const CHUNK_SIZE = 500;
     const chunk: string[] = [];
@@ -135,18 +142,23 @@ export class RedisBackend implements CacheBackend {
     ) {
       const keys: string[] = Array.isArray(batch) ? batch : [batch];
       for (const key of keys) {
-        chunk.push(key as string);
-        if (chunk.length >= CHUNK_SIZE) {
-          await this.client.del(chunk);
-          count += chunk.length;
-          chunk.length = 0;
+        // Empty prefix ⇒ match-all: accept every scanned key.
+        // Non-empty prefix ⇒ only delete keys that are exactly the prefix or
+        // share its namespace (e.g. "recipes:123" but not "recipes2:foo").
+        if (isEmptyPrefix || key === prefixKey || key.startsWith(prefixWithSeparator)) {
+          chunk.push(key as string);
+          if (chunk.length >= CHUNK_SIZE) {
+            const numDeleted: number = await this.client.del(chunk);
+            count += numDeleted;
+            chunk.length = 0;
+          }
         }
       }
     }
 
     if (chunk.length > 0) {
-      await this.client.del(chunk);
-      count += chunk.length;
+      const numDeleted: number = await this.client.del(chunk);
+      count += numDeleted;
     }
 
     return count;
