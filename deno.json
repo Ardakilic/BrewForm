@@ -1,5 +1,6 @@
 {
   "nodeModulesDir": "auto",
+  "unstable": ["kv"],
   "lock": "deno.lock",
   "fmt": {
     "useTabs": false,

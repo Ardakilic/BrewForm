@@ -221,9 +221,7 @@ test-watch:
 
 lint:
 	docker compose run --rm api deno task lint
-	docker compose run --rm api deno task format:check
 	docker compose run --rm web deno task lint
-	docker compose run --rm web deno task format:check
 
 lint-fix:
 	docker compose run --rm api deno task lint:fix
