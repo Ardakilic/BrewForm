@@ -400,13 +400,13 @@
     "selected": "{{count}}/{{max}} note gustative selectate",
     "scaaReference": "Referință roată de arome SCAA",
     "cache": {
-      "label": "Taste Notes Cache",
-      "description": "Taste notes are cached for 24 hours. Use this button to force a refresh after importing new data or making manual database changes.",
-      "invalidateButton": "Invalidate Cache",
-      "invalidating": "Invalidating cache...",
-      "success": "Cache invalidated ({{count}} entries cleared). Next request will re-fetch from the database.",
-      "failure": "Failed to invalidate cache",
-      "networkError": "Network error. Could not reach API."
+      "label": "Cache note de degustare",
+      "description": "Notele de degustare sunt memorate in cache timp de 24 de ore. Folositi acest buton pentru a forta reincarcarea dupa importarea datelor sau modificari manuale ale bazei de date.",
+      "invalidateButton": "Invalidare cache",
+      "invalidating": "Se invalideaza cache-ul...",
+      "success": "Cache invalidat ({{count}} intrari eliminate). Urmatoarea cerere va reincarca datele din baza de date.",
+      "failure": "Eroare la invalidarea cache-ului",
+      "networkError": "Eroare de retea. Nu s-a putut contacta API-ul."
     }
   },
   "rating": {

@@ -67,8 +67,12 @@ const configSchema = z.object({
   cacheRequired: z.preprocess(
     (val: unknown) => {
       if (typeof val === "boolean") return val;
-      if (typeof val === "string") return val === "true" || val === "1";
-      return false;
+      if (typeof val === "string") {
+        if (val === "true" || val === "1") return true;
+        if (val === "false" || val === "0") return false;
+        return val;
+      }
+      return val;
     },
     z.boolean(),
   ).default(false),

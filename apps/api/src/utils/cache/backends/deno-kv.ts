@@ -81,17 +81,21 @@ export class DenoKvBackend implements CacheBackend {
   async setMany<T>(
     entries: readonly { key: CacheKey; value: T; options?: CacheOptions }[],
   ): Promise<void> {
-    const kv = this.openKv();
-    let atomic = kv.atomic();
-    for (const e of entries) {
-      const expireIn = this.totalTtlMs(e.options);
-      atomic = atomic.set(
-        toKvKey(e.key),
-        e.value,
-        expireIn ? { expireIn } : undefined,
-      );
+    const BATCH_SIZE = 1000;
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const chunk = entries.slice(i, i + BATCH_SIZE);
+      const kv = this.openKv();
+      let atomic = kv.atomic();
+      for (const e of chunk) {
+        const expireIn = this.totalTtlMs(e.options);
+        atomic = atomic.set(
+          toKvKey(e.key),
+          e.value,
+          expireIn ? { expireIn } : undefined,
+        );
+      }
+      await atomic.commit();
     }
-    await atomic.commit();
   }
 
   async delete(key: CacheKey): Promise<void> {

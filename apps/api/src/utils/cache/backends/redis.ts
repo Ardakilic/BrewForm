@@ -121,7 +121,12 @@ export class RedisBackend implements CacheBackend {
 
   async invalidateByPrefix(prefix: CacheKey): Promise<number> {
     const pattern = prefixToPattern(prefix);
+    const prefixKey = this.toKey(prefix);
     let count = 0;
+
+    const deleted = await this.client.del(prefixKey);
+    if (deleted === 1) count++;
+
     const CHUNK_SIZE = 500;
     const chunk: string[] = [];
 

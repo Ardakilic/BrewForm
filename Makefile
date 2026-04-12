@@ -276,7 +276,7 @@ cache-flush:
 		docker compose --profile cache-redis exec redis redis-cli FLUSHDB; \
 	else \
 		echo "Flushing Deno KV cache..."; \
-		docker compose exec api sh -c "rm -f /data/deno-kv/brewform.kv && echo Done"; \
+		docker compose exec api sh -c "rm -f $${CACHE_DENO_KV_PATH:-/data/deno-kv/brewform.kv} && echo Done"; \
 	fi
 
 # ============================================

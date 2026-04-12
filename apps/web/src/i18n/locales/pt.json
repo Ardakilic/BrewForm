@@ -400,13 +400,13 @@
     "selected": "{{count}}/{{max}} notas selecionadas",
     "scaaReference": "Referência da roda SCAA",
     "cache": {
-      "label": "Taste Notes Cache",
-      "description": "Taste notes are cached for 24 hours. Use this button to force a refresh after importing new data or making manual database changes.",
-      "invalidateButton": "Invalidate Cache",
-      "invalidating": "Invalidating cache...",
-      "success": "Cache invalidated ({{count}} entries cleared). Next request will re-fetch from the database.",
-      "failure": "Failed to invalidate cache",
-      "networkError": "Network error. Could not reach API."
+      "label": "Cache de Notas de Degustacao",
+      "description": "As notas de degustacao sao armazenadas em cache por 24 horas. Use este botao para forcar uma atualizacao apos importar novos dados ou fazer alteracoes manuais no banco de dados.",
+      "invalidateButton": "Invalidar Cache",
+      "invalidating": "Invalidando cache...",
+      "success": "Cache invalidado ({{count}} entradas removidas). A proxima requisicao buscara novamente no banco de dados.",
+      "failure": "Falha ao invalidar o cache",
+      "networkError": "Erro de rede. Nao foi possivel contactar a API."
     }
   },
   "rating": {

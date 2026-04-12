@@ -37,7 +37,9 @@ interface CacheCall {
 
 let _calls: CacheCall[] = [];
 let _errorOnNext = false;
+let _errorOnNextAll = false;
 let _cacheConnectionResult = true;
+let _mockPingResult = true;
 
 function k(key: CacheKey): string {
   return JSON.stringify(key);
@@ -60,7 +62,9 @@ export function resetCacheMock(): void {
   _store.clear();
   _calls = [];
   _errorOnNext = false;
+  _errorOnNextAll = false;
   _cacheConnectionResult = true;
+  _mockPingResult = true;
   _passthrough = true;
 }
 
@@ -74,10 +78,12 @@ export function enableCacheStore(): void {
 
 export function simulateCacheError(enable: boolean): void {
   _errorOnNext = enable;
+  _errorOnNextAll = enable;
 }
 
 export function setCacheConnectionResult(healthy: boolean): void {
   _cacheConnectionResult = healthy;
+  _mockPingResult = healthy;
 }
 
 // ============================================
@@ -99,12 +105,20 @@ export function getCache() {
     },
     set<T>(key: CacheKey, value: T, _opts?: CacheOptions): Promise<void> {
       _calls.push({ op: "set", key });
+      if (_errorOnNextAll) {
+        _errorOnNextAll = false;
+        return Promise.reject(new Error("Mock cache error"));
+      }
       _store.set(k(key), value);
       return Promise.resolve();
     },
     setMany<T>(
       entries: readonly { key: CacheKey; value: T; options?: CacheOptions }[],
     ): Promise<void> {
+      if (_errorOnNextAll) {
+        _errorOnNextAll = false;
+        return Promise.reject(new Error("Mock cache error"));
+      }
       for (const e of entries) {
         _store.set(k(e.key), e.value);
       }
@@ -116,6 +130,10 @@ export function getCache() {
     },
     invalidateByPrefix(prefix: CacheKey): Promise<number> {
       _calls.push({ op: "invalidate", key: prefix });
+      if (_errorOnNextAll) {
+        _errorOnNextAll = false;
+        return Promise.reject(new Error("Mock cache error"));
+      }
       const prefixArr = JSON.parse(JSON.stringify(prefix));
       let count = 0;
       for (const storedKey of [..._store.keys()]) {
@@ -135,7 +153,7 @@ export function getCache() {
       return Promise.resolve(_store.has(k(key)));
     },
     ping(): Promise<boolean> {
-      return Promise.resolve(true);
+      return Promise.resolve(_mockPingResult);
     },
     close(): Promise<void> {
       return Promise.resolve();
@@ -183,6 +201,11 @@ export async function cacheGetManyOrSet<T>(
   fetcher: (missingKeys: readonly CacheKey[]) => Promise<T[]>,
   _options?: CacheOptions,
 ): Promise<T[]> {
+  _calls.push({ op: "getOrSet", key: keys });
+  if (_errorOnNextAll) {
+    _errorOnNextAll = false;
+    throw new Error("Mock cache error");
+  }
   if (_passthrough) {
     return await fetcher(keys);
   }
@@ -208,6 +231,10 @@ export async function cacheGetManyOrSet<T>(
 
 export function invalidateCache(prefix: CacheKey): Promise<number> {
   _calls.push({ op: "invalidate", key: prefix });
+  if (_errorOnNextAll) {
+    _errorOnNextAll = false;
+    return Promise.reject(new Error("Mock cache error"));
+  }
   const prefixArr = JSON.parse(JSON.stringify(prefix));
   let count = 0;
   for (const storedKey of [..._store.keys()]) {

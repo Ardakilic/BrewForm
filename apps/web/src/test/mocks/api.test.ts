@@ -4,7 +4,7 @@
 
 import { describe, it } from "@std/testing";
 import { expect } from "@std/expect";
-import api, { api as apiDefault } from "./api.ts";
+import apiDefault, { api } from "./api.ts";
 
 describe("Mock API", () => {
   it("has get method", () => {

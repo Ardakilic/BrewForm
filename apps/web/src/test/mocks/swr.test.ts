@@ -46,10 +46,14 @@ describe("Mock SWR", () => {
 
   it("mockImplementation can be overridden", () => {
     const customResult = { data: { test: true }, isLoading: true, error: null, mutate: () => Promise.resolve(), isValidating: false };
-    useSWR.mockImplementation(() => customResult);
-    const result = useSWR("key");
-    expect(result.data).toEqual({ test: true });
-    expect(result.isLoading).toBe(true);
+    try {
+      useSWR.mockImplementationOnce(() => customResult);
+      const result = useSWR("key");
+      expect(result.data).toEqual({ test: true });
+      expect(result.isLoading).toBe(true);
+    } finally {
+      useSWR.mockReset();
+    }
   });
 
   it("mockReset restores defaults", () => {

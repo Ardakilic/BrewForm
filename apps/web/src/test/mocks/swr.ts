@@ -20,10 +20,18 @@ const swrMock = {
     mutate: () => Promise.resolve(undefined),
     isValidating: false,
   }),
+  implementationOnce: null as ((
+    ...args: unknown[]
+  ) => SWRResponse<unknown>) | null,
 };
 
 // Export a function that calls the current implementation
 function useSWR<T = unknown>(...args: unknown[]): SWRResponse<T> {
+  if (swrMock.implementationOnce) {
+    const result = swrMock.implementationOnce(...args) as SWRResponse<T>;
+    swrMock.implementationOnce = null;
+    return result;
+  }
   return swrMock.implementation(...args) as SWRResponse<T>;
 }
 
@@ -32,6 +40,12 @@ useSWR.mockImplementation = (
   fn: (...args: unknown[]) => SWRResponse<unknown>,
 ) => {
   swrMock.implementation = fn;
+};
+
+useSWR.mockImplementationOnce = (
+  fn: (...args: unknown[]) => SWRResponse<unknown>,
+) => {
+  swrMock.implementationOnce = fn;
 };
 
 // Reset to default
@@ -43,6 +57,7 @@ useSWR.mockReset = () => {
     mutate: () => Promise.resolve(undefined),
     isValidating: false,
   });
+  swrMock.implementationOnce = null;
 };
 
 export default useSWR;

@@ -96,8 +96,34 @@ health.get("/ready", async (c) => {
  */
 health.get("/startup", async (c) => {
   const config = getConfig();
-  const dbOk = await checkDbConnection();
-  const cacheOk = config.cacheRequired ? await checkCacheConnection() : true;
+  const logger = getLogger();
+  let dbOk = false;
+  let cacheOk = false;
+
+  try {
+    dbOk = await checkDbConnection();
+  } catch (error) {
+    logger.error({
+      type: "health",
+      check: "database",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+
+  if (config.cacheRequired) {
+    try {
+      cacheOk = await checkCacheConnection();
+    } catch (error) {
+      logger.error({
+        type: "health",
+        check: "cache",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  } else {
+    cacheOk = true;
+  }
+
   const isStarted = dbOk && (cacheOk || !config.cacheRequired);
 
   return c.json(
