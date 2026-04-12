@@ -56,3 +56,7 @@ plan.md
 plan_*.md
 pr_description.md
 pr_description_*.md
+
+# Serena MCP
+.serena/cache/
+.serena/project.local.yml

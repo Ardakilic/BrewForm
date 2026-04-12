@@ -1,4 +1,9 @@
 {
+  "enabledMcpjsonServers": [
+    "context7",
+    "serena"
+  ],
+  "disabledMcpjsonServers": [],
   "permissions": {
     "deny": [
       "Read(credentials/)"
