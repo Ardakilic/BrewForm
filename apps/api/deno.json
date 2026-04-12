@@ -1,4 +1,5 @@
 {
+  "nodeModulesDir": "auto",
   "tasks": {
     "db:generate": "deno run -A npm:prisma generate"
   },
