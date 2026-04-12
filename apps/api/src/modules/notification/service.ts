@@ -4,7 +4,7 @@
  */
 
 import { createPaginationMeta, getPagination, getPrisma } from '../../utils/database/index.ts';
-import type { NotificationType } from '../../../prisma/generated/prisma';
+import { NotificationType } from '../../../prisma/generated/prisma/index.js';
 
 // ============================================
 // Types
@@ -12,7 +12,7 @@ import type { NotificationType } from '../../../prisma/generated/prisma';
 
 export interface CreateNotificationInput {
   userId: string;
-  type: NotificationType;
+  type: typeof NotificationType[keyof typeof NotificationType];
   title: string;
   message: string;
   link?: string;

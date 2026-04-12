@@ -11,7 +11,7 @@ import {
 } from '../../utils/database/index.ts';
 import { logAudit } from '../../utils/logger/index.ts';
 import { NotFoundError } from '../../middleware/errorHandler.ts';
-import type { Theme, UnitSystem } from '../../../prisma/generated/prisma';
+import type { Theme, UnitSystem } from '../../../prisma/generated/prisma/index.js';
 
 // ============================================
 // Types
@@ -23,8 +23,8 @@ export interface UpdateProfileInput {
   website?: string;
   preferredLocale?: string;
   preferredTimezone?: string;
-  preferredUnits?: UnitSystem;
-  preferredTheme?: Theme;
+  preferredUnits?: (typeof UnitSystem)[keyof typeof UnitSystem];
+  preferredTheme?: (typeof Theme)[keyof typeof Theme];
 }
 
 export interface UserProfile {
@@ -39,8 +39,8 @@ export interface UserProfile {
   emailVerified: boolean;
   preferredLocale: string;
   preferredTimezone: string;
-  preferredUnits: UnitSystem;
-  preferredTheme: Theme;
+  preferredUnits: (typeof UnitSystem)[keyof typeof UnitSystem];
+  preferredTheme: (typeof Theme)[keyof typeof Theme];
   createdAt: Date;
   recipeCount: number;
   favouriteCount: number;
@@ -302,7 +302,7 @@ export async function getUserFavourites(userId: string, page = 1, limit = 20) {
   ]);
 
   return {
-    favourites: favourites.map((f) => f.recipe),
+    favourites: favourites.map((f: typeof favourites[number]) => f.recipe),
     pagination: createPaginationMeta(page, limit, total),
   };
 }
@@ -382,7 +382,7 @@ export async function listUsers(
   ]);
 
   return {
-    users: users.map((user) => ({
+    users: users.map((user: typeof users[number]) => ({
       id: user.id,
       username: user.username,
       displayName: user.displayName,

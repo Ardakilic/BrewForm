@@ -10,7 +10,7 @@ import {
   EmojiRating,
   ProcessingMethod,
   Visibility,
-} from '../../../prisma/generated/prisma';
+} from '../../../prisma/generated/prisma/index.js';
 // Re-export CUID validation utilities
 export * from './cuid.ts';
 
@@ -63,8 +63,8 @@ export const commentIdParamSchema = z.object({
  * This is used for hard validation
  */
 export const BREW_METHOD_DRINK_COMPATIBILITY: Record<
-  BrewMethodType,
-  DrinkType[]
+  (typeof BrewMethodType)[keyof typeof BrewMethodType],
+  Array<(typeof DrinkType)[keyof typeof DrinkType]>
 > = {
   ESPRESSO_MACHINE: [
     DrinkType.ESPRESSO,
@@ -110,8 +110,8 @@ export const BREW_METHOD_DRINK_COMPATIBILITY: Record<
  * Check if brew method and drink type are compatible
  */
 export function isBrewMethodCompatible(
-  brewMethod: BrewMethodType,
-  drinkType: DrinkType,
+  brewMethod: (typeof BrewMethodType)[keyof typeof BrewMethodType],
+  drinkType: (typeof DrinkType)[keyof typeof DrinkType],
 ): boolean {
   const compatibleDrinks = BREW_METHOD_DRINK_COMPATIBILITY[brewMethod];
   return compatibleDrinks.includes(drinkType);
@@ -124,7 +124,10 @@ export function isBrewMethodCompatible(
 /**
  * Typical brew ratio ranges by drink type
  */
-export const TYPICAL_RATIOS: Record<DrinkType, { min: number; max: number }> = {
+export const TYPICAL_RATIOS: Record<
+  (typeof DrinkType)[keyof typeof DrinkType],
+  { min: number; max: number }
+> = {
   ESPRESSO: { min: 1.5, max: 2.5 },
   RISTRETTO: { min: 1, max: 1.5 },
   LUNGO: { min: 2.5, max: 4 },
@@ -150,7 +153,7 @@ export const TYPICAL_RATIOS: Record<DrinkType, { min: number; max: number }> = {
  * Typical extraction times by brew method (in seconds)
  */
 export const TYPICAL_EXTRACTION_TIMES: Record<
-  BrewMethodType,
+  (typeof BrewMethodType)[keyof typeof BrewMethodType],
   { min: number; max: number }
 > = {
   ESPRESSO_MACHINE: { min: 20, max: 35 },
@@ -174,7 +177,7 @@ export const TYPICAL_EXTRACTION_TIMES: Record<
  * Typical brew temperatures by brew method (in Celsius)
  */
 export const TYPICAL_TEMPERATURES: Record<
-  BrewMethodType,
+  (typeof BrewMethodType)[keyof typeof BrewMethodType],
   { min: number; max: number }
 > = {
   ESPRESSO_MACHINE: { min: 88, max: 96 },
@@ -366,7 +369,7 @@ function checkTemperature(input: RecipeVersionInput): string | null {
  * Check for milk preparation with non-milk drinks
  */
 function checkMilkPreparation(input: RecipeVersionInput): string | null {
-  const milkDrinks: DrinkType[] = [
+  const milkDrinks: Array<(typeof DrinkType)[keyof typeof DrinkType]> = [
     DrinkType.LATTE,
     DrinkType.CAPPUCCINO,
     DrinkType.FLAT_WHITE,

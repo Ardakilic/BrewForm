@@ -16,29 +16,29 @@ import { createRecipeSlug } from '../../utils/slug/index.ts';
 import { type RecipeVersionInput, validateRecipe } from '../../utils/validation/index.ts';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../middleware/errorHandler.ts';
 import { calculateBrewRatio, calculateFlowRate } from '../../utils/units/index.ts';
-import type {
-  BrewMethodType,
-  DrinkType,
-  Visibility,
-} from '../../../prisma/generated/prisma/index.d.ts';
+import { BrewMethodType, DrinkType, Visibility } from '../../../prisma/generated/prisma/index.js';
 
 // ============================================
 // Types
 // ============================================
 
 export interface CreateRecipeInput {
-  visibility?: Visibility;
+  visibility?: (typeof Visibility)[keyof typeof Visibility];
   version: RecipeVersionInput;
 }
 
 export interface RecipeFilters {
   search?: string;
-  brewMethod?: BrewMethodType | BrewMethodType[];
-  drinkType?: DrinkType | DrinkType[];
+  brewMethod?:
+    | (typeof BrewMethodType)[keyof typeof BrewMethodType]
+    | (typeof BrewMethodType)[keyof typeof BrewMethodType][];
+  drinkType?:
+    | (typeof DrinkType)[keyof typeof DrinkType]
+    | (typeof DrinkType)[keyof typeof DrinkType][];
   grinderId?: string;
   brewerId?: string;
   userId?: string;
-  visibility?: Visibility;
+  visibility?: (typeof Visibility)[keyof typeof Visibility];
   minRating?: number;
   tags?: string[];
   sortBy?: 'createdAt' | 'rating' | 'favouriteCount' | 'viewCount';
@@ -176,7 +176,7 @@ export async function createRecipe(userId: string, input: CreateRecipeInput) {
 export async function getRecipeById(
   recipeId: string,
   viewerId?: string | null,
-) {
+): Promise<NonNullable<Awaited<ReturnType<typeof prisma.recipe.findUnique>>>> {
   const prisma = getPrisma();
   const cfg = getConfig();
 
@@ -235,9 +235,10 @@ export async function getRecipeById(
   }
 
   // Check visibility
-  const isOwner = viewerId === recipe.userId;
+  const isOwner = viewerId === (recipe as { userId: string }).userId;
   if (!isOwner) {
-    if (recipe.visibility === 'DRAFT' || recipe.visibility === 'PRIVATE') {
+    const visibility = (recipe as { visibility: string }).visibility;
+    if (visibility === 'DRAFT' || visibility === 'PRIVATE') {
       throw new NotFoundError('Recipe');
     }
   }
@@ -278,7 +279,7 @@ export async function getRecipeBySlug(slug: string, viewerId?: string | null) {
 export async function updateRecipe(
   recipeId: string,
   userId: string,
-  input: { visibility?: Visibility; isFeatured?: boolean },
+  input: { visibility?: (typeof Visibility)[keyof typeof Visibility]; isFeatured?: boolean },
 ) {
   const prisma = getPrisma();
 
