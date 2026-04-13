@@ -87,7 +87,7 @@ function createMockClient() {
     ping() {
       return Promise.resolve('PONG');
     },
-    disconnect() {
+    destroy() {
       return Promise.resolve();
     },
   };
@@ -340,22 +340,22 @@ describe('RedisBackend — method calls', () => {
   });
 
   describe('close', () => {
-    it('calls disconnect', async () => {
+    it('calls destroy', async () => {
       const { backend, mock } = await createBackend();
-      let disconnected = false;
-      mock.client.disconnect = () => {
-        disconnected = true;
+      let destroyed = false;
+      mock.client.destroy = () => {
+        destroyed = true;
         return Promise.resolve();
       };
 
       await backend.close();
 
-      expect(disconnected).toBe(true);
+      expect(destroyed).toBe(true);
     });
 
-    it('ignores disconnect errors', async () => {
+    it('ignores destroy errors', async () => {
       const { backend, mock } = await createBackend();
-      mock.client.disconnect = () => {
+      mock.client.destroy = () => {
         throw new Error('already closed');
       };
 
