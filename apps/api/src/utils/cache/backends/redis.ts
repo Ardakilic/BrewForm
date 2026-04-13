@@ -5,7 +5,7 @@
  * Requires the `redis` npm package (optionalDependencies in apps/api/package.json).
  * Hard-fails at startup if the package is missing — no silent fallback.
  *
- * Uses node-redis v4 API (createClient, connect, get/set/mGet, etc.)
+ * Uses node-redis v5 API (createClient, connect, get/set/mGet, etc.)
  */
 
 import type { CacheBackend, CacheKey, CacheOptions } from '../types.ts';
@@ -138,9 +138,8 @@ export class RedisBackend implements CacheBackend {
     const chunk: string[] = [];
 
     for await (
-      const batch of this.client.scanIterator({ MATCH: pattern, COUNT: 500 })
+      const keys of this.client.scanIterator({ MATCH: pattern, COUNT: 500 })
     ) {
-      const keys: string[] = Array.isArray(batch) ? batch : [batch];
       for (const key of keys) {
         // Empty prefix ⇒ match-all: accept every scanned key.
         // Non-empty prefix ⇒ only delete keys that are exactly the prefix or
@@ -180,7 +179,7 @@ export class RedisBackend implements CacheBackend {
 
   async close(): Promise<void> {
     try {
-      await this.client?.disconnect();
+      await this.client?.destroy();
     } catch {
       // ignore disconnect errors on shutdown
     }
