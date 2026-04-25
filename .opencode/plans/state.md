@@ -1,6 +1,6 @@
 # BrewForm Implementation State
 
-## Current Phase: 6 (Backend Domain Modules) — READY TO START
+## Current Phase: 7 (Admin Module) — READY TO START
 
 ## Phase Progress
 
@@ -11,8 +11,8 @@
 | 3 | Shared Package | ✅ Completed | Types, schemas, constants, utils, i18n |
 | 4 | Backend Core (Hono) | ✅ Completed | Config, logger, cache, response, middleware |
 | 5 | Authentication Module | ✅ Completed | JWT, model, service, email, routes |
-| 6 | Backend Domain Modules (14) | 🔵 Ready | [plan](phase6-domain-modules.md) |
-| 7 | Admin Module | ⬜ Pending | [plan](phase7-admin.md) |
+| 6 | Backend Domain Modules (14+) | ✅ Completed | 15 modules with model/service/controller pattern |
+| 7 | Admin Module | 🔵 Ready | [plan](phase7-admin.md) |
 | 8 | Frontend Foundation | ⬜ Pending | [plan](phase8-frontend-foundation.md) |
 | 9 | Frontend Features | ⬜ Pending | [plan](phase9-frontend-features.md) |
 | 10 | Testing | ⬜ Pending | [plan](phase10-testing.md) |
@@ -113,22 +113,13 @@
   - `getAuthenticatedUser()` — fetches user by ID
   - Uses `toAuthUser()` helper to cast Prisma results to full `AuthUser` interface
 - [x] `apps/api/src/modules/auth/email.ts` — Email sending with MJML templates via nodemailer
-   - `sendEmail()` — sends via `nodemailer` with SMTP config from env (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`)
-   - `loadTemplate()` — reads `.mjml` files from `templates/email/` using `import.meta.dirname`
-   - `sendWelcomeEmail()` — renders welcome.mjml template
-   - `sendPasswordResetEmail()` — renders reset-password.mjml with reset URL
-   - Skips sending in test environment
+  - `sendEmail()` — sends via `nodemailer` with SMTP config from env
+  - `loadTemplate()` — reads `.mjml` files from `templates/email/` using `import.meta.dirname`
+  - `sendWelcomeEmail()` — renders welcome.mjml template
+  - `sendPasswordResetEmail()` — renders reset-password.mjml with reset URL
+  - Skips sending in test environment
 - [x] `apps/api/src/modules/auth/index.ts` — Hono routes controller
-  - `POST /register` — Zod-validated, creates user + tokens, 201 status
-  - `POST /login` — Zod-validated, returns tokens
-  - `POST /refresh` — Zod-validated, rotates both tokens
-  - `POST /forgot-password` — Zod-validated, always returns success (no email enumeration)
-  - `POST /reset-password` — Zod-validated, validates token, updates password
-  - `sanitizeUser()` — strips `passwordHash` from responses
-  - Error handling with specific error codes for each auth failure
-  - Uses `catch (err: unknown)` with `instanceof Error` for type-safe error message extraction
 - [x] `apps/api/src/modules/auth/types.ts` — Re-exports JWT payload types from jwt.ts
-- [x] `apps/api/src/modules/auth/email.ts` — MJML email module
 - [x] `apps/api/src/templates/email/welcome.mjml` — Welcome email template
 - [x] `apps/api/src/templates/email/reset-password.mjml` — Password reset email template
 - [x] `apps/api/src/routes/index.ts` — Updated to mount auth routes at `/api/v1/auth`
@@ -140,6 +131,78 @@
 - [x] `Makefile` — Updated `db-generate` to clear `.prisma` cache before regenerating
 - [x] `deno check` passes for all API files
 - [x] `deno lint` passes for auth module (pre-existing lint issues in cache module remain)
+
+## Phase 6 — Completed
+
+- [x] `apps/api/src/types/hono.ts` — Shared AppEnv type for Hono context variables
+- [x] `apps/api/src/config/env.ts` — Added `APP_URL` env variable for QR code generation
+- [x] **User module** (`apps/api/src/modules/user/`)
+  - model.ts: findById, findByUsername, updateProfile, deleteUser, getUserStats, searchUsers
+  - service.ts: getProfile, getPublicProfile, updateProfile, deleteAccount
+  - index.ts: GET /me, PATCH /me, DELETE /me, GET /:username
+- [x] **Recipe module** (`apps/api/src/modules/recipe/`)
+  - model.ts: create, findById, findBySlug, findMany, update, softDelete, createVersion, forkRecipe, toggleLike, toggleFavourite, toggleFeature, incrementLikes, decrementLikes, incrementComments, decrementComments, getFeed
+  - service.ts: getRecipe, createRecipe, updateRecipe, deleteRecipe, forkRecipe, listRecipes, toggleLike, toggleFavourite, toggleFeature, getRecipeMeta
+  - index.ts: CRUD + fork + like/favourite/feature toggle + meta endpoint for OG tags + compare
+  - Gap analysis C1: Like/favourite toggle endpoints added
+  - Gap analysis H3: Feature toggle endpoint added
+  - Gap analysis H6: `/recipes/:slug/meta` endpoint for OG tags
+- [x] **Equipment module** (`apps/api/src/modules/equipment/`)
+  - model.ts: findById, findMany, search, create, update, softDelete
+  - service.ts: getEquipment, listEquipment, searchEquipment, createEquipment, updateEquipment, deleteEquipment
+  - index.ts: Full CRUD + search/autocomplete
+- [x] **Bean module** (`apps/api/src/modules/bean/`)
+  - model.ts: findById, findByUser, create, update, softDelete
+  - service.ts: listBeans, getBean, createBean, updateBean, deleteBean
+  - index.ts: Full CRUD scoped to user
+- [x] **Vendor module** (`apps/api/src/modules/vendor/`)
+  - model.ts: findById, findMany, search, create, update, softDelete
+  - service.ts: listVendors, searchVendors, getVendor, createVendor, updateVendor, deleteVendor
+  - index.ts: CRUD + search, admin-only delete
+- [x] **Taste module** (`apps/api/src/modules/taste/`)
+  - model.ts: findAll, findChildren, searchByName, getHierarchy, findById, create, update, remove
+  - service.ts: getHierarchy (cached), searchTasteNotes, getFlatList (cached), createTasteNote, updateTasteNote, deleteTasteNote
+  - index.ts: GET hierarchy, GET search, GET flat, POST (admin), PATCH (admin), DELETE (admin)
+  - CacheProvider integration with Deno KV for caching
+- [x] **Photo module** (`apps/api/src/modules/photo/`)
+  - model.ts: findById, findByRecipe, create, softDelete
+  - service.ts: uploadPhoto (with validation), listPhotos, deletePhoto
+  - index.ts: POST multipart upload, GET by recipe, DELETE (auth required)
+- [x] **Comment module** (`apps/api/src/modules/comment/`)
+  - model.ts: findById, findByRecipe, create, softDelete, getRecipeAuthorId
+  - service.ts: createComment (OP-only reply enforcement per gap M7), listComments, deleteComment
+  - index.ts: POST /recipe/:recipeId, GET /recipe/:recipeId, DELETE /:id
+- [x] **Follow module** (`apps/api/src/modules/follow/`)
+  - model.ts: findFollow, createFollow, deleteFollow, getFollowers, getFollowing, getFollowingIds, isFollowing
+  - service.ts: followUser, unfollowUser, getFollowers, getFollowing, getFeed
+  - index.ts: POST /:userId, DELETE /:userId, GET /:userId/followers, GET /:userId/following, GET /feed
+- [x] **Badge module** (`apps/api/src/modules/badge/`)
+  - model.ts: listBadges, getUserBadges, evaluateBadges (with precision_brewer logic per gap H1)
+  - service.ts: listBadges, getUserBadges, evaluateBadges
+  - index.ts: GET /, GET /user/:userId, POST /evaluate/:userId (admin)
+- [x] **Setup module** (`apps/api/src/modules/setup/`)
+  - model.ts: findById, findByUser, create, update, softDelete, clearDefaultForUser
+  - service.ts: listSetups, getSetup, createSetup, updateSetup, deleteSetup, setDefault
+  - index.ts: Full CRUD + POST /:id/set-default
+- [x] **Preference module** (`apps/api/src/modules/preference/`)
+  - model.ts: findByUserId, upsert
+  - service.ts: getPreferences, updatePreferences
+  - index.ts: GET /, PATCH / (with email notification flattening)
+- [x] **Search module** (`apps/api/src/modules/search/`)
+  - model.ts: searchRecipes with dynamic where clause construction
+  - service.ts: search (delegates to model)
+  - index.ts: GET / with SearchSchema validation
+- [x] **QR Code module** (`apps/api/src/modules/qrcode/`)
+  - model.ts: findBySlug
+  - service.ts: getRecipeQRCode (PNG or SVG format)
+  - index.ts: GET /recipe/:slug.png, GET /recipe/:slug.svg
+- [x] **Report module** (`apps/api/src/modules/report/`) — Gap analysis C5
+  - model.ts: create, findById, findMany, resolve
+  - service.ts: createReport, listReports, resolveReport
+  - index.ts: POST / (auth), GET / (admin), PATCH /:id/resolve (admin)
+- [x] `apps/api/src/routes/index.ts` — Updated to mount all 16 route groups
+- [x] `deno check` passes for all API files
+- [x] `APP_URL` added to env config for QR code baseUrl
 
 ## Key Decisions
 
@@ -166,3 +229,7 @@
 - **Password hashing**: Uses `bcryptjs` (not native `bcrypt`) for Deno compatibility. `hashSync`/`compareSync` for synchronous hashing (10 rounds).
 - **Email**: MJML templates rendered server-side. In development, only SMTP connection is verified (Mailpit at port 1025). No actual email sending beyond connection check.
 - **Deno lint**: `deno-lint-ignore` comments must NOT contain explanatory text after the rule codes — Deno parses subsequent words as additional rule codes. Use `// deno-lint-ignore no-explicit-any` only, with explanations on a separate comment line. Use `deno-lint-ignore-file` for file-wide suppressions.
+- **Hono sub-router typing**: Each sub-router must use `new Hono<AppEnv>()` with the shared `AppEnv` type from `types/hono.ts` to properly type `c.get('userId')`, `c.get('cache')`, etc. Without this, TypeScript can't resolve the context variable types.
+- **Route params**: `c.req.param('id')` returns `string | undefined`. Use `!` assertion (`c.req.param('id')!`) since route params are guaranteed by route patterns.
+- **c.get('userId')**: Returns `string | null` per our Variables type. After authMiddleware, it's guaranteed to be non-null. Use `as string` assertion: `c.get('userId') as string`.
+- **Module pattern**: Each domain module follows `model.ts` → `service.ts` → `index.ts` pattern. Model wraps Prisma calls with `as any` casts. Service contains business logic. Index defines Hono routes with Zod validation.

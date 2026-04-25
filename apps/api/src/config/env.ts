@@ -29,6 +29,8 @@ const envSchema = z.object({
   UPLOAD_MAX_SIZE_BYTES: z.coerce.number().default(10 * 1024 * 1024),
   UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
 
+  APP_URL: z.string().default('http://localhost:8000'),
+
   ADMIN_EMAIL: z.string().default('admin@brewform.local'),
   ADMIN_USERNAME: z.string().default('admin'),
   ADMIN_PASSWORD: z.string().default('changeme123'),
