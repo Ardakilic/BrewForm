@@ -1,6 +1,6 @@
 # BrewForm Implementation State
 
-## Current Phase: 7 (Admin Module) — READY TO START
+## Current Phase: 8 (Frontend Foundation) — READY TO START
 
 ## Phase Progress
 
@@ -12,8 +12,8 @@
 | 4 | Backend Core (Hono) | ✅ Completed | Config, logger, cache, response, middleware |
 | 5 | Authentication Module | ✅ Completed | JWT, model, service, email, routes |
 | 6 | Backend Domain Modules (14+) | ✅ Completed | 15 modules with model/service/controller pattern |
-| 7 | Admin Module | 🔵 Ready | [plan](phase7-admin.md) |
-| 8 | Frontend Foundation | ⬜ Pending | [plan](phase8-frontend-foundation.md) |
+| 7 | Admin Module | ✅ Completed | Admin CRUD, audit log, analytics, content moderation |
+| 8 | Frontend Foundation | 🔵 Ready | [plan](phase8-frontend-foundation.md) |
 | 9 | Frontend Features | ⬜ Pending | [plan](phase9-frontend-features.md) |
 | 10 | Testing | ⬜ Pending | [plan](phase10-testing.md) |
 | 11 | CI/CD & Deployment | ⬜ Pending | [plan](phase11-cicd.md) |
@@ -203,6 +203,38 @@
 - [x] `apps/api/src/routes/index.ts` — Updated to mount all 16 route groups
 - [x] `deno check` passes for all API files
 - [x] `APP_URL` added to env config for QR code baseUrl
+
+## Phase 7 — Completed
+
+- [x] `apps/api/src/modules/admin/model.ts` — Prisma wrapper for all admin DB operations
+  - User management: listUsers, getUserById, banUser, unbanUser, setUserAdminRole, adminCreateUser, softDeleteUser
+  - Recipe management: listAllRecipes (with visibility filter), updateRecipeVisibility, softDeleteRecipe
+  - Equipment management: listEquipment, createEquipment, updateEquipment, deleteEquipment
+  - Vendor management: listVendors, createVendor, updateVendor, deleteVendor
+  - Brew method compatibility: listCompatibilityRules, updateCompatibilityRule, createCompatibilityRule, deleteCompatibilityRule
+  - Report management: listReports (with status/entityType filter), resolveReport, dismissReport
+  - Audit logs: createAuditLog, listAuditLogs (with entity filter)
+  - Analytics: getDashboardStats, getUserGrowth, getRecipeGrowth, getTopRecipes, getTopUsers
+- [x] `apps/api/src/modules/admin/service.ts` — Business logic with audit logging for every admin action
+  - All mutations create AuditLog entries tracking adminId, action, entity, entityId, details
+  - Cache invalidation on compatibility rule changes (deletes `cache:compatibility` prefix)
+  - Delegates to taste module service for taste note admin operations (with cache flush)
+- [x] `apps/api/src/modules/admin/index.ts` — Hono routes with `authMiddleware` + `adminMiddleware` on all routes
+  - Analytics: GET /stats, GET /analytics/users, GET /analytics/recipes, GET /analytics/top-recipes, GET /analytics/top-users
+  - Users: GET /users, GET /users/:id, POST /users, POST /users/:id/ban, PATCH /users/:id/admin, DELETE /users/:id
+  - Recipes: GET /recipes, PATCH /recipes/:id/visibility, DELETE /recipes/:id
+  - Equipment: GET /equipment, POST /equipment, PATCH /equipment/:id, DELETE /equipment/:id
+  - Vendors: GET /vendors, POST /vendors, PATCH /vendors/:id, DELETE /vendors/:id
+  - Taste Notes: GET /taste-notes, POST /taste-notes, PATCH /taste-notes/:id, DELETE /taste-notes/:id
+  - Reports: GET /reports, PATCH /reports/:id/resolve, PATCH /reports/:id/dismiss
+  - Compatibility: GET /compatibility, PATCH /compatibility/:id, POST /compatibility, DELETE /compatibility/:id
+  - Audit Log: GET /audit-log
+  - Cache: POST /cache/flush
+- [x] `apps/api/src/routes/index.ts` — Updated to mount admin routes at `/api/v1/admin`
+- [x] Gap H4: Admin "create user" endpoint (POST /admin/users)
+- [x] Gap C5: Admin report management (resolve + dismiss in addition to existing list/resolve)
+- [x] Gap C6: Admin analytics endpoints (dashboard stats, user/recipe growth, top recipes, top users)
+- [x] `deno check` passes for all API files
 
 ## Key Decisions
 

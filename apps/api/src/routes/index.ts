@@ -17,6 +17,7 @@ import preference from '../modules/preference/index.ts';
 import search from '../modules/search/index.ts';
 import qrcode from '../modules/qrcode/index.ts';
 import report from '../modules/report/index.ts';
+import admin from '../modules/admin/index.ts';
 
 const routes = new Hono();
 
@@ -38,5 +39,6 @@ routes.route('/api/v1/preferences', preference);
 routes.route('/api/v1/search', search);
 routes.route('/api/v1/qrcode', qrcode);
 routes.route('/api/v1/reports', report);
+routes.route('/api/v1/admin', admin);
 
 export default routes;
