@@ -206,3 +206,9 @@ See `/Users/arda/projects/BrewForm/.opencode/plans/state.md` for the full and al
 - **QR code binary response**: Use `new Response(data, { headers: {...} })` instead of `c.body()` for binary/union types. `c.body()` doesn't accept `Uint8Array | string` unions.
 - **APP_URL env variable**: Added to config (`APP_URL`, defaults to `http://localhost:8000`) for QR code generation base URL.
 - **Deno lint file-level ignores**: For model/service files heavy on `any` and async passthrough, use `// deno-lint-ignore-file no-explicit-any require-await` at the top rather than per-line suppressions.
+- **Frontend imports must omit `.ts`/`.tsx` extensions**: In Vite projects, import paths must not include `.ts` or `.tsx` extensions — Vite resolves them automatically. Including them causes TypeScript errors with `"module": "ES2022"`.
+- **TypeScript `"module": "ESNext"` required for import attributes**: Changed `"module"` from `"ES2022"` to `"ESNext"` in `apps/web/tsconfig.json` and `packages/shared/tsconfig.json` to support `import ... with { type: 'json' }` syntax used by `i18n/index.ts`.
+- **Deno lint `no-window` rule**: Use `globalThis` instead of `window` in code checked by Deno lint. Both work in browsers; `globalThis` is Deno-compatible.
+- **Deno lint `jsx-button-has-type` rule**: All `<button>` elements must have an explicit `type` attribute (`button`, `submit`, or `reset`).
+- **React Router v7**: Import from `react-router` (not `react-router-dom`). Use `createBrowserRouter` + `RouterProvider` for data routing.
+- **Provider nesting order**: ThemeProvider → I18nProvider → AuthProvider. Theme must be outermost so it applies `document.documentElement.className` before React hydrates.

@@ -1,6 +1,6 @@
 # BrewForm Implementation State
 
-## Current Phase: 8 (Frontend Foundation) — READY TO START
+## Current Phase: 9 (Frontend Features) — NEXT
 
 ## Phase Progress
 
@@ -13,8 +13,8 @@
 | 5 | Authentication Module | ✅ Completed | JWT, model, service, email, routes |
 | 6 | Backend Domain Modules (14+) | ✅ Completed | 15 modules with model/service/controller pattern |
 | 7 | Admin Module | ✅ Completed | Admin CRUD, audit log, analytics, content moderation |
-| 8 | Frontend Foundation | 🔵 Ready | [plan](phase8-frontend-foundation.md) |
-| 9 | Frontend Features | ⬜ Pending | [plan](phase9-frontend-features.md) |
+| 8 | Frontend Foundation | ✅ Completed | Theme, API client, auth context, layout, pages |
+| 9 | Frontend Features | 🔵 Ready | [plan](phase9-frontend-features.md) |
 | 10 | Testing | ⬜ Pending | [plan](phase10-testing.md) |
 | 11 | CI/CD & Deployment | ⬜ Pending | [plan](phase11-cicd.md) |
 | 12 | Documentation | ⬜ Pending | [plan](phase12-documentation.md) |
@@ -236,6 +236,62 @@
 - [x] Gap C6: Admin analytics endpoints (dashboard stats, user/recipe growth, top recipes, top users)
 - [x] `deno check` passes for all API files
 
+## Phase 8 — Completed
+
+- [x] `apps/web/src/styles/globals.css` — Complete theme system with light/dark/coffee CSS custom properties
+  - `:root` (light), `.dark`, `.coffee` theme variants
+  - Utility classes: `.card`, `.btn-primary`, `.btn-secondary`, `.input-field`, `.badge`
+  - `@theme` block with coffee color palette and font stacks
+- [x] `apps/web/src/api/client.ts` — API client with token management
+  - `setAccessToken()`, `getAccessToken()`, `clearTokens()` for auth token lifecycle
+  - Automatic token refresh on 401 responses
+  - `ApiError` class with code, message, details, status
+  - `api.get/post/patch/put/delete/upload` convenience methods
+- [x] `apps/web/src/api/index.ts` — Typed API endpoint functions
+  - `authApi`: register, login, refresh, forgotPassword, resetPassword
+  - `userApi`: me, updateProfile, deleteAccount, getProfile
+  - `recipeApi`: list, get, create, update, delete, fork, compare, like, favourite, feature
+  - `tasteApi`: hierarchy, search, flat
+  - `AuthUser` interface for type-safe auth response
+- [x] `apps/web/src/contexts/AuthContext.tsx` — React auth context
+  - `AuthProvider` with auto-restore from localStorage
+  - `useAuth()` hook: user, isLoading, isAuthenticated, login, register, logout, refreshUser
+  - Persists access + refresh tokens in localStorage
+- [x] `apps/web/src/contexts/ThemeContext.tsx` — Theme context (light/dark/coffee)
+  - `ThemeProvider` with system preference detection
+  - Syncs `document.documentElement.className` with theme
+  - Persists theme in localStorage
+  - `useTheme()` hook
+- [x] `apps/web/src/contexts/I18nContext.tsx` — i18n context (gap analysis H8)
+  - `I18nProvider` wrapping `@brewform/shared/i18n`
+  - `useTranslation()` hook returning `{ locale, setLocale, t, availableLocales }`
+  - Persists locale in localStorage
+- [x] `apps/web/src/components/layout/Navbar.tsx` — Responsive navigation bar
+  - Theme switcher (light/dark/coffee dropdown)
+  - Auth-aware: login/signup vs profile/logout
+  - Links to recipes, new recipe, setups, profile
+- [x] `apps/web/src/components/layout/Footer.tsx` — Site footer with Explore/Legal sections
+- [x] `apps/web/src/components/layout/Layout.tsx` — Root layout with Navbar + Outlet + Footer + CookieConsent
+- [x] `apps/web/src/components/CookieConsent.tsx` — GDPR cookie consent banner
+- [x] `apps/web/src/router.tsx` — React Router v7 `createBrowserRouter` config
+  - Layout wraps all pages with Navbar/Footer/CookieConsent
+  - Routes: /, /login, /register, /forgot-password, /reset-password, /*
+- [x] `apps/web/src/App.tsx` — Root component with ThemeProvider > I18nProvider > AuthProvider > RouterProvider
+- [x] `apps/web/src/pages/HomePage.tsx` — Landing page with hero, latest recipes, popular recipes
+- [x] `apps/web/src/pages/NotFoundPage.tsx` — 404 page
+- [x] `apps/web/src/pages/auth/LoginPage.tsx` — Login form with error handling, loading state
+- [x] `apps/web/src/pages/auth/RegisterPage.tsx` — Registration form with confirm password
+- [x] `apps/web/src/pages/auth/ForgotPasswordPage.tsx` — Forgot password with success state
+- [x] `apps/web/src/pages/auth/ResetPasswordPage.tsx` — Reset password with token from URL params, invalid token state
+- [x] `apps/web/index.html` — Added default `class="light"` on html element for theme
+- [x] `apps/web/tsconfig.json` — Changed module from `ES2022` to `ESNext` (import attribute support)
+- [x] `packages/shared/tsconfig.json` — Changed module from `ES2022` to `ESNext` (import attribute support)
+- [x] `deno lint` passes for all web files (5 issues fixed: no-window, jsx-button-has-type)
+- [x] `tsc --noEmit` passes for web app
+- [x] `vite build` passes (315KB JS gzip 99KB)
+- [x] All imports use no `.ts`/`.tsx` extensions (Vite resolves automatically)
+- [x] Gap analysis H8: useTranslation hook implemented via I18nContext
+
 ## Key Decisions
 
 - **Deno version**: 2.7.13
@@ -265,3 +321,9 @@
 - **Route params**: `c.req.param('id')` returns `string | undefined`. Use `!` assertion (`c.req.param('id')!`) since route params are guaranteed by route patterns.
 - **c.get('userId')**: Returns `string | null` per our Variables type. After authMiddleware, it's guaranteed to be non-null. Use `as string` assertion: `c.get('userId') as string`.
 - **Module pattern**: Each domain module follows `model.ts` → `service.ts` → `index.ts` pattern. Model wraps Prisma calls with `as any` casts. Service contains business logic. Index defines Hono routes with Zod validation.
+- **Frontend imports**: No `.ts`/`.tsx` extensions in import paths for Vite projects — Vite resolves them automatically. Using extensions causes TypeScript errors with `"module": "ES2022"`.
+- **TypeScript module setting**: Changed `"module"` from `"ES2022"` to `"ESNext"` in both `apps/web/tsconfig.json` and `packages/shared/tsconfig.json` to support import attributes (`with { type: 'json' }`) used by `i18n/index.ts`.
+- **Deno lint `no-window` rule**: Use `globalThis` instead of `window` in code that Deno lint checks. Both work in browsers; `globalThis` is Deno-compatible.
+- **Deno lint `jsx-button-has-type` rule**: All `<button>` elements must have an explicit `type` attribute (`button`, `submit`, or `reset`).
+- **React Router v7**: Import from `react-router` (not `react-router-dom`). Use `createBrowserRouter` + `RouterProvider` for data routing. All imports are from `react-router`.
+- **Frontend architecture**: ThemeProvider → I18nProvider → AuthProvider nesting order. Theme must be outermost so it applies before React hydrates (via `document.documentElement.className`).
