@@ -1,11 +1,45 @@
-# Deno
-# https://deno.com/
+# Dependencies
+node_modules/
 
-# Cache directory (when using project-local DENO_DIR)
-# https://docs.deno.com/runtime/fundamentals/setup/#deno_dir
-.deno/
+# Build outputs
+dist/
+*.tsbuildinfo
 
-# Coverage reports
-# https://docs.deno.com/runtime/reference/cli/coverage/
+# Coverage
 coverage/
 *.lcov
+
+# Deno
+.deno/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+packages/db/prisma/migrations/migration_lock.toml
+!packages/db/prisma/migrations/
+
+# Logs
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# Generated
+packages/db/src/generated/
+
+# Uploads
+uploads/

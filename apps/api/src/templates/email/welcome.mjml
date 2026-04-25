@@ -1,0 +1,29 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-text font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" />
+      <mj-button background-color="#6F4E37" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#F5F0EB">
+    <mj-section>
+      <mj-column>
+        <mj-text font-size="24px" font-weight="bold" color="#3E2723" align="center">
+          ☕ Welcome to {{app_name}}!
+        </mj-text>
+        <mj-text font-size="18px" color="#5D4037" align="center">
+          Hey {{username}},
+        </mj-text>
+        <mj-text font-size="16px" color="#5D4037" align="center">
+          Your coffee journey starts here. Record your brewing recipes, explore community creations, and share your tasting notes with the world.
+        </mj-text>
+        <mj-button href="https://brewform.github.io/onboarding" font-size="16px">
+          Get Started
+        </mj-button>
+        <mj-text font-size="14px" color="#8D6E63" align="center">
+          Happy brewing! ☕
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

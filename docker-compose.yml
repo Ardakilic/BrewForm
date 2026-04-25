@@ -1,0 +1,74 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform?connection_limit=10&pool_timeout=30
+      - DATABASE_PROVIDER=postgresql
+      - CACHE_DRIVER=deno-kv
+      - JWT_SECRET=dev-secret-change-me
+      - JWT_ACCESS_EXPIRY=15m
+      - JWT_REFRESH_EXPIRY=7d
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_SECURE=false
+      - EMAIL_FROM=noreply@brewform.local
+      - OPENAPI_ENABLED=true
+      - APP_ENV=development
+      - APP_PORT=8000
+      - LOG_LEVEL=debug
+      - ADMIN_EMAIL=admin@brewform.local
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=changeme123
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/db/node_modules
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: brewform
+      POSTGRES_PASSWORD: brewform
+      POSTGRES_DB: brewform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brewform"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  pgadmin:
+    image: elestio/pgadmin:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@brewform.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -1,0 +1,587 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum Visibility {
+  draft
+  private
+  unlisted
+  public
+}
+
+enum BrewMethod {
+  espresso_machine
+  v60
+  french_press
+  aeropress
+  turkish_coffee
+  drip_coffee
+  chemex
+  kalita_wave
+  moka_pot
+  cold_brew
+  siphon
+}
+
+enum DrinkType {
+  espresso
+  americano
+  flat_white
+  latte
+  cappuccino
+  cortado
+  macchiato
+  turkish_coffee
+  pour_over
+  cold_brew
+  french_press
+}
+
+enum EquipmentType {
+  portafilter
+  basket
+  puck_screen
+  paper_filter
+  tamper
+  gooseneck_kettle
+  mesh_filter
+  cezve
+  scale
+  thermometer
+  other
+}
+
+enum EmojiTag {
+  fire
+  rocket
+  thumbsup
+  neutral
+  thumbsdown
+  nauseated
+}
+
+enum BadgeRule {
+  first_brew
+  decade_brewer
+  centurion
+  first_fork
+  fan_favourite
+  community_star
+  conversationalist
+  precision_brewer
+  explorer
+  influencer
+}
+
+enum UnitSystem {
+  metric
+  imperial
+}
+
+enum TemperatureUnit {
+  celsius
+  fahrenheit
+}
+
+enum Theme {
+  light
+  dark
+  coffee
+}
+
+enum DateFormat {
+  DD_MM_YYYY
+  MM_DD_YYYY
+  YYYY_MM_DD
+}
+
+enum AdditionalPreparationType {
+  milk
+  water
+  syrup
+  spice
+  other
+}
+
+// ============================================================
+// Models
+// ============================================================
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  username            String    @unique
+  passwordHash        String
+  displayName         String?
+  avatarUrl           String?
+  bio                 String?
+  onboardingCompleted Boolean   @default(false)
+  isAdmin             Boolean   @default(false)
+  isBanned            Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  preferences        UserPreferences?
+  recipes            Recipe[]
+  comments           Comment[]
+  badges             UserBadge[]
+  followsAsFollower  UserFollow[]          @relation("UserFollows")
+  followsAsFollowing UserFollow[]          @relation("UserFollowing")
+  likes              UserRecipeLike[]
+  favourites         UserRecipeFavourite[]
+  setups             Setup[]
+  equipment          Equipment[]
+  beans              Bean[]
+  auditLogs          AuditLog[]
+  passwordResets     PasswordReset[]
+  reports            Report[]
+
+  @@index([email])
+  @@index([username])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model UserPreferences {
+  id                 String          @id @default(uuid())
+  userId             String          @unique
+  unitSystem         UnitSystem      @default(metric)
+  temperatureUnit    TemperatureUnit @default(celsius)
+  theme              Theme           @default(light)
+  locale             String          @default("en")
+  timezone           String          @default("UTC")
+  dateFormat         DateFormat      @default(YYYY_MM_DD)
+  newFollower        Boolean         @default(true)
+  recipeLiked        Boolean         @default(true)
+  recipeCommented    Boolean         @default(true)
+  followedUserPosted Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Recipe {
+  id               String     @id @default(uuid())
+  slug             String     @unique
+  title            String
+  authorId         String
+  visibility       Visibility @default(draft)
+  currentVersionId String?
+  likeCount        Int        @default(0)
+  commentCount     Int        @default(0)
+  forkCount        Int        @default(0)
+  forkedFromId     String?
+  featured         Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime?
+
+  author     User                  @relation(fields: [authorId], references: [id])
+  versions   RecipeVersion[]
+  photos     Photo[]
+  comments   Comment[]
+  likes      UserRecipeLike[]
+  favourites UserRecipeFavourite[]
+  forkedFrom Recipe?               @relation("RecipeFork", fields: [forkedFromId], references: [id])
+  forks      Recipe[]              @relation("RecipeFork")
+
+  @@index([authorId])
+  @@index([visibility])
+  @@index([createdAt])
+  @@index([likeCount])
+  @@index([forkedFromId])
+  @@index([slug])
+  @@index([deletedAt])
+}
+
+model RecipeVersion {
+  id                    String     @id @default(uuid())
+  recipeId              String
+  versionNumber         Int
+  productName           String?
+  coffeeBrand           String?
+  coffeeProcessing      String?
+  vendorId              String?
+  roastDate             DateTime?
+  packageOpenDate       DateTime?
+  grindDate             DateTime?
+  brewDate              DateTime   @default(now())
+  brewMethod            BrewMethod
+  drinkType             DrinkType
+  brewerDetails         String?
+  grinder               String?
+  grindSize             String?
+  groundWeightGrams     Float?
+  extractionTimeSeconds Int?
+  extractionVolumeMl    Float?
+  temperatureCelsius    Float?
+  brewRatio             Float?
+  flowRate              Float?
+  personalNotes         String?
+  isFavourite           Boolean    @default(false)
+  rating                Int?
+  emojiTag              EmojiTag?
+  createdAt             DateTime   @default(now())
+
+  recipe                 Recipe                        @relation(fields: [recipeId], references: [id])
+  vendor                 Vendor?                       @relation(fields: [vendorId], references: [id])
+  tasteNotes             RecipeTasteNote[]
+  equipment              RecipeEquipment[]
+  additionalPreparations RecipeAdditionalPreparation[]
+  versionPhotos          RecipeVersionPhoto[]
+
+  @@unique([recipeId, versionNumber])
+  @@index([recipeId])
+  @@index([brewMethod])
+  @@index([drinkType])
+  @@index([createdAt])
+}
+
+model RecipeTasteNote {
+  id              String @id @default(uuid())
+  recipeVersionId String
+  tasteNoteId     String
+
+  recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
+  tasteNote     TasteNote     @relation(fields: [tasteNoteId], references: [id])
+
+  @@unique([recipeVersionId, tasteNoteId])
+  @@index([recipeVersionId])
+  @@index([tasteNoteId])
+}
+
+model RecipeEquipment {
+  id              String @id @default(uuid())
+  recipeVersionId String
+  equipmentId     String
+
+  recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
+  equipment     Equipment     @relation(fields: [equipmentId], references: [id])
+
+  @@unique([recipeVersionId, equipmentId])
+  @@index([recipeVersionId])
+  @@index([equipmentId])
+}
+
+model RecipeAdditionalPreparation {
+  id              String @id @default(uuid())
+  recipeVersionId String
+  name            String
+  type            String
+  inputAmount     String
+  preparationType String
+  sortOrder       Int    @default(0)
+
+  recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
+
+  @@index([recipeVersionId])
+}
+
+model Photo {
+  id           String    @id @default(uuid())
+  recipeId     String
+  url          String
+  thumbnailUrl String?
+  alt          String?
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  recipe        Recipe               @relation(fields: [recipeId], references: [id])
+  versionPhotos RecipeVersionPhoto[]
+
+  @@index([recipeId])
+  @@index([deletedAt])
+}
+
+model RecipeVersionPhoto {
+  id              String @id @default(uuid())
+  recipeVersionId String
+  photoId         String
+  sortOrder       Int    @default(0)
+
+  recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
+  photo         Photo         @relation(fields: [photoId], references: [id])
+
+  @@unique([recipeVersionId, photoId])
+  @@index([recipeVersionId])
+  @@index([photoId])
+}
+
+model Equipment {
+  id          String        @id @default(uuid())
+  name        String
+  type        EquipmentType
+  brand       String?
+  model       String?
+  description String?
+  createdBy   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  createdByUser     User?             @relation(fields: [createdBy], references: [id])
+  recipeEquipment   RecipeEquipment[]
+  setupPortafilters Setup[]           @relation("SetupPortafilter")
+  setupBaskets      Setup[]           @relation("SetupBasket")
+  setupPuckScreens  Setup[]           @relation("SetupPuckScreen")
+  setupPaperFilters Setup[]           @relation("SetupPaperFilter")
+  setupTampers      Setup[]           @relation("SetupTamper")
+
+  @@index([type])
+  @@index([name])
+  @@index([deletedAt])
+}
+
+model Bean {
+  id         String    @id @default(uuid())
+  name       String
+  brand      String?
+  vendorId   String?
+  roaster    String?
+  roastLevel String?
+  processing String?
+  origin     String?
+  userId     String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  vendor Vendor? @relation(fields: [vendorId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([deletedAt])
+}
+
+model Vendor {
+  id          String    @id @default(uuid())
+  name        String
+  website     String?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  beans          Bean[]
+  recipeVersions RecipeVersion[]
+
+  @@index([name])
+  @@index([deletedAt])
+}
+
+model TasteNote {
+  id         String   @id @default(uuid())
+  name       String
+  parentId   String?
+  color      String?
+  definition String?
+  depth      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  parent           TasteNote?        @relation("TasteNoteHierarchy", fields: [parentId], references: [id])
+  children         TasteNote[]       @relation("TasteNoteHierarchy")
+  recipeTasteNotes RecipeTasteNote[]
+
+  @@index([parentId])
+  @@index([name])
+  @@index([depth])
+}
+
+model Setup {
+  id            String    @id @default(uuid())
+  name          String
+  userId        String
+  brewerDetails String?
+  grinder       String?
+  portafilterId String?
+  basketId      String?
+  puckScreenId  String?
+  paperFilterId String?
+  tamperId      String?
+  isDefault     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  user        User       @relation(fields: [userId], references: [id])
+  portafilter Equipment? @relation("SetupPortafilter", fields: [portafilterId], references: [id])
+  basket      Equipment? @relation("SetupBasket", fields: [basketId], references: [id])
+  puckScreen  Equipment? @relation("SetupPuckScreen", fields: [puckScreenId], references: [id])
+  paperFilter Equipment? @relation("SetupPaperFilter", fields: [paperFilterId], references: [id])
+  tamper      Equipment? @relation("SetupTamper", fields: [tamperId], references: [id])
+
+  @@index([userId])
+  @@index([deletedAt])
+}
+
+model Comment {
+  id              String    @id @default(uuid())
+  recipeId        String
+  authorId        String
+  content         String
+  parentCommentId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  recipe        Recipe    @relation(fields: [recipeId], references: [id])
+  author        User      @relation(fields: [authorId], references: [id])
+  parentComment Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id])
+  replies       Comment[] @relation("CommentReplies")
+
+  @@index([recipeId])
+  @@index([authorId])
+  @@index([parentCommentId])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model UserFollow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("UserFollows", fields: [followerId], references: [id])
+  following User @relation("UserFollowing", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@index([createdAt])
+}
+
+model UserRecipeFavourite {
+  id        String   @id @default(uuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  recipe Recipe @relation(fields: [recipeId], references: [id])
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@index([recipeId])
+  @@index([createdAt])
+}
+
+model UserRecipeLike {
+  id        String   @id @default(uuid())
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  recipe Recipe @relation(fields: [recipeId], references: [id])
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@index([recipeId])
+  @@index([createdAt])
+}
+
+model Badge {
+  id          String    @id @default(uuid())
+  name        String
+  icon        String
+  description String
+  rule        BadgeRule
+  threshold   Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userBadges UserBadge[]
+
+  @@unique([rule])
+  @@index([rule])
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  badgeId   String
+  awardedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  badge Badge @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+}
+
+model BrewMethodEquipmentRule {
+  id            String        @id @default(uuid())
+  brewMethod    BrewMethod
+  equipmentType EquipmentType
+  compatible    Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+
+  @@unique([brewMethod, equipmentType])
+  @@index([brewMethod])
+  @@index([equipmentType])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Report {
+  id         String    @id @default(uuid())
+  reporterId String
+  entityType String
+  entityId   String
+  reason     String
+  status     String    @default("pending")
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  reporter User @relation(fields: [reporterId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([reporterId])
+  @@index([createdAt])
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@brewform/db",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@brewform/shared": "*",
+    "@prisma/client": "^6.19.3"
+  },
+  "devDependencies": {
+    "prisma": "^6.7.0"
+  },
+  "scripts": {
+    "build": "echo 'DB package uses Prisma generate'",
+    "lint": "deno lint src/",
+    "check": "deno check src/index.ts",
+    "test": "deno test src/"
+  }
+}

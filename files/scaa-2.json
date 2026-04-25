@@ -1,0 +1,2057 @@
+{
+  "meta":{
+    "maxDepth": 3,
+    "name": "SCAA 2016",
+    "type": "coffee",
+    "faults": false,
+    "author": "SCAA",
+    "date": "2016",
+    "languages": ["en", "ru"],
+    "source": "http://www.scaa.org/?page=resources&d=scaa-flavor-wheel",
+    "notes": ["It is not truly global. It is not finished"]
+  },
+  "data":
+[
+  {
+    "name": "Fruity",
+    "name_ru": "Фруктовый",
+    "colour": "#DA1D23",
+    "definition": "A sweet, floral, aromatic blend of a variety of ripe fruits.",
+    "definition_ru": "Сладкий, цветочный аромат спелых фруктов.",
+    "references": [
+      {
+        "reference": "Juicy Juice 100% Juice Kiwi Strawberry",
+        "flavor": 4.0,
+        "flavor_preparation": "Serve juice in a 1-ounce cup. Cover with a plastic lid",
+        "aroma": 3.0,
+        "aroma_preparation": "Mix 1 part water and 1 part juice. Place ¼ cup of mixture in a medium snifter. Cover."
+      },
+      {
+        "reference": "Le Nez du Café n.17 “apple”",
+        "reference_ru": "Le Nez du Café n.17 “яблоко”",
+        "aroma": 7.0,
+        "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+        "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+      }
+    ],
+    "children": [
+      {
+        "name": "Berry",
+        "name_ru": "Ягоды",
+        "colour": "#DD4C51",
+        "definition": "The sweet, sour, floral, sometimes heavy aromatic associated with a variety of berries such as blackberries, raspberries, blueberries, or strawberries",
+        "definition_ru": "Сладкий, кислый, цветочный, иногда тяжёлый аромат, ассоциируемый с такими ягодами, как ежевика, малина, черника или клубника",
+        "references": [
+          {
+            "reference": "Private Selection Triple Berry Preserves",
+            "aroma": 10.0,
+            "aroma_preparation": "Place 1 teaspoon of jelly in a medium snifter. Cover",
+            "flavor": 9.0,
+            "flavor_preparation": "Place 1 teaspoon in a 1-ounce cup. Cover with a plastic lid."
+          },
+          {
+            "reference": "Welch’s Unfiltered 100% Juice Blackberry",
+            "flavor": 7.5,
+            "flavor_preparation": "Serve juice in a 1-ounce cup. Cover with a plastic lid."
+          }
+        ],
+        "children": [
+          {
+            "name": "Blackberry",
+            "name_ru": "Ежевика",
+            "colour": "#3E0317",
+            "definition": "The sweet, dark, fruity, floral, slightly sour, somewhat woody aromatic associated with blackberries.",
+            "definition_ru": "Сладкий, фруктовый, тёмный, цветочный, слегка кислый, немного древесный аромат, ассоциируемый с ежевикой.",
+            "references": [
+              {
+                "reference": "Smucker’s Blackberry Jam",
+                "flavor": 5.5,
+                "flavor_preparation": "Serve jam in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Raspberry",
+            "name_ru": "Малина",
+            "colour": "#E52968",
+            "icon": "raspberry",
+            "definition": "The lightly sweet, fruity, floral, slightly sour and musty aromatic associated with raspberries.",
+            "definition_ru": "Слегка сладкий, фруктовый, цветочный, немного кислый, прокисший запах, ассоциируемый с малиной.",
+            "references": [
+              {
+                "reference": "Jell-O Raspberry (dry gelatin powder)",
+                "flavor": 6.5,
+                "flavor_preparation": "Served dry powder in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Blueberry",
+            "name_ru": "Черника",
+            "colour": "#6469B0",
+            "icon": "blueberry",
+            "definition": "The slightly dark, fruity, sweet, slightly sour, musty, dusty, floral aromatic associated with blueberry.",
+            "definition_ru": "Слегка тёмный, фруктовый, сладкий, с лёгкой кислинкой, прокисший, пыльный, цветочный аромат, ассоциируемый с черникой.",
+            "references": [
+              {
+                "reference": "Oregon Fruit Products Blueberries in Light Syrup (canned)",
+                "aroma": 6.5,
+                "aroma_preparation": "Put 1 teaspoon of syrup from canned blueberries in a medium snifter. Cover.",
+                "flavor": 6.0,
+                "flavor_preparation": "Serve blueberries in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Strawberry",
+            "name_ru": "Клубника",
+            "colour": "#EF2D36",
+            "image": "strawberry.png",
+            "definition": "The somewhat sweet, slightly sour, floral, fruity, frequently winey aromatic associated with strawberry.",
+            "definition_ru": "Слегка сладкий, немного кислый, цветочный, фруктовый, часто винный аромат, ассоциируемый с клубникой.",
+            "references": [
+              {
+                "reference": "Dole Whole Strawberries All Natural",
+                "aroma": 13.0,
+                "aroma_preparation": "Thaw strawberries in refrigerator overnight. Serve at room temperature in 3.25-ounce cup. Cover with a plastic lid.",
+                "flavor": 6.0,
+                "flavor_preparation": "Thaw strawberries in refrigerator overnight. Serve at room temperature in 3.25-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Dried fruit",
+        "name_ru": "Сухофрукты",
+        "colour": "#C94A44",
+        "definition": "An aromatic impression of dark fruit that is sweet and slightly brown and is associated with dried plums and raisins.",
+        "definition_ru": "Аромат, наталкивающий на мысль о сладких и немного подвяленных тёмных фруктах. Ассоциируется с черносливом и изюмом.",
+        "references": [
+          {
+            "reference": "Sunsweet Amaz!n Prune Juice",
+            "aroma": 3.0,
+            "aroma_preparation": "Mix 1 part juice with 2 parts water. This may be prepared 24 hours in advance and refrigerated. Bring to room temperature for serving. Serve 1 tablespoon in a medium snifter. Cover.",
+            "flavor": 4.5,
+            "flavor_preparation": "Mix 1 part juice with 2 parts water. This may be prepared 24 hours in advance and refrigerated in coded, lidded 1-ounce cups. Bring to room temperature for serving."
+          },
+          {
+            "reference": "Mixture of Sun-Maid Raisins and Sun-Maid Prunes",
+            "aroma": 5.0,
+            "aroma_preparation": "Mix ¼ cup raisins (whole) and ¼ cup prunes (chopped). Add ¾ cup water and cook in microwave on high for 2 minutes. Filter with a sieve. Place 1 tablespoon of liquid juice in a medium snifter. Cover.",
+            "flavor": 6.0,
+            "flavor_preparation": "Mix ¼ cup raisins (whole) and ¼ cup prunes (chopped). Add ¾ cup water and cook in microwave on high for 2 minutes. Filter with a sieve. Place the mixture in a blender and mix for 1 minute at medium speed. Serve the paste of raisins and prunes in a 1-ounce cup. Cover with a plastic lid."
+          }
+        ],
+        "children": [
+          {
+            "name": "Raisin",
+            "name_ru": "Изюм",
+            "colour": "#B53B54",
+            "definition": "The concentrated, sweet, somewhat sour, brown, fruity, floral aromatic characteristic of dried grapes.",
+            "definition_ru": "Концентрированный, сладкий, несколько кислый, печёный, фруктовый, цветочный аромат, характерный для сушёного винограда.",
+            "references": [
+              {
+                "reference": "Sun-Maid Raisins",
+                "aroma": 6.0,
+                "aroma_preparation": "Chop 1/2 cup of raisins. Add ¾ cup water and cook in microwave on high for 2 minutes. Filter with a sieve. Place 1 tablespoon of liquid juice in a medium snifter. Cover.",
+                "flavor": 5.5,
+                "flavor_preparation": "Chop 1/2 cup of raisins. Add ¾ cup water and cook in microwave on high for 2 minutes. Filter with a sieve. Serve juice in a 1-ounce cup. Cover with a plastic lid. "
+              }
+            ]
+          },
+          {
+            "name": "Prune",
+            "name_ru": "Чернослив",
+            "colour": "#A5446F",
+            "definition": "The sweet, slightly brown, floral, musty and overripe aromatic impression of dark fruit associated with dried plums.",
+            "definition_ru": "Сладкий, слегка печёный, цветочный, прокисший и переспелый аромат тёмных фруктов, ассоциируемый с сушёными сливами.",
+            "references": [
+              {
+                "reference": "Sun-Maid Prunes",
+                "aroma": 4.5,
+                "aroma_preparation": "Chop 1/2 cup prunes. Add ¾ cup of water and cook in microwave on high for 2 minutes. Filter with a sieve. Place 1 tablespoon of juice in a medium snifter. Cover.",
+                "flavor": 5.0,
+                "flavor_preparation": "Chop 1/2 cup prunes. Add ¾ cup of water and cook in microwave on high for 2 minutes. Filter with a sieve. Pour juice into a 1-ounce cup. Cover a with plastic lid."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Other fruit",
+        "name_ru": "Другие Фрукты",
+        "colour": "#F2684C",
+        "definition": "A sweet, light, fruity, somewhat floral, sour, or green aromatic that may include apples, grapes, peaches, pears, or cherries.",
+        "definition_ru": "Сладкий, лёгкий, фруктовый, несколько цветочный, кислый или растительный аромат, включающий в себя яблоки, виноград, персики, груши или вишню.",
+        "references": [
+          {
+            "reference": "Le Nez du Café n.17 “apple”",
+            "reference_ru": "Le Nez du Café n.17 “яблоко”",
+            "aroma": 7.0,
+            "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover",
+            "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+          }
+        ],
+        "children": [
+          {
+            "name": "Coconut",
+            "name_ru": "Кокос",
+            "image": "coconut.png",
+            "icon": "coconut",
+            "colour": "#D07C36",
+            "definition": "The slightly sweet, nutty, somewhat woody aromatic associated with coconut.",
+            "definition_ru": "Слегка сладкий, ореховый, немного древесный аромат, ассоциируемый с кокосом.",
+            "references": [
+              {
+                "reference": "Coconut imitation extract",
+                "reference_ru": "Кокосовый ароматизатор",
+                "aroma": 7.5,
+                "aroma_preparation": "Place 1 drop of coconut extract on a cotton ball in a medium snifter. Cover.",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей кокосового ароматизатора в средний снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Cherry",
+            "name_ru": "Вишня",
+            "colour": "#E73451",
+            "image": "cherry.png",
+            "icon": "cherry",
+            "definition": "The sour, fruity, slightly bitter, floral aromatic associated with cherries.",
+            "definition_ru": "Кислый, фруктовый, слегка горький цветочный аромат, ассоциируемый с вишней.",
+            "references": [
+              {
+                "reference": "R.W. Knudsen Just Tart Cherry Juice",
+                "flavor": 4.0,
+                "flavor_preparation": "Mix 1 part cherry juice with 2 parts water. Serve in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Pomegranate",
+            "name_ru": "Гранат",
+            "colour": "#E65656",
+            "icon": "pomegranate",
+            "definition": "A sour, sweet fruity aromatic that may be somewhat dark, musty and earthy, reminiscent of dark fruits and root vegetables such as beets and carrots; may also have an astringent mouthfeel.",
+            "definition_ru": "Кислый, сладкий, фруктовый аромат. Может быть несколько тёмным, прокисшим и земельным, напоминающим тёмные фрукты и корнеплоды, такие как свёкла и морковь. Иногда обладает вяжущим вкусом.",
+            "references": [
+              {
+                "reference": "R.W. Knudsen Organic Just Pomegranate Juice",
+                "aroma": 5.5,
+                "aroma_preparation": "Serve 2 tablespoons of juice in a medium snifter. Cover.",
+                "flavor": 7.5,
+                "flavor_preparation": "Serve the juice in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Pineapple",
+            "name_ru": "Ананас",
+            "colour": "#F89A1C",
+            "icon": "pineapple",
+            "definition": "The sweet, slightly sharp, fruity aromatic associated with pineapple.",
+            "definition_ru": "Сладкий, слегка резкий фруктовый аромат, ассоциируемый с ананасом.",
+            "references": [
+              {
+                "reference": "Dole Pineapple Juice (canned)",
+                "aroma": 6.5,
+                "aroma_preparation": "Mix 1 part pineapple juice and 1 part water. Serve 1 tablespoon of juice in a medium snifter. Cover.",
+                "flavor": 6.0,
+                "flavor_preparation": "Mix 1 part pineapple juice and 1 part water. Serve juice in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Grape",
+            "name_ru": "Виноград",
+            "colour": "#AEB92C",
+            "icon": "grape",
+            "definition": "The sweet, fruity, floral, slightly sour, musty aromatic commonly associated with grapes.",
+            "definition_ru": "Сладкий, фруктовый, цветочный, слегка кислый, прокисший аромат, ассоциируемый с виноградом.",
+            "references": [
+              {
+                "reference": "Welch’s 100% Juice Unfiltered Concord Grape",
+                "flavor": 5.0,
+                "flavor_preparation": "Mix 1 part grape juice with 1 part water. Serve in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Apple",
+            "name_ru": "Яблоко",
+            "colour": "#4EB947",
+            "image": "green-apple.png",
+            "icon": "apple",
+            "definition": "A sweet, light, fruity, somewhat floral aromatic commonly associated with fresh or processed apples.",
+            "definition_ru": "Сладкий, лёгкий, фруктовый, несколько цветочный аромат, ассоциируемый со свежими или обработанными яблоками.",
+            "references": [
+              {
+                "reference": "Le Nez du Café n.17 “apple”",
+                "aroma": 5.0,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "reference_ru": "Le Nez du Café n.17 “яблоко”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в снифтер среднего размера. Накройте."
+              },
+              {
+                "reference": "Gerber 2nd Foods Applesauce",
+                "flavor": 6.0,
+                "flavor_preparation": "Serve applesauce in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Peach",
+            "name_ru": "Персик",
+            "colour": "#F68A5C",
+            "image": "peach.png",
+            "icon": "peach",
+            "definition": "The floral, perfuming, fruity, sweet, slightly sour aromatic associated with peaches.",
+            "definition_ru": "Цветочный, душистый, сладкий, слегка кислый аромат, ассоциируемый с персиками.",
+            "references": [
+              {
+                "reference": "Fresh peach pit",
+                "aroma": 8.0,
+                "aroma_preparation": "Put clean peach pit in a medium snifter. Cover."
+              },
+              {
+                "reference": "Jell-O Peach (dry gelatin powder)",
+                "flavor": 7.0,
+                "flavor_preparation": "Serve dry powder in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Pear",
+            "name_ru": "Груша",
+            "colour": "#BAA635",
+            "image": "pear.png",
+            "icon": "pear",
+            "definition": "The sweet, slightly floral, musty, woody, fruity aromatic associated with pears.",
+            "definition_ru": "Сладкий, слегка цветочный, прокисший, древесный, фруктовый аромат, ассоциируемый с грушами.",
+            "references": [
+              {
+                "reference": "Jumax Pear Nectar (can)",
+                "flavor": 7.5,
+                "flavor_preparation": "Serve juice in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Citrus fruit",
+        "name_ru": "Цитрусовые",
+        "colour": "#F7A129",
+        "definition": "A citric, sour, astringent, slightly sweet, peely, and somewhat floral aromatic that may include lemons, limes, grapefruits, or oranges.",
+        "definition_ru": "Цитрусовый, кислый, вяжущий, цедровый, слегка сладкий и немного цветочный аромат, который может включать лимон, лайм, грейпфрут или апельсин.",
+        "references": [
+          {
+            "reference": "Peels of lemon and lime",
+            "aroma": 4.5,
+            "aroma_preparation": "Put 0.5 grams lemon peel and 0.5 grams lime peel in a medium snifter. Cover."
+          },
+          {
+            "reference": "Grapefruit peel",
+            "aroma": 7.5,
+            "aroma_preparation": "Put 0.25 grams grapefruit peel in a medium snifter. Cover."
+          },
+          {
+            "reference": "Five Alive Citrus (frozen concentrate)",
+            "flavor": 6.5,
+            "flavor_preparation": "Prepare the concentrate according to the package directions. Serve prepared juice in 1-ounce cups. Cover with a plastic lid."
+          }
+        ],
+        "children": [
+          {
+            "name": "Grapefruit",
+            "name_ru": "Грейпфрут",
+            "colour": "#F26355",
+            "image": "grapefruit.png",
+            "definition": "The citric, sour, bitter, astringent, peely, sharp, slightly sweet aromatic associated with grapefruit.",
+            "definition_ru": "Цитрусовый, кислый, горький, вяжущий, цедровый, резкий, слегка сладкий аромат, ассоциируемый с грейпфрутом.",
+            "references": [
+              {
+                "reference": "Ocean Spray 100% White Grapefruit Juice",
+                "flavor": 11.0,
+                "flavor_preparation": "Serve juice in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Kroger 100% White Grapefruit Juice",
+                "flavor": 13.5,
+                "flavor_preparation": "Serve juice in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Orange",
+            "name_ru": "Апельсин",
+            "colour": "#E2631E",
+            "image": "orange.png",
+            "icon": "orange",
+            "definition": "The citric, sweet, floral, slightly sour aromatic associated with oranges, which may include bitter, peely, and astringent notes.",
+            "definition_ru": "Цитрусовый, сладкий, цветочный, слегка кислый аромат, ассоциируемый с апельсинами. Может включать горькие, цедровые и вяжущие ноты.",
+            "references": [
+              {
+                "reference": "Tropicana Pure Premium Original 100% No Pulp Orange Juice",
+                "flavor": 10.0,
+                "flavor_preparation": "Serve juice in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Lemon",
+            "name_ru": "Лимон",
+            "colour": "#FDE402",
+            "image": "lemon.png",
+            "icon": "lemon",
+            "definition": "The citric, sour, astringent, slightly sweet, peely and somewhat floral aromatic associated with lemon.",
+            "definition_ru": "Цитрусовый, кислый, вяжущий, цедровый, слегка сладкий и несколько цветочный аромат, ассоциируемый с лимоном.",
+            "references": [
+              {
+                "reference": "Fresh lemon juice",
+                "aroma": 5.0,
+                "aroma_preparation": "Juice a lemon. Dilute with water, 1 part juice to 4 parts water. Pour ¼ cup in a medium snifter. Cover.",
+                "flavor": 7.0,
+                "flavor_preparation": "Juice a lemon. Dilute with water, 1 part juice to 4 parts water. Serve in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Le Nez du Café n. 15 'lemon'",
+                "reference_ru": "Le Nez du Café n. 15 'лимон'",
+                "aroma": 5.5,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Lime",
+            "name_ru": "Лайм",
+            "colour": "#7EB138",
+            "image": "lime.png",
+            "icon": "lime",
+            "definition": "The citric, sour, astringent, bitter, green, peely, sharp and somewhat floral aromatic associated with limes.",
+            "definition_ru": "Цитрусовый, кислый, вяжущий, горький, зелёный, цедровый, резкий и немного цветочный аромат, ассоциируемый с лаймом.",
+            "references": [
+              {
+                "reference": "Lime peel",
+                "aroma": 6.5,
+                "aroma_preparation": "Put 0.25 grams lime peel in a medium snifter. Cover.",
+                "reference_ru": "Цедра лайма",
+                "aroma_preparation_ru": "Поместите 0.25 грамм цедры лайма в средний снифтер. Накройте."
+              },
+              {
+                "reference": "ReaLime 100% Lime Juice",
+                "flavor": 7.0,
+                "flavor_preparation": "Serve juice in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Sour/Fermented",
+    "name_ru": "Кислый",
+    "colour": "#EBB40D",
+    "children": [
+      {
+        "name": "Sour",
+        "name_ru": "Кислый",
+        "colour": "#E1C315",
+        "fundamental": true,
+        "definition": "The fundamental taste factor associated with a citric acid solution.",
+        "definition_ru": "Базовый вкус, ассоциируемый с цитрусами и кислотными растворами.",
+        "references": [
+          {
+            "reference": "0.015% citric acid solution.",
+            "flavor": 1.5,
+            "flavor_preparation": "Serve solution in a 1-ounce cup. Cover with a plastic lid.",
+            "reference_ru": "0.015% раствор лимонной кислоты.",
+            "flavor_preparation_ru": "Подавайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+          },
+          {
+            "reference": "0.05% citric acid solution.",
+            "flavor": 3.5,
+            "flavor_preparation": "Serve solution in a 1-ounce cup. Cover with a plastic lid.",
+            "reference_ru": "0.05% раствор лимонной кислоты.",
+            "flavor_preparation_ru": "Подавайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+          }
+        ],
+        "children": [
+          {
+            "name": "Sour aromatics",
+            "name_ru": "Кислый запах",
+            "colour": "#9EA718",
+            "definition": "An aromatic associated with the impression of a sour product.",
+            "definition_ru": "Аромат, ассоциируемый с кислыми продуктами.",
+            "references": [
+              {
+                "reference": "Bush’s Pinto Beans (canned)",
+                "aroma": 2.0,
+                "aroma_preparation": "Drain beans and rinse with deionized water. Place 1 tablespoon in a medium snifter at room temperature. Cover."
+              }
+            ]
+          },
+          {
+            "name": "Acetic acid",
+            "name_ru": "Уксусная кислота",
+            "colour": "#94A770",
+            "image": "acetic-acid.svg",
+            "definition": "A sour, astringent, slightly pungent aromatic associated with vinegar.",
+            "definition_ru": "Кислый, вяжущий, слегка пикантный аромат, ассоциируемый с уксусом.",
+            "references": [
+              {
+                "reference": "0.5% acetic acid solution",
+                "aroma": 2.0,
+                "aroma_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "flavor": 2.0,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.5% раствор уксусной кислоты",
+                "aroma_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой.",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              },
+              {
+                "reference": "1.0% acetic acid solution",
+                "aroma": 2.5,
+                "aroma_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "flavor": 3.0,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "1.0% раствор уксусной кислоты",
+                "aroma_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой.",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              },
+              {
+                "reference": "2.0% acetic acid solution",
+                "aroma": 3.0,
+                "aroma_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "flavor": 4.5,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "2.0% раствор уксусной кислоты",
+                "aroma_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой.",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              }
+            ]
+          },
+          {
+            "name": "Butyric acid",
+            "name_ru": "Масляная кислота",
+            "colour": "#D0B34F",
+            "image": "butyric-acid.svg",
+            "definition": "A sour, fermented-dairy aromatic associated with certain aged cheeses such as Parmesan",
+            "definition_ru": "Кислый, кисломолочный аромат, ассоциируемый с некоторыми выдержанными сырами, такими как Пармезан",
+            "references": [
+              {
+                "reference": "0.4 µl/l butyric acid solution",
+                "aroma": 2.5,
+                "aroma_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "flavor": 3.0,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.4 мл/л раствор масляной кислоты",
+                "aroma_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой.",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              }
+            ]
+          },
+          {
+            "name": "Isovaleric acid",
+            "name_ru": "Изовалериановая",
+            "colour": "#8EB646",
+            "image": "isovaleric-acid.png",
+            "definition": "A pungent, sour aromatic associated with sweaty, perspiration-generated foot odor and certain aged cheeses such as Romano.",
+            "definition_ru": "Пикантный, кислый аромат, ассоциируемый с потными, запрелыми ногами и некоторыми выдержанными сырами, такими как Пекорино Романо.",
+            "references": [
+              {
+                "reference": "0.2 µl/l isovaleric acid solution",
+                "aroma": 3.0,
+                "aroma_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "flavor": 4.0,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.2 мл/л раствор изовалериановой кислоты",
+                "aroma_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой.",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              }
+            ]
+          },
+          {
+            "name": "Citric acid",
+            "name_ru": "Лимонная кислота",
+            "colour": "#FAEF08",
+            "image": "citric-acid.svg",
+            "icon": "citric-acid",
+            "definition": "A mild, clean, sour aromatic with slight citrus notes accompanied by astringency.",
+            "definition_ru": "Мягкий, чистый, кислый аромат со слегка цитрусовыми нотами, сопровождаемый терпкостью.",
+            "references": [
+              {
+                "reference": "0.025% citric acid solution",
+                "aroma": 0.0,
+                "aroma_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "flavor": 2.5,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.025% раствор лимонной кислоты",
+                "aroma_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой.",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              },
+              {
+                "reference": "0.05% citric acid solution",
+                "aroma": 0.0,
+                "aroma_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "flavor": 3.5,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.05% раствор лимонной кислоты",
+                "aroma_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой.",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              }
+            ]
+          },
+          {
+            "name": "Malic acid",
+            "name_ru": "Яблочная кислота",
+            "colour": "#C1BA09",
+            "image": "malic-acid.png",
+            "definition": "A sour, sharp, somewhat fruity aromatic accompanied by astringency.",
+            "definition_ru": "Кислый, резкий, несколько фруктовый аромат, сопровождаемый терпкостью.",
+            "references": [
+              {
+                "reference": "0.5 g/l malic acid solution",
+                "flavor": 3.0,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.5 г/л раствор яблочной кислоты",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              },
+              {
+                "reference": "1.0 g/l malic acid solution",
+                "flavor": 5.0,
+                "flavor_preparation": "Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "1.0 г/л раствор яблочной кислоты",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Alcohol/Fermented",
+        "name_ru": "Алкоголь",
+        "colour": "#B09733",
+        "image": "ethanol.svg",
+        "definition": "Alcohol — a colorless, pungent, chemical-like aromatic associated with distilled spirits or grain products",
+        "definition_ru": "Бесцветный, пикантный, химический аромат, ассоциируемый с дистиллированными крепкими напитками или продуктами из злаков",
+        "references": [
+          {
+            "reference": "Absolute Vodka (80 Proof)",
+            "aroma": 5.0,
+            "aroma_preparation": "Dilute 16 milliliters of vodka with 64 milliliters of water. Serve in a large snifter. Cover.",
+            "reference_ru": "Водка Absolute",
+            "aroma_preparation_ru": "Разбавьте 16 мл водки 64 мл воды. Подайте в больших снифтерах. Накройте."
+          }
+        ],
+        "children": [
+          {
+            "name": "Winey",
+            "name_ru": "Вино",
+            "colour": "#8F1B53",
+            "definition": "The sharp, pungent, somewhat fruity, alcohol-like aromatic associated with wine.",
+            "definition_ru": "Резкий, пикантный, несколько фруктовый, прохожий на алкоголь аромат, ассоциируемый с вином.",
+            "references": [
+              {
+                "reference": "Yellow Tail Cabernet Sauvignon",
+                "aroma": 10.0,
+                "aroma_preparation": "Serve ½ cup of wine in a large snifter. Cover.",
+                "reference_ru": "Вино Yellow Tail Shiraz",
+            "aroma_preparation_ru": "Подайте ½ бокала вина в большом снифтере. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Whiskey",
+            "name_ru": "Виски",
+            "colour": "#B34039",
+            "definition": "The aromatic associated with distilled products from fermented grain mash.",
+            "definition_ru": "Аромат, ассоциируемый с дистиллированными продуктами из зерновой браги.",
+            "references": [
+              {
+                "reference": "Jack Daniel’s Tennessee Whiskey Old No. 7",
+                "aroma": 5.5,
+                "aroma_preparation": "Serve ½ cup whiskey in a large snifter. Cover.",
+                "reference_ru": "Виски Jack Daniel’s Tennessee Whiskey Old No. 7",
+                "aroma_preparation_ru": "Подайте ½ стакана виски в большом снифтере. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Fermented",
+            "name_ru": "Забродивший",
+            "colour": "#BA9232",
+            "definition": "The pungent, sweet, slightly sour, sometimes yeasty, alcohol-like aromatic characteristic of fermented fruits or sugar or over-proofed dough.",
+            "definition_ru": "Пикантный, сладкий, слегка кислый, иногда дрожжевой, спиртовой аромат забродивших фруктов, сахара или передержаного теста.",
+            "references": [
+              {
+                "reference": "Guinness Extra Stout beer",
+                "aroma": 5.0,
+                "aroma_preparation": "Fill 2-ounce aroma jars approximated 1/3 full. Prepare one jar for every three participants. This may be prepared 24 hours in advance and left at room temperature.",
+                "reference_ru": "Пиво Guinness Extra Stout",
+                "aroma_preparation_ru": "Наполните стекляную банку объёмом в 60 мл приблизительно на треть. По одной ёмкости на каждого участника. Подготовленные ёмкости можно хранить 24 часа при комнатной температуре."
+              },
+              {
+                "reference": "Fermented grass",
+                "aroma": 7.0,
+                "aroma_preparation": "Fill 2-ounce glass jars half full with grass and seal tightly with screw-on lids. Leave in airtight container for 2 weeks to ferment. Serve in jar; prepare one jar for every three panelists.",
+                "reference_ru": "Прелая трава",
+                "aroma_preparation_ru": "Наполните стеклянные банки объёмом 60 мл наполовину зелёной травой и плотно закройте крышками. Оставьте в герметичной ёмкости на 2 недели. Подавайте в банках."
+              }
+            ]
+          },
+          {
+            "name": "Overripe",
+            "name_ru": "Перезрелый",
+            "colour": "#8B6439",
+            "image": "overripe-banana.png",
+            "icon": "overripe",
+            "definition": "(Overripe/Near fermented) The sweet, slightly sour, damp, musty/earthy aromatic characteristic of fruit or vegetable past their optimum ripeness.",
+            "definition_ru": "Перезрелый, практически забродивший сладкий, слегка кислый, отсыревший, прокисший/земельный аромат фруктов или овощей после их полного созревания.",
+            "references": [
+              {
+                "reference": "Overripe banana",
+                "aroma": 6.5,
+                "aroma_preparation": "Freeze an overripe banana. Microwave the frozen banana for 1 minute. Mash the cooked banana. Serve 1 teaspoon of mash in a medium snifter. Cover.",
+                "flavor": 6.5,
+                "flavor_preparation": "Freeze an overripe banana. Microwave the frozen banana for 1 minute. Mash the cooked banana. Place mash in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "Перезрелый банан",
+                "aroma_preparation_ru": "Заморозьте перезрелый банан. Разогрейте замороженный банан в микроволновой печи в течение 1 минуты. Подайте 1 чайную ложку пюре в среднем снифтере. Накройте.",
+                "flavor_preparation_ru": "Заморозьте перезрелый банан. Разогрейте замороженный банан в микроволновой печи в течение 1 минуты. Поместите пюре в шот объёмом 30 мл. Накройте пластиковой крышкой."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Green/Vegetative",
+    "name_ru": "Растительный",
+    "colour": "#197A2F",
+    "children": [
+      {
+        "name": "Olive oil",
+        "name_ru": "Оливковое масло",
+        "colour": "#A2B028",
+        "definition": "A light, oily aromatic which may have buttery, green, peppery, bitter, and sweet notes.",
+        "definition_ru": "Светлый, маслянистый аромат. Может иметь масляные, зелёные, перечные, горькие и сладкие ноты.",
+        "references": [
+          {
+            "reference": "Bertolli Extra Virgin Olive Oil",
+            "aroma": 8.5,
+            "aroma_preparation": "Put 1 tablespoon in a medium snifter. Cover."
+          }
+        ]
+      },
+      {
+        "name": "Raw",
+        "name_ru": "Сырые продукты",
+        "colour": "#708933",
+        "definition": "An aromatic associated with uncooked products.",
+        "definition_ru": "Аромат, ассоциируемый с сырыми продуктами.",
+        "references": [
+          {
+            "reference": "Fisher Natural Whole Almonds",
+            "flavor": 3.0,
+            "flavor_preparation": "Serve the almonds in a 1-ounce cup. Cover with a plastic lid."
+          }
+        ]
+      },
+      {
+        "name": "Green/Vegetative",
+        "name_ru": "Зелень",
+        "colour": "#3AA255",
+        "definition": "(Green) An aromatic characteristic of fresh, plant-based material. Attributes may include leafy, viney, unripe, grassy, and peapod.",
+        "definition_ru": "Аромат свежих, растительных продуктов. Описания могут включать листву, вино, незрелые продукты, траву и горох.",
+        "references": [
+          {
+            "reference": "Parsley water",
+            "aroma": 9.0,
+            "aroma_preparation": "Rinse and chop 25 grams of fresh parsley. Add 300 milliliters of water. Let sit for 15 minutes. Filter out the parsley. Serve 1 tablespoon of the water in a medium snifter. Cover.",
+            "flavor": 6.0,
+            "flavor_preparation": "Rinse and chop 25 grams of fresh parsley. Add 300 milliliters of water. Let sit for 15 minutes. Filter out the parsley. Serve 2 teaspoons of the water in a 1-ounce cup. Cover with a plastic lid.",
+            "reference_ru": "Водный настой петрушки",
+            "aroma_preparation_ru": "Ополосните и нарежьте 25 грамм свежей петрушки. Добавьте 300 мл воды. Дайте настояться 15 минут. Отфильтруйте петрушку. Подайте 1 столовую ложку настоя в среднем снифтере. Накройте.",
+            "flavor_preparation_ru": "Ополосните и нарежьте 25 грамм свежей петрушки. Добавьте 300 мл воды. Дайте настояться 15 минут. Отфильтруйте петрушку. Подайте 2 столовые ложки настоя в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+          }
+        ],
+        "children": [
+          {
+            "name": "Under-ripe",
+            "name_ru": "Незрелый",
+            "colour": "#A2BC2B",
+            "definition": "An aromatic found in green/under-ripe fruit.",
+            "definition_ru": "Аромат характерный для зелёных/незрелых фруктов.",
+            "references": [
+              {
+                "reference": "Grapefruit peel",
+                "aroma": 7.5,
+                "aroma_preparation": "Put 0.25 grams of grapefruit peel in a medium snifter. Cover.",
+                "reference_ru": "Цедра грейпфрута",
+                "aroma_preparation_ru": "Поместите 0.25 грамм цедры грейпфрута в средний снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Peapod",
+            "name_ru": "Стручковый горох",
+            "colour": "#62AA3C",
+            "icon": "peapod",
+            "definition": "Green aromatic that is sweet, beany, fresh, raw, and musty/earthy.",
+            "definition_ru": "Аромат зелени, сладкий, бобовый, свежий, сырой/земельный.",
+            "references": [
+              {
+                "reference": "Le Nez du Café, no. 3 “garden peas”",
+                "aroma": 7.0,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover",
+                "reference_ru": "Le Nez du Café, no. 3 “садовый горох”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Fresh",
+            "name_ru": "Свежый",
+            "colour": "#03A653",
+            "definition": "A green aromatic associated with newly cut grass and leafy plants, characterized by a sweet and pungent character.",
+            "definition_ru": "Зелёный аромат, ассоциируемый со свежескошенной травой и лиственными растениями с характерными сладкими и пикантными нотами.",
+            "references": [
+              {
+                "reference": "Fresh green grass",
+                "aroma": 7.0,
+                "aroma_preparation": "Break in half 5 pieces of grass and place into a medium snifter. Cover. Prepare one snifter for every three panelists. Prepare on the day of evaluation so the grass does not ferment and change aroma.",
+                "reference_ru": "Свежая зеленая трава",
+                "aroma_preparation_ru": "Разломите пополам 5 cтебельков травы и поместите в средний снифтер. Накройте. Снифтеры подготовить в день оценки аромата, чтобы трава не запрела и не изменила аромат."
+              }
+            ]
+          },
+          {
+            "name": "Dark green",
+            "name_ru": "Тёмная зелень",
+            "colour": "#048549",
+            "icon": "dark-green",
+            "definition": "The aromatic commonly associated with cooked green vegetables such as spinach, kale, or green beans that may include bitter, sweet, dusty, musty, or earthy elements, and may have a dark, heavy impression.",
+            "definition_ru": "Аромат, ассоциируемый с приготовленными зелёными овощами: шпинат, кэйл или зелёные бобы. Может включать горькие, сладкие, пыльные, прокисшие, земельные элементы и иметь тёмные, тяжёлые ноты.",
+            "references": [
+              {
+                "reference": "Green Giant Cut Green Beans (canned, liquid of)",
+                "aroma": 5.0,
+                "aroma_preparation": "Place 1 tablespoon of liquid from canned vegetables in a medium snifter. Cover.",
+                "flavor": 6.0,
+                "flavor_preparation": "Serve liquid from canned vegetables in 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Del Monte Leaf Spinach (canned, liquid of)",
+                "aroma": 7.0,
+                "aroma_preparation": "Place 1 tablespoon of liquid from canned vegetables in a medium snifter. Cover. ",
+                "flavor": 6.0,
+                "flavor_preparation": "Serve liquid from canned vegetables in 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Vegetative",
+            "name_ru": "Растительный",
+            "colour": "#27B44B",
+            "definition": "Sharp, slightly pungent aromatic associated with green plant or vegetable matter such as parsley, spinach, or peapod.",
+            "definition_ru": "Резкий, слегка пикантный аромат, ассоциируемый с зелёными растениями или овощами, такими как петрушка, шпинат или горох.",
+            "references": [
+              {
+                "reference": "Green Giant Cut Asparagus Spears (canned)",
+                "flavor": 6.0,
+                "flavor_preparation": "Drain liquid from can, saving vegetable water. Place approximately 3 pieces of asparagus and 1 tablespoon of liquid into 1-ounce cups. Cover with a plastic lid. This may be prepared 24 hours in advance and refrigerated. Bring to room temperature for serving."
+              }
+            ]
+          },
+          {
+            "name": "Hay-like",
+            "name_ru": "Сено",
+            "colour": "#A3A830",
+            "definition": "The lightly sweet, dry, dusty aromatic with slight green character associated with dry grasses.",
+            "definition_ru": "Слегка сладкий, сухой, пыльный аромат с лёгкими зелёными нотами. Ассоциируется с сушёной травой.",
+            "references": [
+              {
+                "reference": "McCormick Parsley Flakes",
+                "aroma": 7.5,
+                "aroma_preparation": "Place 1 teaspoon of flakes in a medium snifter. Cover."
+              }
+            ]
+          },
+          {
+            "name": "Herb-like",
+            "name_ru": "Пряные травы",
+            "colour": "#7AC141",
+            "definition": "The aromatic commonly associated with green herbs that may be characterized as sweet, slightly pungent, and slightly bitter. May or may not include green or brown notes.",
+            "definition_ru": "Аромат, обычно ассоциируемый с зелёными пряными травами, такими как лавровый лист, тмин и базилик. Характеризуется как сладкий, слегка пикантный и слегка горький. Может включать зелёные или печёные ноты.",
+            "references": [
+              {
+                "reference": "Mixture of McCormick Bay Leaves, McCormick Ground Thyme, and McCormick Basil Leaves",
+                "aroma": 6.0,
+                "aroma_preparation": "Mix together 0.5 grams of each herb. Break the bay leaves into smaller pieces with your hands first, and then grind all the herbs together using a mortar and pestle. Add 100 milliliters of water. Mix well. Put 5 milliliters of herb water in a medium snifter, and add 200 milliliters of water. Cover",
+                "flavor": 5.0,
+                "flavor_preparation": "Mix together 0.5 grams of each herb. Break the bay leaves into smaller pieces with your hands first, and then grind all the herbs together using a mortar and pestle. Add 100 milliliters of water. Mix well. Mix 5 milliliters of herb water with 200 milliliters of water and serve in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Beany",
+        "name_ru": "Бобовый",
+        "colour": "#5E9A80",
+        "definition": "An aromatic characteristic of beans and bean products that contains musty/earthy, musty/dusty, sour aromatic, bitter aromatic, starchy, and green/peapod, nutty or brown elements.",
+        "definition_ru": "Ароматические характеристики бобов и бобовых продуктов, содержащие земельные, пыльные, кислые, горькие, крахмальные, зелёные/гороховые, ореховые или печёные элементы.",
+        "references": [
+          {
+            "reference": "Bush’s Pinto Beans (canned)",
+            "aroma": 7.0,
+            "aroma_preparation": "Drain beans and rinse with de-ionized water. Place 1 tablespoon in a medium snifter at room temperature. Cover.",
+            "flavor": 7.5,
+            "flavor_preparation": "Drain beans and rinse with de-ionized water. Serve in 1-ounce cups. Cover with a plastic lid."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Other",
+    "name_ru": "Другие",
+    "colour": "#0AA3B5",
+    "children": [
+      {
+        "name": "Papery/Musty",
+        "name_ru": "Бумажный/Затхлый",
+        "colour": "#9DB2B7",
+        "children": [
+          {
+            "name": "Stale", "name_ru": "Затхлый", "colour": "#8B8C90",
+            "definition": "The aromatic characterized by a lack of freshness",
+            "definition_ru": "Аромат, ассоциируемый с недостатком свежести, с сухим хлебом",
+            "references": [
+              {
+                "reference": "Mama Mary’s Gourmet Original Pizza Crust",
+                "aroma": 4.5,
+                "aroma_preparation": "Serve cut a 2-inch square of crust and serve in a medium snifter. Cover.",
+                "flavor": 4.0,
+                "flavor_preparation": "Serve cut a 2-inch square and serve in a 3.25-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Cardboard", "name_ru": "Картонный", "colour": "#BDB175",
+            "image": "cardboard.jpg",
+            "definition": "The aromatic associated with cardboard or paper packaging.",
+            "definition_ru": "Аромат, ассоциируемый с картоном или бумажной упаковкой.",
+            "references": [
+              {
+                "reference": "Cardboard",
+                "aroma": 7.5,
+                "aroma_preparation": "Cut a 2-inch square of cardboard. Place in 1/2 cup water. Serve in a medium snifter. Cover.",
+                "reference_ru": "Картон",
+                "aroma_preparation_ru": "Вырежьте 5-сантиметровый квадрат картона. Поместите в полстакана воды. Подайте в среднем снифтере. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Papery", "name_ru": "Бумажный", "colour": "#FEFEF4",
+            "definition": "The aromatic associated with white paper cups.",
+            "definition_ru": "Аромат, ассоциируемый с белыми бумажными стаканами.",
+            "references": [
+              {
+                "reference": "Pure Brew coffee filters",
+                "flavor": 2.5,
+                "flavor_preparation": "Submerge a stack of 15 coffee filters in 48 ounces boiling water overnight. Remove filters and place remaining water into 1-ounce cups. Cover with a plastic lid. This may be prepared in 24 hours advance and stored at room temperature.",
+                "reference_ru": "Белые фильтры для кофе",
+                "flavor_preparation_ru": "Погрузите стопку из 15 фильтров в 1,4 литра кипятка и оставьте на ночь. Удалите фильтры и разлейте оставшуюся воду в шоты объёмом 30 мл. Накройте пластиковой крышкой. Можно хранить 24 часа при комнатной температуре."
+              }
+            ]
+          },
+          {
+            "name": "Woody", "name_ru": "Древесный", "colour": "#744F02",
+            "definition": "The sweet, brown, musty, dark aromatic associated with a bark of a tree.",
+            "definition_ru": "Сладкий, печёный, затхлый, тёмный аромат, ассоциируемый с корой дерева.",
+            "references": [
+              {
+                "reference": "Diamond Shelled Walnuts.",
+                "aroma": 4.0,
+                "aroma_preparation": "Chop walnuts. Place 1 tablespoon of chopped walnuts in a medium snifter. Cover.",
+                "flavor": 4.0,
+                "flavor_preparation": "Serve walnuts in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Popsicle sticks",
+                "aroma": 7.5,
+                "aroma_preparation": "Break popsicle sticks to fit in sample cups of any size. Cover with a plastic lid. This may be prepared in advance.",
+                "reference_ru": "Палочки для мороженого",
+                "aroma_preparation": "Разломите палочки так, чтобы они поместились в стаканы любого размера. Накройте пластиковой крышкой. Можно приготовить заранее."
+              }
+            ]
+          },
+          {
+            "name": "Moldy/Damp", "name_ru": "Затхлый/Сырой", "colour": "#A3A36F",
+            "image":"2,3,5,6-tetrachloroanisole.png",
+            "definition": "The aromatic associated with damp, closed spaces or basements. May be musty, sharp, and slightly green.",
+            "definition_ru": "Аромат, ассоциируемый с сыростью, закрытыми помещениями или подвалами. Может быть заплесневелым, резким и слегка зелёным.",
+            "references": [
+              {
+                "reference": "2-Ethyl-1-Hexanol 10,000 ppm",
+                "aroma": 6.0,
+                "aroma_preparation": "Place 1 drop on a cotton ball and serve in a medium snifter. Cover.",
+                "reference_ru": "2-Этилгексанол 1% раствор",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              },
+              {
+                "reference": "2,3,5,6-tetrachloroanisole",
+                "aroma": 10.0,
+                "aroma_preparation": "Place 0.1 gram in a medium snifter. Cover.",
+                "reference_ru": "2,3,5,6-тетрахлоранизол",
+                "aroma_preparation_ru": "Поместите 0.1 грамма в средний снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Musty/Dusty", "name_ru": "Затхлый/Пыльный", "colour": "#C9B583",
+            "image": "2,3,4-trimethoxybenzaldehyde.png",
+            "definition": "The aromatic associated with dry, closed-air spaces such as attics and closets. May have elements of dry, musty, papery, dry soil, or grain.",
+            "definition_ru": "Аромат, ассоциируемый с сухими, закрытыми помещениями, такими как чердак или чулан. Может включать сухие, затхлые, бумажные ноты, ноты сухой почвы или зерна.",
+            "references": [
+              {
+                "reference": "Kretschmer Wheat Germ",
+                "aroma": 5.0,
+                "aroma_preparation": "Serve 1 tablespoon wheat germ in a medium snifter. Cover."
+              },
+              {
+                "reference": "2,3,4-trimethoxybenzaldehyde",
+                "aroma": 10.0,
+                "aroma_preparation": "Place 0.1 gram in a medium snifter. Cover.",
+                "reference_ru": "2,3,4-триметоксибензальдегида",
+                "aroma_preparation_ru": "Поместите 0.1 грамма в средний снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Musty/Earthy", "name_ru": "Затхлый/Земельный", "colour": "#988847",
+            "definition": "The somewhat sweet, heavy aromatic associated with decaying vegetation and damp, black soil.",
+            "definition_ru": "Несколько сладкий, тяжёлый аромат, ассоциируемый с перегнивающей растительностью, сыростью и чёрной почвой.",
+            "references": [
+              {
+                "reference": "Miracle-Gro Potting Mix soil",
+                "aroma": 9.0,
+                "aroma_preparation": "Fill a 2-ounce glass jar half full with potting soil and seal tightly with screw-on type lid. Prepare one jar for every three panelists."
+              },
+              {
+                "reference": "Le Nez du Café no. 1 “earthy”",
+                "aroma": 12.0,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "reference_ru": "Le Nez du Café no. 1 “земельный”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+
+              }
+            ]
+          },
+          {
+            "name": "Animalic", "name_ru": "Животный", "colour": "#9D977F",
+            "definition": "A combination of the aromatics associated with farm animals and live-animal habitation.",
+            "definition_ru": "Комбинация ароматов, ассоциируемая с животноводческими фермамим.",
+            "references": [
+              {
+                "reference": "Unflavored gelatin",
+                "aroma": 3.0,
+                "aroma_preparation": "Dissolve 1 bag of gelatin (¼ ounce) in 2 cups distilled water. Place ¼ cup of gelatin water in a medium snifter. Cover.",
+                "reference": "Неароматизированный желатин",
+                "aroma_preparation_ru": "Растворите 1 порцию желатина (7 грамм) в 2 стаканах дистиллированной воды. Поместите ¼ стакана желатиновой воды в средний снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Meaty/Brothy", "name_ru": "Мясной/Бульонный", "colour": "#CC7B6A",
+            "image": "campbells-beef-soup.jpg",
+            "definition": "The aromatic associated with boiled meat, soup, or stock, with weak meaty notes.",
+            "definition_ru": "Аромат, ассоциируемый с варёным мясом, супом или бульоном со слабыми мясными нотами.",
+            "references": [
+              {
+                "reference": "Campbell’s Beef Broth (canned)",
+                "flavor": 9.5,
+                "flavor_preparation": "Heat the broth and serve in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Phenolic", "name_ru": "Фенольный", "colour": "#DB646A",
+            "image": "phenylacetic-acid.svg",
+            "definition": "The aromatic described as damp, musty, and like animal hide. Reminiscent of a tack room.",
+            "definition_ru": "Аромат, описываемый как сырость, затхлость и запах норы животного. Напоминает аромат комнаты, в которой держат сбрую, упряжь, сёдла.",
+            "references": [
+              {
+                "reference": "Phenylacetic acid",
+                "aroma": 6.0,
+                "aroma_preparation": "Serve 0.15g of phenylacetic acid in a medium snifter. Cover.",
+                "reference": "Фенилуксусная кислота",
+                "aroma_preparation_ru": "Подайте 0.15 грамм фенилуксусной кислоты в среднем снифтере. Накройте."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Chemical",
+        "name_ru": "Химический",
+        "colour": "#76C0CB",
+        "children": [
+          {
+            "name": "Bitter",
+            "name_ru": "Горький",
+            "colour": "#80A89D",
+            "image": "caffeine.svg",
+            "fundamental": true,
+            "definition": "The fundamental taste factor associated with a caffeine solution.",
+            "definition_ru": "Базовый вкус, ассоциируемый с раствором кофеина.",
+            "references": [
+              {
+                "reference": "0.01% caffeine solution",
+                "flavor": 2.0,
+                "flavor_preparation": "Serve solution in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.01% раствор кофеина",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              },
+              {
+                "reference": "0.02% caffeine solution",
+                "flavor": 3.5,
+                "flavor_preparation": "Serve solution in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.02% раствор кофеина",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              },
+              {
+                "reference": "0.035% caffeine solution",
+                "flavor": 5.0,
+                "flavor_preparation": "Serve solution in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.035% раствор кофеина",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              },
+              {
+                "reference": "0.05% caffeine solution",
+                "flavor": 6.5,
+                "flavor_preparation": "Serve solution in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.05% раствор кофеина",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              }
+            ]
+          },
+          {
+            "name": "Salty",
+            "name_ru": "Солёный",
+            "colour": "#DEF2FD",
+            "fundamental": true,
+            "definition": "A fundamental taste factor of which sodium chloride is typical",
+            "definition_ru": "Базовый вкус, типичный для поваренной соли.",
+            "references": [
+              {
+                "reference": "0.15% Sodium Chloride Solution",
+                "flavor": 1.5,
+                "flavor_preparation": "Serve solution in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "0.15% раствор поваренной соли",
+                "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+              }
+            ]
+          },
+          {
+            "name": "Medicinal", "name_ru": "Медицинский", "colour": "#7A9BAE",
+            "definition": "A clean, sterile aromatic characteristic of antiseptic-like products such as Band-Aids, alcohol, and iodine.",
+            "definition_ru": "Чистый, стирильный аромат антисептических средств, таких как пластырь, спирт и йод.",
+            "references": [
+              {
+                "reference": "Iodine",
+                "aroma": 3.0,
+                "aroma_preparation": "Serve ¼ cup iodine in a medium snifter. Cover.",
+                "reference_ru": "Йод",
+                "aroma_preparation_ru": "Подайте ¼ шота (7,5 мл) в среднем снифтере. Накройте."
+              },
+              {
+                "reference": "Alcohol",
+                "aroma": 5.0,
+                "aroma_preparation": "Serve ¼ cup alcohol in a medium snifter. Cover.",
+                "reference_ru": "Спирт",
+                "aroma_preparation_ru": "Подайте ¼ шота (7,5 мл) в среднем снифтере. Накройте."
+              },
+              {
+                "reference": "Le Nez du Café no. 35 “medicinal”",
+                "aroma": 6.0,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "reference_ru": "Le Nez du Café no. 35 “медицинский”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              },
+              {
+                "reference": "Band-Aid Plastic Strips adhesive bandage",
+                "aroma": 6.0,
+                "aroma_preparation": "Place 1 bandage in a medium snifter. Cover."
+              }
+            ]
+          },
+          {
+            "name": "Petroleum", "name_ru": "Нефтяной", "colour": "#039FB8",
+            "definition": "A specific chemical aromatic associated with crude oil and its refined products, which have heavy oil characteristics",
+            "definition_ru": "Специфичный химический аромат, ассоциируемый с сырой нефтью и производными от неё продуктами. Характеризуется тяжёлыми масляными нотами",
+            "references": [
+              {
+                "reference": "Vaseline petroleum jelly",
+                "aroma": 3.0,
+                "aroma_preparation": "Place a teaspoon of jelly in a medium snifter. Cover.",
+                "reference_ru": "Вазелин",
+                "aroma_preparation_ru": "Поместите чайную ложку вазелина в средний снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Skunky", "name_ru": "Латекс", "colour": "#5E777B",
+            "icon": "skunky",
+            "definition": "A combination of aromatics associated with skunks.",
+            "definition_ru": "Комбинация ароматов, ассоциируемая со скунсом.",
+            "references": [
+              {
+                "reference": "Latex balloon",
+                "aroma": 2.5,
+                "aroma_preparation": "Place 2 balloons in a 2-ounce glass jar with screw-type lid. This may be prepared several days in advance and stored at room temperature. Prepare one jar for every three panelists.",
+                "reference_ru": "Воздушный шарик",
+                "aroma_preparation_ru": "Поместите 2 воздушных шарика в банку объёмом 60 мл с завинчивающиейся крышкой. Банку можно хранить несколько дней при комнатной температуре."
+              }
+            ]
+          },
+          {
+            "name": "Rubber", "name_ru": "Резина", "colour": "#120C0C",
+            "definition": "A dark, heavy, slightly sharp, and pungent aromatic associated with rubber.",
+            "definition_ru": "Тяжёлый, слегка резкий пикантный аромат, ассоциируемый с резиной.",
+            "references": [
+              {
+                "reference": "A&W Rubber Bands",
+                "aroma": 5.0,
+                "aroma_preparation": "Place 10 grams of rubber bands in a medium snifter. Cover."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Roasted",
+    "name_ru": "Жареный",
+    "colour": "#C94930",
+    "definition": "Dark brown impression characteristic of products cooked to a high temperature by dry heat. Does not include bitter or burnt notes.",
+    "definition_ru": "Тёмно-печёные ноты, характерные для продуктов, приготовленых при высокой температуре сухим жаром. Не включает горькие или горелые ноты.",
+    "references": [
+      {
+        "reference": "Raw blanched peanuts, lightly roasted",
+        "flavor": 2.5,
+        "flavor_preparation": "Preheat oven to 425°F. Place peanuts in a single layer on a baking sheet lined with parchment paper. Roast for 7 minutes. Peanuts will not show any color. Serve in a 1-ounce cup. Cover with a plastic lid.",
+        "reference_ru": "Неочищеный бланшированный арахис, слегка обжаренный",
+        "flavor_preparation_ru": "Разогрейте духовку до 220°С. Распределите арахис одним слоем по застеленному пекарской бумагой противню. Запекайте 7 минут. Арахис при запекании не должен поменять цвет. Подавайте в шотах объёмом 30 мл, накрытых крышкой."
+      },
+      {
+        "reference": "Raw blanched peanuts, medium-roasted",
+        "flavor": 6.5,
+        "flavor_preparation": "Preheat oven to 425°F. Place peanuts in a single layer on a baking sheet lined with parchment paper. Roast for 10 minutes or until peanuts are medium brown in color. Serve in a 1-ounce cup. Cover with a plastic lid.",
+        "reference_ru": "Неочищеный бланшированный арахис средней обжарки",
+        "flavor_preparation_ru": "Разогрейте духовку до 220°С. Распределите арахис одним слоем по застеленному пекарской бумагой противню. Запекайте 10 минут, до тех пор, пока арахис не подрумянится . Подавайте в шотах объёмом 30 мл, накрытых крышкой."
+      },
+      {
+        "reference": "Raw blanched peanuts, dark-roasted",
+        "flavor": 9.5,
+        "flavor_preparation": "Preheat oven to 425°F. Place peanuts in a single layer on a baking sheet lined with parchment paper. Roast for 15 minutes or until peanuts are dark brown in color. Serve in a 1-ounce cup. Cover with a plastic lid.",
+        "reference_ru": "Неочищеный бланшированный тёмно обжаренный арахис",
+        "flavor_preparation_ru": "Разогрейте духовку до 220°С. Распределите арахис одним слоем по застеленному пекарской бумагой противню. Запекайте 15 минут до тех пор, пока арахис не приобретёт насыщенный печёный цвет. Подавайте в шотах объёмом 30 мл, накрытых крышкой."
+      },
+      {
+        "reference": "Raw blanched peanuts, over-roasted/burnt",
+        "flavor": 15.0,
+        "flavor_preparation": "Preheat oven to 425°F. Place peanuts in a single layer on a baking sheet lined with parchment paper. Roast for 20 minutes. Peanuts will be burnt. Serve in a 1-ounce cup. Cover with a plastic lid.",
+        "reference_ru": "Неочищеный бланшированный сожжёный арахис",
+        "flavor_preparation_ru": "Разогрейте духовку до 220°С. Распределите арахис одним слоем по застеленному пекарской бумагой противню. Запекайте 20 минут, пока арахис не сгорит. Подавайте в шотах объёмом 30 мл, накрытых крышкой."
+      }
+    ],
+    "children": [
+      {
+        "name": "Pipe tobacco",
+        "name_ru": "Табак для трубки",
+        "colour": "#CAA465",
+        "definition": "The brown, sweet, slightly pungent, fruity, floral, spicy aromatic associated with cured tobacco.",
+        "definition_ru": "Печёный, сладкий, слегка пикантный, фруктовый, цветочный, пряный аромат, ассоциируемый с сушёным табаком.",
+        "references": [
+          {
+            "reference": "Carter Hall Pipe Tobacco",
+            "aroma": 6.5,
+            "aroma_preparation": "Put 1 teaspoon of tobacco in a medium snifter. Cover."
+          }
+        ]
+      },
+      {
+        "name": "Tobacco",
+        "name_ru": "Табак",
+        "colour": "#DFBD7E",
+        "definition": "The brown, slightly sweet, slightly pungent aromatic associated with cured tobacco.",
+        "definition_ru": "Печёный, слегка сладкий, слегка пикантный аромат, ассоциируемый с сушёным табаком.",
+        "references": [
+          {
+            "reference": "Le Nez du Café no. 33 “pipe tobacco”",
+            "aroma": 5.0,
+            "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+            "reference_ru": "Le Nez du Café no. 33 “табак для трубки”",
+            "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+          },
+          {
+            "reference": "Camel cigarettes (Turkish and Domestic blend)",
+            "aroma": 7.0,
+            "aroma_preparation": "Break cigarette and place 0.1 grams tobacco in a medium snifter. Cover"
+          },
+          {
+            "reference": "Cigar tobacco",
+            "aroma": 10.5,
+            "aroma_preparation": "Split cigar into a 2-ounce glass jar with screw-on type lid. Fill jars approximately 1/3 full. Prepare 1 jar for every three panelists.",
+            "reference_ru": "Сигарный табак",
+            "aroma_preparation_ru": "Разделите сигару по трём 60 мл стеклянным банкам с завинчивающиемися крышками. Наполните банки приблизительно на треть. Подготовьте по одной банке на троих участников."
+          },
+          {
+            "reference": "Unscented pipe tobacco",
+            "aroma": 10.5,
+            "aroma_preparation": "Fill a 2-ounce glass jar with screw-on type lid approximately 1/3 full with tobacco and seal tightly. Prepare 1 jar for every three panelists.",
+            "reference_ru": "Неароматизированный табак для трубок",
+            "aroma_preparation_ru": "Наполните 60 мл стеклянные банки с завинчивающиемися крышками на треть табаком и плотно закройте. Подготовьте по одной банке на троих участников."
+
+          }
+        ]
+      },
+      {
+        "name": "Burnt",
+        "name_ru": "Горелый",
+        "colour": "#BE8663",
+        "definition": "The dark brown impression of an over-cooked or over-roasted product that can be sharp, bitter, and sour.",
+        "definition_ru": "Тёмно-печёные, резкие, горькие или кислые ноты подгоревших или пережареных продуктов.",
+        "references": [
+          {
+            "reference": "Benzyl disulfide",
+            "aroma": 4.5,
+            "aroma_preparation": "Place 0.1 gram of benzyl disulfide in a medium snifter. Cover.",
+            "reference_ru": "Бензил дисульфид",
+            "aroma_preparation_ru": "Поместите 0.1 грамма бензил дисульфида в средний снифтер. Накройте."
+          },
+          {
+            "reference": "Raw peanuts, over-roasted/burnt",
+            "flavor": 7.5,
+            "flavor_preparation": "Preheat oven to 425°F. Place raw, blanched peanuts in a single layer on a baking sheet lined with parchment paper. Roast for 20 minutes. Peanuts will be burnt. Serve in a 1-ounce cup. Cover with a plastic lid.",
+            "reference_ru": "Неочищеный арахис, пережаренный/сожжёный",
+            "flavor_preparation_ru": "Разогрейте духовку до 220°С. Распределите арахис одним слоем по застеленному пекарской бумагой противню. Запекайте 20 минут, пока арахис не сгорит. Подавайте в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+          },
+          {
+            "reference": "Alf’s Natural Nutrition Red Wheat Cereal",
+            "aroma": 8.0,
+            "aroma_preparation": "Serve 1 tablespoon of cereal in a medium snifter. Cover.",
+            "flavor": 3.0,
+            "flavor_preparation": "Place 1 tablespoon of cereal in a 1-ounce cup. Cover with a plastic lid.Cereal should be tasted two at a time."
+          }
+        ],
+        "children": [
+          {
+            "name": "Acrid", "name_ru": "Едкий", "colour": "#B9A449",
+            "definition": "The sharp, pungent, bitter, acidic aromatic associated with products that are excessively roasted or browned.",
+            "definition_ru": "Резкий, пикантный, горький, кислый аромат, ассоциируемый с пережаренными или запечёными продуктами.",
+            "references": [
+              {
+                "reference": "Alf’s Natural Nutrition Red Wheat Cereal",
+                "aroma": 3.0,
+                "aroma_preparation": "Serve 2 tablespoons cereal in a medium snifter. Cover.",
+                "flavor": 3.0,
+                "flavor_preparation": "Serve 1 tablespoon cereal in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Wright’s Liquid Smoke Mesquite",
+                "aroma": 9.5,
+                "aroma_preparation": "Place 1 drop of liquid smoke on a cotton ball in a large snifter. Cover"
+              }
+            ]
+          },
+          {
+            "name": "Ashy", "name_ru": "Пепельный", "colour": "#899893",
+            "definition": "The dry, dusty, dirty, smoky aromatic associated with the residual of burnt products.",
+            "definition_ru": "Сухой, пыльный, грязный, дымный аромат, ассоциируемый с остатками сгоревшего вещества.",
+            "references": [
+              {
+                "reference": "Gerkens 10/12 Midnight Black heavily alkalized cocoa powder",
+                "aroma": 2.5,
+                "aroma_preparation": "Put ½ teaspoon of cocoa powder in a medium snifter. Cover.",
+                "flavor": 3.5,
+                "flavor_preparation": "Mix ¼ teaspoon cocoa powder with 100 milliliters water. Serve in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Benzyl disulfide",
+                "aroma": 4.0,
+                "aroma_preparation": "Place 0.1 gram of benzyl disulfide in a medium snifter. Cover.",
+                "reference_ru": "Бензил дисульфид",
+                "aroma_preparation_ru": "Поместите 0.1 грамма бензил дисульфида в средний снифтер. Накройте."
+              },
+              {
+                "reference": "Paper ashes",
+                "aroma": 4.0,
+                "aroma_preparation": "Obtain ashes from burned white paper and place in 2-ounce glass jars with screw-on type lids. Fill jars approximately 1/3 full. This may be prepared several days in advance and stored at room temperature, tightly sealed. Prepare one jar for every three panelists.",
+                "reference_ru": "Бумажный пепел",
+                "aroma_preparation_ru": "Возьмите пепел от сожжёной белой бумаги и поместите в 60 мл стеклянные банки с завинчивающиемися крышками (по одной банке на троих человек). Наполните банки приблизительно на треть. Можно хранить несколько дней при комнатной температуре в плотно закрытых ёмкостях."
+              }
+            ]
+          },
+          {
+            "name": "Smoky", "name_ru": "Дымный", "colour": "#A1743B",
+            "icon": "smoky",
+            "definition": "An acute, pungent aromatic that is a product of the combustion of wood, leaves, or a non-natural product.",
+            "definition_ru": "Резкий, пикантный аромат, получающийся в результате сгорания дерева, листьев или синтетических продуктов.",
+            "references": [
+              {
+                "reference": "Benzyl disulfide",
+                "aroma": 3.5,
+                "aroma_preparation": "Place 0.1 gram of benzyl disulfide in a medium snifter. Cover.",
+                "reference_ru": "Бензил дисульфид",
+                "aroma_preparation_ru": "Поместите 0.1 грамма бензил дисульфида в средний снифтер. Накройте."
+              },
+              {
+                "reference": "Diamond Smoked Almonds",
+                "aroma": 6.0,
+                "aroma_preparation": "Place 5 almonds in a medium snifter. Cover.",
+                "flavor": 5.0,
+                "flavor_preparation": "Place 1 tablespoon of almonds in a 3.25 ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Wood Ashes",
+                "aroma": 5.0,
+                "aroma_preparation": "Obtain ashes from burned wood (from fireplace or outdoor fire pit). Place ashes in 2-ounce glass jars with screw-on type lids. Fill jars approximately 1/3 full. This may be prepared several days in advance and stored at room temperature, tightly sealed. Prepare one jar for every three participants.",
+                "reference_ru": "Древесный пепел",
+                "aroma_preparation_ru": "Возьмите пепел от сожжёного дерева и поместите в 60 мл стеклянные банки с завинчивающиемися крышками (по одной банке на троих человек). Наполните банки приблизительно на треть. Можно хранить несколько дней при комнатной температуре под плотно закрытыми крышками."
+              }
+            ]
+          },
+          {
+            "name": "Brown, Roast", "name_ru": "Печёный", "colour": "#894810",
+            "definition": "A rich, full, round aromatic impression always characterized as some degree of darkness, generally associated with attributes such as toasted, nutty, roasted, and sweet.",
+            "definition_ru": "Богатый, полный, округлый аромат, ассоциируемый с тостами, орехами, чем-то поджареным и сладким.",
+            "references": [
+              {
+                "reference": "Bush’s Pinto Beans (canned)",
+                "aroma": 6.0,
+                "aroma_preparation": "Place 1 tablespoon in a medium snifter at room temperature. Cover.",
+                "flavor": 3.0,
+                "flavor_preparation": "Drain beans and rinse with de-ionized water. Serve in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "C&H Pure Cane Sugar, Golden Brown",
+                "aroma": 3.0,
+                "aroma_preparation": "Place 1 teaspoon of sugar in a medium snifter. Cover.",
+                "flavor": 7.0,
+                "flavor_preparation": "Place 1 teaspoon of sugar in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Cereal",
+        "name_ru": "Злаки",
+        "colour": "#DDAF61",
+        "children": [
+          {
+            "name": "Grain", "name_ru": "Зерновой", "colour": "#B7906F",
+            "icon": "grain",
+            "definition": "The light brown, dusty, musty, sweet aromatic associated with grains.",
+            "definition_ru": "Светло-печёный, пыльный, забродивший, сладкий аромат, ассоциируемый с крупами.",
+
+            "references": [
+              {
+                "reference": "Mixture of General Mills Rice Chex, General Mills Wheaties and Quaker Quick Oats cereals",
+                "aroma": 5.0,
+                "aroma_preparation": "Mix together ½ cup of each kind of cereal. Put in a blender and “pulse” blend into small particles. Place 1 tablespoon in a medium snifter. Cover. ",
+                "flavor": 8.0,
+                "flavor_preparation": "Mix together ½ cup of each kind of cereal. Put in a blender and “pulse” blend into small particles. Serve 1 teaspoon in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Malt", "name_ru": "Солод", "colour": "#EB9D5E",
+            "definition": "The light brown, dusty, musty, sweet, sour and or slightly fermented aromatic associated with grains.",
+            "definition_ru": "Светло-печёный, пыльный, забродивший, сладкий, кислый или слегка ферментированый аромат, ассоциируемый с солодом",
+            "references": [
+              {
+                "reference": "Post Grape-Nuts cereal",
+                "aroma": 3.5,
+                "aroma_preparation": "Place 1 tablespoon of cereal in a medium snifter. Cover.",
+                "flavor": 8.0,
+                "flavor_preparation": "Serve cereal in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Spices",
+    "name_ru": "Пряный",
+    "colour": "#AD213E",
+    "children": [
+      {
+        "name": "Pungent",
+        "name_ru": "Пикантный",
+        "colour": "#794652",
+        "definition": "A sharp, physically penetrating sensation in the nasal cavity.",
+        "definition_ru": "Резкое, физически проникающие чувство в носовой полости.",
+        "references": [
+          {
+            "reference": "Majestic Mountain Sage Orange Essential Oil, Brazil",
+            "aroma": 5.0,
+            "aroma_preparation": "Mix 1 drop essential oil into 1 tablespoon 3% sucrose solution. Serve in a medium snifter. Cover."
+          }
+        ]
+      },
+      {
+        "name": "Pepper",
+        "name_ru": "Перец",
+        "colour": "#CC3C42",
+        "definition": "The spicy, pungent, musty, and woody aromatic characteristic of ground black pepper.",
+        "definition_ru": "Пряный, пикантный, прокисший, древесный аромат чёрного молотого перца.",
+        "references": [
+          {
+            "reference": "McCormick Ground Black Pepper",
+            "aroma": 13.0,
+            "aroma_preparation": "Place ½ teaspoon pepper in a medium snifter. Cover."
+          }
+        ]
+      },
+      {
+        "name": "Brown spice",
+        "name_ru": "Печёные прян.",
+        "colour": "#B14D57",
+        "definition": "The sweet, brown aromatic associated with spices such as cinnamon, clove, nutmeg, and allspice",
+        "definition_ru": "Сладкий, печёный аромат, ассоциируемый с пряностями: корица, гвоздика, мускатный орех и душистый перец.",
+        "references": [
+          {
+            "reference": "Private Selection Cinnamon Sticks",
+            "aroma": 3.0,
+            "aroma_preparation": "Place 1 cinnamon stick in a 2-ounce glass jar with screw-on type lid. Prepare one per every four panelists. May be prepared 24 hours in advance and stored with tightly sealed lid."
+          },
+          {
+            "reference": "Private Selection Nutmeg (whole) and Private Selection Clove (whole)",
+            "aroma": 7.0,
+            "aroma_preparation": "Place 1 whole nutmeg and 3 clove buds in a 2-ounce glass jar with screw-on type lid. Prepare one per every four participants. May be prepared 24 hours in advance and stored with tightly sealed lid. (Note: If unable to find whole nutmeg, substitute ¼ teaspoon of ground nutmeg.)"
+          },
+          {
+            "reference": "Ground cinnamon, allspice, nutmeg, and clove mixture",
+            "aroma": 10.5,
+            "aroma_preparation": "Mix together 0.25 grams ground cinnamon, 0.25 grams ground allspice, 0.25 grams ground nutmeg, and 0.06 grams ground cloves. Serve ¼ teaspoon of spice mixture in a medium snifter. Cover.",
+            "reference_ru": "Смесь молотых корицы, душистого перца, мускатного ореха и гвоздики",
+            "aroma_preparation_ru": "Смешайте вместе 0.25 грамм молотой корицы, 0.25 грамм молотого душистого перца, 0.25 грамм молотого мускатного ореха, и 0.06 грамм молотой гвоздики. Подайте ¼ чайной ложки смеси специй в среднем снифтере. Накройте."
+          }
+        ],
+        "children": [
+          {
+            "name": "Anise", "name_ru": "Анис", "colour": "#C78935",
+            "definition": "A pungent, sweet, brown, caramelized aromatic that may contain petroleum, medicinal, and floral notes.",
+            "definition_ru": "Пикантный, сладкий, печёный, карамлизированый аромат. Может содержать нефтяные, медицинские и цветочные ноты.",
+            "references": [
+              {
+                "reference": "Tone’s Pure Anise Extract",
+                "aroma": 7.5,
+                "aroma_preparation": "Place 1 drop of anise extract on a cotton ball in a large snifter. Cover."
+              }
+            ]
+          },
+          {
+            "name": "Nutmeg", "name_ru": "Мускат", "colour": "#8C292C",
+            "definition": "A wet, brown, woody, pungent, petroleum-like, heavy aromatic with a slightly lemony impression.",
+            "definition_ru": "Влажный, печёный, древесный, пикантный, тяжёлый аромат с легким лимонным оттенком, похожий на бензин.",
+            "references": [
+              {
+                "reference": "McCormick Ground Nutmeg",
+                "aroma": 9.0,
+                "aroma_preparation": "Place ¼ teaspoon nutmeg in a covered medium snifter. Cover."
+              }
+            ]
+          },
+          {
+            "name": "Cinnamon", "name_ru": "Корица", "colour": "#E5762E",
+            "definition": "A sweet, brown, slightly woody, slightly pungent, spicy aromatic.",
+            "definition_ru": "Сладкий, печёный, слегка древесный, слегка пикантный, пряный аромат.",
+            "references": [
+              {
+                "reference": "McCormick Ground Cinnamon",
+                "aroma": 13.0,
+                "aroma_preparation": "Place ¼ teaspoon of cinnamon in a medium snifter. Cover."
+              }
+            ]
+          },
+          {
+            "name": "Clove", "name_ru": "Гвоздика", "colour": "#A16C5A",
+            "definition": "A sweet, brown, spicy, pungent, floral, citrus, medicinal, and slightly minty aromatic.",
+            "definition_ru": "Сладкий, печёный, пряный, пикантный, цветочный, цитрусовый, медицинский, слегка мятный аромат.",
+            "references": [
+              {
+                "reference": "Le Nez du Café no. 7 “clove” n.7",
+                "aroma": 6.5,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "reference_ru": "Le Nez du Café no. 7 “гвоздика”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Nutty/Cocoa",
+    "name_ru": "Ореховый/Какао",
+    "colour": "#A87B64",
+    "children": [
+      {
+        "name": "Nutty",
+        "name_ru": "Ореховый",
+        "colour": "#C78869",
+        "definition": "A slightly sweet, brown, woody, oily, musty, astringent, and bitter aromatic commonly associated with nuts, seeds, beans, and grains.",
+        "definition_ru": "Слегка сладкий, печёный, древесный, масляный, затхлый, вяжущий и горький аромат, ассоциируемый с орехами, семенами, бобами и злаками.",
+        "references": [
+          {
+            "reference": "Le Nez du Café no. 29 “roasted hazelnuts”",
+            "aroma": 7.5,
+            "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+            "reference_ru": "Le Nez du Café no. 29 “жареный фундук”",
+            "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+          },
+          {
+            "reference": "Mixture of Diamond Sliced Almonds and Diamond Shelled Walnuts",
+            "flavor": 7.5,
+            "flavor_preparation": "Puree the almonds and walnuts separately in blenders for 45 seconds on high speed. Combine equal amounts of the chopped nuts. Serve in 1-ounce cups. Cover with a plastic lid."
+          }
+        ],
+        "children": [
+          {
+            "name": "Peanuts", "name_ru": "Арахис", "colour": "#D4AD13",
+            "icon": "peanuts",
+            "definition": "A sweet, light brown, oily, somewhat musty/dusty, beany aromatic that may be slightly astringent.",
+            "definition_ru": "Сладкий, светло-печёный, маслянистый, несколько затхлый/пыльный, бобовый слегка вяжущий аромат.",
+            "references": [
+              {
+                "reference": "Raw blanched bulk peanuts, roasted",
+                "aroma": 8.5,
+                "aroma_preparation": "Preheat oven to 425°F. Place raw, blanched peanuts in a single layer on a baking sheet lined with parchment paper. Roast for 10 minutes or until peanuts are medium brown in color. Chop peanuts and serve 1 tablespoon in a medium snifter. Cover.",
+                "flavor": 7.5,
+                "flavor_preparation": "Preheat oven to 425°F. Place raw, blanched peanuts in a single layer on a baking sheet lined with parchment paper. Roast for 10 minutes or until peanuts are medium brown in color. Serve in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "Неочищеный бланшированный арахис средней обжарки",
+                "flavor_preparation_ru": "Разогрейте духовку до 220°С. Распределите арахис одним слоем по застеленному пекарской бумагой противню. Запекайте 10 минут, пока арахис не подрумянится. Подавайте в шотах объёмом 30 мл, накрытых пластиковой крышкой.",
+                "aroma_preparation_ru": "Разогрейте духовку до 220°С. Распределите арахис одним слоем по застеленному пекарской бумагой противню. Запекайте 10 минут, пока арахис не подрумянится. Нарежьте и добавьте по одной чайной ложке в снифтеры среднего размера. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Hazelnut", "name_ru": "Фундук", "colour": "#9D5433",
+            "icon": "hazelnut",
+            "definition": "A woody, brown, sweet, musty/earthy, slightly cedar aromatic. May include floral, beany, oily, astringent, and bitter flavor notes.",
+            "definition_ru": "Древесный, печёный, сладкий, затхлый/земельный, слегка кедровый аромат. Может включать цветочные, бобовые, масляные, терпкие и горькие вкусовые ноты.",
+            "references": [
+              {
+                "reference": "Le Nez du Café no. 29 “roasted hazelnuts”",
+                "aroma": 5.5,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "reference_ru": "Le Nez du Café no. 29 “жареный фундук”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              },
+              {
+                "reference": "McCormick Imitation Hazelnut Extract, in milk",
+                "flavor": 3.5,
+                "flavor_preparation": "Place ⅛ teaspoon of hazelnut extract in 1 cup of whole milk. Cover with a plastic lid."
+              },
+              {
+                "reference": "McCormick Imitation Hazelnut Extract, in milk",
+                "flavor": 6.0,
+                "flavor_preparation": "Place ¼ teaspoon of hazelnut extract in 1 cup of whole milk. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Almond", "name_ru": "Миндаль", "colour": "#C89F83",
+            "icon": "almond",
+            "definition": "A sweet, light brown, woody, and buttery aromatic with floral and fruity notes that may include rose, cherry, and apricot. It is also astringent and may be slightly smoky.",
+            "definition_ru": "Сладкий, светло-печёный, древесный, немного вяжущий, слегка дымный, сливочный аромат с цветочными и фруктовыми нотами, включающими розу, вишню и абрикос.",
+            "references": [
+              {
+                "reference": "Le Nez du Café no. 27 “roasted almonds”",
+                "aroma": 7.0,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "reference_ru": "Le Nez du Café no. 27 “жареный миндаль”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Cocoa",
+        "name_ru": "Какао",
+        "colour": "#BB764C",
+        "definition": "A brown, sweet, dusty, musty, often bitter aromatic associated with cocoa bean, powdered cocoa and chocolate bars.",
+        "definition_ru": "Печёный, сладкий, пыльный, затхлый, часто горький аромат, ассоциируемый с какао-бобами, какао-порошком и шоколадными батончиками.",
+        "references": [
+          {
+            "reference": "Hershey’s Cocoa Powder Natural Unsweetened, in water",
+            "aroma": 7.5,
+            "aroma_preparation": "Mix ¼ teaspoon of cocoa powder with 100 milliliters of water. Serve in a medium snifter. Cover.",
+            "flavor": 5.0,
+            "flavor_preparation": "Mix ¼ teaspoon of cocoa powder with 100 milliliters of water. Serve in a 1-ounce cup. Cover with a plastic lid."
+          }
+        ],
+        "children": [
+          {
+            "name": "Chocolate", "name_ru": "Шоколад", "colour": "#692A19",
+            "icon": "chocolate",
+            "definition": "A blend of cocoa, including cocoa butter and dark roast aromatics at varying intensities.",
+            "definition_ru": "Аромат какао, включающий какао масло и ноты тёмной обжарки разной интенсивности.",
+            "references": [
+              {
+                "reference": "Nestle Toll House Semi-Sweet Chocolate Morsels",
+                "aroma": 8.0,
+                "aroma_preparation": "Chop the chocolate chips and place ¼ cup in a medium snifter. Cover.",
+                "flavor": 7.5,
+                "flavor_preparation": "Place 1 teaspoon of chocolate in a 1-ounce cup. Cover with a plastic lid. During the tasting session, taste one chip per sample."
+              }
+            ]
+          },
+          {
+            "name": "Dark chocolate", "name_ru": "Тёмный шоколад", "colour": "#470603",
+            "definition": "A high-intensity blend of cocoa and cocoa butter that may include dark roast, spicy, burnt, and musty notes with increased astringency and bitterness.",
+            "definition_ru": "Интенсивный аромат какао и какао масла с повышеной вязкостью и горечью, с возможными нотами тёмной обжарки, пряностей, гари, затхлости.",
+            "references": [
+              {
+                "reference": "Lindt Excellence 90% Cocoa Supreme Dark chocolate bar",
+                "aroma": 6.0,
+                "aroma_preparation": "Chop the chocolate and put 1 teaspoon in a medium snifter. Cover.",
+                "flavor": 11.0,
+                "flavor_preparation": "Serve three 1/2-inch squares of chocolate in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Dove Promises Silky Smooth Dark Chocolate (individually wrapped bite-sized bars)",
+                "flavor": 8.5,
+                "flavor_preparation": "Serve one chocolate in snack-size Ziploc bag."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Sweet",
+    "name_ru": "Сладкий",
+    "colour": "#E65832",
+    "image": "sucrose.svg",
+    "fundamental": true,
+    "definition": "A fundamental taste factor of which sucrose is typical.",
+    "definition_ru": "Базовый вкус, типичный для сахара.",
+    "references": [
+      {
+        "reference": "1.0% sucrose solution",
+        "flavor": 1.0,
+        "flavor_preparation": "Serve juice in a 1-ounce cup. Cover with a plastic lid.",
+        "reference_ru": "1.0% раствор сахарозы",
+        "flavor_preparation_ru": "Подайте раствор в шотах объёмом 30 мл, накрытых пластиковой крышкой."
+      }
+    ],
+    "children": [
+      {
+        "name": "Brown sugar",
+        "name_ru": "Коричневый сахар",
+        "colour": "#D45A59",
+        "definition": "A rich, full, round, sweet aromatic impression characterized by some degree of darkness.",
+        "definition_ru": "Богатый, полный, округлый, сладкий, немного тёмный аромат.",
+        "references": [
+          {
+            "reference": "C&H Pure Cane Sugar, Golden Brown",
+            "aroma": 6.0,
+            "aroma_preparation": "Place 1 teaspoon brown sugar in a medium snifter. Cover.",
+            "flavor": 5.0,
+            "flavor_preparation": "Mix 2 teaspoons sugar in 1 cup water. Serve in a 1-ounce cup. Cover with a plastic lid."
+          }
+        ],
+        "children": [
+          {
+            "name": "Molasses", "name_ru": "Меласса", "colour": "#310C0F",
+            "definition": "Dark, caramelized top notes that may include slightly sharp, acrid, and sulfur notes characteristic of molasses.",
+            "definition_ru": "Тёмный, карамелизированный аромат, который может включать слегка резкие, серные ноты, характерные для мелассы.",
+            "references": [
+              {
+                "reference": "Grandma’s Original Molasses, unsulphured",
+                "aroma": 6.5,
+                "aroma_preparation": "Mix 2 teaspoons of molasses in 250 milliliters of water. Serve ¼ cup in a medium snifter. Cover.",
+                "flavor": 6.5,
+                "flavor_preparation": "Mix 2 teaspoons of molasses in 250 milliliters of water. Serve 1 teaspoon molasses in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Mapple syrup", "name_ru": "Кленовый сироп", "colour": "#AE341F",
+            "definition": "A woody, sweet, caramelized, brown, slightly green aromatic associated with maple syrup.",
+            "definition_ru": "Древесный, сладкий, карамелизированый, печёный, слегка зелёный аромат, ассоциируемый с кленовым сиропом.",
+            "references": [
+              {
+                "reference": "Le Nez du Café no. 24 “maple syrup”",
+                "aroma": 7.0,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "reference_ru": "Le Nez du Café no. 24 “кленовый сироп”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              },
+              {
+                "reference": "Maple Grove Farms Pure Maple Syrup Medium Amber",
+                "flavor": 5.0,
+                "flavor_preparation": "Serve 1 teaspoon maple syrup in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Caramelized", "name_ru": "Карамель", "colour": "#D78823",
+            "definition": "A round, full-bodied, medium brown, sweet aromatic associated with cooked sugars and other carbohydrates. Does not include burnt or scorched notes.",
+            "definition_ru": "Округлый, полнотелый, средне печёный, сладкий аромат, ассоциируемый с запечёным сахаром. Не включает горелые или пригоревшие ноты.",
+            "references": [
+              {
+                "reference": "Le Nez du Café no. 25 “caramel”",
+                "aroma": 8.0,
+                "aroma_preparation": "Place 1 drop of essence on a cotton ball in a large snifter. Cover.",
+                "reference_ru": "Le Nez du Café no. 25 “карамель”",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+              },
+              {
+                "reference": "C&H Pure Cane Sugar, Golden Brown",
+                "flavor": 2.5,
+                "flavor_preparation": "Place 2 teaspoons sugar in 1 cup water. Serve 1 teaspoon in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "C&H Pure Cane Sugar, Golden Brown",
+                "flavor": 4.5,
+                "flavor_preparation": "Make 60% solution by dissolving 60 grams brown sugar in 1 liter water. Serve 1 teaspoon in a 1-ounce cup. Cover with a plastic lid."
+              },
+              {
+                "reference": "Caramelized white table cane sugar",
+                "flavor": 7.5,
+                "flavor_preparation": "Place 1 cup white table sugar in a heavy saucepan. Cook over low-tomedium heat, stirring constantly with a wooden spoon, until sugar is melted. When it has turned light amber in color, remove from heat and pour onto wax paper. Be very careful—melted sugar is VERY HOT. Let harden. Break cooled, solidified sugar into pieces and store in a labeled airtight container. Serve a few small pieces in a 1-ounce cup. Cover with a plastic lid.",
+                "reference_ru": "Карамелизированый белый столовый сахар",
+                "flavor_preparation": "Поместите 1 стакан белого столового сахара в тяжёлую сковороду. Готовьте на медленном огне, постоянно помешивая деревянной ложкой, до тех пор, пока сахар не расплавится. Когда он станет светло-янтарного цвета, уберите с огня и вылейте на пекарскую бумагу. Будьте осторожны, расплавленный сахар очень горячий. Дайте сахару затвердеть. Разбейте застывший сахар на куски и храните в закрытой ёмкости. Подавайте несколько маленьких кусочков в шотах, накрытых пластиковой крышкой."
+              }
+            ]
+          },
+          {
+            "name": "Honey", "name_ru": "Мёд", "colour": "#DA5C1F",
+            "icon": "honey",
+            "definition": "Sweet, light brown, slightly spicy aromatic associated with honey.",
+            "definition_ru": "Сладкий, светло-печёный, слегка пряный аромат, ассоциируемый с мёдом.",
+            "references": [
+              {
+                "reference": "Busy Bee Pure Clover Honey",
+                "aroma": 6.0,
+                "aroma_preparation": "Dissolve 1 tablespoon honey in 250 milliliters of hot water. Serve ¼ cup in a medium snifter. Cover.",
+                "flavor": 6.5,
+                "flavor_preparation": "Dissolve 1 tablespoon honey in 250 milliliters of hot water. Serve in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Vanilla",
+        "name_ru": "Ваниль",
+        "colour": "#F89A80",
+        "icon": "vanilla",
+        "definition": "A woody, slightly chemical aromatic associated with vanilla bean, which may include brown, beany, floral, and spicy notes.",
+        "definition_ru": "Древесный, слегка синтетический аромат, ассоциируемый с ванильными стручками. Может включать печёные, бобовые, цветочные и пряные ноты.",
+        "references": [
+          {
+            "reference": "Le Nez du Café no. 10 “vanilla“",
+            "aroma": 2.5,
+            "aroma_preparation": "Place 2 drops of essence on a cotton ball in a large snifter. Cover.",
+            "reference_ru": "Le Nez du Café no. 10 “ваниль“",
+            "aroma_preparation_ru": "Поместите ватный диск с 2 каплями эссенции в большой снифтер. Накройте."
+          },
+          {
+            "reference": "Spice Islands Bourbon Vanilla Bean",
+            "aroma": 5.5,
+            "aroma_preparation": "Place 0.5 gram chopped vanilla beans in a medium snifter. Cover."
+          },
+          {
+            "reference": "McCormick Pure Vanilla Extract, in whole milk",
+            "flavor": 3.0,
+            "flavor_preparation": "Stir 1/8 teaspoon of vanilla extract into ½ cup of whole milk. Serve in a 1-ounce cup. Cover with a plastic lid."
+          }
+        ]
+      },
+      {
+        "name": "Vanillin",
+        "name_ru": "Ванилин",
+        "colour": "#F37674",
+        "image": "vanilin.svg",
+        "icon": "vanillin",
+        "definition": "An extremely sweet, non-natural aromatic associated with vanilla, cotton candy, and marshmallows.",
+        "definition_ru": "Очень сладкий, неестественный аромат, ассоциируемый с ванилью, сладкой ватой и маршмеллоу.",
+        "references": [
+          {
+            "reference": "Fisher Scientific Vanillin",
+            "aroma": 6.0,
+            "aroma_preparation": "Mix 2 grams vanillin powder into 250 milliliters of water. Place in a large snifter. Cover."
+          }
+        ]
+      },
+      {
+        "name": "Overall sweet",
+        "name_ru": "В целом сладкий",
+        "colour": "#E75B68",
+        "definition": "The perception of a combination of sweet taste and aromatics.",
+        "definition_ru": "Комбинация сладкого вкуса и аромата.",
+        "references": [
+          {
+            "reference": "Post Shredded Wheat",
+            "flavor": 1.5,
+            "flavor_preparation": "Serve 2 tablespoons in a 3.25-ounce cup. Cover with a plastic lid."
+          },
+          {
+            "reference": "General Mills Wheaties",
+            "flavor": 3.0,
+            "flavor_preparation": "Serve 2 tablespoons in a 3.25-ounce cup. Cover with a plastic lid."
+          },
+          {
+            "reference": "Nabisco Lorna Doone Cookies",
+            "flavor": 5.0,
+            "flavor_preparation": "Serve 2 cookies in a 3.25-ounce cup. Cover with a plastic lid."
+          }
+        ]
+      },
+      {
+        "name": "Sweet Aromatics",
+        "name_ru": "Сладкий запах",
+        "colour": "#D0545F",
+        "definition": "An aromatic associated with the impression of a sweet substance.",
+        "definition_ru": "Аромат, ассоциируемый со сладкими веществами.",
+        "references": [
+          {
+            "reference": "Fisher Scientific Vanillin",
+            "aroma": 5.0,
+            "aroma_preparation": "Mix 0.5 grams of vanillin into 250 milliliters of water in a large snifter. Cover."
+          },
+          {
+            "reference": "Fisher Scientific Vanillin",
+            "aroma": 7.0,
+            "aroma_preparation": "Mix 2 grams of vanillin into 250 milliliters of water in a large snifter. Cover."
+          },
+          {
+            "reference": "Nabisco Lorna Doone cookies",
+            "aroma": 5.0,
+            "aroma_preparation": "Serve 2 cookies in a 3.25-ounce cup. Cover with a plastic lid."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Floral",
+    "name_ru": "Цветочный",
+    "colour": "#DA0D68",
+    "children": [
+      {
+        "name": "Black Tea",
+        "name_ru": "Чёрный чай",
+        "colour": "#975E6D",
+        "definition": "A somewhat brown, musty, dried plant and dried bark aromatic associated with the oxidization of tea leaves.",
+        "definition_ru": "Несколько печёный, затхлый аромат сухих растений и сухой коры, ассоциируемый с окисленными чайными листьями.",
+        "references": [
+          {
+            "reference": "Lipton Black Tea",
+            "aroma": 8.0,
+            "aroma_preparation": "Cut open 1 tea bag. Pour the tea leaves into medium snifters. Place 1 teaspoon of hot water over leaves immediately before serving.",
+            "flavor": 7.0,
+            "flavor_preparation": "Place 1 tea bag in 1 cup of boiling water. Brew for 5 minutes. Let cool. Serve brewed tea in a 1-ounce cup. Cover with a plastic lid."
+          }
+        ]
+      },
+      {
+        "name": "Floral",
+        "name_ru": "Цветочный",
+        "colour": "#E0719C",
+        "definition": "A sweet, light, slightly fragrant aromatic associated with fresh flowers.",
+        "definition_ru": "Сладкий, светлый, лёгкий и нежный аромат, ассоциируемый с цветами.",
+        "references": [
+          {
+            "reference": "Welch’s 100% White Grape juice",
+            "aroma": 6.0,
+            "aroma_preparation": "Mix 1 part water and 1 part juice. Place ¼ cup of mixture in a medium snifter. Cover.",
+            "flavor": 5.0,
+            "flavor_preparation": "Mix 1 part water and 1 part juice. Serve mixure in a 1-ounce cup. Cover with a plastic lid."
+          },
+          {
+            "reference": "Carnation essence oil",
+            "aroma": 7.5,
+            "aroma_preparation": "Place 1 drop of Carnation essence oil on a cotton ball in a large snifter. Cover.",
+            "reference_ru": "Эфирное масло гвоздики",
+            "aroma_preparation_ru": "Поместите ватный диск с 1 каплей масла в большой снифтер. Накройте."
+          },
+          {
+            "reference": "Le Nez du Café n.12 “coffee blossom”",
+            "aroma": 8.0,
+            "aroma_preparation": "Place 1 drop of Le Nez du Café essence on a cotton ball in a large snifter. Cover.",
+            "reference_ru": "Le Nez du Café n.12 “кофейный цветок”",
+            "aroma_preparation_ru": "Поместите ватный диск с 1 каплей эссенции в большой снифтер. Накройте."
+          }
+        ],
+        "children": [
+          {
+            "name": "Chamomile", "name_ru": "Ромашка", "colour": "#F99E1B",
+            "icon": "chamomile",
+            "definition": "The sweet, slightly floral/fruity, somewhat woody green associated with chamomile.",
+            "definition_ru": "Сладкий, слегка фруктовый/цветочный, несколько древесный зелёный аромат, ассоциируемый с ромашкой.",
+            "references": [
+              {
+                "reference": "Celestial Seasonings Chamomile Tea",
+                "aroma": 5.0,
+                "aroma_preparation": "Place 1 tea bag in 1 cup of boiling water. Brew for 5 minutes. Let cool. Serve ¼ cup of the brewed tea in a medium snifter. Cover.",
+                "flavor": 5.0,
+                "flavor_preparation": "Place 1 tea bag in 1 cup of boiling water. Brew for 5 minutes. Let cool. Serve brewed tea in a 1-ounce cup. Cover with a plastic lid."
+              }
+            ]
+          },
+          {
+            "name": "Rose", "name_ru": "Роза", "colour": "#EF5A78",
+            "icon": "rose",
+            "definition": "A sweet, soft, slightly musty/dusty floral fragrance associated with fresh or dried roses.",
+            "definition_ru": "Сладкий, мягкий, слегка затхлый/пыльный цветочный аромат, ассоциируемый со свежими или сушёным розами.",
+            "references": [
+              {
+                "reference": "Rose water",
+                "aroma": 5.0,
+                "aroma_preparation": "Place 2 drops of rose water on a cotton ball in a medium snifter. Cover.",
+                "reference": "Розовая вода",
+                "aroma_preparation_ru": "Поместите ватный диск с 2 каплями розовой воды в большой снифтер. Накройте."
+              }
+            ]
+          },
+          {
+            "name": "Jasmine",
+            "name_ru": "Жасмин",
+            "colour": "#F7F1BD",
+            "definition": "An intense, slightly pungent, sweet, floral aromatic with underlying green, musty/dusty notes.",
+            "definition_ru": "Интенсивный, слегка пикантный, сладкий, цветочный аромат с зелёными, затхлыми/пыльными нотами.",
+            "references": [
+              {
+                "reference": "Jasmine extract",
+                "aroma": 8.5,
+                "aroma_preparation": "Place 1 drop of jasmine extract on a cotton ball in a medium snifter. Cover.",
+                "reference_ru": "Экстракт жасмина",
+                "aroma_preparation_ru": "Поместите ватный диск с 1 каплей экстракта в большой снифтер. Накройте."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+}
