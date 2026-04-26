@@ -8,9 +8,9 @@ export {
   formatWeight,
   formatVolume,
   formatTemperature,
-} from './conversion.ts';
+} from './conversion';
 
-export { computeBrewRatio, computeFlowRate, computeExtractionYield } from './metrics.ts';
-export { validateGrindDateNotBeforeRoastDate, validateBrewMethodCompatibility, validateSoftWarnings } from './validation.ts';
-export { formatDate, isDateBefore } from './date.ts';
-export { generateSlug, ensureUniqueSlug } from './slug.ts';
+export { computeBrewRatio, computeFlowRate, computeExtractionYield } from './metrics';
+export { validateGrindDateNotBeforeRoastDate, validateBrewMethodCompatibility, validateSoftWarnings } from './validation';
+export { formatDate, isDateBefore } from './date';
+export { generateSlug, ensureUniqueSlug } from './slug';

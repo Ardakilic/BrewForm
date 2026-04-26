@@ -48,6 +48,35 @@ export const tasteApi = {
   flat: () => api.get<Record<string, unknown>[]>('/taste-notes/flat'),
 };
 
+export const setupApi = {
+  list: () => api.get<Record<string, unknown>[]>('/setups'),
+  create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/setups', data),
+  get: (id: string) => api.get<Record<string, unknown>>(`/setups/${id}`),
+  update: (id: string, data: Record<string, unknown>) => api.patch<Record<string, unknown>>(`/setups/${id}`, data),
+  delete: (id: string) => api.delete<{ message: string }>(`/setups/${id}`),
+};
+
+export const beanApi = {
+  list: () => api.get<Record<string, unknown>[]>('/beans'),
+  create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/beans', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch<Record<string, unknown>>(`/beans/${id}`, data),
+  delete: (id: string) => api.delete<{ message: string }>(`/beans/${id}`),
+};
+
+export const equipmentApi = {
+  list: () => api.get<Record<string, unknown>[]>('/equipment'),
+  create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/equipment', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch<Record<string, unknown>>(`/equipment/${id}`, data),
+  delete: (id: string) => api.delete<{ message: string }>(`/equipment/${id}`),
+};
+
+export const followApi = {
+  follow: (userId: string) => api.post<Record<string, unknown>>(`/follow/${userId}`, {}),
+  unfollow: (userId: string) => api.delete(`/follow/${userId}`),
+  followers: (userId: string) => api.get<Record<string, unknown>>(`/follow/${userId}/followers`),
+  following: (userId: string) => api.get<Record<string, unknown>>(`/follow/${userId}/following`),
+};
+
 interface AuthUser {
   id: string;
   email: string;

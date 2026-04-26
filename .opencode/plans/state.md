@@ -1,6 +1,6 @@
 # BrewForm Implementation State
 
-## Current Phase: 9 (Frontend Features) — NEXT
+## Current Phase: 10 (Testing) — NEXT
 
 ## Phase Progress
 
@@ -14,7 +14,8 @@
 | 6 | Backend Domain Modules (14+) | ✅ Completed | 15 modules with model/service/controller pattern |
 | 7 | Admin Module | ✅ Completed | Admin CRUD, audit log, analytics, content moderation |
 | 8 | Frontend Foundation | ✅ Completed | Theme, API client, auth context, layout, pages |
-| 9 | Frontend Features | 🔵 Ready | [plan](phase9-frontend-features.md) |
+| 9 | Frontend Features | ✅ Completed | All pages, components, admin panel, routes |
+| 10 | Testing | 🔵 Ready | [plan](phase10-testing.md) |
 | 10 | Testing | ⬜ Pending | [plan](phase10-testing.md) |
 | 11 | CI/CD & Deployment | ⬜ Pending | [plan](phase11-cicd.md) |
 | 12 | Documentation | ⬜ Pending | [plan](phase12-documentation.md) |
@@ -327,3 +328,37 @@
 - **Deno lint `jsx-button-has-type` rule**: All `<button>` elements must have an explicit `type` attribute (`button`, `submit`, or `reset`).
 - **React Router v7**: Import from `react-router` (not `react-router-dom`). Use `createBrowserRouter` + `RouterProvider` for data routing. All imports are from `react-router`.
 - **Frontend architecture**: ThemeProvider → I18nProvider → AuthProvider nesting order. Theme must be outermost so it applies before React hydrates (via `document.documentElement.className`).
+
+## Phase 9 — Completed
+
+- [x] Auth guard component: `RequireAuth` with `requireAdmin` prop
+- [x] SEO components: `SEOHead` (meta tags) and `RecipeJsonLd` (structured data per gap M4)
+- [x] Error pages: `NotFoundPage`, `ServerErrorPage`, `ForbiddenPage` as composable `ErrorPage`
+- [x] Taste note autocomplete: `TasteAutocomplete` with 3-char debounce, hierarchy display, removable chips
+- [x] Recipe pages: `RecipeListPage`, `RecipeDetailPage`, `RecipeCreatePage`, `RecipeEditPage`, `RecipeComparePage`, `RecipePrintViewPage`, `RecipeFocusModePage`
+- [x] Social components: `LikeButton`, `FavouriteButton`, `CommentSection`, `FollowButton`
+- [x] Photo upload: `PhotoUpload` — drag & drop, validation, preview
+- [x] QR code: `RecipeQRCode` — PNG/SVG download
+- [x] Print/focus toggle buttons: `PrintButton`, `FocusModeButton`
+- [x] User profile: `UserProfilePage` — tabs, follow button, badges
+- [x] Onboarding wizard: `OnboardingWizard` — 5 steps, skippable
+- [x] Settings page: `SettingsPage` — units, theme, locale, notifications, danger zone
+- [x] Search page: `SearchPage` — filter sidebar, URL params
+- [x] Setup/Bean/Equipment list pages — CRUD
+- [x] Admin panel: `AdminLayout`, `AdminDashboard`, `AdminUsersPage`, `AdminRecipesPage`, `AdminEquipmentPage`, `AdminVendorsPage`, `AdminTasteNotesPage`, `AdminCompatibilityPage`, `AdminBadgesPage`, `AdminAuditLogPage`, `AdminCachePage`
+- [x] Legal pages: `PrivacyPage`, `TermsPage`
+- [x] Taste notes browse page: `TasteNotesPage`
+- [x] QR "not available" route (gap M3), JSON-LD structured data (gap M4)
+- [x] Updated `router.tsx` with all routes including admin
+- [x] Print CSS with `@media print` and focus mode CSS
+- [x] Updated `api/index.ts` with setup, bean, equipment, follow APIs
+- [x] Updated shared types barrel to export `Visibility`, `BrewMethod`, `DrinkType`, `EmojiTag`
+- [x] Fixed shared barrel files (removed `.ts` extensions for tsc compatibility)
+- [x] `tsc --noEmit` passes, `vite build` passes
+
+## Key Decisions (Phase 9 additions)
+
+- **`any` type for API responses**: Frontend uses `any` for API response data, avoiding complex front/backend type sync
+- **`as unknown as any[]`**: Shared constants use `as const` making them readonly, requiring double cast for map iterations
+- **React 19 `useRef`**: Requires initial value parameter (`null`)
+- **Admin routes**: Protected by `RequireAuth requireAdmin`, separate `AdminLayout` with sidebar

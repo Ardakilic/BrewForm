@@ -212,3 +212,9 @@ See `/Users/arda/projects/BrewForm/.opencode/plans/state.md` for the full and al
 - **Deno lint `jsx-button-has-type` rule**: All `<button>` elements must have an explicit `type` attribute (`button`, `submit`, or `reset`).
 - **React Router v7**: Import from `react-router` (not `react-router-dom`). Use `createBrowserRouter` + `RouterProvider` for data routing.
 - **Provider nesting order**: ThemeProvider → I18nProvider → AuthProvider. Theme must be outermost so it applies `document.documentElement.className` before React hydrates.
+- **React 19 `useRef` requires initial value**: `useRef<Type>()` must have an argument like `useRef<Type | null>(null)`. React 19 enforces this.
+- **Shared `as const` arrays need double cast for TSX mapping**: Use `CONST as unknown as any[]` when mapping over `as const` arrays in JSX. Direct `as any[]` fails because readonly arrays don't overlap with mutable `any[]`.
+- **Shared package barrel files must not use `.ts` extensions**: When `tsc` resolves through `package.json` exports, it follows into the barrel file and sees `.ts` extensions on re-export paths, causing `TS5097`. Remove `.ts` from all `from './xxx.ts'` paths in barrel files.
+- **Shared type exports must include all used types**: When frontend code imports `BrewMethod`, `DrinkType`, `Visibility` etc. from `@brewform/shared/types`, they must be explicitly exported from the barrel file. A missing export causes `TS2305`.
+- **Frontend API responses use `any`**: Frontend pages use `any` type for API response data instead of strict interfaces, since the backend already enforces types. This avoids frontend/backend type synchronization issues.
+- **Admin routes use separate layout**: Admin pages use `<AdminLayout>` with sidebar, mounted at `/admin` path with `<RequireAuth requireAdmin>`. Uses `<Outlet>` for nested routes.

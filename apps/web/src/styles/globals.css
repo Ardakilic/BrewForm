@@ -135,4 +135,45 @@
     background-color: var(--accent-primary);
     color: var(--bg-primary);
   }
+
+  .focus-mode header,
+  .focus-mode footer,
+  .focus-mode nav,
+  .focus-mode .social-section,
+  .focus-mode .comments-section {
+    display: none !important;
+  }
+
+  .focus-mode main {
+    max-width: 42rem;
+    margin: 0 auto;
+    font-size: 1.125rem;
+    line-height: 1.8;
+  }
+}
+
+@media print {
+  header, footer, nav, .social-section, .comments-section, .btn-primary, .btn-secondary,
+  .no-print, button[type="button"] {
+    display: none !important;
+  }
+
+  .print-container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  .card {
+    border: 1px solid #ccc !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
 }
