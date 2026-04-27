@@ -1,6 +1,6 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { generateSlug, ensureUniqueSlug } from './slug.ts';
+import { ensureUniqueSlug, generateSlug } from './slug.ts';
 
 describe('Slug Utilities', () => {
   describe('generateSlug', () => {

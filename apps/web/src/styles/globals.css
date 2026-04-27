@@ -153,8 +153,15 @@
 }
 
 @media print {
-  header, footer, nav, .social-section, .comments-section, .btn-primary, .btn-secondary,
-  .no-print, button[type="button"] {
+  header,
+  footer,
+  nav,
+  .social-section,
+  .comments-section,
+  .btn-primary,
+  .btn-secondary,
+  .no-print,
+  button[type='button'] {
     display: none !important;
   }
 

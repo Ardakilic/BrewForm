@@ -1,6 +1,12 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { AuthRegisterSchema, AuthLoginSchema, AuthRefreshSchema, PasswordResetSchema, PasswordResetConfirmSchema } from './auth.ts';
+import {
+  AuthLoginSchema,
+  AuthRefreshSchema,
+  AuthRegisterSchema,
+  PasswordResetConfirmSchema,
+  PasswordResetSchema,
+} from './auth.ts';
 
 describe('AuthRegisterSchema', () => {
   it('should validate a valid registration', () => {

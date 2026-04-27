@@ -19,8 +19,14 @@ export async function listUsers(page: number, perPage: number, query?: string) {
       skip: (page - 1) * perPage,
       take: perPage,
       select: {
-        id: true, email: true, username: true, displayName: true,
-        avatarUrl: true, isAdmin: true, isBanned: true, createdAt: true,
+        id: true,
+        email: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        isAdmin: true,
+        isBanned: true,
+        createdAt: true,
       },
     }),
     prisma.user.count({ where }),
@@ -32,9 +38,17 @@ export async function getUserById(id: string) {
   return prisma.user.findFirst({
     where: { id, deletedAt: null },
     select: {
-      id: true, email: true, username: true, displayName: true,
-      avatarUrl: true, bio: true, isAdmin: true, isBanned: true,
-      onboardingCompleted: true, createdAt: true, updatedAt: true,
+      id: true,
+      email: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+      bio: true,
+      isAdmin: true,
+      isBanned: true,
+      onboardingCompleted: true,
+      createdAt: true,
+      updatedAt: true,
     },
   });
 }
@@ -127,7 +141,9 @@ export async function listEquipment(page: number, perPage: number) {
   return { equipment, total };
 }
 
-export async function createEquipment(data: { name: string; type: string; brand?: string; model?: string; description?: string }) {
+export async function createEquipment(
+  data: { name: string; type: string; brand?: string; model?: string; description?: string },
+) {
   return prisma.equipment.create({ data: data as any });
 }
 
@@ -168,14 +184,18 @@ export async function deleteVendor(id: string) {
 // --- Brew Method Compatibility Rules ---
 
 export async function listCompatibilityRules() {
-  return prisma.brewMethodEquipmentRule.findMany({ orderBy: [{ brewMethod: 'asc' }, { equipmentType: 'asc' }] });
+  return prisma.brewMethodEquipmentRule.findMany({
+    orderBy: [{ brewMethod: 'asc' }, { equipmentType: 'asc' }],
+  });
 }
 
 export async function updateCompatibilityRule(id: string, compatible: boolean) {
   return prisma.brewMethodEquipmentRule.update({ where: { id }, data: { compatible } });
 }
 
-export async function createCompatibilityRule(data: { brewMethod: string; equipmentType: string; compatible: boolean }) {
+export async function createCompatibilityRule(
+  data: { brewMethod: string; equipmentType: string; compatible: boolean },
+) {
   return prisma.brewMethodEquipmentRule.create({ data: data as any });
 }
 
@@ -185,7 +205,12 @@ export async function deleteCompatibilityRule(id: string) {
 
 // --- Reports (admin view) ---
 
-export async function listReports(page: number, perPage: number, status?: string, entityType?: string) {
+export async function listReports(
+  page: number,
+  perPage: number,
+  status?: string,
+  entityType?: string,
+) {
   const where: any = {};
   if (status) where.status = status;
   if (entityType) where.entityType = entityType;
@@ -218,7 +243,13 @@ export async function dismissReport(id: string, resolvedBy: string) {
 
 // --- Audit Logs ---
 
-export async function createAuditLog(adminId: string, action: string, entity: string, entityId?: string, details?: string) {
+export async function createAuditLog(
+  adminId: string,
+  action: string,
+  entity: string,
+  entityId?: string,
+  details?: string,
+) {
   return prisma.auditLog.create({
     data: { adminId, action, entity, entityId, details },
   });
@@ -308,7 +339,13 @@ export async function getTopRecipes(limit: number) {
   return prisma.recipe.findMany({
     where: { deletedAt: null, visibility: 'public' },
     select: {
-      id: true, slug: true, title: true, likeCount: true, commentCount: true, forkCount: true, createdAt: true,
+      id: true,
+      slug: true,
+      title: true,
+      likeCount: true,
+      commentCount: true,
+      forkCount: true,
+      createdAt: true,
       author: { select: { id: true, username: true, displayName: true } },
     },
     orderBy: { likeCount: 'desc' },
@@ -320,7 +357,10 @@ export async function getTopUsers(limit: number) {
   return prisma.user.findMany({
     where: { deletedAt: null },
     select: {
-      id: true, username: true, displayName: true, avatarUrl: true,
+      id: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
       _count: { select: { recipes: { where: { deletedAt: null } } } },
     },
     orderBy: { recipes: { _count: 'desc' } },

@@ -48,7 +48,13 @@ export async function findBySlug(slug: string) {
   } as any);
 }
 
-export async function findMany(where: any, page: number, perPage: number, sortBy: string = 'createdAt', sortOrder: string = 'desc') {
+export async function findMany(
+  where: any,
+  page: number,
+  perPage: number,
+  sortBy: string = 'createdAt',
+  sortOrder: string = 'desc',
+) {
   const [recipes, total] = await Promise.all([
     prisma.recipe.findMany({
       where: { ...where, deletedAt: null },
@@ -191,8 +197,14 @@ export async function toggleFeature(id: string) {
 }
 
 export async function getFeed(authorIds: string[], page: number, perPage: number) {
-  return findMany({
-    authorId: { in: authorIds },
-    visibility: 'public',
-  }, page, perPage, 'createdAt', 'desc');
+  return findMany(
+    {
+      authorId: { in: authorIds },
+      visibility: 'public',
+    },
+    page,
+    perPage,
+    'createdAt',
+    'desc',
+  );
 }

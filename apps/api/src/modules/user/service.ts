@@ -18,7 +18,10 @@ export async function getPublicProfile(username: string) {
   return { ...safe, ...stats };
 }
 
-export async function updateProfile(userId: string, data: { displayName?: string; bio?: string; avatarUrl?: string }) {
+export async function updateProfile(
+  userId: string,
+  data: { displayName?: string; bio?: string; avatarUrl?: string },
+) {
   const user = await model.updateProfile(userId, data);
   // deno-lint-ignore no-explicit-any
   const { passwordHash: _passwordHash, ...safe } = user as any;

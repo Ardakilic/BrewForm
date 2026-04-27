@@ -171,7 +171,7 @@ See `/Users/arda/projects/BrewForm/.opencode/plans/state.md` for the full and al
 2. **Read the phase plan file** for that phase
 3. **Read `gap-analysis.md`** and apply the fixes for that phase
 4. **Implement** the phase, creating all specified files
-5. **Verify** with `make check` (or `docker compose run --rm app deno check apps/api/src/main.ts`)
+5. **Verify** with `make check` (or `docker compose run --rm app deno check --unstable-sloppy-imports apps/api/src/main.ts`)
 6. **Update `state.md`** marking the phase as completed and noting the next phase
 7. **Continue** to the next phase or report completion
 8. **Self-improve this prompt** — After completing each phase, re-read this file (`/Users/arda/projects/BrewForm/.opencode/plans/implementation-master-prompt.md`) and update it with any new insights, gotchas, or corrections discovered during implementation. This makes the prompt progressively more reliable for future sessions. Examples of improvements:
@@ -225,3 +225,9 @@ See `/Users/arda/projects/BrewForm/.opencode/plans/state.md` for the full and al
 - **`@prisma/client` import fails in test context**: Some Deno test files can't import `@prisma/client` directly. Middleware tests that reference Prisma error classes should test logic patterns rather than actually importing Prisma.
 - **Deno test `deno.json` config**: The `test.include` field must list explicit paths like `["apps/api/src/", "packages/shared/src/"]` — not `["src/"]` which only matches the root src directory.
 - **Test Makefile commands**: `make test` runs full suite. `make test-api` runs API tests only. `make test-shared` runs shared package tests. `make test-specific filter=path/to/test.ts` runs a single test file.
+- **`deno check` requires `--unstable-sloppy-imports`**: Same flag as test runner. Without it, `deno check` fails with 35 TS2307 errors about missing `.ts` extensions in barrel file re-exports. The Makefile `check` command and CI workflows now include this flag.
+- **`deno.json` lint/fmt include paths must cover actual directories**: The old `include: ["src/"]` only matched a non-existent root `src/` directory, effectively linting nothing. Must use `["apps/", "packages/"]` to cover the monorepo source. Exclude patterns should include `["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/"]`.
+- **Lint rule exclusions for npm-based Deno monorepo**: `no-import-prefix` (node: imports), `no-unversioned-import` (npm specifiers from node_modules), `no-explicit-any` (Prisma model pattern), `require-await` (service interface), `no-empty` (intentional empty catch blocks) should be excluded in `deno.json` lint rules. These are false positives or accepted patterns in an npm-based Deno monorepo.
+- **`packageManager` field required by Turborepo**: The root `package.json` must have `"packageManager": "npm@10.9.7"` for Turborepo to resolve workspaces. Without it, `npx turbo run build` fails with "Could not resolve workspaces" and "Missing `packageManager` field".
+- **GitHub Pages SPA routing**: Uses `404.html` redirect trick with `sessionStorage` to preserve the original URL, then restores it in `index.html` via `history.replaceState`. Without this, direct URL access to SPA routes returns 404.
+- **`VITE_API_URL` build-time injection**: In `vite.config.ts`, use `define: { 'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || '/api/v1') }` to inject the production API URL at build time. Development defaults to `/api/v1` (proxied by Vite dev server). Production sets `VITE_API_URL` env var during CI build.

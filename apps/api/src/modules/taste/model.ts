@@ -44,11 +44,16 @@ export async function findById(id: string) {
   return prisma.tasteNote.findUnique({ where: { id } });
 }
 
-export async function create(data: { name: string; parentId?: string; color?: string; definition?: string; depth: number }) {
+export async function create(
+  data: { name: string; parentId?: string; color?: string; definition?: string; depth: number },
+) {
   return prisma.tasteNote.create({ data });
 }
 
-export async function update(id: string, data: { name?: string; color?: string; definition?: string }) {
+export async function update(
+  id: string,
+  data: { name?: string; color?: string; definition?: string },
+) {
   return prisma.tasteNote.update({ where: { id }, data });
 }
 

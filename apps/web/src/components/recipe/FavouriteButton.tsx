@@ -32,10 +32,10 @@ export function FavouriteButton({ recipeId, initialFavourited, initialCount }: P
 
   return (
     <button
-      type="button"
+      type='button'
       onClick={toggle}
       disabled={loading}
-      className="flex items-center gap-1 rounded px-3 py-1 text-sm transition-opacity hover:opacity-80"
+      className='flex items-center gap-1 rounded px-3 py-1 text-sm transition-opacity hover:opacity-80'
       style={{
         backgroundColor: favourited ? 'var(--warning)' : 'var(--bg-tertiary)',
         color: favourited ? 'var(--bg-primary)' : 'var(--text-primary)',

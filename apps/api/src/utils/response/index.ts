@@ -2,7 +2,12 @@ import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { PaginationMeta } from '@brewform/shared/types';
 
-export function success<T>(c: Context, data: T, status: ContentfulStatusCode = 200, meta?: { pagination?: PaginationMeta }) {
+export function success<T>(
+  c: Context,
+  data: T,
+  status: ContentfulStatusCode = 200,
+  meta?: { pagination?: PaginationMeta },
+) {
   return c.json({
     success: true as const,
     data,
@@ -24,7 +29,13 @@ export function paginated<T>(c: Context, data: T[], pagination: PaginationMeta) 
   }, 200);
 }
 
-export function error(c: Context, code: string, message: string, status: ContentfulStatusCode, details?: Array<{ field: string; message: string }>) {
+export function error(
+  c: Context,
+  code: string,
+  message: string,
+  status: ContentfulStatusCode,
+  details?: Array<{ field: string; message: string }>,
+) {
   return c.json({
     success: false as const,
     error: {

@@ -15,7 +15,10 @@ export async function findByUsername(username: string) {
   } as any);
 }
 
-export async function updateProfile(id: string, data: { displayName?: string; bio?: string; avatarUrl?: string }) {
+export async function updateProfile(
+  id: string,
+  data: { displayName?: string; bio?: string; avatarUrl?: string },
+) {
   return prisma.user.update({
     where: { id },
     data,
@@ -52,7 +55,14 @@ export async function searchUsers(query: string, page: number, perPage: number) 
       where,
       skip: (page - 1) * perPage,
       take: perPage,
-      select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true, createdAt: true },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        bio: true,
+        createdAt: true,
+      },
     }),
     prisma.user.count({ where }),
   ]);

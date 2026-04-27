@@ -4,7 +4,9 @@ import { prisma } from '@brewform/db';
 export async function findById(id: string) {
   return prisma.comment.findFirst({
     where: { id, deletedAt: null },
-    include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+    include: {
+      author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+    },
   } as any);
 }
 
@@ -20,7 +22,9 @@ export async function findByRecipe(recipeId: string, page: number, perPage: numb
         replies: {
           where: { deletedAt: null },
           orderBy: { createdAt: 'asc' },
-          include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+          include: {
+            author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+          },
         },
       },
     } as any),
@@ -32,7 +36,9 @@ export async function findByRecipe(recipeId: string, page: number, perPage: numb
 export async function create(data: any) {
   return prisma.comment.create({
     data,
-    include: { author: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+    include: {
+      author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+    },
   } as any);
 }
 
@@ -44,6 +50,9 @@ export async function softDelete(id: string) {
 }
 
 export async function getRecipeAuthorId(recipeId: string) {
-  const recipe = await prisma.recipe.findUnique({ where: { id: recipeId }, select: { authorId: true } });
+  const recipe = await prisma.recipe.findUnique({
+    where: { id: recipeId },
+    select: { authorId: true },
+  });
   return recipe?.authorId;
 }

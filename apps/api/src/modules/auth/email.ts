@@ -2,7 +2,7 @@ import { config } from '../../config/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import mjml2html from 'mjml';
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import nodemailer from 'npm:nodemailer@^7.0.0';
 
 const logger = createLogger('email');
@@ -22,9 +22,7 @@ function createTransporter() {
     host: config.SMTP_HOST,
     port: config.SMTP_PORT,
     secure: config.SMTP_SECURE,
-    auth: config.SMTP_USER
-      ? { user: config.SMTP_USER, pass: config.SMTP_PASS }
-      : undefined,
+    auth: config.SMTP_USER ? { user: config.SMTP_USER, pass: config.SMTP_PASS } : undefined,
   });
 }
 

@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { UserPreferencesSchema } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { success, error } from '../../utils/response/index.ts';
+import { error, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const preference = new Hono<AppEnv>();
@@ -15,7 +15,9 @@ preference.get('/', authMiddleware, async (c) => {
     return success(c, prefs);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message === 'PREFERENCES_NOT_FOUND') return error(c, 'NOT_FOUND', 'Preferences not found', 404);
+    if (message === 'PREFERENCES_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'Preferences not found', 404);
+    }
     throw err;
   }
 });

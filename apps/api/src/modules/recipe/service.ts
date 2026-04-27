@@ -2,7 +2,7 @@
 // deno-lint-ignore no-explicit-any
 import * as model from './model.ts';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
-import { generateSlug, ensureUniqueSlug } from '@brewform/shared/utils';
+import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 
 async function generateUniqueSlug(title: string): Promise<string> {
   const slug = generateSlug(title);
@@ -64,18 +64,27 @@ export async function createRecipe(authorId: string, data: any) {
         isFavourite: data.isFavourite || false,
         rating: data.rating,
         emojiTag: data.emojiTag,
-        tasteNotes: data.tasteNoteIds ? {
-          create: data.tasteNoteIds.map((id: string) => ({ tasteNoteId: id })),
-        } : undefined,
-        equipment: data.equipmentIds ? {
-          create: data.equipmentIds.map((id: string) => ({ equipmentId: id })),
-        } : undefined,
-        additionalPreparations: data.additionalPreparations ? {
-          create: data.additionalPreparations.map((p: any, i: number) => ({
-            name: p.name, type: p.type, inputAmount: p.inputAmount,
-            preparationType: p.preparationType, sortOrder: i,
-          })),
-        } : undefined,
+        tasteNotes: data.tasteNoteIds
+          ? {
+            create: data.tasteNoteIds.map((id: string) => ({ tasteNoteId: id })),
+          }
+          : undefined,
+        equipment: data.equipmentIds
+          ? {
+            create: data.equipmentIds.map((id: string) => ({ equipmentId: id })),
+          }
+          : undefined,
+        additionalPreparations: data.additionalPreparations
+          ? {
+            create: data.additionalPreparations.map((p: any, i: number) => ({
+              name: p.name,
+              type: p.type,
+              inputAmount: p.inputAmount,
+              preparationType: p.preparationType,
+              sortOrder: i,
+            })),
+          }
+          : undefined,
       },
     },
   });
@@ -95,15 +104,15 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
 
     const brewRatio = data.groundWeightGrams || data.extractionVolumeMl
       ? computeBrewRatio(
-          data.groundWeightGrams ?? latestVersion.groundWeightGrams ?? 0,
-          data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
-        )
+        data.groundWeightGrams ?? latestVersion.groundWeightGrams ?? 0,
+        data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
+      )
       : latestVersion.brewRatio;
     const flowRate = data.extractionVolumeMl || data.extractionTimeSeconds
       ? computeFlowRate(
-          data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
-          data.extractionTimeSeconds ?? latestVersion.extractionTimeSeconds ?? 0,
-        )
+        data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
+        data.extractionTimeSeconds ?? latestVersion.extractionTimeSeconds ?? 0,
+      )
       : latestVersion.flowRate;
 
     const version = await model.createVersion({
@@ -114,7 +123,9 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
       coffeeProcessing: data.coffeeProcessing ?? latestVersion.coffeeProcessing,
       vendorId: data.vendorId ?? latestVersion.vendorId,
       roastDate: data.roastDate ? new Date(data.roastDate) : latestVersion.roastDate,
-      packageOpenDate: data.packageOpenDate ? new Date(data.packageOpenDate) : latestVersion.packageOpenDate,
+      packageOpenDate: data.packageOpenDate
+        ? new Date(data.packageOpenDate)
+        : latestVersion.packageOpenDate,
       grindDate: data.grindDate ? new Date(data.grindDate) : latestVersion.grindDate,
       brewDate: new Date(),
       brewMethod: data.brewMethod ?? latestVersion.brewMethod,

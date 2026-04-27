@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { BeanCreateSchema, BeanUpdateSchema, PaginationSchema } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { success, error, paginated } from '../../utils/response/index.ts';
+import { error, paginated, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const bean = new Hono<AppEnv>();

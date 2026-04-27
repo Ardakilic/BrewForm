@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { authMiddleware, adminMiddleware } from '../../middleware/auth.ts';
+import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import { success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';

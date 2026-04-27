@@ -28,7 +28,19 @@ describe('EquipmentCreateSchema', () => {
   });
 
   it('should accept all valid equipment types', () => {
-    const types = ['portafilter', 'basket', 'puck_screen', 'paper_filter', 'tamper', 'gooseneck_kettle', 'mesh_filter', 'cezve', 'scale', 'thermometer', 'other'];
+    const types = [
+      'portafilter',
+      'basket',
+      'puck_screen',
+      'paper_filter',
+      'tamper',
+      'gooseneck_kettle',
+      'mesh_filter',
+      'cezve',
+      'scale',
+      'thermometer',
+      'other',
+    ];
     for (const type of types) {
       const result = EquipmentCreateSchema.safeParse({
         name: `Test ${type}`,

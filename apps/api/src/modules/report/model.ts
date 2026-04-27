@@ -1,7 +1,12 @@
 // deno-lint-ignore-file no-explicit-any require-await
 import { prisma } from '@brewform/db';
 
-export async function create(reporterId: string, entityType: string, entityId: string, reason: string) {
+export async function create(
+  reporterId: string,
+  entityType: string,
+  entityId: string,
+  reason: string,
+) {
   return prisma.report.create({
     data: { reporterId, entityType, entityId, reason },
   });

@@ -1,7 +1,6 @@
-import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import type { CacheProvider } from '../../utils/cache/index.ts';
 
 const TASTE_CACHE_KEY = ['cache', 'taste-notes'];
 const TASTE_FLAT_CACHE_KEY = ['cache', 'taste-notes-flat'];
@@ -28,7 +27,11 @@ describe('Taste Service', () => {
     });
 
     it('should cache and retrieve flat list data', async () => {
-      const flatData = [{ id: '1', name: 'Fruity', parentId: null }, { id: '2', name: 'Berry', parentId: '1' }];
+      const flatData = [{ id: '1', name: 'Fruity', parentId: null }, {
+        id: '2',
+        name: 'Berry',
+        parentId: '1',
+      }];
       await cache.set(TASTE_FLAT_CACHE_KEY, flatData, { ttlMs: 86400000 });
 
       const cached = await cache.get<typeof flatData>(TASTE_FLAT_CACHE_KEY);

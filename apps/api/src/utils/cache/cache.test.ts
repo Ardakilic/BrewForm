@@ -1,7 +1,6 @@
-import { describe, it, beforeEach } from 'jsr:@std/testing/bdd';
+import { beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { InMemoryCacheProvider } from './index.ts';
-import type { CacheProvider } from './index.ts';
 
 describe('CacheProvider', () => {
   let cache: InMemoryCacheProvider;

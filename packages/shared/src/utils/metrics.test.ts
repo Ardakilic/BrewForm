@@ -1,6 +1,6 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { computeBrewRatio, computeFlowRate, computeExtractionYield } from './metrics.ts';
+import { computeBrewRatio, computeExtractionYield, computeFlowRate } from './metrics.ts';
 
 describe('Brew Metrics', () => {
   describe('computeBrewRatio', () => {

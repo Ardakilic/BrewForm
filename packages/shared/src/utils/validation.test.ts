@@ -1,6 +1,10 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { validateGrindDateNotBeforeRoastDate, validateBrewMethodCompatibility, validateSoftWarnings } from './validation.ts';
+import {
+  validateBrewMethodCompatibility,
+  validateGrindDateNotBeforeRoastDate,
+  validateSoftWarnings,
+} from './validation.ts';
 
 describe('Validation', () => {
   describe('validateGrindDateNotBeforeRoastDate', () => {

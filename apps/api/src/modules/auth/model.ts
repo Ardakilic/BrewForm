@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any require-await
 import { prisma } from '@brewform/db';
-import { hashSync, compareSync } from 'bcryptjs';
+import { compareSync, hashSync } from 'bcryptjs';
 
 export async function findUserByEmail(email: string) {
   return prisma.user.findFirst({

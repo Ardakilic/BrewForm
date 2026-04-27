@@ -1,14 +1,14 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import {
-  AuthRegisterSchema,
   AuthLoginSchema,
   AuthRefreshSchema,
-  PasswordResetSchema,
+  AuthRegisterSchema,
   PasswordResetConfirmSchema,
+  PasswordResetSchema,
 } from '@brewform/shared/schemas';
 import * as authService from './service.ts';
-import { success, error } from '../../utils/response/index.ts';
+import { error, success } from '../../utils/response/index.ts';
 
 const auth = new Hono();
 
@@ -75,7 +75,9 @@ auth.post('/refresh', zValidator('json', AuthRefreshSchema), async (c) => {
 auth.post('/forgot-password', zValidator('json', PasswordResetSchema), async (c) => {
   const body = c.req.valid('json');
   await authService.requestPasswordReset(body.email);
-  return success(c, { message: 'If an account with that email exists, a reset link has been sent.' });
+  return success(c, {
+    message: 'If an account with that email exists, a reset link has been sent.',
+  });
 });
 
 auth.post('/reset-password', zValidator('json', PasswordResetConfirmSchema), async (c) => {

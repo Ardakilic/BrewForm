@@ -5,9 +5,24 @@ describe('Badge Service Logic', () => {
   describe('Badge evaluation triggers', () => {
     it('should list all available badges', async () => {
       const badges = [
-        { id: 'badge-1', name: 'First Brew', rule: 'first_recipe', description: 'Created your first recipe' },
-        { id: 'badge-2', name: 'Social Butterfly', rule: 'ten_followers', description: 'Got 10 followers' },
-        { id: 'badge-3', name: 'Precision Brewer', rule: 'precision_brewer', description: 'Filled all optional fields' },
+        {
+          id: 'badge-1',
+          name: 'First Brew',
+          rule: 'first_recipe',
+          description: 'Created your first recipe',
+        },
+        {
+          id: 'badge-2',
+          name: 'Social Butterfly',
+          rule: 'ten_followers',
+          description: 'Got 10 followers',
+        },
+        {
+          id: 'badge-3',
+          name: 'Precision Brewer',
+          rule: 'precision_brewer',
+          description: 'Filled all optional fields',
+        },
       ];
       expect(badges.length).toBe(3);
       expect(badges[0].rule).toBe('first_recipe');
@@ -23,7 +38,9 @@ describe('Badge Service Logic', () => {
         productName: 'Ethiopia Yirgacheffe',
         coffeeBrand: 'Blue Bottle',
       };
-      const hasAllFields = Object.values(allOptionalFieldsFilled).every((v) => v !== null && v !== undefined);
+      const hasAllFields = Object.values(allOptionalFieldsFilled).every((v) =>
+        v !== null && v !== undefined
+      );
       expect(hasAllFields).toBe(true);
     });
 

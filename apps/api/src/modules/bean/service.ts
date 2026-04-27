@@ -1,5 +1,4 @@
 import * as model from './model.ts';
-import { PaginationSchema } from '@brewform/shared/schemas';
 
 export async function listBeans(userId: string, page: number, perPage: number) {
   return model.findByUser(userId, page, perPage);

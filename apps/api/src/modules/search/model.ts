@@ -1,7 +1,13 @@
 // deno-lint-ignore-file no-explicit-any require-await
 import { prisma } from '@brewform/db';
 
-export async function searchRecipes(filters: any, page: number, perPage: number, sortBy: string = 'createdAt', sortOrder: string = 'desc') {
+export async function searchRecipes(
+  filters: any,
+  page: number,
+  perPage: number,
+  sortBy: string = 'createdAt',
+  sortOrder: string = 'desc',
+) {
   const where: any = { deletedAt: null };
 
   if (filters.q) {
@@ -31,7 +37,9 @@ export async function searchRecipes(filters: any, page: number, perPage: number,
     where.visibility = 'public';
   }
   if (filters.grinder) {
-    where.versions = { some: { ...(where.versions?.some || {}), grinder: { contains: filters.grinder } } };
+    where.versions = {
+      some: { ...(where.versions?.some || {}), grinder: { contains: filters.grinder } },
+    };
   }
 
   const [recipes, total] = await Promise.all([

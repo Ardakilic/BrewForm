@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { api } from '../../api/client';
 
 interface Props {
@@ -58,39 +58,37 @@ export function PhotoUpload({ recipeId, onUploadComplete }: Props) {
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors hover:border-opacity-60"
+        className='flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors hover:border-opacity-60'
         style={{ borderColor: 'var(--border-secondary)', backgroundColor: 'var(--bg-secondary)' }}
       >
-        <div className="text-3xl mb-2">📷</div>
-        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+        <div className='text-3xl mb-2'>📷</div>
+        <p className='text-sm font-medium' style={{ color: 'var(--text-primary)' }}>
           Drop photos here or click to browse
         </p>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+        <p className='text-xs mt-1' style={{ color: 'var(--text-tertiary)' }}>
           JPEG, PNG, or WebP — Max 10MB each
         </p>
         <input
           ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
+          type='file'
+          accept='image/jpeg,image/png,image/webp'
           multiple
-          className="hidden"
+          className='hidden'
           onChange={(e) => e.target.files && handleFiles(e.target.files)}
         />
       </div>
 
-      {error && (
-        <p className="mt-2 text-sm" style={{ color: 'var(--error)' }}>{error}</p>
-      )}
+      {error && <p className='mt-2 text-sm' style={{ color: 'var(--error)' }}>{error}</p>}
 
       {uploading && (
-        <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>Uploading...</p>
+        <p className='mt-2 text-sm' style={{ color: 'var(--text-secondary)' }}>Uploading...</p>
       )}
 
       {previews.length > 0 && (
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className='mt-4 grid grid-cols-3 gap-2'>
           {previews.map((preview) => (
-            <div key={preview.name} className="relative aspect-square rounded overflow-hidden">
-              <img src={preview.url} alt={preview.name} className="w-full h-full object-cover" />
+            <div key={preview.name} className='relative aspect-square rounded overflow-hidden'>
+              <img src={preview.url} alt={preview.name} className='w-full h-full object-cover' />
             </div>
           ))}
         </div>

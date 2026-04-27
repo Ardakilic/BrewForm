@@ -1,13 +1,23 @@
-export type { ApiResponse, ApiError, PaginationMeta, PaginationQuery } from './api';
-export type { User, UserProfile, UserPreferences } from './user';
-export type { Recipe, RecipeVersion, RecipeCreateInput, RecipeUpdateInput, AdditionalPreparation, Visibility, BrewMethod, DrinkType, EmojiTag } from './recipe';
-export type { Equipment, Portafilter, Basket, PuckScreen, PaperFilter, Tamper } from './equipment';
-export type { TasteNote, TasteHierarchy } from './taste';
+export type { ApiError, ApiResponse, PaginationMeta, PaginationQuery } from './api';
+export type { User, UserPreferences, UserProfile } from './user';
+export type {
+  AdditionalPreparation,
+  BrewMethod,
+  DrinkType,
+  EmojiTag,
+  Recipe,
+  RecipeCreateInput,
+  RecipeUpdateInput,
+  RecipeVersion,
+  Visibility,
+} from './recipe';
+export type { Basket, Equipment, PaperFilter, Portafilter, PuckScreen, Tamper } from './equipment';
+export type { TasteHierarchy, TasteNote } from './taste';
 export type { Bean, Vendor } from './bean';
 export type { Setup } from './setup';
 export type { Comment } from './comment';
 export type { Follow } from './follow';
-export type { Badge, UserBadge, BadgeRule } from './badge';
+export type { Badge, BadgeRule, UserBadge } from './badge';
 export type { Photo } from './photo';
 export type { AuditLog } from './audit';
 export type { PasswordReset } from './password-reset';

@@ -1,9 +1,17 @@
 import { z } from 'zod';
 
 const EquipmentTypeEnum = z.enum([
-  'portafilter', 'basket', 'puck_screen', 'paper_filter',
-  'tamper', 'gooseneck_kettle', 'mesh_filter', 'cezve',
-  'scale', 'thermometer', 'other',
+  'portafilter',
+  'basket',
+  'puck_screen',
+  'paper_filter',
+  'tamper',
+  'gooseneck_kettle',
+  'mesh_filter',
+  'cezve',
+  'scale',
+  'thermometer',
+  'other',
 ]);
 
 export const EquipmentCreateSchema = z.object({

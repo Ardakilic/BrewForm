@@ -66,7 +66,7 @@ describe('Auth Service Logic', () => {
 
   describe('Password reset', () => {
     it('should silently succeed for non-existent email (security)', async () => {
-      const email = 'nonexistent@test.com';
+      const _email = 'nonexistent@test.com';
       const found = false;
       if (!found) {
         return;

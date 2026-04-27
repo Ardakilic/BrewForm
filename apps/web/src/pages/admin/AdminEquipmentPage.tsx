@@ -76,70 +76,152 @@ export function AdminEquipmentPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Equipment Management</h1>
-        <button type="button" onClick={() => setShowForm(!showForm)} className="btn-primary">
+      <div className='flex items-center justify-between mb-6'>
+        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+          Equipment Management
+        </h1>
+        <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
           {showForm ? 'Cancel' : '+ Add Equipment'}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="card mb-6">
-          <h2 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+        <form onSubmit={handleSubmit} className='card mb-6'>
+          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
             {editId ? 'Edit Equipment' : 'Add Equipment'}
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className='grid grid-cols-2 gap-4'>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Name *</label>
-              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" required />
+              <label
+                className='block text-sm font-medium mb-1'
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Name *
+              </label>
+              <input
+                type='text'
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className='input-field'
+                required
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Type *</label>
-              <input type="text" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="input-field" required />
+              <label
+                className='block text-sm font-medium mb-1'
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Type *
+              </label>
+              <input
+                type='text'
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                className='input-field'
+                required
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Brand</label>
-              <input type="text" value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="input-field" />
+              <label
+                className='block text-sm font-medium mb-1'
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Brand
+              </label>
+              <input
+                type='text'
+                value={form.brand}
+                onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                className='input-field'
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Model</label>
-              <input type="text" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} className="input-field" />
+              <label
+                className='block text-sm font-medium mb-1'
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Model
+              </label>
+              <input
+                type='text'
+                value={form.model}
+                onChange={(e) => setForm({ ...form, model: e.target.value })}
+                className='input-field'
+              />
             </div>
           </div>
-          <div className="flex gap-2 mt-4">
-            <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
-            {editId && <button type="button" onClick={resetForm} className="btn-secondary">Cancel Edit</button>}
+          <div className='flex gap-2 mt-4'>
+            <button type='submit' className='btn-primary' disabled={saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            {editId && (
+              <button type='button' onClick={resetForm} className='btn-secondary'>
+                Cancel Edit
+              </button>
+            )}
           </div>
         </form>
       )}
 
-      {loading ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div> : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>Name</th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>Type</th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>Brand</th>
-                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {equipment.map((eq) => (
-                <tr key={eq.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                  <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>{eq.name}</td>
-                  <td className="py-2 px-3"><span className="badge">{eq.type}</span></td>
-                  <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>{eq.brand || '-'}</td>
-                  <td className="py-2 px-3 flex gap-2">
-                    <button type="button" onClick={() => startEdit(eq)} className="text-xs" style={{ color: 'var(--accent-primary)' }}>Edit</button>
-                    <button type="button" onClick={() => handleDelete(eq.id)} className="text-xs" style={{ color: 'var(--error)' }}>Delete</button>
-                  </td>
+      {loading
+        ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        : (
+          <div className='overflow-x-auto'>
+            <table className='w-full text-sm'>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
+                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                    Name
+                  </th>
+                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                    Type
+                  </th>
+                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                    Brand
+                  </th>
+                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {equipment.map((eq) => (
+                  <tr key={eq.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
+                    <td className='py-2 px-3' style={{ color: 'var(--text-primary)' }}>
+                      {eq.name}
+                    </td>
+                    <td className='py-2 px-3'>
+                      <span className='badge'>{eq.type}</span>
+                    </td>
+                    <td className='py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                      {eq.brand || '-'}
+                    </td>
+                    <td className='py-2 px-3 flex gap-2'>
+                      <button
+                        type='button'
+                        onClick={() =>
+                          startEdit(eq)}
+                        className='text-xs'
+                        style={{ color: 'var(--accent-primary)' }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() =>
+                          handleDelete(eq.id)}
+                        className='text-xs'
+                        style={{ color: 'var(--error)' }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { UserProfileUpdateSchema } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { success, error } from '../../utils/response/index.ts';
+import { error, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const user = new Hono<AppEnv>();

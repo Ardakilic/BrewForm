@@ -10,7 +10,7 @@ describe('Comment Service Logic', () => {
     });
 
     it('should require recipe author for replies', () => {
-      const parentCommentId = 'comment-1';
+      const _parentCommentId = 'comment-1';
       const recipeAuthorId = 'author-1';
       const currentUserId = 'user-2';
 

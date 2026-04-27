@@ -11,12 +11,12 @@ export function RequireAuth({ children, requireAdmin }: Props) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="text-lg" style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+      <div className='flex min-h-[40vh] items-center justify-center'>
+        <div className='text-lg' style={{ color: 'var(--text-secondary)' }}>Loading...</div>
       </div>
     );
   }
-  if (!isAuthenticated) return <Navigate to="/login" />;
-  if (requireAdmin && !user?.isAdmin) return <Navigate to="/" />;
+  if (!isAuthenticated) return <Navigate to='/login' />;
+  if (requireAdmin && !user?.isAdmin) return <Navigate to='/' />;
   return <>{children}</>;
 }

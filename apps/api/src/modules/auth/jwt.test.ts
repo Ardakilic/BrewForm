@@ -1,11 +1,16 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { signAccessToken, signRefreshToken, verifyJwt, decodeJwt } from './jwt.ts';
+import { decodeJwt, signAccessToken, signRefreshToken, verifyJwt } from './jwt.ts';
 
 describe('JWT Module', () => {
   describe('signAccessToken', () => {
     it('should sign and verify an access token', async () => {
-      const payload = { id: 'user-123', email: 'test@test.com', username: 'testuser', isAdmin: false };
+      const payload = {
+        id: 'user-123',
+        email: 'test@test.com',
+        username: 'testuser',
+        isAdmin: false,
+      };
       const token = await signAccessToken(payload);
       const decoded = await verifyJwt(token);
       expect(decoded.sub).toBe('user-123');
@@ -58,7 +63,12 @@ describe('JWT Module', () => {
 
   describe('decodeJwt', () => {
     it('should decode a token without verification', async () => {
-      const token = await signAccessToken({ id: 'user-1', email: 'test@test.com', username: 'test', isAdmin: false });
+      const token = await signAccessToken({
+        id: 'user-1',
+        email: 'test@test.com',
+        username: 'test',
+        isAdmin: false,
+      });
       const decoded = decodeJwt(token);
       expect(decoded).not.toBeNull();
       expect(decoded!.payload.sub).toBe('user-1');
@@ -72,7 +82,12 @@ describe('JWT Module', () => {
 
   describe('Token type differentiation', () => {
     it('should distinguish access and refresh tokens', async () => {
-      const accessToken = await signAccessToken({ id: '1', email: 'a@b.com', username: 'u', isAdmin: false });
+      const accessToken = await signAccessToken({
+        id: '1',
+        email: 'a@b.com',
+        username: 'u',
+        isAdmin: false,
+      });
       const refreshToken = await signRefreshToken('1');
 
       const accessDecoded = await verifyJwt(accessToken);

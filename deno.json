@@ -9,10 +9,17 @@
     ]
   },
   "lint": {
-    "include": ["src/"],
-    "exclude": ["src/generated/"],
+    "include": ["apps/", "packages/"],
+    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/"],
     "rules": {
-      "tags": ["recommended"]
+      "tags": ["recommended"],
+      "exclude": [
+        "no-import-prefix",
+        "no-unversioned-import",
+        "no-explicit-any",
+        "require-await",
+        "no-empty"
+      ]
     }
   },
   "fmt": {
@@ -21,8 +28,8 @@
     "indentWidth": 2,
     "singleQuote": true,
     "semiColons": true,
-    "include": ["src/"],
-    "exclude": ["src/generated/"]
+    "include": ["apps/", "packages/"],
+    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/"]
   },
   "test": {
     "include": [
@@ -34,5 +41,5 @@
       "src/generated/",
       "node_modules/"
     ]
-  },
   }
+}

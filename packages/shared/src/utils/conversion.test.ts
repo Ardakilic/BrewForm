@@ -1,15 +1,15 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import {
-  convertGramsToOunces,
-  convertOuncesToGrams,
-  convertMlToFlOz,
-  convertFlOzToMl,
   convertCtoF,
+  convertFlOzToMl,
   convertFtoC,
-  formatWeight,
-  formatVolume,
+  convertGramsToOunces,
+  convertMlToFlOz,
+  convertOuncesToGrams,
   formatTemperature,
+  formatVolume,
+  formatWeight,
 } from './conversion.ts';
 
 describe('Unit Conversions', () => {

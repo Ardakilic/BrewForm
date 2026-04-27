@@ -28,7 +28,11 @@ export async function getFollowers(userId: string, page: number, perPage: number
       skip: (page - 1) * perPage,
       take: perPage,
       orderBy: { createdAt: 'desc' },
-      include: { follower: { select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true } } },
+      include: {
+        follower: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true },
+        },
+      },
     }) as any,
     prisma.userFollow.count({ where: { followingId: userId } }),
   ]);
@@ -42,7 +46,11 @@ export async function getFollowing(userId: string, page: number, perPage: number
       skip: (page - 1) * perPage,
       take: perPage,
       orderBy: { createdAt: 'desc' },
-      include: { following: { select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true } } },
+      include: {
+        following: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true },
+        },
+      },
     }) as any,
     prisma.userFollow.count({ where: { followerId: userId } }),
   ]);

@@ -1,16 +1,16 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { authMiddleware, adminMiddleware } from '../../middleware/auth.ts';
+import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import {
   AdminBanUserSchema,
-  AdminModifyRecipeVisibilitySchema,
   AdminFlushCacheSchema,
+  AdminModifyRecipeVisibilitySchema,
   PaginationSchema,
 } from '@brewform/shared/schemas';
 import * as service from './service.ts';
 import { cacheProvider } from '../../main.ts';
-import { success, paginated, error } from '../../utils/response/index.ts';
+import { error, paginated, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const admin = new Hono<AppEnv>();
@@ -23,38 +23,61 @@ admin.get('/stats', async (c) => {
   return success(c, stats);
 });
 
-admin.get('/analytics/users', zValidator('query', z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })), async (c) => {
-  const { days } = c.req.valid('query');
-  const growth = await service.getUserGrowth(days);
-  return success(c, growth);
-});
+admin.get(
+  '/analytics/users',
+  zValidator('query', z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })),
+  async (c) => {
+    const { days } = c.req.valid('query');
+    const growth = await service.getUserGrowth(days);
+    return success(c, growth);
+  },
+);
 
-admin.get('/analytics/recipes', zValidator('query', z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })), async (c) => {
-  const { days } = c.req.valid('query');
-  const growth = await service.getRecipeGrowth(days);
-  return success(c, growth);
-});
+admin.get(
+  '/analytics/recipes',
+  zValidator('query', z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })),
+  async (c) => {
+    const { days } = c.req.valid('query');
+    const growth = await service.getRecipeGrowth(days);
+    return success(c, growth);
+  },
+);
 
-admin.get('/analytics/top-recipes', zValidator('query', z.object({ limit: z.coerce.number().int().min(1).max(100).default(10) })), async (c) => {
-  const { limit } = c.req.valid('query');
-  const recipes = await service.getTopRecipes(limit);
-  return success(c, recipes);
-});
+admin.get(
+  '/analytics/top-recipes',
+  zValidator('query', z.object({ limit: z.coerce.number().int().min(1).max(100).default(10) })),
+  async (c) => {
+    const { limit } = c.req.valid('query');
+    const recipes = await service.getTopRecipes(limit);
+    return success(c, recipes);
+  },
+);
 
-admin.get('/analytics/top-users', zValidator('query', z.object({ limit: z.coerce.number().int().min(1).max(100).default(10) })), async (c) => {
-  const { limit } = c.req.valid('query');
-  const users = await service.getTopUsers(limit);
-  return success(c, users);
-});
+admin.get(
+  '/analytics/top-users',
+  zValidator('query', z.object({ limit: z.coerce.number().int().min(1).max(100).default(10) })),
+  async (c) => {
+    const { limit } = c.req.valid('query');
+    const users = await service.getTopUsers(limit);
+    return success(c, users);
+  },
+);
 
 // --- Users ---
-admin.get('/users', zValidator('query', PaginationSchema.extend({ q: z.string().optional() })), async (c) => {
-  const { page, perPage, q } = c.req.valid('query');
-  const result = await service.listUsers(page, perPage, q);
-  return paginated(c, result.users, {
-    page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage),
-  });
-});
+admin.get(
+  '/users',
+  zValidator('query', PaginationSchema.extend({ q: z.string().optional() })),
+  async (c) => {
+    const { page, perPage, q } = c.req.valid('query');
+    const result = await service.listUsers(page, perPage, q);
+    return paginated(c, result.users, {
+      page,
+      perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / perPage),
+    });
+  },
+);
 
 admin.get('/users/:id', async (c) => {
   const id = c.req.param('id')!;
@@ -74,7 +97,13 @@ admin.post('/users', async (c) => {
     isAdmin: z.boolean().optional(),
   }).safeParse(body);
   if (!parsed.success) {
-    return error(c, 'VALIDATION_ERROR', 'Invalid input', 400, parsed.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })));
+    return error(
+      c,
+      'VALIDATION_ERROR',
+      'Invalid input',
+      400,
+      parsed.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
+    );
   }
   try {
     const user = await service.adminCreateUser(adminId, parsed.data);
@@ -100,13 +129,17 @@ admin.post('/users/:id/ban', zValidator('json', AdminBanUserSchema), async (c) =
   }
 });
 
-admin.patch('/users/:id/admin', zValidator('json', z.object({ isAdmin: z.boolean() })), async (c) => {
-  const adminId = c.get('userId') as string;
-  const userId = c.req.param('id')!;
-  const { isAdmin } = c.req.valid('json');
-  const user = await service.setUserAdminRole(adminId, userId, isAdmin);
-  return success(c, user);
-});
+admin.patch(
+  '/users/:id/admin',
+  zValidator('json', z.object({ isAdmin: z.boolean() })),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const userId = c.req.param('id')!;
+    const { isAdmin } = c.req.valid('json');
+    const user = await service.setUserAdminRole(adminId, userId, isAdmin);
+    return success(c, user);
+  },
+);
 
 admin.delete('/users/:id', async (c) => {
   const adminId = c.get('userId') as string;
@@ -116,21 +149,32 @@ admin.delete('/users/:id', async (c) => {
 });
 
 // --- Recipes ---
-admin.get('/recipes', zValidator('query', PaginationSchema.extend({ visibility: z.string().optional() })), async (c) => {
-  const { page, perPage, visibility } = c.req.valid('query');
-  const result = await service.listAllRecipes(page, perPage, visibility);
-  return paginated(c, result.recipes, {
-    page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage),
-  });
-});
+admin.get(
+  '/recipes',
+  zValidator('query', PaginationSchema.extend({ visibility: z.string().optional() })),
+  async (c) => {
+    const { page, perPage, visibility } = c.req.valid('query');
+    const result = await service.listAllRecipes(page, perPage, visibility);
+    return paginated(c, result.recipes, {
+      page,
+      perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / perPage),
+    });
+  },
+);
 
-admin.patch('/recipes/:id/visibility', zValidator('json', AdminModifyRecipeVisibilitySchema), async (c) => {
-  const adminId = c.get('userId') as string;
-  const recipeId = c.req.param('id')!;
-  const { visibility } = c.req.valid('json');
-  const recipe = await service.updateRecipeVisibility(adminId, recipeId, visibility);
-  return success(c, recipe);
-});
+admin.patch(
+  '/recipes/:id/visibility',
+  zValidator('json', AdminModifyRecipeVisibilitySchema),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const recipeId = c.req.param('id')!;
+    const { visibility } = c.req.valid('json');
+    const recipe = await service.updateRecipeVisibility(adminId, recipeId, visibility);
+    return success(c, recipe);
+  },
+);
 
 admin.delete('/recipes/:id', async (c) => {
   const adminId = c.get('userId') as string;
@@ -144,7 +188,10 @@ admin.get('/equipment', zValidator('query', PaginationSchema), async (c) => {
   const { page, perPage } = c.req.valid('query');
   const result = await service.listEquipment(page, perPage);
   return paginated(c, result.equipment, {
-    page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage),
+    page,
+    perPage,
+    total: result.total,
+    totalPages: Math.ceil(result.total / perPage),
   });
 });
 
@@ -175,7 +222,10 @@ admin.get('/vendors', zValidator('query', PaginationSchema), async (c) => {
   const { page, perPage } = c.req.valid('query');
   const result = await service.listVendors(page, perPage);
   return paginated(c, result.vendors, {
-    page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage),
+    page,
+    perPage,
+    total: result.total,
+    totalPages: Math.ceil(result.total / perPage),
   });
 });
 
@@ -230,13 +280,23 @@ admin.delete('/taste-notes/:id', async (c) => {
 });
 
 // --- Reports (admin) ---
-admin.get('/reports', zValidator('query', PaginationSchema.extend({ status: z.string().optional(), entityType: z.string().optional() })), async (c) => {
-  const { page, perPage, status, entityType } = c.req.valid('query');
-  const result = await service.listReports(page, perPage, status, entityType);
-  return paginated(c, result.reports, {
-    page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage),
-  });
-});
+admin.get(
+  '/reports',
+  zValidator(
+    'query',
+    PaginationSchema.extend({ status: z.string().optional(), entityType: z.string().optional() }),
+  ),
+  async (c) => {
+    const { page, perPage, status, entityType } = c.req.valid('query');
+    const result = await service.listReports(page, perPage, status, entityType);
+    return paginated(c, result.reports, {
+      page,
+      perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / perPage),
+    });
+  },
+);
 
 admin.patch('/reports/:id/resolve', async (c) => {
   const adminId = c.get('userId') as string;
@@ -247,7 +307,9 @@ admin.patch('/reports/:id/resolve', async (c) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === 'REPORT_NOT_FOUND') return error(c, 'NOT_FOUND', 'Report not found', 404);
-    if (message === 'REPORT_ALREADY_RESOLVED') return error(c, 'CONFLICT', 'Report already resolved', 409);
+    if (message === 'REPORT_ALREADY_RESOLVED') {
+      return error(c, 'CONFLICT', 'Report already resolved', 409);
+    }
     throw err;
   }
 });
@@ -294,13 +356,20 @@ admin.delete('/compatibility/:id', async (c) => {
 });
 
 // --- Audit Log ---
-admin.get('/audit-log', zValidator('query', PaginationSchema.extend({ entity: z.string().optional() })), async (c) => {
-  const { page, perPage, entity } = c.req.valid('query');
-  const result = await service.listAuditLogs(page, perPage, entity);
-  return paginated(c, result.logs, {
-    page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage),
-  });
-});
+admin.get(
+  '/audit-log',
+  zValidator('query', PaginationSchema.extend({ entity: z.string().optional() })),
+  async (c) => {
+    const { page, perPage, entity } = c.req.valid('query');
+    const result = await service.listAuditLogs(page, perPage, entity);
+    return paginated(c, result.logs, {
+      page,
+      perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / perPage),
+    });
+  },
+);
 
 // --- Cache Flush ---
 admin.post('/cache/flush', zValidator('json', AdminFlushCacheSchema.optional()), async (c) => {

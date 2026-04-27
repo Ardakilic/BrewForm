@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono';
 import { verifyJwt } from '../modules/auth/jwt.ts';
 import { prisma } from '@brewform/db';
-import { unauthorized, forbidden } from '../utils/response/index.ts';
+import { forbidden, unauthorized } from '../utils/response/index.ts';
 
 export async function authMiddleware(c: Context, next: Next) {
   const authHeader = c.req.header('Authorization');

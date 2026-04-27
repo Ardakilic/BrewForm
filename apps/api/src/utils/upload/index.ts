@@ -40,7 +40,10 @@ export function generateFilename(originalName: string): string {
   return `${timestamp}-${uniqueId}.${ext}`;
 }
 
-export function generateThumbnailFilename(originalFilename: string, size: string = 'medium'): string {
+export function generateThumbnailFilename(
+  originalFilename: string,
+  size: string = 'medium',
+): string {
   const ext = originalFilename.split('.').pop() || 'jpg';
   const baseName = originalFilename.replace(`.${ext}`, '');
   return `${baseName}_${size}.${ext}`;
@@ -84,5 +87,7 @@ export function generateThumbnail(
   // For now, thumbnail generation is deferred to a future phase
   // where a proper image processing pipeline will be implemented.
   // Phase 9 (Frontend Features) will add client-side resize before upload.
-  throw new Error('Thumbnail generation not yet implemented. Use client-side resize or a future server-side implementation.');
+  throw new Error(
+    'Thumbnail generation not yet implemented. Use client-side resize or a future server-side implementation.',
+  );
 }

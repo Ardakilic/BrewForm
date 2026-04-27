@@ -1,7 +1,5 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { Hono } from 'hono';
-
 // Integration test for health route — tests the route handler logic
 // without connecting to a real database
 describe('Health Route Logic', () => {

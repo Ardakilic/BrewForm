@@ -7,7 +7,9 @@ interface RecipeJsonLdProps {
   image?: string;
 }
 
-export function RecipeJsonLd({ title, description, slug, authorName, datePublished, image }: RecipeJsonLdProps) {
+export function RecipeJsonLd(
+  { title, description, slug, authorName, datePublished, image }: RecipeJsonLdProps,
+) {
   const jsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Recipe',
@@ -24,7 +26,7 @@ export function RecipeJsonLd({ title, description, slug, authorName, datePublish
 
   return (
     <script
-      type="application/ld+json"
+      type='application/ld+json'
       dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
     />
   );

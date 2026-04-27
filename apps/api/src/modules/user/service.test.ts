@@ -1,12 +1,12 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
 
 function createMockModel(overrides: Record<string, unknown> = {}) {
   return {
     findById: (_id: string) => Promise.resolve(null),
     findByUsername: (_username: string) => Promise.resolve(null),
-    getUserStats: (_id: string) => Promise.resolve({ recipeCount: 0, followerCount: 0, followingCount: 0 }),
+    getUserStats: (_id: string) =>
+      Promise.resolve({ recipeCount: 0, followerCount: 0, followingCount: 0 }),
     updateProfile: (_id: string, _data: unknown) => Promise.resolve({ id: _id }),
     deleteUser: (_id: string) => Promise.resolve({ id: _id }),
     ...overrides,
@@ -46,7 +46,8 @@ describe('User Service', () => {
       };
       const model = createMockModel({
         findById: (_id: string) => Promise.resolve(mockUser),
-        getUserStats: (_id: string) => Promise.resolve({ recipeCount: 5, followerCount: 10, followingCount: 3 }),
+        getUserStats: (_id: string) =>
+          Promise.resolve({ recipeCount: 5, followerCount: 10, followingCount: 3 }),
       });
       const user = await model.findById('user-1');
       expect(user).not.toBeNull();

@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { authApi, setAccessToken, clearTokens, getAccessToken, userApi } from '../api/index';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { authApi, clearTokens, getAccessToken, setAccessToken, userApi } from '../api/index';
 
 interface AuthUser {
   id: string;
@@ -16,7 +16,9 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; username: string; password: string; displayName?: string }) => Promise<void>;
+  register: (
+    data: { email: string; username: string; password: string; displayName?: string },
+  ) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -55,7 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(response.user);
   }
 
-  async function register(data: { email: string; username: string; password: string; displayName?: string }) {
+  async function register(
+    data: { email: string; username: string; password: string; displayName?: string },
+  ) {
     const response = await authApi.register(data);
     setAccessToken(response.accessToken);
     localStorage.setItem('brewform_refresh_token', response.refreshToken);
@@ -68,15 +72,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      isAuthenticated: !!user,
-      login,
-      register,
-      logout,
-      refreshUser,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        login,
+        register,
+        logout,
+        refreshUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

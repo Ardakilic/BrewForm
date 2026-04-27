@@ -14,7 +14,7 @@ export async function getHierarchy(cache: CacheProvider) {
   return hierarchy;
 }
 
-export async function searchTasteNotes(query: string, cache: CacheProvider) {
+export async function searchTasteNotes(query: string, _cache: CacheProvider) {
   if (query.length < 3) throw new Error('QUERY_TOO_SHORT');
 
   const allNotes = await model.searchByName(query);
@@ -54,13 +54,20 @@ export async function getFlatList(cache: CacheProvider) {
   return allNotes;
 }
 
-export async function createTasteNote(data: { name: string; parentId?: string; color?: string; definition?: string; depth: number }, cache: CacheProvider) {
+export async function createTasteNote(
+  data: { name: string; parentId?: string; color?: string; definition?: string; depth: number },
+  cache: CacheProvider,
+) {
   const note = await model.create(data);
   await flushCache(cache);
   return note;
 }
 
-export async function updateTasteNote(id: string, data: { name?: string; color?: string; definition?: string }, cache: CacheProvider) {
+export async function updateTasteNote(
+  id: string,
+  data: { name?: string; color?: string; definition?: string },
+  cache: CacheProvider,
+) {
   const note = await model.update(id, data);
   await flushCache(cache);
   return note;

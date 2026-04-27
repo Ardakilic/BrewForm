@@ -123,16 +123,76 @@ async function seedBrewMethodCompatibility(tx: PrismaClient) {
 
 async function seedBadges(tx: PrismaClient) {
   const badges = [
-    { name: 'First Brew', icon: 'coffee', rule: 'first_brew' as const, description: 'Logged your first recipe', threshold: 1 },
-    { name: 'Decade Brewer', icon: 'ten', rule: 'decade_brewer' as const, description: '10 recipes logged', threshold: 10 },
-    { name: 'Centurion', icon: '100', rule: 'centurion' as const, description: '100 recipes logged', threshold: 100 },
-    { name: 'First Fork', icon: 'fork_and_knife', rule: 'first_fork' as const, description: 'Forked your first recipe', threshold: 1 },
-    { name: 'Fan Favourite', icon: 'star', rule: 'fan_favourite' as const, description: 'One of your recipes received 10+ likes', threshold: 10 },
-    { name: 'Community Star', icon: 'star2', rule: 'community_star' as const, description: 'One of your recipes received 50+ likes', threshold: 50 },
-    { name: 'Conversationalist', icon: 'speech_balloon', rule: 'conversationalist' as const, description: 'Left 10+ comments', threshold: 10 },
-    { name: 'Precision Brewer', icon: 'dart', rule: 'precision_brewer' as const, description: 'Logged 10 recipes with all optional fields filled', threshold: 10 },
-    { name: 'Explorer', icon: 'globe', rule: 'explorer' as const, description: 'Brewed with 5+ different brew methods', threshold: 5 },
-    { name: 'Influencer', icon: 'busts_in_silhouette', rule: 'influencer' as const, description: 'Gained 25+ followers', threshold: 25 },
+    {
+      name: 'First Brew',
+      icon: 'coffee',
+      rule: 'first_brew' as const,
+      description: 'Logged your first recipe',
+      threshold: 1,
+    },
+    {
+      name: 'Decade Brewer',
+      icon: 'ten',
+      rule: 'decade_brewer' as const,
+      description: '10 recipes logged',
+      threshold: 10,
+    },
+    {
+      name: 'Centurion',
+      icon: '100',
+      rule: 'centurion' as const,
+      description: '100 recipes logged',
+      threshold: 100,
+    },
+    {
+      name: 'First Fork',
+      icon: 'fork_and_knife',
+      rule: 'first_fork' as const,
+      description: 'Forked your first recipe',
+      threshold: 1,
+    },
+    {
+      name: 'Fan Favourite',
+      icon: 'star',
+      rule: 'fan_favourite' as const,
+      description: 'One of your recipes received 10+ likes',
+      threshold: 10,
+    },
+    {
+      name: 'Community Star',
+      icon: 'star2',
+      rule: 'community_star' as const,
+      description: 'One of your recipes received 50+ likes',
+      threshold: 50,
+    },
+    {
+      name: 'Conversationalist',
+      icon: 'speech_balloon',
+      rule: 'conversationalist' as const,
+      description: 'Left 10+ comments',
+      threshold: 10,
+    },
+    {
+      name: 'Precision Brewer',
+      icon: 'dart',
+      rule: 'precision_brewer' as const,
+      description: 'Logged 10 recipes with all optional fields filled',
+      threshold: 10,
+    },
+    {
+      name: 'Explorer',
+      icon: 'globe',
+      rule: 'explorer' as const,
+      description: 'Brewed with 5+ different brew methods',
+      threshold: 5,
+    },
+    {
+      name: 'Influencer',
+      icon: 'busts_in_silhouette',
+      rule: 'influencer' as const,
+      description: 'Gained 25+ followers',
+      threshold: 25,
+    },
   ];
 
   for (const badge of badges) {
@@ -192,7 +252,12 @@ async function seedUsers(tx: PrismaClient) {
 
 async function seedRecipes(tx: PrismaClient, users: { admin: any; user1: any; user2: any }) {
   const portafilter = await tx.equipment.create({
-    data: { name: 'Bottomless Portafilter 58mm', type: 'portafilter', brand: 'Lelit', createdBy: users.user1.id },
+    data: {
+      name: 'Bottomless Portafilter 58mm',
+      type: 'portafilter',
+      brand: 'Lelit',
+      createdBy: users.user1.id,
+    },
   });
 
   const basket = await tx.equipment.create({
@@ -200,31 +265,70 @@ async function seedRecipes(tx: PrismaClient, users: { admin: any; user1: any; us
   });
 
   const tamper = await tx.equipment.create({
-    data: { name: 'Normcore 58.5mm Spring Tamper', type: 'tamper', brand: 'Normcore', createdBy: users.user1.id },
+    data: {
+      name: 'Normcore 58.5mm Spring Tamper',
+      type: 'tamper',
+      brand: 'Normcore',
+      createdBy: users.user1.id,
+    },
   });
 
   const puckScreen = await tx.equipment.create({
-    data: { name: 'Metal Puck Screen 58.5mm', type: 'puck_screen', brand: 'Sieve', createdBy: users.user1.id },
+    data: {
+      name: 'Metal Puck Screen 58.5mm',
+      type: 'puck_screen',
+      brand: 'Sieve',
+      createdBy: users.user1.id,
+    },
   });
 
   const gooseneck = await tx.equipment.create({
-    data: { name: 'Fellow Stagg EKG', type: 'gooseneck_kettle', brand: 'Fellow', createdBy: users.user2.id },
+    data: {
+      name: 'Fellow Stagg EKG',
+      type: 'gooseneck_kettle',
+      brand: 'Fellow',
+      createdBy: users.user2.id,
+    },
   });
 
   const v60Filter = await tx.equipment.create({
-    data: { name: 'Hario V60 Paper Filter 02', type: 'paper_filter', brand: 'Hario', createdBy: users.user2.id },
+    data: {
+      name: 'Hario V60 Paper Filter 02',
+      type: 'paper_filter',
+      brand: 'Hario',
+      createdBy: users.user2.id,
+    },
   });
 
   const scale = await tx.equipment.create({
-    data: { name: 'Acaia Lunar', type: 'scale', brand: 'Acaia', description: 'High-precision espresso scale', createdBy: users.user1.id },
+    data: {
+      name: 'Acaia Lunar',
+      type: 'scale',
+      brand: 'Acaia',
+      description: 'High-precision espresso scale',
+      createdBy: users.user1.id,
+    },
   });
 
   const vendor1 = await tx.vendor.create({
-    data: { name: 'Heart Coffee Roasters', website: 'https://heartroasters.com', description: 'Portland-based specialty coffee roaster' },
+    data: {
+      name: 'Heart Coffee Roasters',
+      website: 'https://heartroasters.com',
+      description: 'Portland-based specialty coffee roaster',
+    },
   });
 
-  const bean1 = await tx.bean.create({
-    data: { name: 'Heart Ethiopia Yirgacheffe', brand: 'Heart', vendorId: vendor1.id, roaster: 'Heart Coffee Roasters', roastLevel: 'light', processing: 'washed', origin: 'Ethiopia, Yirgacheffe', userId: users.user1.id },
+  const _bean1 = await tx.bean.create({
+    data: {
+      name: 'Heart Ethiopia Yirgacheffe',
+      brand: 'Heart',
+      vendorId: vendor1.id,
+      roaster: 'Heart Coffee Roasters',
+      roastLevel: 'light',
+      processing: 'washed',
+      origin: 'Ethiopia, Yirgacheffe',
+      userId: users.user1.id,
+    },
   });
 
   const recipe1 = await tx.recipe.create({
@@ -333,7 +437,11 @@ async function seedRecipes(tx: PrismaClient, users: { admin: any; user1: any; us
   return { recipe1, recipe2, portafilter, basket, tamper, puckScreen, gooseneck, v60Filter, scale };
 }
 
-async function seedSocialData(tx: PrismaClient, users: { admin: any; user1: any; user2: any }, recipes: { recipe1: any; recipe2: any }) {
+async function seedSocialData(
+  tx: PrismaClient,
+  users: { admin: any; user1: any; user2: any },
+  recipes: { recipe1: any; recipe2: any },
+) {
   await tx.userFollow.create({
     data: { followerId: users.user2.id, followingId: users.user1.id },
   });
@@ -347,11 +455,20 @@ async function seedSocialData(tx: PrismaClient, users: { admin: any; user1: any;
   });
 
   const comment1 = await tx.comment.create({
-    data: { recipeId: recipes.recipe1.id, authorId: users.user2.id, content: 'Amazing shot! What Grinder setting are you using?' },
+    data: {
+      recipeId: recipes.recipe1.id,
+      authorId: users.user2.id,
+      content: 'Amazing shot! What Grinder setting are you using?',
+    },
   });
 
   await tx.comment.create({
-    data: { recipeId: recipes.recipe1.id, authorId: users.user1.id, content: 'Thanks! Setting 12 on the Lelit Fred.', parentCommentId: comment1.id },
+    data: {
+      recipeId: recipes.recipe1.id,
+      authorId: users.user1.id,
+      content: 'Thanks! Setting 12 on the Lelit Fred.',
+      parentCommentId: comment1.id,
+    },
   });
 
   const firstBrewBadge = await tx.badge.findFirst({ where: { rule: 'first_brew' } });
@@ -362,7 +479,11 @@ async function seedSocialData(tx: PrismaClient, users: { admin: any; user1: any;
   }
 }
 
-async function seedSetups(tx: PrismaClient, users: { admin: any; user1: any; user2: any }, equipment: any) {
+async function seedSetups(
+  tx: PrismaClient,
+  users: { admin: any; user1: any; user2: any },
+  equipment: any,
+) {
   await tx.setup.create({
     data: {
       name: "Alice's Espresso Setup",
@@ -395,7 +516,8 @@ async function main() {
   await seedBadges(prisma);
 
   const users = await seedUsers(prisma);
-  const { recipe1, recipe2, portafilter, basket, tamper, puckScreen, gooseneck, v60Filter, scale } = await seedRecipes(prisma, users);
+  const { recipe1, recipe2, portafilter, basket, tamper, puckScreen, gooseneck, v60Filter, scale } =
+    await seedRecipes(prisma, users);
   const equipment = { portafilter, basket, tamper, puckScreen, gooseneck, v60Filter, scale };
 
   await seedSocialData(prisma, users, { recipe1, recipe2 });
@@ -411,6 +533,7 @@ async function main() {
 main()
   .catch((e) => {
     console.error(e);
+    // deno-lint-ignore no-process-global
     process.exit(1);
   })
   .finally(async () => {

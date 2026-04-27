@@ -1,4 +1,4 @@
-import { sign, verify, decode } from 'hono/jwt';
+import { decode, sign, verify } from 'hono/jwt';
 import { config } from '../../config/index.ts';
 
 const JWT_SECRET = config.JWT_SECRET;
@@ -24,7 +24,9 @@ export interface RefreshPayload {
 
 export type JwtPayload = AccessPayload | RefreshPayload;
 
-export async function signAccessToken(user: { id: string; email: string; username: string; isAdmin: boolean }): Promise<string> {
+export async function signAccessToken(
+  user: { id: string; email: string; username: string; isAdmin: boolean },
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: user.id,
@@ -54,7 +56,9 @@ export async function verifyJwt(token: string): Promise<JwtPayload> {
   return payload as unknown as JwtPayload;
 }
 
-export function decodeJwt(token: string): { header: Record<string, unknown>; payload: Record<string, unknown> } | null {
+export function decodeJwt(
+  token: string,
+): { header: Record<string, unknown>; payload: Record<string, unknown> } | null {
   try {
     const decoded = decode(token);
     return {
@@ -72,10 +76,15 @@ function parseExpiry(expiry: string): number {
   const value = parseInt(match[1], 10);
   const unit = match[2];
   switch (unit) {
-    case 's': return value;
-    case 'm': return value * 60;
-    case 'h': return value * 3600;
-    case 'd': return value * 86400;
-    default: throw new Error(`Unknown time unit: ${unit}`);
+    case 's':
+      return value;
+    case 'm':
+      return value * 60;
+    case 'h':
+      return value * 3600;
+    case 'd':
+      return value * 86400;
+    default:
+      throw new Error(`Unknown time unit: ${unit}`);
   }
 }

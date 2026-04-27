@@ -1,7 +1,12 @@
 import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
 
-export async function createComment(userId: string, recipeId: string, content: string, parentCommentId?: string) {
+export async function createComment(
+  userId: string,
+  recipeId: string,
+  content: string,
+  parentCommentId?: string,
+) {
   if (parentCommentId) {
     const parentComment = await model.findById(parentCommentId);
     if (!parentComment) throw new Error('COMMENT_NOT_FOUND');

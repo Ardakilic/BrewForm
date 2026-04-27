@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { TasteNoteFilterSchema } from '@brewform/shared/schemas';
-import { authMiddleware, adminMiddleware } from '../../middleware/auth.ts';
+import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { success, error } from '../../utils/response/index.ts';
+import { error, success } from '../../utils/response/index.ts';
 import { cacheProvider } from '../../main.ts';
 import type { AppEnv } from '../../types/hono.ts';
 

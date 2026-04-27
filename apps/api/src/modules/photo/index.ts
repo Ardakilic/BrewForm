@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { success, error } from '../../utils/response/index.ts';
+import { error, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const photo = new Hono<AppEnv>();
@@ -25,12 +25,18 @@ photo.post('/', authMiddleware, async (c) => {
   const data = new Uint8Array(await fileField.arrayBuffer());
 
   try {
-    const result = await service.uploadPhoto(userId, recipeId, {
-      name: fileField.name,
-      type: fileField.type,
-      size: fileField.size,
-      data,
-    }, alt, sortOrder);
+    const result = await service.uploadPhoto(
+      userId,
+      recipeId,
+      {
+        name: fileField.name,
+        type: fileField.type,
+        size: fileField.size,
+        data,
+      },
+      alt,
+      sortOrder,
+    );
     return success(c, result, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

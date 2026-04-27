@@ -47,20 +47,69 @@ export const router = createBrowserRouter([
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'recipes', element: <RecipeListPage /> },
-      { path: 'recipes/new', element: <RequireAuth><RecipeCreatePage /></RequireAuth> },
+      {
+        path: 'recipes/new',
+        element: (
+          <RequireAuth>
+            <RecipeCreatePage />
+          </RequireAuth>
+        ),
+      },
       { path: 'recipes/compare/:id1/:id2', element: <RecipeComparePage /> },
       { path: 'recipes/:slug', element: <RecipeDetailPage /> },
       { path: 'recipes/:slug/print', element: <RecipePrintViewPage /> },
       { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },
-      { path: 'recipes/:id/edit', element: <RequireAuth><RecipeEditPage /></RequireAuth> },
+      {
+        path: 'recipes/:id/edit',
+        element: (
+          <RequireAuth>
+            <RecipeEditPage />
+          </RequireAuth>
+        ),
+      },
       { path: 'search', element: <SearchPage /> },
       { path: 'u/:username', element: <UserProfilePage /> },
-      { path: 'settings', element: <RequireAuth><SettingsPage /></RequireAuth> },
-      { path: 'setups', element: <RequireAuth><SetupListPage /></RequireAuth> },
-      { path: 'beans', element: <RequireAuth><BeanListPage /></RequireAuth> },
-      { path: 'equipment', element: <RequireAuth><EquipmentListPage /></RequireAuth> },
+      {
+        path: 'settings',
+        element: (
+          <RequireAuth>
+            <SettingsPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'setups',
+        element: (
+          <RequireAuth>
+            <SetupListPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'beans',
+        element: (
+          <RequireAuth>
+            <BeanListPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'equipment',
+        element: (
+          <RequireAuth>
+            <EquipmentListPage />
+          </RequireAuth>
+        ),
+      },
       { path: 'taste-notes', element: <TasteNotesPage /> },
-      { path: 'onboarding', element: <RequireAuth><OnboardingWizard /></RequireAuth> },
+      {
+        path: 'onboarding',
+        element: (
+          <RequireAuth>
+            <OnboardingWizard />
+          </RequireAuth>
+        ),
+      },
       { path: 'privacy', element: <PrivacyPage /> },
       { path: 'terms', element: <TermsPage /> },
       { path: '*', element: <NotFoundPage /> },
@@ -68,7 +117,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin',
-    element: <RequireAuth requireAdmin><AdminLayout /></RequireAuth>,
+    element: (
+      <RequireAuth requireAdmin>
+        <AdminLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <AdminDashboard /> },
       { path: 'users', element: <AdminUsersPage /> },

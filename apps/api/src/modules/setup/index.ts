@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { SetupCreateSchema, SetupUpdateSchema, PaginationSchema } from '@brewform/shared/schemas';
+import { PaginationSchema, SetupCreateSchema, SetupUpdateSchema } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { success, error, paginated } from '../../utils/response/index.ts';
+import { error, paginated, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const setup = new Hono<AppEnv>();

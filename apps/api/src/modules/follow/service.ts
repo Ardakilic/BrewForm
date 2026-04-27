@@ -2,7 +2,7 @@ import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
-const logger = createLogger('follow-service');
+const _logger = createLogger('follow-service');
 
 export async function followUser(followerId: string, followingId: string) {
   if (followerId === followingId) throw new Error('CANNOT_FOLLOW_SELF');

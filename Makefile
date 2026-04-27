@@ -42,16 +42,16 @@ turbo-check:
 # --- Code Quality ---
 
 lint:
-	docker compose run --rm app deno lint
+	docker compose run --rm app deno lint apps/ packages/
 
 fmt:
-	docker compose run --rm app deno fmt
+	docker compose run --rm app deno fmt apps/ packages/
 
 fmt-check:
-	docker compose run --rm app deno fmt --check
+	docker compose run --rm app deno fmt --check apps/ packages/
 
 check:
-	docker compose run --rm app bash -c "npm install 2>/dev/null && rm -rf node_modules/.prisma && cd packages/db && npx prisma generate 2>/dev/null && cd /app && deno check apps/api/src/main.ts"
+	docker compose run --rm app bash -c "npm install 2>/dev/null && rm -rf node_modules/.prisma && cd packages/db && npx prisma generate 2>/dev/null && cd /app && deno check --unstable-sloppy-imports apps/api/src/main.ts"
 
 # --- Testing ---
 

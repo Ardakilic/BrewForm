@@ -1,9 +1,16 @@
 import { z } from 'zod';
 
 const BadgeRuleEnum = z.enum([
-  'first_brew', 'decade_brewer', 'centurion', 'first_fork',
-  'fan_favourite', 'community_star', 'conversationalist',
-  'precision_brewer', 'explorer', 'influencer',
+  'first_brew',
+  'decade_brewer',
+  'centurion',
+  'first_fork',
+  'fan_favourite',
+  'community_star',
+  'conversationalist',
+  'precision_brewer',
+  'explorer',
+  'influencer',
 ]);
 
 export const BadgeCreateSchema = z.object({

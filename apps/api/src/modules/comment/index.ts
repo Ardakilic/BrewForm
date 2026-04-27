@@ -3,25 +3,49 @@ import { zValidator } from '@hono/zod-validator';
 import { CommentCreateSchema, PaginationSchema } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { success, error, paginated } from '../../utils/response/index.ts';
+import { error, paginated, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const comment = new Hono<AppEnv>();
 
-comment.post('/recipe/:recipeId', authMiddleware, zValidator('json', CommentCreateSchema), async (c) => {
-  const recipeId = c.req.param('recipeId')!;
-  const userId = c.get('userId') as string;
-  const body = c.req.valid('json');
-  try {
-    const result = await service.createComment(userId, recipeId, body.content, body.parentCommentId);
-    return success(c, result, 201);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message === 'COMMENT_NOT_FOUND') return error(c, 'NOT_FOUND', 'Parent comment not found', 404);
-    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Only the recipe author can reply to comments', 403);
-    throw err;
-  }
-});
+comment.post(
+  '/recipe/:recipeId',
+  authMiddleware,
+  zValidator('json', CommentCreateSchema),
+  async (c) => {
+    const recipeId = c.req.param('recipeId')!;
+    const userId = c.get('userId') as string;
+    const body = c.req.valid('json');
+    try {
+      const result = await service.createComment(
+        userId,
+        recipeId,
+        body.content,
+        body.parentCommentId,
+      );
+      return success(c, result, 201);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'COMMENT_NOT_FOUND') {
+        return error(
+          c,
+          'NOT_FOUND',
+          'Parent comment not found',
+          404,
+        );
+      }
+      if (message === 'FORBIDDEN') {
+        return error(
+          c,
+          'FORBIDDEN',
+          'Only the recipe author can reply to comments',
+          403,
+        );
+      }
+      throw err;
+    }
+  },
+);
 
 comment.get('/recipe/:recipeId', zValidator('query', PaginationSchema), async (c) => {
   const recipeId = c.req.param('recipeId')!;

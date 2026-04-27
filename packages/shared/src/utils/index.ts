@@ -1,16 +1,20 @@
 export {
-  convertGramsToOunces,
-  convertOuncesToGrams,
-  convertMlToFlOz,
-  convertFlOzToMl,
   convertCtoF,
+  convertFlOzToMl,
   convertFtoC,
-  formatWeight,
-  formatVolume,
+  convertGramsToOunces,
+  convertMlToFlOz,
+  convertOuncesToGrams,
   formatTemperature,
+  formatVolume,
+  formatWeight,
 } from './conversion';
 
-export { computeBrewRatio, computeFlowRate, computeExtractionYield } from './metrics';
-export { validateGrindDateNotBeforeRoastDate, validateBrewMethodCompatibility, validateSoftWarnings } from './validation';
+export { computeBrewRatio, computeExtractionYield, computeFlowRate } from './metrics';
+export {
+  validateBrewMethodCompatibility,
+  validateGrindDateNotBeforeRoastDate,
+  validateSoftWarnings,
+} from './validation';
 export { formatDate, isDateBefore } from './date';
-export { generateSlug, ensureUniqueSlug } from './slug';
+export { ensureUniqueSlug, generateSlug } from './slug';

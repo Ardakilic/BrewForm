@@ -26,7 +26,13 @@ export async function unbanUser(adminId: string, userId: string) {
 
 export async function setUserAdminRole(adminId: string, userId: string, isAdmin: boolean) {
   const user = await model.setUserAdminRole(userId, isAdmin);
-  await model.createAuditLog(adminId, isAdmin ? 'SET_ADMIN' : 'REMOVE_ADMIN', 'User', userId, `isAdmin: ${isAdmin}`);
+  await model.createAuditLog(
+    adminId,
+    isAdmin ? 'SET_ADMIN' : 'REMOVE_ADMIN',
+    'User',
+    userId,
+    `isAdmin: ${isAdmin}`,
+  );
   return user;
 }
 
@@ -38,7 +44,13 @@ export async function adminCreateUser(adminId: string, data: {
   isAdmin?: boolean;
 }) {
   const user = await model.adminCreateUser(data);
-  await model.createAuditLog(adminId, 'CREATE_USER', 'User', (user as any).id, `username: ${data.username}`);
+  await model.createAuditLog(
+    adminId,
+    'CREATE_USER',
+    'User',
+    (user as any).id,
+    `username: ${data.username}`,
+  );
   return user;
 }
 
@@ -53,9 +65,19 @@ export async function listAllRecipes(page: number, perPage: number, visibility?:
   return model.listAllRecipes(page, perPage, visibility);
 }
 
-export async function updateRecipeVisibility(adminId: string, recipeId: string, visibility: string) {
+export async function updateRecipeVisibility(
+  adminId: string,
+  recipeId: string,
+  visibility: string,
+) {
   const recipe = await model.updateRecipeVisibility(recipeId, visibility);
-  await model.createAuditLog(adminId, 'UPDATE_RECIPE_VISIBILITY', 'Recipe', recipeId, `visibility: ${visibility}`);
+  await model.createAuditLog(
+    adminId,
+    'UPDATE_RECIPE_VISIBILITY',
+    'Recipe',
+    recipeId,
+    `visibility: ${visibility}`,
+  );
   return recipe;
 }
 
@@ -70,7 +92,10 @@ export async function listEquipment(page: number, perPage: number) {
   return model.listEquipment(page, perPage);
 }
 
-export async function createEquipment(adminId: string, data: { name: string; type: string; brand?: string; model?: string; description?: string }) {
+export async function createEquipment(
+  adminId: string,
+  data: { name: string; type: string; brand?: string; model?: string; description?: string },
+) {
   const equipment = await model.createEquipment(data);
   await model.createAuditLog(adminId, 'CREATE_EQUIPMENT', 'Equipment', equipment.id);
   return equipment;
@@ -93,7 +118,10 @@ export async function listVendors(page: number, perPage: number) {
   return model.listVendors(page, perPage);
 }
 
-export async function createVendor(adminId: string, data: { name: string; website?: string; description?: string }) {
+export async function createVendor(
+  adminId: string,
+  data: { name: string; website?: string; description?: string },
+) {
   const vendor = await model.createVendor(data);
   await model.createAuditLog(adminId, 'CREATE_VENDOR', 'Vendor', vendor.id);
   return vendor;
@@ -117,14 +145,29 @@ export async function listTasteNotes(cache: CacheProvider) {
   return getHierarchy(cache);
 }
 
-export async function createTasteNote(adminId: string, data: { name: string; parentId?: string; color?: string; definition?: string; depth: number }, cache: CacheProvider) {
+export async function createTasteNote(
+  adminId: string,
+  data: { name: string; parentId?: string; color?: string; definition?: string; depth: number },
+  cache: CacheProvider,
+) {
   const { createTasteNote } = await import('../taste/service.ts');
   const note = await createTasteNote(data, cache);
-  await model.createAuditLog(adminId, 'CREATE_TASTE_NOTE', 'TasteNote', note.id, `name: ${data.name}`);
+  await model.createAuditLog(
+    adminId,
+    'CREATE_TASTE_NOTE',
+    'TasteNote',
+    note.id,
+    `name: ${data.name}`,
+  );
   return note;
 }
 
-export async function updateTasteNote(adminId: string, id: string, data: { name?: string; color?: string; definition?: string }, cache: CacheProvider) {
+export async function updateTasteNote(
+  adminId: string,
+  id: string,
+  data: { name?: string; color?: string; definition?: string },
+  cache: CacheProvider,
+) {
   const { updateTasteNote } = await import('../taste/service.ts');
   const note = await updateTasteNote(id, data, cache);
   await model.createAuditLog(adminId, 'UPDATE_TASTE_NOTE', 'TasteNote', id);
@@ -143,16 +186,32 @@ export async function listCompatibilityRules() {
   return model.listCompatibilityRules();
 }
 
-export async function updateCompatibilityRule(adminId: string, id: string, compatible: boolean, cache: CacheProvider) {
+export async function updateCompatibilityRule(
+  adminId: string,
+  id: string,
+  compatible: boolean,
+  cache: CacheProvider,
+) {
   const rule = await model.updateCompatibilityRule(id, compatible);
-  await model.createAuditLog(adminId, 'UPDATE_COMPATIBILITY_RULE', 'BrewMethodEquipmentRule', id, `compatible: ${compatible}`);
+  await model.createAuditLog(
+    adminId,
+    'UPDATE_COMPATIBILITY_RULE',
+    'BrewMethodEquipmentRule',
+    id,
+    `compatible: ${compatible}`,
+  );
   await cache.deleteByPrefix(['cache', 'compatibility']);
   return rule;
 }
 
 export async function createCompatibilityRule(adminId: string, data: any, cache: CacheProvider) {
   const rule = await model.createCompatibilityRule(data);
-  await model.createAuditLog(adminId, 'CREATE_COMPATIBILITY_RULE', 'BrewMethodEquipmentRule', rule.id);
+  await model.createAuditLog(
+    adminId,
+    'CREATE_COMPATIBILITY_RULE',
+    'BrewMethodEquipmentRule',
+    rule.id,
+  );
   await cache.deleteByPrefix(['cache', 'compatibility']);
   return rule;
 }
@@ -165,7 +224,12 @@ export async function deleteCompatibilityRule(adminId: string, id: string, cache
 
 // --- Reports (admin) ---
 
-export async function listReports(page: number, perPage: number, status?: string, entityType?: string) {
+export async function listReports(
+  page: number,
+  perPage: number,
+  status?: string,
+  entityType?: string,
+) {
   return model.listReports(page, perPage, status, entityType);
 }
 
@@ -197,7 +261,13 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
       await cache.delete(['cache', key]);
     }
   }
-  await model.createAuditLog('system', 'FLUSH_CACHE', 'Cache', undefined, keys.length > 0 ? keys.join(',') : 'ALL');
+  await model.createAuditLog(
+    'system',
+    'FLUSH_CACHE',
+    'Cache',
+    undefined,
+    keys.length > 0 ? keys.join(',') : 'ALL',
+  );
 }
 
 // --- Analytics ---

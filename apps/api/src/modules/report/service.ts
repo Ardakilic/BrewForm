@@ -1,6 +1,11 @@
 import * as model from './model.ts';
 
-export async function createReport(reporterId: string, entityType: string, entityId: string, reason: string) {
+export async function createReport(
+  reporterId: string,
+  entityType: string,
+  entityId: string,
+  reason: string,
+) {
   return model.create(reporterId, entityType, entityId, reason);
 }
 

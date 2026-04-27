@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api/index';
 
 interface TasteNote {
@@ -49,7 +49,7 @@ export function TasteAutocomplete({ selectedIds, onSelectionChange }: Props) {
       if (note.parentId) parentIds.add(note.parentId);
     });
     const expanded = allNotes.filter((note) =>
-      matched.some((m) => m.id === note.id) || parentIds.has(note.id),
+      matched.some((m) => m.id === note.id) || parentIds.has(note.id)
     );
     const unique = Array.from(new Map(expanded.map((n) => [n.id, n])).values());
     unique.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
@@ -75,12 +75,12 @@ export function TasteAutocomplete({ selectedIds, onSelectionChange }: Props) {
   const selectedNotes = allNotes.filter((n) => selectedIds.includes(n.id));
 
   return (
-    <div ref={wrapperRef} className="relative">
-      <div className="flex flex-wrap gap-2 mb-2">
+    <div ref={wrapperRef} className='relative'>
+      <div className='flex flex-wrap gap-2 mb-2'>
         {selectedNotes.map((note) => (
           <span
             key={note.id}
-            className="badge cursor-pointer"
+            className='badge cursor-pointer'
             onClick={() => toggleNote(note.id)}
           >
             {note.name} ×
@@ -88,38 +88,39 @@ export function TasteAutocomplete({ selectedIds, onSelectionChange }: Props) {
         ))}
       </div>
       <input
-        type="text"
+        type='text'
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
-        placeholder="Search taste notes (type 3+ characters)..."
-        className="input-field"
+        placeholder='Search taste notes (type 3+ characters)...'
+        className='input-field'
       />
       {isOpen && results.length > 0 && (
         <ul
-          className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded border"
+          className='absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded border'
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
         >
           {results.map((note) => (
             <li
               key={note.id}
-              className="cursor-pointer px-3 py-2 hover:opacity-80"
+              className='cursor-pointer px-3 py-2 hover:opacity-80'
               style={{ paddingLeft: `${note.depth * 1.5 + 0.75}rem`, color: 'var(--text-primary)' }}
               onClick={() => toggleNote(note.id)}
             >
-              {selectedIds.includes(note.id) ? '✓ ' : ''}{note.name}
+              {selectedIds.includes(note.id) ? '✓ ' : ''}
+              {note.name}
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+      <p className='mt-1 text-xs' style={{ color: 'var(--text-tertiary)' }}>
         <a
-          href="https://notbadcoffee.com/flavor-wheel-en/"
-          target="_blank"
-          rel="noopener noreferrer"
+          href='https://notbadcoffee.com/flavor-wheel-en/'
+          target='_blank'
+          rel='noopener noreferrer'
           style={{ color: 'var(--accent-primary)' }}
         >
           SCAA Flavor Wheel Reference

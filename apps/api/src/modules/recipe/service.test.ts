@@ -1,7 +1,7 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { computeBrewRatio, computeFlowRate, computeExtractionYield } from '@brewform/shared/utils';
-import { generateSlug, ensureUniqueSlug } from '@brewform/shared/utils';
+import { computeBrewRatio, computeExtractionYield, computeFlowRate } from '@brewform/shared/utils';
+import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 
 describe('Recipe Service Logic', () => {
   describe('Slug generation', () => {
@@ -56,21 +56,24 @@ describe('Recipe Service Logic', () => {
     it('should prevent forking of private recipes by non-authors', () => {
       const recipe = { visibility: 'private', authorId: 'user-1' };
       const currentUserId = 'user-2';
-      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' || recipe.authorId === currentUserId;
+      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' ||
+        recipe.authorId === currentUserId;
       expect(canFork).toBe(false);
     });
 
     it('should allow forking of public recipes by anyone', () => {
       const recipe = { visibility: 'public', authorId: 'user-1' };
       const currentUserId = 'user-2';
-      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' || recipe.authorId === currentUserId;
+      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' ||
+        recipe.authorId === currentUserId;
       expect(canFork).toBe(true);
     });
 
     it('should allow author to fork their own private recipe', () => {
       const recipe = { visibility: 'private', authorId: 'user-1' };
       const currentUserId = 'user-1';
-      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' || recipe.authorId === currentUserId;
+      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' ||
+        recipe.authorId === currentUserId;
       expect(canFork).toBe(true);
     });
   });

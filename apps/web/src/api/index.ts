@@ -1,6 +1,6 @@
-import { api, setAccessToken, getAccessToken, clearTokens, ApiError } from './client';
+import { api, ApiError, clearTokens, getAccessToken, setAccessToken } from './client';
 
-export { api, setAccessToken, getAccessToken, clearTokens, ApiError };
+export { api, ApiError, clearTokens, getAccessToken, setAccessToken };
 
 export const authApi = {
   register: (data: { email: string; username: string; password: string; displayName?: string }) =>
@@ -52,21 +52,24 @@ export const setupApi = {
   list: () => api.get<Record<string, unknown>[]>('/setups'),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/setups', data),
   get: (id: string) => api.get<Record<string, unknown>>(`/setups/${id}`),
-  update: (id: string, data: Record<string, unknown>) => api.patch<Record<string, unknown>>(`/setups/${id}`, data),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.patch<Record<string, unknown>>(`/setups/${id}`, data),
   delete: (id: string) => api.delete<{ message: string }>(`/setups/${id}`),
 };
 
 export const beanApi = {
   list: () => api.get<Record<string, unknown>[]>('/beans'),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/beans', data),
-  update: (id: string, data: Record<string, unknown>) => api.patch<Record<string, unknown>>(`/beans/${id}`, data),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.patch<Record<string, unknown>>(`/beans/${id}`, data),
   delete: (id: string) => api.delete<{ message: string }>(`/beans/${id}`),
 };
 
 export const equipmentApi = {
   list: () => api.get<Record<string, unknown>[]>('/equipment'),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/equipment', data),
-  update: (id: string, data: Record<string, unknown>) => api.patch<Record<string, unknown>>(`/equipment/${id}`, data),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.patch<Record<string, unknown>>(`/equipment/${id}`, data),
   delete: (id: string) => api.delete<{ message: string }>(`/equipment/${id}`),
 };
 

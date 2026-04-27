@@ -21,7 +21,13 @@ async function main() {
   const password = Deno.env.get('ADMIN_PASSWORD') || 'changeme123';
 
   console.log(`Creating admin user: ${username} (${email})`);
-  console.log(`Password: ${Deno.env.get('ADMIN_PASSWORD') ? '(from ADMIN_PASSWORD env)' : '(default: changeme123 — change immediately!)'}`);
+  console.log(
+    `Password: ${
+      Deno.env.get('ADMIN_PASSWORD')
+        ? '(from ADMIN_PASSWORD env)'
+        : '(default: changeme123 — change immediately!)'
+    }`,
+  );
 
   const passwordHash = hashSync(password, 10);
 

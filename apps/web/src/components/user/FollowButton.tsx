@@ -30,11 +30,13 @@ export function FollowButton({ userId, initialFollowing, onToggle }: Props) {
 
   return (
     <button
-      type="button"
+      type='button'
       onClick={toggle}
       disabled={loading}
-      className="btn-secondary text-sm"
-      style={following ? { backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' } : {}}
+      className='btn-secondary text-sm'
+      style={following
+        ? { backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }
+        : {}}
     >
       {loading ? '...' : following ? 'Following' : 'Follow'}
     </button>

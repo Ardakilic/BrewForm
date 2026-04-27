@@ -16,11 +16,13 @@ export async function getUserBadges(userId: string) {
 export async function evaluateBadges(userId: string) {
   const userRecipes = await prisma.recipe.count({ where: { authorId: userId, deletedAt: null } });
   const userComments = await prisma.comment.count({ where: { authorId: userId, deletedAt: null } });
-  const userForks = await prisma.recipe.count({ where: { authorId: userId, forkedFromId: { not: null }, deletedAt: null } as any });
+  const userForks = await prisma.recipe.count({
+    where: { authorId: userId, forkedFromId: { not: null }, deletedAt: null } as any,
+  });
   const userFollowers = await prisma.userFollow.count({ where: { followingId: userId } });
   const userRecipesWithLikes = await prisma.recipe.findMany({ where: { authorId: userId } });
   const maxLikes = Math.max(...userRecipesWithLikes.map((r: any) => r.likeCount), 0);
-  
+
   const distinctMethods = await prisma.recipeVersion.findMany({
     where: { recipe: { authorId: userId, deletedAt: null } },
     select: { brewMethod: true },
@@ -39,14 +41,15 @@ export async function evaluateBadges(userId: string) {
     },
   } as any);
 
-  const precisionBrewerMet = userVersions.length >= 1 && userVersions.every((v: any) =>
-    v.groundWeightGrams !== null &&
-    v.extractionTimeSeconds !== null &&
-    v.extractionVolumeMl !== null &&
-    v.temperatureCelsius !== null &&
-    v.brewRatio !== null &&
-    v.flowRate !== null
-  );
+  const precisionBrewerMet = userVersions.length >= 1 &&
+    userVersions.every((v: any) =>
+      v.groundWeightGrams !== null &&
+      v.extractionTimeSeconds !== null &&
+      v.extractionVolumeMl !== null &&
+      v.temperatureCelsius !== null &&
+      v.brewRatio !== null &&
+      v.flowRate !== null
+    );
 
   const checks: Array<{ rule: string; met: boolean }> = [
     { rule: 'first_brew', met: userRecipes >= 1 },

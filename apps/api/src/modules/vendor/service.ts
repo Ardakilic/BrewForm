@@ -18,7 +18,7 @@ export async function createVendor(data: any) {
   return model.create(data);
 }
 
-export async function updateVendor(userId: string, id: string, data: any) {
+export async function updateVendor(_userId: string, id: string, data: any) {
   const vendor = await model.findById(id);
   if (!vendor) throw new Error('VENDOR_NOT_FOUND');
   return model.update(id, data);
