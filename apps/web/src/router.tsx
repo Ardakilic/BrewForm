@@ -14,6 +14,7 @@ import { RecipeEditPage } from './pages/recipes/RecipeEditPage';
 import { RecipeComparePage } from './pages/recipes/RecipeComparePage';
 import { RecipePrintViewPage } from './pages/recipes/RecipePrintViewPage';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage';
+import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage';
 import { UserProfilePage } from './pages/users/UserProfilePage';
 import { SearchPage } from './pages/search/SearchPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'recipes', element: <RecipeListPage /> },
+      { path: 'recipes/unavailable', element: <RecipeNotAvailablePage /> },
       {
         path: 'recipes/new',
         element: (

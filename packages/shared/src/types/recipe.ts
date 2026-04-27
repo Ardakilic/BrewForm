@@ -25,7 +25,7 @@ export type DrinkType =
   | 'cold_brew'
   | 'french_press';
 
-export type EmojiTag = 'fire' | 'rocket' | 'thumbsup' | 'neutral' | 'thumbsdown' | 'sick';
+export type EmojiTag = 'fire' | 'rocket' | 'thumbsup' | 'neutral' | 'thumbsdown' | 'nauseated';
 
 export interface Recipe {
   id: string;
@@ -104,9 +104,11 @@ export interface RecipeCreateInput {
   additionalPreparations?: AdditionalPreparation[];
 }
 
+export type AdditionalPreparationCategory = 'milk' | 'water' | 'syrup' | 'spice' | 'other';
+
 export interface AdditionalPreparation {
   name: string;
-  type: string;
+  type: AdditionalPreparationCategory;
   inputAmount: string;
   preparationType: string;
 }

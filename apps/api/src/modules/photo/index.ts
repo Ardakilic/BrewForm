@@ -10,7 +10,8 @@ photo.post('/', authMiddleware, async (c) => {
   const userId = c.get('userId') as string;
   const formData = await c.req.formData();
 
-  const fileField = formData.get('file');
+  const fileField = formData.get('file') ?? formData.get('photo');
+  const thumbnailField = formData.get('thumbnail');
   const recipeId = formData.get('recipeId') as string;
   const alt = (formData.get('alt') as string) || undefined;
   const sortOrder = formData.get('sortOrder') ? Number(formData.get('sortOrder')) : undefined;
@@ -23,6 +24,9 @@ photo.post('/', authMiddleware, async (c) => {
   }
 
   const data = new Uint8Array(await fileField.arrayBuffer());
+  const thumbnail = thumbnailField instanceof File && thumbnailField.size > 0
+    ? new Uint8Array(await thumbnailField.arrayBuffer())
+    : null;
 
   try {
     const result = await service.uploadPhoto(
@@ -34,6 +38,7 @@ photo.post('/', authMiddleware, async (c) => {
         size: fileField.size,
         data,
       },
+      thumbnail,
       alt,
       sortOrder,
     );

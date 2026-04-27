@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { recipeApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { RecipeJsonLd } from '../../components/seo/JsonLd';
@@ -13,6 +13,9 @@ import { EMOJI_TAGS } from '@brewform/shared/constants';
 
 export function RecipeDetailPage() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const fromQr = searchParams.get('from') === 'qr';
   const { user, isAuthenticated } = useAuth();
   // deno-lint-ignore no-explicit-any
   const [recipe, setRecipe] = useState<any>(null);
@@ -23,10 +26,19 @@ export function RecipeDetailPage() {
     if (!slug) return;
     setLoading(true);
     recipeApi.get(slug).then((data) => {
+      // QR codes are only generated for public recipes. If a scan lands on a
+      // non-public recipe, show the dedicated "no longer available" page.
+      if (fromQr && data && data.visibility !== 'public') {
+        navigate('/recipes/unavailable', { replace: true });
+        return;
+      }
       setRecipe(data);
     }).catch(() => {
+      if (fromQr) {
+        navigate('/recipes/unavailable', { replace: true });
+      }
     }).finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, fromQr, navigate]);
 
   if (loading) {
     return (

@@ -15,7 +15,7 @@
 | 7 | Admin Module | ✅ Completed | Admin CRUD, audit log, analytics, content moderation |
 | 8 | Frontend Foundation | ✅ Completed | Theme, API client, auth context, layout, pages |
 | 9 | Frontend Features | ✅ Completed | All pages, components, admin panel, routes |
-| 10 | Testing | ✅ Completed | All tests passing (44 test suites, 315 steps) |
+| 10 | Testing | ✅ Completed | All tests passing (45 test suites, 316 steps) |
 | 11 | CI/CD & Deployment | ✅ Completed | GitHub Actions, Deno Deploy, GitHub Pages |
 | 12 | Documentation | ✅ Completed | README, docs/, JSDoc comments |
 
@@ -33,8 +33,9 @@
 
 ## Phase 2 — Completed
 
-- [x] `packages/db/prisma/schema.prisma` — Full schema with 24 models and 13 enums
+- [x] `packages/db/prisma/schema.prisma` — Full schema with 24 models and 11 enums
   - Enums: Visibility, BrewMethod, DrinkType, EquipmentType, EmojiTag, BadgeRule, UnitSystem, TemperatureUnit, Theme, DateFormat, AdditionalPreparationType
+  - `RecipeAdditionalPreparation.type` now uses the `AdditionalPreparationType` enum (post-review fix; migration `20260427194537_use_additional_preparation_type_enum`)
   - Models: User, UserPreferences, Recipe, RecipeVersion, RecipeTasteNote, RecipeEquipment, RecipeAdditionalPreparation, Photo, RecipeVersionPhoto, Equipment, Bean, Vendor, TasteNote, Setup, Comment, UserFollow, UserRecipeFavourite, UserRecipeLike, Badge, UserBadge, BrewMethodEquipmentRule, AuditLog, PasswordReset, Report
   - All models use UUID string IDs, soft deletes, proper indexes
   - EmojiTag enum stores stable keys (fire, rocket, etc.) not emoji characters
@@ -304,7 +305,7 @@
 - **Dockerfile**: Node.js 22 installed alongside Deno for npm/npx commands
 - **Seed script**: Uses Node.js (`.cjs`) since Prisma Client is a Node module
 - **Report model**: Added from gap analysis (C5) for content moderation
-- **EmojiTag stable keys**: Uses `fire`, `rocket`, `thumbsup`, `neutral`, `thumbsdown`, `sick` instead of emoji characters (per §6.2 DB portability)
+- **EmojiTag stable keys**: Uses `fire`, `rocket`, `thumbsup`, `neutral`, `thumbsdown`, `nauseated` instead of emoji characters (per §6.2 DB portability). Shared types/Zod aligned with the DB enum value `nauseated`.
 - **RecipeCreateSchema refactored**: Base object schema extracted to `RecipeCreateObjectSchema` so `RecipeUpdateSchema` can use `.partial()` on the unwrapped ZodObject
 - **Hono type variables**: Custom `Variables` type for context (`requestId`, `cache`, `userId`, `user`)
 - **Response helper types**: Use Hono's `ContentfulStatusCode` type (not `StatusCode`) for proper type narrowing — `StatusCode` includes informational 1xx codes which aren't valid for JSON responses

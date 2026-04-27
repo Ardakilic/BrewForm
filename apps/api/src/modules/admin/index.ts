@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { describeRoute } from 'hono-openapi';
 import { z } from 'zod';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import {
@@ -18,13 +19,28 @@ const admin = new Hono<AppEnv>();
 admin.use('*', authMiddleware, adminMiddleware);
 
 // --- Analytics Dashboard ---
-admin.get('/stats', async (c) => {
-  const stats = await service.getDashboardStats();
-  return success(c, stats);
-});
+admin.get(
+  '/stats',
+  describeRoute({
+    tags: ['Admin'],
+    summary: 'Dashboard summary stats',
+    security: [{ bearerAuth: [] }],
+    responses: { 200: { description: 'Aggregate counters for the admin home page' } },
+  }),
+  async (c) => {
+    const stats = await service.getDashboardStats();
+    return success(c, stats);
+  },
+);
 
 admin.get(
   '/analytics/users',
+  describeRoute({
+    tags: ['Admin'],
+    summary: 'User signup growth over a window of days',
+    security: [{ bearerAuth: [] }],
+    responses: { 200: { description: 'Time-series of new users per day' } },
+  }),
   zValidator('query', z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })),
   async (c) => {
     const { days } = c.req.valid('query');
@@ -35,6 +51,12 @@ admin.get(
 
 admin.get(
   '/analytics/recipes',
+  describeRoute({
+    tags: ['Admin'],
+    summary: 'Recipe creation growth over a window of days',
+    security: [{ bearerAuth: [] }],
+    responses: { 200: { description: 'Time-series of new recipes per day' } },
+  }),
   zValidator('query', z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })),
   async (c) => {
     const { days } = c.req.valid('query');
@@ -45,6 +67,12 @@ admin.get(
 
 admin.get(
   '/analytics/top-recipes',
+  describeRoute({
+    tags: ['Admin'],
+    summary: 'Top recipes leaderboard',
+    security: [{ bearerAuth: [] }],
+    responses: { 200: { description: 'Top recipes by like count' } },
+  }),
   zValidator('query', z.object({ limit: z.coerce.number().int().min(1).max(100).default(10) })),
   async (c) => {
     const { limit } = c.req.valid('query');
@@ -55,6 +83,12 @@ admin.get(
 
 admin.get(
   '/analytics/top-users',
+  describeRoute({
+    tags: ['Admin'],
+    summary: 'Top users leaderboard',
+    security: [{ bearerAuth: [] }],
+    responses: { 200: { description: 'Top users by recipe / follower counts' } },
+  }),
   zValidator('query', z.object({ limit: z.coerce.number().int().min(1).max(100).default(10) })),
   async (c) => {
     const { limit } = c.req.valid('query');

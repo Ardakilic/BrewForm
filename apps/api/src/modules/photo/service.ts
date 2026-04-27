@@ -1,8 +1,9 @@
-// deno-lint-ignore no-explicit-any
+// deno-lint-ignore-file no-explicit-any
 import * as model from './model.ts';
 import {
   generateFilename,
   getPublicUrl,
+  saveThumbnail,
   saveUploadedFile,
   validateImageUpload,
 } from '../../utils/upload/index.ts';
@@ -14,6 +15,7 @@ export async function uploadPhoto(
   _userId: string,
   recipeId: string,
   file: { name: string; type: string; size: number; data: Uint8Array },
+  thumbnail: Uint8Array | null,
   alt?: string,
   sortOrder?: number,
 ) {
@@ -22,11 +24,14 @@ export async function uploadPhoto(
 
   const filename = generateFilename(file.name);
   const filepath = await saveUploadedFile(file.data, filename);
-  logger.info({ filepath, filename }, 'Photo saved');
+  const url = getPublicUrl(filename);
+  const thumbnailUrl = await saveThumbnail(thumbnail, filename, url, 'medium');
+  logger.info({ filepath, filename, hasThumbnail: thumbnail !== null }, 'Photo saved');
 
   const photo = await model.create({
     recipeId,
-    url: getPublicUrl(filename),
+    url,
+    thumbnailUrl,
     alt: alt || null,
     sortOrder: sortOrder ?? 0,
   } as any);

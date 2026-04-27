@@ -29,16 +29,18 @@ const DrinkTypeEnum = z.enum([
 ]);
 
 const VisibilityEnum = z.enum(['draft', 'private', 'unlisted', 'public']);
-const EmojiTagEnum = z.enum(['fire', 'rocket', 'thumbsup', 'neutral', 'thumbsdown', 'sick']);
+const EmojiTagEnum = z.enum(['fire', 'rocket', 'thumbsup', 'neutral', 'thumbsdown', 'nauseated']);
+
+const AdditionalPreparationTypeEnum = z.enum(['milk', 'water', 'syrup', 'spice', 'other']);
 
 const AdditionalPreparationSchema = z.object({
   name: z.string().min(1).max(100),
-  type: z.string().min(1).max(100),
+  type: AdditionalPreparationTypeEnum,
   inputAmount: z.string().min(1).max(50),
   preparationType: z.string().min(1).max(100),
 });
 
-const RecipeCreateObjectSchema = z.object({
+export const RecipeCreateObjectSchema = z.object({
   title: z.string().min(1).max(200),
   visibility: VisibilityEnum.default('draft'),
   productName: z.string().max(200).optional(),

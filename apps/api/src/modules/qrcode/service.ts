@@ -8,7 +8,10 @@ export async function getRecipeQRCode(slug: string, format: 'png' | 'svg', baseU
     throw new Error('RECIPE_NOT_AVAILABLE');
   }
 
-  const url = `${baseUrl}/recipes/${slug}`;
+  // Embed `?from=qr` so the frontend can route public-only scans of recipes
+  // that have since been delisted to a dedicated "no longer available" page,
+  // instead of falling through to the generic 404 (gap M3).
+  const url = `${baseUrl}/recipes/${slug}?from=qr`;
   if (format === 'png') {
     const data = await generateQRCodePng(url);
     return { data: data.buffer as ArrayBuffer, contentType: 'image/png' };

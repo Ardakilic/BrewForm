@@ -58,6 +58,7 @@
           "dependencies": [
             "npm:@brewform/db@*",
             "npm:@brewform/shared@*",
+            "npm:@hono/standard-validator@~0.1.5",
             "npm:@hono/zod-validator@0.5",
             "npm:@types/bcryptjs@^2.4.6",
             "npm:@types/nodemailer@^6.4.17",

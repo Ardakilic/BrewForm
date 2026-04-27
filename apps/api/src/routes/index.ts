@@ -11,7 +11,8 @@
  */
 import { Hono } from 'hono';
 import health from './health.ts';
-import openapi from './openapi.ts';
+import { registerOpenApi } from './openapi.ts';
+import type { AppEnv } from '../types/hono.ts';
 import auth from '../modules/auth/index.ts';
 import user from '../modules/user/index.ts';
 import recipe from '../modules/recipe/index.ts';
@@ -30,10 +31,9 @@ import qrcode from '../modules/qrcode/index.ts';
 import report from '../modules/report/index.ts';
 import admin from '../modules/admin/index.ts';
 
-const routes = new Hono();
+const routes = new Hono<AppEnv>();
 
 routes.route('/', health);
-routes.route('/', openapi);
 routes.route('/api/v1/auth', auth);
 routes.route('/api/v1/users', user);
 routes.route('/api/v1/recipes', recipe);
@@ -51,5 +51,7 @@ routes.route('/api/v1/search', search);
 routes.route('/api/v1/qrcode', qrcode);
 routes.route('/api/v1/reports', report);
 routes.route('/api/v1/admin', admin);
+
+registerOpenApi(routes);
 
 export default routes;

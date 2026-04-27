@@ -1,4 +1,9 @@
-export { RecipeCreateSchema, RecipeFilterSchema, RecipeUpdateSchema } from './recipe';
+export {
+  RecipeCreateObjectSchema,
+  RecipeCreateSchema,
+  RecipeFilterSchema,
+  RecipeUpdateSchema,
+} from './recipe';
 export { EquipmentCreateSchema, EquipmentUpdateSchema } from './equipment';
 export {
   AuthLoginSchema,

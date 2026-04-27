@@ -72,22 +72,24 @@ export function getThumbnailSizes(): Record<string, ThumbnailOptions> {
   return { ...THUMBNAIL_SIZES };
 }
 
-export function generateThumbnail(
-  _sourcePath: string,
-  _destPath: string,
-  _options: ThumbnailOptions,
-): Promise<void> {
-  // Thumbnail generation requires image processing library (e.g., sharp).
-  // This is a placeholder that copies the source file as-is.
-  // When a suitable Deno-compatible image processing library is available,
-  // replace this with actual resize logic:
-  //   const image = await processImage(sourcePath, options);
-  //   await Deno.writeFile(destPath, image);
-  //
-  // For now, thumbnail generation is deferred to a future phase
-  // where a proper image processing pipeline will be implemented.
-  // Phase 9 (Frontend Features) will add client-side resize before upload.
-  throw new Error(
-    'Thumbnail generation not yet implemented. Use client-side resize or a future server-side implementation.',
-  );
+/**
+ * Persists pre-resized thumbnail bytes to disk and returns the public URL.
+ *
+ * Thumbnails are produced client-side via `<canvas>` in PhotoUpload before
+ * upload (see apps/web/src/components/photos/PhotoUpload.tsx). The server
+ * only stores them. If no thumbnail bytes are provided the original file's
+ * URL is returned so callers can always populate `Photo.thumbnailUrl`.
+ */
+export async function saveThumbnail(
+  thumbnailBytes: Uint8Array | null,
+  originalFilename: string,
+  fallbackUrl: string,
+  size: string = 'medium',
+): Promise<string> {
+  if (!thumbnailBytes || thumbnailBytes.length === 0) {
+    return fallbackUrl;
+  }
+  const filename = generateThumbnailFilename(originalFilename, size);
+  await saveUploadedFile(thumbnailBytes, filename);
+  return getPublicUrl(filename);
 }

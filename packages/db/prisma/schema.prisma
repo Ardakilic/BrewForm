@@ -275,13 +275,13 @@ model RecipeEquipment {
 }
 
 model RecipeAdditionalPreparation {
-  id              String @id @default(uuid())
+  id              String                    @id @default(uuid())
   recipeVersionId String
   name            String
-  type            String
+  type            AdditionalPreparationType
   inputAmount     String
   preparationType String
-  sortOrder       Int    @default(0)
+  sortOrder       Int                       @default(0)
 
   recipeVersion RecipeVersion @relation(fields: [recipeVersionId], references: [id], onDelete: Cascade)
 

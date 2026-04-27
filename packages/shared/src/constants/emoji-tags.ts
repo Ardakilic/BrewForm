@@ -4,7 +4,7 @@ export const EMOJI_TAGS = [
   { key: 'thumbsup', emoji: '\u{1F44D}', label: 'Good' },
   { key: 'neutral', emoji: '\u{1F610}', label: 'Okay' },
   { key: 'thumbsdown', emoji: '\u{1F44E}', label: 'Bad' },
-  { key: 'sick', emoji: '\u{1F922}', label: 'Horrible' },
+  { key: 'nauseated', emoji: '\u{1F922}', label: 'Horrible' },
 ] as const;
 
 export type EmojiTagKey = (typeof EMOJI_TAGS)[number]['key'];
