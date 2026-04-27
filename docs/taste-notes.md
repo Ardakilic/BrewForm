@@ -1,18 +1,21 @@
 # Taste Notes (SCAA Flavor Wheel)
 
-BrewForm uses the SCAA 2016 Flavor Wheel as the foundation for its tasting note system. The wheel data is parsed from `files/scaa-2.json` during database seeding and stored as a hierarchical structure.
+BrewForm uses the SCAA 2016 Flavor Wheel as the foundation for its tasting note system. The wheel
+data is parsed from `files/scaa-2.json` during database seeding and stored as a hierarchical
+structure.
 
 ## Hierarchy
 
 Taste notes follow a 3-level hierarchy:
 
-| Level | Examples | Description |
-|-------|----------|-------------|
-| Level 0 (Root) | Fruity, Sweet, Spices, Roasted | Top-level categories |
-| Level 1 (Mid) | Berry, Citrus Fruit, Brown Sugar | Sub-categories |
-| Level 2 (Leaf) | Raspberry, Blackberry, Grapefruit | Specific notes |
+| Level          | Examples                          | Description          |
+| -------------- | --------------------------------- | -------------------- |
+| Level 0 (Root) | Fruity, Sweet, Spices, Roasted    | Top-level categories |
+| Level 1 (Mid)  | Berry, Citrus Fruit, Brown Sugar  | Sub-categories       |
+| Level 2 (Leaf) | Raspberry, Blackberry, Grapefruit | Specific notes       |
 
-Each note has a `parentId` pointing to its parent in the tree. Root-level notes have `parentId = null`.
+Each note has a `parentId` pointing to its parent in the tree. Root-level notes have
+`parentId = null`.
 
 ## Autocomplete
 
@@ -52,37 +55,41 @@ Taste notes rarely change, so the hierarchy is **cached in Deno KV** with a 24-h
 - `GET /taste-notes/flat` → cached at `["taste-notes", "flat"]`
 - Search queries are cached at `["taste-notes", "search", "<query>"]`
 
-Cache is **flushed** automatically when an admin creates, updates, or deletes a taste note (via the admin endpoints). The flush uses `deleteByPrefix(["taste-notes"])` to remove all taste-note-related keys.
+Cache is **flushed** automatically when an admin creates, updates, or deletes a taste note (via the
+admin endpoints). The flush uses `deleteByPrefix(["taste-notes"])` to remove all taste-note-related
+keys.
 
 ## Emoji Tags
 
 Each `RecipeTasteNote` can have an emoji tag to express the taster's sentiment:
 
-| Key | Emoji | Label |
-|-----|-------|-------|
-| `fire` | 🔥 | Fire |
-| `rocket` | 🚀 | Rocket |
-| `thumbsup` | 👍 | Thumbs Up |
-| `neutral` | 😐 | Neutral |
-| `thumbsdown` | 👎 | Thumbs Down |
-| `nauseated` | 🤢 | Nauseated |
+| Key          | Emoji | Label       |
+| ------------ | ----- | ----------- |
+| `fire`       | 🔥    | Fire        |
+| `rocket`     | 🚀    | Rocket      |
+| `thumbsup`   | 👍    | Thumbs Up   |
+| `neutral`    | 😐    | Neutral     |
+| `thumbsdown` | 👎    | Thumbs Down |
+| `nauseated`  | 🤢    | Nauseated   |
 
-Emoji tags are stored as stable keys (not emoji characters) to maintain DB portability per §6.2. The mapping from key → emoji → label lives in `@brewform/shared/constants/emoji-tags.ts`.
+Emoji tags are stored as stable keys (not emoji characters) to maintain DB portability per §6.2. The
+mapping from key → emoji → label lives in `@brewform/shared/constants/emoji-tags.ts`.
 
 ## API Endpoints
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/taste-notes/hierarchy` | none | Full tree structure |
-| GET | `/taste-notes/flat` | none | Flat list of all notes |
-| GET | `/taste-notes/search?search=` | none | Search with autocomplete rules |
-| POST | `/taste-notes` | admin | Create a taste note (flushes cache) |
-| PATCH | `/taste-notes/:id` | admin | Update a taste note (flushes cache) |
-| DELETE | `/taste-notes/:id` | admin | Delete a taste note (flushes cache) |
+| Method | Endpoint                      | Auth  | Description                         |
+| ------ | ----------------------------- | ----- | ----------------------------------- |
+| GET    | `/taste-notes/hierarchy`      | none  | Full tree structure                 |
+| GET    | `/taste-notes/flat`           | none  | Flat list of all notes              |
+| GET    | `/taste-notes/search?search=` | none  | Search with autocomplete rules      |
+| POST   | `/taste-notes`                | admin | Create a taste note (flushes cache) |
+| PATCH  | `/taste-notes/:id`            | admin | Update a taste note (flushes cache) |
+| DELETE | `/taste-notes/:id`            | admin | Delete a taste note (flushes cache) |
 
 ## In Recipes
 
-Taste notes are attached to recipes via the `RecipeTasteNote` join table. Each entry links a `TasteNote` to a `RecipeVersion` with an optional `emojiTag`:
+Taste notes are attached to recipes via the `RecipeTasteNote` join table. Each entry links a
+`TasteNote` to a `RecipeVersion` with an optional `emojiTag`:
 
 ```json
 {

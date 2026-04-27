@@ -26,19 +26,19 @@
 
 Required environment variables for production:
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_SECRET` | Cryptographically random, ≥32 characters |
-| `CORS_ALLOWED_ORIGINS` | `https://yourdomain.com` |
-| `APP_URL` | `https://your-api.deno.dev` |
-| `SMTP_HOST` | Production SMTP host |
-| `SMTP_PORT` | Production SMTP port |
-| `SMTP_USER` | SMTP username |
-| `SMTP_PASS` | SMTP password |
-| `SMTP_SECURE` | `true` for production |
-| `EMAIL_FROM` | Sender email address |
-| `APP_ENV` | `production` |
+| Variable               | Description                              |
+| ---------------------- | ---------------------------------------- |
+| `DATABASE_URL`         | PostgreSQL connection string             |
+| `JWT_SECRET`           | Cryptographically random, ≥32 characters |
+| `CORS_ALLOWED_ORIGINS` | `https://yourdomain.com`                 |
+| `APP_URL`              | `https://your-api.deno.dev`              |
+| `SMTP_HOST`            | Production SMTP host                     |
+| `SMTP_PORT`            | Production SMTP port                     |
+| `SMTP_USER`            | SMTP username                            |
+| `SMTP_PASS`            | SMTP password                            |
+| `SMTP_SECURE`          | `true` for production                    |
+| `EMAIL_FROM`           | Sender email address                     |
+| `APP_ENV`              | `production`                             |
 
 ## Frontend Deployment (GitHub Pages)
 
@@ -51,6 +51,7 @@ Required environment variables for production:
 5. SPA routing handled via `404.html` redirect trick with `sessionStorage`
 
 The `404.html` trick:
+
 - GitHub Pages returns `404.html` for unknown paths
 - `404.html` saves the original URL path to `sessionStorage` and redirects to `/`
 - `index.html` checks `sessionStorage` on load and restores the URL via `history.replaceState`
@@ -70,13 +71,13 @@ After seeding, admin credentials: `admin@brewform.local` / `admin123456`
 
 ### Development Services
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| API | 8000 | Hono backend |
-| Web (Vite) | 5173 | React dev server with HMR |
-| PostgreSQL | 5432 | Database |
-| Mailpit | 1025 / 8025 | SMTP server + web UI for email |
-| pgAdmin | 5050 | Database GUI |
+| Service    | Port        | Purpose                        |
+| ---------- | ----------- | ------------------------------ |
+| API        | 8000        | Hono backend                   |
+| Web (Vite) | 5173        | React dev server with HMR      |
+| PostgreSQL | 5432        | Database                       |
+| Mailpit    | 1025 / 8025 | SMTP server + web UI for email |
+| pgAdmin    | 5050        | Database GUI                   |
 
 ### Docker Compose
 
@@ -111,20 +112,20 @@ Triggers on pull requests:
 
 See `.env.example` for all configuration options. Key variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_PORT` | `8000` | Server port |
-| `APP_ENV` | `development` | `development`, `production`, or `test` |
-| `LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
-| `DATABASE_URL` | — | **Required.** PostgreSQL connection string |
-| `CACHE_DRIVER` | `deno-kv` | `deno-kv` or `memory` |
-| `JWT_SECRET` | — | **Required.** ≥16 characters |
-| `JWT_ACCESS_EXPIRY` | `15m` | Access token validity period |
-| `JWT_REFRESH_EXPIRY` | `7d` | Refresh token validity period |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,...` | Comma-separated allowed origins |
-| `SMTP_HOST` | `localhost` | SMTP server host |
-| `SMTP_PORT` | `1025` | SMTP server port |
-| `UPLOAD_DIR` | `./uploads` | Photo upload directory |
-| `UPLOAD_MAX_SIZE_BYTES` | `10485760` | Max upload size (10 MB) |
-| `APP_URL` | `http://localhost:8000` | Base URL for QR code generation |
-| `OPENAPI_ENABLED` | `true` | Enable /openapi.json endpoint |
+| Variable                | Default                     | Description                                |
+| ----------------------- | --------------------------- | ------------------------------------------ |
+| `APP_PORT`              | `8000`                      | Server port                                |
+| `APP_ENV`               | `development`               | `development`, `production`, or `test`     |
+| `LOG_LEVEL`             | `info`                      | Log level (debug, info, warn, error)       |
+| `DATABASE_URL`          | —                           | **Required.** PostgreSQL connection string |
+| `CACHE_DRIVER`          | `deno-kv`                   | `deno-kv` or `memory`                      |
+| `JWT_SECRET`            | —                           | **Required.** ≥16 characters               |
+| `JWT_ACCESS_EXPIRY`     | `15m`                       | Access token validity period               |
+| `JWT_REFRESH_EXPIRY`    | `7d`                        | Refresh token validity period              |
+| `CORS_ALLOWED_ORIGINS`  | `http://localhost:5173,...` | Comma-separated allowed origins            |
+| `SMTP_HOST`             | `localhost`                 | SMTP server host                           |
+| `SMTP_PORT`             | `1025`                      | SMTP server port                           |
+| `UPLOAD_DIR`            | `./uploads`                 | Photo upload directory                     |
+| `UPLOAD_MAX_SIZE_BYTES` | `10485760`                  | Max upload size (10 MB)                    |
+| `APP_URL`               | `http://localhost:8000`     | Base URL for QR code generation            |
+| `OPENAPI_ENABLED`       | `true`                      | Enable /openapi.json endpoint              |

@@ -43,3 +43,6 @@ packages/db/src/generated/
 
 # Uploads
 uploads/
+
+# Arda
+pr_description.md

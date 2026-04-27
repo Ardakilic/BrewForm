@@ -1,15 +1,23 @@
 # Architecture
 
+This document is the reference for _how_ the system is structured. Two companion docs cover the
+_why_ and the _flow_:
+
+- [`decisions.md`](decisions.md) — architectural decision records (Hono, JWT, Prisma, Deno KV,
+  module pattern, etc.)
+- [`request-lifecycle.md`](request-lifecycle.md) — end-to-end trace of a request from the edge to
+  the response, including middleware order, validation, error path, and side-effect path
+
 ## Monorepo Structure
 
 BrewForm uses a Turborepo monorepo with npm workspaces. Four packages:
 
-| Package | Purpose | Runtime |
-|---------|---------|---------|
-| `apps/api` | Hono backend API | Deno Deploy |
-| `apps/web` | React SPA frontend | Browser (GitHub Pages) |
-| `packages/shared` | Types, Zod schemas, constants, utils, i18n | Shared (api + web) |
-| `packages/db` | Prisma schema, migrations, seed data, client | Server (api only) |
+| Package           | Purpose                                      | Runtime                |
+| ----------------- | -------------------------------------------- | ---------------------- |
+| `apps/api`        | Hono backend API                             | Deno Deploy            |
+| `apps/web`        | React SPA frontend                           | Browser (GitHub Pages) |
+| `packages/shared` | Types, Zod schemas, constants, utils, i18n   | Shared (api + web)     |
+| `packages/db`     | Prisma schema, migrations, seed data, client | Server (api only)      |
 
 ### Dependency Graph
 
@@ -20,14 +28,16 @@ apps/api ──┬──→ packages/shared
            └──→ packages/db ──→ packages/shared
 ```
 
-The frontend **never** imports from `@brewform/db`. All type sharing happens through `@brewform/shared`.
+The frontend **never** imports from `@brewform/db`. All type sharing happens through
+`@brewform/shared`.
 
 ### Package Identifiers
 
 - `@brewform/shared` — types, schemas, constants, utils, i18n
 - `@brewform/db` — Prisma client, schema, migrations
 
-Both are configured as npm workspace packages in the root `package.json` using `*` protocol (not `workspace:*`).
+Both are configured as npm workspace packages in the root `package.json` using `*` protocol (not
+`workspace:*`).
 
 ## Backend Module Pattern
 
@@ -42,10 +52,13 @@ modules/
 ```
 
 **Key rules:**
+
 - **Services never import from `@prisma/client`** — they import from model files
-- **Models use `as any` type assertions** for Prisma query options (generated types may lag behind schema changes)
+- **Models use `as any` type assertions** for Prisma query options (generated types may lag behind
+  schema changes)
 - **Controllers validate with shared Zod schemas** — `@brewform/shared/schemas`
-- **File-level lint suppressions**: modules use `// deno-lint-ignore-file no-explicit-any require-await`
+- **File-level lint suppressions**: modules use
+  `// deno-lint-ignore-file no-explicit-any require-await`
 
 ### Hono Context Variables
 
@@ -62,7 +75,8 @@ const router = new Hono<AppEnv>();
 
 ## Cache Architecture
 
-All caching goes through the `CacheProvider` interface — services never call `Deno.openKv()` directly:
+All caching goes through the `CacheProvider` interface — services never call `Deno.openKv()`
+directly:
 
 ```typescript
 interface CacheProvider {
@@ -74,26 +88,32 @@ interface CacheProvider {
 ```
 
 Two implementations:
+
 - **`DenoKVCacheProvider`** — production, uses Deno KV with TTL support
 - **`InMemoryCacheProvider`** — testing, uses an in-process Map
 
-The active provider is chosen at startup based on `CACHE_DRIVER` env variable and injected into Hono context.
+The active provider is chosen at startup based on `CACHE_DRIVER` env variable and injected into Hono
+context.
 
 ## Validation
 
 Zod schemas live in `@brewform/shared/schemas` and are shared between frontend and backend:
 
-- **Hard validation** — blocks save. Applied in API controllers via `c.req.json()` → schema `.parse()`
-- **Soft validation** — warns but allows save. Applied in service layer, returns warnings alongside data
+- **Hard validation** — blocks save. Applied in API controllers via `c.req.json()` → schema
+  `.parse()`
+- **Soft validation** — warns but allows save. Applied in service layer, returns warnings alongside
+  data
 
-Example: recipe creation uses `RecipeCreateSchema` (hard validation with `.refine()`) while warnings like "extraction time seems short for espresso" are computed separately.
+Example: recipe creation uses `RecipeCreateSchema` (hard validation with `.refine()`) while warnings
+like "extraction time seems short for espresso" are computed separately.
 
 ## Portability Rules (§6.2)
 
 BrewForm maintains database portability:
 
 - **No raw SQL** — all queries via Prisma Client
-- **No `@db.JsonB`, `@db.Uuid`** — all structured data is relational, all IDs are `@default(uuid())` strings
+- **No `@db.JsonB`, `@db.Uuid`** — all structured data is relational, all IDs are `@default(uuid())`
+  strings
 - **No Postgres-specific query operators** — no `mode: 'insensitive'`, etc.
 - **All filterable fields reference normalized entities or enums**
 - **Services import from model files**, never from `@prisma/client`
@@ -115,11 +135,14 @@ BrewForm maintains database portability:
 
 ### Soft Deletes
 
-All main entities have a `deletedAt DateTime?` field. Queries use `findFirst({ where: { deletedAt: null } })` instead of `findUnique` for soft-delete filtering, since `deletedAt` is not a unique constraint.
+All main entities have a `deletedAt DateTime?` field. Queries use
+`findFirst({ where: { deletedAt: null } })` instead of `findUnique` for soft-delete filtering, since
+`deletedAt` is not a unique constraint.
 
 ### Connection Pooling
 
 Configured via `DATABASE_URL` parameters:
+
 ```
 DATABASE_URL=postgresql://user:pass@host:5432/brewform?connection_limit=10&pool_timeout=30
 ```
@@ -135,9 +158,35 @@ Applied in order:
 5. **Error Handler** — catches all errors, returns consistent error envelope
 
 Route-level middleware:
+
 - **`authMiddleware`** — required auth (valid JWT, not banned, not deleted)
 - **`optionalAuthMiddleware`** — inspect token if present, allow anonymous
 - **`adminMiddleware`** — requires auth + admin role
+
+## OpenAPI
+
+The API exposes an auto-generated OpenAPI 3.x specification derived from `describeRoute(...)`
+decorations on the auth, recipe, admin, and health routes. Two endpoints, both gated by the
+`OPENAPI_ENABLED` env flag:
+
+- `GET /api/v1/openapi.json` — machine-readable spec for client generation or Postman import
+- `GET /api/v1/docs` — a Scalar-based HTML viewer (loaded from a CDN)
+
+The spec is built at request time via `hono-openapi`'s `openAPIRouteHandler`, so any new route gets
+picked up automatically. See `decisions.md` ADR-012 for why we kept `zValidator` instead of swapping
+to `hono-openapi`'s validator.
+
+## Notifications
+
+Social-event email delivery (follow / like / comment / new public recipe by followee) lives in
+`apps/api/src/utils/notify/`. Each helper:
+
+1. Loads the recipient and their `UserPreferences`.
+2. Returns silently if the relevant flag is off or `APP_ENV === 'test'`.
+3. Renders an MJML template and sends via SMTP.
+
+Calls are fire-and-forget so SMTP failures never block social actions. See
+[`notifications.md`](notifications.md) for trigger points, templates, and how to add a new category.
 
 ## Background Jobs
 
@@ -145,11 +194,12 @@ Simple interval-based job scheduler:
 
 ```typescript
 registerJob('badge-evaluation', 3600000, evaluateBadges);
-startJobs();   // Called on server startup
-stopJobs();    // Called on graceful shutdown
+startJobs(); // Called on server startup
+stopJobs(); // Called on graceful shutdown
 ```
 
-Jobs are registered with a name, interval (ms), and handler function. The scheduler is started/stopped with the server lifecycle.
+Jobs are registered with a name, interval (ms), and handler function. The scheduler is
+started/stopped with the server lifecycle.
 
 ## Graceful Shutdown
 
@@ -171,9 +221,11 @@ import { expect } from 'jsr:@std/expect';
 ```
 
 Commands:
+
 - `make test` — full test suite
 - `make test-api` — API tests only
 - `make test-shared` — shared package tests only
 - `make test-specific filter=path/to/test.ts` — single test file
 
-Tests run with `--no-check` (type checking done separately via `make check`) and `--unstable-sloppy-imports` (for barrel file paths without `.ts` extensions).
+Tests run with `--no-check` (type checking done separately via `make check`) and
+`--unstable-sloppy-imports` (for barrel file paths without `.ts` extensions).

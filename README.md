@@ -1,12 +1,15 @@
 # ☕ BrewForm
 
-A web application for digitalizing, sharing, and discovering coffee brewing recipes and tasting notes.
+A web application for digitalizing, sharing, and discovering coffee brewing recipes and tasting
+notes.
 
 ## Features
 
-- **Recipe Management** — Create, version, and fork coffee brewing recipes with full parameter tracking
+- **Recipe Management** — Create, version, and fork coffee brewing recipes with full parameter
+  tracking
 - **SCAA Taste Notes** — Structured tasting notes from the SCAA 2016 Flavor Wheel with autocomplete
-- **Brew Method Compatibility** — Data-driven validation ensures brew methods and equipment are compatible
+- **Brew Method Compatibility** — Data-driven validation ensures brew methods and equipment are
+  compatible
 - **Social Features** — Follow brewers, like/favourite recipes, comment with OP-only replies
 - **Achievement Badges** — Gamification system with data-driven badge rules
 - **QR Codes** — Generate shareable QR codes for public recipes (PNG and SVG)
@@ -18,19 +21,19 @@ A web application for digitalizing, sharing, and discovering coffee brewing reci
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Deno 2.7 |
-| Monorepo | Turborepo (npm workspaces) |
-| Backend | Hono |
-| Frontend | React 19 + Vite + Tailwind CSS v4 + Base UI |
-| ORM | Prisma |
-| Database | PostgreSQL |
-| Cache | Deno KV |
-| Email | MJML |
-| Validation | Zod (shared between frontend and backend) |
-| Testing | Deno test runner + BDD (`@std/testing/bdd`) |
-| CI/CD | GitHub Actions → Deno Deploy + GitHub Pages |
+| Layer      | Technology                                  |
+| ---------- | ------------------------------------------- |
+| Runtime    | Deno 2.7                                    |
+| Monorepo   | Turborepo (npm workspaces)                  |
+| Backend    | Hono                                        |
+| Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |
+| ORM        | Prisma                                      |
+| Database   | PostgreSQL                                  |
+| Cache      | Deno KV                                     |
+| Email      | MJML                                        |
+| Validation | Zod (shared between frontend and backend)   |
+| Testing    | Deno test runner + BDD (`@std/testing/bdd`) |
+| CI/CD      | GitHub Actions → Deno Deploy + GitHub Pages |
 
 ## Quick Start
 
@@ -145,18 +148,22 @@ brewform/
 
 ## API
 
-The API is versioned at `/api/v1/`. See [docs/api.md](docs/api.md) for the full endpoint reference (100+ endpoints).
+The API is versioned at `/api/v1/`. See [docs/api.md](docs/api.md) for the full endpoint reference
+(100+ endpoints).
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [docs/api.md](docs/api.md) | Complete API endpoint reference |
-| [docs/auth.md](docs/auth.md) | Authentication flows and token strategy |
-| [docs/recipes.md](docs/recipes.md) | Recipe versioning, forking, validation |
-| [docs/taste-notes.md](docs/taste-notes.md) | SCAA Flavor Wheel integration and autocomplete |
-| [docs/deployment.md](docs/deployment.md) | Production deployment guide |
-| [docs/architecture.md](docs/architecture.md) | Monorepo structure, module pattern, conventions |
+| Document                                               | Description                                                 |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| [docs/api.md](docs/api.md)                             | Complete API endpoint reference                             |
+| [docs/auth.md](docs/auth.md)                           | Authentication flows and token strategy                     |
+| [docs/recipes.md](docs/recipes.md)                     | Recipe versioning, forking, validation                      |
+| [docs/taste-notes.md](docs/taste-notes.md)             | SCAA Flavor Wheel integration and autocomplete              |
+| [docs/notifications.md](docs/notifications.md)         | Email categories, triggers, and delivery model              |
+| [docs/deployment.md](docs/deployment.md)               | Production deployment guide                                 |
+| [docs/architecture.md](docs/architecture.md)           | Monorepo structure, module pattern, conventions             |
+| [docs/request-lifecycle.md](docs/request-lifecycle.md) | End-to-end trace of an HTTP request through the API         |
+| [docs/decisions.md](docs/decisions.md)                 | Architectural decision records (the _why_ behind the stack) |
 
 ## License
 
