@@ -1,5 +1,11 @@
+// deno-lint-ignore-file no-explicit-any
 import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
+import { prisma } from '@brewform/db';
+import { createLogger } from '../../utils/logger/index.ts';
+import { notifyRecipeCommented } from '../../utils/notify/index.ts';
+
+const logger = createLogger('comment-service');
 
 export async function createComment(
   userId: string,
@@ -25,6 +31,25 @@ export async function createComment(
   });
 
   await recipeModel.incrementComments(recipeId);
+
+  // Notify the recipe author (unless they commented on their own recipe).
+  (async () => {
+    const recipe: any = await prisma.recipe.findFirst({
+      where: { id: recipeId } as any,
+      select: { id: true, slug: true, title: true, authorId: true },
+    });
+    if (!recipe || recipe.authorId === userId) return;
+    const commenter: any = await prisma.user.findFirst({
+      where: { id: userId } as any,
+    });
+    if (!commenter?.username) return;
+    await notifyRecipeCommented({
+      recipeAuthorId: recipe.authorId,
+      commenterUsername: commenter.username,
+      recipeTitle: recipe.title,
+      recipeSlug: recipe.slug,
+    });
+  })().catch((err) => logger.error({ err }, 'notifyRecipeCommented failed'));
 
   return comment;
 }

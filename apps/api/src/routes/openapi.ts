@@ -2,11 +2,12 @@
  * OpenAPI spec generation.
  *
  * Wires `hono-openapi`'s `openAPIRouteHandler` to expose the auto-generated
- * OpenAPI 3.x specification at `/openapi.json`. The spec is derived from
- * `describeRoute()` decorations applied to the individual route modules
+ * OpenAPI 3.x specification at `/api/v1/openapi.json` (per §6.9). A minimal
+ * Scalar-style HTML viewer is served at `/api/v1/docs`. Both endpoints are
+ * derived from `describeRoute()` decorations on the individual route modules
  * (auth, recipe, admin, etc.).
  *
- * Gated by `OPENAPI_ENABLED` — when disabled, the endpoint returns 404 to
+ * Gated by `OPENAPI_ENABLED` — when disabled, both endpoints return 404 to
  * avoid leaking the API surface in production.
  */
 import type { Hono } from 'hono';
@@ -14,9 +15,26 @@ import { openAPIRouteHandler } from 'hono-openapi';
 import { config } from '../config/index.ts';
 import type { AppEnv } from '../types/hono.ts';
 
+const DOCS_HTML = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BrewForm API — Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <script
+      id="api-reference"
+      data-url="/api/v1/openapi.json"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  </body>
+</html>`;
+
 /**
- * Registers GET /openapi.json on the supplied Hono instance. Must be called
- * AFTER all sub-routers have been mounted so the spec can introspect them.
+ * Registers GET /api/v1/openapi.json and GET /api/v1/docs on the supplied
+ * Hono instance. Must be called AFTER all sub-routers have been mounted so
+ * the spec can introspect them.
  */
 export function registerOpenApi(app: Hono<AppEnv>): void {
   const handler = openAPIRouteHandler(app, {
@@ -50,10 +68,17 @@ export function registerOpenApi(app: Hono<AppEnv>): void {
     excludeMethods: ['OPTIONS', 'HEAD'],
   });
 
-  app.get('/openapi.json', async (c, next) => {
+  app.get('/api/v1/openapi.json', async (c, next) => {
     if (!config.OPENAPI_ENABLED) {
       return c.json({ error: 'OpenAPI disabled' }, 404);
     }
     return await handler(c, next);
+  });
+
+  app.get('/api/v1/docs', (c) => {
+    if (!config.OPENAPI_ENABLED) {
+      return c.json({ error: 'OpenAPI disabled' }, 404);
+    }
+    return c.html(DOCS_HTML);
   });
 }

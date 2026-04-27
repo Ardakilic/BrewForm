@@ -1,8 +1,13 @@
 // deno-lint-ignore-file no-explicit-any require-await
 // deno-lint-ignore no-explicit-any
 import * as model from './model.ts';
+import { prisma } from '@brewform/db';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
+import { createLogger } from '../../utils/logger/index.ts';
+import { notifyFollowersOfNewRecipe, notifyRecipeLiked } from '../../utils/notify/index.ts';
+
+const logger = createLogger('recipe-service');
 
 async function generateUniqueSlug(title: string): Promise<string> {
   const slug = generateSlug(title);
@@ -90,7 +95,25 @@ export async function createRecipe(authorId: string, data: any) {
   });
 
   await model.update(recipe.id, { currentVersionId: recipe.versions[0].id });
-  return model.findById(recipe.id);
+  const finalRecipe: any = await model.findById(recipe.id);
+
+  // Fan out to followers when the recipe is published as public.
+  if (finalRecipe?.visibility === 'public') {
+    (async () => {
+      const author: any = await prisma.user.findFirst({
+        where: { id: authorId } as any,
+      });
+      if (!author?.username) return;
+      await notifyFollowersOfNewRecipe({
+        authorId,
+        authorUsername: author.username,
+        recipeTitle: finalRecipe.title,
+        recipeSlug: finalRecipe.slug,
+      });
+    })().catch((err) => logger.error({ err }, 'notifyFollowersOfNewRecipe failed'));
+  }
+
+  return finalRecipe;
 }
 
 export async function updateRecipe(recipeId: string, authorId: string, data: any) {
@@ -198,9 +221,27 @@ export async function listRecipes(filters: any, page: number, perPage: number) {
 }
 
 export async function toggleLike(userId: string, recipeId: string) {
-  const recipe = await model.findById(recipeId);
+  const recipe: any = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
-  return model.toggleLike(userId, recipeId);
+  const result = await model.toggleLike(userId, recipeId);
+
+  // Notify the author only on a new like (not on un-like) and not on self-likes.
+  if (result.liked && recipe.authorId !== userId) {
+    (async () => {
+      const liker: any = await prisma.user.findFirst({
+        where: { id: userId } as any,
+      });
+      if (!liker?.username) return;
+      await notifyRecipeLiked({
+        recipeAuthorId: recipe.authorId,
+        likerUsername: liker.username,
+        recipeTitle: recipe.title,
+        recipeSlug: recipe.slug,
+      });
+    })().catch((err) => logger.error({ err }, 'notifyRecipeLiked failed'));
+  }
+
+  return result;
 }
 
 export async function toggleFavourite(userId: string, recipeId: string) {
