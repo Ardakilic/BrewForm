@@ -1,5 +1,9 @@
+/**
+ * Unit conversion and formatting utilities for canonical metric storage.
+ * All numeric values are stored in metric (grams, mL, Celsius, seconds).
+ * These functions convert between metric and imperial for UI display.
+ */
 export {
-  convertCtoF,
   convertFlOzToMl,
   convertFtoC,
   convertGramsToOunces,
@@ -10,7 +14,9 @@ export {
   formatWeight,
 } from './conversion';
 
+/** Coffee brewing metrics: brew ratio, extraction yield, flow rate. */
 export { computeBrewRatio, computeExtractionYield, computeFlowRate } from './metrics';
+/** Recipe validation: hard (blocks save) and soft (warnings only) checks. */
 export {
   validateBrewMethodCompatibility,
   validateGrindDateNotBeforeRoastDate,

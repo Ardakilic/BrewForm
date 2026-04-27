@@ -1,7 +1,16 @@
+/**
+ * Consistent JSON response envelope helpers for the BrewForm API.
+ *
+ * Every response follows { success, data, meta } or { success, error }
+ * with a requestId for distributed tracing. Use ContentfulStatusCode
+ * (not StatusCode) — StatusCode includes 1xx codes which aren't valid
+ * for JSON responses and cause type narrowing errors.
+ */
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { PaginationMeta } from '@brewform/shared/types';
 
+/** Return a success envelope with optional pagination metadata. */
 export function success<T>(
   c: Context,
   data: T,
@@ -18,6 +27,7 @@ export function success<T>(
   }, status);
 }
 
+/** Return a success envelope with pagination metadata. Shorthand for success() with pagination. */
 export function paginated<T>(c: Context, data: T[], pagination: PaginationMeta) {
   return c.json({
     success: true as const,
@@ -29,6 +39,7 @@ export function paginated<T>(c: Context, data: T[], pagination: PaginationMeta) 
   }, 200);
 }
 
+/** Return an error envelope with code, message, and optional field-level details. */
 export function error(
   c: Context,
   code: string,

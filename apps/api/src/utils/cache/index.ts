@@ -1,7 +1,19 @@
+/**
+ * Abstraction over Deno KV / in-memory caching.
+ * Services never call Deno.openKv() directly — they receive a CacheProvider
+ * via Hono context injection. This ensures testability and DB portability (§6.2).
+ *
+ * Keys are string arrays (Deno KV atomic keys) for hierarchical namespacing,
+ * e.g. ["taste-notes", "hierarchy"] or ["taste-notes", "search", "fruit"].
+ */
 export interface CacheProvider {
+  /** Retrieve a cached value by key. Returns null if missing or expired. */
   get<T>(key: string[]): Promise<T | null>;
+  /** Store a value with optional TTL (milliseconds). Overwrites existing. */
   set<T>(key: string[], value: T, options?: { ttlMs?: number }): Promise<void>;
+  /** Delete a single cache entry. */
   delete(key: string[]): Promise<void>;
+  /** Delete all entries whose key starts with the given prefix. */
   deleteByPrefix(prefix: string[]): Promise<void>;
 }
 

@@ -1,3 +1,13 @@
+/**
+ * Authentication middleware for BrewForm API.
+ *
+ * - authMiddleware: Required auth. Rejects missing/invalid tokens, banned users,
+ *   and soft-deleted users. Sets userId and user on Hono context.
+ * - optionalAuthMiddleware: Inspects token if present but allows anonymous requests.
+ *   Sets userId=null and user=null for unauthenticated requests. Used for endpoints
+ *   like GET /recipes/:slug where private recipes are only visible to their author.
+ * - adminMiddleware: Must be used AFTER authMiddleware. Rejects non-admin users (403).
+ */
 import type { Context, Next } from 'hono';
 import { verifyJwt } from '../modules/auth/jwt.ts';
 import { prisma } from '@brewform/db';

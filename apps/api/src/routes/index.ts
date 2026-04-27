@@ -1,3 +1,14 @@
+/**
+ * Route aggregator — mounts all API modules at their /api/v1/* prefixes.
+ *
+ * Each module follows the model→service→controller pattern:
+ *   model.ts    — Prisma data access layer
+ *   service.ts  — Business logic and validation
+ *   index.ts    — Hono routes with Zod validation (this file's import targets)
+ *
+ * Health and OpenAPI are mounted at / (no prefix).
+ * See docs/api.md for the full endpoint reference.
+ */
 import { Hono } from 'hono';
 import health from './health.ts';
 import openapi from './openapi.ts';

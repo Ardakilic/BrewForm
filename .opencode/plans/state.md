@@ -1,6 +1,6 @@
 # BrewForm Implementation State
 
-## Current Phase: 11 (CI/CD) — COMPLETED
+## Current Phase: All phases COMPLETED
 
 ## Phase Progress
 
@@ -17,7 +17,7 @@
 | 9 | Frontend Features | ✅ Completed | All pages, components, admin panel, routes |
 | 10 | Testing | ✅ Completed | All tests passing (44 test suites, 315 steps) |
 | 11 | CI/CD & Deployment | ✅ Completed | GitHub Actions, Deno Deploy, GitHub Pages |
-| 12 | Documentation | ⬜ Pending | [plan](phase12-documentation.md) |
+| 12 | Documentation | ✅ Completed | README, docs/, JSDoc comments |
 
 ## Phase 1 — Completed
 
@@ -429,3 +429,29 @@
 - **GitHub Pages SPA routing**: Uses `404.html` redirect trick with `sessionStorage` to preserve the original URL, then restores it in `index.html` via `history.replaceState`.
 - **VITE_API_URL injection**: Production API URL is injected at build time via `define` in vite.config.ts. Development defaults to `/api/v1` (proxied by Vite dev server).
 - **Deploy backend with `denoland/deployctl@v1`**: Uses OIDC authentication (no API key), entrypoint `apps/api/src/main.ts`, root `.`
+
+## Phase 12 — Completed
+
+- [x] `README.md` — Complete project documentation (features, tech stack, quick start, dev commands, architecture, project structure, docs table, license)
+- [x] `docs/api.md` — Full API reference (108 endpoints, response envelope, error codes, request/response examples, all modules documented)
+- [x] `docs/auth.md` — Authentication flows (token strategy, registration, login, refresh, password reset, middleware descriptions, env config)
+- [x] `docs/recipes.md` — Recipe system docs (two-layer model, versioning, forking, visibility, hard/soft validation, canonical units, comparison, like/favourite/feature, meta endpoint)
+- [x] `docs/taste-notes.md` — SCAA taste notes docs (hierarchy, autocomplete rules, caching, emoji tags, API endpoints, recipe integration)
+- [x] `docs/deployment.md` — Deployment guide (architecture diagram, Deno Deploy, GitHub Pages, 404.html SPA trick, CI/CD pipelines, dev services, env vars reference)
+- [x] `docs/architecture.md` — Architecture overview (monorepo structure, dependency graph, module pattern, cache architecture, validation, portability rules, database schema, middleware stack, background jobs, graceful shutdown, testing)
+- [x] JSDoc comments added to key modules:
+  - `packages/shared/src/index.ts` — Package overview
+  - `packages/shared/src/utils/index.ts` — Unit conversion and validation docs
+  - `apps/api/src/main.ts` — Startup/shutdown sequence, middleware stack
+  - `apps/api/src/config/env.ts` — Zod-validated env config docs
+  - `apps/api/src/utils/cache/index.ts` — CacheProvider interface docs
+  - `apps/api/src/utils/response/index.ts` — Response envelope helpers docs
+  - `apps/api/src/middleware/auth.ts` — Middleware behavior docs
+  - `apps/api/src/modules/auth/jwt.ts` — JWT token strategy docs
+  - `apps/api/src/routes/index.ts` — Route aggregator docs
+- [x] All checks pass: `deno fmt --check`, `deno lint`, `deno check --unstable-sloppy-imports`
+
+## Key Decisions (Phase 12 additions)
+
+- **Documentation split**: Feature docs (auth, recipes, taste-notes) in `docs/` for user-facing reference; JSDoc comments in code for developer reference. No duplication — docs explain "why" and "how", JSDoc explains "what".
+- **API reference enumerated 108 endpoints**: Counted from actual route files, not plan estimates. Covers all 17 modules plus health/OpenAPI.

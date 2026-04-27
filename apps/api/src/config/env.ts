@@ -1,3 +1,9 @@
+/**
+ * Zod-validated environment configuration.
+ * All env vars are parsed at startup — invalid or missing required vars
+ * cause the server to exit immediately with a descriptive error.
+ * Defaults are suitable for local development (Mailpit on port 1025, etc.).
+ */
 import { z } from 'zod';
 
 const envSchema = z.object({

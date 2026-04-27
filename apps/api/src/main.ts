@@ -1,3 +1,22 @@
+/**
+ * BrewForm API — Hono server entry point.
+ *
+ * Startup sequence:
+ *   1. Initialize cache driver (Deno KV or in-memory)
+ *   2. Start background job scheduler (badge evaluation, cache refresh)
+ *   3. Bind HTTP server to APP_PORT
+ *   4. Register SIGTERM/SIGINT handlers for graceful shutdown
+ *
+ * Shutdown sequence (on SIGTERM/SIGINT):
+ *   1. Stop background jobs
+ *   2. Shut down HTTP server
+ *   3. Close Deno KV connection
+ *   4. Disconnect Prisma client
+ *   5. Exit cleanly
+ *
+ * Middleware stack (applied in order):
+ *   cors → requestId → rateLimit(100/min) → cache injection → routes
+ */
 import { Hono } from 'hono';
 import { config } from './config/index.ts';
 import { corsMiddleware } from './middleware/cors.ts';
