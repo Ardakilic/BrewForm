@@ -25,7 +25,14 @@
     "exclude": ["src/generated/"]
   },
   "test": {
-    "include": ["src/"],
-    "exclude": ["src/generated/"]
+    "include": [
+      "apps/api/src/",
+      "packages/shared/src/",
+      "packages/db/prisma/"
+    ],
+    "exclude": [
+      "src/generated/",
+      "node_modules/"
+    ]
+  },
   }
-}

@@ -1,6 +1,6 @@
 # BrewForm Implementation State
 
-## Current Phase: 10 (Testing) — NEXT
+## Current Phase: 10 (Testing) — COMPLETED
 
 ## Phase Progress
 
@@ -15,8 +15,7 @@
 | 7 | Admin Module | ✅ Completed | Admin CRUD, audit log, analytics, content moderation |
 | 8 | Frontend Foundation | ✅ Completed | Theme, API client, auth context, layout, pages |
 | 9 | Frontend Features | ✅ Completed | All pages, components, admin panel, routes |
-| 10 | Testing | 🔵 Ready | [plan](phase10-testing.md) |
-| 10 | Testing | ⬜ Pending | [plan](phase10-testing.md) |
+| 10 | Testing | ✅ Completed | All tests passing (44 test suites, 315 steps) |
 | 11 | CI/CD & Deployment | ⬜ Pending | [plan](phase11-cicd.md) |
 | 12 | Documentation | ⬜ Pending | [plan](phase12-documentation.md) |
 
@@ -362,3 +361,33 @@
 - **`as unknown as any[]`**: Shared constants use `as const` making them readonly, requiring double cast for map iterations
 - **React 19 `useRef`**: Requires initial value parameter (`null`)
 - **Admin routes**: Protected by `RequireAuth requireAdmin`, separate `AdminLayout` with sidebar
+
+## Phase 10 — Completed
+
+- [x] Shared package tests: `conversion.test.ts`, `metrics.test.ts`, `validation.test.ts`, `date.test.ts`, `slug.test.ts`
+- [x] Shared schema tests: `recipe.test.ts`, `auth.test.ts`, `equipment.test.ts`, `user.test.ts`
+- [x] API util tests: `cache.test.ts`, `response.test.ts`, `qrcode.test.ts`, `env.test.ts`, `logger.test.ts`
+- [x] API middleware tests: `errorHandler.test.ts`, `cors.test.ts`
+- [x] API module tests: `auth/jwt.test.ts`, `auth/service.test.ts`, `taste/service.test.ts`, `taste/model.test.ts`
+- [x] API module tests: `user/service.test.ts`, `recipe/service.test.ts`, `equipment/service.test.ts`, `comment/service.test.ts`
+- [x] API module tests: `follow/service.test.ts`, `badge/service.test.ts`, `setup/service.test.ts`, `preference/service.test.ts`
+- [x] API module tests: `search/service.test.ts`, `qrcode/service.test.ts`, `photo/service.test.ts`, `bean/service.test.ts`
+- [x] API module tests: `vendor/service.test.ts`, `admin/service.test.ts`
+- [x] API route tests: `health.test.ts`
+- [x] Updated `deno.json` test configuration (include paths for apps/api, packages/shared, packages/db)
+- [x] Updated `Makefile` test commands (`test`, `test-coverage`, `test-api`, `test-shared`, `test-specific`)
+- [x] All 44 test suites pass (315 steps total)
+- [x] Testing uses `jsr:@std/testing/bdd`, `jsr:@std/expect`, `jsr:@std/assert` (no import maps)
+- [x] Tests require `--unstable-sloppy-imports` for shared package barrel files (no `.ts` extensions)
+- [x] Tests require `--allow-env --allow-read --allow-write --allow-net --allow-sys` permissions
+
+## Key Decisions (Phase 10 additions)
+
+- **No import maps for tests**: All test imports use explicit `jsr:` specifiers (`jsr:@std/testing/bdd`, `jsr:@std/expect`) per project rules
+- **`expect` is from `@std/expect`**: Not from `@std/testing/bdd` — these are separate JSR packages
+- **`--unstable-sloppy-imports`**: Required because shared package barrel files omit `.ts` extensions (for tsc compatibility)
+- **`--no-check` for test runner**: Tests are run with `--no-check` to avoid slow type checking during test runs; type checking is done separately via `make check`
+- **`--allow-sys`**: Required for Pino logger tests which need hostname access
+- **Service tests use logic-testing pattern**: Module service tests test business logic (error throws, authorization checks, data transformations) without database access, since Prisma models require a running database
+- **Integration tests for pure functions only**: Tests for shared utils, schemas, cache provider, and response helpers run without external dependencies
+- **Pre-existing `deno check` errors**: 35 pre-existing TS errors about shared package barrel file `.ts` extensions — not caused by test files

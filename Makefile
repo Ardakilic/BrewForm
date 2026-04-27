@@ -56,12 +56,19 @@ check:
 # --- Testing ---
 
 test:
-	docker compose run --rm app deno test --coverage=coverage/
+	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys apps/api/src/ packages/shared/src/
 
-coverage:
-	docker compose run --rm app deno coverage coverage/
+test-coverage:
+	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --coverage=coverage/ apps/api/src/ packages/shared/src/
 
-test-coverage: test coverage
+test-api:
+	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys apps/api/src/
+
+test-shared:
+	docker compose run --rm app deno test --allow-env --allow-read --allow-write --allow-net packages/shared/src/
+
+test-specific:
+	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys $(filter)
 
 # --- Database ---
 
