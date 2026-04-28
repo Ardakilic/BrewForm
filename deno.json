@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "types": [
+      "./apps/api/src/types/mjml.d.ts",
+      "./apps/api/src/types/pino-pretty.d.ts"
+    ]
+  },
+  "lint": {
+    "include": ["apps/", "packages/"],
+    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/"],
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": [
+        "no-import-prefix",
+        "no-unversioned-import",
+        "no-explicit-any",
+        "require-await",
+        "no-empty"
+      ]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": true,
+    "semiColons": true,
+    "include": ["apps/", "packages/"],
+    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/"]
+  },
+  "test": {
+    "include": [
+      "apps/api/src/",
+      "packages/shared/src/",
+      "packages/db/prisma/"
+    ],
+    "exclude": [
+      "src/generated/",
+      "node_modules/"
+    ]
+  }
+}

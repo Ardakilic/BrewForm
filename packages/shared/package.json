@@ -1,0 +1,21 @@
+{
+  "name": "@brewform/shared",
+  "type": "module",
+  "exports": {
+    "./types": { "types": "./src/types/index.ts", "default": "./src/types/index.ts" },
+    "./schemas": { "types": "./src/schemas/index.ts", "default": "./src/schemas/index.ts" },
+    "./constants": { "types": "./src/constants/index.ts", "default": "./src/constants/index.ts" },
+    "./utils": { "types": "./src/utils/index.ts", "default": "./src/utils/index.ts" },
+    "./i18n": { "types": "./src/i18n/index.ts", "default": "./src/i18n/index.ts" }
+  },
+  "dependencies": {
+    "zod": "^3.24.0",
+    "date-fns": "^4.1.0"
+  },
+  "scripts": {
+    "build": "echo 'Shared package uses TypeScript source directly'",
+    "lint": "deno lint src/",
+    "check": "deno check src/index.ts",
+    "test": "deno test src/"
+  }
+}

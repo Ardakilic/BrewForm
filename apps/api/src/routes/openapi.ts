@@ -1,0 +1,84 @@
+/**
+ * OpenAPI spec generation.
+ *
+ * Wires `hono-openapi`'s `openAPIRouteHandler` to expose the auto-generated
+ * OpenAPI 3.x specification at `/api/v1/openapi.json` (per §6.9). A minimal
+ * Scalar-style HTML viewer is served at `/api/v1/docs`. Both endpoints are
+ * derived from `describeRoute()` decorations on the individual route modules
+ * (auth, recipe, admin, etc.).
+ *
+ * Gated by `OPENAPI_ENABLED` — when disabled, both endpoints return 404 to
+ * avoid leaking the API surface in production.
+ */
+import type { Hono } from 'hono';
+import { openAPIRouteHandler } from 'hono-openapi';
+import { config } from '../config/index.ts';
+import type { AppEnv } from '../types/hono.ts';
+
+const DOCS_HTML = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BrewForm API — Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <script
+      id="api-reference"
+      data-url="/api/v1/openapi.json"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  </body>
+</html>`;
+
+/**
+ * Registers GET /api/v1/openapi.json and GET /api/v1/docs on the supplied
+ * Hono instance. Must be called AFTER all sub-routers have been mounted so
+ * the spec can introspect them.
+ */
+export function registerOpenApi(app: Hono<AppEnv>): void {
+  const handler = openAPIRouteHandler(app, {
+    documentation: {
+      info: {
+        title: 'BrewForm API',
+        version: '1.0.0',
+        description: 'Coffee brewing recipe sharing and discovery platform',
+      },
+      servers: [
+        { url: 'http://localhost:8000', description: 'Development' },
+      ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+          },
+        },
+      },
+      tags: [
+        { name: 'Auth', description: 'Registration, login, password reset, token refresh' },
+        { name: 'Recipes', description: 'Recipe CRUD, fork, like/favourite/feature toggles' },
+        { name: 'Users', description: 'Public user profiles and the authenticated user' },
+        { name: 'Admin', description: 'Privileged admin operations (requires admin role)' },
+        { name: 'Health', description: 'Liveness and readiness probes' },
+      ],
+    },
+    excludeStaticFile: true,
+    excludeMethods: ['OPTIONS', 'HEAD'],
+  });
+
+  app.get('/api/v1/openapi.json', async (c, next) => {
+    if (!config.OPENAPI_ENABLED) {
+      return c.json({ error: 'OpenAPI disabled' }, 404);
+    }
+    return await handler(c, next);
+  });
+
+  app.get('/api/v1/docs', (c) => {
+    if (!config.OPENAPI_ENABLED) {
+      return c.json({ error: 'OpenAPI disabled' }, 404);
+    }
+    return c.html(DOCS_HTML);
+  });
+}

@@ -1,0 +1,67 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Prisma client
+        run: |
+          rm -rf node_modules/.prisma
+          cd packages/db && npx prisma generate --schema=prisma/schema.prisma
+
+      - name: Format check
+        run: deno fmt --check apps/ packages/
+
+      - name: Lint
+        run: deno lint apps/ packages/
+
+      - name: Type check
+        run: deno check --unstable-sloppy-imports apps/api/src/main.ts
+
+  test-unit:
+    runs-on: ubuntu-latest
+    needs: check
+    env:
+      DATABASE_URL: postgresql://brewform:brewform@localhost:5432/brewform_test
+      JWT_SECRET: test-secret-for-ci-only-minimum-16-chars
+      CACHE_DRIVER: memory
+      APP_ENV: test
+      APP_PORT: 8000
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run shared package tests
+        run: |
+          deno test --unstable-sloppy-imports --no-check \
+            --allow-env --allow-read --allow-write --allow-net --allow-sys \
+            packages/shared/src/
