@@ -1,6 +1,5 @@
 import type { Context } from 'hono';
 import { createLogger } from '../utils/logger/index.ts';
-import { Prisma } from '@prisma/client';
 import { config } from '../config/index.ts';
 
 const log = createLogger('errorHandler');
@@ -8,10 +7,11 @@ const log = createLogger('errorHandler');
 export function errorHandler(err: Error, c: Context) {
   const requestId = c.get('requestId') as string | undefined;
 
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    log.error({ err, requestId, prismaCode: err.code }, 'Prisma error');
+  if (err.name === 'PrismaClientKnownRequestError') {
+    const prismaErr = err as { code?: string };
+    log.error({ err, requestId, prismaCode: prismaErr.code }, 'Prisma error');
 
-    if (err.code === 'P2002') {
+    if (prismaErr.code === 'P2002') {
       return c.json({
         success: false,
         error: {
@@ -21,7 +21,7 @@ export function errorHandler(err: Error, c: Context) {
         },
       }, 409);
     }
-    if (err.code === 'P2025') {
+    if (prismaErr.code === 'P2025') {
       return c.json({
         success: false,
         error: {
@@ -33,7 +33,7 @@ export function errorHandler(err: Error, c: Context) {
     }
   }
 
-  if (err instanceof Prisma.PrismaClientValidationError) {
+  if (err.name === 'PrismaClientValidationError') {
     log.warn({ err, requestId }, 'Prisma validation error');
     return c.json({
       success: false,

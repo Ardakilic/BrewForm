@@ -76,6 +76,7 @@ export function RecipeDetailPage() {
             recipe.author?.displayName || recipe.author?.username
           }`}
         image={recipe.photos?.[0]?.url}
+        url={`${window.location.origin}/share/${recipe.slug}`}
       />
       <RecipeJsonLd
         title={recipe.title}

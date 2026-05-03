@@ -12,7 +12,7 @@
     "@prisma/client": "^6.19.3"
   },
   "devDependencies": {
-    "prisma": "^6.7.0"
+    "prisma": "^6.19.3"
   },
   "scripts": {
     "build": "echo 'DB package uses Prisma generate'",

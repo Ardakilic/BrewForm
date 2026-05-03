@@ -98,7 +98,7 @@
           "dependencies": [
             "npm:@brewform/shared@*",
             "npm:@prisma/client@^6.19.3",
-            "npm:prisma@^6.7.0"
+            "npm:prisma@^6.19.3"
           ]
         }
       },

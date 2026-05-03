@@ -4,6 +4,7 @@ import * as recipeModel from '../recipe/model.ts';
 import { prisma } from '@brewform/db';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyRecipeCommented } from '../../utils/notify/index.ts';
+import { evaluateBadges } from '../badge/service.ts';
 
 const logger = createLogger('comment-service');
 
@@ -50,6 +51,9 @@ export async function createComment(
       recipeSlug: recipe.slug,
     });
   })().catch((err) => logger.error({ err }, 'notifyRecipeCommented failed'));
+
+  // Fire-and-forget badge evaluation so errors never block the response.
+  evaluateBadges(userId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
   return comment;
 }

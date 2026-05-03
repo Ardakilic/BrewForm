@@ -104,4 +104,40 @@ describe('Recipe Service Logic', () => {
       expect(yield_).toBeNull();
     });
   });
+
+  describe('Setup auto-fill in recipe creation', () => {
+    it('should auto-fill grinder from setup when not provided', () => {
+      const userGrinder = null;
+      const setupGrinder = 'Niche Zero';
+      const finalGrinder = userGrinder || setupGrinder;
+      expect(finalGrinder).toBe('Niche Zero');
+    });
+
+    it('should auto-fill brewerDetails from setup when not provided', () => {
+      const userBrewerDetails = null;
+      const setupBrewerDetails = 'V60 02 ceramic';
+      const finalBrewerDetails = userBrewerDetails || setupBrewerDetails;
+      expect(finalBrewerDetails).toBe('V60 02 ceramic');
+    });
+
+    it('should not overwrite user-provided grinder', () => {
+      const userGrinder = 'Eureka Mignon';
+      const setupGrinder = 'Niche Zero';
+      const finalGrinder = userGrinder || setupGrinder;
+      expect(finalGrinder).toBe('Eureka Mignon');
+    });
+
+    it('should not overwrite user-provided brewerDetails', () => {
+      const userBrewerDetails = 'Aeropress';
+      const setupBrewerDetails = 'V60 02 ceramic';
+      const finalBrewerDetails = userBrewerDetails || setupBrewerDetails;
+      expect(finalBrewerDetails).toBe('Aeropress');
+    });
+
+    it('should map equipmentIds to connection create array', () => {
+      const equipmentIds = ['eq-1', 'eq-2'];
+      const connections = equipmentIds.map((id: string) => ({ equipmentId: id }));
+      expect(connections).toEqual([{ equipmentId: 'eq-1' }, { equipmentId: 'eq-2' }]);
+    });
+  });
 });

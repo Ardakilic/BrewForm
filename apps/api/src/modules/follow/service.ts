@@ -4,6 +4,7 @@ import * as recipeModel from '../recipe/model.ts';
 import { prisma } from '@brewform/db';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyNewFollower } from '../../utils/notify/index.ts';
+import { evaluateBadges } from '../badge/service.ts';
 
 const logger = createLogger('follow-service');
 
@@ -24,6 +25,9 @@ export async function followUser(followerId: string, followingId: string) {
       followerUsername: follower.username,
     });
   })().catch((err) => logger.error({ err }, 'notifyNewFollower failed'));
+
+  // Fire-and-forget badge evaluation so errors never block the response.
+  evaluateBadges(followerId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
   return follow;
 }

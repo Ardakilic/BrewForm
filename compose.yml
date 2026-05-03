@@ -8,7 +8,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform?connection_limit=10&pool_timeout=30
       - DATABASE_PROVIDER=postgresql
-      - CACHE_DRIVER=deno-kv
+      - CACHE_DRIVER=memory
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -31,11 +31,11 @@ services:
         condition: service_started
     volumes:
       - .:/app
-      - /app/node_modules
-      - /app/apps/api/node_modules
-      - /app/apps/web/node_modules
-      - /app/packages/shared/node_modules
-      - /app/packages/db/node_modules
+      - ./node_modules:/app/node_modules
+      - ./apps/api/node_modules:/app/apps/api/node_modules
+      - ./apps/web/node_modules:/app/apps/web/node_modules
+      - ./packages/shared/node_modules:/app/packages/shared/node_modules
+      - ./packages/db/node_modules:/app/packages/db/node_modules
 
   postgres:
     image: postgres:18-trixie
@@ -46,7 +46,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brewform"]
       interval: 5s
@@ -62,7 +62,7 @@ services:
   pgadmin:
     image: elestio/pgadmin:latest
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@brewform.local
+      PGADMIN_DEFAULT_EMAIL: admin@brewform.dev
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"

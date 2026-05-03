@@ -1,6 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+// deno-lint-ignore-file
+import prismaPkg from '@prisma/client';
+const PrismaClient = (prismaPkg as any).PrismaClient;
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma: any };
 
 export const prisma = globalForPrisma.prisma || new PrismaClient();
 

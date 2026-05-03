@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { prisma } from '@brewform/db';
-import { hashSync } from 'bcryptjs';
+import * as bcrypt from 'bcryptjs';
+const { hashSync } = bcrypt;
 
 async function main() {
   console.log('BrewForm Admin Setup');

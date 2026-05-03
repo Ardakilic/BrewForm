@@ -1,0 +1,29 @@
+{
+  "spec": "validate-brewform-requirements-against-brewform",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Automated, repeatable audit run via Docker/Makefile that checks every plan section against code, runs tests, and produces a prioritized g...",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "Code inspection comparing every brewform-plan.md section against the actual codebase, plus test execution via Docker/Makefile (make check, make test, make test-coverage). Runtime verification by building and running the app stack.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "done"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-03T15:36:36.966Z"
+}

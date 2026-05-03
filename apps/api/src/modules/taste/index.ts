@@ -4,7 +4,7 @@ import { TasteNoteFilterSchema } from '@brewform/shared/schemas';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import { error, success } from '../../utils/response/index.ts';
-import { cacheProvider } from '../../main.ts';
+import { cacheProvider } from '../../utils/cache/singleton.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const taste = new Hono<AppEnv>();

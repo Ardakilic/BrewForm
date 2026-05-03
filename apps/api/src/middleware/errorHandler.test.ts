@@ -1,5 +1,15 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
+import type { Context } from 'hono';
+import { errorHandler } from './errorHandler.ts';
+
+function createMockContext(requestId = 'test-req-1'): Context {
+  return {
+    get: (key: string) => key === 'requestId' ? requestId : undefined,
+    json: (body: unknown, status = 200) =>
+      new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }),
+  } as unknown as Context;
+}
 
 describe('Error Handler Logic', () => {
   describe('Error type detection', () => {
@@ -55,6 +65,40 @@ describe('Error Handler Logic', () => {
       };
       expect(response.error.details.length).toBe(2);
       expect(response.error.details[0].field).toBe('email');
+    });
+  });
+
+  describe('Prisma error handling by name', () => {
+    it('should return 409 CONFLICT for Prisma P2002', async () => {
+      const err = new Error('Unique constraint failed');
+      err.name = 'PrismaClientKnownRequestError';
+      (err as { code?: string }).code = 'P2002';
+      const c = createMockContext();
+      const res = errorHandler(err, c);
+      expect(res.status).toBe(409);
+      const body = await res.json();
+      expect(body.error.code).toBe('CONFLICT');
+    });
+
+    it('should return 404 NOT_FOUND for Prisma P2025', async () => {
+      const err = new Error('Record not found');
+      err.name = 'PrismaClientKnownRequestError';
+      (err as { code?: string }).code = 'P2025';
+      const c = createMockContext();
+      const res = errorHandler(err, c);
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.error.code).toBe('NOT_FOUND');
+    });
+
+    it('should return 400 VALIDATION_ERROR for PrismaClientValidationError', async () => {
+      const err = new Error('Invalid data');
+      err.name = 'PrismaClientValidationError';
+      const c = createMockContext();
+      const res = errorHandler(err, c);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
   });
 });

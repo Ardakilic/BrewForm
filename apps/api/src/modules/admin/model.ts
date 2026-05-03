@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any require-await
 import { prisma } from '@brewform/db';
-import { hashSync } from 'bcryptjs';
+import * as bcrypt from 'bcryptjs';
+const { hashSync } = bcrypt;
 
 // --- Users ---
 
@@ -321,7 +322,7 @@ export async function getUserGrowth(days: number) {
     select: { createdAt: true },
     orderBy: { createdAt: 'asc' },
   });
-  return users.map((u) => ({ date: u.createdAt.toISOString().split('T')[0] }));
+  return users.map((u: { createdAt: Date }) => ({ date: u.createdAt.toISOString().split('T')[0] }));
 }
 
 export async function getRecipeGrowth(days: number) {
@@ -332,7 +333,7 @@ export async function getRecipeGrowth(days: number) {
     select: { createdAt: true },
     orderBy: { createdAt: 'asc' },
   });
-  return recipes.map((r) => ({ date: r.createdAt.toISOString().split('T')[0] }));
+  return recipes.map((r: { createdAt: Date }) => ({ date: r.createdAt.toISOString().split('T')[0] }));
 }
 
 export async function getTopRecipes(limit: number) {

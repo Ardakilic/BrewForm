@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { recipeApi } from '../../api/index';
+import { equipmentApi, recipeApi, setupApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
 import {
@@ -43,6 +43,32 @@ export function RecipeCreatePage() {
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
 
+  // Equipment & Setup state
+  const [equipmentList, setEquipmentList] = useState<any[]>([]);
+  const [setupList, setSetupList] = useState<any[]>([]);
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
+  const [selectedSetupId, setSelectedSetupId] = useState('');
+  const [equipLoading, setEquipLoading] = useState(true);
+  const [equipError, setEquipError] = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      equipmentApi.list().then((data) => setEquipmentList(data as any[])).catch(() => setEquipError('Failed to load equipment')),
+      setupApi.list().then((data) => setSetupList(data as any[])).catch(() => setEquipError('Failed to load setups')),
+    ]).finally(() => setEquipLoading(false));
+  }, []);
+
+  // Auto-fill grinder and brewerDetails when setup changes
+  useEffect(() => {
+    if (!selectedSetupId) return;
+    const setup = setupList.find((s) => s.id === selectedSetupId);
+    if (!setup) return;
+    if (setup.grinder) setGrinder(setup.grinder);
+    if (setup.brewerDetails) {
+      setBrewerDetailsFromSetup(setup.brewerDetails);
+    }
+  }, [selectedSetupId, setupList]);
+
   const compatibleDrinks = DRINK_TYPES_ANY.filter((d: any) =>
     d.compatibleMethods.includes(brewMethod)
   );
@@ -52,6 +78,24 @@ export function RecipeCreatePage() {
       setDrinkType(compatibleDrinks[0]?.value as DrinkType || 'espresso');
     }
   }, [brewMethod]);
+
+  function toggleEquipment(id: string) {
+    setSelectedEquipmentIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function setBrewerDetailsFromSetup(value: string) {
+    // brewerDetails is not a separate state field in the form —
+    // it's part of the Brew Parameters section as a free-text input.
+    // We'll store it alongside grinder for now; the parameter card
+    // on the detail page renders it if present.
+    // Actually, looking at the form, there is NO brewerDetails input.
+    // Let's add one in the Brew Parameters section.
+    setBrewerDetails(value);
+  }
+
+  const [brewerDetails, setBrewerDetails] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,6 +116,7 @@ export function RecipeCreatePage() {
         ...(coffeeProcessing ? { coffeeProcessing } : {}),
         ...(grinder ? { grinder } : {}),
         ...(grindSize ? { grindSize } : {}),
+        ...(brewerDetails ? { brewerDetails } : {}),
         ...(groundWeightGrams ? { groundWeightGrams: Number(groundWeightGrams) } : {}),
         ...(extractionTimeSeconds ? { extractionTimeSeconds: Number(extractionTimeSeconds) } : {}),
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
@@ -80,6 +125,8 @@ export function RecipeCreatePage() {
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
         ...(tasteNoteIds.length > 0 ? { tasteNoteIds } : {}),
+        ...(selectedEquipmentIds.length > 0 ? { equipmentIds: selectedEquipmentIds } : {}),
+        ...(selectedSetupId ? { setupId: selectedSetupId } : {}),
       };
       const result = await recipeApi.create(data) as Record<string, unknown>;
       navigate(`/recipes/${result.slug}`);
@@ -158,6 +205,58 @@ export function RecipeCreatePage() {
           </div>
         </Section>
 
+        <Section title='Equipment & Setup'>
+          {equipLoading ? (
+            <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>Loading equipment...</p>
+          ) : equipError ? (
+            <p className='text-sm' style={{ color: 'var(--error)' }}>{equipError}</p>
+          ) : (
+            <>
+              <Field label='Setup (auto-fills grinder & brewer)'>
+                <select
+                  value={selectedSetupId}
+                  onChange={(e) => setSelectedSetupId(e.target.value)}
+                  className='input-field'
+                >
+                  <option value=''>None</option>
+                  {setupList.map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.name}{s.isDefault ? ' (default)' : ''}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label='Equipment'>
+                <div className='space-y-2 mt-1'>
+                  {equipmentList.length === 0 ? (
+                    <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
+                      No equipment yet. Add some in your profile.
+                    </p>
+                  ) : (
+                    equipmentList.map((eq: any) => (
+                      <label
+                        key={eq.id}
+                        className='flex items-center gap-2 text-sm cursor-pointer'
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        <input
+                          type='checkbox'
+                          checked={selectedEquipmentIds.includes(eq.id)}
+                          onChange={() => toggleEquipment(eq.id)}
+                          className='rounded'
+                        />
+                        <span>{eq.name}</span>
+                        <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                          ({eq.type})
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </Field>
+            </>
+          )}
+        </Section>
+
         <Section title='Coffee Identity'>
           <div className='grid grid-cols-2 gap-4'>
             <Field label='Product Name'>
@@ -204,6 +303,15 @@ export function RecipeCreatePage() {
                 value={grindSize}
                 onChange={(e) => setGrindSize(e.target.value)}
                 className='input-field'
+              />
+            </Field>
+            <Field label='Brewer Details'>
+              <input
+                type='text'
+                value={brewerDetails}
+                onChange={(e) => setBrewerDetails(e.target.value)}
+                className='input-field'
+                placeholder='e.g. 58mm portafilter, 20g basket'
               />
             </Field>
             <Field label='Dose (grams)'>

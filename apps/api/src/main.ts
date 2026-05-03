@@ -25,6 +25,7 @@ import { errorHandler } from './middleware/errorHandler.ts';
 import { rateLimitMiddleware } from './middleware/rateLimit.ts';
 import { createCacheProvider } from './utils/cache/index.ts';
 import type { CacheProvider } from './utils/cache/index.ts';
+import { setCacheProvider, cacheProvider } from './utils/cache/singleton.ts';
 import routes from './routes/index.ts';
 import { createLogger } from './utils/logger/index.ts';
 import { startJobs, stopJobs } from './utils/jobs/index.ts';
@@ -39,8 +40,6 @@ type Variables = {
 };
 
 const app = new Hono<{ Variables: Variables }>();
-
-let cacheProvider: CacheProvider = createCacheProvider('memory');
 
 app.use('*', corsMiddleware);
 app.use('*', requestIdMiddleware);
@@ -60,10 +59,10 @@ async function startup() {
 
   if (config.CACHE_DRIVER === 'deno-kv') {
     kv = await Deno.openKv();
-    cacheProvider = createCacheProvider('deno-kv', kv);
+    setCacheProvider(createCacheProvider('deno-kv', kv));
     logger.info('Deno KV cache initialized');
   } else {
-    cacheProvider = createCacheProvider('memory');
+    setCacheProvider(createCacheProvider('memory'));
     logger.info('In-memory cache initialized');
   }
 
@@ -102,4 +101,4 @@ startup().catch((err) => {
   Deno.exit(1);
 });
 
-export { app, cacheProvider };
+export { app };

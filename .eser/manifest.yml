@@ -1,0 +1,22 @@
+noskills:
+  # noskills orchestrator — inline comments in this section won't be preserved on next write
+  concerns:
+    - open-source
+    - beautiful-product
+    - well-engineered
+  tools:
+    - claude-code
+  providers:
+    - opencode
+    - kiro
+  project:
+    languages:
+      - typescript
+    frameworks: []
+    ci:
+      - github-actions
+    testRunner: deno
+  maxIterationsBeforeRestart: 15
+  verifyCommand: null
+  allowGit: false
+  command: deno run --allow-all jsr:@eser/cli noskills

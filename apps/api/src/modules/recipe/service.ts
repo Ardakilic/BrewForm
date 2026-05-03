@@ -6,6 +6,7 @@ import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyFollowersOfNewRecipe, notifyRecipeLiked } from '../../utils/notify/index.ts';
+import { evaluateBadges } from '../badge/service.ts';
 
 const logger = createLogger('recipe-service');
 
@@ -29,6 +30,20 @@ export async function getRecipe(slugOrId: string) {
 
 export async function createRecipe(authorId: string, data: any) {
   const slug = await generateUniqueSlug(data.title);
+
+  // If setupId is provided, auto-fill grinder and brewerDetails from the setup
+  // unless the user has explicitly provided their own values.
+  let grinder = data.grinder;
+  let brewerDetails = data.brewerDetails;
+  if (data.setupId) {
+    const setup: any = await prisma.setup.findUnique({
+      where: { id: data.setupId, deletedAt: null },
+    } as any);
+    if (setup) {
+      if (!grinder) grinder = setup.grinder;
+      if (!brewerDetails) brewerDetails = setup.brewerDetails;
+    }
+  }
 
   const brewRatio = data.groundWeightGrams && data.extractionVolumeMl
     ? computeBrewRatio(data.groundWeightGrams, data.extractionVolumeMl)
@@ -56,8 +71,8 @@ export async function createRecipe(authorId: string, data: any) {
         brewDate: data.brewDate ? new Date(data.brewDate) : new Date(),
         brewMethod: data.brewMethod,
         drinkType: data.drinkType,
-        brewerDetails: data.brewerDetails,
-        grinder: data.grinder,
+        brewerDetails,
+        grinder,
         grindSize: data.grindSize,
         groundWeightGrams: data.groundWeightGrams,
         extractionTimeSeconds: data.extractionTimeSeconds,
@@ -112,6 +127,9 @@ export async function createRecipe(authorId: string, data: any) {
       });
     })().catch((err) => logger.error({ err }, 'notifyFollowersOfNewRecipe failed'));
   }
+
+  // Fire-and-forget badge evaluation so errors never block the response.
+  evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
   return finalRecipe;
 }
@@ -201,7 +219,12 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   const slug = generateSlug(forkTitle);
   const uniqueSlug = await ensureUniqueSlug(slug, []);
 
-  return model.forkRecipe(sourceId, authorId, forkTitle, uniqueSlug);
+  const forked = await model.forkRecipe(sourceId, authorId, forkTitle, uniqueSlug);
+
+  // Fire-and-forget badge evaluation so errors never block the response.
+  evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
+
+  return forked;
 }
 
 export async function listRecipes(filters: any, page: number, perPage: number) {

@@ -10,7 +10,7 @@ import {
   PaginationSchema,
 } from '@brewform/shared/schemas';
 import * as service from './service.ts';
-import { cacheProvider } from '../../main.ts';
+import { cacheProvider } from '../../utils/cache/singleton.ts';
 import { error, paginated, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
