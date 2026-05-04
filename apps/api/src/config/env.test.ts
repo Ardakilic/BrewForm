@@ -26,7 +26,7 @@ const envSchema = z.object({
   APP_URL: z.string().default('http://localhost:8000'),
   ADMIN_EMAIL: z.string().default('admin@brewform.local'),
   ADMIN_USERNAME: z.string().default('admin'),
-  ADMIN_PASSWORD: z.string().default('changeme123'),
+  ADMIN_PASSWORD: z.string().default('admin123456'),
 });
 
 describe('Environment Config Schema', () => {

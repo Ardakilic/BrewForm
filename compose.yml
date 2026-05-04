@@ -23,7 +23,7 @@ services:
       - LOG_LEVEL=debug
       - ADMIN_EMAIL=admin@brewform.local
       - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=changeme123
+      - ADMIN_PASSWORD=admin123456
     depends_on:
       postgres:
         condition: service_healthy

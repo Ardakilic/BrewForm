@@ -19,14 +19,14 @@ async function main() {
 
   const email = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
   const username = Deno.env.get('ADMIN_USERNAME') || 'admin';
-  const password = Deno.env.get('ADMIN_PASSWORD') || 'changeme123';
+  const password = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';
 
   console.log(`Creating admin user: ${username} (${email})`);
   console.log(
     `Password: ${
       Deno.env.get('ADMIN_PASSWORD')
         ? '(from ADMIN_PASSWORD env)'
-        : '(default: changeme123 — change immediately!)'
+        : '(default: admin123456 — change immediately!)'
     }`,
   );
 

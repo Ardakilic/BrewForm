@@ -2,8 +2,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
-import process from 'node:process';
-
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -26,7 +24,7 @@ export default defineConfig({
   },
   define: {
     'import.meta.env.VITE_API_URL': JSON.stringify(
-      process.env.VITE_API_URL || '/api/v1',
+      Deno.env.get('VITE_API_URL') || '/api/v1',
     ),
   },
 });

@@ -39,7 +39,7 @@ const envSchema = z.object({
 
   ADMIN_EMAIL: z.string().default('admin@brewform.local'),
   ADMIN_USERNAME: z.string().default('admin'),
-  ADMIN_PASSWORD: z.string().default('changeme123'),
+  ADMIN_PASSWORD: z.string().default('admin123456'),
 });
 
 export type Env = z.infer<typeof envSchema>;

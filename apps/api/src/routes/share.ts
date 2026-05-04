@@ -52,7 +52,7 @@ share.get('/:slug', async (c) => {
       return c.html('<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 — Recipe not found</h1></body></html>', 404);
     }
 
-    const baseUrl = process.env.APP_URL || `http://localhost:${process.env.APP_PORT || 8000}`;
+    const baseUrl = Deno.env.get('APP_URL') || `http://localhost:${Deno.env.get('APP_PORT') || 8000}`;
     const description = meta.productName
       ? `${meta.brewMethod || 'Coffee'} recipe using ${meta.productName}`
       : `${meta.brewMethod || 'Coffee'} recipe by ${meta.author?.displayName || meta.author?.username || 'BrewForm user'}`;

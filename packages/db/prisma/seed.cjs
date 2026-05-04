@@ -167,14 +167,16 @@ async function seedBadges(tx) {
 }
 
 async function seedUsers(tx) {
-  const adminPassword = bcryptjs.hashSync('admin123456', 10);
+  const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
+  const adminUsername = Deno.env.get('ADMIN_USERNAME') || 'admin';
+  const adminPassword = bcryptjs.hashSync(Deno.env.get('ADMIN_PASSWORD') || 'admin123456', 10);
   const user1Password = bcryptjs.hashSync('user123456', 10);
   const user2Password = bcryptjs.hashSync('user123456', 10);
 
   const admin = await tx.user.create({
     data: {
-      email: 'admin@brewform.local',
-      username: 'admin',
+      email: adminEmail,
+      username: adminUsername,
       passwordHash: adminPassword,
       displayName: 'BrewForm Admin',
       isAdmin: true,
@@ -478,15 +480,16 @@ async function main() {
   );
   await seedTasteNotes(prisma, scaaData.data);
 
+  const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
+  const adminPassword = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';
   console.log('Seeding complete!');
-  console.log('Admin credentials: admin@brewform.local / admin123456');
+  console.log(`Admin credentials: ${adminEmail} / ${adminPassword}`);
 }
 
 main()
   .catch((e) => {
     console.error(e);
-    // deno-lint-ignore no-process-global
-    process.exit(1);
+    Deno.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

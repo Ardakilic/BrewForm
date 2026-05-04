@@ -2,7 +2,13 @@ import { PrismaClient } from '@prisma/client';
 import { hashSync } from 'bcryptjs';
 import { readFileSync } from 'node:fs';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: Deno.env.get('DATABASE_URL'),
+    },
+  },
+});
 
 interface ScaaChild {
   name: string;
@@ -201,14 +207,16 @@ async function seedBadges(tx: PrismaClient) {
 }
 
 async function seedUsers(tx: PrismaClient) {
-  const adminPassword = hashSync('admin123456', 10);
+  const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
+  const adminUsername = Deno.env.get('ADMIN_USERNAME') || 'admin';
+  const adminPassword = hashSync(Deno.env.get('ADMIN_PASSWORD') || 'admin123456', 10);
   const user1Password = hashSync('user123456', 10);
   const user2Password = hashSync('user123456', 10);
 
   const admin = await tx.user.create({
     data: {
-      email: 'admin@brewform.local',
-      username: 'admin',
+      email: adminEmail,
+      username: adminUsername,
       passwordHash: adminPassword,
       displayName: 'BrewForm Admin',
       isAdmin: true,
@@ -526,15 +534,16 @@ async function main() {
   const scaaData = JSON.parse(readFileSync('./files/scaa-2.json', 'utf-8'));
   await seedTasteNotes(prisma, scaaData.data);
 
+  const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
+  const adminPassword = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';
   console.log('Seeding complete!');
-  console.log('Admin credentials: admin@brewform.local / admin123456');
+  console.log(`Admin credentials: ${adminEmail} / ${adminPassword}`);
 }
 
 main()
   .catch((e) => {
     console.error(e);
-    // deno-lint-ignore no-process-global
-    process.exit(1);
+    Deno.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
