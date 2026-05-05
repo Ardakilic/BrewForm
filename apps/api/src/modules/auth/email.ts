@@ -2,7 +2,7 @@ import { config } from '../../config/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
 import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
-import nodemailer from 'npm:nodemailer';
+import nodemailer from 'npm:nodemailer@^7.0.0';
 
 const logger = createLogger('email');
 
