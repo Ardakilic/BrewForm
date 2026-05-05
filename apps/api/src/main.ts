@@ -18,6 +18,7 @@
  *   cors → requestId → rateLimit(100/min) → cache injection → routes
  */
 import { Hono } from 'hono';
+import * as path from 'jsr:@std/path';
 import { config } from './config/index.ts';
 import { corsMiddleware } from './middleware/cors.ts';
 import { requestIdMiddleware } from './middleware/requestId.ts';
@@ -53,7 +54,21 @@ app.onError(errorHandler);
 // Serve uploads locally when using filesystem storage
 if (config.STORAGE_DRIVER === 'local') {
   app.get('/uploads/*', async (c) => {
-    const filepath = `${config.UPLOAD_DIR}/${c.req.param('*')}`;
+    const userPath = c.req.param('*');
+    if (!userPath) {
+      return c.text('Bad Request', 400);
+    }
+    const resolvedUploadDir = path.resolve(config.UPLOAD_DIR);
+    const filepath = path.resolve(path.join(resolvedUploadDir, userPath));
+
+    if (
+      path.isAbsolute(userPath) ||
+      userPath.includes('..') ||
+      !filepath.startsWith(resolvedUploadDir + path.SEPARATOR)
+    ) {
+      return c.text('Forbidden', 403);
+    }
+
     try {
       const file = await Deno.open(filepath, { read: true });
       const stat = await file.stat();
