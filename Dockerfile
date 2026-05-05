@@ -34,4 +34,4 @@ RUN apt-get update && apt-get install -y curl && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app .
 EXPOSE 8000
-CMD ["deno", "run", "--allow-all", "--unstable-sloppy-imports", "--unstable-cron", "apps/api/src/main.ts"]
+CMD ["deno", "run", "--allow-read", "--allow-write", "--allow-net", "--allow-env", "--allow-kv", "--unstable-sloppy-imports", "--unstable-cron", "apps/api/src/main.ts"]

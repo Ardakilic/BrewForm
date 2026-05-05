@@ -16,6 +16,7 @@ import { prisma } from '@brewform/db';
 import nodemailer from 'npm:nodemailer@^7.0.0';
 import { config } from '../../config/index.ts';
 import { createLogger } from '../logger/index.ts';
+import { escapeHtml } from '../../routes/share.ts';
 import { template as newFollowerTemplate } from '../../templates/email/generated/new-follower.ts';
 import { template as recipeLikedTemplate } from '../../templates/email/generated/recipe-liked.ts';
 import { template as recipeCommentedTemplate } from '../../templates/email/generated/recipe-commented.ts';
@@ -26,7 +27,7 @@ const logger = createLogger('notify');
 function renderTemplate(template: string, vars: Record<string, string>): string {
   let out = template;
   for (const [k, v] of Object.entries(vars)) {
-    out = out.split('{{' + k + '}}').join(v);
+    out = out.split('{{' + k + '}}').join(escapeHtml(v));
   }
   return out;
 }

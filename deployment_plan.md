@@ -46,6 +46,10 @@ deno lint apps/ packages/
 ```
 
 ### A5. Run Tests
+
+Ensure `.env` is present (e.g. `cp .env.example .env`) so Docker Compose can
+load service environment variables before starting dependent containers:
+
 ```bash
 docker compose up -d postgres mailpit garage
 deno task db:migrate

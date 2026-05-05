@@ -73,6 +73,13 @@ The `404.html` trick:
 
 ## Local Development
 
+Make sure `.env` exists (copy from `.env.example`) so Docker Compose can load
+environment variables for services such as Garage:
+
+```bash
+cp .env.example .env
+```
+
 ```bash
 make up          # Start all services (postgres, mailpit, pgadmin, app)
 make dev         # Start development server (hot reload)

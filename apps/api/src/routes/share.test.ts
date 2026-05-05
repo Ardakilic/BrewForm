@@ -20,9 +20,13 @@ describe('Share Route', () => {
       expect(escapeHtml("It's good")).toBe('It&#39;s good');
     });
 
+    it('should escape forward slashes', () => {
+      expect(escapeHtml('a/b')).toBe('a&#x2F;b');
+    });
+
     it('should escape all special characters combined', () => {
-      expect(escapeHtml('"Coffee & Tea\'s <best>"')).toBe(
-        '&quot;Coffee &amp; Tea&#39;s &lt;best&gt;&quot;',
+      expect(escapeHtml('"Coffee & Tea\'s <best>/"')).toBe(
+        '&quot;Coffee &amp; Tea&#39;s &lt;best&gt;&#x2F;&quot;',
       );
     });
   });

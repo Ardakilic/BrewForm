@@ -45,7 +45,7 @@ All commands run through Docker. No local Deno/Node installation required.
 git clone https://github.com/your-org/brewform.git
 cd brewform
 
-# Copy environment config
+# Copy environment config (required by Docker Compose services such as Garage)
 cp .env.example .env
 
 # Start all services (postgres, mailpit, pgadmin, garage, app)

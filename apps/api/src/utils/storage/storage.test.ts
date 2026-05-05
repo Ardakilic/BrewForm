@@ -1,10 +1,11 @@
-import { beforeEach, describe, it } from 'jsr:@std/testing/bdd';
+import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { LocalStorageDriver } from './local.ts';
 
 describe('LocalStorageDriver', () => {
   const testDir = '/tmp/brewform-storage-test';
   let driver: LocalStorageDriver;
+  let originalUploadDir: string;
 
   beforeEach(async () => {
     // Clean test directory
@@ -17,9 +18,23 @@ describe('LocalStorageDriver', () => {
 
     // Override config.UPLOAD_DIR for testing
     const { config } = await import('../../config/index.ts');
+    originalUploadDir = (config as any).UPLOAD_DIR;
     (config as any).UPLOAD_DIR = testDir;
 
     driver = new LocalStorageDriver();
+  });
+
+  afterEach(async () => {
+    // Restore original config.UPLOAD_DIR
+    const { config } = await import('../../config/index.ts');
+    (config as any).UPLOAD_DIR = originalUploadDir;
+
+    // Clean up test directory
+    try {
+      await Deno.remove(testDir, { recursive: true });
+    } catch {
+      // ignore if doesn't exist
+    }
   });
 
   it('should save a file and return a public URL', async () => {
@@ -43,6 +58,17 @@ describe('LocalStorageDriver', () => {
   it('should not throw when deleting a non-existent file', async () => {
     await expect(driver.delete('non-existent.txt')).resolves.toBeUndefined();
   });
+
+  it('should reject path traversal in save', async () => {
+    const data = new TextEncoder().encode('malicious');
+    await expect(driver.save(data, '../../../etc/passwd')).rejects.toThrow('Invalid filename');
+    await expect(driver.save(data, '/etc/passwd')).rejects.toThrow('Invalid filename');
+  });
+
+  it('should reject path traversal in delete', async () => {
+    await expect(driver.delete('../../../etc/passwd')).rejects.toThrow('Invalid filename');
+    await expect(driver.delete('/etc/passwd')).rejects.toThrow('Invalid filename');
+  });
 });
 
 describe('createStorageDriver', () => {
@@ -63,11 +89,26 @@ describe('createStorageDriver', () => {
     const { S3StorageDriver } = await import('./s3.ts');
     const { config } = await import('../../config/index.ts');
     const originalDriver = config.STORAGE_DRIVER;
+    const originalEndpoint = (config as any).S3_ENDPOINT;
+    const originalBucket = (config as any).S3_BUCKET;
+    const originalAccessKey = (config as any).S3_ACCESS_KEY;
+    const originalSecretKey = (config as any).S3_SECRET_KEY;
+    const originalPublicUrl = (config as any).S3_PUBLIC_URL;
     (config as any).STORAGE_DRIVER = 's3';
+    (config as any).S3_ENDPOINT = 'https://s3.example.com';
+    (config as any).S3_BUCKET = 'test-bucket';
+    (config as any).S3_ACCESS_KEY = 'test-access-key';
+    (config as any).S3_SECRET_KEY = 'test-secret-key';
+    (config as any).S3_PUBLIC_URL = 'https://cdn.example.com';
 
     const driver = createStorageDriver();
     expect(driver).toBeInstanceOf(S3StorageDriver);
 
     (config as any).STORAGE_DRIVER = originalDriver;
+    (config as any).S3_ENDPOINT = originalEndpoint;
+    (config as any).S3_BUCKET = originalBucket;
+    (config as any).S3_ACCESS_KEY = originalAccessKey;
+    (config as any).S3_SECRET_KEY = originalSecretKey;
+    (config as any).S3_PUBLIC_URL = originalPublicUrl;
   });
 });

@@ -50,15 +50,25 @@ const envSchema = z.object({
   ADMIN_EMAIL: z.string().default('admin@brewform.local'),
   ADMIN_USERNAME: z.string().default('admin'),
   ADMIN_PASSWORD: z.string().default('admin123456'),
-}).refine(
-  (obj) => {
-    if (obj.STORAGE_DRIVER !== 's3') return true;
-    return !!obj.S3_BUCKET && !!obj.S3_ACCESS_KEY && !!obj.S3_SECRET_KEY;
-  },
-  {
-    message: 'When STORAGE_DRIVER=s3, S3_BUCKET, S3_ACCESS_KEY and S3_SECRET_KEY must be set',
-  },
-);
+}).superRefine((obj, ctx) => {
+  if (obj.STORAGE_DRIVER !== 's3') return;
+  const requiredS3Fields = [
+    { key: 'S3_ENDPOINT', value: obj.S3_ENDPOINT },
+    { key: 'S3_BUCKET', value: obj.S3_BUCKET },
+    { key: 'S3_ACCESS_KEY', value: obj.S3_ACCESS_KEY },
+    { key: 'S3_SECRET_KEY', value: obj.S3_SECRET_KEY },
+    { key: 'S3_PUBLIC_URL', value: obj.S3_PUBLIC_URL },
+  ];
+  for (const field of requiredS3Fields) {
+    if (!field.value) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field.key],
+        message: `${field.key} is required when STORAGE_DRIVER is s3`,
+      });
+    }
+  }
+});
 
 export type Env = z.infer<typeof envSchema>;
 

@@ -47,3 +47,6 @@ uploads/
 
 # Arda
 pr_description.md
+
+# Garage config (contains secrets)
+garage.toml

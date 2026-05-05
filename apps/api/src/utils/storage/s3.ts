@@ -21,8 +21,8 @@ export class S3StorageDriver implements StorageDriver {
   async save(data: Uint8Array, filename: string): Promise<string> {
     const key = `${this.bucket}/${filename}`;
     const url = `${this.endpoint}/${key}`;
-    const headers = await this.signRequest('PUT', url, data);
-    const res = await fetch(url, { method: 'PUT', headers, body: data as BodyInit });
+    const headers = await this.signRequest('PUT', url, data, data.byteLength);
+    const res = await this.fetchWithRetry(url, { method: 'PUT', headers, body: data as BodyInit });
     if (!res.ok) throw new Error(`S3 upload failed: ${res.status} ${res.statusText}`);
     return `${this.publicUrl}/${filename}`;
   }
@@ -31,11 +31,46 @@ export class S3StorageDriver implements StorageDriver {
     const key = `${this.bucket}/${filename}`;
     const url = `${this.endpoint}/${key}`;
     const headers = await this.signRequest('DELETE', url);
-    const res = await fetch(url, { method: 'DELETE', headers });
+    const res = await this.fetchWithRetry(url, { method: 'DELETE', headers });
     if (!res.ok) throw new Error(`S3 delete failed: ${res.status} ${res.statusText}`);
   }
 
-  private async signRequest(method: string, url: string, body?: Uint8Array): Promise<Headers> {
+  private async fetchWithRetry(url: string, init: RequestInit, maxAttempts = 4): Promise<Response> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res = await fetch(url, { ...init, signal: AbortSignal.timeout(30_000) });
+
+        if (res.ok) {
+          return res;
+        }
+
+        const text = await res.text().catch(() => '');
+        const isRetryable = res.status >= 500 || res.status === 503 || text.includes('SlowDown');
+
+        if (!isRetryable) {
+          return res;
+        }
+
+        lastError = new Error(`HTTP ${res.status}: ${text}`);
+
+        if (attempt === maxAttempts - 1) {
+          throw lastError;
+        }
+      } catch (err) {
+        if (attempt === maxAttempts - 1) throw err;
+        lastError = err instanceof Error ? err : new Error(String(err));
+      }
+
+      const delay = Math.min(1000 * 2 ** attempt, 8000);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+
+    throw lastError ?? new Error('Max retries exceeded');
+  }
+
+  private async signRequest(method: string, url: string, body?: Uint8Array, contentLength?: number): Promise<Headers> {
     const now = new Date();
     const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, '');
     const timeStamp = now.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
@@ -47,12 +82,18 @@ export class S3StorageDriver implements StorageDriver {
 
     const headers = new Headers();
     headers.set('host', parsedUrl.host);
+    if (contentLength !== undefined) {
+      headers.set('content-length', String(contentLength));
+    }
     headers.set('x-amz-content-sha256', payloadHash);
     headers.set('x-amz-date', timeStamp);
 
-    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
-    const canonicalHeaders =
-      `host:${parsedUrl.host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timeStamp}\n`;
+    const signedHeaders = contentLength !== undefined
+      ? 'content-length;host;x-amz-content-sha256;x-amz-date'
+      : 'host;x-amz-content-sha256;x-amz-date';
+    const canonicalHeaders = contentLength !== undefined
+      ? `content-length:${contentLength}\nhost:${parsedUrl.host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timeStamp}\n`
+      : `host:${parsedUrl.host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timeStamp}\n`;
 
     const canonicalRequest = [
       method,
