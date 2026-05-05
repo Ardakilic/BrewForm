@@ -30,7 +30,8 @@ notes.
 | ORM        | Prisma                                      |
 | Database   | PostgreSQL                                  |
 | Cache      | Deno KV                                     |
-| Email      | MJML                                        |
+| Storage    | Local filesystem or S3-compatible (Garage)  |
+| Email      | MJML (pre-compiled at build time)           |
 | Validation | Zod (shared between frontend and backend)   |
 | Testing    | Deno test runner + BDD (`@std/testing/bdd`) |
 | CI/CD      | GitHub Actions → Deno Deploy + GitHub Pages |
@@ -47,13 +48,16 @@ cd brewform
 # Copy environment config
 cp .env.example .env
 
-# Start all services (postgres, mailpit, pgadmin, app)
+# Start all services (postgres, mailpit, pgadmin, garage, app)
 make up
 
 # Install dependencies
 make install
 
-# Generate Prisma client
+# Build email templates (required before running the API)
+make email-build
+
+# Generate Prisma client (standard + edge for Deno Deploy)
 make db-generate
 
 # Run database migrations
@@ -139,7 +143,7 @@ brewform/
 │   └── scaa-2.json            # SCAA 2016 flavor wheel data
 ├── docs/                      # Feature & API documentation
 ├── .github/workflows/         # CI/CD pipelines
-├── docker-compose.yml
+├── compose.yml
 ├── Dockerfile
 ├── Makefile
 ├── turbo.json

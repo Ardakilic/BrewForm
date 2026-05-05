@@ -5,12 +5,12 @@ RUN apt-get update && apt-get install -y curl && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
-COPY package.json turbo.json ./
+COPY package.json turbo.json .npmrc ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/db/package.json ./packages/db/
-RUN npm install
+RUN deno install
 
 # --- Stage 2: Build ---
 FROM denoland/deno:debian-2.7.13 AS builder
@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y curl && \
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
-RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
+RUN deno run -A npm:prisma@^6.19.3 generate --schema=packages/db/prisma/schema.prisma
 RUN deno check --unstable-sloppy-imports apps/api/src/main.ts
 
 # --- Stage 3: Runtime (API only) ---
@@ -34,4 +34,4 @@ RUN apt-get update && apt-get install -y curl && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app .
 EXPOSE 8000
-CMD ["deno", "run", "--allow-all", "--unstable-sloppy-imports", "apps/api/src/main.ts"]
+CMD ["deno", "run", "--allow-all", "--unstable-sloppy-imports", "--unstable-cron", "apps/api/src/main.ts"]

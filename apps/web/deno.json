@@ -1,0 +1,11 @@
+{
+  "deploy": {
+    "install": "deno install",
+    "build": "deno task build",
+    "runtime": {
+      "mode": "static",
+      "cwd": "./dist",
+      "spa": true
+    }
+  }
+}

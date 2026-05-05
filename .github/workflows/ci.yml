@@ -16,17 +16,14 @@ jobs:
         with:
           deno-version: v2.x
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
       - name: Install dependencies
-        run: npm install
+        run: deno install
 
-      - name: Generate Prisma client
-        run: |
-          rm -rf node_modules/.prisma
-          cd packages/db && npx prisma generate --schema=prisma/schema.prisma
+      - name: Generate Prisma clients
+        run: deno task db:generate
+
+      - name: Build email templates
+        run: deno run -A apps/api/scripts/build-email-templates.ts
 
       - name: Format check
         run: deno fmt --check apps/ packages/
@@ -62,6 +59,7 @@ jobs:
       APP_ENV: test
       APP_PORT: 8000
       CORS_ALLOWED_ORIGINS: http://localhost:5173
+      STORAGE_DRIVER: local
 
     steps:
       - uses: actions/checkout@v4
@@ -70,32 +68,24 @@ jobs:
         with:
           deno-version: v2.x
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
       - name: Install dependencies
-        run: npm install
+        run: deno install
 
-      - name: Generate Prisma client
-        run: |
-          rm -rf node_modules/.prisma
-          cd packages/db && npx prisma generate --schema=prisma/schema.prisma
+      - name: Generate Prisma clients
+        run: deno task db:generate
 
-      - name: Run database migrations
-        run: |
-          export DATABASE_URL="postgresql://brewform:brewform@localhost:5432/brewform_test"
-          npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
+      - name: Build email templates
+        run: deno run -A apps/api/scripts/build-email-templates.ts
+
+      - name: Run migrations
+        run: deno task db:migrate
 
       - name: Seed database
-        run: node packages/db/prisma/seed.cjs
-        env:
-          DATABASE_URL: postgresql://brewform:brewform@localhost:5432/brewform_test
+        run: deno run --allow-all packages/db/prisma/seed.ts
 
       - name: Run tests with coverage
         run: |
-          deno test --unstable-sloppy-imports --no-check \
-            --allow-env --allow-read --allow-write --allow-net --allow-sys \
+          deno test --unstable-sloppy-imports --no-check --allow-all \
             --coverage=coverage/ \
             apps/api/src/ packages/shared/src/
 
@@ -111,76 +101,5 @@ jobs:
           name: coverage-report
           path: coverage/
 
-  deploy-backend:
-    needs: [quality, test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Generate Prisma client
-        run: |
-          rm -rf node_modules/.prisma
-          cd packages/db && npx prisma generate --schema=prisma/schema.prisma
-
-      - name: Deploy to Deno Deploy
-        uses: denoland/deployctl@v1
-        with:
-          project: brewform-api
-          entrypoint: apps/api/src/main.ts
-          root: .
-
-  deploy-frontend:
-    needs: [quality, test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build frontend
-        run: npx turbo run build --filter=@brewform/web
-        env:
-          VITE_API_URL: https://brewform-api.deno.dev/api/v1
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: apps/web/dist/
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  # Deno Deploy handles deployment automatically via GitHub integration.
+  # No manual deploy steps needed in CI.

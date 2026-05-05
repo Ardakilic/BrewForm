@@ -1,39 +1,41 @@
+/**
+ * Cron-based job scheduling using Deno.cron().
+ * Works in both Deno CLI (local dev) and Deno Deploy (production).
+ */
 import { createLogger } from '../logger/index.ts';
 
 const log = createLogger('jobs');
 
-export interface ScheduledJob {
+export type CronHandler = () => Promise<void>;
+
+export interface CronJob {
   name: string;
-  intervalMs: number;
-  handler: () => Promise<void>;
+  schedule: string;
+  handler: CronHandler;
 }
 
-const jobs: ScheduledJob[] = [];
-let intervals: ReturnType<typeof setInterval>[] = [];
+const jobs: CronJob[] = [];
 
-export function registerJob(job: ScheduledJob): void {
+export function registerJob(job: CronJob): void {
   jobs.push(job);
-  log.info({ job: job.name, intervalMs: job.intervalMs }, 'Job registered');
+  log.info({ job: job.name, schedule: job.schedule }, 'Job registered');
 }
 
-export function startJobs(): void {
+export function startCronJobs(): void {
   for (const job of jobs) {
-    log.info({ job: job.name }, 'Starting job');
-    const interval = setInterval(async () => {
+    log.info({ job: job.name }, 'Registering cron job');
+    Deno.cron(job.name, job.schedule, async () => {
       try {
         await job.handler();
       } catch (err) {
-        log.error({ err, job: job.name }, 'Job failed');
+        log.error({ err, job: job.name }, 'Cron job failed');
       }
-    }, job.intervalMs);
-    intervals.push(interval);
+    });
   }
 }
 
-export function stopJobs(): void {
-  for (const interval of intervals) {
-    clearInterval(interval);
-  }
-  intervals = [];
-  log.info('All jobs stopped');
+export function stopCronJobs(): void {
+  // Deno.cron() jobs are managed by the runtime; no manual stop needed.
+  // In local dev with Deno CLI, jobs terminate when the process exits.
+  log.info('Cron jobs stopping (process exit)');
 }

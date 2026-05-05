@@ -14,17 +14,13 @@ jobs:
         with:
           deno-version: v2.x
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
       - name: Install dependencies
-        run: npm install
+        run: deno install
 
       - name: Generate Prisma client
         run: |
           rm -rf node_modules/.prisma
-          cd packages/db && npx prisma generate --schema=prisma/schema.prisma
+          cd packages/db && deno run -A npm:prisma@^6.19.3 generate --schema=prisma/schema.prisma
 
       - name: Format check
         run: deno fmt --check apps/ packages/
@@ -53,12 +49,8 @@ jobs:
         with:
           deno-version: v2.x
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
       - name: Install dependencies
-        run: npm install
+        run: deno install
 
       - name: Run shared package tests
         run: |

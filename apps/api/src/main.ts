@@ -3,12 +3,12 @@
  *
  * Startup sequence:
  *   1. Initialize cache driver (Deno KV or in-memory)
- *   2. Start background job scheduler (badge evaluation, cache refresh)
- *   3. Bind HTTP server to APP_PORT
- *   4. Register SIGTERM/SIGINT handlers for graceful shutdown
+ *   2. Register Deno.cron jobs (badge evaluation, cache refresh)
+ *   3. Bind HTTP server (auto-detect Deno Deploy for port)
+ *   4. Register SIGTERM/SIGINT handlers for graceful shutdown (local only)
  *
  * Shutdown sequence (on SIGTERM/SIGINT):
- *   1. Stop background jobs
+ *   1. Deno.cron jobs terminate with process
  *   2. Shut down HTTP server
  *   3. Close Deno KV connection
  *   4. Disconnect Prisma client
@@ -25,10 +25,10 @@ import { errorHandler } from './middleware/errorHandler.ts';
 import { rateLimitMiddleware } from './middleware/rateLimit.ts';
 import { createCacheProvider } from './utils/cache/index.ts';
 import type { CacheProvider } from './utils/cache/index.ts';
-import { setCacheProvider, cacheProvider } from './utils/cache/singleton.ts';
+import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import routes from './routes/index.ts';
 import { createLogger } from './utils/logger/index.ts';
-import { startJobs, stopJobs } from './utils/jobs/index.ts';
+import { registerJob, startCronJobs } from './utils/jobs/index.ts';
 
 const logger = createLogger('main');
 
@@ -50,6 +50,32 @@ app.use('*', async (c, next) => {
 });
 app.onError(errorHandler);
 
+// Serve uploads locally when using filesystem storage
+if (config.STORAGE_DRIVER === 'local') {
+  app.get('/uploads/*', async (c) => {
+    const filepath = `${config.UPLOAD_DIR}/${c.req.param('*')}`;
+    try {
+      const file = await Deno.open(filepath, { read: true });
+      const stat = await file.stat();
+      const ext = filepath.split('.').pop() || '';
+      const contentType = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        webp: 'image/webp',
+      }[ext.toLowerCase()] || 'application/octet-stream';
+      return new Response(file.readable, {
+        headers: {
+          'content-type': contentType,
+          'content-length': String(stat.size),
+        },
+      });
+    } catch {
+      return c.notFound();
+    }
+  });
+}
+
 app.route('/', routes);
 
 let kv: Deno.Kv | null = null;
@@ -66,16 +92,37 @@ async function startup() {
     logger.info('In-memory cache initialized');
   }
 
-  startJobs();
+  // Register cron jobs before starting server
+  registerJob({
+    name: 'evaluate-badges',
+    schedule: '0 * * * *', // hourly
+    handler: async () => {
+      const { evaluateAllBadges } = await import('./modules/badge/service.ts');
+      await evaluateAllBadges();
+    },
+  });
 
-  const port = config.APP_PORT;
-  const server = Deno.serve({ port }, app.fetch);
+  registerJob({
+    name: 'refresh-popular-cache',
+    schedule: '0 */6 * * *', // every 6 hours
+    handler: async () => {
+      const { refreshPopularRecipes } = await import('./modules/search/service.ts');
+      await refreshPopularRecipes();
+    },
+  });
 
-  logger.info(`BrewForm API running on http://localhost:${port}`);
+  startCronJobs();
+
+  const server = Deno.env.get('DENO_DEPLOY')
+    ? Deno.serve(app.fetch)
+    : Deno.serve({ port: config.APP_PORT }, app.fetch);
+
+  if (!Deno.env.get('DENO_DEPLOY')) {
+    logger.info(`BrewForm API running on http://localhost:${config.APP_PORT}`);
+  }
 
   const shutdown = async () => {
     logger.info('Shutting down gracefully...');
-    stopJobs();
 
     await server.shutdown();
 
@@ -92,8 +139,10 @@ async function startup() {
     Deno.exit(0);
   };
 
-  Deno.addSignalListener('SIGTERM', shutdown);
-  Deno.addSignalListener('SIGINT', shutdown);
+  if (!Deno.env.get('DENO_DEPLOY')) {
+    Deno.addSignalListener('SIGTERM', shutdown);
+    Deno.addSignalListener('SIGINT', shutdown);
+  }
 }
 
 startup().catch((err) => {

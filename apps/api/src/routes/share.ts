@@ -10,7 +10,8 @@ const OG_TEMPLATE = (meta: {
   image: string | null;
   url: string;
   siteName: string;
-}) => `<!DOCTYPE html>
+}) =>
+  `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -49,13 +50,19 @@ share.get('/:slug', async (c) => {
   try {
     const meta = await getRecipeMeta(slug);
     if (meta.visibility !== 'public') {
-      return c.html('<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 — Recipe not found</h1></body></html>', 404);
+      return c.html(
+        '<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 — Recipe not found</h1></body></html>',
+        404,
+      );
     }
 
-    const baseUrl = Deno.env.get('APP_URL') || `http://localhost:${Deno.env.get('APP_PORT') || 8000}`;
+    const baseUrl = Deno.env.get('APP_URL') ||
+      `http://localhost:${Deno.env.get('APP_PORT') || 8000}`;
     const description = meta.productName
       ? `${meta.brewMethod || 'Coffee'} recipe using ${meta.productName}`
-      : `${meta.brewMethod || 'Coffee'} recipe by ${meta.author?.displayName || meta.author?.username || 'BrewForm user'}`;
+      : `${meta.brewMethod || 'Coffee'} recipe by ${
+        meta.author?.displayName || meta.author?.username || 'BrewForm user'
+      }`;
 
     const html = OG_TEMPLATE({
       title: meta.title,
@@ -69,7 +76,10 @@ share.get('/:slug', async (c) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === 'RECIPE_NOT_FOUND') {
-      return c.html('<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 — Recipe not found</h1></body></html>', 404);
+      return c.html(
+        '<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 — Recipe not found</h1></body></html>',
+        404,
+      );
     }
     throw err;
   }

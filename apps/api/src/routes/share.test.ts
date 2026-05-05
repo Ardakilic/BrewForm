@@ -55,8 +55,8 @@ describe('Share Route', () => {
     });
 
     it('should redirect humans to recipe page', () => {
-      const script = "window.location.replace('/recipes/' + \"test-slug\");";
-      expect(script).toContain("/recipes/");
+      const script = 'window.location.replace(\'/recipes/\' + "test-slug");';
+      expect(script).toContain('/recipes/');
     });
   });
 });

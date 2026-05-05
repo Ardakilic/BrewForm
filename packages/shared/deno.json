@@ -1,0 +1,4 @@
+{
+  "name": "@brewform/shared",
+  "exports": "./src/index.ts"
+}

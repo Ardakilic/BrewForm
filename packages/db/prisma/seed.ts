@@ -1,7 +1,8 @@
-import { PrismaClient } from '@prisma/client';
-import { hashSync } from 'bcryptjs';
-import { readFileSync } from 'node:fs';
+import * as prismaClientMod from '@prisma/client';
+import * as bcryptjs from 'bcryptjs';
+const hashSync = bcryptjs.hashSync || bcryptjs.default?.hashSync;
 
+const PrismaClient = (prismaClientMod as any).PrismaClient || (prismaClientMod as any).default?.PrismaClient;
 const prisma = new PrismaClient({
   datasources: {
     db: {
@@ -531,7 +532,7 @@ async function main() {
   await seedSocialData(prisma, users, { recipe1, recipe2 });
   await seedSetups(prisma, users, equipment);
 
-  const scaaData = JSON.parse(readFileSync('./files/scaa-2.json', 'utf-8'));
+  const scaaData = JSON.parse(await Deno.readTextFile('./files/scaa-2.json'));
   await seedTasteNotes(prisma, scaaData.data);
 
   const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';

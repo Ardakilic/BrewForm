@@ -14,15 +14,23 @@
 - **Frontend**: React SPA built with Vite, deployed to GitHub Pages as static assets
 - **Backend**: Hono API running on Deno Deploy, connecting to a managed PostgreSQL instance
 - **Cache**: Deno KV for taste note hierarchy, popular recipes, and search result caching
-- **Email**: SMTP (Mailpit in development, production SMTP in production)
+- **Storage**: Local filesystem (default) or S3-compatible object storage (Garage in development, any S3 provider in production)
+- **Email**: SMTP (Mailpit in development, production SMTP in production). MJML templates are pre-compiled to TypeScript at build time
 
 ## Backend Deployment (Deno Deploy)
+
+**Prerequisite**: Build email templates before deployment:
+
+```bash
+deno task email:build
+```
 
 1. Push to `main` branch
 2. GitHub Actions workflow builds and deploys via `denoland/deployctl@v1` with OIDC authentication
 3. Environment variables configured in the Deno Deploy dashboard
 4. Entry point: `apps/api/src/main.ts`
 5. Deno Deploy provides built-in Deno KV
+6. Deno Deploy supports `Deno.cron()` for scheduled jobs (badge evaluation, cache refresh)
 
 Required environment variables for production:
 
@@ -39,6 +47,13 @@ Required environment variables for production:
 | `SMTP_SECURE`          | `true` for production                    |
 | `EMAIL_FROM`           | Sender email address                     |
 | `APP_ENV`              | `production`                             |
+| `STORAGE_DRIVER`       | `s3` for production (default: `local`)   |
+| `S3_ENDPOINT`          | S3-compatible API endpoint               |
+| `S3_REGION`            | S3 region (default: `auto`)              |
+| `S3_BUCKET`            | S3 bucket name                           |
+| `S3_ACCESS_KEY`        | S3 access key                            |
+| `S3_SECRET_KEY`        | S3 secret key                            |
+| `S3_PUBLIC_URL`        | Public URL for serving uploaded files    |
 
 ## Frontend Deployment (GitHub Pages)
 
@@ -78,15 +93,17 @@ After seeding, admin credentials: `admin@brewform.local` / `admin123456`
 | PostgreSQL | 5432        | Database                       |
 | Mailpit    | 1025 / 8025 | SMTP server + web UI for email |
 | pgAdmin    | 5050        | Database GUI                   |
+| Garage     | 3900 / 3902 | S3-compatible object storage   |
 
 ### Docker Compose
 
-The `docker-compose.yml` defines four services:
+The `compose.yml` defines five services:
 
 - **app**: Deno runtime with the API
-- **postgres**: PostgreSQL 16 database
+- **postgres**: PostgreSQL 18 database
 - **mailpit**: SMTP testing with web UI
 - **pgadmin**: PostgreSQL admin GUI
+- **garage**: S3-compatible object storage for local development
 
 ## CI/CD Pipelines
 
@@ -125,7 +142,14 @@ See `.env.example` for all configuration options. Key variables:
 | `CORS_ALLOWED_ORIGINS`  | `http://localhost:5173,...` | Comma-separated allowed origins            |
 | `SMTP_HOST`             | `localhost`                 | SMTP server host                           |
 | `SMTP_PORT`             | `1025`                      | SMTP server port                           |
-| `UPLOAD_DIR`            | `./uploads`                 | Photo upload directory                     |
+| `UPLOAD_DIR`            | `./uploads`                 | Photo upload directory (local driver only) |
 | `UPLOAD_MAX_SIZE_BYTES` | `10485760`                  | Max upload size (10 MB)                    |
 | `APP_URL`               | `http://localhost:8000`     | Base URL for QR code generation            |
 | `OPENAPI_ENABLED`       | `true`                      | Enable /openapi.json endpoint              |
+| `STORAGE_DRIVER`        | `local`                     | `local` or `s3`                            |
+| `S3_ENDPOINT`           | —                           | S3 API endpoint (required when `s3`)       |
+| `S3_REGION`             | `auto`                      | S3 region                                  |
+| `S3_BUCKET`             | —                           | S3 bucket name (required when `s3`)        |
+| `S3_ACCESS_KEY`         | —                           | S3 access key (required when `s3`)         |
+| `S3_SECRET_KEY`         | —                           | S3 secret key (required when `s3`)         |
+| `S3_PUBLIC_URL`         | —                           | Public CDN URL for uploads (required when `s3`) |

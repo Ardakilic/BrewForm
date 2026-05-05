@@ -26,11 +26,21 @@ const envSchema = z.object({
   SMTP_PORT: z.coerce.number().default(1025),
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   EMAIL_FROM: z.string().default('noreply@brewform.local'),
 
-  OPENAPI_ENABLED: z.coerce.boolean().default(true),
+  OPENAPI_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
 
+  // Storage
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  S3_ENDPOINT: z.string().optional(),
+  S3_REGION: z.string().default('auto'),
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY: z.string().optional(),
+  S3_SECRET_KEY: z.string().optional(),
+  S3_PUBLIC_URL: z.string().optional(),
+
+  // Retained for local driver
   UPLOAD_DIR: z.string().default('./uploads'),
   UPLOAD_MAX_SIZE_BYTES: z.coerce.number().default(10 * 1024 * 1024),
   UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),

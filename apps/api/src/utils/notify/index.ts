@@ -4,7 +4,7 @@
  * Each helper:
  *   1. Loads the recipient + their UserPreferences.
  *   2. Returns silently if the relevant `*Notification*` flag is false.
- *   3. Renders the appropriate MJML template and sends via the auth email
+ *   3. Renders the pre-compiled email template and sends via the auth email
  *      transport (skipped automatically in `APP_ENV=test`).
  *
  * Helpers are designed to be **fire-and-forget** from the calling service:
@@ -13,30 +13,22 @@
  */
 // deno-lint-ignore-file no-explicit-any
 import { prisma } from '@brewform/db';
-import mjml2html from 'mjml';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
 import nodemailer from 'npm:nodemailer@^7.0.0';
 import { config } from '../../config/index.ts';
 import { createLogger } from '../logger/index.ts';
+import { template as newFollowerTemplate } from '../../templates/email/generated/new-follower.ts';
+import { template as recipeLikedTemplate } from '../../templates/email/generated/recipe-liked.ts';
+import { template as recipeCommentedTemplate } from '../../templates/email/generated/recipe-commented.ts';
+import { template as followedUserPostedTemplate } from '../../templates/email/generated/followed-user-posted.ts';
 
 const logger = createLogger('notify');
 
-function templateDir(): string {
-  const here = new URL(import.meta.url).pathname;
-  return join(dirname(here), '..', '..', 'templates', 'email');
-}
-
-function loadTemplate(name: string): string {
-  return readFileSync(join(templateDir(), `${name}.mjml`), 'utf-8');
-}
-
-function render(template: string, vars: Record<string, string>): string {
+function renderTemplate(template: string, vars: Record<string, string>): string {
   let out = template;
   for (const [k, v] of Object.entries(vars)) {
-    out = out.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), v);
+    out = out.split('{{' + k + '}}').join(v);
   }
-  return mjml2html(out, { minify: true }).html;
+  return out;
 }
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
@@ -59,7 +51,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 }
 
 function appBaseUrl(): string {
-  return config.APP_ENV === 'production' ? 'https://brewform.github.io' : 'http://localhost:5173';
+  return config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173';
 }
 
 async function loadRecipient(userId: string): Promise<
@@ -81,7 +73,7 @@ export async function notifyNewFollower(params: {
   if (!recipient) return;
   if (recipient.prefs.newFollower === false) return;
 
-  const html = render(loadTemplate('new-follower'), {
+  const html = renderTemplate(newFollowerTemplate, {
     app_name: 'BrewForm',
     username: recipient.username,
     follower_username: params.followerUsername,
@@ -100,7 +92,7 @@ export async function notifyRecipeLiked(params: {
   if (!recipient) return;
   if (recipient.prefs.recipeLiked === false) return;
 
-  const html = render(loadTemplate('recipe-liked'), {
+  const html = renderTemplate(recipeLikedTemplate, {
     app_name: 'BrewForm',
     username: recipient.username,
     liker_username: params.likerUsername,
@@ -120,7 +112,7 @@ export async function notifyRecipeCommented(params: {
   if (!recipient) return;
   if (recipient.prefs.recipeCommented === false) return;
 
-  const html = render(loadTemplate('recipe-commented'), {
+  const html = renderTemplate(recipeCommentedTemplate, {
     app_name: 'BrewForm',
     username: recipient.username,
     commenter_username: params.commenterUsername,
@@ -143,7 +135,6 @@ export async function notifyFollowersOfNewRecipe(params: {
   if (follows.length === 0) return;
 
   const subject = `${params.authorUsername} posted a new recipe on BrewForm`;
-  const template = loadTemplate('followed-user-posted');
   const recipeUrl = `${appBaseUrl()}/recipes/${params.recipeSlug}`;
 
   for (const f of follows) {
@@ -151,7 +142,7 @@ export async function notifyFollowersOfNewRecipe(params: {
     if (!recipient) continue;
     if (recipient.prefs.followedUserPosted === false) continue;
 
-    const html = render(template, {
+    const html = renderTemplate(followedUserPostedTemplate, {
       app_name: 'BrewForm',
       username: recipient.username,
       author_username: params.authorUsername,

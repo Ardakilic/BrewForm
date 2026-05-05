@@ -70,5 +70,22 @@ services:
       postgres:
         condition: service_healthy
 
+  garage:
+    image: dxflrs/garage:v2.3.0
+    ports:
+      - "3900:3900"  # S3 API
+      - "3902:3902"  # Web gateway
+    environment:
+      - GARAGE_DEFAULT_ACCESS_KEY=GK52378f6ea928fa19319f1ee0d5f8d50c
+      - GARAGE_DEFAULT_SECRET_KEY=26f14b3b91eaf6f745c7e599f80589aee4fe74dffc6745598e0a582127481c81
+      - GARAGE_DEFAULT_BUCKET=brewform-uploads
+    command: /garage server --single-node --default-bucket
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_data:/tmp/data
+      - garage_meta:/tmp/meta
+
 volumes:
   postgres_data:
+  garage_data:
+  garage_meta:

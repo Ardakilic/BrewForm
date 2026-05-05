@@ -333,7 +333,9 @@ export async function getRecipeGrowth(days: number) {
     select: { createdAt: true },
     orderBy: { createdAt: 'asc' },
   });
-  return recipes.map((r: { createdAt: Date }) => ({ date: r.createdAt.toISOString().split('T')[0] }));
+  return recipes.map((r: { createdAt: Date }) => ({
+    date: r.createdAt.toISOString().split('T')[0],
+  }));
 }
 
 export async function getTopRecipes(limit: number) {
