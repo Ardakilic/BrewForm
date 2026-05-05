@@ -25,7 +25,9 @@ for await (const entry of Deno.readDir(templateDir)) {
   const { html, errors } = mjml2html(mjmlContent);
   if (errors.length > 0) {
     throw new Error(
-      `MJML validation failed for ${entry.name}: ${errors.map((e: any) => e.formattedMessage ?? e.message).join(', ')}`
+      `MJML validation failed for ${entry.name}: ${
+        errors.map((e: any) => e.formattedMessage ?? e.message).join(', ')
+      }`,
     );
   }
 

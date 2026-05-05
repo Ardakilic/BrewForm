@@ -20,7 +20,8 @@
     "date-fns": "^4.1.0",
     "bcryptjs": "^2.4.3",
     "qrcode": "^1.5.4",
-    "nodemailer": "^7.0.0"
+    "nodemailer": "^7.0.0",
+    "mjml": "^4.15.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

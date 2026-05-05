@@ -70,7 +70,12 @@ export class S3StorageDriver implements StorageDriver {
     throw lastError ?? new Error('Max retries exceeded');
   }
 
-  private async signRequest(method: string, url: string, body?: Uint8Array, contentLength?: number): Promise<Headers> {
+  private async signRequest(
+    method: string,
+    url: string,
+    body?: Uint8Array,
+    contentLength?: number,
+  ): Promise<Headers> {
     const now = new Date();
     const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, '');
     const timeStamp = now.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';

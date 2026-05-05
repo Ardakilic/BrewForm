@@ -2,7 +2,8 @@ import * as prismaClientMod from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
 const hashSync = bcryptjs.hashSync || bcryptjs.default?.hashSync;
 
-const PrismaClient = (prismaClientMod as any).PrismaClient || (prismaClientMod as any).default?.PrismaClient;
+const PrismaClient = (prismaClientMod as any).PrismaClient ||
+  (prismaClientMod as any).default?.PrismaClient;
 const prisma = new PrismaClient({
   datasources: {
     db: {
