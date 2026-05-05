@@ -389,6 +389,7 @@ async function seedRecipes(tx: PrismaClient, users: { admin: any; user1: any; us
         },
       },
     },
+    include: { versions: true },
   });
 
   await tx.recipe.update({
@@ -437,6 +438,7 @@ async function seedRecipes(tx: PrismaClient, users: { admin: any; user1: any; us
         },
       },
     },
+    include: { versions: true },
   });
 
   await tx.recipe.update({
