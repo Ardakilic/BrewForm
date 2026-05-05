@@ -1801,6 +1801,7 @@
             "npm:date-fns@^4.1.0",
             "npm:hono-openapi@1",
             "npm:hono@^4.7.0",
+            "npm:mjml@^4.15.0",
             "npm:nodemailer@7",
             "npm:pino-pretty@13",
             "npm:pino@^9.6.0",
