@@ -73,7 +73,7 @@ test-specific:
 # --- Database ---
 
 db-migrate:
-	docker compose exec app deno run -A npm:prisma@^6.19.3 migrate deploy --schema=packages/db/prisma/schema.prisma
+	docker compose run --rm app deno run -A npm:prisma@^6.19.3 migrate deploy --schema=packages/db/prisma/schema.prisma
 
 db-generate:
 	docker compose run --rm app bash -c "rm -rf node_modules/.prisma && cd packages/db && deno run -A npm:prisma@^6.19.3 generate --schema=prisma/schema.prisma"
@@ -82,13 +82,13 @@ db-dev-migrate:
 	docker compose exec app deno run -A npm:prisma@^6.19.3 migrate dev --schema=packages/db/prisma/schema.prisma
 
 db-seed:
-	docker compose exec app deno run --allow-all packages/db/prisma/seed.ts
+	docker compose run --rm app deno run --allow-all packages/db/prisma/seed.ts
 
 db-studio:
 	docker compose exec app deno run -A npm:prisma@^6.19.3 studio --schema=packages/db/prisma/schema.prisma
 
 db-reset:
-	docker compose exec app deno run -A npm:prisma@^6.19.3 migrate reset --force --schema=packages/db/prisma/schema.prisma
+	docker compose run --rm app deno run -A npm:prisma@^6.19.3 migrate reset --force --schema=packages/db/prisma/schema.prisma
 
 # --- Admin Setup ---
 
