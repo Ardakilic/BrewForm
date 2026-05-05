@@ -1,4 +1,7 @@
 import * as model from './model.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+
+const logger = createLogger('badge-service');
 
 export async function listBadges() {
   return model.listBadges();
@@ -19,6 +22,10 @@ export async function evaluateAllBadges() {
     select: { id: true },
   });
   for (const user of users) {
-    await model.evaluateBadges(user.id);
+    try {
+      await model.evaluateBadges(user.id);
+    } catch (err) {
+      logger.error({ err, userId: user.id }, 'evaluateBadges failed');
+    }
   }
 }
