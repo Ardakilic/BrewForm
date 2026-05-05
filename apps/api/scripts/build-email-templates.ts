@@ -22,7 +22,12 @@ for await (const entry of Deno.readDir(templateDir)) {
   const mjmlPath = join(templateDir, entry.name);
   const mjmlContent = await Deno.readTextFile(mjmlPath);
 
-  const { html } = mjml2html(mjmlContent);
+  const { html, errors } = mjml2html(mjmlContent);
+  if (errors.length > 0) {
+    throw new Error(
+      `MJML validation failed for ${entry.name}: ${errors.map((e: any) => e.formattedMessage ?? e.message).join(', ')}`
+    );
+  }
 
   const tsContent = `// Auto-generated from ${entry.name}
 // Do not edit manually. Run: deno run -A apps/api/scripts/build-email-templates.ts
