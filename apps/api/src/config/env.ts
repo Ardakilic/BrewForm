@@ -50,7 +50,15 @@ const envSchema = z.object({
   ADMIN_EMAIL: z.string().default('admin@brewform.local'),
   ADMIN_USERNAME: z.string().default('admin'),
   ADMIN_PASSWORD: z.string().default('admin123456'),
-});
+}).refine(
+  (obj) => {
+    if (obj.STORAGE_DRIVER !== 's3') return true;
+    return !!obj.S3_BUCKET && !!obj.S3_ACCESS_KEY && !!obj.S3_SECRET_KEY;
+  },
+  {
+    message: 'When STORAGE_DRIVER=s3, S3_BUCKET, S3_ACCESS_KEY and S3_SECRET_KEY must be set',
+  },
+);
 
 export type Env = z.infer<typeof envSchema>;
 
