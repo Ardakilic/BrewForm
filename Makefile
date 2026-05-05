@@ -85,7 +85,7 @@ db-seed:
 	docker compose run --rm app deno run --allow-all packages/db/prisma/seed.ts
 
 db-studio:
-	docker compose exec app deno run -A npm:prisma@^6.19.3 studio --schema=packages/db/prisma/schema.prisma
+	docker compose run --rm --service-ports app deno run -A npm:prisma@^6.19.3 studio --schema=packages/db/prisma/schema.prisma --host=0.0.0.0 --port=5555
 
 db-reset:
 	docker compose run --rm app deno run -A npm:prisma@^6.19.3 migrate reset --force --schema=packages/db/prisma/schema.prisma
