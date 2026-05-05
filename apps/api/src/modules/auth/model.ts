@@ -4,6 +4,17 @@ import * as bcrypt from 'bcryptjs';
 const hashSync = (bcrypt as any).hashSync || (bcrypt as any).default?.hashSync;
 const compareSync = (bcrypt as any).compareSync || (bcrypt as any).default?.compareSync;
 
+if (!hashSync) {
+  throw new Error(
+    'hashSync could not be resolved from bcrypt. Please install/require bcryptjs or correct the import so that hashSync is available.',
+  );
+}
+if (!compareSync) {
+  throw new Error(
+    'compareSync could not be resolved from bcrypt. Please install/require bcryptjs or correct the import so that compareSync is available.',
+  );
+}
+
 export async function findUserByEmail(email: string) {
   return prisma.user.findFirst({
     where: { email, deletedAt: null },
