@@ -29,7 +29,7 @@ import type { CacheProvider } from './utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import routes from './routes/index.ts';
 import { createLogger } from './utils/logger/index.ts';
-import { registerJob, startCronJobs } from './utils/jobs/index.ts';
+import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
 
@@ -107,26 +107,7 @@ async function startup() {
     logger.info('In-memory cache initialized');
   }
 
-  // Register cron jobs before starting server
-  registerJob({
-    name: 'evaluate-badges',
-    schedule: '0 * * * *', // hourly
-    handler: async () => {
-      const { evaluateAllBadges } = await import('./modules/badge/service.ts');
-      await evaluateAllBadges();
-    },
-  });
-
-  registerJob({
-    name: 'refresh-popular-cache',
-    schedule: '0 */6 * * *', // every 6 hours
-    handler: async () => {
-      const { refreshPopularRecipes } = await import('./modules/search/service.ts');
-      await refreshPopularRecipes();
-    },
-  });
-
-  startCronJobs();
+  // Cron jobs are registered at module top-level via import above
 
   const server = Deno.env.get('DENO_DEPLOY')
     ? Deno.serve(app.fetch)
