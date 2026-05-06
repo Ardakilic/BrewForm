@@ -17,15 +17,31 @@ export async function evaluateBadges(userId: string) {
 
 export async function evaluateAllBadges() {
   const { prisma } = await import('@brewform/db');
-  const users = await prisma.user.findMany({
-    where: { deletedAt: null },
-    select: { id: true },
-  });
-  for (const user of users) {
-    try {
-      await model.evaluateBadges(user.id);
-    } catch (err) {
-      logger.error({ err, userId: user.id }, 'evaluateBadges failed');
+  const BATCH_SIZE = 100;
+  let cursor: { id: string } | undefined;
+
+  while (true) {
+    const users = await prisma.user.findMany({
+      where: { deletedAt: null },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+      take: BATCH_SIZE,
+      skip: cursor ? 1 : undefined,
+      cursor,
+    });
+
+    if (users.length === 0) {
+      break;
     }
+
+    for (const user of users) {
+      try {
+        await model.evaluateBadges(user.id);
+      } catch (err) {
+        logger.error({ err, userId: user.id }, 'evaluateBadges failed');
+      }
+    }
+
+    cursor = { id: users[users.length - 1].id };
   }
 }

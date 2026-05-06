@@ -16,11 +16,9 @@ function createTransporter() {
 }
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
-  let html = template;
-  for (const [key, value] of Object.entries(vars)) {
-    html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
-  }
-  return html;
+  return template.replace(/\{\{(.*?)\}\}/g, (match, key) => {
+    return vars[key] !== undefined ? vars[key] : match;
+  });
 }
 
 async function sendEmail(to: string, subject: string, html: string) {
