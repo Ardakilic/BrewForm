@@ -31,7 +31,7 @@ describe('Share Route', () => {
 
     it('should redirect humans to recipe page', () => {
       const html = OG_TEMPLATE(meta);
-      expect(html).toContain("window.location.replace('/recipes/' + \"test-recipe\");");
+      expect(html).toContain('window.location.replace(\'/recipes/\' + "test-recipe");');
     });
 
     it('should escape </ sequences in the redirect slug', () => {
@@ -42,7 +42,8 @@ describe('Share Route', () => {
       };
       const html = OG_TEMPLATE(maliciousMeta);
       const scriptMatch = html.match(
-        /window\.location\.replace\('\/recipes\/' \+ "([^"]+)"\)/);
+        /window\.location\.replace\('\/recipes\/\' \+ "([^"]+)"\)/,
+      );
       expect(scriptMatch).not.toBeNull();
       expect(scriptMatch![1]).toContain('<\\/script>');
       expect(scriptMatch![1]).not.toContain('</script>');
