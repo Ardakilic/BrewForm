@@ -59,7 +59,9 @@ export async function searchUsers(query: string, page: number, perPage: number) 
       avatarUrl: users.avatarUrl,
       bio: users.bio,
       createdAt: users.createdAt,
-    }).from(users).where(where).orderBy(desc(users.createdAt), asc(users.id)).limit(perPage).offset((page - 1) * perPage),
+    }).from(users).where(where).orderBy(desc(users.createdAt), asc(users.id)).limit(perPage).offset(
+      (page - 1) * perPage,
+    ),
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };

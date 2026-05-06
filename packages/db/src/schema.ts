@@ -176,7 +176,10 @@ export const recipes = pgTable(
     title: varchar('title', { length: 255 }).notNull(),
     authorId: varchar('author_id', { length: 36 }).notNull().references(() => users.id),
     visibility: visibilityEnum('visibility').notNull().default('draft'),
-    currentVersionId: varchar('current_version_id', { length: 36 }).references((): AnyPgColumn => recipeVersions.id, { onDelete: 'set null' }),
+    currentVersionId: varchar('current_version_id', { length: 36 }).references(
+      (): AnyPgColumn => recipeVersions.id,
+      { onDelete: 'set null' },
+    ),
     likeCount: integer('like_count').notNull().default(0),
     commentCount: integer('comment_count').notNull().default(0),
     forkCount: integer('fork_count').notNull().default(0),

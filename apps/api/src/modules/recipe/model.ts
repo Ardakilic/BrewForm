@@ -139,7 +139,10 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       .where(eq(recipeTasteNotes.recipeVersionId, latestVersion.id));
     const insertedTasteNotes = sourceTasteNotes.length
       ? await tx.insert(recipeTasteNotes).values(
-        sourceTasteNotes.map((tn) => ({ recipeVersionId: newVersion.id, tasteNoteId: tn.tasteNoteId })),
+        sourceTasteNotes.map((tn) => ({
+          recipeVersionId: newVersion.id,
+          tasteNoteId: tn.tasteNoteId,
+        })),
       ).returning()
       : [];
 
@@ -147,7 +150,10 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       .where(eq(recipeEquipment.recipeVersionId, latestVersion.id));
     const insertedEquipment = sourceEquipment.length
       ? await tx.insert(recipeEquipment).values(
-        sourceEquipment.map((eq) => ({ recipeVersionId: newVersion.id, equipmentId: eq.equipmentId })),
+        sourceEquipment.map((eq) => ({
+          recipeVersionId: newVersion.id,
+          equipmentId: eq.equipmentId,
+        })),
       ).returning()
       : [];
 
@@ -191,7 +197,9 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
         ...newVersion,
         tasteNotes: insertedTasteNotes.map((tn) => ({
           ...tn,
-          tasteNote: latestVersion.tasteNotes?.find((ltn: any) => ltn.tasteNoteId === tn.tasteNoteId)
+          tasteNote: latestVersion.tasteNotes?.find((ltn: any) =>
+            ltn.tasteNoteId === tn.tasteNoteId
+          )
             ?.tasteNote,
         })),
         equipment: insertedEquipment.map((eq) => ({
