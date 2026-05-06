@@ -1,6 +1,5 @@
 {
   "private": true,
-  "packageManager": "npm@10.9.7",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -10,13 +9,17 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "check": "turbo run check"
+    "check": "turbo run check",
+    "db:generate": "deno run -A npm:prisma@^6.19.3 generate --schema=packages/db/prisma/schema.prisma",
+    "db:migrate": "deno run -A npm:prisma@^6.19.3 migrate deploy --schema=packages/db/prisma/schema.prisma"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.0",
     "prisma": "^6.19.3",
     "turbo": "^2.5.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "@std/testing": "jsr:@std/testing@^1.0.18",
+    "@std/expect": "jsr:@std/expect@^1.0.19"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

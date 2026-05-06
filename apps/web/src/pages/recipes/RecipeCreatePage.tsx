@@ -53,8 +53,12 @@ export function RecipeCreatePage() {
 
   useEffect(() => {
     Promise.all([
-      equipmentApi.list().then((data) => setEquipmentList(data as any[])).catch(() => setEquipError('Failed to load equipment')),
-      setupApi.list().then((data) => setSetupList(data as any[])).catch(() => setEquipError('Failed to load setups')),
+      equipmentApi.list().then((data) => setEquipmentList(data as any[])).catch(() =>
+        setEquipError('Failed to load equipment')
+      ),
+      setupApi.list().then((data) => setSetupList(data as any[])).catch(() =>
+        setEquipError('Failed to load setups')
+      ),
     ]).finally(() => setEquipLoading(false));
   }, []);
 
@@ -206,55 +210,64 @@ export function RecipeCreatePage() {
         </Section>
 
         <Section title='Equipment & Setup'>
-          {equipLoading ? (
-            <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>Loading equipment...</p>
-          ) : equipError ? (
-            <p className='text-sm' style={{ color: 'var(--error)' }}>{equipError}</p>
-          ) : (
-            <>
-              <Field label='Setup (auto-fills grinder & brewer)'>
-                <select
-                  value={selectedSetupId}
-                  onChange={(e) => setSelectedSetupId(e.target.value)}
-                  className='input-field'
-                >
-                  <option value=''>None</option>
-                  {setupList.map((s: any) => (
-                    <option key={s.id} value={s.id}>{s.name}{s.isDefault ? ' (default)' : ''}</option>
-                  ))}
-                </select>
-              </Field>
+          {equipLoading
+            ? (
+              <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
+                Loading equipment...
+              </p>
+            )
+            : equipError
+            ? <p className='text-sm' style={{ color: 'var(--error)' }}>{equipError}</p>
+            : (
+              <>
+                <Field label='Setup (auto-fills grinder & brewer)'>
+                  <select
+                    value={selectedSetupId}
+                    onChange={(e) => setSelectedSetupId(e.target.value)}
+                    className='input-field'
+                  >
+                    <option value=''>None</option>
+                    {setupList.map((s: any) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                        {s.isDefault ? ' (default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
 
-              <Field label='Equipment'>
-                <div className='space-y-2 mt-1'>
-                  {equipmentList.length === 0 ? (
-                    <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
-                      No equipment yet. Add some in your profile.
-                    </p>
-                  ) : (
-                    equipmentList.map((eq: any) => (
-                      <label
-                        key={eq.id}
-                        className='flex items-center gap-2 text-sm cursor-pointer'
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        <input
-                          type='checkbox'
-                          checked={selectedEquipmentIds.includes(eq.id)}
-                          onChange={() => toggleEquipment(eq.id)}
-                          className='rounded'
-                        />
-                        <span>{eq.name}</span>
-                        <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
-                          ({eq.type})
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </Field>
-            </>
-          )}
+                <Field label='Equipment'>
+                  <div className='space-y-2 mt-1'>
+                    {equipmentList.length === 0
+                      ? (
+                        <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
+                          No equipment yet. Add some in your profile.
+                        </p>
+                      )
+                      : (
+                        equipmentList.map((eq: any) => (
+                          <label
+                            key={eq.id}
+                            className='flex items-center gap-2 text-sm cursor-pointer'
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            <input
+                              type='checkbox'
+                              checked={selectedEquipmentIds.includes(eq.id)}
+                              onChange={() => toggleEquipment(eq.id)}
+                              className='rounded'
+                            />
+                            <span>{eq.name}</span>
+                            <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                              ({eq.type})
+                            </span>
+                          </label>
+                        ))
+                      )}
+                  </div>
+                </Field>
+              </>
+            )}
         </Section>
 
         <Section title='Coffee Identity'>

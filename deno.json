@@ -1,4 +1,8 @@
 {
+  "unstable": ["cron"],
+  "workspace": {
+    "members": ["apps/*", "packages/*"]
+  },
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",

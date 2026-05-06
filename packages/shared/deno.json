@@ -1,0 +1,11 @@
+{
+  "name": "@brewform/shared",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./constants": "./src/constants/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./i18n": "./src/i18n/index.ts"
+  }
+}

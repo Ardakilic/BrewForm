@@ -1,0 +1,29 @@
+{
+  "spec": "remove-hardcoded-secrets-garagetoml-use-env",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Integrate with a secret vault and automated rotation",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "1) grep garage.toml to confirm old hex secret is removed, 2) confirm .env.example includes new vars with generation instructions, 3) confirm compose.yml still mounts garage.toml correctly.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "done"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-05T21:05:12.080Z"
+}

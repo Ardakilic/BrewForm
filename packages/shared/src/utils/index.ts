@@ -24,3 +24,4 @@ export {
 } from './validation';
 export { formatDate, isDateBefore } from './date';
 export { ensureUniqueSlug, generateSlug } from './slug';
+export { escapeHtml, escapeHtmlAttr } from './html';

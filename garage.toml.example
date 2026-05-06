@@ -1,0 +1,21 @@
+metadata_dir = "/tmp/meta"
+data_dir = "/tmp/data"
+db_engine = "lmdb"
+
+replication_factor = 1
+consistency_mode = "dangerous"
+
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_secret = "<set via GARAGE_RPC_SECRET>"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "0.0.0.0:3900"
+
+[s3_web]
+bind_addr = "0.0.0.0:3902"
+root_domain = "localhost"
+
+[admin]
+api_bind_addr = "0.0.0.0:3903"
+admin_token = "<set via GARAGE_ADMIN_TOKEN>"

@@ -21,9 +21,9 @@ built-in test runner / linter / formatter, and Deno Deploy as a free hosting tar
 npm-only client and a large chunk of the Node ecosystem. Going pure-Node would mean shipping a
 separate build pipeline and losing Deno Deploy.
 
-**Trade-off.** Two ecosystems must coexist: we use `npm install` for deps and `deno run` for
-execution, with `--unstable-sloppy-imports` to bridge the import-style gap. The Dockerfile installs
-both runtimes; the seed script is `.cjs` because Prisma Client is a Node module.
+**Trade-off.** Two ecosystems must coexist: we use `deno install` for deps and `deno run` for
+execution, with `--unstable-sloppy-imports` to bridge the import-style gap. The Dockerfile uses only
+Deno; the seed script is TypeScript and runs via `deno run --allow-all`.
 
 **Excluded.** Import maps in `deno.json`. All imports use explicit npm/JSR specifiers — see
 `implementation-master-prompt.md` and `deno.json`.

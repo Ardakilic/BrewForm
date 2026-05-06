@@ -1,0 +1,29 @@
+{
+  "spec": "add-s3-config-cross-field-validation-env",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": ".superRefine() with per-field errors, actual env.test.ts tests the real schema, lazy storage initialization",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "1) Run Deno type check on env.ts. 2) Start server with STORAGE_DRIVER=s3 and missing S3_ENDPOINT — verify clear error message. 3) Start server with STORAGE_DRIVER=s3 and all S3 vars set — verify clean startup. 4) Start server with STORAGE_DRIVER=local and no S3 vars — verify clean startup.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "pending"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-05T20:46:14.294Z"
+}

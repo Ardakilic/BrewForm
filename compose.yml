@@ -29,6 +29,8 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+      garage:
+        condition: service_healthy
     volumes:
       - .:/app
       - ./node_modules:/app/node_modules
@@ -70,5 +72,25 @@ services:
       postgres:
         condition: service_healthy
 
+  garage:
+    image: dxflrs/garage:v2.3.0
+    ports:
+      - "3900:3900"  # S3 API
+      - "3902:3902"  # Web gateway
+    env_file:
+      - .env
+    command: /garage server --single-node --default-bucket
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_data:/tmp/data
+      - garage_meta:/tmp/meta
+    healthcheck:
+      test: ["CMD-SHELL", "/garage status || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   postgres_data:
+  garage_data:
+  garage_meta:

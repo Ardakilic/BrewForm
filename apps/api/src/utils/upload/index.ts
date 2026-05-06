@@ -1,7 +1,10 @@
 import { config } from '../../config/index.ts';
+import { createStorageDriver } from '../storage/index.ts';
 
 const ALLOWED_TYPES = config.UPLOAD_ALLOWED_TYPES.split(',');
 const MAX_SIZE = config.UPLOAD_MAX_SIZE_BYTES;
+
+const driver = createStorageDriver();
 
 export interface UploadedFile {
   filename: string;
@@ -50,22 +53,14 @@ export function generateThumbnailFilename(
 }
 
 export function getPublicUrl(filename: string): string {
-  return `/uploads/${filename}`;
-}
-
-export async function ensureUploadDir(): Promise<void> {
-  try {
-    await Deno.mkdir(config.UPLOAD_DIR, { recursive: true });
-  } catch {
-    // Directory already exists
+  if (config.STORAGE_DRIVER === 'local') {
+    return `/uploads/${filename}`;
   }
+  return `${config.S3_PUBLIC_URL}/${filename}`;
 }
 
 export async function saveUploadedFile(data: Uint8Array, filename: string): Promise<string> {
-  await ensureUploadDir();
-  const filepath = `${config.UPLOAD_DIR}/${filename}`;
-  await Deno.writeFile(filepath, data);
-  return filepath;
+  return driver.save(data, filename);
 }
 
 export function getThumbnailSizes(): Record<string, ThumbnailOptions> {
@@ -90,6 +85,6 @@ export async function saveThumbnail(
     return fallbackUrl;
   }
   const filename = generateThumbnailFilename(originalFilename, size);
-  await saveUploadedFile(thumbnailBytes, filename);
+  await driver.save(thumbnailBytes, filename);
   return getPublicUrl(filename);
 }
