@@ -1,6 +1,7 @@
 import { db } from '@brewform/db';
 import {
   auditLogs,
+  brewMethodEnum,
   brewMethodEquipmentRules,
   comments,
   equipment,
@@ -37,7 +38,7 @@ export async function listUsers(page: number, perPage: number, query?: string) {
       isAdmin: users.isAdmin,
       isBanned: users.isBanned,
       createdAt: users.createdAt,
-    }).from(users).where(where).limit(perPage).offset((page - 1) * perPage),
+    }).from(users).where(where).orderBy(desc(users.createdAt), asc(users.id)).limit(perPage).offset((page - 1) * perPage),
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };
@@ -115,7 +116,7 @@ export async function listAllRecipes(page: number, perPage: number, visibility?:
     ? and(isNull(recipes.deletedAt), eq(recipes.visibility, visibility))
     : isNull(recipes.deletedAt);
   const [data, totalResult] = await Promise.all([
-    db.select().from(recipes).where(where).limit(perPage).offset((page - 1) * perPage),
+    db.select().from(recipes).where(where).orderBy(desc(recipes.createdAt), asc(recipes.id)).limit(perPage).offset((page - 1) * perPage),
     db.select({ count: count() }).from(recipes).where(where),
   ]);
   return { recipes: data, total: totalResult[0].count };
@@ -141,7 +142,7 @@ export async function softDeleteRecipe(recipeId: string) {
 export async function listEquipment(page: number, perPage: number) {
   const where = isNull(equipment.deletedAt);
   const [data, totalResult] = await Promise.all([
-    db.select().from(equipment).where(where).limit(perPage).offset((page - 1) * perPage),
+    db.select().from(equipment).where(where).orderBy(desc(equipment.createdAt), asc(equipment.id)).limit(perPage).offset((page - 1) * perPage),
     db.select({ count: count() }).from(equipment).where(where),
   ]);
   return { equipment: data, total: totalResult[0].count };
@@ -150,7 +151,10 @@ export async function listEquipment(page: number, perPage: number) {
 export async function createEquipment(
   data: { name: string; type: string; brand?: string; model?: string; description?: string },
 ) {
-  const [result] = await db.insert(equipment).values(data as any).returning();
+  if (!equipmentTypeEnum.enumValues.includes(data.type as typeof equipmentTypeEnum.enumValues[number])) {
+    throw new Error('Invalid equipment type');
+  }
+  const [result] = await db.insert(equipment).values(data as typeof equipment.$inferInsert).returning();
   return result;
 }
 
@@ -182,7 +186,7 @@ export async function deleteEquipment(id: string) {
 export async function listVendors(page: number, perPage: number) {
   const where = isNull(vendors.deletedAt);
   const [data, totalResult] = await Promise.all([
-    db.select().from(vendors).where(where).limit(perPage).offset((page - 1) * perPage),
+    db.select().from(vendors).where(where).orderBy(desc(vendors.createdAt), asc(vendors.id)).limit(perPage).offset((page - 1) * perPage),
     db.select({ count: count() }).from(vendors).where(where),
   ]);
   return { vendors: data, total: totalResult[0].count };
@@ -229,7 +233,15 @@ export async function updateCompatibilityRule(id: string, compatible: boolean) {
 export async function createCompatibilityRule(
   data: { brewMethod: string; equipmentType: string; compatible: boolean },
 ) {
-  const [result] = await db.insert(brewMethodEquipmentRules).values(data as any).returning();
+  if (!brewMethodEnum.enumValues.includes(data.brewMethod as typeof brewMethodEnum.enumValues[number])) {
+    throw new Error('Invalid brew method');
+  }
+  if (!equipmentTypeEnum.enumValues.includes(data.equipmentType as typeof equipmentTypeEnum.enumValues[number])) {
+    throw new Error('Invalid equipment type');
+  }
+  const [result] = await db.insert(brewMethodEquipmentRules).values(
+    data as typeof brewMethodEquipmentRules.$inferInsert,
+  ).returning();
   return result;
 }
 

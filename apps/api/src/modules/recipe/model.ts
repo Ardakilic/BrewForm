@@ -4,6 +4,7 @@ import {
   recipeEquipment,
   recipes,
   recipeTasteNotes,
+  recipeVersionPhotos,
   recipeVersions,
   userRecipeFavourites,
   userRecipeLikes,
@@ -165,6 +166,18 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       ).returning()
       : [];
 
+    const sourceVersionPhotos = await tx.select().from(recipeVersionPhotos)
+      .where(eq(recipeVersionPhotos.recipeVersionId, latestVersion.id));
+    const insertedVersionPhotos = sourceVersionPhotos.length
+      ? await tx.insert(recipeVersionPhotos).values(
+        sourceVersionPhotos.map((vp) => ({
+          recipeVersionId: newVersion.id,
+          photoId: vp.photoId,
+          sortOrder: vp.sortOrder,
+        })),
+      ).returning()
+      : [];
+
     await tx.update(recipes).set({ currentVersionId: newVersion.id }).where(
       eq(recipes.id, newRecipe.id),
     );
@@ -187,6 +200,7 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
             ?.equipment,
         })),
         additionalPreparations: insertedPreparations,
+        versionPhotos: insertedVersionPhotos,
       }],
     };
   });
@@ -220,24 +234,25 @@ export async function decrementComments(id: string) {
 
 export async function toggleLike(userId: string, recipeId: string) {
   return db.transaction(async (tx) => {
-    const existing = await tx.select().from(userRecipeLikes)
-      .where(and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)))
-      .for('update')
-      .limit(1);
+    const inserted = await tx.insert(userRecipeLikes)
+      .values({ userId, recipeId })
+      .onConflictDoNothing({ target: [userRecipeLikes.userId, userRecipeLikes.recipeId] })
+      .returning();
 
-    if (existing.length > 0) {
-      await tx.delete(userRecipeLikes).where(eq(userRecipeLikes.id, existing[0].id));
-      await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
+    if (inserted.length > 0) {
+      await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} + 1` }).where(
         eq(recipes.id, recipeId),
       );
-      return { liked: false };
+      return { liked: true };
     }
 
-    await tx.insert(userRecipeLikes).values({ userId, recipeId });
-    await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} + 1` }).where(
+    await tx.delete(userRecipeLikes).where(
+      and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)),
+    );
+    await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
       eq(recipes.id, recipeId),
     );
-    return { liked: true };
+    return { liked: false };
   });
 }
 
@@ -258,11 +273,14 @@ export async function toggleFavourite(userId: string, recipeId: string) {
 }
 
 export async function toggleFeature(id: string) {
-  const recipe = await db.select().from(recipes).where(eq(recipes.id, id)).limit(1);
-  if (!recipe[0]) throw new Error('RECIPE_NOT_FOUND');
-  const newFeatured = !recipe[0].featured;
-  await db.update(recipes).set({ featured: newFeatured }).where(eq(recipes.id, id));
-  return { featured: newFeatured };
+  const [recipe] = await db.update(recipes)
+    .set({ featured: sql`not ${recipes.featured}` })
+    .where(eq(recipes.id, id))
+    .returning();
+
+  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
+
+  return { featured: recipe.featured };
 }
 
 export async function getFeed(authorIds: string[], page: number, perPage: number) {
