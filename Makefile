@@ -45,10 +45,10 @@ lint:
 	docker compose run --rm app deno lint apps/ packages/
 
 fmt:
-	docker compose run --rm app deno fmt apps/ packages/
+	docker compose run --rm app deno fmt
 
 fmt-check:
-	docker compose run --rm app deno fmt --check apps/ packages/
+	docker compose run --rm app deno fmt --check
 
 check: install
 	docker compose run --rm app deno check --unstable-sloppy-imports apps/api/src/main.ts
