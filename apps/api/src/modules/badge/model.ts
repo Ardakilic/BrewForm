@@ -57,7 +57,8 @@ export async function evaluateBadges(userId: string) {
     .where(eq(userFollows.followingId, userId));
   const userFollowers = userFollowersResult[0].count;
 
-  const userRecipesWithLikes = await db.select().from(recipes).where(eq(recipes.authorId, userId));
+  const userRecipesWithLikes = await db.select().from(recipes)
+    .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
   const maxLikes = Math.max(...userRecipesWithLikes.map((r) => r.likeCount), 0);
 
   const distinctMethodsResult = await db.selectDistinct({ brewMethod: recipeVersions.brewMethod })
@@ -107,12 +108,9 @@ export async function evaluateBadges(userId: string) {
         .limit(1);
       if (badgeResult.length > 0) {
         const badge = badgeResult[0];
-        const existing = await db.select().from(userBadges)
-          .where(and(eq(userBadges.userId, userId), eq(userBadges.badgeId, badge.id)))
-          .limit(1);
-        if (existing.length === 0) {
-          await db.insert(userBadges).values({ userId, badgeId: badge.id });
-        }
+        await db.insert(userBadges)
+          .values({ userId, badgeId: badge.id })
+          .onConflictDoNothing({ target: [userBadges.userId, userBadges.badgeId] });
       }
     }
   }

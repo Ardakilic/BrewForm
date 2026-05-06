@@ -1,6 +1,6 @@
 import { db } from '@brewform/db';
 import { recipes, userFollows, users } from '@brewform/db/schema';
-import { and, count, eq, isNull, like, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNull, like, or } from 'drizzle-orm';
 
 export async function findById(id: string) {
   const result = await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt)))
@@ -19,7 +19,9 @@ export async function updateProfile(
   id: string,
   data: { displayName?: string; bio?: string; avatarUrl?: string },
 ) {
-  const [result] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+  const [result] = await db.update(users).set(data).where(
+    and(eq(users.id, id), isNull(users.deletedAt)),
+  ).returning();
   return result ?? null;
 }
 
@@ -57,7 +59,7 @@ export async function searchUsers(query: string, page: number, perPage: number) 
       avatarUrl: users.avatarUrl,
       bio: users.bio,
       createdAt: users.createdAt,
-    }).from(users).where(where).limit(perPage).offset((page - 1) * perPage),
+    }).from(users).where(where).orderBy(desc(users.createdAt), asc(users.id)).limit(perPage).offset((page - 1) * perPage),
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };

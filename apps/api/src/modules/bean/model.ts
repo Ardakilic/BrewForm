@@ -25,7 +25,9 @@ export async function create(data: typeof beans.$inferInsert) {
 }
 
 export async function update(id: string, data: Partial<typeof beans.$inferInsert>) {
-  const [result] = await db.update(beans).set(data).where(eq(beans.id, id)).returning();
+  const [result] = await db.update(beans).set(data).where(
+    and(eq(beans.id, id), isNull(beans.deletedAt)),
+  ).returning();
   return result ?? null;
 }
 

@@ -1,6 +1,6 @@
 import { db } from '@brewform/db';
 import { userPreferences, users } from '@brewform/db/schema';
-import { count } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 const { hashSync } = bcrypt;
 
@@ -33,16 +33,20 @@ async function main() {
 
   const passwordHash = hashSync(password, 10);
 
-  const [user] = await db.insert(users).values({
-    email,
-    username,
-    passwordHash,
-    isAdmin: true,
-    isBanned: false,
-    onboardingCompleted: true,
-  }).returning();
+  const user = await db.transaction(async (tx) => {
+    const [insertedUser] = await tx.insert(users).values({
+      email,
+      username,
+      passwordHash,
+      isAdmin: true,
+      isBanned: false,
+      onboardingCompleted: true,
+    }).returning();
 
-  await db.insert(userPreferences).values({ userId: user.id });
+    await tx.insert(userPreferences).values({ userId: insertedUser.id });
+
+    return insertedUser;
+  });
 
   console.log(`Admin user created: ${user.id}`);
 }

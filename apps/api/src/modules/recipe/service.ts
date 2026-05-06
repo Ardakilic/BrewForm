@@ -65,7 +65,7 @@ export async function createRecipe(authorId: string, data: any) {
       title: data.title,
       authorId,
       visibility: data.visibility || 'draft',
-      currentVersionId: '',
+      currentVersionId: null,
     }).returning();
 
     const [version] = await tx.insert(recipeVersions).values({

@@ -1,6 +1,6 @@
 import { db } from '@brewform/db';
 import { comments, recipes, users } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 export async function findById(id: string) {
   const result = await db.select({
@@ -58,9 +58,12 @@ export async function findByRecipe(recipeId: string, page: number, perPage: numb
     db.select({ count: count() }).from(comments).where(where),
   ]);
 
-  const commentsWithReplies = [];
-  for (const comment of data) {
-    const replies = await db.select({
+  let commentsWithReplies: Array<(typeof data)[number] & { replies: Array<(typeof data)[number]> }>;
+  if (data.length === 0) {
+    commentsWithReplies = [];
+  } else {
+    const parentIds = data.map((c) => c.id);
+    const allReplies = await db.select({
       id: comments.id,
       recipeId: comments.recipeId,
       authorId: comments.authorId,
@@ -78,9 +81,22 @@ export async function findByRecipe(recipeId: string, page: number, perPage: numb
     })
       .from(comments)
       .leftJoin(users, eq(comments.authorId, users.id))
-      .where(and(eq(comments.parentCommentId, comment.id), isNull(comments.deletedAt)))
+      .where(and(inArray(comments.parentCommentId, parentIds), isNull(comments.deletedAt)))
       .orderBy(asc(comments.createdAt));
-    commentsWithReplies.push({ ...comment, replies });
+
+    const repliesByParent = new Map<string, typeof allReplies>();
+    for (const reply of allReplies) {
+      const key = reply.parentCommentId!;
+      if (!repliesByParent.has(key)) {
+        repliesByParent.set(key, []);
+      }
+      repliesByParent.get(key)!.push(reply);
+    }
+
+    commentsWithReplies = data.map((comment) => ({
+      ...comment,
+      replies: repliesByParent.get(comment.id) ?? [],
+    }));
   }
 
   return { comments: commentsWithReplies, total: totalResult[0].count };

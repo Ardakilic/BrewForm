@@ -67,7 +67,19 @@ export async function searchRecipes(
   }
 
   const where = conditions.length > 1 ? and(...conditions) : conditions[0];
-  const orderBy = sortOrder === 'asc' ? asc(recipes.createdAt) : desc(recipes.createdAt);
+
+  const allowedSortColumns: Record<string, any> = {
+    createdAt: recipes.createdAt,
+    likeCount: recipes.likeCount,
+    commentCount: recipes.commentCount,
+    forkCount: recipes.forkCount,
+    updatedAt: recipes.updatedAt,
+    title: recipes.title,
+    featured: recipes.featured,
+  };
+
+  const sortColumn = allowedSortColumns[_sortBy] ?? recipes.createdAt;
+  const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn);
 
   const [data, totalResult] = await Promise.all([
     db.select().from(recipes).where(where).orderBy(orderBy).limit(perPage).offset(

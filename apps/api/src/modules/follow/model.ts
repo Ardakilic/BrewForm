@@ -1,6 +1,6 @@
 import { db } from '@brewform/db';
 import { userFollows, users } from '@brewform/db/schema';
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, isNull } from 'drizzle-orm';
 
 export async function findFollow(followerId: string, followingId: string) {
   const result = await db.select().from(userFollows)
@@ -37,12 +37,14 @@ export async function getFollowers(userId: string, page: number, perPage: number
       },
     })
       .from(userFollows)
-      .leftJoin(users, eq(userFollows.followerId, users.id))
-      .where(where)
+      .innerJoin(users, and(eq(userFollows.followerId, users.id), isNull(users.deletedAt)))
+      .where(and(where, isNull(users.deletedAt)))
       .orderBy(desc(userFollows.createdAt))
       .limit(perPage)
       .offset((page - 1) * perPage),
-    db.select({ count: count() }).from(userFollows).where(where),
+    db.select({ count: count() }).from(userFollows)
+      .innerJoin(users, and(eq(userFollows.followerId, users.id), isNull(users.deletedAt)))
+      .where(where),
   ]);
   return { followers: data, total: totalResult[0].count };
 }
@@ -64,12 +66,14 @@ export async function getFollowing(userId: string, page: number, perPage: number
       },
     })
       .from(userFollows)
-      .leftJoin(users, eq(userFollows.followingId, users.id))
-      .where(where)
+      .innerJoin(users, and(eq(userFollows.followingId, users.id), isNull(users.deletedAt)))
+      .where(and(where, isNull(users.deletedAt)))
       .orderBy(desc(userFollows.createdAt))
       .limit(perPage)
       .offset((page - 1) * perPage),
-    db.select({ count: count() }).from(userFollows).where(where),
+    db.select({ count: count() }).from(userFollows)
+      .innerJoin(users, and(eq(userFollows.followingId, users.id), isNull(users.deletedAt)))
+      .where(where),
   ]);
   return { following: data, total: totalResult[0].count };
 }

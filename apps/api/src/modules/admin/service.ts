@@ -71,6 +71,7 @@ export async function updateRecipeVisibility(
   visibility: string,
 ) {
   const recipe = await model.updateRecipeVisibility(recipeId, visibility);
+  if (!recipe) return null;
   await model.createAuditLog(
     adminId,
     'UPDATE_RECIPE_VISIBILITY',

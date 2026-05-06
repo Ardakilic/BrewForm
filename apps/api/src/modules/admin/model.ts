@@ -4,8 +4,10 @@ import {
   brewMethodEquipmentRules,
   comments,
   equipment,
+  equipmentTypeEnum,
   recipes,
   reports,
+  type RecipeVisibility,
   userPreferences,
   users,
   vendors,
@@ -102,9 +104,15 @@ export async function softDeleteUser(userId: string) {
   return result ?? null;
 }
 
+const RECIPE_VISIBILITIES: readonly string[] = ['draft', 'private', 'unlisted', 'public'];
+
+function isValidVisibility(v: string): v is RecipeVisibility {
+  return RECIPE_VISIBILITIES.includes(v);
+}
+
 export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
-  const where = visibility
-    ? and(isNull(recipes.deletedAt), eq(recipes.visibility, visibility as any))
+  const where = visibility && isValidVisibility(visibility)
+    ? and(isNull(recipes.deletedAt), eq(recipes.visibility, visibility))
     : isNull(recipes.deletedAt);
   const [data, totalResult] = await Promise.all([
     db.select().from(recipes).where(where).limit(perPage).offset((page - 1) * perPage),
@@ -114,7 +122,10 @@ export async function listAllRecipes(page: number, perPage: number, visibility?:
 }
 
 export async function updateRecipeVisibility(recipeId: string, visibility: string) {
-  const [result] = await db.update(recipes).set({ visibility: visibility as any }).where(
+  if (!isValidVisibility(visibility)) {
+    return null;
+  }
+  const [result] = await db.update(recipes).set({ visibility }).where(
     eq(recipes.id, recipeId),
   ).returning();
   return result ?? null;
@@ -143,8 +154,21 @@ export async function createEquipment(
   return result;
 }
 
-export async function updateEquipment(id: string, data: Partial<typeof equipment.$inferInsert>) {
-  const [result] = await db.update(equipment).set(data).where(eq(equipment.id, id)).returning();
+export async function updateEquipment(
+  id: string,
+  data: Partial<Pick<typeof equipment.$inferInsert, 'name' | 'type' | 'brand' | 'model' | 'description'>>,
+) {
+  const sanitized: Partial<Pick<typeof equipment.$inferInsert, 'name' | 'type' | 'brand' | 'model' | 'description'>> =
+    {};
+  if (data.name !== undefined) sanitized.name = data.name;
+  if (data.type !== undefined && equipmentTypeEnum.enumValues.includes(data.type)) {
+    sanitized.type = data.type;
+  }
+  if (data.brand !== undefined) sanitized.brand = data.brand;
+  if (data.model !== undefined) sanitized.model = data.model;
+  if (data.description !== undefined) sanitized.description = data.description;
+
+  const [result] = await db.update(equipment).set(sanitized).where(eq(equipment.id, id)).returning();
   return result ?? null;
 }
 
@@ -169,8 +193,16 @@ export async function createVendor(data: { name: string; website?: string; descr
   return result;
 }
 
-export async function updateVendor(id: string, data: Partial<typeof vendors.$inferInsert>) {
-  const [result] = await db.update(vendors).set(data).where(eq(vendors.id, id)).returning();
+export async function updateVendor(
+  id: string,
+  data: Partial<Pick<typeof vendors.$inferInsert, 'name' | 'website' | 'description'>>,
+) {
+  const sanitized: Partial<Pick<typeof vendors.$inferInsert, 'name' | 'website' | 'description'>> = {};
+  if (data.name !== undefined) sanitized.name = data.name;
+  if (data.website !== undefined) sanitized.website = data.website;
+  if (data.description !== undefined) sanitized.description = data.description;
+
+  const [result] = await db.update(vendors).set(sanitized).where(eq(vendors.id, id)).returning();
   return result ?? null;
 }
 

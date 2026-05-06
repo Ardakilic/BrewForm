@@ -1,6 +1,9 @@
 import { db } from '@brewform/db';
 import {
+  recipeAdditionalPreparations,
+  recipeEquipment,
   recipes,
+  recipeTasteNotes,
   recipeVersions,
   userRecipeFavourites,
   userRecipeLikes,
@@ -131,6 +134,37 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       isFavourite: false,
     }).returning();
 
+    const sourceTasteNotes = await tx.select().from(recipeTasteNotes)
+      .where(eq(recipeTasteNotes.recipeVersionId, latestVersion.id));
+    const insertedTasteNotes = sourceTasteNotes.length
+      ? await tx.insert(recipeTasteNotes).values(
+        sourceTasteNotes.map((tn) => ({ recipeVersionId: newVersion.id, tasteNoteId: tn.tasteNoteId })),
+      ).returning()
+      : [];
+
+    const sourceEquipment = await tx.select().from(recipeEquipment)
+      .where(eq(recipeEquipment.recipeVersionId, latestVersion.id));
+    const insertedEquipment = sourceEquipment.length
+      ? await tx.insert(recipeEquipment).values(
+        sourceEquipment.map((eq) => ({ recipeVersionId: newVersion.id, equipmentId: eq.equipmentId })),
+      ).returning()
+      : [];
+
+    const sourcePreparations = await tx.select().from(recipeAdditionalPreparations)
+      .where(eq(recipeAdditionalPreparations.recipeVersionId, latestVersion.id));
+    const insertedPreparations = sourcePreparations.length
+      ? await tx.insert(recipeAdditionalPreparations).values(
+        sourcePreparations.map((p) => ({
+          recipeVersionId: newVersion.id,
+          name: p.name,
+          type: p.type,
+          inputAmount: p.inputAmount,
+          preparationType: p.preparationType,
+          sortOrder: p.sortOrder,
+        })),
+      ).returning()
+      : [];
+
     await tx.update(recipes).set({ currentVersionId: newVersion.id }).where(
       eq(recipes.id, newRecipe.id),
     );
@@ -138,7 +172,23 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       eq(recipes.id, sourceId),
     );
 
-    return { ...newRecipe, versions: [newVersion] };
+    return {
+      ...newRecipe,
+      versions: [{
+        ...newVersion,
+        tasteNotes: insertedTasteNotes.map((tn) => ({
+          ...tn,
+          tasteNote: latestVersion.tasteNotes?.find((ltn: any) => ltn.tasteNoteId === tn.tasteNoteId)
+            ?.tasteNote,
+        })),
+        equipment: insertedEquipment.map((eq) => ({
+          ...eq,
+          equipment: latestVersion.equipment?.find((leq: any) => leq.equipmentId === eq.equipmentId)
+            ?.equipment,
+        })),
+        additionalPreparations: insertedPreparations,
+      }],
+    };
   });
 }
 
@@ -169,34 +219,41 @@ export async function decrementComments(id: string) {
 }
 
 export async function toggleLike(userId: string, recipeId: string) {
-  const existing = await db.select().from(userRecipeLikes)
-    .where(and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)))
-    .limit(1);
+  return db.transaction(async (tx) => {
+    const existing = await tx.select().from(userRecipeLikes)
+      .where(and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)))
+      .for('update')
+      .limit(1);
 
-  if (existing.length > 0) {
-    await db.delete(userRecipeLikes).where(eq(userRecipeLikes.id, existing[0].id));
-    await decrementLikes(recipeId);
-    return { liked: false };
-  }
+    if (existing.length > 0) {
+      await tx.delete(userRecipeLikes).where(eq(userRecipeLikes.id, existing[0].id));
+      await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
+        eq(recipes.id, recipeId),
+      );
+      return { liked: false };
+    }
 
-  await db.insert(userRecipeLikes).values({ userId, recipeId });
-  await incrementLikes(recipeId);
-  return { liked: true };
+    await tx.insert(userRecipeLikes).values({ userId, recipeId });
+    await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} + 1` }).where(
+      eq(recipes.id, recipeId),
+    );
+    return { liked: true };
+  });
 }
 
 export async function toggleFavourite(userId: string, recipeId: string) {
-  const existing = await db.select().from(userRecipeFavourites)
-    .where(
-      and(eq(userRecipeFavourites.userId, userId), eq(userRecipeFavourites.recipeId, recipeId)),
-    )
-    .limit(1);
+  const inserted = await db.insert(userRecipeFavourites)
+    .values({ userId, recipeId })
+    .onConflictDoNothing({ target: [userRecipeFavourites.userId, userRecipeFavourites.recipeId] })
+    .returning();
 
-  if (existing.length > 0) {
-    await db.delete(userRecipeFavourites).where(eq(userRecipeFavourites.id, existing[0].id));
+  if (inserted.length === 0) {
+    await db.delete(userRecipeFavourites).where(
+      and(eq(userRecipeFavourites.userId, userId), eq(userRecipeFavourites.recipeId, recipeId)),
+    );
     return { favourited: false };
   }
 
-  await db.insert(userRecipeFavourites).values({ userId, recipeId });
   return { favourited: true };
 }
 

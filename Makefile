@@ -75,20 +75,22 @@ test-specific:
 
 # --- Database ---
 
+DRIZZLE_KIT := npm:drizzle-kit@0.31.10
+
 db-migrate:
-	docker compose run --rm app sh -c "cd packages/db && deno run -A npm:drizzle-kit@latest migrate"
+	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
 
 db-generate:
-	docker compose run --rm app sh -c "cd packages/db && deno run -A npm:drizzle-kit@latest generate"
+	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) generate"
 
 db-push:
-	docker compose run --rm app sh -c "cd packages/db && deno run -A npm:drizzle-kit@latest push"
+	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) push"
 
 db-seed:
 	docker compose run --rm app deno run --allow-all packages/db/src/seed.ts
 
 db-studio:
-	docker compose run --rm --service-ports app sh -c "cd packages/db && deno run -A npm:drizzle-kit@latest studio --host=0.0.0.0 --port=5555"
+	docker compose run --rm --service-ports app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) studio --host=0.0.0.0 --port=5555"
 
 db-reset:
 	docker compose run --rm app bash -c "echo 'Drop and recreate database manually, then run db-migrate and db-seed'"

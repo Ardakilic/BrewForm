@@ -9,13 +9,14 @@ export async function findByUserId(userId: string) {
 }
 
 export async function upsert(userId: string, data: Partial<typeof userPreferences.$inferInsert>) {
-  const existing = await findByUserId(userId);
-  if (existing) {
-    const [result] = await db.update(userPreferences).set(data).where(
-      eq(userPreferences.userId, userId),
-    ).returning();
-    return result;
-  }
-  const [result] = await db.insert(userPreferences).values({ userId, ...data }).returning();
+  const { userId: _, ...updateData } = data;
+  const [result] = await db
+    .insert(userPreferences)
+    .values({ ...data, userId })
+    .onConflictDoUpdate({
+      target: userPreferences.userId,
+      set: updateData,
+    })
+    .returning();
   return result;
 }

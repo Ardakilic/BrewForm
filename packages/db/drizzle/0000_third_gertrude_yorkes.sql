@@ -169,7 +169,7 @@ CREATE TABLE "recipe" (
 	"title" varchar(255) NOT NULL,
 	"author_id" varchar(36) NOT NULL,
 	"visibility" "visibility" DEFAULT 'draft' NOT NULL,
-	"current_version_id" varchar(36),
+	"current_version_id" varchar(36) REFERENCES "recipe_version"("id") ON DELETE SET NULL,
 	"like_count" integer DEFAULT 0 NOT NULL,
 	"comment_count" integer DEFAULT 0 NOT NULL,
 	"fork_count" integer DEFAULT 0 NOT NULL,
