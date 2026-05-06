@@ -6,6 +6,8 @@ import type { AppEnv } from '../types/hono.ts';
 
 const share = new Hono<AppEnv>();
 
+export const deps = { getRecipeMeta };
+
 export const RECIPE_NOT_FOUND_HTML =
   '<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 — Recipe not found</h1></body></html>';
 
@@ -47,7 +49,7 @@ export const OG_TEMPLATE = (meta: {
 share.get('/:slug', async (c) => {
   const slug = c.req.param('slug')!;
   try {
-    const meta = await getRecipeMeta(slug);
+    const meta = await deps.getRecipeMeta(slug);
     if (meta.visibility !== 'public') {
       return c.html(RECIPE_NOT_FOUND_HTML, 404);
     }

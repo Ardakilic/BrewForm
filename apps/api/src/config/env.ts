@@ -46,7 +46,7 @@ const envSchema = z.object({
   UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
 
   APP_URL: z.string().default('http://localhost:8000'),
-  PUBLIC_APP_URL: z.string().optional(),
+  PUBLIC_APP_URL: z.string().url().optional(),
 
   ADMIN_EMAIL: z.string().default('admin@brewform.local'),
   ADMIN_USERNAME: z.string().default('admin'),

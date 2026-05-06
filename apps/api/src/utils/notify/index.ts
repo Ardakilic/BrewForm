@@ -25,11 +25,10 @@ import { template as followedUserPostedTemplate } from '../../templates/email/ge
 const logger = createLogger('notify');
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
-  let out = template;
-  for (const [k, v] of Object.entries(vars)) {
-    out = out.split('{{' + k + '}}').join(escapeHtml(v));
-  }
-  return out;
+  return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+    const value = vars[key];
+    return value !== undefined ? escapeHtml(value) : _match;
+  });
 }
 
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;

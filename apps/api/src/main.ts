@@ -69,8 +69,9 @@ if (config.STORAGE_DRIVER === 'local') {
       return c.text('Forbidden', 403);
     }
 
+    let file: Deno.FsFile | undefined;
     try {
-      const file = await Deno.open(filepath, { read: true });
+      file = await Deno.open(filepath, { read: true });
       const stat = await file.stat();
       const ext = filepath.split('.').pop() || '';
       const contentType = {
@@ -86,6 +87,7 @@ if (config.STORAGE_DRIVER === 'local') {
         },
       });
     } catch {
+      file?.close();
       return c.notFound();
     }
   });

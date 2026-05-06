@@ -10,7 +10,7 @@ COPY apps/api/package.json apps/api/deno.json ./apps/api/
 COPY apps/web/package.json apps/web/deno.json ./apps/web/
 COPY packages/shared/package.json packages/shared/deno.json ./packages/shared/
 COPY packages/db/package.json packages/db/deno.json ./packages/db/
-RUN deno install
+RUN deno install --frozen
 
 # --- Stage 2: Build ---
 FROM denoland/deno:debian-2.7.13 AS builder

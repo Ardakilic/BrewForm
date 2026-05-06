@@ -118,7 +118,7 @@ git push origin main
 5. **App directory**: `apps/api`
 6. Deno Deploy will auto-detect `deno.json` configuration. If not, configure manually:
    - **Install command**: `deno install`
-   - **Build command**: `deno task db:generate`
+   - **Build command**: `deno task db:generate && deno run -A scripts/build-email-templates.ts`
    - **Pre-deploy command**: `deno run -A npm:prisma@^6.19.3 migrate deploy --schema=../../packages/db/prisma/schema.prisma`
    - **Runtime**: Dynamic
    - **Entrypoint**: `src/main.ts`

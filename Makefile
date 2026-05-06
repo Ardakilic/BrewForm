@@ -55,6 +55,9 @@ check: install db-generate
 
 # --- Testing ---
 
+check-tests:
+	docker compose run --rm app deno check --unstable-sloppy-imports apps/api/src/ packages/shared/src/
+
 test:
 	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/
 
@@ -105,7 +108,7 @@ web-dev:
 
 # --- CI ---
 
-ci: fmt-check lint check test-coverage
+ci: fmt-check lint check check-tests test-coverage
 
 # --- Dev ---
 
