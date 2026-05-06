@@ -32,26 +32,41 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
   return out;
 }
 
+let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: config.SMTP_HOST,
+      port: config.SMTP_PORT,
+      secure: config.SMTP_SECURE,
+      auth: config.SMTP_USER ? { user: config.SMTP_USER, pass: config.SMTP_PASS } : undefined,
+    });
+  }
+  return transporter;
+}
+
+export function closeTransporter(): void {
+  if (transporter) {
+    transporter.close();
+    transporter = null;
+  }
+}
+
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   if (config.APP_ENV === 'test') {
     logger.info({ to, subject }, 'Notification skipped (test environment)');
     return;
   }
   try {
-    const transporter = nodemailer.createTransport({
-      host: config.SMTP_HOST,
-      port: config.SMTP_PORT,
-      secure: config.SMTP_SECURE,
-      auth: config.SMTP_USER ? { user: config.SMTP_USER, pass: config.SMTP_PASS } : undefined,
-    });
-    await transporter.sendMail({ from: config.EMAIL_FROM, to, subject, html });
+    await getTransporter().sendMail({ from: config.EMAIL_FROM, to, subject, html });
     logger.info({ to, subject }, 'Notification email sent');
   } catch (err) {
     logger.error({ err, to, subject }, 'Notification email failed');
   }
 }
 
-function appBaseUrl(): string {
+export function appBaseUrl(): string {
   return config.PUBLIC_APP_URL ||
     (config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173');
 }
@@ -136,21 +151,40 @@ export async function notifyFollowersOfNewRecipe(params: {
   });
   if (follows.length === 0) return;
 
+  const followerIds = follows.map((f: any) => f.followerId);
+  const users: any[] = await (prisma as any).user.findMany({
+    where: { id: { in: followerIds }, deletedAt: null },
+    include: { preferences: true },
+  });
+
+  const recipients = users
+    .filter((u: any) => u.email)
+    .map((u: any) => ({
+      email: u.email,
+      username: u.username,
+      prefs: u.preferences ?? {},
+    }))
+    .filter((r: any) => r.prefs.followedUserPosted !== false);
+
+  if (recipients.length === 0) return;
+
   const subject = `${params.authorUsername} posted a new recipe on BrewForm`;
   const recipeUrl = `${appBaseUrl()}/recipes/${params.recipeSlug}`;
 
-  for (const f of follows) {
-    const recipient = await loadRecipient(f.followerId);
-    if (!recipient) continue;
-    if (recipient.prefs.followedUserPosted === false) continue;
-
-    const html = renderTemplate(followedUserPostedTemplate, {
-      app_name: 'BrewForm',
-      username: recipient.username,
-      author_username: params.authorUsername,
-      recipe_title: params.recipeTitle,
-      recipe_url: recipeUrl,
-    });
-    await sendEmail(recipient.email, subject, html);
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const batch = recipients.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map((recipient) => {
+        const html = renderTemplate(followedUserPostedTemplate, {
+          app_name: 'BrewForm',
+          username: recipient.username,
+          author_username: params.authorUsername,
+          recipe_title: params.recipeTitle,
+          recipe_url: recipeUrl,
+        });
+        return sendEmail(recipient.email, subject, html);
+      }),
+    );
   }
 }

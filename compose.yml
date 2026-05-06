@@ -30,7 +30,7 @@ services:
       mailpit:
         condition: service_started
       garage:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - .:/app
       - ./node_modules:/app/node_modules
@@ -84,6 +84,11 @@ services:
       - ./garage.toml:/etc/garage.toml:ro
       - garage_data:/tmp/data
       - garage_meta:/tmp/meta
+    healthcheck:
+      test: ["CMD-SHELL", "/garage status || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   postgres_data:

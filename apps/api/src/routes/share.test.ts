@@ -1,66 +1,70 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { escapeHtml } from '@brewform/shared/utils';
+
+// Set required env vars before loading the route module (which parses config
+// at the top level).
+Deno.env.set('DATABASE_URL', 'postgresql://test:test@localhost:5432/test');
+Deno.env.set('JWT_SECRET', 'a-very-long-secret-key-for-testing-12345');
+
+const { OG_TEMPLATE, RECIPE_NOT_FOUND_HTML } = await import('../routes/share.ts');
 
 describe('Share Route', () => {
-  describe('escapeHtml', () => {
-    it('should escape ampersands', () => {
-      expect(escapeHtml('Coffee & Tea')).toBe('Coffee &amp; Tea');
-    });
-
-    it('should escape less-than and greater-than', () => {
-      expect(escapeHtml('<script>')).toBe('&lt;script&gt;');
-    });
-
-    it('should escape double quotes', () => {
-      expect(escapeHtml('"Hello"')).toBe('&quot;Hello&quot;');
-    });
-
-    it('should escape single quotes', () => {
-      expect(escapeHtml("It's good")).toBe('It&#39;s good');
-    });
-
-    it('should escape forward slashes', () => {
-      expect(escapeHtml('a/b')).toBe('a&#x2F;b');
-    });
-
-    it('should escape all special characters combined', () => {
-      expect(escapeHtml('"Coffee & Tea\'s <best>/"')).toBe(
-        '&quot;Coffee &amp; Tea&#39;s &lt;best&gt;&#x2F;&quot;',
-      );
-    });
-  });
-
-  describe('Route behavior', () => {
-    it('should return HTML response for public recipes', () => {
-      const responseType = 'text/html';
-      expect(responseType).toBe('text/html');
-    });
-
-    it('should return 404 for non-existent recipes', () => {
-      const status = 404;
-      expect(status).toBe(404);
-    });
-
-    it('should return 404 for private recipes', () => {
-      const visibility = 'private';
-      const isPublic = visibility === 'public';
-      expect(isPublic).toBe(false);
-    });
+  describe('OG_TEMPLATE', () => {
+    const meta = {
+      title: 'Test Recipe',
+      description: 'A delicious coffee recipe',
+      image: 'https://example.com/image.jpg',
+      url: 'https://brewform.cc/share/test-recipe',
+      siteName: 'BrewForm',
+      slug: 'test-recipe',
+    };
 
     it('should include og:title in response', () => {
-      const html = '<meta property="og:title" content="Test">';
-      expect(html).toContain('og:title');
+      const html = OG_TEMPLATE(meta);
+      expect(html).toContain('<meta property="og:title" content="Test Recipe">');
     });
 
     it('should include twitter:card in response', () => {
-      const html = '<meta name="twitter:card" content="summary_large_image">';
-      expect(html).toContain('twitter:card');
+      const html = OG_TEMPLATE(meta);
+      expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
     });
 
     it('should redirect humans to recipe page', () => {
-      const script = 'window.location.replace(\'/recipes/\' + "test-slug");';
-      expect(script).toContain('/recipes/');
+      const html = OG_TEMPLATE(meta);
+      expect(html).toContain("window.location.replace('/recipes/' + \"test-recipe\");");
+    });
+
+    it('should escape </ sequences in the redirect slug', () => {
+      const maliciousMeta = {
+        ...meta,
+        url: 'https://brewform.cc/share/foo</script>bar',
+        slug: 'foo</script>bar',
+      };
+      const html = OG_TEMPLATE(maliciousMeta);
+      const scriptMatch = html.match(
+        /window\.location\.replace\('\/recipes\/' \+ "([^"]+)"\)/);
+      expect(scriptMatch).not.toBeNull();
+      expect(scriptMatch![1]).toContain('<\\/script>');
+      expect(scriptMatch![1]).not.toContain('</script>');
+    });
+
+    it('should return HTML with image meta tags when image is provided', () => {
+      const html = OG_TEMPLATE(meta);
+      expect(html).toContain('<meta property="og:image" content="https://example.com/image.jpg">');
+      expect(html).toContain('<meta name="twitter:image" content="https://example.com/image.jpg">');
+    });
+
+    it('should omit image meta tags when image is null', () => {
+      const htmlNoImage = OG_TEMPLATE({ ...meta, image: null });
+      expect(htmlNoImage).not.toContain('og:image');
+      expect(htmlNoImage).not.toContain('twitter:image');
+    });
+  });
+
+  describe('RECIPE_NOT_FOUND_HTML', () => {
+    it('should be a valid 404 HTML string', () => {
+      expect(RECIPE_NOT_FOUND_HTML).toContain('404');
+      expect(RECIPE_NOT_FOUND_HTML).toContain('Recipe not found');
     });
   });
 });

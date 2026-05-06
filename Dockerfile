@@ -5,11 +5,11 @@ RUN apt-get update && apt-get install -y curl && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
-COPY package.json turbo.json .npmrc ./
-COPY apps/api/package.json ./apps/api/
-COPY apps/web/package.json ./apps/web/
-COPY packages/shared/package.json ./packages/shared/
-COPY packages/db/package.json ./packages/db/
+COPY package.json turbo.json .npmrc deno.json deno.lock ./
+COPY apps/api/package.json apps/api/deno.json ./apps/api/
+COPY apps/web/package.json apps/web/deno.json ./apps/web/
+COPY packages/shared/package.json packages/shared/deno.json ./packages/shared/
+COPY packages/db/package.json packages/db/deno.json ./packages/db/
 RUN deno install
 
 # --- Stage 2: Build ---

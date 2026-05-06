@@ -131,6 +131,10 @@ async function startup() {
     await prisma.$disconnect();
     logger.info('Database connection closed');
 
+    const { closeTransporter } = await import('./utils/notify/index.ts');
+    closeTransporter();
+    logger.info('Email transporter closed');
+
     logger.info('Graceful shutdown complete');
     Deno.exit(0);
   };

@@ -197,12 +197,9 @@ Navigate to `brewform-api` → **Settings** → **Environment Variables** → **
 | `S3_ACCESS_KEY` | `<access-key>` | Mark as **Secret** |
 | `S3_SECRET_KEY` | `<secret-key>` | Mark as **Secret** |
 | `S3_PUBLIC_URL` | `https://pub-<hash>.r2.dev` | Public access URL for bucket |
-| `OPENAPI_ENABLED` | `false` | Strongly recommended: disable in production / set to `false` |
 | `ADMIN_EMAIL` | `admin@brewform.cc` | |
 | `ADMIN_USERNAME` | `admin` | |
 | `ADMIN_PASSWORD` | `<generate-strong>` | Mark as **Secret** |
-
-> **Note:** Ensure `OPENAPI_ENABLED=false` in production environments to reduce attack surface.
 
 ### D2. `brewform-api` — Build Context Variables
 
@@ -237,7 +234,7 @@ In your domain registrar/DNS provider, add these CNAME records:
 | CNAME | `www` | `[brewform-web].deno.dev` | 300 |
 
 > Replace `[brewform-web]` and `[brewform-api]` with your actual Deno Deploy project subdomains (visible in project settings).
-
+>
 > **Apex domain note**: Some DNS providers do not support CNAME on apex (`@`). Use an ALIAS/ANAME record if available, or use `www.brewform.cc` as primary and redirect apex to www.
 
 ### E2. Add Domains in Deno Deploy
@@ -326,6 +323,7 @@ curl https://api.brewform.cc/health
 curl https://api.brewform.cc/openapi.json
 # Expected: JSON OpenAPI spec
 ```
+> Run this verification **before** disabling OpenAPI in Phase I1. Skip if `OPENAPI_ENABLED` is already `false`.
 
 ### H3. Frontend Load
 1. Visit `https://brewform.cc`
@@ -385,8 +383,8 @@ curl https://api.brewform.cc/api/v1/taste-notes
 
 ## Phase I: Cleanup & Hardening
 
-### I1. Disable OpenAPI in Production (Optional)
-Set `OPENAPI_ENABLED=false` in `brewform-api` Production context. Reduces attack surface.
+### I1. Disable OpenAPI in Production (Strongly recommended)
+Set `OPENAPI_ENABLED=false` in `brewform-api` Production context. Strongly recommended: disable in production / set to `false` to reduce attack surface.
 
 ### I2. Review Secrets
 In Deno Deploy dashboard:

@@ -50,25 +50,25 @@ fmt:
 fmt-check:
 	docker compose run --rm app deno fmt --check apps/ packages/
 
-check:
-	docker compose run --rm app bash -c "deno install && rm -rf node_modules/.prisma && cd packages/db && deno run -A npm:prisma@^6.19.3 generate && cd /app && deno check --unstable-sloppy-imports apps/api/src/main.ts"
+check: install db-generate
+	docker compose run --rm app deno check --unstable-sloppy-imports apps/api/src/main.ts
 
 # --- Testing ---
 
 test:
-	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys apps/api/src/ packages/shared/src/
+	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/
 
 test-coverage:
-	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --coverage=coverage/ apps/api/src/ packages/shared/src/
+	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
 
 test-api:
-	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys apps/api/src/
+	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/
 
 test-shared:
 	docker compose run --rm app deno test --allow-env --allow-read --allow-write --allow-net packages/shared/src/
 
 test-specific:
-	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys $(filter)
+	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
 
 # --- Database ---
 
@@ -79,7 +79,7 @@ db-generate:
 	docker compose run --rm app bash -c "rm -rf node_modules/.prisma && cd packages/db && deno run -A npm:prisma@^6.19.3 generate --schema=prisma/schema.prisma"
 
 db-dev-migrate:
-	docker compose exec app deno run -A npm:prisma@^6.19.3 migrate dev --schema=packages/db/prisma/schema.prisma
+	docker compose run --rm app deno run -A npm:prisma@^6.19.3 migrate dev --schema=packages/db/prisma/schema.prisma
 
 db-seed:
 	docker compose run --rm app deno run --allow-all packages/db/prisma/seed.ts
@@ -93,7 +93,7 @@ db-reset:
 # --- Admin Setup ---
 
 setup:
-	docker compose exec app deno run --allow-all apps/api/src/setup.ts
+	docker compose run --rm app deno run --allow-all apps/api/src/setup.ts
 
 # --- Frontend ---
 
