@@ -77,9 +77,13 @@ cd apps/web && deno task dev
 ### A7. Build Frontend Static Assets
 ```bash
 cd apps/web
+# bash / zsh / Linux / macOS
 export VITE_API_URL=https://api.brewform.cc/api/v1
+# Windows PowerShell
+# $env:VITE_API_URL="https://api.brewform.cc/api/v1"
+# Windows cmd.exe
+# set VITE_API_URL=https://api.brewform.cc/api/v1
 deno task build
-# Verify apps/web/dist/ exists with index.html and assets
 ```
 
 ### A8. Commit and Push
@@ -193,10 +197,12 @@ Navigate to `brewform-api` → **Settings** → **Environment Variables** → **
 | `S3_ACCESS_KEY` | `<access-key>` | Mark as **Secret** |
 | `S3_SECRET_KEY` | `<secret-key>` | Mark as **Secret** |
 | `S3_PUBLIC_URL` | `https://pub-<hash>.r2.dev` | Public access URL for bucket |
-| `OPENAPI_ENABLED` | `false` | Optional: disable in production |
+| `OPENAPI_ENABLED` | `false` | Strongly recommended: disable in production / set to `false` |
 | `ADMIN_EMAIL` | `admin@brewform.cc` | |
 | `ADMIN_USERNAME` | `admin` | |
 | `ADMIN_PASSWORD` | `<generate-strong>` | Mark as **Secret** |
+
+> **Note:** Ensure `OPENAPI_ENABLED=false` in production environments to reduce attack surface.
 
 ### D2. `brewform-api` — Build Context Variables
 
@@ -261,7 +267,7 @@ If not yet linked, go to each project → **Settings** → **GitHub** → **Link
 1. Go to `brewform-api` → **Builds**
 2. Watch stages: Queuing → Preparing → Install → Build → Pre-deploy → Deploy
 3. Pre-deploy step should output:
-   ```
+   ```text
    Prisma Migrate: applying migrations...
    ```
 4. Verify **Successful** status.
@@ -454,6 +460,10 @@ If a bad migration ran:
 ### Frontend Shows "Cannot connect to API"
 **Cause**: `VITE_API_URL` incorrect or CORS blocked.
 **Fix**: Rebuild frontend with correct `VITE_API_URL`. Verify `CORS_ALLOWED_ORIGINS` includes `https://brewform.cc`.
+
+### Database Connection Errors
+**Cause**: Prisma Accelerate timeouts, migration lock conflicts, connection pool exhaustion, or network/firewall issues between Deno Deploy and Prisma Postgres.
+**Fix**: Verify `DATABASE_URL` uses `prisma+postgres://`. Check Prisma/Postgres health and migration locks. Tune Prisma pool settings (`connection_limit` / `pool_timeout`) or use a serverless-friendly pooler. Ensure Deno Deploy region/network can reach the database; check Deno Deploy dashboard and database region for latency issues.
 
 ---
 

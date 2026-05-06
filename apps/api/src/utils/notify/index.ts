@@ -16,7 +16,7 @@ import { prisma } from '@brewform/db';
 import nodemailer from 'npm:nodemailer@^7.0.0';
 import { config } from '../../config/index.ts';
 import { createLogger } from '../logger/index.ts';
-import { escapeHtml } from '../../routes/share.ts';
+import { escapeHtml } from '@brewform/shared/utils';
 import { template as newFollowerTemplate } from '../../templates/email/generated/new-follower.ts';
 import { template as recipeLikedTemplate } from '../../templates/email/generated/recipe-liked.ts';
 import { template as recipeCommentedTemplate } from '../../templates/email/generated/recipe-commented.ts';
@@ -52,7 +52,8 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 }
 
 function appBaseUrl(): string {
-  return config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173';
+  return config.PUBLIC_APP_URL ||
+    (config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173');
 }
 
 async function loadRecipient(userId: string): Promise<

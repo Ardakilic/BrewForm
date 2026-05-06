@@ -51,7 +51,7 @@ fmt-check:
 	docker compose run --rm app deno fmt --check apps/ packages/
 
 check:
-	docker compose run --rm app bash -c "deno install 2>/dev/null && rm -rf node_modules/.prisma && cd packages/db && deno run -A npm:prisma@^6.19.3 generate 2>/dev/null && cd /app && deno check --unstable-sloppy-imports apps/api/src/main.ts"
+	docker compose run --rm app bash -c "deno install && rm -rf node_modules/.prisma && cd packages/db && deno run -A npm:prisma@^6.19.3 generate && cd /app && deno check --unstable-sloppy-imports apps/api/src/main.ts"
 
 # --- Testing ---
 

@@ -28,10 +28,6 @@ RUN deno check --unstable-sloppy-imports apps/api/src/main.ts
 # --- Stage 3: Runtime (API only) ---
 FROM denoland/deno:debian-2.7.13 AS runner
 WORKDIR /app
-RUN apt-get update && apt-get install -y curl && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app .
 EXPOSE 8000
 CMD ["deno", "run", "--allow-read", "--allow-write", "--allow-net", "--allow-env", "--allow-kv", "--unstable-sloppy-imports", "--unstable-cron", "apps/api/src/main.ts"]
