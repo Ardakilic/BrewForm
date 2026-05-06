@@ -1,210 +1,217 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import {
+  recipes,
+  recipeVersions,
+  userRecipeFavourites,
+  userRecipeLikes,
+} from '@brewform/db/schema';
+import { and, asc, count, desc, eq, inArray, isNull, SQL, sql } from 'drizzle-orm';
 
-export async function create(data: any) {
-  return prisma.recipe.create({
-    data,
-    include: { versions: true },
-  } as any);
+export async function create(data: typeof recipes.$inferInsert) {
+  const [recipe] = await db.insert(recipes).values(data).returning();
+  return recipe;
 }
 
 export async function findById(id: string) {
-  return prisma.recipe.findUnique({
-    where: { id, deletedAt: null },
-    include: {
-      author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+  return db.query.recipes.findFirst({
+    where: and(eq(recipes.id, id), isNull(recipes.deletedAt)),
+    with: {
+      author: { columns: { id: true, username: true, displayName: true, avatarUrl: true } },
       versions: {
-        orderBy: { versionNumber: 'desc' },
-        include: {
-          tasteNotes: { include: { tasteNote: true } },
-          equipment: { include: { equipment: true } },
+        orderBy: desc(recipeVersions.versionNumber),
+        with: {
+          tasteNotes: { with: { tasteNote: true } },
+          equipment: { with: { equipment: true } },
           additionalPreparations: true,
-          versionPhotos: { include: { photo: true } },
+          versionPhotos: { with: { photo: true } },
         },
       },
       photos: true,
-      forkedFrom: { select: { id: true, slug: true, title: true } },
+      forkedFrom: { columns: { id: true, slug: true, title: true } },
     },
-  } as any);
+  });
 }
 
 export async function findBySlug(slug: string) {
-  return prisma.recipe.findUnique({
-    where: { slug, deletedAt: null },
-    include: {
-      author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+  return db.query.recipes.findFirst({
+    where: and(eq(recipes.slug, slug), isNull(recipes.deletedAt)),
+    with: {
+      author: { columns: { id: true, username: true, displayName: true, avatarUrl: true } },
       versions: {
-        orderBy: { versionNumber: 'desc' },
-        include: {
-          tasteNotes: { include: { tasteNote: true } },
-          equipment: { include: { equipment: true } },
+        orderBy: desc(recipeVersions.versionNumber),
+        with: {
+          tasteNotes: { with: { tasteNote: true } },
+          equipment: { with: { equipment: true } },
           additionalPreparations: true,
-          versionPhotos: { include: { photo: true } },
+          versionPhotos: { with: { photo: true } },
         },
       },
       photos: true,
-      forkedFrom: { select: { id: true, slug: true, title: true } },
+      forkedFrom: { columns: { id: true, slug: true, title: true } },
     },
-  } as any);
+  });
 }
 
 export async function findMany(
-  where: any,
+  where: SQL | undefined,
   page: number,
   perPage: number,
   sortBy: string = 'createdAt',
   sortOrder: string = 'desc',
 ) {
-  const [recipes, total] = await Promise.all([
-    prisma.recipe.findMany({
-      where: { ...where, deletedAt: null },
-      skip: (page - 1) * perPage,
-      take: perPage,
-      orderBy: { [sortBy]: sortOrder },
-      include: {
-        author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        versions: { take: 1, orderBy: { versionNumber: 'desc' } },
-        photos: { take: 1 },
-      },
-    } as any),
-    prisma.recipe.count({ where: { ...where, deletedAt: null } }),
+  const orderByColumn = sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt;
+  const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
+  const finalWhere = where ? and(isNull(recipes.deletedAt), where) : isNull(recipes.deletedAt);
+
+  const [data, totalResult] = await Promise.all([
+    db.select().from(recipes).where(finalWhere).orderBy(orderBy).limit(perPage).offset(
+      (page - 1) * perPage,
+    ),
+    db.select({ count: count() }).from(recipes).where(finalWhere),
   ]);
-  return { recipes, total };
+
+  return { recipes: data, total: totalResult[0].count };
 }
 
-export async function update(id: string, data: any) {
-  return prisma.recipe.update({ where: { id }, data } as any);
+export async function update(id: string, data: Partial<typeof recipes.$inferInsert>) {
+  const [result] = await db.update(recipes).set(data).where(eq(recipes.id, id)).returning();
+  return result ?? null;
 }
 
 export async function softDelete(id: string) {
-  return prisma.recipe.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  } as any);
+  const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, id))
+    .returning();
+  return result ?? null;
 }
 
-export async function createVersion(data: any) {
-  return prisma.recipeVersion.create({ data } as any);
+export async function createVersion(data: typeof recipeVersions.$inferInsert) {
+  const [result] = await db.insert(recipeVersions).values(data).returning();
+  return result;
 }
 
-// deno-lint-ignore no-explicit-any
 export async function forkRecipe(sourceId: string, authorId: string, title: string, slug: string) {
-  const source: any = await findById(sourceId);
+  const source = await findById(sourceId);
   if (!source) throw new Error('RECIPE_NOT_FOUND');
 
   const latestVersion = source.versions?.[0];
   if (!latestVersion) throw new Error('RECIPE_NO_VERSIONS');
 
-  const newRecipe: any = await prisma.recipe.create({
-    data: {
+  return db.transaction(async (tx) => {
+    const [newRecipe] = await tx.insert(recipes).values({
       slug,
       title,
       authorId,
       visibility: 'draft',
       forkedFromId: sourceId,
-      versions: {
-        create: {
-          versionNumber: 1,
-          productName: latestVersion.productName,
-          coffeeBrand: latestVersion.coffeeBrand,
-          coffeeProcessing: latestVersion.coffeeProcessing,
-          vendorId: latestVersion.vendorId,
-          roastDate: latestVersion.roastDate,
-          packageOpenDate: latestVersion.packageOpenDate,
-          grindDate: latestVersion.grindDate,
-          brewDate: new Date(),
-          brewMethod: latestVersion.brewMethod,
-          drinkType: latestVersion.drinkType,
-          brewerDetails: latestVersion.brewerDetails,
-          grinder: latestVersion.grinder,
-          grindSize: latestVersion.grindSize,
-          groundWeightGrams: latestVersion.groundWeightGrams,
-          extractionTimeSeconds: latestVersion.extractionTimeSeconds,
-          extractionVolumeMl: latestVersion.extractionVolumeMl,
-          temperatureCelsius: latestVersion.temperatureCelsius,
-          brewRatio: latestVersion.brewRatio,
-          flowRate: latestVersion.flowRate,
-          personalNotes: latestVersion.personalNotes,
-          isFavourite: false,
-        },
-      },
-    },
-    include: { versions: true },
-  } as any);
+    }).returning();
 
-  await prisma.recipe.update({
-    where: { id: newRecipe.id },
-    data: { currentVersionId: newRecipe.versions[0].id },
-  } as any);
-  await prisma.recipe.update({
-    where: { id: sourceId },
-    data: { forkCount: { increment: 1 } },
-  } as any);
+    const [newVersion] = await tx.insert(recipeVersions).values({
+      recipeId: newRecipe.id,
+      versionNumber: 1,
+      productName: latestVersion.productName,
+      coffeeBrand: latestVersion.coffeeBrand,
+      coffeeProcessing: latestVersion.coffeeProcessing,
+      vendorId: latestVersion.vendorId,
+      roastDate: latestVersion.roastDate,
+      packageOpenDate: latestVersion.packageOpenDate,
+      grindDate: latestVersion.grindDate,
+      brewDate: new Date(),
+      brewMethod: latestVersion.brewMethod,
+      drinkType: latestVersion.drinkType,
+      brewerDetails: latestVersion.brewerDetails,
+      grinder: latestVersion.grinder,
+      grindSize: latestVersion.grindSize,
+      groundWeightGrams: latestVersion.groundWeightGrams,
+      extractionTimeSeconds: latestVersion.extractionTimeSeconds,
+      extractionVolumeMl: latestVersion.extractionVolumeMl,
+      temperatureCelsius: latestVersion.temperatureCelsius,
+      brewRatio: latestVersion.brewRatio,
+      flowRate: latestVersion.flowRate,
+      personalNotes: latestVersion.personalNotes,
+      isFavourite: false,
+    }).returning();
 
-  return newRecipe;
+    await tx.update(recipes).set({ currentVersionId: newVersion.id }).where(
+      eq(recipes.id, newRecipe.id),
+    );
+    await tx.update(recipes).set({ forkCount: sql`${recipes.forkCount} + 1` }).where(
+      eq(recipes.id, sourceId),
+    );
+
+    return { ...newRecipe, versions: [newVersion] };
+  });
 }
 
 export async function incrementLikes(id: string) {
-  return prisma.recipe.update({ where: { id }, data: { likeCount: { increment: 1 } } } as any);
+  const [result] = await db.update(recipes).set({ likeCount: sql`${recipes.likeCount} + 1` }).where(
+    eq(recipes.id, id),
+  ).returning();
+  return result ?? null;
 }
 
 export async function decrementLikes(id: string) {
-  return prisma.recipe.update({ where: { id }, data: { likeCount: { decrement: 1 } } } as any);
+  const [result] = await db.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
+    eq(recipes.id, id),
+  ).returning();
+  return result ?? null;
 }
 
 export async function incrementComments(id: string) {
-  return prisma.recipe.update({ where: { id }, data: { commentCount: { increment: 1 } } } as any);
+  const [result] = await db.update(recipes).set({ commentCount: sql`${recipes.commentCount} + 1` })
+    .where(eq(recipes.id, id)).returning();
+  return result ?? null;
 }
 
 export async function decrementComments(id: string) {
-  return prisma.recipe.update({ where: { id }, data: { commentCount: { decrement: 1 } } } as any);
+  const [result] = await db.update(recipes).set({ commentCount: sql`${recipes.commentCount} - 1` })
+    .where(eq(recipes.id, id)).returning();
+  return result ?? null;
 }
 
 export async function toggleLike(userId: string, recipeId: string) {
-  const existing = await prisma.userRecipeLike.findUnique({
-    where: { userId_recipeId: { userId, recipeId } },
-  } as any);
-  if (existing) {
-    await prisma.userRecipeLike.delete({ where: { id: existing.id } } as any);
+  const existing = await db.select().from(userRecipeLikes)
+    .where(and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.delete(userRecipeLikes).where(eq(userRecipeLikes.id, existing[0].id));
     await decrementLikes(recipeId);
     return { liked: false };
   }
-  await prisma.userRecipeLike.create({ data: { userId, recipeId } } as any);
+
+  await db.insert(userRecipeLikes).values({ userId, recipeId });
   await incrementLikes(recipeId);
   return { liked: true };
 }
 
 export async function toggleFavourite(userId: string, recipeId: string) {
-  const existing = await prisma.userRecipeFavourite.findUnique({
-    where: { userId_recipeId: { userId, recipeId } },
-  } as any);
-  if (existing) {
-    await prisma.userRecipeFavourite.delete({ where: { id: existing.id } } as any);
+  const existing = await db.select().from(userRecipeFavourites)
+    .where(
+      and(eq(userRecipeFavourites.userId, userId), eq(userRecipeFavourites.recipeId, recipeId)),
+    )
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.delete(userRecipeFavourites).where(eq(userRecipeFavourites.id, existing[0].id));
     return { favourited: false };
   }
-  await prisma.userRecipeFavourite.create({ data: { userId, recipeId } } as any);
+
+  await db.insert(userRecipeFavourites).values({ userId, recipeId });
   return { favourited: true };
 }
 
 export async function toggleFeature(id: string) {
-  const recipe = await prisma.recipe.findUnique({ where: { id } } as any);
-  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
-  await prisma.recipe.update({
-    where: { id },
-    data: { featured: !recipe.featured },
-  } as any);
-  return { featured: !recipe.featured };
+  const recipe = await db.select().from(recipes).where(eq(recipes.id, id)).limit(1);
+  if (!recipe[0]) throw new Error('RECIPE_NOT_FOUND');
+  const newFeatured = !recipe[0].featured;
+  await db.update(recipes).set({ featured: newFeatured }).where(eq(recipes.id, id));
+  return { featured: newFeatured };
 }
 
 export async function getFeed(authorIds: string[], page: number, perPage: number) {
-  return findMany(
-    {
-      authorId: { in: authorIds },
-      visibility: 'public',
-    },
-    page,
-    perPage,
-    'createdAt',
-    'desc',
+  const where = and(
+    inArray(recipes.authorId, authorIds),
+    eq(recipes.visibility, 'public'),
   );
+  return findMany(where, page, perPage, 'createdAt', 'desc');
 }

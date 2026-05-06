@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         run: deno install
 
-      - name: Generate Prisma clients
+      - name: Generate Drizzle migration
         run: deno task db:generate
 
       - name: Build email templates
@@ -71,7 +71,7 @@ jobs:
       - name: Install dependencies
         run: deno install
 
-      - name: Generate Prisma clients
+      - name: Generate Drizzle migration
         run: deno task db:generate
 
       - name: Build email templates
@@ -81,7 +81,7 @@ jobs:
         run: deno task db:migrate
 
       - name: Seed database
-        run: deno run --allow-all packages/db/prisma/seed.ts
+        run: deno run --allow-all packages/db/src/seed.ts
 
       - name: Run tests with coverage
         run: |

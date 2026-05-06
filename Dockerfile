@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y curl && \
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
-RUN deno run -A npm:prisma@^6.19.3 generate --schema=packages/db/prisma/schema.prisma
+RUN deno run -A npm:drizzle-kit@latest generate --config=packages/db/drizzle.config.ts
 RUN deno check --unstable-sloppy-imports apps/api/src/main.ts
 
 # --- Stage 3: Runtime (API only) ---

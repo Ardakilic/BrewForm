@@ -3,7 +3,7 @@
 This document is the reference for _how_ the system is structured. Two companion docs cover the
 _why_ and the _flow_:
 
-- [`decisions.md`](decisions.md) — architectural decision records (Hono, JWT, Prisma, Deno KV,
+- [`decisions.md`](decisions.md) — architectural decision records (Hono, JWT, Drizzle ORM, Deno KV,
   module pattern, etc.)
 - [`request-lifecycle.md`](request-lifecycle.md) — end-to-end trace of a request from the edge to
   the response, including middleware order, validation, error path, and side-effect path
@@ -12,12 +12,12 @@ _why_ and the _flow_:
 
 BrewForm uses a Turborepo monorepo with npm workspaces. Four packages:
 
-| Package           | Purpose                                      | Runtime                |
-| ----------------- | -------------------------------------------- | ---------------------- |
-| `apps/api`        | Hono backend API                             | Deno Deploy            |
-| `apps/web`        | React SPA frontend                           | Browser (GitHub Pages) |
-| `packages/shared` | Types, Zod schemas, constants, utils, i18n   | Shared (api + web)     |
-| `packages/db`     | Prisma schema, migrations, seed data, client | Server (api only)      |
+| Package           | Purpose                                       | Runtime                |
+| ----------------- | --------------------------------------------- | ---------------------- |
+| `apps/api`        | Hono backend API                              | Deno Deploy            |
+| `apps/web`        | React SPA frontend                            | Browser (GitHub Pages) |
+| `packages/shared` | Types, Zod schemas, constants, utils, i18n    | Shared (api + web)     |
+| `packages/db`     | Drizzle schema, migrations, seed data, client | Server (api only)      |
 
 ### Dependency Graph
 
@@ -34,7 +34,7 @@ The frontend **never** imports from `@brewform/db`. All type sharing happens thr
 ### Package Identifiers
 
 - `@brewform/shared` — types, schemas, constants, utils, i18n
-- `@brewform/db` — Prisma client, schema, migrations
+- `@brewform/db` — Drizzle client, schema, migrations
 
 Both are configured as npm workspace packages in the root `package.json` using `*` protocol (not
 `workspace:*`).
@@ -46,16 +46,15 @@ Each API domain module follows a strict 3-layer pattern:
 ```
 modules/
   recipe/
-    model.ts      ← Prisma wrapper (raw data access, as any casts)
+    model.ts      ← Drizzle query builder (raw data access, typed selects/inserts)
     service.ts    ← Business logic (validation, authorization, orchestration)
     index.ts      ← Controller (Hono routes, Zod validation, response formatting)
 ```
 
 **Key rules:**
 
-- **Services never import from `@prisma/client`** — they import from model files
-- **Models use `as any` type assertions** for Prisma query options (generated types may lag behind
-  schema changes)
+- **Services never import from `drizzle-orm`** directly — they import from model files
+- **Models use Drizzle relational queries and typed builders** for all database access
 - **Controllers validate with shared Zod schemas** — `@brewform/shared/schemas`
 - **File-level lint suppressions**: modules use
   `// deno-lint-ignore-file no-explicit-any require-await`
@@ -111,19 +110,19 @@ like "extraction time seems short for espresso" are computed separately.
 
 BrewForm maintains database portability:
 
-- **No raw SQL** — all queries via Prisma Client
-- **No `@db.JsonB`, `@db.Uuid`** — all structured data is relational, all IDs are `@default(uuid())`
-  strings
+- **No raw SQL** — all queries via Drizzle ORM
+- **No JSONB/UUID columns** — all structured data is relational, all IDs are
+  `$defaultFn(() => crypto.randomUUID())` strings
 - **No Postgres-specific query operators** — no `mode: 'insensitive'`, etc.
 - **All filterable fields reference normalized entities or enums**
-- **Services import from model files**, never from `@prisma/client`
+- **Services import from model files**, never from `drizzle-orm` directly
 - **Postgres-specific features** are isolated with `// POSTGRES-SPECIFIC` comments if unavoidable
 
 ## Database
 
 ### Schema Overview
 
-24 models and 12 enums in a single Prisma schema:
+24 tables and 12 enums in a single Drizzle schema:
 
 - **Core**: User, UserPreferences, Recipe, RecipeVersion
 - **Recipe parts**: RecipeTasteNote, RecipeEquipment, RecipeAdditionalPreparation
@@ -135,17 +134,19 @@ BrewForm maintains database portability:
 
 ### Soft Deletes
 
-All main entities have a `deletedAt DateTime?` field. Queries use
-`findFirst({ where: { deletedAt: null } })` instead of `findUnique` for soft-delete filtering, since
-`deletedAt` is not a unique constraint.
+All main entities have a `deletedAt timestamp with time zone` field. Queries use
+`findFirst({ where: eq(table.deletedAt, null) })` instead of `findUnique` for soft-delete filtering,
+since `deletedAt` is not a unique constraint.
 
 ### Connection Pooling
 
-Configured via `DATABASE_URL` parameters:
+Configured via `DATABASE_URL` and `postgres-js` options:
 
 ```
-DATABASE_URL=postgresql://user:pass@host:5432/brewform?connection_limit=10&pool_timeout=30
+DATABASE_URL=postgresql://user:pass@host:5432/brewform
 ```
+
+Connection pooling is handled by the `postgres-js` driver (`max: 10` in `packages/db/src/index.ts`).
 
 ## Middleware Stack
 
@@ -208,7 +209,7 @@ The server handles SIGTERM and SIGINT by:
 1. Stopping background jobs
 2. Shutting down the HTTP server
 3. Closing Deno KV connection
-4. Disconnecting Prisma client
+4. Closing postgres-js client (`client.end()`)
 5. Calling `Deno.exit(0)`
 
 ## Testing

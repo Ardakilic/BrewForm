@@ -1,62 +1,63 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { tasteNotes } from '@brewform/db/schema';
+import { and, asc, eq, isNull, like } from 'drizzle-orm';
 
 export async function findAll() {
-  return prisma.tasteNote.findMany({
-    where: {},
-    orderBy: [{ depth: 'asc' }, { name: 'asc' }],
-  });
+  return db.select().from(tasteNotes).orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
 }
 
 export async function findChildren(parentId: string) {
-  return prisma.tasteNote.findMany({
-    where: { parentId },
-    orderBy: { name: 'asc' },
-  });
+  return db.select().from(tasteNotes).where(eq(tasteNotes.parentId, parentId)).orderBy(
+    asc(tasteNotes.name),
+  );
 }
 
 export async function searchByName(query: string) {
-  return prisma.tasteNote.findMany({
-    where: {
-      name: { contains: query },
-    },
-    orderBy: [{ depth: 'asc' }, { name: 'asc' }],
-    take: 50,
-  });
+  return db.select().from(tasteNotes)
+    .where(like(tasteNotes.name, `%${query}%`))
+    .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name))
+    .limit(50);
 }
 
 export async function getHierarchy() {
-  return prisma.tasteNote.findMany({
-    where: { parentId: null, depth: 0 },
-    include: {
-      children: {
-        include: {
-          children: true,
-        },
-        orderBy: { name: 'asc' },
-      },
-    },
-    orderBy: { name: 'asc' },
-  });
+  const roots = await db.select().from(tasteNotes)
+    .where(and(isNull(tasteNotes.parentId), eq(tasteNotes.depth, 0)))
+    .orderBy(asc(tasteNotes.name));
+
+  const result = [];
+  for (const root of roots) {
+    const children = await db.select().from(tasteNotes)
+      .where(eq(tasteNotes.parentId, root.id))
+      .orderBy(asc(tasteNotes.name));
+
+    const childrenWithGrandchildren = [];
+    for (const child of children) {
+      const grandchildren = await db.select().from(tasteNotes)
+        .where(eq(tasteNotes.parentId, child.id))
+        .orderBy(asc(tasteNotes.name));
+      childrenWithGrandchildren.push({ ...child, children: grandchildren });
+    }
+    result.push({ ...root, children: childrenWithGrandchildren });
+  }
+  return result;
 }
 
 export async function findById(id: string) {
-  return prisma.tasteNote.findUnique({ where: { id } });
+  const result = await db.select().from(tasteNotes).where(eq(tasteNotes.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
-export async function create(
-  data: { name: string; parentId?: string; color?: string; definition?: string; depth: number },
-) {
-  return prisma.tasteNote.create({ data });
+export async function create(data: typeof tasteNotes.$inferInsert) {
+  const [result] = await db.insert(tasteNotes).values(data).returning();
+  return result;
 }
 
-export async function update(
-  id: string,
-  data: { name?: string; color?: string; definition?: string },
-) {
-  return prisma.tasteNote.update({ where: { id }, data });
+export async function update(id: string, data: Partial<typeof tasteNotes.$inferInsert>) {
+  const [result] = await db.update(tasteNotes).set(data).where(eq(tasteNotes.id, id)).returning();
+  return result ?? null;
 }
 
 export async function remove(id: string) {
-  return prisma.tasteNote.delete({ where: { id } });
+  const [result] = await db.delete(tasteNotes).where(eq(tasteNotes.id, id)).returning();
+  return result ?? null;
 }

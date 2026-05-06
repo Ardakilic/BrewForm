@@ -1,73 +1,88 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { userFollows, users } from '@brewform/db/schema';
+import { and, count, desc, eq } from 'drizzle-orm';
 
 export async function findFollow(followerId: string, followingId: string) {
-  return prisma.userFollow.findUnique({
-    where: { followerId_followingId: { followerId, followingId } } as any,
-  });
+  const result = await db.select().from(userFollows)
+    .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)))
+    .limit(1);
+  return result[0] ?? null;
 }
 
 export async function createFollow(followerId: string, followingId: string) {
-  return prisma.userFollow.create({
-    data: { followerId, followingId },
-  } as any);
+  const [result] = await db.insert(userFollows).values({ followerId, followingId }).returning();
+  return result;
 }
 
 export async function deleteFollow(followerId: string, followingId: string) {
-  const follow = await prisma.userFollow.findFirst({
-    where: { followerId, followingId },
-  } as any);
+  const follow = await findFollow(followerId, followingId);
   if (!follow) throw new Error('FOLLOW_NOT_FOUND');
-  await prisma.userFollow.delete({ where: { id: follow.id } } as any);
+  await db.delete(userFollows).where(eq(userFollows.id, follow.id));
 }
 
 export async function getFollowers(userId: string, page: number, perPage: number) {
-  const [followers, total] = await Promise.all([
-    prisma.userFollow.findMany({
-      where: { followingId: userId },
-      skip: (page - 1) * perPage,
-      take: perPage,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        follower: {
-          select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true },
-        },
+  const where = eq(userFollows.followingId, userId);
+  const [data, totalResult] = await Promise.all([
+    db.select({
+      id: userFollows.id,
+      followerId: userFollows.followerId,
+      followingId: userFollows.followingId,
+      createdAt: userFollows.createdAt,
+      follower: {
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+        bio: users.bio,
       },
-    }) as any,
-    prisma.userFollow.count({ where: { followingId: userId } }),
+    })
+      .from(userFollows)
+      .leftJoin(users, eq(userFollows.followerId, users.id))
+      .where(where)
+      .orderBy(desc(userFollows.createdAt))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
+    db.select({ count: count() }).from(userFollows).where(where),
   ]);
-  return { followers, total };
+  return { followers: data, total: totalResult[0].count };
 }
 
 export async function getFollowing(userId: string, page: number, perPage: number) {
-  const [following, total] = await Promise.all([
-    prisma.userFollow.findMany({
-      where: { followerId: userId },
-      skip: (page - 1) * perPage,
-      take: perPage,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        following: {
-          select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true },
-        },
+  const where = eq(userFollows.followerId, userId);
+  const [data, totalResult] = await Promise.all([
+    db.select({
+      id: userFollows.id,
+      followerId: userFollows.followerId,
+      followingId: userFollows.followingId,
+      createdAt: userFollows.createdAt,
+      following: {
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+        bio: users.bio,
       },
-    }) as any,
-    prisma.userFollow.count({ where: { followerId: userId } }),
+    })
+      .from(userFollows)
+      .leftJoin(users, eq(userFollows.followingId, users.id))
+      .where(where)
+      .orderBy(desc(userFollows.createdAt))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
+    db.select({ count: count() }).from(userFollows).where(where),
   ]);
-  return { following, total };
+  return { following: data, total: totalResult[0].count };
 }
 
 export async function getFollowingIds(userId: string) {
-  const follows = await prisma.userFollow.findMany({
-    where: { followerId: userId },
-    select: { followingId: true },
-  } as any);
-  return follows.map((f: any) => f.followingId);
+  const follows = await db.select({ followingId: userFollows.followingId }).from(userFollows).where(
+    eq(userFollows.followerId, userId),
+  );
+  return follows.map((f) => f.followingId);
 }
 
 export async function isFollowing(followerId: string, followingId: string) {
-  const count = await prisma.userFollow.count({
-    where: { followerId, followingId },
-  } as any);
-  return count > 0;
+  const result = await db.select({ count: count() }).from(userFollows)
+    .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)));
+  return result[0].count > 0;
 }

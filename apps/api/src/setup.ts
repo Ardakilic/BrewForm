@@ -1,5 +1,6 @@
-// deno-lint-ignore-file no-explicit-any
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { userPreferences, users } from '@brewform/db/schema';
+import { count } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 const { hashSync } = bcrypt;
 
@@ -7,13 +8,13 @@ async function main() {
   console.log('BrewForm Admin Setup');
   console.log('====================');
 
-  const adminCount = await prisma.user.count({
-    where: { isAdmin: true } as any,
-  });
+  const adminCountResult = await db.select({ count: count() }).from(users).where(
+    eq(users.isAdmin, true),
+  );
+  const adminCount = adminCountResult[0].count;
 
   if (adminCount > 0) {
     console.log(`Admin users already exist (${adminCount} found). Skipping setup.`);
-    await prisma.$disconnect();
     return;
   }
 
@@ -32,22 +33,18 @@ async function main() {
 
   const passwordHash = hashSync(password, 10);
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      username,
-      passwordHash,
-      isAdmin: true,
-      isBanned: false,
-      onboardingCompleted: true,
-      preferences: {
-        create: {},
-      },
-    } as any,
-  });
+  const [user] = await db.insert(users).values({
+    email,
+    username,
+    passwordHash,
+    isAdmin: true,
+    isBanned: false,
+    onboardingCompleted: true,
+  }).returning();
+
+  await db.insert(userPreferences).values({ userId: user.id });
 
   console.log(`Admin user created: ${user.id}`);
-  await prisma.$disconnect();
 }
 
 main().catch((err) => {

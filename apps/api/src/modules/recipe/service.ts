@@ -1,7 +1,15 @@
-// deno-lint-ignore-file no-explicit-any require-await
-// deno-lint-ignore no-explicit-any
 import * as model from './model.ts';
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import {
+  recipeAdditionalPreparations,
+  recipeEquipment,
+  recipes,
+  recipeTasteNotes,
+  recipeVersions,
+  setups,
+  users,
+} from '@brewform/db/schema';
+import { and, eq, inArray, isNull, like, or } from 'drizzle-orm';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import { createLogger } from '../../utils/logger/index.ts';
@@ -31,14 +39,13 @@ export async function getRecipe(slugOrId: string) {
 export async function createRecipe(authorId: string, data: any) {
   const slug = await generateUniqueSlug(data.title);
 
-  // If setupId is provided, auto-fill grinder and brewerDetails from the setup
-  // unless the user has explicitly provided their own values.
   let grinder = data.grinder;
   let brewerDetails = data.brewerDetails;
   if (data.setupId) {
-    const setup: any = await prisma.setup.findUnique({
-      where: { id: data.setupId, deletedAt: null },
-    } as any);
+    const setupResult = await db.select().from(setups)
+      .where(and(eq(setups.id, data.setupId), isNull(setups.deletedAt)))
+      .limit(1);
+    const setup = setupResult[0];
     if (setup) {
       if (!grinder) grinder = setup.grinder;
       if (!brewerDetails) brewerDetails = setup.brewerDetails;
@@ -52,72 +59,79 @@ export async function createRecipe(authorId: string, data: any) {
     ? computeFlowRate(data.extractionVolumeMl, data.extractionTimeSeconds)
     : null;
 
-  const recipe: any = await model.create({
-    slug,
-    title: data.title,
-    authorId,
-    visibility: data.visibility || 'draft',
-    currentVersionId: '',
-    versions: {
-      create: {
-        versionNumber: 1,
-        productName: data.productName,
-        coffeeBrand: data.coffeeBrand,
-        coffeeProcessing: data.coffeeProcessing,
-        vendorId: data.vendorId,
-        roastDate: data.roastDate ? new Date(data.roastDate) : null,
-        packageOpenDate: data.packageOpenDate ? new Date(data.packageOpenDate) : null,
-        grindDate: data.grindDate ? new Date(data.grindDate) : null,
-        brewDate: data.brewDate ? new Date(data.brewDate) : new Date(),
-        brewMethod: data.brewMethod,
-        drinkType: data.drinkType,
-        brewerDetails,
-        grinder,
-        grindSize: data.grindSize,
-        groundWeightGrams: data.groundWeightGrams,
-        extractionTimeSeconds: data.extractionTimeSeconds,
-        extractionVolumeMl: data.extractionVolumeMl,
-        temperatureCelsius: data.temperatureCelsius,
-        brewRatio,
-        flowRate,
-        personalNotes: data.personalNotes,
-        isFavourite: data.isFavourite || false,
-        rating: data.rating,
-        emojiTag: data.emojiTag,
-        tasteNotes: data.tasteNoteIds
-          ? {
-            create: data.tasteNoteIds.map((id: string) => ({ tasteNoteId: id })),
-          }
-          : undefined,
-        equipment: data.equipmentIds
-          ? {
-            create: data.equipmentIds.map((id: string) => ({ equipmentId: id })),
-          }
-          : undefined,
-        additionalPreparations: data.additionalPreparations
-          ? {
-            create: data.additionalPreparations.map((p: any, i: number) => ({
-              name: p.name,
-              type: p.type,
-              inputAmount: p.inputAmount,
-              preparationType: p.preparationType,
-              sortOrder: i,
-            })),
-          }
-          : undefined,
-      },
-    },
+  const recipe: any = await db.transaction(async (tx) => {
+    const [r] = await tx.insert(recipes).values({
+      slug,
+      title: data.title,
+      authorId,
+      visibility: data.visibility || 'draft',
+      currentVersionId: '',
+    }).returning();
+
+    const [version] = await tx.insert(recipeVersions).values({
+      recipeId: r.id,
+      versionNumber: 1,
+      productName: data.productName,
+      coffeeBrand: data.coffeeBrand,
+      coffeeProcessing: data.coffeeProcessing,
+      vendorId: data.vendorId,
+      roastDate: data.roastDate ? new Date(data.roastDate) : null,
+      packageOpenDate: data.packageOpenDate ? new Date(data.packageOpenDate) : null,
+      grindDate: data.grindDate ? new Date(data.grindDate) : null,
+      brewDate: data.brewDate ? new Date(data.brewDate) : new Date(),
+      brewMethod: data.brewMethod,
+      drinkType: data.drinkType,
+      brewerDetails,
+      grinder,
+      grindSize: data.grindSize,
+      groundWeightGrams: data.groundWeightGrams,
+      extractionTimeSeconds: data.extractionTimeSeconds,
+      extractionVolumeMl: data.extractionVolumeMl,
+      temperatureCelsius: data.temperatureCelsius,
+      brewRatio,
+      flowRate,
+      personalNotes: data.personalNotes,
+      isFavourite: data.isFavourite || false,
+      rating: data.rating,
+      emojiTag: data.emojiTag,
+    }).returning();
+
+    if (data.tasteNoteIds?.length) {
+      await tx.insert(recipeTasteNotes).values(
+        data.tasteNoteIds.map((id: string) => ({ recipeVersionId: version.id, tasteNoteId: id })),
+      );
+    }
+
+    if (data.equipmentIds?.length) {
+      await tx.insert(recipeEquipment).values(
+        data.equipmentIds.map((id: string) => ({ recipeVersionId: version.id, equipmentId: id })),
+      );
+    }
+
+    if (data.additionalPreparations?.length) {
+      await tx.insert(recipeAdditionalPreparations).values(
+        data.additionalPreparations.map((p: any, i: number) => ({
+          recipeVersionId: version.id,
+          name: p.name,
+          type: p.type,
+          inputAmount: p.inputAmount,
+          preparationType: p.preparationType,
+          sortOrder: i,
+        })),
+      );
+    }
+
+    await tx.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, r.id));
+
+    return { ...r, versions: [version] };
   });
 
-  await model.update(recipe.id, { currentVersionId: recipe.versions[0].id });
   const finalRecipe: any = await model.findById(recipe.id);
 
-  // Fan out to followers when the recipe is published as public.
   if (finalRecipe?.visibility === 'public') {
     (async () => {
-      const author: any = await prisma.user.findFirst({
-        where: { id: authorId } as any,
-      });
+      const authorResult = await db.select().from(users).where(eq(users.id, authorId)).limit(1);
+      const author = authorResult[0];
       if (!author?.username) return;
       await notifyFollowersOfNewRecipe({
         authorId,
@@ -128,7 +142,6 @@ export async function createRecipe(authorId: string, data: any) {
     })().catch((err) => logger.error({ err }, 'notifyFollowersOfNewRecipe failed'));
   }
 
-  // Fire-and-forget badge evaluation so errors never block the response.
   evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
   return finalRecipe;
@@ -221,23 +234,56 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
 
   const forked = await model.forkRecipe(sourceId, authorId, forkTitle, uniqueSlug);
 
-  // Fire-and-forget badge evaluation so errors never block the response.
   evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
   return forked;
 }
 
 export async function listRecipes(filters: any, page: number, perPage: number) {
-  const where: any = { visibility: 'public' };
-  if (filters.authorId) where.authorId = filters.authorId;
-  if (filters.brewMethod) where.versions = { some: { brewMethod: filters.brewMethod } };
-  if (filters.drinkType) where.versions = { some: { drinkType: filters.drinkType } };
-  if (filters.search) {
-    where.OR = [
-      { title: { contains: filters.search } },
-      { versions: { some: { productName: { contains: filters.search } } } },
-    ];
+  const conditions: any[] = [eq(recipes.visibility, 'public')];
+
+  if (filters.authorId) {
+    conditions.push(eq(recipes.authorId, filters.authorId));
   }
+
+  if (filters.brewMethod) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.brewMethod, filters.brewMethod),
+        ),
+      ),
+    );
+  }
+
+  if (filters.drinkType) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.drinkType, filters.drinkType),
+        ),
+      ),
+    );
+  }
+
+  if (filters.search) {
+    const searchTerm = `%${filters.search}%`;
+    conditions.push(
+      or(
+        like(recipes.title, searchTerm),
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+            like(recipeVersions.productName, searchTerm),
+          ),
+        ),
+      ),
+    );
+  }
+
+  const where = conditions.length > 1 ? and(...conditions) : conditions[0];
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
   return model.findMany(where, page, perPage, sortBy, sortOrder);
@@ -248,12 +294,10 @@ export async function toggleLike(userId: string, recipeId: string) {
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   const result = await model.toggleLike(userId, recipeId);
 
-  // Notify the author only on a new like (not on un-like) and not on self-likes.
   if (result.liked && recipe.authorId !== userId) {
     (async () => {
-      const liker: any = await prisma.user.findFirst({
-        where: { id: userId } as any,
-      });
+      const likerResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const liker = likerResult[0];
       if (!liker?.username) return;
       await notifyRecipeLiked({
         recipeAuthorId: recipe.authorId,
@@ -280,7 +324,6 @@ export async function toggleFeature(recipeId: string, authorId: string) {
   return model.toggleFeature(recipeId);
 }
 
-// deno-lint-ignore no-explicit-any
 export async function getRecipeMeta(slug: string) {
   const recipe: any = await model.findBySlug(slug);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');

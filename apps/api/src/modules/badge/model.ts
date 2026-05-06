@@ -1,48 +1,85 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import {
+  badges,
+  comments,
+  recipes,
+  recipeVersions,
+  userBadges,
+  userFollows,
+} from '@brewform/db/schema';
+import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm';
 
 export async function listBadges() {
-  return prisma.badge.findMany({ orderBy: { threshold: 'asc' } });
+  return db.select().from(badges).orderBy(asc(badges.threshold));
 }
 
 export async function getUserBadges(userId: string) {
-  return prisma.userBadge.findMany({
-    where: { userId },
-    include: { badge: true },
-    orderBy: { awardedAt: 'desc' },
-  } as any);
+  return db.select({
+    id: userBadges.id,
+    userId: userBadges.userId,
+    badgeId: userBadges.badgeId,
+    awardedAt: userBadges.awardedAt,
+    badge: {
+      id: badges.id,
+      name: badges.name,
+      icon: badges.icon,
+      description: badges.description,
+      rule: badges.rule,
+      threshold: badges.threshold,
+    },
+  })
+    .from(userBadges)
+    .leftJoin(badges, eq(userBadges.badgeId, badges.id))
+    .where(eq(userBadges.userId, userId))
+    .orderBy(desc(userBadges.awardedAt));
 }
 
 export async function evaluateBadges(userId: string) {
-  const userRecipes = await prisma.recipe.count({ where: { authorId: userId, deletedAt: null } });
-  const userComments = await prisma.comment.count({ where: { authorId: userId, deletedAt: null } });
-  const userForks = await prisma.recipe.count({
-    where: { authorId: userId, forkedFromId: { not: null }, deletedAt: null } as any,
-  });
-  const userFollowers = await prisma.userFollow.count({ where: { followingId: userId } });
-  const userRecipesWithLikes = await prisma.recipe.findMany({ where: { authorId: userId } });
-  const maxLikes = Math.max(...userRecipesWithLikes.map((r: any) => r.likeCount), 0);
+  const userRecipesResult = await db.select({ count: count() }).from(recipes)
+    .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
+  const userRecipes = userRecipesResult[0].count;
 
-  const distinctMethods = await prisma.recipeVersion.findMany({
-    where: { recipe: { authorId: userId, deletedAt: null } },
-    select: { brewMethod: true },
-    distinct: ['brewMethod'],
-  } as any);
+  const userCommentsResult = await db.select({ count: count() }).from(comments)
+    .where(and(eq(comments.authorId, userId), isNull(comments.deletedAt)));
+  const userComments = userCommentsResult[0].count;
 
-  const userVersions = await prisma.recipeVersion.findMany({
-    where: { recipe: { authorId: userId, deletedAt: null } },
-    select: {
-      groundWeightGrams: true,
-      extractionTimeSeconds: true,
-      extractionVolumeMl: true,
-      temperatureCelsius: true,
-      brewRatio: true,
-      flowRate: true,
-    },
-  } as any);
+  const userForksResult = await db.select({ count: count() }).from(recipes)
+    .where(
+      and(
+        eq(recipes.authorId, userId),
+        isNull(recipes.deletedAt),
+        sql`${recipes.forkedFromId} is not null`,
+      ),
+    );
+  const userForks = userForksResult[0].count;
+
+  const userFollowersResult = await db.select({ count: count() }).from(userFollows)
+    .where(eq(userFollows.followingId, userId));
+  const userFollowers = userFollowersResult[0].count;
+
+  const userRecipesWithLikes = await db.select().from(recipes).where(eq(recipes.authorId, userId));
+  const maxLikes = Math.max(...userRecipesWithLikes.map((r) => r.likeCount), 0);
+
+  const distinctMethodsResult = await db.selectDistinct({ brewMethod: recipeVersions.brewMethod })
+    .from(recipeVersions)
+    .innerJoin(recipes, eq(recipeVersions.recipeId, recipes.id))
+    .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
+  const distinctMethods = distinctMethodsResult;
+
+  const userVersions = await db.select({
+    groundWeightGrams: recipeVersions.groundWeightGrams,
+    extractionTimeSeconds: recipeVersions.extractionTimeSeconds,
+    extractionVolumeMl: recipeVersions.extractionVolumeMl,
+    temperatureCelsius: recipeVersions.temperatureCelsius,
+    brewRatio: recipeVersions.brewRatio,
+    flowRate: recipeVersions.flowRate,
+  })
+    .from(recipeVersions)
+    .innerJoin(recipes, eq(recipeVersions.recipeId, recipes.id))
+    .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
 
   const precisionBrewerMet = userVersions.length >= 1 &&
-    userVersions.every((v: any) =>
+    userVersions.every((v) =>
       v.groundWeightGrams !== null &&
       v.extractionTimeSeconds !== null &&
       v.extractionVolumeMl !== null &&
@@ -66,13 +103,16 @@ export async function evaluateBadges(userId: string) {
 
   for (const check of checks) {
     if (check.met) {
-      const badge = await prisma.badge.findUnique({ where: { rule: check.rule as any } });
-      if (badge) {
-        await prisma.userBadge.upsert({
-          where: { userId_badgeId: { userId, badgeId: badge.id } },
-          create: { userId, badgeId: badge.id },
-          update: {},
-        } as any);
+      const badgeResult = await db.select().from(badges).where(eq(badges.rule, check.rule as any))
+        .limit(1);
+      if (badgeResult.length > 0) {
+        const badge = badgeResult[0];
+        const existing = await db.select().from(userBadges)
+          .where(and(eq(userBadges.userId, userId), eq(userBadges.badgeId, badge.id)))
+          .limit(1);
+        if (existing.length === 0) {
+          await db.insert(userBadges).values({ userId, badgeId: badge.id });
+        }
       }
     }
   }

@@ -1,58 +1,106 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { comments, recipes, users } from '@brewform/db/schema';
+import { and, asc, count, desc, eq, isNull } from 'drizzle-orm';
 
 export async function findById(id: string) {
-  return prisma.comment.findFirst({
-    where: { id, deletedAt: null },
-    include: {
-      author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+  const result = await db.select({
+    id: comments.id,
+    recipeId: comments.recipeId,
+    authorId: comments.authorId,
+    content: comments.content,
+    parentCommentId: comments.parentCommentId,
+    createdAt: comments.createdAt,
+    updatedAt: comments.updatedAt,
+    deletedAt: comments.deletedAt,
+    author: {
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
     },
-  } as any);
+  })
+    .from(comments)
+    .leftJoin(users, eq(comments.authorId, users.id))
+    .where(and(eq(comments.id, id), isNull(comments.deletedAt)))
+    .limit(1);
+  return result[0] ?? null;
 }
 
 export async function findByRecipe(recipeId: string, page: number, perPage: number) {
-  const [comments, total] = await Promise.all([
-    prisma.comment.findMany({
-      where: { recipeId, deletedAt: null, parentCommentId: null },
-      skip: (page - 1) * perPage,
-      take: perPage,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        replies: {
-          where: { deletedAt: null },
-          orderBy: { createdAt: 'asc' },
-          include: {
-            author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-          },
-        },
+  const where = and(
+    eq(comments.recipeId, recipeId),
+    isNull(comments.deletedAt),
+    isNull(comments.parentCommentId),
+  );
+  const [data, totalResult] = await Promise.all([
+    db.select({
+      id: comments.id,
+      recipeId: comments.recipeId,
+      authorId: comments.authorId,
+      content: comments.content,
+      parentCommentId: comments.parentCommentId,
+      createdAt: comments.createdAt,
+      updatedAt: comments.updatedAt,
+      deletedAt: comments.deletedAt,
+      author: {
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
       },
-    } as any),
-    prisma.comment.count({ where: { recipeId, deletedAt: null, parentCommentId: null } }),
+    })
+      .from(comments)
+      .leftJoin(users, eq(comments.authorId, users.id))
+      .where(where)
+      .orderBy(desc(comments.createdAt))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
+    db.select({ count: count() }).from(comments).where(where),
   ]);
-  return { comments, total };
+
+  const commentsWithReplies = [];
+  for (const comment of data) {
+    const replies = await db.select({
+      id: comments.id,
+      recipeId: comments.recipeId,
+      authorId: comments.authorId,
+      content: comments.content,
+      parentCommentId: comments.parentCommentId,
+      createdAt: comments.createdAt,
+      updatedAt: comments.updatedAt,
+      deletedAt: comments.deletedAt,
+      author: {
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+      },
+    })
+      .from(comments)
+      .leftJoin(users, eq(comments.authorId, users.id))
+      .where(and(eq(comments.parentCommentId, comment.id), isNull(comments.deletedAt)))
+      .orderBy(asc(comments.createdAt));
+    commentsWithReplies.push({ ...comment, replies });
+  }
+
+  return { comments: commentsWithReplies, total: totalResult[0].count };
 }
 
-export async function create(data: any) {
-  return prisma.comment.create({
-    data,
-    include: {
-      author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-    },
-  } as any);
+export async function create(data: typeof comments.$inferInsert) {
+  const [result] = await db.insert(comments).values(data).returning();
+  return result;
 }
 
 export async function softDelete(id: string) {
-  return prisma.comment.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  } as any);
+  const [result] = await db.update(comments).set({ deletedAt: new Date() }).where(
+    eq(comments.id, id),
+  ).returning();
+  return result ?? null;
 }
 
 export async function getRecipeAuthorId(recipeId: string) {
-  const recipe = await prisma.recipe.findUnique({
-    where: { id: recipeId },
-    select: { authorId: true },
-  });
-  return recipe?.authorId;
+  const result = await db.select({ authorId: recipes.authorId }).from(recipes).where(
+    eq(recipes.id, recipeId),
+  ).limit(1);
+  return result[0]?.authorId ?? null;
 }

@@ -5,18 +5,22 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./schema": {
+      "types": "./src/schema.ts",
+      "default": "./src/schema.ts"
     }
   },
   "dependencies": {
     "@brewform/shared": "workspace:*",
-    "@prisma/client": "^6.19.3",
-    "@prisma/extension-accelerate": "^1.3.0"
+    "drizzle-orm": "^0.42.0",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
-    "prisma": "^6.19.3"
+    "drizzle-kit": "^0.31.0"
   },
   "scripts": {
-    "build": "echo 'DB package uses Prisma generate'",
+    "build": "echo 'DB package uses Drizzle ORM'",
     "lint": "deno lint src/",
     "check": "deno check src/index.ts",
     "test": "deno test src/"

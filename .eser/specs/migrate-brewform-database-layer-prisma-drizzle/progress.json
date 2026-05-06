@@ -1,0 +1,29 @@
+{
+  "spec": "migrate-brewform-database-layer-prisma-drizzle",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Seamless migration where all 24 models, 12 enums, 40+ indexes, relations, and seed data are preserved. API contract unchanged. Type-check...",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "1) Static: deno check passes on apps/api/src/main.ts and apps/web/src/main.tsx. deno lint and deno fmt --check pass. Zero @prisma/client imports remain. 2) DB: drizzle-kit generate produces valid SQL. Migration applies cleanly to fresh PostgreSQL. Seed script runs without errors. All 24 tables have correct row counts. 3) Functional: GET /health and /ready return correctly. Register, login, create recipe, fork, like, comment, follow, badge evaluation, admin stats all work. 4) Tests: All existing test suites pass (they mock DB layer or test logic, so minimal changes needed). 5) Deployment docs updated.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "done"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-06T15:26:08.374Z"
+}

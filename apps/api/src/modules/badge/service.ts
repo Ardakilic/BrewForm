@@ -1,4 +1,7 @@
 import * as model from './model.ts';
+import { db } from '@brewform/db';
+import { users } from '@brewform/db/schema';
+import { and, asc, gt, isNull } from 'drizzle-orm';
 import { createLogger } from '../../utils/logger/index.ts';
 
 const logger = createLogger('badge-service');
@@ -16,25 +19,21 @@ export async function evaluateBadges(userId: string) {
 }
 
 export async function evaluateAllBadges() {
-  const { prisma } = await import('@brewform/db');
   const BATCH_SIZE = 100;
-  let cursor: { id: string } | undefined;
+  let lastId: string | undefined;
 
   while (true) {
-    const users = await prisma.user.findMany({
-      where: { deletedAt: null },
-      select: { id: true },
-      orderBy: { id: 'asc' },
-      take: BATCH_SIZE,
-      skip: cursor ? 1 : undefined,
-      cursor,
-    });
+    const userBatch = await db.select({ id: users.id })
+      .from(users)
+      .where(lastId ? and(isNull(users.deletedAt), gt(users.id, lastId)) : isNull(users.deletedAt))
+      .orderBy(asc(users.id))
+      .limit(BATCH_SIZE);
 
-    if (users.length === 0) {
+    if (userBatch.length === 0) {
       break;
     }
 
-    for (const user of users) {
+    for (const user of userBatch) {
       try {
         await model.evaluateBadges(user.id);
       } catch (err) {
@@ -42,6 +41,6 @@ export async function evaluateAllBadges() {
       }
     }
 
-    cursor = { id: users[users.length - 1].id };
+    lastId = userBatch[userBatch.length - 1].id;
   }
 }

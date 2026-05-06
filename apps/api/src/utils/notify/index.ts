@@ -11,8 +11,9 @@
  * email failures must never block the social action that triggered them.
  * Use `notifyXxx(...).catch(...)` at the call site.
  */
-// deno-lint-ignore-file no-explicit-any
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { userFollows, userPreferences, users } from '@brewform/db/schema';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import nodemailer from 'npm:nodemailer@^7.0.0';
 import { config } from '../../config/index.ts';
 import { createLogger } from '../logger/index.ts';
@@ -73,12 +74,16 @@ export function appBaseUrl(): string {
 async function loadRecipient(userId: string): Promise<
   { email: string; username: string; prefs: any } | null
 > {
-  const user: any = await prisma.user.findFirst({
-    where: { id: userId, deletedAt: null },
-    include: { preferences: true },
-  } as any);
+  const result = await db.select()
+    .from(users)
+    .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+    .limit(1);
+  if (!result[0]) return null;
+  const user = result[0].user;
+  const prefs = result[0].user_preferences;
   if (!user || !user.email) return null;
-  return { email: user.email, username: user.username, prefs: user.preferences ?? {} };
+  return { email: user.email, username: user.username, prefs: prefs ?? {} };
 }
 
 export async function notifyNewFollower(params: {
@@ -144,24 +149,23 @@ export async function notifyFollowersOfNewRecipe(params: {
   recipeTitle: string;
   recipeSlug: string;
 }): Promise<void> {
-  const follows: any[] = await (prisma as any).userFollow.findMany({
-    where: { followingId: params.authorId },
-    select: { followerId: true },
-  });
+  const follows = await db.select({ followerId: userFollows.followerId })
+    .from(userFollows)
+    .where(eq(userFollows.followingId, params.authorId));
   if (follows.length === 0) return;
 
-  const followerIds = follows.map((f: any) => f.followerId);
-  const users: any[] = await (prisma as any).user.findMany({
-    where: { id: { in: followerIds }, deletedAt: null },
-    include: { preferences: true },
-  });
+  const followerIds = follows.map((f) => f.followerId);
+  const userResults = await db.select()
+    .from(users)
+    .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
+    .where(and(inArray(users.id, followerIds), isNull(users.deletedAt)));
 
-  const recipients = users
-    .filter((u: any) => u.email)
-    .map((u: any) => ({
-      email: u.email,
-      username: u.username,
-      prefs: u.preferences ?? {},
+  const recipients = userResults
+    .filter((u) => u.user.email)
+    .map((u) => ({
+      email: u.user.email,
+      username: u.user.username,
+      prefs: u.user_preferences ?? {},
     }))
     .filter((r: any) => r.prefs.followedUserPosted !== false);
 

@@ -1,9 +1,11 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { recipes } from '@brewform/db/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 
 export async function findBySlug(slug: string) {
-  return prisma.recipe.findUnique({
-    where: { slug, deletedAt: null },
-    select: { id: true, visibility: true },
-  });
+  const result = await db.select({ id: recipes.id, visibility: recipes.visibility })
+    .from(recipes)
+    .where(and(eq(recipes.slug, slug), isNull(recipes.deletedAt)))
+    .limit(1);
+  return result[0] ?? null;
 }

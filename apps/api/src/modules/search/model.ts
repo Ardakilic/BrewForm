@@ -1,60 +1,80 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { recipes, recipeVersions } from '@brewform/db/schema';
+import { and, asc, count, desc, eq, inArray, isNull, like, or, SQL } from 'drizzle-orm';
 
 export async function searchRecipes(
   filters: any,
   page: number,
   perPage: number,
-  sortBy: string = 'createdAt',
+  _sortBy: string = 'createdAt',
   sortOrder: string = 'desc',
 ) {
-  const where: any = { deletedAt: null };
+  const conditions: SQL[] = [isNull(recipes.deletedAt)];
 
   if (filters.q) {
-    where.OR = [
-      { title: { contains: filters.q } },
-      { versions: { some: { productName: { contains: filters.q } } } },
-      { versions: { some: { coffeeBrand: { contains: filters.q } } } },
-    ];
-  }
-  if (filters.brewMethod) {
-    where.versions = { some: { brewMethod: filters.brewMethod } };
-  }
-  if (filters.drinkType) {
-    if (where.versions && where.versions.some) {
-      where.versions.some.brewMethod = filters.brewMethod;
-      where.versions.some.drinkType = filters.drinkType;
-    } else {
-      where.versions = { some: { brewMethod: filters.brewMethod, drinkType: filters.drinkType } };
-    }
-  }
-  if (filters.authorId) {
-    where.authorId = filters.authorId;
-  }
-  if (filters.visibility) {
-    where.visibility = filters.visibility;
-  } else {
-    where.visibility = 'public';
-  }
-  if (filters.grinder) {
-    where.versions = {
-      some: { ...(where.versions?.some || {}), grinder: { contains: filters.grinder } },
-    };
+    const term = `%${filters.q}%`;
+    conditions.push(
+      or(
+        like(recipes.title, term),
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions)
+            .where(
+              or(like(recipeVersions.productName, term), like(recipeVersions.coffeeBrand, term)),
+            ),
+        ),
+      ) as SQL,
+    );
   }
 
-  const [recipes, total] = await Promise.all([
-    prisma.recipe.findMany({
-      where,
-      skip: (page - 1) * perPage,
-      take: perPage,
-      orderBy: { [sortBy]: sortOrder },
-      include: {
-        author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        versions: { take: 1, orderBy: { versionNumber: 'desc' } },
-        photos: { take: 1 },
-      },
-    } as any),
-    prisma.recipe.count({ where }),
+  if (filters.brewMethod) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.brewMethod, filters.brewMethod),
+        ),
+      ) as SQL,
+    );
+  }
+
+  if (filters.drinkType) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.drinkType, filters.drinkType),
+        ),
+      ) as SQL,
+    );
+  }
+
+  if (filters.authorId) {
+    conditions.push(eq(recipes.authorId, filters.authorId) as SQL);
+  }
+
+  conditions.push(eq(recipes.visibility, filters.visibility || 'public') as SQL);
+
+  if (filters.grinder) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          like(recipeVersions.grinder, `%${filters.grinder}%`),
+        ),
+      ) as SQL,
+    );
+  }
+
+  const where = conditions.length > 1 ? and(...conditions) : conditions[0];
+  const orderBy = sortOrder === 'asc' ? asc(recipes.createdAt) : desc(recipes.createdAt);
+
+  const [data, totalResult] = await Promise.all([
+    db.select().from(recipes).where(where).orderBy(orderBy).limit(perPage).offset(
+      (page - 1) * perPage,
+    ),
+    db.select({ count: count() }).from(recipes).where(where),
   ]);
-  return { recipes, total };
+
+  return { recipes: data, total: totalResult[0].count };
 }

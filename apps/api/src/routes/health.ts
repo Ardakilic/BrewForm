@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { sql } from 'drizzle-orm';
 
 const health = new Hono();
 
@@ -27,7 +28,7 @@ health.get(
   }),
   async (c) => {
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await db.execute(sql`SELECT 1`);
       return c.json({ status: 'ready', db: 'connected' });
     } catch {
       return c.json({ status: 'not_ready', db: 'disconnected' }, 503);
