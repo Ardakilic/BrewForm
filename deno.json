@@ -14,7 +14,7 @@
   },
   "lint": {
     "include": ["apps/", "packages/"],
-    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/"],
+    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/", "packages/db/drizzle/"],
     "rules": {
       "tags": ["recommended"],
       "exclude": [
@@ -33,17 +33,18 @@
     "singleQuote": true,
     "semiColons": true,
     "include": ["apps/", "packages/"],
-    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/"]
+    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/", "packages/db/drizzle/"]
   },
   "test": {
     "include": [
       "apps/api/src/",
       "packages/shared/src/",
-      "packages/db/prisma/"
+      "packages/db/src/"
     ],
     "exclude": [
       "src/generated/",
-      "node_modules/"
+      "node_modules/",
+      "packages/db/drizzle/"
     ]
   }
 }

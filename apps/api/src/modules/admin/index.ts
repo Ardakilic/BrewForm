@@ -185,7 +185,12 @@ admin.delete('/users/:id', async (c) => {
 // --- Recipes ---
 admin.get(
   '/recipes',
-  zValidator('query', PaginationSchema.extend({ visibility: z.string().optional() })),
+  zValidator(
+    'query',
+    PaginationSchema.extend({
+      visibility: z.enum(['draft', 'private', 'unlisted', 'public']).optional(),
+    }),
+  ),
   async (c) => {
     const { page, perPage, visibility } = c.req.valid('query');
     const result = await service.listAllRecipes(page, perPage, visibility);

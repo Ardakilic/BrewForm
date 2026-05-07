@@ -1,0 +1,1 @@
+{"refinement":"Update scope_boundary: remove the line about preserving any patterns and replace with 'Model files will use Drizzle-inferred types instead of any casts.' Update task-5 description to 'Migrate API model files from Prisma to Drizzle queries with proper Drizzle type inference, removing no-explicit-any lint ignores where feasible.'"}

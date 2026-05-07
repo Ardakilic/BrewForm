@@ -1,38 +1,40 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { passwordResets, userPreferences, users } from '@brewform/db/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 const hashSync = (bcrypt as any).hashSync || (bcrypt as any).default?.hashSync;
 const compareSync = (bcrypt as any).compareSync || (bcrypt as any).default?.compareSync;
 
 if (!hashSync) {
-  throw new Error(
-    'hashSync could not be resolved from bcrypt. Please install/require bcryptjs or correct the import so that hashSync is available.',
-  );
+  throw new Error('hashSync could not be resolved from bcrypt.');
 }
 if (!compareSync) {
-  throw new Error(
-    'compareSync could not be resolved from bcrypt. Please install/require bcryptjs or correct the import so that compareSync is available.',
-  );
+  throw new Error('compareSync could not be resolved from bcrypt.');
 }
 
 export async function findUserByEmail(email: string) {
-  return prisma.user.findFirst({
-    where: { email, deletedAt: null },
-    include: { preferences: true },
-  } as any);
+  const result = await db.select().from(users)
+    .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
+    .where(and(eq(users.email, email), isNull(users.deletedAt)))
+    .limit(1);
+  if (!result[0]) return null;
+  return { ...result[0].user, preferences: result[0].user_preferences };
 }
 
 export async function findUserByUsername(username: string) {
-  return prisma.user.findFirst({
-    where: { username, deletedAt: null },
-  } as any);
+  const result = await db.select().from(users)
+    .where(and(eq(users.username, username), isNull(users.deletedAt)))
+    .limit(1);
+  return result[0] ?? null;
 }
 
 export async function findUserById(id: string) {
-  return prisma.user.findFirst({
-    where: { id, deletedAt: null },
-    include: { preferences: true },
-  } as any);
+  const result = await db.select().from(users)
+    .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
+    .where(and(eq(users.id, id), isNull(users.deletedAt)))
+    .limit(1);
+  if (!result[0]) return null;
+  return { ...result[0].user, preferences: result[0].user_preferences };
 }
 
 export async function createUser(data: {
@@ -42,18 +44,16 @@ export async function createUser(data: {
   displayName?: string;
 }) {
   const passwordHash = hashSync(data.password, 10);
-  return prisma.user.create({
-    data: {
+  return db.transaction(async (tx) => {
+    const [user] = await tx.insert(users).values({
       email: data.email,
       username: data.username,
       passwordHash,
       displayName: data.displayName || null,
-      preferences: {
-        create: {},
-      },
-    },
-    include: { preferences: true },
-  } as any);
+    }).returning();
+    await tx.insert(userPreferences).values({ userId: user.id });
+    return user;
+  });
 }
 
 export function verifyPassword(plainPassword: string, hashedPassword: string): boolean {
@@ -62,35 +62,35 @@ export function verifyPassword(plainPassword: string, hashedPassword: string): b
 
 export async function updateUserPassword(userId: string, newPassword: string) {
   const passwordHash = hashSync(newPassword, 10);
-  return prisma.user.update({
-    where: { id: userId },
-    data: { passwordHash },
-  } as any);
+  const [result] = await db.update(users).set({ passwordHash }).where(eq(users.id, userId))
+    .returning();
+  return result ?? null;
 }
 
 export async function createPasswordReset(userId: string, token: string, expiresAt: Date) {
-  return (prisma as any).passwordReset.create({
-    data: { userId, token, expiresAt },
-  });
+  const [result] = await db.insert(passwordResets).values({ userId, token, expiresAt }).returning();
+  return result;
 }
 
 export async function findPasswordResetByToken(token: string) {
-  return (prisma as any).passwordReset.findUnique({
-    where: { token },
-    include: { user: true },
-  });
+  const result = await db.select().from(passwordResets)
+    .leftJoin(users, eq(passwordResets.userId, users.id))
+    .where(eq(passwordResets.token, token))
+    .limit(1);
+  if (!result[0]) return null;
+  return { ...result[0].password_reset, user: result[0].user };
 }
 
 export async function markPasswordResetUsed(id: string) {
-  return (prisma as any).passwordReset.update({
-    where: { id },
-    data: { usedAt: new Date() },
-  });
+  const [result] = await db.update(passwordResets).set({ usedAt: new Date() }).where(
+    eq(passwordResets.id, id),
+  ).returning();
+  return result ?? null;
 }
 
 export async function markOnboardingComplete(userId: string) {
-  return prisma.user.update({
-    where: { id: userId },
-    data: { onboardingCompleted: true },
-  } as any);
+  const [result] = await db.update(users).set({ onboardingCompleted: true }).where(
+    eq(users.id, userId),
+  ).returning();
+  return result ?? null;
 }

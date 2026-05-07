@@ -1,28 +1,13 @@
-// deno-lint-ignore-file no-explicit-any
-let prisma: any;
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './schema.ts';
 
-if (Deno.env.get('DENO_DEPLOY')) {
-  const mod = await import('../generated/prisma/client.ts');
-  const { withAccelerate } = await import('npm:@prisma/extension-accelerate');
-  const PrismaClient = mod.PrismaClient;
-  prisma = new PrismaClient({
-    datasources: {
-      db: { url: Deno.env.get('DATABASE_URL') },
-    },
-  }).$extends(withAccelerate());
-} else {
-  const mod = await import('@prisma/client');
-  const PrismaClient = (mod as any).PrismaClient || (mod as any).default?.PrismaClient;
-  const globalForPrisma = globalThis as unknown as { prisma: any };
-  prisma = globalForPrisma.prisma || new PrismaClient({
-    datasources: {
-      db: { url: Deno.env.get('DATABASE_URL') },
-    },
-  });
-  if (Deno.env.get('APP_ENV') !== 'production') {
-    globalForPrisma.prisma = prisma;
-  }
-}
-
-export { prisma };
-export default prisma;
+const rawConnectionString = Deno.env.get('DATABASE_URL')!;
+// Strip Prisma-specific query params that postgres-js does not understand
+const connectionUrl = new URL(rawConnectionString);
+connectionUrl.searchParams.delete('connection_limit');
+connectionUrl.searchParams.delete('pool_timeout');
+const connectionString = connectionUrl.toString();
+const client = postgres(connectionString, { max: 10 });
+export const db = drizzle(client, { schema });
+export { client };

@@ -45,12 +45,12 @@ lint:
 	docker compose run --rm app deno lint apps/ packages/
 
 fmt:
-	docker compose run --rm app deno fmt apps/ packages/
+	docker compose run --rm app deno fmt
 
 fmt-check:
-	docker compose run --rm app deno fmt --check apps/ packages/
+	docker compose run --rm app deno fmt --check
 
-check: install db-generate
+check: install
 	docker compose run --rm app deno check --unstable-sloppy-imports apps/api/src/main.ts
 
 # --- Testing ---
@@ -75,23 +75,25 @@ test-specific:
 
 # --- Database ---
 
+DRIZZLE_KIT := npm:drizzle-kit@0.31.10
+
 db-migrate:
-	docker compose run --rm app deno run -A npm:prisma@^6.19.3 migrate deploy --schema=packages/db/prisma/schema.prisma
+	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
 
 db-generate:
-	docker compose run --rm app bash -c "rm -rf node_modules/.prisma && cd packages/db && deno run -A npm:prisma@^6.19.3 generate --schema=prisma/schema.prisma"
+	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) generate"
 
-db-dev-migrate:
-	docker compose run --rm app deno run -A npm:prisma@^6.19.3 migrate dev --schema=packages/db/prisma/schema.prisma
+db-push:
+	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) push"
 
 db-seed:
-	docker compose run --rm app deno run --allow-all packages/db/prisma/seed.ts
+	docker compose run --rm app deno run --allow-all packages/db/src/seed.ts
 
 db-studio:
-	docker compose run --rm --service-ports app deno run -A npm:prisma@^6.19.3 studio --schema=packages/db/prisma/schema.prisma --host=0.0.0.0 --port=5555
+	docker compose run --rm --service-ports app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) studio --host=0.0.0.0 --port=5555"
 
 db-reset:
-	docker compose run --rm app deno run -A npm:prisma@^6.19.3 migrate reset --force --schema=packages/db/prisma/schema.prisma
+	docker compose run --rm app bash -c "echo 'Drop and recreate database manually, then run db-migrate and db-seed'"
 
 # --- Admin Setup ---
 

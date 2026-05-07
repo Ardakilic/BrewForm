@@ -11,7 +11,7 @@
  *   1. Deno.cron jobs terminate with process
  *   2. Shut down HTTP server
  *   3. Close Deno KV connection
- *   4. Disconnect Prisma client
+ *   4. Close postgres-js client
  *   5. Exit cleanly
  *
  * Middleware stack (applied in order):
@@ -129,8 +129,8 @@ async function startup() {
       logger.info('Deno KV connection closed');
     }
 
-    const { prisma } = await import('@brewform/db');
-    await prisma.$disconnect();
+    const { client } = await import('@brewform/db');
+    await client.end();
     logger.info('Database connection closed');
 
     const { closeTransporter } = await import('./utils/notify/index.ts');

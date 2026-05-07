@@ -17,13 +17,11 @@ jobs:
       - name: Install dependencies
         run: deno install
 
-      - name: Generate Prisma client
-        run: |
-          rm -rf node_modules/.prisma
-          cd packages/db && deno run -A npm:prisma@^6.19.3 generate --schema=prisma/schema.prisma
+      - name: Generate Drizzle migration
+        run: deno task db:generate
 
       - name: Format check
-        run: deno fmt --check apps/ packages/
+        run: deno fmt --check
 
       - name: Lint
         run: deno lint apps/ packages/

@@ -1,5 +1,6 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { reports } from '@brewform/db/schema';
+import { count, desc, eq } from 'drizzle-orm';
 
 export async function create(
   reporterId: string,
@@ -7,34 +8,34 @@ export async function create(
   entityId: string,
   reason: string,
 ) {
-  return prisma.report.create({
-    data: { reporterId, entityType, entityId, reason },
-  });
+  const [result] = await db.insert(reports).values({ reporterId, entityType, entityId, reason })
+    .returning();
+  return result;
 }
 
 export async function findById(id: string) {
-  return prisma.report.findUnique({ where: { id } });
+  const result = await db.select().from(reports).where(eq(reports.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
 export async function findMany(status: string | undefined, page: number, perPage: number) {
-  const where: any = {};
-  if (status) where.status = status;
-  const [reports, total] = await Promise.all([
-    prisma.report.findMany({
-      where,
-      skip: (page - 1) * perPage,
-      take: perPage,
-      orderBy: { createdAt: 'desc' },
-      include: { reporter: { select: { id: true, username: true, displayName: true } } },
-    }),
-    prisma.report.count({ where }),
+  let where = undefined;
+  if (status) {
+    where = eq(reports.status, status);
+  }
+  const [data, totalResult] = await Promise.all([
+    db.select().from(reports).where(where).orderBy(desc(reports.createdAt)).limit(perPage).offset(
+      (page - 1) * perPage,
+    ),
+    db.select({ count: count() }).from(reports).where(where),
   ]);
-  return { reports, total };
+  return { reports: data, total: totalResult[0].count };
 }
 
 export async function resolve(id: string, resolvedBy: string) {
-  return prisma.report.update({
-    where: { id },
-    data: { status: 'resolved', resolvedBy, resolvedAt: new Date() },
-  } as any);
+  const [result] = await db.update(reports)
+    .set({ status: 'resolved', resolvedBy, resolvedAt: new Date() })
+    .where(eq(reports.id, id))
+    .returning();
+  return result ?? null;
 }

@@ -10,7 +10,9 @@
  */
 import type { Context, Next } from 'hono';
 import { verifyJwt } from '../modules/auth/jwt.ts';
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { users } from '@brewform/db/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 import { forbidden, unauthorized } from '../utils/response/index.ts';
 
 export async function authMiddleware(c: Context, next: Next) {
@@ -26,9 +28,10 @@ export async function authMiddleware(c: Context, next: Next) {
       return unauthorized(c, 'Invalid token payload');
     }
 
-    const user = await prisma.user.findFirst({
-      where: { id: payload.sub, deletedAt: null },
-    });
+    const result = await db.select().from(users)
+      .where(and(eq(users.id, payload.sub), isNull(users.deletedAt)))
+      .limit(1);
+    const user = result[0];
 
     if (!user) {
       return unauthorized(c, 'User not found');
@@ -58,9 +61,10 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
   try {
     const payload = await verifyJwt(token);
     if (payload.sub && payload.type === 'access') {
-      const user = await prisma.user.findFirst({
-        where: { id: payload.sub, deletedAt: null },
-      });
+      const result = await db.select().from(users)
+        .where(and(eq(users.id, payload.sub), isNull(users.deletedAt)))
+        .limit(1);
+      const user = result[0];
       if (user && !user.isBanned) {
         c.set('userId', user.id);
         c.set('user', user);

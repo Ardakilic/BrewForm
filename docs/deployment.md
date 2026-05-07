@@ -5,7 +5,7 @@
 ```
 ┌──────────────────┐       ┌──────────────────────────┐
 │  GitHub Pages    │       │    Deno Deploy (free)     │
-│  (Static SPA)    │──────▶│    Hono API + Prisma      │
+│  (Static SPA)    │──────▶│    Hono API + Drizzle ORM │
 │  React + Vite    │ CORS  │    Deno KV (cache)        │
 └──────────────────┘       │    PostgreSQL (managed)    │
                            └──────────────────────────┘
@@ -14,8 +14,10 @@
 - **Frontend**: React SPA built with Vite, deployed to GitHub Pages as static assets
 - **Backend**: Hono API running on Deno Deploy, connecting to a managed PostgreSQL instance
 - **Cache**: Deno KV for taste note hierarchy, popular recipes, and search result caching
-- **Storage**: Local filesystem (default) or S3-compatible object storage (Garage in development, any S3 provider in production)
-- **Email**: SMTP (Mailpit in development, production SMTP in production). MJML templates are pre-compiled to TypeScript at build time
+- **Storage**: Local filesystem (default) or S3-compatible object storage (Garage in development,
+  any S3 provider in production)
+- **Email**: SMTP (Mailpit in development, production SMTP in production). MJML templates are
+  pre-compiled to TypeScript at build time
 
 ## Backend Deployment (Deno Deploy)
 
@@ -73,8 +75,8 @@ The `404.html` trick:
 
 ## Local Development
 
-Make sure `.env` exists (copy from `.env.example`) so Docker Compose can load
-environment variables for services such as Garage:
+Make sure `.env` exists (copy from `.env.example`) so Docker Compose can load environment variables
+for services such as Garage:
 
 ```bash
 cp .env.example .env
@@ -86,7 +88,7 @@ make dev         # Start development server (hot reload)
 make logs        # View API logs
 make db-migrate  # Apply database migrations
 make db-seed     # Seed sample data
-make db-studio   # Open Prisma Studio GUI at localhost:5555
+make db-studio   # Open Drizzle Studio GUI at localhost:5555
 ```
 
 After seeding, admin credentials: `admin@brewform.local` / `admin123456`
@@ -136,27 +138,27 @@ Triggers on pull requests:
 
 See `.env.example` for all configuration options. Key variables:
 
-| Variable                | Default                     | Description                                |
-| ----------------------- | --------------------------- | ------------------------------------------ |
-| `APP_PORT`              | `8000`                      | Server port                                |
-| `APP_ENV`               | `development`               | `development`, `production`, or `test`     |
-| `LOG_LEVEL`             | `info`                      | Log level (debug, info, warn, error)       |
-| `DATABASE_URL`          | —                           | **Required.** PostgreSQL connection string |
-| `CACHE_DRIVER`          | `deno-kv`                   | `deno-kv` or `memory`                      |
-| `JWT_SECRET`            | —                           | **Required.** ≥16 characters               |
-| `JWT_ACCESS_EXPIRY`     | `15m`                       | Access token validity period               |
-| `JWT_REFRESH_EXPIRY`    | `7d`                        | Refresh token validity period              |
-| `CORS_ALLOWED_ORIGINS`  | `http://localhost:5173,...` | Comma-separated allowed origins            |
-| `SMTP_HOST`             | `localhost`                 | SMTP server host                           |
-| `SMTP_PORT`             | `1025`                      | SMTP server port                           |
-| `UPLOAD_DIR`            | `./uploads`                 | Photo upload directory (local driver only) |
-| `UPLOAD_MAX_SIZE_BYTES` | `10485760`                  | Max upload size (10 MB)                    |
-| `APP_URL`               | `http://localhost:8000`     | Base URL for QR code generation            |
-| `OPENAPI_ENABLED`       | `true`                      | Enable /openapi.json endpoint              |
-| `STORAGE_DRIVER`        | `local`                     | `local` or `s3`                            |
-| `S3_ENDPOINT`           | —                           | S3 API endpoint (required when `s3`)       |
-| `S3_REGION`             | `auto`                      | S3 region                                  |
-| `S3_BUCKET`             | —                           | S3 bucket name (required when `s3`)        |
-| `S3_ACCESS_KEY`         | —                           | S3 access key (required when `s3`)         |
-| `S3_SECRET_KEY`         | —                           | S3 secret key (required when `s3`)         |
+| Variable                | Default                     | Description                                     |
+| ----------------------- | --------------------------- | ----------------------------------------------- |
+| `APP_PORT`              | `8000`                      | Server port                                     |
+| `APP_ENV`               | `development`               | `development`, `production`, or `test`          |
+| `LOG_LEVEL`             | `info`                      | Log level (debug, info, warn, error)            |
+| `DATABASE_URL`          | —                           | **Required.** PostgreSQL connection string      |
+| `CACHE_DRIVER`          | `deno-kv`                   | `deno-kv` or `memory`                           |
+| `JWT_SECRET`            | —                           | **Required.** ≥16 characters                    |
+| `JWT_ACCESS_EXPIRY`     | `15m`                       | Access token validity period                    |
+| `JWT_REFRESH_EXPIRY`    | `7d`                        | Refresh token validity period                   |
+| `CORS_ALLOWED_ORIGINS`  | `http://localhost:5173,...` | Comma-separated allowed origins                 |
+| `SMTP_HOST`             | `localhost`                 | SMTP server host                                |
+| `SMTP_PORT`             | `1025`                      | SMTP server port                                |
+| `UPLOAD_DIR`            | `./uploads`                 | Photo upload directory (local driver only)      |
+| `UPLOAD_MAX_SIZE_BYTES` | `10485760`                  | Max upload size (10 MB)                         |
+| `APP_URL`               | `http://localhost:8000`     | Base URL for QR code generation                 |
+| `OPENAPI_ENABLED`       | `true`                      | Enable /openapi.json endpoint                   |
+| `STORAGE_DRIVER`        | `local`                     | `local` or `s3`                                 |
+| `S3_ENDPOINT`           | —                           | S3 API endpoint (required when `s3`)            |
+| `S3_REGION`             | `auto`                      | S3 region                                       |
+| `S3_BUCKET`             | —                           | S3 bucket name (required when `s3`)             |
+| `S3_ACCESS_KEY`         | —                           | S3 access key (required when `s3`)              |
+| `S3_SECRET_KEY`         | —                           | S3 secret key (required when `s3`)              |
 | `S3_PUBLIC_URL`         | —                           | Public CDN URL for uploads (required when `s3`) |

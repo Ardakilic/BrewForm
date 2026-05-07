@@ -1,14 +1,22 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { userPreferences } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function findByUserId(userId: string) {
-  return prisma.userPreferences.findUnique({ where: { userId } });
+  const result = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId))
+    .limit(1);
+  return result[0] ?? null;
 }
 
-export async function upsert(userId: string, data: any) {
-  return prisma.userPreferences.upsert({
-    where: { userId },
-    create: { userId, ...data },
-    update: data,
-  } as any);
+export async function upsert(userId: string, data: Partial<typeof userPreferences.$inferInsert>) {
+  const { userId: _, ...updateData } = data;
+  const [result] = await db
+    .insert(userPreferences)
+    .values({ ...data, userId })
+    .onConflictDoUpdate({
+      target: userPreferences.userId,
+      set: updateData,
+    })
+    .returning();
+  return result;
 }

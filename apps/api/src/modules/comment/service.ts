@@ -1,7 +1,8 @@
-// deno-lint-ignore-file no-explicit-any
 import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { recipes, users } from '@brewform/db/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyRecipeCommented } from '../../utils/notify/index.ts';
 import { evaluateBadges } from '../badge/service.ts';
@@ -33,16 +34,20 @@ export async function createComment(
 
   await recipeModel.incrementComments(recipeId);
 
-  // Notify the recipe author (unless they commented on their own recipe).
   (async () => {
-    const recipe: any = await prisma.recipe.findFirst({
-      where: { id: recipeId } as any,
-      select: { id: true, slug: true, title: true, authorId: true },
-    });
+    const recipeResult = await db.select({
+      id: recipes.id,
+      slug: recipes.slug,
+      title: recipes.title,
+      authorId: recipes.authorId,
+    })
+      .from(recipes)
+      .where(and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)))
+      .limit(1);
+    const recipe = recipeResult[0];
     if (!recipe || recipe.authorId === userId) return;
-    const commenter: any = await prisma.user.findFirst({
-      where: { id: userId } as any,
-    });
+    const commenterResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const commenter = commenterResult[0];
     if (!commenter?.username) return;
     await notifyRecipeCommented({
       recipeAuthorId: recipe.authorId,
@@ -52,7 +57,6 @@ export async function createComment(
     });
   })().catch((err) => logger.error({ err }, 'notifyRecipeCommented failed'));
 
-  // Fire-and-forget badge evaluation so errors never block the response.
   evaluateBadges(userId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
   return comment;

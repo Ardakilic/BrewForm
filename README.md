@@ -27,7 +27,7 @@ notes.
 | Monorepo   | Turborepo (npm workspaces)                  |
 | Backend    | Hono                                        |
 | Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |
-| ORM        | Prisma                                      |
+| ORM        | Drizzle ORM (postgres-js driver)            |
 | Database   | PostgreSQL                                  |
 | Cache      | Deno KV                                     |
 | Storage    | Local filesystem or S3-compatible (Garage)  |
@@ -57,7 +57,7 @@ make install
 # Build email templates (required before running the API)
 make email-build
 
-# Generate Prisma client (standard + edge for Deno Deploy)
+# Generate Drizzle migration
 make db-generate
 
 # Run database migrations
@@ -91,10 +91,10 @@ make ci            # Full CI check (fmt-check, lint, check, test-coverage)
 ## Database
 
 ```bash
-make db-generate   # (Re)generate Prisma client
+make db-generate   # Generate Drizzle migration SQL
 make db-migrate    # Apply pending migrations
 make db-seed       # Seed sample data
-make db-studio     # Open Prisma Studio (GUI)
+make db-studio     # Open Drizzle Studio (GUI)
 make db-reset      # Reset database (destroys all data)
 ```
 
@@ -110,7 +110,7 @@ apps/api ──┬──→ packages/shared
 - **`apps/api/`** — Hono backend API (Deno Deploy)
 - **`apps/web/`** — React SPA frontend (GitHub Pages)
 - **`packages/shared/`** — Types, Zod schemas, constants, utils, i18n
-- **`packages/db/`** — Prisma schema, migrations, seed data, client
+- **`packages/db/`** — Drizzle schema, migrations, seed data, client
 
 The frontend **never** imports from `@brewform/db`.
 
@@ -138,7 +138,7 @@ brewform/
 │           └── styles/         # Global CSS, theme system
 ├── packages/
 │   ├── shared/                 # Types, schemas, constants, utils, i18n
-│   └── db/                    # Prisma schema, migrations, seed
+│   └── db/                    # Drizzle schema, migrations, seed
 ├── files/
 │   └── scaa-2.json            # SCAA 2016 flavor wheel data
 ├── docs/                      # Feature & API documentation

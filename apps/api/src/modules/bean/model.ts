@@ -1,38 +1,39 @@
-// deno-lint-ignore-file no-explicit-any require-await
-import { prisma } from '@brewform/db';
+import { db } from '@brewform/db';
+import { beans } from '@brewform/db/schema';
+import { and, count, desc, eq, isNull } from 'drizzle-orm';
 
 export async function findById(id: string) {
-  return prisma.bean.findFirst({
-    where: { id, deletedAt: null },
-    include: { vendor: true },
-  });
+  const result = await db.select().from(beans).where(and(eq(beans.id, id), isNull(beans.deletedAt)))
+    .limit(1);
+  return result[0] ?? null;
 }
 
 export async function findByUser(userId: string, page: number, perPage: number) {
-  const [beans, total] = await Promise.all([
-    prisma.bean.findMany({
-      where: { userId, deletedAt: null },
-      skip: (page - 1) * perPage,
-      take: perPage,
-      orderBy: { createdAt: 'desc' },
-      include: { vendor: true },
-    }),
-    prisma.bean.count({ where: { userId, deletedAt: null } }),
+  const where = and(eq(beans.userId, userId), isNull(beans.deletedAt));
+  const [data, totalResult] = await Promise.all([
+    db.select().from(beans).where(where).orderBy(desc(beans.createdAt)).limit(perPage).offset(
+      (page - 1) * perPage,
+    ),
+    db.select({ count: count() }).from(beans).where(where),
   ]);
-  return { beans, total };
+  return { beans: data, total: totalResult[0].count };
 }
 
-export async function create(data: any) {
-  return prisma.bean.create({ data, include: { vendor: true } });
+export async function create(data: typeof beans.$inferInsert) {
+  const [result] = await db.insert(beans).values(data).returning();
+  return result;
 }
 
-export async function update(id: string, data: any) {
-  return prisma.bean.update({ where: { id }, data, include: { vendor: true } });
+export async function update(id: string, data: Partial<typeof beans.$inferInsert>) {
+  const [result] = await db.update(beans).set(data).where(
+    and(eq(beans.id, id), isNull(beans.deletedAt)),
+  ).returning();
+  return result ?? null;
 }
 
 export async function softDelete(id: string) {
-  return prisma.bean.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  });
+  const [result] = await db.update(beans).set({ deletedAt: new Date() }).where(
+    and(eq(beans.id, id), isNull(beans.deletedAt)),
+  ).returning();
+  return result ?? null;
 }
