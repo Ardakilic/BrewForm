@@ -9,7 +9,7 @@ import {
   setups,
   users,
 } from '@brewform/db/schema';
-import { and, eq, inArray, isNull, like, or } from 'drizzle-orm';
+import { and, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import { createLogger } from '../../utils/logger/index.ts';
@@ -269,14 +269,15 @@ export async function listRecipes(filters: any, page: number, perPage: number) {
   }
 
   if (filters.search) {
-    const searchTerm = `%${filters.search}%`;
+    const sanitized = filters.search.replace(/[%_]/g, '');
+    const searchTerm = `%${sanitized}%`;
     conditions.push(
       or(
-        like(recipes.title, searchTerm),
+        ilike(recipes.title, searchTerm),
         inArray(
           recipes.id,
           db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-            like(recipeVersions.productName, searchTerm),
+            ilike(recipeVersions.productName, searchTerm),
           ),
         ),
       ),

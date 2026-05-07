@@ -57,9 +57,11 @@ export async function evaluateBadges(userId: string) {
     .where(eq(userFollows.followingId, userId));
   const userFollowers = userFollowersResult[0].count;
 
-  const userRecipesWithLikes = await db.select().from(recipes)
+  const maxLikesResult = await db.select({
+    maxLikes: sql<number>`coalesce(max(${recipes.likeCount}), 0)`,
+  }).from(recipes)
     .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
-  const maxLikes = Math.max(...userRecipesWithLikes.map((r) => r.likeCount), 0);
+  const maxLikes = maxLikesResult[0].maxLikes;
 
   const distinctMethodsResult = await db.selectDistinct({ brewMethod: recipeVersions.brewMethod })
     .from(recipeVersions)

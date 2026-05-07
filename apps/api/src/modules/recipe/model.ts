@@ -254,12 +254,15 @@ export async function toggleLike(userId: string, recipeId: string) {
       return { liked: true };
     }
 
-    await tx.delete(userRecipeLikes).where(
+    const deleted = await tx.delete(userRecipeLikes).where(
       and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)),
-    );
-    await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
-      eq(recipes.id, recipeId),
-    );
+    ).returning();
+
+    if (deleted.length > 0) {
+      await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
+        eq(recipes.id, recipeId),
+      );
+    }
     return { liked: false };
   });
 }

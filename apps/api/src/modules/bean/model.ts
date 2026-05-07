@@ -32,7 +32,8 @@ export async function update(id: string, data: Partial<typeof beans.$inferInsert
 }
 
 export async function softDelete(id: string) {
-  const [result] = await db.update(beans).set({ deletedAt: new Date() }).where(eq(beans.id, id))
-    .returning();
+  const [result] = await db.update(beans).set({ deletedAt: new Date() }).where(
+    and(eq(beans.id, id), isNull(beans.deletedAt)),
+  ).returning();
   return result ?? null;
 }
