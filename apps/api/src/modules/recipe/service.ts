@@ -43,7 +43,7 @@ export async function createRecipe(authorId: string, data: any) {
   let brewerDetails = data.brewerDetails;
   if (data.setupId) {
     const setupResult = await db.select().from(setups)
-      .where(and(eq(setups.id, data.setupId), isNull(setups.deletedAt)))
+      .where(and(eq(setups.id, data.setupId), eq(setups.userId, authorId), isNull(setups.deletedAt)))
       .limit(1);
     const setup = setupResult[0];
     if (setup) {
