@@ -270,18 +270,20 @@ export async function listRecipes(filters: any, page: number, perPage: number) {
 
   if (filters.search) {
     const sanitized = filters.search.replace(/[%_]/g, '');
-    const searchTerm = `%${sanitized}%`;
-    conditions.push(
-      or(
-        ilike(recipes.title, searchTerm),
-        inArray(
-          recipes.id,
-          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-            ilike(recipeVersions.productName, searchTerm),
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        or(
+          ilike(recipes.title, searchTerm),
+          inArray(
+            recipes.id,
+            db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+              ilike(recipeVersions.productName, searchTerm),
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   const where = conditions.length > 1 ? and(...conditions) : conditions[0];

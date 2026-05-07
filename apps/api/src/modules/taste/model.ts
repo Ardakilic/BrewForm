@@ -1,6 +1,6 @@
 import { db } from '@brewform/db';
 import { tasteNotes } from '@brewform/db/schema';
-import { and, asc, eq, isNull, like } from 'drizzle-orm';
+import { asc, eq, like } from 'drizzle-orm';
 
 export async function findAll() {
   return db.select().from(tasteNotes).orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
@@ -20,26 +20,25 @@ export async function searchByName(query: string) {
 }
 
 export async function getHierarchy() {
-  const roots = await db.select().from(tasteNotes)
-    .where(and(isNull(tasteNotes.parentId), eq(tasteNotes.depth, 0)))
-    .orderBy(asc(tasteNotes.name));
+  const allNotes = await db.select().from(tasteNotes)
+    .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
 
-  const result = [];
-  for (const root of roots) {
-    const children = await db.select().from(tasteNotes)
-      .where(eq(tasteNotes.parentId, root.id))
-      .orderBy(asc(tasteNotes.name));
-
-    const childrenWithGrandchildren = [];
-    for (const child of children) {
-      const grandchildren = await db.select().from(tasteNotes)
-        .where(eq(tasteNotes.parentId, child.id))
-        .orderBy(asc(tasteNotes.name));
-      childrenWithGrandchildren.push({ ...child, children: grandchildren });
-    }
-    result.push({ ...root, children: childrenWithGrandchildren });
+  const nodeMap = new Map<string, any>();
+  for (const note of allNotes) {
+    nodeMap.set(note.id, { ...note, children: [] });
   }
-  return result;
+
+  const roots: any[] = [];
+  for (const note of allNotes) {
+    const node = nodeMap.get(note.id)!;
+    if (note.parentId == null && note.depth === 0) {
+      roots.push(node);
+    } else if (note.parentId && nodeMap.has(note.parentId)) {
+      nodeMap.get(note.parentId)!.children.push(node);
+    }
+  }
+
+  return roots;
 }
 
 export async function findById(id: string) {

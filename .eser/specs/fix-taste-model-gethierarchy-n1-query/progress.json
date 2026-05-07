@@ -1,0 +1,29 @@
+{
+  "spec": "fix-taste-model-gethierarchy-n1-query",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Single query, minimal memory overhead, identical API response shape, fully validated with existing tests and type-check",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "1) deno check src/modules/taste/model.ts — type-check passes. 2) deno test src/modules/taste/ — existing tests still pass. 3) Manual shape comparison: old vs new output must match for roots, children, and grandchildren ordering.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "pending"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-07T10:35:29.850Z"
+}

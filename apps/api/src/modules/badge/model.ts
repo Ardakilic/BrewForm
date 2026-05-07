@@ -7,7 +7,7 @@ import {
   userBadges,
   userFollows,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 
 export async function listBadges() {
   return db.select().from(badges).orderBy(asc(badges.threshold));
@@ -66,7 +66,7 @@ export async function evaluateBadges(userId: string) {
   const distinctMethodsResult = await db.selectDistinct({ brewMethod: recipeVersions.brewMethod })
     .from(recipeVersions)
     .innerJoin(recipes, eq(recipeVersions.recipeId, recipes.id))
-    .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
+    .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt), isNotNull(recipeVersions.brewMethod)));
   const distinctMethods = distinctMethodsResult;
 
   const userVersions = await db.select({
