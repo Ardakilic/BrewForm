@@ -66,7 +66,13 @@ export async function evaluateBadges(userId: string) {
   const distinctMethodsResult = await db.selectDistinct({ brewMethod: recipeVersions.brewMethod })
     .from(recipeVersions)
     .innerJoin(recipes, eq(recipeVersions.recipeId, recipes.id))
-    .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt), isNotNull(recipeVersions.brewMethod)));
+    .where(
+      and(
+        eq(recipes.authorId, userId),
+        isNull(recipes.deletedAt),
+        isNotNull(recipeVersions.brewMethod),
+      ),
+    );
   const distinctMethods = distinctMethodsResult;
 
   const userVersions = await db.select({
