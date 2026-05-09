@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../../api/client';
+import { api } from '../../api/client.ts';
 
 interface Props {
   recipeId: string;
@@ -16,14 +16,11 @@ export function FavouriteButton({ recipeId, initialFavourited, initialCount }: P
     if (loading) return;
     setLoading(true);
     try {
-      if (favourited) {
-        await api.delete(`/recipes/${recipeId}/favourite`);
-        setCount((c) => c - 1);
-      } else {
-        await api.post(`/recipes/${recipeId}/favourite`, {});
-        setCount((c) => c + 1);
-      }
-      setFavourited(!favourited);
+      // The API uses a toggle endpoint (POST) — one call to favourite, another to unfavourite.
+      const result = await api.post<{ favourited: boolean }>(`/recipes/${recipeId}/favourite`, {});
+      const nowFavourited = (result as { favourited: boolean }).favourited;
+      setFavourited(nowFavourited);
+      setCount((c) => nowFavourited ? c + 1 : c - 1);
     } catch {
     } finally {
       setLoading(false);

@@ -8,6 +8,7 @@ import {
 } from '@brewform/shared/schemas';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
+import * as model from './model.ts';
 import { error, paginated, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
@@ -81,7 +82,35 @@ recipe.get(
         const userId = c.get('userId');
         if (userId !== r.authorId) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
-      return success(c, r);
+      // Transform the Drizzle result into the shape the frontend expects:
+      // - currentVersion: the latest version (versions[0])
+      // - tasteNotes: flattened from currentVersion.tasteNotes[].tasteNote
+      // - equipment: flattened from currentVersion.equipment[].equipment
+      // - userLiked / userFavourited: actual status for the authenticated user
+      const currentVersion = (r as any).versions?.[0] ?? null;
+      const userId = c.get('userId');
+      const recipeId = (r as any).id;
+      const [likeStatus, favouriteCount, ratingStats, userRating] = await Promise.all([
+        userId
+          ? model.getUserLikeStatus(userId, recipeId)
+          : Promise.resolve({ userLiked: false, userFavourited: false }),
+        model.getFavouriteCount(recipeId),
+        model.getRecipeRatingStats(recipeId),
+        userId ? model.getUserRating(userId, recipeId) : Promise.resolve(null),
+      ]);
+      const payload = {
+        ...(r as any),
+        currentVersion,
+        tasteNotes: currentVersion?.tasteNotes?.map((t: any) => t.tasteNote) ?? [],
+        equipment: currentVersion?.equipment?.map((e: any) => e.equipment) ?? [],
+        userLiked: likeStatus.userLiked,
+        userFavourited: likeStatus.userFavourited,
+        favouriteCount,
+        avgRating: ratingStats.avgRating,
+        ratingCount: ratingStats.ratingCount,
+        userRating,
+      };
+      return success(c, payload);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
@@ -223,6 +252,39 @@ recipe.post(
     try {
       const result = await service.toggleLike(userId, recipeId);
       return success(c, result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      throw err;
+    }
+  },
+);
+
+recipe.post(
+  '/:id/rate',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'Rate a recipe (1–10)',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'Rating saved' },
+      400: { description: 'Invalid rating value' },
+      404: { description: 'Recipe not found' },
+    },
+  }),
+  authMiddleware,
+  async (c) => {
+    const recipeId = c.req.param('id')!;
+    const userId = c.get('userId') as string;
+    const body = await c.req.json().catch(() => ({}));
+    const rating = Number(body.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
+      return error(c, 'VALIDATION_ERROR', 'Rating must be an integer between 1 and 10', 400);
+    }
+    try {
+      const result = await model.upsertUserRating(userId, recipeId, rating);
+      const stats = await model.getRecipeRatingStats(recipeId);
+      return success(c, { ...result, ...stats });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);

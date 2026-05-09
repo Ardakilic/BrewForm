@@ -8,8 +8,9 @@ import {
   recipeVersions,
   userRecipeFavourites,
   userRecipeLikes,
+  userRecipeRatings,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, inArray, isNull, SQL, sql } from 'drizzle-orm';
+import { and, asc, avg, count, desc, eq, inArray, isNull, SQL, sql } from 'drizzle-orm';
 
 export async function create(data: typeof recipes.$inferInsert) {
   const [recipe] = await db.insert(recipes).values(data).returning();
@@ -238,6 +239,66 @@ export async function decrementComments(id: string) {
   const [result] = await db.update(recipes).set({ commentCount: sql`${recipes.commentCount} - 1` })
     .where(eq(recipes.id, id)).returning();
   return result ?? null;
+}
+
+export async function upsertUserRating(userId: string, recipeId: string, rating: number) {
+  const existing = await db.select({ id: userRecipeRatings.id })
+    .from(userRecipeRatings)
+    .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.update(userRecipeRatings)
+      .set({ rating, updatedAt: new Date() })
+      .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)));
+  } else {
+    await db.insert(userRecipeRatings).values({ userId, recipeId, rating });
+  }
+  return { rating };
+}
+
+export async function getRecipeRatingStats(recipeId: string) {
+  const [result] = await db.select({
+    avgRating: avg(userRecipeRatings.rating),
+    ratingCount: count(userRecipeRatings.id),
+  })
+    .from(userRecipeRatings)
+    .where(eq(userRecipeRatings.recipeId, recipeId));
+  return {
+    avgRating: result?.avgRating ? Math.round(Number(result.avgRating) * 10) / 10 : null,
+    ratingCount: result?.ratingCount ?? 0,
+  };
+}
+
+export async function getUserRating(userId: string, recipeId: string): Promise<number | null> {
+  const [result] = await db.select({ rating: userRecipeRatings.rating })
+    .from(userRecipeRatings)
+    .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)))
+    .limit(1);
+  return result?.rating ?? null;
+}
+
+export async function getFavouriteCount(recipeId: string): Promise<number> {
+  const [result] = await db.select({ count: count() })
+    .from(userRecipeFavourites)
+    .where(eq(userRecipeFavourites.recipeId, recipeId));
+  return result?.count ?? 0;
+}
+
+export async function getUserLikeStatus(userId: string, recipeId: string) {
+  const [[like], [fav]] = await Promise.all([
+    db.select({ id: userRecipeLikes.userId })
+      .from(userRecipeLikes)
+      .where(and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)))
+      .limit(1),
+    db.select({ id: userRecipeFavourites.userId })
+      .from(userRecipeFavourites)
+      .where(
+        and(eq(userRecipeFavourites.userId, userId), eq(userRecipeFavourites.recipeId, recipeId)),
+      )
+      .limit(1),
+  ]);
+  return { userLiked: !!like, userFavourited: !!fav };
 }
 
 export async function toggleLike(userId: string, recipeId: string) {

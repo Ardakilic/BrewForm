@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../../api/client';
+import { api } from '../../api/client.ts';
 
 interface Props {
   recipeId: string;
@@ -16,14 +16,11 @@ export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
     if (loading) return;
     setLoading(true);
     try {
-      if (liked) {
-        await api.delete(`/recipes/${recipeId}/like`);
-        setCount((c) => c - 1);
-      } else {
-        await api.post(`/recipes/${recipeId}/like`, {});
-        setCount((c) => c + 1);
-      }
-      setLiked(!liked);
+      // The API uses a toggle endpoint (POST) — one call to like, another to unlike.
+      const result = await api.post<{ liked: boolean }>(`/recipes/${recipeId}/like`, {});
+      const nowLiked = (result as { liked: boolean }).liked;
+      setLiked(nowLiked);
+      setCount((c) => nowLiked ? c + 1 : c - 1);
     } catch {
     } finally {
       setLoading(false);

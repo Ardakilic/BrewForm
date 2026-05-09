@@ -10,16 +10,16 @@ export function PrintButton({ slug }: { slug: string }) {
   );
 }
 
-export function FocusModeButton(
-  { isFocusMode, onToggle }: { isFocusMode: boolean; onToggle: () => void },
-) {
+// Focus Mode navigates to the dedicated focus-mode page (/recipes/:slug/focus).
+// The page shows only the brew parameters in a distraction-free layout.
+export function FocusModeButton({ slug }: { slug: string }) {
   return (
     <button
       type='button'
-      onClick={onToggle}
+      onClick={() => globalThis.open(`/recipes/${slug}/focus`, '_blank')}
       className='btn-secondary text-sm'
     >
-      {isFocusMode ? '✕ Exit Focus' : '📖 Focus Mode'}
+      📖 Focus Mode
     </button>
   );
 }

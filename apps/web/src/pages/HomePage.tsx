@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { recipeApi } from '../api/index';
+import { recipeApi } from '../api/index.ts';
 
 interface RecipeListItem {
   id: string;
@@ -17,11 +17,14 @@ export function HomePage() {
   const [popularRecipes, setPopularRecipes] = useState<RecipeListItem[]>([]);
 
   useEffect(() => {
-    recipeApi.list({ perPage: '6', sortBy: 'createdAt' }).then((data) => {
-      setLatestRecipes((data as Record<string, unknown>).recipes as RecipeListItem[]);
+    // recipeApi.list() returns the recipes array directly.
+    // The API uses paginated() which puts the array in data.data;
+    // the client unwraps data.data, so the resolved value is the array itself.
+    recipeApi.list({ perPage: '6', sortBy: 'createdAt' }).then((recipes) => {
+      setLatestRecipes(Array.isArray(recipes) ? (recipes as RecipeListItem[]) : []);
     }).catch(() => {});
-    recipeApi.list({ perPage: '6', sortBy: 'likeCount' }).then((data) => {
-      setPopularRecipes((data as Record<string, unknown>).recipes as RecipeListItem[]);
+    recipeApi.list({ perPage: '6', sortBy: 'likeCount' }).then((recipes) => {
+      setPopularRecipes(Array.isArray(recipes) ? (recipes as RecipeListItem[]) : []);
     }).catch(() => {});
   }, []);
 

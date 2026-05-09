@@ -39,6 +39,7 @@ services:
       - OPENAPI_ENABLED=true
       - APP_ENV=development
       - APP_PORT=8000
+      - APP_URL=http://localhost:8000
       - LOG_LEVEL=debug
       - ADMIN_EMAIL=admin@brewform.local
       - ADMIN_USERNAME=admin
@@ -126,6 +127,7 @@ services:
       - OPENAPI_ENABLED=true
       - APP_ENV=development
       - APP_PORT=8000
+      - APP_URL=http://localhost:8000
       - LOG_LEVEL=debug
       - ADMIN_EMAIL=admin@brewform.local
       - ADMIN_USERNAME=admin

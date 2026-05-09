@@ -5,6 +5,7 @@
   },
   "compilerOptions": {
     "strict": true,
+    "lib": ["dom", "dom.iterable", "esnext", "deno.ns"],
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "types": [

@@ -519,6 +519,23 @@ export const userRecipeLikes = pgTable(
   ],
 );
 
+export const userRecipeRatings = pgTable(
+  'user_recipe_rating',
+  {
+    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    rating: integer('rating').notNull(), // 1–10
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('user_recipe_rating_user_id_recipe_id_unique').on(table.userId, table.recipeId),
+    index('user_recipe_rating_user_id_idx').on(table.userId),
+    index('user_recipe_rating_recipe_id_idx').on(table.recipeId),
+  ],
+);
+
 export const badges = pgTable(
   'badge',
   {
@@ -848,6 +865,17 @@ export const userRecipeFavouritesRelations = relations(userRecipeFavourites, ({ 
   }),
   recipe: one(recipes, {
     fields: [userRecipeFavourites.recipeId],
+    references: [recipes.id],
+  }),
+}));
+
+export const userRecipeRatingsRelations = relations(userRecipeRatings, ({ one }) => ({
+  user: one(users, {
+    fields: [userRecipeRatings.userId],
+    references: [users.id],
+  }),
+  recipe: one(recipes, {
+    fields: [userRecipeRatings.recipeId],
     references: [recipes.id],
   }),
 }));

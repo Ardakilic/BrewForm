@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { api } from '../../api/client';
-import { useAuth } from '../../contexts/AuthContext';
-import { SEOHead } from '../../components/seo/SEOHead';
-import { FollowButton } from '../../components/user/FollowButton';
+import { api } from '../../api/client.ts';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { FollowButton } from '../../components/user/FollowButton.tsx';
 
 interface UserProfile {
   id: string;
@@ -41,8 +41,14 @@ export function UserProfilePage() {
   useEffect(() => {
     if (!username) return;
     setLoading(true);
-    api.get<UserProfile>(`/users/${username}`).then((data) => {
-      setProfile(data as UserProfile);
+    api.get<Record<string, unknown>>(`/users/${username}`).then((data: Record<string, unknown>) => {
+      // Normalize: the API may not return recipes/badges arrays — default to empty arrays.
+      setProfile({
+        ...(data as unknown as UserProfile),
+        recipes: Array.isArray(data.recipes) ? (data.recipes as UserProfile['recipes']) : [],
+        badges: Array.isArray(data.badges) ? (data.badges as UserProfile['badges']) : [],
+        isFollowing: Boolean(data.isFollowing),
+      });
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, [username]);
@@ -199,12 +205,12 @@ function FollowList({ userId, type }: { userId: string; type: 'followers' | 'fol
   >([]);
 
   useEffect(() => {
-    api.get<{ users: { id: string; username: string; displayName: string | null }[] }>(
+    // The follow endpoints use paginated() — the array is returned directly in data.data.
+    api.get<{ id: string; username: string; displayName: string | null }[]>(
       `/follow/${userId}/${type}`,
     )
-      .then((data) => {
-        const d = data as Record<string, unknown>;
-        setUsers((d.users as { id: string; username: string; displayName: string | null }[]) || []);
+      .then((data: { id: string; username: string; displayName: string | null }[]) => {
+        setUsers(Array.isArray(data) ? data : []);
       })
       .catch(() => {});
   }, [userId, type]);

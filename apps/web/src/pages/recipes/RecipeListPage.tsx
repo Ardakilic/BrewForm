@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { recipeApi } from '../../api/index';
-import { SEOHead } from '../../components/seo/SEOHead';
+import { recipeApi } from '../../api/index.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS, DRINK_TYPES, VISIBILITY_STATES } from '@brewform/shared/constants';
 
 // deno-lint-ignore no-explicit-any
@@ -45,9 +45,11 @@ export function RecipeListPage() {
     if (visibility) params.visibility = visibility;
     if (search) params.search = search;
 
-    recipeApi.list(params).then((data: any) => {
-      setRecipes(data.recipes || []);
-      setTotal(data.total || 0);
+    // recipeApi.list() returns the array directly (paginated() puts array in data.data).
+    recipeApi.list(params).then((data) => {
+      const items = Array.isArray(data) ? (data as RecipeListItem[]) : [];
+      setRecipes(items);
+      setTotal(items.length);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, [page, brewMethod, drinkType, visibility, sortBy, search]);

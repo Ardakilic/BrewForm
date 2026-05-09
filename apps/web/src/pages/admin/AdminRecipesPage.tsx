@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../api/client';
+import { api } from '../../api/client.ts';
 
 interface Recipe {
   id: string;
@@ -17,9 +17,10 @@ export function AdminRecipesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<{ recipes: Recipe[]; total: number }>('/admin/recipes?perPage=50').then((data) => {
-      const d = data as Record<string, unknown>;
-      setRecipes((d.recipes as Recipe[]) || []);
+    // The API uses paginated() which puts the array directly in data.data.
+    // The client unwraps data.data, so the resolved value is the array itself.
+    api.get<Recipe[]>('/admin/recipes?perPage=50').then((data: Recipe[]) => {
+      setRecipes(Array.isArray(data) ? data : []);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);

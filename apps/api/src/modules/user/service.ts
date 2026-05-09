@@ -14,8 +14,17 @@ export async function getPublicProfile(username: string) {
   if (!user) throw new Error('USER_NOT_FOUND');
   // deno-lint-ignore no-explicit-any
   const { passwordHash: _passwordHash, email: _email, ...safe } = user as any;
-  const stats = await model.getUserStats(user.id);
-  return { ...safe, ...stats };
+  const [stats, recipes] = await Promise.all([
+    model.getUserStats(user.id),
+    model.getUserPublicRecipes(user.id),
+  ]);
+  return {
+    ...safe,
+    ...stats,
+    recipes,
+    badges: [], // badges are not yet fetched for public profiles
+    isFollowing: false, // requires auth context — set by frontend if needed
+  };
 }
 
 export async function updateProfile(

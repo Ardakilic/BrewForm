@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { recipeApi } from '../../api/index';
+import { recipeApi } from '../../api/index.ts';
 import { EMOJI_TAGS } from '@brewform/shared/constants';
 
 export function RecipePrintViewPage() {
@@ -9,7 +9,7 @@ export function RecipePrintViewPage() {
 
   useEffect(() => {
     if (!slug) return;
-    recipeApi.get(slug).then((data) => {
+    recipeApi.get(slug).then((data: Record<string, unknown>) => {
       setRecipe(data);
     }).catch(() => {});
   }, [slug]);
@@ -26,7 +26,7 @@ export function RecipePrintViewPage() {
     );
   }
 
-  const v = recipe.currentVersion;
+  const v = recipe.currentVersion ?? {};
   const emoji = v.emojiTag ? EMOJI_TAGS.find((e: any) => e.key === v.emojiTag) : null;
 
   return (

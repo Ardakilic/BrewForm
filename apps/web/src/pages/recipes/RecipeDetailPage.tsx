@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { recipeApi } from '../../api/index';
-import { SEOHead } from '../../components/seo/SEOHead';
-import { RecipeJsonLd } from '../../components/seo/JsonLd';
-import { LikeButton } from '../../components/recipe/LikeButton';
-import { FavouriteButton } from '../../components/recipe/FavouriteButton';
-import { CommentSection } from '../../components/recipe/CommentSection';
-import { RecipeQRCode } from '../../components/qrcode/RecipeQRCode';
-import { FocusModeButton, PrintButton } from '../../components/recipe/PrintButton';
-import { useAuth } from '../../contexts/AuthContext';
+import { recipeApi } from '../../api/index.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
+import { LikeButton } from '../../components/recipe/LikeButton.tsx';
+import { FavouriteButton } from '../../components/recipe/FavouriteButton.tsx';
+import { CommentSection } from '../../components/recipe/CommentSection.tsx';
+import { RecipeQRCode } from '../../components/qrcode/RecipeQRCode.tsx';
+import { FocusModeButton, PrintButton } from '../../components/recipe/PrintButton.tsx';
+import { StarRating } from '../../components/recipe/StarRating.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import { EMOJI_TAGS } from '@brewform/shared/constants';
 
 export function RecipeDetailPage() {
@@ -20,12 +21,12 @@ export function RecipeDetailPage() {
   // deno-lint-ignore no-explicit-any
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [focusMode, setFocusMode] = useState(false);
+  // focusMode state removed — Focus Mode now navigates to /recipes/:slug/focus page
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    recipeApi.get(slug).then((data) => {
+    recipeApi.get(slug).then((data: Record<string, unknown>) => {
       // QR codes are only generated for public recipes. If a scan lands on a
       // non-public recipe, show the dedicated "no longer available" page.
       if (fromQr && data && data.visibility !== 'public') {
@@ -63,12 +64,16 @@ export function RecipeDetailPage() {
   }
 
   const isOwner = user?.id === recipe.authorId;
-  const v = recipe.currentVersion;
+  const v = recipe.currentVersion ?? {};
   // deno-lint-ignore no-explicit-any
-  const emojiInfo = v.emojiTag ? EMOJI_TAGS.find((e: any) => e.key === v.emojiTag) : null;
+  const emojiInfo = v?.emojiTag ? EMOJI_TAGS.find((e: any) => e.key === v.emojiTag) : null;
+  // deno-lint-ignore no-explicit-any
+  const tasteNotes: any[] = Array.isArray(recipe.tasteNotes) ? recipe.tasteNotes : [];
+  // deno-lint-ignore no-explicit-any
+  const equipment: any[] = Array.isArray(recipe.equipment) ? recipe.equipment : [];
 
   return (
-    <div className={focusMode ? 'focus-mode' : ''}>
+    <div>
       <SEOHead
         title={recipe.title}
         description={v.personalNotes ||
@@ -119,7 +124,7 @@ export function RecipeDetailPage() {
               <Link to={`/recipes/${recipe.id}/edit`} className='btn-secondary text-sm'>Edit</Link>
             )}
             <PrintButton slug={recipe.slug} />
-            <FocusModeButton isFocusMode={focusMode} onToggle={() => setFocusMode(!focusMode)} />
+            <FocusModeButton slug={recipe.slug} />
           </div>
         </div>
 
@@ -129,9 +134,9 @@ export function RecipeDetailPage() {
               <h2 className='font-semibold mb-3' style={{ color: 'var(--text-primary)' }}>
                 Brew Parameters
               </h2>
-              <div className='grid grid-cols-2 gap-3 text-sm'>
-                <ParamRow label='Brew Method' value={v.brewMethod.replace(/_/g, ' ')} />
-                <ParamRow label='Drink Type' value={v.drinkType.replace(/_/g, ' ')} />
+              <div className='text-sm'>
+                <ParamRow label='Brew Method' value={v.brewMethod?.replace(/_/g, ' ') ?? null} />
+                <ParamRow label='Drink Type' value={v.drinkType?.replace(/_/g, ' ') ?? null} />
                 <ParamRow label='Product Name' value={v.productName} />
                 <ParamRow label='Coffee Brand' value={v.coffeeBrand} />
                 <ParamRow label='Processing' value={v.coffeeProcessing} />
@@ -172,26 +177,26 @@ export function RecipeDetailPage() {
               </div>
             )}
 
-            {recipe.tasteNotes.length > 0 && (
+            {tasteNotes.length > 0 && (
               <div className='card'>
                 <h2 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
                   Taste Notes
                 </h2>
                 <div className='flex flex-wrap gap-2'>
-                  {recipe.tasteNotes.map((note: any) => (
+                  {tasteNotes.map((note: any) => (
                     <span key={note.id} className='badge'>{note.name}</span>
                   ))}
                 </div>
               </div>
             )}
 
-            {recipe.equipment.length > 0 && (
+            {equipment.length > 0 && (
               <div className='card'>
                 <h2 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
                   Equipment
                 </h2>
                 <div className='flex flex-wrap gap-2'>
-                  {recipe.equipment.map((eq: any) => (
+                  {equipment.map((eq: any) => (
                     <span
                       key={eq.id}
                       className='badge'
@@ -216,9 +221,50 @@ export function RecipeDetailPage() {
                 </span>
                 {emojiInfo && <span title={emojiInfo.label}>{emojiInfo.emoji}</span>}
               </div>
+
+              {/* Author's self-rating (read-only stars) */}
               {v.rating && (
-                <div className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
-                  {v.rating}/10
+                <div className='mb-3'>
+                  <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
+                    Author's rating
+                  </p>
+                  <StarRating value={v.rating} interactive={false} />
+                </div>
+              )}
+
+              {/* Community average — always shown (empty stars when no votes yet) */}
+              <div className='mb-3'>
+                <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
+                  Community average
+                </p>
+                <StarRating
+                  value={recipe.avgRating ? Math.round(recipe.avgRating) : null}
+                  count={recipe.ratingCount ?? 0}
+                  interactive={false}
+                />
+              </div>
+
+              {/* Interactive rating for authenticated users */}
+              {isAuthenticated && (
+                <div className='pt-3 border-t' style={{ borderColor: 'var(--border-primary)' }}>
+                  <p className='text-xs mb-2' style={{ color: 'var(--text-tertiary)' }}>
+                    {recipe.userRating ? 'Your rating' : 'Rate this recipe'}
+                  </p>
+                  <StarRating
+                    value={recipe.userRating ?? null}
+                    onRate={async (rating) => {
+                      try {
+                        const result = await recipeApi.rate(recipe.id, rating);
+                        setRecipe((prev: any) => ({
+                          ...prev,
+                          userRating: rating,
+                          avgRating: (result as any).avgRating,
+                          ratingCount: (result as any).ratingCount,
+                        }));
+                      } catch {
+                      }
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -233,7 +279,7 @@ export function RecipeDetailPage() {
                 <FavouriteButton
                   recipeId={recipe.id}
                   initialFavourited={recipe.userFavourited}
-                  initialCount={0}
+                  initialCount={recipe.favouriteCount ?? 0}
                 />
               )}
               {isAuthenticated && !isOwner && (
@@ -256,15 +302,17 @@ export function RecipeDetailPage() {
   );
 }
 
-function ParamRow({ label, value }: { label: string; value: string | null }) {
+function ParamRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
     <div
-      className='flex justify-between py-1'
+      className='flex items-baseline justify-between gap-4 py-1.5'
       style={{ borderBottom: '1px solid var(--border-primary)' }}
     >
-      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-      <span className='font-medium' style={{ color: 'var(--text-primary)' }}>{value}</span>
+      <span className='flex-shrink-0' style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <span className='font-medium text-right' style={{ color: 'var(--text-primary)' }}>
+        {value}
+      </span>
     </div>
   );
 }

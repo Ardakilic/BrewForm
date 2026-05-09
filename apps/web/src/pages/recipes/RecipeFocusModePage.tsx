@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
-import { recipeApi } from '../../api/index';
+import { Link, useParams } from 'react-router';
+import { recipeApi } from '../../api/index.ts';
 import { EMOJI_TAGS } from '@brewform/shared/constants';
 
 export function RecipeFocusModePage() {
@@ -10,7 +10,7 @@ export function RecipeFocusModePage() {
 
   useEffect(() => {
     if (!slug) return;
-    recipeApi.get(slug).then((data) => {
+    recipeApi.get(slug).then((data: Record<string, unknown>) => {
       setRecipe(data);
     }).catch(() => {});
   }, [slug]);
@@ -26,19 +26,18 @@ export function RecipeFocusModePage() {
     );
   }
 
-  const v = recipe.currentVersion;
+  const v = recipe.currentVersion ?? {};
   const emoji = v.emojiTag ? EMOJI_TAGS.find((e: any) => e.key === v.emojiTag) : null;
 
   return (
     <div className='focus-mode mx-auto max-w-2xl px-6 py-16'>
-      <button
-        type='button'
-        onClick={() => globalThis.history.back()}
-        className='mb-8 text-sm'
+      <Link
+        to={`/recipes/${slug}`}
+        className='mb-8 text-sm inline-block'
         style={{ color: 'var(--accent-primary)' }}
       >
-        ← Back
-      </button>
+        ← Back to Recipe
+      </Link>
 
       <h1 className='text-3xl font-bold mb-2' style={{ color: 'var(--text-primary)' }}>
         {recipe.title}
@@ -75,7 +74,7 @@ export function RecipeFocusModePage() {
           </div>
         </section>
 
-        {recipe.tasteNotes.length > 0 && (
+        {Array.isArray(recipe.tasteNotes) && recipe.tasteNotes.length > 0 && (
           <section>
             <h2 className='text-lg font-semibold mb-2' style={{ color: 'var(--accent-primary)' }}>
               Taste Notes

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { api } from '../../api/client';
-import { SEOHead } from '../../components/seo/SEOHead';
+import { api } from '../../api/client.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS, DRINK_TYPES } from '@brewform/shared/constants';
 
 // deno-lint-ignore no-explicit-any
@@ -45,10 +45,13 @@ export function SearchPage() {
     params.page = String(page);
     params.perPage = '12';
 
-    api.get<{ recipes: SearchRecipe[]; total: number }>(`/search?${new URLSearchParams(params)}`)
-      .then((data: any) => {
-        setResults((data.recipes as SearchRecipe[]) || []);
-        setTotal((data.total as number) || 0);
+    // The API uses paginated() which puts the array directly in data.data.
+    // The client unwraps data.data, so the resolved value is the array itself.
+    api.get<unknown[]>(`/search?${new URLSearchParams(params)}`)
+      .then((data) => {
+        const items = Array.isArray(data) ? (data as SearchRecipe[]) : [];
+        setResults(items);
+        setTotal(items.length);
       })
       .catch(() => {
         setResults([]);
