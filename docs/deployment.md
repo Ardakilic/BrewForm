@@ -84,6 +84,7 @@ cp .env.example .env
 
 ```bash
 make up          # Start infrastructure (postgres, mailpit, pgadmin, garage)
+make install     # Cache Deno dependencies
 make dev         # Start full-stack dev server (API :8000 + web :5173 with HMR)
 make logs        # View infrastructure logs
 make db-migrate  # Apply database migrations
@@ -93,48 +94,68 @@ make db-studio   # Open Drizzle Studio GUI at localhost:5555
 
 After seeding, admin credentials: `admin@brewform.local` / `admin123456`
 
+Open **http://localhost:5173** for the web app and **http://localhost:8000** for the API.
+
 ### Development Services
 
-| Service    | Port        | Purpose                        |
-| ---------- | ----------- | ------------------------------ |
-| API        | 8000        | Hono backend                   |
-| Web (Vite) | 5173        | React dev server with HMR      |
-| Web (Caddy)| 8080        | Built SPA preview              |
-| PostgreSQL | 5432        | Database                       |
-| Mailpit    | 1025 / 8025 | SMTP server + web UI for email |
-| pgAdmin    | 5050        | Database GUI                   |
-| Garage     | 3900 / 3902 | S3-compatible object storage   |
+| Service         | URL / Port              | Purpose                          |
+| --------------- | ----------------------- | -------------------------------- |
+| API             | http://localhost:8000   | Hono backend (dev + preview)     |
+| Web (Vite HMR)  | http://localhost:5173   | React dev server with hot reload |
+| Web (Caddy)     | http://localhost:8080   | Built SPA preview                |
+| PostgreSQL      | localhost:5432          | Database                         |
+| Mailpit SMTP    | localhost:1025          | SMTP server for email testing    |
+| Mailpit UI      | http://localhost:8025   | Email web UI                     |
+| pgAdmin         | http://localhost:5050   | Database GUI                     |
+| Garage S3 API   | http://localhost:3900   | S3-compatible object storage     |
+| Garage Web      | http://localhost:3902   | Garage web gateway               |
 
 ### Development vs. Preview
 
-**Development (`make dev`)**  
-Runs the API and web in development mode with hot reload inside a single transient container.
-- API is available at `http://localhost:8000`
-- Web dev server (Vite) is available at `http://localhost:5173`
-- Vite proxies `/api` requests to the API automatically
-- `make dev-api` and `make web-dev` are available for running only one side
+**Development (`make dev`)**
+Starts two long-running Docker Compose services (profile `dev`):
 
-**Why not start the app with `make up`?**  
-`make up` intentionally starts only infrastructure services. Starting the `app` container
-permanently would bind port `8000`, causing a "port already allocated" error when you later
-run `make dev` (which needs the same port for the development server).
+- **`app`** — Hono API with `deno run --watch` for hot reload at `http://localhost:8000`
+- **`web-dev`** — Vite dev server with HMR at `http://localhost:5173`
 
-**Preview (`make preview`)**  
+Vite proxies `/api` requests to the `app` container via the Docker internal hostname `app:8000`,
+so the browser only needs to talk to `http://localhost:5173`.
+
+`make dev-api` and `make web-dev` are available for running only one side at a time.
+
+**Why not start the app with `make up`?**
+`make up` intentionally starts only infrastructure services (profile-less services). The `app` and
+`web-dev` services are in the `dev` profile and are never started by `make up`. This prevents a
+"port already allocated" error that would occur if the API container were already running when you
+later run `make dev`.
+
+**Why no Turborepo for `make dev`?**
+Turborepo is an npm-ecosystem tool that requires an npm-compatible package manager binary (npm,
+pnpm, yarn) to resolve workspaces. This project uses native Deno workspaces (`deno.json`) and has
+no Node.js runtime in the Docker image. Running dev servers directly with Deno (`--watch` for the
+API, `deno run -A npm:vite` for the web) is simpler, faster, and has no permission-prompt issues.
+Turborepo is still used for CI tasks (build, lint, test) where it provides caching benefits.
+
+**Preview (`make preview`)**
 Builds the web app and serves the static SPA via Caddy alongside the production-like API:
-- API at `http://localhost:8000`
-- Built web app at `http://localhost:8080`
+- API at `http://localhost:8000` (via `app-preview` service, profile `preview`)
+- Built web app at `http://localhost:8080` (via `web` Caddy service, profile `preview`)
 - Useful for testing production builds locally before deploying
 
 ### Docker Compose Services
 
 The `compose.yml` defines these services:
 
-- **app**: Deno runtime for the API (started on-demand via `make dev`, or as part of `make preview`)
-- **postgres**: PostgreSQL 18 database
-- **mailpit**: SMTP testing with web UI
-- **pgadmin**: PostgreSQL admin GUI
-- **garage**: S3-compatible object storage for local development
-- **web** (profile `preview`): Caddy static file server for the built React SPA
+| Service       | Profile   | Purpose                                                    |
+| ------------- | --------- | ---------------------------------------------------------- |
+| `app`         | `dev`     | API with `--watch` hot reload; source volume-mounted       |
+| `web-dev`     | `dev`     | Vite dev server with HMR; proxies `/api` to `app:8000`     |
+| `app-preview` | `preview` | Production API image (no hot reload, no volume mount)      |
+| `web`         | `preview` | Caddy static file server for the built React SPA           |
+| `postgres`    | —         | PostgreSQL 18 database                                     |
+| `mailpit`     | —         | SMTP testing with web UI                                   |
+| `pgadmin`     | —         | PostgreSQL admin GUI                                       |
+| `garage`      | —         | S3-compatible object storage for local development         |
 
 ## CI/CD Pipelines
 

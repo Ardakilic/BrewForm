@@ -10,7 +10,7 @@ _why_ and the _flow_:
 
 ## Monorepo Structure
 
-BrewForm uses a Turborepo monorepo with npm workspaces. Four packages:
+BrewForm uses a Turborepo monorepo with native Deno workspaces (`deno.json`). Four packages:
 
 | Package           | Purpose                                       | Runtime                |
 | ----------------- | --------------------------------------------- | ---------------------- |
@@ -36,8 +36,8 @@ The frontend **never** imports from `@brewform/db`. All type sharing happens thr
 - `@brewform/shared` — types, schemas, constants, utils, i18n
 - `@brewform/db` — Drizzle client, schema, migrations
 
-Both are configured as npm workspace packages in the root `package.json` using `*` protocol (not
-`workspace:*`).
+Both are configured as Deno workspace members in the root `deno.json` (`workspace.members`) and
+also listed in `package.json` workspaces for npm-ecosystem tooling (Turborepo, Drizzle Kit).
 
 ## Backend Module Pattern
 

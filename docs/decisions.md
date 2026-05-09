@@ -10,23 +10,30 @@ For the _what_ (file layout, schema, middleware order), see `architecture.md` an
 
 ---
 
-## ADR-001 — Deno + npm workspaces (instead of Node + pnpm)
+## ADR-001 — Deno + Deno workspaces (instead of Node + pnpm)
 
-**Decision.** Run on the Deno runtime, but manage dependencies through `package.json` and npm
-workspaces.
+**Decision.** Run on the Deno runtime, manage the monorepo with native Deno workspaces
+(`deno.json` `workspace.members`), and keep a `package.json` only for npm-ecosystem tooling
+(Turborepo, Drizzle Kit, type declarations).
 
 **Why.** Deno gives us first-class TypeScript without a build step, fetch/Web-Standards APIs,
-built-in test runner / linter / formatter, and Deno Deploy as a free hosting target. Going pure-Deno
-(with `deno.json` import maps) would have been simpler in isolation but locked us out of Prisma's
-npm-only client and a large chunk of the Node ecosystem. Going pure-Node would mean shipping a
-separate build pipeline and losing Deno Deploy.
+built-in test runner / linter / formatter, and Deno Deploy as a free hosting target. Native Deno
+workspaces let us share packages (`@brewform/shared`, `@brewform/db`) without a Node.js runtime or
+a separate package manager binary. The `package.json` is kept for Turborepo (CI task caching) and
+Drizzle Kit, both of which are invoked via `deno run -A npm:...` — no `node_modules` binary is
+ever executed directly.
 
 **Trade-off.** Two ecosystems must coexist: we use `deno install` for deps and `deno run` for
 execution, with `--unstable-sloppy-imports` to bridge the import-style gap. The Dockerfile uses only
 Deno; the seed script is TypeScript and runs via `deno run --allow-all`.
 
+**Dev servers bypass Turborepo.** Turborepo requires an npm-compatible package manager binary
+(npm/pnpm/yarn) to resolve workspaces. Since the Docker image has no such binary, dev servers
+(`make dev`) run directly via Deno: `deno run --watch` for the API and `deno run -A npm:vite` for
+the web. Turborepo is only used for CI tasks (build, lint, test) where its caching is valuable.
+
 **Excluded.** Import maps in `deno.json`. All imports use explicit npm/JSR specifiers — see
-`implementation-master-prompt.md` and `deno.json`.
+`deno.json`.
 
 ---
 
