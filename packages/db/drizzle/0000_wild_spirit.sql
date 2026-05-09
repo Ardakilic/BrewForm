@@ -169,7 +169,7 @@ CREATE TABLE "recipe" (
 	"title" varchar(255) NOT NULL,
 	"author_id" varchar(36) NOT NULL,
 	"visibility" "visibility" DEFAULT 'draft' NOT NULL,
-	"current_version_id" varchar(36) REFERENCES "recipe_version"("id") ON DELETE SET NULL,
+	"current_version_id" varchar(36),
 	"like_count" integer DEFAULT 0 NOT NULL,
 	"comment_count" integer DEFAULT 0 NOT NULL,
 	"fork_count" integer DEFAULT 0 NOT NULL,
@@ -308,7 +308,7 @@ ALTER TABLE "comment" ADD CONSTRAINT "comment_parent_comment_id_comment_id_fk" F
 ALTER TABLE "equipment" ADD CONSTRAINT "equipment_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "password_reset" ADD CONSTRAINT "password_reset_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "photo" ADD CONSTRAINT "photo_recipe_id_recipe_id_fk" FOREIGN KEY ("recipe_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipe_additional_preparation" ADD CONSTRAINT "recipe_additional_preparation_recipe_version_id_recipe_version_id_fk" FOREIGN KEY ("recipe_version_id") REFERENCES "public"."recipe_version"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recipe_additional_preparation" ADD CONSTRAINT "recipe_addl_prep_recipe_version_id_fk" FOREIGN KEY ("recipe_version_id") REFERENCES "public"."recipe_version"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe_equipment" ADD CONSTRAINT "recipe_equipment_recipe_version_id_recipe_version_id_fk" FOREIGN KEY ("recipe_version_id") REFERENCES "public"."recipe_version"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe_equipment" ADD CONSTRAINT "recipe_equipment_equipment_id_equipment_id_fk" FOREIGN KEY ("equipment_id") REFERENCES "public"."equipment"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe_taste_note" ADD CONSTRAINT "recipe_taste_note_recipe_version_id_recipe_version_id_fk" FOREIGN KEY ("recipe_version_id") REFERENCES "public"."recipe_version"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -318,6 +318,7 @@ ALTER TABLE "recipe_version_photo" ADD CONSTRAINT "recipe_version_photo_photo_id
 ALTER TABLE "recipe_version" ADD CONSTRAINT "recipe_version_recipe_id_recipe_id_fk" FOREIGN KEY ("recipe_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe_version" ADD CONSTRAINT "recipe_version_vendor_id_vendor_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendor"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe" ADD CONSTRAINT "recipe_author_id_user_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recipe" ADD CONSTRAINT "recipe_current_version_id_recipe_version_id_fk" FOREIGN KEY ("current_version_id") REFERENCES "public"."recipe_version"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe" ADD CONSTRAINT "recipe_forked_from_id_recipe_id_fk" FOREIGN KEY ("forked_from_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "report" ADD CONSTRAINT "report_reporter_id_user_id_fk" FOREIGN KEY ("reporter_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "setup" ADD CONSTRAINT "setup_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

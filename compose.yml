@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform?connection_limit=10&pool_timeout=30
+      - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
       - CACHE_DRIVER=memory
       - JWT_SECRET=dev-secret-change-me
@@ -85,7 +85,7 @@ services:
       - garage_data:/tmp/data
       - garage_meta:/tmp/meta
     healthcheck:
-      test: ["CMD-SHELL", "/garage status || exit 1"]
+      test: ["CMD", "/garage", "status"]
       interval: 5s
       timeout: 3s
       retries: 5

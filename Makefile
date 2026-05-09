@@ -25,6 +25,11 @@ restart:
 install:
 	docker compose run --rm app deno install
 
+# --- Email Templates ---
+
+email-build:
+	docker compose run --rm app deno task email-build
+
 # --- Turbo Tasks (standalone) ---
 
 turbo-build:

@@ -7,11 +7,11 @@ const log = createLogger('errorHandler');
 export function errorHandler(err: Error, c: Context) {
   const requestId = c.get('requestId') as string | undefined;
 
-  if (err.name === 'PrismaClientKnownRequestError') {
-    const prismaErr = err as { code?: string };
-    log.error({ err, requestId, prismaCode: prismaErr.code }, 'Prisma error');
+  if (err.name === 'PostgresError') {
+    const pgErr = err as { code?: string };
+    log.error({ err, requestId, pgCode: pgErr.code }, 'Database error');
 
-    if (prismaErr.code === 'P2002') {
+    if (pgErr.code === '23505') {
       return c.json({
         success: false,
         error: {
@@ -21,28 +21,6 @@ export function errorHandler(err: Error, c: Context) {
         },
       }, 409);
     }
-    if (prismaErr.code === 'P2025') {
-      return c.json({
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Record not found',
-          requestId,
-        },
-      }, 404);
-    }
-  }
-
-  if (err.name === 'PrismaClientValidationError') {
-    log.warn({ err, requestId }, 'Prisma validation error');
-    return c.json({
-      success: false,
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Invalid data provided',
-        requestId,
-      },
-    }, 400);
   }
 
   if (err.name === 'ZodError') {

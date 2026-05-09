@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import {
   AnyPgColumn,
   boolean,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -289,10 +290,7 @@ export const recipeAdditionalPreparations = pgTable(
   'recipe_additional_preparation',
   {
     id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    recipeVersionId: varchar('recipe_version_id', { length: 36 }).notNull().references(
-      () => recipeVersions.id,
-      { onDelete: 'cascade' },
-    ),
+    recipeVersionId: varchar('recipe_version_id', { length: 36 }).notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     type: additionalPreparationTypeEnum('type').notNull(),
     inputAmount: varchar('input_amount', { length: 100 }).notNull(),
@@ -300,6 +298,11 @@ export const recipeAdditionalPreparations = pgTable(
     sortOrder: integer('sort_order').notNull().default(0),
   },
   (table) => [
+    foreignKey({
+      name: 'recipe_addl_prep_recipe_version_id_fk',
+      columns: [table.recipeVersionId],
+      foreignColumns: [recipeVersions.id],
+    }).onDelete('cascade'),
     index('recipe_additional_preparation_recipe_version_id_idx').on(table.recipeVersionId),
   ],
 );

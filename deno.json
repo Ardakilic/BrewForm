@@ -14,7 +14,7 @@
   },
   "lint": {
     "include": ["apps/", "packages/"],
-    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/", "packages/db/drizzle/"],
+    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "packages/db/drizzle/"],
     "rules": {
       "tags": ["recommended"],
       "exclude": [
@@ -33,7 +33,7 @@
     "singleQuote": true,
     "semiColons": true,
     "include": ["apps/", "packages/"],
-    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "**/.prisma/", "packages/db/drizzle/"]
+    "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "packages/db/drizzle/"]
   },
   "test": {
     "include": [

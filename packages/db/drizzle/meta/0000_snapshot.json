@@ -1,5 +1,5 @@
 {
-  "id": "02529179-537d-4b15-9173-2cecfdc09e96",
+  "id": "6deed488-f114-4763-bdff-7ea161953080",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1048,8 +1048,8 @@
         }
       },
       "foreignKeys": {
-        "recipe_additional_preparation_recipe_version_id_recipe_version_id_fk": {
-          "name": "recipe_additional_preparation_recipe_version_id_recipe_version_id_fk",
+        "recipe_addl_prep_recipe_version_id_fk": {
+          "name": "recipe_addl_prep_recipe_version_id_fk",
           "tableFrom": "recipe_additional_preparation",
           "tableTo": "recipe_version",
           "columnsFrom": [

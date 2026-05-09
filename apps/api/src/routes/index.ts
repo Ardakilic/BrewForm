@@ -2,7 +2,7 @@
  * Route aggregator — mounts all API modules at their /api/v1/* prefixes.
  *
  * Each module follows the model→service→controller pattern:
- *   model.ts    — Prisma data access layer
+ *   model.ts    — Drizzle data access layer
  *   service.ts  — Business logic and validation
  *   index.ts    — Hono routes with Zod validation (this file's import targets)
  *
