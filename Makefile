@@ -5,17 +5,19 @@
 
 # --- App Lifecycle ---
 
+# Start infrastructure services only (postgres, mailpit, pgadmin, garage).
+# Run `make dev` afterwards to start the API and Web dev servers.
 up:
-	docker compose up -d
+	docker compose up -d postgres mailpit pgadmin garage
 
 down:
-	docker compose down
+	docker compose --profile preview down
 
 build:
 	docker compose build
 
 logs:
-	docker compose logs -f app
+	docker compose logs -f
 
 restart:
 	docker compose restart app
@@ -95,7 +97,7 @@ db-seed:
 	docker compose run --rm app deno run --allow-all packages/db/src/seed.ts
 
 db-studio:
-	docker compose run --rm --service-ports app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) studio --host=0.0.0.0 --port=5555"
+	docker compose run --rm -p 5555:5555 app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) studio --host=0.0.0.0 --port=5555"
 
 db-reset:
 	docker compose run --rm app bash -c "echo 'Drop and recreate database manually, then run db-migrate and db-seed'"
@@ -111,7 +113,12 @@ web-build:
 	docker compose run --rm app deno run -A npm:turbo@^2.5.0 run build --filter=@brewform/web
 
 web-dev:
-	docker compose run --rm --service-ports app deno run -A npm:turbo@^2.5.0 run dev --filter=@brewform/web
+	docker compose up -d postgres mailpit pgadmin garage && docker compose run --rm -p 5173:5173 app deno run -A npm:turbo@^2.5.0 run dev --filter=@brewform/web
+
+# Preview production build — builds the web app and serves it via Caddy on :8080
+# alongside the API on :8000. Requires `make web-build` first (handled automatically).
+preview: web-build
+	docker compose --profile preview up -d
 
 # --- CI ---
 
@@ -120,7 +127,7 @@ ci: fmt-check lint check check-tests test-coverage
 # --- Dev ---
 
 dev-api:
-	docker compose run --rm --service-ports app deno run --allow-all --watch apps/api/src/main.ts
+	docker compose up -d postgres mailpit pgadmin garage && docker compose run --rm -p 8000:8000 app deno run --allow-all --watch apps/api/src/main.ts
 
 dev:
-	docker compose up -d postgres mailpit pgadmin && docker compose run --rm --service-ports app deno run -A npm:turbo@^2.5.0 run dev
+	docker compose up -d postgres mailpit pgadmin garage && docker compose run --rm -p 8000:8000 -p 5173:5173 app deno run -A npm:turbo@^2.5.0 run dev

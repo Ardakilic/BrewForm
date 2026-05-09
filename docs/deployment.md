@@ -83,9 +83,9 @@ cp .env.example .env
 ```
 
 ```bash
-make up          # Start all services (postgres, mailpit, pgadmin, app)
-make dev         # Start development server (hot reload)
-make logs        # View API logs
+make up          # Start infrastructure (postgres, mailpit, pgadmin, garage)
+make dev         # Start full-stack dev server (API :8000 + web :5173 with HMR)
+make logs        # View infrastructure logs
 make db-migrate  # Apply database migrations
 make db-seed     # Seed sample data
 make db-studio   # Open Drizzle Studio GUI at localhost:5555
@@ -99,20 +99,42 @@ After seeding, admin credentials: `admin@brewform.local` / `admin123456`
 | ---------- | ----------- | ------------------------------ |
 | API        | 8000        | Hono backend                   |
 | Web (Vite) | 5173        | React dev server with HMR      |
+| Web (Caddy)| 8080        | Built SPA preview              |
 | PostgreSQL | 5432        | Database                       |
 | Mailpit    | 1025 / 8025 | SMTP server + web UI for email |
 | pgAdmin    | 5050        | Database GUI                   |
 | Garage     | 3900 / 3902 | S3-compatible object storage   |
 
-### Docker Compose
+### Development vs. Preview
 
-The `compose.yml` defines five services:
+**Development (`make dev`)**  
+Runs the API and web in development mode with hot reload inside a single transient container.
+- API is available at `http://localhost:8000`
+- Web dev server (Vite) is available at `http://localhost:5173`
+- Vite proxies `/api` requests to the API automatically
+- `make dev-api` and `make web-dev` are available for running only one side
 
-- **app**: Deno runtime with the API
+**Why not start the app with `make up`?**  
+`make up` intentionally starts only infrastructure services. Starting the `app` container
+permanently would bind port `8000`, causing a "port already allocated" error when you later
+run `make dev` (which needs the same port for the development server).
+
+**Preview (`make preview`)**  
+Builds the web app and serves the static SPA via Caddy alongside the production-like API:
+- API at `http://localhost:8000`
+- Built web app at `http://localhost:8080`
+- Useful for testing production builds locally before deploying
+
+### Docker Compose Services
+
+The `compose.yml` defines these services:
+
+- **app**: Deno runtime for the API (started on-demand via `make dev`, or as part of `make preview`)
 - **postgres**: PostgreSQL 18 database
 - **mailpit**: SMTP testing with web UI
 - **pgadmin**: PostgreSQL admin GUI
 - **garage**: S3-compatible object storage for local development
+- **web** (profile `preview`): Caddy static file server for the built React SPA
 
 ## CI/CD Pipelines
 

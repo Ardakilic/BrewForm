@@ -68,7 +68,7 @@ in each template.
 In development, Mailpit captures every outgoing email and exposes them at `http://localhost:8025`.
 There's no production SMTP wiring required to exercise the full flow:
 
-1. `make up` and `make dev` to start the stack.
+1. `make up` to start infrastructure, then `make dev` to start the development servers.
 2. Trigger a social action (follow another user, like a recipe, etc.).
 3. Open `http://localhost:8025` to inspect the rendered HTML.
 

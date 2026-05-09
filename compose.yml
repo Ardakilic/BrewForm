@@ -12,7 +12,7 @@ services:
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
-      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000,http://localhost:8080
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
       - SMTP_SECURE=false
@@ -89,6 +89,21 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # Optional preview web server — serves the built SPA on :8080.
+  # Start with: make preview  (builds the web app and starts API + Caddy)
+  web:
+    image: caddy:2-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./apps/web/dist:/usr/share/caddy:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      app:
+        condition: service_started
+    profiles:
+      - preview
 
 volumes:
   postgres_data:

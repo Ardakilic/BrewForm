@@ -48,7 +48,7 @@ cd brewform
 # Copy environment config (required by Docker Compose services such as Garage)
 cp .env.example .env
 
-# Start all services (postgres, mailpit, pgadmin, garage, app)
+# Start infrastructure services (postgres, mailpit, pgadmin, garage)
 make up
 
 # Install dependencies
@@ -66,7 +66,7 @@ make db-migrate
 # Seed the database
 make db-seed
 
-# Start development server
+# Start full-stack development server (API on :8000 + Web on :5173 with hot reload)
 make dev
 ```
 
@@ -75,8 +75,10 @@ Admin credentials after seeding: `admin@brewform.local` / `admin123456`
 ## Development
 
 ```bash
-make dev           # Start development server (API + web with hot reload)
-make dev-api       # Start API only with hot reload
+make dev           # Start full-stack dev server (API :8000 + web :5173 with HMR)
+make dev-api       # Start API only with hot reload (:8000)
+make web-dev       # Start web dev server only (:5173)
+make preview       # Build web and preview production build (API :8000 + web :8080)
 make lint          # Lint the codebase
 make fmt           # Format the codebase
 make fmt-check     # Check formatting
@@ -87,6 +89,9 @@ make test-api      # Run API tests only
 make test-shared   # Run shared package tests only
 make ci            # Full CI check (fmt-check, lint, check, test-coverage)
 ```
+
+> **Why `make up` does not start the app?**  
+> `make up` only starts infrastructure (database, mail, storage, etc.). This prevents the port-conflict error that would occur if the API container were already running when you later run `make dev`. Development servers are started on-demand via `make dev`, `make dev-api`, or `make web-dev`.
 
 ## Database
 
