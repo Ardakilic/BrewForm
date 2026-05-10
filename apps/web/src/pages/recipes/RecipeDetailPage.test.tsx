@@ -38,6 +38,7 @@ vi.mock('../../components/recipe/PrintButton.tsx', () => ({
   FocusModeButton: () => null,
 }));
 vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: () => null }));
+vi.mock('../../components/recipe/ForkCard.tsx', () => ({ ForkCard: () => <div data-testid="fork-card">ForkCard</div> }));
 vi.mock('@brewform/shared/constants', () => ({ EMOJI_TAGS: [] }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ const enT = (key: string) => {
     'recipe.yourRating': 'Your rating',
     'recipe.fork': 'Fork Recipe',
     'recipe.forkedFromOriginal': 'Forked from original',
+    'recipe.forkDescription': 'Forking creates your own personal copy of this recipe that you can freely modify and build upon.',
   };
   return map[key] ?? key;
 };
@@ -126,6 +128,7 @@ const trT = (key: string) => {
     'recipe.yourRating': 'Puanınız',
     'recipe.fork': 'Tarifi Çatalla',
     'recipe.forkedFromOriginal': 'Orijinalden çatallandı',
+    'recipe.forkDescription': 'Çatallama, bu tarifin kendi kişisel kopyanızı oluşturur; üzerinde özgürce değişiklik yapabilir ve geliştirebilirsiniz.',
   };
   return map[key] ?? key;
 };
@@ -375,5 +378,110 @@ describe('RecipeDetailPage — canonical SEO', () => {
     const calls = mockSEOHead.mock.calls;
     const lastProps = calls[calls.length - 1][0] as { canonical?: string; noIndex?: boolean };
     expect(lastProps.noIndex).toBeFalsy();
+  });
+});
+
+// ── New test groups for recipe-action-buttons-ui ───────────────────────────
+
+import { within } from '@testing-library/react';
+
+const nonOwnerAuth = {
+  user: { id: 'other-user', email: 'bob@example.com', username: 'bob', displayName: 'Bob', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+  isAuthenticated: true,
+  isLoading: false,
+  login: vi.fn(),
+  register: vi.fn(),
+  logout: vi.fn(),
+};
+
+describe('RecipeDetailPage — Social_Actions_Card layout', () => {
+  it('guest: social-actions-card inner div has flex and flex-row classes', async () => {
+    // guestAuth is the default from beforeEach
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
+    });
+
+    const card = screen.getByTestId('social-actions-card');
+    const innerDiv = card.querySelector('div');
+    expect(innerDiv).not.toBeNull();
+    expect(innerDiv!.classList.contains('flex')).toBe(true);
+    expect(innerDiv!.classList.contains('flex-row')).toBe(true);
+  });
+
+  it('authenticated non-owner: social-actions-card inner div has flex and flex-row classes', async () => {
+    mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
+
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
+    });
+
+    const card = screen.getByTestId('social-actions-card');
+    const innerDiv = card.querySelector('div');
+    expect(innerDiv).not.toBeNull();
+    expect(innerDiv!.classList.contains('flex')).toBe(true);
+    expect(innerDiv!.classList.contains('flex-row')).toBe(true);
+  });
+});
+
+describe('RecipeDetailPage — Fork_Card visibility', () => {
+  it('authenticated non-owner: fork-card is rendered', async () => {
+    mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
+
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fork-card')).toBeInTheDocument();
+    });
+  });
+
+  it('guest (isAuthenticated=false): fork-card is NOT rendered', async () => {
+    // guestAuth is the default from beforeEach
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('fork-card')).toBeNull();
+  });
+
+  it('recipe owner (user.id === recipe.authorId): fork-card is NOT rendered', async () => {
+    const ownerAuth = {
+      user: { id: 'author-1', email: 'alice@example.com', username: 'alice', displayName: 'Alice', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+    };
+    mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
+
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('fork-card')).toBeNull();
+  });
+});
+
+describe('RecipeDetailPage — Fork_Card is sibling, not child of Social_Actions_Card', () => {
+  it('authenticated non-owner: fork-card is NOT inside social-actions-card', async () => {
+    mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
+
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fork-card')).toBeInTheDocument();
+    });
+
+    const socialActionsCard = screen.getByTestId('social-actions-card');
+    const forkCardInsideSocialActions = within(socialActionsCard).queryByTestId('fork-card');
+    expect(forkCardInsideSocialActions).toBeNull();
   });
 });

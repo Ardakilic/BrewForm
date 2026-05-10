@@ -5,6 +5,7 @@ import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
 import { LikeButton } from '../../components/recipe/LikeButton.tsx';
 import { FavouriteButton } from '../../components/recipe/FavouriteButton.tsx';
+import { ForkCard } from '../../components/recipe/ForkCard.tsx';
 import { CommentSection } from '../../components/recipe/CommentSection.tsx';
 import { RecipeQRCode } from '../../components/qrcode/RecipeQRCode.tsx';
 import { FocusModeButton, PrintButton } from '../../components/recipe/PrintButton.tsx';
@@ -271,28 +272,24 @@ export function RecipeDetailPage() {
               )}
             </div>
 
-            <div className='card flex flex-col gap-3'>
-              <LikeButton
-                recipeId={recipe.id}
-                initialLiked={recipe.userLiked}
-                initialCount={recipe.likeCount}
-              />
-              {isAuthenticated && (
-                <FavouriteButton
-                  recipeId={recipe.id}
-                  initialFavourited={recipe.userFavourited}
-                  initialCount={recipe.favouriteCount ?? 0}
-                />
-              )}
-              {isAuthenticated && !isOwner && (
-                <Link
-                  to={`/recipes/${recipe.id}/fork`}
-                  className='btn-secondary text-sm text-center'
-                >
-                  🍴 {t('recipe.fork')}
-                </Link>
-              )}
+            {/* Social_Actions_Card */}
+            <div data-testid="social-actions-card" className='card'>
+              <div className='flex flex-row gap-3'>
+                <LikeButton recipeId={recipe.id} initialLiked={recipe.userLiked} initialCount={recipe.likeCount} />
+                {isAuthenticated && (
+                  <FavouriteButton
+                    recipeId={recipe.id}
+                    initialFavourited={recipe.userFavourited}
+                    initialCount={recipe.favouriteCount ?? 0}
+                  />
+                )}
+              </div>
             </div>
+
+            {/* Fork_Card — sibling to Social_Actions_Card */}
+            {isAuthenticated && !isOwner && (
+              <ForkCard recipeId={recipe.id} />
+            )}
 
             <RecipeQRCode slug={recipe.slug} visibility={recipe.visibility} />
           </div>

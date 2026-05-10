@@ -22,6 +22,7 @@
   "recipe.create": "New Recipe",
   "recipe.edit": "Edit Recipe",
   "recipe.fork": "Fork Recipe",
+  "recipe.forkDescription": "Forking creates your own personal copy of this recipe that you can freely modify and build upon.",
   "recipe.compare": "Compare",
   "recipe.version": "Version",
   "recipe.versions": "Versions",

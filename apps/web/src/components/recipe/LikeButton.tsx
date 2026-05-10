@@ -4,12 +4,12 @@ import { api } from '../../api/client.ts';
 interface Props {
   recipeId: string;
   initialLiked: boolean;
-  initialCount: number;
+  initialCount?: number;
 }
 
 export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
   const [liked, setLiked] = useState(initialLiked);
-  const [count, setCount] = useState(initialCount);
+  const [count, setCount] = useState<number | undefined>(initialCount);
   const [loading, setLoading] = useState(false);
 
   async function toggle() {
@@ -38,7 +38,7 @@ export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
         color: liked ? 'var(--bg-primary)' : 'var(--text-primary)',
       }}
     >
-      ❤️ {count}
+      ❤️ {count !== undefined && count}
     </button>
   );
 }

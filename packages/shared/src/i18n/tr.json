@@ -22,6 +22,7 @@
   "recipe.create": "Yeni Tarif",
   "recipe.edit": "Tarifi Düzenle",
   "recipe.fork": "Tarifi Çatalla",
+  "recipe.forkDescription": "Çatallama, bu tarifin kendi kişisel kopyanızı oluşturur; üzerinde özgürce değişiklik yapabilir ve geliştirebilirsiniz.",
   "recipe.compare": "Karşılaştır",
   "recipe.version": "Sürüm",
   "recipe.versions": "Sürümler",
