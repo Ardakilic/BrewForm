@@ -15,6 +15,13 @@
       "when": 1778362488861,
       "tag": "0001_tearful_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778431183780,
+      "tag": "0002_late_gamora",
+      "breakpoints": true
     }
   ]
 }

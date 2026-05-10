@@ -1,6 +1,23 @@
+/**
+ * Tests for RecipeFocusModePage
+ *
+ * Feature: recipe-detail-redesign
+ * **Validates: Requirements 16.8**
+ *
+ * Covers:
+ *  - Loading state
+ *  - Recipe title (h1) and author byline rendering
+ *  - "Back to Recipe" navigation link
+ *  - StatCards always rendered
+ *  - BeanSection conditional rendering
+ *  - TastingNotesSection conditional rendering
+ *  - SEO canonical + noIndex
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { RecipeFocusModePage } from './RecipeFocusModePage';
+
+// ── Mocks ──────────────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
   Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
@@ -17,12 +34,28 @@ vi.mock('../../api/index.ts', () => ({
   recipeApi: { get: vi.fn() },
 }));
 
-vi.mock('@brewform/shared/constants', () => ({
-  EMOJI_TAGS: [{ key: 'fire', emoji: '🔥', label: 'Fire' }],
-}));
-
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
   SEOHead: vi.fn(() => null),
+}));
+
+vi.mock('../../components/recipe/StatCards.tsx', () => ({
+  StatCards: () => <div data-testid="stat-cards" />,
+}));
+
+vi.mock('../../components/recipe/BeanSection.tsx', () => ({
+  BeanSection: () => <div data-testid="bean-section" />,
+}));
+
+vi.mock('../../components/recipe/BrewTimeline.tsx', () => ({
+  BrewTimeline: () => <div data-testid="brew-timeline" />,
+}));
+
+vi.mock('../../components/recipe/EquipmentSection.tsx', () => ({
+  EquipmentSection: () => <div data-testid="equipment-section" />,
+}));
+
+vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({
+  TastingNotesSection: () => <div data-testid="tasting-notes-section" />,
 }));
 
 import { useParams } from 'react-router';
@@ -40,23 +73,8 @@ const mockSEOHead = vi.mocked(SEOHead);
 const enT = (key: string) => {
   const map: Record<string, string> = {
     'common.loading': 'Loading...',
-    'recipe.brewParams': 'Brew Parameters',
-    'recipe.tasteNotes': 'Taste Notes',
-    'recipe.grinder': 'Grinder',
-    'recipe.focusMode.backToRecipe': '← Back to Recipe',
+    'recipe.focusMode.backToRecipe': 'Back to Recipe',
     'recipe.focusMode.by': 'By',
-    'recipe.focusMode.method': 'Method',
-    'recipe.focusMode.drink': 'Drink',
-    'recipe.focusMode.product': 'Product',
-    'recipe.focusMode.brand': 'Brand',
-    'recipe.focusMode.grind': 'Grind',
-    'recipe.focusMode.dose': 'Dose',
-    'recipe.focusMode.time': 'Time',
-    'recipe.focusMode.yield': 'Yield',
-    'recipe.focusMode.temp': 'Temp',
-    'recipe.focusMode.ratio': 'Ratio',
-    'recipe.focusMode.rating': 'Rating',
-    'recipe.focusMode.notes': 'Notes',
   };
   return map[key] ?? key;
 };
@@ -64,23 +82,8 @@ const enT = (key: string) => {
 const trT = (key: string) => {
   const map: Record<string, string> = {
     'common.loading': 'Yükleniyor...',
-    'recipe.brewParams': 'Demleme Parametreleri',
-    'recipe.tasteNotes': 'Tat Notları',
-    'recipe.grinder': 'Öğütücü',
-    'recipe.focusMode.backToRecipe': '← Tarife Dön',
+    'recipe.focusMode.backToRecipe': 'Tarife Dön',
     'recipe.focusMode.by': 'Yazan',
-    'recipe.focusMode.method': 'Yöntem',
-    'recipe.focusMode.drink': 'İçecek',
-    'recipe.focusMode.product': 'Ürün',
-    'recipe.focusMode.brand': 'Marka',
-    'recipe.focusMode.grind': 'Öğütme',
-    'recipe.focusMode.dose': 'Doz',
-    'recipe.focusMode.time': 'Süre',
-    'recipe.focusMode.yield': 'Verim',
-    'recipe.focusMode.temp': 'Sıcaklık',
-    'recipe.focusMode.ratio': 'Oran',
-    'recipe.focusMode.rating': 'Puan',
-    'recipe.focusMode.notes': 'Notlar',
   };
   return map[key] ?? key;
 };
@@ -92,25 +95,23 @@ const defaultTranslation = {
   availableLocales: ['en', 'tr'],
 };
 
+// ── Sample data ────────────────────────────────────────────────────────────
+
 const sampleRecipe = {
   title: 'My Espresso',
   slug: 'my-espresso',
   author: { username: 'alice', displayName: 'Alice' },
-  tasteNotes: [{ id: 'tn-1', name: 'Chocolate' }],
+  tasteNotes: [{ id: 'tn-1', name: 'Chocolate', intensity: 2 }],
   currentVersion: {
     brewMethod: 'ESPRESSO',
     drinkType: 'ESPRESSO',
     productName: 'Ethiopia Yirgacheffe',
     coffeeBrand: 'Blue Bottle',
-    grinder: 'Niche Zero',
-    grindSize: '2.5',
     groundWeightGrams: 18,
     extractionTimeSeconds: 28,
     extractionVolumeMl: 36,
     temperatureCelsius: 93,
     brewRatio: 2,
-    rating: 8,
-    emojiTag: 'fire',
     personalNotes: 'Great shot today.',
   },
 };
@@ -141,141 +142,167 @@ describe('RecipeFocusModePage — loading state', () => {
   });
 });
 
-describe('RecipeFocusModePage — i18n section headings', () => {
-  it('renders back link, author prefix, and section headings using t() — English', async () => {
+describe('RecipeFocusModePage — recipe title and author', () => {
+  it('renders recipe title in h1', async () => {
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument());
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My Espresso');
+  });
+
+  it('renders author byline', async () => {
     render(<RecipeFocusModePage />);
 
     await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
 
-    expect(screen.getByRole('link', { name: '← Back to Recipe' })).toBeInTheDocument();
+    expect(screen.getByText(/Alice/)).toBeInTheDocument();
+  });
+
+  it('renders author byline with "By" prefix — English', async () => {
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
     expect(screen.getByText(/^By Alice/)).toBeInTheDocument();
-    expect(screen.getByText('Brew Parameters')).toBeInTheDocument();
-    expect(screen.getByText('Taste Notes')).toBeInTheDocument();
-    expect(screen.getByText('Notes')).toBeInTheDocument();
   });
 
-  it('renders section headings in Turkish when locale is tr', async () => {
+  it('renders author byline with "Yazan" prefix — Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
     render(<RecipeFocusModePage />);
 
     await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
 
-    expect(screen.getByRole('link', { name: '← Tarife Dön' })).toBeInTheDocument();
     expect(screen.getByText(/^Yazan Alice/)).toBeInTheDocument();
-    expect(screen.getByText('Demleme Parametreleri')).toBeInTheDocument();
-    expect(screen.getByText('Tat Notları')).toBeInTheDocument();
-    expect(screen.getByText('Notlar')).toBeInTheDocument();
   });
 });
 
-describe('RecipeFocusModePage — i18n param labels', () => {
-  it('renders param labels using t() — English', async () => {
+describe('RecipeFocusModePage — Back to Recipe link', () => {
+  it('renders Back to Recipe link', async () => {
     render(<RecipeFocusModePage />);
 
     await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
 
-    expect(screen.getByText('Method')).toBeInTheDocument();
-    expect(screen.getByText('Drink')).toBeInTheDocument();
-    expect(screen.getByText('Product')).toBeInTheDocument();
-    expect(screen.getByText('Brand')).toBeInTheDocument();
-    expect(screen.getByText('Grinder')).toBeInTheDocument();
-    expect(screen.getByText('Grind')).toBeInTheDocument();
-    expect(screen.getByText('Dose')).toBeInTheDocument();
-    expect(screen.getByText('Time')).toBeInTheDocument();
-    expect(screen.getByText('Yield')).toBeInTheDocument();
-    expect(screen.getByText('Temp')).toBeInTheDocument();
-    expect(screen.getByText('Ratio')).toBeInTheDocument();
-    expect(screen.getByText('Rating')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Back to Recipe/i })).toBeInTheDocument();
   });
 
-  it('renders param labels in Turkish when locale is tr', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-
+  it('back link href points to /recipes/:slug', async () => {
     render(<RecipeFocusModePage />);
 
     await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
 
-    expect(screen.getByText('Yöntem')).toBeInTheDocument();
-    expect(screen.getByText('İçecek')).toBeInTheDocument();
-    expect(screen.getByText('Ürün')).toBeInTheDocument();
-    expect(screen.getByText('Marka')).toBeInTheDocument();
-    expect(screen.getByText('Öğütücü')).toBeInTheDocument();
-    expect(screen.getByText('Öğütme')).toBeInTheDocument();
-    expect(screen.getByText('Doz')).toBeInTheDocument();
-    expect(screen.getByText('Süre')).toBeInTheDocument();
-    expect(screen.getByText('Verim')).toBeInTheDocument();
-    expect(screen.getByText('Sıcaklık')).toBeInTheDocument();
-    expect(screen.getByText('Oran')).toBeInTheDocument();
-    expect(screen.getByText('Puan')).toBeInTheDocument();
-  });
-});
-
-describe('RecipeFocusModePage — content rendering', () => {
-  it('renders recipe title and author', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('My Espresso')).toBeInTheDocument();
-      expect(screen.getByText(/Alice/)).toBeInTheDocument();
-    });
-  });
-
-  it('renders taste notes', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Chocolate')).toBeInTheDocument();
-    });
-  });
-
-  it('renders personal notes', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Great shot today.')).toBeInTheDocument();
-    });
-  });
-
-  it('back link points to the recipe detail page', async () => {
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => screen.getByRole('link', { name: '← Back to Recipe' }));
-
-    expect(screen.getByRole('link', { name: '← Back to Recipe' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Back to Recipe/i })).toHaveAttribute(
       'href',
       '/recipes/my-espresso',
     );
   });
+});
 
-  it('does not render taste notes section when tasteNotes is empty', async () => {
-    mockRecipeApi.get.mockResolvedValue({
-      ...sampleRecipe,
-      tasteNotes: [],
-    } as unknown as Record<string, unknown>);
-
+describe('RecipeFocusModePage — StatCards', () => {
+  it('renders StatCards', async () => {
     render(<RecipeFocusModePage />);
 
     await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
 
-    expect(screen.queryByText('Taste Notes')).not.toBeInTheDocument();
-  });
-
-  it('does not render notes section when personalNotes is absent', async () => {
-    mockRecipeApi.get.mockResolvedValue({
-      ...sampleRecipe,
-      currentVersion: { ...sampleRecipe.currentVersion, personalNotes: null },
-    } as unknown as Record<string, unknown>);
-
-    render(<RecipeFocusModePage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
-
-    expect(screen.queryByText('Notes')).not.toBeInTheDocument();
+    expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
   });
 });
 
-describe('RecipeFocusModePage — canonical + noindex SEO', () => {
+describe('RecipeFocusModePage — BeanSection conditional rendering', () => {
+  it('shows BeanSection when bean data is present', async () => {
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    expect(screen.getByTestId('bean-section')).toBeInTheDocument();
+  });
+
+  it('hides BeanSection when no bean data', async () => {
+    mockRecipeApi.get.mockResolvedValue({
+      ...sampleRecipe,
+      currentVersion: {
+        ...sampleRecipe.currentVersion,
+        productName: null,
+        coffeeBrand: null,
+        coffeeProcessing: null,
+        roastDate: null,
+        packageOpenDate: null,
+        grindDate: null,
+        bean: null,
+      },
+    } as unknown as Record<string, unknown>);
+
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('bean-section')).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipeFocusModePage — TastingNotesSection conditional rendering', () => {
+  it('shows TastingNotesSection when taste notes are present', async () => {
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    expect(screen.getByTestId('tasting-notes-section')).toBeInTheDocument();
+  });
+
+  it('shows TastingNotesSection when personalNotes is present but tasteNotes is empty', async () => {
+    mockRecipeApi.get.mockResolvedValue({
+      ...sampleRecipe,
+      tasteNotes: [],
+      currentVersion: {
+        ...sampleRecipe.currentVersion,
+        personalNotes: 'Great shot today.',
+      },
+    } as unknown as Record<string, unknown>);
+
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    expect(screen.getByTestId('tasting-notes-section')).toBeInTheDocument();
+  });
+
+  it('hides TastingNotesSection when no taste notes and no personalNotes', async () => {
+    mockRecipeApi.get.mockResolvedValue({
+      ...sampleRecipe,
+      tasteNotes: [],
+      currentVersion: {
+        ...sampleRecipe.currentVersion,
+        personalNotes: null,
+      },
+    } as unknown as Record<string, unknown>);
+
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('tasting-notes-section')).not.toBeInTheDocument();
+  });
+
+  it('hides TastingNotesSection when personalNotes is empty string and no taste notes', async () => {
+    mockRecipeApi.get.mockResolvedValue({
+      ...sampleRecipe,
+      tasteNotes: [],
+      currentVersion: {
+        ...sampleRecipe.currentVersion,
+        personalNotes: '',
+      },
+    } as unknown as Record<string, unknown>);
+
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('tasting-notes-section')).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipeFocusModePage — canonical + noIndex SEO', () => {
   it('passes noIndex=true to SEOHead', async () => {
     render(<RecipeFocusModePage />);
 

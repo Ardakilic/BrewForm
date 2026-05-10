@@ -228,6 +228,8 @@ export const recipeVersions = pgTable(
     temperatureCelsius: real('temperature_celsius'),
     brewRatio: real('brew_ratio'),
     flowRate: real('flow_rate'),
+    preInfusionTimeSeconds: integer('pre_infusion_time_seconds'),
+    beanId: varchar('bean_id', { length: 36 }).references(() => beans.id),
     personalNotes: text('personal_notes'),
     isFavourite: boolean('is_favourite').notNull().default(false),
     rating: integer('rating'),
@@ -255,6 +257,7 @@ export const recipeTasteNotes = pgTable(
       { onDelete: 'cascade' },
     ),
     tasteNoteId: varchar('taste_note_id', { length: 36 }).notNull().references(() => tasteNotes.id),
+    intensity: integer('intensity').notNull().default(1),
   },
   (table) => [
     unique('recipe_taste_note_recipe_version_id_taste_note_id_unique').on(
@@ -702,6 +705,10 @@ export const recipeVersionsRelations = relations(recipeVersions, ({ one, many })
     fields: [recipeVersions.vendorId],
     references: [vendors.id],
   }),
+  bean: one(beans, {
+    fields: [recipeVersions.beanId],
+    references: [beans.id],
+  }),
   tasteNotes: many(recipeTasteNotes),
   equipment: many(recipeEquipment),
   additionalPreparations: many(recipeAdditionalPreparations),
@@ -772,7 +779,7 @@ export const equipmentRelations = relations(equipment, ({ one, many }) => ({
   setupTampers: many(setups, { relationName: 'SetupTamper' }),
 }));
 
-export const beansRelations = relations(beans, ({ one }) => ({
+export const beansRelations = relations(beans, ({ one, many }) => ({
   vendor: one(vendors, {
     fields: [beans.vendorId],
     references: [vendors.id],
@@ -781,6 +788,7 @@ export const beansRelations = relations(beans, ({ one }) => ({
     fields: [beans.userId],
     references: [users.id],
   }),
+  recipeVersions: many(recipeVersions),
 }));
 
 export const vendorsRelations = relations(vendors, ({ many }) => ({

@@ -29,6 +29,7 @@ export async function findById(id: string) {
           equipment: { with: { equipment: true } },
           additionalPreparations: true,
           versionPhotos: { with: { photo: true } },
+          bean: { columns: { origin: true, roaster: true, roastLevel: true } },
         },
       },
       photos: true,
@@ -49,6 +50,7 @@ export async function findBySlug(slug: string) {
           equipment: { with: { equipment: true } },
           additionalPreparations: true,
           versionPhotos: { with: { photo: true } },
+          bean: { columns: { origin: true, roaster: true, roastLevel: true } },
         },
       },
       photos: true,
@@ -132,6 +134,8 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       temperatureCelsius: latestVersion.temperatureCelsius,
       brewRatio: latestVersion.brewRatio,
       flowRate: latestVersion.flowRate,
+      preInfusionTimeSeconds: latestVersion.preInfusionTimeSeconds,
+      beanId: latestVersion.beanId,
       personalNotes: latestVersion.personalNotes,
       isFavourite: false,
     }).returning();
@@ -143,6 +147,7 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
         sourceTasteNotes.map((tn) => ({
           recipeVersionId: newVersion.id,
           tasteNoteId: tn.tasteNoteId,
+          intensity: tn.intensity,
         })),
       ).returning()
       : [];

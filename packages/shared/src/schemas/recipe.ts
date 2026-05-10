@@ -68,6 +68,11 @@ export const RecipeCreateObjectSchema = z.object({
   tasteNoteIds: z.array(z.string().uuid()).optional(),
   equipmentIds: z.array(z.string().uuid()).optional(),
   additionalPreparations: z.array(AdditionalPreparationSchema).optional(),
+  preInfusionTimeSeconds: z.number().int().min(1).optional(),
+  beanId: z.string().uuid().optional(),
+  brewRatio: z.number().positive().optional(),
+  flowRate: z.number().positive().optional(),
+  tasteNoteIntensities: z.record(z.string().uuid(), z.number().int().min(1).max(3)).optional(),
 });
 
 export const RecipeCreateSchema = RecipeCreateObjectSchema
@@ -97,6 +102,24 @@ export const RecipeCreateSchema = RecipeCreateObjectSchema
       return true;
     },
     { message: 'Grind date cannot be earlier than package open date', path: ['grindDate'] },
+  )
+  .refine(
+    (data) => {
+      if (data.preInfusionTimeSeconds != null && data.extractionTimeSeconds != null) {
+        return data.preInfusionTimeSeconds < data.extractionTimeSeconds;
+      }
+      return true;
+    },
+    { message: 'Pre-infusion time must be less than extraction time', path: ['preInfusionTimeSeconds'] },
+  )
+  .refine(
+    (data) => {
+      if (data.preInfusionTimeSeconds != null && data.extractionTimeSeconds == null) {
+        return false;
+      }
+      return true;
+    },
+    { message: 'Extraction time is required when pre-infusion time is specified', path: ['preInfusionTimeSeconds'] },
   );
 
 export const RecipeUpdateSchema = RecipeCreateObjectSchema.partial().extend({
@@ -108,6 +131,7 @@ export const RecipeFilterSchema = z.object({
   drinkType: DrinkTypeEnum.optional(),
   visibility: VisibilityEnum.optional(),
   authorId: z.string().uuid().optional(),
+  equipmentId: z.string().uuid().optional(),
   grinder: z.string().optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),

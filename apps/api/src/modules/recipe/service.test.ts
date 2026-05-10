@@ -2,6 +2,11 @@ import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { computeBrewRatio, computeExtractionYield, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
+import {
+  RecipeCreateObjectSchema,
+  RecipeCreateSchema,
+  RecipeFilterSchema,
+} from '@brewform/shared/schemas';
 
 describe('Recipe Service Logic', () => {
   describe('Slug generation', () => {
@@ -138,6 +143,128 @@ describe('Recipe Service Logic', () => {
       const equipmentIds = ['eq-1', 'eq-2'];
       const connections = equipmentIds.map((id: string) => ({ equipmentId: id }));
       expect(connections).toEqual([{ equipmentId: 'eq-1' }, { equipmentId: 'eq-2' }]);
+    });
+  });
+});
+
+describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
+  const BASE_RECIPE = { title: 'Test', brewMethod: 'espresso_machine', drinkType: 'espresso' } as const;
+  const TEST_UUID = '00000000-0000-0000-0000-000000000001';
+
+  // Requirements 12.2, 12.3, 12.4
+  describe('Pre-infusion cross-field validation', () => {
+    it('should accept preInfusionTimeSeconds=5 with extractionTimeSeconds=28', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        preInfusionTimeSeconds: 5,
+        extractionTimeSeconds: 28,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject preInfusionTimeSeconds=28 when extractionTimeSeconds=28 (equal)', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        preInfusionTimeSeconds: 28,
+        extractionTimeSeconds: 28,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject preInfusionTimeSeconds=30 when extractionTimeSeconds=28 (greater)', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        preInfusionTimeSeconds: 30,
+        extractionTimeSeconds: 28,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject preInfusionTimeSeconds=5 without extractionTimeSeconds', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        preInfusionTimeSeconds: 5,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept extractionTimeSeconds=28 without preInfusionTimeSeconds', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        extractionTimeSeconds: 28,
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // Requirements 13.2, 13.3
+  describe('Intensity validation', () => {
+    it('should accept tasteNoteIntensities with values 1, 2, 3', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        tasteNoteIntensities: {
+          [TEST_UUID]: 1,
+          '00000000-0000-0000-0000-000000000002': 2,
+          '00000000-0000-0000-0000-000000000003': 3,
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject tasteNoteIntensities with value 0', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        tasteNoteIntensities: {
+          [TEST_UUID]: 0,
+        },
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject tasteNoteIntensities with value 4', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        tasteNoteIntensities: {
+          [TEST_UUID]: 4,
+        },
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  // Requirement 14.2
+  describe('beanId field', () => {
+    it('should accept beanId as a valid UUID', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        beanId: TEST_UUID,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject beanId as a non-UUID string', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        beanId: 'not-a-uuid',
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  // Requirement 14.2 (equipmentId filter)
+  describe('equipmentId filter', () => {
+    it('should accept equipmentId as a valid UUID in filter', () => {
+      const result = RecipeFilterSchema.safeParse({
+        equipmentId: TEST_UUID,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject equipmentId as a non-UUID string in filter', () => {
+      const result = RecipeFilterSchema.safeParse({
+        equipmentId: 'not-a-uuid',
+      });
+      expect(result.success).toBe(false);
     });
   });
 });

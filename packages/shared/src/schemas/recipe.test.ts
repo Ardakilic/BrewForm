@@ -1,7 +1,7 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import fc from 'npm:fast-check@3.22.0';
-import { RecipeCreateSchema, RecipeFilterSchema, RecipeUpdateSchema } from './recipe.ts';
+import { RecipeCreateObjectSchema, RecipeCreateSchema, RecipeFilterSchema, RecipeUpdateSchema } from './recipe.ts';
 
 describe('RecipeCreateSchema', () => {
   it('should validate a complete recipe', () => {
@@ -582,6 +582,387 @@ describe('Preservation property tests', () => {
           if (!result.success) {
             expect(result.error.issues.some((i) => i.path.includes('grindDate'))).toBe(true);
           }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+});
+
+/**
+ * Property 9: Pre-infusion time validation
+ *
+ * For any pair of integers (preInfusionTimeSeconds, extractionTimeSeconds),
+ * the validation SHALL accept the pair if and only if:
+ *   - preInfusionTimeSeconds ≥ 1 AND
+ *   - extractionTimeSeconds is provided AND
+ *   - preInfusionTimeSeconds < extractionTimeSeconds
+ * All other combinations SHALL be rejected.
+ *
+ * Validates: Requirements 12.2, 12.3, 12.4
+ */
+describe('Property 9: Pre-infusion time validation', () => {
+  const baseRecipe = {
+    title: 'Test Recipe',
+    brewMethod: 'espresso_machine',
+    drinkType: 'espresso',
+  } as const;
+
+  // ---------------------------------------------------------------------------
+  // Concrete unit tests
+  // ---------------------------------------------------------------------------
+
+  it('should accept valid pair: preInfusionTimeSeconds=5, extractionTimeSeconds=28', () => {
+    const result = RecipeCreateSchema.safeParse({
+      ...baseRecipe,
+      preInfusionTimeSeconds: 5,
+      extractionTimeSeconds: 28,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject equal values: preInfusionTimeSeconds=28, extractionTimeSeconds=28', () => {
+    const result = RecipeCreateSchema.safeParse({
+      ...baseRecipe,
+      preInfusionTimeSeconds: 28,
+      extractionTimeSeconds: 28,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(true);
+    }
+  });
+
+  it('should reject preInfusionTimeSeconds > extractionTimeSeconds: 30 vs 28', () => {
+    const result = RecipeCreateSchema.safeParse({
+      ...baseRecipe,
+      preInfusionTimeSeconds: 30,
+      extractionTimeSeconds: 28,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(true);
+    }
+  });
+
+  it('should reject preInfusionTimeSeconds without extractionTimeSeconds', () => {
+    const result = RecipeCreateSchema.safeParse({
+      ...baseRecipe,
+      preInfusionTimeSeconds: 5,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(true);
+    }
+  });
+
+  it('should accept preInfusionTimeSeconds=undefined, extractionTimeSeconds=28 (pre-infusion optional)', () => {
+    const result = RecipeCreateSchema.safeParse({
+      ...baseRecipe,
+      extractionTimeSeconds: 28,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept both preInfusionTimeSeconds=undefined and extractionTimeSeconds=undefined', () => {
+    const result = RecipeCreateSchema.safeParse({
+      ...baseRecipe,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject preInfusionTimeSeconds=0 (min is 1)', () => {
+    const result = RecipeCreateSchema.safeParse({
+      ...baseRecipe,
+      preInfusionTimeSeconds: 0,
+      extractionTimeSeconds: 28,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject preInfusionTimeSeconds=-1 (min is 1)', () => {
+    const result = RecipeCreateSchema.safeParse({
+      ...baseRecipe,
+      preInfusionTimeSeconds: -1,
+      extractionTimeSeconds: 28,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Property-based tests
+  // ---------------------------------------------------------------------------
+
+  /**
+   * PBT — Valid pairs (preInfusionTimeSeconds ≥ 1 AND preInfusionTimeSeconds < extractionTimeSeconds):
+   * For ALL such pairs, safeParse MUST return success: true.
+   *
+   * Validates: Requirements 12.2
+   */
+  it('PBT Property 9a: for all valid pairs (preInfusion ≥ 1 AND preInfusion < extraction), safeParse returns success: true', () => {
+    fc.assert(
+      fc.property(
+        // Generate preInfusionTimeSeconds ≥ 1
+        fc.integer({ min: 1, max: 1000 }),
+        // Generate extractionTimeSeconds strictly greater than preInfusionTimeSeconds
+        fc.integer({ min: 1, max: 1000 }),
+        (preInfusion, delta) => {
+          const extractionTimeSeconds = preInfusion + delta;
+
+          const result = RecipeCreateSchema.safeParse({
+            ...baseRecipe,
+            preInfusionTimeSeconds: preInfusion,
+            extractionTimeSeconds,
+          });
+
+          expect(result.success).toBe(true);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  /**
+   * PBT — Equal values (preInfusionTimeSeconds === extractionTimeSeconds):
+   * For ALL such pairs where preInfusion ≥ 1, safeParse MUST return success: false.
+   *
+   * Validates: Requirements 12.3
+   */
+  it('PBT Property 9b: for all pairs where preInfusion === extraction (≥ 1), safeParse returns success: false', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 10000 }),
+        (value) => {
+          const result = RecipeCreateSchema.safeParse({
+            ...baseRecipe,
+            preInfusionTimeSeconds: value,
+            extractionTimeSeconds: value,
+          });
+
+          expect(result.success).toBe(false);
+          if (!result.success) {
+            expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(true);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  /**
+   * PBT — preInfusionTimeSeconds > extractionTimeSeconds:
+   * For ALL such pairs where preInfusion ≥ 1, safeParse MUST return success: false.
+   *
+   * Validates: Requirements 12.3
+   */
+  it('PBT Property 9c: for all pairs where preInfusion > extraction (both ≥ 1), safeParse returns success: false', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 1000 }),
+        fc.integer({ min: 1, max: 1000 }),
+        (extraction, delta) => {
+          const preInfusion = extraction + delta;
+
+          const result = RecipeCreateSchema.safeParse({
+            ...baseRecipe,
+            preInfusionTimeSeconds: preInfusion,
+            extractionTimeSeconds: extraction,
+          });
+
+          expect(result.success).toBe(false);
+          if (!result.success) {
+            expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(true);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  /**
+   * PBT — preInfusionTimeSeconds provided without extractionTimeSeconds:
+   * For ALL preInfusionTimeSeconds ≥ 1 with no extractionTimeSeconds, safeParse MUST return success: false.
+   *
+   * Validates: Requirements 12.4
+   */
+  it('PBT Property 9d: for all preInfusion ≥ 1 without extractionTimeSeconds, safeParse returns success: false', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 10000 }),
+        (preInfusion) => {
+          const result = RecipeCreateSchema.safeParse({
+            ...baseRecipe,
+            preInfusionTimeSeconds: preInfusion,
+          });
+
+          expect(result.success).toBe(false);
+          if (!result.success) {
+            expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(true);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  /**
+   * PBT — preInfusionTimeSeconds absent (only extractionTimeSeconds provided):
+   * For ALL extractionTimeSeconds > 0 with no preInfusionTimeSeconds, safeParse MUST return success: true.
+   *
+   * Validates: Requirements 12.2 (pre-infusion is optional)
+   */
+  it('PBT Property 9e: for all extractionTimeSeconds > 0 without preInfusionTimeSeconds, safeParse returns success: true', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 10000 }),
+        (extraction) => {
+          const result = RecipeCreateSchema.safeParse({
+            ...baseRecipe,
+            extractionTimeSeconds: extraction,
+          });
+
+          expect(result.success).toBe(true);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+});
+
+/**
+ * Property 10: Intensity range validation
+ *
+ * For any integer value provided as a taste note intensity, the validation
+ * SHALL accept the value if and only if it is 1, 2, or 3. All other integer
+ * values SHALL be rejected.
+ *
+ * Validates: Requirements 13.2, 13.3
+ */
+describe('Property 10: Intensity range validation', () => {
+  const TEST_UUID = '00000000-0000-0000-0000-000000000001';
+
+  const baseRecipe = {
+    title: 'Test Recipe',
+    brewMethod: 'espresso_machine',
+    drinkType: 'espresso',
+  } as const;
+
+  // ---------------------------------------------------------------------------
+  // Concrete unit tests — valid intensities
+  // ---------------------------------------------------------------------------
+
+  it('should accept intensity=1', () => {
+    const result = RecipeCreateObjectSchema.safeParse({
+      ...baseRecipe,
+      tasteNoteIntensities: { [TEST_UUID]: 1 },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept intensity=2', () => {
+    const result = RecipeCreateObjectSchema.safeParse({
+      ...baseRecipe,
+      tasteNoteIntensities: { [TEST_UUID]: 2 },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept intensity=3', () => {
+    const result = RecipeCreateObjectSchema.safeParse({
+      ...baseRecipe,
+      tasteNoteIntensities: { [TEST_UUID]: 3 },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Concrete unit tests — invalid intensities
+  // ---------------------------------------------------------------------------
+
+  it('should reject intensity=0', () => {
+    const result = RecipeCreateObjectSchema.safeParse({
+      ...baseRecipe,
+      tasteNoteIntensities: { [TEST_UUID]: 0 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject intensity=4', () => {
+    const result = RecipeCreateObjectSchema.safeParse({
+      ...baseRecipe,
+      tasteNoteIntensities: { [TEST_UUID]: 4 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject intensity=-1', () => {
+    const result = RecipeCreateObjectSchema.safeParse({
+      ...baseRecipe,
+      tasteNoteIntensities: { [TEST_UUID]: -1 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject intensity=100', () => {
+    const result = RecipeCreateObjectSchema.safeParse({
+      ...baseRecipe,
+      tasteNoteIntensities: { [TEST_UUID]: 100 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept no intensity provided (tasteNoteIntensities omitted)', () => {
+    const result = RecipeCreateObjectSchema.safeParse({
+      ...baseRecipe,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Property-based test — valid intensities (1, 2, 3) are always accepted
+  // ---------------------------------------------------------------------------
+
+  /**
+   * PBT — valid range:
+   * For ALL integers in {1, 2, 3}, RecipeCreateObjectSchema.safeParse() with
+   * tasteNoteIntensities: { [uuid]: value } MUST return success: true.
+   *
+   * Validates: Requirements 13.2, 13.3
+   */
+  it('PBT Property 10: for all valid intensities (1, 2, 3), safeParse returns success: true', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(1, 2, 3),
+        (intensity) => {
+          const result = RecipeCreateObjectSchema.safeParse({
+            ...baseRecipe,
+            tasteNoteIntensities: { [TEST_UUID]: intensity },
+          });
+          expect(result.success).toBe(true);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  /**
+   * PBT — invalid range:
+   * For ALL integers outside {1, 2, 3}, RecipeCreateObjectSchema.safeParse()
+   * with tasteNoteIntensities: { [uuid]: value } MUST return success: false.
+   *
+   * Validates: Requirements 13.2, 13.3
+   */
+  it('PBT Property 10: for all integers outside {1, 2, 3}, safeParse returns success: false', () => {
+    fc.assert(
+      fc.property(
+        // Generate integers that are NOT in {1, 2, 3}
+        fc.integer({ min: -1000, max: 1000 }).filter((n) => n < 1 || n > 3),
+        (intensity) => {
+          const result = RecipeCreateObjectSchema.safeParse({
+            ...baseRecipe,
+            tasteNoteIntensities: { [TEST_UUID]: intensity },
+          });
+          expect(result.success).toBe(false);
         },
       ),
       { numRuns: 100 },

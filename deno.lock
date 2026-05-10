@@ -3522,6 +3522,7 @@
             "npm:@types/react@^19.1.0",
             "npm:@vitejs/plugin-react@^4.4.0",
             "npm:@vitest/coverage-v8@^3.2.0",
+            "npm:fast-check@^3.22.0",
             "npm:jsdom@^26.1.0",
             "npm:react-dom@^19.1.0",
             "npm:react-router@^7.5.0",

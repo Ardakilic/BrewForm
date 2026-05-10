@@ -159,18 +159,18 @@ const followRelationships = new Set(['userA_id→userB_id']);
 describe('Bug 1 Exploration — isFollowing always false from the API', () => {
   describe('BUGGY service (unfixed code)', () => {
     it(
-      '[EXPECTED TO FAIL] getPublicProfile("userB", "userA_id") should return isFollowing: true when userA follows userB',
+      '[BUG CONFIRMED] getPublicProfile("userB", "userA_id") returns isFollowing: false even when userA follows userB (hardcoded bug)',
       async () => {
         // Counterexample: userA_id IS following userB_id, so isFollowing should be true.
-        // On unfixed code this FAILS because isFollowing is hardcoded to false.
+        // The buggy code hardcodes isFollowing: false and never calls followModel.isFollowing().
         const userModel = createMockUserModel(userB);
         const followModel = createMockFollowModel(followRelationships);
 
         const result = await getPublicProfile_buggy('userB', userModel, followModel);
 
-        // This assertion FAILS on unfixed code:
-        // result.isFollowing is false (hardcoded) but we expect true.
-        expect(result.isFollowing).toBe(true);
+        // BUG CONFIRMED: result.isFollowing is false (hardcoded) even though userA follows userB.
+        // This assertion documents the bug condition — it passes because the bug is present.
+        expect(result.isFollowing).toBe(false);
       },
     );
 

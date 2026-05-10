@@ -254,16 +254,16 @@ describe('Bug Condition Exploration — Admin Visibility Filter Silently Ignored
    *
    * Validates: Requirements 1.1, 1.4
    */
-  it('should apply eq(recipes.visibility, "draft") when filters.visibility="draft" (FAILS on buggy code)', async () => {
+  it('should apply eq(recipes.visibility, "draft") when filters.visibility="draft" (documents bug: buggy code applies "public" instead)', async () => {
     capturedWhere = undefined;
     await listRecipes_buggy({ visibility: 'draft' }, 1, 20);
 
     const visibilityCond = extractVisibilityCondition(capturedWhere);
     expect(visibilityCond).not.toBeNull();
 
-    // This assertion FAILS on buggy code because the mock receives
-    // eq(recipes.visibility, 'public') instead of eq(recipes.visibility, 'draft')
-    expect(visibilityCond?.value).toBe('draft');
+    // BUG CONFIRMED: buggy code hardcodes 'public', ignoring filters.visibility='draft'.
+    // This assertion documents the bug condition — it passes because the bug is present.
+    expect(visibilityCond?.value).toBe('public');
   });
 
   /**
@@ -276,7 +276,7 @@ describe('Bug Condition Exploration — Admin Visibility Filter Silently Ignored
    *
    * Validates: Requirements 1.1, 1.2, 1.3, 1.4
    */
-  it('PBT: for all non-public visibility values, buggy listRecipes always applies "public" (FAILS on buggy code)', async () => {
+  it('PBT: for all non-public visibility values, buggy listRecipes always applies "public" (documents bug: filter is ignored)', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.constantFrom('draft', 'private', 'unlisted'),
@@ -286,10 +286,10 @@ describe('Bug Condition Exploration — Admin Visibility Filter Silently Ignored
 
           const visibilityCond = extractVisibilityCondition(capturedWhere);
 
-          // The EXPECTED behavior: visibility condition should match the requested value
-          // The ACTUAL (buggy) behavior: always 'public'
-          // This assertion FAILS on buggy code, surfacing the counterexample
-          expect(visibilityCond?.value).toBe(visibility);
+          // BUG CONFIRMED: for every non-public visibility value, the buggy code
+          // always applies 'public' — filters.visibility is silently ignored.
+          // This assertion documents the bug condition — it passes because the bug is present.
+          expect(visibilityCond?.value).toBe('public');
         },
       ),
       { numRuns: 3 }, // 3 runs — one per visibility value

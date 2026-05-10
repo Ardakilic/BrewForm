@@ -96,11 +96,17 @@ export async function createRecipe(authorId: string, data: any) {
       isFavourite: data.isFavourite || false,
       rating: data.rating,
       emojiTag: data.emojiTag,
+      preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? null,
+      beanId: data.beanId ?? null,
     }).returning();
 
     if (data.tasteNoteIds?.length) {
       await tx.insert(recipeTasteNotes).values(
-        data.tasteNoteIds.map((id: string) => ({ recipeVersionId: version.id, tasteNoteId: id })),
+        data.tasteNoteIds.map((id: string) => ({
+          recipeVersionId: version.id,
+          tasteNoteId: id,
+          intensity: data.tasteNoteIntensities?.[id] ?? 1,
+        })),
       );
     }
 
@@ -199,6 +205,8 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
       isFavourite: data.isFavourite ?? latestVersion.isFavourite,
       rating: data.rating ?? latestVersion.rating,
       emojiTag: data.emojiTag ?? latestVersion.emojiTag,
+      preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? latestVersion.preInfusionTimeSeconds,
+      beanId: data.beanId ?? latestVersion.beanId,
     });
 
     await model.update(recipe.id, {
@@ -268,6 +276,17 @@ export async function listRecipes(filters: any, page: number, perPage: number, r
         recipes.id,
         db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
           eq(recipeVersions.drinkType, filters.drinkType),
+        ),
+      ),
+    );
+  }
+
+  if (filters.equipmentId) {
+    conditions.push(
+      inArray(
+        recipes.currentVersionId,
+        db.select({ id: recipeEquipment.recipeVersionId }).from(recipeEquipment).where(
+          eq(recipeEquipment.equipmentId, filters.equipmentId),
         ),
       ),
     );

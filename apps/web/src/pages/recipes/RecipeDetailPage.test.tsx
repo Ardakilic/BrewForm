@@ -32,14 +32,19 @@ vi.mock('../../components/seo/JsonLd.tsx', () => ({ RecipeJsonLd: () => null }))
 vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => null }));
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
 vi.mock('../../components/recipe/CommentSection.tsx', () => ({ CommentSection: () => null }));
-vi.mock('../../components/qrcode/RecipeQRCode.tsx', () => ({ RecipeQRCode: () => null }));
-vi.mock('../../components/recipe/PrintButton.tsx', () => ({
-  PrintButton: () => null,
-  FocusModeButton: () => null,
-}));
 vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: () => null }));
 vi.mock('../../components/recipe/ForkCard.tsx', () => ({ ForkCard: () => <div data-testid="fork-card">ForkCard</div> }));
 vi.mock('@brewform/shared/constants', () => ({ EMOJI_TAGS: [] }));
+
+// New component mocks for redesigned page
+vi.mock('../../components/recipe/BreadcrumbNav.tsx', () => ({ BreadcrumbNav: () => <div data-testid="breadcrumb-nav" /> }));
+vi.mock('../../components/recipe/MetadataBadges.tsx', () => ({ MetadataBadges: () => <div data-testid="metadata-badges" /> }));
+vi.mock('../../components/recipe/StatCards.tsx', () => ({ StatCards: () => <div data-testid="stat-cards" /> }));
+vi.mock('../../components/recipe/BeanSection.tsx', () => ({ BeanSection: () => <div data-testid="bean-section" /> }));
+vi.mock('../../components/recipe/BrewTimeline.tsx', () => ({ BrewTimeline: () => <div data-testid="brew-timeline" /> }));
+vi.mock('../../components/recipe/EquipmentSection.tsx', () => ({ EquipmentSection: () => <div data-testid="equipment-section" /> }));
+vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({ TastingNotesSection: () => <div data-testid="tasting-notes-section" /> }));
+vi.mock('../../components/recipe/ShareSection.tsx', () => ({ ShareSection: () => <div data-testid="share-section" /> }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
@@ -64,34 +69,12 @@ const enT = (key: string) => {
     'common.loading': 'Loading...',
     'common.edit': 'Edit',
     'recipe.notFound': 'Recipe not found',
-    'recipe.brewParams': 'Brew Parameters',
-    'recipe.brewMethod': 'Brew Method',
-    'recipe.drinkType': 'Drink Type',
-    'recipe.productName': 'Product Name',
-    'recipe.coffeeBrand': 'Coffee Brand',
-    'recipe.coffeeProcessing': 'Coffee Processing',
-    'recipe.roastDate': 'Roast Date',
-    'recipe.packageOpenDate': 'Package Open Date',
-    'recipe.grindDate': 'Grind Date',
-    'recipe.grinder': 'Grinder',
-    'recipe.grindSize': 'Grind Size',
-    'recipe.dose': 'Dose',
-    'recipe.extractionTime': 'Extraction Time',
-    'recipe.yield': 'Yield',
-    'recipe.temperature': 'Temperature',
-    'recipe.ratio': 'Ratio',
-    'recipe.flowRate': 'Flow Rate',
-    'recipe.personalNotes': 'Personal Notes',
-    'recipe.tasteNotes': 'Taste Notes',
-    'equipment.title': 'Equipment',
     'recipe.rating': 'Rating',
     'recipe.authorRating': "Author's rating",
     'recipe.communityAvg': 'Community average',
     'recipe.rateThis': 'Rate this recipe',
     'recipe.yourRating': 'Your rating',
     'recipe.fork': 'Fork Recipe',
-    'recipe.forkedFromOriginal': 'Forked from original',
-    'recipe.forkDescription': 'Forking creates your own personal copy of this recipe that you can freely modify and build upon.',
   };
   return map[key] ?? key;
 };
@@ -101,34 +84,12 @@ const trT = (key: string) => {
     'common.loading': 'Yükleniyor...',
     'common.edit': 'Düzenle',
     'recipe.notFound': 'Tarif bulunamadı',
-    'recipe.brewParams': 'Demleme Parametreleri',
-    'recipe.brewMethod': 'Demleme Yöntemi',
-    'recipe.drinkType': 'İçecek Türü',
-    'recipe.productName': 'Ürün Adı',
-    'recipe.coffeeBrand': 'Kahve Markası',
-    'recipe.coffeeProcessing': 'Kahve İşleme Yöntemi',
-    'recipe.roastDate': 'Kavurma Tarihi',
-    'recipe.packageOpenDate': 'Paket Açma Tarihi',
-    'recipe.grindDate': 'Öğütme Tarihi',
-    'recipe.grinder': 'Öğütücü',
-    'recipe.grindSize': 'Öğütme Boyutu',
-    'recipe.dose': 'Doz',
-    'recipe.extractionTime': 'Ekstraksiyon Süresi',
-    'recipe.yield': 'Verim',
-    'recipe.temperature': 'Sıcaklık',
-    'recipe.ratio': 'Oran',
-    'recipe.flowRate': 'Akış Hızı',
-    'recipe.personalNotes': 'Kişisel Notlar',
-    'recipe.tasteNotes': 'Tat Notları',
-    'equipment.title': 'Ekipman',
     'recipe.rating': 'Puan',
     'recipe.authorRating': 'Yazarın puanı',
     'recipe.communityAvg': 'Topluluk ortalaması',
     'recipe.rateThis': 'Bu tarifi puanla',
     'recipe.yourRating': 'Puanınız',
     'recipe.fork': 'Tarifi Çatalla',
-    'recipe.forkedFromOriginal': 'Orijinalden çatallandı',
-    'recipe.forkDescription': 'Çatallama, bu tarifin kendi kişisel kopyanızı oluşturur; üzerinde özgürce değişiklik yapabilir ve geliştirebilirsiniz.',
   };
   return map[key] ?? key;
 };
@@ -237,83 +198,98 @@ describe('RecipeDetailPage — loading and not-found states', () => {
   });
 });
 
-describe('RecipeDetailPage — i18n section headings', () => {
-  it('renders section headings using t() — English', async () => {
+describe('RecipeDetailPage — new header components', () => {
+  it('renders BreadcrumbNav', async () => {
     render(<RecipeDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Brew Parameters')).toBeInTheDocument();
+      expect(screen.getByTestId('breadcrumb-nav')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Personal Notes')).toBeInTheDocument();
-    expect(screen.getByText('Rating')).toBeInTheDocument();
   });
 
-  it('renders section headings in Turkish when locale is tr', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-
+  it('renders StatCards', async () => {
     render(<RecipeDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Demleme Parametreleri')).toBeInTheDocument();
+      expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Kişisel Notlar')).toBeInTheDocument();
-    expect(screen.getByText('Puan')).toBeInTheDocument();
   });
 
-  it('renders param row labels using t() — English', async () => {
+  it('renders ShareSection', async () => {
     render(<RecipeDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Brew Method')).toBeInTheDocument();
+      expect(screen.getByTestId('share-section')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Drink Type')).toBeInTheDocument();
-    expect(screen.getByText('Dose')).toBeInTheDocument();
-    expect(screen.getByText('Extraction Time')).toBeInTheDocument();
-    expect(screen.getByText('Yield')).toBeInTheDocument();
-    expect(screen.getByText('Temperature')).toBeInTheDocument();
-    expect(screen.getByText('Ratio')).toBeInTheDocument();
   });
 
-  it('renders param row labels in Turkish when locale is tr', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-
+  it('Print button is present', async () => {
     render(<RecipeDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Demleme Yöntemi')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Print recipe' })).toBeInTheDocument();
     });
-
-    expect(screen.getByText('İçecek Türü')).toBeInTheDocument();
-    expect(screen.getByText('Doz')).toBeInTheDocument();
-    expect(screen.getByText('Ekstraksiyon Süresi')).toBeInTheDocument();
-    expect(screen.getByText('Verim')).toBeInTheDocument();
-    expect(screen.getByText('Sıcaklık')).toBeInTheDocument();
-    expect(screen.getByText('Oran')).toBeInTheDocument();
   });
 
-  it('renders rating sub-labels using t() — English', async () => {
+  it('Focus button is present', async () => {
     render(<RecipeDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Author's rating")).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Focus mode' })).toBeInTheDocument();
     });
+  });
+});
 
-    expect(screen.getByText('Community average')).toBeInTheDocument();
+describe('RecipeDetailPage — Fork Recipe button visibility', () => {
+  const nonOwnerAuth = {
+    user: { id: 'other-user', email: 'bob@example.com', username: 'bob', displayName: 'Bob', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+    isAuthenticated: true,
+    isLoading: false,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+  };
+
+  const ownerAuth = {
+    user: { id: 'author-1', email: 'alice@example.com', username: 'alice', displayName: 'Alice', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+    isAuthenticated: true,
+    isLoading: false,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+  };
+
+  it('Fork Recipe button shown for authenticated non-owner', async () => {
+    mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
+
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Fork recipe' })).toBeInTheDocument();
+    });
   });
 
-  it('renders rating sub-labels in Turkish when locale is tr', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+  it('Fork Recipe button hidden for guest', async () => {
+    // guestAuth is the default from beforeEach
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Fork recipe' })).not.toBeInTheDocument();
+  });
+
+  it('Fork Recipe button hidden for owner', async () => {
+    mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
 
     render(<RecipeDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Yazarın puanı')).toBeInTheDocument();
+      expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Topluluk ortalaması')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Fork recipe' })).not.toBeInTheDocument();
   });
 });
 
@@ -483,5 +459,43 @@ describe('RecipeDetailPage — Fork_Card is sibling, not child of Social_Actions
     const socialActionsCard = screen.getByTestId('social-actions-card');
     const forkCardInsideSocialActions = within(socialActionsCard).queryByTestId('fork-card');
     expect(forkCardInsideSocialActions).toBeNull();
+  });
+});
+
+// ── Task 12.4: Responsive layout tests ────────────────────────────────────
+
+describe('RecipeDetailPage — Responsive layout', () => {
+  it('main content grid has grid-cols-1 md:grid-cols-3 class', async () => {
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
+    });
+
+    // The main grid wrapping the main column and sidebar
+    const grid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-3');
+    expect(grid).not.toBeNull();
+  });
+
+  it('StatCards container is present', async () => {
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
+    });
+  });
+
+  it('sidebar has space-y-4 class', async () => {
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
+    });
+
+    // The sidebar is the div containing social-actions-card with space-y-4
+    const socialActionsCard = screen.getByTestId('social-actions-card');
+    const sidebar = socialActionsCard.parentElement;
+    expect(sidebar).not.toBeNull();
+    expect(sidebar!.classList.contains('space-y-4')).toBe(true);
   });
 });

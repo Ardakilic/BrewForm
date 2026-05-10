@@ -104,8 +104,11 @@ recipe.get(
       const payload = {
         ...(r as any),
         currentVersion,
-        tasteNotes: currentVersion?.tasteNotes?.map((t: any) => t.tasteNote) ?? [],
-        equipment: currentVersion?.equipment?.map((e: any) => e.equipment) ?? [],
+        tasteNotes: currentVersion?.tasteNotes?.map((t: any) => ({ ...t.tasteNote, intensity: t.intensity ?? 1 })) ?? [],
+        equipment: currentVersion?.equipment?.map((e: any) => ({ ...e.equipment, equipmentId: e.equipmentId })) ?? [],
+        bean: currentVersion?.bean ?? null,
+        versionCount: (r as any).versions?.length ?? 1,
+        forkedFromSlug: (r as any).forkedFrom?.slug ?? null,
         userLiked: likeStatus.userLiked,
         userFavourited: likeStatus.userFavourited,
         favouriteCount,
