@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { recipeApi } from '../../api/index.ts';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS, DRINK_TYPES, VISIBILITY_STATES } from '@brewform/shared/constants';
 
@@ -29,6 +30,7 @@ export function RecipeListPage() {
   const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const page = Number(searchParams.get('page')) || 1;
   const brewMethod = searchParams.get('brewMethod') || '';
@@ -42,7 +44,7 @@ export function RecipeListPage() {
     const params: Record<string, string> = { page: String(page), perPage: '12', sortBy };
     if (brewMethod) params.brewMethod = brewMethod;
     if (drinkType) params.drinkType = drinkType;
-    if (visibility) params.visibility = visibility;
+    if (visibility && user?.isAdmin === true) params.visibility = visibility;
     if (search) params.search = search;
 
     // recipeApi.list() returns the array directly (paginated() puts array in data.data).
@@ -52,7 +54,7 @@ export function RecipeListPage() {
       setTotal(items.length);
     }).catch(() => {
     }).finally(() => setLoading(false));
-  }, [page, brewMethod, drinkType, visibility, sortBy, search]);
+  }, [page, brewMethod, drinkType, visibility, sortBy, search, user]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams);
@@ -65,7 +67,7 @@ export function RecipeListPage() {
     setSearchParams(params);
   }
 
-  const activeFilters = [brewMethod, drinkType, visibility].filter(Boolean);
+  const activeFilters = [brewMethod, drinkType, user?.isAdmin === true ? visibility : ''].filter(Boolean);
 
   return (
     <div className='mx-auto max-w-6xl px-6 py-8'>
@@ -135,24 +137,26 @@ export function RecipeListPage() {
               </select>
             </div>
 
-            <div className='mb-3'>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Visibility
-              </label>
-              <select
-                value={visibility}
-                onChange={(e) => updateFilter('visibility', e.target.value)}
-                className='input-field text-sm'
-              >
-                <option value=''>All</option>
-                {VISIBILITY_ANY.map((v: any) => (
-                  <option key={v.value} value={v.value}>{v.label}</option>
-                ))}
-              </select>
-            </div>
+            {user?.isAdmin === true && (
+              <div className='mb-3'>
+                <label
+                  className='block text-sm font-medium mb-1'
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Visibility (Admins only)
+                </label>
+                <select
+                  value={visibility}
+                  onChange={(e) => updateFilter('visibility', e.target.value)}
+                  className='input-field text-sm'
+                >
+                  <option value=''>All</option>
+                  {VISIBILITY_ANY.map((v: any) => (
+                    <option key={v.value} value={v.value}>{v.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className='mb-3'>
               <label

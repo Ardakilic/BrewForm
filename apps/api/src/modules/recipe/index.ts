@@ -22,10 +22,13 @@ recipe.get(
     description: 'Paginated, filterable list of recipes.',
     responses: { 200: { description: 'Paginated list of recipes' } },
   }),
+  optionalAuthMiddleware,
   zValidator('query', RecipeFilterSchema),
   async (c) => {
     const filters = c.req.valid('query');
-    const result = await service.listRecipes(filters, filters.page, filters.perPage);
+    const userId = c.get('userId') ?? null;
+    const isAdmin = (c.get('user') as any)?.isAdmin ?? false;
+    const result = await service.listRecipes(filters, filters.page, filters.perPage, userId, isAdmin);
     return paginated(c, result.recipes, {
       page: filters.page,
       perPage: filters.perPage,

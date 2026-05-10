@@ -241,8 +241,11 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   return forked;
 }
 
-export async function listRecipes(filters: any, page: number, perPage: number) {
-  const conditions: any[] = [eq(recipes.visibility, 'public')];
+export async function listRecipes(filters: any, page: number, perPage: number, requestingUserId: string | null = null, isAdmin: boolean = false) {
+  const visibilityCondition = (isAdmin === true && filters.visibility)
+    ? eq(recipes.visibility, filters.visibility)
+    : eq(recipes.visibility, 'public');
+  const conditions: any[] = [visibilityCondition];
 
   if (filters.authorId) {
     conditions.push(eq(recipes.authorId, filters.authorId));
