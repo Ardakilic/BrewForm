@@ -2,6 +2,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ShareSection } from './ShareSection.tsx';
 
+// ── Mocks ──────────────────────────────────────────────────────────────────
+
+vi.mock('../../contexts/I18nContext.tsx', () => ({
+  useTranslation: vi.fn(),
+  I18nProvider: ({ children }: { children: unknown }) => children,
+}));
+
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+
+const mockUseTranslation = vi.mocked(useTranslation);
+
+const defaultTranslation = {
+  t: (key: string) => key,
+  locale: 'en',
+  setLocale: vi.fn(),
+  availableLocales: ['en'],
+};
+
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 // ShareSection uses window.location.origin — provide a stable value
@@ -12,6 +30,7 @@ Object.defineProperty(globalThis, 'location', {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUseTranslation.mockReturnValue(defaultTranslation as ReturnType<typeof useTranslation>);
 });
 
 // ── Visibility gating tests ────────────────────────────────────────────────
@@ -49,12 +68,12 @@ describe('ShareSection — visibility gating', () => {
 // ── QR code image ──────────────────────────────────────────────────────────
 
 describe('ShareSection — QR code image', () => {
-  it('shows QR code image with src containing slug.png', () => {
+  it('shows QR code image with src containing slug.svg', () => {
     render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
 
     const img = screen.getByRole('img', { name: /QR code for recipe/i });
     expect(img).toBeInTheDocument();
-    expect((img as HTMLImageElement).src).toContain('my-espresso.png');
+    expect((img as HTMLImageElement).src).toContain('my-espresso.svg');
   });
 
   it('does NOT show a select element (no SVG format option)', () => {

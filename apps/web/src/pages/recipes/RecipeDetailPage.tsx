@@ -100,10 +100,10 @@ export function RecipeDetailPage() {
 
       {/* ── Header section ── */}
       <div
-        className='px-6 py-6'
+        className='py-6'
         style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)' }}
       >
-        <div className='mx-auto max-w-4xl'>
+        <div className='mx-auto max-w-4xl px-6'>
           {/* Breadcrumb */}
           <div className='mb-3'>
             <BreadcrumbNav brewMethod={v.brewMethod} recipeTitle={recipe.title} />
@@ -176,8 +176,8 @@ export function RecipeDetailPage() {
       </div>
 
       {/* ── Stat Cards (full width below header) ── */}
-      <div className='px-6 py-4' style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className='mx-auto max-w-4xl'>
+      <div className='py-4' style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className='mx-auto max-w-4xl px-6'>
           <StatCards version={v} />
         </div>
       </div>

@@ -5,6 +5,7 @@ import {
   resolveRootCategory,
   type TasteNoteForChart,
 } from '../../utils/radar-chart-data.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 interface TasteNote {
   id: string;
@@ -52,6 +53,7 @@ export function TastingNotesSection({
   personalNotes,
   allTasteNotes,
 }: TastingNotesSectionProps) {
+  const { t } = useTranslation();
   const hasTasteNotes = tasteNotes.length > 0;
 
   // Enrich notes with resolved root category names
@@ -90,7 +92,7 @@ export function TastingNotesSection({
           className='text-xs font-semibold uppercase tracking-widest'
           style={{ color: 'var(--text-tertiary)' }}
         >
-          TASTING NOTES · SCAA 2016
+          {t('recipe.tastingNotes.title')}
         </span>
       </div>
 
@@ -168,7 +170,7 @@ export function TastingNotesSection({
             className='text-xs mt-2 uppercase tracking-widest'
             style={{ color: 'var(--text-tertiary)', fontStyle: 'normal' }}
           >
-            — PERSONAL NOTE
+            {t('recipe.tastingNotes.personalNote')}
           </footer>
         </blockquote>
       )}
@@ -176,7 +178,7 @@ export function TastingNotesSection({
       {/* Empty state: no taste notes and no personal notes */}
       {!hasTasteNotes && !personalNotes && (
         <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
-          No tasting notes recorded.
+          {t('recipe.tastingNotes.empty')}
         </p>
       )}
     </section>

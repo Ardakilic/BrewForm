@@ -27,7 +27,7 @@ export function buildStatCards(version: {
   const dash = "—";
 
   const dose: StatCardItem = {
-    label: "DOSE",
+    label: "recipe.stat.dose",
     value:
       version.groundWeightGrams != null
         ? `${formatNumber(version.groundWeightGrams)}g`
@@ -35,7 +35,7 @@ export function buildStatCards(version: {
   };
 
   const yieldCard: StatCardItem = {
-    label: "YIELD",
+    label: "recipe.stat.yield",
     value:
       version.extractionVolumeMl != null
         ? `${formatNumber(version.extractionVolumeMl)}ml`
@@ -43,7 +43,7 @@ export function buildStatCards(version: {
   };
 
   const time: StatCardItem = {
-    label: "TIME",
+    label: "recipe.stat.time",
     value:
       version.extractionTimeSeconds != null
         ? `${formatNumber(version.extractionTimeSeconds)}s`
@@ -51,7 +51,7 @@ export function buildStatCards(version: {
   };
 
   const ratio: StatCardItem = {
-    label: "RATIO",
+    label: "recipe.stat.ratio",
     value:
       version.brewRatio != null
         ? `1:${formatNumber(version.brewRatio)}`
@@ -59,7 +59,7 @@ export function buildStatCards(version: {
   };
 
   const temp: StatCardItem = {
-    label: "TEMP",
+    label: "recipe.stat.temp",
     value:
       version.temperatureCelsius != null
         ? `${formatNumber(version.temperatureCelsius)}°C`

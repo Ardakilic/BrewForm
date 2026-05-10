@@ -1,14 +1,10 @@
 /**
- * Tests for EquipmentSection component — equipment compatibility status
+ * Tests for EquipmentSection component
  *
- * Property 6: Equipment compatibility status
- * Validates: Requirements 7.5, 7.6
+ * Validates: Requirements 2.3, 2.4
  *
- * For any set of equipment items with types and a brew method with associated
- * compatibility rules, the compatibility status SHALL be "compatible" if and
- * only if every equipment item's type either has no rule defined for the brew
- * method OR has a rule with `compatible: true`; otherwise the status SHALL be
- * "incompatible".
+ * The equipment section shows item count only (no compatibility status).
+ * All user-visible strings use the i18n t() function.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -34,6 +30,19 @@ vi.mock('../icons/equipment/index.ts', () => ({
     },
 }));
 
+vi.mock('../../contexts/I18nContext.tsx', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'recipe.equipment.title': 'EQUIPMENT',
+        'recipe.equipment.item': 'item',
+        'recipe.equipment.items': 'items',
+      };
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -44,7 +53,6 @@ function makeItem(
     equipmentId: string;
     name: string;
     type: string;
-    compatible: boolean | undefined;
   }> = {},
 ) {
   return {
@@ -52,7 +60,6 @@ function makeItem(
     equipmentId: overrides.equipmentId ?? 'equip-1',
     name: overrides.name ?? 'Test Item',
     type: overrides.type ?? 'portafilter',
-    compatible: overrides.compatible,
   };
 }
 
@@ -80,45 +87,17 @@ describe('EquipmentSection — unit tests', () => {
     expect(screen.getByText(/2 items/)).toBeInTheDocument();
   });
 
-  it('shows "all compatible" when all items have compatible=true', () => {
+  it('does NOT show compatibility status text', () => {
     render(
       <EquipmentSection
         items={[
-          makeItem({ id: 'a', equipmentId: 'ea', compatible: true }),
-          makeItem({ id: 'b', equipmentId: 'eb', compatible: true }),
+          makeItem({ id: 'a', equipmentId: 'ea' }),
+          makeItem({ id: 'b', equipmentId: 'eb' }),
         ]}
       />,
     );
-    expect(screen.getByText('all compatible')).toBeInTheDocument();
-  });
-
-  it('shows "all compatible" when all items have compatible=undefined', () => {
-    render(
-      <EquipmentSection
-        items={[
-          makeItem({ id: 'a', equipmentId: 'ea', compatible: undefined }),
-          makeItem({ id: 'b', equipmentId: 'eb', compatible: undefined }),
-        ]}
-      />,
-    );
-    expect(screen.getByText('all compatible')).toBeInTheDocument();
-  });
-
-  it('shows "incompatible items" when any item has compatible=false', () => {
-    render(
-      <EquipmentSection
-        items={[
-          makeItem({ id: 'a', equipmentId: 'ea', compatible: true }),
-          makeItem({ id: 'b', equipmentId: 'eb', compatible: false }),
-        ]}
-      />,
-    );
-    expect(screen.getByText('incompatible items')).toBeInTheDocument();
-  });
-
-  it('shows "incompatible items" when only item has compatible=false', () => {
-    render(<EquipmentSection items={[makeItem({ compatible: false })]} />);
-    expect(screen.getByText('incompatible items')).toBeInTheDocument();
+    expect(screen.queryByText('all compatible')).not.toBeInTheDocument();
+    expect(screen.queryByText('incompatible items')).not.toBeInTheDocument();
   });
 
   it('clicking an item navigates to /recipes?equipmentId={id}', async () => {
@@ -133,9 +112,6 @@ describe('EquipmentSection — unit tests', () => {
 
   it('shows equipment type label in uppercase', () => {
     render(<EquipmentSection items={[makeItem({ type: 'portafilter' })]} />);
-    // The component replaces underscores with spaces and renders in uppercase via CSS,
-    // but the text content itself is the type with underscores replaced by spaces.
-    // We check the element has the uppercase tracking class.
     const typeLabel = screen.getByText('portafilter');
     expect(typeLabel).toBeInTheDocument();
     expect(typeLabel.className).toMatch(/uppercase/);
@@ -145,28 +121,36 @@ describe('EquipmentSection — unit tests', () => {
     render(<EquipmentSection items={[makeItem({ type: 'puck_screen' })]} />);
     expect(screen.getByText('puck screen')).toBeInTheDocument();
   });
+
+  it('renders without crashing when item type is undefined', () => {
+    const item = { id: 'x', equipmentId: 'eq-x', name: 'No Type Item', type: undefined };
+    const { container } = render(<EquipmentSection items={[item as any]} />);
+    expect(container.firstChild).not.toBeNull();
+  });
+
+  it('renders without crashing when item name is null', () => {
+    const item = { id: 'x', equipmentId: 'eq-x', name: null, type: 'portafilter' };
+    const { container } = render(<EquipmentSection items={[item]} />);
+    expect(container.firstChild).not.toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
-// Property-based test — Property 6: Equipment compatibility status
-// Validates: Requirements 7.5, 7.6
+// Property-based test — item count display
+// Validates: Requirements 2.3, 2.4
 // ---------------------------------------------------------------------------
 
-describe('EquipmentSection — Property 6: Equipment compatibility status', () => {
+describe('EquipmentSection — property tests', () => {
   /**
-   * For any non-empty set of items where all have compatible !== false,
-   * the component shows "all compatible".
+   * For any non-empty set of items, the component shows the correct item count
+   * and never shows compatibility status text.
    */
-  it('for any non-empty set of items where all have compatible !== false, shows "all compatible"', () => {
-    // Arbitrary: compatible is true or undefined (never false)
-    const compatibleValue = fc.oneof(fc.constant(true), fc.constant(undefined));
-
+  it('for any non-empty set of items, shows correct count and no compatibility text', () => {
     const itemArb = fc.record({
       id: fc.uuid(),
       equipmentId: fc.uuid(),
       name: fc.string({ minLength: 1, maxLength: 30 }),
       type: fc.constantFrom('portafilter', 'basket', 'puck_screen', 'scale', 'thermometer'),
-      compatible: compatibleValue,
     });
 
     fc.assert(
@@ -174,51 +158,44 @@ describe('EquipmentSection — Property 6: Equipment compatibility status', () =
         fc.array(itemArb, { minLength: 1, maxLength: 10 }),
         (items) => {
           const { unmount } = render(<EquipmentSection items={items} />);
-          expect(screen.getByText('all compatible')).toBeInTheDocument();
+
+          // Item count is shown
+          const countLabel = items.length === 1 ? '1 item' : `${items.length} items`;
+          expect(screen.getByText(new RegExp(countLabel))).toBeInTheDocument();
+
+          // No compatibility text
+          expect(screen.queryByText('all compatible')).not.toBeInTheDocument();
+          expect(screen.queryByText('incompatible items')).not.toBeInTheDocument();
+
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: 50 },
     );
   });
 
   /**
-   * For any non-empty set of items where at least one has compatible === false,
-   * the component shows "incompatible items".
+   * For any non-empty set of items, the component renders exactly items.length buttons.
    */
-  it('for any non-empty set of items where at least one has compatible === false, shows "incompatible items"', () => {
-    const compatibleValue = fc.oneof(fc.constant(true), fc.constant(false), fc.constant(undefined));
-
+  it('renders exactly items.length equipment buttons for any non-empty array', () => {
     const itemArb = fc.record({
       id: fc.uuid(),
       equipmentId: fc.uuid(),
       name: fc.string({ minLength: 1, maxLength: 30 }),
       type: fc.constantFrom('portafilter', 'basket', 'puck_screen', 'scale', 'thermometer'),
-      compatible: compatibleValue,
     });
 
-    // Generate an array of items, then force at least one to have compatible=false
     fc.assert(
       fc.property(
-        fc.array(itemArb, { minLength: 1, maxLength: 9 }),
-        fc.record({
-          id: fc.uuid(),
-          equipmentId: fc.uuid(),
-          name: fc.string({ minLength: 1, maxLength: 30 }),
-          type: fc.constantFrom('portafilter', 'basket', 'puck_screen', 'scale', 'thermometer'),
-        }),
-        (otherItems, incompatibleItem) => {
-          const items = [
-            ...otherItems,
-            { ...incompatibleItem, compatible: false as const },
-          ];
-
+        fc.array(itemArb, { minLength: 1, maxLength: 10 }),
+        (items) => {
           const { unmount } = render(<EquipmentSection items={items} />);
-          expect(screen.getByText('incompatible items')).toBeInTheDocument();
+          const buttons = screen.getAllByRole('button');
+          expect(buttons).toHaveLength(items.length);
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: 50 },
     );
   });
 });

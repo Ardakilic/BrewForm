@@ -15,6 +15,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import fc from 'fast-check';
 import { BeanSection } from './BeanSection';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import type { ReactNode } from 'react';
+
+function withI18n(ui: ReactNode) {
+  return <I18nProvider>{ui}</I18nProvider>;
+}
 
 // ---------------------------------------------------------------------------
 // Mock relative-date utilities to return predictable labels
@@ -32,7 +38,7 @@ vi.mock('../../utils/relative-date.ts', () => ({
 
 /** Returns the rendered container or null if BeanSection returns null */
 function renderBeanSection(props: Parameters<typeof BeanSection>[0]) {
-  const { container } = render(<BeanSection {...props} />);
+  const { container } = render(withI18n(<BeanSection {...props} />));
   return container.firstChild;
 }
 
@@ -88,17 +94,17 @@ describe('BeanSection — conditional rendering unit tests', () => {
   });
 
   it('shows product name when present', () => {
-    render(<BeanSection productName='Ethiopia Yirgacheffe' />);
+    render(withI18n(<BeanSection productName='Ethiopia Yirgacheffe' />));
     expect(screen.getByText('Ethiopia Yirgacheffe')).toBeInTheDocument();
   });
 
   it('does NOT show product name when null', () => {
-    render(<BeanSection coffeeBrand='Blue Bottle' productName={null} />);
+    render(withI18n(<BeanSection coffeeBrand='Blue Bottle' productName={null} />));
     expect(screen.queryByText('Ethiopia Yirgacheffe')).toBeNull();
   });
 
   it('shows relative date label for roast date', () => {
-    render(<BeanSection roastDate='2024-01-01' />);
+    render(withI18n(<BeanSection roastDate='2024-01-01' />));
     // The mocked roastDateLabel returns '7 days post-roast'
     // The label appears in both the section header and the date field
     const labels = screen.getAllByText('7 days post-roast');
@@ -106,7 +112,7 @@ describe('BeanSection — conditional rendering unit tests', () => {
   });
 
   it('shows origin from bean record', () => {
-    render(<BeanSection bean={{ origin: 'Colombia', roaster: null, roastLevel: null }} />);
+    render(withI18n(<BeanSection bean={{ origin: 'Colombia', roaster: null, roastLevel: null }} />));
     expect(screen.getByText('Colombia')).toBeInTheDocument();
   });
 });

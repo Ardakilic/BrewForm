@@ -1,33 +1,25 @@
 import { useNavigate } from 'react-router';
 import { getEquipmentIcon } from '../icons/equipment/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 interface EquipmentItem {
   id: string;
   equipmentId: string;
-  name: string;
-  type: string;
-  compatible?: boolean;
+  name?: string | null;
+  type?: string | null;
 }
 
 interface EquipmentSectionProps {
   items: EquipmentItem[];
-  brewMethod?: string | null;
-}
-
-function getCompatibilityStatus(items: EquipmentItem[]): 'all compatible' | 'incompatible items' {
-  const hasIncompatible = items.some((item) => item.compatible === false);
-  return hasIncompatible ? 'incompatible items' : 'all compatible';
 }
 
 export function EquipmentSection({ items }: EquipmentSectionProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   if (items.length === 0) {
     return null;
   }
-
-  const compatibilityStatus = getCompatibilityStatus(items);
-  const isAllCompatible = compatibilityStatus === 'all compatible';
 
   return (
     <div className='card'>
@@ -37,27 +29,20 @@ export function EquipmentSection({ items }: EquipmentSectionProps) {
           className='text-xs font-semibold uppercase tracking-widest'
           style={{ color: 'var(--text-tertiary)' }}
         >
-          EQUIPMENT
+          {t('recipe.equipment.title')}
         </span>
         <span
           className='text-xs'
           style={{ color: 'var(--text-tertiary)' }}
         >
-          {items.length} {items.length === 1 ? 'item' : 'items'} ·{' '}
-          <span
-            style={{
-              color: isAllCompatible ? 'var(--success)' : 'var(--warning)',
-            }}
-          >
-            {compatibilityStatus}
-          </span>
+          {items.length} {items.length === 1 ? t('recipe.equipment.item') : t('recipe.equipment.items')}
         </span>
       </div>
 
       {/* Equipment grid */}
       <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
         {items.map((item) => {
-          const Icon = getEquipmentIcon(item.type);
+          const Icon = getEquipmentIcon(item.type ?? '');
           return (
             <button
               key={item.id}
@@ -92,13 +77,13 @@ export function EquipmentSection({ items }: EquipmentSectionProps) {
                   className='font-semibold text-sm truncate'
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {item.name}
+                  {item.name ?? ''}
                 </span>
                 <span
                   className='text-xs uppercase tracking-wide'
                   style={{ color: 'var(--text-tertiary)' }}
                 >
-                  {item.type.replace(/_/g, ' ')}
+                  {item.type?.replace(/_/g, ' ') ?? ''}
                 </span>
               </span>
             </button>

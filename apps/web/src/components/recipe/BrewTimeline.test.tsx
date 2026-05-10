@@ -22,6 +22,12 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import fc from 'fast-check';
 import { BrewTimeline } from './BrewTimeline';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import type { ReactNode } from 'react';
+
+function withI18n(ui: ReactNode) {
+  return <I18nProvider>{ui}</I18nProvider>;
+}
 
 // ---------------------------------------------------------------------------
 // Unit tests — rendering
@@ -29,37 +35,37 @@ import { BrewTimeline } from './BrewTimeline';
 
 describe('BrewTimeline — rendering unit tests', () => {
   it('returns null when extractionTimeSeconds is null', () => {
-    const { container } = render(<BrewTimeline extractionTimeSeconds={null} />);
+    const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={null} />));
     expect(container.firstChild).toBeNull();
   });
 
   it('returns null when extractionTimeSeconds is undefined', () => {
-    const { container } = render(<BrewTimeline extractionTimeSeconds={undefined} />);
+    const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={undefined} />));
     expect(container.firstChild).toBeNull();
   });
 
   it('renders when extractionTimeSeconds is present', () => {
-    const { container } = render(<BrewTimeline extractionTimeSeconds={30} />);
+    const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={30} />));
     expect(container.firstChild).not.toBeNull();
   });
 
   it('shows flow rate when present', () => {
-    render(<BrewTimeline extractionTimeSeconds={30} flowRate={2.5} />);
+    render(withI18n(<BrewTimeline extractionTimeSeconds={30} flowRate={2.5} />));
     expect(screen.getByText('2.5 ml/s')).toBeInTheDocument();
   });
 
   it('does not show flow rate when null', () => {
-    render(<BrewTimeline extractionTimeSeconds={30} flowRate={null} />);
+    render(withI18n(<BrewTimeline extractionTimeSeconds={30} flowRate={null} />));
     expect(screen.queryByText(/ml\/s/)).toBeNull();
   });
 
   it('shows pre-infusion segment when preInfusionTimeSeconds is present', () => {
-    render(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={10} />);
+    render(withI18n(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={10} />));
     expect(screen.getByText('Pre-Infusion')).toBeInTheDocument();
   });
 
   it('does not show pre-infusion segment when preInfusionTimeSeconds is null', () => {
-    render(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={null} />);
+    render(withI18n(<BrewTimeline extractionTimeSeconds={30} preInfusionTimeSeconds={null} />));
     expect(screen.queryByText('Pre-Infusion')).toBeNull();
   });
 });
@@ -80,10 +86,12 @@ function getSegmentWidths(
   preInfusionTimeSeconds: number,
 ): { preInfusionPct: number; extractionPct: number } {
   const { container } = render(
-    <BrewTimeline
-      extractionTimeSeconds={extractionTimeSeconds}
-      preInfusionTimeSeconds={preInfusionTimeSeconds}
-    />,
+    withI18n(
+      <BrewTimeline
+        extractionTimeSeconds={extractionTimeSeconds}
+        preInfusionTimeSeconds={preInfusionTimeSeconds}
+      />,
+    ),
   );
 
   const timelineBar = container.querySelector('[role="img"]');
@@ -113,7 +121,7 @@ function getSegmentWidths(
  */
 function getAxisMarkerValues(extractionTimeSeconds: number): number[] {
   const { container } = render(
-    <BrewTimeline extractionTimeSeconds={extractionTimeSeconds} />,
+    withI18n(<BrewTimeline extractionTimeSeconds={extractionTimeSeconds} />),
   );
 
   // The axis container is the div with style height: 20px (relative positioning)

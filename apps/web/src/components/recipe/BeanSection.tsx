@@ -3,6 +3,7 @@ import {
   packageOpenDateLabel,
   grindDateLabel,
 } from '../../utils/relative-date.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 interface BeanSectionProps {
   productName?: string | null;
@@ -45,6 +46,7 @@ function hasBeanData(props: BeanSectionProps): boolean {
 }
 
 export function BeanSection(props: BeanSectionProps) {
+  const { t } = useTranslation();
   const {
     productName,
     coffeeBrand,
@@ -82,7 +84,7 @@ export function BeanSection(props: BeanSectionProps) {
           className='text-xs uppercase tracking-widest font-semibold'
           style={{ color: 'var(--text-tertiary)' }}
         >
-          Bean
+          {t('recipe.bean.title')}
         </span>
         {roastLabel && (
           <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
@@ -141,21 +143,21 @@ export function BeanSection(props: BeanSectionProps) {
         <div className='flex-1 grid grid-cols-2 gap-x-4 gap-y-3 sm:ml-auto'>
           {roastDate && (
             <DateField
-              label='Roasted'
+              label={t('recipe.bean.roasted')}
               date={roastDate}
               relative={roastDateLabel(roastDate, brewDate)}
             />
           )}
           {packageOpenDate && (
             <DateField
-              label='Bag Opened'
+              label={t('recipe.bean.bagOpened')}
               date={packageOpenDate}
               relative={packageOpenDateLabel(packageOpenDate, brewDate)}
             />
           )}
           {grindDate && (
             <DateField
-              label='Ground'
+              label={t('recipe.bean.ground')}
               date={grindDate}
               relative={grindDateLabel(grindDate, brewDate)}
             />
@@ -166,7 +168,7 @@ export function BeanSection(props: BeanSectionProps) {
                 className='text-xs uppercase tracking-widest'
                 style={{ color: 'var(--text-tertiary)' }}
               >
-                Origin
+                {t('recipe.bean.origin')}
               </span>
               <span className='text-sm font-bold' style={{ color: 'var(--text-primary)' }}>
                 {origin}

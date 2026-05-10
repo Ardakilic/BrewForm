@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { recipeApi } from '../../api/index.ts';
+import { recipeApi, equipmentApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS, DRINK_TYPES, VISIBILITY_STATES } from '@brewform/shared/constants';
+
+function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
 
 // deno-lint-ignore no-explicit-any
 const BREW_METHODS_ANY = BREW_METHODS as unknown as any[];
@@ -31,6 +35,7 @@ export function RecipeListPage() {
   const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [activeEquipmentName, setActiveEquipmentName] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -40,6 +45,7 @@ export function RecipeListPage() {
   const visibility = searchParams.get('visibility') || '';
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
+  const equipmentId = searchParams.get('equipmentId') || '';
 
   useEffect(() => {
     setLoading(true);
@@ -48,6 +54,7 @@ export function RecipeListPage() {
     if (drinkType) params.drinkType = drinkType;
     if (visibility && user?.isAdmin === true) params.visibility = visibility;
     if (search) params.search = search;
+    if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
 
     recipeApi.list(params).then((data) => {
       const items = Array.isArray(data) ? (data as RecipeListItem[]) : [];
@@ -55,7 +62,20 @@ export function RecipeListPage() {
       setTotal(items.length);
     }).catch(() => {
     }).finally(() => setLoading(false));
-  }, [page, brewMethod, drinkType, visibility, sortBy, search, user]);
+  }, [page, brewMethod, drinkType, visibility, sortBy, search, user, equipmentId]);
+
+  useEffect(() => {
+    if (!equipmentId || !isValidUuid(equipmentId)) {
+      setActiveEquipmentName(null);
+      return;
+    }
+    equipmentApi.list().then((items) => {
+      const found = (items as Array<{ id: string; name: string }>).find((e) => e.id === equipmentId);
+      setActiveEquipmentName(found?.name ?? null);
+    }).catch(() => {
+      setActiveEquipmentName(null);
+    });
+  }, [equipmentId]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams);
@@ -68,7 +88,7 @@ export function RecipeListPage() {
     setSearchParams(params);
   }
 
-  const activeFilters = [brewMethod, drinkType, user?.isAdmin === true ? visibility : ''].filter(
+  const activeFilters = [brewMethod, drinkType, user?.isAdmin === true ? visibility : '', equipmentId && isValidUuid(equipmentId) ? equipmentId : ''].filter(
     Boolean,
   );
   const totalPages = Math.ceil(total / 12);
@@ -183,6 +203,28 @@ export function RecipeListPage() {
                 <option value='rating'>{t('recipe.list.topRated')}</option>
               </select>
             </div>
+
+            {equipmentId && isValidUuid(equipmentId) && (
+              <div className='mb-3'>
+                <label className='block text-sm font-medium mb-1' style={{ color: 'var(--text-secondary)' }}>
+                  {t('recipe.list.equipmentFilter')}
+                </label>
+                <div className='flex items-center gap-2'>
+                  <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
+                    {activeEquipmentName || t('recipe.list.equipmentFilterActive')}
+                  </span>
+                  <button
+                    type='button'
+                    onClick={() => updateFilter('equipmentId', '')}
+                    className='text-xs'
+                    style={{ color: 'var(--text-tertiary)' }}
+                    aria-label='Remove equipment filter'
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
 
             {activeFilters.length > 0 && (
               <button

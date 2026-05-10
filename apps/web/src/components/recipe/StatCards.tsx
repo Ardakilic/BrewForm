@@ -1,4 +1,5 @@
 import { buildStatCards } from '../../utils/stat-cards.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 interface StatCardsProps {
   version: {
@@ -11,6 +12,7 @@ interface StatCardsProps {
 }
 
 export function StatCards({ version }: StatCardsProps) {
+  const { t } = useTranslation();
   const cards = buildStatCards(version);
 
   return (
@@ -28,7 +30,7 @@ export function StatCards({ version }: StatCardsProps) {
             className='text-xs uppercase tracking-widest'
             style={{ color: 'var(--text-tertiary)' }}
           >
-            {card.label}
+            {t(card.label)}
           </span>
           <span
             className='text-2xl font-bold mt-1'

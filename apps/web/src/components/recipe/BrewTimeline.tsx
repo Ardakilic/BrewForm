@@ -1,3 +1,5 @@
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+
 interface BrewTimelineProps {
   extractionTimeSeconds: number | null | undefined;
   preInfusionTimeSeconds?: number | null;
@@ -22,6 +24,8 @@ export function BrewTimeline({
   preInfusionTimeSeconds,
   flowRate,
 }: BrewTimelineProps) {
+  const { t } = useTranslation();
+
   // Hide entirely if extractionTimeSeconds is null/undefined (Req 6.6)
   if (extractionTimeSeconds == null) {
     return null;
@@ -47,7 +51,7 @@ export function BrewTimeline({
           className='text-xs font-semibold uppercase tracking-widest'
           style={{ color: 'var(--text-tertiary)' }}
         >
-          Brew Timeline
+          {t('recipe.brewTimeline.title')}
         </span>
         {flowRate != null && (
           <span
@@ -84,7 +88,7 @@ export function BrewTimeline({
                 className='text-xs font-semibold uppercase tracking-wide truncate'
                 style={{ color: 'var(--text-secondary)', fontSize: '0.65rem' }}
               >
-                Pre-Infusion
+                {t('recipe.brewTimeline.preInfusion')}
               </span>
               <span
                 className='text-xs font-bold'
@@ -109,7 +113,7 @@ export function BrewTimeline({
               className='text-xs font-semibold uppercase tracking-wide truncate'
               style={{ color: 'var(--text-secondary)', fontSize: '0.65rem' }}
             >
-              Extraction
+              {t('recipe.brewTimeline.extraction')}
             </span>
             <span
               className='text-xs font-bold'

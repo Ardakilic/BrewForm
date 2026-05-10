@@ -15,6 +15,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import fc from 'fast-check';
 import { TastingNotesSection } from './TastingNotesSection';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import type { ReactNode } from 'react';
+
+function withI18n(ui: ReactNode) {
+  return <I18nProvider>{ui}</I18nProvider>;
+}
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -72,7 +78,7 @@ function makeNote(overrides: Partial<TasteNote> & { id: string; tasteNoteId: str
 
 describe('TastingNotesSection — unit tests', () => {
   it('renders empty state message when no taste notes and no personalNotes', () => {
-    render(<TastingNotesSection tasteNotes={[]} personalNotes={null} />);
+    render(withI18n(<TastingNotesSection tasteNotes={[]} personalNotes={null} />));
     expect(screen.getByText('No tasting notes recorded.')).toBeInTheDocument();
     // No radar chart when no taste notes
     expect(screen.queryAllByTestId('scaa-radar-chart')).toHaveLength(0);
@@ -82,7 +88,7 @@ describe('TastingNotesSection — unit tests', () => {
 
   it('shows personalNotes blockquote when present even with no taste notes', () => {
     render(
-      <TastingNotesSection tasteNotes={[]} personalNotes='Bright and citrusy.' />,
+      withI18n(<TastingNotesSection tasteNotes={[]} personalNotes='Bright and citrusy.' />),
     );
     const blockquote = document.querySelector('blockquote');
     expect(blockquote).not.toBeNull();
@@ -95,7 +101,7 @@ describe('TastingNotesSection — unit tests', () => {
     const notes: TasteNote[] = [
       makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
     ];
-    render(<TastingNotesSection tasteNotes={notes} />);
+    render(withI18n(<TastingNotesSection tasteNotes={notes} />));
     // The component renders two radar charts (one for sm:block, one for block sm:hidden)
     const charts = screen.getAllByTestId('scaa-radar-chart');
     expect(charts.length).toBeGreaterThanOrEqual(1);
@@ -107,7 +113,7 @@ describe('TastingNotesSection — unit tests', () => {
       makeNote({ id: '2', tasteNoteId: 'tn2', name: 'Blueberry', rootCategoryName: 'Fruity' }),
       makeNote({ id: '3', tasteNoteId: 'tn3', name: 'Rose', rootCategoryName: 'Floral' }),
     ];
-    render(<TastingNotesSection tasteNotes={notes} />);
+    render(withI18n(<TastingNotesSection tasteNotes={notes} />));
     // Category labels should appear
     expect(screen.getByText('Floral')).toBeInTheDocument();
     expect(screen.getByText('Fruity')).toBeInTheDocument();
@@ -118,7 +124,7 @@ describe('TastingNotesSection — unit tests', () => {
       makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
       makeNote({ id: '2', tasteNoteId: 'tn2', name: 'Blueberry', rootCategoryName: 'Fruity' }),
     ];
-    render(<TastingNotesSection tasteNotes={notes} />);
+    render(withI18n(<TastingNotesSection tasteNotes={notes} />));
     expect(screen.getByText('Jasmine')).toBeInTheDocument();
     expect(screen.getByText('Blueberry')).toBeInTheDocument();
   });
@@ -128,7 +134,7 @@ describe('TastingNotesSection — unit tests', () => {
       makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
     ];
     render(
-      <TastingNotesSection tasteNotes={notes} personalNotes='Very floral and delicate.' />,
+      withI18n(<TastingNotesSection tasteNotes={notes} personalNotes='Very floral and delicate.' />),
     );
     const blockquote = document.querySelector('blockquote');
     expect(blockquote).not.toBeNull();
@@ -176,7 +182,7 @@ describe('TastingNotesSection — Property 8: Taste note grouping and intensity 
     fc.assert(
       fc.property(tasteNotesArb, (notes) => {
         const { container } = render(
-          <TastingNotesSection tasteNotes={notes} />,
+          withI18n(<TastingNotesSection tasteNotes={notes} />),
         );
 
         const intensityDots = container.querySelectorAll('[data-testid="intensity-dots"]');
@@ -197,7 +203,7 @@ describe('TastingNotesSection — Property 8: Taste note grouping and intensity 
     fc.assert(
       fc.property(tasteNotesArb, (notes) => {
         const { container } = render(
-          <TastingNotesSection tasteNotes={notes} />,
+          withI18n(<TastingNotesSection tasteNotes={notes} />),
         );
 
         const intensityDots = Array.from(
@@ -233,7 +239,7 @@ describe('TastingNotesSection — Property 8: Taste note grouping and intensity 
     fc.assert(
       fc.property(tasteNotesArb, (notes) => {
         const { container } = render(
-          <TastingNotesSection tasteNotes={notes} />,
+          withI18n(<TastingNotesSection tasteNotes={notes} />),
         );
 
         const distinctCategories = new Set(notes.map((n) => n.rootCategoryName));

@@ -32,11 +32,11 @@ describe('buildStatCards — unit tests', () => {
       brewRatio: 2,
       temperatureCelsius: 93,
     });
-    expect(cards[0]).toEqual({ label: 'DOSE', value: '18g' });
-    expect(cards[1]).toEqual({ label: 'YIELD', value: '36ml' });
-    expect(cards[2]).toEqual({ label: 'TIME', value: '30s' });
-    expect(cards[3]).toEqual({ label: 'RATIO', value: '1:2' });
-    expect(cards[4]).toEqual({ label: 'TEMP', value: '93°C' });
+    expect(cards[0]).toEqual({ label: 'recipe.stat.dose', value: '18g' });
+    expect(cards[1]).toEqual({ label: 'recipe.stat.yield', value: '36ml' });
+    expect(cards[2]).toEqual({ label: 'recipe.stat.time', value: '30s' });
+    expect(cards[3]).toEqual({ label: 'recipe.stat.ratio', value: '1:2' });
+    expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '93°C' });
   });
 
   it('returns exactly 5 cards when all values are null', () => {
@@ -58,11 +58,11 @@ describe('buildStatCards — unit tests', () => {
       brewRatio: null,
       temperatureCelsius: null,
     });
-    expect(cards[0]).toEqual({ label: 'DOSE', value: '—g' });
-    expect(cards[1]).toEqual({ label: 'YIELD', value: '—ml' });
-    expect(cards[2]).toEqual({ label: 'TIME', value: '—s' });
-    expect(cards[3]).toEqual({ label: 'RATIO', value: '1:—' });
-    expect(cards[4]).toEqual({ label: 'TEMP', value: '—°C' });
+    expect(cards[0]).toEqual({ label: 'recipe.stat.dose', value: '—g' });
+    expect(cards[1]).toEqual({ label: 'recipe.stat.yield', value: '—ml' });
+    expect(cards[2]).toEqual({ label: 'recipe.stat.time', value: '—s' });
+    expect(cards[3]).toEqual({ label: 'recipe.stat.ratio', value: '1:—' });
+    expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '—°C' });
   });
 
   it('handles mixed null and present values correctly', () => {
@@ -73,11 +73,11 @@ describe('buildStatCards — unit tests', () => {
       brewRatio: null,
       temperatureCelsius: 93,
     });
-    expect(cards[0]).toEqual({ label: 'DOSE', value: '18g' });
-    expect(cards[1]).toEqual({ label: 'YIELD', value: '—ml' });
-    expect(cards[2]).toEqual({ label: 'TIME', value: '30s' });
-    expect(cards[3]).toEqual({ label: 'RATIO', value: '1:—' });
-    expect(cards[4]).toEqual({ label: 'TEMP', value: '93°C' });
+    expect(cards[0]).toEqual({ label: 'recipe.stat.dose', value: '18g' });
+    expect(cards[1]).toEqual({ label: 'recipe.stat.yield', value: '—ml' });
+    expect(cards[2]).toEqual({ label: 'recipe.stat.time', value: '30s' });
+    expect(cards[3]).toEqual({ label: 'recipe.stat.ratio', value: '1:—' });
+    expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '93°C' });
   });
 
   it('always returns exactly 5 cards regardless of input', () => {
@@ -96,7 +96,7 @@ describe('buildStatCards — unit tests', () => {
 
   it('labels are always uppercase in fixed order: DOSE, YIELD, TIME, RATIO, TEMP', () => {
     const cards = buildStatCards({});
-    expect(cards.map((c) => c.label)).toEqual(['DOSE', 'YIELD', 'TIME', 'RATIO', 'TEMP']);
+    expect(cards.map((c) => c.label)).toEqual(['recipe.stat.dose', 'recipe.stat.yield', 'recipe.stat.time', 'recipe.stat.ratio', 'recipe.stat.temp']);
   });
 
   it('formats RATIO as "1:2" not "2" when brewRatio is 2', () => {
@@ -162,11 +162,11 @@ describe('buildStatCards — property-based tests', () => {
         const cards = buildStatCards(version);
         const labels = cards.map((c) => c.label);
         return (
-          labels[0] === 'DOSE' &&
-          labels[1] === 'YIELD' &&
-          labels[2] === 'TIME' &&
-          labels[3] === 'RATIO' &&
-          labels[4] === 'TEMP'
+          labels[0] === 'recipe.stat.dose' &&
+          labels[1] === 'recipe.stat.yield' &&
+          labels[2] === 'recipe.stat.time' &&
+          labels[3] === 'recipe.stat.ratio' &&
+          labels[4] === 'recipe.stat.temp'
         );
       }),
       { numRuns: 200 },

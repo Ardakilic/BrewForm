@@ -1,5 +1,5 @@
 import { db } from '@brewform/db';
-import { eq } from 'drizzle-orm';
+import { eq, ilike } from 'drizzle-orm';
 import * as bcryptjs from 'bcryptjs';
 import {
   badges,
@@ -8,6 +8,7 @@ import {
   comments,
   equipment,
   recipeEquipment,
+  recipeTasteNotes,
   recipes,
   recipeVersions,
   setups,
@@ -348,6 +349,7 @@ async function seedRecipes(tx: typeof db, seedUsers: { admin: any; user1: any; u
     grindSize: '12',
     groundWeightGrams: 18,
     extractionTimeSeconds: 28,
+    preInfusionTimeSeconds: 5,
     extractionVolumeMl: 36,
     temperatureCelsius: 93,
     brewRatio: 2.0,
@@ -489,6 +491,25 @@ async function seedSetups(
   });
 }
 
+async function seedRecipeTasteNotes(tx: typeof db, recipeVersionId: string) {
+  // Query for specific taste note IDs by name (case-insensitive to handle SCAA naming variations)
+  const [raspberry] = await tx.select().from(tasteNotes).where(ilike(tasteNotes.name, 'Raspberry')).limit(1);
+  const [darkChocolate] = await tx.select().from(tasteNotes).where(ilike(tasteNotes.name, 'Dark chocolate')).limit(1);
+  const [rose] = await tx.select().from(tasteNotes).where(ilike(tasteNotes.name, 'Rose')).limit(1);
+  const [caramelized] = await tx.select().from(tasteNotes).where(ilike(tasteNotes.name, 'Caramelized')).limit(1);
+
+  const notesToInsert = [
+    raspberry && { recipeVersionId, tasteNoteId: raspberry.id, intensity: 2 },
+    darkChocolate && { recipeVersionId, tasteNoteId: darkChocolate.id, intensity: 3 },
+    rose && { recipeVersionId, tasteNoteId: rose.id, intensity: 1 },
+    caramelized && { recipeVersionId, tasteNoteId: caramelized.id, intensity: 2 },
+  ].filter(Boolean);
+
+  if (notesToInsert.length > 0) {
+    await tx.insert(recipeTasteNotes).values(notesToInsert as any[]);
+  }
+}
+
 async function main() {
   console.log('Seeding database...');
 
@@ -516,8 +537,15 @@ async function main() {
 
   const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
   const scaaData: ScaaFile = JSON.parse(await Deno.readTextFile(scaaPath));
+
+  // Query recipe1Version ID after the first transaction (created in seedRecipes)
+  const recipe1Rows = await db.select().from(recipes).where(eq(recipes.slug, 'alices-signature-espresso')).limit(1);
+  const recipe1VersionRows = await db.select().from(recipeVersions).where(eq(recipeVersions.recipeId, recipe1Rows[0].id)).limit(1);
+  const recipe1VersionId = recipe1VersionRows[0].id;
+
   await db.transaction(async (tx) => {
     await seedTasteNotes(tx, scaaData.data);
+    await seedRecipeTasteNotes(tx, recipe1VersionId);
   });
 
   const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';

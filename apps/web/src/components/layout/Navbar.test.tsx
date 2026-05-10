@@ -77,9 +77,9 @@ const trTranslations: Record<string, string> = {
   'nav.profile': 'Profil',
   'recipe.create': 'Yeni Tarif',
   'setup.title': 'Kurulumlarım',
-  'theme.light': 'Açık',
-  'theme.dark': 'Koyu',
-  'theme.coffee': 'Kahve',
+  'theme.light': 'Açık Kavurma',
+  'theme.dark': 'Koyu Kavurma',
+  'theme.coffee': 'Orta Kavurma',
   'nav.menu': 'Gezinme menüsü',
   'nav.menuToggle': 'Gezinme menüsünü aç/kapat',
   'nav.close': 'Menüyü kapat',
@@ -95,9 +95,9 @@ const enTranslations: Record<string, string> = {
   'nav.profile': 'Profile',
   'recipe.create': 'New Recipe',
   'setup.title': 'My Setups',
-  'theme.light': 'Light',
-  'theme.dark': 'Dark',
-  'theme.coffee': 'Coffee',
+  'theme.light': 'Light Roast',
+  'theme.dark': 'Dark Roast',
+  'theme.coffee': 'Medium Roast',
   'nav.menu': 'Navigation menu',
   'nav.menuToggle': 'Toggle navigation menu',
   'nav.close': 'Close menu',
@@ -193,8 +193,8 @@ describe('Navbar — i18n', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    // After opening, click the 'Dark' option in the popup
-    const darkOption = await screen.findByText('Dark');
+    // After opening, click the 'Dark Roast' option in the popup
+    const darkOption = await screen.findByText('Dark Roast');
     await userEvent.click(darkOption);
 
     expect(setTheme).toHaveBeenCalledWith('dark');
@@ -397,9 +397,9 @@ describe('Navbar — i18n theme options', () => {
     await userEvent.click(triggers[0]);
 
     // After opening the popup, all three theme options should be visible
-    expect(await screen.findByText('Light')).toBeInTheDocument();
-    expect(screen.getByText('Dark')).toBeInTheDocument();
-    expect(screen.getByText('Coffee')).toBeInTheDocument();
+    expect(await screen.findByText('Light Roast')).toBeInTheDocument();
+    expect(screen.getByText('Dark Roast')).toBeInTheDocument();
+    expect(screen.getByText('Medium Roast')).toBeInTheDocument();
   });
 
   it('shows translated theme options in popup after clicking trigger — Turkish', async () => {
@@ -415,9 +415,9 @@ describe('Navbar — i18n theme options', () => {
     await userEvent.click(triggers[0]);
 
     // After opening the popup, all three theme options should appear in Turkish
-    expect(await screen.findByText('Açık')).toBeInTheDocument();
-    expect(screen.getByText('Koyu')).toBeInTheDocument();
-    expect(screen.getByText('Kahve')).toBeInTheDocument();
+    expect(await screen.findByText('Açık Kavurma')).toBeInTheDocument();
+    expect(screen.getByText('Koyu Kavurma')).toBeInTheDocument();
+    expect(screen.getByText('Orta Kavurma')).toBeInTheDocument();
   });
 });
 
@@ -583,7 +583,7 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    const lightOption = await screen.findByRole('option', { name: 'Light' });
+    const lightOption = await screen.findByRole('option', { name: 'Light Roast' });
     await userEvent.click(lightOption);
 
     expect(setTheme).toHaveBeenCalledWith('light');
@@ -598,7 +598,7 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    const darkOption = await screen.findByRole('option', { name: 'Dark' });
+    const darkOption = await screen.findByRole('option', { name: 'Dark Roast' });
     await userEvent.click(darkOption);
 
     expect(setTheme).toHaveBeenCalledWith('dark');
@@ -613,7 +613,7 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    const coffeeOption = await screen.findByRole('option', { name: 'Coffee' });
+    const coffeeOption = await screen.findByRole('option', { name: 'Medium Roast' });
     await userEvent.click(coffeeOption);
 
     expect(setTheme).toHaveBeenCalledWith('coffee');
@@ -668,7 +668,7 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     // Option label is in Turkish but the value passed to setTheme must still be 'coffee'.
     // Use getByRole('option') to target the clickable item element, not the inner text span
     // which may have pointer-events: none applied by Base UI.
-    const coffeeOption = await screen.findByRole('option', { name: trTranslations['theme.coffee'] }); // 'Kahve'
+    const coffeeOption = await screen.findByRole('option', { name: trTranslations['theme.coffee'] }); // 'Orta Kavurma'
     await userEvent.click(coffeeOption);
 
     expect(setTheme).toHaveBeenCalledWith('coffee');
@@ -684,9 +684,9 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     await userEvent.keyboard('{Enter}');
 
     // After pressing Enter, the popup should be open and options visible
-    expect(await screen.findByText('Light')).toBeInTheDocument();
-    expect(screen.getByText('Dark')).toBeInTheDocument();
-    expect(screen.getByText('Coffee')).toBeInTheDocument();
+    expect(await screen.findByText('Light Roast')).toBeInTheDocument();
+    expect(screen.getByText('Dark Roast')).toBeInTheDocument();
+    expect(screen.getByText('Medium Roast')).toBeInTheDocument();
   });
 
   it('opens the theme dropdown with Space key when trigger is focused', async () => {
@@ -696,7 +696,7 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     triggers[0].focus();
     await userEvent.keyboard(' ');
 
-    expect(await screen.findByText('Light')).toBeInTheDocument();
+    expect(await screen.findByText('Light Roast')).toBeInTheDocument();
   });
 
   it('closes the theme dropdown with Escape key', async () => {
@@ -728,9 +728,9 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     await userEvent.keyboard('{ArrowDown}');
 
     // The highlighted option should be accessible — all options still visible
-    expect(await screen.findByText('Light')).toBeInTheDocument();
-    expect(screen.getByText('Dark')).toBeInTheDocument();
-    expect(screen.getByText('Coffee')).toBeInTheDocument();
+    expect(await screen.findByText('Light Roast')).toBeInTheDocument();
+    expect(screen.getByText('Dark Roast')).toBeInTheDocument();
+    expect(screen.getByText('Medium Roast')).toBeInTheDocument();
   });
 
   it('selects highlighted option with Enter key during keyboard navigation', async () => {

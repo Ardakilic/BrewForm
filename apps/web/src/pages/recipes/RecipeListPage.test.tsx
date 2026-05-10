@@ -22,6 +22,7 @@ vi.mock('../../contexts/AuthContext.tsx', () => ({
 
 vi.mock('../../api/index.ts', () => ({
   recipeApi: { list: vi.fn() },
+  equipmentApi: { list: vi.fn() },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
@@ -39,12 +40,13 @@ vi.mock('@brewform/shared/constants', () => ({
 import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { recipeApi } from '../../api/index.ts';
+import { recipeApi, equipmentApi } from '../../api/index.ts';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
 const mockRecipeApi = vi.mocked(recipeApi);
+const mockEquipmentApi = vi.mocked(equipmentApi);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -65,6 +67,8 @@ const enT = (key: string) => {
     'recipe.list.all': 'All',
     'recipe.list.visibilityAdmin': 'Visibility (Admins only)',
     'recipe.list.page': 'Page {page} of {total}',
+    'recipe.list.equipmentFilter': 'Equipment',
+    'recipe.list.equipmentFilterActive': 'Equipment filter active',
     'common.loading': 'Loading...',
     'common.previous': 'Previous',
     'common.next': 'Next',
@@ -89,6 +93,8 @@ const trT = (key: string) => {
     'recipe.list.all': 'Tümü',
     'recipe.list.visibilityAdmin': 'Görünürlük (Yalnızca Yöneticiler)',
     'recipe.list.page': 'Sayfa {page} / {total}',
+    'recipe.list.equipmentFilter': 'Ekipman',
+    'recipe.list.equipmentFilterActive': 'Ekipman filtresi aktif',
     'common.loading': 'Yükleniyor...',
     'common.previous': 'Önceki',
     'common.next': 'İleri',
@@ -126,6 +132,7 @@ beforeEach(() => {
   mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
   mockUseSearchParams.mockReturnValue(makeSearchParams());
   mockRecipeApi.list.mockResolvedValue([]);
+  mockEquipmentApi.list.mockResolvedValue([]);
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -254,5 +261,82 @@ describe('RecipeListPage — i18n', () => {
     await waitFor(() => expect(screen.queryByText('Yükleniyor...')).not.toBeInTheDocument());
 
     expect(screen.getByPlaceholderText('Tarif ara...')).toBeInTheDocument();
+  });
+});
+
+describe('RecipeListPage — equipment filter', () => {
+  const VALID_UUID = '11111111-1111-1111-1111-111111111111';
+
+  it('passes equipmentId to API when URL has a valid UUID', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
+    mockEquipmentApi.list.mockResolvedValue([]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    expect(mockRecipeApi.list).toHaveBeenCalledWith(
+      expect.objectContaining({ equipmentId: VALID_UUID }),
+    );
+  });
+
+  it('does NOT pass equipmentId to API when value is not a valid UUID', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: 'not-a-uuid' }));
+    mockEquipmentApi.list.mockResolvedValue([]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    const callArgs = mockRecipeApi.list.mock.calls[0][0] as Record<string, string>;
+    expect(callArgs).not.toHaveProperty('equipmentId');
+  });
+
+  it('shows equipment filter label with fallback text when equipment name is not found', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
+    mockEquipmentApi.list.mockResolvedValue([]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.getByText('Equipment')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Equipment filter active')).toBeInTheDocument());
+  });
+
+  it('shows equipment name when equipment is found in list', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
+    mockEquipmentApi.list.mockResolvedValue([{ id: VALID_UUID, name: 'My Espresso Machine' }]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso Machine')).toBeInTheDocument());
+  });
+
+  it('shows remove button for equipment filter with correct aria-label', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
+    mockEquipmentApi.list.mockResolvedValue([]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.getByLabelText('Remove equipment filter')).toBeInTheDocument());
+  });
+
+  it('does not show equipment filter section when equipmentId is absent', async () => {
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    expect(screen.queryByText('Equipment')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Remove equipment filter')).not.toBeInTheDocument();
+  });
+
+  it('shows equipment filter label in Turkish when locale is tr', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
+    mockEquipmentApi.list.mockResolvedValue([]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.getByText('Ekipman')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Ekipman filtresi aktif')).toBeInTheDocument());
   });
 });

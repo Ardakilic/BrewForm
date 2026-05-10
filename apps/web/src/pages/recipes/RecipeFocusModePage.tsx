@@ -37,7 +37,7 @@ export function RecipeFocusModePage() {
 
   // Equipment items from the API
   // deno-lint-ignore no-explicit-any
-  const equipmentItems: any[] = Array.isArray(v.equipment) ? v.equipment : [];
+  const equipmentItems: any[] = Array.isArray(recipe.equipment) ? recipe.equipment : [];
 
   // Taste notes from the API
   // deno-lint-ignore no-explicit-any

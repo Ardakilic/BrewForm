@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 interface ShareSectionProps {
   slug: string;
@@ -7,6 +8,7 @@ interface ShareSectionProps {
 }
 
 export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
+  const { t } = useTranslation();
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
 
   // Hidden when private or draft (Requirement 9.9)
@@ -15,7 +17,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
   }
 
   const shareUrl = `${window.location.origin}/recipes/${slug}`;
-  const qrImageUrl = `/api/v1/qrcode/recipe/${slug}.png`;
+  const qrImageUrl = `/api/v1/qrcode/recipe/${slug}.svg`;
 
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);
@@ -37,14 +39,14 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
     }
   }
 
-  async function handleDownloadPng() {
+  async function handleDownloadSvg() {
     try {
-      const response = await fetch(qrImageUrl);
+      const response = await fetch(`/api/v1/qrcode/recipe/${slug}.svg`);
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = objectUrl;
-      anchor.download = `recipe-${slug}-qr.png`;
+      anchor.download = `brewform-${slug}-qr.svg`;
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
@@ -66,17 +68,17 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
           className='text-xs font-semibold uppercase tracking-widest'
           style={{ color: 'var(--text-tertiary)' }}
         >
-          SHARE
+          {t('recipe.share.title')}
         </span>
       </div>
 
       {/* Body: QR code left, controls right */}
-      <div className='flex flex-col sm:flex-row gap-4'>
+      <div className='flex flex-col sm:flex-row gap-4 sm:items-center'>
         {/* QR code image (Requirement 9.1) */}
         <div className='flex-shrink-0'>
           <img
             src={qrImageUrl}
-            alt={`QR code for recipe: ${title}`}
+            alt={`QR code for recipe: ${title} (SVG)`}
             width={128}
             height={128}
             style={{ minWidth: '128px', minHeight: '128px' }}
@@ -107,19 +109,19 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
               aria-label='Copy recipe URL to clipboard'
             >
               {copyState === 'copied'
-                ? 'Copied!'
+                ? t('recipe.share.copied')
                 : copyState === 'error'
-                  ? 'Could not copy URL'
-                  : 'Copy URL'}
+                  ? t('recipe.share.copyError')
+                  : t('recipe.share.copyUrl')}
             </button>
 
             <button
               type='button'
-              onClick={handleDownloadPng}
+              onClick={handleDownloadSvg}
               className='btn-secondary text-sm flex-1 min-h-11'
-              aria-label='Download QR code as PNG'
+              aria-label='Download QR code as SVG'
             >
-              Download QR
+              {t('recipe.share.downloadQr')}
             </button>
           </div>
 
