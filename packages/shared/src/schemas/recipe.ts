@@ -132,6 +132,7 @@ export const RecipeFilterSchema = z.object({
   visibility: VisibilityEnum.optional(),
   authorId: z.string().uuid().optional(),
   equipmentId: z.string().uuid().optional(),
+  tasteNoteId: z.string().uuid().optional(),
   grinder: z.string().optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),

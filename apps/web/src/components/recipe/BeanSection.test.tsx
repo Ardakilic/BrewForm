@@ -27,6 +27,12 @@ function withI18n(ui: ReactNode) {
 // ---------------------------------------------------------------------------
 
 vi.mock('../../utils/relative-date.ts', () => ({
+  roastDateResult: (_roastDate: Date, _brewDate: Date) => ({ type: 'daysPostRoast', days: 7 }),
+  packageOpenDateResult: (_openDate: Date, _brewDate: Date) => ({ type: 'daysSinceOpened', days: 3 }),
+  grindDateResult: (_grindDate: Date, _brewDate: Date) => ({ type: 'daysAgo', days: 1 }),
+  // daysBetween is used by isPeakWindow inside BeanSection
+  daysBetween: (_a: Date, _b: Date) => 14,
+  // Legacy exports kept for any other callers
   roastDateLabel: (_roastDate: Date, _brewDate: Date) => '7 days post-roast',
   packageOpenDateLabel: (_openDate: Date, _brewDate: Date) => '3 days since opened',
   grindDateLabel: (_grindDate: Date, _brewDate: Date) => '1 days ago',

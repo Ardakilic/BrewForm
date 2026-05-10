@@ -6,10 +6,11 @@ import {
   type TasteNoteForChart,
 } from '../../utils/radar-chart-data.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useNavigate } from 'react-router';
 
 interface TasteNote {
   id: string;
-  tasteNoteId: string;
+  tasteNoteId?: string;  // explicit tasteNoteId from API; falls back to id
   name: string;
   intensity: number; // 1-3
   parentId: string | null;
@@ -38,7 +39,9 @@ function getRootCategoryName(
     return note.rootCategoryName;
   }
   if (allTasteNotes && allTasteNotes.length > 0) {
-    const resolved = resolveRootCategory(note.tasteNoteId, allTasteNotes);
+    // Use tasteNoteId if available, fall back to id (API may send either)
+    const lookupId = note.tasteNoteId ?? note.id;
+    const resolved = resolveRootCategory(lookupId, allTasteNotes);
     if (resolved) return resolved;
   }
   // If depth=0, the note itself is a root category
@@ -54,11 +57,12 @@ export function TastingNotesSection({
   allTasteNotes,
 }: TastingNotesSectionProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const hasTasteNotes = tasteNotes.length > 0;
 
   // Enrich notes with resolved root category names
   const enrichedNotes: TasteNoteForChart[] = tasteNotes.map((note) => ({
-    tasteNoteId: note.tasteNoteId,
+    tasteNoteId: note.tasteNoteId ?? note.id,  // fallback: API may send id instead of tasteNoteId
     intensity: note.intensity,
     name: note.name,
     parentId: note.parentId,
@@ -125,20 +129,27 @@ export function TastingNotesSection({
                 </span>
                 {/* Chips */}
                 <div className='flex flex-wrap gap-2'>
-                  {notes.map((note) => (
-                    <div
-                      key={note.id}
-                      className='inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium'
-                      style={{
-                        backgroundColor: 'var(--bg-tertiary)',
-                        border: '1px solid var(--border-primary)',
-                        color: 'var(--text-primary)',
-                      }}
-                    >
-                      <span>{note.name}</span>
-                      <IntensityDots intensity={note.intensity} />
-                    </div>
-                  ))}
+                  {notes.map((note) => {
+                    const noteId = note.tasteNoteId ?? note.id;
+                    return (
+                      <button
+                        key={note.id}
+                        type='button'
+                        onClick={() => navigate(`/recipes?tasteNoteId=${noteId}`)}
+                        className='inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-75'
+                        style={{
+                          backgroundColor: 'var(--bg-tertiary)',
+                          border: '1px solid var(--border-primary)',
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                        }}
+                        aria-label={`Filter recipes by ${note.name}`}
+                      >
+                        <span>{note.name}</span>
+                        <IntensityDots intensity={note.intensity} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}

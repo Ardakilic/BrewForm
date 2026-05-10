@@ -32,6 +32,7 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
 
 vi.mock('../../api/index.ts', () => ({
   recipeApi: { get: vi.fn() },
+  tasteApi: { flat: vi.fn().mockResolvedValue([]) },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({

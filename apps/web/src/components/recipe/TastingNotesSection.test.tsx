@@ -26,6 +26,11 @@ function withI18n(ui: ReactNode) {
 // Mocks
 // ---------------------------------------------------------------------------
 
+const mockNavigate = vi.fn();
+vi.mock('react-router', () => ({
+  useNavigate: () => mockNavigate,
+}));
+
 // Mock radar-chart-data to control category aggregation
 vi.mock('../../utils/radar-chart-data.ts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../utils/radar-chart-data.ts')>();

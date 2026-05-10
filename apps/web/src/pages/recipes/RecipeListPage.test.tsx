@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { RecipeListPage } from './RecipeListPage';
 
 // ── External deps ──────────────────────────────────────────────────────────
@@ -23,6 +22,7 @@ vi.mock('../../contexts/AuthContext.tsx', () => ({
 vi.mock('../../api/index.ts', () => ({
   recipeApi: { list: vi.fn() },
   equipmentApi: { list: vi.fn() },
+  tasteApi: { flat: vi.fn() },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
@@ -40,13 +40,15 @@ vi.mock('@brewform/shared/constants', () => ({
 import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { recipeApi, equipmentApi } from '../../api/index.ts';
+import { recipeApi, equipmentApi, tasteApi } from '../../api/index.ts';
+import { _resetStaticCache } from './RecipeListPage';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
 const mockRecipeApi = vi.mocked(recipeApi);
 const mockEquipmentApi = vi.mocked(equipmentApi);
+const mockTasteApi = vi.mocked(tasteApi);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -69,6 +71,8 @@ const enT = (key: string) => {
     'recipe.list.page': 'Page {page} of {total}',
     'recipe.list.equipmentFilter': 'Equipment',
     'recipe.list.equipmentFilterActive': 'Equipment filter active',
+    'recipe.list.tasteNoteFilter': 'Taste Note',
+    'recipe.list.tasteNoteFilterActive': 'Taste note filter active',
     'common.loading': 'Loading...',
     'common.previous': 'Previous',
     'common.next': 'Next',
@@ -95,6 +99,8 @@ const trT = (key: string) => {
     'recipe.list.page': 'Sayfa {page} / {total}',
     'recipe.list.equipmentFilter': 'Ekipman',
     'recipe.list.equipmentFilterActive': 'Ekipman filtresi aktif',
+    'recipe.list.tasteNoteFilter': 'Tat Notu',
+    'recipe.list.tasteNoteFilterActive': 'Tat notu filtresi aktif',
     'common.loading': 'Yükleniyor...',
     'common.previous': 'Önceki',
     'common.next': 'İleri',
@@ -128,11 +134,13 @@ function makeSearchParams(init: Record<string, string> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  _resetStaticCache();
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
   mockUseSearchParams.mockReturnValue(makeSearchParams());
   mockRecipeApi.list.mockResolvedValue([]);
   mockEquipmentApi.list.mockResolvedValue([]);
+  mockTasteApi.flat.mockResolvedValue([]);
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -207,7 +215,6 @@ describe('RecipeListPage — i18n', () => {
   });
 
   it('shows "Loading..." while fetching — English', () => {
-    // Never resolves so loading state persists
     mockRecipeApi.list.mockReturnValue(new Promise(() => {}));
 
     render(<RecipeListPage />);
@@ -264,12 +271,14 @@ describe('RecipeListPage — i18n', () => {
   });
 });
 
-describe('RecipeListPage — equipment filter', () => {
+describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
   const VALID_UUID = '11111111-1111-1111-1111-111111111111';
 
   it('passes equipmentId to API when URL has a valid UUID', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
-    mockEquipmentApi.list.mockResolvedValue([]);
+    mockEquipmentApi.list.mockResolvedValue([
+      { id: VALID_UUID, name: 'Acaia Lunar', type: 'scale' },
+    ]);
 
     render(<RecipeListPage />);
 
@@ -282,7 +291,6 @@ describe('RecipeListPage — equipment filter', () => {
 
   it('does NOT pass equipmentId to API when value is not a valid UUID', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: 'not-a-uuid' }));
-    mockEquipmentApi.list.mockResolvedValue([]);
 
     render(<RecipeListPage />);
 
@@ -292,51 +300,153 @@ describe('RecipeListPage — equipment filter', () => {
     expect(callArgs).not.toHaveProperty('equipmentId');
   });
 
-  it('shows equipment filter label with fallback text when equipment name is not found', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
-    mockEquipmentApi.list.mockResolvedValue([]);
+  it('renders a dropdown for each equipment type that has items', async () => {
+    mockEquipmentApi.list.mockResolvedValue([
+      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale' },
+      { id: 'eq-2', name: 'Fellow Stagg', type: 'gooseneck_kettle' },
+    ]);
 
-    render(<RecipeListPage />);
-
-    await waitFor(() => expect(screen.getByText('Equipment')).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByText('Equipment filter active')).toBeInTheDocument());
-  });
-
-  it('shows equipment name when equipment is found in list', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
-    mockEquipmentApi.list.mockResolvedValue([{ id: VALID_UUID, name: 'My Espresso Machine' }]);
-
-    render(<RecipeListPage />);
-
-    await waitFor(() => expect(screen.getByText('My Espresso Machine')).toBeInTheDocument());
-  });
-
-  it('shows remove button for equipment filter with correct aria-label', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
-    mockEquipmentApi.list.mockResolvedValue([]);
-
-    render(<RecipeListPage />);
-
-    await waitFor(() => expect(screen.getByLabelText('Remove equipment filter')).toBeInTheDocument());
-  });
-
-  it('does not show equipment filter section when equipmentId is absent', async () => {
     render(<RecipeListPage />);
 
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
-    expect(screen.queryByText('Equipment')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Remove equipment filter')).not.toBeInTheDocument();
+    // Scale dropdown should appear
+    expect(screen.getByLabelText('Filter by Scale')).toBeInTheDocument();
+    // Kettle dropdown should appear
+    expect(screen.getByLabelText('Filter by Kettle')).toBeInTheDocument();
+    // Portafilter dropdown should NOT appear (no items)
+    expect(screen.queryByLabelText('Filter by Portafilter')).not.toBeInTheDocument();
   });
 
-  it('shows equipment filter label in Turkish when locale is tr', async () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+  it('shows equipment name in the dropdown when equipment is loaded', async () => {
+    mockEquipmentApi.list.mockResolvedValue([
+      { id: VALID_UUID, name: 'My Espresso Scale', type: 'scale' },
+    ]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'My Espresso Scale' })).toBeInTheDocument());
+  });
+
+  it('shows active equipment filter badge when equipmentId is in URL', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
+    mockEquipmentApi.list.mockResolvedValue([
+      { id: VALID_UUID, name: 'Acaia Lunar', type: 'scale' },
+    ]);
+
+    render(<RecipeListPage />);
+
+    // The badge shows the equipment name and a remove button
+    await waitFor(() => expect(screen.getByLabelText('Remove Equipment filter')).toBeInTheDocument());
+    // The name appears at least once (may also appear in the dropdown option)
+    expect(screen.getAllByText('Acaia Lunar').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows fallback text in badge when equipment name is not found', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
     mockEquipmentApi.list.mockResolvedValue([]);
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.getByText('Ekipman')).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByText('Ekipman filtresi aktif')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Equipment filter active')).toBeInTheDocument());
+  });
+});
+
+describe('RecipeListPage — taste note filter', () => {
+  const VALID_UUID = '22222222-2222-2222-2222-222222222222';
+
+  const sampleTasteNotes = [
+    { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+    { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+    { id: VALID_UUID, name: 'Raspberry', depth: 2, parentId: 'mid-1' },
+    { id: 'root-2', name: 'Floral', depth: 0, parentId: null },
+    { id: 'mid-2', name: 'Floral', depth: 1, parentId: 'root-2' },
+    { id: 'leaf-2', name: 'Rose', depth: 2, parentId: 'mid-2' },
+  ];
+
+  it('renders taste note dropdown when taste notes are loaded', async () => {
+    mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    expect(screen.getByLabelText('Filter by taste note')).toBeInTheDocument();
+  });
+
+  it('does NOT render taste note dropdown when no taste notes are loaded', async () => {
+    mockTasteApi.flat.mockResolvedValue([]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    expect(screen.queryByLabelText('Filter by taste note')).not.toBeInTheDocument();
+  });
+
+  it('shows leaf taste notes as options in the dropdown', async () => {
+    mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Raspberry' })).toBeInTheDocument());
+    expect(screen.getByRole('option', { name: 'Rose' })).toBeInTheDocument();
+  });
+
+  it('passes tasteNoteId to API when URL has a valid UUID', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: VALID_UUID }));
+    mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    expect(mockRecipeApi.list).toHaveBeenCalledWith(
+      expect.objectContaining({ tasteNoteId: VALID_UUID }),
+    );
+  });
+
+  it('does NOT pass tasteNoteId to API when value is not a valid UUID', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: 'not-a-uuid' }));
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    const callArgs = mockRecipeApi.list.mock.calls[0][0] as Record<string, string>;
+    expect(callArgs).not.toHaveProperty('tasteNoteId');
+  });
+
+  it('shows active taste note filter badge when tasteNoteId is in URL', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: VALID_UUID }));
+    mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
+
+    render(<RecipeListPage />);
+
+    // The badge remove button should appear
+    await waitFor(() => expect(screen.getByLabelText('Remove Taste Note filter')).toBeInTheDocument());
+    // The name appears at least once (may also appear in the dropdown option)
+    expect(screen.getAllByText('Raspberry').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows fallback text in badge when taste note name is not found', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: VALID_UUID }));
+    mockTasteApi.flat.mockResolvedValue([]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.getByText('Taste note filter active')).toBeInTheDocument());
+  });
+
+  it('shows taste note filter label in Turkish when locale is tr', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: VALID_UUID }));
+    mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.getByText('Tat Notu')).toBeInTheDocument());
+    // Raspberry appears in the dropdown option and/or badge
+    await waitFor(() => expect(screen.getAllByText('Raspberry').length).toBeGreaterThanOrEqual(1));
   });
 });

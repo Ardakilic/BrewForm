@@ -292,6 +292,17 @@ export async function listRecipes(filters: any, page: number, perPage: number, r
     );
   }
 
+  if (filters.tasteNoteId) {
+    conditions.push(
+      inArray(
+        recipes.currentVersionId,
+        db.select({ id: recipeTasteNotes.recipeVersionId }).from(recipeTasteNotes).where(
+          eq(recipeTasteNotes.tasteNoteId, filters.tasteNoteId),
+        ),
+      ),
+    );
+  }
+
   if (filters.search) {
     const sanitized = filters.search.replace(/[%_]/g, '');
     if (sanitized) {

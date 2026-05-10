@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { recipeApi } from '../../api/index.ts';
+import { recipeApi, tasteApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { StatCards } from '../../components/recipe/StatCards.tsx';
@@ -14,6 +14,14 @@ export function RecipeFocusModePage() {
   const { t } = useTranslation();
   // deno-lint-ignore no-explicit-any
   const [recipe, setRecipe] = useState<any>(null);
+  // deno-lint-ignore no-explicit-any
+  const [allTasteNotes, setAllTasteNotes] = useState<any[]>([]);
+
+  useEffect(() => {
+    tasteApi.flat().then((data) => {
+      setAllTasteNotes(Array.isArray(data) ? data as any[] : []);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -129,6 +137,7 @@ export function RecipeFocusModePage() {
           <TastingNotesSection
             tasteNotes={tasteNotes}
             personalNotes={v.personalNotes}
+            allTasteNotes={allTasteNotes}
           />
         )}
       </div>

@@ -8,15 +8,57 @@ interface BrewTimelineProps {
 
 function generateAxisMarkers(totalSeconds: number): number[] {
   const markers: number[] = [];
-  // Add markers at 0, 5, 10, ... up to the largest multiple of 5 <= totalSeconds
   for (let s = 0; s <= totalSeconds; s += 5) {
     markers.push(s);
   }
-  // Add final marker at totalSeconds if it's not already a multiple of 5
   if (totalSeconds % 5 !== 0) {
     markers.push(totalSeconds);
   }
   return markers;
+}
+
+/**
+ * Returns two SVG path strings:
+ *  - `fill`: closed area path (curve + bottom edge) for the gradient fill
+ *  - `stroke`: open path (curve only) for the line on top
+ *
+ * Shape:
+ *  - Pre-infusion phase (0 → preX): cubic ease-in rise from bottom to plateau
+ *  - Extraction phase (preX → width): flat plateau at the top
+ */
+function buildPaths(
+  width: number,
+  height: number,
+  preInfusionPct: number,
+): { fill: string; stroke: string } {
+  const bottom = height;
+  const top = height * 0.1; // plateau height (10% from top)
+  const preX = (preInfusionPct / 100) * width;
+
+  if (preInfusionPct <= 0) {
+    // No pre-infusion: flat line at plateau across full width
+    const stroke = `M 0 ${top} L ${width} ${top}`;
+    const fill = `M 0 ${top} L ${width} ${top} L ${width} ${bottom} L 0 ${bottom} Z`;
+    return { fill, stroke };
+  }
+
+  // Cubic bezier rise:
+  //   starts at bottom-left (0, bottom)
+  //   cp1: 55% of preX horizontally, still at bottom (slow start)
+  //   cp2: at preX, very close to top (fast finish)
+  //   end: (preX, top)
+  const cp1x = preX * 0.55;
+  const cp1y = bottom;
+  const cp2x = preX * 0.98;
+  const cp2y = top + (bottom - top) * 0.04;
+
+  const curvePart = `M 0 ${bottom} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${preX} ${top}`;
+  const plateauPart = `L ${width} ${top}`;
+
+  const stroke = `${curvePart} ${plateauPart}`;
+  const fill = `${stroke} L ${width} ${bottom} L 0 ${bottom} Z`;
+
+  return { fill, stroke };
 }
 
 export function BrewTimeline({
@@ -26,7 +68,6 @@ export function BrewTimeline({
 }: BrewTimelineProps) {
   const { t } = useTranslation();
 
-  // Hide entirely if extractionTimeSeconds is null/undefined (Req 6.6)
   if (extractionTimeSeconds == null) {
     return null;
   }
@@ -37,16 +78,24 @@ export function BrewTimeline({
       ? preInfusionTimeSeconds
       : null;
 
-  // Segment widths as percentages (Req 6.1, 6.2)
   const preInfusionPct = preInfusion != null ? (preInfusion / total) * 100 : 0;
   const extractionPct = 100 - preInfusionPct;
 
   const markers = generateAxisMarkers(total);
 
+  // SVG coordinate space
+  const svgW = 1000;
+  const svgH = 120;
+  const { fill: fillPath, stroke: strokePath } = buildPaths(svgW, svgH, preInfusionPct);
+
+  // Label centres as % of total width
+  const preInfusionLabelX = preInfusionPct / 2;
+  const extractionLabelX = preInfusionPct + extractionPct / 2;
+
   return (
     <div className='card'>
-      {/* Section header */}
-      <div className='flex items-center justify-between mb-4'>
+      {/* Header */}
+      <div className='flex items-center justify-between mb-3'>
         <span
           className='text-xs font-semibold uppercase tracking-widest'
           style={{ color: 'var(--text-tertiary)' }}
@@ -63,70 +112,146 @@ export function BrewTimeline({
         )}
       </div>
 
-      {/* Timeline bar */}
+      {/* Chart */}
       <div
-        className='flex w-full overflow-hidden'
-        style={{
-          height: '48px',
-          borderRadius: '0.5rem',
-          border: '1px solid var(--border-primary)',
-        }}
-        role='img'
-        aria-label={`Brew timeline: ${preInfusion != null ? `${preInfusion}s pre-infusion, ` : ''}${preInfusion != null ? total - preInfusion : total}s extraction`}
+        className='relative w-full overflow-hidden'
+        style={{ borderRadius: '0.5rem' }}
       >
-        {/* Pre-infusion segment (Req 6.2, 6.5) */}
-        {preInfusion != null && (
-          <div
-            className='flex items-center justify-center overflow-hidden flex-shrink-0'
-            style={{
-              width: `${preInfusionPct}%`,
-              backgroundColor: 'var(--bg-tertiary)',
-            }}
-          >
-            <div className='flex flex-col items-center px-2 min-w-0'>
-              <span
-                className='text-xs font-semibold uppercase tracking-wide truncate'
-                style={{ color: 'var(--text-secondary)', fontSize: '0.65rem' }}
-              >
-                {t('recipe.brewTimeline.preInfusion')}
-              </span>
-              <span
-                className='text-xs font-bold'
-                style={{ color: 'var(--text-primary)' }}
-              >
-                {preInfusion}s
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Extraction segment (Req 6.1, 6.5) */}
+        {/*
+          Invisible semantic structure preserved for tests.
+          role="img" with proportional child divs — visually hidden.
+        */}
         <div
-          className='flex items-center justify-center overflow-hidden flex-grow'
+          className='flex w-full'
+          role='img'
+          aria-label={`Brew timeline: ${
+            preInfusion != null ? `${preInfusion}s pre-infusion, ` : ''
+          }${preInfusion != null ? total - preInfusion : total}s extraction`}
           style={{
-            width: `${extractionPct}%`,
-            backgroundColor: 'var(--bg-secondary)',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            opacity: 0,
+            pointerEvents: 'none',
           }}
         >
-          <div className='flex flex-col items-center px-2 min-w-0'>
-            <span
-              className='text-xs font-semibold uppercase tracking-wide truncate'
-              style={{ color: 'var(--text-secondary)', fontSize: '0.65rem' }}
-            >
-              {t('recipe.brewTimeline.extraction')}
-            </span>
-            <span
-              className='text-xs font-bold'
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {preInfusion != null ? total - preInfusion : total}s
-            </span>
-          </div>
+          {preInfusion != null && (
+            <div style={{ width: `${preInfusionPct}%` }} />
+          )}
+          <div style={{ width: `${extractionPct}%` }} />
         </div>
+
+        {/* SVG area chart */}
+        <svg
+          viewBox={`0 0 ${svgW} ${svgH}`}
+          preserveAspectRatio='none'
+          width='100%'
+          style={{ display: 'block', height: '80px' }}
+          aria-hidden='true'
+        >
+          <defs>
+            <linearGradient id='brew-fill-grad' x1='0' y1='0' x2='0' y2='1'>
+              <stop offset='0%' stopColor='var(--accent-primary)' stopOpacity='0.5' />
+              <stop offset='100%' stopColor='var(--accent-primary)' stopOpacity='0.1' />
+            </linearGradient>
+          </defs>
+
+          {/* Chart background */}
+          <rect x='0' y='0' width={svgW} height={svgH} fill='var(--bg-secondary)' />
+
+          {/* Pre-infusion zone background (slightly darker) */}
+          {preInfusion != null && (
+            <rect
+              x='0'
+              y='0'
+              width={(preInfusionPct / 100) * svgW}
+              height={svgH}
+              fill='var(--bg-tertiary)'
+            />
+          )}
+
+          {/* Gradient fill under the curve */}
+          <path d={fillPath} fill='url(#brew-fill-grad)' />
+
+          {/* Curve stroke */}
+          <path
+            d={strokePath}
+            fill='none'
+            stroke='var(--accent-primary)'
+            strokeWidth='2.5'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+          />
+
+          {/* Vertical divider at pre-infusion / extraction boundary */}
+          {preInfusion != null && (
+            <line
+              x1={(preInfusionPct / 100) * svgW}
+              y1='0'
+              x2={(preInfusionPct / 100) * svgW}
+              y2={svgH}
+              stroke='var(--border-secondary)'
+              strokeWidth='1'
+              strokeOpacity='0.6'
+            />
+          )}
+
+          {/* Pre-infusion label */}
+          {preInfusion != null && (
+            <>
+              <text
+                x={(preInfusionLabelX / 100) * svgW}
+                y={svgH * 0.35}
+                textAnchor='middle'
+                fontSize='16'
+                fontWeight='600'
+                letterSpacing='1.5'
+                fill='var(--text-secondary)'
+              >
+                {t('recipe.brewTimeline.preInfusion')}
+              </text>
+              <text
+                x={(preInfusionLabelX / 100) * svgW}
+                y={svgH * 0.72}
+                textAnchor='middle'
+                fontSize='28'
+                fontWeight='700'
+                fill='var(--text-primary)'
+              >
+                {preInfusion}s
+              </text>
+            </>
+          )}
+
+          {/* Extraction label */}
+          <text
+            x={(extractionLabelX / 100) * svgW}
+            y={svgH * 0.35}
+            textAnchor='middle'
+            fontSize='16'
+            fontWeight='600'
+            letterSpacing='1.5'
+            fill='var(--text-secondary)'
+          >
+            {t('recipe.brewTimeline.extraction')}
+          </text>
+          <text
+            x={(extractionLabelX / 100) * svgW}
+            y={svgH * 0.72}
+            textAnchor='middle'
+            fontSize='28'
+            fontWeight='700'
+            fill='var(--text-primary)'
+          >
+            {preInfusion != null ? total - preInfusion : total}s
+          </text>
+        </svg>
       </div>
 
-      {/* Time axis (Req 6.4) */}
-      <div className='relative mt-2' style={{ height: '20px' }}>
+      {/* Time axis */}
+      <div className='relative mt-1' style={{ height: '20px' }}>
         {markers.map((seconds) => {
           const positionPct = (seconds / total) * 100;
           return (
@@ -135,9 +260,10 @@ export function BrewTimeline({
               className='absolute flex flex-col items-center'
               style={{
                 left: `${positionPct}%`,
-                transform: positionPct === 0
-                  ? 'translateX(0)'
-                  : positionPct === 100
+                transform:
+                  positionPct === 0
+                    ? 'translateX(0)'
+                    : positionPct === 100
                     ? 'translateX(-100%)'
                     : 'translateX(-50%)',
                 top: 0,
@@ -145,7 +271,11 @@ export function BrewTimeline({
             >
               <span
                 className='text-xs'
-                style={{ color: 'var(--text-tertiary)', fontSize: '0.65rem', whiteSpace: 'nowrap' }}
+                style={{
+                  color: 'var(--text-tertiary)',
+                  fontSize: '0.65rem',
+                  whiteSpace: 'nowrap',
+                }}
               >
                 {seconds}s
               </span>

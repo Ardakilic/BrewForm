@@ -234,9 +234,7 @@ describe('Preservation - TastingNotesSection empty state', () => {
     fc.assert(
       fc.property(fc.constant([]), (_emptyNotes) => {
         const { unmount } = render(
-          <I18nProvider>
-            <TastingNotesSection tasteNotes={_emptyNotes} personalNotes={null} />
-          </I18nProvider>,
+          withProviders(<TastingNotesSection tasteNotes={_emptyNotes} personalNotes={null} />),
         );
         const emptyMsg = screen.queryByText(/no tasting notes/i);
         const hasEmptyState = emptyMsg !== null;
@@ -248,20 +246,12 @@ describe('Preservation - TastingNotesSection empty state', () => {
   });
 
   it('shows empty state when tasteNotes is empty and no personalNotes', () => {
-    render(
-      <I18nProvider>
-        <TastingNotesSection tasteNotes={[]} personalNotes={null} />
-      </I18nProvider>,
-    );
+    render(withProviders(<TastingNotesSection tasteNotes={[]} personalNotes={null} />));
     expect(screen.getByText(/no tasting notes/i)).toBeTruthy();
   });
 
   it('shows personal notes blockquote when personalNotes is provided', () => {
-    render(
-      <I18nProvider>
-        <TastingNotesSection tasteNotes={[]} personalNotes='Beautiful sweet shot' />
-      </I18nProvider>,
-    );
+    render(withProviders(<TastingNotesSection tasteNotes={[]} personalNotes='Beautiful sweet shot' />));
     expect(screen.getByText('Beautiful sweet shot')).toBeTruthy();
   });
 });

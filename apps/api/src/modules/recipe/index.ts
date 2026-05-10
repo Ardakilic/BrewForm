@@ -104,7 +104,11 @@ recipe.get(
       const payload = {
         ...(r as any),
         currentVersion,
-        tasteNotes: currentVersion?.tasteNotes?.map((t: any) => ({ ...t.tasteNote, intensity: t.intensity ?? 1 })) ?? [],
+        tasteNotes: currentVersion?.tasteNotes?.map((t: any) => ({
+          ...t.tasteNote,
+          tasteNoteId: t.tasteNote?.id,  // explicit tasteNoteId for frontend hierarchy resolution
+          intensity: t.intensity ?? 1,
+        })) ?? [],
         equipment: currentVersion?.equipment?.map((e: any) => ({ ...e.equipment, equipmentId: e.equipmentId })) ?? [],
         bean: currentVersion?.bean ?? null,
         versionCount: (r as any).versions?.length ?? 1,

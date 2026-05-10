@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { recipeApi, equipmentApi } from '../../api/index.ts';
+import { recipeApi, equipmentApi, tasteApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
@@ -17,6 +17,49 @@ const DRINK_TYPES_ANY = DRINK_TYPES as unknown as any[];
 // deno-lint-ignore no-explicit-any
 const VISIBILITY_ANY = VISIBILITY_STATES as unknown as any[];
 
+/** Equipment type → human-readable label */
+const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
+  portafilter: 'Portafilter',
+  basket: 'Basket',
+  puck_screen: 'Puck Screen',
+  paper_filter: 'Paper Filter',
+  mesh_filter: 'Mesh Filter',
+  tamper: 'Tamper',
+  gooseneck_kettle: 'Kettle',
+  scale: 'Scale',
+  thermometer: 'Thermometer',
+  cezve: 'Cezve',
+  other: 'Other',
+};
+
+/** Ordered list of equipment types to show as separate dropdowns */
+const EQUIPMENT_FILTER_TYPES = [
+  'portafilter',
+  'basket',
+  'tamper',
+  'puck_screen',
+  'scale',
+  'gooseneck_kettle',
+  'paper_filter',
+  'mesh_filter',
+  'cezve',
+  'thermometer',
+  'other',
+] as const;
+
+interface EquipmentItem {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface TasteNoteFlat {
+  id: string;
+  name: string;
+  depth: number;
+  parentId: string | null;
+}
+
 interface RecipeListItem {
   id: string;
   slug: string;
@@ -30,12 +73,25 @@ interface RecipeListItem {
   createdAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Module-level cache for static data (survives re-renders, cleared on page reload)
+// ---------------------------------------------------------------------------
+let cachedEquipment: EquipmentItem[] | null = null;
+let cachedTasteNotes: TasteNoteFlat[] | null = null;
+
+/** Reset the static data cache (used in tests) */
+export function _resetStaticCache() {
+  cachedEquipment = null;
+  cachedTasteNotes = null;
+}
+
 export function RecipeListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [activeEquipmentName, setActiveEquipmentName] = useState<string | null>(null);
+  const [allEquipment, setAllEquipment] = useState<EquipmentItem[]>(cachedEquipment ?? []);
+  const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteFlat[]>(cachedTasteNotes ?? []);
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -46,7 +102,26 @@ export function RecipeListPage() {
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
   const equipmentId = searchParams.get('equipmentId') || '';
+  const tasteNoteId = searchParams.get('tasteNoteId') || '';
 
+  // Fetch static data once (equipment + taste notes), use module-level cache
+  useEffect(() => {
+    if (!cachedEquipment) {
+      equipmentApi.list().then((data) => {
+        cachedEquipment = data as EquipmentItem[];
+        setAllEquipment(cachedEquipment);
+      }).catch(() => {});
+    }
+
+    if (!cachedTasteNotes) {
+      tasteApi.flat().then((data) => {
+        cachedTasteNotes = data as TasteNoteFlat[];
+        setAllTasteNotes(cachedTasteNotes);
+      }).catch(() => {});
+    }
+  }, []);
+
+  // Fetch recipes when filters change
   useEffect(() => {
     setLoading(true);
     const params: Record<string, string> = { page: String(page), perPage: '12', sortBy };
@@ -55,6 +130,7 @@ export function RecipeListPage() {
     if (visibility && user?.isAdmin === true) params.visibility = visibility;
     if (search) params.search = search;
     if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
+    if (tasteNoteId && isValidUuid(tasteNoteId)) params.tasteNoteId = tasteNoteId;
 
     recipeApi.list(params).then((data) => {
       const items = Array.isArray(data) ? (data as RecipeListItem[]) : [];
@@ -62,20 +138,7 @@ export function RecipeListPage() {
       setTotal(items.length);
     }).catch(() => {
     }).finally(() => setLoading(false));
-  }, [page, brewMethod, drinkType, visibility, sortBy, search, user, equipmentId]);
-
-  useEffect(() => {
-    if (!equipmentId || !isValidUuid(equipmentId)) {
-      setActiveEquipmentName(null);
-      return;
-    }
-    equipmentApi.list().then((items) => {
-      const found = (items as Array<{ id: string; name: string }>).find((e) => e.id === equipmentId);
-      setActiveEquipmentName(found?.name ?? null);
-    }).catch(() => {
-      setActiveEquipmentName(null);
-    });
-  }, [equipmentId]);
+  }, [page, brewMethod, drinkType, visibility, sortBy, search, user, equipmentId, tasteNoteId]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams);
@@ -88,9 +151,33 @@ export function RecipeListPage() {
     setSearchParams(params);
   }
 
-  const activeFilters = [brewMethod, drinkType, user?.isAdmin === true ? visibility : '', equipmentId && isValidUuid(equipmentId) ? equipmentId : ''].filter(
-    Boolean,
+  // Group equipment by type for the dropdowns
+  const equipmentByType = EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentItem[]>>(
+    (acc, type) => {
+      acc[type] = allEquipment.filter((e) => e.type === type);
+      return acc;
+    },
+    {} as Record<string, EquipmentItem[]>,
   );
+
+  // Build SCAA taste note tree: root categories → children (depth=1 mid-categories + depth=2 leaves)
+  // For the dropdown we show: root categories as optgroup headers, leaves as options
+  const tasteNoteRoots = allTasteNotes.filter((n) => n.depth === 0);
+  const tasteNoteMids = allTasteNotes.filter((n) => n.depth === 1);
+  const tasteNoteLeaves = allTasteNotes.filter((n) => n.depth === 2);
+
+  // Active filter labels
+  const activeEquipmentName = allEquipment.find((e) => e.id === equipmentId)?.name ?? null;
+  const activeTasteNoteName = allTasteNotes.find((n) => n.id === tasteNoteId)?.name ?? null;
+
+  const activeFilters = [
+    brewMethod,
+    drinkType,
+    user?.isAdmin === true ? visibility : '',
+    equipmentId && isValidUuid(equipmentId) ? equipmentId : '',
+    tasteNoteId && isValidUuid(tasteNoteId) ? tasteNoteId : '',
+  ].filter(Boolean);
+
   const totalPages = Math.ceil(total / 12);
 
   return (
@@ -105,19 +192,15 @@ export function RecipeListPage() {
       </h1>
 
       <div className='flex flex-col lg:flex-row gap-6'>
+        {/* ── Sidebar filters ── */}
         <aside className='w-full lg:w-64 flex-shrink-0'>
-          <div className='card'>
-            <h3 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
+          <div className='card space-y-3'>
+            <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
               {t('recipe.list.filters')}
             </h3>
 
-            <div className='mb-3'>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('recipe.list.search')}
-              </label>
+            {/* Search */}
+            <FilterField label={t('recipe.list.search')}>
               <input
                 type='text'
                 placeholder={t('recipe.list.searchPlaceholder')}
@@ -125,15 +208,10 @@ export function RecipeListPage() {
                 onChange={(e) => updateFilter('search', e.target.value)}
                 className='input-field text-sm'
               />
-            </div>
+            </FilterField>
 
-            <div className='mb-3'>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('recipe.brewMethod')}
-              </label>
+            {/* Brew Method */}
+            <FilterField label={t('recipe.brewMethod')}>
               <select
                 value={brewMethod}
                 onChange={(e) => updateFilter('brewMethod', e.target.value)}
@@ -144,15 +222,10 @@ export function RecipeListPage() {
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
-            </div>
+            </FilterField>
 
-            <div className='mb-3'>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('recipe.drinkType')}
-              </label>
+            {/* Drink Type */}
+            <FilterField label={t('recipe.drinkType')}>
               <select
                 value={drinkType}
                 onChange={(e) => updateFilter('drinkType', e.target.value)}
@@ -163,16 +236,11 @@ export function RecipeListPage() {
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
               </select>
-            </div>
+            </FilterField>
 
+            {/* Admin: Visibility */}
             {user?.isAdmin === true && (
-              <div className='mb-3'>
-                <label
-                  className='block text-sm font-medium mb-1'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {t('recipe.list.visibilityAdmin')}
-                </label>
+              <FilterField label={t('recipe.list.visibilityAdmin')}>
                 <select
                   value={visibility}
                   onChange={(e) => updateFilter('visibility', e.target.value)}
@@ -183,16 +251,78 @@ export function RecipeListPage() {
                     <option key={v.value} value={v.value}>{v.label}</option>
                   ))}
                 </select>
-              </div>
+              </FilterField>
             )}
 
-            <div className='mb-3'>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('recipe.list.sortBy')}
-              </label>
+            {/* ── Equipment filters — one dropdown per type ── */}
+            {EQUIPMENT_FILTER_TYPES.map((type) => {
+              const items = equipmentByType[type];
+              if (!items || items.length === 0) return null;
+              const label = EQUIPMENT_TYPE_LABELS[type] ?? type;
+              // Is any item of this type currently selected?
+              const selectedItem = items.find((e) => e.id === equipmentId);
+              return (
+                <FilterField key={type} label={label}>
+                  <select
+                    value={selectedItem ? equipmentId : ''}
+                    onChange={(e) => updateFilter('equipmentId', e.target.value)}
+                    className='input-field text-sm'
+                    aria-label={`Filter by ${label}`}
+                  >
+                    <option value=''>{t('recipe.list.all')}</option>
+                    {items.map((eq) => (
+                      <option key={eq.id} value={eq.id}>{eq.name}</option>
+                    ))}
+                  </select>
+                </FilterField>
+              );
+            })}
+
+            {/* ── Taste Note filter — SCAA hierarchy dropdown ── */}
+            {allTasteNotes.length > 0 && (
+              <FilterField label={t('recipe.list.tasteNoteFilter')}>
+                <select
+                  value={tasteNoteId}
+                  onChange={(e) => updateFilter('tasteNoteId', e.target.value)}
+                  className='input-field text-sm'
+                  aria-label='Filter by taste note'
+                >
+                  <option value=''>{t('recipe.list.all')}</option>
+                  {tasteNoteRoots.map((root) => {
+                    // Get mid-categories under this root
+                    const mids = tasteNoteMids.filter((m) => m.parentId === root.id);
+                    if (mids.length === 0) {
+                      // Root has no children — show it directly
+                      return (
+                        <option key={root.id} value={root.id}>{root.name}</option>
+                      );
+                    }
+                    return (
+                      <optgroup key={root.id} label={root.name}>
+                        {mids.map((mid) => {
+                          const leaves = tasteNoteLeaves.filter((l) => l.parentId === mid.id);
+                          if (leaves.length === 0) {
+                            return (
+                              <option key={mid.id} value={mid.id}>
+                                {mid.name}
+                              </option>
+                            );
+                          }
+                          return leaves.map((leaf) => (
+                            <option key={leaf.id} value={leaf.id}>
+                              {leaf.name}
+                            </option>
+                          ));
+                        })}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+              </FilterField>
+            )}
+
+            {/* Sort */}
+            <FilterField label={t('recipe.list.sortBy')}>
               <select
                 value={sortBy}
                 onChange={(e) => updateFilter('sortBy', e.target.value)}
@@ -202,30 +332,25 @@ export function RecipeListPage() {
                 <option value='likeCount'>{t('recipe.list.mostLiked')}</option>
                 <option value='rating'>{t('recipe.list.topRated')}</option>
               </select>
-            </div>
+            </FilterField>
 
-            {equipmentId && isValidUuid(equipmentId) && (
-              <div className='mb-3'>
-                <label className='block text-sm font-medium mb-1' style={{ color: 'var(--text-secondary)' }}>
-                  {t('recipe.list.equipmentFilter')}
-                </label>
-                <div className='flex items-center gap-2'>
-                  <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
-                    {activeEquipmentName || t('recipe.list.equipmentFilterActive')}
-                  </span>
-                  <button
-                    type='button'
-                    onClick={() => updateFilter('equipmentId', '')}
-                    className='text-xs'
-                    style={{ color: 'var(--text-tertiary)' }}
-                    aria-label='Remove equipment filter'
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
+            {/* Active filter badges */}
+            {(equipmentId && isValidUuid(equipmentId)) && (
+              <ActiveFilterBadge
+                label={t('recipe.list.equipmentFilter')}
+                value={activeEquipmentName || t('recipe.list.equipmentFilterActive')}
+                onRemove={() => updateFilter('equipmentId', '')}
+              />
+            )}
+            {(tasteNoteId && isValidUuid(tasteNoteId)) && (
+              <ActiveFilterBadge
+                label={t('recipe.list.tasteNoteFilter')}
+                value={activeTasteNoteName || t('recipe.list.tasteNoteFilterActive')}
+                onRemove={() => updateFilter('tasteNoteId', '')}
+              />
             )}
 
+            {/* Clear all */}
             {activeFilters.length > 0 && (
               <button
                 type='button'
@@ -238,6 +363,7 @@ export function RecipeListPage() {
           </div>
         </aside>
 
+        {/* ── Recipe grid ── */}
         <main className='flex-1'>
           {loading
             ? (
@@ -290,6 +416,54 @@ export function RecipeListPage() {
               </>
             )}
         </main>
+      </div>
+    </div>
+  );
+}
+
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label
+        className='block text-sm font-medium mb-1'
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function ActiveFilterBadge(
+  { label, value, onRemove }: { label: string; value: string; onRemove: () => void },
+) {
+  return (
+    <div>
+      <span
+        className='block text-xs font-medium mb-1'
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        {label}
+      </span>
+      <div className='flex items-center gap-2'>
+        <span
+          className='text-sm truncate'
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {value}
+        </span>
+        <button
+          type='button'
+          onClick={onRemove}
+          className='text-xs flex-shrink-0'
+          style={{ color: 'var(--text-tertiary)' }}
+          aria-label={`Remove ${label} filter`}
+        >
+          ✕
+        </button>
       </div>
     </div>
   );

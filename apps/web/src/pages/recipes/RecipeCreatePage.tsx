@@ -42,6 +42,7 @@ export function RecipeCreatePage() {
   const [rating, setRating] = useState('');
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
+  const [tasteNoteIntensities, setTasteNoteIntensities] = useState<Record<string, number>>({});
   const [roastDate, setRoastDate] = useState('');
   const [packageOpenDate, setPackageOpenDate] = useState('');
   const [grindDate, setGrindDate] = useState('');
@@ -131,7 +132,7 @@ export function RecipeCreatePage() {
         ...(personalNotes ? { personalNotes } : {}),
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
-        ...(tasteNoteIds.length > 0 ? { tasteNoteIds } : {}),
+        ...(tasteNoteIds.length > 0 ? { tasteNoteIds, tasteNoteIntensities } : {}),
         ...(roastDate ? { roastDate } : {}),
         ...(packageOpenDate ? { packageOpenDate } : {}),
         ...(grindDate ? { grindDate } : {}),
@@ -429,7 +430,12 @@ export function RecipeCreatePage() {
             >
               Taste Notes
             </label>
-            <TasteAutocomplete selectedIds={tasteNoteIds} onSelectionChange={setTasteNoteIds} />
+            <TasteAutocomplete
+              selectedIds={tasteNoteIds}
+              onSelectionChange={setTasteNoteIds}
+              intensities={tasteNoteIntensities}
+              onIntensitiesChange={setTasteNoteIntensities}
+            />
           </div>
         </Section>
 

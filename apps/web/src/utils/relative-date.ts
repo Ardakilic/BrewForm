@@ -12,7 +12,6 @@ function toISODateString(d: Date): string {
  */
 export function daysBetween(dateA: Date, dateB: Date): number {
   const msPerDay = 1000 * 60 * 60 * 24;
-  // Strip time by parsing the ISO date string back to midnight UTC
   const a = Date.parse(toISODateString(dateA));
   const b = Date.parse(toISODateString(dateB));
   return Math.abs(Math.round((b - a) / msPerDay));
@@ -25,41 +24,71 @@ function isSameCalendarDay(a: Date, b: Date): boolean {
   return toISODateString(a) === toISODateString(b);
 }
 
+// ---------------------------------------------------------------------------
+// Structured result types — callers translate using t()
+// ---------------------------------------------------------------------------
+
+export type RelativeDateResult =
+  | { type: 'today' }
+  | { type: 'daysPostRoast'; days: number }
+  | { type: 'daysSinceOpened'; days: number }
+  | { type: 'daysAgo'; days: number };
+
 /**
- * Returns a relative label for a roast date relative to the brew date.
- * - Same calendar day: "today"
- * - Otherwise: "X days post-roast"
+ * Returns structured relative info for a roast date.
+ * Callers translate using:
+ *   type === 'today'         → t('common.today')
+ *   type === 'daysPostRoast' → t('recipe.bean.daysPostRoast', { days })
  */
+export function roastDateResult(roastDate: Date, brewDate: Date): RelativeDateResult {
+  if (isSameCalendarDay(roastDate, brewDate)) return { type: 'today' };
+  return { type: 'daysPostRoast', days: daysBetween(roastDate, brewDate) };
+}
+
+/**
+ * Returns structured relative info for a package open date.
+ * Callers translate using:
+ *   type === 'today'           → t('common.today')
+ *   type === 'daysSinceOpened' → t('recipe.bean.daysSinceOpened', { days })
+ */
+export function packageOpenDateResult(packageOpenDate: Date, brewDate: Date): RelativeDateResult {
+  if (isSameCalendarDay(packageOpenDate, brewDate)) return { type: 'today' };
+  return { type: 'daysSinceOpened', days: daysBetween(packageOpenDate, brewDate) };
+}
+
+/**
+ * Returns structured relative info for a grind date.
+ * Callers translate using:
+ *   type === 'today'    → t('common.today')
+ *   type === 'daysAgo'  → t('recipe.bean.daysAgo', { days })
+ */
+export function grindDateResult(grindDate: Date, brewDate: Date): RelativeDateResult {
+  if (isSameCalendarDay(grindDate, brewDate)) return { type: 'today' };
+  return { type: 'daysAgo', days: daysBetween(grindDate, brewDate) };
+}
+
+// ---------------------------------------------------------------------------
+// Legacy string helpers — kept for backward compatibility with existing tests
+// and any other callers. These return English strings.
+// ---------------------------------------------------------------------------
+
+/** @deprecated Use roastDateResult() + t() for localized output */
 export function roastDateLabel(roastDate: Date, brewDate: Date): string {
-  if (isSameCalendarDay(roastDate, brewDate)) {
-    return "today";
-  }
-  const days = daysBetween(roastDate, brewDate);
-  return `${days} days post-roast`;
+  const r = roastDateResult(roastDate, brewDate);
+  if (r.type === 'today') return 'today';
+  return `${r.days} days post-roast`;
 }
 
-/**
- * Returns a relative label for a package open date relative to the brew date.
- * - Same calendar day: "today"
- * - Otherwise: "X days since opened"
- */
+/** @deprecated Use packageOpenDateResult() + t() for localized output */
 export function packageOpenDateLabel(packageOpenDate: Date, brewDate: Date): string {
-  if (isSameCalendarDay(packageOpenDate, brewDate)) {
-    return "today";
-  }
-  const days = daysBetween(packageOpenDate, brewDate);
-  return `${days} days since opened`;
+  const r = packageOpenDateResult(packageOpenDate, brewDate);
+  if (r.type === 'today') return 'today';
+  return `${r.days} days since opened`;
 }
 
-/**
- * Returns a relative label for a grind date relative to the brew date.
- * - Same calendar day: "today"
- * - Otherwise: "X days ago"
- */
+/** @deprecated Use grindDateResult() + t() for localized output */
 export function grindDateLabel(grindDate: Date, brewDate: Date): string {
-  if (isSameCalendarDay(grindDate, brewDate)) {
-    return "today";
-  }
-  const days = daysBetween(grindDate, brewDate);
-  return `${days} days ago`;
+  const r = grindDateResult(grindDate, brewDate);
+  if (r.type === 'today') return 'today';
+  return `${r.days} days ago`;
 }

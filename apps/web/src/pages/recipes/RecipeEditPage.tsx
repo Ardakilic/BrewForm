@@ -45,6 +45,7 @@ export function RecipeEditPage() {
   const [rating, setRating] = useState('');
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
+  const [tasteNoteIntensities, setTasteNoteIntensities] = useState<Record<string, number>>({});
   const [roastDate, setRoastDate] = useState('');
   const [packageOpenDate, setPackageOpenDate] = useState('');
   const [grindDate, setGrindDate] = useState('');
@@ -70,6 +71,12 @@ export function RecipeEditPage() {
       setRating(r.currentVersion.rating?.toString() || '');
       setEmojiTag(r.currentVersion.emojiTag || '');
       setTasteNoteIds((r as any).tasteNotes.map((t: any) => t.id));
+      // Pre-populate intensities from existing taste notes
+      const existingIntensities: Record<string, number> = {};
+      for (const t of (r as any).tasteNotes) {
+        existingIntensities[t.id] = t.intensity ?? 2;
+      }
+      setTasteNoteIntensities(existingIntensities);
       setRoastDate(r.currentVersion.roastDate ? r.currentVersion.roastDate.slice(0, 10) : '');
       setPackageOpenDate(
         r.currentVersion.packageOpenDate ? r.currentVersion.packageOpenDate.slice(0, 10) : '',
@@ -108,7 +115,7 @@ export function RecipeEditPage() {
         ...(personalNotes ? { personalNotes } : {}),
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
-        ...(tasteNoteIds.length > 0 ? { tasteNoteIds } : {}),
+        ...(tasteNoteIds.length > 0 ? { tasteNoteIds, tasteNoteIntensities } : {}),
         ...(roastDate ? { roastDate } : {}),
         ...(packageOpenDate ? { packageOpenDate } : {}),
         ...(grindDate ? { grindDate } : {}),
@@ -356,7 +363,12 @@ export function RecipeEditPage() {
             >
               Taste Notes
             </label>
-            <TasteAutocomplete selectedIds={tasteNoteIds} onSelectionChange={setTasteNoteIds} />
+            <TasteAutocomplete
+              selectedIds={tasteNoteIds}
+              onSelectionChange={setTasteNoteIds}
+              intensities={tasteNoteIntensities}
+              onIntensitiesChange={setTasteNoteIntensities}
+            />
           </div>
         </EditSection>
 

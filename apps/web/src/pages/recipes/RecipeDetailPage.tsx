@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { recipeApi } from '../../api/index.ts';
+import { recipeApi, tasteApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
 import { LikeButton } from '../../components/recipe/LikeButton.tsx';
@@ -30,6 +30,15 @@ export function RecipeDetailPage() {
   // deno-lint-ignore no-explicit-any
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // deno-lint-ignore no-explicit-any
+  const [allTasteNotes, setAllTasteNotes] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch the flat taste notes hierarchy once for root category resolution
+    tasteApi.flat().then((data) => {
+      setAllTasteNotes(Array.isArray(data) ? data as any[] : []);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -212,6 +221,7 @@ export function RecipeDetailPage() {
             <TastingNotesSection
               tasteNotes={tasteNotes}
               personalNotes={v.personalNotes}
+              allTasteNotes={allTasteNotes}
             />
           </div>
 
