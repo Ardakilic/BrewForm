@@ -80,7 +80,8 @@ export function RecipeDetailPage() {
             recipe.author?.displayName || recipe.author?.username
           }`}
         image={recipe.photos?.[0]?.url}
-        url={`${globalThis.location.origin}/share/${recipe.slug}`}
+        url={`${globalThis.location.origin}/recipes/${recipe.slug}`}
+        canonical={`${globalThis.location.origin}/recipes/${recipe.slug}`}
       />
       <RecipeJsonLd
         title={recipe.title}

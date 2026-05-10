@@ -25,7 +25,9 @@ vi.mock('../../api/index.ts', () => ({
   recipeApi: { get: vi.fn(), rate: vi.fn() },
 }));
 
-vi.mock('../../components/seo/SEOHead.tsx', () => ({ SEOHead: () => null }));
+vi.mock('../../components/seo/SEOHead.tsx', () => ({
+  SEOHead: vi.fn(() => null),
+}));
 vi.mock('../../components/seo/JsonLd.tsx', () => ({ RecipeJsonLd: () => null }));
 vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => null }));
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
@@ -44,6 +46,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { recipeApi } from '../../api/index.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
 
 const mockUseParams = vi.mocked(useParams);
 const mockUseSearchParams = vi.mocked(useSearchParams);
@@ -51,6 +54,7 @@ const mockUseNavigate = vi.mocked(useNavigate);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
 const mockRecipeApi = vi.mocked(recipeApi);
+const mockSEOHead = vi.mocked(SEOHead);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -349,5 +353,27 @@ describe('RecipeDetailPage — owner actions', () => {
     });
 
     expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipeDetailPage — canonical SEO', () => {
+  it('passes canonical pointing to /recipes/:slug', async () => {
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    const calls = mockSEOHead.mock.calls;
+    const lastProps = calls[calls.length - 1][0] as { canonical?: string; noIndex?: boolean };
+    expect(lastProps.canonical).toMatch(/\/recipes\/my-espresso$/);
+  });
+
+  it('does NOT pass noIndex — recipe detail page should be indexed', async () => {
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    const calls = mockSEOHead.mock.calls;
+    const lastProps = calls[calls.length - 1][0] as { canonical?: string; noIndex?: boolean };
+    expect(lastProps.noIndex).toBeFalsy();
   });
 });

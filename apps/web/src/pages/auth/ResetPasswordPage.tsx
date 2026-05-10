@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { authApi } from '../../api/index';
+import { useTranslation } from '../../contexts/I18nContext';
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
+  const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,7 +18,7 @@ export function ResetPasswordPage() {
     setError('');
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.register.passwordsMismatch'));
       return;
     }
 
@@ -41,12 +43,14 @@ export function ResetPasswordPage() {
     return (
       <div className='mx-auto max-w-md px-6 py-12'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Password Reset
+          {t('auth.resetPassword.success')}
         </h1>
         <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
-          Your password has been reset successfully. You can now log in with your new password.
+          {t('auth.resetPassword.successDesc')}
         </p>
-        <Link to='/login' className='btn-primary mt-6 inline-block'>Log In</Link>
+        <Link to='/login' className='btn-primary mt-6 inline-block'>
+          {t('auth.login.title')}
+        </Link>
       </div>
     );
   }
@@ -55,13 +59,13 @@ export function ResetPasswordPage() {
     return (
       <div className='mx-auto max-w-md px-6 py-12'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Invalid Link
+          {t('auth.resetPassword.invalidLink')}
         </h1>
         <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
-          This password reset link is invalid. Please request a new one.
+          {t('auth.resetPassword.invalidLinkDesc')}
         </p>
         <Link to='/forgot-password' className='btn-primary mt-6 inline-block'>
-          Request New Link
+          {t('auth.resetPassword.requestNew')}
         </Link>
       </div>
     );
@@ -70,7 +74,7 @@ export function ResetPasswordPage() {
   return (
     <div className='mx-auto max-w-md px-6 py-12'>
       <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-        Reset Password
+        {t('auth.resetPassword.title')}
       </h1>
       {error && (
         <div
@@ -86,7 +90,7 @@ export function ResetPasswordPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            New Password
+            {t('auth.resetPassword.newPassword')}
           </label>
           <input
             type='password'
@@ -103,7 +107,7 @@ export function ResetPasswordPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Confirm New Password
+            {t('auth.resetPassword.confirmNew')}
           </label>
           <input
             type='password'
@@ -115,7 +119,7 @@ export function ResetPasswordPage() {
           />
         </div>
         <button type='submit' className='btn-primary' disabled={loading}>
-          {loading ? 'Resetting...' : 'Reset Password'}
+          {loading ? t('auth.resetPassword.resetting') : t('auth.resetPassword.reset')}
         </button>
       </form>
     </div>

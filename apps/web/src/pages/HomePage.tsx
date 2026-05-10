@@ -44,7 +44,7 @@ export function HomePage() {
 
       <section className='mx-auto max-w-6xl px-6 py-8'>
         <h2 className='mb-4 text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Latest Recipes
+          {t('home.latestRecipes')}
         </h2>
         <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
           {latestRecipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
@@ -53,7 +53,7 @@ export function HomePage() {
 
       <section className='mx-auto max-w-6xl px-6 py-8'>
         <h2 className='mb-4 text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Popular Recipes
+          {t('home.popularRecipes')}
         </h2>
         <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
           {popularRecipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}

@@ -23,7 +23,14 @@ A **Top_Level_Comment** has `parentCommentId IS NULL`. A **Reply** has a non-nul
 that references a Top_Level_Comment.
 
 Any authenticated user may post a top-level comment on a recipe. Posting a reply (a comment with a
-`parentCommentId`) requires the caller to be either the recipe owner or an admin.
+`parentCommentId`) requires the caller to be **one of**:
+
+- The **recipe owner** (the user whose `id` matches the recipe's `authorId`)
+- An **admin** (a user with `isAdmin: true`)
+- The **author of the top-level comment** being replied to
+
+This means a commenter can always reply within their own thread, while recipe owners and admins can
+reply to any comment.
 
 ## One-Level Depth Rule
 
@@ -99,12 +106,12 @@ export async function createComment(
 
 Authorization logic when `parentCommentId` is set:
 
-| `isAdmin` | `isRecipeOwner` | Outcome           |
-| --------- | --------------- | ----------------- |
-| `true`    | `true`          | ✅ Reply created   |
-| `true`    | `false`         | ✅ Reply created   |
-| `false`   | `true`          | ✅ Reply created   |
-| `false`   | `false`         | ❌ `FORBIDDEN`     |
+| `isAdmin` | `isRecipeOwner` | `isCommentAuthor` | Outcome           |
+| --------- | --------------- | ----------------- | ----------------- |
+| `true`    | any             | any               | ✅ Reply created   |
+| any       | `true`          | any               | ✅ Reply created   |
+| any       | any             | `true`            | ✅ Reply created   |
+| `false`   | `false`         | `false`           | ❌ `FORBIDDEN`     |
 
 Top-level comments (no `parentCommentId`) are unrestricted by role — any authenticated user may
 post them.
@@ -137,7 +144,37 @@ Authorization logic:
 If the target comment does not exist or has already been soft-deleted, `COMMENT_NOT_FOUND` is
 thrown for both admin and non-admin callers.
 
-## Error Reference
+## Reply-on-Reply UX
+
+The UI renders a **Reply** button on each reply as well as on each top-level comment. Clicking
+Reply on a reply opens the reply form on the **parent top-level comment** (because the backend
+enforces one-level threading) and pre-fills the textarea with `@username ` — the username of the
+reply's author — so the conversation context is preserved.
+
+The Reply button is shown only to users who are permitted to reply to that thread:
+
+- The **recipe owner**
+- An **admin**
+- The **author of the top-level comment**
+
+## Comment Body Formatting
+
+Comment and reply bodies support a limited subset of inline Markdown to keep the UI readable
+without enabling arbitrary HTML injection. Only the following tokens are parsed:
+
+| Syntax          | Renders as  | Example input       | Example output  |
+| --------------- | ----------- | ------------------- | --------------- |
+| `**text**`      | **bold**    | `**great shot**`    | **great shot**  |
+| `*text*`        | *italic*    | `*nice*`            | *nice*          |
+| `__text__`      | underline   | `__important__`     | <u>important</u> |
+| `_text_`        | *italic*    | `_nice_`            | *nice*          |
+
+All other Markdown syntax (headings, links, code blocks, lists, images, etc.) is rendered as plain
+text. HTML tags in comment content are never interpreted — they are displayed as literal characters.
+
+The parsing is performed client-side by `renderInlineMarkdown()` in
+`apps/web/src/components/recipe/CommentSection.tsx`. The backend stores and returns the raw
+Markdown source; rendering is purely a display concern.
 
 | Error Code               | HTTP Status | Condition                                                                 |
 | ------------------------ | ----------- | ------------------------------------------------------------------------- |

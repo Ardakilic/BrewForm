@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { BREW_METHODS, DRINK_TYPES } from '@brewform/shared/constants';
 
 // deno-lint-ignore no-explicit-any
@@ -23,6 +24,7 @@ export function SearchPage() {
   const [results, setResults] = useState<SearchRecipe[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
+  const { t } = useTranslation();
 
   const q = searchParams.get('q') || '';
   const brewMethod = searchParams.get('brewMethod') || '';
@@ -45,8 +47,6 @@ export function SearchPage() {
     params.page = String(page);
     params.perPage = '12';
 
-    // The API uses paginated() which puts the array directly in data.data.
-    // The client unwraps data.data, so the resolved value is the array itself.
     api.get<unknown[]>(`/search?${new URLSearchParams(params)}`)
       .then((data) => {
         const items = Array.isArray(data) ? (data as SearchRecipe[]) : [];
@@ -76,25 +76,27 @@ export function SearchPage() {
   return (
     <div className='mx-auto max-w-6xl px-6 py-8'>
       <SEOHead
-        title='Search Recipes'
+        title={t('search.title')}
         description='Search and filter coffee brewing recipes on BrewForm.'
       />
 
       <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
-        Search Recipes
+        {t('search.title')}
       </h1>
 
       <div className='flex flex-col lg:flex-row gap-6'>
         <aside className='w-full lg:w-64 flex-shrink-0'>
           <div className='card'>
-            <h3 className='font-semibold mb-3' style={{ color: 'var(--text-primary)' }}>Filters</h3>
+            <h3 className='font-semibold mb-3' style={{ color: 'var(--text-primary)' }}>
+              {t('recipe.list.filters')}
+            </h3>
 
             <div className='mb-3'>
               <input
                 type='text'
                 value={q}
                 onChange={(e) => updateFilter('q', e.target.value)}
-                placeholder='Search...'
+                placeholder={t('recipe.list.searchPlaceholder')}
                 className='input-field text-sm'
               />
             </div>
@@ -104,14 +106,14 @@ export function SearchPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Brew Method
+                {t('recipe.brewMethod')}
               </label>
               <select
                 value={brewMethod}
                 onChange={(e) => updateFilter('brewMethod', e.target.value)}
                 className='input-field text-sm'
               >
-                <option value=''>All</option>
+                <option value=''>{t('recipe.list.all')}</option>
                 {BREW_METHODS_ANY.map((m: any) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
@@ -123,14 +125,14 @@ export function SearchPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Drink Type
+                {t('recipe.drinkType')}
               </label>
               <select
                 value={drinkType}
                 onChange={(e) => updateFilter('drinkType', e.target.value)}
                 className='input-field text-sm'
               >
-                <option value=''>All</option>
+                <option value=''>{t('recipe.list.all')}</option>
                 {DRINK_TYPES_ANY.map((d: any) => (
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
@@ -142,16 +144,16 @@ export function SearchPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Sort By
+                {t('recipe.list.sortBy')}
               </label>
               <select
                 value={sortBy}
                 onChange={(e) => updateFilter('sortBy', e.target.value)}
                 className='input-field text-sm'
               >
-                <option value='createdAt'>Newest</option>
-                <option value='likeCount'>Most Liked</option>
-                <option value='rating'>Top Rated</option>
+                <option value='createdAt'>{t('recipe.list.newest')}</option>
+                <option value='likeCount'>{t('recipe.list.mostLiked')}</option>
+                <option value='rating'>{t('recipe.list.topRated')}</option>
               </select>
             </div>
 
@@ -161,7 +163,7 @@ export function SearchPage() {
                 onClick={() => setSearchParams({})}
                 className='btn-secondary text-sm w-full'
               >
-                Clear Filters
+                {t('recipe.list.clearFilters')}
               </button>
             )}
           </div>
@@ -171,21 +173,19 @@ export function SearchPage() {
           {loading
             ? (
               <div className='text-center py-12' style={{ color: 'var(--text-secondary)' }}>
-                Searching...
+                {t('search.searching')}
               </div>
             )
             : results.length === 0
             ? (
               <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-                {activeFilters.length > 0
-                  ? 'No results found. Try adjusting your filters.'
-                  : 'Enter a search query or select filters.'}
+                {activeFilters.length > 0 ? t('search.noResults') : t('search.noQuery')}
               </div>
             )
             : (
               <>
                 <p className='text-sm mb-4' style={{ color: 'var(--text-secondary)' }}>
-                  {total} results
+                  {t('search.results').replace('{count}', String(total))}
                 </p>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                   {results.map((r) => (

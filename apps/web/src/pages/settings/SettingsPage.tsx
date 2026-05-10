@@ -22,7 +22,7 @@ interface Preferences {
 export function SettingsPage() {
   const { user, refreshUser: _refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { locale, setLocale, availableLocales } = useTranslation();
+  const { locale, setLocale, availableLocales, t } = useTranslation();
   const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -46,16 +46,16 @@ export function SettingsPage() {
         dateFormat: prefs.dateFormat,
         emailNotifications: prefs.emailNotifications,
       } as Record<string, unknown>);
-      setMessage('Preferences saved!');
+      setMessage(t('settings.savedMsg'));
     } catch {
-      setMessage('Failed to save preferences.');
+      setMessage(t('settings.failedMsg'));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDeleteAccount() {
-    if (!globalThis.confirm('Are you sure? This action cannot be undone.')) return;
+    if (!globalThis.confirm(t('settings.deleteConfirm'))) return;
     try {
       await api.delete('/users/me');
     } catch {
@@ -66,15 +66,19 @@ export function SettingsPage() {
 
   return (
     <div className='mx-auto max-w-2xl px-6 py-8'>
-      <SEOHead title='Settings' />
+      <SEOHead title={t('settings.title')} />
 
-      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>Settings</h1>
+      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+        {t('settings.title')}
+      </h1>
 
       {message && (
         <div
           className='mb-4 rounded p-3 text-sm'
           style={{
-            backgroundColor: message.includes('Failed') ? 'var(--error)' : 'var(--success)',
+            backgroundColor: message.includes('Failed') || message.includes('kaydedilemedi')
+              ? 'var(--error)'
+              : 'var(--success)',
             color: 'white',
           }}
         >
@@ -84,17 +88,19 @@ export function SettingsPage() {
 
       <div className='space-y-6'>
         <div className='card'>
-          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>Profile</h2>
+          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+            {t('settings.profile')}
+          </h2>
           <div className='space-y-3'>
             <div>
               <label
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Display Name
+                {t('settings.displayName')}
               </label>
               <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
-                {user.displayName || 'Not set'}
+                {user.displayName || t('settings.notSet')}
               </span>
             </div>
             <div>
@@ -102,7 +108,7 @@ export function SettingsPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Username
+                {t('auth.username')}
               </label>
               <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
                 @{user.username}
@@ -113,7 +119,7 @@ export function SettingsPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Email
+                {t('auth.email')}
               </label>
               <span className='text-sm' style={{ color: 'var(--text-primary)' }}>{user.email}</span>
             </div>
@@ -122,7 +128,7 @@ export function SettingsPage() {
 
         <div className='card'>
           <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-            Appearance
+            {t('settings.appearance')}
           </h2>
           <div className='space-y-3'>
             <div>
@@ -130,16 +136,16 @@ export function SettingsPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Theme
+                {t('preferences.theme')}
               </label>
               <select
                 value={theme}
                 onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'coffee')}
                 className='input-field w-auto'
               >
-                <option value='light'>Light</option>
-                <option value='dark'>Dark</option>
-                <option value='coffee'>Coffee</option>
+                <option value='light'>{t('theme.light')}</option>
+                <option value='dark'>{t('theme.dark')}</option>
+                <option value='coffee'>{t('theme.coffee')}</option>
               </select>
             </div>
             <div>
@@ -147,7 +153,7 @@ export function SettingsPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Language
+                {t('preferences.locale')}
               </label>
               <select
                 value={locale}
@@ -155,7 +161,7 @@ export function SettingsPage() {
                 className='input-field w-auto'
               >
                 {availableLocales.map((l) => (
-                  <option key={l} value={l}>{l === 'en' ? 'English' : 'Turkish'}</option>
+                  <option key={l} value={l}>{l === 'en' ? 'English' : 'Türkçe'}</option>
                 ))}
               </select>
             </div>
@@ -165,7 +171,7 @@ export function SettingsPage() {
         {prefs && (
           <div className='card'>
             <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-              Preferences
+              {t('preferences.title')}
             </h2>
             <div className='space-y-3'>
               <div>
@@ -173,7 +179,7 @@ export function SettingsPage() {
                   className='block text-sm font-medium mb-1'
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  Unit System
+                  {t('preferences.unitSystem')}
                 </label>
                 <select
                   value={prefs.unitSystem}
@@ -181,8 +187,8 @@ export function SettingsPage() {
                     setPrefs({ ...prefs, unitSystem: e.target.value as 'metric' | 'imperial' })}
                   className='input-field w-auto'
                 >
-                  <option value='metric'>Metric (g, ml, °C)</option>
-                  <option value='imperial'>Imperial (oz, fl oz, °F)</option>
+                  <option value='metric'>{t('settings.unitSystem.metric')}</option>
+                  <option value='imperial'>{t('settings.unitSystem.imperial')}</option>
                 </select>
               </div>
               <div>
@@ -190,7 +196,7 @@ export function SettingsPage() {
                   className='block text-sm font-medium mb-1'
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  Temperature Unit
+                  {t('preferences.temperature')}
                 </label>
                 <select
                   value={prefs.temperatureUnit}
@@ -201,8 +207,8 @@ export function SettingsPage() {
                     })}
                   className='input-field w-auto'
                 >
-                  <option value='celsius'>Celsius</option>
-                  <option value='fahrenheit'>Fahrenheit</option>
+                  <option value='celsius'>{t('settings.temperatureUnit.celsius')}</option>
+                  <option value='fahrenheit'>{t('settings.temperatureUnit.fahrenheit')}</option>
                 </select>
               </div>
               <div>
@@ -210,7 +216,7 @@ export function SettingsPage() {
                   className='block text-sm font-medium mb-1'
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  Date Format
+                  {t('preferences.dateFormat')}
                 </label>
                 <select
                   value={prefs.dateFormat}
@@ -228,7 +234,7 @@ export function SettingsPage() {
                 className='btn-primary'
                 disabled={saving}
               >
-                {saving ? 'Saving...' : 'Save Preferences'}
+                {saving ? t('settings.saving') : t('settings.savePreferences')}
               </button>
             </div>
           </div>
@@ -237,11 +243,11 @@ export function SettingsPage() {
         {prefs && (
           <div className='card'>
             <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-              Email Notifications
+              {t('settings.emailNotifications')}
             </h2>
             <div className='space-y-3'>
               <NotificationToggle
-                label='New follower'
+                label={t('settings.notif.newFollower')}
                 checked={prefs.emailNotifications.newFollower}
                 onChange={(v) =>
                   setPrefs({
@@ -250,7 +256,7 @@ export function SettingsPage() {
                   })}
               />
               <NotificationToggle
-                label='Recipe liked'
+                label={t('settings.notif.recipeLiked')}
                 checked={prefs.emailNotifications.recipeLiked}
                 onChange={(v) =>
                   setPrefs({
@@ -259,7 +265,7 @@ export function SettingsPage() {
                   })}
               />
               <NotificationToggle
-                label='Recipe commented'
+                label={t('settings.notif.recipeCommented')}
                 checked={prefs.emailNotifications.recipeCommented}
                 onChange={(v) =>
                   setPrefs({
@@ -268,7 +274,7 @@ export function SettingsPage() {
                   })}
               />
               <NotificationToggle
-                label='Followed user posted'
+                label={t('settings.notif.followedUserPosted')}
                 checked={prefs.emailNotifications.followedUserPosted}
                 onChange={(v) =>
                   setPrefs({
@@ -283,15 +289,17 @@ export function SettingsPage() {
               className='btn-primary mt-4'
               disabled={saving}
             >
-              {saving ? 'Saving...' : 'Save Notifications'}
+              {saving ? t('settings.saving') : t('settings.saveNotifications')}
             </button>
           </div>
         )}
 
         <div className='card' style={{ borderColor: 'var(--error)' }}>
-          <h2 className='font-semibold mb-2' style={{ color: 'var(--error)' }}>Danger Zone</h2>
+          <h2 className='font-semibold mb-2' style={{ color: 'var(--error)' }}>
+            {t('settings.dangerZone')}
+          </h2>
           <p className='text-sm mb-3' style={{ color: 'var(--text-secondary)' }}>
-            Permanently delete your account and all your data. This cannot be undone.
+            {t('settings.dangerZoneDesc')}
           </p>
           <button
             type='button'
@@ -299,7 +307,7 @@ export function SettingsPage() {
             className='text-sm px-4 py-2 rounded'
             style={{ backgroundColor: 'var(--error)', color: 'white' }}
           >
-            Delete Account
+            {t('settings.deleteAccountBtn')}
           </button>
         </div>
       </div>

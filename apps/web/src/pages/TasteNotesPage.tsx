@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api/index';
 import { SEOHead } from '../components/seo/SEOHead';
+import { useTranslation } from '../contexts/I18nContext';
 
 interface TasteCategory {
   id: string;
@@ -12,6 +13,7 @@ interface TasteCategory {
 export function TasteNotesPage() {
   const [hierarchy, setHierarchy] = useState<TasteCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     api.get<TasteCategory[]>('/taste-notes/hierarchy').then((data) => {
@@ -23,10 +25,7 @@ export function TasteNotesPage() {
   function renderTree(categories: TasteCategory[], depth: number = 0): React.ReactNode {
     return categories.map((cat) => (
       <div key={cat.id}>
-        <div
-          className='py-2'
-          style={{ paddingLeft: `${depth * 1.5 + 0.75}rem` }}
-        >
+        <div className='py-2' style={{ paddingLeft: `${depth * 1.5 + 0.75}rem` }}>
           <Link
             to={`/search?q=${encodeURIComponent(cat.name)}`}
             className='hover:underline'
@@ -46,15 +45,15 @@ export function TasteNotesPage() {
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>
       <SEOHead
-        title='Taste Notes'
+        title={t('page.tasteNotes')}
         description='Explore the SCAA flavor wheel taste notes on BrewForm.'
       />
 
       <h1 className='text-2xl font-bold mb-2' style={{ color: 'var(--text-primary)' }}>
-        Taste Notes
+        {t('page.tasteNotes')}
       </h1>
       <p className='mb-6' style={{ color: 'var(--text-secondary)' }}>
-        Explore the coffee flavor wheel. Click any taste note to find recipes.
+        {t('page.tasteNotes.description')}
       </p>
 
       <p className='text-xs mb-6' style={{ color: 'var(--text-tertiary)' }}>
@@ -64,12 +63,12 @@ export function TasteNotesPage() {
           rel='noopener noreferrer'
           style={{ color: 'var(--accent-primary)' }}
         >
-          SCAA Flavor Wheel Reference
+          {t('taste.reference')}
         </a>
       </p>
 
       {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
         : (
           <div className='card'>
             {renderTree(hierarchy)}

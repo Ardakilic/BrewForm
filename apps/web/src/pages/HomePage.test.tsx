@@ -12,7 +12,6 @@ vi.mock('../contexts/I18nContext', () => ({
   useTranslation: vi.fn(),
 }));
 
-// Silence the recipeApi calls — we don't need real data for these tests
 vi.mock('../api/index.ts', () => ({
   recipeApi: {
     list: vi.fn().mockResolvedValue([]),
@@ -29,6 +28,8 @@ const enT = (key: string) => {
     'app.tagline': 'Coffee brewing recipes and tasting notes',
     'common.browseRecipes': 'Browse Recipes',
     'nav.register': 'Sign Up',
+    'home.latestRecipes': 'Latest Recipes',
+    'home.popularRecipes': 'Popular Recipes',
   };
   return map[key] ?? key;
 };
@@ -39,6 +40,8 @@ const trT = (key: string) => {
     'app.tagline': 'Kahve demleme tarifleri ve tadım notları',
     'common.browseRecipes': 'Tariflere Göz At',
     'nav.register': 'Kayıt Ol',
+    'home.latestRecipes': 'Son Tarifler',
+    'home.popularRecipes': 'Popüler Tarifler',
   };
   return map[key] ?? key;
 };
@@ -72,6 +75,22 @@ describe('HomePage — i18n', () => {
     expect(screen.getByText('Kahve demleme tarifleri ve tadım notları')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Tariflere Göz At' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Kayıt Ol' })).toBeInTheDocument();
+  });
+
+  it('renders section headings using t() — English', () => {
+    render(<HomePage />);
+
+    expect(screen.getByText('Latest Recipes')).toBeInTheDocument();
+    expect(screen.getByText('Popular Recipes')).toBeInTheDocument();
+  });
+
+  it('renders section headings in Turkish when locale is tr', () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+
+    render(<HomePage />);
+
+    expect(screen.getByText('Son Tarifler')).toBeInTheDocument();
+    expect(screen.getByText('Popüler Tarifler')).toBeInTheDocument();
   });
 
   it('Browse Recipes link points to /recipes', () => {

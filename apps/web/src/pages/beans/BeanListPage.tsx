@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead';
+import { useTranslation } from '../../contexts/I18nContext';
 import { api } from '../../api/client';
 
 interface Bean {
@@ -24,6 +25,7 @@ export function BeanListPage() {
     roastLevel: '',
   });
   const [saving, setSaving] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     api.get<Bean[]>('/beans').then((data) => {
@@ -54,7 +56,7 @@ export function BeanListPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!globalThis.confirm('Delete this bean?')) return;
+    if (!globalThis.confirm(t('common.delete') + '?')) return;
     try {
       await api.delete(`/beans/${id}`);
       setBeans((prev) => prev.filter((b) => b.id !== id));
@@ -68,31 +70,35 @@ export function BeanListPage() {
         className='mx-auto max-w-4xl px-6 py-12 text-center'
         style={{ color: 'var(--text-secondary)' }}
       >
-        Loading...
+        {t('common.loading')}
       </div>
     );
   }
 
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>
-      <SEOHead title='My Beans' />
+      <SEOHead title={t('bean.title')} />
       <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>My Beans</h1>
+        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+          {t('bean.title')}
+        </h1>
         <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
-          {showForm ? 'Cancel' : '+ Add Bean'}
+          {showForm ? t('common.cancel') : t('bean.addBean')}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleCreate} className='card mb-6'>
-          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>Add Bean</h2>
+          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+            {t('bean.addBeanTitle')}
+          </h2>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <div>
               <label
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Product Name
+                {t('recipe.productName')}
               </label>
               <input
                 type='text'
@@ -106,7 +112,7 @@ export function BeanListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Brand
+                {t('bean.brand')}
               </label>
               <input
                 type='text'
@@ -120,7 +126,7 @@ export function BeanListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Origin
+                {t('bean.origin')}
               </label>
               <input
                 type='text'
@@ -135,7 +141,7 @@ export function BeanListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Processing
+                {t('bean.processing')}
               </label>
               <input
                 type='text'
@@ -150,7 +156,7 @@ export function BeanListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Roast Level
+                {t('bean.roastLevel')}
               </label>
               <input
                 type='text'
@@ -162,7 +168,7 @@ export function BeanListPage() {
             </div>
           </div>
           <button type='submit' className='btn-primary mt-4' disabled={saving}>
-            {saving ? 'Adding...' : 'Add Bean'}
+            {saving ? t('bean.adding') : t('bean.addBeanTitle')}
           </button>
         </form>
       )}
@@ -170,7 +176,7 @@ export function BeanListPage() {
       {beans.length === 0
         ? (
           <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-            No beans yet. Add your coffee beans!
+            {t('bean.noBeansYet')}
           </div>
         )
         : (
@@ -180,7 +186,7 @@ export function BeanListPage() {
                 <div className='flex items-start justify-between'>
                   <div>
                     <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                      {bean.productName || 'Unnamed Bean'}
+                      {bean.productName || t('bean.unnamed')}
                     </h3>
                     {bean.brand && (
                       <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
@@ -202,7 +208,7 @@ export function BeanListPage() {
                     className='text-sm'
                     style={{ color: 'var(--error)' }}
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>

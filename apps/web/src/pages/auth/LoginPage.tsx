@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from '../../contexts/I18nContext';
 
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +20,7 @@ export function LoginPage() {
       await login(email, password);
       navigate('/');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Login failed';
+      const message = err instanceof Error ? err.message : t('auth.login.title');
       setError(message);
     } finally {
       setLoading(false);
@@ -27,7 +29,9 @@ export function LoginPage() {
 
   return (
     <div className='mx-auto max-w-md px-6 py-12'>
-      <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>Log In</h1>
+      <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+        {t('auth.login.title')}
+      </h1>
       {error && (
         <div
           className='mt-4 rounded p-3 text-sm'
@@ -42,7 +46,7 @@ export function LoginPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Email
+            {t('auth.email')}
           </label>
           <input
             type='email'
@@ -58,7 +62,7 @@ export function LoginPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Password
+            {t('auth.password')}
           </label>
           <input
             type='password'
@@ -70,17 +74,19 @@ export function LoginPage() {
           />
         </div>
         <button type='submit' className='btn-primary' disabled={loading}>
-          {loading ? 'Logging in...' : 'Log In'}
+          {loading ? t('auth.login.loggingIn') : t('auth.login.title')}
         </button>
       </form>
       <p className='mt-4 text-sm' style={{ color: 'var(--text-secondary)' }}>
         <Link to='/forgot-password' style={{ color: 'var(--accent-primary)' }}>
-          Forgot password?
+          {t('auth.login.forgotPassword')}
         </Link>
       </p>
       <p className='mt-2 text-sm' style={{ color: 'var(--text-secondary)' }}>
-        Don't have an account?{' '}
-        <Link to='/register' style={{ color: 'var(--accent-primary)' }}>Sign up</Link>
+        {t('auth.login.noAccount')}{' '}
+        <Link to='/register' style={{ color: 'var(--accent-primary)' }}>
+          {t('auth.login.signUp')}
+        </Link>
       </p>
     </div>
   );
