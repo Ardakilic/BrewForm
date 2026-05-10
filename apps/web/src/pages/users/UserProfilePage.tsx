@@ -199,17 +199,19 @@ export function UserProfilePage() {
   );
 }
 
+type FollowRecord =
+  | { id: string; follower: { id: string; username: string; displayName: string | null } }
+  | { id: string; following: { id: string; username: string; displayName: string | null } };
+
 function FollowList({ userId, type }: { userId: string; type: 'followers' | 'following' }) {
-  const [users, setUsers] = useState<
-    { id: string; username: string; displayName: string | null }[]
-  >([]);
+  const [users, setUsers] = useState<FollowRecord[]>([]);
 
   useEffect(() => {
     // The follow endpoints use paginated() — the array is returned directly in data.data.
-    api.get<{ id: string; username: string; displayName: string | null }[]>(
+    api.get<FollowRecord[]>(
       `/follow/${userId}/${type}`,
     )
-      .then((data: { id: string; username: string; displayName: string | null }[]) => {
+      .then((data: FollowRecord[]) => {
         setUsers(Array.isArray(data) ? data : []);
       })
       .catch(() => {});
@@ -218,18 +220,23 @@ function FollowList({ userId, type }: { userId: string; type: 'followers' | 'fol
   return (
     <div className='flex flex-col gap-2'>
       {users.length === 0 ? <p style={{ color: 'var(--text-tertiary)' }}>No {type} yet.</p> : (
-        users.map((u) => (
-          <Link
-            key={u.id}
-            to={`/u/${u.username}`}
-            className='card flex items-center gap-2 hover:shadow-lg transition-shadow'
-          >
-            <span className='font-medium' style={{ color: 'var(--text-primary)' }}>
-              {u.displayName || u.username}
-            </span>
-            <span className='text-sm' style={{ color: 'var(--text-tertiary)' }}>@{u.username}</span>
-          </Link>
-        ))
+        users.map((u) => {
+          const person = 'follower' in u ? u.follower : u.following;
+          return (
+            <Link
+              key={u.id}
+              to={`/u/${person.username}`}
+              className='card flex items-center gap-2 hover:shadow-lg transition-shadow'
+            >
+              <span className='font-medium' style={{ color: 'var(--text-primary)' }}>
+                {person.displayName || person.username}
+              </span>
+              <span className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
+                @{person.username}
+              </span>
+            </Link>
+          );
+        })
       )}
     </div>
   );

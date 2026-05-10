@@ -1,4 +1,5 @@
 import * as model from './model.ts';
+import * as followModel from '../follow/model.ts';
 
 export async function getProfile(userId: string) {
   const user = await model.findById(userId);
@@ -9,7 +10,7 @@ export async function getProfile(userId: string) {
   return { ...safe, ...stats };
 }
 
-export async function getPublicProfile(username: string) {
+export async function getPublicProfile(username: string, requesterId?: string) {
   const user = await model.findByUsername(username);
   if (!user) throw new Error('USER_NOT_FOUND');
   // deno-lint-ignore no-explicit-any
@@ -23,7 +24,7 @@ export async function getPublicProfile(username: string) {
     ...stats,
     recipes,
     badges: [], // badges are not yet fetched for public profiles
-    isFollowing: false, // requires auth context — set by frontend if needed
+    isFollowing: requesterId ? await followModel.isFollowing(requesterId, user.id) : false,
   };
 }
 
