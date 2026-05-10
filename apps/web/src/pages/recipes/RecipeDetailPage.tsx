@@ -140,6 +140,9 @@ export function RecipeDetailPage() {
                 <ParamRow label='Product Name' value={v.productName} />
                 <ParamRow label='Coffee Brand' value={v.coffeeBrand} />
                 <ParamRow label='Processing' value={v.coffeeProcessing} />
+                <ParamRow label='Roast Date' value={v.roastDate ? v.roastDate.slice(0, 10) : null} />
+                <ParamRow label='Package Open Date' value={v.packageOpenDate ? v.packageOpenDate.slice(0, 10) : null} />
+                <ParamRow label='Grind Date' value={v.grindDate ? v.grindDate.slice(0, 10) : null} />
                 <ParamRow label='Grinder' value={v.grinder} />
                 <ParamRow label='Grind Size' value={v.grindSize} />
                 <ParamRow

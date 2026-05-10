@@ -45,6 +45,9 @@ export function RecipeEditPage() {
   const [rating, setRating] = useState('');
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
+  const [roastDate, setRoastDate] = useState('');
+  const [packageOpenDate, setPackageOpenDate] = useState('');
+  const [grindDate, setGrindDate] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -67,6 +70,11 @@ export function RecipeEditPage() {
       setRating(r.currentVersion.rating?.toString() || '');
       setEmojiTag(r.currentVersion.emojiTag || '');
       setTasteNoteIds((r as any).tasteNotes.map((t: any) => t.id));
+      setRoastDate(r.currentVersion.roastDate ? r.currentVersion.roastDate.slice(0, 10) : '');
+      setPackageOpenDate(
+        r.currentVersion.packageOpenDate ? r.currentVersion.packageOpenDate.slice(0, 10) : '',
+      );
+      setGrindDate(r.currentVersion.grindDate ? r.currentVersion.grindDate.slice(0, 10) : '');
     }).catch(() => {
       setError('Failed to load recipe');
     }).finally(() => setFetching(false));
@@ -101,6 +109,9 @@ export function RecipeEditPage() {
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
         ...(tasteNoteIds.length > 0 ? { tasteNoteIds } : {}),
+        ...(roastDate ? { roastDate } : {}),
+        ...(packageOpenDate ? { packageOpenDate } : {}),
+        ...(grindDate ? { grindDate } : {}),
       };
       const result = await recipeApi.update(id, data) as Record<string, unknown>;
       navigate(`/recipes/${result.slug}`);
@@ -225,6 +236,32 @@ export function RecipeEditPage() {
                 type='text'
                 value={coffeeProcessing}
                 onChange={(e) => setCoffeeProcessing(e.target.value)}
+                className='input-field'
+              />
+            </EditField>
+          </div>
+          <div className='grid grid-cols-2 gap-4 mt-4'>
+            <EditField label='Roast Date'>
+              <input
+                type='date'
+                value={roastDate}
+                onChange={(e) => setRoastDate(e.target.value)}
+                className='input-field'
+              />
+            </EditField>
+            <EditField label='Package Open Date'>
+              <input
+                type='date'
+                value={packageOpenDate}
+                onChange={(e) => setPackageOpenDate(e.target.value)}
+                className='input-field'
+              />
+            </EditField>
+            <EditField label='Grind Date'>
+              <input
+                type='date'
+                value={grindDate}
+                onChange={(e) => setGrindDate(e.target.value)}
                 className='input-field'
               />
             </EditField>

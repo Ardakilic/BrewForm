@@ -42,6 +42,9 @@ export function RecipeCreatePage() {
   const [rating, setRating] = useState('');
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
+  const [roastDate, setRoastDate] = useState('');
+  const [packageOpenDate, setPackageOpenDate] = useState('');
+  const [grindDate, setGrindDate] = useState('');
 
   // Equipment & Setup state
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
@@ -129,6 +132,9 @@ export function RecipeCreatePage() {
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
         ...(tasteNoteIds.length > 0 ? { tasteNoteIds } : {}),
+        ...(roastDate ? { roastDate } : {}),
+        ...(packageOpenDate ? { packageOpenDate } : {}),
+        ...(grindDate ? { grindDate } : {}),
         ...(selectedEquipmentIds.length > 0 ? { equipmentIds: selectedEquipmentIds } : {}),
         ...(selectedSetupId ? { setupId: selectedSetupId } : {}),
       };
@@ -295,6 +301,32 @@ export function RecipeCreatePage() {
                 onChange={(e) => setCoffeeProcessing(e.target.value)}
                 className='input-field'
                 placeholder='e.g. washed, natural, honey'
+              />
+            </Field>
+          </div>
+          <div className='grid grid-cols-2 gap-4 mt-4'>
+            <Field label='Roast Date'>
+              <input
+                type='date'
+                value={roastDate}
+                onChange={(e) => setRoastDate(e.target.value)}
+                className='input-field'
+              />
+            </Field>
+            <Field label='Package Open Date'>
+              <input
+                type='date'
+                value={packageOpenDate}
+                onChange={(e) => setPackageOpenDate(e.target.value)}
+                className='input-field'
+              />
+            </Field>
+            <Field label='Grind Date'>
+              <input
+                type='date'
+                value={grindDate}
+                onChange={(e) => setGrindDate(e.target.value)}
+                className='input-field'
               />
             </Field>
           </div>

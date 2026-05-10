@@ -70,15 +70,34 @@ export const RecipeCreateObjectSchema = z.object({
   additionalPreparations: z.array(AdditionalPreparationSchema).optional(),
 });
 
-export const RecipeCreateSchema = RecipeCreateObjectSchema.refine(
-  (data) => {
-    if (data.grindDate && data.roastDate) {
-      return data.grindDate >= data.roastDate;
-    }
-    return true;
-  },
-  { message: 'Grind date cannot be earlier than roast date', path: ['grindDate'] },
-);
+export const RecipeCreateSchema = RecipeCreateObjectSchema
+  .refine(
+    (data) => {
+      if (data.grindDate && data.roastDate) {
+        return data.grindDate >= data.roastDate;
+      }
+      return true;
+    },
+    { message: 'Grind date cannot be earlier than roast date', path: ['grindDate'] },
+  )
+  .refine(
+    (data) => {
+      if (data.packageOpenDate && data.roastDate) {
+        return data.packageOpenDate >= data.roastDate;
+      }
+      return true;
+    },
+    { message: 'Package open date cannot be earlier than roast date', path: ['packageOpenDate'] },
+  )
+  .refine(
+    (data) => {
+      if (data.grindDate && data.packageOpenDate) {
+        return data.grindDate >= data.packageOpenDate;
+      }
+      return true;
+    },
+    { message: 'Grind date cannot be earlier than package open date', path: ['grindDate'] },
+  );
 
 export const RecipeUpdateSchema = RecipeCreateObjectSchema.partial().extend({
   bumpVersion: z.boolean().default(false),

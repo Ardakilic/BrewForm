@@ -387,6 +387,8 @@ async function seedRecipes(tx: typeof db, seedUsers: { admin: any; user1: any; u
     coffeeProcessing: 'washed',
     vendorId: vendor1.id,
     roastDate: new Date('2026-03-15'),
+    packageOpenDate: new Date('2026-03-22'),
+    grindDate: new Date('2026-04-12'),
     brewDate: new Date('2026-04-12'),
     brewMethod: 'v60',
     drinkType: 'pour_over',
