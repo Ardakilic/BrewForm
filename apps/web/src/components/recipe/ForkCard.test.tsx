@@ -7,8 +7,8 @@ vi.mock('../../contexts/I18nContext', () => ({
 }));
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
+  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
+    <a href={to} {...props}>{children}</a>
   ),
 }));
 
@@ -46,12 +46,41 @@ beforeEach(() => {
   mockUseTranslation.mockReturnValue(defaultTranslation);
 });
 
-describe('ForkCard — i18n', () => {
-  /**
-   * Property 4 (English): Render with English t → description text equals the English
-   * recipe.forkDescription value.
-   * Validates: Requirements 3.2
-   */
+describe('ForkCard — heading', () => {
+  it('renders the "Fork Recipe" heading — English', () => {
+    render(<ForkCard recipeId='recipe-1' />);
+    expect(screen.getByRole('heading', { name: 'Fork Recipe' })).toBeInTheDocument();
+  });
+
+  it('renders the Turkish heading when locale is tr', () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    render(<ForkCard recipeId='recipe-1' />);
+    expect(screen.getByRole('heading', { name: 'Tarifi Çatalla' })).toBeInTheDocument();
+  });
+});
+
+describe('ForkCard — fork link button', () => {
+  it('renders a link with href /recipes/recipe-1/fork for recipeId="recipe-1"', () => {
+    render(<ForkCard recipeId='recipe-1' />);
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/recipes/recipe-1/fork');
+  });
+
+  it('renders the fork link with the fork emoji and label text', () => {
+    render(<ForkCard recipeId='recipe-1' />);
+    const link = screen.getByRole('link');
+    expect(link.textContent).toContain('🍴');
+    expect(link.textContent).toContain('Fork Recipe');
+  });
+
+  it('renders the fork link with btn-secondary styling class', () => {
+    render(<ForkCard recipeId='recipe-1' />);
+    const link = screen.getByRole('link');
+    expect(link.classList.contains('btn-secondary')).toBe(true);
+  });
+});
+
+describe('ForkCard — description', () => {
   it('renders the English fork description via t() — Property 4 (English)', () => {
     render(<ForkCard recipeId='recipe-1' />);
     expect(
@@ -61,11 +90,6 @@ describe('ForkCard — i18n', () => {
     ).toBeInTheDocument();
   });
 
-  /**
-   * Property 4 (Turkish): Render with Turkish t → description text equals the Turkish
-   * recipe.forkDescription value.
-   * Validates: Requirements 3.2
-   */
   it('renders the Turkish fork description via t() — Property 4 (Turkish)', () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
     render(<ForkCard recipeId='recipe-1' />);
@@ -74,25 +98,5 @@ describe('ForkCard — i18n', () => {
         'Çatallama, bu tarifin kendi kişisel kopyanızı oluşturur; üzerinde özgürce değişiklik yapabilir ve geliştirebilirsiniz.',
       ),
     ).toBeInTheDocument();
-  });
-});
-
-describe('ForkCard — fork link', () => {
-  /**
-   * Requirement 2.3: Rendered <a> has href matching /recipes/recipe-1/fork when recipeId="recipe-1"
-   */
-  it('renders a link with href /recipes/recipe-1/fork for recipeId="recipe-1"', () => {
-    render(<ForkCard recipeId='recipe-1' />);
-    const link = screen.getByRole('link');
-    expect(link).toHaveAttribute('href', '/recipes/recipe-1/fork');
-  });
-
-  /**
-   * Requirement 2.3: The fork link has non-empty text content (accessible label)
-   */
-  it('renders the fork link with non-empty text content', () => {
-    render(<ForkCard recipeId='recipe-1' />);
-    const link = screen.getByRole('link');
-    expect(link.textContent?.trim()).not.toBe('');
   });
 });

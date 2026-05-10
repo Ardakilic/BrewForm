@@ -10,10 +10,15 @@ export function ForkCard({ recipeId }: Props) {
 
   return (
     <div className='card'>
-      <p>{t('recipe.forkDescription')}</p>
-      <Link to={`/recipes/${recipeId}/fork`} aria-label={t('recipe.fork')}>
+      <h4 className='font-semibold mb-3' style={{ color: 'var(--text-primary)' }}>
         {t('recipe.fork')}
+      </h4>
+      <Link to={`/recipes/${recipeId}/fork`} className='btn-secondary text-sm inline-block mb-3'>
+        🍴 {t('recipe.fork')}
       </Link>
+      <p className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+        {t('recipe.forkDescription')}
+      </p>
     </div>
   );
 }
