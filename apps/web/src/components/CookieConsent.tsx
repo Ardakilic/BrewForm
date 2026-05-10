@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from '../contexts/I18nContext';
 
 export function CookieConsent() {
   const [show, setShow] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const consent = localStorage.getItem('brewform_cookie_consent');
@@ -31,11 +33,15 @@ export function CookieConsent() {
     >
       <div className='mx-auto flex max-w-4xl items-center justify-between gap-4'>
         <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
-          We use cookies to improve your experience. You can accept or reject non-essential cookies.
+          {t('cookie.consent')}
         </p>
         <div className='flex gap-2'>
-          <button type='button' onClick={reject} className='btn-secondary text-sm'>Reject</button>
-          <button type='button' onClick={accept} className='btn-primary text-sm'>Accept</button>
+          <button type='button' onClick={reject} className='btn-secondary text-sm'>
+            {t('cookie.reject')}
+          </button>
+          <button type='button' onClick={accept} className='btn-primary text-sm'>
+            {t('cookie.accept')}
+          </button>
         </div>
       </div>
     </div>

@@ -29,6 +29,14 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  // Track which comment the reply form is open for (null = no reply form open)
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [replyLoading, setReplyLoading] = useState(false);
+
+  // Whether the current user can reply to comments (recipe owner or admin)
+  const canReply = isAuthenticated && user != null &&
+    (user.id === recipeAuthorId || user.isAdmin === true);
 
   useEffect(() => {
     // The comment endpoint uses paginated() — the array is returned directly in data.data.
@@ -71,7 +79,43 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
     }
   }
 
-  function isAuthor(comment: Comment) {
+  async function handleReplySubmit(e: React.FormEvent, parentCommentId: string) {
+    e.preventDefault();
+    if (!replyContent.trim() || replyLoading) return;
+    setReplyLoading(true);
+    try {
+      const data = await api.post<Record<string, unknown>>(`/comments/recipe/${recipeId}`, {
+        content: replyContent.trim(),
+        parentCommentId,
+      });
+      const optimisticReply: Comment = {
+        ...(data as unknown as Comment),
+        author: user
+          ? {
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+          }
+          : undefined,
+      };
+      // Append the reply to the correct parent comment optimistically
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === parentCommentId
+            ? { ...c, replies: [...(c.replies ?? []), optimisticReply] }
+            : c
+        )
+      );
+      setReplyContent('');
+      setReplyingToId(null);
+    } catch {
+    } finally {
+      setReplyLoading(false);
+    }
+  }
+
+  function isRecipeAuthor(comment: Comment) {
     return comment.authorId === recipeAuthorId;
   }
 
@@ -102,6 +146,8 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
   }
 
   function renderComment(comment: Comment) {
+    const isReplyOpen = replyingToId === comment.id;
+
     return (
       <div
         key={comment.id}
@@ -113,13 +159,67 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
       >
         <div className='flex items-center gap-2 mb-2'>
           <AuthorLink comment={comment} className='font-medium text-sm' />
-          {isAuthor(comment) && <span className='badge text-xs'>OP</span>}
+          {isRecipeAuthor(comment) && <span className='badge text-xs'>OP</span>}
           <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
             {new Date(comment.createdAt).toLocaleDateString()}
           </span>
         </div>
         <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>{comment.content}</p>
-        {/* Replies (OP-only) */}
+
+        {/* Reply button — visible to recipe owner and admins */}
+        {canReply && !isReplyOpen && (
+          <button
+            type='button'
+            onClick={() => {
+              setReplyingToId(comment.id);
+              setReplyContent('');
+            }}
+            className='mt-2 text-xs'
+            style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            Reply
+          </button>
+        )}
+
+        {/* Inline reply form */}
+        {isReplyOpen && (
+          <form
+            onSubmit={(e) => handleReplySubmit(e, comment.id)}
+            className='mt-3 ml-4'
+          >
+            <textarea
+              value={replyContent}
+              onChange={(e) => setReplyContent(e.target.value)}
+              placeholder='Write a reply...'
+              className='input-field mb-2'
+              rows={2}
+              autoFocus
+            />
+            <div className='flex gap-2'>
+              <button
+                type='submit'
+                className='btn-primary'
+                style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}
+                disabled={replyLoading || !replyContent.trim()}
+              >
+                {replyLoading ? 'Posting...' : 'Post Reply'}
+              </button>
+              <button
+                type='button'
+                className='btn-secondary'
+                style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}
+                onClick={() => {
+                  setReplyingToId(null);
+                  setReplyContent('');
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Replies */}
         {Array.isArray(comment.replies) && comment.replies.length > 0 && (
           <div className='mt-3 ml-4 flex flex-col gap-2'>
             {comment.replies.map((reply) => (
@@ -133,7 +233,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
               >
                 <div className='flex items-center gap-2 mb-1'>
                   <AuthorLink comment={reply} className='font-medium text-xs' />
-                  <span className='badge text-xs'>OP</span>
+                  {isRecipeAuthor(reply) && <span className='badge text-xs'>OP</span>}
                   <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
                     {new Date(reply.createdAt).toLocaleDateString()}
                   </span>

@@ -10,6 +10,7 @@ import { RecipeQRCode } from '../../components/qrcode/RecipeQRCode.tsx';
 import { FocusModeButton, PrintButton } from '../../components/recipe/PrintButton.tsx';
 import { StarRating } from '../../components/recipe/StarRating.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { EMOJI_TAGS } from '@brewform/shared/constants';
 
 export function RecipeDetailPage() {
@@ -18,17 +19,15 @@ export function RecipeDetailPage() {
   const navigate = useNavigate();
   const fromQr = searchParams.get('from') === 'qr';
   const { user, isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   // deno-lint-ignore no-explicit-any
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  // focusMode state removed — Focus Mode now navigates to /recipes/:slug/focus page
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
     recipeApi.get(slug).then((data: Record<string, unknown>) => {
-      // QR codes are only generated for public recipes. If a scan lands on a
-      // non-public recipe, show the dedicated "no longer available" page.
       if (fromQr && data && data.visibility !== 'public') {
         navigate('/recipes/unavailable', { replace: true });
         return;
@@ -47,7 +46,7 @@ export function RecipeDetailPage() {
         className='mx-auto max-w-4xl px-6 py-12 text-center'
         style={{ color: 'var(--text-secondary)' }}
       >
-        Loading...
+        {t('common.loading')}
       </div>
     );
   }
@@ -58,7 +57,7 @@ export function RecipeDetailPage() {
         className='mx-auto max-w-4xl px-6 py-12 text-center'
         style={{ color: 'var(--text-tertiary)' }}
       >
-        Recipe not found.
+        {t('recipe.notFound')}
       </div>
     );
   }
@@ -113,7 +112,7 @@ export function RecipeDetailPage() {
                     to={`/recipes/${recipe.forkedFromSlug}`}
                     style={{ color: 'var(--accent-primary)' }}
                   >
-                    Forked from original
+                    {t('recipe.forkedFromOriginal')}
                   </Link>
                 </>
               )}
@@ -121,7 +120,9 @@ export function RecipeDetailPage() {
           </div>
           <div className='flex gap-2'>
             {isOwner && (
-              <Link to={`/recipes/${recipe.id}/edit`} className='btn-secondary text-sm'>Edit</Link>
+              <Link to={`/recipes/${recipe.id}/edit`} className='btn-secondary text-sm'>
+                {t('common.edit')}
+              </Link>
             )}
             <PrintButton slug={recipe.slug} />
             <FocusModeButton slug={recipe.slug} />
@@ -132,44 +133,44 @@ export function RecipeDetailPage() {
           <div className='md:col-span-2 space-y-4'>
             <div className='card'>
               <h2 className='font-semibold mb-3' style={{ color: 'var(--text-primary)' }}>
-                Brew Parameters
+                {t('recipe.brewParams')}
               </h2>
               <div className='text-sm'>
-                <ParamRow label='Brew Method' value={v.brewMethod?.replace(/_/g, ' ') ?? null} />
-                <ParamRow label='Drink Type' value={v.drinkType?.replace(/_/g, ' ') ?? null} />
-                <ParamRow label='Product Name' value={v.productName} />
-                <ParamRow label='Coffee Brand' value={v.coffeeBrand} />
-                <ParamRow label='Processing' value={v.coffeeProcessing} />
-                <ParamRow label='Roast Date' value={v.roastDate ? v.roastDate.slice(0, 10) : null} />
-                <ParamRow label='Package Open Date' value={v.packageOpenDate ? v.packageOpenDate.slice(0, 10) : null} />
-                <ParamRow label='Grind Date' value={v.grindDate ? v.grindDate.slice(0, 10) : null} />
-                <ParamRow label='Grinder' value={v.grinder} />
-                <ParamRow label='Grind Size' value={v.grindSize} />
+                <ParamRow label={t('recipe.brewMethod')} value={v.brewMethod?.replace(/_/g, ' ') ?? null} />
+                <ParamRow label={t('recipe.drinkType')} value={v.drinkType?.replace(/_/g, ' ') ?? null} />
+                <ParamRow label={t('recipe.productName')} value={v.productName} />
+                <ParamRow label={t('recipe.coffeeBrand')} value={v.coffeeBrand} />
+                <ParamRow label={t('recipe.coffeeProcessing')} value={v.coffeeProcessing} />
+                <ParamRow label={t('recipe.roastDate')} value={v.roastDate ? v.roastDate.slice(0, 10) : null} />
+                <ParamRow label={t('recipe.packageOpenDate')} value={v.packageOpenDate ? v.packageOpenDate.slice(0, 10) : null} />
+                <ParamRow label={t('recipe.grindDate')} value={v.grindDate ? v.grindDate.slice(0, 10) : null} />
+                <ParamRow label={t('recipe.grinder')} value={v.grinder} />
+                <ParamRow label={t('recipe.grindSize')} value={v.grindSize} />
                 <ParamRow
-                  label='Dose'
+                  label={t('recipe.dose')}
                   value={v.groundWeightGrams ? `${v.groundWeightGrams}g` : null}
                 />
                 <ParamRow
-                  label='Extraction Time'
+                  label={t('recipe.extractionTime')}
                   value={v.extractionTimeSeconds ? `${v.extractionTimeSeconds}s` : null}
                 />
                 <ParamRow
-                  label='Yield'
+                  label={t('recipe.yield')}
                   value={v.extractionVolumeMl ? `${v.extractionVolumeMl}ml` : null}
                 />
                 <ParamRow
-                  label='Temperature'
+                  label={t('recipe.temperature')}
                   value={v.temperatureCelsius ? `${v.temperatureCelsius}°C` : null}
                 />
-                <ParamRow label='Ratio' value={v.brewRatio ? `1:${v.brewRatio}` : null} />
-                <ParamRow label='Flow Rate' value={v.flowRate ? `${v.flowRate} ml/s` : null} />
+                <ParamRow label={t('recipe.ratio')} value={v.brewRatio ? `1:${v.brewRatio}` : null} />
+                <ParamRow label={t('recipe.flowRate')} value={v.flowRate ? `${v.flowRate} ml/s` : null} />
               </div>
             </div>
 
             {v.personalNotes && (
               <div className='card'>
                 <h2 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
-                  Personal Notes
+                  {t('recipe.personalNotes')}
                 </h2>
                 <p
                   className='text-sm whitespace-pre-wrap'
@@ -183,7 +184,7 @@ export function RecipeDetailPage() {
             {tasteNotes.length > 0 && (
               <div className='card'>
                 <h2 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
-                  Taste Notes
+                  {t('recipe.tasteNotes')}
                 </h2>
                 <div className='flex flex-wrap gap-2'>
                   {tasteNotes.map((note: any) => (
@@ -196,7 +197,7 @@ export function RecipeDetailPage() {
             {equipment.length > 0 && (
               <div className='card'>
                 <h2 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
-                  Equipment
+                  {t('equipment.title')}
                 </h2>
                 <div className='flex flex-wrap gap-2'>
                   {equipment.map((eq: any) => (
@@ -220,25 +221,23 @@ export function RecipeDetailPage() {
             <div className='card'>
               <div className='flex items-center justify-between mb-3'>
                 <span className='text-sm font-medium' style={{ color: 'var(--text-secondary)' }}>
-                  Rating
+                  {t('recipe.rating')}
                 </span>
                 {emojiInfo && <span title={emojiInfo.label}>{emojiInfo.emoji}</span>}
               </div>
 
-              {/* Author's self-rating (read-only stars) */}
               {v.rating && (
                 <div className='mb-3'>
                   <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
-                    Author's rating
+                    {t('recipe.authorRating')}
                   </p>
                   <StarRating value={v.rating} interactive={false} />
                 </div>
               )}
 
-              {/* Community average — always shown (empty stars when no votes yet) */}
               <div className='mb-3'>
                 <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
-                  Community average
+                  {t('recipe.communityAvg')}
                 </p>
                 <StarRating
                   value={recipe.avgRating ? Math.round(recipe.avgRating) : null}
@@ -247,11 +246,10 @@ export function RecipeDetailPage() {
                 />
               </div>
 
-              {/* Interactive rating for authenticated users */}
               {isAuthenticated && (
                 <div className='pt-3 border-t' style={{ borderColor: 'var(--border-primary)' }}>
                   <p className='text-xs mb-2' style={{ color: 'var(--text-tertiary)' }}>
-                    {recipe.userRating ? 'Your rating' : 'Rate this recipe'}
+                    {recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
                   </p>
                   <StarRating
                     value={recipe.userRating ?? null}
@@ -290,7 +288,7 @@ export function RecipeDetailPage() {
                   to={`/recipes/${recipe.id}/fork`}
                   className='btn-secondary text-sm text-center'
                 >
-                  🍴 Fork Recipe
+                  🍴 {t('recipe.fork')}
                 </Link>
               )}
             </div>

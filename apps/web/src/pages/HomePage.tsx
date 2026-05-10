@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { recipeApi } from '../api/index.ts';
+import { useTranslation } from '../contexts/I18nContext';
 
 interface RecipeListItem {
   id: string;
@@ -15,11 +16,9 @@ interface RecipeListItem {
 export function HomePage() {
   const [latestRecipes, setLatestRecipes] = useState<RecipeListItem[]>([]);
   const [popularRecipes, setPopularRecipes] = useState<RecipeListItem[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
-    // recipeApi.list() returns the recipes array directly.
-    // The API uses paginated() which puts the array in data.data;
-    // the client unwraps data.data, so the resolved value is the array itself.
     recipeApi.list({ perPage: '6', sortBy: 'createdAt' }).then((recipes) => {
       setLatestRecipes(Array.isArray(recipes) ? (recipes as RecipeListItem[]) : []);
     }).catch(() => {});
@@ -32,14 +31,14 @@ export function HomePage() {
     <div>
       <section className='mx-auto max-w-6xl px-6 py-12 text-center'>
         <h1 className='text-4xl font-bold' style={{ color: 'var(--accent-primary)' }}>
-          ☕ BrewForm
+          ☕ {t('app.name')}
         </h1>
         <p className='mt-4 text-lg' style={{ color: 'var(--text-secondary)' }}>
-          Digitalize, share, and discover coffee brewing recipes and tasting notes.
+          {t('app.tagline')}
         </p>
         <div className='mt-6 flex justify-center gap-4'>
-          <Link to='/recipes' className='btn-primary'>Browse Recipes</Link>
-          <Link to='/register' className='btn-secondary'>Get Started</Link>
+          <Link to='/recipes' className='btn-primary'>{t('common.browseRecipes')}</Link>
+          <Link to='/register' className='btn-secondary'>{t('nav.register')}</Link>
         </div>
       </section>
 

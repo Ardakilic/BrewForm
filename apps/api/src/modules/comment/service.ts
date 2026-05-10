@@ -13,23 +13,50 @@ export async function createComment(
   userId: string,
   recipeId: string,
   content: string,
+  isAdmin: boolean,
   parentCommentId?: string,
 ) {
+  let effectiveParentCommentId: string | null = parentCommentId || null;
+  let effectiveContent = content;
+
   if (parentCommentId) {
-    const parentComment = await model.findById(parentCommentId);
-    if (!parentComment) throw new Error('COMMENT_NOT_FOUND');
+    const targetComment = await model.findById(parentCommentId);
+    if (!targetComment) throw new Error('COMMENT_NOT_FOUND');
 
     const recipeAuthorId = await model.getRecipeAuthorId(recipeId);
-    if (recipeAuthorId !== userId) {
+    if (!isAdmin && recipeAuthorId !== userId) {
       throw new Error('FORBIDDEN');
+    }
+
+    // Thread-flattening: if target is itself a Reply, traverse up to find the Top_Level_Comment
+    if (targetComment.parentCommentId !== null) {
+      const directTarget = targetComment;
+      let current = targetComment;
+      let hops = 0;
+
+      while (current.parentCommentId !== null) {
+        hops++;
+        if (hops > 100) throw new Error('COMMENT_DEPTH_EXCEEDED');
+        const parent = await model.findById(current.parentCommentId);
+        if (!parent) throw new Error('COMMENT_NOT_FOUND');
+        current = parent;
+      }
+
+      // current is now the Top_Level_Comment
+      effectiveParentCommentId = current.id;
+
+      // Prepend @username mention if author username is available
+      if (directTarget.author?.username) {
+        effectiveContent = `@${directTarget.author.username} ${content}`;
+      }
     }
   }
 
   const comment = await model.create({
     recipeId,
     authorId: userId,
-    content,
-    parentCommentId: parentCommentId || null,
+    content: effectiveContent,
+    parentCommentId: effectiveParentCommentId,
   });
 
   await recipeModel.incrementComments(recipeId);
@@ -66,9 +93,9 @@ export async function listComments(recipeId: string, page: number, perPage: numb
   return model.findByRecipe(recipeId, page, perPage);
 }
 
-export async function deleteComment(userId: string, id: string) {
+export async function deleteComment(userId: string, id: string, isAdmin: boolean): Promise<void> {
   const comment = await model.findById(id);
   if (!comment) throw new Error('COMMENT_NOT_FOUND');
-  if (comment.authorId !== userId) throw new Error('FORBIDDEN');
+  if (!isAdmin && comment.authorId !== userId) throw new Error('FORBIDDEN');
   await model.softDelete(id);
 }

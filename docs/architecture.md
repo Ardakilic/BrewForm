@@ -138,6 +138,17 @@ All main entities have a `deletedAt timestamp with time zone` field. Queries use
 `findFirst({ where: eq(table.deletedAt, null) })` instead of `findUnique` for soft-delete filtering,
 since `deletedAt` is not a unique constraint.
 
+### Comment Moderation (`isAdmin` Flag)
+
+`Comment_Service.createComment` and `Comment_Service.deleteComment` both accept an `isAdmin: boolean` parameter that grants elevated permissions:
+
+- **Replies** — when `isAdmin` is `true`, the service allows the caller to reply to any comment on any recipe, bypassing the normal recipe-owner check. When `isAdmin` is `false`, only the recipe owner may reply.
+- **Deletions** — when `isAdmin` is `true`, the service allows the caller to delete any comment regardless of authorship, bypassing the normal author check. When `isAdmin` is `false`, only the comment's own author may delete it.
+
+The `isAdmin` flag is derived from the authenticated user object (`c.get('user').isAdmin`) set by `authMiddleware` and forwarded by the comment router — no separate `adminMiddleware` is applied to comment routes.
+
+Default (non-admin) behaviour: only the recipe owner may reply to a comment; only the comment's author may delete it.
+
 ### Connection Pooling
 
 Configured via `DATABASE_URL` and `postgres-js` options:

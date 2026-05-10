@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { recipeApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS, DRINK_TYPES, VISIBILITY_STATES } from '@brewform/shared/constants';
 
@@ -31,6 +32,7 @@ export function RecipeListPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const page = Number(searchParams.get('page')) || 1;
   const brewMethod = searchParams.get('brewMethod') || '';
@@ -47,7 +49,6 @@ export function RecipeListPage() {
     if (visibility && user?.isAdmin === true) params.visibility = visibility;
     if (search) params.search = search;
 
-    // recipeApi.list() returns the array directly (paginated() puts array in data.data).
     recipeApi.list(params).then((data) => {
       const items = Array.isArray(data) ? (data as RecipeListItem[]) : [];
       setRecipes(items);
@@ -67,32 +68,39 @@ export function RecipeListPage() {
     setSearchParams(params);
   }
 
-  const activeFilters = [brewMethod, drinkType, user?.isAdmin === true ? visibility : ''].filter(Boolean);
+  const activeFilters = [brewMethod, drinkType, user?.isAdmin === true ? visibility : ''].filter(
+    Boolean,
+  );
+  const totalPages = Math.ceil(total / 12);
 
   return (
     <div className='mx-auto max-w-6xl px-6 py-8'>
       <SEOHead
-        title='Recipes'
+        title={t('recipe.list.title')}
         description='Browse and discover coffee brewing recipes on BrewForm.'
       />
 
-      <h1 className='text-3xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>Recipes</h1>
+      <h1 className='text-3xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+        {t('recipe.list.title')}
+      </h1>
 
       <div className='flex flex-col lg:flex-row gap-6'>
         <aside className='w-full lg:w-64 flex-shrink-0'>
           <div className='card'>
-            <h3 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>Filters</h3>
+            <h3 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
+              {t('recipe.list.filters')}
+            </h3>
 
             <div className='mb-3'>
               <label
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Search
+                {t('recipe.list.search')}
               </label>
               <input
                 type='text'
-                placeholder='Search recipes...'
+                placeholder={t('recipe.list.searchPlaceholder')}
                 value={search}
                 onChange={(e) => updateFilter('search', e.target.value)}
                 className='input-field text-sm'
@@ -104,14 +112,14 @@ export function RecipeListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Brew Method
+                {t('recipe.brewMethod')}
               </label>
               <select
                 value={brewMethod}
                 onChange={(e) => updateFilter('brewMethod', e.target.value)}
                 className='input-field text-sm'
               >
-                <option value=''>All</option>
+                <option value=''>{t('recipe.list.all')}</option>
                 {BREW_METHODS_ANY.map((m: any) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
@@ -123,14 +131,14 @@ export function RecipeListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Drink Type
+                {t('recipe.drinkType')}
               </label>
               <select
                 value={drinkType}
                 onChange={(e) => updateFilter('drinkType', e.target.value)}
                 className='input-field text-sm'
               >
-                <option value=''>All</option>
+                <option value=''>{t('recipe.list.all')}</option>
                 {DRINK_TYPES_ANY.map((d: any) => (
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
@@ -143,14 +151,14 @@ export function RecipeListPage() {
                   className='block text-sm font-medium mb-1'
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  Visibility (Admins only)
+                  {t('recipe.list.visibilityAdmin')}
                 </label>
                 <select
                   value={visibility}
                   onChange={(e) => updateFilter('visibility', e.target.value)}
                   className='input-field text-sm'
                 >
-                  <option value=''>All</option>
+                  <option value=''>{t('recipe.list.all')}</option>
                   {VISIBILITY_ANY.map((v: any) => (
                     <option key={v.value} value={v.value}>{v.label}</option>
                   ))}
@@ -163,16 +171,16 @@ export function RecipeListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Sort By
+                {t('recipe.list.sortBy')}
               </label>
               <select
                 value={sortBy}
                 onChange={(e) => updateFilter('sortBy', e.target.value)}
                 className='input-field text-sm'
               >
-                <option value='createdAt'>Newest</option>
-                <option value='likeCount'>Most Liked</option>
-                <option value='rating'>Top Rated</option>
+                <option value='createdAt'>{t('recipe.list.newest')}</option>
+                <option value='likeCount'>{t('recipe.list.mostLiked')}</option>
+                <option value='rating'>{t('recipe.list.topRated')}</option>
               </select>
             </div>
 
@@ -182,7 +190,7 @@ export function RecipeListPage() {
                 onClick={() => setSearchParams({})}
                 className='btn-secondary text-sm w-full'
               >
-                Clear Filters
+                {t('recipe.list.clearFilters')}
               </button>
             )}
           </div>
@@ -192,13 +200,13 @@ export function RecipeListPage() {
           {loading
             ? (
               <div className='text-center py-12' style={{ color: 'var(--text-secondary)' }}>
-                Loading...
+                {t('common.loading')}
               </div>
             )
             : recipes.length === 0
             ? (
               <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-                No recipes found.
+                {t('recipe.list.noResults')}
               </div>
             )
             : (
@@ -215,19 +223,24 @@ export function RecipeListPage() {
                         onClick={() => updateFilter('page', String(page - 1))}
                         className='btn-secondary'
                       >
-                        Previous
+                        {t('common.previous')}
                       </button>
                     )}
-                    <span className='py-2 px-4 text-sm' style={{ color: 'var(--text-secondary)' }}>
-                      Page {page} of {Math.ceil(total / 12)}
+                    <span
+                      className='py-2 px-4 text-sm'
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      {t('recipe.list.page')
+                        .replace('{page}', String(page))
+                        .replace('{total}', String(totalPages))}
                     </span>
-                    {page < Math.ceil(total / 12) && (
+                    {page < totalPages && (
                       <button
                         type='button'
                         onClick={() => updateFilter('page', String(page + 1))}
                         className='btn-secondary'
                       >
-                        Next
+                        {t('common.next')}
                       </button>
                     )}
                   </div>

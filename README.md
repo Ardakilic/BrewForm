@@ -10,7 +10,8 @@ notes.
 - **SCAA Taste Notes** — Structured tasting notes from the SCAA 2016 Flavor Wheel with autocomplete
 - **Brew Method Compatibility** — Data-driven validation ensures brew methods and equipment are
   compatible
-- **Social Features** — Follow brewers, like/favourite recipes, comment with OP-only replies
+- **Social Features** — Follow brewers, like/favourite recipes, comment with OP-only replies; admins can reply to and delete any comment
+- **🌐 Language Switcher** — Switch between English and Turkish from the footer dropdown
 - **Achievement Badges** — Gamification system with data-driven badge rules
 - **QR Codes** — Generate shareable QR codes for public recipes (PNG and SVG)
 - **Three Themes** — Light, Dark, and Coffee mode
