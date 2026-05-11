@@ -202,6 +202,58 @@ describe('RecipeFilterSchema', () => {
  *
  * Validates: Requirements 2.4, 2.5
  */
+describe('RecipeFilterSchema.tasteNoteIds', () => {
+  it('PBT: for any array of 1–10 valid UUIDs, comma-separated string is accepted', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }),
+        (ids) => {
+          const result = RecipeFilterSchema.safeParse({
+            tasteNoteIds: ids.join(','),
+          });
+          expect(result.success).toBe(true);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it('PBT: for any array of >10 valid UUIDs, comma-separated string is rejected', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.uuid(), { minLength: 11, maxLength: 20 }),
+        (ids) => {
+          const result = RecipeFilterSchema.safeParse({
+            tasteNoteIds: ids.join(','),
+          });
+          expect(result.success).toBe(false);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it('PBT: for any string containing a non-UUID segment, parsing is rejected', () => {
+    fc.assert(
+      fc.property(
+        fc.tuple(
+          fc.array(fc.uuid(), { minLength: 0, maxLength: 4 }),
+          fc.string({ minLength: 1, maxLength: 5 }),
+          fc.array(fc.uuid(), { minLength: 0, maxLength: 4 }),
+        ),
+        ([before, invalid, after]) => {
+          const parts = [...before, invalid, ...after];
+          const result = RecipeFilterSchema.safeParse({
+            tasteNoteIds: parts.join(','),
+          });
+          expect(result.success).toBe(false);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+});
+
 describe('Bug Condition exploration', () => {
   // ---------------------------------------------------------------------------
   // Concrete unit tests

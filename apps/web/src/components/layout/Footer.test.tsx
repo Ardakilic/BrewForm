@@ -66,7 +66,7 @@ beforeEach(() => {
 });
 
 describe('Footer — Language Switcher', () => {
-  it('renders <select> with correct options when availableLocales = ["en", "tr"]', () => {
+  it('renders language selector with correct options when availableLocales = ["en", "tr"]', async () => {
     // Requirements: 1.1, 1.2
     mockUseTranslation.mockReturnValue({
       ...defaultTranslation,
@@ -75,13 +75,15 @@ describe('Footer — Language Switcher', () => {
 
     render(<Footer />);
 
-    const select = screen.getByRole('combobox');
-    expect(select).toBeInTheDocument();
+    const trigger = screen.getByRole('combobox');
+    expect(trigger).toBeInTheDocument();
+
+    await userEvent.click(trigger);
 
     const options = screen.getAllByRole('option');
     expect(options).toHaveLength(2);
-    expect(options[0]).toHaveValue('en');
-    expect(options[1]).toHaveValue('tr');
+    expect(options[0]).toHaveTextContent('🇬🇧 English');
+    expect(options[1]).toHaveTextContent('🇹🇷 Türkçe');
   });
 
   it('does not render <select> when availableLocales = []', () => {
@@ -108,8 +110,11 @@ describe('Footer — Language Switcher', () => {
 
     render(<Footer />);
 
-    const select = screen.getByRole('combobox');
-    await userEvent.selectOptions(select, 'tr');
+    const trigger = screen.getByRole('combobox');
+    await userEvent.click(trigger);
+
+    const trOption = await screen.findByRole('option', { name: '🇹🇷 Türkçe' });
+    await userEvent.click(trOption);
 
     expect(setLocale).toHaveBeenCalledOnce();
     expect(setLocale).toHaveBeenCalledWith('tr');
@@ -125,8 +130,8 @@ describe('Footer — Language Switcher', () => {
 
     render(<Footer />);
 
-    const select = screen.getByRole('combobox') as HTMLSelectElement;
-    expect(select.value).toBe('tr');
+    const trigger = screen.getByRole('combobox');
+    expect(trigger).toHaveTextContent('🇹🇷 Türkçe');
   });
 
   it('label text equals t("preferences.locale") — "Language" for en', () => {

@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -397,9 +398,9 @@ describe('Navbar — i18n theme options', () => {
     await userEvent.click(triggers[0]);
 
     // After opening the popup, all three theme options should be visible
-    expect(await screen.findByText('Light Roast')).toBeInTheDocument();
-    expect(screen.getByText('Dark Roast')).toBeInTheDocument();
-    expect(screen.getByText('Medium Roast')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Light Roast' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Dark Roast' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Medium Roast' })).toBeInTheDocument();
   });
 
   it('shows translated theme options in popup after clicking trigger — Turkish', async () => {
@@ -415,9 +416,9 @@ describe('Navbar — i18n theme options', () => {
     await userEvent.click(triggers[0]);
 
     // After opening the popup, all three theme options should appear in Turkish
-    expect(await screen.findByText('Açık Kavurma')).toBeInTheDocument();
-    expect(screen.getByText('Koyu Kavurma')).toBeInTheDocument();
-    expect(screen.getByText('Orta Kavurma')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Açık Kavurma' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Koyu Kavurma' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Orta Kavurma' })).toBeInTheDocument();
   });
 });
 
@@ -627,9 +628,9 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    expect(await screen.findByText(enTranslations['theme.light'])).toBeInTheDocument();
-    expect(screen.getByText(enTranslations['theme.dark'])).toBeInTheDocument();
-    expect(screen.getByText(enTranslations['theme.coffee'])).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: enTranslations['theme.light'] })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: enTranslations['theme.dark'] })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: enTranslations['theme.coffee'] })).toBeInTheDocument();
   });
 
   // ── i18n option labels — Turkish ───────────────────────────────────────────
@@ -646,9 +647,9 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    expect(await screen.findByText(trTranslations['theme.light'])).toBeInTheDocument();
-    expect(screen.getByText(trTranslations['theme.dark'])).toBeInTheDocument();
-    expect(screen.getByText(trTranslations['theme.coffee'])).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: trTranslations['theme.light'] })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: trTranslations['theme.dark'] })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: trTranslations['theme.coffee'] })).toBeInTheDocument();
   });
 
   it('selecting "coffee" theme in Turkish calls setTheme with "coffee"', async () => {
@@ -684,9 +685,9 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     await userEvent.keyboard('{Enter}');
 
     // After pressing Enter, the popup should be open and options visible
-    expect(await screen.findByText('Light Roast')).toBeInTheDocument();
-    expect(screen.getByText('Dark Roast')).toBeInTheDocument();
-    expect(screen.getByText('Medium Roast')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Light Roast' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Dark Roast' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Medium Roast' })).toBeInTheDocument();
   });
 
   it('opens the theme dropdown with Space key when trigger is focused', async () => {
@@ -696,7 +697,7 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     triggers[0].focus();
     await userEvent.keyboard(' ');
 
-    expect(await screen.findByText('Light Roast')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Light Roast' })).toBeInTheDocument();
   });
 
   it('closes the theme dropdown with Escape key', async () => {
@@ -728,9 +729,9 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     await userEvent.keyboard('{ArrowDown}');
 
     // The highlighted option should be accessible — all options still visible
-    expect(await screen.findByText('Light Roast')).toBeInTheDocument();
-    expect(screen.getByText('Dark Roast')).toBeInTheDocument();
-    expect(screen.getByText('Medium Roast')).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Light Roast' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Dark Roast' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Medium Roast' })).toBeInTheDocument();
   });
 
   it('selects highlighted option with Enter key during keyboard navigation', async () => {
@@ -896,4 +897,64 @@ describe('Navbar — active route indicator', () => {
     const activeHrefs = new Set(activeLinks.map((el) => el.getAttribute('href')));
     expect(activeHrefs.size).toBeLessThanOrEqual(1);
   });
+});
+
+describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
+  const allThemeTranslations: Record<string, Record<string, string>> = {
+    en: {
+      'theme.light': 'Light Roast',
+      'theme.dark': 'Dark Roast',
+      'theme.coffee': 'Medium Roast',
+    },
+    tr: {
+      'theme.light': 'Açık Kavurma',
+      'theme.dark': 'Koyu Kavurma',
+      'theme.coffee': 'Orta Kavurma',
+    },
+  };
+
+  it(
+    'for any theme value and locale, trigger displays translated label and popup options are translated',
+    async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.constantFrom('light', 'dark', 'coffee'),
+          fc.constantFrom('en', 'tr'),
+          async (theme, locale) => {
+            const translations = allThemeTranslations[locale];
+            const t = (key: string) => translations[key] ?? key;
+
+            mockUseTheme.mockReturnValue({ theme, setTheme: vi.fn() } as ReturnType<typeof useTheme>);
+            mockUseTranslation.mockReturnValue({
+              ...defaultTranslation,
+              locale,
+              t,
+              availableLocales: ['en', 'tr'],
+            });
+
+            const { unmount } = render(<Navbar />);
+
+            try {
+              const triggers = screen.getAllByRole('combobox');
+
+              // Verify trigger shows the translated label for the selected theme
+              const expectedTriggerLabel = translations[`theme.${theme}`];
+              expect(triggers[0]).toHaveTextContent(expectedTriggerLabel);
+
+              // Open the popup
+              await userEvent.click(triggers[0]);
+
+              // All options in popup should have translated names
+              expect(await screen.findByRole('option', { name: translations['theme.light'] })).toBeInTheDocument();
+              expect(screen.getByRole('option', { name: translations['theme.dark'] })).toBeInTheDocument();
+              expect(screen.getByRole('option', { name: translations['theme.coffee'] })).toBeInTheDocument();
+            } finally {
+              unmount();
+            }
+          },
+        ),
+        { numRuns: 100 },
+      );
+    },
+  );
 });

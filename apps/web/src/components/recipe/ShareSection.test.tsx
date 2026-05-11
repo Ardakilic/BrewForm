@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ShareSection } from './ShareSection.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -139,5 +140,52 @@ describe('ShareSection — social share buttons', () => {
     expect(
       screen.getByRole('button', { name: 'Share on WhatsApp' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('ShareSection — copy behavior (task 9.2)', () => {
+  beforeEach(() => {
+    // Mock navigator.clipboard
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
+  });
+
+  it('does not render the readonly URL textbox element', () => {
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('renders QR code image with correct dimensions', () => {
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    const img = screen.getByRole('img', { name: /QR code for recipe/i });
+    expect(img).toHaveAttribute('width', '128');
+    expect(img).toHaveAttribute('height', '128');
+  });
+
+  it('copy button shows "Copied!" for 3 seconds after successful copy', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+
+    const copyButton = screen.getByRole('button', { name: /copy recipe url/i });
+    await userEvent.click(copyButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /copy recipe url/i })).toHaveTextContent('recipe.share.copied');
+    });
+  });
+
+  it('copy button shows error state for 3 seconds on clipboard failure', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+
+    const copyButton = screen.getByRole('button', { name: /copy recipe url/i });
+    await userEvent.click(copyButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /copy recipe url/i })).toHaveTextContent('recipe.share.copyError');
+    });
   });
 });

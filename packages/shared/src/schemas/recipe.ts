@@ -132,6 +132,16 @@ export const RecipeFilterSchema = z.object({
   visibility: VisibilityEnum.optional(),
   authorId: z.string().uuid().optional(),
   equipmentId: z.string().uuid().optional(),
+  tasteNoteIds: z.string().optional().refine(
+    (val) => {
+      if (!val) return true;
+      const ids = val.split(',');
+      if (ids.length > 10) return false;
+      return ids.every((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim()));
+    },
+    { message: 'tasteNoteIds must be at most 10 comma-separated UUIDs' },
+  ),
+  // Keep tasteNoteId for backward compatibility (deprecated)
   tasteNoteId: z.string().uuid().optional(),
   grinder: z.string().optional(),
   search: z.string().optional(),

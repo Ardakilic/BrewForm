@@ -1,5 +1,6 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
+import fc from 'npm:fast-check@3.22.0';
 import { computeBrewRatio, computeExtractionYield, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import {
@@ -266,5 +267,119 @@ describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
       });
       expect(result.success).toBe(false);
     });
+  });
+});
+
+describe('tasteNoteIds AND logic filtering', () => {
+  // ---------------------------------------------------------------------------
+  // Minimal Drizzle-ORM-like condition builders (no real DB needed)
+  // ---------------------------------------------------------------------------
+  type Condition = { type: string; column: string; value: unknown };
+
+  function eq(column: string, value: unknown): Condition {
+    return { type: 'eq', column, value };
+  }
+
+  function inArray(column: string, _subquery: unknown): Condition {
+    return { type: 'inArray', column, value: _subquery };
+  }
+
+  function and(...conditions: Condition[]): { type: 'and'; conditions: Condition[] } {
+    return { type: 'and', conditions };
+  }
+
+  let capturedConditions: Condition[] = [];
+
+  const mockModel = {
+    findMany: (
+      where: unknown,
+      _page: number,
+      _perPage: number,
+      _sortBy: string,
+      _sortOrder: string,
+    ) => {
+      if ((where as { type: string }).type === 'and') {
+        capturedConditions = (where as { type: string; conditions: Condition[] }).conditions;
+      } else if (Array.isArray(where)) {
+        capturedConditions = where as Condition[];
+      } else {
+        capturedConditions = [where as Condition];
+      }
+      return Promise.resolve({ data: [], meta: { page: 1, perPage: 20, total: 0, totalPages: 0 } });
+    },
+  };
+
+  const recipes = {
+    visibility: 'recipes.visibility',
+    currentVersionId: 'recipes.currentVersionId',
+  };
+
+  const recipeTasteNotes = {
+    recipeVersionId: 'recipeTasteNotes.recipeVersionId',
+    tasteNoteId: 'recipeTasteNotes.tasteNoteId',
+  };
+
+  // deno-lint-ignore no-explicit-any
+  const db: any = {
+    select: () => ({
+      from: (_table: any) => ({
+        where: (cond: unknown) => cond,
+      }),
+    }),
+  };
+
+  async function listRecipes_withTasteNoteFilters(filters: any, page: number, perPage: number) {
+    const conditions: any[] = [eq(recipes.visibility, 'public')];
+
+    if (filters.tasteNoteIds) {
+      const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
+      // AND logic: recipe's current version must have ALL specified taste notes
+      for (const noteId of ids) {
+        conditions.push(
+          inArray(
+            recipes.currentVersionId,
+            db.select({ id: recipeTasteNotes.recipeVersionId })
+              .from(recipeTasteNotes)
+              .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
+          ),
+        );
+      }
+    }
+
+    const where = conditions.length > 1 ? and(...conditions) : conditions[0];
+    return mockModel.findMany(where, page, perPage, 'createdAt', 'desc');
+  }
+
+  it('PBT: for any subset of 1–10 taste note IDs, parsing splits correctly and generates the right number of conditions', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }),
+        async (ids) => {
+          capturedConditions = [];
+          const tasteNoteIds = ids.join(',');
+          await listRecipes_withTasteNoteFilters({ tasteNoteIds }, 1, 20);
+
+          // First condition is visibility eq
+          expect(capturedConditions.length).toBe(1 + ids.length);
+
+          const tasteNoteConditions = capturedConditions.filter(
+            (c) => c.type === 'inArray' && c.column === 'recipes.currentVersionId',
+          );
+          expect(tasteNoteConditions.length).toBe(ids.length);
+
+          // Verify each ID appears in exactly one condition
+          ids.forEach((noteId) => {
+            const matching = tasteNoteConditions.filter(
+              (c) =>
+                (c.value as Condition).type === 'eq' &&
+                (c.value as Condition).column === 'recipeTasteNotes.tasteNoteId' &&
+                (c.value as Condition).value === noteId,
+            );
+            expect(matching.length).toBe(1);
+          });
+        },
+      ),
+      { numRuns: 100 },
+    );
   });
 });

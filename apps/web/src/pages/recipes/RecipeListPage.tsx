@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS, DRINK_TYPES, VISIBILITY_STATES } from '@brewform/shared/constants';
+import { TasteNotesFilter, TasteNoteFlat } from '../../components/recipe/TasteNotesFilter.tsx';
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -18,7 +19,7 @@ const DRINK_TYPES_ANY = DRINK_TYPES as unknown as any[];
 const VISIBILITY_ANY = VISIBILITY_STATES as unknown as any[];
 
 /** Equipment type → human-readable label */
-const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
+export const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
   portafilter: 'Portafilter',
   basket: 'Basket',
   puck_screen: 'Puck Screen',
@@ -33,7 +34,7 @@ const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
 };
 
 /** Ordered list of equipment types to show as separate dropdowns */
-const EQUIPMENT_FILTER_TYPES = [
+export const EQUIPMENT_FILTER_TYPES = [
   'portafilter',
   'basket',
   'tamper',
@@ -51,13 +52,6 @@ interface EquipmentItem {
   id: string;
   name: string;
   type: string;
-}
-
-interface TasteNoteFlat {
-  id: string;
-  name: string;
-  depth: number;
-  parentId: string | null;
 }
 
 interface RecipeListItem {
@@ -92,6 +86,7 @@ export function RecipeListPage() {
   const [loading, setLoading] = useState(true);
   const [allEquipment, setAllEquipment] = useState<EquipmentItem[]>(cachedEquipment ?? []);
   const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteFlat[]>(cachedTasteNotes ?? []);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -102,7 +97,10 @@ export function RecipeListPage() {
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
   const equipmentId = searchParams.get('equipmentId') || '';
-  const tasteNoteId = searchParams.get('tasteNoteId') || '';
+  const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
+  const tasteNoteIds = tasteNoteIdsParam
+    ? tasteNoteIdsParam.split(',').map((id) => id.trim()).filter((id) => isValidUuid(id))
+    : [];
 
   // Fetch static data once (equipment + taste notes), use module-level cache
   useEffect(() => {
@@ -130,7 +128,7 @@ export function RecipeListPage() {
     if (visibility && user?.isAdmin === true) params.visibility = visibility;
     if (search) params.search = search;
     if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
-    if (tasteNoteId && isValidUuid(tasteNoteId)) params.tasteNoteId = tasteNoteId;
+    if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
 
     recipeApi.list(params).then((data) => {
       const items = Array.isArray(data) ? (data as RecipeListItem[]) : [];
@@ -138,11 +136,17 @@ export function RecipeListPage() {
       setTotal(items.length);
     }).catch(() => {
     }).finally(() => setLoading(false));
-  }, [page, brewMethod, drinkType, visibility, sortBy, search, user, equipmentId, tasteNoteId]);
+  }, [page, brewMethod, drinkType, visibility, sortBy, search, user, equipmentId, tasteNoteIds]);
 
-  function updateFilter(key: string, value: string) {
+  function updateFilter(key: string, value: string | string[]) {
     const params = new URLSearchParams(searchParams);
-    if (value) {
+    if (Array.isArray(value)) {
+      if (value.length > 0) {
+        params.set(key, value.join(','));
+      } else {
+        params.delete(key);
+      }
+    } else if (value) {
       params.set(key, value);
     } else {
       params.delete(key);
@@ -160,23 +164,17 @@ export function RecipeListPage() {
     {} as Record<string, EquipmentItem[]>,
   );
 
-  // Build SCAA taste note tree: root categories → children (depth=1 mid-categories + depth=2 leaves)
-  // For the dropdown we show: root categories as optgroup headers, leaves as options
-  const tasteNoteRoots = allTasteNotes.filter((n) => n.depth === 0);
-  const tasteNoteMids = allTasteNotes.filter((n) => n.depth === 1);
-  const tasteNoteLeaves = allTasteNotes.filter((n) => n.depth === 2);
-
   // Active filter labels
   const activeEquipmentName = allEquipment.find((e) => e.id === equipmentId)?.name ?? null;
-  const activeTasteNoteName = allTasteNotes.find((n) => n.id === tasteNoteId)?.name ?? null;
 
-  const activeFilters = [
-    brewMethod,
-    drinkType,
-    user?.isAdmin === true ? visibility : '',
-    equipmentId && isValidUuid(equipmentId) ? equipmentId : '',
-    tasteNoteId && isValidUuid(tasteNoteId) ? tasteNoteId : '',
-  ].filter(Boolean);
+  const hasActiveFilters = !!(
+    brewMethod ||
+    drinkType ||
+    (user?.isAdmin === true ? visibility : '') ||
+    (equipmentId && isValidUuid(equipmentId)) ||
+    tasteNoteIds.length > 0 ||
+    search
+  );
 
   const totalPages = Math.ceil(total / 12);
 
@@ -194,10 +192,42 @@ export function RecipeListPage() {
       <div className='flex flex-col lg:flex-row gap-6'>
         {/* ── Sidebar filters ── */}
         <aside className='w-full lg:w-64 flex-shrink-0'>
-          <div className='card space-y-3'>
-            <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-              {t('recipe.list.filters')}
-            </h3>
+          <button
+            type='button'
+            onClick={() => setIsSidebarOpen((prev) => !prev)}
+            aria-expanded={isSidebarOpen}
+            aria-controls='filter-sidebar'
+            className={[
+              'lg:hidden flex items-center justify-center min-h-11 min-w-11 rounded-md mb-2',
+              'border border-[color:var(--border-primary)]',
+              'bg-[color:var(--bg-tertiary)] text-[color:var(--text-primary)]',
+              'text-sm select-none',
+            ].join(' ')}
+          >
+            {t('recipe.list.filters')}
+          </button>
+          <div
+            id='filter-sidebar'
+            className={[
+              'card space-y-3',
+              isSidebarOpen ? 'block' : 'hidden',
+              'lg:block',
+            ].join(' ')}
+          >
+            <div className='flex items-center justify-between'>
+              <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
+                {t('recipe.list.filters')}
+              </h3>
+              {hasActiveFilters && (
+                <button
+                  type='button'
+                  onClick={() => setSearchParams({})}
+                  className='btn-secondary text-sm'
+                >
+                  {t('recipe.list.clearFilters')}
+                </button>
+              )}
+            </div>
 
             {/* Search */}
             <FilterField label={t('recipe.list.search')}>
@@ -278,46 +308,15 @@ export function RecipeListPage() {
               );
             })}
 
-            {/* ── Taste Note filter — SCAA hierarchy dropdown ── */}
+            {/* ── Taste Notes multi-select filter ── */}
             {allTasteNotes.length > 0 && (
-              <FilterField label={t('recipe.list.tasteNoteFilter')}>
-                <select
-                  value={tasteNoteId}
-                  onChange={(e) => updateFilter('tasteNoteId', e.target.value)}
-                  className='input-field text-sm'
-                  aria-label='Filter by taste note'
-                >
-                  <option value=''>{t('recipe.list.all')}</option>
-                  {tasteNoteRoots.map((root) => {
-                    // Get mid-categories under this root
-                    const mids = tasteNoteMids.filter((m) => m.parentId === root.id);
-                    if (mids.length === 0) {
-                      // Root has no children — show it directly
-                      return (
-                        <option key={root.id} value={root.id}>{root.name}</option>
-                      );
-                    }
-                    return (
-                      <optgroup key={root.id} label={root.name}>
-                        {mids.map((mid) => {
-                          const leaves = tasteNoteLeaves.filter((l) => l.parentId === mid.id);
-                          if (leaves.length === 0) {
-                            return (
-                              <option key={mid.id} value={mid.id}>
-                                {mid.name}
-                              </option>
-                            );
-                          }
-                          return leaves.map((leaf) => (
-                            <option key={leaf.id} value={leaf.id}>
-                              {leaf.name}
-                            </option>
-                          ));
-                        })}
-                      </optgroup>
-                    );
-                  })}
-                </select>
+              <FilterField label={t('recipe.list.tasteNotesFilter')}>
+                <TasteNotesFilter
+                  allTasteNotes={allTasteNotes}
+                  selectedIds={tasteNoteIds}
+                  onChange={(ids) => updateFilter('tasteNoteIds', ids)}
+                  placeholder={t('recipe.list.tasteNotesPlaceholder')}
+                />
               </FilterField>
             )}
 
@@ -342,24 +341,21 @@ export function RecipeListPage() {
                 onRemove={() => updateFilter('equipmentId', '')}
               />
             )}
-            {(tasteNoteId && isValidUuid(tasteNoteId)) && (
-              <ActiveFilterBadge
-                label={t('recipe.list.tasteNoteFilter')}
-                value={activeTasteNoteName || t('recipe.list.tasteNoteFilterActive')}
-                onRemove={() => updateFilter('tasteNoteId', '')}
-              />
-            )}
-
-            {/* Clear all */}
-            {activeFilters.length > 0 && (
-              <button
-                type='button'
-                onClick={() => setSearchParams({})}
-                className='btn-secondary text-sm w-full'
-              >
-                {t('recipe.list.clearFilters')}
-              </button>
-            )}
+            {tasteNoteIds.length > 0 &&
+              tasteNoteIds.map((id) => {
+                const note = allTasteNotes.find((n) => n.id === id);
+                return (
+                  <ActiveFilterBadge
+                    key={id}
+                    label={t('recipe.list.tasteNotesFilter')}
+                    value={note?.name || t('recipe.list.tasteNoteFilterActive')}
+                    onRemove={() => {
+                      const next = tasteNoteIds.filter((tid) => tid !== id);
+                      updateFilter('tasteNoteIds', next);
+                    }}
+                  />
+                );
+              })}
           </div>
         </aside>
 

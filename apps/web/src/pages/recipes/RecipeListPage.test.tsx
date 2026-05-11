@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { RecipeListPage } from './RecipeListPage';
 
 // ── External deps ──────────────────────────────────────────────────────────
@@ -41,7 +42,8 @@ import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { recipeApi, equipmentApi, tasteApi } from '../../api/index.ts';
-import { _resetStaticCache } from './RecipeListPage';
+import fc from 'fast-check';
+import { _resetStaticCache, EQUIPMENT_TYPE_LABELS, EQUIPMENT_FILTER_TYPES } from './RecipeListPage';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -73,6 +75,10 @@ const enT = (key: string) => {
     'recipe.list.equipmentFilterActive': 'Equipment filter active',
     'recipe.list.tasteNoteFilter': 'Taste Note',
     'recipe.list.tasteNoteFilterActive': 'Taste note filter active',
+    'recipe.list.tasteNotesFilter': 'Taste Notes',
+    'recipe.list.tasteNotesPlaceholder': 'Select taste notes...',
+    'recipe.list.tasteNotesSelected': '{count} selected',
+    'recipe.list.tasteNotesMax': 'Maximum 10 taste notes',
     'common.loading': 'Loading...',
     'common.previous': 'Previous',
     'common.next': 'Next',
@@ -101,6 +107,10 @@ const trT = (key: string) => {
     'recipe.list.equipmentFilterActive': 'Ekipman filtresi aktif',
     'recipe.list.tasteNoteFilter': 'Tat Notu',
     'recipe.list.tasteNoteFilterActive': 'Tat notu filtresi aktif',
+    'recipe.list.tasteNotesFilter': 'Tat Notaları',
+    'recipe.list.tasteNotesPlaceholder': 'Tat notası seçin...',
+    'recipe.list.tasteNotesSelected': '{count} seçili',
+    'recipe.list.tasteNotesMax': 'En fazla 10 tat notası',
     'common.loading': 'Yükleniyor...',
     'common.previous': 'Önceki',
     'common.next': 'İleri',
@@ -152,7 +162,7 @@ describe('RecipeListPage — i18n', () => {
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
     expect(screen.getByRole('heading', { name: 'Recipes' })).toBeInTheDocument();
-    expect(screen.getByText('Filters')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Filters' })).toBeInTheDocument();
     expect(screen.getByText('Search')).toBeInTheDocument();
     expect(screen.getByText('Brew Method')).toBeInTheDocument();
     expect(screen.getByText('Drink Type')).toBeInTheDocument();
@@ -167,7 +177,7 @@ describe('RecipeListPage — i18n', () => {
     await waitFor(() => expect(screen.queryByText('Yükleniyor...')).not.toBeInTheDocument());
 
     expect(screen.getByRole('heading', { name: 'Tarifler' })).toBeInTheDocument();
-    expect(screen.getByText('Filtreler')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Filtreler' })).toBeInTheDocument();
     expect(screen.getByText('Ara')).toBeInTheDocument();
     expect(screen.getByText('Demleme Yöntemi')).toBeInTheDocument();
     expect(screen.getByText('İçecek Türü')).toBeInTheDocument();
@@ -371,7 +381,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
-    expect(screen.getByLabelText('Filter by taste note')).toBeInTheDocument();
+    expect(screen.getByText('Taste Notes')).toBeInTheDocument();
   });
 
   it('does NOT render taste note dropdown when no taste notes are loaded', async () => {
@@ -381,7 +391,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
-    expect(screen.queryByLabelText('Filter by taste note')).not.toBeInTheDocument();
+    expect(screen.queryByText('Taste Notes')).not.toBeInTheDocument();
   });
 
   it('shows leaf taste notes as options in the dropdown', async () => {
@@ -389,12 +399,20 @@ describe('RecipeListPage — taste note filter', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.getByRole('option', { name: 'Raspberry' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    const trigger = screen.getAllByRole('combobox').find((el) =>
+      el.textContent?.includes('Select taste notes...')
+    );
+    expect(trigger).toBeDefined();
+    await userEvent.click(trigger!);
+
+    expect(await screen.findByRole('option', { name: 'Raspberry' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Rose' })).toBeInTheDocument();
   });
 
-  it('passes tasteNoteId to API when URL has a valid UUID', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: VALID_UUID }));
+  it('passes tasteNoteIds to API when URL has a valid UUID', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteIds: VALID_UUID }));
     mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
 
     render(<RecipeListPage />);
@@ -402,35 +420,35 @@ describe('RecipeListPage — taste note filter', () => {
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
     expect(mockRecipeApi.list).toHaveBeenCalledWith(
-      expect.objectContaining({ tasteNoteId: VALID_UUID }),
+      expect.objectContaining({ tasteNoteIds: VALID_UUID }),
     );
   });
 
-  it('does NOT pass tasteNoteId to API when value is not a valid UUID', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: 'not-a-uuid' }));
+  it('does NOT pass tasteNoteIds to API when value is not a valid UUID', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteIds: 'not-a-uuid' }));
 
     render(<RecipeListPage />);
 
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
     const callArgs = mockRecipeApi.list.mock.calls[0][0] as Record<string, string>;
-    expect(callArgs).not.toHaveProperty('tasteNoteId');
+    expect(callArgs).not.toHaveProperty('tasteNoteIds');
   });
 
   it('shows active taste note filter badge when tasteNoteId is in URL', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: VALID_UUID }));
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteIds: VALID_UUID }));
     mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
 
     render(<RecipeListPage />);
 
     // The badge remove button should appear
-    await waitFor(() => expect(screen.getByLabelText('Remove Taste Note filter')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText('Remove Taste Notes filter')).toBeInTheDocument());
     // The name appears at least once (may also appear in the dropdown option)
     expect(screen.getAllByText('Raspberry').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows fallback text in badge when taste note name is not found', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: VALID_UUID }));
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteIds: VALID_UUID }));
     mockTasteApi.flat.mockResolvedValue([]);
 
     render(<RecipeListPage />);
@@ -440,13 +458,134 @@ describe('RecipeListPage — taste note filter', () => {
 
   it('shows taste note filter label in Turkish when locale is tr', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteId: VALID_UUID }));
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteIds: VALID_UUID }));
     mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.getByText('Tat Notu')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Tat Notaları')).toBeInTheDocument());
     // Raspberry appears in the dropdown option and/or badge
     await waitFor(() => expect(screen.getAllByText('Raspberry').length).toBeGreaterThanOrEqual(1));
+  });
+});
+
+describe('RecipeListPage — property-based tests', () => {
+  const VALID_UUID = '11111111-1111-1111-1111-111111111111';
+
+  function resetToDefaults() {
+    cleanup();
+    vi.clearAllMocks();
+    _resetStaticCache();
+    mockUseTranslation.mockReturnValue(defaultTranslation);
+    mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
+    mockUseSearchParams.mockReturnValue(makeSearchParams());
+    mockRecipeApi.list.mockResolvedValue([]);
+    mockEquipmentApi.list.mockResolvedValue([]);
+    mockTasteApi.flat.mockResolvedValue([]);
+  }
+
+  it('Property 5: equipment grouping correctness — exactly one dropdown per distinct type present', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            id: fc.uuid(),
+            name: fc.string({ minLength: 1 }),
+            type: fc.constantFrom(...EQUIPMENT_FILTER_TYPES),
+          }),
+          { maxLength: 20 },
+        ),
+        async (equipmentList) => {
+          resetToDefaults();
+          mockEquipmentApi.list.mockResolvedValue(equipmentList);
+
+          render(<RecipeListPage />);
+
+          await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+          const distinctTypes = new Set(equipmentList.map((e) => e.type));
+
+          for (const type of EQUIPMENT_FILTER_TYPES) {
+            const label = `Filter by ${EQUIPMENT_TYPE_LABELS[type]}`;
+            if (distinctTypes.has(type)) {
+              expect(screen.getByLabelText(label)).toBeInTheDocument();
+            } else {
+              expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+            }
+          }
+        },
+      ),
+      { numRuns: 30 },
+    );
+  });
+
+  it('Property 6: UUID validation prevents invalid equipmentId from being passed to API', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.string({ minLength: 1 }).filter(
+          (s) =>
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s),
+        ),
+        async (invalidId) => {
+          resetToDefaults();
+          mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: invalidId }));
+
+          render(<RecipeListPage />);
+
+          await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+          const callArgs = mockRecipeApi.list.mock.calls[0]?.[0] as
+            | Record<string, string>
+            | undefined;
+          expect(callArgs).not.toHaveProperty('equipmentId');
+        },
+      ),
+      { numRuns: 30 },
+    );
+  });
+
+  it('Property 7: Clear Filters button visibility reflects hasActiveFilters state', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          brewMethod: fc.boolean(),
+          drinkType: fc.boolean(),
+          equipmentId: fc.boolean(),
+          tasteNoteIds: fc.boolean(),
+          search: fc.boolean(),
+        }),
+        async (active) => {
+          resetToDefaults();
+
+          const params: Record<string, string> = {};
+          if (active.brewMethod) params.brewMethod = 'ESPRESSO';
+          if (active.drinkType) params.drinkType = 'ESPRESSO';
+          if (active.equipmentId) params.equipmentId = VALID_UUID;
+          if (active.tasteNoteIds) params.tasteNoteIds = VALID_UUID;
+          if (active.search) params.search = 'test-search';
+
+          mockUseSearchParams.mockReturnValue(makeSearchParams(params));
+
+          render(<RecipeListPage />);
+
+          await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+          const expectedHasActive =
+            active.brewMethod ||
+            active.drinkType ||
+            active.equipmentId ||
+            active.tasteNoteIds ||
+            active.search;
+
+          const clearButton = screen.queryByRole('button', { name: 'Clear Filters' });
+          if (expectedHasActive) {
+            expect(clearButton).toBeInTheDocument();
+          } else {
+            expect(clearButton).not.toBeInTheDocument();
+          }
+        },
+      ),
+      { numRuns: 30 },
+    );
   });
 });

@@ -292,7 +292,21 @@ export async function listRecipes(filters: any, page: number, perPage: number, r
     );
   }
 
-  if (filters.tasteNoteId) {
+  if (filters.tasteNoteIds) {
+    const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
+    // AND logic: recipe's current version must have ALL specified taste notes
+    for (const noteId of ids) {
+      conditions.push(
+        inArray(
+          recipes.currentVersionId,
+          db.select({ id: recipeTasteNotes.recipeVersionId })
+            .from(recipeTasteNotes)
+            .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
+        ),
+      );
+    }
+  } else if (filters.tasteNoteId) {
+    // Backward compatibility: single taste note filter
     conditions.push(
       inArray(
         recipes.currentVersionId,

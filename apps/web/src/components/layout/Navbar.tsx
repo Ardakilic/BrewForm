@@ -53,10 +53,16 @@ function ThemeSwitcher({ theme, setTheme, t }: ThemeSwitcherProps) {
     { value: 'coffee', labelKey: 'theme.coffee' },
   ];
 
+  const itemToStringLabel = useCallback(
+    (val: string) => t(`theme.${val}`) || val,
+    [t],
+  );
+
   return (
     <Select.Root
       value={theme}
       onValueChange={(val) => setTheme(val as Theme)}
+      itemToStringLabel={itemToStringLabel}
     >
       {/* Trigger: pill-shaped button showing current theme name with a chevron */}
       <Select.Trigger

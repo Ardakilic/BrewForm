@@ -86,21 +86,9 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
           />
         </div>
 
-        {/* Right side: URL + buttons */}
+        {/* Right side: buttons */}
         <div className='flex flex-col gap-3 flex-1 min-w-0'>
-          {/* Shareable URL display (Requirement 9.3) */}
-          <div
-            className='input-field text-sm truncate select-all'
-            style={{ color: 'var(--text-secondary)', cursor: 'text' }}
-            role='textbox'
-            aria-label='Shareable recipe URL'
-            aria-readonly='true'
-            title={shareUrl}
-          >
-            {shareUrl}
-          </div>
-
-          {/* Copy button + PNG download button (Requirements 9.4, 9.5, 9.6) */}
+          {/* Copy URL + Download QR buttons */}
           <div className='flex gap-2'>
             <button
               type='button'
@@ -125,7 +113,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
             </button>
           </div>
 
-          {/* Social share buttons (Requirements 9.7, 9.8) */}
+          {/* Social share buttons */}
           <div className='flex gap-2'>
             <button
               type='button'
