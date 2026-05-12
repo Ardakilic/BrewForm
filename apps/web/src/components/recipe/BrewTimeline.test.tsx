@@ -10,18 +10,18 @@
  * - Extraction segment width% = ((extractionTimeSeconds - preInfusionTimeSeconds) / extractionTimeSeconds) * 100
  * - Both percentages sum to 100
  *
- * Property 5: Timeline axis markers at 5-second intervals
+ * Property 5: Timeline axis markers at adaptive intervals
  * Validates: Requirements 6.4
  *
  * For any extractionTimeSeconds > 0, the timeline SHALL produce markers at
- * 0, 5, 10, ..., up to the largest multiple of 5 ≤ extractionTimeSeconds,
- * plus a final marker at extractionTimeSeconds if it's not a multiple of 5.
+ * adaptive intervals (5s for ≤60s, 15s for 61–120s, 30s for >120s),
+ * plus a final marker at extractionTimeSeconds if it's not aligned to the step.
  */
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import fc from 'fast-check';
-import { BrewTimeline } from './BrewTimeline';
+import { BrewTimeline } from './BrewTimeline.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import type { ReactNode } from 'react';
 
@@ -248,7 +248,7 @@ describe('BrewTimeline — Property 4: Timeline segment proportional widths', ()
  * Property 5: Timeline axis markers at 5-second intervals
  * Validates: Requirements 6.4
  */
-describe('BrewTimeline — Property 5: Timeline axis markers at 5-second intervals', () => {
+describe('BrewTimeline — Property 5: Timeline axis markers at adaptive intervals', () => {
   it('for any extractionTimeSeconds, markers include 0 and the total', () => {
     fc.assert(
       fc.property(
@@ -263,29 +263,80 @@ describe('BrewTimeline — Property 5: Timeline axis markers at 5-second interva
     );
   });
 
-  it('for any extractionTimeSeconds, all markers except possibly the last are multiples of 5', () => {
+  it('for any extractionTimeSeconds, all markers except possibly the last are aligned to the step', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 1, max: 300 }),
         (total) => {
           const markers = getAxisMarkerValues(total);
+          const step = total > 120 ? 30 : total > 60 ? 15 : 5;
 
-          // All markers except the last must be multiples of 5
+          // All markers except the last must be multiples of the step
           const allButLast = markers.slice(0, -1);
           for (const m of allButLast) {
-            expect(m % 5).toBe(0);
+            expect(m % step).toBe(0);
           }
 
-          // The last marker is either a multiple of 5 (when total is) or total itself
+          // The last marker is either aligned (when total is) or total itself
           const last = markers[markers.length - 1];
-          if (total % 5 === 0) {
-            expect(last % 5).toBe(0);
+          if (total % step === 0) {
+            expect(last % step).toBe(0);
           } else {
             expect(last).toBe(total);
           }
         },
       ),
       { numRuns: 200 },
+    );
+  });
+
+  it('uses 30s intervals for extractionTimeSeconds > 120', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 121, max: 300 }),
+        (total) => {
+          const markers = getAxisMarkerValues(total);
+          const allButLast = markers.slice(0, -1);
+          for (const m of allButLast) {
+            expect(m % 30).toBe(0);
+          }
+          expect(markers.length).toBeLessThanOrEqual(12); // 0,30,60,...,300 + possibly total
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it('uses 15s intervals for 61s ≤ extractionTimeSeconds ≤ 120s', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 61, max: 120 }),
+        (total) => {
+          const markers = getAxisMarkerValues(total);
+          const allButLast = markers.slice(0, -1);
+          for (const m of allButLast) {
+            expect(m % 15).toBe(0);
+          }
+          expect(markers.length).toBeLessThanOrEqual(10); // 0,15,30,...,120 + possibly total
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  it('uses 5s intervals for extractionTimeSeconds ≤ 60', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 60 }),
+        (total) => {
+          const markers = getAxisMarkerValues(total);
+          const allButLast = markers.slice(0, -1);
+          for (const m of allButLast) {
+            expect(m % 5).toBe(0);
+          }
+        },
+      ),
+      { numRuns: 100 },
     );
   });
 
@@ -304,33 +355,31 @@ describe('BrewTimeline — Property 5: Timeline axis markers at 5-second interva
     );
   });
 
-  it('for any extractionTimeSeconds that is a multiple of 5, the last marker equals the total', () => {
+  it('for any extractionTimeSeconds that aligns to its step, the last marker equals the total', () => {
     fc.assert(
       fc.property(
-        // multiples of 5 from 5 to 300
         fc.integer({ min: 1, max: 60 }).map((n) => n * 5),
         (total) => {
           const markers = getAxisMarkerValues(total);
           const last = markers[markers.length - 1];
           expect(last).toBe(total);
-          // And it should be a multiple of 5
-          expect(last % 5).toBe(0);
         },
       ),
       { numRuns: 100 },
     );
   });
 
-  it('for any extractionTimeSeconds not a multiple of 5, the second-to-last marker is the largest multiple of 5 ≤ total', () => {
+  it('for any extractionTimeSeconds not aligned to its step, the second-to-last marker is the largest aligned value ≤ total', () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 1, max: 300 }).filter((n) => n % 5 !== 0),
         (total) => {
           const markers = getAxisMarkerValues(total);
+          const step = total > 120 ? 30 : total > 60 ? 15 : 5;
           // Last marker must be total
           expect(markers[markers.length - 1]).toBe(total);
-          // Second-to-last must be the largest multiple of 5 ≤ total
-          const expectedSecondToLast = Math.floor(total / 5) * 5;
+          // Second-to-last must be the largest multiple of step ≤ total
+          const expectedSecondToLast = Math.floor(total / step) * step;
           if (expectedSecondToLast > 0) {
             expect(markers[markers.length - 2]).toBe(expectedSecondToLast);
           }

@@ -7,11 +7,19 @@ interface BrewTimelineProps {
 }
 
 function generateAxisMarkers(totalSeconds: number): number[] {
+  // Adaptive interval: avoid crowding for long extractions (pour-over, french press)
+  let step = 5;
+  if (totalSeconds > 120) {
+    step = 30; // > 2 min → every 30s
+  } else if (totalSeconds > 60) {
+    step = 15; // > 1 min → every 15s
+  }
+
   const markers: number[] = [];
-  for (let s = 0; s <= totalSeconds; s += 5) {
+  for (let s = 0; s <= totalSeconds; s += step) {
     markers.push(s);
   }
-  if (totalSeconds % 5 !== 0) {
+  if (totalSeconds % step !== 0) {
     markers.push(totalSeconds);
   }
   return markers;
