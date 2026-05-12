@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/index';
 import { IntensityDots } from '../recipe/IntensityDots.tsx';
 
@@ -24,11 +24,11 @@ export function TasteAutocomplete({
   onIntensitiesChange,
 }: Props) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<TasteNote[]>([]);
   const [allNotes, setAllNotes] = useState<TasteNote[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
 
   useEffect(() => {
     api.get<TasteNote[]>('/taste-notes/flat').then((data) => {
@@ -46,32 +46,70 @@ export function TasteAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const search = useCallback((q: string) => {
-    if (q.length < 3) {
-      setResults([]);
-      return;
+  const groupedResults = useMemo(() => {
+    const noteById = new Map(allNotes.map((n) => [n.id, n]));
+
+    function getRootId(note: TasteNote): string | null {
+      if (note.depth === 0) return note.id;
+      if (!note.parentId) return null;
+      const parent = noteById.get(note.parentId);
+      if (!parent) return null;
+      return getRootId(parent);
     }
-    const lower = q.toLowerCase();
-    const matched = allNotes.filter((note) => note.name.toLowerCase().includes(lower));
-    const parentIds = new Set<string>();
-    matched.forEach((note) => {
-      if (note.parentId) parentIds.add(note.parentId);
-    });
-    const expanded = allNotes.filter((note) =>
-      matched.some((m) => m.id === note.id) || parentIds.has(note.id)
+
+    const lower = query.trim().toLowerCase();
+    const items = allNotes.filter((n) => n.depth >= 1);
+    const filtered = lower
+      ? items.filter((n) => n.name.toLowerCase().includes(lower))
+      : items;
+
+    const groups = new Map<string, { root: TasteNote; items: TasteNote[] }>();
+
+    for (const item of filtered) {
+      const rootId = getRootId(item);
+      if (!rootId) continue;
+      const root = noteById.get(rootId);
+      if (!root) continue;
+      if (!groups.has(rootId)) {
+        groups.set(rootId, { root, items: [] });
+      }
+      groups.get(rootId)!.items.push(item);
+    }
+
+    const sorted = Array.from(groups.values()).sort((a, b) =>
+      a.root.name.localeCompare(b.root.name),
     );
-    const unique = Array.from(new Map(expanded.map((n) => [n.id, n])).values());
-    unique.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
-    setResults(unique);
-  }, [allNotes]);
+
+    for (const group of sorted) {
+      group.items.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
+    }
+
+    return sorted;
+  }, [allNotes, query]);
+
+  const selectableIds = useMemo(
+    () => groupedResults.flatMap((g) => g.items.map((i) => i.id)),
+    [groupedResults],
+  );
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(query), 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [query, search]);
+    if (isOpen && selectableIds.length > 0) {
+      setHighlightedId((prev) =>
+        prev && selectableIds.includes(prev) ? prev : selectableIds[0],
+      );
+    } else {
+      setHighlightedId(null);
+    }
+  }, [isOpen, selectableIds]);
+
+  useEffect(() => {
+    if (highlightedId) {
+      const el = itemRefs.current.get(highlightedId);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightedId]);
 
   function toggleNote(id: string) {
     if (selectedIds.includes(id)) {
@@ -94,6 +132,41 @@ export function TasteAutocomplete({
     const current = intensities[id] ?? 2;
     const next = current >= 3 ? 1 : current + 1;
     onIntensitiesChange({ ...intensities, [id]: next });
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    if (selectableIds.length === 0) {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const idx = highlightedId ? selectableIds.indexOf(highlightedId) : -1;
+      const nextIdx = idx < selectableIds.length - 1 ? idx + 1 : 0;
+      setHighlightedId(selectableIds[nextIdx]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const idx = highlightedId ? selectableIds.indexOf(highlightedId) : 0;
+      const nextIdx = idx > 0 ? idx - 1 : selectableIds.length - 1;
+      setHighlightedId(selectableIds[nextIdx]);
+    } else if (e.key === 'Enter') {
+      if (highlightedId) {
+        e.preventDefault();
+        toggleNote(highlightedId);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
   }
 
   const selectedNotes = allNotes.filter((n) => selectedIds.includes(n.id));
@@ -157,36 +230,71 @@ export function TasteAutocomplete({
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
-        placeholder='Search SCAA taste notes (type 3+ characters)...'
+        onKeyDown={handleKeyDown}
+        placeholder='Search SCAA taste notes...'
         className='input-field'
       />
 
-      {isOpen && results.length > 0 && (
+      {isOpen && (
         <ul
           className='absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded border'
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
         >
-          {results.map((note) => (
+          {allNotes.length === 0 ? (
             <li
-              key={note.id}
-              className='cursor-pointer px-3 py-2 hover:opacity-80 flex items-center justify-between'
-              style={{
-                paddingLeft: `${note.depth * 1.5 + 0.75}rem`,
-                color: 'var(--text-primary)',
-              }}
-              onClick={() => toggleNote(note.id)}
+              className='px-3 py-4 text-sm text-center'
+              style={{ color: 'var(--text-tertiary)' }}
             >
-              <span>
-                {selectedIds.includes(note.id) ? '✓ ' : ''}
-                {note.name}
-              </span>
-              {note.depth === 0 && (
-                <span className='text-xs ml-2' style={{ color: 'var(--text-tertiary)' }}>
-                  category
-                </span>
-              )}
+              Loading taste notes...
             </li>
-          ))}
+          ) : groupedResults.length > 0 ? (
+            groupedResults.map((group) => (
+              <Fragment key={group.root.id}>
+                <li
+                  className='px-3 py-1.5 text-xs font-semibold select-none cursor-default'
+                  style={{ color: 'var(--text-tertiary)' }}
+                  aria-hidden='true'
+                >
+                  {group.root.name}
+                </li>
+                {group.items.map((item) => (
+                  <li
+                    key={item.id}
+                    ref={(el) => {
+                      if (el) {
+                        itemRefs.current.set(item.id, el);
+                      } else {
+                        itemRefs.current.delete(item.id);
+                      }
+                    }}
+                    className='cursor-pointer px-3 py-2 flex items-center justify-between'
+                    style={{
+                      paddingLeft: `${item.depth * 1.5 + 0.75}rem`,
+                      color: 'var(--text-primary)',
+                      backgroundColor:
+                        highlightedId === item.id ? 'var(--bg-secondary)' : undefined,
+                    }}
+                    onClick={() => toggleNote(item.id)}
+                    onMouseEnter={() => setHighlightedId(item.id)}
+                    role='option'
+                    aria-selected={selectedIds.includes(item.id)}
+                  >
+                    <span>
+                      {selectedIds.includes(item.id) ? '✓ ' : ''}
+                      {item.name}
+                    </span>
+                  </li>
+                ))}
+              </Fragment>
+            ))
+          ) : (
+            <li
+              className='px-3 py-4 text-sm text-center'
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              No taste notes found.
+            </li>
+          )}
         </ul>
       )}
 

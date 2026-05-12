@@ -1,0 +1,29 @@
+{
+  "spec": "update-tasteautocomplete-show-notes-default-search",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Hierarchical browse, real-time search, categories as headers, keyboard nav. Target 8/10",
+      "status": "pending"
+    },
+    {
+      "id": "task-2",
+      "title": "Unit tests: show all notes on focus, search filters, categories not selectable, chips render. Run vitest.",
+      "status": "pending"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "pending"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "pending"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-12T23:27:34.100Z"
+}
