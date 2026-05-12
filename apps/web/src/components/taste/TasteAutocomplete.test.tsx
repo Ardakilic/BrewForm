@@ -61,12 +61,13 @@ describe('TasteAutocomplete', () => {
       expect(screen.getByText('Floral')).toBeInTheDocument();
     });
 
+    // Sub-group label under Fruity
+    expect(screen.getByText('Fruity > Berry')).toBeInTheDocument();
     // Items under Fruity
-    expect(screen.getByText('Berry')).toBeInTheDocument();
     expect(screen.getByText('Raspberry')).toBeInTheDocument();
     expect(screen.getByText('Blueberry')).toBeInTheDocument();
 
-    // Item under Floral
+    // Item under Floral (Rose is depth-1 without children — still selectable)
     expect(screen.getByText('Rose')).toBeInTheDocument();
   });
 
@@ -78,7 +79,7 @@ describe('TasteAutocomplete', () => {
     await user.click(input);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('option').length).toBe(4);
+      expect(screen.getAllByRole('option').length).toBe(3);
     });
 
     await user.type(input, 'Rasp');
@@ -209,7 +210,7 @@ describe('TasteAutocomplete', () => {
     await user.click(input);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('option').length).toBe(4);
+      expect(screen.getAllByRole('option').length).toBe(3);
     });
 
     // First item should be highlighted by default
@@ -233,7 +234,7 @@ describe('TasteAutocomplete', () => {
     await user.click(input);
 
     await waitFor(() => {
-      expect(screen.getAllByRole('option').length).toBe(4);
+      expect(screen.getAllByRole('option').length).toBe(3);
     });
 
     await user.keyboard('{Escape}');
@@ -264,10 +265,10 @@ describe('TasteAutocomplete', () => {
     await user.click(input);
 
     await waitFor(() => {
-      expect(screen.getByText('Berry')).toBeInTheDocument();
+      expect(screen.getByText('Raspberry')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText('Berry'));
-    expect(onSelectionChange).toHaveBeenCalledWith(['mid-1']);
+    await user.click(screen.getByText('Raspberry'));
+    expect(onSelectionChange).toHaveBeenCalledWith(['leaf-1']);
   });
 });

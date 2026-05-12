@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Select } from '@base-ui-components/react/select';
 
 export interface TasteNoteFlat {
@@ -6,6 +6,11 @@ export interface TasteNoteFlat {
   name: string;
   depth: number;
   parentId: string | null;
+}
+
+interface SubGroup {
+  parent: TasteNoteFlat;
+  children: TasteNoteFlat[];
 }
 
 interface TasteNotesFilterProps {
@@ -38,40 +43,80 @@ export function TasteNotesFilter({
     }
   }
 
-  // Group taste notes by their root ancestor (depth-0)
-  const roots = allTasteNotes.filter((n) => n.depth === 0);
+  const noteById = useMemo(() => new Map(allTasteNotes.map((n) => [n.id, n])), [allTasteNotes]);
 
   function getRootId(note: TasteNoteFlat): string | null {
     if (note.depth === 0) return note.id;
     if (!note.parentId) return null;
-    const parent = allTasteNotes.find((n) => n.id === note.parentId);
+    const parent = noteById.get(note.parentId);
     if (!parent) return null;
     return getRootId(parent);
   }
 
-  const itemsByRoot = new Map<string, TasteNoteFlat[]>();
-  for (const root of roots) {
-    itemsByRoot.set(root.id, []);
-  }
-
-  for (const note of allTasteNotes) {
-    if (note.depth >= 1) {
-      const rootId = getRootId(note);
-      if (rootId && itemsByRoot.has(rootId)) {
-        itemsByRoot.get(rootId)!.push(note);
-      }
-    }
+  function hasChildren(note: TasteNoteFlat): boolean {
+    return allTasteNotes.some((n) => n.parentId === note.id);
   }
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  const visibleRoots = roots.map((root) => {
-    const items = itemsByRoot.get(root.id) || [];
-    const filtered = normalizedQuery
-      ? items.filter((item) => item.name.toLowerCase().includes(normalizedQuery))
-      : items;
-    return { root, items: filtered };
-  }).filter((group) => group.items.length > 0);
+  const visibleRoots = useMemo(() => {
+    const roots = allTasteNotes.filter((n) => n.depth === 0);
+
+    const rootGroups = roots.map((root) => {
+      const subGroups: SubGroup[] = [];
+      const orphanItems: TasteNoteFlat[] = [];
+
+      const items = allTasteNotes.filter((n) => {
+        if (n.depth < 1) return false;
+        const rootId = getRootId(n);
+        return rootId === root.id;
+      });
+
+      const filtered = normalizedQuery
+        ? items.filter((item) => item.name.toLowerCase().includes(normalizedQuery))
+        : items;
+
+      for (const item of filtered) {
+        const itemHasChildren = hasChildren(item);
+
+        if (item.depth === 1 && itemHasChildren) {
+          const existing = subGroups.find((sg) => sg.parent.id === item.id);
+          if (!existing) {
+            subGroups.push({ parent: item, children: [] });
+          }
+        } else if (item.depth === 2) {
+          const depth1Parent = item.parentId ? noteById.get(item.parentId) : null;
+          if (depth1Parent && depth1Parent.depth === 1 && hasChildren(depth1Parent)) {
+            let subGroup = subGroups.find((sg) => sg.parent.id === item.parentId);
+            if (!subGroup) {
+              subGroup = { parent: depth1Parent, children: [] };
+              subGroups.push(subGroup);
+            }
+            subGroup.children.push(item);
+          } else {
+            orphanItems.push(item);
+          }
+        } else {
+          orphanItems.push(item);
+        }
+      }
+
+      subGroups.sort((a, b) => a.parent.name.localeCompare(b.parent.name));
+      for (const sg of subGroups) {
+        sg.children.sort((a, b) => a.name.localeCompare(b.name));
+      }
+      orphanItems.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
+
+      return {
+        root,
+        subGroups,
+        orphanItems,
+      };
+    }).filter((g) => g.subGroups.length > 0 || g.orphanItems.length > 0);
+
+    rootGroups.sort((a, b) => a.root.name.localeCompare(b.root.name));
+    return rootGroups;
+  }, [allTasteNotes, normalizedQuery, noteById]);
 
   const hasVisibleItems = visibleRoots.length > 0;
 
@@ -163,12 +208,53 @@ export function TasteNotesFilter({
 
             <Select.List>
               {hasVisibleItems ? (
-                visibleRoots.map(({ root, items }) => (
+                visibleRoots.map(({ root, subGroups, orphanItems }) => (
                   <Select.Group key={root.id}>
                     <Select.GroupLabel className='px-3 py-1.5 text-xs font-semibold text-[color:var(--text-tertiary)] cursor-default select-none'>
                       {root.name}
                     </Select.GroupLabel>
-                    {items.map((item) => (
+                    {subGroups.map((sg) => (
+                      <div key={sg.parent.id}>
+                        <div
+                          className='px-3 py-1 text-xs font-semibold text-[color:var(--text-tertiary)] select-none'
+                          style={{ paddingLeft: '1.25rem' }}
+                          aria-hidden='true'
+                        >
+                          {root.name} &gt; {sg.parent.name}
+                        </div>
+                        {sg.children.map((item) => (
+                          <Select.Item
+                            key={item.id}
+                            value={item.id}
+                            className={[
+                              'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
+                              'text-sm text-[color:var(--text-primary)] cursor-default',
+                              'outline-none select-none',
+                              'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
+                              'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
+                            ].join(' ')}
+                          >
+                            <Select.ItemIndicator className='col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]'>
+                              <svg
+                                width='12'
+                                height='12'
+                                viewBox='0 0 12 12'
+                                fill='none'
+                                stroke='currentColor'
+                                strokeWidth='2'
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                aria-hidden='true'
+                              >
+                                <path d='M2 6l3 3 5-5' />
+                              </svg>
+                            </Select.ItemIndicator>
+                            <Select.ItemText className='col-start-2'>{item.name}</Select.ItemText>
+                          </Select.Item>
+                        ))}
+                      </div>
+                    ))}
+                    {orphanItems.map((item) => (
                       <Select.Item
                         key={item.id}
                         value={item.id}

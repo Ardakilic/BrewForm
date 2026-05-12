@@ -59,11 +59,20 @@ export function TasteAutocomplete({
 
     const lower = query.trim().toLowerCase();
     const items = allNotes.filter((n) => n.depth >= 1);
+
     const filtered = lower
       ? items.filter((n) => n.name.toLowerCase().includes(lower))
       : items;
 
-    const groups = new Map<string, { root: TasteNote; items: TasteNote[] }>();
+    function hasChildren(note: TasteNote): boolean {
+      return filtered.some((n) => n.parentId === note.id);
+    }
+
+    const groups = new Map<string, {
+      root: TasteNote;
+      subGroups: { parent: TasteNote; children: TasteNote[] }[];
+      orphanItems: TasteNote[];
+    }>();
 
     for (const item of filtered) {
       const rootId = getRootId(item);
@@ -71,9 +80,31 @@ export function TasteAutocomplete({
       const root = noteById.get(rootId);
       if (!root) continue;
       if (!groups.has(rootId)) {
-        groups.set(rootId, { root, items: [] });
+        groups.set(rootId, { root, subGroups: [], orphanItems: [] });
       }
-      groups.get(rootId)!.items.push(item);
+      const group = groups.get(rootId)!;
+
+      if (item.depth === 1 && hasChildren(item)) {
+        const existing = group.subGroups.find((sg) => sg.parent.id === item.id);
+        if (!existing) {
+          group.subGroups.push({ parent: item, children: [] });
+        }
+      } else if (item.depth === 2) {
+        const parentId = item.parentId;
+        const depth1Parent = parentId ? noteById.get(parentId) : null;
+        if (depth1Parent && depth1Parent.depth === 1 && hasChildren(depth1Parent)) {
+          let subGroup = group.subGroups.find((sg) => sg.parent.id === parentId);
+          if (!subGroup) {
+            subGroup = { parent: depth1Parent, children: [] };
+            group.subGroups.push(subGroup);
+          }
+          subGroup.children.push(item);
+        } else {
+          group.orphanItems.push(item);
+        }
+      } else {
+        group.orphanItems.push(item);
+      }
     }
 
     const sorted = Array.from(groups.values()).sort((a, b) =>
@@ -81,16 +112,32 @@ export function TasteAutocomplete({
     );
 
     for (const group of sorted) {
-      group.items.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
+      group.subGroups.sort((a, b) => a.parent.name.localeCompare(b.parent.name));
+      for (const sg of group.subGroups) {
+        sg.children.sort((a, b) => a.name.localeCompare(b.name));
+      }
+      group.orphanItems.sort((a, b) =>
+        a.depth - b.depth || a.name.localeCompare(b.name),
+      );
     }
 
     return sorted;
   }, [allNotes, query]);
 
-  const selectableIds = useMemo(
-    () => groupedResults.flatMap((g) => g.items.map((i) => i.id)),
-    [groupedResults],
-  );
+  const selectableIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const group of groupedResults) {
+      for (const sg of group.subGroups) {
+        for (const child of sg.children) {
+          ids.push(child.id);
+        }
+      }
+      for (const item of group.orphanItems) {
+        ids.push(item.id);
+      }
+    }
+    return ids;
+  }, [groupedResults]);
 
   useEffect(() => {
     if (isOpen && selectableIds.length > 0) {
@@ -257,7 +304,49 @@ export function TasteAutocomplete({
                 >
                   {group.root.name}
                 </li>
-                {group.items.map((item) => (
+                {group.subGroups.map((sg) => (
+                  <Fragment key={sg.parent.id}>
+                    <li
+                      className='px-3 py-1.5 text-xs font-semibold select-none cursor-default'
+                      style={{
+                        color: 'var(--text-tertiary)',
+                        paddingLeft: '1.25rem',
+                      }}
+                      aria-hidden='true'
+                    >
+                      {group.root.name} &gt; {sg.parent.name}
+                    </li>
+                    {sg.children.map((item) => (
+                      <li
+                        key={item.id}
+                        ref={(el) => {
+                          if (el) {
+                            itemRefs.current.set(item.id, el);
+                          } else {
+                            itemRefs.current.delete(item.id);
+                          }
+                        }}
+                        className='cursor-pointer px-3 py-2 flex items-center justify-between'
+                        style={{
+                          paddingLeft: `${item.depth * 0.75 + 1.5}rem`,
+                          color: 'var(--text-primary)',
+                          backgroundColor:
+                            highlightedId === item.id ? 'var(--bg-secondary)' : undefined,
+                        }}
+                        onClick={() => toggleNote(item.id)}
+                        onMouseEnter={() => setHighlightedId(item.id)}
+                        role='option'
+                        aria-selected={selectedIds.includes(item.id)}
+                      >
+                        <span>
+                          {selectedIds.includes(item.id) ? '✓ ' : ''}
+                          {item.name}
+                        </span>
+                      </li>
+                    ))}
+                  </Fragment>
+                ))}
+                {group.orphanItems.map((item) => (
                   <li
                     key={item.id}
                     ref={(el) => {

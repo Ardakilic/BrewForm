@@ -348,9 +348,9 @@ describe('TasteNotesFilter — search', () => {
     const trigger = screen.getByRole('combobox');
     await user.click(trigger);
 
-    // All items visible initially (Berry depth-1 + Raspberry + Blueberry depth-2)
+    // Berry is now a sub-group header (not selectable); only Raspberry + Blueberry are options
     const optionsBefore = await screen.findAllByRole('option');
-    expect(optionsBefore.length).toBe(3);
+    expect(optionsBefore.length).toBe(2);
 
     // Type search query using fireEvent to avoid pointer-events issues
     const searchInput = screen.getByPlaceholderText('Search taste notes...');
@@ -427,13 +427,13 @@ describe('TasteNotesFilter — search', () => {
     // Reopen popup
     await user.click(trigger);
 
-    // Search should be reset and all items visible (Berry + Raspberry = 2)
+    // Search should be reset and only selectable item visible (Raspberry)
     const searchInputAfter = screen.getByPlaceholderText('Search taste notes...');
     expect(searchInputAfter).toHaveValue('');
 
     await waitFor(() => {
       const options = screen.getAllByRole('option');
-      expect(options.length).toBe(2);
+      expect(options.length).toBe(1);
     });
   });
 });
