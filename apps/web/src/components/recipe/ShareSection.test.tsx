@@ -66,32 +66,13 @@ describe('ShareSection — visibility gating', () => {
   });
 });
 
-// ── QR code image ──────────────────────────────────────────────────────────
+// ── No QR code image (removed per refactor) ────────────────────────────────
 
-describe('ShareSection — QR code image', () => {
-  it('shows QR code image with src containing slug.svg', () => {
+describe('ShareSection — no QR code image', () => {
+  it('does NOT show a QR code image', () => {
     render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
 
-    const img = screen.getByRole('img', { name: /QR code for recipe/i });
-    expect(img).toBeInTheDocument();
-    expect((img as HTMLImageElement).src).toContain('my-espresso.svg');
-  });
-
-  it('does NOT show a select element (no SVG format option)', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
-
-    expect(document.querySelector('select')).toBeNull();
-  });
-
-  it('does NOT show an SVG format option', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
-
-    // No option element with SVG text
-    const options = document.querySelectorAll('option');
-    const svgOption = Array.from(options).find((o) =>
-      o.textContent?.toLowerCase().includes('svg'),
-    );
-    expect(svgOption).toBeUndefined();
+    expect(screen.queryByRole('img', { name: /QR code for recipe/i })).toBeNull();
   });
 });
 
@@ -141,24 +122,20 @@ describe('ShareSection — social share buttons', () => {
       screen.getByRole('button', { name: 'Share on WhatsApp' }),
     ).toBeInTheDocument();
   });
+
+  it('shows Reddit share button', () => {
+    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+
+    expect(
+      screen.getByRole('button', { name: 'Share on Reddit' }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('ShareSection — copy behavior (task 9.2)', () => {
   beforeEach(() => {
     // Mock navigator.clipboard
     vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn() } });
-  });
-
-  it('does not render the readonly URL textbox element', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-  });
-
-  it('renders QR code image with correct dimensions', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
-    const img = screen.getByRole('img', { name: /QR code for recipe/i });
-    expect(img).toHaveAttribute('width', '128');
-    expect(img).toHaveAttribute('height', '128');
   });
 
   it('copy button shows "Copied!" for 3 seconds after successful copy', async () => {

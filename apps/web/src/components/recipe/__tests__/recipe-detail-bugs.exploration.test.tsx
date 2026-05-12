@@ -119,12 +119,9 @@ describe('Bug 1.4 - Components use hardcoded English strings instead of i18n', (
   });
 });
 
-describe('Bug 1.6 - ShareSection uses PNG instead of SVG', () => {
-  it('should use SVG endpoint for QR code image', () => {
+describe('Bug 1.6 - ShareSection no longer shows QR code (removed per refactor)', () => {
+  it('should NOT render any img element (QR code removed)', () => {
     render(withProviders(<ShareSection slug="test-recipe" title="Test Recipe" visibility="public" />));
-    const img = document.querySelector('img');
-    // On unfixed code, src contains .png — this assertion will FAIL
-    expect(img?.src).toMatch(/\.svg/);
-    expect(img?.src).not.toMatch(/\.png/);
+    expect(document.querySelector('img')).toBeNull();
   });
 });
