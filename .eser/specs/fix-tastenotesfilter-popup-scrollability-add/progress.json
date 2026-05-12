@@ -1,0 +1,29 @@
+{
+  "spec": "fix-tastenotesfilter-popup-scrollability-add",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Popup has max-height with smooth scroll, internal search that filters items in real-time, arrow aligned to the right edge matching all na...",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "Unit tests in TasteNotesFilter.test.tsx: (1) verify popup has max-height and overflow classes, (2) verify search input filters items, (3) verify search resets on popup close, (4) verify trigger has justify-between for arrow alignment, (5) verify items do not have rounded-md or mx-1. Run vitest via deno run -A npm:vitest from apps/web.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "done"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-12T23:03:52.076Z"
+}

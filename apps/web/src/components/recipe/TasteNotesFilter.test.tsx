@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
 import { TasteNotesFilter, type TasteNoteFlat } from './TasteNotesFilter';
@@ -205,4 +205,235 @@ describe('TasteNotesFilter — Property 2: Trigger label reflects selection coun
       );
     },
   );
+});
+
+describe('TasteNotesFilter — styling consistency', () => {
+  it('trigger has rounded-lg, w-full, py-2 px-3, justify-between, and bg-primary classes matching input-field', () => {
+    const allTasteNotes: TasteNoteFlat[] = [
+      { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+      { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+    ];
+
+    const { container } = render(
+      <TasteNotesFilter
+        allTasteNotes={allTasteNotes}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        placeholder='Select taste notes'
+      />,
+    );
+
+    const trigger = container.querySelector('[role="combobox"]');
+    expect(trigger).toBeTruthy();
+
+    const classList = trigger?.className ?? '';
+    expect(classList).toContain('rounded-lg');
+    expect(classList).toContain('w-full');
+    expect(classList).toContain('py-2');
+    expect(classList).toContain('px-3');
+    expect(classList).toContain('justify-between');
+    expect(classList).toContain('bg-[color:var(--bg-primary)]');
+    expect(classList).not.toContain('rounded-full');
+    expect(classList).not.toContain('bg-[color:var(--bg-tertiary)]');
+  });
+
+  it('popup has max-h-80 and overflow-y-auto classes', async () => {
+    const user = userEvent.setup();
+    const allTasteNotes: TasteNoteFlat[] = [
+      { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+      { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+    ];
+
+    const { container } = render(
+      <TasteNotesFilter
+        allTasteNotes={allTasteNotes}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        placeholder='Select taste notes'
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox');
+    await user.click(trigger);
+
+    // The popup is the ancestor of the listbox that has the max-h and overflow classes
+    const listbox = await screen.findByRole('listbox');
+    expect(listbox).toBeTruthy();
+
+    // Walk up to find the popup container (parent with max-h-80)
+    let popup = listbox.parentElement;
+    while (popup && !popup.className.includes('max-h-80')) {
+      popup = popup.parentElement;
+    }
+
+    expect(popup).toBeTruthy();
+    const classList = popup?.className ?? '';
+    expect(classList).toContain('max-h-80');
+    expect(classList).toContain('overflow-y-auto');
+  });
+
+  it('items do not have rounded-md or mx-1 classes', async () => {
+    const user = userEvent.setup();
+    const allTasteNotes: TasteNoteFlat[] = [
+      { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+      { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+    ];
+
+    render(
+      <TasteNotesFilter
+        allTasteNotes={allTasteNotes}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        placeholder='Select taste notes'
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox');
+    await user.click(trigger);
+
+    const options = await screen.findAllByRole('option');
+    expect(options.length).toBeGreaterThan(0);
+
+    for (const option of options) {
+      const classList = option.className ?? '';
+      expect(classList).not.toContain('rounded-md');
+      expect(classList).not.toContain('mx-1');
+    }
+  });
+});
+
+describe('TasteNotesFilter — search', () => {
+  it('renders a search input inside the popup', async () => {
+    const user = userEvent.setup();
+    const allTasteNotes: TasteNoteFlat[] = [
+      { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+      { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+      { id: 'leaf-1', name: 'Raspberry', depth: 2, parentId: 'mid-1' },
+    ];
+
+    render(
+      <TasteNotesFilter
+        allTasteNotes={allTasteNotes}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        placeholder='Select taste notes'
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox');
+    await user.click(trigger);
+
+    const searchInput = screen.getByPlaceholderText('Search taste notes...');
+    expect(searchInput).toBeInTheDocument();
+  });
+
+  it('filters items when typing in the search input', async () => {
+    const user = userEvent.setup();
+    const allTasteNotes: TasteNoteFlat[] = [
+      { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+      { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+      { id: 'leaf-1', name: 'Raspberry', depth: 2, parentId: 'mid-1' },
+      { id: 'leaf-2', name: 'Blueberry', depth: 2, parentId: 'mid-1' },
+    ];
+
+    render(
+      <TasteNotesFilter
+        allTasteNotes={allTasteNotes}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        placeholder='Select taste notes'
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox');
+    await user.click(trigger);
+
+    // All items visible initially (Berry depth-1 + Raspberry + Blueberry depth-2)
+    const optionsBefore = await screen.findAllByRole('option');
+    expect(optionsBefore.length).toBe(3);
+
+    // Type search query using fireEvent to avoid pointer-events issues
+    const searchInput = screen.getByPlaceholderText('Search taste notes...');
+    fireEvent.change(searchInput, { target: { value: 'Rasp' } });
+
+    // Only matching item visible
+    await waitFor(() => {
+      const optionsAfter = screen.getAllByRole('option');
+      expect(optionsAfter.length).toBe(1);
+      expect(optionsAfter[0]).toHaveTextContent('Raspberry');
+    });
+  });
+
+  it('shows empty state when search yields no results', async () => {
+    const user = userEvent.setup();
+    const allTasteNotes: TasteNoteFlat[] = [
+      { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+      { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+      { id: 'leaf-1', name: 'Raspberry', depth: 2, parentId: 'mid-1' },
+    ];
+
+    render(
+      <TasteNotesFilter
+        allTasteNotes={allTasteNotes}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        placeholder='Select taste notes'
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox');
+    await user.click(trigger);
+
+    const searchInput = screen.getByPlaceholderText('Search taste notes...');
+    fireEvent.change(searchInput, { target: { value: 'zzz' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('No taste notes found.')).toBeInTheDocument();
+      expect(screen.queryAllByRole('option').length).toBe(0);
+    });
+  });
+
+  it('resets search query when popup closes and reopens', async () => {
+    const user = userEvent.setup();
+    const allTasteNotes: TasteNoteFlat[] = [
+      { id: 'root-1', name: 'Fruity', depth: 0, parentId: null },
+      { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
+      { id: 'leaf-1', name: 'Raspberry', depth: 2, parentId: 'mid-1' },
+    ];
+
+    render(
+      <TasteNotesFilter
+        allTasteNotes={allTasteNotes}
+        selectedIds={[]}
+        onChange={vi.fn()}
+        placeholder='Select taste notes'
+      />,
+    );
+
+    // Open popup
+    const trigger = screen.getByRole('combobox');
+    await user.click(trigger);
+
+    const searchInput = screen.getByPlaceholderText('Search taste notes...');
+    fireEvent.change(searchInput, { target: { value: 'Rasp' } });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('option').length).toBe(1);
+    });
+
+    // Close popup with Escape
+    await user.keyboard('{Escape}');
+
+    // Reopen popup
+    await user.click(trigger);
+
+    // Search should be reset and all items visible (Berry + Raspberry = 2)
+    const searchInputAfter = screen.getByPlaceholderText('Search taste notes...');
+    expect(searchInputAfter).toHaveValue('');
+
+    await waitFor(() => {
+      const options = screen.getAllByRole('option');
+      expect(options.length).toBe(2);
+    });
+  });
 });

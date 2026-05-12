@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { recipeApi, equipmentApi, tasteApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -98,9 +98,11 @@ export function RecipeListPage() {
   const search = searchParams.get('search') || '';
   const equipmentId = searchParams.get('equipmentId') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
-  const tasteNoteIds = tasteNoteIdsParam
-    ? tasteNoteIdsParam.split(',').map((id) => id.trim()).filter((id) => isValidUuid(id))
-    : [];
+  const tasteNoteIds = useMemo(() =>
+    tasteNoteIdsParam
+      ? tasteNoteIdsParam.split(',').map((id) => id.trim()).filter((id) => isValidUuid(id))
+      : []
+  , [tasteNoteIdsParam]);
 
   // Fetch static data once (equipment + taste notes), use module-level cache
   useEffect(() => {
@@ -229,6 +231,30 @@ export function RecipeListPage() {
               )}
             </div>
 
+            {/* Active filter badges */}
+            {(equipmentId && isValidUuid(equipmentId)) && (
+              <ActiveFilterBadge
+                label={t('recipe.list.equipmentFilter')}
+                value={activeEquipmentName || t('recipe.list.equipmentFilterActive')}
+                onRemove={() => updateFilter('equipmentId', '')}
+              />
+            )}
+            {tasteNoteIds.length > 0 &&
+              tasteNoteIds.map((id) => {
+                const note = allTasteNotes.find((n) => n.id === id);
+                return (
+                  <ActiveFilterBadge
+                    key={id}
+                    label={t('recipe.list.tasteNotesFilter')}
+                    value={note?.name || t('recipe.list.tasteNoteFilterActive')}
+                    onRemove={() => {
+                      const next = tasteNoteIds.filter((tid) => tid !== id);
+                      updateFilter('tasteNoteIds', next);
+                    }}
+                  />
+                );
+              })}
+
             {/* Search */}
             <FilterField label={t('recipe.list.search')}>
               <input
@@ -332,30 +358,6 @@ export function RecipeListPage() {
                 <option value='rating'>{t('recipe.list.topRated')}</option>
               </select>
             </FilterField>
-
-            {/* Active filter badges */}
-            {(equipmentId && isValidUuid(equipmentId)) && (
-              <ActiveFilterBadge
-                label={t('recipe.list.equipmentFilter')}
-                value={activeEquipmentName || t('recipe.list.equipmentFilterActive')}
-                onRemove={() => updateFilter('equipmentId', '')}
-              />
-            )}
-            {tasteNoteIds.length > 0 &&
-              tasteNoteIds.map((id) => {
-                const note = allTasteNotes.find((n) => n.id === id);
-                return (
-                  <ActiveFilterBadge
-                    key={id}
-                    label={t('recipe.list.tasteNotesFilter')}
-                    value={note?.name || t('recipe.list.tasteNoteFilterActive')}
-                    onRemove={() => {
-                      const next = tasteNoteIds.filter((tid) => tid !== id);
-                      updateFilter('tasteNoteIds', next);
-                    }}
-                  />
-                );
-              })}
           </div>
         </aside>
 

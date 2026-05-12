@@ -467,6 +467,48 @@ describe('RecipeListPage — taste note filter', () => {
     // Raspberry appears in the dropdown option and/or badge
     await waitFor(() => expect(screen.getAllByText('Raspberry').length).toBeGreaterThanOrEqual(1));
   });
+
+  it('calls recipeApi.list exactly once when tasteNoteIds is present — regression for infinite loop', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteIds: VALID_UUID }));
+    mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    expect(mockRecipeApi.list).toHaveBeenCalledTimes(1);
+    expect(mockRecipeApi.list).toHaveBeenCalledWith(
+      expect.objectContaining({ tasteNoteIds: VALID_UUID }),
+    );
+  });
+
+  it('renders active filter badges after Filters heading and before Search filter', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({
+      tasteNoteIds: VALID_UUID,
+      equipmentId: '11111111-1111-1111-1111-111111111111',
+    }));
+    mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
+    mockEquipmentApi.list.mockResolvedValue([
+      { id: '11111111-1111-1111-1111-111111111111', name: 'Acaia Lunar', type: 'scale' },
+    ]);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+
+    const filtersHeading = screen.getByRole('heading', { name: 'Filters' });
+    const searchLabel = screen.getByText('Search');
+    const badge1 = screen.getByLabelText('Remove Equipment filter');
+    const badge2 = screen.getByLabelText('Remove Taste Notes filter');
+
+    // Badges should appear after the Filters heading
+    expect(filtersHeading.compareDocumentPosition(badge1) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(filtersHeading.compareDocumentPosition(badge2) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Badges should appear before the Search label
+    expect(badge1.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(badge2.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
 
 describe('RecipeListPage — property-based tests', () => {
