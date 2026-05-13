@@ -161,6 +161,7 @@ interface NavItemConfig {
 const NAV_ITEMS = [
   { to: '/recipes', labelKey: 'nav.recipes', end: true, authRequired: false },
   { to: '/recipes/new', labelKey: 'recipe.create', end: true, authRequired: true },
+  { to: '/recipes/starred', labelKey: 'recipe.starred.title', end: true, authRequired: true },
   { to: '/setups', labelKey: 'setup.title', end: false, authRequired: true },
   // Profile is dynamic: /u/${user.username} — handled separately
 ] as const satisfies readonly NavItemConfig[];

@@ -30,6 +30,10 @@ export const recipeApi = {
     // Using unknown[] so callers can cast to their specific type.
     return api.get<unknown[]>(`/recipes${query}`);
   },
+  starred: (params?: Record<string, string>) => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.get<unknown[]>(`/recipes/starred${query}`);
+  },
   get: (slugOrId: string) => api.get<Record<string, unknown>>(`/recipes/${slugOrId}`),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/recipes', data),
   update: (id: string, data: Record<string, unknown>) =>
@@ -44,6 +48,8 @@ export const recipeApi = {
   feature: (id: string) => api.post<Record<string, unknown>>(`/recipes/${id}/feature`, {}),
   rate: (id: string, rating: number) =>
     api.post<Record<string, unknown>>(`/recipes/${id}/rate`, { rating }),
+  saveNotes: (id: string, notes: string) =>
+    api.post<Record<string, unknown>>(`/recipes/${id}/notes`, { notes }),
 };
 
 export const tasteApi = {

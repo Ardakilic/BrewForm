@@ -15,6 +15,7 @@ import { BeanSection } from '../../components/recipe/BeanSection.tsx';
 import { BrewTimeline } from '../../components/recipe/BrewTimeline.tsx';
 import { EquipmentSection } from '../../components/recipe/EquipmentSection.tsx';
 import { TastingNotesSection } from '../../components/recipe/TastingNotesSection.tsx';
+import { RecipeNotesSection } from '../../components/recipe/RecipeNotesSection.tsx';
 import { ShareSection } from '../../components/recipe/ShareSection.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -244,6 +245,8 @@ export function RecipeDetailPage() {
               personalNotes={v.personalNotes}
               allTasteNotes={allTasteNotes}
             />
+
+            <RecipeNotesSection recipeId={recipe.id} initialNotes={v.personalNotes} />
           </div>
 
           {/* Sidebar (1/3 width on md+) */}

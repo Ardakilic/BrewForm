@@ -378,6 +378,17 @@ export async function toggleFeature(recipeId: string, authorId: string) {
   return model.toggleFeature(recipeId);
 }
 
+export async function saveNotes(recipeId: string, notes: string) {
+  const recipe = await model.findById(recipeId);
+  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
+  if (!recipe.currentVersionId) throw new Error('RECIPE_NOT_FOUND');
+  await model.updateVersionNotes(recipe.currentVersionId, notes);
+}
+
+export async function listStarredRecipes(filters: any, page: number, perPage: number, userId: string) {
+  return model.findStarred(userId, filters, page, perPage);
+}
+
 export async function getRecipeMeta(slug: string) {
   const recipe: any = await model.findBySlug(slug);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');

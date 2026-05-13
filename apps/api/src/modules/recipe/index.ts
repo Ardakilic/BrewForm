@@ -39,6 +39,33 @@ recipe.get(
 );
 
 recipe.get(
+  '/starred',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'List starred (favourited) recipes',
+    description: 'Paginated, filterable list of recipes the current user has starred.',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'Paginated list of starred recipes' },
+      401: { description: 'Unauthorized' },
+    },
+  }),
+  authMiddleware,
+  zValidator('query', RecipeFilterSchema),
+  async (c) => {
+    const userId = c.get('userId') as string;
+    const filters = c.req.valid('query');
+    const result = await service.listStarredRecipes(filters, filters.page, filters.perPage, userId);
+    return paginated(c, result.recipes, {
+      page: filters.page,
+      perPage: filters.perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / filters.perPage),
+    });
+  },
+);
+
+recipe.get(
   '/meta/:slug',
   describeRoute({
     tags: ['Recipes'],
@@ -295,6 +322,35 @@ recipe.post(
       const result = await model.upsertUserRating(userId, recipeId, rating);
       const stats = await model.getRecipeRatingStats(recipeId);
       return success(c, { ...result, ...stats });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      throw err;
+    }
+  },
+);
+
+recipe.post(
+  '/:id/notes',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'Save personal notes for a recipe',
+    description: 'Saves personal notes to the current version of the recipe.',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'Notes saved' },
+      401: { description: 'Unauthorized' },
+      404: { description: 'Recipe not found' },
+    },
+  }),
+  authMiddleware,
+  async (c) => {
+    const recipeId = c.req.param('id')!;
+    const body = await c.req.json().catch(() => ({}));
+    const notes = typeof body.notes === 'string' ? body.notes : '';
+    try {
+      await service.saveNotes(recipeId, notes);
+      return success(c, { message: 'Notes saved' });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);

@@ -361,10 +361,126 @@ export async function toggleFeature(id: string) {
   return { featured: recipe.featured };
 }
 
+export async function updateVersionNotes(versionId: string, notes: string) {
+  await db.update(recipeVersions)
+    .set({ personalNotes: notes, updatedAt: new Date() })
+    .where(eq(recipeVersions.id, versionId));
+}
+
 export async function getFeed(authorIds: string[], page: number, perPage: number) {
   const where = and(
     inArray(recipes.authorId, authorIds),
     eq(recipes.visibility, 'public'),
   );
   return findMany(where, page, perPage, 'createdAt', 'desc');
+}
+
+export async function findStarred(
+  userId: string,
+  filters: {
+    brewMethod?: string;
+    drinkType?: string;
+    search?: string;
+    equipmentId?: string;
+    tasteNoteIds?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  },
+  page: number,
+  perPage: number,
+) {
+  const conditions: any[] = [
+    eq(recipes.visibility, 'public'),
+  ];
+
+  if (filters.brewMethod) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.brewMethod, filters.brewMethod),
+        ),
+      ),
+    );
+  }
+
+  if (filters.drinkType) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.drinkType, filters.drinkType),
+        ),
+      ),
+    );
+  }
+
+  if (filters.search) {
+    const sanitized = filters.search.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        or(
+          ilike(recipes.title, searchTerm),
+          inArray(
+            recipes.id,
+            db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+              ilike(recipeVersions.productName, searchTerm),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  if (filters.equipmentId) {
+    conditions.push(
+      inArray(
+        recipes.currentVersionId,
+        db.select({ id: recipeEquipment.recipeVersionId }).from(recipeEquipment).where(
+          eq(recipeEquipment.equipmentId, filters.equipmentId),
+        ),
+      ),
+    );
+  }
+
+  if (filters.tasteNoteIds) {
+    const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
+    for (const noteId of ids) {
+      conditions.push(
+        inArray(
+          recipes.currentVersionId,
+          db.select({ id: recipeTasteNotes.recipeVersionId }).from(recipeTasteNotes).where(
+            eq(recipeTasteNotes.tasteNoteId, noteId),
+          ),
+        ),
+      );
+    }
+  }
+
+  const where = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+  const starredSubquery = db.select({ recipeId: userRecipeFavourites.recipeId })
+    .from(userRecipeFavourites)
+    .where(eq(userRecipeFavourites.userId, userId));
+
+  const finalWhere = and(
+    where,
+    inArray(recipes.id, starredSubquery),
+    isNull(recipes.deletedAt),
+  );
+
+  const sortBy = filters.sortBy || 'createdAt';
+  const sortOrder = filters.sortOrder || 'desc';
+  const orderByColumn = sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt;
+  const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
+
+  const [data, totalResult] = await Promise.all([
+    db.select().from(recipes).where(finalWhere).orderBy(orderBy).limit(perPage).offset(
+      (page - 1) * perPage,
+    ),
+    db.select({ count: count() }).from(recipes).where(finalWhere),
+  ]);
+
+  return { recipes: data, total: totalResult[0].count };
 }

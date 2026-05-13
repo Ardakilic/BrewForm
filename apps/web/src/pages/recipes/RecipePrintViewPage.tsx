@@ -141,6 +141,13 @@ export function RecipePrintViewPage() {
         </div>
       )}
 
+      {recipe.userNotes && (
+        <div className='mb-4'>
+          <h2 className='font-semibold mb-1'>Your Notes</h2>
+          <p className='whitespace-pre-wrap'>{recipe.userNotes}</p>
+        </div>
+      )}
+
       <div className='text-xs text-gray-500 mt-8'>BrewForm — {globalThis.location.href}</div>
     </div>
   );

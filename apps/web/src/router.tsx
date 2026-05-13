@@ -8,6 +8,7 @@ import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { RecipeListPage } from './pages/recipes/RecipeListPage';
+import { StarredRecipesPage } from './pages/recipes/StarredRecipesPage';
 import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage';
 import { RecipeCreatePage } from './pages/recipes/RecipeCreatePage';
 import { RecipeEditPage } from './pages/recipes/RecipeEditPage';
@@ -47,6 +48,14 @@ export const router = createBrowserRouter([
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'recipes', element: <RecipeListPage /> },
+      {
+        path: 'recipes/starred',
+        element: (
+          <RequireAuth>
+            <StarredRecipesPage />
+          </RequireAuth>
+        ),
+      },
       { path: 'recipes/unavailable', element: <RecipeNotAvailablePage /> },
       {
         path: 'recipes/new',
