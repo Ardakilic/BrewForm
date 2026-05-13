@@ -247,7 +247,14 @@ export function RecipeDetailPage() {
           </div>
 
           {/* Sidebar (1/3 width on md+) */}
-          <div className='space-y-4'>
+          <div className='space-y-4 no-print'>
+            {/* Share section — at top for reachability */}
+            <ShareSection
+              slug={recipe.slug}
+              title={recipe.title}
+              visibility={recipe.visibility}
+            />
+
             {/* Rating card */}
             <div className='card'>
               <div className='flex items-center justify-between mb-3'>
@@ -324,17 +331,11 @@ export function RecipeDetailPage() {
               <ForkCard recipeId={recipe.id} />
             )}
 
-            {/* Share section */}
-            <ShareSection
-              slug={recipe.slug}
-              title={recipe.title}
-              visibility={recipe.visibility}
-            />
           </div>
         </div>
 
         {/* Comment section (full width below grid) */}
-        <div className='mt-6'>
+        <div className='mt-6 no-print' data-testid='comment-section-wrapper'>
           <CommentSection recipeId={recipe.id} recipeAuthorId={recipe.authorId} />
         </div>
       </div>

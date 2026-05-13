@@ -198,6 +198,15 @@ describe('RecipeFocusModePage — Back to Recipe link', () => {
       '/recipes/my-espresso',
     );
   });
+
+  it('back link does NOT contain double arrow', async () => {
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    const link = screen.getByRole('link', { name: /Back to Recipe/i });
+    expect(link.textContent).not.toMatch(/←\s*←/);
+  });
 });
 
 describe('RecipeFocusModePage — StatCards', () => {

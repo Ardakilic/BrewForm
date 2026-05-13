@@ -80,7 +80,7 @@ export function RecipeFocusModePage() {
         className='mb-6 text-sm inline-block'
         style={{ color: 'var(--accent-primary)' }}
       >
-        ← {t('recipe.focusMode.backToRecipe')}
+        {t('recipe.focusMode.backToRecipe')}
       </Link>
 
       <div className='space-y-6'>

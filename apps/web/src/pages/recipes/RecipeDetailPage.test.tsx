@@ -499,4 +499,42 @@ describe('RecipeDetailPage — Responsive layout', () => {
     expect(sidebar).not.toBeNull();
     expect(sidebar!.classList.contains('space-y-4')).toBe(true);
   });
+
+  it('sidebar has no-print class for print hiding', async () => {
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
+    });
+
+    const socialActionsCard = screen.getByTestId('social-actions-card');
+    const sidebar = socialActionsCard.parentElement;
+    expect(sidebar).not.toBeNull();
+    expect(sidebar!.classList.contains('no-print')).toBe(true);
+  });
+
+  it('ShareSection is the first child of the sidebar', async () => {
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('share-section')).toBeInTheDocument();
+    });
+
+    const sidebar = screen.getByTestId('share-section').parentElement;
+    expect(sidebar).not.toBeNull();
+    expect(sidebar!.firstElementChild).toBe(screen.getByTestId('share-section'));
+  });
+});
+
+describe('RecipeDetailPage — Print layout hiding', () => {
+  it('comment section wrapper has no-print class', async () => {
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
+    });
+
+    const commentWrapper = screen.getByTestId('comment-section-wrapper');
+    expect(commentWrapper.classList.contains('no-print')).toBe(true);
+  });
 });
