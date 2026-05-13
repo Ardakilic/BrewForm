@@ -135,7 +135,7 @@ export function TastingNotesSection({
                       <button
                         key={note.id}
                         type='button'
-                        onClick={() => navigate(`/recipes?tasteNoteId=${noteId}`)}
+                        onClick={() => navigate(`/recipes?tasteNoteIds=${noteId}`)}
                         className='inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-75'
                         style={{
                           backgroundColor: 'var(--bg-tertiary)',

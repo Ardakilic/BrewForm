@@ -134,6 +134,16 @@ describe('TastingNotesSection — unit tests', () => {
     expect(screen.getByText('Blueberry')).toBeInTheDocument();
   });
 
+  it('navigates to recipes page with tasteNoteIds (plural) when a chip is clicked', () => {
+    const notes: TasteNote[] = [
+      makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
+    ];
+    render(withI18n(<TastingNotesSection tasteNotes={notes} />));
+    const chip = screen.getByRole('button', { name: /Filter recipes by Jasmine/ });
+    chip.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/recipes?tasteNoteIds=tn1');
+  });
+
   it('shows personal notes in blockquote when present alongside taste notes', () => {
     const notes: TasteNote[] = [
       makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
