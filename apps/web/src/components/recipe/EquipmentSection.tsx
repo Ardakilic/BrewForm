@@ -44,10 +44,17 @@ export function EquipmentSection({ items }: EquipmentSectionProps) {
         {items.map((item) => {
           const Icon = getEquipmentIcon(item.type ?? '');
           return (
-            <button
+            <div
               key={item.id}
-              type='button'
+              role='button'
+              tabIndex={0}
               onClick={() => navigate(`/recipes?equipmentId=${item.equipmentId}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/recipes?equipmentId=${item.equipmentId}`);
+                }
+              }}
               className='flex items-center gap-3 rounded-lg p-3 text-left transition-colors min-h-11'
               style={{
                 border: '1px solid var(--border-primary)',
@@ -55,15 +62,14 @@ export function EquipmentSection({ items }: EquipmentSectionProps) {
                 cursor: 'pointer',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                (e.currentTarget as HTMLDivElement).style.backgroundColor =
                   'var(--bg-tertiary)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                (e.currentTarget as HTMLDivElement).style.backgroundColor =
                   'var(--bg-primary)';
               }}
             >
-              {/* Icon */}
               <span
                 className='flex-shrink-0'
                 style={{ color: 'var(--text-secondary)' }}
@@ -71,7 +77,6 @@ export function EquipmentSection({ items }: EquipmentSectionProps) {
                 <Icon size={24} />
               </span>
 
-              {/* Name and type */}
               <span className='flex flex-col min-w-0'>
                 <span
                   className='font-semibold text-sm truncate'
@@ -86,7 +91,7 @@ export function EquipmentSection({ items }: EquipmentSectionProps) {
                   {item.type?.replace(/_/g, ' ') ?? ''}
                 </span>
               </span>
-            </button>
+            </div>
           );
         })}
       </div>
