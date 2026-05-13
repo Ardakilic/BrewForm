@@ -163,17 +163,22 @@ Response `200`:
 
 ### Query Parameters (GET /recipes)
 
-| Parameter    | Default     | Description                                    |
-| ------------ | ----------- | ---------------------------------------------- |
-| `page`       | 1           | Page number                                    |
-| `perPage`    | 20          | Items per page (max 100)                       |
-| `brewMethod` | —           | Filter by brew method                          |
-| `drinkType`  | —           | Filter by drink type                           |
-| `visibility` | —           | Filter by visibility (own drafts require auth) |
-| `authorId`   | —           | Filter by author                               |
-| `search`     | —           | Search by title                                |
-| `sortBy`     | `createdAt` | Sort field: `createdAt`, `likeCount`, `rating` |
-| `sortOrder`  | `desc`      | Sort direction: `asc`, `desc`                  |
+| Parameter      | Default       | Description                                            |
+| -------------- | ------------- | ------------------------------------------------------ |
+| `page`         | 1             | Page number                                            |
+| `perPage`      | 20            | Items per page (max 100)                               |
+| `brewMethod`   | —             | Filter by brew method                                  |
+| `drinkType`    | —             | Filter by drink type                                   |
+| `visibility`   | —             | Filter by visibility (own drafts require auth)         |
+| `authorId`     | —             | Filter by author                                       |
+| `search`       | —             | Search by title                                        |
+| `equipmentId`  | —             | Filter by linked equipment UUID                        |
+| `tasteNoteIds` | —             | Comma-separated taste note UUIDs (AND logic, max 10)   |
+| `tasteNoteId`  | —             | Single taste note UUID (deprecated, use tasteNoteIds)  |
+| `grinder`      | —             | Filter by grinder name                                 |
+| `mainBrewer`   | —             | Filter by main brewer name (partial, case-insensitive) |
+| `sortBy`       | `createdAt`   | Sort field: `createdAt`, `likeCount`, `rating`         |
+| `sortOrder`    | `desc`        | Sort direction: `asc`, `desc`                          |
 
 ### POST /recipes
 
@@ -183,15 +188,20 @@ Response `200`:
   "brewMethod": "espresso_machine",
   "drinkType": "espresso",
   "visibility": "public",
-  "coffeeWeightGrams": 18,
-  "waterWeightGrams": 36,
-  "brewTemperatureCelsius": 93,
+  "brewerDetails": "Lelit Mara X",
+  "grinder": "Eureka Mignon",
+  "grindSize": "12",
+  "groundWeightGrams": 18,
+  "extractionVolumeMl": 36,
+  "temperatureCelsius": 93,
   "extractionTimeSeconds": 28,
+  "preparationNotes": "1. Dose 18g...",
   "roastDate": "2026-01-15",
   "tasteNoteIds": ["uuid1", "uuid2"],
+  "tasteNoteIntensities": { "uuid1": 2, "uuid2": 3 },
   "equipmentIds": ["uuid3"],
   "additionalPreparations": [
-    { "name": "Oat milk", "type": "milk", "preparedAmount": 30 }
+    { "name": "Oat milk", "type": "milk", "inputAmount": "30ml", "preparationType": "steamed" }
   ]
 }
 ```

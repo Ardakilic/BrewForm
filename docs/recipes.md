@@ -60,7 +60,7 @@ BrewForm implements two levels of validation:
 - Brew method and drink type must be compatible (per the brew method compatibility matrix)
 - `grindDate` cannot be earlier than `roastDate`
 - Required fields must be present (`title`, `brewMethod`, `drinkType`, `preparationNotes`)
-- Numeric values must be physically valid (positive where required)
+- Numeric values must be physically valid (non-negative where required, e.g. dose and yield)
 - Taste note IDs must reference existing taste notes
 - Equipment IDs must reference existing equipment
 
@@ -110,6 +110,16 @@ GET /api/v1/recipes/compare/:id1/:id2
 
 Returns both recipes' latest versions with all parameters for side-by-side display. If either recipe
 becomes private/draft, the comparison becomes inaccessible.
+
+## Filtering by Main Brewer
+
+Recipes can be filtered by the main brewer's name via the `mainBrewer` query parameter on the list endpoint:
+
+```
+GET /api/v1/recipes?mainBrewer=Lelit%20Mara%20X
+```
+
+This performs a case-insensitive partial match on `recipeVersions.brewerDetails`.
 
 ## Like and Favourite
 

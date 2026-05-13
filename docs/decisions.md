@@ -71,21 +71,19 @@ Currently it lives in `localStorage` for SPA simplicity. Tracked in `gap-analysi
 
 ---
 
-## ADR-004 — Prisma (instead of raw SQL or another ORM)
+## ADR-004 — Drizzle ORM + postgres-js driver (instead of raw SQL or another ORM)
 
-**Decision.** Prisma Client for all database access, with strict portability rules.
+**Decision.** Drizzle ORM with `postgres-js` driver for all database access, with strict portability rules.
 
-**Why.** Generated, fully-typed query API; built-in migrations; multiple-DB provider support keeps
-`MySQL` / `SQLite` reachable later without rewriting queries.
+**Why.** Lightweight, SQL-like query builder; full TypeScript type inference; `postgres-js` driver keeps
+PostgreSQL features accessible.
 
-**Trade-off — and the rule it imposes.** Postgres-specific features (`@db.JsonB`, `@db.Uuid`,
-`mode: 'insensitive'`, GIN indexes) are forbidden unless isolated behind a `// POSTGRES-SPECIFIC`
-comment. All IDs are `@default(uuid())` strings, all structured data is relational. See
+**Trade-off — and the rule it imposes.** Postgres-specific features are used via native SQL expressions where needed.
+All IDs are UUID strings generated in code or by `gen_random_uuid()`, all structured data is relational. See
 `architecture.md` §"Portability Rules".
 
-**Trade-off — generated-types drift.** When the schema changes, generated types lag behind the DB
-until `prisma generate` is re-run. Models cope by file-level
-`// deno-lint-ignore-file no-explicit-any` and `as any` on query options. Encapsulating Prisma in
+**Trade-off — schema drift.** Drizzle schema is TypeScript-first; no code generation step needed.
+Models use Drizzle's typed query API; `as any` is used sparingly for complex subqueries. Encapsulating Drizzle in
 `model.ts` keeps the noise out of services.
 
 ---
