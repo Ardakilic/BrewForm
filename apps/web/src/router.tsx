@@ -13,7 +13,6 @@ import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage';
 import { RecipeCreatePage } from './pages/recipes/RecipeCreatePage';
 import { RecipeEditPage } from './pages/recipes/RecipeEditPage';
 import { RecipeComparePage } from './pages/recipes/RecipeComparePage';
-import { RecipePrintViewPage } from './pages/recipes/RecipePrintViewPage';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage';
 import { UserProfilePage } from './pages/users/UserProfilePage';
@@ -67,7 +66,6 @@ export const router = createBrowserRouter([
       },
       { path: 'recipes/compare/:id1/:id2', element: <RecipeComparePage /> },
       { path: 'recipes/:slug', element: <RecipeDetailPage /> },
-      { path: 'recipes/:slug/print', element: <RecipePrintViewPage /> },
       { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },
       {
         path: 'recipes/:id/edit',

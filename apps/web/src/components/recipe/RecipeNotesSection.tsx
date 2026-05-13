@@ -48,7 +48,7 @@ export function RecipeNotesSection({ recipeId, initialNotes = '' }: RecipeNotesS
         {notes || t('recipe.notes.placeholder')}
       </p>
       <div className='flex items-center justify-between mt-3'>
-        <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+        <span className='text-xs print-hidden' style={{ color: 'var(--text-tertiary)' }}>
           {notes.length} / 10000
         </span>
         <div className='flex items-center gap-2'>
