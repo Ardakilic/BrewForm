@@ -10,7 +10,7 @@ import {
   userRecipeLikes,
   userRecipeRatings,
 } from '@brewform/db/schema';
-import { and, asc, avg, count, desc, eq, inArray, isNull, SQL, sql } from 'drizzle-orm';
+import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
 
 export async function create(data: typeof recipes.$inferInsert) {
   const [recipe] = await db.insert(recipes).values(data).returning();
@@ -427,6 +427,21 @@ export async function findStarred(
             db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
               ilike(recipeVersions.productName, searchTerm),
             ),
+          ),
+        ),
+      );
+    }
+  }
+
+  if (filters.mainBrewer) {
+    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+            ilike(recipeVersions.brewerDetails, searchTerm),
           ),
         ),
       );

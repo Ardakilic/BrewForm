@@ -148,31 +148,30 @@ describe('EquipmentSection — unit tests', () => {
     expect(screen.getByText('Main Brewer')).toBeInTheDocument();
   });
 
-  it('clicking main brewer navigates to /recipes?brewMethod={method}', async () => {
+  it('clicking main brewer navigates to /recipes?mainBrewer={encoded}', async () => {
     const user = userEvent.setup();
     render(
       <EquipmentSection
         items={[]}
         brewerDetails='V60 02 ceramic'
-        brewMethod='v60'
       />,
     );
     const button = screen.getByRole('button', { name: /V60 02 ceramic/i });
     await user.click(button);
-    expect(mockNavigate).toHaveBeenCalledWith('/recipes?brewMethod=v60');
+    expect(mockNavigate).toHaveBeenCalledWith('/recipes?mainBrewer=V60%2002%20ceramic');
   });
 
-  it('main brewer is not clickable when brewMethod is missing', async () => {
+  it('pressing Enter on main brewer navigates to /recipes?mainBrewer={encoded}', async () => {
     const user = userEvent.setup();
     render(
       <EquipmentSection
         items={[]}
-        brewerDetails='Unknown Brewer'
+        brewerDetails='V60 02 ceramic'
       />,
     );
-    const button = screen.getByRole('button', { name: /Unknown Brewer/i });
-    await user.click(button);
-    expect(mockNavigate).not.toHaveBeenCalled();
+    const button = screen.getByRole('button', { name: /V60 02 ceramic/i });
+    await user.type(button, '{enter}');
+    expect(mockNavigate).toHaveBeenCalledWith('/recipes?mainBrewer=V60%2002%20ceramic');
   });
 });
 

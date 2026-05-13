@@ -337,6 +337,21 @@ export async function listRecipes(filters: any, page: number, perPage: number, r
     }
   }
 
+  if (filters.mainBrewer) {
+    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+            ilike(recipeVersions.brewerDetails, searchTerm),
+          ),
+        ),
+      );
+    }
+  }
+
   const where = conditions.length > 1 ? and(...conditions) : conditions[0];
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';

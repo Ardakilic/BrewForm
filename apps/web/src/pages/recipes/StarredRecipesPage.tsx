@@ -94,6 +94,7 @@ export function StarredRecipesPage() {
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
   const equipmentId = searchParams.get('equipmentId') || '';
+  const mainBrewer = searchParams.get('mainBrewer') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
   const tasteNoteIds = useMemo(() =>
     tasteNoteIdsParam
@@ -130,6 +131,7 @@ export function StarredRecipesPage() {
     if (drinkType) params.drinkType = drinkType;
     if (search) params.search = search;
     if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
+    if (mainBrewer) params.mainBrewer = mainBrewer;
     if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
 
     recipeApi.starred(params).then((data) => {
@@ -138,7 +140,7 @@ export function StarredRecipesPage() {
       setTotal(items.length);
     }).catch(() => {
     }).finally(() => setLoading(false));
-  }, [page, brewMethod, drinkType, sortBy, search, equipmentId, tasteNoteIds, isAuthenticated]);
+  }, [page, brewMethod, drinkType, sortBy, search, equipmentId, mainBrewer, tasteNoteIds, isAuthenticated]);
 
   function updateFilter(key: string, value: string | string[]) {
     const params = new URLSearchParams(searchParams);
@@ -173,6 +175,7 @@ export function StarredRecipesPage() {
     brewMethod ||
     drinkType ||
     (equipmentId && isValidUuid(equipmentId)) ||
+    mainBrewer ||
     tasteNoteIds.length > 0 ||
     search
   );
@@ -236,6 +239,13 @@ export function StarredRecipesPage() {
                 label={t('recipe.list.equipmentFilter')}
                 value={activeEquipmentName || t('recipe.list.equipmentFilterActive')}
                 onRemove={() => updateFilter('equipmentId', '')}
+              />
+            )}
+            {mainBrewer && (
+              <ActiveFilterBadge
+                label={t('recipe.mainBrewer')}
+                value={mainBrewer}
+                onRemove={() => updateFilter('mainBrewer', '')}
               />
             )}
             {tasteNoteIds.length > 0 &&

@@ -269,6 +269,22 @@ describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
     });
   });
 
+  describe('mainBrewer filter', () => {
+    it('should accept mainBrewer in filter', () => {
+      const result = RecipeFilterSchema.safeParse({
+        mainBrewer: 'Lelit Mara X',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject mainBrewer longer than 200 chars', () => {
+      const result = RecipeFilterSchema.safeParse({
+        mainBrewer: 'a'.repeat(201),
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe('groundWeightGrams validation', () => {
     it('should reject negative groundWeightGrams', () => {
       const result = RecipeCreateSchema.safeParse({

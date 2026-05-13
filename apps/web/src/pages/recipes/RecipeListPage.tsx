@@ -97,6 +97,7 @@ export function RecipeListPage() {
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
   const equipmentId = searchParams.get('equipmentId') || '';
+  const mainBrewer = searchParams.get('mainBrewer') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
   const tasteNoteIds = useMemo(() =>
     tasteNoteIdsParam
@@ -130,6 +131,7 @@ export function RecipeListPage() {
     if (visibility && user?.isAdmin === true) params.visibility = visibility;
     if (search) params.search = search;
     if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
+    if (mainBrewer) params.mainBrewer = mainBrewer;
     if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
 
     recipeApi.list(params).then((data) => {
@@ -138,7 +140,7 @@ export function RecipeListPage() {
       setTotal(items.length);
     }).catch(() => {
     }).finally(() => setLoading(false));
-  }, [page, brewMethod, drinkType, visibility, sortBy, search, user, equipmentId, tasteNoteIds]);
+  }, [page, brewMethod, drinkType, visibility, sortBy, search, user, equipmentId, mainBrewer, tasteNoteIds]);
 
   function updateFilter(key: string, value: string | string[]) {
     const params = new URLSearchParams(searchParams);
@@ -174,6 +176,7 @@ export function RecipeListPage() {
     drinkType ||
     (user?.isAdmin === true ? visibility : '') ||
     (equipmentId && isValidUuid(equipmentId)) ||
+    mainBrewer ||
     tasteNoteIds.length > 0 ||
     search
   );
@@ -237,6 +240,13 @@ export function RecipeListPage() {
                 label={t('recipe.list.equipmentFilter')}
                 value={activeEquipmentName || t('recipe.list.equipmentFilterActive')}
                 onRemove={() => updateFilter('equipmentId', '')}
+              />
+            )}
+            {mainBrewer && (
+              <ActiveFilterBadge
+                label={t('recipe.mainBrewer')}
+                value={mainBrewer}
+                onRemove={() => updateFilter('mainBrewer', '')}
               />
             )}
             {tasteNoteIds.length > 0 &&

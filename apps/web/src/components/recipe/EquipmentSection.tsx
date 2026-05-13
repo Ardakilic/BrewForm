@@ -50,22 +50,22 @@ export function EquipmentSection({ items, brewMethod, brewerDetails }: Equipment
             role='button'
             tabIndex={0}
             onClick={() => {
-              if (brewMethod) navigate(`/recipes?brewMethod=${brewMethod}`);
+              if (brewerDetails) navigate(`/recipes?mainBrewer=${encodeURIComponent(brewerDetails)}`);
             }}
             onKeyDown={(e) => {
-              if ((e.key === 'Enter' || e.key === ' ') && brewMethod) {
+              if ((e.key === 'Enter' || e.key === ' ') && brewerDetails) {
                 e.preventDefault();
-                navigate(`/recipes?brewMethod=${brewMethod}`);
+                navigate(`/recipes?mainBrewer=${encodeURIComponent(brewerDetails)}`);
               }
             }}
             className='flex items-center gap-3 rounded-lg p-3 text-left transition-colors min-h-11'
             style={{
               border: '1px solid var(--border-primary)',
               backgroundColor: 'var(--bg-primary)',
-              cursor: brewMethod ? 'pointer' : 'default',
+              cursor: brewerDetails ? 'pointer' : 'default',
             }}
             onMouseEnter={(e) => {
-              if (brewMethod) {
+              if (brewerDetails) {
                 (e.currentTarget as HTMLDivElement).style.backgroundColor =
                   'var(--bg-tertiary)';
               }

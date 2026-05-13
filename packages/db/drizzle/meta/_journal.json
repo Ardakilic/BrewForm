@@ -29,6 +29,13 @@
       "when": 1778634579086,
       "tag": "0003_spooky_lady_ursula",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778701465283,
+      "tag": "0004_burly_masque",
+      "breakpoints": true
     }
   ]
 }
