@@ -63,7 +63,7 @@ export function RecipeFocusModePage() {
       (v.bean.origin != null || v.bean.roaster != null || v.bean.roastLevel != null));
 
   const hasBrewTimeline = v.extractionTimeSeconds != null;
-  const hasEquipment = equipmentItems.length > 0;
+  const hasEquipment = equipmentItems.length > 0 || (v.brewerDetails != null && v.brewerDetails !== '');
   const hasTastingNotes = tasteNotes.length > 0 || (v.personalNotes != null && v.personalNotes !== '');
 
   return (

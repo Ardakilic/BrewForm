@@ -147,6 +147,33 @@ describe('EquipmentSection — unit tests', () => {
     expect(screen.getByText('Aeropress')).toBeInTheDocument();
     expect(screen.getByText('Main Brewer')).toBeInTheDocument();
   });
+
+  it('clicking main brewer navigates to /recipes?brewMethod={method}', async () => {
+    const user = userEvent.setup();
+    render(
+      <EquipmentSection
+        items={[]}
+        brewerDetails='V60 02 ceramic'
+        brewMethod='v60'
+      />,
+    );
+    const button = screen.getByRole('button', { name: /V60 02 ceramic/i });
+    await user.click(button);
+    expect(mockNavigate).toHaveBeenCalledWith('/recipes?brewMethod=v60');
+  });
+
+  it('main brewer is not clickable when brewMethod is missing', async () => {
+    const user = userEvent.setup();
+    render(
+      <EquipmentSection
+        items={[]}
+        brewerDetails='Unknown Brewer'
+      />,
+    );
+    const button = screen.getByRole('button', { name: /Unknown Brewer/i });
+    await user.click(button);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------

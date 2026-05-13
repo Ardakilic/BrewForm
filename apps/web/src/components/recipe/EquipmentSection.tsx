@@ -15,7 +15,7 @@ interface EquipmentSectionProps {
   brewerDetails?: string | null;
 }
 
-export function EquipmentSection({ items, brewerDetails }: EquipmentSectionProps) {
+export function EquipmentSection({ items, brewMethod, brewerDetails }: EquipmentSectionProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const BrewerIcon = getEquipmentIcon('');
@@ -47,10 +47,32 @@ export function EquipmentSection({ items, brewerDetails }: EquipmentSectionProps
       <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
         {brewerDetails && (
           <div
+            role='button'
+            tabIndex={0}
+            onClick={() => {
+              if (brewMethod) navigate(`/recipes?brewMethod=${brewMethod}`);
+            }}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ' ') && brewMethod) {
+                e.preventDefault();
+                navigate(`/recipes?brewMethod=${brewMethod}`);
+              }
+            }}
             className='flex items-center gap-3 rounded-lg p-3 text-left transition-colors min-h-11'
             style={{
               border: '1px solid var(--border-primary)',
               backgroundColor: 'var(--bg-primary)',
+              cursor: brewMethod ? 'pointer' : 'default',
+            }}
+            onMouseEnter={(e) => {
+              if (brewMethod) {
+                (e.currentTarget as HTMLDivElement).style.backgroundColor =
+                  'var(--bg-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.backgroundColor =
+                'var(--bg-primary)';
             }}
           >
             <span
