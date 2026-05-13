@@ -16,7 +16,6 @@ import { RecipePrintViewPage } from './pages/recipes/RecipePrintViewPage';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage';
 import { UserProfilePage } from './pages/users/UserProfilePage';
-import { SearchPage } from './pages/search/SearchPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { SetupListPage } from './pages/setups/SetupListPage';
 import { BeanListPage } from './pages/beans/BeanListPage';
@@ -69,7 +68,6 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
-      { path: 'search', element: <SearchPage /> },
       { path: 'u/:username', element: <UserProfilePage /> },
       {
         path: 'settings',

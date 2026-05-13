@@ -58,9 +58,6 @@ export function AdminCachePage() {
             <li>
               <code>compatibility:</code> — Brew method compatibility matrix
             </li>
-            <li>
-              <code>search:</code> — Recipe search results
-            </li>
           </ul>
         </div>
       </div>

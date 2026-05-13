@@ -338,16 +338,6 @@ Only the recipe author can reply to comments (OP-only reply rule).
 
 ---
 
-## Search
-
-| Method | Endpoint  | Auth | Description                                |
-| ------ | --------- | ---- | ------------------------------------------ |
-| GET    | `/search` | none | Search recipes with filters and pagination |
-
-Accepts the same query parameters as `GET /recipes`.
-
----
-
 ## QR Code
 
 | Method | Endpoint                   | Auth | Description                              |

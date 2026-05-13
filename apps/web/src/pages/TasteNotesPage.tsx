@@ -10,6 +10,11 @@ interface TasteCategory {
   children: TasteCategory[];
 }
 
+function collectLeafIds(cat: TasteCategory): string[] {
+  if (cat.children.length === 0) return [cat.id];
+  return cat.children.flatMap(collectLeafIds);
+}
+
 export function TasteNotesPage() {
   const [hierarchy, setHierarchy] = useState<TasteCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +32,7 @@ export function TasteNotesPage() {
       <div key={cat.id}>
         <div className='py-2' style={{ paddingLeft: `${depth * 1.5 + 0.75}rem` }}>
           <Link
-            to={`/search?q=${encodeURIComponent(cat.name)}`}
+            to={`/recipes?tasteNoteIds=${collectLeafIds(cat).join(',')}`}
             className='hover:underline'
             style={{
               color: depth === 0 ? 'var(--accent-primary)' : 'var(--text-primary)',
