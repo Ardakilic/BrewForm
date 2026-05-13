@@ -9,7 +9,7 @@ import {
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import * as model from './model.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const recipe = new Hono<AppEnv>();
@@ -168,7 +168,7 @@ recipe.post(
     },
   }),
   authMiddleware,
-  zValidator('json', RecipeCreateSchema),
+  zValidator('json', RecipeCreateSchema, zodValidationHook),
   async (c) => {
     const authorId = c.get('userId') as string;
     const body = c.req.valid('json');
@@ -196,7 +196,7 @@ recipe.patch(
     },
   }),
   authMiddleware,
-  zValidator('json', RecipeUpdateSchema),
+  zValidator('json', RecipeUpdateSchema, zodValidationHook),
   async (c) => {
     const recipeId = c.req.param('id')!;
     const authorId = c.get('userId') as string;

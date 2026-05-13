@@ -129,6 +129,7 @@ export function RecipeFocusModePage() {
           <EquipmentSection
             items={equipmentItems}
             brewMethod={v.brewMethod}
+            brewerDetails={v.brewerDetails}
           />
         )}
 

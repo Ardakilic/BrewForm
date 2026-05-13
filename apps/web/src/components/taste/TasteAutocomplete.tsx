@@ -172,6 +172,7 @@ export function TasteAutocomplete({
         onIntensitiesChange({ ...intensities, [id]: 2 }); // default intensity 2
       }
     }
+    setQuery('');
   }
 
   function cycleIntensity(id: string) {
@@ -338,10 +339,10 @@ export function TasteAutocomplete({
                         role='option'
                         aria-selected={selectedIds.includes(item.id)}
                       >
-                        <span>
-                          {selectedIds.includes(item.id) ? '✓ ' : ''}
-                          {item.name}
-                        </span>
+                        {selectedIds.includes(item.id) && (
+                          <span className='mr-1 text-xs' style={{ color: 'var(--accent-primary)' }}>✓</span>
+                        )}
+                        <span>{item.name}</span>
                       </li>
                     ))}
                   </Fragment>
@@ -368,10 +369,10 @@ export function TasteAutocomplete({
                     role='option'
                     aria-selected={selectedIds.includes(item.id)}
                   >
-                    <span>
-                      {selectedIds.includes(item.id) ? '✓ ' : ''}
-                      {item.name}
-                    </span>
+                    {selectedIds.includes(item.id) && (
+                      <span className='mr-1 text-xs' style={{ color: 'var(--accent-primary)' }}>✓</span>
+                    )}
+                    <span>{item.name}</span>
                   </li>
                 ))}
               </Fragment>

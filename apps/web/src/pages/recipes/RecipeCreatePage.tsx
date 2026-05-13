@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { ApiError } from '../../api/client';
 import { equipmentApi, recipeApi, setupApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
@@ -108,10 +109,6 @@ export function RecipeCreatePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) {
-      setError('Title is required');
-      return;
-    }
     setLoading(true);
     setError('');
     try {
@@ -144,8 +141,13 @@ export function RecipeCreatePage() {
       const result = await recipeApi.create(data) as Record<string, unknown>;
       navigate(`/recipes/${result.slug}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create recipe';
-      setError(message);
+      if (err instanceof ApiError && err.details) {
+        const messages = err.details.map((d) => `${d.field}: ${d.message}`);
+        setError(messages.join('\n'));
+      } else {
+        const message = err instanceof Error ? err.message : 'Failed to create recipe';
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -163,7 +165,13 @@ export function RecipeCreatePage() {
           className='mb-4 rounded p-3 text-sm'
           style={{ backgroundColor: 'var(--error)', color: 'white' }}
         >
-          {error}
+          {typeof error === 'string' && error.includes('\n')
+            ? (
+              <ul className='list-disc pl-4 space-y-1'>
+                {error.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+              </ul>
+            )
+            : error}
         </div>
       )}
 
@@ -353,7 +361,7 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Brewer Details'>
+            <Field label='Main Brewer'>
               <input
                 type='text'
                 value={brewerDetails}
@@ -369,6 +377,7 @@ export function RecipeCreatePage() {
                 onChange={(e) => setGroundWeightGrams(e.target.value)}
                 className='input-field'
                 step='0.1'
+                min='0'
               />
             </Field>
             <Field label='Extraction Time (seconds)'>
@@ -386,6 +395,7 @@ export function RecipeCreatePage() {
                 onChange={(e) => setExtractionVolumeMl(e.target.value)}
                 className='input-field'
                 step='0.1'
+                min='0'
               />
             </Field>
             <Field label='Temperature (°C)'>

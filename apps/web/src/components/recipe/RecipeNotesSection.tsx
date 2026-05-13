@@ -9,7 +9,7 @@ interface RecipeNotesSectionProps {
 
 export function RecipeNotesSection({ recipeId, initialNotes = '' }: RecipeNotesSectionProps) {
   const { t } = useTranslation();
-  const [notes, setNotes] = useState(initialNotes);
+  const [notes, setNotes] = useState(initialNotes ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 

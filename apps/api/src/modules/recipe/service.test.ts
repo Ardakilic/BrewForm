@@ -268,6 +268,56 @@ describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe('groundWeightGrams validation', () => {
+    it('should reject negative groundWeightGrams', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        groundWeightGrams: -1,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept groundWeightGrams of 0', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        groundWeightGrams: 0,
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('extractionVolumeMl validation', () => {
+    it('should reject negative extractionVolumeMl', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        extractionVolumeMl: -1,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept extractionVolumeMl of 0', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        extractionVolumeMl: 0,
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('new drink types', () => {
+    const newDrinkTypes = ['aeropress', 'drip_coffee', 'moka_pot', 'siphon'] as const;
+
+    for (const drinkType of newDrinkTypes) {
+      it(`should accept drink type ${drinkType}`, () => {
+        const result = RecipeCreateSchema.safeParse({
+          ...BASE_RECIPE,
+          drinkType,
+        });
+        expect(result.success).toBe(true);
+      });
+    }
+  });
 });
 
 describe('tasteNoteIds AND logic filtering', () => {

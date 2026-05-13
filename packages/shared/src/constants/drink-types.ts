@@ -10,6 +10,10 @@ export const DRINK_TYPES = [
   { value: 'pour_over', label: 'Pour Over', compatibleMethods: ['v60', 'chemex', 'kalita_wave'] },
   { value: 'cold_brew', label: 'Cold Brew', compatibleMethods: ['cold_brew'] },
   { value: 'french_press', label: 'French Press', compatibleMethods: ['french_press'] },
+  { value: 'aeropress', label: 'AeroPress', compatibleMethods: ['aeropress'] },
+  { value: 'drip_coffee', label: 'Drip Coffee', compatibleMethods: ['drip_coffee'] },
+  { value: 'moka_pot', label: 'Moka Pot', compatibleMethods: ['moka_pot'] },
+  { value: 'siphon', label: 'Siphon', compatibleMethods: ['siphon'] },
 ] as const;
 
 export type DrinkTypeValue = (typeof DRINK_TYPES)[number]['value'];

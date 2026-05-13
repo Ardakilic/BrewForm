@@ -217,6 +217,7 @@ export function RecipeDetailPage() {
             <EquipmentSection
               items={equipment}
               brewMethod={v.brewMethod}
+              brewerDetails={v.brewerDetails}
             />
 
             <section className='card' aria-label='Preparation notes'>

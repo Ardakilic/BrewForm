@@ -53,6 +53,10 @@ export const drinkTypeEnum = pgEnum('drink_type', [
   'pour_over',
   'cold_brew',
   'french_press',
+  'aeropress',
+  'drip_coffee',
+  'moka_pot',
+  'siphon',
 ]);
 
 export const equipmentTypeEnum = pgEnum('equipment_type', [

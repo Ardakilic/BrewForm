@@ -26,6 +26,10 @@ const DrinkTypeEnum = z.enum([
   'pour_over',
   'cold_brew',
   'french_press',
+  'aeropress',
+  'drip_coffee',
+  'moka_pot',
+  'siphon',
 ]);
 
 const VisibilityEnum = z.enum(['draft', 'private', 'unlisted', 'public']);
@@ -56,9 +60,9 @@ export const RecipeCreateObjectSchema = z.object({
   brewerDetails: z.string().max(200).optional(),
   grinder: z.string().max(200).optional(),
   grindSize: z.string().max(100).optional(),
-  groundWeightGrams: z.number().positive().optional(),
+  groundWeightGrams: z.number().min(0).optional(),
   extractionTimeSeconds: z.number().positive().optional(),
-  extractionVolumeMl: z.number().positive().optional(),
+  extractionVolumeMl: z.number().min(0).optional(),
   temperatureCelsius: z.number().min(-40).max(100).optional(),
   personalNotes: z.string().max(10000).optional(),
   preparationNotes: z.string().min(1).max(10000),
@@ -71,8 +75,8 @@ export const RecipeCreateObjectSchema = z.object({
   additionalPreparations: z.array(AdditionalPreparationSchema).optional(),
   preInfusionTimeSeconds: z.number().int().min(1).optional(),
   beanId: z.string().uuid().optional(),
-  brewRatio: z.number().positive().optional(),
-  flowRate: z.number().positive().optional(),
+  brewRatio: z.number().min(0).optional(),
+  flowRate: z.number().min(0).optional(),
   tasteNoteIntensities: z.record(z.string().uuid(), z.number().int().min(1).max(3)).optional(),
 });
 

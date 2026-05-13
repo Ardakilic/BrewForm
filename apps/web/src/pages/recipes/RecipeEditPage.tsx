@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { ApiError } from '../../api/client';
 import { recipeApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
@@ -50,6 +51,7 @@ export function RecipeEditPage() {
   const [roastDate, setRoastDate] = useState('');
   const [packageOpenDate, setPackageOpenDate] = useState('');
   const [grindDate, setGrindDate] = useState('');
+  const [brewerDetails, setBrewerDetails] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -64,6 +66,7 @@ export function RecipeEditPage() {
       setCoffeeProcessing(r.currentVersion.coffeeProcessing || '');
       setGrinder(r.currentVersion.grinder || '');
       setGrindSize(r.currentVersion.grindSize || '');
+      setBrewerDetails(r.currentVersion.brewerDetails || '');
       setGroundWeightGrams(r.currentVersion.groundWeightGrams?.toString() || '');
       setExtractionTimeSeconds(r.currentVersion.extractionTimeSeconds?.toString() || '');
       setExtractionVolumeMl(r.currentVersion.extractionVolumeMl?.toString() || '');
@@ -110,6 +113,7 @@ export function RecipeEditPage() {
         ...(coffeeProcessing ? { coffeeProcessing } : {}),
         ...(grinder ? { grinder } : {}),
         ...(grindSize ? { grindSize } : {}),
+        ...(brewerDetails ? { brewerDetails } : {}),
         ...(groundWeightGrams ? { groundWeightGrams: Number(groundWeightGrams) } : {}),
         ...(extractionTimeSeconds ? { extractionTimeSeconds: Number(extractionTimeSeconds) } : {}),
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
@@ -126,8 +130,13 @@ export function RecipeEditPage() {
       const result = await recipeApi.update(id, data) as Record<string, unknown>;
       navigate(`/recipes/${result.slug}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update recipe';
-      setError(message);
+      if (err instanceof ApiError && err.details) {
+        const messages = err.details.map((d) => `${d.field}: ${d.message}`);
+        setError(messages.map((m) => `• ${m}`).join('\n'));
+      } else {
+        const message = err instanceof Error ? err.message : 'Failed to update recipe';
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -156,7 +165,13 @@ export function RecipeEditPage() {
           className='mb-4 rounded p-3 text-sm'
           style={{ backgroundColor: 'var(--error)', color: 'white' }}
         >
-          {error}
+          {typeof error === 'string' && error.includes('\n')
+            ? (
+              <ul className='list-disc pl-4 space-y-1'>
+                {error.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+              </ul>
+            )
+            : error}
         </div>
       )}
 
@@ -296,6 +311,15 @@ export function RecipeEditPage() {
                 className='input-field'
               />
             </EditField>
+            <EditField label='Main Brewer'>
+              <input
+                type='text'
+                value={brewerDetails}
+                onChange={(e) => setBrewerDetails(e.target.value)}
+                className='input-field'
+                placeholder='e.g. 58mm portafilter, 20g basket'
+              />
+            </EditField>
             <EditField label='Dose (g)'>
               <input
                 type='number'
@@ -303,6 +327,7 @@ export function RecipeEditPage() {
                 onChange={(e) => setGroundWeightGrams(e.target.value)}
                 className='input-field'
                 step='0.1'
+                min='0'
               />
             </EditField>
             <EditField label='Extraction Time (s)'>
@@ -320,6 +345,7 @@ export function RecipeEditPage() {
                 onChange={(e) => setExtractionVolumeMl(e.target.value)}
                 className='input-field'
                 step='0.1'
+                min='0'
               />
             </EditField>
             <EditField label='Temperature (°C)'>

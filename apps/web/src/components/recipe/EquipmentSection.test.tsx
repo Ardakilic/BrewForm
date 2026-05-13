@@ -37,6 +37,7 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
         'recipe.equipment.title': 'EQUIPMENT',
         'recipe.equipment.item': 'item',
         'recipe.equipment.items': 'items',
+        'recipe.mainBrewer': 'Main Brewer',
       };
       return translations[key] ?? key;
     },
@@ -132,6 +133,19 @@ describe('EquipmentSection — unit tests', () => {
     const item = { id: 'x', equipmentId: 'eq-x', name: null, type: 'portafilter' };
     const { container } = render(<EquipmentSection items={[item]} />);
     expect(container.firstChild).not.toBeNull();
+  });
+
+  it('renders brewerDetails as a Main Brewer card', () => {
+    render(<EquipmentSection items={[makeItem()]} brewerDetails='V60 02 ceramic' />);
+    expect(screen.getByText('V60 02 ceramic')).toBeInTheDocument();
+    expect(screen.getByText('Main Brewer')).toBeInTheDocument();
+  });
+
+  it('renders when items is empty but brewerDetails is provided', () => {
+    const { container } = render(<EquipmentSection items={[]} brewerDetails='Aeropress' />);
+    expect(container.firstChild).not.toBeNull();
+    expect(screen.getByText('Aeropress')).toBeInTheDocument();
+    expect(screen.getByText('Main Brewer')).toBeInTheDocument();
   });
 });
 

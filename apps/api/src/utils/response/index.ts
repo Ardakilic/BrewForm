@@ -73,3 +73,21 @@ export function forbidden(c: Context, message: string = 'Insufficient permission
 export function validationError(c: Context, details: Array<{ field: string; message: string }>) {
   return error(c, 'VALIDATION_ERROR', 'Validation failed', 400, details);
 }
+
+/**
+ * Hook for @hono/zod-validator that formats Zod issues into our standard
+ * { success: false, error: { code, message, details } } envelope instead of
+ * returning the raw ZodError object.
+ */
+export function zodValidationHook(
+  result: { success: boolean; error?: { issues: Array<{ path: (string | number)[]; message: string }> } },
+  c: Context,
+): Response | undefined {
+  if (!result.success && result.error) {
+    const details = result.error.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
+    }));
+    return validationError(c, details);
+  }
+}
