@@ -231,6 +231,7 @@ export const recipeVersions = pgTable(
     preInfusionTimeSeconds: integer('pre_infusion_time_seconds'),
     beanId: varchar('bean_id', { length: 36 }).references(() => beans.id),
     personalNotes: text('personal_notes'),
+    preparationNotes: text('preparation_notes').notNull(),
     isFavourite: boolean('is_favourite').notNull().default(false),
     rating: integer('rating'),
     emojiTag: emojiTagEnum('emoji_tag'),

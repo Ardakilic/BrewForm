@@ -42,6 +42,7 @@ export function RecipeEditPage() {
   const [extractionVolumeMl, setExtractionVolumeMl] = useState('');
   const [temperatureCelsius, setTemperatureCelsius] = useState('');
   const [personalNotes, setPersonalNotes] = useState('');
+  const [preparationNotes, setPreparationNotes] = useState('');
   const [rating, setRating] = useState('');
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
@@ -68,6 +69,7 @@ export function RecipeEditPage() {
       setExtractionVolumeMl(r.currentVersion.extractionVolumeMl?.toString() || '');
       setTemperatureCelsius(r.currentVersion.temperatureCelsius?.toString() || '');
       setPersonalNotes(r.currentVersion.personalNotes || '');
+      setPreparationNotes(r.currentVersion.preparationNotes || '');
       setRating(r.currentVersion.rating?.toString() || '');
       setEmojiTag(r.currentVersion.emojiTag || '');
       setTasteNoteIds((r as any).tasteNotes.map((t: any) => t.id));
@@ -113,6 +115,7 @@ export function RecipeEditPage() {
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
         ...(temperatureCelsius ? { temperatureCelsius: Number(temperatureCelsius) } : {}),
         ...(personalNotes ? { personalNotes } : {}),
+        preparationNotes: preparationNotes.trim(),
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
         ...(tasteNoteIds.length > 0 ? { tasteNoteIds, tasteNoteIntensities } : {}),
@@ -370,6 +373,16 @@ export function RecipeEditPage() {
               onIntensitiesChange={setTasteNoteIntensities}
             />
           </div>
+        </EditSection>
+
+        <EditSection title='Preparation Notes'>
+          <textarea
+            value={preparationNotes}
+            onChange={(e) => setPreparationNotes(e.target.value)}
+            className='input-field'
+            rows={6}
+            required
+          />
         </EditSection>
 
         <EditSection title='Personal Notes'>

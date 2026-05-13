@@ -9,6 +9,7 @@ describe('RecipeCreateSchema', () => {
       title: 'My Espresso',
       brewMethod: 'espresso_machine',
       drinkType: 'espresso',
+      preparationNotes: 'Test notes',
       groundWeightGrams: 18,
       extractionVolumeMl: 36,
     });
@@ -18,6 +19,7 @@ describe('RecipeCreateSchema', () => {
   it('should reject missing required fields', () => {
     const result = RecipeCreateSchema.safeParse({
       title: 'Missing brew method',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -33,6 +35,7 @@ describe('RecipeCreateSchema', () => {
       drinkType: 'espresso',
       roastDate: '2026-04-10',
       grindDate: '2026-04-05',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -44,6 +47,7 @@ describe('RecipeCreateSchema', () => {
         brewMethod: 'espresso_machine',
         drinkType: 'espresso',
         visibility,
+      preparationNotes: 'Test notes',
       });
       expect(result.success).toBe(true);
     }
@@ -54,6 +58,7 @@ describe('RecipeCreateSchema', () => {
       title: 'Bad method',
       brewMethod: 'invalid_method',
       drinkType: 'espresso',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -63,6 +68,7 @@ describe('RecipeCreateSchema', () => {
       title: 'Bad drink',
       brewMethod: 'espresso_machine',
       drinkType: 'invalid_drink',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -72,6 +78,7 @@ describe('RecipeCreateSchema', () => {
       title: 'Default visibility',
       brewMethod: 'espresso_machine',
       drinkType: 'espresso',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -84,6 +91,7 @@ describe('RecipeCreateSchema', () => {
       title: 'Test',
       brewMethod: 'v60',
       drinkType: 'pour_over',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -99,6 +107,7 @@ describe('RecipeCreateSchema', () => {
       additionalPreparations: [
         { name: 'Steamed Milk', type: 'milk', inputAmount: '60ml', preparationType: 'milk' },
       ],
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -109,6 +118,7 @@ describe('RecipeCreateSchema', () => {
       brewMethod: 'espresso_machine',
       drinkType: 'espresso',
       rating: 15,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -119,6 +129,7 @@ describe('RecipeCreateSchema', () => {
       brewMethod: 'espresso_machine',
       drinkType: 'espresso',
       emojiTag: 'fire',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -129,8 +140,77 @@ describe('RecipeCreateSchema', () => {
       brewMethod: 'espresso_machine',
       drinkType: 'espresso',
       emojiTag: 'invalid',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('preparationNotes validation', () => {
+  it('should reject missing preparationNotes', () => {
+    const result = RecipeCreateSchema.safeParse({
+      title: 'Missing prep notes',
+      brewMethod: 'espresso_machine',
+      drinkType: 'espresso',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('preparationNotes'))).toBe(true);
+    }
+  });
+
+  it('should reject empty preparationNotes', () => {
+    const result = RecipeCreateSchema.safeParse({
+      title: 'Empty prep notes',
+      brewMethod: 'espresso_machine',
+      drinkType: 'espresso',
+      preparationNotes: '',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('preparationNotes'))).toBe(true);
+    }
+  });
+
+  it('should accept preparationNotes up to 10000 chars', () => {
+    const result = RecipeCreateSchema.safeParse({
+      title: 'Long prep notes',
+      brewMethod: 'espresso_machine',
+      drinkType: 'espresso',
+      preparationNotes: 'a'.repeat(10000),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject preparationNotes over 10000 chars', () => {
+    const result = RecipeCreateSchema.safeParse({
+      title: 'Too long prep notes',
+      brewMethod: 'espresso_machine',
+      drinkType: 'espresso',
+      preparationNotes: 'a'.repeat(10001),
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('preparationNotes'))).toBe(true);
+    }
+  });
+
+  it('should allow optional preparationNotes in RecipeUpdateSchema', () => {
+    const result = RecipeUpdateSchema.safeParse({
+      title: 'Updated',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate preparationNotes when provided in RecipeUpdateSchema', () => {
+    const result = RecipeUpdateSchema.safeParse({
+      title: 'Updated',
+      preparationNotes: '',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('preparationNotes'))).toBe(true);
+    }
   });
 });
 
@@ -276,6 +356,7 @@ describe('Bug Condition exploration', () => {
       drinkType: 'pour_over',
       roastDate: '2026-04-10',
       packageOpenDate: '2026-04-05',
+      preparationNotes: 'Test notes',
     });
     // This assertion FAILS on unfixed code because the schema currently accepts
     // this invalid payload (success: true instead of success: false)
@@ -302,6 +383,7 @@ describe('Bug Condition exploration', () => {
       drinkType: 'pour_over',
       packageOpenDate: '2026-04-10',
       grindDate: '2026-04-05',
+      preparationNotes: 'Test notes',
     });
     // This assertion FAILS on unfixed code because the schema currently accepts
     // this invalid payload (success: true instead of success: false)
@@ -352,6 +434,7 @@ describe('Bug Condition exploration', () => {
             drinkType: 'pour_over',
             roastDate: roastDateStr,
             packageOpenDate: packageOpenDateStr,
+      preparationNotes: 'Test notes',
           });
 
           // EXPECTED: success: false with error on packageOpenDate
@@ -403,6 +486,7 @@ describe('Bug Condition exploration', () => {
             drinkType: 'pour_over',
             packageOpenDate: packageOpenDateStr,
             grindDate: grindDateStr,
+      preparationNotes: 'Test notes',
           });
 
           // EXPECTED: success: false with error on grindDate
@@ -436,6 +520,7 @@ describe('Preservation property tests', () => {
       title: 'T',
       brewMethod: 'v60',
       drinkType: 'pour_over',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -446,6 +531,7 @@ describe('Preservation property tests', () => {
       brewMethod: 'v60',
       drinkType: 'pour_over',
       roastDate: '2026-03-15',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -456,6 +542,7 @@ describe('Preservation property tests', () => {
       brewMethod: 'v60',
       drinkType: 'pour_over',
       packageOpenDate: '2026-04-01',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -468,6 +555,7 @@ describe('Preservation property tests', () => {
       roastDate: '2026-04-10',
       packageOpenDate: '2026-04-10',
       grindDate: '2026-04-10',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -479,6 +567,7 @@ describe('Preservation property tests', () => {
       drinkType: 'pour_over',
       roastDate: '2026-03-15',
       packageOpenDate: '2026-03-15',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -490,6 +579,7 @@ describe('Preservation property tests', () => {
       drinkType: 'pour_over',
       packageOpenDate: '2026-04-01',
       grindDate: '2026-04-01',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -502,6 +592,7 @@ describe('Preservation property tests', () => {
       roastDate: '2026-03-15',
       packageOpenDate: '2026-04-01',
       grindDate: '2026-04-10',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -513,6 +604,7 @@ describe('Preservation property tests', () => {
       drinkType: 'pour_over',
       roastDate: '2026-04-10',
       grindDate: '2026-04-05',
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -550,6 +642,7 @@ describe('Preservation property tests', () => {
             roastDate,
             packageOpenDate,
             grindDate,
+      preparationNotes: 'Test notes',
           });
 
           // Valid ordering must always be accepted
@@ -586,6 +679,7 @@ describe('Preservation property tests', () => {
             title,
             brewMethod,
             drinkType,
+      preparationNotes: 'Test notes',
           });
 
           // No date fields — must always be accepted
@@ -627,6 +721,7 @@ describe('Preservation property tests', () => {
             drinkType: 'pour_over',
             roastDate: roastDateStr,
             grindDate: grindDateStr,
+      preparationNotes: 'Test notes',
           });
 
           // Existing rule: grindDate < roastDate must be rejected
@@ -658,6 +753,7 @@ describe('Property 9: Pre-infusion time validation', () => {
     title: 'Test Recipe',
     brewMethod: 'espresso_machine',
     drinkType: 'espresso',
+    preparationNotes: 'Test preparation notes',
   } as const;
 
   // ---------------------------------------------------------------------------
@@ -669,6 +765,7 @@ describe('Property 9: Pre-infusion time validation', () => {
       ...baseRecipe,
       preInfusionTimeSeconds: 5,
       extractionTimeSeconds: 28,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -678,6 +775,7 @@ describe('Property 9: Pre-infusion time validation', () => {
       ...baseRecipe,
       preInfusionTimeSeconds: 28,
       extractionTimeSeconds: 28,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -690,6 +788,7 @@ describe('Property 9: Pre-infusion time validation', () => {
       ...baseRecipe,
       preInfusionTimeSeconds: 30,
       extractionTimeSeconds: 28,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -701,6 +800,7 @@ describe('Property 9: Pre-infusion time validation', () => {
     const result = RecipeCreateSchema.safeParse({
       ...baseRecipe,
       preInfusionTimeSeconds: 5,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -712,6 +812,7 @@ describe('Property 9: Pre-infusion time validation', () => {
     const result = RecipeCreateSchema.safeParse({
       ...baseRecipe,
       extractionTimeSeconds: 28,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -719,6 +820,7 @@ describe('Property 9: Pre-infusion time validation', () => {
   it('should accept both preInfusionTimeSeconds=undefined and extractionTimeSeconds=undefined', () => {
     const result = RecipeCreateSchema.safeParse({
       ...baseRecipe,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -728,6 +830,7 @@ describe('Property 9: Pre-infusion time validation', () => {
       ...baseRecipe,
       preInfusionTimeSeconds: 0,
       extractionTimeSeconds: 28,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -737,6 +840,7 @@ describe('Property 9: Pre-infusion time validation', () => {
       ...baseRecipe,
       preInfusionTimeSeconds: -1,
       extractionTimeSeconds: 28,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -765,6 +869,7 @@ describe('Property 9: Pre-infusion time validation', () => {
             ...baseRecipe,
             preInfusionTimeSeconds: preInfusion,
             extractionTimeSeconds,
+      preparationNotes: 'Test notes',
           });
 
           expect(result.success).toBe(true);
@@ -789,6 +894,7 @@ describe('Property 9: Pre-infusion time validation', () => {
             ...baseRecipe,
             preInfusionTimeSeconds: value,
             extractionTimeSeconds: value,
+      preparationNotes: 'Test notes',
           });
 
           expect(result.success).toBe(false);
@@ -819,6 +925,7 @@ describe('Property 9: Pre-infusion time validation', () => {
             ...baseRecipe,
             preInfusionTimeSeconds: preInfusion,
             extractionTimeSeconds: extraction,
+      preparationNotes: 'Test notes',
           });
 
           expect(result.success).toBe(false);
@@ -845,6 +952,7 @@ describe('Property 9: Pre-infusion time validation', () => {
           const result = RecipeCreateSchema.safeParse({
             ...baseRecipe,
             preInfusionTimeSeconds: preInfusion,
+      preparationNotes: 'Test notes',
           });
 
           expect(result.success).toBe(false);
@@ -871,6 +979,7 @@ describe('Property 9: Pre-infusion time validation', () => {
           const result = RecipeCreateSchema.safeParse({
             ...baseRecipe,
             extractionTimeSeconds: extraction,
+      preparationNotes: 'Test notes',
           });
 
           expect(result.success).toBe(true);
@@ -897,6 +1006,7 @@ describe('Property 10: Intensity range validation', () => {
     title: 'Test Recipe',
     brewMethod: 'espresso_machine',
     drinkType: 'espresso',
+    preparationNotes: 'Test preparation notes',
   } as const;
 
   // ---------------------------------------------------------------------------
@@ -907,6 +1017,7 @@ describe('Property 10: Intensity range validation', () => {
     const result = RecipeCreateObjectSchema.safeParse({
       ...baseRecipe,
       tasteNoteIntensities: { [TEST_UUID]: 1 },
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -915,6 +1026,7 @@ describe('Property 10: Intensity range validation', () => {
     const result = RecipeCreateObjectSchema.safeParse({
       ...baseRecipe,
       tasteNoteIntensities: { [TEST_UUID]: 2 },
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -923,6 +1035,7 @@ describe('Property 10: Intensity range validation', () => {
     const result = RecipeCreateObjectSchema.safeParse({
       ...baseRecipe,
       tasteNoteIntensities: { [TEST_UUID]: 3 },
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -935,6 +1048,7 @@ describe('Property 10: Intensity range validation', () => {
     const result = RecipeCreateObjectSchema.safeParse({
       ...baseRecipe,
       tasteNoteIntensities: { [TEST_UUID]: 0 },
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -943,6 +1057,7 @@ describe('Property 10: Intensity range validation', () => {
     const result = RecipeCreateObjectSchema.safeParse({
       ...baseRecipe,
       tasteNoteIntensities: { [TEST_UUID]: 4 },
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -951,6 +1066,7 @@ describe('Property 10: Intensity range validation', () => {
     const result = RecipeCreateObjectSchema.safeParse({
       ...baseRecipe,
       tasteNoteIntensities: { [TEST_UUID]: -1 },
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -959,6 +1075,7 @@ describe('Property 10: Intensity range validation', () => {
     const result = RecipeCreateObjectSchema.safeParse({
       ...baseRecipe,
       tasteNoteIntensities: { [TEST_UUID]: 100 },
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(false);
   });
@@ -966,6 +1083,7 @@ describe('Property 10: Intensity range validation', () => {
   it('should accept no intensity provided (tasteNoteIntensities omitted)', () => {
     const result = RecipeCreateObjectSchema.safeParse({
       ...baseRecipe,
+      preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
   });
@@ -989,6 +1107,7 @@ describe('Property 10: Intensity range validation', () => {
           const result = RecipeCreateObjectSchema.safeParse({
             ...baseRecipe,
             tasteNoteIntensities: { [TEST_UUID]: intensity },
+      preparationNotes: 'Test notes',
           });
           expect(result.success).toBe(true);
         },
@@ -1013,6 +1132,7 @@ describe('Property 10: Intensity range validation', () => {
           const result = RecipeCreateObjectSchema.safeParse({
             ...baseRecipe,
             tasteNoteIntensities: { [TEST_UUID]: intensity },
+      preparationNotes: 'Test notes',
           });
           expect(result.success).toBe(false);
         },

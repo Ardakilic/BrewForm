@@ -1,0 +1,29 @@
+{
+  "spec": "add-preparation-notes-field-recipes-markdown",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Rich but safe markdown textarea with a live preview, rendered as beautiful structured HTML (headers, lists, bold, italic) on recipe pages...",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "1) Schema tests: verify preparationNotes accepts valid strings up to 10000 chars. 2) Service tests: verify createRecipe/updateRecipe persist preparationNotes. 3) Seed test: verify seed data populates the field. 4) UI tests: verify textarea appears on create/edit, verify rendered markdown appears on detail/focus pages. 5) Run db-generate + db-migrate to verify migration applies cleanly. 6) Run full test suite (make test). 7) Manually verify both English and Turkish localization. Design quality: check empty state, loading state not needed (static render), long text overflow, and no AI slop patterns.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "done"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-13T01:29:33.297Z"
+}

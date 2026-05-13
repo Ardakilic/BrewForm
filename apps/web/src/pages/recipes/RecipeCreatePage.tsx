@@ -39,6 +39,7 @@ export function RecipeCreatePage() {
   const [extractionVolumeMl, setExtractionVolumeMl] = useState('');
   const [temperatureCelsius, setTemperatureCelsius] = useState('');
   const [personalNotes, setPersonalNotes] = useState('');
+  const [preparationNotes, setPreparationNotes] = useState('');
   const [rating, setRating] = useState('');
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
@@ -130,6 +131,7 @@ export function RecipeCreatePage() {
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
         ...(temperatureCelsius ? { temperatureCelsius: Number(temperatureCelsius) } : {}),
         ...(personalNotes ? { personalNotes } : {}),
+        preparationNotes: preparationNotes.trim(),
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
         ...(tasteNoteIds.length > 0 ? { tasteNoteIds, tasteNoteIntensities } : {}),
@@ -437,6 +439,17 @@ export function RecipeCreatePage() {
               onIntensitiesChange={setTasteNoteIntensities}
             />
           </div>
+        </Section>
+
+        <Section title='Preparation Notes'>
+          <textarea
+            value={preparationNotes}
+            onChange={(e) => setPreparationNotes(e.target.value)}
+            className='input-field'
+            rows={6}
+            placeholder='Step-by-step instructions on how to prepare this recipe...'
+            required
+          />
         </Section>
 
         <Section title='Personal Notes'>

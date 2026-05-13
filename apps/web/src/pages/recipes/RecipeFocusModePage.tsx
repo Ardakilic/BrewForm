@@ -132,6 +132,28 @@ export function RecipeFocusModePage() {
           />
         )}
 
+        {/* Preparation Notes Section — always show (mandatory field) */}
+        <section className='card' aria-label='Preparation notes'>
+          <div className='flex items-center justify-between mb-4'>
+            <span
+              className='text-xs font-semibold uppercase tracking-widest'
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              {t('recipe.preparationNotes')}
+            </span>
+          </div>
+          <p
+            className='text-sm'
+            style={{
+              color: 'var(--text-secondary)',
+              whiteSpace: 'pre-wrap',
+              lineHeight: '1.6',
+            }}
+          >
+            {v.preparationNotes}
+          </p>
+        </section>
+
         {/* Tasting Notes Section — hide if no taste notes AND no personalNotes */}
         {hasTastingNotes && (
           <TastingNotesSection

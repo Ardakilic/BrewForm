@@ -59,7 +59,7 @@ BrewForm implements two levels of validation:
 
 - Brew method and drink type must be compatible (per the brew method compatibility matrix)
 - `grindDate` cannot be earlier than `roastDate`
-- Required fields must be present (`title`, `brewMethod`, `drinkType`)
+- Required fields must be present (`title`, `brewMethod`, `drinkType`, `preparationNotes`)
 - Numeric values must be physically valid (positive where required)
 - Taste note IDs must reference existing taste notes
 - Equipment IDs must reference existing equipment

@@ -137,6 +137,7 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       preInfusionTimeSeconds: latestVersion.preInfusionTimeSeconds,
       beanId: latestVersion.beanId,
       personalNotes: latestVersion.personalNotes,
+      preparationNotes: latestVersion.preparationNotes,
       isFavourite: false,
     }).returning();
 

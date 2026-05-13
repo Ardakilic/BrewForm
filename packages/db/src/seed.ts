@@ -232,6 +232,7 @@ async function seedRecipes(
       flowRate: version.flowRate,
       preInfusionTimeSeconds: (version as any).preInfusionTimeSeconds ?? null,
       personalNotes: version.personalNotes,
+      preparationNotes: version.preparationNotes,
       isFavourite: version.isFavourite,
       rating: version.rating,
       emojiTag: version.emojiTag as any,

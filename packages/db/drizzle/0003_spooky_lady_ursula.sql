@@ -1,0 +1,1 @@
+ALTER TABLE "recipe_version" ADD COLUMN "preparation_notes" text NOT NULL;

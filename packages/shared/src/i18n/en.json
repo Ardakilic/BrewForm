@@ -79,6 +79,7 @@
   "recipe.emojiTag": "Quick Tag",
   "recipe.rating": "Rating",
   "recipe.personalNotes": "Personal Notes",
+  "recipe.preparationNotes": "Preparation Notes",
   "recipe.brewRatio": "Brew Ratio",
   "recipe.flowRate": "Flow Rate",
   "recipe.extractionTime": "Extraction Time",

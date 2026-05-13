@@ -149,7 +149,7 @@ describe('Recipe Service Logic', () => {
 });
 
 describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
-  const BASE_RECIPE = { title: 'Test', brewMethod: 'espresso_machine', drinkType: 'espresso' } as const;
+  const BASE_RECIPE = { title: 'Test', brewMethod: 'espresso_machine', drinkType: 'espresso', preparationNotes: 'Test preparation notes' } as const;
   const TEST_UUID = '00000000-0000-0000-0000-000000000001';
 
   // Requirements 12.2, 12.3, 12.4
