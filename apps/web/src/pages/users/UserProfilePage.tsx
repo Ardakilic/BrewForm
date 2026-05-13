@@ -136,7 +136,7 @@ export function UserProfilePage() {
                   {t('user.editProfile')}
                 </Link>
               )
-              : <FollowButton userId={profile.id} initialFollowing={profile.isFollowing} />}
+              : user && <FollowButton userId={profile.id} initialFollowing={profile.isFollowing} />}
           </div>
         </div>
       </div>
