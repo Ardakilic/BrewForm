@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import path from 'node:path';
+import { resolve, join } from 'jsr:@std/path';
 
 // When running inside Docker Compose, the API is reachable via the service name
 // "app" (http://app:8000). Outside Docker (bare Deno), it's localhost:8000.
@@ -10,24 +10,24 @@ const apiProxyTarget = Deno.env.get('VITE_API_PROXY_TARGET') || 'http://localhos
 
 // Resolve the monorepo root relative to this file's location.
 // vite.config.ts lives at apps/web/, so the root is two levels up.
-const monorepoRoot = path.resolve(__dirname, '../..');
-const sharedSrc = path.join(monorepoRoot, 'packages/shared/src');
+const monorepoRoot = resolve(import.meta.dirname!, '../..');
+const sharedSrc = join(monorepoRoot, 'packages/shared/src');
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       // Local path alias
-      '@': path.resolve(__dirname, './src'),
+      '@': resolve(import.meta.dirname!, './src'),
       // Workspace package aliases — Vite (Node.js) cannot resolve TypeScript
       // source files from package.json exports directly, so we map each
       // @brewform/shared/* sub-path to the actual source directory.
-      '@brewform/shared/types': path.join(sharedSrc, 'types/index.ts'),
-      '@brewform/shared/schemas': path.join(sharedSrc, 'schemas/index.ts'),
-      '@brewform/shared/constants': path.join(sharedSrc, 'constants/index.ts'),
-      '@brewform/shared/utils': path.join(sharedSrc, 'utils/index.ts'),
-      '@brewform/shared/i18n': path.join(sharedSrc, 'i18n/index.ts'),
-      '@brewform/shared': path.join(sharedSrc, 'index.ts'),
+      '@brewform/shared/types': join(sharedSrc, 'types/index.ts'),
+      '@brewform/shared/schemas': join(sharedSrc, 'schemas/index.ts'),
+      '@brewform/shared/constants': join(sharedSrc, 'constants/index.ts'),
+      '@brewform/shared/utils': join(sharedSrc, 'utils/index.ts'),
+      '@brewform/shared/i18n': join(sharedSrc, 'i18n/index.ts'),
+      '@brewform/shared': join(sharedSrc, 'index.ts'),
     },
   },
   server: {

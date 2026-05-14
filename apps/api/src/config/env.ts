@@ -10,6 +10,7 @@ const envSchema = z.object({
   APP_PORT: z.coerce.number().default(8000),
   APP_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),
+  LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
 
   DATABASE_URL: z.string().min(1),
   DATABASE_PROVIDER: z.enum(['postgresql', 'mysql', 'sqlite']).default('postgresql'),

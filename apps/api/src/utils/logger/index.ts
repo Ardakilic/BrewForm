@@ -7,7 +7,7 @@ const logger = pino({
   serializers: {
     err: pino.stdSerializers.err,
   },
-  transport: config.APP_ENV === 'development'
+  transport: config.LOG_FORMAT === 'pretty'
     ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
     : undefined,
 });
