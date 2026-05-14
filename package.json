@@ -14,7 +14,8 @@
     "db:migrate": "cd packages/db && deno run -A npm:drizzle-kit@0.31.10 migrate",
     "db:push": "cd packages/db && deno run -A npm:drizzle-kit@0.31.10 push",
     "db:studio": "cd packages/db && deno run -A npm:drizzle-kit@0.31.10 studio --host=0.0.0.0 --port=5555",
-    "db:seed": "deno run --allow-all packages/db/src/seed.ts"
+    "db:seed": "deno run --allow-all packages/db/src/seed.ts",
+    "email-build": "cd apps/api && deno run -A scripts/build-email-templates.ts"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.0",

@@ -1,7 +1,7 @@
 {
   "deploy": {
     "install": "deno install",
-    "build": "deno task db:generate && deno run -A scripts/build-email-templates.ts",
+    "build": "deno task db:generate && deno task email-build",
     "runtime": {
       "mode": "dynamic",
       "entrypoint": "src/main.ts"

@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { useTranslation } from '../contexts/I18nContext';
 
 interface Props {
   statusCode: number;
@@ -7,6 +8,8 @@ interface Props {
 }
 
 export function ErrorPage({ statusCode, message, illustration }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className='flex min-h-[60vh] flex-col items-center justify-center px-6 text-center'>
       <div className='text-8xl'>{illustration}</div>
@@ -14,37 +17,40 @@ export function ErrorPage({ statusCode, message, illustration }: Props) {
         {statusCode}
       </h1>
       <p className='mt-2 text-lg' style={{ color: 'var(--text-secondary)' }}>{message}</p>
-      <Link to='/' className='btn-primary mt-6'>Go Home</Link>
+      <Link to='/' className='btn-primary mt-6'>{t('common.goHome')}</Link>
     </div>
   );
 }
 
 export function NotFoundPage() {
+  const { t } = useTranslation();
   return (
     <ErrorPage
       statusCode={404}
-      message="Looks like this cup is empty. The page you're looking for doesn't exist."
-      illustration='\uD83E\uDEE5'
+      message={t('error.404')}
+      illustration='🫥'
     />
   );
 }
 
 export function ServerErrorPage() {
+  const { t } = useTranslation();
   return (
     <ErrorPage
       statusCode={500}
-      message="Something went wrong. We're brewing a fix."
-      illustration='\uD83D\uDC94'
+      message={t('error.500')}
+      illustration='💔'
     />
   );
 }
 
 export function ForbiddenPage() {
+  const { t } = useTranslation();
   return (
     <ErrorPage
       statusCode={403}
-      message="You don't have permission to access this page."
-      illustration='\uD83D\uDD12'
+      message={t('error.403')}
+      illustration='🔒'
     />
   );
 }

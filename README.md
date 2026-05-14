@@ -10,7 +10,8 @@ notes.
 - **SCAA Taste Notes** — Structured tasting notes from the SCAA 2016 Flavor Wheel with autocomplete
 - **Brew Method Compatibility** — Data-driven validation ensures brew methods and equipment are
   compatible
-- **Social Features** — Follow brewers, like/favourite recipes, comment with OP-only replies
+- **Social Features** — Follow brewers, like/favourite recipes, comment with OP-only replies; admins can reply to and delete any comment
+- **🌐 Language Switcher** — Switch between English and Turkish from the footer dropdown
 - **Achievement Badges** — Gamification system with data-driven badge rules
 - **QR Codes** — Generate shareable QR codes for public recipes (PNG and SVG)
 - **Three Themes** — Light, Dark, and Coffee mode
@@ -24,7 +25,7 @@ notes.
 | Layer      | Technology                                  |
 | ---------- | ------------------------------------------- |
 | Runtime    | Deno 2.7                                    |
-| Monorepo   | Turborepo (npm workspaces)                  |
+| Monorepo   | Turborepo (Deno workspaces)                 |
 | Backend    | Hono                                        |
 | Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |
 | ORM        | Drizzle ORM (postgres-js driver)            |
@@ -38,7 +39,7 @@ notes.
 
 ## Quick Start
 
-All commands run through Docker. No local Deno/Node installation required.
+All commands run through Docker. No local Deno installation required.
 
 ```bash
 # Clone the repository
@@ -48,16 +49,16 @@ cd brewform
 # Copy environment config (required by Docker Compose services such as Garage)
 cp .env.example .env
 
-# Start all services (postgres, mailpit, pgadmin, garage, app)
+# Start infrastructure services (postgres, mailpit, pgadmin, garage)
 make up
 
-# Install dependencies
+# Cache Deno dependencies
 make install
 
 # Build email templates (required before running the API)
 make email-build
 
-# Generate Drizzle migration
+# Generate Drizzle migration SQL
 make db-generate
 
 # Run database migrations
@@ -66,17 +67,21 @@ make db-migrate
 # Seed the database
 make db-seed
 
-# Start development server
+# Start full-stack development server (API on :8000 + Web on :5173 with hot reload)
 make dev
 ```
 
 Admin credentials after seeding: `admin@brewform.local` / `admin123456`
 
+Open **http://localhost:5173** for the web app and **http://localhost:8000** for the API.
+
 ## Development
 
 ```bash
-make dev           # Start development server (API + web with hot reload)
-make dev-api       # Start API only with hot reload
+make dev           # Start full-stack dev server (API :8000 + web :5173 with HMR)
+make dev-api       # Start API only with hot reload (:8000)
+make web-dev       # Start web dev server only (:5173, requires API already running)
+make preview       # Build web and preview production build (API :8000 + web :8080)
 make lint          # Lint the codebase
 make fmt           # Format the codebase
 make fmt-check     # Check formatting
@@ -87,6 +92,18 @@ make test-api      # Run API tests only
 make test-shared   # Run shared package tests only
 make ci            # Full CI check (fmt-check, lint, check, test-coverage)
 ```
+
+> **Why `make up` does not start the app?**  
+> `make up` only starts infrastructure (database, mail, storage, etc.). The API and web dev server
+> are started on-demand via `make dev`. This prevents a "port already allocated" error that would
+> occur if the API container were already running when you run `make dev`.
+
+> **Why no Turborepo for `make dev`?**  
+> Turborepo is an npm-ecosystem tool that requires an npm-compatible package manager binary (npm,
+> pnpm, yarn) to resolve workspaces. This project uses native Deno workspaces (`deno.json`) and has
+> no Node.js runtime in the Docker image. Running dev servers directly with Deno (`--watch` for the
+> API, `deno run -A npm:vite` for the web) is simpler, faster, and has no permission-prompt issues.
+> Turborepo is still used for CI tasks (build, lint, test) where it provides caching benefits.
 
 ## Database
 
@@ -149,6 +166,20 @@ brewform/
 ├── turbo.json
 └── deno.json
 ```
+
+## Services
+
+| Service         | URL                       | Purpose                          |
+| --------------- | ------------------------- | -------------------------------- |
+| API             | http://localhost:8000     | Hono backend (dev + preview)     |
+| Web (Vite HMR)  | http://localhost:5173     | React dev server with hot reload |
+| Web (Caddy)     | http://localhost:8080     | Built SPA preview                |
+| PostgreSQL      | localhost:5432            | Database                         |
+| Mailpit SMTP    | localhost:1025            | SMTP server for email testing    |
+| Mailpit UI      | http://localhost:8025     | Email web UI                     |
+| pgAdmin         | http://localhost:5050     | Database GUI                     |
+| Garage S3 API   | http://localhost:3900     | S3-compatible object storage     |
+| Garage Web      | http://localhost:3902     | Garage web gateway               |
 
 ## API
 

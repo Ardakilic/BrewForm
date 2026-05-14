@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-
 import { SEOHead } from '../../components/seo/SEOHead';
+import { useTranslation } from '../../contexts/I18nContext';
 import { api } from '../../api/client';
 
 interface Setup {
@@ -20,6 +20,7 @@ export function SetupListPage() {
   const [brewerDetails, setBrewerDetails] = useState('');
   const [grinder, setGrinder] = useState('');
   const [saving, setSaving] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     api.get<Setup[]>('/setups').then((data) => {
@@ -53,7 +54,7 @@ export function SetupListPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!globalThis.confirm('Delete this setup?')) return;
+    if (!globalThis.confirm(t('setup.delete') + '?')) return;
     try {
       await api.delete(`/setups/${id}`);
       setSetups((prev) => prev.filter((s) => s.id !== id));
@@ -67,25 +68,27 @@ export function SetupListPage() {
         className='mx-auto max-w-4xl px-6 py-12 text-center'
         style={{ color: 'var(--text-secondary)' }}
       >
-        Loading...
+        {t('common.loading')}
       </div>
     );
   }
 
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>
-      <SEOHead title='My Setups' />
+      <SEOHead title={t('setup.title')} />
       <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>My Setups</h1>
+        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+          {t('setup.title')}
+        </h1>
         <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
-          {showForm ? 'Cancel' : '+ New Setup'}
+          {showForm ? t('common.cancel') : t('setup.newSetup')}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleCreate} className='card mb-6'>
           <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-            Create Setup
+            {t('setup.createSetup')}
           </h2>
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
             <div>
@@ -93,7 +96,7 @@ export function SetupListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Name *
+                {t('setup.name')} *
               </label>
               <input
                 type='text'
@@ -108,7 +111,7 @@ export function SetupListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Brewer Details
+                {t('setup.brewerDetails')}
               </label>
               <input
                 type='text'
@@ -123,7 +126,7 @@ export function SetupListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Grinder
+                {t('recipe.grinder')}
               </label>
               <input
                 type='text'
@@ -135,7 +138,7 @@ export function SetupListPage() {
             </div>
           </div>
           <button type='submit' className='btn-primary mt-4' disabled={saving}>
-            {saving ? 'Creating...' : 'Create Setup'}
+            {saving ? t('setup.creating') : t('setup.createSetup')}
           </button>
         </form>
       )}
@@ -143,7 +146,7 @@ export function SetupListPage() {
       {setups.length === 0
         ? (
           <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-            No setups yet. Create your first brewing setup!
+            {t('setup.noSetups')}
           </div>
         )
         : (
@@ -154,7 +157,9 @@ export function SetupListPage() {
                   <div>
                     <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
                       {setup.name}
-                      {setup.isDefault && <span className='badge ml-2 text-xs'>Default</span>}
+                      {setup.isDefault && (
+                        <span className='badge ml-2 text-xs'>{t('setup.default')}</span>
+                      )}
                     </h3>
                     {setup.brewerDetails && (
                       <p className='text-sm mt-1' style={{ color: 'var(--text-secondary)' }}>
@@ -163,7 +168,7 @@ export function SetupListPage() {
                     )}
                     {setup.grinder && (
                       <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
-                        Grinder: {setup.grinder}
+                        {t('recipe.grinder')}: {setup.grinder}
                       </p>
                     )}
                   </div>
@@ -173,7 +178,7 @@ export function SetupListPage() {
                     className='text-sm'
                     style={{ color: 'var(--error)' }}
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>

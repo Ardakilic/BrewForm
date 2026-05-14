@@ -67,6 +67,8 @@ export interface RecipeVersion {
   temperatureCelsius: number | null;
   brewRatio: number | null;
   flowRate: number | null;
+  preInfusionTimeSeconds: number | null;
+  beanId: string | null;
   personalNotes: string | null;
   isFavourite: boolean;
   rating: number | null;
@@ -94,6 +96,10 @@ export interface RecipeCreateInput {
   extractionTimeSeconds?: number;
   extractionVolumeMl?: number;
   temperatureCelsius?: number;
+  brewRatio?: number;
+  flowRate?: number;
+  preInfusionTimeSeconds?: number;
+  beanId?: string;
   personalNotes?: string;
   isFavourite?: boolean;
   rating?: number;
@@ -102,6 +108,7 @@ export interface RecipeCreateInput {
   tasteNoteIds?: string[];
   equipmentIds?: string[];
   additionalPreparations?: AdditionalPreparation[];
+  tasteNoteIntensities?: Record<string, number>;
 }
 
 export type AdditionalPreparationCategory = 'milk' | 'water' | 'syrup' | 'spice' | 'other';

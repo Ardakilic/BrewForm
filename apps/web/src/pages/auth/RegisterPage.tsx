@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from '../../contexts/I18nContext';
 
 export function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -18,7 +20,7 @@ export function RegisterPage() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.register.passwordsMismatch'));
       return;
     }
 
@@ -37,7 +39,7 @@ export function RegisterPage() {
   return (
     <div className='mx-auto max-w-md px-6 py-12'>
       <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-        Create Account
+        {t('auth.register.title')}
       </h1>
       {error && (
         <div
@@ -53,7 +55,7 @@ export function RegisterPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Email
+            {t('auth.email')}
           </label>
           <input
             type='email'
@@ -69,7 +71,7 @@ export function RegisterPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Username
+            {t('auth.username')}
           </label>
           <input
             type='text'
@@ -85,7 +87,8 @@ export function RegisterPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Display Name <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span>
+            {t('auth.register.displayName')}{' '}
+            <span style={{ color: 'var(--text-tertiary)' }}>({t('common.optional')})</span>
           </label>
           <input
             type='text'
@@ -100,7 +103,7 @@ export function RegisterPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Password
+            {t('auth.password')}
           </label>
           <input
             type='password'
@@ -117,7 +120,7 @@ export function RegisterPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Confirm Password
+            {t('auth.confirmPassword')}
           </label>
           <input
             type='password'
@@ -129,12 +132,14 @@ export function RegisterPage() {
           />
         </div>
         <button type='submit' className='btn-primary' disabled={loading}>
-          {loading ? 'Creating account...' : 'Sign Up'}
+          {loading ? t('auth.register.creating') : t('nav.register')}
         </button>
       </form>
       <p className='mt-4 text-sm' style={{ color: 'var(--text-secondary)' }}>
-        Already have an account?{' '}
-        <Link to='/login' style={{ color: 'var(--accent-primary)' }}>Log in</Link>
+        {t('auth.register.hasAccount')}{' '}
+        <Link to='/login' style={{ color: 'var(--accent-primary)' }}>
+          {t('auth.register.logIn')}
+        </Link>
       </p>
     </div>
   );

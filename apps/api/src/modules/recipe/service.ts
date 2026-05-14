@@ -93,14 +93,21 @@ export async function createRecipe(authorId: string, data: any) {
       brewRatio,
       flowRate,
       personalNotes: data.personalNotes,
+      preparationNotes: data.preparationNotes,
       isFavourite: data.isFavourite || false,
       rating: data.rating,
       emojiTag: data.emojiTag,
+      preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? null,
+      beanId: data.beanId ?? null,
     }).returning();
 
     if (data.tasteNoteIds?.length) {
       await tx.insert(recipeTasteNotes).values(
-        data.tasteNoteIds.map((id: string) => ({ recipeVersionId: version.id, tasteNoteId: id })),
+        data.tasteNoteIds.map((id: string) => ({
+          recipeVersionId: version.id,
+          tasteNoteId: id,
+          intensity: data.tasteNoteIntensities?.[id] ?? 1,
+        })),
       );
     }
 
@@ -196,9 +203,12 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
       brewRatio,
       flowRate,
       personalNotes: data.personalNotes ?? latestVersion.personalNotes,
+      preparationNotes: data.preparationNotes ?? latestVersion.preparationNotes,
       isFavourite: data.isFavourite ?? latestVersion.isFavourite,
       rating: data.rating ?? latestVersion.rating,
       emojiTag: data.emojiTag ?? latestVersion.emojiTag,
+      preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? latestVersion.preInfusionTimeSeconds,
+      beanId: data.beanId ?? latestVersion.beanId,
     });
 
     await model.update(recipe.id, {
@@ -241,8 +251,17 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   return forked;
 }
 
-export async function listRecipes(filters: any, page: number, perPage: number) {
-  const conditions: any[] = [eq(recipes.visibility, 'public')];
+export async function listRecipes(
+  filters: any,
+  page: number,
+  perPage: number,
+  _requestingUserId: string | null = null,
+  isAdmin: boolean = false,
+) {
+  const visibilityCondition = (isAdmin === true && filters.visibility)
+    ? eq(recipes.visibility, filters.visibility)
+    : eq(recipes.visibility, 'public');
+  const conditions: any[] = [visibilityCondition];
 
   if (filters.authorId) {
     conditions.push(eq(recipes.authorId, filters.authorId));
@@ -270,6 +289,42 @@ export async function listRecipes(filters: any, page: number, perPage: number) {
     );
   }
 
+  if (filters.equipmentId) {
+    conditions.push(
+      inArray(
+        recipes.currentVersionId,
+        db.select({ id: recipeEquipment.recipeVersionId }).from(recipeEquipment).where(
+          eq(recipeEquipment.equipmentId, filters.equipmentId),
+        ),
+      ),
+    );
+  }
+
+  if (filters.tasteNoteIds) {
+    const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
+    // AND logic: recipe's current version must have ALL specified taste notes
+    for (const noteId of ids) {
+      conditions.push(
+        inArray(
+          recipes.currentVersionId,
+          db.select({ id: recipeTasteNotes.recipeVersionId })
+            .from(recipeTasteNotes)
+            .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
+        ),
+      );
+    }
+  } else if (filters.tasteNoteId) {
+    // Backward compatibility: single taste note filter
+    conditions.push(
+      inArray(
+        recipes.currentVersionId,
+        db.select({ id: recipeTasteNotes.recipeVersionId }).from(recipeTasteNotes).where(
+          eq(recipeTasteNotes.tasteNoteId, filters.tasteNoteId),
+        ),
+      ),
+    );
+  }
+
   if (filters.search) {
     const sanitized = filters.search.replace(/[%_]/g, '');
     if (sanitized) {
@@ -282,6 +337,21 @@ export async function listRecipes(filters: any, page: number, perPage: number) {
             db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
               ilike(recipeVersions.productName, searchTerm),
             ),
+          ),
+        ),
+      );
+    }
+  }
+
+  if (filters.mainBrewer) {
+    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+            ilike(recipeVersions.brewerDetails, searchTerm),
           ),
         ),
       );
@@ -327,6 +397,22 @@ export async function toggleFeature(recipeId: string, authorId: string) {
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (recipe.authorId !== authorId) throw new Error('FORBIDDEN');
   return model.toggleFeature(recipeId);
+}
+
+export async function saveNotes(recipeId: string, notes: string) {
+  const recipe = await model.findById(recipeId);
+  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
+  if (!recipe.currentVersionId) throw new Error('RECIPE_NOT_FOUND');
+  await model.updateVersionNotes(recipe.currentVersionId, notes);
+}
+
+export async function listStarredRecipes(
+  filters: any,
+  page: number,
+  perPage: number,
+  userId: string,
+) {
+  return model.findStarred(userId, filters, page, perPage);
 }
 
 export async function getRecipeMeta(slug: string) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { ApiError } from '../../api/client';
 import { recipeApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
@@ -42,9 +43,15 @@ export function RecipeEditPage() {
   const [extractionVolumeMl, setExtractionVolumeMl] = useState('');
   const [temperatureCelsius, setTemperatureCelsius] = useState('');
   const [personalNotes, setPersonalNotes] = useState('');
+  const [preparationNotes, setPreparationNotes] = useState('');
   const [rating, setRating] = useState('');
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
+  const [tasteNoteIntensities, setTasteNoteIntensities] = useState<Record<string, number>>({});
+  const [roastDate, setRoastDate] = useState('');
+  const [packageOpenDate, setPackageOpenDate] = useState('');
+  const [grindDate, setGrindDate] = useState('');
+  const [brewerDetails, setBrewerDetails] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -59,14 +66,27 @@ export function RecipeEditPage() {
       setCoffeeProcessing(r.currentVersion.coffeeProcessing || '');
       setGrinder(r.currentVersion.grinder || '');
       setGrindSize(r.currentVersion.grindSize || '');
+      setBrewerDetails(r.currentVersion.brewerDetails || '');
       setGroundWeightGrams(r.currentVersion.groundWeightGrams?.toString() || '');
       setExtractionTimeSeconds(r.currentVersion.extractionTimeSeconds?.toString() || '');
       setExtractionVolumeMl(r.currentVersion.extractionVolumeMl?.toString() || '');
       setTemperatureCelsius(r.currentVersion.temperatureCelsius?.toString() || '');
       setPersonalNotes(r.currentVersion.personalNotes || '');
+      setPreparationNotes(r.currentVersion.preparationNotes || '');
       setRating(r.currentVersion.rating?.toString() || '');
       setEmojiTag(r.currentVersion.emojiTag || '');
       setTasteNoteIds((r as any).tasteNotes.map((t: any) => t.id));
+      // Pre-populate intensities from existing taste notes
+      const existingIntensities: Record<string, number> = {};
+      for (const t of (r as any).tasteNotes) {
+        existingIntensities[t.id] = t.intensity ?? 2;
+      }
+      setTasteNoteIntensities(existingIntensities);
+      setRoastDate(r.currentVersion.roastDate ? r.currentVersion.roastDate.slice(0, 10) : '');
+      setPackageOpenDate(
+        r.currentVersion.packageOpenDate ? r.currentVersion.packageOpenDate.slice(0, 10) : '',
+      );
+      setGrindDate(r.currentVersion.grindDate ? r.currentVersion.grindDate.slice(0, 10) : '');
     }).catch(() => {
       setError('Failed to load recipe');
     }).finally(() => setFetching(false));
@@ -93,20 +113,30 @@ export function RecipeEditPage() {
         ...(coffeeProcessing ? { coffeeProcessing } : {}),
         ...(grinder ? { grinder } : {}),
         ...(grindSize ? { grindSize } : {}),
+        ...(brewerDetails ? { brewerDetails } : {}),
         ...(groundWeightGrams ? { groundWeightGrams: Number(groundWeightGrams) } : {}),
         ...(extractionTimeSeconds ? { extractionTimeSeconds: Number(extractionTimeSeconds) } : {}),
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
         ...(temperatureCelsius ? { temperatureCelsius: Number(temperatureCelsius) } : {}),
         ...(personalNotes ? { personalNotes } : {}),
+        preparationNotes: preparationNotes.trim(),
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
-        ...(tasteNoteIds.length > 0 ? { tasteNoteIds } : {}),
+        ...(tasteNoteIds.length > 0 ? { tasteNoteIds, tasteNoteIntensities } : {}),
+        ...(roastDate ? { roastDate } : {}),
+        ...(packageOpenDate ? { packageOpenDate } : {}),
+        ...(grindDate ? { grindDate } : {}),
       };
       const result = await recipeApi.update(id, data) as Record<string, unknown>;
       navigate(`/recipes/${result.slug}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update recipe';
-      setError(message);
+      if (err instanceof ApiError && err.details) {
+        const messages = err.details.map((d) => `${d.field}: ${d.message}`);
+        setError(messages.map((m) => `• ${m}`).join('\n'));
+      } else {
+        const message = err instanceof Error ? err.message : 'Failed to update recipe';
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -135,7 +165,13 @@ export function RecipeEditPage() {
           className='mb-4 rounded p-3 text-sm'
           style={{ backgroundColor: 'var(--error)', color: 'white' }}
         >
-          {error}
+          {typeof error === 'string' && error.includes('\n')
+            ? (
+              <ul className='list-disc pl-4 space-y-1'>
+                {error.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+              </ul>
+            )
+            : error}
         </div>
       )}
 
@@ -229,6 +265,32 @@ export function RecipeEditPage() {
               />
             </EditField>
           </div>
+          <div className='grid grid-cols-2 gap-4 mt-4'>
+            <EditField label='Roast Date'>
+              <input
+                type='date'
+                value={roastDate}
+                onChange={(e) => setRoastDate(e.target.value)}
+                className='input-field'
+              />
+            </EditField>
+            <EditField label='Package Open Date'>
+              <input
+                type='date'
+                value={packageOpenDate}
+                onChange={(e) => setPackageOpenDate(e.target.value)}
+                className='input-field'
+              />
+            </EditField>
+            <EditField label='Grind Date'>
+              <input
+                type='date'
+                value={grindDate}
+                onChange={(e) => setGrindDate(e.target.value)}
+                className='input-field'
+              />
+            </EditField>
+          </div>
         </EditSection>
 
         <EditSection title='Brew Parameters'>
@@ -249,6 +311,15 @@ export function RecipeEditPage() {
                 className='input-field'
               />
             </EditField>
+            <EditField label='Main Brewer'>
+              <input
+                type='text'
+                value={brewerDetails}
+                onChange={(e) => setBrewerDetails(e.target.value)}
+                className='input-field'
+                placeholder='e.g. 58mm portafilter, 20g basket'
+              />
+            </EditField>
             <EditField label='Dose (g)'>
               <input
                 type='number'
@@ -256,6 +327,7 @@ export function RecipeEditPage() {
                 onChange={(e) => setGroundWeightGrams(e.target.value)}
                 className='input-field'
                 step='0.1'
+                min='0'
               />
             </EditField>
             <EditField label='Extraction Time (s)'>
@@ -273,6 +345,7 @@ export function RecipeEditPage() {
                 onChange={(e) => setExtractionVolumeMl(e.target.value)}
                 className='input-field'
                 step='0.1'
+                min='0'
               />
             </EditField>
             <EditField label='Temperature (°C)'>
@@ -319,8 +392,23 @@ export function RecipeEditPage() {
             >
               Taste Notes
             </label>
-            <TasteAutocomplete selectedIds={tasteNoteIds} onSelectionChange={setTasteNoteIds} />
+            <TasteAutocomplete
+              selectedIds={tasteNoteIds}
+              onSelectionChange={setTasteNoteIds}
+              intensities={tasteNoteIntensities}
+              onIntensitiesChange={setTasteNoteIntensities}
+            />
           </div>
+        </EditSection>
+
+        <EditSection title='Preparation Notes'>
+          <textarea
+            value={preparationNotes}
+            onChange={(e) => setPreparationNotes(e.target.value)}
+            className='input-field'
+            rows={6}
+            required
+          />
         </EditSection>
 
         <EditSection title='Personal Notes'>

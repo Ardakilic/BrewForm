@@ -26,6 +26,10 @@ const DrinkTypeEnum = z.enum([
   'pour_over',
   'cold_brew',
   'french_press',
+  'aeropress',
+  'drip_coffee',
+  'moka_pot',
+  'siphon',
 ]);
 
 const VisibilityEnum = z.enum(['draft', 'private', 'unlisted', 'public']);
@@ -56,11 +60,12 @@ export const RecipeCreateObjectSchema = z.object({
   brewerDetails: z.string().max(200).optional(),
   grinder: z.string().max(200).optional(),
   grindSize: z.string().max(100).optional(),
-  groundWeightGrams: z.number().positive().optional(),
+  groundWeightGrams: z.number().min(0).optional(),
   extractionTimeSeconds: z.number().positive().optional(),
-  extractionVolumeMl: z.number().positive().optional(),
+  extractionVolumeMl: z.number().min(0).optional(),
   temperatureCelsius: z.number().min(-40).max(100).optional(),
   personalNotes: z.string().max(10000).optional(),
+  preparationNotes: z.string().min(1).max(10000),
   isFavourite: z.boolean().default(false),
   rating: z.number().min(1).max(10).optional(),
   emojiTag: EmojiTagEnum.optional(),
@@ -68,17 +73,65 @@ export const RecipeCreateObjectSchema = z.object({
   tasteNoteIds: z.array(z.string().uuid()).optional(),
   equipmentIds: z.array(z.string().uuid()).optional(),
   additionalPreparations: z.array(AdditionalPreparationSchema).optional(),
+  preInfusionTimeSeconds: z.number().int().min(1).optional(),
+  beanId: z.string().uuid().optional(),
+  brewRatio: z.number().min(0).optional(),
+  flowRate: z.number().min(0).optional(),
+  tasteNoteIntensities: z.record(z.string().uuid(), z.number().int().min(1).max(3)).optional(),
 });
 
-export const RecipeCreateSchema = RecipeCreateObjectSchema.refine(
-  (data) => {
-    if (data.grindDate && data.roastDate) {
-      return data.grindDate >= data.roastDate;
-    }
-    return true;
-  },
-  { message: 'Grind date cannot be earlier than roast date', path: ['grindDate'] },
-);
+export const RecipeCreateSchema = RecipeCreateObjectSchema
+  .refine(
+    (data) => {
+      if (data.grindDate && data.roastDate) {
+        return data.grindDate >= data.roastDate;
+      }
+      return true;
+    },
+    { message: 'Grind date cannot be earlier than roast date', path: ['grindDate'] },
+  )
+  .refine(
+    (data) => {
+      if (data.packageOpenDate && data.roastDate) {
+        return data.packageOpenDate >= data.roastDate;
+      }
+      return true;
+    },
+    { message: 'Package open date cannot be earlier than roast date', path: ['packageOpenDate'] },
+  )
+  .refine(
+    (data) => {
+      if (data.grindDate && data.packageOpenDate) {
+        return data.grindDate >= data.packageOpenDate;
+      }
+      return true;
+    },
+    { message: 'Grind date cannot be earlier than package open date', path: ['grindDate'] },
+  )
+  .refine(
+    (data) => {
+      if (data.preInfusionTimeSeconds != null && data.extractionTimeSeconds != null) {
+        return data.preInfusionTimeSeconds < data.extractionTimeSeconds;
+      }
+      return true;
+    },
+    {
+      message: 'Pre-infusion time must be less than extraction time',
+      path: ['preInfusionTimeSeconds'],
+    },
+  )
+  .refine(
+    (data) => {
+      if (data.preInfusionTimeSeconds != null && data.extractionTimeSeconds == null) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Extraction time is required when pre-infusion time is specified',
+      path: ['preInfusionTimeSeconds'],
+    },
+  );
 
 export const RecipeUpdateSchema = RecipeCreateObjectSchema.partial().extend({
   bumpVersion: z.boolean().default(false),
@@ -89,7 +142,22 @@ export const RecipeFilterSchema = z.object({
   drinkType: DrinkTypeEnum.optional(),
   visibility: VisibilityEnum.optional(),
   authorId: z.string().uuid().optional(),
+  equipmentId: z.string().uuid().optional(),
+  tasteNoteIds: z.string().optional().refine(
+    (val) => {
+      if (!val) return true;
+      const ids = val.split(',');
+      if (ids.length > 10) return false;
+      return ids.every((id) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim())
+      );
+    },
+    { message: 'tasteNoteIds must be at most 10 comma-separated UUIDs' },
+  ),
+  // Keep tasteNoteId for backward compatibility (deprecated)
+  tasteNoteId: z.string().uuid().optional(),
   grinder: z.string().optional(),
+  mainBrewer: z.string().max(200).optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
   perPage: z.coerce.number().int().positive().max(100).default(20),

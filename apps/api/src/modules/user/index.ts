@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { UserProfileUpdateSchema } from '@brewform/shared/schemas';
-import { authMiddleware } from '../../middleware/auth.ts';
+import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import { error, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
@@ -33,10 +33,11 @@ user.delete('/me', authMiddleware, async (c) => {
   return success(c, { message: 'Account deleted' });
 });
 
-user.get('/:username', async (c) => {
-  const username = c.req.param('username');
+user.get('/:username', optionalAuthMiddleware, async (c) => {
+  const username = c.req.param('username') as string;
+  const requesterId = c.get('userId') as string | undefined;
   try {
-    const profile = await service.getPublicProfile(username);
+    const profile = await service.getPublicProfile(username, requesterId);
     return success(c, profile);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

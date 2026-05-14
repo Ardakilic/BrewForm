@@ -8,7 +8,8 @@ import {
 } from '@brewform/shared/schemas';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import * as model from './model.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const recipe = new Hono<AppEnv>();
@@ -21,10 +22,46 @@ recipe.get(
     description: 'Paginated, filterable list of recipes.',
     responses: { 200: { description: 'Paginated list of recipes' } },
   }),
+  optionalAuthMiddleware,
   zValidator('query', RecipeFilterSchema),
   async (c) => {
     const filters = c.req.valid('query');
-    const result = await service.listRecipes(filters, filters.page, filters.perPage);
+    const userId = c.get('userId') ?? null;
+    const isAdmin = (c.get('user') as any)?.isAdmin ?? false;
+    const result = await service.listRecipes(
+      filters,
+      filters.page,
+      filters.perPage,
+      userId,
+      isAdmin,
+    );
+    return paginated(c, result.recipes, {
+      page: filters.page,
+      perPage: filters.perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / filters.perPage),
+    });
+  },
+);
+
+recipe.get(
+  '/starred',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'List starred (favourited) recipes',
+    description: 'Paginated, filterable list of recipes the current user has starred.',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'Paginated list of starred recipes' },
+      401: { description: 'Unauthorized' },
+    },
+  }),
+  authMiddleware,
+  zValidator('query', RecipeFilterSchema),
+  async (c) => {
+    const userId = c.get('userId') as string;
+    const filters = c.req.valid('query');
+    const result = await service.listStarredRecipes(filters, filters.page, filters.perPage, userId);
     return paginated(c, result.recipes, {
       page: filters.page,
       perPage: filters.perPage,
@@ -81,7 +118,45 @@ recipe.get(
         const userId = c.get('userId');
         if (userId !== r.authorId) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
-      return success(c, r);
+      // Transform the Drizzle result into the shape the frontend expects:
+      // - currentVersion: the latest version (versions[0])
+      // - tasteNotes: flattened from currentVersion.tasteNotes[].tasteNote
+      // - equipment: flattened from currentVersion.equipment[].equipment
+      // - userLiked / userFavourited: actual status for the authenticated user
+      const currentVersion = (r as any).versions?.[0] ?? null;
+      const userId = c.get('userId');
+      const recipeId = (r as any).id;
+      const [likeStatus, favouriteCount, ratingStats, userRating] = await Promise.all([
+        userId
+          ? model.getUserLikeStatus(userId, recipeId)
+          : Promise.resolve({ userLiked: false, userFavourited: false }),
+        model.getFavouriteCount(recipeId),
+        model.getRecipeRatingStats(recipeId),
+        userId ? model.getUserRating(userId, recipeId) : Promise.resolve(null),
+      ]);
+      const payload = {
+        ...(r as any),
+        currentVersion,
+        tasteNotes: currentVersion?.tasteNotes?.map((t: any) => ({
+          ...t.tasteNote,
+          tasteNoteId: t.tasteNote?.id, // explicit tasteNoteId for frontend hierarchy resolution
+          intensity: t.intensity ?? 1,
+        })) ?? [],
+        equipment: currentVersion?.equipment?.map((e: any) => ({
+          ...e.equipment,
+          equipmentId: e.equipmentId,
+        })) ?? [],
+        bean: currentVersion?.bean ?? null,
+        versionCount: (r as any).versions?.length ?? 1,
+        forkedFromSlug: (r as any).forkedFrom?.slug ?? null,
+        userLiked: likeStatus.userLiked,
+        userFavourited: likeStatus.userFavourited,
+        favouriteCount,
+        avgRating: ratingStats.avgRating,
+        ratingCount: ratingStats.ratingCount,
+        userRating,
+      };
+      return success(c, payload);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
@@ -102,7 +177,7 @@ recipe.post(
     },
   }),
   authMiddleware,
-  zValidator('json', RecipeCreateSchema),
+  zValidator('json', RecipeCreateSchema, zodValidationHook),
   async (c) => {
     const authorId = c.get('userId') as string;
     const body = c.req.valid('json');
@@ -130,7 +205,7 @@ recipe.patch(
     },
   }),
   authMiddleware,
-  zValidator('json', RecipeUpdateSchema),
+  zValidator('json', RecipeUpdateSchema, zodValidationHook),
   async (c) => {
     const recipeId = c.req.param('id')!;
     const authorId = c.get('userId') as string;
@@ -223,6 +298,68 @@ recipe.post(
     try {
       const result = await service.toggleLike(userId, recipeId);
       return success(c, result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      throw err;
+    }
+  },
+);
+
+recipe.post(
+  '/:id/rate',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'Rate a recipe (1–10)',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'Rating saved' },
+      400: { description: 'Invalid rating value' },
+      404: { description: 'Recipe not found' },
+    },
+  }),
+  authMiddleware,
+  async (c) => {
+    const recipeId = c.req.param('id')!;
+    const userId = c.get('userId') as string;
+    const body = await c.req.json().catch(() => ({}));
+    const rating = Number(body.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
+      return error(c, 'VALIDATION_ERROR', 'Rating must be an integer between 1 and 10', 400);
+    }
+    try {
+      const result = await model.upsertUserRating(userId, recipeId, rating);
+      const stats = await model.getRecipeRatingStats(recipeId);
+      return success(c, { ...result, ...stats });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      throw err;
+    }
+  },
+);
+
+recipe.post(
+  '/:id/notes',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'Save personal notes for a recipe',
+    description: 'Saves personal notes to the current version of the recipe.',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: { description: 'Notes saved' },
+      401: { description: 'Unauthorized' },
+      404: { description: 'Recipe not found' },
+    },
+  }),
+  authMiddleware,
+  async (c) => {
+    const recipeId = c.req.param('id')!;
+    const body = await c.req.json().catch(() => ({}));
+    const notes = typeof body.notes === 'string' ? body.notes : '';
+    try {
+      await service.saveNotes(recipeId, notes);
+      return success(c, { message: 'Notes saved' });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);

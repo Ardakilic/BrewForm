@@ -8,8 +8,9 @@ import {
   recipeVersions,
   userRecipeFavourites,
   userRecipeLikes,
+  userRecipeRatings,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, inArray, isNull, SQL, sql } from 'drizzle-orm';
+import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
 
 export async function create(data: typeof recipes.$inferInsert) {
   const [recipe] = await db.insert(recipes).values(data).returning();
@@ -28,6 +29,7 @@ export async function findById(id: string) {
           equipment: { with: { equipment: true } },
           additionalPreparations: true,
           versionPhotos: { with: { photo: true } },
+          bean: { columns: { origin: true, roaster: true, roastLevel: true } },
         },
       },
       photos: true,
@@ -48,6 +50,7 @@ export async function findBySlug(slug: string) {
           equipment: { with: { equipment: true } },
           additionalPreparations: true,
           versionPhotos: { with: { photo: true } },
+          bean: { columns: { origin: true, roaster: true, roastLevel: true } },
         },
       },
       photos: true,
@@ -68,9 +71,15 @@ export async function findMany(
   const finalWhere = where ? and(isNull(recipes.deletedAt), where) : isNull(recipes.deletedAt);
 
   const [data, totalResult] = await Promise.all([
-    db.select().from(recipes).where(finalWhere).orderBy(orderBy).limit(perPage).offset(
-      (page - 1) * perPage,
-    ),
+    db.query.recipes.findMany({
+      where: finalWhere,
+      orderBy,
+      limit: perPage,
+      offset: (page - 1) * perPage,
+      with: {
+        author: { columns: { id: true, username: true, displayName: true } },
+      },
+    }),
     db.select({ count: count() }).from(recipes).where(finalWhere),
   ]);
 
@@ -131,7 +140,10 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       temperatureCelsius: latestVersion.temperatureCelsius,
       brewRatio: latestVersion.brewRatio,
       flowRate: latestVersion.flowRate,
+      preInfusionTimeSeconds: latestVersion.preInfusionTimeSeconds,
+      beanId: latestVersion.beanId,
       personalNotes: latestVersion.personalNotes,
+      preparationNotes: latestVersion.preparationNotes,
       isFavourite: false,
     }).returning();
 
@@ -142,6 +154,7 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
         sourceTasteNotes.map((tn) => ({
           recipeVersionId: newVersion.id,
           tasteNoteId: tn.tasteNoteId,
+          intensity: tn.intensity,
         })),
       ).returning()
       : [];
@@ -240,6 +253,66 @@ export async function decrementComments(id: string) {
   return result ?? null;
 }
 
+export async function upsertUserRating(userId: string, recipeId: string, rating: number) {
+  const existing = await db.select({ id: userRecipeRatings.id })
+    .from(userRecipeRatings)
+    .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.update(userRecipeRatings)
+      .set({ rating, updatedAt: new Date() })
+      .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)));
+  } else {
+    await db.insert(userRecipeRatings).values({ userId, recipeId, rating });
+  }
+  return { rating };
+}
+
+export async function getRecipeRatingStats(recipeId: string) {
+  const [result] = await db.select({
+    avgRating: avg(userRecipeRatings.rating),
+    ratingCount: count(userRecipeRatings.id),
+  })
+    .from(userRecipeRatings)
+    .where(eq(userRecipeRatings.recipeId, recipeId));
+  return {
+    avgRating: result?.avgRating ? Math.round(Number(result.avgRating) * 10) / 10 : null,
+    ratingCount: result?.ratingCount ?? 0,
+  };
+}
+
+export async function getUserRating(userId: string, recipeId: string): Promise<number | null> {
+  const [result] = await db.select({ rating: userRecipeRatings.rating })
+    .from(userRecipeRatings)
+    .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)))
+    .limit(1);
+  return result?.rating ?? null;
+}
+
+export async function getFavouriteCount(recipeId: string): Promise<number> {
+  const [result] = await db.select({ count: count() })
+    .from(userRecipeFavourites)
+    .where(eq(userRecipeFavourites.recipeId, recipeId));
+  return result?.count ?? 0;
+}
+
+export async function getUserLikeStatus(userId: string, recipeId: string) {
+  const [[like], [fav]] = await Promise.all([
+    db.select({ id: userRecipeLikes.userId })
+      .from(userRecipeLikes)
+      .where(and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)))
+      .limit(1),
+    db.select({ id: userRecipeFavourites.userId })
+      .from(userRecipeFavourites)
+      .where(
+        and(eq(userRecipeFavourites.userId, userId), eq(userRecipeFavourites.recipeId, recipeId)),
+      )
+      .limit(1),
+  ]);
+  return { userLiked: !!like, userFavourited: !!fav };
+}
+
 export async function toggleLike(userId: string, recipeId: string) {
   return db.transaction(async (tx) => {
     const inserted = await tx.insert(userRecipeLikes)
@@ -294,10 +367,148 @@ export async function toggleFeature(id: string) {
   return { featured: recipe.featured };
 }
 
+export async function updateVersionNotes(versionId: string, notes: string) {
+  await db.update(recipeVersions)
+    .set({ personalNotes: notes })
+    .where(eq(recipeVersions.id, versionId));
+}
+
 export async function getFeed(authorIds: string[], page: number, perPage: number) {
   const where = and(
     inArray(recipes.authorId, authorIds),
     eq(recipes.visibility, 'public'),
   );
   return findMany(where, page, perPage, 'createdAt', 'desc');
+}
+
+export async function findStarred(
+  userId: string,
+  filters: {
+    brewMethod?: string;
+    drinkType?: string;
+    search?: string;
+    equipmentId?: string;
+    tasteNoteIds?: string;
+    mainBrewer?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  },
+  page: number,
+  perPage: number,
+) {
+  const conditions: any[] = [
+    eq(recipes.visibility, 'public'),
+  ];
+
+  if (filters.brewMethod) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.brewMethod, filters.brewMethod as any),
+        ),
+      ),
+    );
+  }
+
+  if (filters.drinkType) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.drinkType, filters.drinkType as any),
+        ),
+      ),
+    );
+  }
+
+  if (filters.search) {
+    const sanitized = filters.search.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        or(
+          ilike(recipes.title, searchTerm),
+          inArray(
+            recipes.id,
+            db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+              ilike(recipeVersions.productName, searchTerm),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  if (filters.mainBrewer) {
+    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+            ilike(recipeVersions.brewerDetails, searchTerm),
+          ),
+        ),
+      );
+    }
+  }
+
+  if (filters.equipmentId) {
+    conditions.push(
+      inArray(
+        recipes.currentVersionId,
+        db.select({ id: recipeEquipment.recipeVersionId }).from(recipeEquipment).where(
+          eq(recipeEquipment.equipmentId, filters.equipmentId),
+        ),
+      ),
+    );
+  }
+
+  if (filters.tasteNoteIds) {
+    const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
+    for (const noteId of ids) {
+      conditions.push(
+        inArray(
+          recipes.currentVersionId,
+          db.select({ id: recipeTasteNotes.recipeVersionId }).from(recipeTasteNotes).where(
+            eq(recipeTasteNotes.tasteNoteId, noteId),
+          ),
+        ),
+      );
+    }
+  }
+
+  const where = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+  const starredSubquery = db.select({ recipeId: userRecipeFavourites.recipeId })
+    .from(userRecipeFavourites)
+    .where(eq(userRecipeFavourites.userId, userId));
+
+  const finalWhere = and(
+    where,
+    inArray(recipes.id, starredSubquery),
+    isNull(recipes.deletedAt),
+  );
+
+  const sortBy = filters.sortBy || 'createdAt';
+  const sortOrder = filters.sortOrder || 'desc';
+  const orderByColumn = sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt;
+  const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
+
+  const [data, totalResult] = await Promise.all([
+    db.query.recipes.findMany({
+      where: finalWhere,
+      orderBy,
+      limit: perPage,
+      offset: (page - 1) * perPage,
+      with: {
+        author: { columns: { id: true, username: true, displayName: true } },
+      },
+    }),
+    db.select({ count: count() }).from(recipes).where(finalWhere),
+  ]);
+
+  return { recipes: data, total: totalResult[0].count };
 }

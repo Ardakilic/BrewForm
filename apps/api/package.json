@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "deno run --allow-all --watch src/main.ts",
     "build": "echo 'API build handled by Docker'",
+    "email-build": "deno run -A scripts/build-email-templates.ts",
     "lint": "deno lint src/",
     "check": "deno check src/main.ts",
     "test": "deno test src/"

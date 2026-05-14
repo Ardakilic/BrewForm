@@ -15,12 +15,3 @@ Deno.cron('evaluate-badges', '0 * * * *', async () => {
     log.error({ err, job: 'evaluate-badges' }, 'Cron job failed');
   }
 });
-
-Deno.cron('refresh-popular-cache', '0 */6 * * *', async () => {
-  try {
-    const { refreshPopularRecipes } = await import('../../modules/search/service.ts');
-    await refreshPopularRecipes();
-  } catch (err) {
-    log.error({ err, job: 'refresh-popular-cache' }, 'Cron job failed');
-  }
-});

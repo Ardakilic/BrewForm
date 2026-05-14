@@ -1,18 +1,37 @@
 services:
+  # ── API — development (hot reload) ─────────────────────────────────────────
+  # Runs the Hono API with `deno run --watch` for hot reload.
+  # Source code is volume-mounted from the host so file changes are picked up
+  # immediately without rebuilding the image.
+  #
+  # node_modules is kept in a named volume so the host directory never shadows
+  # the packages installed by `deno install` inside the container.
+  #
+  # Started on-demand via `make dev` or `make dev-api` (profile: dev).
+  # NOT started by `make up` to avoid binding port 8000 before `make dev`.
   app:
     build:
       context: .
       dockerfile: Dockerfile
+      target: deps
+    command:
+      - deno
+      - run
+      - --allow-all
+      - --unstable-sloppy-imports
+      - --unstable-cron
+      - --watch
+      - apps/api/src/main.ts
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform?connection_limit=10&pool_timeout=30
+      - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
       - CACHE_DRIVER=memory
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
-      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000,http://localhost:8080
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
       - SMTP_SECURE=false
@@ -20,7 +39,96 @@ services:
       - OPENAPI_ENABLED=true
       - APP_ENV=development
       - APP_PORT=8000
+      - APP_URL=http://localhost:8000
       - LOG_LEVEL=debug
+      - LOG_FORMAT=pretty
+      - ADMIN_EMAIL=admin@brewform.local
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123456
+    volumes:
+      - .:/app
+      - app_node_modules:/app/node_modules
+      - app_api_node_modules:/app/apps/api/node_modules
+      - app_web_node_modules:/app/apps/web/node_modules
+      - app_shared_node_modules:/app/packages/shared/node_modules
+      - app_db_node_modules:/app/packages/db/node_modules
+      - deno_cache:/root/.cache/deno
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      garage:
+        condition: service_healthy
+    profiles:
+      - dev
+
+  # ── Web dev server (Vite + HMR) ────────────────────────────────────────────
+  # Runs the React SPA in development mode with hot-module replacement.
+  # Proxies /api requests to the `app` service via http://app:8000.
+  # Started on-demand via `make dev` or `make web-dev` (profile: dev).
+  web-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    command:
+      - deno
+      - run
+      - --allow-all
+      - npm:vite
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "5173"
+    working_dir: /app/apps/web
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=/api/v1
+      - VITE_API_PROXY_TARGET=http://app:8000
+    depends_on:
+      app:
+        condition: service_started
+    volumes:
+      - .:/app
+      - app_node_modules:/app/node_modules
+      - app_api_node_modules:/app/apps/api/node_modules
+      - app_web_node_modules:/app/apps/web/node_modules
+      - app_shared_node_modules:/app/packages/shared/node_modules
+      - app_db_node_modules:/app/packages/db/node_modules
+      - deno_cache:/root/.cache/deno
+    profiles:
+      - dev
+
+  # ── API — preview (production-like, no hot reload) ─────────────────────────
+  # Runs the built production image of the API.
+  # Used by `make preview` alongside the Caddy static file server.
+  app-preview:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
+      - DATABASE_PROVIDER=postgresql
+      - CACHE_DRIVER=memory
+      - JWT_SECRET=dev-secret-change-me
+      - JWT_ACCESS_EXPIRY=15m
+      - JWT_REFRESH_EXPIRY=7d
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000,http://localhost:8080
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_SECURE=false
+      - EMAIL_FROM=noreply@brewform.local
+      - OPENAPI_ENABLED=true
+      - APP_ENV=development
+      - APP_PORT=8000
+      - APP_URL=http://localhost:8000
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=json
       - ADMIN_EMAIL=admin@brewform.local
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=admin123456
@@ -31,13 +139,10 @@ services:
         condition: service_started
       garage:
         condition: service_healthy
-    volumes:
-      - .:/app
-      - ./node_modules:/app/node_modules
-      - ./apps/api/node_modules:/app/apps/api/node_modules
-      - ./apps/web/node_modules:/app/apps/web/node_modules
-      - ./packages/shared/node_modules:/app/packages/shared/node_modules
-      - ./packages/db/node_modules:/app/packages/db/node_modules
+    profiles:
+      - preview
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
 
   postgres:
     image: postgres:18-trixie
@@ -85,12 +190,36 @@ services:
       - garage_data:/tmp/data
       - garage_meta:/tmp/meta
     healthcheck:
-      test: ["CMD-SHELL", "/garage status || exit 1"]
+      test: ["CMD", "/garage", "status"]
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # ── Preview — static SPA via Caddy ─────────────────────────────────────────
+  # Serves the built React SPA on :8080 alongside app-preview on :8000.
+  # Start with: make preview  (builds the web app first, then starts both)
+  web:
+    image: caddy:2-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./apps/web/dist:/usr/share/caddy:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      app-preview:
+        condition: service_started
+    profiles:
+      - preview
 
 volumes:
   postgres_data:
   garage_data:
   garage_meta:
+  deno_cache:
+  # node_modules volumes — keep installed packages inside the container so the
+  # host directory never shadows them when the source tree is volume-mounted.
+  app_node_modules:
+  app_api_node_modules:
+  app_web_node_modules:
+  app_shared_node_modules:
+  app_db_node_modules:

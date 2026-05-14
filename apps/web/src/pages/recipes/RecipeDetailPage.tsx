@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { recipeApi } from '../../api/index';
-import { SEOHead } from '../../components/seo/SEOHead';
-import { RecipeJsonLd } from '../../components/seo/JsonLd';
-import { LikeButton } from '../../components/recipe/LikeButton';
-import { FavouriteButton } from '../../components/recipe/FavouriteButton';
-import { CommentSection } from '../../components/recipe/CommentSection';
-import { RecipeQRCode } from '../../components/qrcode/RecipeQRCode';
-import { FocusModeButton, PrintButton } from '../../components/recipe/PrintButton';
-import { useAuth } from '../../contexts/AuthContext';
+import { recipeApi, tasteApi } from '../../api/index.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
+import { LikeButton } from '../../components/recipe/LikeButton.tsx';
+import { FavouriteButton } from '../../components/recipe/FavouriteButton.tsx';
+import { ForkCard } from '../../components/recipe/ForkCard.tsx';
+import { CommentSection } from '../../components/recipe/CommentSection.tsx';
+import { StarRating } from '../../components/recipe/StarRating.tsx';
+import { BreadcrumbNav } from '../../components/recipe/BreadcrumbNav.tsx';
+import { MetadataBadges } from '../../components/recipe/MetadataBadges.tsx';
+import { StatCards } from '../../components/recipe/StatCards.tsx';
+import { BeanSection } from '../../components/recipe/BeanSection.tsx';
+import { BrewTimeline } from '../../components/recipe/BrewTimeline.tsx';
+import { EquipmentSection } from '../../components/recipe/EquipmentSection.tsx';
+import { TastingNotesSection } from '../../components/recipe/TastingNotesSection.tsx';
+import { RecipeNotesSection } from '../../components/recipe/RecipeNotesSection.tsx';
+import { ShareSection } from '../../components/recipe/ShareSection.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { EMOJI_TAGS } from '@brewform/shared/constants';
 
 export function RecipeDetailPage() {
@@ -17,17 +27,24 @@ export function RecipeDetailPage() {
   const navigate = useNavigate();
   const fromQr = searchParams.get('from') === 'qr';
   const { user, isAuthenticated } = useAuth();
+  const { t } = useTranslation();
   // deno-lint-ignore no-explicit-any
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [focusMode, setFocusMode] = useState(false);
+  // deno-lint-ignore no-explicit-any
+  const [allTasteNotes, setAllTasteNotes] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch the flat taste notes hierarchy once for root category resolution
+    tasteApi.flat().then((data) => {
+      setAllTasteNotes(Array.isArray(data) ? data as any[] : []);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    recipeApi.get(slug).then((data) => {
-      // QR codes are only generated for public recipes. If a scan lands on a
-      // non-public recipe, show the dedicated "no longer available" page.
+    recipeApi.get(slug).then((data: Record<string, unknown>) => {
       if (fromQr && data && data.visibility !== 'public') {
         navigate('/recipes/unavailable', { replace: true });
         return;
@@ -46,7 +63,7 @@ export function RecipeDetailPage() {
         className='mx-auto max-w-4xl px-6 py-12 text-center'
         style={{ color: 'var(--text-secondary)' }}
       >
-        Loading...
+        {t('common.loading')}
       </div>
     );
   }
@@ -57,18 +74,22 @@ export function RecipeDetailPage() {
         className='mx-auto max-w-4xl px-6 py-12 text-center'
         style={{ color: 'var(--text-tertiary)' }}
       >
-        Recipe not found.
+        {t('recipe.notFound')}
       </div>
     );
   }
 
   const isOwner = user?.id === recipe.authorId;
-  const v = recipe.currentVersion;
+  const v = recipe.currentVersion ?? {};
   // deno-lint-ignore no-explicit-any
-  const emojiInfo = v.emojiTag ? EMOJI_TAGS.find((e: any) => e.key === v.emojiTag) : null;
+  const emojiInfo = v?.emojiTag ? EMOJI_TAGS.find((e: any) => e.key === v.emojiTag) : null;
+  // deno-lint-ignore no-explicit-any
+  const tasteNotes: any[] = Array.isArray(recipe.tasteNotes) ? recipe.tasteNotes : [];
+  // deno-lint-ignore no-explicit-any
+  const equipment: any[] = Array.isArray(recipe.equipment) ? recipe.equipment : [];
 
   return (
-    <div className={focusMode ? 'focus-mode' : ''}>
+    <div>
       <SEOHead
         title={recipe.title}
         description={v.personalNotes ||
@@ -76,7 +97,8 @@ export function RecipeDetailPage() {
             recipe.author?.displayName || recipe.author?.username
           }`}
         image={recipe.photos?.[0]?.url}
-        url={`${globalThis.location.origin}/share/${recipe.slug}`}
+        url={`${globalThis.location.origin}/recipes/${recipe.slug}`}
+        canonical={`${globalThis.location.origin}/recipes/${recipe.slug}`}
       />
       <RecipeJsonLd
         title={recipe.title}
@@ -86,185 +108,241 @@ export function RecipeDetailPage() {
         datePublished={recipe.createdAt}
       />
 
-      <div className='mx-auto max-w-4xl px-6 py-8'>
-        <div className='flex items-start justify-between mb-6'>
-          <div>
-            <h1 className='text-3xl font-bold' style={{ color: 'var(--text-primary)' }}>
-              {recipe.title}
-            </h1>
-            <div
-              className='flex items-center gap-2 mt-2 text-sm'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              <Link to={`/u/${recipe.author?.username}`} style={{ color: 'var(--accent-primary)' }}>
-                {recipe.author?.displayName || recipe.author?.username}
-              </Link>
-              <span>•</span>
-              <span className='badge'>{recipe.visibility}</span>
-              {recipe.forkedFromSlug && (
-                <>
-                  <span>•</span>
-                  <Link
-                    to={`/recipes/${recipe.forkedFromSlug}`}
-                    style={{ color: 'var(--accent-primary)' }}
-                  >
-                    Forked from original
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-          <div className='flex gap-2'>
-            {isOwner && (
-              <Link to={`/recipes/${recipe.id}/edit`} className='btn-secondary text-sm'>Edit</Link>
-            )}
-            <PrintButton slug={recipe.slug} />
-            <FocusModeButton isFocusMode={focusMode} onToggle={() => setFocusMode(!focusMode)} />
-          </div>
-        </div>
-
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'>
-          <div className='md:col-span-2 space-y-4'>
-            <div className='card'>
-              <h2 className='font-semibold mb-3' style={{ color: 'var(--text-primary)' }}>
-                Brew Parameters
-              </h2>
-              <div className='grid grid-cols-2 gap-3 text-sm'>
-                <ParamRow label='Brew Method' value={v.brewMethod.replace(/_/g, ' ')} />
-                <ParamRow label='Drink Type' value={v.drinkType.replace(/_/g, ' ')} />
-                <ParamRow label='Product Name' value={v.productName} />
-                <ParamRow label='Coffee Brand' value={v.coffeeBrand} />
-                <ParamRow label='Processing' value={v.coffeeProcessing} />
-                <ParamRow label='Grinder' value={v.grinder} />
-                <ParamRow label='Grind Size' value={v.grindSize} />
-                <ParamRow
-                  label='Dose'
-                  value={v.groundWeightGrams ? `${v.groundWeightGrams}g` : null}
-                />
-                <ParamRow
-                  label='Extraction Time'
-                  value={v.extractionTimeSeconds ? `${v.extractionTimeSeconds}s` : null}
-                />
-                <ParamRow
-                  label='Yield'
-                  value={v.extractionVolumeMl ? `${v.extractionVolumeMl}ml` : null}
-                />
-                <ParamRow
-                  label='Temperature'
-                  value={v.temperatureCelsius ? `${v.temperatureCelsius}°C` : null}
-                />
-                <ParamRow label='Ratio' value={v.brewRatio ? `1:${v.brewRatio}` : null} />
-                <ParamRow label='Flow Rate' value={v.flowRate ? `${v.flowRate} ml/s` : null} />
-              </div>
-            </div>
-
-            {v.personalNotes && (
-              <div className='card'>
-                <h2 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
-                  Personal Notes
-                </h2>
-                <p
-                  className='text-sm whitespace-pre-wrap'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {v.personalNotes}
-                </p>
-              </div>
-            )}
-
-            {recipe.tasteNotes.length > 0 && (
-              <div className='card'>
-                <h2 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
-                  Taste Notes
-                </h2>
-                <div className='flex flex-wrap gap-2'>
-                  {recipe.tasteNotes.map((note: any) => (
-                    <span key={note.id} className='badge'>{note.name}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {recipe.equipment.length > 0 && (
-              <div className='card'>
-                <h2 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
-                  Equipment
-                </h2>
-                <div className='flex flex-wrap gap-2'>
-                  {recipe.equipment.map((eq: any) => (
-                    <span
-                      key={eq.id}
-                      className='badge'
-                      style={{
-                        backgroundColor: 'var(--bg-tertiary)',
-                        color: 'var(--text-primary)',
-                      }}
-                    >
-                      {eq.name} ({eq.type})
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+      {/* ── Header section ── */}
+      <div
+        className='py-6'
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          borderBottom: '1px solid var(--border-primary)',
+        }}
+      >
+        <div className='mx-auto max-w-4xl px-6'>
+          {/* Breadcrumb */}
+          <div className='mb-3'>
+            <BreadcrumbNav brewMethod={v.brewMethod} recipeTitle={recipe.title} />
           </div>
 
-          <div className='space-y-4'>
-            <div className='card'>
-              <div className='flex items-center justify-between mb-3'>
-                <span className='text-sm font-medium' style={{ color: 'var(--text-secondary)' }}>
-                  Rating
-                </span>
-                {emojiInfo && <span title={emojiInfo.label}>{emojiInfo.emoji}</span>}
-              </div>
-              {v.rating && (
-                <div className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
-                  {v.rating}/10
-                </div>
-              )}
-            </div>
+          {/* Recipe title */}
+          <h1
+            className='text-3xl font-bold font-serif mb-3'
+            style={{ color: 'var(--text-primary)' }}
+          >
+            {recipe.title}
+          </h1>
 
-            <div className='card flex flex-col gap-3'>
-              <LikeButton
-                recipeId={recipe.id}
-                initialLiked={recipe.userLiked}
-                initialCount={recipe.likeCount}
-              />
-              {isAuthenticated && (
-                <FavouriteButton
-                  recipeId={recipe.id}
-                  initialFavourited={recipe.userFavourited}
-                  initialCount={0}
-                />
-              )}
+          {/* Metadata badges + action buttons row */}
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <MetadataBadges
+              author={recipe.author ?? null}
+              visibility={recipe.visibility}
+              brewMethod={v.brewMethod}
+              versionNumber={v.versionNumber ?? 1}
+              versionCount={recipe.versionCount ?? 1}
+            />
+
+            {/* Action buttons */}
+            <div className='flex flex-wrap items-center gap-2'>
+              {/* Print button */}
+              <button
+                type='button'
+                onClick={() => globalThis.print()}
+                className='btn-secondary text-sm min-h-11 px-3'
+                aria-label='Print recipe'
+              >
+                Print
+              </button>
+
+              {/* Focus button */}
+              <button
+                type='button'
+                onClick={() => navigate(`/recipes/${recipe.slug}/focus`)}
+                className='btn-secondary text-sm min-h-11 px-3'
+                aria-label='Focus mode'
+              >
+                Focus
+              </button>
+
+              {/* Fork Recipe button — hidden if not authenticated OR is owner */}
               {isAuthenticated && !isOwner && (
-                <Link
-                  to={`/recipes/${recipe.id}/fork`}
-                  className='btn-secondary text-sm text-center'
+                <button
+                  type='button'
+                  onClick={() => navigate(`/recipes/${recipe.id}/fork`)}
+                  className='btn-secondary text-sm min-h-11 px-3'
+                  aria-label='Fork recipe'
                 >
-                  🍴 Fork Recipe
+                  Fork Recipe
+                </button>
+              )}
+
+              {/* Edit button — owner only */}
+              {isOwner && (
+                <Link
+                  to={`/recipes/${recipe.id}/edit`}
+                  className='btn-secondary text-sm min-h-11 px-3 inline-flex items-center'
+                >
+                  {t('common.edit')}
                 </Link>
               )}
             </div>
+          </div>
+        </div>
+      </div>
 
-            <RecipeQRCode slug={recipe.slug} visibility={recipe.visibility} />
+      {/* ── Stat Cards (full width below header) ── */}
+      <div className='py-4' style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className='mx-auto max-w-4xl px-6'>
+          <StatCards version={v} />
+        </div>
+      </div>
+
+      {/* ── Main content grid ── */}
+      <div className='mx-auto max-w-4xl px-6 py-6'>
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+          {/* Main column (2/3 width on md+) */}
+          <div className='md:col-span-2 space-y-6'>
+            <BeanSection
+              productName={v.productName}
+              coffeeBrand={v.coffeeBrand}
+              coffeeProcessing={v.coffeeProcessing}
+              roastDate={v.roastDate}
+              packageOpenDate={v.packageOpenDate}
+              grindDate={v.grindDate}
+              brewDate={v.brewDate}
+              bean={recipe.bean ?? v.bean ?? null}
+            />
+
+            <BrewTimeline
+              extractionTimeSeconds={v.extractionTimeSeconds}
+              preInfusionTimeSeconds={v.preInfusionTimeSeconds}
+              flowRate={v.flowRate}
+            />
+
+            <EquipmentSection
+              items={equipment}
+              brewMethod={v.brewMethod}
+              brewerDetails={v.brewerDetails}
+            />
+
+            <section className='card' aria-label='Preparation notes'>
+              <div className='flex items-center justify-between mb-4'>
+                <span
+                  className='text-xs font-semibold uppercase tracking-widest'
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  {t('recipe.preparationNotes')}
+                </span>
+              </div>
+              <p
+                className='text-sm'
+                style={{
+                  color: 'var(--text-secondary)',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: '1.6',
+                }}
+              >
+                {v.preparationNotes}
+              </p>
+            </section>
+
+            <TastingNotesSection
+              tasteNotes={tasteNotes}
+              personalNotes={v.personalNotes}
+              allTasteNotes={allTasteNotes}
+            />
+
+            <RecipeNotesSection recipeId={recipe.id} initialNotes={v.personalNotes} />
+          </div>
+
+          {/* Sidebar (1/3 width on md+) */}
+          <div className='space-y-4 no-print'>
+            {/* Share section — at top for reachability */}
+            <ShareSection
+              slug={recipe.slug}
+              title={recipe.title}
+              visibility={recipe.visibility}
+            />
+
+            {/* Rating card */}
+            <div className='card'>
+              <div className='flex items-center justify-between mb-3'>
+                <span className='text-sm font-medium' style={{ color: 'var(--text-secondary)' }}>
+                  {t('recipe.rating')}
+                </span>
+                {emojiInfo && <span title={emojiInfo.label}>{emojiInfo.emoji}</span>}
+              </div>
+
+              {v.rating && (
+                <div className='mb-3'>
+                  <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
+                    {t('recipe.authorRating')}
+                  </p>
+                  <StarRating value={v.rating} interactive={false} />
+                </div>
+              )}
+
+              <div className='mb-3'>
+                <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
+                  {t('recipe.communityAvg')}
+                </p>
+                <StarRating
+                  value={recipe.avgRating ? Math.round(recipe.avgRating) : null}
+                  count={recipe.ratingCount ?? 0}
+                  interactive={false}
+                />
+              </div>
+
+              {isAuthenticated && (
+                <div className='pt-3 border-t' style={{ borderColor: 'var(--border-primary)' }}>
+                  <p className='text-xs mb-2' style={{ color: 'var(--text-tertiary)' }}>
+                    {recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
+                  </p>
+                  <StarRating
+                    value={recipe.userRating ?? null}
+                    onRate={async (rating) => {
+                      try {
+                        const result = await recipeApi.rate(recipe.id, rating);
+                        setRecipe((prev: any) => ({
+                          ...prev,
+                          userRating: rating,
+                          avgRating: (result as any).avgRating,
+                          ratingCount: (result as any).ratingCount,
+                        }));
+                      } catch {
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Social actions */}
+            <div data-testid='social-actions-card' className='card'>
+              <div className='flex flex-row gap-3'>
+                <LikeButton
+                  recipeId={recipe.id}
+                  initialLiked={recipe.userLiked}
+                  initialCount={recipe.likeCount}
+                />
+                {isAuthenticated && (
+                  <FavouriteButton
+                    recipeId={recipe.id}
+                    initialFavourited={recipe.userFavourited}
+                    initialCount={recipe.favouriteCount ?? 0}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Fork card */}
+            {isAuthenticated && !isOwner && <ForkCard recipeId={recipe.id} />}
           </div>
         </div>
 
-        <CommentSection recipeId={recipe.id} recipeAuthorId={recipe.authorId} />
+        {/* Comment section (full width below grid) */}
+        <div className='mt-6 no-print' data-testid='comment-section-wrapper'>
+          <CommentSection recipeId={recipe.id} recipeAuthorId={recipe.authorId} />
+        </div>
       </div>
-    </div>
-  );
-}
-
-function ParamRow({ label, value }: { label: string; value: string | null }) {
-  if (!value) return null;
-  return (
-    <div
-      className='flex justify-between py-1'
-      style={{ borderBottom: '1px solid var(--border-primary)' }}
-    >
-      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-      <span className='font-medium' style={{ color: 'var(--text-primary)' }}>{value}</span>
     </div>
   );
 }

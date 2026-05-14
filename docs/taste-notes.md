@@ -19,33 +19,24 @@ Each note has a `parentId` pointing to its parent in the tree. Root-level notes 
 
 ## Autocomplete
 
-The taste note autocomplete in the recipe form:
+The taste note autocomplete in the recipe form uses a client-side filter over the full SCAA hierarchy:
 
-1. Activates after the user types **3+ characters**
-2. Debounces requests by **2 seconds** (cancels previous on each keypress)
-3. Performs case-insensitive search across the full breadcrumb path
-4. If a search matches a parent node, all its children are expanded
-5. Results are sorted by depth then name
-6. Selected notes appear as removable chips above the input
+1. Loads the complete flat list once via `GET /taste-notes/flat`
+2. Filters client-side as the user types (case-insensitive match on note names)
+3. Results are grouped by root category with sub-groups for mid-level categories
+4. Selected notes appear as removable chips with intensity dots (1–3) above the input
+5. Clicking intensity dots cycles through 1 → 2 → 3 → 1
+6. The search query clears automatically after each selection/deselection
+7. Checkmarks indicate already-selected notes in the dropdown
+8. Keyboard navigation: ArrowUp/ArrowDown to highlight, Enter to toggle, Escape to close
 
-### Search Flow
-
-```
-User types "fruit" → GET /api/v1/taste-notes/search?search=fruit
-```
-
-Results include the matching parent and all its descendants:
+### Client-Side Filter Flow
 
 ```
-Fruity
- ├── Fruity > Berry
- │    ├── Fruity > Berry > Raspberry
- │    ├── Fruity > Berry > Blackberry
- │    └── Fruity > Berry > Strawberry
- └── Fruity > Citrus Fruit
-      ├── Fruity > Citrus Fruit > Grapefruit
-      └── Fruity > Citrus Fruit > Lemon
+User types "fruit" → client filters loaded flat notes → shows matching leaves grouped by category
 ```
+
+If no query is entered, all leaf notes are shown grouped by root category.
 
 ## Caching
 
@@ -89,14 +80,14 @@ mapping from key → emoji → label lives in `@brewform/shared/constants/emoji-
 ## In Recipes
 
 Taste notes are attached to recipes via the `RecipeTasteNote` join table. Each entry links a
-`TasteNote` to a `RecipeVersion` with an optional `emojiTag`:
+`TasteNote` to a `RecipeVersion` with an optional intensity (1–3):
 
 ```json
 {
   "tasteNoteIds": ["uuid-of-raspberry", "uuid-of-chocolate"],
-  "emojiTags": {
-    "uuid-of-raspberry": "fire",
-    "uuid-of-chocolate": "thumbsup"
+  "tasteNoteIntensities": {
+    "uuid-of-raspberry": 2,
+    "uuid-of-chocolate": 3
   }
 }
 ```

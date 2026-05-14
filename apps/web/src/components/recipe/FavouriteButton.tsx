@@ -1,29 +1,26 @@
 import { useState } from 'react';
-import { api } from '../../api/client';
+import { api } from '../../api/client.ts';
 
 interface Props {
   recipeId: string;
   initialFavourited: boolean;
-  initialCount: number;
+  initialCount?: number;
 }
 
 export function FavouriteButton({ recipeId, initialFavourited, initialCount }: Props) {
   const [favourited, setFavourited] = useState(initialFavourited);
-  const [count, setCount] = useState(initialCount);
+  const [count, setCount] = useState<number | undefined>(initialCount);
   const [loading, setLoading] = useState(false);
 
   async function toggle() {
     if (loading) return;
     setLoading(true);
     try {
-      if (favourited) {
-        await api.delete(`/recipes/${recipeId}/favourite`);
-        setCount((c) => c - 1);
-      } else {
-        await api.post(`/recipes/${recipeId}/favourite`, {});
-        setCount((c) => c + 1);
-      }
-      setFavourited(!favourited);
+      // The API uses a toggle endpoint (POST) — one call to favourite, another to unfavourite.
+      const result = await api.post<{ favourited: boolean }>(`/recipes/${recipeId}/favourite`, {});
+      const nowFavourited = (result as { favourited: boolean }).favourited;
+      setFavourited(nowFavourited);
+      setCount((c) => nowFavourited ? c + 1 : c - 1);
     } catch {
     } finally {
       setLoading(false);
@@ -41,7 +38,7 @@ export function FavouriteButton({ recipeId, initialFavourited, initialCount }: P
         color: favourited ? 'var(--bg-primary)' : 'var(--text-primary)',
       }}
     >
-      ⭐ {count}
+      ⭐ {count !== undefined && count}
     </button>
   );
 }

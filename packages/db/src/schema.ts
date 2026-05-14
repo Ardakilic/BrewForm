@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import {
   AnyPgColumn,
   boolean,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -52,6 +53,10 @@ export const drinkTypeEnum = pgEnum('drink_type', [
   'pour_over',
   'cold_brew',
   'french_press',
+  'aeropress',
+  'drip_coffee',
+  'moka_pot',
+  'siphon',
 ]);
 
 export const equipmentTypeEnum = pgEnum('equipment_type', [
@@ -227,7 +232,10 @@ export const recipeVersions = pgTable(
     temperatureCelsius: real('temperature_celsius'),
     brewRatio: real('brew_ratio'),
     flowRate: real('flow_rate'),
+    preInfusionTimeSeconds: integer('pre_infusion_time_seconds'),
+    beanId: varchar('bean_id', { length: 36 }).references(() => beans.id),
     personalNotes: text('personal_notes'),
+    preparationNotes: text('preparation_notes').notNull(),
     isFavourite: boolean('is_favourite').notNull().default(false),
     rating: integer('rating'),
     emojiTag: emojiTagEnum('emoji_tag'),
@@ -254,6 +262,7 @@ export const recipeTasteNotes = pgTable(
       { onDelete: 'cascade' },
     ),
     tasteNoteId: varchar('taste_note_id', { length: 36 }).notNull().references(() => tasteNotes.id),
+    intensity: integer('intensity').notNull().default(1),
   },
   (table) => [
     unique('recipe_taste_note_recipe_version_id_taste_note_id_unique').on(
@@ -289,10 +298,7 @@ export const recipeAdditionalPreparations = pgTable(
   'recipe_additional_preparation',
   {
     id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    recipeVersionId: varchar('recipe_version_id', { length: 36 }).notNull().references(
-      () => recipeVersions.id,
-      { onDelete: 'cascade' },
-    ),
+    recipeVersionId: varchar('recipe_version_id', { length: 36 }).notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     type: additionalPreparationTypeEnum('type').notNull(),
     inputAmount: varchar('input_amount', { length: 100 }).notNull(),
@@ -300,6 +306,11 @@ export const recipeAdditionalPreparations = pgTable(
     sortOrder: integer('sort_order').notNull().default(0),
   },
   (table) => [
+    foreignKey({
+      name: 'recipe_addl_prep_recipe_version_id_fk',
+      columns: [table.recipeVersionId],
+      foreignColumns: [recipeVersions.id],
+    }).onDelete('cascade'),
     index('recipe_additional_preparation_recipe_version_id_idx').on(table.recipeVersionId),
   ],
 );
@@ -516,6 +527,23 @@ export const userRecipeLikes = pgTable(
   ],
 );
 
+export const userRecipeRatings = pgTable(
+  'user_recipe_rating',
+  {
+    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    rating: integer('rating').notNull(), // 1–10
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('user_recipe_rating_user_id_recipe_id_unique').on(table.userId, table.recipeId),
+    index('user_recipe_rating_user_id_idx').on(table.userId),
+    index('user_recipe_rating_recipe_id_idx').on(table.recipeId),
+  ],
+);
+
 export const badges = pgTable(
   'badge',
   {
@@ -682,6 +710,10 @@ export const recipeVersionsRelations = relations(recipeVersions, ({ one, many })
     fields: [recipeVersions.vendorId],
     references: [vendors.id],
   }),
+  bean: one(beans, {
+    fields: [recipeVersions.beanId],
+    references: [beans.id],
+  }),
   tasteNotes: many(recipeTasteNotes),
   equipment: many(recipeEquipment),
   additionalPreparations: many(recipeAdditionalPreparations),
@@ -752,7 +784,7 @@ export const equipmentRelations = relations(equipment, ({ one, many }) => ({
   setupTampers: many(setups, { relationName: 'SetupTamper' }),
 }));
 
-export const beansRelations = relations(beans, ({ one }) => ({
+export const beansRelations = relations(beans, ({ one, many }) => ({
   vendor: one(vendors, {
     fields: [beans.vendorId],
     references: [vendors.id],
@@ -761,6 +793,7 @@ export const beansRelations = relations(beans, ({ one }) => ({
     fields: [beans.userId],
     references: [users.id],
   }),
+  recipeVersions: many(recipeVersions),
 }));
 
 export const vendorsRelations = relations(vendors, ({ many }) => ({
@@ -845,6 +878,17 @@ export const userRecipeFavouritesRelations = relations(userRecipeFavourites, ({ 
   }),
   recipe: one(recipes, {
     fields: [userRecipeFavourites.recipeId],
+    references: [recipes.id],
+  }),
+}));
+
+export const userRecipeRatingsRelations = relations(userRecipeRatings, ({ one }) => ({
+  user: one(users, {
+    fields: [userRecipeRatings.userId],
+    references: [users.id],
+  }),
+  recipe: one(recipes, {
+    fields: [userRecipeRatings.recipeId],
     references: [recipes.id],
   }),
 }));

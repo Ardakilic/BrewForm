@@ -61,6 +61,8 @@ jobs:
       APP_ENV: test
       APP_PORT: 8000
       CORS_ALLOWED_ORIGINS: http://localhost:5173
+      LOG_LEVEL: info
+      LOG_FORMAT: json
       STORAGE_DRIVER: local
 
     steps:

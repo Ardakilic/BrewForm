@@ -1,12 +1,14 @@
 import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router';
 import { authApi } from '../../api/index';
+import { useTranslation } from '../../contexts/I18nContext';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -27,12 +29,14 @@ export function ForgotPasswordPage() {
     return (
       <div className='mx-auto max-w-md px-6 py-12'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Check Your Email
+          {t('auth.forgotPassword.checkEmail')}
         </h1>
         <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
-          If an account with that email exists, we've sent you a password reset link.
+          {t('auth.forgotPassword.checkEmailDesc')}
         </p>
-        <Link to='/login' className='btn-secondary mt-6 inline-block'>Back to Login</Link>
+        <Link to='/login' className='btn-secondary mt-6 inline-block'>
+          {t('auth.forgotPassword.backToLogin')}
+        </Link>
       </div>
     );
   }
@@ -40,10 +44,10 @@ export function ForgotPasswordPage() {
   return (
     <div className='mx-auto max-w-md px-6 py-12'>
       <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-        Forgot Password
+        {t('auth.forgotPassword.title')}
       </h1>
       <p className='mt-2 text-sm' style={{ color: 'var(--text-secondary)' }}>
-        Enter your email and we'll send you a reset link.
+        {t('auth.forgotPassword.desc')}
       </p>
       {error && (
         <div
@@ -59,7 +63,7 @@ export function ForgotPasswordPage() {
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
-            Email
+            {t('auth.email')}
           </label>
           <input
             type='email'
@@ -71,12 +75,14 @@ export function ForgotPasswordPage() {
           />
         </div>
         <button type='submit' className='btn-primary' disabled={loading}>
-          {loading ? 'Sending...' : 'Send Reset Link'}
+          {loading ? t('auth.forgotPassword.sending') : t('auth.forgotPassword.sendLink')}
         </button>
       </form>
       <p className='mt-4 text-sm' style={{ color: 'var(--text-secondary)' }}>
-        Remember your password?{' '}
-        <Link to='/login' style={{ color: 'var(--accent-primary)' }}>Log in</Link>
+        {t('auth.forgotPassword.rememberPassword')}{' '}
+        <Link to='/login' style={{ color: 'var(--accent-primary)' }}>
+          {t('auth.login.title')}
+        </Link>
       </p>
     </div>
   );

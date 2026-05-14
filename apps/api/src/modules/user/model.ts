@@ -1,5 +1,5 @@
 import { db } from '@brewform/db';
-import { recipes, userFollows, users } from '@brewform/db/schema';
+import { recipes, recipeVersions, userFollows, users } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, isNull, like, or } from 'drizzle-orm';
 
 export async function findById(id: string) {
@@ -44,6 +44,43 @@ export async function getUserStats(id: string) {
     followerCount: followerCountResult[0].count,
     followingCount: followingCountResult[0].count,
   };
+}
+
+export async function getUserPublicRecipes(userId: string) {
+  // Fetch the user's public recipes with their latest version's brew method and drink type.
+  const userRecipes = await db.query.recipes.findMany({
+    where: and(
+      eq(recipes.authorId, userId),
+      eq(recipes.visibility, 'public'),
+      isNull(recipes.deletedAt),
+    ),
+    orderBy: desc(recipes.createdAt),
+    columns: {
+      id: true,
+      slug: true,
+      title: true,
+      likeCount: true,
+      commentCount: true,
+      createdAt: true,
+    },
+    with: {
+      versions: {
+        orderBy: desc(recipeVersions.versionNumber),
+        limit: 1,
+        columns: { brewMethod: true, drinkType: true },
+      },
+    },
+  });
+
+  return userRecipes.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    likeCount: r.likeCount,
+    commentCount: r.commentCount,
+    createdAt: r.createdAt,
+    currentVersion: r.versions?.[0] ?? null,
+  }));
 }
 
 export async function searchUsers(query: string, page: number, perPage: number) {

@@ -8,15 +8,14 @@ import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { RecipeListPage } from './pages/recipes/RecipeListPage';
+import { StarredRecipesPage } from './pages/recipes/StarredRecipesPage';
 import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage';
 import { RecipeCreatePage } from './pages/recipes/RecipeCreatePage';
 import { RecipeEditPage } from './pages/recipes/RecipeEditPage';
 import { RecipeComparePage } from './pages/recipes/RecipeComparePage';
-import { RecipePrintViewPage } from './pages/recipes/RecipePrintViewPage';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage';
 import { UserProfilePage } from './pages/users/UserProfilePage';
-import { SearchPage } from './pages/search/SearchPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { SetupListPage } from './pages/setups/SetupListPage';
 import { BeanListPage } from './pages/beans/BeanListPage';
@@ -48,6 +47,14 @@ export const router = createBrowserRouter([
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'recipes', element: <RecipeListPage /> },
+      {
+        path: 'recipes/starred',
+        element: (
+          <RequireAuth>
+            <StarredRecipesPage />
+          </RequireAuth>
+        ),
+      },
       { path: 'recipes/unavailable', element: <RecipeNotAvailablePage /> },
       {
         path: 'recipes/new',
@@ -59,7 +66,6 @@ export const router = createBrowserRouter([
       },
       { path: 'recipes/compare/:id1/:id2', element: <RecipeComparePage /> },
       { path: 'recipes/:slug', element: <RecipeDetailPage /> },
-      { path: 'recipes/:slug/print', element: <RecipePrintViewPage /> },
       { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },
       {
         path: 'recipes/:id/edit',
@@ -69,7 +75,6 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
-      { path: 'search', element: <SearchPage /> },
       { path: 'u/:username', element: <UserProfilePage /> },
       {
         path: 'settings',

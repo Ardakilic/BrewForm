@@ -1,14 +1,16 @@
-import { db } from '@brewform/db';
-import { eq } from 'drizzle-orm';
-import * as bcryptjs from 'bcryptjs';
+import { eq, ilike } from 'drizzle-orm';
 import {
   badges,
   beans,
   brewMethodEquipmentRules,
   comments,
   equipment,
+  photos,
+  recipeAdditionalPreparations,
   recipeEquipment,
   recipes,
+  recipeTasteNotes,
+  recipeVersionPhotos,
   recipeVersions,
   setups,
   tasteNotes,
@@ -17,11 +19,24 @@ import {
   userPreferences,
   userRecipeFavourites,
   userRecipeLikes,
+  userRecipeRatings,
   users,
   vendors,
 } from './schema.ts';
-
-const hashSync = (bcryptjs as any).hashSync || (bcryptjs as any).default?.hashSync;
+import { db } from './index.ts';
+import {
+  badgeSeedData,
+  beanSeedData,
+  brewMethodCompatibilityRules,
+  defaultPassword,
+  equipmentSeedData,
+  hashPassword,
+  recipeSeedData,
+  setupSeedData,
+  socialSeedData,
+  userSeedData,
+  vendorSeedData,
+} from './seed-data.ts';
 
 interface ScaaChild {
   name: string;
@@ -41,7 +56,7 @@ interface ScaaFile {
   data: ScaaRoot[];
 }
 
-async function seedTasteNotes(tx: typeof db, data: ScaaRoot[]) {
+async function seedTasteNotes(tx: any, data: ScaaRoot[]) {
   for (const root of data) {
     const [rootNote] = await tx.insert(tasteNotes).values({
       name: root.name,
@@ -76,43 +91,8 @@ async function seedTasteNotes(tx: typeof db, data: ScaaRoot[]) {
   }
 }
 
-async function seedBrewMethodCompatibility(tx: typeof db) {
-  const rules: Array<{ brewMethod: string; equipmentType: string; compatible: boolean }> = [
-    { brewMethod: 'espresso_machine', equipmentType: 'portafilter', compatible: true },
-    { brewMethod: 'espresso_machine', equipmentType: 'basket', compatible: true },
-    { brewMethod: 'espresso_machine', equipmentType: 'tamper', compatible: true },
-    { brewMethod: 'espresso_machine', equipmentType: 'puck_screen', compatible: true },
-    { brewMethod: 'espresso_machine', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'v60', equipmentType: 'paper_filter', compatible: true },
-    { brewMethod: 'v60', equipmentType: 'gooseneck_kettle', compatible: true },
-    { brewMethod: 'v60', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'french_press', equipmentType: 'mesh_filter', compatible: true },
-    { brewMethod: 'french_press', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'aeropress', equipmentType: 'paper_filter', compatible: true },
-    { brewMethod: 'aeropress', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'turkish_coffee', equipmentType: 'cezve', compatible: true },
-    { brewMethod: 'drip_coffee', equipmentType: 'paper_filter', compatible: true },
-    { brewMethod: 'drip_coffee', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'chemex', equipmentType: 'paper_filter', compatible: true },
-    { brewMethod: 'chemex', equipmentType: 'gooseneck_kettle', compatible: true },
-    { brewMethod: 'chemex', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'kalita_wave', equipmentType: 'paper_filter', compatible: true },
-    { brewMethod: 'kalita_wave', equipmentType: 'gooseneck_kettle', compatible: true },
-    { brewMethod: 'kalita_wave', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'moka_pot', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'cold_brew', equipmentType: 'mesh_filter', compatible: true },
-    { brewMethod: 'cold_brew', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'siphon', equipmentType: 'scale', compatible: true },
-    { brewMethod: 'siphon', equipmentType: 'thermometer', compatible: true },
-    { brewMethod: 'espresso_machine', equipmentType: 'paper_filter', compatible: false },
-    { brewMethod: 'espresso_machine', equipmentType: 'mesh_filter', compatible: false },
-    { brewMethod: 'espresso_machine', equipmentType: 'gooseneck_kettle', compatible: false },
-    { brewMethod: 'v60', equipmentType: 'portafilter', compatible: false },
-    { brewMethod: 'v60', equipmentType: 'tamper', compatible: false },
-    { brewMethod: 'turkish_coffee', equipmentType: 'portafilter', compatible: false },
-  ];
-
-  for (const rule of rules) {
+async function seedBrewMethodCompatibility(tx: any) {
+  for (const rule of brewMethodCompatibilityRules) {
     await tx.insert(brewMethodEquipmentRules).values({
       brewMethod: rule.brewMethod as any,
       equipmentType: rule.equipmentType as any,
@@ -121,91 +101,16 @@ async function seedBrewMethodCompatibility(tx: typeof db) {
   }
 }
 
-async function seedBadges(tx: typeof db) {
-  const badgeData = [
-    {
-      name: 'First Brew',
-      icon: 'coffee',
-      rule: 'first_brew' as const,
-      description: 'Logged your first recipe',
-      threshold: 1,
-    },
-    {
-      name: 'Decade Brewer',
-      icon: 'ten',
-      rule: 'decade_brewer' as const,
-      description: '10 recipes logged',
-      threshold: 10,
-    },
-    {
-      name: 'Centurion',
-      icon: '100',
-      rule: 'centurion' as const,
-      description: '100 recipes logged',
-      threshold: 100,
-    },
-    {
-      name: 'First Fork',
-      icon: 'fork_and_knife',
-      rule: 'first_fork' as const,
-      description: 'Forked your first recipe',
-      threshold: 1,
-    },
-    {
-      name: 'Fan Favourite',
-      icon: 'star',
-      rule: 'fan_favourite' as const,
-      description: 'One of your recipes received 10+ likes',
-      threshold: 10,
-    },
-    {
-      name: 'Community Star',
-      icon: 'star2',
-      rule: 'community_star' as const,
-      description: 'One of your recipes received 50+ likes',
-      threshold: 50,
-    },
-    {
-      name: 'Conversationalist',
-      icon: 'speech_balloon',
-      rule: 'conversationalist' as const,
-      description: 'Left 10+ comments',
-      threshold: 10,
-    },
-    {
-      name: 'Precision Brewer',
-      icon: 'dart',
-      rule: 'precision_brewer' as const,
-      description: 'Logged 10 recipes with all optional fields filled',
-      threshold: 10,
-    },
-    {
-      name: 'Explorer',
-      icon: 'globe',
-      rule: 'explorer' as const,
-      description: 'Brewed with 5+ different brew methods',
-      threshold: 5,
-    },
-    {
-      name: 'Influencer',
-      icon: 'busts_in_silhouette',
-      rule: 'influencer' as const,
-      description: 'Gained 25+ followers',
-      threshold: 25,
-    },
-  ];
-
-  for (const badge of badgeData) {
+async function seedBadges(tx: any) {
+  for (const badge of badgeSeedData) {
     await tx.insert(badges).values(badge);
   }
 }
 
-async function seedUsers(tx: typeof db) {
+async function seedUsers(tx: any) {
   const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
   const adminUsername = Deno.env.get('ADMIN_USERNAME') || 'admin';
-  const adminPassword = hashSync(Deno.env.get('ADMIN_PASSWORD') || 'admin123456', 10);
-  const user1Password = hashSync('user123456', 10);
-  const user2Password = hashSync('user123456', 10);
+  const adminPassword = hashPassword(Deno.env.get('ADMIN_PASSWORD') || 'admin123456');
 
   const [admin] = await tx.insert(users).values({
     email: adminEmail,
@@ -218,304 +123,332 @@ async function seedUsers(tx: typeof db) {
 
   await tx.insert(userPreferences).values({ userId: admin.id });
 
-  const [user1] = await tx.insert(users).values({
-    email: 'alice@example.com',
-    username: 'alice',
-    passwordHash: user1Password,
-    displayName: 'Alice Brewer',
-    bio: 'Espresso enthusiast from Portland',
-    onboardingCompleted: true,
-  }).returning();
+  const createdUsers: Record<string, any> = { admin };
 
-  await tx.insert(userPreferences).values({
-    userId: user1.id,
-    unitSystem: 'metric',
-    theme: 'coffee',
-  });
+  for (const userData of userSeedData) {
+    const [user] = await tx.insert(users).values({
+      email: userData.email,
+      username: userData.username,
+      passwordHash: hashPassword(defaultPassword),
+      displayName: userData.displayName,
+      bio: userData.bio,
+      onboardingCompleted: userData.onboardingCompleted,
+    }).returning();
 
-  const [user2] = await tx.insert(users).values({
-    email: 'bob@example.com',
-    username: 'bob',
-    passwordHash: user2Password,
-    displayName: 'Bob Barista',
-    bio: 'V60 lover and specialty coffee nerd',
-    onboardingCompleted: true,
-  }).returning();
+    await tx.insert(userPreferences).values({
+      userId: user.id,
+      unitSystem: userData.preferences.unitSystem as any,
+      theme: userData.preferences.theme as any,
+    });
 
-  await tx.insert(userPreferences).values({
-    userId: user2.id,
-    unitSystem: 'metric',
-    theme: 'dark',
-  });
+    createdUsers[userData.username] = user;
+  }
 
-  return { admin, user1, user2 };
+  return createdUsers;
 }
 
-async function seedRecipes(tx: typeof db, seedUsers: { admin: any; user1: any; user2: any }) {
-  const [portafilter] = await tx.insert(equipment).values({
-    name: 'Bottomless Portafilter 58mm',
-    type: 'portafilter',
-    brand: 'Lelit',
-    createdBy: seedUsers.user1.id,
-  }).returning();
-
-  const [basket] = await tx.insert(equipment).values({
-    name: 'IMS H24 18g',
-    type: 'basket',
-    brand: 'IMS',
-    createdBy: seedUsers.user1.id,
-  }).returning();
-
-  const [tamper] = await tx.insert(equipment).values({
-    name: 'Normcore 58.5mm Spring Tamper',
-    type: 'tamper',
-    brand: 'Normcore',
-    createdBy: seedUsers.user1.id,
-  }).returning();
-
-  const [puckScreen] = await tx.insert(equipment).values({
-    name: 'Metal Puck Screen 58.5mm',
-    type: 'puck_screen',
-    brand: 'Sieve',
-    createdBy: seedUsers.user1.id,
-  }).returning();
-
-  const [gooseneck] = await tx.insert(equipment).values({
-    name: 'Fellow Stagg EKG',
-    type: 'gooseneck_kettle',
-    brand: 'Fellow',
-    createdBy: seedUsers.user2.id,
-  }).returning();
-
-  const [v60Filter] = await tx.insert(equipment).values({
-    name: 'Hario V60 Paper Filter 02',
-    type: 'paper_filter',
-    brand: 'Hario',
-    createdBy: seedUsers.user2.id,
-  }).returning();
-
-  const [scale] = await tx.insert(equipment).values({
-    name: 'Acaia Lunar',
-    type: 'scale',
-    brand: 'Acaia',
-    description: 'High-precision espresso scale',
-    createdBy: seedUsers.user1.id,
-  }).returning();
-
-  const [vendor1] = await tx.insert(vendors).values({
-    name: 'Heart Coffee Roasters',
-    website: 'https://heartroasters.com',
-    description: 'Portland-based specialty coffee roaster',
-  }).returning();
-
-  await tx.insert(beans).values({
-    name: 'Heart Ethiopia Yirgacheffe',
-    brand: 'Heart',
-    vendorId: vendor1.id,
-    roaster: 'Heart Coffee Roasters',
-    roastLevel: 'light',
-    processing: 'washed',
-    origin: 'Ethiopia, Yirgacheffe',
-    userId: seedUsers.user1.id,
-  });
-
-  const [recipe1] = await tx.insert(recipes).values({
-    slug: 'alices-signature-espresso',
-    title: "Alice's Signature Espresso",
-    authorId: seedUsers.user1.id,
-    visibility: 'public',
-    likeCount: 5,
-    commentCount: 2,
-    forkCount: 1,
-    featured: true,
-  }).returning();
-
-  const [recipe1Version] = await tx.insert(recipeVersions).values({
-    recipeId: recipe1.id,
-    versionNumber: 1,
-    productName: 'Heart Ethiopia Yirgacheffe',
-    coffeeBrand: 'Heart',
-    coffeeProcessing: 'washed',
-    vendorId: vendor1.id,
-    roastDate: new Date('2026-03-15'),
-    packageOpenDate: new Date('2026-04-01'),
-    grindDate: new Date('2026-04-10'),
-    brewDate: new Date('2026-04-15'),
-    brewMethod: 'espresso_machine',
-    drinkType: 'espresso',
-    brewerDetails: 'Lelit Mara X',
-    grinder: 'Lelit Fred',
-    grindSize: '12',
-    groundWeightGrams: 18,
-    extractionTimeSeconds: 28,
-    extractionVolumeMl: 36,
-    temperatureCelsius: 93,
-    brewRatio: 2.0,
-    flowRate: 1.29,
-    personalNotes: 'Beautiful sweet shot with floral notes and a honey finish.',
-    isFavourite: true,
-    rating: 9,
-    emojiTag: 'fire',
-  }).returning();
-
-  await tx.update(recipes).set({ currentVersionId: recipe1Version.id }).where(
-    eq(recipes.id, recipe1.id),
-  );
-
-  await tx.insert(recipeEquipment).values([
-    { recipeVersionId: recipe1Version.id, equipmentId: portafilter.id },
-    { recipeVersionId: recipe1Version.id, equipmentId: basket.id },
-    { recipeVersionId: recipe1Version.id, equipmentId: tamper.id },
-    { recipeVersionId: recipe1Version.id, equipmentId: puckScreen.id },
-    { recipeVersionId: recipe1Version.id, equipmentId: scale.id },
-  ]);
-
-  const [recipe2] = await tx.insert(recipes).values({
-    slug: 'bobs-morning-v60',
-    title: "Bob's Morning V60",
-    authorId: seedUsers.user2.id,
-    visibility: 'public',
-    likeCount: 3,
-    featured: false,
-  }).returning();
-
-  const [recipe2Version] = await tx.insert(recipeVersions).values({
-    recipeId: recipe2.id,
-    versionNumber: 1,
-    productName: 'Heart Ethiopia Yirgacheffe',
-    coffeeBrand: 'Heart',
-    coffeeProcessing: 'washed',
-    vendorId: vendor1.id,
-    roastDate: new Date('2026-03-15'),
-    brewDate: new Date('2026-04-12'),
-    brewMethod: 'v60',
-    drinkType: 'pour_over',
-    brewerDetails: 'Hario V60 02',
-    grinder: 'Baratza Encore',
-    grindSize: '20',
-    groundWeightGrams: 15,
-    extractionTimeSeconds: 210,
-    extractionVolumeMl: 250,
-    temperatureCelsius: 96,
-    brewRatio: 16.67,
-    flowRate: 1.19,
-    personalNotes: 'Clean, bright cup. Great morning brew.',
-    isFavourite: true,
-    rating: 8,
-    emojiTag: 'rocket',
-  }).returning();
-
-  await tx.update(recipes).set({ currentVersionId: recipe2Version.id }).where(
-    eq(recipes.id, recipe2.id),
-  );
-
-  await tx.insert(recipeEquipment).values([
-    { recipeVersionId: recipe2Version.id, equipmentId: gooseneck.id },
-    { recipeVersionId: recipe2Version.id, equipmentId: v60Filter.id },
-  ]);
-
-  return { recipe1, recipe2, portafilter, basket, tamper, puckScreen, gooseneck, v60Filter, scale };
+async function seedVendors(tx: any) {
+  const createdVendors: Record<string, any> = {};
+  for (const vendorData of vendorSeedData) {
+    const [vendor] = await tx.insert(vendors).values(vendorData).returning();
+    createdVendors[vendorData.name] = vendor;
+  }
+  return createdVendors;
 }
 
-async function seedSocialData(
-  tx: typeof db,
-  seedUsers: { admin: any; user1: any; user2: any },
-  seedRecipes: { recipe1: any; recipe2: any },
+async function seedEquipment(tx: any, createdUsers: Record<string, any>) {
+  const createdEquipment: Record<string, any> = {};
+  for (const equipData of equipmentSeedData) {
+    const [equip] = await tx.insert(equipment).values({
+      name: equipData.name,
+      type: equipData.type as any,
+      brand: equipData.brand,
+      description: equipData.description ?? null,
+      createdBy: createdUsers[equipData.createdByUsername]?.id,
+    }).returning();
+    createdEquipment[equipData.name] = equip;
+  }
+  return createdEquipment;
+}
+
+async function seedBeans(
+  tx: any,
+  createdUsers: Record<string, any>,
+  createdVendors: Record<string, any>,
 ) {
-  await tx.insert(userFollows).values({
-    followerId: seedUsers.user2.id,
-    followingId: seedUsers.user1.id,
-  });
-
-  await tx.insert(userRecipeLikes).values({
-    userId: seedUsers.user2.id,
-    recipeId: seedRecipes.recipe1.id,
-  });
-
-  await tx.insert(userRecipeFavourites).values({
-    userId: seedUsers.user2.id,
-    recipeId: seedRecipes.recipe1.id,
-  });
-
-  const [comment1] = await tx.insert(comments).values({
-    recipeId: seedRecipes.recipe1.id,
-    authorId: seedUsers.user2.id,
-    content: 'Amazing shot! What Grinder setting are you using?',
-  }).returning();
-
-  await tx.insert(comments).values({
-    recipeId: seedRecipes.recipe1.id,
-    authorId: seedUsers.user1.id,
-    content: 'Thanks! Setting 12 on the Lelit Fred.',
-    parentCommentId: comment1.id,
-  });
-
-  const firstBrewBadge = await tx.select().from(badges).where(eq(badges.rule, 'first_brew')).limit(
-    1,
-  );
-  if (firstBrewBadge.length > 0) {
-    await tx.insert(userBadges).values({
-      userId: seedUsers.user1.id,
-      badgeId: firstBrewBadge[0].id,
+  for (const beanData of beanSeedData) {
+    await tx.insert(beans).values({
+      name: beanData.name,
+      brand: beanData.brand,
+      vendorId: createdVendors[beanData.vendorName]?.id ?? null,
+      roaster: beanData.roaster,
+      roastLevel: beanData.roastLevel,
+      processing: beanData.processing,
+      origin: beanData.origin,
+      userId: createdUsers[beanData.userUsername]?.id,
     });
   }
 }
 
-async function seedSetups(
-  tx: typeof db,
-  seedUsers: { admin: any; user1: any; user2: any },
-  seedEquipment: any,
+async function seedRecipes(
+  tx: any,
+  createdUsers: Record<string, any>,
+  createdVendors: Record<string, any>,
+  createdEquipment: Record<string, any>,
 ) {
-  await tx.insert(setups).values({
-    name: "Alice's Espresso Setup",
-    userId: seedUsers.user1.id,
-    brewerDetails: 'Lelit Mara X',
-    grinder: 'Lelit Fred',
-    portafilterId: seedEquipment.portafilter.id,
-    basketId: seedEquipment.basket.id,
-    puckScreenId: seedEquipment.puckScreen.id,
-    tamperId: seedEquipment.tamper.id,
-    isDefault: true,
-  });
+  const createdRecipes: Record<string, any> = {};
+  const createdVersions: Record<string, any> = {};
 
-  await tx.insert(setups).values({
-    name: "Bob's V60 Setup",
-    userId: seedUsers.user2.id,
-    brewerDetails: 'Hario V60 02',
-    grinder: 'Baratza Encore',
-    isDefault: true,
-  });
+  for (const recipeData of recipeSeedData) {
+    const [recipe] = await tx.insert(recipes).values({
+      slug: recipeData.slug,
+      title: recipeData.title,
+      authorId: createdUsers[recipeData.authorUsername]?.id,
+      visibility: recipeData.visibility as any,
+      likeCount: recipeData.likeCount,
+      commentCount: recipeData.commentCount,
+      forkCount: recipeData.forkCount,
+      featured: recipeData.featured,
+    }).returning();
+
+    const version = recipeData.version;
+    const [recipeVersion] = await tx.insert(recipeVersions).values({
+      recipeId: recipe.id,
+      versionNumber: 1,
+      productName: version.productName,
+      coffeeBrand: version.coffeeBrand,
+      coffeeProcessing: version.coffeeProcessing,
+      vendorId: createdVendors[version.vendorName]?.id ?? null,
+      roastDate: new Date(version.roastDate),
+      packageOpenDate: new Date(version.packageOpenDate),
+      grindDate: new Date(version.grindDate),
+      brewDate: new Date(version.brewDate),
+      brewMethod: version.brewMethod as any,
+      drinkType: version.drinkType as any,
+      brewerDetails: version.brewerDetails,
+      grinder: version.grinder,
+      grindSize: version.grindSize,
+      groundWeightGrams: version.groundWeightGrams,
+      extractionTimeSeconds: version.extractionTimeSeconds,
+      extractionVolumeMl: version.extractionVolumeMl,
+      temperatureCelsius: version.temperatureCelsius,
+      brewRatio: version.brewRatio,
+      flowRate: version.flowRate,
+      preInfusionTimeSeconds: (version as any).preInfusionTimeSeconds ?? null,
+      personalNotes: version.personalNotes,
+      preparationNotes: version.preparationNotes,
+      isFavourite: version.isFavourite,
+      rating: version.rating,
+      emojiTag: version.emojiTag as any,
+    }).returning();
+
+    await tx.update(recipes).set({ currentVersionId: recipeVersion.id }).where(
+      eq(recipes.id, recipe.id),
+    );
+
+    // Equipment associations
+    const equipAssociations = recipeData.equipmentNames
+      .map((name) => {
+        const equip = createdEquipment[name];
+        if (!equip) return null;
+        return { recipeVersionId: recipeVersion.id, equipmentId: equip.id };
+      })
+      .filter(Boolean);
+
+    if (equipAssociations.length > 0) {
+      await tx.insert(recipeEquipment).values(equipAssociations as any[]);
+    }
+
+    // Additional preparations
+    if (recipeData.additionalPreparations) {
+      const prepValues = recipeData.additionalPreparations.map((prep) => ({
+        recipeVersionId: recipeVersion.id,
+        name: prep.name,
+        type: prep.type as any,
+        inputAmount: prep.inputAmount,
+        preparationType: prep.preparationType,
+        sortOrder: prep.sortOrder,
+      }));
+      await tx.insert(recipeAdditionalPreparations).values(prepValues);
+    }
+
+    // Photos
+    if (recipeData.photos) {
+      for (const photoData of recipeData.photos) {
+        const [photo] = await tx.insert(photos).values({
+          recipeId: recipe.id,
+          url: photoData.url,
+          alt: photoData.alt ?? null,
+          sortOrder: photoData.sortOrder,
+        }).returning();
+
+        await tx.insert(recipeVersionPhotos).values({
+          recipeVersionId: recipeVersion.id,
+          photoId: photo.id,
+          sortOrder: photoData.sortOrder,
+        });
+      }
+    }
+
+    createdRecipes[recipeData.slug] = recipe;
+    createdVersions[recipeData.slug] = recipeVersion;
+  }
+
+  return { createdRecipes, createdVersions };
+}
+
+async function seedRecipeTasteNotes(
+  tx: any,
+  createdVersions: Record<string, any>,
+) {
+  for (const recipeData of recipeSeedData) {
+    const recipeVersion = createdVersions[recipeData.slug];
+    if (!recipeVersion || !recipeData.tasteNotes) continue;
+
+    const notesToInsert: any[] = [];
+    for (const note of recipeData.tasteNotes) {
+      const [found] = await tx.select().from(tasteNotes).where(
+        ilike(tasteNotes.name, note.name),
+      ).limit(1);
+      if (found) {
+        notesToInsert.push({
+          recipeVersionId: recipeVersion.id,
+          tasteNoteId: found.id,
+          intensity: note.intensity,
+        });
+      }
+    }
+
+    if (notesToInsert.length > 0) {
+      await tx.insert(recipeTasteNotes).values(notesToInsert);
+    }
+  }
+}
+
+async function seedSocialData(
+  tx: any,
+  createdUsers: Record<string, any>,
+  createdRecipes: Record<string, any>,
+) {
+  // Follows
+  for (const follow of socialSeedData.follows) {
+    await tx.insert(userFollows).values({
+      followerId: createdUsers[follow.followerUsername]?.id,
+      followingId: createdUsers[follow.followingUsername]?.id,
+    });
+  }
+
+  // Likes
+  for (const like of socialSeedData.likes) {
+    await tx.insert(userRecipeLikes).values({
+      userId: createdUsers[like.userUsername]?.id,
+      recipeId: createdRecipes[like.recipeSlug]?.id,
+    });
+  }
+
+  // Favourites
+  for (const fav of socialSeedData.favourites) {
+    await tx.insert(userRecipeFavourites).values({
+      userId: createdUsers[fav.userUsername]?.id,
+      recipeId: createdRecipes[fav.recipeSlug]?.id,
+    });
+  }
+
+  // Ratings
+  for (const rating of socialSeedData.ratings) {
+    await tx.insert(userRecipeRatings).values({
+      userId: createdUsers[rating.userUsername]?.id,
+      recipeId: createdRecipes[rating.recipeSlug]?.id,
+      rating: rating.rating,
+    });
+  }
+
+  // Comments
+  for (const comment of socialSeedData.comments) {
+    const [parentComment] = await tx.insert(comments).values({
+      recipeId: createdRecipes[comment.recipeSlug]?.id,
+      authorId: createdUsers[comment.authorUsername]?.id,
+      content: comment.content,
+    }).returning();
+
+    for (const reply of comment.replies) {
+      await tx.insert(comments).values({
+        recipeId: createdRecipes[comment.recipeSlug]?.id,
+        authorId: createdUsers[reply.authorUsername]?.id,
+        content: reply.content,
+        parentCommentId: parentComment.id,
+      });
+    }
+  }
+
+  // Badges
+  for (const badge of socialSeedData.badges) {
+    const badgeRows = await tx.select().from(badges).where(eq(badges.rule, badge.badgeRule as any))
+      .limit(1);
+    if (badgeRows.length > 0) {
+      await tx.insert(userBadges).values({
+        userId: createdUsers[badge.userUsername]?.id,
+        badgeId: badgeRows[0].id,
+      });
+    }
+  }
+}
+
+async function seedSetups(
+  tx: any,
+  createdUsers: Record<string, any>,
+  createdEquipment: Record<string, any>,
+) {
+  for (const setupData of setupSeedData) {
+    const equipMap: Record<string, string | undefined> = {};
+    for (const name of setupData.equipmentNames) {
+      const equip = createdEquipment[name];
+      if (!equip) continue;
+      equipMap[`${equip.type}Id`] = equip.id;
+    }
+
+    await tx.insert(setups).values({
+      name: setupData.name,
+      userId: createdUsers[setupData.userUsername]?.id,
+      brewerDetails: setupData.brewerDetails,
+      grinder: setupData.grinder,
+      portafilterId: equipMap.portafilterId ?? null,
+      basketId: equipMap.basketId ?? null,
+      puckScreenId: equipMap.puck_screenId ?? null,
+      paperFilterId: equipMap.paper_filterId ?? null,
+      tamperId: equipMap.tamperId ?? null,
+      isDefault: setupData.isDefault,
+    });
+  }
 }
 
 async function main() {
   console.log('Seeding database...');
+
+  const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
+  const scaaData: ScaaFile = JSON.parse(await Deno.readTextFile(scaaPath));
 
   await db.transaction(async (tx) => {
     await seedBrewMethodCompatibility(tx);
     await seedBadges(tx);
 
     const createdUsers = await seedUsers(tx);
-    const {
-      recipe1,
-      recipe2,
-      portafilter,
-      basket,
-      tamper,
-      puckScreen,
-      gooseneck,
-      v60Filter,
-      scale,
-    } = await seedRecipes(tx, createdUsers);
-    const seedEquipment = { portafilter, basket, tamper, puckScreen, gooseneck, v60Filter, scale };
+    const createdVendors = await seedVendors(tx);
+    const createdEquipment = await seedEquipment(tx, createdUsers);
 
-    await seedSocialData(tx, createdUsers, { recipe1, recipe2 });
-    await seedSetups(tx, createdUsers, seedEquipment);
-  });
+    await seedBeans(tx, createdUsers, createdVendors);
 
-  const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
-  const scaaData: ScaaFile = JSON.parse(await Deno.readTextFile(scaaPath));
-  await db.transaction(async (tx) => {
+    const { createdRecipes, createdVersions } = await seedRecipes(
+      tx,
+      createdUsers,
+      createdVendors,
+      createdEquipment,
+    );
+
+    await seedSocialData(tx, createdUsers, createdRecipes);
+    await seedSetups(tx, createdUsers, createdEquipment);
     await seedTasteNotes(tx, scaaData.data);
+    await seedRecipeTasteNotes(tx, createdVersions);
   });
 
   const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';

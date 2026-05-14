@@ -14,6 +14,28 @@
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --animate-slide-in-right: slide-in-right 200ms ease-out both;
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  --animate-fade-in: fade-in 200ms ease-out both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 
 @layer base {
@@ -152,6 +174,10 @@
   }
 }
 
+.print-only {
+  display: none;
+}
+
 @media print {
   header,
   footer,
@@ -161,8 +187,13 @@
   .btn-primary,
   .btn-secondary,
   .no-print,
+  .print-hidden,
   button[type='button'] {
     display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
   }
 
   .print-container {

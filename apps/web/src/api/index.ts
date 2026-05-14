@@ -1,4 +1,4 @@
-import { api, ApiError, clearTokens, getAccessToken, setAccessToken } from './client';
+import { api, ApiError, clearTokens, getAccessToken, setAccessToken } from './client.ts';
 
 export { api, ApiError, clearTokens, getAccessToken, setAccessToken };
 
@@ -25,7 +25,14 @@ export const userApi = {
 export const recipeApi = {
   list: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return api.get<{ recipes: Record<string, unknown>[]; total: number }>(`/recipes${query}`);
+    // The API uses paginated() which puts the array directly in data.data.
+    // The client unwraps data.data, so the resolved value is the array itself.
+    // Using unknown[] so callers can cast to their specific type.
+    return api.get<unknown[]>(`/recipes${query}`);
+  },
+  starred: (params?: Record<string, string>) => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.get<unknown[]>(`/recipes/starred${query}`);
   },
   get: (slugOrId: string) => api.get<Record<string, unknown>>(`/recipes/${slugOrId}`),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/recipes', data),
@@ -39,6 +46,10 @@ export const recipeApi = {
   like: (id: string) => api.post<Record<string, unknown>>(`/recipes/${id}/like`, {}),
   favourite: (id: string) => api.post<Record<string, unknown>>(`/recipes/${id}/favourite`, {}),
   feature: (id: string) => api.post<Record<string, unknown>>(`/recipes/${id}/feature`, {}),
+  rate: (id: string, rating: number) =>
+    api.post<Record<string, unknown>>(`/recipes/${id}/rate`, { rating }),
+  saveNotes: (id: string, notes: string) =>
+    api.post<Record<string, unknown>>(`/recipes/${id}/notes`, { notes }),
 };
 
 export const tasteApi = {

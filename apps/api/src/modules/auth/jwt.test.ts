@@ -1,3 +1,4 @@
+import '../../test-setup.ts';
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { decodeJwt, signAccessToken, signRefreshToken, verifyJwt } from './jwt.ts';

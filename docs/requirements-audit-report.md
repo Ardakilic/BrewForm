@@ -164,7 +164,7 @@ not. (Major)
 
 ### §3.10 Search & Filtering — ✅ Partial
 
-- `SearchPage` and API endpoint with query, brewMethod, drinkType, grinder, authorId, sort.
+- `RecipeListPage` with full filter sidebar: search text, brew method, drink type, equipment, taste notes, sort order, visibility (admin).
 
 **Gap:** No full-text search abstraction (`SearchProvider`). No URL-reflected filter state. No
 dedicated browse pages grouped by grinder, bean, vendor, etc. (Major)
@@ -450,7 +450,7 @@ exists but is not used for crawler-facing meta tags. (Critical)
 | M5 | `RecipeVersionPhoto` table exists but never populated                  | §2.9       | Model includes it in queries but create path never writes to it |
 | M6 | Photo gallery/carousel absent from recipe detail page                  | §2.9       | No gallery component found in frontend                          |
 | M7 | No version history browsing UI                                         | §3.6       | No version list/timeline page found                             |
-| M8 | Search lacks URL-reflected state and dedicated browse pages            | §3.10      | SearchPage has no URL sync; no browse-by-X pages                |
+| M8 | Search lacks URL-reflected state and dedicated browse pages            | §3.10      | Search removed; filtering consolidated in RecipeListPage with URL sync |
 
 ### 🟡 Minor (Polish, nice-to-have, or partially implemented)
 

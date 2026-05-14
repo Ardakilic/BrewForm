@@ -6,6 +6,7 @@ const envSchema = z.object({
   APP_PORT: z.coerce.number().default(8000),
   APP_ENV: z.enum(['development', 'production', 'test']).default('development'),
   LOG_LEVEL: z.string().default('info'),
+  LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
   DATABASE_URL: z.string().min(1),
   DATABASE_PROVIDER: z.enum(['postgresql', 'mysql', 'sqlite']).default('postgresql'),
   CACHE_DRIVER: z.enum(['deno-kv', 'memory']).default('deno-kv'),
@@ -46,6 +47,8 @@ describe('Environment Config Schema', () => {
       expect(result.data.SMTP_PORT).toBe(1025);
       expect(result.data.APP_URL).toBe('http://localhost:8000');
       expect(result.data.UPLOAD_MAX_SIZE_BYTES).toBe(10485760);
+      expect(result.data.LOG_LEVEL).toBe('info');
+      expect(result.data.LOG_FORMAT).toBe('json');
     }
   });
 
@@ -104,6 +107,65 @@ describe('Environment Config Schema', () => {
         CACHE_DRIVER: driver,
       });
       expect(result.success).toBe(true);
+    }
+  });
+
+  it('should accept all valid LOG_FORMAT values', () => {
+    for (const format of ['json', 'pretty'] as const) {
+      const result = envSchema.safeParse({
+        DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+        JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+        LOG_FORMAT: format,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.LOG_FORMAT).toBe(format);
+      }
+    }
+  });
+
+  it('should reject invalid LOG_FORMAT', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+      LOG_FORMAT: 'xml',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should default LOG_FORMAT to json', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.LOG_FORMAT).toBe('json');
+    }
+  });
+
+  it('should default LOG_LEVEL to info', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.LOG_LEVEL).toBe('info');
+    }
+  });
+
+  it('should accept custom LOG_LEVEL values', () => {
+    for (const level of ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as const) {
+      const result = envSchema.safeParse({
+        DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+        JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+        LOG_LEVEL: level,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.LOG_LEVEL).toBe(level);
+      }
     }
   });
 });

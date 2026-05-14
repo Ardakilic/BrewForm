@@ -27,4 +27,3 @@ export {
 } from './admin';
 export { PhotoUploadSchema } from './photo';
 export { FollowSchema } from './follow';
-export { SearchSchema } from './search';

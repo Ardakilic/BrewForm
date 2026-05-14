@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { ApiError } from '../../api/client';
 import { equipmentApi, recipeApi, setupApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
@@ -39,9 +40,14 @@ export function RecipeCreatePage() {
   const [extractionVolumeMl, setExtractionVolumeMl] = useState('');
   const [temperatureCelsius, setTemperatureCelsius] = useState('');
   const [personalNotes, setPersonalNotes] = useState('');
+  const [preparationNotes, setPreparationNotes] = useState('');
   const [rating, setRating] = useState('');
   const [emojiTag, setEmojiTag] = useState('');
   const [tasteNoteIds, setTasteNoteIds] = useState<string[]>([]);
+  const [tasteNoteIntensities, setTasteNoteIntensities] = useState<Record<string, number>>({});
+  const [roastDate, setRoastDate] = useState('');
+  const [packageOpenDate, setPackageOpenDate] = useState('');
+  const [grindDate, setGrindDate] = useState('');
 
   // Equipment & Setup state
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
@@ -103,10 +109,6 @@ export function RecipeCreatePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) {
-      setError('Title is required');
-      return;
-    }
     setLoading(true);
     setError('');
     try {
@@ -126,17 +128,26 @@ export function RecipeCreatePage() {
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
         ...(temperatureCelsius ? { temperatureCelsius: Number(temperatureCelsius) } : {}),
         ...(personalNotes ? { personalNotes } : {}),
+        preparationNotes: preparationNotes.trim(),
         ...(rating ? { rating: Number(rating) } : {}),
         ...(emojiTag ? { emojiTag } : {}),
-        ...(tasteNoteIds.length > 0 ? { tasteNoteIds } : {}),
+        ...(tasteNoteIds.length > 0 ? { tasteNoteIds, tasteNoteIntensities } : {}),
+        ...(roastDate ? { roastDate } : {}),
+        ...(packageOpenDate ? { packageOpenDate } : {}),
+        ...(grindDate ? { grindDate } : {}),
         ...(selectedEquipmentIds.length > 0 ? { equipmentIds: selectedEquipmentIds } : {}),
         ...(selectedSetupId ? { setupId: selectedSetupId } : {}),
       };
       const result = await recipeApi.create(data) as Record<string, unknown>;
       navigate(`/recipes/${result.slug}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create recipe';
-      setError(message);
+      if (err instanceof ApiError && err.details) {
+        const messages = err.details.map((d) => `${d.field}: ${d.message}`);
+        setError(messages.join('\n'));
+      } else {
+        const message = err instanceof Error ? err.message : 'Failed to create recipe';
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -154,7 +165,13 @@ export function RecipeCreatePage() {
           className='mb-4 rounded p-3 text-sm'
           style={{ backgroundColor: 'var(--error)', color: 'white' }}
         >
-          {error}
+          {typeof error === 'string' && error.includes('\n')
+            ? (
+              <ul className='list-disc pl-4 space-y-1'>
+                {error.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+              </ul>
+            )
+            : error}
         </div>
       )}
 
@@ -298,6 +315,32 @@ export function RecipeCreatePage() {
               />
             </Field>
           </div>
+          <div className='grid grid-cols-2 gap-4 mt-4'>
+            <Field label='Roast Date'>
+              <input
+                type='date'
+                value={roastDate}
+                onChange={(e) => setRoastDate(e.target.value)}
+                className='input-field'
+              />
+            </Field>
+            <Field label='Package Open Date'>
+              <input
+                type='date'
+                value={packageOpenDate}
+                onChange={(e) => setPackageOpenDate(e.target.value)}
+                className='input-field'
+              />
+            </Field>
+            <Field label='Grind Date'>
+              <input
+                type='date'
+                value={grindDate}
+                onChange={(e) => setGrindDate(e.target.value)}
+                className='input-field'
+              />
+            </Field>
+          </div>
         </Section>
 
         <Section title='Brew Parameters'>
@@ -318,7 +361,7 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Brewer Details'>
+            <Field label='Main Brewer'>
               <input
                 type='text'
                 value={brewerDetails}
@@ -334,6 +377,7 @@ export function RecipeCreatePage() {
                 onChange={(e) => setGroundWeightGrams(e.target.value)}
                 className='input-field'
                 step='0.1'
+                min='0'
               />
             </Field>
             <Field label='Extraction Time (seconds)'>
@@ -351,6 +395,7 @@ export function RecipeCreatePage() {
                 onChange={(e) => setExtractionVolumeMl(e.target.value)}
                 className='input-field'
                 step='0.1'
+                min='0'
               />
             </Field>
             <Field label='Temperature (°C)'>
@@ -397,8 +442,24 @@ export function RecipeCreatePage() {
             >
               Taste Notes
             </label>
-            <TasteAutocomplete selectedIds={tasteNoteIds} onSelectionChange={setTasteNoteIds} />
+            <TasteAutocomplete
+              selectedIds={tasteNoteIds}
+              onSelectionChange={setTasteNoteIds}
+              intensities={tasteNoteIntensities}
+              onIntensitiesChange={setTasteNoteIntensities}
+            />
           </div>
+        </Section>
+
+        <Section title='Preparation Notes'>
+          <textarea
+            value={preparationNotes}
+            onChange={(e) => setPreparationNotes(e.target.value)}
+            className='input-field'
+            rows={6}
+            placeholder='Step-by-step instructions on how to prepare this recipe...'
+            required
+          />
         </Section>
 
         <Section title='Personal Notes'>

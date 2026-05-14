@@ -1,29 +1,26 @@
 import { useState } from 'react';
-import { api } from '../../api/client';
+import { api } from '../../api/client.ts';
 
 interface Props {
   recipeId: string;
   initialLiked: boolean;
-  initialCount: number;
+  initialCount?: number;
 }
 
 export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
   const [liked, setLiked] = useState(initialLiked);
-  const [count, setCount] = useState(initialCount);
+  const [count, setCount] = useState<number | undefined>(initialCount);
   const [loading, setLoading] = useState(false);
 
   async function toggle() {
     if (loading) return;
     setLoading(true);
     try {
-      if (liked) {
-        await api.delete(`/recipes/${recipeId}/like`);
-        setCount((c) => c - 1);
-      } else {
-        await api.post(`/recipes/${recipeId}/like`, {});
-        setCount((c) => c + 1);
-      }
-      setLiked(!liked);
+      // The API uses a toggle endpoint (POST) — one call to like, another to unlike.
+      const result = await api.post<{ liked: boolean }>(`/recipes/${recipeId}/like`, {});
+      const nowLiked = (result as { liked: boolean }).liked;
+      setLiked(nowLiked);
+      setCount((c) => nowLiked ? c + 1 : c - 1);
     } catch {
     } finally {
       setLoading(false);
@@ -41,7 +38,7 @@ export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
         color: liked ? 'var(--bg-primary)' : 'var(--text-primary)',
       }}
     >
-      ❤️ {count}
+      ❤️ {count !== undefined && count}
     </button>
   );
 }

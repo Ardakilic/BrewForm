@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
@@ -9,7 +10,13 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@brewform/shared": ["../../packages/shared/src/index.ts"],
+      "@brewform/shared/types": ["../../packages/shared/src/types/index.ts"],
+      "@brewform/shared/schemas": ["../../packages/shared/src/schemas/index.ts"],
+      "@brewform/shared/constants": ["../../packages/shared/src/constants/index.ts"],
+      "@brewform/shared/utils": ["../../packages/shared/src/utils/index.ts"],
+      "@brewform/shared/i18n": ["../../packages/shared/src/i18n/index.ts"]
     }
   },
   "include": ["src/**/*", "vite-env.d.ts"],

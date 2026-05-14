@@ -2,7 +2,7 @@
  * Route aggregator — mounts all API modules at their /api/v1/* prefixes.
  *
  * Each module follows the model→service→controller pattern:
- *   model.ts    — Prisma data access layer
+ *   model.ts    — Drizzle data access layer
  *   service.ts  — Business logic and validation
  *   index.ts    — Hono routes with Zod validation (this file's import targets)
  *
@@ -26,7 +26,6 @@ import follow from '../modules/follow/index.ts';
 import badge from '../modules/badge/index.ts';
 import setup from '../modules/setup/index.ts';
 import preference from '../modules/preference/index.ts';
-import search from '../modules/search/index.ts';
 import qrcode from '../modules/qrcode/index.ts';
 import report from '../modules/report/index.ts';
 import admin from '../modules/admin/index.ts';
@@ -49,7 +48,6 @@ routes.route('/api/v1/follow', follow);
 routes.route('/api/v1/badges', badge);
 routes.route('/api/v1/setups', setup);
 routes.route('/api/v1/preferences', preference);
-routes.route('/api/v1/search', search);
 routes.route('/api/v1/qrcode', qrcode);
 routes.route('/api/v1/reports', report);
 routes.route('/api/v1/admin', admin);

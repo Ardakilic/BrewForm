@@ -1,7 +1,13 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
+import fc from 'npm:fast-check@3.22.0';
 import { computeBrewRatio, computeExtractionYield, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
+import {
+  RecipeCreateObjectSchema,
+  RecipeCreateSchema,
+  RecipeFilterSchema,
+} from '@brewform/shared/schemas';
 
 describe('Recipe Service Logic', () => {
   describe('Slug generation', () => {
@@ -139,5 +145,312 @@ describe('Recipe Service Logic', () => {
       const connections = equipmentIds.map((id: string) => ({ equipmentId: id }));
       expect(connections).toEqual([{ equipmentId: 'eq-1' }, { equipmentId: 'eq-2' }]);
     });
+  });
+});
+
+describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
+  const BASE_RECIPE = {
+    title: 'Test',
+    brewMethod: 'espresso_machine',
+    drinkType: 'espresso',
+    preparationNotes: 'Test preparation notes',
+  } as const;
+  const TEST_UUID = '00000000-0000-0000-0000-000000000001';
+
+  // Requirements 12.2, 12.3, 12.4
+  describe('Pre-infusion cross-field validation', () => {
+    it('should accept preInfusionTimeSeconds=5 with extractionTimeSeconds=28', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        preInfusionTimeSeconds: 5,
+        extractionTimeSeconds: 28,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject preInfusionTimeSeconds=28 when extractionTimeSeconds=28 (equal)', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        preInfusionTimeSeconds: 28,
+        extractionTimeSeconds: 28,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject preInfusionTimeSeconds=30 when extractionTimeSeconds=28 (greater)', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        preInfusionTimeSeconds: 30,
+        extractionTimeSeconds: 28,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject preInfusionTimeSeconds=5 without extractionTimeSeconds', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        preInfusionTimeSeconds: 5,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept extractionTimeSeconds=28 without preInfusionTimeSeconds', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        extractionTimeSeconds: 28,
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // Requirements 13.2, 13.3
+  describe('Intensity validation', () => {
+    it('should accept tasteNoteIntensities with values 1, 2, 3', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        tasteNoteIntensities: {
+          [TEST_UUID]: 1,
+          '00000000-0000-0000-0000-000000000002': 2,
+          '00000000-0000-0000-0000-000000000003': 3,
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject tasteNoteIntensities with value 0', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        tasteNoteIntensities: {
+          [TEST_UUID]: 0,
+        },
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject tasteNoteIntensities with value 4', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        tasteNoteIntensities: {
+          [TEST_UUID]: 4,
+        },
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  // Requirement 14.2
+  describe('beanId field', () => {
+    it('should accept beanId as a valid UUID', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        beanId: TEST_UUID,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject beanId as a non-UUID string', () => {
+      const result = RecipeCreateObjectSchema.safeParse({
+        ...BASE_RECIPE,
+        beanId: 'not-a-uuid',
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  // Requirement 14.2 (equipmentId filter)
+  describe('equipmentId filter', () => {
+    it('should accept equipmentId as a valid UUID in filter', () => {
+      const result = RecipeFilterSchema.safeParse({
+        equipmentId: TEST_UUID,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject equipmentId as a non-UUID string in filter', () => {
+      const result = RecipeFilterSchema.safeParse({
+        equipmentId: 'not-a-uuid',
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('mainBrewer filter', () => {
+    it('should accept mainBrewer in filter', () => {
+      const result = RecipeFilterSchema.safeParse({
+        mainBrewer: 'Lelit Mara X',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject mainBrewer longer than 200 chars', () => {
+      const result = RecipeFilterSchema.safeParse({
+        mainBrewer: 'a'.repeat(201),
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('groundWeightGrams validation', () => {
+    it('should reject negative groundWeightGrams', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        groundWeightGrams: -1,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept groundWeightGrams of 0', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        groundWeightGrams: 0,
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('extractionVolumeMl validation', () => {
+    it('should reject negative extractionVolumeMl', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        extractionVolumeMl: -1,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept extractionVolumeMl of 0', () => {
+      const result = RecipeCreateSchema.safeParse({
+        ...BASE_RECIPE,
+        extractionVolumeMl: 0,
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('new drink types', () => {
+    const newDrinkTypes = ['aeropress', 'drip_coffee', 'moka_pot', 'siphon'] as const;
+
+    for (const drinkType of newDrinkTypes) {
+      it(`should accept drink type ${drinkType}`, () => {
+        const result = RecipeCreateSchema.safeParse({
+          ...BASE_RECIPE,
+          drinkType,
+        });
+        expect(result.success).toBe(true);
+      });
+    }
+  });
+});
+
+describe('tasteNoteIds AND logic filtering', () => {
+  // ---------------------------------------------------------------------------
+  // Minimal Drizzle-ORM-like condition builders (no real DB needed)
+  // ---------------------------------------------------------------------------
+  type Condition = { type: string; column: string; value: unknown };
+
+  function eq(column: string, value: unknown): Condition {
+    return { type: 'eq', column, value };
+  }
+
+  function inArray(column: string, _subquery: unknown): Condition {
+    return { type: 'inArray', column, value: _subquery };
+  }
+
+  function and(...conditions: Condition[]): { type: 'and'; conditions: Condition[] } {
+    return { type: 'and', conditions };
+  }
+
+  let capturedConditions: Condition[] = [];
+
+  const mockModel = {
+    findMany: (
+      where: unknown,
+      _page: number,
+      _perPage: number,
+      _sortBy: string,
+      _sortOrder: string,
+    ) => {
+      if ((where as { type: string }).type === 'and') {
+        capturedConditions = (where as { type: string; conditions: Condition[] }).conditions;
+      } else if (Array.isArray(where)) {
+        capturedConditions = where as Condition[];
+      } else {
+        capturedConditions = [where as Condition];
+      }
+      return Promise.resolve({ data: [], meta: { page: 1, perPage: 20, total: 0, totalPages: 0 } });
+    },
+  };
+
+  const recipes = {
+    visibility: 'recipes.visibility',
+    currentVersionId: 'recipes.currentVersionId',
+  };
+
+  const recipeTasteNotes = {
+    recipeVersionId: 'recipeTasteNotes.recipeVersionId',
+    tasteNoteId: 'recipeTasteNotes.tasteNoteId',
+  };
+
+  // deno-lint-ignore no-explicit-any
+  const db: any = {
+    select: () => ({
+      from: (_table: any) => ({
+        where: (cond: unknown) => cond,
+      }),
+    }),
+  };
+
+  async function listRecipes_withTasteNoteFilters(filters: any, page: number, perPage: number) {
+    const conditions: any[] = [eq(recipes.visibility, 'public')];
+
+    if (filters.tasteNoteIds) {
+      const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
+      // AND logic: recipe's current version must have ALL specified taste notes
+      for (const noteId of ids) {
+        conditions.push(
+          inArray(
+            recipes.currentVersionId,
+            db.select({ id: recipeTasteNotes.recipeVersionId })
+              .from(recipeTasteNotes)
+              .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
+          ),
+        );
+      }
+    }
+
+    const where = conditions.length > 1 ? and(...conditions) : conditions[0];
+    return mockModel.findMany(where, page, perPage, 'createdAt', 'desc');
+  }
+
+  it('PBT: for any subset of 1–10 taste note IDs, parsing splits correctly and generates the right number of conditions', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }),
+        async (ids) => {
+          capturedConditions = [];
+          const tasteNoteIds = ids.join(',');
+          await listRecipes_withTasteNoteFilters({ tasteNoteIds }, 1, 20);
+
+          // First condition is visibility eq
+          expect(capturedConditions.length).toBe(1 + ids.length);
+
+          const tasteNoteConditions = capturedConditions.filter(
+            (c) => c.type === 'inArray' && c.column === 'recipes.currentVersionId',
+          );
+          expect(tasteNoteConditions.length).toBe(ids.length);
+
+          // Verify each ID appears in exactly one condition
+          ids.forEach((noteId) => {
+            const matching = tasteNoteConditions.filter(
+              (c) =>
+                (c.value as Condition).type === 'eq' &&
+                (c.value as Condition).column === 'recipeTasteNotes.tasteNoteId' &&
+                (c.value as Condition).value === noteId,
+            );
+            expect(matching.length).toBe(1);
+          });
+        },
+      ),
+      { numRuns: 100 },
+    );
   });
 });

@@ -35,10 +35,10 @@ Deno.serve / Hono app  (apps/api/src/main.ts)
        │   - throws domain errors as named strings (RECIPE_NOT_FOUND, FORBIDDEN, ...)
        │
        ▼  Model layer (modules/<name>/model.ts)
-       │   - thin Prisma wrapper, `as any` cast to bypass type lag
-       │   - the only place @prisma/client is imported
+       │   - thin Drizzle wrapper, `as any` cast to bypass type lag
+       │   - the only place @brewform/db is imported
        │
-       ▼  Prisma Client → PostgreSQL
+       ▼  Drizzle ORM + postgres-js driver → PostgreSQL
   │
   ▼  Response helper (apps/api/src/utils/response/index.ts)
   └─ success(c, data, status?)  |  paginated(c, list, meta)  |  error(c, code, msg, status, details?)
@@ -89,6 +89,9 @@ Two layers:
    `zValidator(target, schema)`. Schemas live in `@brewform/shared/schemas` so the same shape is
    enforced on the frontend form. A failure short-circuits with a 400 `VALIDATION_ERROR` and a
    per-field `details` array.
+   Validation failures are formatted through a `zodValidationHook` that transforms Zod issues into
+   the standard `{ success: false, error: { code: 'VALIDATION_ERROR', details: [...] } }` envelope
+   instead of returning the raw `ZodError` object.
 2. **Soft validation** in the service layer
    (`packages/shared/src/utils/validation.ts:validateSoftWarnings`). Returns warnings alongside the
    data — never blocks the save. Currently 7 checks (espresso ratio bounds, extraction time,
@@ -162,7 +165,7 @@ wrapped in a try/catch so a failing job never tears down the scheduler.
 1. `stopJobs()` — clears all interval timers
 2. `server.shutdown()` — drains in-flight requests
 3. `kv.close()` — if the Deno KV provider is in use
-4. `prisma.$disconnect()` — closes the connection pool
+4. `postgres-js client end` — closes the connection pool
 5. `Deno.exit(0)`
 
 Anything that times out past the host's grace window (Deno Deploy or container orchestrator) is

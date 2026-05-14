@@ -15,12 +15,15 @@ comment.post(
   async (c) => {
     const recipeId = c.req.param('recipeId')!;
     const userId = c.get('userId') as string;
+    const user = c.get('user') as { isAdmin: boolean } | null;
+    const isAdmin = user?.isAdmin ?? false;
     const body = c.req.valid('json');
     try {
       const result = await service.createComment(
         userId,
         recipeId,
         body.content,
+        isAdmin,
         body.parentCommentId,
       );
       return success(c, result, 201);
@@ -42,6 +45,9 @@ comment.post(
           403,
         );
       }
+      if (message === 'COMMENT_DEPTH_EXCEEDED') {
+        return error(c, 'BAD_REQUEST', 'Comment thread depth limit exceeded', 400);
+      }
       throw err;
     }
   },
@@ -62,8 +68,10 @@ comment.get('/recipe/:recipeId', zValidator('query', PaginationSchema), async (c
 comment.delete('/:id', authMiddleware, async (c) => {
   const id = c.req.param('id')!;
   const userId = c.get('userId') as string;
+  const user = c.get('user') as { isAdmin: boolean } | null;
+  const isAdmin = user?.isAdmin ?? false;
   try {
-    await service.deleteComment(userId, id);
+    await service.deleteComment(userId, id, isAdmin);
     return success(c, { message: 'Comment deleted' });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

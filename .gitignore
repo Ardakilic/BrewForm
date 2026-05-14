@@ -50,3 +50,6 @@ pr_description.md
 
 # Garage config (contains secrets)
 garage.toml
+
+# other
+.kiro/

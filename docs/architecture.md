@@ -10,7 +10,7 @@ _why_ and the _flow_:
 
 ## Monorepo Structure
 
-BrewForm uses a Turborepo monorepo with npm workspaces. Four packages:
+BrewForm uses a Turborepo monorepo with native Deno workspaces (`deno.json`). Four packages:
 
 | Package           | Purpose                                       | Runtime                |
 | ----------------- | --------------------------------------------- | ---------------------- |
@@ -36,8 +36,8 @@ The frontend **never** imports from `@brewform/db`. All type sharing happens thr
 - `@brewform/shared` — types, schemas, constants, utils, i18n
 - `@brewform/db` — Drizzle client, schema, migrations
 
-Both are configured as npm workspace packages in the root `package.json` using `*` protocol (not
-`workspace:*`).
+Both are configured as Deno workspace members in the root `deno.json` (`workspace.members`) and
+also listed in `package.json` workspaces for npm-ecosystem tooling (Turborepo, Drizzle Kit).
 
 ## Backend Module Pattern
 
@@ -137,6 +137,17 @@ BrewForm maintains database portability:
 All main entities have a `deletedAt timestamp with time zone` field. Queries use
 `findFirst({ where: eq(table.deletedAt, null) })` instead of `findUnique` for soft-delete filtering,
 since `deletedAt` is not a unique constraint.
+
+### Comment Moderation (`isAdmin` Flag)
+
+`Comment_Service.createComment` and `Comment_Service.deleteComment` both accept an `isAdmin: boolean` parameter that grants elevated permissions:
+
+- **Replies** — when `isAdmin` is `true`, the service allows the caller to reply to any comment on any recipe, bypassing the normal recipe-owner check. When `isAdmin` is `false`, only the recipe owner may reply.
+- **Deletions** — when `isAdmin` is `true`, the service allows the caller to delete any comment regardless of authorship, bypassing the normal author check. When `isAdmin` is `false`, only the comment's own author may delete it.
+
+The `isAdmin` flag is derived from the authenticated user object (`c.get('user').isAdmin`) set by `authMiddleware` and forwarded by the comment router — no separate `adminMiddleware` is applied to comment routes.
+
+Default (non-admin) behaviour: only the recipe owner may reply to a comment; only the comment's author may delete it.
 
 ### Connection Pooling
 

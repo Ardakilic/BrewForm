@@ -6,9 +6,18 @@ interface Props {
   image?: string;
   url?: string;
   type?: string;
+  /** When true, adds <meta name="robots" content="noindex, nofollow"> */
+  noIndex?: boolean;
+  /**
+   * When provided, inserts/updates a <link rel="canonical" href="..."> element.
+   * Pass the full absolute URL of the preferred indexable version of this page.
+   */
+  canonical?: string;
 }
 
-export function SEOHead({ title, description, image, url, type = 'website' }: Props) {
+export function SEOHead(
+  { title, description, image, url, type = 'website', noIndex, canonical }: Props,
+) {
   useEffect(() => {
     document.title = title ? `${title} | BrewForm` : 'BrewForm — Coffee Brewing Recipes';
     setMeta(
@@ -24,7 +33,21 @@ export function SEOHead({ title, description, image, url, type = 'website' }: Pr
     setMeta('og:url', url || globalThis.location.href);
     setMeta('og:type', type);
     setMeta('twitter:card', 'summary_large_image');
-  }, [title, description, image, url, type]);
+
+    // robots meta — set or remove depending on noIndex flag
+    if (noIndex) {
+      setMeta('robots', 'noindex, nofollow');
+    } else {
+      removeMeta('robots');
+    }
+
+    // canonical link element
+    if (canonical) {
+      setCanonical(canonical);
+    } else {
+      removeCanonical();
+    }
+  }, [title, description, image, url, type, noIndex, canonical]);
 
   return null;
 }
@@ -38,4 +61,24 @@ function setMeta(name: string, content: string) {
     document.head.appendChild(el);
   }
   el.setAttribute('content', content);
+}
+
+function removeMeta(name: string) {
+  const el = document.querySelector(`meta[name="${name}"]`);
+  if (el) el.remove();
+}
+
+function setCanonical(href: string) {
+  let el = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', 'canonical');
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', href);
+}
+
+function removeCanonical() {
+  const el = document.querySelector('link[rel="canonical"]');
+  if (el) el.remove();
 }
