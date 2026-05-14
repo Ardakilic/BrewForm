@@ -1,6 +1,6 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check@3.22.0';
+import fc from 'npm:fast-check';
 import enJson from './en.json' with { type: 'json' };
 import trJson from './tr.json' with { type: 'json' };
 

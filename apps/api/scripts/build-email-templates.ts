@@ -3,11 +3,11 @@
  * Run with: deno run -A apps/api/scripts/build-email-templates.ts
  * Re-run whenever a .mjml template is modified.
  */
-import { dirname, fromFileUrl, join } from 'jsr:@std/path@^1.0.0';
-import { ensureDir } from 'jsr:@std/fs@^1.0.0';
+import { dirname, fromFileUrl, join } from 'jsr:@std/path';
+import { ensureDir } from 'jsr:@std/fs';
 
 // MJML must be available as a build-time dependency via npm:
-const { default: mjml2html } = await import('npm:mjml@^4.15.0');
+const { default: mjml2html } = await import('npm:mjml');
 
 const scriptDir = fromFileUrl(dirname(import.meta.url));
 const templateDir = join(scriptDir, '..', 'src', 'templates', 'email');
