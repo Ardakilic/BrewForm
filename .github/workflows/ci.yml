@@ -41,7 +41,7 @@ jobs:
     needs: quality
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: brewform
           POSTGRES_PASSWORD: brewform
