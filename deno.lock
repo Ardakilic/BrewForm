@@ -12,7 +12,7 @@
     "jsr:@std/testing@*": "1.0.18",
     "npm:@base-ui-components/react@^1.0.0-alpha.7": "1.0.0-rc.0_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
     "npm:@hono/standard-validator@0.2": "0.2.2_@standard-schema+spec@1.0.0_hono@4.12.16",
-    "npm:@hono/zod-validator@0.5": "0.5.0_hono@4.12.16_zod@3.25.76",
+    "npm:@hono/zod-validator@0.8": "0.8.0_hono@4.12.16_zod@3.25.76",
     "npm:@jsr/std__expect@^1.0.19": "1.0.19",
     "npm:@jsr/std__testing@^1.0.18": "1.0.18",
     "npm:@tailwindcss/vite@^4.1.0": "4.2.4_vite@6.4.2",
@@ -742,8 +742,8 @@
         "hono"
       ]
     },
-    "@hono/zod-validator@0.5.0_hono@4.12.16_zod@3.25.76": {
-      "integrity": "sha512-ds5bW6DCgAnNHP33E3ieSbaZFd5dkV52ZjyaXtGoR06APFrCtzAsKZxTHwOrJNBdXsi0e5wNwo5L4nVEVnJUdg==",
+    "@hono/zod-validator@0.8.0_hono@4.12.16_zod@3.25.76": {
+      "integrity": "sha512-5uS4S1/LKtZQYvD4BtpPUFkOv8d1wNxHHrChm26buMiEYc1FrHWvDUaKVBwkiVtvSExHSpLGDvcnpI2Copyj9w==",
       "dependencies": [
         "hono",
         "zod"
@@ -3493,7 +3493,7 @@
         "packageJson": {
           "dependencies": [
             "npm:@hono/standard-validator@0.2",
-            "npm:@hono/zod-validator@0.5",
+            "npm:@hono/zod-validator@0.8",
             "npm:@types/bcryptjs@^2.4.6",
             "npm:@types/nodemailer@^6.4.17",
             "npm:@types/qrcode@^1.5.5",
