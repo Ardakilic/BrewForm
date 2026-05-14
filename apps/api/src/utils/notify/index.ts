@@ -14,7 +14,7 @@
 import { db } from '@brewform/db';
 import { userFollows, userPreferences, users } from '@brewform/db/schema';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import nodemailer from 'npm:nodemailer@^7.0.0';
+import nodemailer from 'npm:nodemailer';
 import { config } from '../../config/index.ts';
 import { createLogger } from '../logger/index.ts';
 import { escapeHtml } from '@brewform/shared/utils';

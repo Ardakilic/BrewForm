@@ -13,7 +13,7 @@
 
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check@3.22.0';
+import fc from 'npm:fast-check';
 
 // ---------------------------------------------------------------------------
 // Minimal Drizzle-ORM-like condition builders (no real DB needed)
