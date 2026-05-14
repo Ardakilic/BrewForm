@@ -3,7 +3,7 @@ import type { CacheProvider } from '../../utils/cache/index.ts';
 
 const TASTE_CACHE_KEY = ['cache', 'taste-notes'];
 const TASTE_FLAT_CACHE_KEY = ['cache', 'taste-notes-flat'];
-const TASTE_CACHE_TTL = 86400000;
+const TASTE_CACHE_TTL = 2592000000; // 30 days
 
 export async function getHierarchy(cache: CacheProvider) {
   const cached = await cache.get<any>(TASTE_CACHE_KEY);

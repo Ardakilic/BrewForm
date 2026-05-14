@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api/index';
 import { SEOHead } from '../components/seo/SEOHead';
@@ -7,6 +7,11 @@ import { useTranslation } from '../contexts/I18nContext';
 interface TasteCategory {
   id: string;
   name: string;
+  parentId: string | null;
+  color: string | null;
+  definition: string | null;
+  depth: number;
+  createdAt: string;
   children: TasteCategory[];
 }
 
@@ -15,68 +20,261 @@ function collectLeafIds(cat: TasteCategory): string[] {
   return cat.children.flatMap(collectLeafIds);
 }
 
+function countLeaves(cat: TasteCategory): number {
+  if (cat.children.length === 0) return 1;
+  return cat.children.reduce((sum, child) => sum + countLeaves(child), 0);
+}
+
+function filterHierarchy(categories: TasteCategory[], search: string): TasteCategory[] {
+  const lower = search.toLowerCase();
+
+  function filter(cat: TasteCategory): TasteCategory | null {
+    const nameMatches = cat.name.toLowerCase().includes(lower);
+
+    if (cat.children.length === 0) {
+      return nameMatches ? cat : null;
+    }
+
+    const filteredChildren = cat.children
+      .map(filter)
+      .filter((c): c is TasteCategory => c !== null);
+
+    if (nameMatches) {
+      return { ...cat };
+    }
+
+    if (filteredChildren.length > 0) {
+      return { ...cat, children: filteredChildren };
+    }
+
+    return null;
+  }
+
+  return categories
+    .map(filter)
+    .filter((c): c is TasteCategory => c !== null);
+}
+
+function TasteCategoryCard({
+  category,
+  expanded,
+  onToggleDefinition,
+}: {
+  category: TasteCategory;
+  expanded: boolean;
+  onToggleDefinition: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const leafCount = useMemo(() => countLeaves(category), [category]);
+  const swatchColor = category.color ?? 'var(--accent-primary)';
+
+  return (
+    <div
+      data-category-card
+      className='card flex flex-col hover:shadow-md transition-shadow'
+      style={{ borderLeft: `3px solid ${swatchColor}` }}
+    >
+      <div className='flex items-center gap-3 mb-3'>
+        <span
+          data-color-swatch
+          className='inline-block rounded-full flex-shrink-0'
+          style={{
+            width: '14px',
+            height: '14px',
+            backgroundColor: swatchColor,
+            boxShadow: `0 0 8px ${swatchColor}40`,
+          }}
+        />
+        <Link
+          to={`/recipes?tasteNoteIds=${collectLeafIds(category).join(',')}`}
+          className='font-semibold text-lg hover:underline'
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {category.name}
+        </Link>
+        <span
+          className='ml-auto text-xs font-medium rounded-full px-2 py-0.5 flex-shrink-0'
+          style={{
+            backgroundColor: `${swatchColor}18`,
+            color: swatchColor,
+          }}
+        >
+          {t('taste.leafCount').replace('{count}', leafCount.toString())}
+        </span>
+      </div>
+
+      {category.definition && (
+        <div className='mb-3'>
+          {expanded && (
+            <p
+              className='text-sm leading-relaxed mb-2'
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {category.definition}
+            </p>
+          )}
+          <button
+            type='button'
+            onClick={() => onToggleDefinition(category.id)}
+            className='text-xs font-medium hover:underline cursor-pointer'
+            style={{ color: 'var(--accent-primary)' }}
+          >
+            {expanded ? t('taste.hideDefinition') : t('taste.showDefinition')}
+          </button>
+        </div>
+      )}
+
+      {category.definition && !expanded && (
+        <div className='border-t mb-3' style={{ borderColor: 'var(--border-primary)' }} />
+      )}
+      {!category.definition && (
+        <div className='border-t mb-3' style={{ borderColor: 'var(--border-primary)' }} />
+      )}
+
+      <div className='flex flex-col gap-4 mt-auto'>
+        {category.children.map((sub) => (
+          <div key={sub.id}>
+            <div className='flex items-center gap-2 mb-2'>
+              <Link
+                to={`/recipes?tasteNoteIds=${collectLeafIds(sub).join(',')}`}
+                className='text-sm font-medium hover:underline'
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {sub.name}
+              </Link>
+              <span
+                className='text-xs'
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                {sub.children.length}
+              </span>
+            </div>
+            <div className='flex flex-wrap gap-1.5'>
+              {sub.children.map((leaf) => (
+                <Link
+                  key={leaf.id}
+                  to={`/recipes?tasteNoteIds=${leaf.id}`}
+                  className='inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium transition-all duration-150 hover:brightness-110'
+                  style={{
+                    backgroundColor: 'var(--bg-tertiary)',
+                    color: 'var(--text-secondary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = swatchColor + '22';
+                    e.currentTarget.style.color = swatchColor;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                >
+                  {leaf.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TasteNotesPage() {
   const [hierarchy, setHierarchy] = useState<TasteCategory[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [expandedDefinitions, setExpandedDefinitions] = useState<Set<string>>(new Set());
   const { t } = useTranslation();
 
   useEffect(() => {
-    api.get<TasteCategory[]>('/taste-notes/hierarchy').then((data) => {
-      setHierarchy(data as TasteCategory[]);
+    api.get<TasteCategory[]>('/taste-notes/hierarchy').then((data: TasteCategory[] | null) => {
+      setHierarchy((data ?? []) as TasteCategory[]);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
 
-  function renderTree(categories: TasteCategory[], depth: number = 0): React.ReactNode {
-    return categories.map((cat) => (
-      <div key={cat.id}>
-        <div className='py-2' style={{ paddingLeft: `${depth * 1.5 + 0.75}rem` }}>
-          <Link
-            to={`/recipes?tasteNoteIds=${collectLeafIds(cat).join(',')}`}
-            className='hover:underline'
-            style={{
-              color: depth === 0 ? 'var(--accent-primary)' : 'var(--text-primary)',
-              fontWeight: depth === 0 ? 600 : 400,
-            }}
-          >
-            {cat.name}
-          </Link>
-        </div>
-        {cat.children.length > 0 && renderTree(cat.children, depth + 1)}
-      </div>
-    ));
+  function toggleDefinition(id: string) {
+    setExpandedDefinitions((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   }
 
+  const filteredHierarchy = search ? filterHierarchy(hierarchy, search) : hierarchy;
+
   return (
-    <div className='mx-auto max-w-4xl px-6 py-8'>
+    <div className='mx-auto max-w-6xl px-6 py-8'>
       <SEOHead
         title={t('page.tasteNotes')}
         description='Explore the SCAA flavor wheel taste notes on BrewForm.'
       />
 
-      <h1 className='text-2xl font-bold mb-2' style={{ color: 'var(--text-primary)' }}>
-        {t('page.tasteNotes')}
-      </h1>
-      <p className='mb-6' style={{ color: 'var(--text-secondary)' }}>
-        {t('page.tasteNotes.description')}
-      </p>
+      <div className='mb-8'>
+        <h1 className='text-2xl font-bold mb-2' style={{ color: 'var(--text-primary)' }}>
+          {t('page.tasteNotes')}
+        </h1>
+        <p className='mb-4' style={{ color: 'var(--text-secondary)' }}>
+          {t('page.tasteNotes.description')}
+        </p>
+        <p className='text-xs mb-4' style={{ color: 'var(--text-tertiary)' }}>
+          <a
+            href='https://notbadcoffee.com/flavor-wheel-en/'
+            target='_blank'
+            rel='noopener noreferrer'
+            style={{ color: 'var(--accent-primary)' }}
+          >
+            {t('taste.reference')}
+          </a>
+        </p>
 
-      <p className='text-xs mb-6' style={{ color: 'var(--text-tertiary)' }}>
-        <a
-          href='https://notbadcoffee.com/flavor-wheel-en/'
-          target='_blank'
-          rel='noopener noreferrer'
-          style={{ color: 'var(--accent-primary)' }}
-        >
-          {t('taste.reference')}
-        </a>
-      </p>
+        <div className='relative'>
+          <svg
+            className='absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none'
+            width='18'
+            height='18'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='var(--text-tertiary)'
+            strokeWidth='2'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+          >
+            <circle cx='11' cy='11' r='8' />
+            <line x1='21' y1='21' x2='16.65' y2='16.65' />
+          </svg>
+          <input
+            type='text'
+            className='input-field pl-10'
+            placeholder={t('taste.searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
 
       {loading
         ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
+        : filteredHierarchy.length === 0
+        ? (
+          <div className='card text-center py-12'>
+            <p style={{ color: 'var(--text-secondary)' }}>{t('taste.noResults')}</p>
+          </div>
+        )
         : (
-          <div className='card'>
-            {renderTree(hierarchy)}
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+            {filteredHierarchy.map((category) => (
+              <TasteCategoryCard
+                key={category.id}
+                category={category}
+                expanded={expandedDefinitions.has(category.id)}
+                onToggleDefinition={toggleDefinition}
+              />
+            ))}
           </div>
         )}
     </div>
