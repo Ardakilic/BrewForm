@@ -159,7 +159,7 @@ describe('StarredRecipesPage', () => {
     });
   });
 
-  it('renders recipe cards when API returns data', async () => {
+  it('renders recipe cards with clickable author link when API returns data', async () => {
     mockRecipeApi.starred.mockResolvedValue([
       {
         id: 'recipe-1',
@@ -180,7 +180,10 @@ describe('StarredRecipesPage', () => {
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
     expect(screen.getByText('Test Recipe')).toBeInTheDocument();
-    expect(screen.getByText('by Test User')).toBeInTheDocument();
+
+    // Author display name should be visible as a link
+    const authorLink = screen.getByRole('link', { name: 'Test User' });
+    expect(authorLink).toHaveAttribute('href', '/u/testuser');
   });
 
   it('passes filters to API when search params are present', async () => {

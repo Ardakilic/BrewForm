@@ -71,9 +71,15 @@ export async function findMany(
   const finalWhere = where ? and(isNull(recipes.deletedAt), where) : isNull(recipes.deletedAt);
 
   const [data, totalResult] = await Promise.all([
-    db.select().from(recipes).where(finalWhere).orderBy(orderBy).limit(perPage).offset(
-      (page - 1) * perPage,
-    ),
+    db.query.recipes.findMany({
+      where: finalWhere,
+      orderBy,
+      limit: perPage,
+      offset: (page - 1) * perPage,
+      with: {
+        author: { columns: { id: true, username: true, displayName: true } },
+      },
+    }),
     db.select({ count: count() }).from(recipes).where(finalWhere),
   ]);
 
@@ -491,9 +497,15 @@ export async function findStarred(
   const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
 
   const [data, totalResult] = await Promise.all([
-    db.select().from(recipes).where(finalWhere).orderBy(orderBy).limit(perPage).offset(
-      (page - 1) * perPage,
-    ),
+    db.query.recipes.findMany({
+      where: finalWhere,
+      orderBy,
+      limit: perPage,
+      offset: (page - 1) * perPage,
+      with: {
+        author: { columns: { id: true, username: true, displayName: true } },
+      },
+    }),
     db.select({ count: count() }).from(recipes).where(finalWhere),
   ]);
 

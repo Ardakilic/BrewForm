@@ -104,4 +104,31 @@ describe('HomePage — i18n', () => {
 
     expect(screen.getByRole('link', { name: 'Sign Up' })).toHaveAttribute('href', '/register');
   });
+
+  it('renders recipe cards with clickable author link when API returns data', async () => {
+    const mockRecipes = [
+      {
+        id: 'recipe-1',
+        slug: 'test-recipe',
+        title: 'Test Recipe',
+        likeCount: 5,
+        commentCount: 2,
+        forkCount: 1,
+        author: { username: 'testuser', displayName: 'Test User' },
+      },
+    ];
+    const { recipeApi } = await import('../api/index.ts');
+    vi.mocked(recipeApi.list).mockResolvedValue(mockRecipes);
+
+    render(<HomePage />);
+
+    // Title appears in both Latest and Popular sections
+    expect(await screen.findAllByText('Test Recipe')).toHaveLength(2);
+    // Author links appear in both Latest and Popular sections
+    const authorLinks = screen.getAllByRole('link', { name: 'Test User' });
+    expect(authorLinks).toHaveLength(2);
+    authorLinks.forEach((link) => {
+      expect(link).toHaveAttribute('href', '/u/testuser');
+    });
+  });
 });

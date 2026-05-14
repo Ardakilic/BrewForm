@@ -279,6 +279,37 @@ describe('RecipeListPage — i18n', () => {
 
     expect(screen.getByPlaceholderText('Tarif ara...')).toBeInTheDocument();
   });
+
+  it('renders recipe cards with clickable author link when API returns data', async () => {
+    const mockRecipes = [
+      {
+        id: 'recipe-1',
+        slug: 'test-recipe',
+        title: 'Test Recipe',
+        visibility: 'public',
+        likeCount: 5,
+        commentCount: 2,
+        forkCount: 1,
+        author: { username: 'testuser', displayName: 'Test User' },
+        currentVersion: { brewMethod: 'espresso_machine', drinkType: 'espresso', rating: null },
+        createdAt: '2025-01-01T00:00:00Z',
+      },
+    ];
+    mockRecipeApi.list.mockResolvedValue(mockRecipes);
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    // Recipe title should render
+    expect(screen.getByText('Test Recipe')).toBeInTheDocument();
+
+    // Author's display name should be visible and linked to profile
+    const authorLink = screen.getByRole('link', { name: 'Test User' });
+    expect(authorLink).toHaveAttribute('href', '/u/testuser');
+  });
 });
 
 describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {

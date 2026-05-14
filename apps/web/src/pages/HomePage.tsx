@@ -7,7 +7,7 @@ interface RecipeListItem {
   id: string;
   slug: string;
   title: string;
-  author?: { username: string };
+  author?: { username: string; displayName: string | null };
   likeCount: number;
   commentCount: number;
   forkCount: number;
@@ -68,7 +68,19 @@ function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
     <Link to={`/recipes/${recipe.slug}`} className='card hover:shadow-lg transition-shadow'>
       <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>{recipe.title}</h3>
       <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
-        by {recipe.author?.username}
+        by{' '}
+        {recipe.author ? (
+          <Link
+            to={`/u/${recipe.author.username}`}
+            onClick={(e) => e.stopPropagation()}
+            className='hover:underline'
+            style={{ color: 'var(--accent-primary)' }}
+          >
+            {recipe.author.displayName || recipe.author.username}
+          </Link>
+        ) : (
+          'unknown'
+        )}
       </p>
       <div
         className='mt-2 flex items-center gap-2 text-xs'
