@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { TasteNotesPage } from './TasteNotesPage';
@@ -7,6 +8,58 @@ vi.mock('react-router', () => ({
     <a href={to} {...props}>{children}</a>
   ),
 }));
+
+vi.mock('@base-ui-components/react/popover', () => {
+  const PopoverRoot = ({ children }: { children: React.ReactNode }) => {
+    const [open, setOpen] = React.useState(false);
+    return (
+      <span data-popover-root onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+        {React.Children.map(children, (child) => {
+          if (React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverTrigger') {
+            return React.cloneElement(child as React.ReactElement<any>, {
+              onClick: () => setOpen((prev: boolean) => !prev),
+              'data-open': open,
+            });
+          }
+          if (React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverPortal') {
+            return open ? child : null;
+          }
+          return child;
+        })}
+      </span>
+    );
+  };
+
+  const PopoverTrigger = ({ children, openOnHover, delay, ...props }: any) => {
+    const Comp = 'span' as any;
+    return <Comp data-popover-trigger {...props}>{children}</Comp>;
+  };
+  PopoverTrigger.displayName = 'PopoverTrigger';
+
+  const PopoverPortal = ({ children }: any) => <>{children}</>;
+  PopoverPortal.displayName = 'PopoverPortal';
+
+  const PopoverPositioner = ({ children }: any) => <div data-popover-positioner>{children}</div>;
+  const PopoverPopup = ({ children, className, ...props }: any) => (
+    <div className={className} data-popover-popup {...props}>{children}</div>
+  );
+  const PopoverArrow = ({ className }: any) => <div className={className} data-popover-arrow />;
+  const PopoverDescription = ({ children, className, ...props }: any) => (
+    <div className={className} data-popover-description {...props}>{children}</div>
+  );
+
+  return {
+    Popover: {
+      Root: PopoverRoot,
+      Trigger: PopoverTrigger,
+      Portal: PopoverPortal,
+      Positioner: PopoverPositioner,
+      Popup: PopoverPopup,
+      Arrow: PopoverArrow,
+      Description: PopoverDescription,
+    },
+  };
+});
 
 vi.mock('../components/seo/SEOHead', () => ({
   SEOHead: ({ title, description }: { title: string; description: string }) => (
@@ -80,11 +133,10 @@ const enT = (key: string) => {
     'page.tasteNotes.description': 'Explore the SCAA flavor wheel taste notes.',
     'taste.reference': 'Reference: notbadcoffee.com/flavor-wheel-en/',
     'common.loading': 'Loading...',
-    'taste.showDefinition': 'Show definition',
-    'taste.hideDefinition': 'Hide definition',
     'taste.searchPlaceholder': 'Search taste notes...',
     'taste.noResults': 'No taste notes match your search.',
-    'taste.leafCount': '{{count}} recipes',
+    'taste.leafCount': '{count} recipes',
+    'taste.infoIconHint': 'Click the info icons next to taste names to see their description.',
   };
   return map[key] ?? key;
 };
@@ -95,11 +147,10 @@ const trT = (key: string) => {
     'page.tasteNotes.description': 'SCAA lezzet çarkı tadım notlarını keşfedin.',
     'taste.reference': 'Referans: notbadcoffee.com/flavor-wheel-en/',
     'common.loading': 'Yükleniyor...',
-    'taste.showDefinition': 'Tanımı göster',
-    'taste.hideDefinition': 'Tanımı gizle',
     'taste.searchPlaceholder': 'Tadım notlarında ara...',
     'taste.noResults': 'Aramanızla eşleşen tadım notu bulunamadı.',
-    'taste.leafCount': '{{count}} tarif',
+    'taste.leafCount': '{count} tarif',
+    'taste.infoIconHint': 'Tat isimlerinin yanındaki bilgi simgelerine tıklayarak açıklamalarını görebilirsiniz.',
   };
   return map[key] ?? key;
 };
@@ -172,35 +223,6 @@ describe('TasteNotesPage — color swatches', () => {
   });
 });
 
-describe('TasteNotesPage — definition toggle', () => {
-  it('shows "Show definition" button and clicking it reveals definition text', async () => {
-    render(<TasteNotesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Fruity')).toBeInTheDocument();
-    });
-
-    const showDefButton = screen.getAllByText('Show definition')[0];
-    expect(showDefButton).toBeInTheDocument();
-
-    fireEvent.click(showDefButton);
-
-    expect(screen.getByText('A sweet, floral, aromatic blend of a variety of ripe fruits.')).toBeInTheDocument();
-  });
-
-  it('toggles button text to "Hide definition" after clicking', async () => {
-    render(<TasteNotesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Fruity')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getAllByText('Show definition')[0]);
-
-    expect(screen.getAllByText('Hide definition')[0]).toBeInTheDocument();
-  });
-});
-
 describe('TasteNotesPage — search filter', () => {
   it('filters displayed categories when typing in the search input', async () => {
     render(<TasteNotesPage />);
@@ -257,16 +279,26 @@ describe('TasteNotesPage — i18n', () => {
     expect(screen.getByPlaceholderText('Tadım notlarında ara...')).toBeInTheDocument();
   });
 
-  it('renders "Show definition" text in Turkish when locale is tr', async () => {
+  it('renders info icon hint in English', async () => {
+    render(<TasteNotesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Taste Notes')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Click the info icons/)).toBeInTheDocument();
+  });
+
+  it('renders info icon hint in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
     render(<TasteNotesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Fruity')).toBeInTheDocument();
+      expect(screen.getByText('Tadım Notları')).toBeInTheDocument();
     });
 
-    expect(screen.getAllByText('Tanımı göster')[0]).toBeInTheDocument();
+    expect(screen.getByText(/bilgi simgelerine/)).toBeInTheDocument();
   });
 });
 
@@ -343,5 +375,132 @@ describe('TasteNotesPage — empty/error state', () => {
     });
 
     expect(screen.getByText('Taste Notes')).toBeInTheDocument();
+  });
+});
+
+describe('TasteNotesPage — info icons for definitions', () => {
+  it('renders info icon next to leaf notes that have definitions', async () => {
+    render(<TasteNotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Raspberry')).toBeInTheDocument();
+    });
+
+    const triggers = document.querySelectorAll('[data-popover-trigger]');
+    expect(triggers.length).toBeGreaterThan(0);
+
+    const raspberryTrigger = Array.from(triggers).find(
+      (t) => t.getAttribute('aria-label')?.includes('Raspberry')
+    );
+    expect(raspberryTrigger).toBeTruthy();
+  });
+
+  it('renders info icon next to subcategories that have definitions', async () => {
+    render(<TasteNotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Berry')).toBeInTheDocument();
+    });
+
+    const triggers = document.querySelectorAll('[data-popover-trigger]');
+    const berryTrigger = Array.from(triggers).find(
+      (t) => t.getAttribute('aria-label')?.includes('Berry')
+    );
+    expect(berryTrigger).toBeTruthy();
+
+    const citrusTrigger = Array.from(triggers).find(
+      (t) => t.getAttribute('aria-label')?.includes('Citrus Fruit')
+    );
+    expect(citrusTrigger).toBeTruthy();
+  });
+
+  it('renders the correct number of info icons (one per root, subcategory, and leaf with definition)', async () => {
+    render(<TasteNotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Raspberry')).toBeInTheDocument();
+    });
+
+    const triggers = document.querySelectorAll('[data-popover-trigger]');
+    // 2 root categories (Fruity, Roasted) + 2 subcategories (Berry, Citrus Fruit) + 3 leaves (Raspberry, Blueberry, Lemon) = 7
+    expect(triggers.length).toBe(7);
+  });
+
+  it('root categories now have info icons instead of toggle buttons', async () => {
+    render(<TasteNotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Fruity')).toBeInTheDocument();
+    });
+    const triggers = document.querySelectorAll('[data-popover-trigger]');
+    const fruityTrigger = Array.from(triggers).find(
+      (t) => t.getAttribute('aria-label')?.includes('Fruity')
+    );
+    expect(fruityTrigger).toBeTruthy();
+  });
+});
+
+describe('TasteNotesPage — definition popover interaction', () => {
+  it('shows definition text when hovering the info icon', async () => {
+    render(<TasteNotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Raspberry')).toBeInTheDocument();
+    });
+
+    const triggers = document.querySelectorAll('[data-popover-trigger]');
+    const raspberryTrigger = Array.from(triggers).find(
+      (t) => t.getAttribute('aria-label')?.includes('Raspberry')
+    )!;
+    expect(raspberryTrigger).toBeTruthy();
+
+    fireEvent.mouseEnter(raspberryTrigger.closest('[data-popover-root]')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sharp, tart, and floral berry note.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows definition text on click (mobile tap simulation)', async () => {
+    render(<TasteNotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Raspberry')).toBeInTheDocument();
+    });
+
+    const triggers = document.querySelectorAll('[data-popover-trigger]');
+    const raspberryTrigger = Array.from(triggers).find(
+      (t) => t.getAttribute('aria-label')?.includes('Raspberry')
+    )!;
+
+    fireEvent.click(raspberryTrigger);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sharp, tart, and floral berry note.')).toBeInTheDocument();
+    });
+  });
+
+  it('link still navigates — clicking chip name does not trigger popover', async () => {
+    render(<TasteNotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Raspberry')).toBeInTheDocument();
+    });
+
+    const raspberryLink = screen.getByRole('link', { name: 'Raspberry' });
+    expect(raspberryLink).toHaveAttribute('href', '/recipes?tasteNoteIds=3');
+
+    expect(screen.queryByText('Sharp, tart, and floral berry note.')).not.toBeInTheDocument();
+  });
+
+  it('subcategory popover shows correct definition text', async () => {
+    render(<TasteNotesPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Berry')).toBeInTheDocument();
+    });
+
+    const triggers = document.querySelectorAll('[data-popover-trigger]');
+    const berryTrigger = Array.from(triggers).find(
+      (t) => t.getAttribute('aria-label')?.includes('Berry')
+    )!;
+
+    fireEvent.mouseEnter(berryTrigger.closest('[data-popover-root]')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('The sweet, sour, floral, sometimes heavy aromatic associated with berries.')).toBeInTheDocument();
+    });
   });
 });

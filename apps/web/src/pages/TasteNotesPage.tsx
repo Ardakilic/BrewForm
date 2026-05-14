@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { Popover } from '@base-ui-components/react/popover';
 import { api } from '../api/index';
 import { SEOHead } from '../components/seo/SEOHead';
 import { useTranslation } from '../contexts/I18nContext';
@@ -57,12 +58,8 @@ function filterHierarchy(categories: TasteCategory[], search: string): TasteCate
 
 function TasteCategoryCard({
   category,
-  expanded,
-  onToggleDefinition,
 }: {
   category: TasteCategory;
-  expanded: boolean;
-  onToggleDefinition: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const leafCount = useMemo(() => countLeaves(category), [category]);
@@ -87,11 +84,12 @@ function TasteCategoryCard({
         />
         <Link
           to={`/recipes?tasteNoteIds=${collectLeafIds(category).join(',')}`}
-          className='font-semibold text-lg hover:underline'
+          className='font-semibold text-xl hover:underline'
           style={{ color: 'var(--text-primary)' }}
         >
           {category.name}
         </Link>
+        <DefinitionPopover definition={category.definition} label={category.name} />
         <span
           className='ml-auto text-xs font-medium rounded-full px-2 py-0.5 flex-shrink-0'
           style={{
@@ -103,47 +101,22 @@ function TasteCategoryCard({
         </span>
       </div>
 
-      {category.definition && (
-        <div className='mb-3'>
-          {expanded && (
-            <p
-              className='text-sm leading-relaxed mb-2'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {category.definition}
-            </p>
-          )}
-          <button
-            type='button'
-            onClick={() => onToggleDefinition(category.id)}
-            className='text-xs font-medium hover:underline cursor-pointer'
-            style={{ color: 'var(--accent-primary)' }}
-          >
-            {expanded ? t('taste.hideDefinition') : t('taste.showDefinition')}
-          </button>
-        </div>
-      )}
-
-      {category.definition && !expanded && (
-        <div className='border-t mb-3' style={{ borderColor: 'var(--border-primary)' }} />
-      )}
-      {!category.definition && (
-        <div className='border-t mb-3' style={{ borderColor: 'var(--border-primary)' }} />
-      )}
+      <div className='border-t mb-3' style={{ borderColor: 'var(--border-primary)' }} />
 
       <div className='flex flex-col gap-4 mt-auto'>
         {category.children.map((sub) => (
           <div key={sub.id}>
-            <div className='flex items-center gap-2 mb-2'>
+            <div className='flex items-center gap-1.5 mb-2'>
               <Link
                 to={`/recipes?tasteNoteIds=${collectLeafIds(sub).join(',')}`}
-                className='text-sm font-medium hover:underline'
+                className='text-base font-medium hover:underline'
                 style={{ color: 'var(--text-primary)' }}
               >
                 {sub.name}
               </Link>
+              <DefinitionPopover definition={sub.definition} label={sub.name} />
               <span
-                className='text-xs'
+                className='text-sm'
                 style={{ color: 'var(--text-tertiary)' }}
               >
                 {sub.children.length}
@@ -151,25 +124,31 @@ function TasteCategoryCard({
             </div>
             <div className='flex flex-wrap gap-1.5'>
               {sub.children.map((leaf) => (
-                <Link
+                <span
                   key={leaf.id}
-                  to={`/recipes?tasteNoteIds=${leaf.id}`}
-                  className='inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium transition-all duration-150 hover:brightness-110'
+                  className="inline-flex items-center gap-0.5 rounded-md text-sm font-medium px-2 py-1"
                   style={{
                     backgroundColor: 'var(--bg-tertiary)',
                     color: 'var(--text-secondary)',
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = swatchColor + '22';
-                    e.currentTarget.style.color = swatchColor;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
                 >
-                  {leaf.name}
-                </Link>
+                  <Link
+                    to={`/recipes?tasteNoteIds=${leaf.id}`}
+                    className='inline-flex items-center transition-all duration-150 hover:brightness-110'
+                    style={{ color: 'inherit', borderRadius: 'inherit' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.parentElement!.style.backgroundColor = swatchColor + '22';
+                      e.currentTarget.parentElement!.style.color = swatchColor;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.parentElement!.style.backgroundColor = 'var(--bg-tertiary)';
+                      e.currentTarget.parentElement!.style.color = 'var(--text-secondary)';
+                    }}
+                  >
+                    {leaf.name}
+                  </Link>
+                  <DefinitionPopover definition={leaf.definition} label={leaf.name} />
+                </span>
               ))}
             </div>
           </div>
@@ -179,11 +158,52 @@ function TasteCategoryCard({
   );
 }
 
+function DefinitionPopover({ definition, label }: { definition: string | null; label: string }) {
+  if (!definition) return null;
+
+  return (
+    <Popover.Root>
+      <Popover.Trigger
+        openOnHover
+        delay={300}
+        className="inline-flex items-center justify-center w-5 h-5 rounded-full
+                   hover:bg-[var(--bg-tertiary)] text-[var(--text-tertiary)]
+                   hover:text-[var(--accent-primary)] transition-colors
+                   cursor-pointer flex-shrink-0"
+        aria-label={`Definition of ${label}`}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+             strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="top" sideOffset={6} align="center">
+          <Popover.Popup
+            className="card max-w-[260px] p-3 text-xs shadow-lg z-50"
+            style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
+          >
+            <Popover.Arrow className="fill-[var(--bg-secondary)]" />
+            <Popover.Description
+              className="leading-relaxed"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {definition}
+            </Popover.Description>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 export function TasteNotesPage() {
   const [hierarchy, setHierarchy] = useState<TasteCategory[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [expandedDefinitions, setExpandedDefinitions] = useState<Set<string>>(new Set());
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -192,18 +212,6 @@ export function TasteNotesPage() {
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
-
-  function toggleDefinition(id: string) {
-    setExpandedDefinitions((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
 
   const filteredHierarchy = search ? filterHierarchy(hierarchy, search) : hierarchy;
 
@@ -215,11 +223,15 @@ export function TasteNotesPage() {
       />
 
       <div className='mb-8'>
-        <h1 className='text-2xl font-bold mb-2' style={{ color: 'var(--text-primary)' }}>
+        <h1 className='text-3xl font-bold mb-2' style={{ color: 'var(--text-primary)' }}>
           {t('page.tasteNotes')}
         </h1>
-        <p className='mb-4' style={{ color: 'var(--text-secondary)' }}>
+        <p className='mb-4 text-base' style={{ color: 'var(--text-secondary)' }}>
           {t('page.tasteNotes.description')}
+        </p>
+        <p className='mb-4 text-sm' style={{ color: 'var(--text-secondary)' }}>
+          <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>ⓘ</span>{' '}
+          {t('taste.infoIconHint')}
         </p>
         <p className='text-xs mb-4' style={{ color: 'var(--text-tertiary)' }}>
           <a
@@ -271,8 +283,6 @@ export function TasteNotesPage() {
               <TasteCategoryCard
                 key={category.id}
                 category={category}
-                expanded={expandedDefinitions.has(category.id)}
-                onToggleDefinition={toggleDefinition}
               />
             ))}
           </div>
