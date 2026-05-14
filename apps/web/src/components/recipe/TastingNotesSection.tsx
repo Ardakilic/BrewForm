@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router';
 
 interface TasteNote {
   id: string;
-  tasteNoteId?: string;  // explicit tasteNoteId from API; falls back to id
+  tasteNoteId?: string; // explicit tasteNoteId from API; falls back to id
   name: string;
   intensity: number; // 1-3
   parentId: string | null;
@@ -33,7 +33,7 @@ interface TastingNotesSectionProps {
  */
 function getRootCategoryName(
   note: TasteNote,
-  allTasteNotes?: Array<{ id: string; name: string; parentId: string | null; depth: number }>
+  allTasteNotes?: Array<{ id: string; name: string; parentId: string | null; depth: number }>,
 ): string {
   if (note.rootCategoryName) {
     return note.rootCategoryName;
@@ -62,7 +62,7 @@ export function TastingNotesSection({
 
   // Enrich notes with resolved root category names
   const enrichedNotes: TasteNoteForChart[] = tasteNotes.map((note) => ({
-    tasteNoteId: note.tasteNoteId ?? note.id,  // fallback: API may send id instead of tasteNoteId
+    tasteNoteId: note.tasteNoteId ?? note.id, // fallback: API may send id instead of tasteNoteId
     intensity: note.intensity,
     name: note.name,
     parentId: note.parentId,

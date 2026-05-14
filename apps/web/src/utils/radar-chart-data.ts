@@ -58,10 +58,10 @@ export function mapToScaaCategory(rootName: string): ScaaCategory {
  * @param notes - Array of taste notes with hierarchy info (rootCategoryName must be set)
  */
 export function aggregateByCategory(
-  notes: TasteNoteForChart[]
+  notes: TasteNoteForChart[],
 ): Record<ScaaCategory, number> {
   const result = Object.fromEntries(
-    SCAA_CATEGORIES.map((cat) => [cat, 0])
+    SCAA_CATEGORIES.map((cat) => [cat, 0]),
   ) as Record<ScaaCategory, number>;
 
   for (const note of notes) {
@@ -84,7 +84,7 @@ export function aggregateByCategory(
  */
 export function resolveRootCategory(
   noteId: string,
-  allNotes: Array<{ id: string; name: string; parentId: string | null; depth: number }>
+  allNotes: Array<{ id: string; name: string; parentId: string | null; depth: number }>,
 ): string | null {
   const noteMap = new Map(allNotes.map((n) => [n.id, n]));
 

@@ -36,7 +36,7 @@ function axisPoint(
   cx: number,
   cy: number,
   radius: number,
-  i: number
+  i: number,
 ): [number, number] {
   const angle = axisAngle(i);
   return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
@@ -69,7 +69,7 @@ function textAnchor(x: number, cx: number): 'start' | 'middle' | 'end' {
  */
 function dominantBaseline(
   y: number,
-  cy: number
+  cy: number,
 ): 'auto' | 'middle' | 'hanging' {
   const delta = y - cy;
   if (delta > 2) return 'hanging';

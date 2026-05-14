@@ -20,7 +20,7 @@ export function LanguageSelector({ locale, setLocale, availableLocales }: Langua
 
   return (
     <Select.Root
-      id="language-switcher"
+      id='language-switcher'
       value={locale}
       onValueChange={(val) => setLocale(val as 'en' | 'tr')}
     >
@@ -96,7 +96,9 @@ export function LanguageSelector({ locale, setLocale, availableLocales }: Langua
                     <path d='M2 6l3 3 5-5' />
                   </svg>
                 </Select.ItemIndicator>
-                <Select.ItemText className='col-start-2'>{LOCALE_LABELS[loc] ?? loc}</Select.ItemText>
+                <Select.ItemText className='col-start-2'>
+                  {LOCALE_LABELS[loc] ?? loc}
+                </Select.ItemText>
               </Select.Item>
             ))}
           </Select.Popup>

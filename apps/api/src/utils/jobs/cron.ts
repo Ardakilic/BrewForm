@@ -15,5 +15,3 @@ Deno.cron('evaluate-badges', '0 * * * *', async () => {
     log.error({ err, job: 'evaluate-badges' }, 'Cron job failed');
   }
 });
-
-

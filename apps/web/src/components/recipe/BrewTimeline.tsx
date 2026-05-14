@@ -81,10 +81,9 @@ export function BrewTimeline({
   }
 
   const total = extractionTimeSeconds;
-  const preInfusion =
-    preInfusionTimeSeconds != null && preInfusionTimeSeconds > 0
-      ? preInfusionTimeSeconds
-      : null;
+  const preInfusion = preInfusionTimeSeconds != null && preInfusionTimeSeconds > 0
+    ? preInfusionTimeSeconds
+    : null;
 
   const preInfusionPct = preInfusion != null ? (preInfusion / total) * 100 : 0;
   const extractionPct = 100 - preInfusionPct;
@@ -125,10 +124,12 @@ export function BrewTimeline({
         className='relative w-full overflow-hidden'
         style={{ borderRadius: '0.5rem' }}
       >
-        {/*
+        {
+          /*
           Invisible semantic structure preserved for tests.
           role="img" with proportional child divs — visually hidden.
-        */}
+        */
+        }
         <div
           className='flex w-full'
           role='img'
@@ -145,9 +146,7 @@ export function BrewTimeline({
             pointerEvents: 'none',
           }}
         >
-          {preInfusion != null && (
-            <div style={{ width: `${preInfusionPct}%` }} />
-          )}
+          {preInfusion != null && <div style={{ width: `${preInfusionPct}%` }} />}
           <div style={{ width: `${extractionPct}%` }} />
         </div>
 
@@ -268,12 +267,11 @@ export function BrewTimeline({
               className='absolute flex flex-col items-center'
               style={{
                 left: `${positionPct}%`,
-                transform:
-                  positionPct === 0
-                    ? 'translateX(0)'
-                    : positionPct === 100
-                    ? 'translateX(-100%)'
-                    : 'translateX(-50%)',
+                transform: positionPct === 0
+                  ? 'translateX(0)'
+                  : positionPct === 100
+                  ? 'translateX(-100%)'
+                  : 'translateX(-50%)',
                 top: 0,
               }}
             >

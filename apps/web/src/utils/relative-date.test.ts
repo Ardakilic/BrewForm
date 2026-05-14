@@ -6,14 +6,9 @@
  *
  * Covers: same-day, 1-day, and multi-day differences for all three label functions.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import {
-  daysBetween,
-  roastDateLabel,
-  packageOpenDateLabel,
-  grindDateLabel,
-} from './relative-date';
+import { daysBetween, grindDateLabel, packageOpenDateLabel, roastDateLabel } from './relative-date';
 
 describe('daysBetween', () => {
   it('returns 0 for the same date', () => {
@@ -188,11 +183,13 @@ describe('Property 3: Relative date calculation (PBT)', () => {
 
           ctx.log(`dateA=${a.toISOString()}, dateB=${b.toISOString()}`);
 
-          for (const label of [
-            roastDateLabel(dateA, dateB),
-            packageOpenDateLabel(dateA, dateB),
-            grindDateLabel(dateA, dateB),
-          ]) {
+          for (
+            const label of [
+              roastDateLabel(dateA, dateB),
+              packageOpenDateLabel(dateA, dateB),
+              grindDateLabel(dateA, dateB),
+            ]
+          ) {
             expect(label).not.toBe('today');
             const days = leadingInt(label);
             expect(Number.isInteger(days)).toBe(true);

@@ -27,7 +27,8 @@ interface Props {
 // ---------------------------------------------------------------------------
 function renderInlineMarkdown(text: string): React.ReactNode[] {
   // Pattern matches **bold**, __underline__, *italic*, _italic_ in that priority order.
-  const pattern = /(\*\*(.+?)\*\*|__(.+?)__|(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<!_)_(?!_)(.+?)(?<!_)_(?!_))/g;
+  const pattern =
+    /(\*\*(.+?)\*\*|__(.+?)__|(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<!_)_(?!_)(.+?)(?<!_)_(?!_))/g;
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -151,9 +152,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
       };
       setComments((prev) =>
         prev.map((c) =>
-          c.id === parentCommentId
-            ? { ...c, replies: [...(c.replies ?? []), optimisticReply] }
-            : c
+          c.id === parentCommentId ? { ...c, replies: [...(c.replies ?? []), optimisticReply] } : c
         )
       );
       setReplyContent('');
@@ -182,7 +181,11 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
     const name = getAuthorName(comment);
     if (username) {
       return (
-        <Link to={`/u/${username}`} className={className} style={{ color: 'var(--accent-primary)' }}>
+        <Link
+          to={`/u/${username}`}
+          className={className}
+          style={{ color: 'var(--accent-primary)' }}
+        >
           {name}
         </Link>
       );
@@ -198,7 +201,10 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
       <div
         key={comment.id}
         className='rounded-lg p-4'
-        style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }}
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          border: '1px solid var(--border-primary)',
+        }}
       >
         {/* Comment header */}
         <div className='flex items-center gap-2 mb-2'>
@@ -220,7 +226,13 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
             type='button'
             onClick={() => openReplyForm(comment.id)}
             className='mt-2 text-xs'
-            style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{
+              color: 'var(--accent-primary)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
           >
             {t('comment.reply')}
           </button>
@@ -231,12 +243,14 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
           <form onSubmit={(e) => handleReplySubmit(e, comment.id)} className='mt-3 ml-4'>
             <textarea
               value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
+              onChange={(e) =>
+                setReplyContent(e.target.value)}
               placeholder={t('comment.writeReply')}
               className='input-field mb-2'
               rows={2}
               // deno-lint-ignore no-explicit-any
-              ref={(el: any) => el?.focus()}
+              ref={(el: any) =>
+                el?.focus()}
             />
             <div className='flex gap-2'>
               <button
@@ -251,7 +265,10 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
                 type='button'
                 className='btn-secondary'
                 style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}
-                onClick={() => { setReplyingToId(null); setReplyContent(''); }}
+                onClick={() => {
+                  setReplyingToId(null);
+                  setReplyContent('');
+                }}
               >
                 {t('comment.cancel')}
               </button>
@@ -266,11 +283,16 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
               <div
                 key={reply.id}
                 className='rounded p-3'
-                style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)' }}
+                style={{
+                  backgroundColor: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-primary)',
+                }}
               >
                 <div className='flex items-center gap-2 mb-1'>
                   <AuthorLink comment={reply} className='font-medium text-xs' />
-                  {isRecipeAuthor(reply) && <span className='badge text-xs'>{t('comment.op')}</span>}
+                  {isRecipeAuthor(reply) && (
+                    <span className='badge text-xs'>{t('comment.op')}</span>
+                  )}
                   <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
                     {new Date(reply.createdAt).toLocaleDateString()}
                   </span>
@@ -285,7 +307,13 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
                     type='button'
                     onClick={() => openReplyForm(comment.id, getAuthorUsername(reply) ?? undefined)}
                     className='mt-1 text-xs'
-                    style={{ color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{
+                      color: 'var(--accent-primary)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
                   >
                     {t('comment.reply')}
                   </button>

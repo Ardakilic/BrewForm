@@ -24,46 +24,39 @@ export function buildStatCards(version: {
   brewRatio?: number | null;
   temperatureCelsius?: number | null;
 }): StatCardItem[] {
-  const dash = "—";
+  const dash = '—';
 
   const dose: StatCardItem = {
-    label: "recipe.stat.dose",
-    value:
-      version.groundWeightGrams != null
-        ? `${formatNumber(version.groundWeightGrams)}g`
-        : `${dash}g`,
+    label: 'recipe.stat.dose',
+    value: version.groundWeightGrams != null
+      ? `${formatNumber(version.groundWeightGrams)}g`
+      : `${dash}g`,
   };
 
   const yieldCard: StatCardItem = {
-    label: "recipe.stat.yield",
-    value:
-      version.extractionVolumeMl != null
-        ? `${formatNumber(version.extractionVolumeMl)}ml`
-        : `${dash}ml`,
+    label: 'recipe.stat.yield',
+    value: version.extractionVolumeMl != null
+      ? `${formatNumber(version.extractionVolumeMl)}ml`
+      : `${dash}ml`,
   };
 
   const time: StatCardItem = {
-    label: "recipe.stat.time",
-    value:
-      version.extractionTimeSeconds != null
-        ? `${formatNumber(version.extractionTimeSeconds)}s`
-        : `${dash}s`,
+    label: 'recipe.stat.time',
+    value: version.extractionTimeSeconds != null
+      ? `${formatNumber(version.extractionTimeSeconds)}s`
+      : `${dash}s`,
   };
 
   const ratio: StatCardItem = {
-    label: "recipe.stat.ratio",
-    value:
-      version.brewRatio != null
-        ? `1:${formatNumber(version.brewRatio)}`
-        : `1:${dash}`,
+    label: 'recipe.stat.ratio',
+    value: version.brewRatio != null ? `1:${formatNumber(version.brewRatio)}` : `1:${dash}`,
   };
 
   const temp: StatCardItem = {
-    label: "recipe.stat.temp",
-    value:
-      version.temperatureCelsius != null
-        ? `${formatNumber(version.temperatureCelsius)}°C`
-        : `${dash}°C`,
+    label: 'recipe.stat.temp',
+    value: version.temperatureCelsius != null
+      ? `${formatNumber(version.temperatureCelsius)}°C`
+      : `${dash}°C`,
   };
 
   return [dose, yieldCard, time, ratio, temp];

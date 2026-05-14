@@ -1,21 +1,27 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TasteNotesPage } from './TasteNotesPage';
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
 }));
 
 vi.mock('@base-ui-components/react/popover', () => {
   const PopoverRoot = ({ children }: { children: React.ReactNode }) => {
     const [open, setOpen] = React.useState(false);
     return (
-      <span data-popover-root onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <span
+        data-popover-root
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
         {React.Children.map(children, (child) => {
-          if (React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverTrigger') {
+          if (
+            React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverTrigger'
+          ) {
             return React.cloneElement(child as React.ReactElement<any>, {
               onClick: () => setOpen((prev: boolean) => !prev),
               'data-open': open,
@@ -30,7 +36,9 @@ vi.mock('@base-ui-components/react/popover', () => {
     );
   };
 
-  const PopoverTrigger = ({ children, openOnHover: _openOnHover, delay: _delay, ...props }: any) => {
+  const PopoverTrigger = (
+    { children, openOnHover: _openOnHover, delay: _delay, ...props }: any,
+  ) => {
     const Comp = 'span' as any;
     return <Comp data-popover-trigger {...props}>{children}</Comp>;
   };
@@ -63,7 +71,7 @@ vi.mock('@base-ui-components/react/popover', () => {
 
 vi.mock('../components/seo/SEOHead', () => ({
   SEOHead: ({ title, description }: { title: string; description: string }) => (
-    <div data-testid="seo-head" data-title={title} data-description={description} />
+    <div data-testid='seo-head' data-title={title} data-description={description} />
   ),
 }));
 
@@ -99,8 +107,24 @@ const mockHierarchy = [
         depth: 1,
         parentId: '1',
         children: [
-          { id: '3', name: 'Raspberry', color: '#E52968', definition: 'Sharp, tart, and floral berry note.', depth: 2, parentId: '2', children: [] },
-          { id: '4', name: 'Blueberry', color: '#6469B0', definition: 'Mild, sweet berry with jammy character.', depth: 2, parentId: '2', children: [] },
+          {
+            id: '3',
+            name: 'Raspberry',
+            color: '#E52968',
+            definition: 'Sharp, tart, and floral berry note.',
+            depth: 2,
+            parentId: '2',
+            children: [],
+          },
+          {
+            id: '4',
+            name: 'Blueberry',
+            color: '#6469B0',
+            definition: 'Mild, sweet berry with jammy character.',
+            depth: 2,
+            parentId: '2',
+            children: [],
+          },
         ],
       },
       {
@@ -111,7 +135,15 @@ const mockHierarchy = [
         depth: 1,
         parentId: '1',
         children: [
-          { id: '6', name: 'Lemon', color: '#FDE402', definition: 'Sharp, clean citrus acidity.', depth: 2, parentId: '5', children: [] },
+          {
+            id: '6',
+            name: 'Lemon',
+            color: '#FDE402',
+            definition: 'Sharp, clean citrus acidity.',
+            depth: 2,
+            parentId: '5',
+            children: [],
+          },
         ],
       },
     ],
@@ -150,7 +182,8 @@ const trT = (key: string) => {
     'taste.searchPlaceholder': 'Tadım notlarında ara...',
     'taste.noResults': 'Aramanızla eşleşen tadım notu bulunamadı.',
     'taste.leafCount': '{count} tarif',
-    'taste.infoIconHint': 'Tat isimlerinin yanındaki bilgi simgelerine tıklayarak açıklamalarını görebilirsiniz.',
+    'taste.infoIconHint':
+      'Tat isimlerinin yanındaki bilgi simgelerine tıklayarak açıklamalarını görebilirsiniz.',
   };
   return map[key] ?? key;
 };
@@ -312,7 +345,10 @@ describe('TasteNotesPage — SEOHead', () => {
 
     const seoHead = screen.getByTestId('seo-head');
     expect(seoHead).toHaveAttribute('data-title', 'Taste Notes');
-    expect(seoHead).toHaveAttribute('data-description', 'Explore the SCAA flavor wheel taste notes on BrewForm.');
+    expect(seoHead).toHaveAttribute(
+      'data-description',
+      'Explore the SCAA flavor wheel taste notes on BrewForm.',
+    );
   });
 });
 
@@ -389,7 +425,7 @@ describe('TasteNotesPage — info icons for definitions', () => {
     expect(triggers.length).toBeGreaterThan(0);
 
     const raspberryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Raspberry')
+      (t) => t.getAttribute('aria-label')?.includes('Raspberry'),
     );
     expect(raspberryTrigger).toBeTruthy();
   });
@@ -402,12 +438,12 @@ describe('TasteNotesPage — info icons for definitions', () => {
 
     const triggers = document.querySelectorAll('[data-popover-trigger]');
     const berryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Berry')
+      (t) => t.getAttribute('aria-label')?.includes('Berry'),
     );
     expect(berryTrigger).toBeTruthy();
 
     const citrusTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Citrus Fruit')
+      (t) => t.getAttribute('aria-label')?.includes('Citrus Fruit'),
     );
     expect(citrusTrigger).toBeTruthy();
   });
@@ -430,7 +466,7 @@ describe('TasteNotesPage — info icons for definitions', () => {
     });
     const triggers = document.querySelectorAll('[data-popover-trigger]');
     const fruityTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Fruity')
+      (t) => t.getAttribute('aria-label')?.includes('Fruity'),
     );
     expect(fruityTrigger).toBeTruthy();
   });
@@ -445,7 +481,7 @@ describe('TasteNotesPage — definition popover interaction', () => {
 
     const triggers = document.querySelectorAll('[data-popover-trigger]');
     const raspberryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Raspberry')
+      (t) => t.getAttribute('aria-label')?.includes('Raspberry'),
     )!;
     expect(raspberryTrigger).toBeTruthy();
 
@@ -464,7 +500,7 @@ describe('TasteNotesPage — definition popover interaction', () => {
 
     const triggers = document.querySelectorAll('[data-popover-trigger]');
     const raspberryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Raspberry')
+      (t) => t.getAttribute('aria-label')?.includes('Raspberry'),
     )!;
 
     fireEvent.click(raspberryTrigger);
@@ -494,13 +530,17 @@ describe('TasteNotesPage — definition popover interaction', () => {
 
     const triggers = document.querySelectorAll('[data-popover-trigger]');
     const berryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Berry')
+      (t) => t.getAttribute('aria-label')?.includes('Berry'),
     )!;
 
     fireEvent.mouseEnter(berryTrigger.closest('[data-popover-root]')!);
 
     await waitFor(() => {
-      expect(screen.getByText('The sweet, sour, floral, sometimes heavy aromatic associated with berries.')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'The sweet, sour, floral, sometimes heavy aromatic associated with berries.',
+        ),
+      ).toBeInTheDocument();
     });
   });
 });

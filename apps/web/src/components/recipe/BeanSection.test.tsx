@@ -11,7 +11,7 @@
  * fields with non-null values SHALL be displayed.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import fc from 'fast-check';
 import { BeanSection } from './BeanSection';
@@ -28,7 +28,10 @@ function withI18n(ui: ReactNode) {
 
 vi.mock('../../utils/relative-date.ts', () => ({
   roastDateResult: (_roastDate: Date, _brewDate: Date) => ({ type: 'daysPostRoast', days: 7 }),
-  packageOpenDateResult: (_openDate: Date, _brewDate: Date) => ({ type: 'daysSinceOpened', days: 3 }),
+  packageOpenDateResult: (_openDate: Date, _brewDate: Date) => ({
+    type: 'daysSinceOpened',
+    days: 3,
+  }),
   grindDateResult: (_grindDate: Date, _brewDate: Date) => ({ type: 'daysAgo', days: 1 }),
   // daysBetween is used by isPeakWindow inside BeanSection
   daysBetween: (_a: Date, _b: Date) => 14,
@@ -69,7 +72,9 @@ describe('BeanSection — conditional rendering unit tests', () => {
   });
 
   it('renders when only bean.origin is present', () => {
-    const node = renderBeanSection({ bean: { origin: 'Ethiopia', roaster: null, roastLevel: null } });
+    const node = renderBeanSection({
+      bean: { origin: 'Ethiopia', roaster: null, roastLevel: null },
+    });
     expect(node).not.toBeNull();
   });
 
@@ -118,7 +123,9 @@ describe('BeanSection — conditional rendering unit tests', () => {
   });
 
   it('shows origin from bean record', () => {
-    render(withI18n(<BeanSection bean={{ origin: 'Colombia', roaster: null, roastLevel: null }} />));
+    render(
+      withI18n(<BeanSection bean={{ origin: 'Colombia', roaster: null, roastLevel: null }} />),
+    );
     expect(screen.getByText('Colombia')).toBeInTheDocument();
   });
 });
@@ -157,7 +164,15 @@ function shouldRender(props: {
   grindDate: string | null;
   bean: { origin: string | null; roaster: string | null; roastLevel: string | null } | null;
 }): boolean {
-  const { productName, coffeeBrand, coffeeProcessing, roastDate, packageOpenDate, grindDate, bean } = props;
+  const {
+    productName,
+    coffeeBrand,
+    coffeeProcessing,
+    roastDate,
+    packageOpenDate,
+    grindDate,
+    bean,
+  } = props;
   return (
     productName != null ||
     coffeeBrand != null ||

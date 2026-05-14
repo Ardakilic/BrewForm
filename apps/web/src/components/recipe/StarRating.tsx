@@ -22,7 +22,12 @@ function Star({ index, activeValue }: { index: number; activeValue: number }) {
   const isHalf = !isFull && activeValue >= index * 2 - 1;
 
   return (
-    <svg viewBox='0 0 24 24' width='28' height='28' style={{ display: 'block', overflow: 'visible' }}>
+    <svg
+      viewBox='0 0 24 24'
+      width='28'
+      height='28'
+      style={{ display: 'block', overflow: 'visible' }}
+    >
       {/* Empty / outline */}
       <path
         d={STAR_PATH}
@@ -41,9 +46,7 @@ function Star({ index, activeValue }: { index: number; activeValue: number }) {
         />
       )}
       {/* Full fill */}
-      {isFull && (
-        <path d={STAR_PATH} fill='#f5a623' stroke='none' />
-      )}
+      {isFull && <path d={STAR_PATH} fill='#f5a623' stroke='none' />}
     </svg>
   );
 }
@@ -89,13 +92,7 @@ export function StarRating({ value, count, onRate, interactive = true }: Props) 
           className='ml-1 text-sm font-medium tabular-nums'
           style={{ color: 'var(--text-secondary)', minWidth: '2.5rem' }}
         >
-          {hovered > 0
-            ? label(hovered)
-            : value
-            ? label(value)
-            : interactive
-            ? ''
-            : '—'}
+          {hovered > 0 ? label(hovered) : value ? label(value) : interactive ? '' : '—'}
         </span>
       </div>
 

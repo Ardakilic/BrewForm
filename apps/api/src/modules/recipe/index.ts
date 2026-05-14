@@ -28,7 +28,13 @@ recipe.get(
     const filters = c.req.valid('query');
     const userId = c.get('userId') ?? null;
     const isAdmin = (c.get('user') as any)?.isAdmin ?? false;
-    const result = await service.listRecipes(filters, filters.page, filters.perPage, userId, isAdmin);
+    const result = await service.listRecipes(
+      filters,
+      filters.page,
+      filters.perPage,
+      userId,
+      isAdmin,
+    );
     return paginated(c, result.recipes, {
       page: filters.page,
       perPage: filters.perPage,
@@ -133,10 +139,13 @@ recipe.get(
         currentVersion,
         tasteNotes: currentVersion?.tasteNotes?.map((t: any) => ({
           ...t.tasteNote,
-          tasteNoteId: t.tasteNote?.id,  // explicit tasteNoteId for frontend hierarchy resolution
+          tasteNoteId: t.tasteNote?.id, // explicit tasteNoteId for frontend hierarchy resolution
           intensity: t.intensity ?? 1,
         })) ?? [],
-        equipment: currentVersion?.equipment?.map((e: any) => ({ ...e.equipment, equipmentId: e.equipmentId })) ?? [],
+        equipment: currentVersion?.equipment?.map((e: any) => ({
+          ...e.equipment,
+          equipmentId: e.equipmentId,
+        })) ?? [],
         bean: currentVersion?.bean ?? null,
         versionCount: (r as any).versions?.length ?? 1,
         forkedFromSlug: (r as any).forkedFrom?.slug ?? null,

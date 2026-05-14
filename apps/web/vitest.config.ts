@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { resolve, join } from 'jsr:@std/path';
+import { join, resolve } from 'jsr:@std/path';
 
 const monorepoRoot = resolve(import.meta.dirname!, '../..');
 const sharedSrc = join(monorepoRoot, 'packages/shared/src');

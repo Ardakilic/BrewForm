@@ -8,7 +8,7 @@
  * When the fix is applied (Tasks 3–8), these tests will pass.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { I18nProvider } from '../../../contexts/I18nContext.tsx';
@@ -32,18 +32,16 @@ describe('Bug 1.1 - EquipmentSection crashes when item.type is undefined', () =>
       { id: '1', equipmentId: 'eq1', name: 'Portafilter', type: undefined as any },
     ];
     // This WILL crash on unfixed code: item.type.replace(/_/g, ' ') throws TypeError
-    expect(() =>
-      render(withProviders(<EquipmentSection items={itemsWithUndefinedType} />))
-    ).not.toThrow();
+    expect(() => render(withProviders(<EquipmentSection items={itemsWithUndefinedType} />))).not
+      .toThrow();
   });
 
   it('should NOT crash when item.name is undefined', () => {
     const itemsWithUndefinedName = [
       { id: '1', equipmentId: 'eq1', name: undefined as any, type: 'portafilter' },
     ];
-    expect(() =>
-      render(withProviders(<EquipmentSection items={itemsWithUndefinedName} />))
-    ).not.toThrow();
+    expect(() => render(withProviders(<EquipmentSection items={itemsWithUndefinedName} />))).not
+      .toThrow();
   });
 });
 
@@ -68,7 +66,7 @@ describe('Bug 1.4 - Components use hardcoded English strings instead of i18n', (
       render(
         <I18nProvider>
           <BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />
-        </I18nProvider>
+        </I18nProvider>,
       )
     ).not.toThrow();
   });
@@ -79,7 +77,7 @@ describe('Bug 1.4 - Components use hardcoded English strings instead of i18n', (
     render(
       <I18nProvider>
         <BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />
-      </I18nProvider>
+      </I18nProvider>,
     );
     // The i18n key resolves to "Brew Timeline" in English — verify it renders
     expect(screen.getByText('Brew Timeline')).toBeTruthy();
@@ -89,7 +87,7 @@ describe('Bug 1.4 - Components use hardcoded English strings instead of i18n', (
     render(
       <I18nProvider>
         <BrewTimeline extractionTimeSeconds={28} preInfusionTimeSeconds={5} />
-      </I18nProvider>
+      </I18nProvider>,
     );
     // The i18n key resolves to "Pre-Infusion" in English — verify it renders via t()
     expect(screen.getByText('Pre-Infusion')).toBeTruthy();
@@ -99,7 +97,7 @@ describe('Bug 1.4 - Components use hardcoded English strings instead of i18n', (
     render(
       <I18nProvider>
         <BrewTimeline extractionTimeSeconds={28} />
-      </I18nProvider>
+      </I18nProvider>,
     );
     // The i18n key resolves to "Extraction" in English — verify it renders via t()
     expect(screen.getByText('Extraction')).toBeTruthy();
@@ -109,10 +107,10 @@ describe('Bug 1.4 - Components use hardcoded English strings instead of i18n', (
     render(
       <I18nProvider>
         <BeanSection
-          productName="Test Bean"
-          coffeeBrand="Test Brand"
+          productName='Test Bean'
+          coffeeBrand='Test Brand'
         />
-      </I18nProvider>
+      </I18nProvider>,
     );
     // The i18n key resolves to "Bean" in English — verify it renders via t()
     expect(screen.getByText('Bean')).toBeTruthy();
@@ -121,7 +119,9 @@ describe('Bug 1.4 - Components use hardcoded English strings instead of i18n', (
 
 describe('Bug 1.6 - ShareSection no longer shows QR code (removed per refactor)', () => {
   it('should NOT render any img element (QR code removed)', () => {
-    render(withProviders(<ShareSection slug="test-recipe" title="Test Recipe" visibility="public" />));
+    render(
+      withProviders(<ShareSection slug='test-recipe' title='Test Recipe' visibility='public' />),
+    );
     expect(document.querySelector('img')).toBeNull();
   });
 });

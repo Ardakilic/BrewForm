@@ -48,7 +48,11 @@ export function BreadcrumbNav({ brewMethod, recipeTitle }: BreadcrumbNavProps) {
 
         {brewMethod && (
           <>
-            <li aria-hidden='true' className='select-none' style={{ color: 'var(--text-tertiary)' }}>
+            <li
+              aria-hidden='true'
+              className='select-none'
+              style={{ color: 'var(--text-tertiary)' }}
+            >
               ›
             </li>
             <li>

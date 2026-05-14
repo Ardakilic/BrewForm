@@ -18,7 +18,7 @@
  * plus a final marker at extractionTimeSeconds if it's not aligned to the step.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import fc from 'fast-check';
 import { BrewTimeline } from './BrewTimeline.tsx';

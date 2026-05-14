@@ -60,9 +60,7 @@ export function TasteAutocomplete({
     const lower = query.trim().toLowerCase();
     const items = allNotes.filter((n) => n.depth >= 1);
 
-    const filtered = lower
-      ? items.filter((n) => n.name.toLowerCase().includes(lower))
-      : items;
+    const filtered = lower ? items.filter((n) => n.name.toLowerCase().includes(lower)) : items;
 
     function hasChildren(note: TasteNote): boolean {
       return filtered.some((n) => n.parentId === note.id);
@@ -108,7 +106,7 @@ export function TasteAutocomplete({
     }
 
     const sorted = Array.from(groups.values()).sort((a, b) =>
-      a.root.name.localeCompare(b.root.name),
+      a.root.name.localeCompare(b.root.name)
     );
 
     for (const group of sorted) {
@@ -116,9 +114,7 @@ export function TasteAutocomplete({
       for (const sg of group.subGroups) {
         sg.children.sort((a, b) => a.name.localeCompare(b.name));
       }
-      group.orphanItems.sort((a, b) =>
-        a.depth - b.depth || a.name.localeCompare(b.name),
-      );
+      group.orphanItems.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
     }
 
     return sorted;
@@ -141,9 +137,7 @@ export function TasteAutocomplete({
 
   useEffect(() => {
     if (isOpen && selectableIds.length > 0) {
-      setHighlightedId((prev) =>
-        prev && selectableIds.includes(prev) ? prev : selectableIds[0],
-      );
+      setHighlightedId((prev) => prev && selectableIds.includes(prev) ? prev : selectableIds[0]);
     } else {
       setHighlightedId(null);
     }
@@ -242,7 +236,13 @@ export function TasteAutocomplete({
                   type='button'
                   onClick={() => cycleIntensity(note.id)}
                   title={`Intensity ${intensity}/3 — click to change`}
-                  style={{ lineHeight: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+                  style={{
+                    lineHeight: 0,
+                    cursor: 'pointer',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                  }}
                   aria-label={`Set intensity for ${note.name}`}
                 >
                   <IntensityDots intensity={intensity} />
@@ -288,103 +288,116 @@ export function TasteAutocomplete({
           className='absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded border'
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
         >
-          {allNotes.length === 0 ? (
-            <li
-              className='px-3 py-4 text-sm text-center'
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              Loading taste notes...
-            </li>
-          ) : groupedResults.length > 0 ? (
-            groupedResults.map((group) => (
-              <Fragment key={group.root.id}>
-                <li
-                  className='px-3 py-1.5 text-xs font-semibold select-none cursor-default'
-                  style={{ color: 'var(--text-tertiary)' }}
-                  aria-hidden='true'
-                >
-                  {group.root.name}
-                </li>
-                {group.subGroups.map((sg) => (
-                  <Fragment key={sg.parent.id}>
-                    <li
-                      className='px-3 py-1.5 text-xs font-semibold select-none cursor-default'
-                      style={{
-                        color: 'var(--text-tertiary)',
-                        paddingLeft: '1.25rem',
-                      }}
-                      aria-hidden='true'
-                    >
-                      {group.root.name} &gt; {sg.parent.name}
-                    </li>
-                    {sg.children.map((item) => (
-                      <li
-                        key={item.id}
-                        ref={(el) => {
-                          if (el) {
-                            itemRefs.current.set(item.id, el);
-                          } else {
-                            itemRefs.current.delete(item.id);
-                          }
-                        }}
-                        className='cursor-pointer px-3 py-2 flex items-center justify-between'
-                        style={{
-                          paddingLeft: `${item.depth * 0.75 + 1.5}rem`,
-                          color: 'var(--text-primary)',
-                          backgroundColor:
-                            highlightedId === item.id ? 'var(--bg-secondary)' : undefined,
-                        }}
-                        onClick={() => toggleNote(item.id)}
-                        onMouseEnter={() => setHighlightedId(item.id)}
-                        role='option'
-                        aria-selected={selectedIds.includes(item.id)}
-                      >
-                        {selectedIds.includes(item.id) && (
-                          <span className='mr-1 text-xs' style={{ color: 'var(--accent-primary)' }}>✓</span>
-                        )}
-                        <span>{item.name}</span>
-                      </li>
-                    ))}
-                  </Fragment>
-                ))}
-                {group.orphanItems.map((item) => (
+          {allNotes.length === 0
+            ? (
+              <li
+                className='px-3 py-4 text-sm text-center'
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                Loading taste notes...
+              </li>
+            )
+            : groupedResults.length > 0
+            ? (
+              groupedResults.map((group) => (
+                <Fragment key={group.root.id}>
                   <li
-                    key={item.id}
-                    ref={(el) => {
-                      if (el) {
-                        itemRefs.current.set(item.id, el);
-                      } else {
-                        itemRefs.current.delete(item.id);
-                      }
-                    }}
-                    className='cursor-pointer px-3 py-2 flex items-center justify-between'
-                    style={{
-                      paddingLeft: `${item.depth * 1.5 + 0.75}rem`,
-                      color: 'var(--text-primary)',
-                      backgroundColor:
-                        highlightedId === item.id ? 'var(--bg-secondary)' : undefined,
-                    }}
-                    onClick={() => toggleNote(item.id)}
-                    onMouseEnter={() => setHighlightedId(item.id)}
-                    role='option'
-                    aria-selected={selectedIds.includes(item.id)}
+                    className='px-3 py-1.5 text-xs font-semibold select-none cursor-default'
+                    style={{ color: 'var(--text-tertiary)' }}
+                    aria-hidden='true'
                   >
-                    {selectedIds.includes(item.id) && (
-                      <span className='mr-1 text-xs' style={{ color: 'var(--accent-primary)' }}>✓</span>
-                    )}
-                    <span>{item.name}</span>
+                    {group.root.name}
                   </li>
-                ))}
-              </Fragment>
-            ))
-          ) : (
-            <li
-              className='px-3 py-4 text-sm text-center'
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              No taste notes found.
-            </li>
-          )}
+                  {group.subGroups.map((sg) => (
+                    <Fragment key={sg.parent.id}>
+                      <li
+                        className='px-3 py-1.5 text-xs font-semibold select-none cursor-default'
+                        style={{
+                          color: 'var(--text-tertiary)',
+                          paddingLeft: '1.25rem',
+                        }}
+                        aria-hidden='true'
+                      >
+                        {group.root.name} &gt; {sg.parent.name}
+                      </li>
+                      {sg.children.map((item) => (
+                        <li
+                          key={item.id}
+                          ref={(el) => {
+                            if (el) {
+                              itemRefs.current.set(item.id, el);
+                            } else {
+                              itemRefs.current.delete(item.id);
+                            }
+                          }}
+                          className='cursor-pointer px-3 py-2 flex items-center justify-between'
+                          style={{
+                            paddingLeft: `${item.depth * 0.75 + 1.5}rem`,
+                            color: 'var(--text-primary)',
+                            backgroundColor: highlightedId === item.id
+                              ? 'var(--bg-secondary)'
+                              : undefined,
+                          }}
+                          onClick={() => toggleNote(item.id)}
+                          onMouseEnter={() => setHighlightedId(item.id)}
+                          role='option'
+                          aria-selected={selectedIds.includes(item.id)}
+                        >
+                          {selectedIds.includes(item.id) && (
+                            <span
+                              className='mr-1 text-xs'
+                              style={{ color: 'var(--accent-primary)' }}
+                            >
+                              ✓
+                            </span>
+                          )}
+                          <span>{item.name}</span>
+                        </li>
+                      ))}
+                    </Fragment>
+                  ))}
+                  {group.orphanItems.map((item) => (
+                    <li
+                      key={item.id}
+                      ref={(el) => {
+                        if (el) {
+                          itemRefs.current.set(item.id, el);
+                        } else {
+                          itemRefs.current.delete(item.id);
+                        }
+                      }}
+                      className='cursor-pointer px-3 py-2 flex items-center justify-between'
+                      style={{
+                        paddingLeft: `${item.depth * 1.5 + 0.75}rem`,
+                        color: 'var(--text-primary)',
+                        backgroundColor: highlightedId === item.id
+                          ? 'var(--bg-secondary)'
+                          : undefined,
+                      }}
+                      onClick={() => toggleNote(item.id)}
+                      onMouseEnter={() => setHighlightedId(item.id)}
+                      role='option'
+                      aria-selected={selectedIds.includes(item.id)}
+                    >
+                      {selectedIds.includes(item.id) && (
+                        <span className='mr-1 text-xs' style={{ color: 'var(--accent-primary)' }}>
+                          ✓
+                        </span>
+                      )}
+                      <span>{item.name}</span>
+                    </li>
+                  ))}
+                </Fragment>
+              ))
+            )
+            : (
+              <li
+                className='px-3 py-4 text-sm text-center'
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                No taste notes found.
+              </li>
+            )}
         </ul>
       )}
 

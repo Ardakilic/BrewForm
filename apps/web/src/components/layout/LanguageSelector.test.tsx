@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LanguageSelector } from './LanguageSelector';
@@ -15,7 +15,7 @@ describe('LanguageSelector', () => {
   it('renders flag emoji + language name for each locale option', async () => {
     render(
       <LanguageSelector
-        locale="en"
+        locale='en'
         setLocale={setLocale}
         availableLocales={['en', 'tr']}
       />,
@@ -31,7 +31,7 @@ describe('LanguageSelector', () => {
   it('calls setLocale when a different language is selected', async () => {
     render(
       <LanguageSelector
-        locale="en"
+        locale='en'
         setLocale={setLocale}
         availableLocales={['en', 'tr']}
       />,
@@ -49,7 +49,7 @@ describe('LanguageSelector', () => {
   it('renders nothing when availableLocales is empty', () => {
     const { container } = render(
       <LanguageSelector
-        locale="en"
+        locale='en'
         setLocale={setLocale}
         availableLocales={[]}
       />,
@@ -61,7 +61,7 @@ describe('LanguageSelector', () => {
   it('displays currently active locale in trigger', () => {
     render(
       <LanguageSelector
-        locale="tr"
+        locale='tr'
         setLocale={setLocale}
         availableLocales={['en', 'tr']}
       />,

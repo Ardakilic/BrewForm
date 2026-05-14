@@ -7,13 +7,13 @@
  * **Validates: Requirements 8.1, 8.2**
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
   aggregateByCategory,
-  SCAA_CATEGORIES,
   mapToScaaCategory,
   resolveRootCategory,
+  SCAA_CATEGORIES,
   type TasteNoteForChart,
 } from './radar-chart-data';
 

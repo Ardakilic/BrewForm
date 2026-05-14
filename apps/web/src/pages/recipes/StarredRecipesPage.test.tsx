@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { StarredRecipesPage, _resetStaticCache } from './StarredRecipesPage';
+import { _resetStaticCache, StarredRecipesPage } from './StarredRecipesPage';
 
 // ── External deps ──────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
   useSearchParams: vi.fn(),
 }));
 
@@ -40,7 +40,7 @@ vi.mock('@brewform/shared/constants', () => ({
 import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { recipeApi, equipmentApi, tasteApi } from '../../api/index.ts';
+import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -64,7 +64,7 @@ const enT = (key: string) => {
     'recipe.list.mostLiked': 'Most Liked',
     'recipe.list.topRated': 'Top Rated',
     'recipe.list.clearFilters': 'Clear Filters',
-    'recipe.starred.noResults': 'You haven\'t starred any recipes yet.',
+    'recipe.starred.noResults': "You haven't starred any recipes yet.",
     'recipe.starred.loginRequired': 'Please log in to view your starred recipes.',
     'recipe.list.all': 'All',
     'recipe.list.page': 'Page {page} of {total}',
@@ -91,7 +91,15 @@ const defaultTranslation = {
 };
 
 const defaultAuth = {
-  user: { id: 'user-1', email: 'a@a.com', username: 'testuser', displayName: null, avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+  user: {
+    id: 'user-1',
+    email: 'a@a.com',
+    username: 'testuser',
+    displayName: null,
+    avatarUrl: null,
+    isAdmin: false,
+    onboardingCompleted: true,
+  },
   isAuthenticated: true,
   isLoading: false,
   login: vi.fn(),
@@ -154,7 +162,7 @@ describe('StarredRecipesPage', () => {
     render(<StarredRecipesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('You haven\'t starred any recipes yet.')).toBeInTheDocument();
+      expect(screen.getByText("You haven't starred any recipes yet.")).toBeInTheDocument();
     });
   });
 

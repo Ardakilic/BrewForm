@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeListPage } from './RecipeListPage';
@@ -6,9 +6,9 @@ import { RecipeListPage } from './RecipeListPage';
 // ── External deps ──────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
   useSearchParams: vi.fn(),
 }));
 
@@ -41,9 +41,9 @@ vi.mock('@brewform/shared/constants', () => ({
 import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { recipeApi, equipmentApi, tasteApi } from '../../api/index.ts';
+import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 import fc from 'fast-check';
-import { _resetStaticCache, EQUIPMENT_TYPE_LABELS, EQUIPMENT_FILTER_TYPES } from './RecipeListPage';
+import { _resetStaticCache, EQUIPMENT_FILTER_TYPES, EQUIPMENT_TYPE_LABELS } from './RecipeListPage';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -244,7 +244,15 @@ describe('RecipeListPage — i18n', () => {
   it('shows Visibility filter only for admin users', async () => {
     mockUseAuth.mockReturnValue({
       ...defaultAuth,
-      user: { id: 'a', email: 'a@a.com', username: 'admin', displayName: null, avatarUrl: null, isAdmin: true, onboardingCompleted: true },
+      user: {
+        id: 'a',
+        email: 'a@a.com',
+        username: 'admin',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: true,
+        onboardingCompleted: true,
+      },
     } as ReturnType<typeof useAuth>);
 
     render(<RecipeListPage />);
@@ -366,7 +374,9 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.getByRole('option', { name: 'My Espresso Scale' })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('option', { name: 'My Espresso Scale' })).toBeInTheDocument()
+    );
   });
 
   it('shows active equipment filter badge when equipmentId is in URL', async () => {
@@ -378,7 +388,9 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
     render(<RecipeListPage />);
 
     // The badge shows the equipment name and a remove button
-    await waitFor(() => expect(screen.getByLabelText('Remove Equipment filter')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByLabelText('Remove Equipment filter')).toBeInTheDocument()
+    );
     // The name appears at least once (may also appear in the dropdown option)
     expect(screen.getAllByText('Acaia Lunar').length).toBeGreaterThanOrEqual(1);
   });
@@ -473,7 +485,9 @@ describe('RecipeListPage — taste note filter', () => {
     render(<RecipeListPage />);
 
     // The badge remove button should appear
-    await waitFor(() => expect(screen.getByLabelText('Remove Taste Notes filter')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByLabelText('Remove Taste Notes filter')).toBeInTheDocument()
+    );
     // The name appears at least once (may also appear in the dropdown option)
     expect(screen.getAllByText('Raspberry').length).toBeGreaterThanOrEqual(1);
   });
@@ -533,12 +547,16 @@ describe('RecipeListPage — taste note filter', () => {
     const badge2 = screen.getByLabelText('Remove Taste Notes filter');
 
     // Badges should appear after the Filters heading
-    expect(filtersHeading.compareDocumentPosition(badge1) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(filtersHeading.compareDocumentPosition(badge2) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(filtersHeading.compareDocumentPosition(badge1) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(filtersHeading.compareDocumentPosition(badge2) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
 
     // Badges should appear before the Search label
-    expect(badge1.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(badge2.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(badge1.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(badge2.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
   });
 });
 
@@ -596,8 +614,7 @@ describe('RecipeListPage — property-based tests', () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 1 }).filter(
-          (s) =>
-            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s),
+          (s) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s),
         ),
         async (invalidId) => {
           resetToDefaults();
@@ -643,8 +660,7 @@ describe('RecipeListPage — property-based tests', () => {
 
           await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
-          const expectedHasActive =
-            active.brewMethod ||
+          const expectedHasActive = active.brewMethod ||
             active.drinkType ||
             active.equipmentId ||
             active.tasteNoteIds ||

@@ -80,7 +80,10 @@ export function validationError(c: Context, details: Array<{ field: string; mess
  * returning the raw ZodError object.
  */
 export function zodValidationHook(
-  result: { success: boolean; error?: { issues: Array<{ path: (string | number)[]; message: string }> } },
+  result: {
+    success: boolean;
+    error?: { issues: Array<{ path: (string | number)[]; message: string }> };
+  },
   c: Context,
 ): Response | undefined {
   if (!result.success && result.error) {

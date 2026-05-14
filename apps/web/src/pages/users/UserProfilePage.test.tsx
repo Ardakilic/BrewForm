@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { UserProfilePage } from './UserProfilePage';
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
   useParams: vi.fn(),
 }));
 
@@ -22,7 +22,9 @@ vi.mock('../../api/client.ts', () => ({
 }));
 
 vi.mock('../../components/user/FollowButton.tsx', () => ({
-  FollowButton: ({ userId }: { userId: string }) => <button type='button' data-testid='follow-button' data-userid={userId}>Follow</button>,
+  FollowButton: ({ userId }: { userId: string }) => (
+    <button type='button' data-testid='follow-button' data-userid={userId}>Follow</button>
+  ),
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({

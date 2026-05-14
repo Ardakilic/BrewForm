@@ -1,9 +1,9 @@
 import {
-  roastDateResult,
-  packageOpenDateResult,
-  grindDateResult,
   daysBetween,
+  grindDateResult,
+  packageOpenDateResult,
   type RelativeDateResult,
+  roastDateResult,
 } from '../../utils/relative-date.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 
@@ -35,8 +35,15 @@ function formatDateISO(d: Date): string {
 }
 
 function hasBeanData(props: BeanSectionProps): boolean {
-  const { productName, coffeeBrand, coffeeProcessing, roastDate, packageOpenDate, grindDate, bean } =
-    props;
+  const {
+    productName,
+    coffeeBrand,
+    coffeeProcessing,
+    roastDate,
+    packageOpenDate,
+    grindDate,
+    bean,
+  } = props;
   return (
     productName != null ||
     coffeeBrand != null ||
@@ -108,7 +115,8 @@ export function BeanSection(props: BeanSectionProps) {
   // Subtitle: "Heart Roasters · Washed process"
   const roasterDisplay = coffeeBrand ?? bean?.roaster ?? null;
   const processingDisplay = coffeeProcessing
-    ? coffeeProcessing.charAt(0).toUpperCase() + coffeeProcessing.slice(1).toLowerCase() + ' process'
+    ? coffeeProcessing.charAt(0).toUpperCase() + coffeeProcessing.slice(1).toLowerCase() +
+      ' process'
     : null;
   const subtitle = [roasterDisplay, processingDisplay].filter(Boolean).join(' · ') || null;
 
@@ -129,7 +137,7 @@ export function BeanSection(props: BeanSectionProps) {
             {roastHeaderLabel}
             {showPeakWindow && (
               <span style={{ color: 'var(--accent-primary)' }}>
-                 · {t('recipe.bean.peakWindow')}
+                · {t('recipe.bean.peakWindow')}
               </span>
             )}
           </span>

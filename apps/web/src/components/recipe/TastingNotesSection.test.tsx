@@ -11,7 +11,7 @@
  * intensity value (1, 2, or 3).
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import fc from 'fast-check';
 import { TastingNotesSection } from './TastingNotesSection';
@@ -68,7 +68,9 @@ interface TasteNote {
   rootCategoryName?: string;
 }
 
-function makeNote(overrides: Partial<TasteNote> & { id: string; tasteNoteId: string; name: string }): TasteNote {
+function makeNote(
+  overrides: Partial<TasteNote> & { id: string; tasteNoteId: string; name: string },
+): TasteNote {
   return {
     intensity: 1,
     parentId: null,
@@ -149,7 +151,9 @@ describe('TastingNotesSection — unit tests', () => {
       makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
     ];
     render(
-      withI18n(<TastingNotesSection tasteNotes={notes} personalNotes='Very floral and delicate.' />),
+      withI18n(
+        <TastingNotesSection tasteNotes={notes} personalNotes='Very floral and delicate.' />,
+      ),
     );
     const blockquote = document.querySelector('blockquote');
     expect(blockquote).not.toBeNull();
@@ -165,7 +169,15 @@ describe('TastingNotesSection — unit tests', () => {
 // Validates: Requirements 8.3, 8.4
 // ---------------------------------------------------------------------------
 
-const SCAA_CATEGORIES = ['Floral', 'Fruity', 'Sweet', 'Nutty/Cocoa', 'Spices', 'Roasted', 'Other'] as const;
+const SCAA_CATEGORIES = [
+  'Floral',
+  'Fruity',
+  'Sweet',
+  'Nutty/Cocoa',
+  'Spices',
+  'Roasted',
+  'Other',
+] as const;
 
 /** Arbitrary for a valid intensity value (1, 2, or 3) */
 const intensityArb = fc.integer({ min: 1, max: 3 });

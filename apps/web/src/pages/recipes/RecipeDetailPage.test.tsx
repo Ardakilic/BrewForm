@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { RecipeDetailPage } from './RecipeDetailPage';
 
 // ── External deps ──────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
   useParams: vi.fn(),
   useSearchParams: vi.fn(),
   useNavigate: vi.fn(),
@@ -34,22 +34,49 @@ vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => nul
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
 vi.mock('../../components/recipe/CommentSection.tsx', () => ({ CommentSection: () => null }));
 vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: () => null }));
-vi.mock('../../components/recipe/ForkCard.tsx', () => ({ ForkCard: () => <div data-testid="fork-card">ForkCard</div> }));
+vi.mock(
+  '../../components/recipe/ForkCard.tsx',
+  () => ({ ForkCard: () => <div data-testid='fork-card'>ForkCard</div> }),
+);
 vi.mock('@brewform/shared/constants', () => ({ EMOJI_TAGS: [] }));
 
 // New component mocks for redesigned page
-vi.mock('../../components/recipe/BreadcrumbNav.tsx', () => ({ BreadcrumbNav: () => <div data-testid="breadcrumb-nav" /> }));
-vi.mock('../../components/recipe/MetadataBadges.tsx', () => ({ MetadataBadges: () => <div data-testid="metadata-badges" /> }));
-vi.mock('../../components/recipe/StatCards.tsx', () => ({ StatCards: () => <div data-testid="stat-cards" /> }));
-vi.mock('../../components/recipe/BeanSection.tsx', () => ({ BeanSection: () => <div data-testid="bean-section" /> }));
-vi.mock('../../components/recipe/BrewTimeline.tsx', () => ({ BrewTimeline: () => <div data-testid="brew-timeline" /> }));
-vi.mock('../../components/recipe/EquipmentSection.tsx', () => ({ EquipmentSection: () => <div data-testid="equipment-section" /> }));
-vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({ TastingNotesSection: () => <div data-testid="tasting-notes-section" /> }));
-vi.mock('../../components/recipe/ShareSection.tsx', () => ({ ShareSection: () => <div data-testid="share-section" /> }));
+vi.mock(
+  '../../components/recipe/BreadcrumbNav.tsx',
+  () => ({ BreadcrumbNav: () => <div data-testid='breadcrumb-nav' /> }),
+);
+vi.mock(
+  '../../components/recipe/MetadataBadges.tsx',
+  () => ({ MetadataBadges: () => <div data-testid='metadata-badges' /> }),
+);
+vi.mock(
+  '../../components/recipe/StatCards.tsx',
+  () => ({ StatCards: () => <div data-testid='stat-cards' /> }),
+);
+vi.mock(
+  '../../components/recipe/BeanSection.tsx',
+  () => ({ BeanSection: () => <div data-testid='bean-section' /> }),
+);
+vi.mock(
+  '../../components/recipe/BrewTimeline.tsx',
+  () => ({ BrewTimeline: () => <div data-testid='brew-timeline' /> }),
+);
+vi.mock(
+  '../../components/recipe/EquipmentSection.tsx',
+  () => ({ EquipmentSection: () => <div data-testid='equipment-section' /> }),
+);
+vi.mock(
+  '../../components/recipe/TastingNotesSection.tsx',
+  () => ({ TastingNotesSection: () => <div data-testid='tasting-notes-section' /> }),
+);
+vi.mock(
+  '../../components/recipe/ShareSection.tsx',
+  () => ({ ShareSection: () => <div data-testid='share-section' /> }),
+);
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useParams, useSearchParams, useNavigate } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { recipeApi } from '../../api/index.ts';
@@ -152,7 +179,9 @@ beforeEach(() => {
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
   mockUseParams.mockReturnValue({ slug: 'my-espresso' });
-  mockUseSearchParams.mockReturnValue([new URLSearchParams(), vi.fn()] as ReturnType<typeof useSearchParams>);
+  mockUseSearchParams.mockReturnValue(
+    [new URLSearchParams(), vi.fn()] as ReturnType<typeof useSearchParams>,
+  );
   mockUseNavigate.mockReturnValue(vi.fn());
   mockRecipeApi.get.mockResolvedValue(sampleRecipe as unknown as Record<string, unknown>);
 });
@@ -243,7 +272,15 @@ describe('RecipeDetailPage — new header components', () => {
 
 describe('RecipeDetailPage — Fork Recipe button visibility', () => {
   const nonOwnerAuth = {
-    user: { id: 'other-user', email: 'bob@example.com', username: 'bob', displayName: 'Bob', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+    user: {
+      id: 'other-user',
+      email: 'bob@example.com',
+      username: 'bob',
+      displayName: 'Bob',
+      avatarUrl: null,
+      isAdmin: false,
+      onboardingCompleted: true,
+    },
     isAuthenticated: true,
     isLoading: false,
     login: vi.fn(),
@@ -252,7 +289,15 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
   };
 
   const ownerAuth = {
-    user: { id: 'author-1', email: 'alice@example.com', username: 'alice', displayName: 'Alice', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+    user: {
+      id: 'author-1',
+      email: 'alice@example.com',
+      username: 'alice',
+      displayName: 'Alice',
+      avatarUrl: null,
+      isAdmin: false,
+      onboardingCompleted: true,
+    },
     isAuthenticated: true,
     isLoading: false,
     login: vi.fn(),
@@ -296,7 +341,15 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
 
 describe('RecipeDetailPage — owner actions', () => {
   const ownerAuth = {
-    user: { id: 'author-1', email: 'alice@example.com', username: 'alice', displayName: 'Alice', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+    user: {
+      id: 'author-1',
+      email: 'alice@example.com',
+      username: 'alice',
+      displayName: 'Alice',
+      avatarUrl: null,
+      isAdmin: false,
+      onboardingCompleted: true,
+    },
     isAuthenticated: true,
     isLoading: false,
     login: vi.fn(),
@@ -363,7 +416,15 @@ describe('RecipeDetailPage — canonical SEO', () => {
 import { within } from '@testing-library/react';
 
 const nonOwnerAuth = {
-  user: { id: 'other-user', email: 'bob@example.com', username: 'bob', displayName: 'Bob', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+  user: {
+    id: 'other-user',
+    email: 'bob@example.com',
+    username: 'bob',
+    displayName: 'Bob',
+    avatarUrl: null,
+    isAdmin: false,
+    onboardingCompleted: true,
+  },
   isAuthenticated: true,
   isLoading: false,
   login: vi.fn(),
@@ -428,7 +489,15 @@ describe('RecipeDetailPage — Fork_Card visibility', () => {
 
   it('recipe owner (user.id === recipe.authorId): fork-card is NOT rendered', async () => {
     const ownerAuth = {
-      user: { id: 'author-1', email: 'alice@example.com', username: 'alice', displayName: 'Alice', avatarUrl: null, isAdmin: false, onboardingCompleted: true },
+      user: {
+        id: 'author-1',
+        email: 'alice@example.com',
+        username: 'alice',
+        displayName: 'Alice',
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: true,
+      },
       isAuthenticated: true,
       isLoading: false,
       login: vi.fn(),

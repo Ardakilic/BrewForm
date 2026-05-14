@@ -323,12 +323,19 @@ export const recipeSeedData = [
       brewRatio: 2.0,
       flowRate: 1.29,
       personalNotes: 'Beautiful sweet shot with floral notes and a honey finish.',
-      preparationNotes: '1. Preheat the machine and portafilter for 10 minutes.\n2. Dose 18g of coffee into the basket.\n3. Distribute evenly and tamp with 15kg pressure.\n4. Lock in the portafilter and start extraction immediately.\n5. Aim for 36g out in 25-30 seconds.\n6. Serve in a preheated cup.',
+      preparationNotes:
+        '1. Preheat the machine and portafilter for 10 minutes.\n2. Dose 18g of coffee into the basket.\n3. Distribute evenly and tamp with 15kg pressure.\n4. Lock in the portafilter and start extraction immediately.\n5. Aim for 36g out in 25-30 seconds.\n6. Serve in a preheated cup.',
       isFavourite: true,
       rating: 9,
       emojiTag: 'fire',
     },
-    equipmentNames: ['Bottomless Portafilter 58mm', 'IMS H24 18g', 'Normcore 58.5mm Spring Tamper', 'Metal Puck Screen 58.5mm', 'Acaia Lunar'],
+    equipmentNames: [
+      'Bottomless Portafilter 58mm',
+      'IMS H24 18g',
+      'Normcore 58.5mm Spring Tamper',
+      'Metal Puck Screen 58.5mm',
+      'Acaia Lunar',
+    ],
     tasteNotes: [
       { name: 'Raspberry', intensity: 2 },
       { name: 'Dark chocolate', intensity: 3 },
@@ -336,7 +343,11 @@ export const recipeSeedData = [
       { name: 'Caramelized', intensity: 2 },
     ],
     photos: [
-      { url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefad?w=800', alt: 'Espresso shot with crema', sortOrder: 0 },
+      {
+        url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefad?w=800',
+        alt: 'Espresso shot with crema',
+        sortOrder: 0,
+      },
     ],
   },
   {
@@ -369,7 +380,8 @@ export const recipeSeedData = [
       brewRatio: 16.67,
       flowRate: 1.19,
       personalNotes: 'Clean, bright cup. Great morning brew.',
-      preparationNotes: "1. Rinse the paper filter with hot water and discard.\n2. Add 15g of medium-fine ground coffee.\n3. Bloom with 30g water for 30 seconds.\n4. Pour remaining water in slow circles to 250g total.\n5. Let drain completely.\n6. Serve immediately.",
+      preparationNotes:
+        '1. Rinse the paper filter with hot water and discard.\n2. Add 15g of medium-fine ground coffee.\n3. Bloom with 30g water for 30 seconds.\n4. Pour remaining water in slow circles to 250g total.\n5. Let drain completely.\n6. Serve immediately.',
       isFavourite: true,
       rating: 8,
       emojiTag: 'rocket',
@@ -380,7 +392,11 @@ export const recipeSeedData = [
       { name: 'Cinnamon', intensity: 3 },
     ],
     photos: [
-      { url: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800', alt: 'V60 pour over', sortOrder: 0 },
+      {
+        url: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800',
+        alt: 'V60 pour over',
+        sortOrder: 0,
+      },
     ],
   },
   {
@@ -413,7 +429,8 @@ export const recipeSeedData = [
       brewRatio: 16.67,
       flowRate: 2.08,
       personalNotes: 'Full-bodied, rich cup with chocolatey depth.',
-      preparationNotes: "1. Preheat the press with hot water.\n2. Add 30g coarse ground coffee.\n3. Pour 500ml water at 94C.\n4. Stir gently and place lid without pressing.\n5. Steep for 4 minutes.\n6. Press slowly and serve.",
+      preparationNotes:
+        '1. Preheat the press with hot water.\n2. Add 30g coarse ground coffee.\n3. Pour 500ml water at 94C.\n4. Stir gently and place lid without pressing.\n5. Steep for 4 minutes.\n6. Press slowly and serve.',
       isFavourite: true,
       rating: 8,
       emojiTag: 'thumbsup',
@@ -425,7 +442,11 @@ export const recipeSeedData = [
       { name: 'Honey', intensity: 1 },
     ],
     photos: [
-      { url: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=800', alt: 'French press coffee', sortOrder: 0 },
+      {
+        url: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=800',
+        alt: 'French press coffee',
+        sortOrder: 0,
+      },
     ],
   },
   {
@@ -458,7 +479,8 @@ export const recipeSeedData = [
       brewRatio: 8.0,
       flowRate: 0.44,
       personalNotes: 'Rich, thick foam. Best enjoyed with a piece of Turkish delight.',
-      preparationNotes: "1. Add 10g finely ground coffee and 80ml cold water to cezve.\n2. Add sugar to taste if desired.\n3. Stir well before heating.\n4. Heat slowly over low flame.\n5. Remove just before boiling when foam rises.\n6. Pour into a small cup and let grounds settle.",
+      preparationNotes:
+        '1. Add 10g finely ground coffee and 80ml cold water to cezve.\n2. Add sugar to taste if desired.\n3. Stir well before heating.\n4. Heat slowly over low flame.\n5. Remove just before boiling when foam rises.\n6. Pour into a small cup and let grounds settle.',
       isFavourite: true,
       rating: 10,
       emojiTag: 'fire',
@@ -470,7 +492,11 @@ export const recipeSeedData = [
       { name: 'Tobacco', intensity: 1 },
     ],
     photos: [
-      { url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800', alt: 'Turkish coffee in cezve', sortOrder: 0 },
+      {
+        url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800',
+        alt: 'Turkish coffee in cezve',
+        sortOrder: 0,
+      },
     ],
   },
   {
@@ -503,14 +529,21 @@ export const recipeSeedData = [
       brewRatio: 2.0,
       flowRate: 1.44,
       personalNotes: 'Refreshing summer drink with smooth espresso and cold milk over ice.',
-      preparationNotes: "1. Fill a tall glass with ice cubes.\n2. Pull a double espresso shot (18g in, 36g out).\n3. Pour 200ml cold whole milk over the ice.\n4. Pour the hot espresso over the milk.\n5. Stir gently and serve with a straw.",
+      preparationNotes:
+        '1. Fill a tall glass with ice cubes.\n2. Pull a double espresso shot (18g in, 36g out).\n3. Pour 200ml cold whole milk over the ice.\n4. Pour the hot espresso over the milk.\n5. Stir gently and serve with a straw.',
       isFavourite: true,
       rating: 9,
       emojiTag: 'rocket',
     },
     equipmentNames: ['Acaia Lunar'],
     additionalPreparations: [
-      { name: 'Whole milk', type: 'milk', inputAmount: '200ml', preparationType: 'cold', sortOrder: 0 },
+      {
+        name: 'Whole milk',
+        type: 'milk',
+        inputAmount: '200ml',
+        preparationType: 'cold',
+        sortOrder: 0,
+      },
     ],
     tasteNotes: [
       { name: 'Vanilla', intensity: 2 },
@@ -518,7 +551,11 @@ export const recipeSeedData = [
       { name: 'Dark chocolate', intensity: 1 },
     ],
     photos: [
-      { url: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=800', alt: 'Iced latte in glass', sortOrder: 0 },
+      {
+        url: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=800',
+        alt: 'Iced latte in glass',
+        sortOrder: 0,
+      },
     ],
   },
   {
@@ -551,14 +588,21 @@ export const recipeSeedData = [
       brewRatio: 2.0,
       flowRate: 1.38,
       personalNotes: 'Heavenly combination of hot espresso and cold vanilla ice cream.',
-      preparationNotes: "1. Place one scoop of vanilla ice cream in a small bowl.\n2. Pull a fresh espresso shot (18g in, 36g out).\n3. Pour the hot espresso directly over the ice cream.\n4. Serve immediately with a small spoon.",
+      preparationNotes:
+        '1. Place one scoop of vanilla ice cream in a small bowl.\n2. Pull a fresh espresso shot (18g in, 36g out).\n3. Pour the hot espresso directly over the ice cream.\n4. Serve immediately with a small spoon.',
       isFavourite: true,
       rating: 10,
       emojiTag: 'fire',
     },
     equipmentNames: ['Acaia Lunar'],
     additionalPreparations: [
-      { name: 'Vanilla ice cream', type: 'other', inputAmount: '1 scoop', preparationType: 'cold', sortOrder: 0 },
+      {
+        name: 'Vanilla ice cream',
+        type: 'other',
+        inputAmount: '1 scoop',
+        preparationType: 'cold',
+        sortOrder: 0,
+      },
     ],
     tasteNotes: [
       { name: 'Vanilla', intensity: 3 },
@@ -566,7 +610,11 @@ export const recipeSeedData = [
       { name: 'Dark chocolate', intensity: 2 },
     ],
     photos: [
-      { url: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=800', alt: 'Affogato with ice cream', sortOrder: 0 },
+      {
+        url: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=800',
+        alt: 'Affogato with ice cream',
+        sortOrder: 0,
+      },
     ],
   },
 ];
@@ -628,7 +676,10 @@ export const socialSeedData = {
       authorUsername: 'evan',
       content: 'The foam is incredible. What sugar ratio do you use?',
       replies: [
-        { authorUsername: 'diana', content: 'I prefer it unsweetened, but 1 tsp per cup is traditional.' },
+        {
+          authorUsername: 'diana',
+          content: 'I prefer it unsweetened, but 1 tsp per cup is traditional.',
+        },
       ],
     },
     {
@@ -636,7 +687,10 @@ export const socialSeedData = {
       authorUsername: 'alice',
       content: 'This is my new favourite dessert coffee!',
       replies: [
-        { authorUsername: 'evan', content: 'Glad you like it! Try it with caramel drizzle next time.' },
+        {
+          authorUsername: 'evan',
+          content: 'Glad you like it! Try it with caramel drizzle next time.',
+        },
       ],
     },
   ],
@@ -655,7 +709,12 @@ export const setupSeedData = [
     userUsername: 'alice',
     brewerDetails: 'Lelit Mara X',
     grinder: 'Lelit Fred',
-    equipmentNames: ['Bottomless Portafilter 58mm', 'IMS H24 18g', 'Metal Puck Screen 58.5mm', 'Normcore 58.5mm Spring Tamper'],
+    equipmentNames: [
+      'Bottomless Portafilter 58mm',
+      'IMS H24 18g',
+      'Metal Puck Screen 58.5mm',
+      'Normcore 58.5mm Spring Tamper',
+    ],
     isDefault: true,
   },
   {

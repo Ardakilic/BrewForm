@@ -7,7 +7,7 @@
  * Validates: Requirements 2.1, 2.3, 2.4, 2.5
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
@@ -53,8 +53,7 @@ vi.mock('react-router', () => ({
     const isActive = end
       ? currentPath === to
       : currentPath === to || currentPath.startsWith(to + '/');
-    const resolvedClassName =
-      typeof className === 'function' ? className({ isActive }) : className;
+    const resolvedClassName = typeof className === 'function' ? className({ isActive }) : className;
     return (
       <a href={to} className={resolvedClassName} onClick={onClick} {...props}>
         {children}
@@ -188,7 +187,7 @@ const ALL_NAV_ITEMS: NavItemConfig[] = [...STATIC_NAV_ITEMS, PROFILE_NAV_ITEM];
  */
 function computeExpectedActiveHref(path: string): string | null {
   const matches = ALL_NAV_ITEMS.filter(({ to, end }) =>
-    end ? path === to : path === to || path.startsWith(to + '/'),
+    end ? path === to : path === to || path.startsWith(to + '/')
   );
 
   if (matches.length === 0) return null;
@@ -307,7 +306,7 @@ describe('Navbar — Property 1: Active Route Matching Invariant', () => {
 
             // Find which nav links have the active class
             const activeLinks = navLinks.filter((el) =>
-              el.className.includes(ACTIVE_CLASS_FRAGMENT),
+              el.className.includes(ACTIVE_CLASS_FRAGMENT)
             );
 
             // Deduplicate by href (desktop + mobile render the same links twice)

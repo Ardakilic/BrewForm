@@ -8,9 +8,9 @@ import {
   photos,
   recipeAdditionalPreparations,
   recipeEquipment,
+  recipes,
   recipeTasteNotes,
   recipeVersionPhotos,
-  recipes,
   recipeVersions,
   setups,
   tasteNotes,
@@ -171,7 +171,11 @@ async function seedEquipment(tx: any, createdUsers: Record<string, any>) {
   return createdEquipment;
 }
 
-async function seedBeans(tx: any, createdUsers: Record<string, any>, createdVendors: Record<string, any>) {
+async function seedBeans(
+  tx: any,
+  createdUsers: Record<string, any>,
+  createdVendors: Record<string, any>,
+) {
   for (const beanData of beanSeedData) {
     await tx.insert(beans).values({
       name: beanData.name,
@@ -379,7 +383,8 @@ async function seedSocialData(
 
   // Badges
   for (const badge of socialSeedData.badges) {
-    const badgeRows = await tx.select().from(badges).where(eq(badges.rule, badge.badgeRule as any)).limit(1);
+    const badgeRows = await tx.select().from(badges).where(eq(badges.rule, badge.badgeRule as any))
+      .limit(1);
     if (badgeRows.length > 0) {
       await tx.insert(userBadges).values({
         userId: createdUsers[badge.userUsername]?.id,

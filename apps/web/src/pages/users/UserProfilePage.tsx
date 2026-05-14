@@ -234,27 +234,25 @@ function FollowList(
 
   return (
     <div className='flex flex-col gap-2'>
-      {users.length === 0
-        ? <p style={{ color: 'var(--text-tertiary)' }}>{emptyMsg}</p>
-        : (
-          users.map((u) => {
-            const person = 'follower' in u ? u.follower : u.following;
-            return (
-              <Link
-                key={u.id}
-                to={`/u/${person.username}`}
-                className='card flex items-center gap-2 hover:shadow-lg transition-shadow'
-              >
-                <span className='font-medium' style={{ color: 'var(--text-primary)' }}>
-                  {person.displayName || person.username}
-                </span>
-                <span className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
-                  @{person.username}
-                </span>
-              </Link>
-            );
-          })
-        )}
+      {users.length === 0 ? <p style={{ color: 'var(--text-tertiary)' }}>{emptyMsg}</p> : (
+        users.map((u) => {
+          const person = 'follower' in u ? u.follower : u.following;
+          return (
+            <Link
+              key={u.id}
+              to={`/u/${person.username}`}
+              className='card flex items-center gap-2 hover:shadow-lg transition-shadow'
+            >
+              <span className='font-medium' style={{ color: 'var(--text-primary)' }}>
+                {person.displayName || person.username}
+              </span>
+              <span className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
+                @{person.username}
+              </span>
+            </Link>
+          );
+        })
+      )}
     </div>
   );
 }

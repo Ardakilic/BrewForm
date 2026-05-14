@@ -21,7 +21,10 @@ function inArray(column: string, subquery: unknown) {
 describe('Starred recipes filtering', () => {
   it('should require public visibility for starred recipes', () => {
     const recipes = { visibility: 'recipes.visibility', id: 'recipes.id' };
-    const userRecipeFavourites = { userId: 'userRecipeFavourites.userId', recipeId: 'userRecipeFavourites.recipeId' };
+    const userRecipeFavourites = {
+      userId: 'userRecipeFavourites.userId',
+      recipeId: 'userRecipeFavourites.recipeId',
+    };
     const userId = 'user-123';
 
     const visibilityCondition = eq(recipes.visibility, 'public');

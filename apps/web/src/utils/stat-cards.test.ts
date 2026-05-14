@@ -6,7 +6,7 @@
  *
  * Covers: all combinations of null/present values for the 5 stat card fields.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { buildStatCards } from './stat-cards';
 
@@ -96,7 +96,13 @@ describe('buildStatCards — unit tests', () => {
 
   it('labels are always uppercase in fixed order: DOSE, YIELD, TIME, RATIO, TEMP', () => {
     const cards = buildStatCards({});
-    expect(cards.map((c) => c.label)).toEqual(['recipe.stat.dose', 'recipe.stat.yield', 'recipe.stat.time', 'recipe.stat.ratio', 'recipe.stat.temp']);
+    expect(cards.map((c) => c.label)).toEqual([
+      'recipe.stat.dose',
+      'recipe.stat.yield',
+      'recipe.stat.time',
+      'recipe.stat.ratio',
+      'recipe.stat.temp',
+    ]);
   });
 
   it('formats RATIO as "1:2" not "2" when brewRatio is 2', () => {

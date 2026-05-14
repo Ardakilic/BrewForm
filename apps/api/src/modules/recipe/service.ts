@@ -251,7 +251,13 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   return forked;
 }
 
-export async function listRecipes(filters: any, page: number, perPage: number, _requestingUserId: string | null = null, isAdmin: boolean = false) {
+export async function listRecipes(
+  filters: any,
+  page: number,
+  perPage: number,
+  _requestingUserId: string | null = null,
+  isAdmin: boolean = false,
+) {
   const visibilityCondition = (isAdmin === true && filters.visibility)
     ? eq(recipes.visibility, filters.visibility)
     : eq(recipes.visibility, 'public');
@@ -400,7 +406,12 @@ export async function saveNotes(recipeId: string, notes: string) {
   await model.updateVersionNotes(recipe.currentVersionId, notes);
 }
 
-export async function listStarredRecipes(filters: any, page: number, perPage: number, userId: string) {
+export async function listStarredRecipes(
+  filters: any,
+  page: number,
+  perPage: number,
+  userId: string,
+) {
   return model.findStarred(userId, filters, page, perPage);
 }
 

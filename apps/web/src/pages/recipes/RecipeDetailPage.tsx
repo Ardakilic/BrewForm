@@ -111,7 +111,10 @@ export function RecipeDetailPage() {
       {/* ── Header section ── */}
       <div
         className='py-6'
-        style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)' }}
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          borderBottom: '1px solid var(--border-primary)',
+        }}
       >
         <div className='mx-auto max-w-4xl px-6'>
           {/* Breadcrumb */}
@@ -331,10 +334,7 @@ export function RecipeDetailPage() {
             </div>
 
             {/* Fork card */}
-            {isAuthenticated && !isOwner && (
-              <ForkCard recipeId={recipe.id} />
-            )}
-
+            {isAuthenticated && !isOwner && <ForkCard recipeId={recipe.id} />}
           </div>
         </div>
 

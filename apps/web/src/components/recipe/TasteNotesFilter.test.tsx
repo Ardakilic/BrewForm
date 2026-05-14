@@ -5,11 +5,11 @@
  * Property 2: Trigger label reflects selection count
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
-import { TasteNotesFilter, type TasteNoteFlat } from './TasteNotesFilter';
+import { type TasteNoteFlat, TasteNotesFilter } from './TasteNotesFilter';
 
 // ---------------------------------------------------------------------------
 // Arbitrary generators
@@ -171,7 +171,9 @@ describe('TasteNotesFilter — Property 2: Trigger label reflects selection coun
 
             // Pick N random IDs (distinct)
             const shuffled = [...allTasteNotes].sort(() => Math.random() - 0.5);
-            const selectedIds = shuffled.slice(0, Math.min(nSelected, allTasteNotes.length)).map((n) => n.id);
+            const selectedIds = shuffled.slice(0, Math.min(nSelected, allTasteNotes.length)).map((
+              n,
+            ) => n.id);
 
             const onChange = vi.fn();
             const placeholder = 'Select taste notes';

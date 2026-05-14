@@ -7,7 +7,7 @@
  * All user-visible strings use the i18n t() function.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';

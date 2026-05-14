@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ShareSection } from './ShareSection.tsx';
@@ -39,28 +39,28 @@ beforeEach(() => {
 describe('ShareSection — visibility gating', () => {
   it('renders null when visibility is "private"', () => {
     const { container } = render(
-      <ShareSection slug="my-espresso" title="My Espresso" visibility="private" />,
+      <ShareSection slug='my-espresso' title='My Espresso' visibility='private' />,
     );
     expect(container.firstChild).toBeNull();
   });
 
   it('renders null when visibility is "draft"', () => {
     const { container } = render(
-      <ShareSection slug="my-espresso" title="My Espresso" visibility="draft" />,
+      <ShareSection slug='my-espresso' title='My Espresso' visibility='draft' />,
     );
     expect(container.firstChild).toBeNull();
   });
 
   it('renders when visibility is "public"', () => {
     const { container } = render(
-      <ShareSection slug="my-espresso" title="My Espresso" visibility="public" />,
+      <ShareSection slug='my-espresso' title='My Espresso' visibility='public' />,
     );
     expect(container.firstChild).not.toBeNull();
   });
 
   it('renders when visibility is "unlisted"', () => {
     const { container } = render(
-      <ShareSection slug="my-espresso" title="My Espresso" visibility="unlisted" />,
+      <ShareSection slug='my-espresso' title='My Espresso' visibility='unlisted' />,
     );
     expect(container.firstChild).not.toBeNull();
   });
@@ -70,7 +70,7 @@ describe('ShareSection — visibility gating', () => {
 
 describe('ShareSection — no QR code image', () => {
   it('does NOT show a QR code image', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     expect(screen.queryByRole('img', { name: /QR code for recipe/i })).toBeNull();
   });
@@ -80,7 +80,7 @@ describe('ShareSection — no QR code image', () => {
 
 describe('ShareSection — action buttons', () => {
   it('shows Copy URL button', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     expect(
       screen.getByRole('button', { name: /copy recipe url/i }),
@@ -88,7 +88,7 @@ describe('ShareSection — action buttons', () => {
   });
 
   it('shows Download QR button', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     expect(
       screen.getByRole('button', { name: /download qr/i }),
@@ -100,7 +100,7 @@ describe('ShareSection — action buttons', () => {
 
 describe('ShareSection — social share buttons', () => {
   it('shows Twitter/X share button', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     expect(
       screen.getByRole('button', { name: 'Share on Twitter/X' }),
@@ -108,7 +108,7 @@ describe('ShareSection — social share buttons', () => {
   });
 
   it('shows Facebook share button', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     expect(
       screen.getByRole('button', { name: 'Share on Facebook' }),
@@ -116,7 +116,7 @@ describe('ShareSection — social share buttons', () => {
   });
 
   it('shows WhatsApp share button', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     expect(
       screen.getByRole('button', { name: 'Share on WhatsApp' }),
@@ -124,7 +124,7 @@ describe('ShareSection — social share buttons', () => {
   });
 
   it('shows Reddit share button', () => {
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     expect(
       screen.getByRole('button', { name: 'Share on Reddit' }),
@@ -142,13 +142,15 @@ describe('ShareSection — copy behavior (task 9.2)', () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
 
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     const copyButton = screen.getByRole('button', { name: /copy recipe url/i });
     await userEvent.click(copyButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /copy recipe url/i })).toHaveTextContent('recipe.share.copied');
+      expect(screen.getByRole('button', { name: /copy recipe url/i })).toHaveTextContent(
+        'recipe.share.copied',
+      );
     });
   });
 
@@ -156,13 +158,15 @@ describe('ShareSection — copy behavior (task 9.2)', () => {
     const writeText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
     vi.stubGlobal('navigator', { clipboard: { writeText } });
 
-    render(<ShareSection slug="my-espresso" title="My Espresso" visibility="public" />);
+    render(<ShareSection slug='my-espresso' title='My Espresso' visibility='public' />);
 
     const copyButton = screen.getByRole('button', { name: /copy recipe url/i });
     await userEvent.click(copyButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /copy recipe url/i })).toHaveTextContent('recipe.share.copyError');
+      expect(screen.getByRole('button', { name: /copy recipe url/i })).toHaveTextContent(
+        'recipe.share.copyError',
+      );
     });
   });
 });

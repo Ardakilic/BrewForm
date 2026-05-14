@@ -141,7 +141,10 @@ function buildBrewParamRows(v: RecipeVersion): ParamRowData[] {
     { label: 'Coffee Brand', value: (v.coffeeBrand as string | null) ?? null },
     { label: 'Processing', value: (v.coffeeProcessing as string | null) ?? null },
     { label: 'Roast Date', value: v.roastDate ? v.roastDate.slice(0, 10) : null },
-    { label: 'Package Open Date', value: v.packageOpenDate ? v.packageOpenDate.slice(0, 10) : null },
+    {
+      label: 'Package Open Date',
+      value: v.packageOpenDate ? v.packageOpenDate.slice(0, 10) : null,
+    },
     { label: 'Grind Date', value: v.grindDate ? v.grindDate.slice(0, 10) : null },
     { label: 'Grinder', value: (v.grinder as string | null) ?? null },
     { label: 'Grind Size', value: (v.grindSize as string | null) ?? null },

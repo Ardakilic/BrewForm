@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import * as fc from 'fast-check';
@@ -251,7 +251,9 @@ describe('Preservation - TastingNotesSection empty state', () => {
   });
 
   it('shows personal notes blockquote when personalNotes is provided', () => {
-    render(withProviders(<TastingNotesSection tasteNotes={[]} personalNotes='Beautiful sweet shot' />));
+    render(
+      withProviders(<TastingNotesSection tasteNotes={[]} personalNotes='Beautiful sweet shot' />),
+    );
     expect(screen.getByText('Beautiful sweet shot')).toBeTruthy();
   });
 });

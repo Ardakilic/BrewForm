@@ -28,7 +28,9 @@ interface MockComment {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
-  author: { id: string; username: string; displayName: string | null; avatarUrl: string | null } | null;
+  author:
+    | { id: string; username: string; displayName: string | null; avatarUrl: string | null }
+    | null;
 }
 
 interface MockCreatedComment {
@@ -193,8 +195,7 @@ describe('Comment Service — Property 1: createComment authorization matrix', (
             let createCallArgs: Parameters<MockModel['create']>[0] | null = null;
 
             const model: MockModel = {
-              findById: (_id: string) =>
-                Promise.resolve(makeTopLevelComment('parent-comment-1')),
+              findById: (_id: string) => Promise.resolve(makeTopLevelComment('parent-comment-1')),
               getRecipeAuthorId: (_recipeId: string) => Promise.resolve(recipeAuthorId),
               create: (data) => {
                 createCallCount++;
@@ -472,7 +473,15 @@ describe('Comment Service — Property 3: mention prefix transformation', () => 
             };
 
             // isAdmin=true bypasses auth; caller provides directTarget.id as parentCommentId
-            await createComment(userId, recipeId, content, true, directTargetId, mockModel, mockRecipeModel);
+            await createComment(
+              userId,
+              recipeId,
+              content,
+              true,
+              directTargetId,
+              mockModel,
+              mockRecipeModel,
+            );
 
             // Assert: content passed to model.create is "@username content"
             expect(capturedCreateData).not.toBeNull();
@@ -525,7 +534,15 @@ describe('createComment — edge cases', () => {
 
     let threw = false;
     try {
-      await createComment('user-1', 'recipe-1', 'content', true, 'nonexistent-id', mockModel, mockRecipeModel);
+      await createComment(
+        'user-1',
+        'recipe-1',
+        'content',
+        true,
+        'nonexistent-id',
+        mockModel,
+        mockRecipeModel,
+      );
     } catch (err) {
       threw = true;
       expect((err as Error).message).toBe('COMMENT_NOT_FOUND');
@@ -552,7 +569,15 @@ describe('createComment — edge cases', () => {
     let threw = false;
     try {
       // Provide the deepest comment (c-101) as parentCommentId
-      await createComment('user-1', 'recipe-1', 'content', true, 'c-101', mockModel, mockRecipeModel);
+      await createComment(
+        'user-1',
+        'recipe-1',
+        'content',
+        true,
+        'c-101',
+        mockModel,
+        mockRecipeModel,
+      );
     } catch (err) {
       threw = true;
       expect((err as Error).message).toBe('COMMENT_DEPTH_EXCEEDED');
@@ -574,7 +599,15 @@ describe('createComment — edge cases', () => {
     const mockRecipeModel: MockRecipeModel = { incrementComments: () => Promise.resolve() };
 
     // isAdmin=false, not recipe owner — but no parentCommentId, so no auth check
-    const result = await createComment('user-1', 'recipe-1', 'content', false, undefined, mockModel, mockRecipeModel);
+    const result = await createComment(
+      'user-1',
+      'recipe-1',
+      'content',
+      false,
+      undefined,
+      mockModel,
+      mockRecipeModel,
+    );
     expect(result).toBeDefined();
     expect(createCalled).toBe(true);
   });

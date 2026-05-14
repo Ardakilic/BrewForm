@@ -15,7 +15,9 @@ interface EquipmentSectionProps {
   brewerDetails?: string | null;
 }
 
-export function EquipmentSection({ items, brewMethod: _brewMethod, brewerDetails }: EquipmentSectionProps) {
+export function EquipmentSection(
+  { items, brewMethod: _brewMethod, brewerDetails }: EquipmentSectionProps,
+) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const BrewerIcon = getEquipmentIcon('');
@@ -39,7 +41,8 @@ export function EquipmentSection({ items, brewMethod: _brewMethod, brewerDetails
           className='text-xs'
           style={{ color: 'var(--text-tertiary)' }}
         >
-          {items.length} {items.length === 1 ? t('recipe.equipment.item') : t('recipe.equipment.items')}
+          {items.length}{' '}
+          {items.length === 1 ? t('recipe.equipment.item') : t('recipe.equipment.items')}
         </span>
       </div>
 
@@ -50,7 +53,9 @@ export function EquipmentSection({ items, brewMethod: _brewMethod, brewerDetails
             role='button'
             tabIndex={0}
             onClick={() => {
-              if (brewerDetails) navigate(`/recipes?mainBrewer=${encodeURIComponent(brewerDetails)}`);
+              if (brewerDetails) {
+                navigate(`/recipes?mainBrewer=${encodeURIComponent(brewerDetails)}`);
+              }
             }}
             onKeyDown={(e) => {
               if ((e.key === 'Enter' || e.key === ' ') && brewerDetails) {
@@ -66,13 +71,11 @@ export function EquipmentSection({ items, brewMethod: _brewMethod, brewerDetails
             }}
             onMouseEnter={(e) => {
               if (brewerDetails) {
-                (e.currentTarget as HTMLDivElement).style.backgroundColor =
-                  'var(--bg-tertiary)';
+                (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-tertiary)';
               }
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.backgroundColor =
-                'var(--bg-primary)';
+              (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-primary)';
             }}
           >
             <span
@@ -120,12 +123,10 @@ export function EquipmentSection({ items, brewMethod: _brewMethod, brewerDetails
                 cursor: 'pointer',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLDivElement).style.backgroundColor =
-                  'var(--bg-tertiary)';
+                (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-tertiary)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLDivElement).style.backgroundColor =
-                  'var(--bg-primary)';
+                (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-primary)';
               }}
             >
               <span

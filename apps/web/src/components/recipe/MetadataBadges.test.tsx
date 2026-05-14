@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MetadataBadges } from './MetadataBadges';
@@ -57,10 +57,10 @@ describe('MetadataBadges — author badge (Req 2.1)', () => {
 
 describe('MetadataBadges — visibility badge (Req 2.2)', () => {
   it.each([
-    ['public', 'rgb(34, 197, 94)'],    // #22c55e — green
+    ['public', 'rgb(34, 197, 94)'], // #22c55e — green
     ['unlisted', 'rgb(245, 158, 11)'], // #f59e0b — amber
     ['private', 'rgb(168, 162, 158)'], // #a8a29e — gray
-    ['draft', 'rgb(168, 162, 158)'],   // #a8a29e — gray
+    ['draft', 'rgb(168, 162, 158)'], // #a8a29e — gray
   ])('renders %s visibility with correct dot color', (vis, expectedColor) => {
     render(<MetadataBadges {...baseProps} visibility={vis} />);
     const dot = document.querySelector('[aria-hidden="true"]') as HTMLElement;

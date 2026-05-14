@@ -82,8 +82,8 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
             {copyState === 'copied'
               ? t('recipe.share.copied')
               : copyState === 'error'
-                ? t('recipe.share.copyError')
-                : t('recipe.share.copyUrl')}
+              ? t('recipe.share.copyError')
+              : t('recipe.share.copyUrl')}
           </button>
 
           <button

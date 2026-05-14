@@ -204,7 +204,14 @@ describe('Seed Data Integrity', () => {
     });
 
     it('should have valid emoji tags', () => {
-      const validEmojis = new Set(['fire', 'rocket', 'thumbsup', 'neutral', 'thumbsdown', 'nauseated']);
+      const validEmojis = new Set([
+        'fire',
+        'rocket',
+        'thumbsup',
+        'neutral',
+        'thumbsdown',
+        'nauseated',
+      ]);
       for (const recipe of recipeSeedData) {
         expect(validEmojis.has(recipe.version.emojiTag)).toBe(true);
       }

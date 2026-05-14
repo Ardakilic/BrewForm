@@ -7,7 +7,7 @@
  * **Validates: Requirements 15.1, 15.2**
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import fc from 'fast-check';
 import { getEquipmentIcon, OtherIcon } from './index';

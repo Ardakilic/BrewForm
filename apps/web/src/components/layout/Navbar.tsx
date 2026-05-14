@@ -1,5 +1,5 @@
-import { NavLink, Link } from 'react-router';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { Link, NavLink } from 'react-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Select } from '@base-ui-components/react/select';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -26,8 +26,7 @@ function NavItem({ to, label, end = false, onClick }: NavItemProps) {
       className={({ isActive }) =>
         isActive
           ? 'rounded-full border border-[color:var(--accent-primary)] px-3 py-1.5 text-sm font-medium text-[color:var(--accent-primary)] transition-colors duration-150 motion-reduce:duration-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-          : 'rounded-full px-3 py-1.5 text-sm text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:bg-[color:var(--bg-tertiary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-      }
+          : 'rounded-full px-3 py-1.5 text-sm text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:bg-[color:var(--bg-tertiary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'}
     >
       {label}
     </NavLink>
@@ -266,27 +265,32 @@ export function Navbar() {
           <ThemeSwitcher theme={theme} setTheme={setTheme} t={t} />
 
           {/* Auth actions */}
-          {isAuthenticated ? (
-            <button
-              type='button'
-              onClick={logout}
-              className='btn-secondary text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-            >
-              {t('nav.logout')}
-            </button>
-          ) : (
-            <>
-              <Link
-                to='/login'
-                className='rounded-sm text-sm text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
+          {isAuthenticated
+            ? (
+              <button
+                type='button'
+                onClick={logout}
+                className='btn-secondary text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
               >
-                {t('nav.login')}
-              </Link>
-              <Link to='/register' className='btn-primary text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'>
-                {t('nav.register')}
-              </Link>
-            </>
-          )}
+                {t('nav.logout')}
+              </button>
+            )
+            : (
+              <>
+                <Link
+                  to='/login'
+                  className='rounded-sm text-sm text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
+                >
+                  {t('nav.login')}
+                </Link>
+                <Link
+                  to='/register'
+                  className='btn-primary text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
+                >
+                  {t('nav.register')}
+                </Link>
+              </>
+            )}
         </nav>
 
         {/* Mobile hamburger button */}
@@ -313,18 +317,20 @@ export function Navbar() {
             strokeLinejoin='round'
             aria-hidden='true'
           >
-            {isMenuOpen ? (
-              <>
-                <line x1='18' y1='6' x2='6' y2='18' />
-                <line x1='6' y1='6' x2='18' y2='18' />
-              </>
-            ) : (
-              <>
-                <line x1='3' y1='6' x2='21' y2='6' />
-                <line x1='3' y1='12' x2='21' y2='12' />
-                <line x1='3' y1='18' x2='21' y2='18' />
-              </>
-            )}
+            {isMenuOpen
+              ? (
+                <>
+                  <line x1='18' y1='6' x2='6' y2='18' />
+                  <line x1='6' y1='6' x2='18' y2='18' />
+                </>
+              )
+              : (
+                <>
+                  <line x1='3' y1='6' x2='21' y2='6' />
+                  <line x1='3' y1='12' x2='21' y2='12' />
+                  <line x1='3' y1='18' x2='21' y2='18' />
+                </>
+              )}
           </svg>
         </button>
       </div>
@@ -398,8 +404,7 @@ export function Navbar() {
                       className={({ isActive }) =>
                         isActive
                           ? 'flex items-center rounded-full border border-[color:var(--accent-primary)] px-4 py-3 text-base font-medium text-[color:var(--accent-primary)] transition-colors duration-150 motion-reduce:duration-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-                          : 'flex items-center rounded-full px-4 py-3 text-base text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:bg-[color:var(--bg-tertiary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-                      }
+                          : 'flex items-center rounded-full px-4 py-3 text-base text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:bg-[color:var(--bg-tertiary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'}
                     >
                       {t(item.labelKey)}
                     </NavLink>
@@ -416,8 +421,7 @@ export function Navbar() {
                       className={({ isActive }) =>
                         isActive
                           ? 'flex items-center rounded-full border border-[color:var(--accent-primary)] px-4 py-3 text-base font-medium text-[color:var(--accent-primary)] transition-colors duration-150 motion-reduce:duration-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-                          : 'flex items-center rounded-full px-4 py-3 text-base text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:bg-[color:var(--bg-tertiary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-                      }
+                          : 'flex items-center rounded-full px-4 py-3 text-base text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:bg-[color:var(--bg-tertiary)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'}
                     >
                       {t('nav.profile')}
                     </NavLink>
@@ -430,35 +434,37 @@ export function Navbar() {
             <div className='border-t border-[color:var(--border-primary)] px-4 py-4 flex flex-col gap-3'>
               <ThemeSwitcher theme={theme} setTheme={setTheme} t={t} />
 
-              {isAuthenticated ? (
-                <button
-                  type='button'
-                  onClick={() => {
-                    logout();
-                    setIsMenuOpen(false);
-                  }}
-                  className='btn-secondary text-sm w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-                >
-                  {t('nav.logout')}
-                </button>
-              ) : (
-                <div className='flex flex-col gap-2'>
-                  <Link
-                    to='/login'
-                    onClick={() => setIsMenuOpen(false)}
-                    className='rounded-sm text-sm text-center text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
+              {isAuthenticated
+                ? (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      logout();
+                      setIsMenuOpen(false);
+                    }}
+                    className='btn-secondary text-sm w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
                   >
-                    {t('nav.login')}
-                  </Link>
-                  <Link
-                    to='/register'
-                    onClick={() => setIsMenuOpen(false)}
-                    className='btn-primary text-sm text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-                  >
-                    {t('nav.register')}
-                  </Link>
-                </div>
-              )}
+                    {t('nav.logout')}
+                  </button>
+                )
+                : (
+                  <div className='flex flex-col gap-2'>
+                    <Link
+                      to='/login'
+                      onClick={() => setIsMenuOpen(false)}
+                      className='rounded-sm text-sm text-center text-[color:var(--text-secondary)] transition-colors duration-150 motion-reduce:duration-0 hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
+                    >
+                      {t('nav.login')}
+                    </Link>
+                    <Link
+                      to='/register'
+                      onClick={() => setIsMenuOpen(false)}
+                      className='btn-primary text-sm text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
+                    >
+                      {t('nav.register')}
+                    </Link>
+                  </div>
+                )}
             </div>
           </div>
         </div>

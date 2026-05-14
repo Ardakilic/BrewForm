@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { recipeApi, equipmentApi, tasteApi } from '../../api/index.ts';
+import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS, DRINK_TYPES, VISIBILITY_STATES } from '@brewform/shared/constants';
-import { TasteNotesFilter, TasteNoteFlat } from '../../components/recipe/TasteNotesFilter.tsx';
+import { TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -99,11 +99,13 @@ export function RecipeListPage() {
   const equipmentId = searchParams.get('equipmentId') || '';
   const mainBrewer = searchParams.get('mainBrewer') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
-  const tasteNoteIds = useMemo(() =>
-    tasteNoteIdsParam
-      ? tasteNoteIdsParam.split(',').map((id) => id.trim()).filter((id) => isValidUuid(id))
-      : []
-  , [tasteNoteIdsParam]);
+  const tasteNoteIds = useMemo(
+    () =>
+      tasteNoteIdsParam
+        ? tasteNoteIdsParam.split(',').map((id) => id.trim()).filter((id) => isValidUuid(id))
+        : [],
+    [tasteNoteIdsParam],
+  );
 
   // Fetch static data once (equipment + taste notes), use module-level cache
   useEffect(() => {
@@ -140,7 +142,18 @@ export function RecipeListPage() {
       setTotal(items.length);
     }).catch(() => {
     }).finally(() => setLoading(false));
-  }, [page, brewMethod, drinkType, visibility, sortBy, search, user, equipmentId, mainBrewer, tasteNoteIds]);
+  }, [
+    page,
+    brewMethod,
+    drinkType,
+    visibility,
+    sortBy,
+    search,
+    user,
+    equipmentId,
+    mainBrewer,
+    tasteNoteIds,
+  ]);
 
   function updateFilter(key: string, value: string | string[]) {
     const params = new URLSearchParams(searchParams);
@@ -336,9 +349,7 @@ export function RecipeListPage() {
                     aria-label={`Filter by ${label}`}
                   >
                     <option value=''>{t('recipe.list.all')}</option>
-                    {items.map((eq) => (
-                      <option key={eq.id} value={eq.id}>{eq.name}</option>
-                    ))}
+                    {items.map((eq) => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
                   </select>
                 </FilterField>
               );
@@ -482,19 +493,20 @@ function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
     <Link to={`/recipes/${recipe.slug}`} className='card hover:shadow-lg transition-shadow'>
       <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>{recipe.title}</h3>
       <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
-        by{' '}
-        {recipe.author ? (
-          <Link
-            to={`/u/${recipe.author.username}`}
-            onClick={(e) => e.stopPropagation()}
-            className='hover:underline'
-            style={{ color: 'var(--accent-primary)' }}
-          >
-            {recipe.author.displayName || recipe.author.username}
-          </Link>
-        ) : (
-          'unknown'
-        )}
+        by {recipe.author
+          ? (
+            <Link
+              to={`/u/${recipe.author.username}`}
+              onClick={(e) => e.stopPropagation()}
+              className='hover:underline'
+              style={{ color: 'var(--accent-primary)' }}
+            >
+              {recipe.author.displayName || recipe.author.username}
+            </Link>
+          )
+          : (
+            'unknown'
+          )}
       </p>
       {recipe.currentVersion && (
         <div

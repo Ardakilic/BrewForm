@@ -10,13 +10,15 @@
  * fewer characters, the full title is displayed unchanged.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import fc from 'fast-check';
 import { BreadcrumbNav } from './BreadcrumbNav';
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => (
     <a href={to} {...props}>
       {children}
     </a>

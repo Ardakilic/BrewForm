@@ -115,7 +115,10 @@ export const RecipeCreateSchema = RecipeCreateObjectSchema
       }
       return true;
     },
-    { message: 'Pre-infusion time must be less than extraction time', path: ['preInfusionTimeSeconds'] },
+    {
+      message: 'Pre-infusion time must be less than extraction time',
+      path: ['preInfusionTimeSeconds'],
+    },
   )
   .refine(
     (data) => {
@@ -124,7 +127,10 @@ export const RecipeCreateSchema = RecipeCreateObjectSchema
       }
       return true;
     },
-    { message: 'Extraction time is required when pre-infusion time is specified', path: ['preInfusionTimeSeconds'] },
+    {
+      message: 'Extraction time is required when pre-infusion time is specified',
+      path: ['preInfusionTimeSeconds'],
+    },
   );
 
 export const RecipeUpdateSchema = RecipeCreateObjectSchema.partial().extend({
@@ -142,7 +148,9 @@ export const RecipeFilterSchema = z.object({
       if (!val) return true;
       const ids = val.split(',');
       if (ids.length > 10) return false;
-      return ids.every((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim()));
+      return ids.every((id) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim())
+      );
     },
     { message: 'tasteNoteIds must be at most 10 comma-separated UUIDs' },
   ),

@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { HomePage } from './HomePage';
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
 }));
 
 vi.mock('../contexts/I18nContext', () => ({
@@ -96,7 +96,10 @@ describe('HomePage — i18n', () => {
   it('Browse Recipes link points to /recipes', () => {
     render(<HomePage />);
 
-    expect(screen.getByRole('link', { name: 'Browse Recipes' })).toHaveAttribute('href', '/recipes');
+    expect(screen.getByRole('link', { name: 'Browse Recipes' })).toHaveAttribute(
+      'href',
+      '/recipes',
+    );
   });
 
   it('Sign Up link points to /register', () => {

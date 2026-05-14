@@ -201,103 +201,119 @@ export function TasteNotesFilter({
               className='flex items-center justify-center py-1 text-[color:var(--text-tertiary)] cursor-default'
               keepMounted={false}
             >
-              <svg width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='currentColor' strokeWidth='1.5'>
+              <svg
+                width='10'
+                height='6'
+                viewBox='0 0 10 6'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='1.5'
+              >
                 <path d='M1 5l4-4 4 4' />
               </svg>
             </Select.ScrollUpArrow>
 
             <Select.List>
-              {hasVisibleItems ? (
-                visibleRoots.map(({ root, subGroups, orphanItems }) => (
-                  <Select.Group key={root.id}>
-                    <Select.GroupLabel className='px-3 py-1.5 text-xs font-semibold text-[color:var(--text-tertiary)] cursor-default select-none'>
-                      {root.name}
-                    </Select.GroupLabel>
-                    {subGroups.map((sg) => (
-                      <div key={sg.parent.id}>
-                        <div
-                          className='px-3 py-1 text-xs font-semibold text-[color:var(--text-tertiary)] select-none'
-                          style={{ paddingLeft: '1.25rem' }}
-                          aria-hidden='true'
-                        >
-                          {root.name} &gt; {sg.parent.name}
-                        </div>
-                        {sg.children.map((item) => (
-                          <Select.Item
-                            key={item.id}
-                            value={item.id}
-                            className={[
-                              'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
-                              'text-sm text-[color:var(--text-primary)] cursor-default',
-                              'outline-none select-none',
-                              'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
-                              'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
-                            ].join(' ')}
-                          >
-                            <Select.ItemIndicator className='col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]'>
-                              <svg
-                                width='12'
-                                height='12'
-                                viewBox='0 0 12 12'
-                                fill='none'
-                                stroke='currentColor'
-                                strokeWidth='2'
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                aria-hidden='true'
-                              >
-                                <path d='M2 6l3 3 5-5' />
-                              </svg>
-                            </Select.ItemIndicator>
-                            <Select.ItemText className='col-start-2'>{item.name}</Select.ItemText>
-                          </Select.Item>
-                        ))}
-                      </div>
-                    ))}
-                    {orphanItems.map((item) => (
-                      <Select.Item
-                        key={item.id}
-                        value={item.id}
-                        className={[
-                          'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
-                          'text-sm text-[color:var(--text-primary)] cursor-default',
-                          'outline-none select-none',
-                          'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
-                          'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
-                        ].join(' ')}
-                      >
-                        <Select.ItemIndicator className='col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]'>
-                          <svg
-                            width='12'
-                            height='12'
-                            viewBox='0 0 12 12'
-                            fill='none'
-                            stroke='currentColor'
-                            strokeWidth='2'
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
+              {hasVisibleItems
+                ? (
+                  visibleRoots.map(({ root, subGroups, orphanItems }) => (
+                    <Select.Group key={root.id}>
+                      <Select.GroupLabel className='px-3 py-1.5 text-xs font-semibold text-[color:var(--text-tertiary)] cursor-default select-none'>
+                        {root.name}
+                      </Select.GroupLabel>
+                      {subGroups.map((sg) => (
+                        <div key={sg.parent.id}>
+                          <div
+                            className='px-3 py-1 text-xs font-semibold text-[color:var(--text-tertiary)] select-none'
+                            style={{ paddingLeft: '1.25rem' }}
                             aria-hidden='true'
                           >
-                            <path d='M2 6l3 3 5-5' />
-                          </svg>
-                        </Select.ItemIndicator>
-                        <Select.ItemText className='col-start-2'>{item.name}</Select.ItemText>
-                      </Select.Item>
-                    ))}
-                  </Select.Group>
-                ))
-              ) : (
-                <div className='px-3 py-4 text-sm text-center text-[color:var(--text-tertiary)]'>
-                  No taste notes found.
-                </div>
-              )}
+                            {root.name} &gt; {sg.parent.name}
+                          </div>
+                          {sg.children.map((item) => (
+                            <Select.Item
+                              key={item.id}
+                              value={item.id}
+                              className={[
+                                'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
+                                'text-sm text-[color:var(--text-primary)] cursor-default',
+                                'outline-none select-none',
+                                'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
+                                'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
+                              ].join(' ')}
+                            >
+                              <Select.ItemIndicator className='col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]'>
+                                <svg
+                                  width='12'
+                                  height='12'
+                                  viewBox='0 0 12 12'
+                                  fill='none'
+                                  stroke='currentColor'
+                                  strokeWidth='2'
+                                  strokeLinecap='round'
+                                  strokeLinejoin='round'
+                                  aria-hidden='true'
+                                >
+                                  <path d='M2 6l3 3 5-5' />
+                                </svg>
+                              </Select.ItemIndicator>
+                              <Select.ItemText className='col-start-2'>{item.name}</Select.ItemText>
+                            </Select.Item>
+                          ))}
+                        </div>
+                      ))}
+                      {orphanItems.map((item) => (
+                        <Select.Item
+                          key={item.id}
+                          value={item.id}
+                          className={[
+                            'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
+                            'text-sm text-[color:var(--text-primary)] cursor-default',
+                            'outline-none select-none',
+                            'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
+                            'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
+                          ].join(' ')}
+                        >
+                          <Select.ItemIndicator className='col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]'>
+                            <svg
+                              width='12'
+                              height='12'
+                              viewBox='0 0 12 12'
+                              fill='none'
+                              stroke='currentColor'
+                              strokeWidth='2'
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              aria-hidden='true'
+                            >
+                              <path d='M2 6l3 3 5-5' />
+                            </svg>
+                          </Select.ItemIndicator>
+                          <Select.ItemText className='col-start-2'>{item.name}</Select.ItemText>
+                        </Select.Item>
+                      ))}
+                    </Select.Group>
+                  ))
+                )
+                : (
+                  <div className='px-3 py-4 text-sm text-center text-[color:var(--text-tertiary)]'>
+                    No taste notes found.
+                  </div>
+                )}
             </Select.List>
 
             <Select.ScrollDownArrow
               className='flex items-center justify-center py-1 text-[color:var(--text-tertiary)] cursor-default'
               keepMounted={false}
             >
-              <svg width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='currentColor' strokeWidth='1.5'>
+              <svg
+                width='10'
+                height='6'
+                viewBox='0 0 10 6'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='1.5'
+              >
                 <path d='M1 1l4 4 4-4' />
               </svg>
             </Select.ScrollDownArrow>

@@ -52,8 +52,7 @@ export function RecipeFocusModePage() {
   const tasteNotes: any[] = Array.isArray(recipe.tasteNotes) ? recipe.tasteNotes : [];
 
   // Determine section visibility
-  const hasBeanData =
-    v.productName != null ||
+  const hasBeanData = v.productName != null ||
     v.coffeeBrand != null ||
     v.coffeeProcessing != null ||
     v.roastDate != null ||
@@ -63,8 +62,10 @@ export function RecipeFocusModePage() {
       (v.bean.origin != null || v.bean.roaster != null || v.bean.roastLevel != null));
 
   const hasBrewTimeline = v.extractionTimeSeconds != null;
-  const hasEquipment = equipmentItems.length > 0 || (v.brewerDetails != null && v.brewerDetails !== '');
-  const hasTastingNotes = tasteNotes.length > 0 || (v.personalNotes != null && v.personalNotes !== '');
+  const hasEquipment = equipmentItems.length > 0 ||
+    (v.brewerDetails != null && v.brewerDetails !== '');
+  const hasTastingNotes = tasteNotes.length > 0 ||
+    (v.personalNotes != null && v.personalNotes !== '');
 
   return (
     <div className='focus-mode mx-auto max-w-3xl px-4 sm:px-6 py-8'>

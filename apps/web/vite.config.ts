@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { resolve, join } from 'jsr:@std/path';
+import { join, resolve } from 'jsr:@std/path';
 
 // When running inside Docker Compose, the API is reachable via the service name
 // "app" (http://app:8000). Outside Docker (bare Deno), it's localhost:8000.

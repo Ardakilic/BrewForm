@@ -126,7 +126,7 @@ function TasteCategoryCard({
               {sub.children.map((leaf) => (
                 <span
                   key={leaf.id}
-                  className="inline-flex items-center gap-0.5 rounded-md text-sm font-medium px-2 py-1"
+                  className='inline-flex items-center gap-0.5 rounded-md text-sm font-medium px-2 py-1'
                   style={{
                     backgroundColor: 'var(--bg-tertiary)',
                     color: 'var(--text-secondary)',
@@ -166,29 +166,37 @@ function DefinitionPopover({ definition, label }: { definition: string | null; l
       <Popover.Trigger
         openOnHover
         delay={300}
-        className="inline-flex items-center justify-center w-5 h-5 rounded-full
+        className='inline-flex items-center justify-center w-5 h-5 rounded-full
                    hover:bg-[var(--bg-tertiary)] text-[var(--text-tertiary)]
                    hover:text-[var(--accent-primary)] transition-colors
-                   cursor-pointer flex-shrink-0"
+                   cursor-pointer flex-shrink-0'
         aria-label={`Definition of ${label}`}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-             strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="16" x2="12" y2="12" />
-          <line x1="12" y1="8" x2="12.01" y2="8" />
+        <svg
+          width='14'
+          height='14'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='2'
+          strokeLinecap='round'
+          strokeLinejoin='round'
+          aria-hidden='true'
+        >
+          <circle cx='12' cy='12' r='10' />
+          <line x1='12' y1='16' x2='12' y2='12' />
+          <line x1='12' y1='8' x2='12.01' y2='8' />
         </svg>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner side="top" sideOffset={6} align="center">
+        <Popover.Positioner side='top' sideOffset={6} align='center'>
           <Popover.Popup
-            className="card max-w-[260px] p-3 text-xs shadow-lg z-50"
+            className='card max-w-[260px] p-3 text-xs shadow-lg z-50'
             style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
           >
-            <Popover.Arrow className="fill-[var(--bg-secondary)]" />
+            <Popover.Arrow className='fill-[var(--bg-secondary)]' />
             <Popover.Description
-              className="leading-relaxed"
+              className='leading-relaxed'
               style={{ color: 'var(--text-secondary)' }}
             >
               {definition}

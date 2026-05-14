@@ -13,16 +13,16 @@
  *  - TastingNotesSection conditional rendering
  *  - SEO canonical + noIndex
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { RecipeFocusModePage } from './RecipeFocusModePage';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
   useParams: vi.fn(),
 }));
 
@@ -40,23 +40,23 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 }));
 
 vi.mock('../../components/recipe/StatCards.tsx', () => ({
-  StatCards: () => <div data-testid="stat-cards" />,
+  StatCards: () => <div data-testid='stat-cards' />,
 }));
 
 vi.mock('../../components/recipe/BeanSection.tsx', () => ({
-  BeanSection: () => <div data-testid="bean-section" />,
+  BeanSection: () => <div data-testid='bean-section' />,
 }));
 
 vi.mock('../../components/recipe/BrewTimeline.tsx', () => ({
-  BrewTimeline: () => <div data-testid="brew-timeline" />,
+  BrewTimeline: () => <div data-testid='brew-timeline' />,
 }));
 
 vi.mock('../../components/recipe/EquipmentSection.tsx', () => ({
-  EquipmentSection: () => <div data-testid="equipment-section" />,
+  EquipmentSection: () => <div data-testid='equipment-section' />,
 }));
 
 vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({
-  TastingNotesSection: () => <div data-testid="tasting-notes-section" />,
+  TastingNotesSection: () => <div data-testid='tasting-notes-section' />,
 }));
 
 import { useParams } from 'react-router';

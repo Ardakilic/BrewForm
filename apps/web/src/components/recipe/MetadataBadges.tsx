@@ -17,10 +17,10 @@ function toTitleCase(str: string): string {
 
 // Dot color for each visibility state
 const VISIBILITY_DOT_COLORS: Record<string, string> = {
-  public: '#22c55e',    // green
-  unlisted: '#f59e0b',  // yellow/amber
-  private: '#a8a29e',   // gray
-  draft: '#a8a29e',     // gray
+  public: '#22c55e', // green
+  unlisted: '#f59e0b', // yellow/amber
+  private: '#a8a29e', // gray
+  draft: '#a8a29e', // gray
 };
 
 export function MetadataBadges({

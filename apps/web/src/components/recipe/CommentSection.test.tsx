@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CommentSection } from './CommentSection';
@@ -6,9 +6,9 @@ import { CommentSection } from './CommentSection';
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
 }));
 
 vi.mock('../../api/client.ts', () => ({
@@ -75,7 +75,14 @@ const defaultTranslation = {
   availableLocales: ['en', 'tr'],
 };
 
-const guestAuth = { user: null, isAuthenticated: false, isLoading: false, login: vi.fn(), register: vi.fn(), logout: vi.fn() };
+const guestAuth = {
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  login: vi.fn(),
+  register: vi.fn(),
+  logout: vi.fn(),
+};
 
 function makeUser(overrides: Partial<{ id: string; isAdmin: boolean }> = {}) {
   return {
@@ -134,7 +141,9 @@ beforeEach(() => {
 
 describe('CommentSection — i18n', () => {
   it('renders heading and form labels using t() — English', async () => {
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -146,7 +155,9 @@ describe('CommentSection — i18n', () => {
   });
 
   it('renders heading and form labels in Turkish when locale is tr', async () => {
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
@@ -160,7 +171,9 @@ describe('CommentSection — i18n', () => {
 
   it('renders Reply button label using t()', async () => {
     mockApi.get.mockResolvedValue([topLevelComment]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -170,7 +183,9 @@ describe('CommentSection — i18n', () => {
 
   it('renders Reply button in Turkish', async () => {
     mockApi.get.mockResolvedValue([topLevelComment]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
@@ -181,7 +196,9 @@ describe('CommentSection — i18n', () => {
 
   it('renders reply form labels using t() — English', async () => {
     mockApi.get.mockResolvedValue([topLevelComment]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -202,7 +219,9 @@ describe('CommentSection — Reply button visibility', () => {
   });
 
   it('shows Reply button for the recipe owner', async () => {
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -210,7 +229,9 @@ describe('CommentSection — Reply button visibility', () => {
   });
 
   it('shows Reply button for an admin', async () => {
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: adminUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: adminUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -219,7 +240,9 @@ describe('CommentSection — Reply button visibility', () => {
 
   it('shows Reply button for the top-level comment author', async () => {
     // regularUser is the author of topLevelComment (authorId = 'user-2')
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -228,7 +251,9 @@ describe('CommentSection — Reply button visibility', () => {
 
   it('does NOT show Reply button for a different regular user (not owner, not admin, not comment author)', async () => {
     const otherUser = makeUser({ id: 'user-99' });
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: otherUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: otherUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -249,7 +274,9 @@ describe('CommentSection — Reply button visibility', () => {
 describe('CommentSection — Reply button on replies', () => {
   beforeEach(() => {
     mockApi.get.mockResolvedValue([commentWithReply]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
   });
 
   it('shows Reply button on a reply for permitted users', async () => {
@@ -307,7 +334,9 @@ describe('CommentSection — Reply button on replies', () => {
 describe('CommentSection — Reply form', () => {
   beforeEach(() => {
     mockApi.get.mockResolvedValue([topLevelComment]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
   });
 
   it('opens the reply form when Reply is clicked on a top-level comment', async () => {
@@ -388,7 +417,9 @@ describe('CommentSection — Reply form', () => {
 describe('CommentSection — comment display', () => {
   it('renders comments from the API', async () => {
     mockApi.get.mockResolvedValue([topLevelComment]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -397,7 +428,9 @@ describe('CommentSection — comment display', () => {
 
   it('renders nested replies under their parent', async () => {
     mockApi.get.mockResolvedValue([commentWithReply]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -409,7 +442,9 @@ describe('CommentSection — comment display', () => {
 
   it('shows OP badge only on comments by the recipe owner', async () => {
     mockApi.get.mockResolvedValue([commentByOwner, topLevelComment]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -425,7 +460,9 @@ describe('CommentSection — comment display', () => {
 describe('CommentSection — inline markdown rendering', () => {
   it('renders **bold** as <strong>', async () => {
     mockApi.get.mockResolvedValue([{ ...topLevelComment, content: '**bold text**' }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -438,7 +475,9 @@ describe('CommentSection — inline markdown rendering', () => {
 
   it('renders *italic* as <em>', async () => {
     mockApi.get.mockResolvedValue([{ ...topLevelComment, content: '*italic text*' }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -451,7 +490,9 @@ describe('CommentSection — inline markdown rendering', () => {
 
   it('renders _italic_ as <em>', async () => {
     mockApi.get.mockResolvedValue([{ ...topLevelComment, content: '_italic text_' }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -464,7 +505,9 @@ describe('CommentSection — inline markdown rendering', () => {
 
   it('renders __underline__ as <u>', async () => {
     mockApi.get.mockResolvedValue([{ ...topLevelComment, content: '__underline text__' }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -477,7 +520,9 @@ describe('CommentSection — inline markdown rendering', () => {
 
   it('renders mixed markdown in a single comment', async () => {
     mockApi.get.mockResolvedValue([{ ...topLevelComment, content: '**bold** and *italic*' }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -489,7 +534,9 @@ describe('CommentSection — inline markdown rendering', () => {
 
   it('renders plain text without any markdown tokens unchanged', async () => {
     mockApi.get.mockResolvedValue([{ ...topLevelComment, content: 'just plain text' }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -501,7 +548,9 @@ describe('CommentSection — inline markdown rendering', () => {
 
   it('does not render HTML tags — treats them as plain text', async () => {
     mockApi.get.mockResolvedValue([{ ...topLevelComment, content: '<script>alert(1)</script>' }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -518,7 +567,9 @@ describe('CommentSection — inline markdown rendering', () => {
       ...topLevelComment,
       replies: [{ ...replyByAlice, content: '**bold reply**' }],
     }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -534,7 +585,9 @@ describe('CommentSection — inline markdown rendering', () => {
 
 describe('CommentSection — comment form', () => {
   it('shows the form when authenticated', () => {
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -548,7 +601,9 @@ describe('CommentSection — comment form', () => {
   });
 
   it('submits a top-level comment without parentCommentId', async () => {
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
+    mockUseAuth.mockReturnValue(
+      { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
+    );
     mockApi.post.mockResolvedValue({
       id: 'new-comment',
       content: 'Hello world',

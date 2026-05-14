@@ -1,6 +1,6 @@
 import fc from 'fast-check';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Navbar } from './Navbar';
 
@@ -12,9 +12,9 @@ const { mockNavState } = vi.hoisted(() => {
 });
 
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
-    <a href={to} {...props}>{children}</a>
-  ),
+  Link: (
+    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+  ) => <a href={to} {...props}>{children}</a>,
   NavLink: ({
     to,
     children,
@@ -37,8 +37,7 @@ vi.mock('react-router', () => ({
     const isActive = end
       ? currentPath === to
       : currentPath === to || currentPath.startsWith(to + '/');
-    const resolvedClassName =
-      typeof className === 'function' ? className({ isActive }) : className;
+    const resolvedClassName = typeof className === 'function' ? className({ isActive }) : className;
     return (
       <a href={to} className={resolvedClassName} onClick={onClick} {...props}>
         {children}
@@ -424,8 +423,7 @@ describe('Navbar — i18n theme options', () => {
 
 describe('Navbar — mobile menu', () => {
   // Helper: get the hamburger button by its aria-label
-  const getHamburger = () =>
-    screen.getByRole('button', { name: 'Toggle navigation menu' });
+  const getHamburger = () => screen.getByRole('button', { name: 'Toggle navigation menu' });
 
   // Helper: get the mobile menu dialog (only present when open)
   const getMobileMenu = () => screen.getByRole('dialog', { name: 'Navigation menu' });
@@ -488,9 +486,7 @@ describe('Navbar — mobile menu', () => {
     // Click the "Recipes" link inside the mobile menu
     const recipesLinks = screen.getAllByRole('link', { name: 'Recipes' });
     // The mobile menu link is the one inside the dialog
-    const mobileRecipesLink = recipesLinks.find((el) =>
-      getMobileMenu().contains(el),
-    );
+    const mobileRecipesLink = recipesLinks.find((el) => getMobileMenu().contains(el));
     expect(mobileRecipesLink).toBeDefined();
     await userEvent.click(mobileRecipesLink!);
 
@@ -628,9 +624,11 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    expect(await screen.findByRole('option', { name: enTranslations['theme.light'] })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: enTranslations['theme.light'] }))
+      .toBeInTheDocument();
     expect(screen.getByRole('option', { name: enTranslations['theme.dark'] })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: enTranslations['theme.coffee'] })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: enTranslations['theme.coffee'] }))
+      .toBeInTheDocument();
   });
 
   // ── i18n option labels — Turkish ───────────────────────────────────────────
@@ -647,9 +645,11 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    expect(await screen.findByRole('option', { name: trTranslations['theme.light'] })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: trTranslations['theme.light'] }))
+      .toBeInTheDocument();
     expect(screen.getByRole('option', { name: trTranslations['theme.dark'] })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: trTranslations['theme.coffee'] })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: trTranslations['theme.coffee'] }))
+      .toBeInTheDocument();
   });
 
   it('selecting "coffee" theme in Turkish calls setTheme with "coffee"', async () => {
@@ -669,7 +669,9 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     // Option label is in Turkish but the value passed to setTheme must still be 'coffee'.
     // Use getByRole('option') to target the clickable item element, not the inner text span
     // which may have pointer-events: none applied by Base UI.
-    const coffeeOption = await screen.findByRole('option', { name: trTranslations['theme.coffee'] }); // 'Orta Kavurma'
+    const coffeeOption = await screen.findByRole('option', {
+      name: trTranslations['theme.coffee'],
+    }); // 'Orta Kavurma'
     await userEvent.click(coffeeOption);
 
     expect(setTheme).toHaveBeenCalledWith('coffee');
@@ -924,7 +926,9 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
             const translations = allThemeTranslations[locale];
             const t = (key: string) => translations[key] ?? key;
 
-            mockUseTheme.mockReturnValue({ theme, setTheme: vi.fn() } as ReturnType<typeof useTheme>);
+            mockUseTheme.mockReturnValue(
+              { theme, setTheme: vi.fn() } as ReturnType<typeof useTheme>,
+            );
             mockUseTranslation.mockReturnValue({
               ...defaultTranslation,
               locale,
@@ -945,9 +949,12 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
               await userEvent.click(triggers[0]);
 
               // All options in popup should have translated names
-              expect(await screen.findByRole('option', { name: translations['theme.light'] })).toBeInTheDocument();
-              expect(screen.getByRole('option', { name: translations['theme.dark'] })).toBeInTheDocument();
-              expect(screen.getByRole('option', { name: translations['theme.coffee'] })).toBeInTheDocument();
+              expect(await screen.findByRole('option', { name: translations['theme.light'] }))
+                .toBeInTheDocument();
+              expect(screen.getByRole('option', { name: translations['theme.dark'] }))
+                .toBeInTheDocument();
+              expect(screen.getByRole('option', { name: translations['theme.coffee'] }))
+                .toBeInTheDocument();
             } finally {
               unmount();
             }

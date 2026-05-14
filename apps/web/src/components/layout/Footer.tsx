@@ -18,7 +18,9 @@ export function Footer() {
             </p>
           </div>
           <div>
-            <h4 className='font-semibold text-[color:var(--text-primary)]'>{t('footer.explore')}</h4>
+            <h4 className='font-semibold text-[color:var(--text-primary)]'>
+              {t('footer.explore')}
+            </h4>
             <div className='mt-2 flex flex-col gap-1'>
               <Link to='/recipes' className='text-sm text-[color:var(--text-secondary)]'>
                 {t('nav.recipes')}
@@ -49,7 +51,10 @@ export function Footer() {
             </div>
             {availableLocales.length > 0 && (
               <div className='mt-2'>
-                <label htmlFor='language-switcher' className='text-xs text-[color:var(--text-secondary)]'>
+                <label
+                  htmlFor='language-switcher'
+                  className='text-xs text-[color:var(--text-secondary)]'
+                >
                   {t('preferences.locale')}
                 </label>
                 <div className='mt-1'>
