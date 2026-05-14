@@ -423,17 +423,6 @@ describe('CommentSection — comment display', () => {
 // ── Inline markdown rendering ──────────────────────────────────────────────
 
 describe('CommentSection — inline markdown rendering', () => {
-  async function renderWithContent(content: string) {
-    mockApi.get.mockResolvedValue([{
-      ...topLevelComment,
-      content,
-    }]);
-    mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);
-
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
-    await waitFor(() => expect(screen.getByText(content, { exact: false })).toBeInTheDocument());
-  }
-
   it('renders **bold** as <strong>', async () => {
     mockApi.get.mockResolvedValue([{ ...topLevelComment, content: '**bold text**' }]);
     mockUseAuth.mockReturnValue({ ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>);

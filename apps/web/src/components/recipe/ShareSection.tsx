@@ -16,7 +16,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
     return null;
   }
 
-  const shareUrl = `${window.location.origin}/recipes/${slug}`;
+  const shareUrl = `${globalThis.location.origin}/recipes/${slug}`;
 
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);
@@ -57,7 +57,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
   }
 
   function handleSocialShare(url: string) {
-    window.open(url, '_blank', 'noopener,noreferrer,width=600,height=400');
+    globalThis.open(url, '_blank', 'noopener,noreferrer,width=600,height=400');
   }
 
   return (

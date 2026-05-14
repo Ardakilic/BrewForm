@@ -20,7 +20,7 @@ describe('FavouriteButton — Property 2 (no w-full class)', () => {
   });
 
   it('button does not have w-full class when initialFavourited=true, initialCount=3', () => {
-    render(<FavouriteButton recipeId='recipe-1' initialFavourited={true} initialCount={3} />);
+    render(<FavouriteButton recipeId='recipe-1' initialFavourited initialCount={3} />);
     const button = screen.getByRole('button');
     expect(button.classList.contains('w-full')).toBe(false);
   });

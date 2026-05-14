@@ -22,7 +22,7 @@ vi.mock('../../api/client.ts', () => ({
 }));
 
 vi.mock('../../components/user/FollowButton.tsx', () => ({
-  FollowButton: ({ userId }: { userId: string }) => <button data-testid='follow-button' data-userid={userId}>Follow</button>,
+  FollowButton: ({ userId }: { userId: string }) => <button type='button' data-testid='follow-button' data-userid={userId}>Follow</button>,
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({

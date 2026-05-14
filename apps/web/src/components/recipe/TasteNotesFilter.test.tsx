@@ -101,13 +101,13 @@ describe('TasteNotesFilter — Property 1: Taste note hierarchy rendering', () =
 
           try {
             const noteById = new Map(allTasteNotes.map((n) => [n.id, n]));
-            function getRootId(note: TasteNoteFlat): string | null {
+            const getRootId = (note: TasteNoteFlat): string | null => {
               if (note.depth === 0) return note.id;
               if (!note.parentId) return null;
               const parent = noteById.get(note.parentId);
               if (!parent) return null;
               return getRootId(parent);
-            }
+            };
 
             const roots = allTasteNotes.filter((n) => n.depth === 0);
             const rootIds = new Set(roots.map((r) => r.id));
@@ -244,7 +244,7 @@ describe('TasteNotesFilter — styling consistency', () => {
       { id: 'mid-1', name: 'Berry', depth: 1, parentId: 'root-1' },
     ];
 
-    const { container } = render(
+    render(
       <TasteNotesFilter
         allTasteNotes={allTasteNotes}
         selectedIds={[]}
@@ -253,7 +253,7 @@ describe('TasteNotesFilter — styling consistency', () => {
       />,
     );
 
-    const trigger = screen.getByRole('combobox');
+    const trigger = screen.getByRole('button');
     await user.click(trigger);
 
     // The popup is the ancestor of the listbox that has the max-h and overflow classes

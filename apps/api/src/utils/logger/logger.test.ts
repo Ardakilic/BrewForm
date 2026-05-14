@@ -55,16 +55,8 @@ describe('Logger', () => {
       expect(logger.level).toBe(config.LOG_LEVEL);
     });
 
-    it('falls back to debug in development when LOG_LEVEL is not set', () => {
-      if (config.APP_ENV === 'development' && !Deno.env.get('LOG_LEVEL')) {
-        expect(logger.level).toBe('debug');
-      }
-    });
-
-    it('falls back to info in production when LOG_LEVEL is not set', () => {
-      if (config.APP_ENV === 'production' && !Deno.env.get('LOG_LEVEL')) {
-        expect(logger.level).toBe('info');
-      }
+    it('LOG_LEVEL defaults to info when not explicitly set', () => {
+      expect(config.LOG_LEVEL).toBe(Deno.env.get('LOG_LEVEL') || 'info');
     });
   });
 

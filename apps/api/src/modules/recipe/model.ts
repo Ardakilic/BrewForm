@@ -369,7 +369,7 @@ export async function toggleFeature(id: string) {
 
 export async function updateVersionNotes(versionId: string, notes: string) {
   await db.update(recipeVersions)
-    .set({ personalNotes: notes, updatedAt: new Date() })
+    .set({ personalNotes: notes })
     .where(eq(recipeVersions.id, versionId));
 }
 
@@ -389,6 +389,7 @@ export async function findStarred(
     search?: string;
     equipmentId?: string;
     tasteNoteIds?: string;
+    mainBrewer?: string;
     sortBy?: string;
     sortOrder?: string;
   },
@@ -404,7 +405,7 @@ export async function findStarred(
       inArray(
         recipes.id,
         db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.brewMethod, filters.brewMethod),
+          eq(recipeVersions.brewMethod, filters.brewMethod as any),
         ),
       ),
     );
@@ -415,7 +416,7 @@ export async function findStarred(
       inArray(
         recipes.id,
         db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.drinkType, filters.drinkType),
+          eq(recipeVersions.drinkType, filters.drinkType as any),
         ),
       ),
     );

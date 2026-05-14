@@ -14,10 +14,6 @@ function and(...conditions: any[]) {
   return { type: 'and', conditions };
 }
 
-function isNull(column: string) {
-  return { type: 'isNull', column };
-}
-
 function inArray(column: string, subquery: unknown) {
   return { type: 'inArray', column, value: subquery };
 }

@@ -30,7 +30,7 @@ vi.mock('@base-ui-components/react/popover', () => {
     );
   };
 
-  const PopoverTrigger = ({ children, openOnHover, delay, ...props }: any) => {
+  const PopoverTrigger = ({ children, openOnHover: _openOnHover, delay: _delay, ...props }: any) => {
     const Comp = 'span' as any;
     return <Comp data-popover-trigger {...props}>{children}</Comp>;
   };

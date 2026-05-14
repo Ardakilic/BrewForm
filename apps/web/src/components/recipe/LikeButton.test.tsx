@@ -20,7 +20,7 @@ describe('LikeButton — Property 1 (no w-full)', () => {
   });
 
   it('button does not have w-full class when initialLiked=true, initialCount=5', () => {
-    render(<LikeButton recipeId='recipe-1' initialLiked={true} initialCount={5} />);
+    render(<LikeButton recipeId='recipe-1' initialLiked initialCount={5} />);
     const button = screen.getByRole('button');
     expect(button.classList.contains('w-full')).toBe(false);
   });

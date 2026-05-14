@@ -15,7 +15,7 @@ interface EquipmentSectionProps {
   brewerDetails?: string | null;
 }
 
-export function EquipmentSection({ items, brewMethod, brewerDetails }: EquipmentSectionProps) {
+export function EquipmentSection({ items, brewMethod: _brewMethod, brewerDetails }: EquipmentSectionProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const BrewerIcon = getEquipmentIcon('');

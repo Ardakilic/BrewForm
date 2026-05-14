@@ -129,7 +129,7 @@ export function BeanSection(props: BeanSectionProps) {
             {roastHeaderLabel}
             {showPeakWindow && (
               <span style={{ color: 'var(--accent-primary)' }}>
-                {' · '}{t('recipe.bean.peakWindow')}
+                 · {t('recipe.bean.peakWindow')}
               </span>
             )}
           </span>

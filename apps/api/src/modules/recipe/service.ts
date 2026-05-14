@@ -251,7 +251,7 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   return forked;
 }
 
-export async function listRecipes(filters: any, page: number, perPage: number, requestingUserId: string | null = null, isAdmin: boolean = false) {
+export async function listRecipes(filters: any, page: number, perPage: number, _requestingUserId: string | null = null, isAdmin: boolean = false) {
   const visibilityCondition = (isAdmin === true && filters.visibility)
     ? eq(recipes.visibility, filters.visibility)
     : eq(recipes.visibility, 'public');
