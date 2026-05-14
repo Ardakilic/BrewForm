@@ -26,7 +26,7 @@
     "npm:drizzle-kit@0.31": "0.31.10",
     "npm:drizzle-kit@0.31.10": "0.31.10",
     "npm:drizzle-orm@0.45": "0.45.2_postgres@3.4.9",
-    "npm:fast-check@^3.22.0": "3.23.2",
+    "npm:fast-check@4": "4.8.0",
     "npm:hono-openapi@1": "1.3.0_@hono+standard-validator@0.2.2__@standard-schema+spec@1.1.0__hono@4.12.18_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@3.25.76_@standard-community+standard-openapi@0.2.9__@standard-community+standard-json@0.3.5___@standard-schema+spec@1.1.0___@types+json-schema@7.0.15___quansync@0.2.11___zod@3.25.76__@standard-schema+spec@1.1.0__openapi-types@12.1.3__zod@3.25.76__@types+json-schema@7.0.15__quansync@0.2.11_@types+json-schema@7.0.15_hono@4.12.18_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@3.25.76",
     "npm:hono@^4.7.0": "4.12.18",
     "npm:jsdom@29": "29.1.1",
@@ -1905,8 +1905,8 @@
     "expect-type@1.3.0": {
       "integrity": "sha512-knvyeauYhqjOYvQ66MznSMs83wmHrCycNEN6Ao+2AeYEfxUIkuiVxdEa1qlGEPK+We3n0THiDciYSsCcgW/DoA=="
     },
-    "fast-check@3.23.2": {
-      "integrity": "sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==",
+    "fast-check@4.8.0": {
+      "integrity": "sha512-GOJ158CUMnN6cSahsv4+ExARvIDuzzinFjkp0E9WtiBa5zcVeLozVkWaE4IzFcc+Y48Wp1EDlUZsXRyAztQcSg==",
       "dependencies": [
         "pure-rand"
       ]
@@ -2878,8 +2878,8 @@
     "punycode@2.3.1": {
       "integrity": "sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg=="
     },
-    "pure-rand@6.1.0": {
-      "integrity": "sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA=="
+    "pure-rand@8.4.0": {
+      "integrity": "sha512-IoM8YF/jY0hiugFo/wOWqfmarlE6J0wc6fDK1PhftMk7MGhVZl88sZimmqBBFomLOCSmcCCpsfj7wXASCpvK9A=="
     },
     "qrcode@1.5.4": {
       "integrity": "sha512-1ca71Zgiu6ORjHqFBDpnSMTR2ReToX4l1Au1VFLyVeBTFavzQnv5JxMFr3ukHVKpSrSA2MCk0lNJSykjUfz7Zg==",
@@ -3503,7 +3503,7 @@
             "npm:@types/react@^19.1.0",
             "npm:@vitejs/plugin-react@^4.4.0",
             "npm:@vitest/coverage-v8@^3.2.0",
-            "npm:fast-check@^3.22.0",
+            "npm:fast-check@4",
             "npm:jsdom@29",
             "npm:react-dom@^19.1.0",
             "npm:react-router@^7.5.0",
