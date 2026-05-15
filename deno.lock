@@ -39,7 +39,7 @@
     "npm:react-router@^7.5.0": "7.15.0_react@19.2.6_react-dom@19.2.6__react@19.2.6",
     "npm:react@^19.1.0": "19.2.6",
     "npm:tailwindcss@^4.1.0": "4.3.0",
-    "npm:typescript@^5.8.0": "5.9.3",
+    "npm:typescript@6": "6.0.3",
     "npm:vite@*": "6.4.2",
     "npm:vite@^6.3.0": "6.4.2",
     "npm:vitest@^3.2.0": "3.2.4_jsdom@29.1.1",
@@ -3168,8 +3168,8 @@
       ],
       "bin": true
     },
-    "typescript@5.9.3": {
-      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+    "typescript@6.0.3": {
+      "integrity": "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==",
       "bin": true
     },
     "uglify-js@3.19.3": {
@@ -3449,7 +3449,7 @@
             "npm:react-router@^7.5.0",
             "npm:react@^19.1.0",
             "npm:tailwindcss@^4.1.0",
-            "npm:typescript@^5.8.0",
+            "npm:typescript@6",
             "npm:vite@^6.3.0",
             "npm:vitest@^3.2.0"
           ]
