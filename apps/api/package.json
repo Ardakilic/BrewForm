@@ -17,7 +17,7 @@
     "nodemailer": "^8.0.6"
   },
   "devDependencies": {
-    "mjml": "^4.15.0",
+    "mjml": "^5.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/qrcode": "^1.5.5",
     "@types/nodemailer": "^8.0.0",
