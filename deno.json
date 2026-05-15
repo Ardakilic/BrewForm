@@ -10,7 +10,7 @@
     "lint": "deno lint apps/ packages/",
     "fmt": "deno fmt",
     "fmt-check": "deno fmt --check",
-    "check": "deno check apps/api/src/main.ts",
+    "check": "deno task --recursive check",
     "test": "deno task --recursive test",
     "test-coverage": "deno test --no-check --allow-all --coverage=coverage/ apps/api/src/ packages/shared/src/",
     "coverage-report": "deno coverage coverage/",
