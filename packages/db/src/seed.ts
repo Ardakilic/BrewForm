@@ -423,6 +423,11 @@ async function seedSetups(
 }
 
 async function main() {
+  const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
+  const adminPassword = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`  Admin: ${adminEmail} / ${adminPassword}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Seeding database...');
 
   const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
@@ -451,8 +456,6 @@ async function main() {
     await seedRecipeTasteNotes(tx, createdVersions);
   });
 
-  const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
-  const adminPassword = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';
   console.log('Seeding complete!');
   console.log(`Admin credentials: ${adminEmail} / ${adminPassword}`);
 }

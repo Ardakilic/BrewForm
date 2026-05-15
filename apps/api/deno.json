@@ -1,4 +1,14 @@
 {
+  "name": "@brewform/api",
+  "exports": {},
+  "tasks": {
+    "dev": "deno run --allow-all --unstable-cron --watch src/main.ts",
+    "build": "deno task email-build",
+    "lint": "deno lint src/",
+    "check": "deno check src/main.ts",
+    "test": "deno test --no-check --allow-all src/",
+    "email-build": "deno run -A scripts/build-email-templates.ts"
+  },
   "deploy": {
     "install": "deno install",
     "build": "deno task db:generate && deno task email-build",

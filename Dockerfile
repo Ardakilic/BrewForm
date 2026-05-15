@@ -12,7 +12,7 @@
 # Used as the base for the dev containers (source is volume-mounted at runtime).
 FROM denoland/deno:debian-2.7.13 AS deps
 WORKDIR /app
-COPY package.json turbo.json .npmrc deno.json deno.lock ./
+COPY deno.json deno.lock ./
 COPY apps/api/package.json apps/api/deno.json ./apps/api/
 COPY apps/web/package.json apps/web/deno.json ./apps/web/
 COPY packages/shared/package.json packages/shared/deno.json ./packages/shared/
@@ -25,10 +25,9 @@ FROM denoland/deno:debian-2.7.13 AS builder
 WORKDIR /app
 COPY --from=deps /root/.cache/deno /root/.cache/deno
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
 RUN cd packages/db && deno run -A npm:drizzle-kit@0.31.10 generate
-RUN deno check --unstable-sloppy-imports apps/api/src/main.ts
+RUN deno check apps/api/src/main.ts
 
 # --- Stage 3: Runtime (API only) ---
 # Minimal production image — runs the Hono API server.
@@ -37,4 +36,4 @@ WORKDIR /app
 COPY --from=builder /root/.cache/deno /root/.cache/deno
 COPY --from=builder /app .
 EXPOSE 8000
-CMD ["deno", "run", "--allow-read", "--allow-write", "--allow-net", "--allow-env", "--allow-sys", "--unstable-sloppy-imports", "--unstable-cron", "apps/api/src/main.ts"]
+CMD ["deno", "run", "--allow-read", "--allow-write", "--allow-net", "--allow-env", "--allow-sys", "--unstable-cron", "apps/api/src/main.ts"]

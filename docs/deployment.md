@@ -129,12 +129,6 @@ so the browser only needs to talk to `http://localhost:5173`.
 "port already allocated" error that would occur if the API container were already running when you
 later run `make dev`.
 
-**Why no Turborepo for `make dev`?**
-Turborepo is an npm-ecosystem tool that requires an npm-compatible package manager binary (npm,
-pnpm, yarn) to resolve workspaces. This project uses native Deno workspaces (`deno.json`) and has
-no Node.js runtime in the Docker image. Running dev servers directly with Deno (`--watch` for the
-API, `deno run -A npm:vite` for the web) is simpler, faster, and has no permission-prompt issues.
-Turborepo is still used for CI tasks (build, lint, test) where it provides caching benefits.
 
 **Preview (`make preview`)**
 Builds the web app and serves the static SPA via Caddy alongside the production-like API:
@@ -163,7 +157,7 @@ The `compose.yml` defines these services:
 
 Triggers on push to `main`:
 
-1. **Quality**: Format check, lint, type check (`deno check --unstable-sloppy-imports`)
+1. **Quality**: Format check, lint, type check
 2. **Test**: PostgreSQL service container, migrations, seed, test suite
 3. **Deploy Backend**: Deploy to Deno Deploy via `deployctl`
 4. **Deploy Frontend**: Build React SPA with `VITE_API_URL`, deploy to GitHub Pages

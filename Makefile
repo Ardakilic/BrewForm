@@ -54,27 +54,27 @@ fmt-check:
 	docker compose run --rm --no-deps app deno fmt --check
 
 check: install
-	docker compose run --rm --no-deps app deno check --unstable-sloppy-imports apps/api/src/main.ts
+	docker compose run --rm --no-deps app deno check apps/api/src/main.ts
 
 # --- Testing ---
 
 check-tests:
-	docker compose run --rm --no-deps app deno check --unstable-sloppy-imports apps/api/src/ packages/shared/src/
+	docker compose run --rm --no-deps app deno check apps/api/src/ packages/shared/src/
 
 test:
-	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/
+	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/
 
 test-coverage:
-	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
+	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
 
 test-api:
-	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/
+	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/
 
 test-shared:
 	docker compose run --rm --no-deps app deno test --allow-env --allow-read --allow-write --allow-net packages/shared/src/
 
 test-specific:
-	docker compose run --rm app deno test --unstable-sloppy-imports --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
+	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
 
 # --- Database ---
 

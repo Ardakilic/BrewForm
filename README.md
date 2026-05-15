@@ -25,7 +25,7 @@ notes.
 | Layer      | Technology                                  |
 | ---------- | ------------------------------------------- |
 | Runtime    | Deno 2.7                                    |
-| Monorepo   | Turborepo (Deno workspaces)                 |
+| Monorepo   | Deno workspaces                             |
 | Backend    | Hono                                        |
 | Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |
 | ORM        | Drizzle ORM (postgres-js driver)            |
@@ -98,12 +98,11 @@ make ci            # Full CI check (fmt-check, lint, check, test-coverage)
 > are started on-demand via `make dev`. This prevents a "port already allocated" error that would
 > occur if the API container were already running when you run `make dev`.
 
-> **Why no Turborepo for `make dev`?**  
-> Turborepo is an npm-ecosystem tool that requires an npm-compatible package manager binary (npm,
-> pnpm, yarn) to resolve workspaces. This project uses native Deno workspaces (`deno.json`) and has
-> no Node.js runtime in the Docker image. Running dev servers directly with Deno (`--watch` for the
-> API, `deno run -A npm:vite` for the web) is simpler, faster, and has no permission-prompt issues.
-> Turborepo is still used for CI tasks (build, lint, test) where it provides caching benefits.
+> **Why `deno task` instead of a task runner?**  
+> Deno's built-in task runner with `--recursive` (run task in all workspace members), `--filter`
+> (target specific members), and `--cwd` (run in a specific directory) covers all orchestration
+> needs. No external task runner required — the `deno.json` `tasks` field is the single source of
+> truth for all build, test, lint, and dev workflows.
 
 ## Database
 
@@ -163,7 +162,6 @@ brewform/
 ├── compose.yml
 ├── Dockerfile
 ├── Makefile
-├── turbo.json
 └── deno.json
 ```
 

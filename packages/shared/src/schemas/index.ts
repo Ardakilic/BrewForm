@@ -3,27 +3,27 @@ export {
   RecipeCreateSchema,
   RecipeFilterSchema,
   RecipeUpdateSchema,
-} from './recipe';
-export { EquipmentCreateSchema, EquipmentUpdateSchema } from './equipment';
+} from './recipe.ts';
+export { EquipmentCreateSchema, EquipmentUpdateSchema } from './equipment.ts';
 export {
   AuthLoginSchema,
   AuthRefreshSchema,
   AuthRegisterSchema,
   PasswordResetConfirmSchema,
   PasswordResetSchema,
-} from './auth';
-export { UserPreferencesSchema, UserProfileUpdateSchema } from './user';
-export { TasteNoteFilterSchema } from './taste';
-export { PaginationSchema, SlugSchema, SortOrderSchema, UuidSchema } from './common';
-export { SetupCreateSchema, SetupUpdateSchema } from './setup';
-export { CommentCreateSchema } from './comment';
-export { BeanCreateSchema, BeanUpdateSchema } from './bean';
-export { VendorCreateSchema, VendorUpdateSchema } from './vendor';
-export { BadgeCreateSchema, BadgeUpdateSchema } from './badge';
+} from './auth.ts';
+export { UserPreferencesSchema, UserProfileUpdateSchema } from './user.ts';
+export { TasteNoteFilterSchema } from './taste.ts';
+export { PaginationSchema, SlugSchema, SortOrderSchema, UuidSchema } from './common.ts';
+export { SetupCreateSchema, SetupUpdateSchema } from './setup.ts';
+export { CommentCreateSchema } from './comment.ts';
+export { BeanCreateSchema, BeanUpdateSchema } from './bean.ts';
+export { VendorCreateSchema, VendorUpdateSchema } from './vendor.ts';
+export { BadgeCreateSchema, BadgeUpdateSchema } from './badge.ts';
 export {
   AdminBanUserSchema,
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
-} from './admin';
-export { PhotoUploadSchema } from './photo';
-export { FollowSchema } from './follow';
+} from './admin.ts';
+export { PhotoUploadSchema } from './photo.ts';
+export { FollowSchema } from './follow.ts';

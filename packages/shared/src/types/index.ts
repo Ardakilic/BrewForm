@@ -1,5 +1,5 @@
-export type { ApiError, ApiResponse, PaginationMeta, PaginationQuery } from './api';
-export type { User, UserPreferences, UserProfile } from './user';
+export type { ApiError, ApiResponse, PaginationMeta, PaginationQuery } from './api.ts';
+export type { User, UserPreferences, UserProfile } from './user.ts';
 export type {
   AdditionalPreparation,
   BrewMethod,
@@ -10,16 +10,23 @@ export type {
   RecipeUpdateInput,
   RecipeVersion,
   Visibility,
-} from './recipe';
-export type { Basket, Equipment, PaperFilter, Portafilter, PuckScreen, Tamper } from './equipment';
-export type { TasteHierarchy, TasteNote } from './taste';
-export type { Bean, Vendor } from './bean';
-export type { Setup } from './setup';
-export type { Comment } from './comment';
-export type { Follow } from './follow';
-export type { Badge, BadgeRule, UserBadge } from './badge';
-export type { Photo } from './photo';
-export type { AuditLog } from './audit';
-export type { PasswordReset } from './password-reset';
-export type { RecipeAdditionalPreparation } from './additional-preparation';
-export type { BrewMethodEquipmentRule } from './brew-method-rule';
+} from './recipe.ts';
+export type {
+  Basket,
+  Equipment,
+  PaperFilter,
+  Portafilter,
+  PuckScreen,
+  Tamper,
+} from './equipment.ts';
+export type { TasteHierarchy, TasteNote } from './taste.ts';
+export type { Bean, Vendor } from './bean.ts';
+export type { Setup } from './setup.ts';
+export type { Comment } from './comment.ts';
+export type { Follow } from './follow.ts';
+export type { Badge, BadgeRule, UserBadge } from './badge.ts';
+export type { Photo } from './photo.ts';
+export type { AuditLog } from './audit.ts';
+export type { PasswordReset } from './password-reset.ts';
+export type { RecipeAdditionalPreparation } from './additional-preparation.ts';
+export type { BrewMethodEquipmentRule } from './brew-method-rule.ts';

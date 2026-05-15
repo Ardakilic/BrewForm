@@ -2,10 +2,9 @@
  * @brewform/shared — Types, Zod schemas, constants, utils, and i18n
  * shared between the API (apps/api) and web frontend (apps/web).
  *
- * ImportPaths use no file extensions (barrel files omit .ts for tsc compatibility).
- * Deno requires --unstable-sloppy-imports to resolve these bare specifiers.
+ * All relative imports use explicit .ts extensions.
  */
-export * from './types/index';
-export * from './schemas/index';
-export * from './constants/index';
-export * from './utils/index';
+export * from './types/index.ts';
+export * from './schemas/index.ts';
+export * from './constants/index.ts';
+export * from './utils/index.ts';
