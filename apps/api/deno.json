@@ -11,7 +11,7 @@
   },
   "deploy": {
     "install": "deno install",
-    "build": "deno task db:generate && deno task email-build",
+    "build": "deno task --cwd ../../packages/db generate && deno task email-build",
     "runtime": {
       "mode": "dynamic",
       "entrypoint": "src/main.ts"
