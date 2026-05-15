@@ -4,7 +4,7 @@
   "scripts": {},
   "dependencies": {
     "drizzle-orm": "^0.45.0",
-    "zod": "^3.24.0",
+    "zod": "^4.0.0",
     "hono": "^4.7.0",
     "@hono/zod-validator": "^0.8.0",
     "@hono/standard-validator": "^0.2.0",
