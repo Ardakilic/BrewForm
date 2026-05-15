@@ -11,7 +11,7 @@
     "push": "deno run -A npm:drizzle-kit@0.31.10 push",
     "studio": "deno run -A npm:drizzle-kit@0.31.10 studio --host=0.0.0.0 --port=5555",
     "lint": "deno lint src/",
-    "check": "deno check src/index.ts",
+    "check": "deno check src/index.ts src/schema.ts",
     "test": "deno test --allow-all src/"
   }
 }
