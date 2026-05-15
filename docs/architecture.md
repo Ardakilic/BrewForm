@@ -10,7 +10,7 @@ _why_ and the _flow_:
 
 ## Monorepo Structure
 
-BrewForm uses a Turborepo monorepo with native Deno workspaces (`deno.json`). Four packages:
+BrewForm uses a Deno workspaces monorepo (`deno.json`). Four packages:
 
 | Package           | Purpose                                       | Runtime                |
 | ----------------- | --------------------------------------------- | ---------------------- |
@@ -36,8 +36,7 @@ The frontend **never** imports from `@brewform/db`. All type sharing happens thr
 - `@brewform/shared` — types, schemas, constants, utils, i18n
 - `@brewform/db` — Drizzle client, schema, migrations
 
-Both are configured as Deno workspace members in the root `deno.json` (`workspace.members`) and
-also listed in `package.json` workspaces for npm-ecosystem tooling (Turborepo, Drizzle Kit).
+Both are configured as Deno workspace members in the root `deno.json` (`workspace.members`).
 
 ## Backend Module Pattern
 
@@ -239,5 +238,5 @@ Commands:
 - `make test-shared` — shared package tests only
 - `make test-specific filter=path/to/test.ts` — single test file
 
-Tests run with `--no-check` (type checking done separately via `make check`) and
-`--unstable-sloppy-imports` (for barrel file paths without `.ts` extensions).
+Tests run with `--no-check` (type checking done separately via `make check`).
+All barrel file imports use explicit `.ts` extensions.

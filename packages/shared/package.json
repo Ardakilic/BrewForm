@@ -12,10 +12,5 @@
     "zod": "^3.24.0",
     "date-fns": "^4.1.0"
   },
-  "scripts": {
-    "build": "echo 'Shared package uses TypeScript source directly'",
-    "lint": "deno lint src/",
-    "check": "deno check src/index.ts",
-    "test": "deno test src/"
-  }
+  "scripts": {}
 }

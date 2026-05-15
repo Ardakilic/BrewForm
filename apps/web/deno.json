@@ -1,4 +1,14 @@
 {
+  "name": "@brewform/web",
+  "exports": {},
+  "tasks": {
+    "dev": "deno run -A npm:vite --host 0.0.0.0 --port 5173",
+    "build": "deno run -A npm:vite build",
+    "preview": "deno run -A npm:vite preview",
+    "lint": "deno lint src/",
+    "test": "deno run -A npm:vitest run",
+    "test:watch": "deno run -A npm:vitest"
+  },
   "deploy": {
     "install": "deno install",
     "build": "deno task build",

@@ -12,16 +12,16 @@ export {
   formatTemperature,
   formatVolume,
   formatWeight,
-} from './conversion';
+} from './conversion.ts';
 
 /** Coffee brewing metrics: brew ratio, extraction yield, flow rate. */
-export { computeBrewRatio, computeExtractionYield, computeFlowRate } from './metrics';
+export { computeBrewRatio, computeExtractionYield, computeFlowRate } from './metrics.ts';
 /** Recipe validation: hard (blocks save) and soft (warnings only) checks. */
 export {
   validateBrewMethodCompatibility,
   validateGrindDateNotBeforeRoastDate,
   validateSoftWarnings,
-} from './validation';
-export { formatDate, isDateBefore } from './date';
-export { ensureUniqueSlug, generateSlug } from './slug';
-export { escapeHtml, escapeHtmlAttr } from './html';
+} from './validation.ts';
+export { formatDate, isDateBefore } from './date.ts';
+export { ensureUniqueSlug, generateSlug } from './slug.ts';
+export { escapeHtml, escapeHtmlAttr } from './html.ts';

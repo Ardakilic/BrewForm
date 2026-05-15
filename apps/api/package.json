@@ -1,17 +1,10 @@
 {
   "name": "@brewform/api",
   "type": "module",
-  "scripts": {
-    "dev": "deno run --allow-all --watch src/main.ts",
-    "build": "echo 'API build handled by Docker'",
-    "email-build": "deno run -A scripts/build-email-templates.ts",
-    "lint": "deno lint src/",
-    "check": "deno check src/main.ts",
-    "test": "deno test src/"
-  },
+  "scripts": {},
   "dependencies": {
-    "@brewform/shared": "workspace:*",
-    "@brewform/db": "workspace:*",
+    "drizzle-orm": "^0.45.0",
+    "zod": "^3.24.0",
     "hono": "^4.7.0",
     "@hono/zod-validator": "^0.8.0",
     "@hono/standard-validator": "^0.2.0",
@@ -26,6 +19,9 @@
   "devDependencies": {
     "mjml": "^4.15.0",
     "@types/bcryptjs": "^2.4.6",
-    "@types/qrcode": "^1.5.5"
+    "@types/qrcode": "^1.5.5",
+    "@types/nodemailer": "^8.0.0",
+    "@std/testing": "jsr:@std/testing@^1.0.18",
+    "@std/expect": "jsr:@std/expect@^1.0.19"
   }
 }

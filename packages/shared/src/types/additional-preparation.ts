@@ -1,4 +1,4 @@
-import type { AdditionalPreparationCategory } from './recipe';
+import type { AdditionalPreparationCategory } from './recipe.ts';
 
 export interface RecipeAdditionalPreparation {
   id: string;

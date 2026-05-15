@@ -13,24 +13,20 @@ For the _what_ (file layout, schema, middleware order), see `architecture.md` an
 ## ADR-001 — Deno + Deno workspaces (instead of Node + pnpm)
 
 **Decision.** Run on the Deno runtime, manage the monorepo with native Deno workspaces
-(`deno.json` `workspace.members`), and keep a `package.json` only for npm-ecosystem tooling
-(Turborepo, Drizzle Kit, type declarations).
+(`deno.json` `workspace.members`), and keep a `package.json` only for npm dependency declarations
+(Drizzle Kit, type declarations, test runners).
 
 **Why.** Deno gives us first-class TypeScript without a build step, fetch/Web-Standards APIs,
 built-in test runner / linter / formatter, and Deno Deploy as a free hosting target. Native Deno
 workspaces let us share packages (`@brewform/shared`, `@brewform/db`) without a Node.js runtime or
-a separate package manager binary. The `package.json` is kept for Turborepo (CI task caching) and
-Drizzle Kit, both of which are invoked via `deno run -A npm:...` — no `node_modules` binary is
-ever executed directly.
+a separate package manager binary. The `package.json` files serve as dependency manifests that both
+Deno's npm compatibility layer and Renovate understand. Task orchestration uses `deno task` with
+`--recursive`, `--filter`, and `--cwd` flags — no external task runner needed.
 
-**Trade-off.** Two ecosystems must coexist: we use `deno install` for deps and `deno run` for
-execution, with `--unstable-sloppy-imports` to bridge the import-style gap. The Dockerfile uses only
-Deno; the seed script is TypeScript and runs via `deno run --allow-all`.
-
-**Dev servers bypass Turborepo.** Turborepo requires an npm-compatible package manager binary
-(npm/pnpm/yarn) to resolve workspaces. Since the Docker image has no such binary, dev servers
-(`make dev`) run directly via Deno: `deno run --watch` for the API and `deno run -A npm:vite` for
-the web. Turborepo is only used for CI tasks (build, lint, test) where its caching is valuable.
+**Trade-off.** A single toolchain simplifies the monorepo. `deno task` handles all build, test,
+lint, and dev workflows. All relative imports use explicit `.ts` extensions — no
+`--unstable-sloppy-imports` flag needed. The Dockerfile uses only Deno; the seed script is
+TypeScript and runs via `deno run --allow-all`.
 
 **Excluded.** Import maps in `deno.json`. All imports use explicit npm/JSR specifiers — see
 `deno.json`.

@@ -11,18 +11,15 @@
       "default": "./src/schema.ts"
     }
   },
+  "scripts": {},
   "dependencies": {
-    "@brewform/shared": "workspace:*",
     "drizzle-orm": "^0.45.0",
-    "postgres": "^3.4.5"
+    "postgres": "^3.4.5",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.0"
-  },
-  "scripts": {
-    "build": "echo 'DB package uses Drizzle ORM'",
-    "lint": "deno lint src/",
-    "check": "deno check src/index.ts",
-    "test": "deno test src/"
+    "drizzle-kit": "^0.31.0",
+    "@std/testing": "jsr:@std/testing@^1.0.18",
+    "@std/expect": "jsr:@std/expect@^1.0.19"
   }
 }

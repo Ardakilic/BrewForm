@@ -3,6 +3,25 @@
   "workspace": {
     "members": ["apps/*", "packages/*"]
   },
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "dev": "deno task --recursive dev",
+    "build": "deno task --recursive build",
+    "lint": "deno lint apps/ packages/",
+    "fmt": "deno fmt",
+    "fmt-check": "deno fmt --check",
+    "check": "deno task --cwd apps/api check && deno task --cwd packages/db check && deno task --cwd packages/shared check",
+    "test": "deno task --recursive test",
+    "test-coverage": "deno test --no-check --allow-all --coverage=coverage/ apps/api/src/ packages/shared/src/",
+    "coverage-report": "deno coverage coverage/",
+    "db:generate": "deno task --cwd packages/db generate",
+    "db:migrate": "deno task --cwd packages/db migrate",
+    "db:push": "deno task --cwd packages/db push",
+    "db:studio": "deno task --cwd packages/db studio --host=0.0.0.0 --port=5555",
+    "db:seed": "deno run --allow-all packages/db/src/seed.ts",
+    "email-build": "deno task --cwd apps/api email-build",
+    "ci": "deno task fmt-check && deno task lint && deno task check && deno task test-coverage"
+  },
   "compilerOptions": {
     "strict": true,
     "lib": ["dom", "dom.iterable", "esnext", "deno.ns", "deno.unstable"],

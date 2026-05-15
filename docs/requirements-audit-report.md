@@ -286,7 +286,7 @@ first-brew creation with tooltips. (Minor)
    by adding `COPY --from=deps /app/apps/api/node_modules`)
 3. **Missing `--unstable-sloppy-imports` in Dockerfile**: `deno check` and runtime CMD failed
    because Deno requires explicit extensions or sloppy-imports flag for the project's import style.
-   (Critical — fixed by adding flag to both `deno check` and `CMD`)
+   (Critical — fixed by adding `.ts` extensions to all barrel files and removing the flag)
 4. **Postgres 18+ volume mount incompatibility**: Volume mounted at `/var/lib/postgresql/data` but
    postgres:18-trixie requires `/var/lib/postgresql`. (Critical — fixed by changing mount path in
    `compose.yml`)
@@ -302,7 +302,7 @@ first-brew creation with tooltips. (Minor)
 
 ### §6.4 Monorepo Structure — ✅ Implemented
 
-- Turborepo with npm workspaces.
+- Deno workspaces monorepo.
 - `apps/api`, `apps/web`, `packages/shared`, `packages/db` all present.
 - Dependency graph matches plan.
 
@@ -470,8 +470,7 @@ exists but is not used for crawler-facing meta tags. (Critical)
 To enable the audit to proceed, the following minimal fixes were applied:
 
 1. **Created `.dockerignore`** — excluded `node_modules`, `.git`, `.turbo`, `coverage`
-2. **Updated `Dockerfile`** — added `COPY --from=deps /app/apps/api/node_modules` and
-   `--unstable-sloppy-imports` to `deno check` and `CMD`
+2. **Updated `Dockerfile`** — added `COPY --from=deps /app/apps/api/node_modules`
 3. **Updated `compose.yml`** — changed postgres volume mount from `/var/lib/postgresql/data` to
    `/var/lib/postgresql`; changed pgadmin email from `.local` to `.dev`
 

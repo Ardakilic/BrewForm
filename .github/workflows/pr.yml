@@ -27,7 +27,7 @@ jobs:
         run: deno lint apps/ packages/
 
       - name: Type check
-        run: deno check --unstable-sloppy-imports apps/api/src/main.ts
+        run: deno task check
 
   test-unit:
     runs-on: ubuntu-latest
@@ -53,7 +53,4 @@ jobs:
         run: deno install
 
       - name: Run shared package tests
-        run: |
-          deno test --unstable-sloppy-imports --no-check \
-            --allow-env --allow-read --allow-write --allow-net --allow-sys \
-            packages/shared/src/
+        run: deno task --cwd packages/shared test
