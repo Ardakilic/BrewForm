@@ -12,13 +12,13 @@
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
     "date-fns": "^4.1.0",
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.0",
     "qrcode": "^1.5.4",
     "nodemailer": "^8.0.6"
   },
   "devDependencies": {
     "mjml": "^4.15.0",
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "^3.0.0",
     "@types/qrcode": "^1.5.5",
     "@types/nodemailer": "^8.0.0",
     "@std/testing": "jsr:@std/testing@^1.0.18",

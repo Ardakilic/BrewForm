@@ -12,14 +12,14 @@
     "npm:@testing-library/jest-dom@^6.6.3": "6.9.1",
     "npm:@testing-library/react@^16.3.0": "16.3.2_@testing-library+dom@10.4.1_@types+react@19.2.14_@types+react-dom@19.2.3__@types+react@19.2.14_react@19.2.6_react-dom@19.2.6__react@19.2.6",
     "npm:@testing-library/user-event@^14.6.1": "14.6.1_@testing-library+dom@10.4.1",
-    "npm:@types/bcryptjs@^2.4.6": "2.4.6",
+    "npm:@types/bcryptjs@3": "3.0.0",
     "npm:@types/nodemailer@8": "8.0.0",
     "npm:@types/qrcode@^1.5.5": "1.5.6",
     "npm:@types/react-dom@^19.1.0": "19.2.3_@types+react@19.2.14",
     "npm:@types/react@^19.1.0": "19.2.14",
     "npm:@vitejs/plugin-react@^4.4.0": "4.7.0_vite@6.4.2",
     "npm:@vitest/coverage-v8@^3.2.0": "3.2.4_vitest@3.2.4__jsdom@29.1.1_jsdom@29.1.1",
-    "npm:bcryptjs@^2.4.3": "2.4.3",
+    "npm:bcryptjs@3": "3.0.3",
     "npm:date-fns@^4.1.0": "4.1.0",
     "npm:drizzle-kit@0.31": "0.31.10",
     "npm:drizzle-kit@0.31.10": "0.31.10",
@@ -1185,8 +1185,12 @@
         "@babel/types"
       ]
     },
-    "@types/bcryptjs@2.4.6": {
-      "integrity": "sha512-9xlo6R2qDs5uixm0bcIqCeMCE6HiQsIyel9KQySStiyqNl2tnj2mP3DX1Nf56MD6KMenNNlBBsy3LJ7gUEQPXQ=="
+    "@types/bcryptjs@3.0.0": {
+      "integrity": "sha512-WRZOuCuaz8UcZZE4R5HXTco2goQSI2XxjGY3hbM/xDvwmqFWd4ivooImsMx65OKM6CtNKbnZ5YL+YwAwK7c1dg==",
+      "dependencies": [
+        "bcryptjs"
+      ],
+      "deprecated": true
     },
     "@types/chai@5.2.3": {
       "integrity": "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==",
@@ -1384,8 +1388,9 @@
       "integrity": "sha512-Asa2krT+XTPZINCS+2QcyS8WTkObE77RwkydwF7h6DmnKqbvlalz93m/dnphUyCa6SWSP51VgtEUf2FN+gelFQ==",
       "bin": true
     },
-    "bcryptjs@2.4.3": {
-      "integrity": "sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ=="
+    "bcryptjs@3.0.3": {
+      "integrity": "sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==",
+      "bin": true
     },
     "bidi-js@1.0.3": {
       "integrity": "sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==",
@@ -3414,10 +3419,10 @@
             "npm:@hono/zod-validator@0.8",
             "npm:@jsr/std__expect@^1.0.19",
             "npm:@jsr/std__testing@^1.0.18",
-            "npm:@types/bcryptjs@^2.4.6",
+            "npm:@types/bcryptjs@3",
             "npm:@types/nodemailer@8",
             "npm:@types/qrcode@^1.5.5",
-            "npm:bcryptjs@^2.4.3",
+            "npm:bcryptjs@3",
             "npm:date-fns@^4.1.0",
             "npm:drizzle-orm@0.45",
             "npm:hono-openapi@1",
@@ -3460,7 +3465,7 @@
           "dependencies": [
             "npm:@jsr/std__expect@^1.0.19",
             "npm:@jsr/std__testing@^1.0.18",
-            "npm:bcryptjs@^2.4.3",
+            "npm:bcryptjs@3",
             "npm:drizzle-kit@0.31",
             "npm:drizzle-orm@0.45",
             "npm:postgres@^3.4.5"
