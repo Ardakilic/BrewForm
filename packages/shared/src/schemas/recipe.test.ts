@@ -647,12 +647,6 @@ describe('Preservation property tests', () => {
         fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
           !isNaN(d.getTime())
         ),
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
         (dateA, dateB, dateC) => {
           const sorted = [dateA, dateB, dateC].sort((a, b) => a.getTime() - b.getTime());
           const roastDate = sorted[0].toISOString().slice(0, 10);
