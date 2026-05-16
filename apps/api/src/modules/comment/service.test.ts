@@ -222,7 +222,7 @@ describe('Comment Service — Property 1: createComment authorization matrix', (
               );
               expect(result).toBeDefined();
               expect(createCallCount).toBe(1);
-              expect(createCallArgs?.parentCommentId).toBeNull();
+              expect(createCallArgs!.parentCommentId).toBeNull();
             } else if (isAdmin || isRecipeOwner) {
               // Reply with permission: succeeds
               const result = await createComment(
@@ -485,7 +485,7 @@ describe('Comment Service — Property 3: mention prefix transformation', () => 
 
             // Assert: content passed to model.create is "@username content"
             expect(capturedCreateData).not.toBeNull();
-            expect((capturedCreateData as { content: string }).content).toBe(
+            expect((capturedCreateData! as { content: string }).content).toBe(
               `@${username} ${content}`,
             );
           },

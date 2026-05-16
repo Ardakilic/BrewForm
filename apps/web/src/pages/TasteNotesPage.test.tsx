@@ -9,7 +9,7 @@ vi.mock('react-router', () => ({
   ) => <a href={to} {...props}>{children}</a>,
 }));
 
-vi.mock('@base-ui-components/react/popover', () => {
+vi.mock('@base-ui/react/popover', () => {
   const PopoverRoot = ({ children }: { children: React.ReactNode }) => {
     const [open, setOpen] = React.useState(false);
     return (

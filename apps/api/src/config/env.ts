@@ -34,12 +34,12 @@ const envSchema = z.object({
 
   // Storage
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
-  S3_ENDPOINT: z.string().url().optional(),
+  S3_ENDPOINT: z.url().optional(),
   S3_REGION: z.string().default('auto'),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
-  S3_PUBLIC_URL: z.string().url().optional(),
+  S3_PUBLIC_URL: z.url().optional(),
 
   // Retained for local driver
   UPLOAD_DIR: z.string().default('./uploads'),
@@ -47,7 +47,7 @@ const envSchema = z.object({
   UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
 
   APP_URL: z.string().default('http://localhost:8000'),
-  PUBLIC_APP_URL: z.string().url().optional(),
+  PUBLIC_APP_URL: z.url().optional(),
 
   ADMIN_EMAIL: z.string().default('admin@brewform.local'),
   ADMIN_USERNAME: z.string().default('admin'),

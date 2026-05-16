@@ -1,8 +1,7 @@
 import { db } from '@brewform/db';
 import { userPreferences, users } from '@brewform/db/schema';
 import { count, eq } from 'drizzle-orm';
-import * as bcrypt from 'bcryptjs';
-const { hashSync } = bcrypt;
+import { hashSync } from 'bcryptjs';
 
 async function main() {
   console.log('BrewForm Admin Setup');

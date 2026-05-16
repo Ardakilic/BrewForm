@@ -417,8 +417,12 @@ describe('Bug Condition exploration', () => {
     fc.assert(
       fc.property(
         // Generate two distinct dates and ensure packageOpenDate < roastDate
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }),
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }),
+        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
+        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
         (dateA, dateB) => {
           // Assign so that roastDate > packageOpenDate
           const roastDate = dateA > dateB ? dateA : dateB;
@@ -469,8 +473,12 @@ describe('Bug Condition exploration', () => {
     fc.assert(
       fc.property(
         // Generate two distinct dates and ensure grindDate < packageOpenDate
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }),
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }),
+        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
+        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
         (dateA, dateB) => {
           // Assign so that packageOpenDate > grindDate
           const packageOpenDate = dateA > dateB ? dateA : dateB;
@@ -630,10 +638,15 @@ describe('Preservation property tests', () => {
   it('PBT Property 3: for all valid date triples (roastDate <= packageOpenDate <= grindDate), safeParse returns success: true', () => {
     fc.assert(
       fc.property(
-        // Generate three dates and sort them to get a valid ordering
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
         (dateA, dateB, dateC) => {
           const sorted = [dateA, dateB, dateC].sort((a, b) => a.getTime() - b.getTime());
           const roastDate = sorted[0].toISOString().slice(0, 10);
@@ -722,8 +735,12 @@ describe('Preservation property tests', () => {
   it('PBT Property 5: for all grindDate < roastDate pairs, safeParse returns success: false (existing rule preserved)', () => {
     fc.assert(
       fc.property(
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }),
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }),
+        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
+        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
+          !isNaN(d.getTime())
+        ),
         (dateA, dateB) => {
           // Assign so that roastDate > grindDate
           const roastDate = dateA > dateB ? dateA : dateB;
@@ -1029,7 +1046,7 @@ describe('Property 9: Pre-infusion time validation', () => {
  * Validates: Requirements 13.2, 13.3
  */
 describe('Property 10: Intensity range validation', () => {
-  const TEST_UUID = '00000000-0000-0000-0000-000000000001';
+  const TEST_UUID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
   const baseRecipe = {
     title: 'Test Recipe',

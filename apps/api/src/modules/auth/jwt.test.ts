@@ -15,7 +15,7 @@ describe('JWT Module', () => {
       const token = await signAccessToken(payload);
       const decoded = await verifyJwt(token);
       expect(decoded.sub).toBe('user-123');
-      expect(decoded.email).toBe('test@test.com');
+      expect((decoded as { email?: string }).email).toBe('test@test.com');
       expect(decoded.type).toBe('access');
     });
 
@@ -23,7 +23,7 @@ describe('JWT Module', () => {
       const payload = { id: 'admin-1', email: 'admin@test.com', username: 'admin', isAdmin: true };
       const token = await signAccessToken(payload);
       const decoded = await verifyJwt(token);
-      expect(decoded.isAdmin).toBe(true);
+      expect((decoded as { isAdmin?: boolean }).isAdmin).toBe(true);
     });
   });
 

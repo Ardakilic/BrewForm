@@ -57,12 +57,12 @@ export const template = `<!doctype html>
     
     
   </head>
-  <body style="word-spacing:normal;background-color:#F5F0EB;">
-    
-    
-      <div
-         aria-roledescription="email" style="background-color:#F5F0EB;" role="article" lang="und" dir="auto"
-      >
+  
+      <body  style="word-spacing:normal;background-color:#F5F0EB;">
+        
+        <div
+           aria-roledescription="email" role="article" lang="und" dir="auto" style="word-spacing:normal;background-color:#F5F0EB;"
+        >
         
       
       <!--[if mso | IE]><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
@@ -181,7 +181,7 @@ export const template = `<!doctype html>
     
     
       </div>
+      </body>
     
-  </body>
 </html>
   `;
