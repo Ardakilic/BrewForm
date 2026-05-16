@@ -334,6 +334,7 @@
   "auth.register.logIn": "Giriş yap",
   "auth.register.displayName": "Görünen Ad",
   "auth.register.passwordsMismatch": "Şifreler eşleşmiyor",
+  "auth.register.registrationClosed": "Yeni hesap kaydı şu anda devre dışı.",
   "auth.forgotPassword.title": "Şifremi Unuttum",
   "auth.forgotPassword.desc": "E-postanızı girin, size sıfırlama bağlantısı gönderelim.",
   "auth.forgotPassword.sending": "Gönderiliyor...",

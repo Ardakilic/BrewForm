@@ -1,0 +1,29 @@
+{
+  "spec": "add-enableregistration-environment-variable",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Version: Dedicated GET /api/v1/auth/registration-status endpoint (public, no auth). Navbar conditionally hides/shows register link based ...",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "Backend tests: env.test.ts — test ENABLE_REGISTRATION defaults to true, accepts false, rejects invalid values. auth/index.test.ts (new) — test POST /register returns 403 REGISTRATION_DISABLED when flag is false; test GET /registration-status returns {enabled: true/false}. auth/service.test.ts — test register() throws REGISTRATION_DISABLED when config says false. Frontend tests: RegisterPage — test disabled state shows closed message with login link; test enabled state shows form. Navbar — test register link hidden when registration disabled; shown when enabled. API client — test registration-status endpoint call. Documentation: .env.example updated with ENABLE_REGISTRATION, docs/auth.md updated with new config option.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "done"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-16T21:59:03.387Z"
+}

@@ -2,6 +2,7 @@ import * as jwt from './jwt.ts';
 import * as model from './model.ts';
 import { sendPasswordResetEmail, sendWelcomeEmail } from './email.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import { config } from '../../config/env.ts';
 
 const logger = createLogger('auth-service');
 
@@ -34,6 +35,10 @@ export async function register(data: {
   password: string;
   displayName?: string;
 }) {
+  if (!config.ENABLE_REGISTRATION) {
+    throw new Error('REGISTRATION_DISABLED');
+  }
+
   const existingEmail = await model.findUserByEmail(data.email);
   if (existingEmail) {
     throw new Error('EMAIL_ALREADY_EXISTS');

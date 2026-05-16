@@ -32,6 +32,55 @@ POST /api/v1/auth/register
 On success, returns `201 Created` with the user object and both tokens. A welcome email is sent
 asynchronously. Passwords are hashed with bcryptjs (10 rounds).
 
+### Registration Disabled
+
+When the `ENABLE_REGISTRATION` environment variable is set to `false`, the register endpoint returns
+a `403 Forbidden` response:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "REGISTRATION_DISABLED",
+    "message": "New account registration is currently disabled",
+    "requestId": "req_abc123"
+  }
+}
+```
+
+A structured warning log is also emitted (with IP from `x-forwarded-for` or `x-real-ip` when
+available) for observability.
+
+## Registration Status
+
+```
+GET /api/v1/auth/registration-status
+```
+
+Public endpoint — no authentication required. Returns whether the server currently accepts new
+account registrations:
+
+```json
+{
+  "success": true,
+  "data": {
+    "enabled": true
+  }
+}
+```
+
+The frontend uses this endpoint to conditionally render the registration UI:
+
+| Status   | RegisterPage                                                                      | Navbar                     |
+| -------- | --------------------------------------------------------------------------------- | -------------------------- |
+| Enabled  | Shows the registration form                                                       | Shows "Sign Up" link       |
+| Disabled | Shows a friendly closed message with a link to the login page                     | Hides "Sign Up" link       |
+| Loading  | Shows a centered "Loading..." indicator                                           | Assumes enabled (shows form & link until status resolves) |
+| Error    | Falls back to enabled (API unreachable — shows the registration form)             | Falls back to enabled      |
+
+The Navbar fetches registration status only for unauthenticated users; authenticated users always
+see the full navigation regardless of the flag.
+
 ## Login
 
 ```
@@ -117,5 +166,6 @@ JWT behaviour is configured via environment variables:
 | `JWT_SECRET`         | —       | **Required.** Cryptographically random, at least 16 characters |
 | `JWT_ACCESS_EXPIRY`  | `15m`   | Access token validity period                                   |
 | `JWT_REFRESH_EXPIRY` | `7d`    | Refresh token validity period                                  |
+| `ENABLE_REGISTRATION` | `true`  | When `false`, `POST /auth/register` returns `403 REGISTRATION_DISABLED`, `GET /auth/registration-status` returns `{ enabled: false }`, the RegisterPage shows a closed message with login link, and the Navbar hides the "Sign Up" link. Existing users can still log in, refresh tokens, and reset passwords — only new account creation is blocked. |
 
 Expiry values use human-readable strings parsed by `parseExpiry()` (`15m`, `1h`, `7d`, etc.).

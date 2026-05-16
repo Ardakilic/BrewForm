@@ -4,6 +4,7 @@ import { Select } from '@base-ui/react/select';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from '../../contexts/I18nContext';
+import { authApi } from '../../api/index';
 
 const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -172,6 +173,14 @@ export function Navbar() {
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+
+  useEffect(() => {
+    if (user) return;
+    authApi.registrationStatus()
+      .then(({ enabled }) => setRegistrationEnabled(enabled))
+      .catch(() => setRegistrationEnabled(true));
+  }, [user]);
 
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -283,12 +292,14 @@ export function Navbar() {
                 >
                   {t('nav.login')}
                 </Link>
-                <Link
-                  to='/register'
-                  className='btn-primary text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-                >
-                  {t('nav.register')}
-                </Link>
+                {registrationEnabled && (
+                  <Link
+                    to='/register'
+                    className='btn-primary text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
+                  >
+                    {t('nav.register')}
+                  </Link>
+                )}
               </>
             )}
         </nav>
@@ -456,13 +467,15 @@ export function Navbar() {
                     >
                       {t('nav.login')}
                     </Link>
-                    <Link
-                      to='/register'
-                      onClick={() => setIsMenuOpen(false)}
-                      className='btn-primary text-sm text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
-                    >
-                      {t('nav.register')}
-                    </Link>
+                    {registrationEnabled && (
+                      <Link
+                        to='/register'
+                        onClick={() => setIsMenuOpen(false)}
+                        className='btn-primary text-sm text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--accent-primary)]'
+                      >
+                        {t('nav.register')}
+                      </Link>
+                    )}
                   </div>
                 )}
             </div>

@@ -31,6 +31,7 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().default('noreply@brewform.local'),
 
   OPENAPI_ENABLED: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  ENABLE_REGISTRATION: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
 
   // Storage
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
@@ -83,4 +84,9 @@ function loadEnv(): Env {
   return result.data;
 }
 
-export const config = loadEnv();
+export let config: Env = loadEnv();
+
+/** Re-parse env vars and update the singleton — used in tests to toggle config between cases. */
+export function reloadConfig(): void {
+  config = loadEnv();
+}

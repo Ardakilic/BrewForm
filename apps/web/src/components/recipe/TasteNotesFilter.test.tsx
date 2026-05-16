@@ -255,7 +255,7 @@ describe('TasteNotesFilter — styling consistency', () => {
       />,
     );
 
-    const trigger = screen.getByRole('button');
+    const trigger = screen.getByRole('combobox');
     await user.click(trigger);
 
     // The popup is the ancestor of the listbox that has the max-h and overflow classes

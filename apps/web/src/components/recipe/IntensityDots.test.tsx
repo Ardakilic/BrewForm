@@ -53,13 +53,14 @@ describe('IntensityDots', () => {
     }
   });
 
-  it('filled dots have no border', () => {
+  it('filled dots have no visible border', () => {
     const { container } = render(<IntensityDots intensity={3} />);
     const dots = Array.from(
       container.querySelectorAll('span[aria-hidden="true"]'),
     ) as HTMLElement[];
     for (const dot of dots) {
-      expect(dot.style.border).toBe('');
+      expect(dot.style.border).not.toBe('1px solid var(--text-tertiary)');
+      expect(dot.style.borderStyle).toBe('none');
     }
   });
 

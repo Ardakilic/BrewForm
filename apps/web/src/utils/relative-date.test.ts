@@ -139,7 +139,8 @@ describe('grindDateLabel', () => {
  * positive integer.
  */
 describe('Property 3: Relative date calculation (PBT)', () => {
-  const dateArb = fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') });
+  const dateArb = fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+    .filter((d) => !isNaN(d.getTime()));
 
   /**
    * Helper: strip time component to midnight UTC so two dates on the same

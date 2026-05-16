@@ -1,7 +1,8 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/I18nContext';
+import { authApi } from '../../api/index';
 
 export function RegisterPage() {
   const { register } = useAuth();
@@ -14,6 +15,23 @@ export function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const { enabled } = await authApi.registrationStatus();
+        setRegistrationEnabled(enabled);
+      } catch {
+        setRegistrationEnabled(true);
+      } finally {
+        setStatusLoading(false);
+      }
+    }
+    checkStatus();
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,6 +52,38 @@ export function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (statusLoading) {
+    return (
+      <div className='mx-auto max-w-md px-6 py-12 text-center'>
+        <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!registrationEnabled) {
+    return (
+      <div className='mx-auto max-w-md px-6 py-12'>
+        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+          {t('auth.register.title')}
+        </h1>
+        <div
+          className='mt-6 rounded p-6'
+          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }}
+        >
+          <p className='text-base' style={{ color: 'var(--text-primary)' }}>
+            {t('auth.register.registrationClosed')}
+          </p>
+          <p className='mt-3 text-sm' style={{ color: 'var(--text-secondary)' }}>
+            {t('auth.register.hasAccount')}{' '}
+            <Link to='/login' style={{ color: 'var(--accent-primary)' }}>
+              {t('auth.register.logIn')}
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -80,7 +80,7 @@ describe('Footer — Language Switcher', () => {
 
     await userEvent.click(trigger);
 
-    const options = screen.getAllByRole('option');
+    const options = await screen.findAllByRole('option');
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent('🇬🇧 English');
     expect(options[1]).toHaveTextContent('🇹🇷 Türkçe');
