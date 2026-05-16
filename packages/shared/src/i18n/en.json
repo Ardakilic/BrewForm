@@ -334,6 +334,7 @@
   "auth.register.logIn": "Log in",
   "auth.register.displayName": "Display Name",
   "auth.register.passwordsMismatch": "Passwords do not match",
+  "auth.register.registrationClosed": "New account registration is currently disabled.",
   "auth.forgotPassword.title": "Forgot Password",
   "auth.forgotPassword.desc": "Enter your email and we'll send you a reset link.",
   "auth.forgotPassword.sending": "Sending...",

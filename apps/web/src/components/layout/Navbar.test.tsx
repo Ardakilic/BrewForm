@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Navbar } from './Navbar';
 
@@ -58,9 +58,31 @@ vi.mock('../../contexts/ThemeContext', () => ({
   useTheme: vi.fn(),
 }));
 
+vi.mock('../../api/index', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+    upload: vi.fn(),
+  },
+  ApiError: class extends Error {
+    code = '';
+    status = 500;
+  },
+  clearTokens: vi.fn(),
+  getAccessToken: vi.fn(() => null),
+  setAccessToken: vi.fn(),
+  authApi: {
+    registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
+  },
+}));
+
 import { useTranslation } from '../../contexts/I18nContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { authApi } from '../../api/index';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
@@ -898,6 +920,52 @@ describe('Navbar — active route indicator', () => {
     // Deduplicate by href (desktop + mobile render the same links twice)
     const activeHrefs = new Set(activeLinks.map((el) => el.getAttribute('href')));
     expect(activeHrefs.size).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('Navbar — registration toggle', () => {
+  it('should show register link when registration is enabled', async () => {
+    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: true });
+    render(<Navbar />);
+    await waitFor(() => {
+      expect(screen.getByText('Sign Up')).toBeInTheDocument();
+    });
+  });
+
+  it('should hide register link when registration is disabled', async () => {
+    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: false });
+    render(<Navbar />);
+    await waitFor(() => {
+      expect(screen.queryByText('Sign Up')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should still show login link when registration is disabled', async () => {
+    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: false });
+    render(<Navbar />);
+    await waitFor(() => {
+      expect(screen.getByText('Log In')).toBeInTheDocument();
+    });
+  });
+
+  it('should not fetch registration status for authenticated users', async () => {
+    mockUseAuth.mockReturnValue({
+      ...defaultAuth,
+      user: {
+        id: 'user-1',
+        email: 'alice@example.com',
+        username: 'alice',
+        displayName: 'Alice',
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: true,
+      },
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+    render(<Navbar />);
+    await waitFor(() => {
+      expect(authApi.registrationStatus).not.toHaveBeenCalled();
+    });
   });
 });
 

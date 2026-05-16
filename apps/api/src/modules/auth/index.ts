@@ -10,6 +10,10 @@ import {
 } from '@brewform/shared/schemas';
 import * as authService from './service.ts';
 import { error, success } from '../../utils/response/index.ts';
+import { config } from '../../config/env.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+
+const log = createLogger('auth');
 
 const auth = new Hono();
 
@@ -22,6 +26,7 @@ auth.post(
       'Email and username are checked for uniqueness.',
     responses: {
       201: { description: 'Account created; tokens issued' },
+      403: { description: 'Registration disabled' },
       409: { description: 'Email or username already in use' },
     },
   }),
@@ -37,6 +42,18 @@ auth.post(
       }, 201);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      if (message === 'REGISTRATION_DISABLED') {
+        log.warn(
+          { ip: c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown' },
+          'Registration attempt while disabled',
+        );
+        return error(
+          c,
+          'REGISTRATION_DISABLED',
+          'New account registration is currently disabled',
+          403,
+        );
+      }
       if (message === 'EMAIL_ALREADY_EXISTS') {
         return error(c, 'CONFLICT', 'Email already registered', 409);
       }
@@ -164,6 +181,22 @@ auth.post(
       }
       throw err;
     }
+  },
+);
+
+auth.get(
+  '/registration-status',
+  describeRoute({
+    tags: ['Auth'],
+    summary: 'Check if new user registration is enabled',
+    description: 'Returns whether the server currently accepts new account registrations. ' +
+      'Public endpoint — no authentication required.',
+    responses: {
+      200: { description: 'Registration status returned' },
+    },
+  }),
+  (c) => {
+    return success(c, { enabled: config.ENABLE_REGISTRATION });
   },
 );
 

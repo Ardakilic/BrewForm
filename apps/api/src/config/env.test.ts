@@ -21,6 +21,7 @@ const envSchema = z.object({
   SMTP_SECURE: z.coerce.boolean().default(false),
   EMAIL_FROM: z.string().default('noreply@brewform.local'),
   OPENAPI_ENABLED: z.coerce.boolean().default(true),
+  ENABLE_REGISTRATION: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   UPLOAD_DIR: z.string().default('./uploads'),
   UPLOAD_MAX_SIZE_BYTES: z.coerce.number().default(10 * 1024 * 1024),
   UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
@@ -167,5 +168,51 @@ describe('Environment Config Schema', () => {
         expect(result.data.LOG_LEVEL).toBe(level);
       }
     }
+  });
+});
+
+describe('ENABLE_REGISTRATION', () => {
+  it('should default to true', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ENABLE_REGISTRATION).toBe(true);
+    }
+  });
+
+  it('should accept false', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+      ENABLE_REGISTRATION: 'false',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ENABLE_REGISTRATION).toBe(false);
+    }
+  });
+
+  it('should accept true', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+      ENABLE_REGISTRATION: 'true',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ENABLE_REGISTRATION).toBe(true);
+    }
+  });
+
+  it('should reject invalid values', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+      ENABLE_REGISTRATION: 'maybe',
+    });
+    expect(result.success).toBe(false);
   });
 });

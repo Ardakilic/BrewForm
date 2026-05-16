@@ -13,6 +13,7 @@ export const authApi = {
     api.post<{ message: string }>('/auth/forgot-password', data),
   resetPassword: (data: { token: string; newPassword: string }) =>
     api.post<{ message: string }>('/auth/reset-password', data),
+  registrationStatus: () => api.get<{ enabled: boolean }>('/auth/registration-status'),
 };
 
 export const userApi = {
