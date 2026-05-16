@@ -14,8 +14,7 @@ import {
   vendors,
 } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, gte, isNull, like, or } from 'drizzle-orm';
-import * as bcrypt from 'bcryptjs';
-const { hashSync } = bcrypt;
+import { hashSync } from 'bcryptjs';
 
 export async function listUsers(page: number, perPage: number, query?: string) {
   const where = query

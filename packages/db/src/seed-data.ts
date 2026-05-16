@@ -1,6 +1,4 @@
-import * as bcryptjs from 'bcryptjs';
-
-const hashSync = (bcryptjs as any).hashSync || (bcryptjs as any).default?.hashSync;
+import { hashSync } from 'bcryptjs';
 
 export function hashPassword(password: string): string {
   return hashSync(password, 10);

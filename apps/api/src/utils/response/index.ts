@@ -82,7 +82,7 @@ export function validationError(c: Context, details: Array<{ field: string; mess
 export function zodValidationHook(
   result: {
     success: boolean;
-    error?: { issues: Array<{ path: (string | number)[]; message: string }> };
+    error?: { issues: Array<{ path: (string | number | symbol)[]; message: string }> };
   },
   c: Context,
 ): Response | undefined {

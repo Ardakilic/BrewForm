@@ -9,7 +9,7 @@ import type { AppEnv } from '../../types/hono.ts';
 
 const ReportCreateSchema = z.object({
   entityType: z.enum(['recipe', 'comment', 'user']),
-  entityId: z.string().uuid(),
+  entityId: z.uuid(),
   reason: z.string().min(1).max(2000),
 });
 

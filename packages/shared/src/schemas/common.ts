@@ -7,6 +7,6 @@ export const PaginationSchema = z.object({
 
 export const SortOrderSchema = z.enum(['asc', 'desc']).default('desc');
 
-export const UuidSchema = z.string().uuid();
+export const UuidSchema = z.uuid();
 
 export const SlugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Select } from '@base-ui-components/react/select';
+import { Select } from '@base-ui/react/select';
 
 export interface TasteNoteFlat {
   id: string;

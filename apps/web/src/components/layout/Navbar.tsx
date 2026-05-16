@@ -1,6 +1,6 @@
 import { Link, NavLink } from 'react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Select } from '@base-ui-components/react/select';
+import { Select } from '@base-ui/react/select';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from '../../contexts/I18nContext';

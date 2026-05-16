@@ -12,11 +12,16 @@ export const UserPreferencesSchema = z.object({
     recipeLiked: z.boolean().default(true),
     recipeCommented: z.boolean().default(true),
     followedUserPosted: z.boolean().default(true),
-  }).default({}),
+  }).default({
+    newFollower: true,
+    recipeLiked: true,
+    recipeCommented: true,
+    followedUserPosted: true,
+  }),
 });
 
 export const UserProfileUpdateSchema = z.object({
   displayName: z.string().max(50).optional(),
   bio: z.string().max(500).optional(),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: z.url().optional(),
 });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Popover } from '@base-ui-components/react/popover';
+import { Popover } from '@base-ui/react/popover';
 import { api } from '../api/index';
 import { SEOHead } from '../components/seo/SEOHead';
 import { useTranslation } from '../contexts/I18nContext';

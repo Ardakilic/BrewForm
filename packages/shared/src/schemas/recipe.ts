@@ -50,11 +50,11 @@ export const RecipeCreateObjectSchema = z.object({
   productName: z.string().max(200).optional(),
   coffeeBrand: z.string().max(200).optional(),
   coffeeProcessing: z.string().max(200).optional(),
-  vendorId: z.string().uuid().optional(),
-  roastDate: z.string().date().optional(),
-  packageOpenDate: z.string().date().optional(),
-  grindDate: z.string().date().optional(),
-  brewDate: z.string().date().optional(),
+  vendorId: z.uuid().optional(),
+  roastDate: z.iso.date().optional(),
+  packageOpenDate: z.iso.date().optional(),
+  grindDate: z.iso.date().optional(),
+  brewDate: z.iso.date().optional(),
   brewMethod: BrewMethodEnum,
   drinkType: DrinkTypeEnum,
   brewerDetails: z.string().max(200).optional(),
@@ -69,15 +69,15 @@ export const RecipeCreateObjectSchema = z.object({
   isFavourite: z.boolean().default(false),
   rating: z.number().min(1).max(10).optional(),
   emojiTag: EmojiTagEnum.optional(),
-  setupId: z.string().uuid().optional(),
-  tasteNoteIds: z.array(z.string().uuid()).optional(),
-  equipmentIds: z.array(z.string().uuid()).optional(),
+  setupId: z.uuid().optional(),
+  tasteNoteIds: z.array(z.uuid()).optional(),
+  equipmentIds: z.array(z.uuid()).optional(),
   additionalPreparations: z.array(AdditionalPreparationSchema).optional(),
   preInfusionTimeSeconds: z.number().int().min(1).optional(),
-  beanId: z.string().uuid().optional(),
+  beanId: z.uuid().optional(),
   brewRatio: z.number().min(0).optional(),
   flowRate: z.number().min(0).optional(),
-  tasteNoteIntensities: z.record(z.string().uuid(), z.number().int().min(1).max(3)).optional(),
+  tasteNoteIntensities: z.record(z.uuid(), z.number().int().min(1).max(3)).optional(),
 });
 
 export const RecipeCreateSchema = RecipeCreateObjectSchema
@@ -141,8 +141,8 @@ export const RecipeFilterSchema = z.object({
   brewMethod: BrewMethodEnum.optional(),
   drinkType: DrinkTypeEnum.optional(),
   visibility: VisibilityEnum.optional(),
-  authorId: z.string().uuid().optional(),
-  equipmentId: z.string().uuid().optional(),
+  authorId: z.uuid().optional(),
+  equipmentId: z.uuid().optional(),
   tasteNoteIds: z.string().optional().refine(
     (val) => {
       if (!val) return true;
@@ -155,7 +155,7 @@ export const RecipeFilterSchema = z.object({
     { message: 'tasteNoteIds must be at most 10 comma-separated UUIDs' },
   ),
   // Keep tasteNoteId for backward compatibility (deprecated)
-  tasteNoteId: z.string().uuid().optional(),
+  tasteNoteId: z.uuid().optional(),
   grinder: z.string().optional(),
   mainBrewer: z.string().max(200).optional(),
   search: z.string().optional(),

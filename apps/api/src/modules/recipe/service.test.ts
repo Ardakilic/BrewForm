@@ -155,7 +155,7 @@ describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
     drinkType: 'espresso',
     preparationNotes: 'Test preparation notes',
   } as const;
-  const TEST_UUID = '00000000-0000-0000-0000-000000000001';
+  const TEST_UUID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
   // Requirements 12.2, 12.3, 12.4
   describe('Pre-infusion cross-field validation', () => {
@@ -210,8 +210,8 @@ describe('Recipe schema — new fields (recipe-detail-redesign)', () => {
         ...BASE_RECIPE,
         tasteNoteIntensities: {
           [TEST_UUID]: 1,
-          '00000000-0000-0000-0000-000000000002': 2,
-          '00000000-0000-0000-0000-000000000003': 3,
+          'a47ac10b-58cc-4372-a567-0e02b2c3d479': 2,
+          'b47ac10b-58cc-4372-a567-0e02b2c3d479': 3,
         },
       });
       expect(result.success).toBe(true);

@@ -124,7 +124,7 @@ admin.post('/users', async (c) => {
   const adminId = c.get('userId') as string;
   const body = await c.req.json();
   const parsed = z.object({
-    email: z.string().email(),
+    email: z.email(),
     username: z.string().min(3).max(30),
     password: z.string().min(8),
     displayName: z.string().optional(),

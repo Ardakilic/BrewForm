@@ -25,9 +25,9 @@ export function errorHandler(err: Error, c: Context) {
 
   if (err.name === 'ZodError') {
     const zodErr = err as unknown as {
-      errors?: Array<{ path: (string | number)[]; message: string }>;
+      issues?: Array<{ path: (string | number)[]; message: string }>;
     };
-    const details = zodErr.errors?.map((e) => ({
+    const details = zodErr.issues?.map((e) => ({
       field: e.path.join('.'),
       message: e.message,
     })) || [];

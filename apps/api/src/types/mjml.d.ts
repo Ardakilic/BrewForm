@@ -5,12 +5,13 @@ declare module 'mjml' {
   }
 
   interface MjmlOptions {
-    minify?: boolean;
-    beautify?: boolean;
     filePath?: string;
+    fonts?: Record<string, string>;
+    keepComments?: boolean;
+    juiceOptions?: Record<string, unknown>;
   }
 
-  function mjml(mjmlString: string, options?: MjmlOptions): MjmlResult;
+  function mjml(mjmlString: string, options?: MjmlOptions): Promise<MjmlResult>;
 
   export default mjml;
 }

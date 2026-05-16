@@ -22,11 +22,11 @@ for await (const entry of Deno.readDir(templateDir)) {
   const mjmlPath = join(templateDir, entry.name);
   const mjmlContent = await Deno.readTextFile(mjmlPath);
 
-  const { html, errors } = mjml2html(mjmlContent);
-  if (errors.length > 0) {
+  const { html, errors } = await mjml2html(mjmlContent);
+  if (errors?.length > 0) {
     throw new Error(
       `MJML validation failed for ${entry.name}: ${
-        errors.map((e: any) => e.formattedMessage ?? e.message).join(', ')
+        errors.map((e: any) => (e as any).formattedMessage ?? (e as any).message).join(', ')
       }`,
     );
   }
