@@ -26,6 +26,7 @@ auth.post(
       'Email and username are checked for uniqueness.',
     responses: {
       201: { description: 'Account created; tokens issued' },
+      403: { description: 'Registration disabled' },
       409: { description: 'Email or username already in use' },
     },
   }),

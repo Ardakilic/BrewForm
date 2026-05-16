@@ -16,7 +16,7 @@ to access protected endpoints.
 
 ## Registration
 
-```
+```text
 POST /api/v1/auth/register
 ```
 
@@ -53,7 +53,7 @@ available) for observability.
 
 ## Registration Status
 
-```
+```text
 GET /api/v1/auth/registration-status
 ```
 
@@ -83,7 +83,7 @@ see the full navigation regardless of the flag.
 
 ## Login
 
-```
+```text
 POST /api/v1/auth/login
 ```
 
@@ -96,7 +96,7 @@ On success, returns `200 OK` with user, access token, and refresh token. Banned 
 
 ## Token Refresh
 
-```
+```text
 POST /api/v1/auth/refresh
 ```
 
@@ -112,7 +112,7 @@ immediately).
 
 ### Step 1: Request Reset
 
-```
+```text
 POST /api/v1/auth/forgot-password
 ```
 
@@ -125,7 +125,7 @@ exists, a reset link is sent to the user with a token valid for 1 hour.
 
 ### Step 2: Confirm Reset
 
-```
+```text
 POST /api/v1/auth/reset-password
 ```
 

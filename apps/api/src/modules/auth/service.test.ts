@@ -1,3 +1,4 @@
+import '../../test-setup.ts';
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { reloadConfig } from '../../config/env.ts';
@@ -103,14 +104,24 @@ describe('Auth Service Logic', () => {
 
   describe('Registration toggle', () => {
     it('should throw REGISTRATION_DISABLED when config disables registration', async () => {
-      Deno.env.set('ENABLE_REGISTRATION', 'false');
-      reloadConfig();
+      const original = Deno.env.get('ENABLE_REGISTRATION');
+      try {
+        Deno.env.set('ENABLE_REGISTRATION', 'false');
+        reloadConfig();
 
-      await expect(register({
-        email: 'test@test.com',
-        username: 'testuser',
-        password: 'Test12345!',
-      })).rejects.toThrow('REGISTRATION_DISABLED');
+        await expect(register({
+          email: 'test@test.com',
+          username: 'testuser',
+          password: 'Test12345!',
+        })).rejects.toThrow('REGISTRATION_DISABLED');
+      } finally {
+        if (original === undefined) {
+          Deno.env.delete('ENABLE_REGISTRATION');
+        } else {
+          Deno.env.set('ENABLE_REGISTRATION', original);
+        }
+        reloadConfig();
+      }
     });
   });
 

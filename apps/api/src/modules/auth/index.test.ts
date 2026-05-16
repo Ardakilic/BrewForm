@@ -1,4 +1,5 @@
-import { afterAll, describe, it } from 'jsr:@std/testing/bdd';
+import '../../test-setup.ts';
+import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
 import auth from './index.ts';
@@ -11,11 +12,6 @@ function createTestApp() {
 }
 
 describe('Auth Routes', () => {
-  afterAll(() => {
-    Deno.env.delete('ENABLE_REGISTRATION');
-    reloadConfig();
-  });
-
   describe('GET /auth/registration-status', () => {
     it('should return enabled status', async () => {
       const app = createTestApp();
@@ -39,23 +35,33 @@ describe('Auth Routes', () => {
     });
 
     it('should return 403 when registration is disabled', async () => {
-      Deno.env.set('ENABLE_REGISTRATION', 'false');
-      reloadConfig();
+      const original = Deno.env.get('ENABLE_REGISTRATION');
+      try {
+        Deno.env.set('ENABLE_REGISTRATION', 'false');
+        reloadConfig();
 
-      const app = createTestApp();
-      const res = await app.request('/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: 'newuser@test.com',
-          username: 'newuser',
-          password: 'Test12345!',
-        }),
-      });
-      expect(res.status).toBe(403);
-      const body = await res.json();
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('REGISTRATION_DISABLED');
+        const app = createTestApp();
+        const res = await app.request('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: 'newuser@test.com',
+            username: 'newuser',
+            password: 'Test12345!',
+          }),
+        });
+        expect(res.status).toBe(403);
+        const body = await res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('REGISTRATION_DISABLED');
+      } finally {
+        if (original === undefined) {
+          Deno.env.delete('ENABLE_REGISTRATION');
+        } else {
+          Deno.env.set('ENABLE_REGISTRATION', original);
+        }
+        reloadConfig();
+      }
     });
   });
 });
