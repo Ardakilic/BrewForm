@@ -70,7 +70,10 @@ export function RegisterPage() {
         </h1>
         <div
           className='mt-6 rounded p-6'
-          style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-primary)' }}
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            border: '1px solid var(--border-primary)',
+          }}
         >
           <p className='text-base' style={{ color: 'var(--text-primary)' }}>
             {t('auth.register.registrationClosed')}

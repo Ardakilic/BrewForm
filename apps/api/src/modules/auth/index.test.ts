@@ -46,7 +46,11 @@ describe('Auth Routes', () => {
       const res = await app.request('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'newuser@test.com', username: 'newuser', password: 'Test12345!' }),
+        body: JSON.stringify({
+          email: 'newuser@test.com',
+          username: 'newuser',
+          password: 'Test12345!',
+        }),
       });
       expect(res.status).toBe(403);
       const body = await res.json();

@@ -59,8 +59,18 @@ vi.mock('../../contexts/ThemeContext', () => ({
 }));
 
 vi.mock('../../api/index', () => ({
-  api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn(), upload: vi.fn() },
-  ApiError: class extends Error { code = ''; status = 500; },
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+    upload: vi.fn(),
+  },
+  ApiError: class extends Error {
+    code = '';
+    status = 500;
+  },
   clearTokens: vi.fn(),
   getAccessToken: vi.fn(() => null),
   setAccessToken: vi.fn(),

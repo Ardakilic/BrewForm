@@ -42,8 +42,16 @@ auth.post(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'REGISTRATION_DISABLED') {
-        log.warn({ ip: c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown' }, 'Registration attempt while disabled');
-        return error(c, 'REGISTRATION_DISABLED', 'New account registration is currently disabled', 403);
+        log.warn(
+          { ip: c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown' },
+          'Registration attempt while disabled',
+        );
+        return error(
+          c,
+          'REGISTRATION_DISABLED',
+          'New account registration is currently disabled',
+          403,
+        );
       }
       if (message === 'EMAIL_ALREADY_EXISTS') {
         return error(c, 'CONFLICT', 'Email already registered', 409);

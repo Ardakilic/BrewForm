@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { RegisterPage } from './RegisterPage';
@@ -7,8 +7,18 @@ import { I18nProvider } from '../../contexts/I18nContext';
 import { authApi } from '../../api/index';
 
 vi.mock('../../api/index', () => ({
-  api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn(), upload: vi.fn() },
-  ApiError: class extends Error { code = ''; status = 500; },
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+    upload: vi.fn(),
+  },
+  ApiError: class extends Error {
+    code = '';
+    status = 500;
+  },
   clearTokens: vi.fn(),
   getAccessToken: vi.fn(() => null),
   setAccessToken: vi.fn(),
