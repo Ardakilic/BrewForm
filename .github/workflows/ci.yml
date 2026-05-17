@@ -36,6 +36,9 @@ jobs:
       - name: Type check
         run: deno task check
 
+      - name: Build
+        run: deno task build
+
   test:
     runs-on: ubuntu-latest
     needs: quality

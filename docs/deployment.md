@@ -245,14 +245,19 @@ make dev         # Full-stack dev (API :8000 + web :5173 with HMR)
 ### Useful Commands
 
 ```bash
-deno task dev              # API with hot reload
-deno task --cwd apps/web dev   # Vite dev server
+deno task dev              # Both API + web with hot reload
+deno task dev:api          # API with hot reload
+deno task dev:web          # Vite dev server
+deno task build            # Build all workspaces
+deno task build:web        # Build React SPA only
+deno task check            # Type-check all workspaces
+deno task check:api        # Type-check API only
+deno task check:web        # Lint web frontend
 deno task db:generate      # Generate Drizzle migration
 deno task db:migrate       # Run migrations
 deno task db:seed          # Seed data
 deno task email-build      # Compile email templates
 deno task lint             # Lint
 deno task fmt              # Format
-deno task check            # Type check
 deno task test             # Run tests
 ```

@@ -78,19 +78,36 @@ Open **http://localhost:5173** for the web app and **http://localhost:8000** for
 ## Development
 
 ```bash
-make dev           # Start full-stack dev server (API :8000 + web :5173 with HMR)
-make dev-api       # Start API only with hot reload (:8000)
-make web-dev       # Start web dev server only (:5173, requires API already running)
-make preview       # Build web and preview production build (API :8000 + web :8080)
-make lint          # Lint the codebase
-make fmt           # Format the codebase
-make fmt-check     # Check formatting
-make check         # Type check all workspaces
-make test          # Run all tests
-make test-coverage # Run tests with coverage
-make test-api      # Run API tests only
-make test-shared   # Run shared package tests only
-make ci            # Full CI check (fmt-check, lint, check, test-coverage)
+# Dev servers
+make dev            # Start full-stack dev server (API :8000 + web :5173 with HMR)
+make dev-api        # Start API only with hot reload (:8000)
+make web-dev        # Start web dev server only (:5173, requires API already running)
+
+# Build
+make build-api      # Build API (compile email templates)
+make build-web      # Build React SPA for production (output: apps/web/dist/)
+make build-shared   # Type-check shared package as build artifact
+make preview        # Build web + preview production build (API :8000 + web :8080)
+
+# Code quality
+make check          # Type-check all workspaces (api, web, db, shared)
+make check-api      # Type-check API only
+make check-web      # Lint web frontend
+make check-db       # Type-check database package
+make check-shared   # Type-check shared package
+make lint           # Lint all apps and packages
+make fmt            # Format the codebase
+make fmt-check      # Check formatting without changes
+
+# Testing
+make test           # Run all tests
+make test-coverage  # Run tests with coverage
+make test-api       # Run API tests only
+make test-shared    # Run shared package tests only
+make check-tests    # Type-check test files
+
+# CI
+make ci             # Full CI pipeline (fmt, lint, check, build, test)
 ```
 
 ## Serena MCP
@@ -141,11 +158,12 @@ See [docs/serena-mcp.md](docs/serena-mcp.md) for detailed setup, architecture, a
 > are started on-demand via `make dev`. This prevents a "port already allocated" error that would
 > occur if the API container were already running when you run `make dev`.
 
-> **Why `deno task` instead of a task runner?**  
-> Deno's built-in task runner with `--recursive` (run task in all workspace members), `--filter`
-> (target specific members), and `--cwd` (run in a specific directory) covers all orchestration
-> needs. No external task runner required — the `deno.json` `tasks` field is the single source of
-> truth for all build, test, lint, and dev workflows.
+> **Why `deno task` instead of a task runner?**
+> Deno's built-in task runner with `--cwd` (run in a specific directory) and explicit per-workspace
+> sub-tasks covers all orchestration needs. Granular tasks like `check:api`, `build:web`, and
+> `dev:api` compose into aggregate `check`, `build`, and `dev` tasks. No external task runner
+> required — the `deno.json` `tasks` field is the single source of truth for all build, test, lint,
+> and dev workflows.
 
 ## Database
 
