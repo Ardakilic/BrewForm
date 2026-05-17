@@ -14,7 +14,9 @@
     "build": "deno task --cwd ../../packages/db generate && deno task email-build",
     "runtime": {
       "type": "dynamic",
-      "entrypoint": "src/main.ts"
+      "entrypoint": "./src/main.ts",
+      "args": ["--unstable-cron"]
     }
   }
 }
+
