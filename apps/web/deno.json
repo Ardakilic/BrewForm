@@ -15,7 +15,7 @@
     "build": "deno task build",
     "runtime": {
       "type": "static",
-      "cwd": "./apps/api/web/dist",
+      "cwd": "./apps/web/dist",
       "spa": true
     }
   }
