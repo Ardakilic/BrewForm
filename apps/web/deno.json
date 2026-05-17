@@ -14,8 +14,8 @@
     "install": "deno install",
     "build": "deno task build",
     "runtime": {
-      "mode": "static",
-      "cwd": "./dist",
+      "type": "static",
+      "cwd": "./apps/api/web/dist",
       "spa": true
     }
   }
