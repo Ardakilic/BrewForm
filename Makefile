@@ -145,7 +145,7 @@ serena-up:
 	docker compose --profile serena up serena -d
 
 serena-stop:
-	docker compose --profile serena down
+	docker compose --profile serena down serena
 
 serena-logs:
 	docker compose logs -f serena
@@ -154,6 +154,6 @@ serena-index:
 	docker compose --profile serena exec serena serena project index /workspace/brewform
 
 serena-health:
-	@curl -sf http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
+	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
 
 .PHONY: up down build logs restart install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-specific db-migrate db-generate db-push db-seed db-studio db-reset setup dev dev-api web-dev web-build preview ci serena-up serena-stop serena-logs serena-index serena-health
