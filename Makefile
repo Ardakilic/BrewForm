@@ -104,7 +104,7 @@ test-specific: ## Run specific test (use filter=)
 
 # --- Database ---
 
-DRIZZLE_KIT := npm:drizzle-kit@0.31.10
+DRIZZLE_KIT := npm:drizzle-kit@0.31
 
 db-migrate: ## Run database migrations
 	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
