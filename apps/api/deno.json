@@ -13,7 +13,7 @@
     "install": "deno install",
     "build": "deno task --cwd ../../packages/db generate && deno task email-build",
     "runtime": {
-      "mode": "dynamic",
+      "type": "dynamic",
       "entrypoint": "src/main.ts"
     }
   }
