@@ -1,7 +1,23 @@
-# BrewForm Deployment Plan — Deno Deploy Step-by-Step
+# BrewForm Deployment Plan — Deno Deploy
 
-This document provides the exact sequence of commands and actions to deploy BrewForm to Deno Deploy.
-Assumes all code changes from `coding_plan.md` are complete and merged to `main`.
+Step-by-step guide to deploy BrewForm to Deno Deploy (new GA platform).
+
+Assumes all code changes are complete and merged to `main`.
+
+---
+
+## Platform Context
+
+Deno Deploy has **two platforms**. This plan targets the **new GA platform** (not Deploy Classic):
+
+| | Classic (legacy) | New GA (current) |
+|---|---|---|
+| Regions | 6 regions | **2 regions** (us, eu) + global routing |
+| Sunset | **July 20, 2026** | N/A |
+| Deno KV | Supported | Supported + 1 GiB free |
+| Deno.cron() | Supported | Supported |
+
+**Action**: Create all new projects on the new GA platform. If you have Classic projects, migrate before July 2026.
 
 ---
 
@@ -10,19 +26,18 @@ Assumes all code changes from `coding_plan.md` are complete and merged to `main`
 - [ ] GitHub repository for BrewForm with `main` branch
 - [ ] Deno v2.x installed locally: `deno --version`
 - [ ] Domain `brewform.cc` registered with DNS provider
-- [ ] S3-compatible object storage account (Cloudflare R2, Backblaze B2, AWS S3, or iDrive E2)
-- [ ] Mailtrap SMTP credentials
+- [ ] PostgreSQL database (managed: Neon, Supabase, AWS RDS, or self-hosted)
+- [ ] S3-compatible object storage (Cloudflare R2, Backblaze B2, AWS S3, or iDrive E2)
+- [ ] SMTP credentials (Mailtrap, SendGrid, etc.)
 
 ---
 
 ## Phase A: Local Final Verification
 
-Run these commands on your local machine before touching Deno Deploy.
-
 ### A1. Pre-compile Email Templates
 
 ```bash
-deno run -A apps/api/scripts/build-email-templates.ts
+deno task email-build
 ```
 
 Verify 6 files exist in `apps/api/src/templates/email/generated/`.
@@ -33,34 +48,30 @@ Verify 6 files exist in `apps/api/src/templates/email/generated/`.
 deno task db:generate
 ```
 
-Verify the migration SQL file is generated in `packages/db/drizzle/`.
+Verify migration SQL file is generated in `packages/db/drizzle/`.
 
 ### A3. Type Check
 
 ```bash
-deno check --unstable-sloppy-imports apps/api/src/main.ts
-deno check apps/web/src/main.tsx
+deno task check
 ```
 
-Both must pass with zero errors.
+Must pass with zero errors.
 
 ### A4. Lint & Format
 
 ```bash
-deno fmt --check apps/ packages/
+deno fmt --check
 deno lint apps/ packages/
 ```
 
 ### A5. Run Tests
 
-Ensure `.env` is present (e.g. `cp .env.example .env`) so Docker Compose can load service
-environment variables before starting dependent containers:
-
 ```bash
 docker compose up -d postgres mailpit garage
 deno task db:migrate
 deno task db:seed
-deno test --unstable-sloppy-imports --no-check --allow-all apps/api/src/ packages/shared/src/
+deno task test
 ```
 
 All tests must pass.
@@ -69,46 +80,27 @@ All tests must pass.
 
 ```bash
 # Terminal 1 — API
-deno run --allow-all apps/api/src/main.ts
+deno task dev
 
 # Terminal 2 — Web
-cd apps/web && deno task dev
+deno task --cwd apps/web dev
 ```
 
 - Visit `http://localhost:5173`
-- Register a user
-- Create a recipe
-- Upload a photo
-- Verify photo is visible
+- Register a user, create a recipe, upload a photo
 - Check Mailpit (`http://localhost:8025`) for welcome email
-- Check Garage (`aws --endpoint-url=http://localhost:3900 s3 ls s3://brewform-uploads`) if testing
-  S3 driver
 
 ### A7. Build Frontend Static Assets
 
 ```bash
-cd apps/web
-# bash / zsh / Linux / macOS
-export VITE_API_URL=https://api.brewform.cc/api/v1
-# Windows PowerShell
-# $env:VITE_API_URL="https://api.brewform.cc/api/v1"
-# Windows cmd.exe
-# set VITE_API_URL=https://api.brewform.cc/api/v1
-deno task build
+VITE_API_URL=https://api.brewform.cc/api/v1 deno task --cwd apps/web build
 ```
 
 ### A8. Commit and Push
 
 ```bash
 git add .
-git commit -m "refactor: Deno Deploy readiness
-
-- Drizzle ORM with postgres-js driver
-- Pre-compiled MJML email templates
-- S3-compatible storage abstraction with local fallback
-- Garage S3 for local dev
-- Deno.cron() for scheduled jobs
-- Deno Deploy static site config for web"
+git commit -m "chore: deployment readiness"
 git push origin main
 ```
 
@@ -120,41 +112,70 @@ git push origin main
 
 1. Go to [dash.deno.com](https://dash.deno.com)
 2. Sign in with GitHub
-3. Create or select organization (e.g., `brewform`)
-4. Verify with credit card (required for full free tier limits)
+3. Create organization (e.g., `brewform`)
 
 ### B2. Create `brewform-api` (Dynamic App)
 
+Project configuration is already defined in `apps/api/deno.json`:
+
+```json
+{
+  "deploy": {
+    "install": "deno install",
+    "build": "deno task --cwd ../../packages/db generate && deno task email-build",
+    "runtime": {
+      "mode": "dynamic",
+      "entrypoint": "src/main.ts"
+    }
+  }
+}
+```
+
+**Steps**:
+
 1. Dashboard → **New Project**
 2. Name: `brewform-api`
-3. Source: **GitHub**
-4. Select your BrewForm repository
-5. **App directory**: `apps/api`
-6. Deno Deploy will auto-detect `deno.json` configuration. If not, configure manually:
-   - **Install command**: `deno install`
-   - **Build command**: `deno task db:generate && deno run -A scripts/build-email-templates.ts`
-   - **Pre-deploy command**:
-     `deno run -A npm:drizzle-kit@latest migrate --config=../../packages/db/drizzle.config.ts`
-   - **Runtime**: Dynamic
-   - **Entrypoint**: `src/main.ts`
-   - **Runtime working directory**: `.`
+3. Source: **GitHub** → select repository
+4. Framework auto-detection: pick **none** (custom)
+5. App directory (root directory): `.` (monorepo root)
+6. **Entrypoint**: `apps/api/src/main.ts`
+7. Build command should auto-populate from `deno.json`. Verify:
+   - Install: `deno install` (will be picked up from root)
+   - Build: uses `apps/api/deno.json` deploy config
 
-> Note: In the pre-deploy command, the config path is relative to `apps/api/`, so
-> `../../packages/db/drizzle.config.ts` resolves correctly.
+> **Install context**: The project is a Deno workspace. `deno install` resolves all workspace dependencies from the root. The build command in `apps/api/deno.json` references the monorepo root via `--cwd ../../` paths, so the deploy root directory must be set to the monorepo root (`.`), not `apps/api/`.
 
 ### B3. Create `brewform-web` (Static Site)
 
+Configuration in `apps/web/deno.json`:
+
+```json
+{
+  "deploy": {
+    "install": "deno install",
+    "build": "deno task build",
+    "runtime": {
+      "mode": "static",
+      "cwd": "./dist",
+      "spa": true
+    }
+  }
+}
+```
+
+**Steps**:
+
 1. Dashboard → **New Project**
 2. Name: `brewform-web`
-3. Source: **GitHub**
-4. Select same repository
-5. **App directory**: `apps/web`
-6. Deno Deploy auto-detects `deno.json` with static config. Verify:
-   - **Install command**: `deno install`
-   - **Build command**: `deno task build`
-   - **Runtime**: Static
-   - **Directory**: `./dist`
-   - **SPA mode**: Enabled
+3. Source: **GitHub** → select repository
+4. Framework auto-detection: pick **Vite**
+5. Root directory: `.` (monorepo root)
+6. Verify:
+   - Build command: `deno run -A npm:vite build --root apps/web` (or auto-detected)
+   - Output dir: `apps/web/dist`
+   - SPA mode: enabled
+
+> Deno Deploy's framework auto-detection may set the root to `apps/web`. If so, the build output dir would be `dist` (relative). Either approach works — just verify paths are consistent.
 
 ---
 
@@ -162,110 +183,107 @@ git push origin main
 
 ### C1. Create Managed Database
 
-Provision a PostgreSQL database from any managed provider (e.g., Supabase, Neon, Railway, AWS RDS,
-or a self-hosted instance).
+Choose a provider. All major PostgreSQL providers work with Deno Deploy:
 
-1. Create a new PostgreSQL 15+ database
-2. Region: Choose closest to your users (e.g., `us-east-1`, `eu-west-1`, `ap-southeast-1`)
-3. Note the connection string: `postgresql://user:pass@host:5432/dbname`
+| Provider | Free Tier | Notes |
+|---|---|---|
+| Neon | 0.5 GB, 100h compute/month | Serverless, auto-pause |
+| Supabase | 500 MB | Includes auth, real-time |
+| Aiven | 5 GB free for 30 days | |
+| Railway | $5/month minimum | |
+| AWS RDS | Pay-as-you-go | |
 
-Save the connection string securely (password manager).
+**Important**: Deno Deploy **does not provide static egress IPs**. Your database must accept connections from all IPs. Use connection pooling (PgBouncer, Supabase pooler, or Neon's built-in pooling) since serverless functions create many short-lived connections.
 
 ### C2. Attach Database to API Project
 
-1. Go to `brewform-api` project → **Settings** → **Environment Variables**
-2. Add `DATABASE_URL` with the connection string from C1
-3. Mark as **Secret** if your provider supports it
+1. Go to `brewform-api` → **Settings** → **Environment Variables**
+2. Add `DATABASE_URL` with the connection string
+3. Mark as **Secret**
 
 ---
 
 ## Phase D: Configure Environment Variables
 
-### D1. `brewform-api` — Production Context Variables
+### D1. `brewform-api` — Production Context
 
-Navigate to `brewform-api` → **Settings** → **Environment Variables** → **Production** context.
+| Variable | Value | Notes |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://user:pass@host:5432/dbname` | Use pooled connection string |
+| `JWT_SECRET` | `<openssl rand -hex 32>` | Mark as **Secret** |
+| `JWT_ACCESS_EXPIRY` | `15m` | |
+| `JWT_REFRESH_EXPIRY` | `7d` | |
+| `CORS_ALLOWED_ORIGINS` | `https://brewform.cc` | |
+| `APP_URL` | `https://api.brewform.cc` | |
+| `APP_ENV` | `production` | |
+| `LOG_LEVEL` | `info` | |
+| `CACHE_DRIVER` | `deno-kv` | Auto-provisioned on Deploy |
+| `SMTP_HOST` | `smtp.mailtrap.io` | Or your provider |
+| `SMTP_PORT` | `2525` | |
+| `SMTP_USER` | `<username>` | |
+| `SMTP_PASS` | `<password>` | Mark as **Secret** |
+| `SMTP_SECURE` | `false` | |
+| `EMAIL_FROM` | `noreply@brewform.cc` | |
+| `STORAGE_DRIVER` | `s3` | |
+| `S3_ENDPOINT` | `https://<account>.r2.cloudflarestorage.com` | |
+| `S3_REGION` | `auto` | |
+| `S3_BUCKET` | `brewform-uploads` | |
+| `S3_ACCESS_KEY` | `<access-key>` | Mark as **Secret** |
+| `S3_SECRET_KEY` | `<secret-key>` | Mark as **Secret** |
+| `S3_PUBLIC_URL` | `https://pub-<hash>.r2.dev` | Public URL for bucket |
+| `ADMIN_EMAIL` | `admin@brewform.cc` | |
+| `ADMIN_USERNAME` | `admin` | |
+| `ADMIN_PASSWORD` | `<generate-strong>` | Mark as **Secret** |
 
-| Variable               | Value                                        | Notes                        |
-| ---------------------- | -------------------------------------------- | ---------------------------- |
-| `DATABASE_URL`         | `postgresql://user:pass@host:5432/dbname`    | PostgreSQL connection string |
-| `JWT_SECRET`           | `<generate>`                                 | `openssl rand -hex 32`       |
-| `JWT_ACCESS_EXPIRY`    | `15m`                                        |                              |
-| `JWT_REFRESH_EXPIRY`   | `7d`                                         |                              |
-| `CORS_ALLOWED_ORIGINS` | `https://brewform.cc`                        |                              |
-| `APP_URL`              | `https://api.brewform.cc`                    |                              |
-| `APP_ENV`              | `production`                                 |                              |
-| `LOG_LEVEL`            | `info`                                       |                              |
-| `CACHE_DRIVER`         | `deno-kv`                                    | Deno KV auto-provisioned     |
-| `SMTP_HOST`            | `smtp.mailtrap.io`                           | Or your Mailtrap host        |
-| `SMTP_PORT`            | `2525`                                       | Or your Mailtrap port        |
-| `SMTP_USER`            | `<mailtrap-username>`                        |                              |
-| `SMTP_PASS`            | `<mailtrap-password>`                        | Mark as **Secret**           |
-| `SMTP_SECURE`          | `false`                                      | `true` if port 465           |
-| `EMAIL_FROM`           | `noreply@brewform.cc`                        |                              |
-| `STORAGE_DRIVER`       | `s3`                                         |                              |
-| `S3_ENDPOINT`          | `https://<account>.r2.cloudflarestorage.com` | Or your provider             |
-| `S3_REGION`            | `auto`                                       | Or `us-east-1`, etc.         |
-| `S3_BUCKET`            | `brewform-uploads`                           |                              |
-| `S3_ACCESS_KEY`        | `<access-key>`                               | Mark as **Secret**           |
-| `S3_SECRET_KEY`        | `<secret-key>`                               | Mark as **Secret**           |
-| `S3_PUBLIC_URL`        | `https://pub-<hash>.r2.dev`                  | Public access URL for bucket |
-| `ADMIN_EMAIL`          | `admin@brewform.cc`                          |                              |
-| `ADMIN_USERNAME`       | `admin`                                      |                              |
-| `ADMIN_PASSWORD`       | `<generate-strong>`                          | Mark as **Secret**           |
+### D2. `brewform-api` — Build Context
 
-### D2. `brewform-api` — Build Context Variables
+| Variable | Value | Notes |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://<connection-string>` | For Drizzle migrations at build time |
 
-Navigate to **Build** context. These are only available during the build/pre-deploy phase.
+### D3. `brewform-web` — Build Context
 
-| Variable       | Value                              | Notes                         |
-| -------------- | ---------------------------------- | ----------------------------- |
-| `DATABASE_URL` | `postgresql://<connection-string>` | PostgreSQL URL for migrations |
-
-> The pre-deploy command runs with Build context variables, so `drizzle-kit migrate` uses this
-> connection string.
-
-### D3. `brewform-web` — Build Context Variables
-
-Navigate to `brewform-web` → **Settings** → **Environment Variables** → **Build** context.
-
-| Variable       | Value                            |
-| -------------- | -------------------------------- |
+| Variable | Value |
+|---|---|
 | `VITE_API_URL` | `https://api.brewform.cc/api/v1` |
 
 ---
 
 ## Phase E: Configure Custom Domains
 
-### E1. DNS Configuration
+### E1. Registry Setup
 
-In your domain registrar/DNS provider, add these CNAME records:
+Deno Deploy supports three DNS methods:
+- **ANAME/ALIAS** (preferred for apex domains)
+- **CNAME** (subdomains only)
+- **A record** (apex)
 
-| Type  | Name       | Value                     | TTL |
-| ----- | ---------- | ------------------------- | --- |
-| CNAME | `@` (apex) | `[brewform-web].deno.dev` | 300 |
-| CNAME | `api`      | `[brewform-api].deno.dev` | 300 |
-| CNAME | `www`      | `[brewform-web].deno.dev` | 300 |
+**Free plan**: Add each subdomain individually (`brewform.cc`, `www.brewform.cc`, `api.brewform.cc`). Wildcard `*.brewform.cc` is Pro-only.
 
-> Replace `[brewform-web]` and `[brewform-api]` with your actual Deno Deploy project subdomains
-> (visible in project settings).
->
-> **Apex domain note**: Some DNS providers do not support CNAME on apex (`@`). Use an ALIAS/ANAME
-> record if available, or use `www.brewform.cc` as primary and redirect apex to www.
+| Type | Name | Target |
+|---|---|---|
+| CNAME/ALIAS | `@` | `brewform-web.deno.dev` |
+| CNAME | `www` | `brewform-web.deno.dev` |
+| CNAME | `api` | `brewform-api.deno.dev` |
+
+Replace target subdomains with your actual project subdomains from the dashboard.
+
+> Deno Deploy does not support IPv6 (no AAAA records). If using Cloudflare, **disable proxy** (grey cloud) for `_acme-challenge` CNAME during verification.
 
 ### E2. Add Domains in Deno Deploy
 
 #### `brewform-web`
-
 1. Project → **Settings** → **Domains**
-2. Add domain: `brewform.cc`
-3. Add domain: `www.brewform.cc`
-4. Deno Deploy verifies DNS. Status should change to **Active**.
+2. Add `brewform.cc` and `www.brewform.cc`
+3. Follow DNS verification instructions
+4. Status → **Active**
 
 #### `brewform-api`
-
 1. Project → **Settings** → **Domains**
-2. Add domain: `api.brewform.cc`
-3. Wait for **Active** status.
+2. Add `api.brewform.cc`
+3. Status → **Active**
+
+TLS certificates (Let's Encrypt) are provisioned and auto-renewed.
 
 ---
 
@@ -273,60 +291,54 @@ In your domain registrar/DNS provider, add these CNAME records:
 
 ### F1. Trigger Build
 
-With GitHub integration, push to `main` automatically triggers builds for both projects.
+Push to `main` triggers automatic deployments for both projects via GitHub integration.
 
-If not yet linked, go to each project → **Settings** → **GitHub** → **Link Repository**.
+If projects aren't linked yet: Project → **Settings** → **GitHub** → **Link Repository**.
 
-### F2. Monitor Build for `brewform-api`
+### F2. Monitor `brewform-api` Build
 
-1. Go to `brewform-api` → **Builds**
-2. Watch stages: Queuing → Preparing → Install → Build → Pre-deploy → Deploy
-3. Pre-deploy step should output:
-   ```text
-   [✓] migrations applied
-   ```
-4. Verify **Successful** status.
+1. Dashboard → `brewform-api` → **Deployments**
+2. Stages: Queuing → Preparing → Install → Build → Deploy
+3. Build output should include:
+   - Drizzle migration generated in `packages/db/drizzle/`
+   - Email templates compiled in `apps/api/src/templates/email/generated/`
+4. Status → **Successful**
 
-### F3. Monitor Build for `brewform-web`
+### F3. Monitor `brewform-web` Build
 
-1. Go to `brewform-web` → **Builds**
-2. Verify build produces `dist/` and deploys as static site.
+1. Dashboard → `brewform-web` → **Deployments**
+2. Verify Vite build produces `apps/web/dist/`
+3. Status → **Successful**
 
 ---
 
 ## Phase G: Database Migration & Seeding
 
-### G1. Run Migrations (if pre-deploy failed)
+### G1. Run Migrations (First Time)
 
-If the pre-deploy migration step failed, run manually from local machine:
+**Via Deno Deploy dashboard**: Set `DATABASE_URL` in **Build** context variables (Phase D2), then deploy once with migration generation. The build step generates migration SQL files, but actual migration execution can be done via:
 
+Option A — Run from local machine:
 ```bash
-export DATABASE_URL="postgresql://<connection-string>"
-deno run -A npm:drizzle-kit@latest migrate --config=packages/db/drizzle.config.ts
+DATABASE_URL="postgresql://<connection-string>" deno task db:migrate
+```
+
+Option B — Run as pre-deploy command (configure in dashboard):
+```
+deno run -A --allow-env npm:drizzle-kit migrate --config=packages/db/drizzle.config.ts
 ```
 
 ### G2. Seed Database
 
-Run the setup script against production database:
-
 ```bash
-export DATABASE_URL="postgresql://<connection-string>"
-export ADMIN_EMAIL="admin@brewform.cc"
-export ADMIN_USERNAME="admin"
-export ADMIN_PASSWORD="<strong-password>"
+DATABASE_URL="postgresql://<connection-string>" \
+ADMIN_EMAIL="admin@brewform.cc" \
+ADMIN_USERNAME="admin" \
+ADMIN_PASSWORD="<strong-password>" \
 deno run --allow-all apps/api/src/setup.ts
 ```
 
-> This creates the initial admin user. It is idempotent — safe to re-run.
-
-### G3. Verify Database Schema
-
-```bash
-export DATABASE_URL="postgresql://<connection-url>"
-deno run -A npm:drizzle-kit@latest studio --config=packages/db/drizzle.config.ts
-```
-
-Open Drizzle Studio and confirm tables exist: `user`, `recipe`, `photo`, `badge`, etc.
+This creates the admin user. Idempotent — safe to re-run.
 
 ---
 
@@ -336,28 +348,24 @@ Open Drizzle Studio and confirm tables exist: `user`, `recipe`, `photo`, `badge`
 
 ```bash
 curl https://api.brewform.cc/health
-# Expected: {"success":true,"data":{"status":"ok"}}
+# {"success":true,"data":{"status":"ok"}}
 ```
 
 ### H2. OpenAPI Schema
 
 ```bash
 curl https://api.brewform.cc/openapi.json
-# Expected: JSON OpenAPI spec
 ```
-
-> Run this verification **before** disabling OpenAPI in Phase I1. Skip if `OPENAPI_ENABLED` is
-> already `false`.
 
 ### H3. Frontend Load
 
 1. Visit `https://brewform.cc`
-2. Verify React app loads (no 404, no blank page)
+2. Verify React app loads
 
 ### H4. SPA Routing
 
-1. Visit `https://brewform.cc/recipes/some-test-slug` directly
-2. Verify React Router handles the route (not 404 from server)
+1. Visit `https://brewform.cc/recipes/some-slug` directly
+2. Verify React Router handles the route (SPA mode serves `index.html`)
 
 ### H5. User Registration
 
@@ -366,9 +374,6 @@ curl -X POST https://api.brewform.cc/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@brewform.cc","username":"testuser","password":"TestPass123!"}'
 ```
-
-- Check Mailtrap inbox for welcome email
-- Verify email HTML renders correctly (no MJML errors)
 
 ### H6. Photo Upload (S3)
 
@@ -379,225 +384,184 @@ curl -X POST https://api.brewform.cc/api/v1/photos \
   -F "file=@test.jpg"
 ```
 
-- Response should contain a URL like `https://pub-<hash>.r2.dev/<filename>`
-- Visit the URL — image should display
-- Check S3 bucket (via provider dashboard or CLI) — object exists
-
 ### H7. QR Code Generation
 
 ```bash
 curl https://api.brewform.cc/api/v1/qrcode/recipe/<slug>.png
-# Should return PNG bytes with Content-Type: image/png
 ```
 
 ### H8. Cron Jobs
 
-1. Go to `brewform-api` → **Cron** tab in Deno Deploy dashboard
-2. Verify two jobs are listed:
-   - `evaluate-badges` (schedule: `0 * * * *`)
-   - `refresh-popular-cache` (schedule: `0 */6 * * *`)
-3. Wait for the next scheduled run
-4. Verify execution history shows **Success**
+Go to `brewform-api` → **Cron** tab in dashboard. Verify the active job:
+- `evaluate-badges` (hourly)
+
+> `refresh-popular-cache` was planned in earlier designs but **not implemented**. See [Gaps](#gaps--unimplemented-features).
 
 ### H9. Deno KV Cache
 
 ```bash
 curl https://api.brewform.cc/api/v1/taste-notes
 # First call: cache miss (slower)
-# Second call: cache hit (faster, served from Deno KV)
+# Second call: cache hit (faster)
 ```
 
 ### H10. Admin Panel
 
 1. Log in with admin credentials
 2. Verify admin routes (`/api/v1/admin/*`) are accessible
-3. Check audit logs are written
 
 ---
 
 ## Phase I: Cleanup & Hardening
 
-### I1. Disable OpenAPI in Production (Strongly recommended)
+### I1. Disable OpenAPI in Production
 
-Set `OPENAPI_ENABLED=false` in `brewform-api` Production context. Strongly recommended: disable in
-production / set to `false` to reduce attack surface.
+Set `OPENAPI_ENABLED=false` in `brewform-api` Production context.
 
 ### I2. Review Secrets
 
-In Deno Deploy dashboard:
-
-- Ensure `JWT_SECRET`, `SMTP_PASS`, `ADMIN_PASSWORD`, `S3_SECRET_KEY` are marked as **Secret**
-- Secrets are encrypted and masked in logs/UI
+Ensure `JWT_SECRET`, `SMTP_PASS`, `ADMIN_PASSWORD`, `S3_SECRET_KEY`, `DATABASE_URL` are marked as **Secret**.
 
 ### I3. Enable Preview Deployments (Optional)
 
-For `brewform-api`:
-
-1. Settings → **GitHub** → Enable **Preview deployments**
-2. Every Pull Request gets its own deployment URL
-3. Preview databases are isolated per branch (if your provider supports branch databases)
+Project → **Settings** → **GitHub** → Enable preview deployments. Every PR gets a preview URL. Note: each preview deployment has its own KV store instance.
 
 ### I4. Set Up Monitoring
 
-- Deno Deploy dashboard provides built-in logs and metrics
-- Go to `brewform-api` → **Observability** for request logs, errors, and latency
-- Set up log alerts if on Pro plan
+- Deno Deploy dashboard: `brewform-api` → **Logs** and **Metrics**
+- Log retention on Free plan: **1 day** (upgrade to Pro for 1 week)
+- Consider external uptime monitoring (e.g., Upptime, Better Uptime)
 
 ### I5. Configure CORS Strictly
 
-Verify `CORS_ALLOWED_ORIGINS` is exactly `https://brewform.cc` (no wildcards, no extra origins).
+`CORS_ALLOWED_ORIGINS` should be exactly `https://brewform.cc` (no wildcards).
 
 ---
 
 ## Phase J: Rollback Procedure
 
-If a deployment breaks production:
-
 ### J1. Rollback via Dashboard
 
-1. `brewform-api` → **Builds**
-2. Find last known good revision
-3. Click **Rollback**
-4. Deno Deploy instantly routes traffic to the previous revision
+1. `brewform-api` → **Deployments**
+2. Find last known good deployment
+3. Click **Rollback** — instantly routes traffic to previous revision
 
 ### J2. Rollback Database (Emergency)
 
-If a bad migration ran:
-
-1. Connect to PostgreSQL directly using the connection string
-2. Revert the problematic migration manually or restore from a backup:
-   ```bash
-   export DATABASE_URL="postgresql://<connection-url>"
-   # Option A: restore from backup
-   # Option B: manually apply down-migration SQL if available
-   ```
-3. Restore from backup if data loss occurred (most managed providers offer automated backups)
+If a bad migration ran, restore from backup or apply a down-migration manually.
 
 ---
 
-## Troubleshooting Guide
+## Free Tier Capacity Planning
 
-### Build Fails: "Cannot find module '@brewform/db'"
+| Resource | Deno Deploy Free Limit | Expected Traffic Headroom |
+|---|---|---|
+| Requests/month | 1M | ~1,400 req/day sustained |
+| Bandwidth (egress) | 20 GB/month | ~650 MB/day |
+| CPU time/month | 15 hours | ~30 min/day sustained |
+| Memory time/month | 350 GB-h | ~12 GB-h/day sustained |
+| Volume storage | 1 GiB | Code + static assets |
+| **Deno KV** | | |
+| Storage | 1 GiB | Cache data |
+| Read units/month | 450K (4 KiB units) | ~15K reads/day |
+| Write units/month | 300K (1 KiB units) | ~10K writes/day |
+| Custom domains | 50/org | Using 3 |
+| Apps | 20 | Using 2 |
 
-**Cause**: `db:generate` step missing or drizzle migration not generated. **Fix**: Ensure build
-command includes `deno task db:generate`.
+**Expected monthly cost: $0** for small-to-medium usage.
 
-### Build Fails: "mjml is not found"
+**Provisioning guidance for managed services:**
 
-**Cause**: Email templates not pre-compiled before build. **Fix**: Add
-`deno run -A apps/api/scripts/build-email-templates.ts` to build command.
-
-### API Returns 500 on First Request
-
-**Cause**: PostgreSQL connection string incorrect or database unreachable. **Fix**: Verify
-`DATABASE_URL` starts with `postgresql://`. Check database health and network connectivity from Deno
-Deploy.
-
-### Photos Return 404
-
-**Cause**: `S3_PUBLIC_URL` incorrect or bucket/object not publicly readable. **Fix**: Verify
-`S3_PUBLIC_URL` matches your provider's public access endpoint. Check bucket permissions.
-
-### Emails Not Sent
-
-**Cause**: Mailtrap SMTP blocked or credentials wrong. **Fix**: Check `brewform-api` logs in Deno
-Deploy dashboard. Verify SMTP_HOST/PORT. Try Mailtrap HTTP API as fallback.
-
-### Cron Jobs Not Running
-
-**Cause**: `Deno.cron()` definitions not detected. **Fix**: Ensure `Deno.cron()` is called at top
-level (not inside a function that conditionally runs). Check Cron tab in dashboard.
-
-### Frontend Shows "Cannot connect to API"
-
-**Cause**: `VITE_API_URL` incorrect or CORS blocked. **Fix**: Rebuild frontend with correct
-`VITE_API_URL`. Verify `CORS_ALLOWED_ORIGINS` includes `https://brewform.cc`.
-
-### Database Connection Errors
-
-**Cause**: Connection pool exhaustion, migration lock conflicts, or network/firewall issues between
-Deno Deploy and PostgreSQL. **Fix**: Verify `DATABASE_URL` uses `postgresql://`. Check Postgres
-health and migration locks. Tune `postgres-js` pool settings (`max` in `packages/db/src/index.ts`)
-or use a serverless-friendly pooler (e.g., PgBouncer). Ensure Deno Deploy region/network can reach
-the database; check Deno Deploy dashboard and database region for latency issues.
+| Service | Recommended Free Tier | Notes |
+|---|---|---|
+| PostgreSQL | Neon 0.5 GB | Serverless, auto-pause when idle |
+| Object storage | Cloudflare R2 | 10 GB free, no egress fees |
+| Email (transactional) | Mailtrap | 100 emails/month free |
 
 ---
 
-## Cost Estimation (Free Tier)
+## Known Platform Limitations
 
-| Service               | Free Tier Limit                   | BrewForm Usage      |
-| --------------------- | --------------------------------- | ------------------- |
-| Deno Deploy (Dynamic) | 100k requests/day + 10GB transfer | API traffic         |
-| Deno Deploy (Static)  | 100k requests/day + 10GB transfer | Frontend assets     |
-| Deno KV               | 1GB storage + 250k ops/day        | Cache, sessions     |
-| PostgreSQL            | 500MB storage (free tier)         | Application data    |
-| Mailtrap              | 100 emails/month (free)           | Transactional email |
-| Cloudflare R2         | 10GB storage + 1M ops free        | Photo storage       |
-
-**Expected monthly cost: $0** (within free tiers for small-to-medium usage).
+| Limitation | Impact | Workaround |
+|---|---|---|
+| No static egress IPs | DB must accept from all IPs | Use connection pooler; restrict by DB user/password |
+| Only 2 regions (us, eu) | Higher latency for distant users | None on Free plan |
+| No `Deno.Kv.enqueue()` / `listenQueue()` | Queue-based patterns unavailable | Use direct DB writes or external queue |
+| Build timeout: 5 min (Free) | Large builds may fail | Optimize build; upgrade for 15 min on Pro |
+| Max deployment size: <1 GB | Large static assets may fail | Use S3/CDN for large files |
+| No IPv6 support | Cloudflare proxy must be disabled | Use grey cloud / DNS-only mode |
 
 ---
 
-## Post-Deploy Maintenance Checklist
+## Gaps & Unimplemented Features
 
-### Weekly
+These are items referenced in design docs or earlier plans that were **not implemented** and may be needed for production durability.
 
-- [ ] Check Deno Deploy dashboard for error logs
-- [ ] Verify cron job execution history
-- [ ] Review Mailtrap delivery logs
+### `refresh-popular-cache` cron job
 
-### Monthly
+**Status**: ❌ Not implemented
+**Priority**: Low — no visible user impact, only affects performance
 
-- [ ] Check database size (PostgreSQL dashboard or provider metrics)
-- [ ] Check S3 bucket size and costs
-- [ ] Review Deno Deploy usage metrics
-- [ ] Rotate `ADMIN_PASSWORD` if needed
+A second `Deno.cron()` job named `refresh-popular-cache` was planned to periodically refresh Deno KV cache entries (popular recipes, taste note hierarchy, search results) on a 6-hour schedule. Currently, cache entries are populated on-demand (cache miss → compute → store) and have no proactive refresh.
 
-### Quarterly
+**If** cache hit rates become a concern in production, implement:
+```ts
+Deno.cron('refresh-popular-cache', '0 */6 * * *', async () => {
+  await refreshPopularRecipesCache();
+  await refreshTasteNotesCache();
+});
+```
 
-- [ ] Update Deno version (Deno Deploy auto-updates runtime)
-- [ ] Update dependencies (`deno install` to refresh lockfile)
-- [ ] Run `deno task db:generate` after any schema changes
-- [ ] Security review: check for leaked secrets in logs
+### Email notification retry queue
+
+**Status**: ❌ Not implemented (by design — see ADR-011)
+**Priority**: Medium — transient SMTP failures cause silent email drops
+
+Per ADR-011, all social-event email notifications (`notifyNewFollower`, `notifyRecipeLiked`, `notifyRecipeCommented`, `notifyFollowersOfNewRecipe`) use a **fire-and-forget** pattern. If the SMTP server is unreachable or returns an error, the failure is logged but the email is silently dropped. There is no retry queue, dead-letter queue, or backoff mechanism.
+
+`Deno.Kv.enqueue()` / `listenQueue()` would be the natural Deno-native building blocks for a retry queue, but they are **not available** on the new Deno Deploy GA platform. Alternatives for implementing email retries:
+
+| Approach | Pros | Cons |
+|---|---|---|
+| Store pending emails in PostgreSQL table | Full control, ACID | Adds DB load, requires cleanup |
+| External queue (Upstash Redis/QStash) | Managed, reliable | Adds a service dependency |
+| Scheduled cron retries | Simple | Fixed interval, not event-driven |
 
 ---
 
 ## Quick Reference: Useful Commands
 
 ```bash
-# Local dev
-deno task dev              # Start API with hot reload
-deno task dev:web          # Start Vite dev server
-deno task db:generate      # Generate Drizzle migration SQL
-deno task db:migrate       # Run migrations
-deno task db:seed          # Seed data
-deno task db:setup         # Create admin user
-deno task email:build      # Compile email templates
-deno task lint             # Lint all code
-deno task fmt              # Format all code
-deno task check            # Type check API
-deno task test             # Run test suite
-deno task test:coverage    # Run tests with coverage
+# Local development
+deno task dev                         # API with hot reload
+deno task --cwd apps/web dev          # Vite dev server
+deno task db:generate                 # Generate Drizzle migration
+deno task db:migrate                  # Run migrations
+deno task db:seed                     # Seed data
+deno task email-build                 # Compile email templates
+deno task lint                        # Lint all code
+deno task fmt                         # Format all code
+deno task check                       # Type check
+deno task test                        # Run test suite
 
-# Local Docker
-docker compose up -d       # Start postgres, mailpit, garage
-docker compose down        # Stop all services
+# Docker workflow
+docker compose up -d                  # Start infra (postgres, mailpit, garage)
+docker compose down                   # Stop all services
 
-# Deno Deploy CLI (optional)
-deno deploy                # Deploy current directory (requires setup)
-deno deploy create --org brewform --app brewform-api --source github --owner <you> --repo BrewForm
-
-# Database (production)
-export DATABASE_URL="postgresql://..."
-deno run --allow-all apps/api/src/setup.ts
+# Production
+DATABASE_URL="postgresql://..." deno task db:migrate
+DATABASE_URL="postgresql://..." deno run --allow-all apps/api/src/setup.ts
 ```
 
 ---
 
 ## Deployment Complete ✅
 
-Once all phases are verified, BrewForm is live on:
-
-- **Web**: `https://brewform.cc`
-- **API**: `https://api.brewform.cc`
-- **Admin**: Log in at `https://brewform.cc` with credentials set in Phase D1
+| Service | URL | Type |
+|---|---|---|
+| Web | `https://brewform.cc` | Deno Deploy (static) |
+| Web (www) | `https://www.brewform.cc` | Deno Deploy (static) |
+| API | `https://api.brewform.cc` | Deno Deploy (dynamic) |
+| PostgreSQL | Managed provider (Neon/Supabase) | External |
+| Object storage | Cloudflare R2 | External |
+| Email | Mailtrap SMTP | External |

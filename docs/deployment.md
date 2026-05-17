@@ -3,199 +3,256 @@
 ## Architecture Overview
 
 ```
-┌──────────────────┐       ┌──────────────────────────┐
-│  GitHub Pages    │       │    Deno Deploy (free)     │
-│  (Static SPA)    │──────▶│    Hono API + Drizzle ORM │
-│  React + Vite    │ CORS  │    Deno KV (cache)        │
-└──────────────────┘       │    PostgreSQL (managed)    │
-                           └──────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                 Deno Deploy (Free Plan)                  │
+│                                                         │
+│  ┌──────────────────────┐   ┌────────────────────────┐ │
+│  │  brewform-web        │   │  brewform-api           │ │
+│  │  (Static Site, SPA)  │──▶│  (Dynamic: Hono API)   │ │
+│  │  React + Vite build  │   │  Drizzle ORM + postgres │ │
+│  │  brewform.cc         │   │  Deno KV (cache)        │ │
+│  │  www.brewform.cc     │   │  api.brewform.cc        │ │
+│  └──────────────────────┘   └──────┬─────────────────┘ │
+└────────────────────────────────────┼───────────────────┘
+                                     │
+                          ┌──────────▼──────────┐
+                          │  PostgreSQL (managed) │
+                          │  Neon / Supabase /   │
+                          │  AWS RDS             │
+                          └─────────────────────┘
 ```
 
-- **Frontend**: React SPA built with Vite, deployed to GitHub Pages as static assets
-- **Backend**: Hono API running on Deno Deploy, connecting to a managed PostgreSQL instance
+- **Frontend**: React SPA built with Vite, deployed to Deno Deploy as a static site with SPA mode
+- **Backend**: Hono API running on Deno Deploy as a dynamic app, connecting to managed PostgreSQL
 - **Cache**: Deno KV for taste note hierarchy, popular recipes, and search result caching
-- **Storage**: Local filesystem (default) or S3-compatible object storage (Garage in development,
-  any S3 provider in production)
-- **Email**: SMTP (Mailpit in development, production SMTP in production). MJML templates are
-  pre-compiled to TypeScript at build time
+- **Storage**: S3-compatible object storage (Cloudflare R2, Backblaze B2, etc.)
+- **Email**: SMTP (Mailpit in development, Mailtrap/SendGrid in production). MJML templates pre-compiled to TypeScript at build time
 
-## Backend Deployment (Deno Deploy)
+## Projects
 
-**Prerequisite**: Build email templates before deployment:
+Two separate Deno Deploy projects, both linked to the same GitHub repository:
 
-```bash
-deno task email:build
+| Project | Type | Domain | Entry / Config |
+|---|---|---|---|
+| `brewform-api` | Dynamic | `api.brewform.cc` | `apps/api/src/main.ts` |
+| `brewform-web` | Static (SPA) | `brewform.cc`, `www.brewform.cc` | `apps/web/dist/` |
+
+### `brewform-api` (Dynamic)
+
+Configured in `apps/api/deno.json`:
+
+```json
+{
+  "deploy": {
+    "install": "deno install",
+    "build": "deno task --cwd ../../packages/db generate && deno task email-build",
+    "runtime": {
+      "mode": "dynamic",
+      "entrypoint": "src/main.ts"
+    }
+  }
+}
 ```
 
-1. Push to `main` branch
-2. GitHub Actions workflow builds and deploys via `denoland/deployctl@v1` with OIDC authentication
-3. Environment variables configured in the Deno Deploy dashboard
-4. Entry point: `apps/api/src/main.ts`
-5. Deno Deploy provides built-in Deno KV
-6. Deno Deploy supports `Deno.cron()` for scheduled jobs (badge evaluation, cache refresh)
+The entry point (`apps/api/src/main.ts`) auto-detects Deno Deploy via `Deno.env.get('DENO_DEPLOY')`:
+- On Deploy: `Deno.serve(app.fetch)` (platform assigns port)
+- Locally: `Deno.serve({ port: config.APP_PORT }, app.fetch)` (default 8000)
 
-Required environment variables for production:
+### `brewform-web` (Static)
 
-| Variable               | Description                              |
-| ---------------------- | ---------------------------------------- |
-| `DATABASE_URL`         | PostgreSQL connection string             |
-| `JWT_SECRET`           | Cryptographically random, ≥32 characters |
-| `CORS_ALLOWED_ORIGINS` | `https://yourdomain.com`                 |
-| `APP_URL`              | `https://your-api.deno.dev`              |
-| `SMTP_HOST`            | Production SMTP host                     |
-| `SMTP_PORT`            | Production SMTP port                     |
-| `SMTP_USER`            | SMTP username                            |
-| `SMTP_PASS`            | SMTP password                            |
-| `SMTP_SECURE`          | `true` for production                    |
-| `EMAIL_FROM`           | Sender email address                     |
-| `APP_ENV`              | `production`                             |
-| `STORAGE_DRIVER`       | `s3` for production (default: `local`)   |
-| `S3_ENDPOINT`          | S3-compatible API endpoint               |
-| `S3_REGION`            | S3 region (default: `auto`)              |
-| `S3_BUCKET`            | S3 bucket name                           |
-| `S3_ACCESS_KEY`        | S3 access key                            |
-| `S3_SECRET_KEY`        | S3 secret key                            |
-| `S3_PUBLIC_URL`        | Public URL for serving uploaded files    |
+Configured in `apps/web/deno.json`:
 
-## Frontend Deployment (GitHub Pages)
-
-1. Push to `main` branch
-2. GitHub Actions builds the React SPA
-3. `VITE_API_URL` is injected at build time via Vite's `define` config:
-   - Production: `https://brewform-api.deno.dev/api/v1`
-   - Development: `/api/v1` (proxied by Vite dev server)
-4. Built assets in `apps/web/dist/` deployed to GitHub Pages
-5. SPA routing handled via `404.html` redirect trick with `sessionStorage`
-
-The `404.html` trick:
-
-- GitHub Pages returns `404.html` for unknown paths
-- `404.html` saves the original URL path to `sessionStorage` and redirects to `/`
-- `index.html` checks `sessionStorage` on load and restores the URL via `history.replaceState`
-
-## Local Development
-
-Make sure `.env` exists (copy from `.env.example`) so Docker Compose can load environment variables
-for services such as Garage:
-
-```bash
-cp .env.example .env
+```json
+{
+  "deploy": {
+    "install": "deno install",
+    "build": "deno task build",
+    "runtime": {
+      "mode": "static",
+      "cwd": "./dist",
+      "spa": true
+    }
+  }
+}
 ```
 
-```bash
-make up          # Start infrastructure (postgres, mailpit, pgadmin, garage)
-make install     # Cache Deno dependencies
-make dev         # Start full-stack dev server (API :8000 + web :5173 with HMR)
-make logs        # View infrastructure logs
-make db-migrate  # Apply database migrations
-make db-seed     # Seed sample data
-make db-studio   # Open Drizzle Studio GUI at localhost:5555
-```
+- **Build command**: `deno run -A npm:vite build` (outputs to `apps/web/dist/`)
+- **SPA mode**: Enabled — serves `index.html` for all unmatched paths (handles React Router client-side routes)
+- **`VITE_API_URL`** injected at build time via Vite's `define` config:
+  - Production: `https://api.brewform.cc/api/v1`
+  - Development: `/api/v1` (proxied by Vite dev server)
 
-After seeding, admin credentials: `admin@brewform.local` / `admin123456`
+## Deployment Process
 
-Open **http://localhost:5173** for the web app and **http://localhost:8000** for the API.
+**Automatic via GitHub integration**. Every push to `main` triggers a deployment:
 
-### Development Services
+1. Push to `main`
+2. GitHub Actions runs CI (quality + test jobs) — no deploy steps in CI
+3. Deno Deploy's GitHub integration detects the push and builds independently for each project
+4. Both projects deploy automatically
 
-| Service         | URL / Port              | Purpose                          |
-| --------------- | ----------------------- | -------------------------------- |
-| API             | http://localhost:8000   | Hono backend (dev + preview)     |
-| Web (Vite HMR)  | http://localhost:5173   | React dev server with hot reload |
-| Web (Caddy)     | http://localhost:8080   | Built SPA preview                |
-| PostgreSQL      | localhost:5432          | Database                         |
-| Mailpit SMTP    | localhost:1025          | SMTP server for email testing    |
-| Mailpit UI      | http://localhost:8025   | Email web UI                     |
-| pgAdmin         | http://localhost:5050   | Database GUI                     |
-| Garage S3 API   | http://localhost:3900   | S3-compatible object storage     |
-| Garage Web      | http://localhost:3902   | Garage web gateway               |
+There is no `deployctl` usage, no manual deploy steps, and no deploy script in CI. The `deno.json` deploy configs define everything Deno Deploy needs.
 
-### Development vs. Preview
+## Domains
 
-**Development (`make dev`)**
-Starts two long-running Docker Compose services (profile `dev`):
+Three custom domains on the Free plan (50-domain limit):
 
-- **`app`** — Hono API with `deno run --watch` for hot reload at `http://localhost:8000`
-- **`web-dev`** — Vite dev server with HMR at `http://localhost:5173`
+| Domain | Project | DNS Record |
+|---|---|---|
+| `brewform.cc` | `brewform-web` | CNAME/ALIAS → `brewform-web.deno.dev` |
+| `www.brewform.cc` | `brewform-web` | CNAME → `brewform-web.deno.dev` |
+| `api.brewform.cc` | `brewform-api` | CNAME → `brewform-api.deno.dev` |
 
-Vite proxies `/api` requests to the `app` container via the Docker internal hostname `app:8000`,
-so the browser only needs to talk to `http://localhost:5173`.
+TLS certificates are provisioned and auto-renewed via Let's Encrypt.
 
-`make dev-api` and `make web-dev` are available for running only one side at a time.
+## Environment Variables
 
-**Why not start the app with `make up`?**
-`make up` intentionally starts only infrastructure services (profile-less services). The `app` and
-`web-dev` services are in the `dev` profile and are never started by `make up`. This prevents a
-"port already allocated" error that would occur if the API container were already running when you
-later run `make dev`.
+### `brewform-api` — Production Context (runtime)
 
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (pooled) |
+| `JWT_SECRET` | Cryptographically random, ≥32 characters |
+| `CORS_ALLOWED_ORIGINS` | `https://brewform.cc` |
+| `APP_URL` | `https://api.brewform.cc` |
+| `APP_ENV` | `production` |
+| `LOG_LEVEL` | `info` |
+| `CACHE_DRIVER` | `deno-kv` |
+| `SMTP_HOST` | Production SMTP host |
+| `SMTP_PORT` | Production SMTP port |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASS` | SMTP password |
+| `SMTP_SECURE` | `true` for production |
+| `EMAIL_FROM` | `noreply@brewform.cc` |
+| `STORAGE_DRIVER` | `s3` |
+| `S3_ENDPOINT` | S3-compatible API endpoint |
+| `S3_REGION` | S3 region (default: `auto`) |
+| `S3_BUCKET` | S3 bucket name |
+| `S3_ACCESS_KEY` | S3 access key |
+| `S3_SECRET_KEY` | S3 secret key |
+| `S3_PUBLIC_URL` | Public URL for serving uploaded files |
+| `ADMIN_EMAIL` | Admin account email |
+| `ADMIN_USERNAME` | Admin account username |
+| `ADMIN_PASSWORD` | Admin account password |
 
-**Preview (`make preview`)**
-Builds the web app and serves the static SPA via Caddy alongside the production-like API:
-- API at `http://localhost:8000` (via `app-preview` service, profile `preview`)
-- Built web app at `http://localhost:8080` (via `web` Caddy service, profile `preview`)
-- Useful for testing production builds locally before deploying
+### `brewform-api` — Build Context
 
-### Docker Compose Services
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL URL for Drizzle migration generation |
 
-The `compose.yml` defines these services:
+### `brewform-web` — Build Context
 
-| Service       | Profile   | Purpose                                                    |
-| ------------- | --------- | ---------------------------------------------------------- |
-| `app`         | `dev`     | API with `--watch` hot reload; source volume-mounted       |
-| `web-dev`     | `dev`     | Vite dev server with HMR; proxies `/api` to `app:8000`     |
-| `app-preview` | `preview` | Production API image (no hot reload, no volume mount)      |
-| `web`         | `preview` | Caddy static file server for the built React SPA           |
-| `postgres`    | —         | PostgreSQL 18 database                                     |
-| `mailpit`     | —         | SMTP testing with web UI                                   |
-| `pgadmin`     | —         | PostgreSQL admin GUI                                       |
-| `garage`      | —         | S3-compatible object storage for local development         |
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | `https://api.brewform.cc/api/v1` |
+
+## Deno Deploy Free Plan Capabilities
+
+| Resource | Limit | BrewForm Usage |
+|---|---|---|
+| Requests/month | 1M | API traffic |
+| Bandwidth (egress) | 20 GB | API responses + static assets |
+| CPU time/month | 15 hours | Request processing |
+| Memory time/month | 350 GB-h | Runtime memory |
+| Volume storage | 1 GiB | Code + config |
+| Apps | 20 | 2 (api + web) |
+| Custom domains | 50/org | 3 |
+| Deno KV storage | 1 GiB | Cache data |
+| Deno KV reads/month | 450K (4 KiB units) | Cache lookups |
+| Deno KV writes/month | 300K (1 KiB units) | Cache writes |
+
+**Deno.cron()**: Supported on Free plan. Currently 1 active job (`evaluate-badges`, hourly). A `refresh-popular-cache` job was planned but not implemented (see [Gaps](#gaps--unimplemented-features)).
+**WebSockets**: Supported (design for reconnection — isolates may be evicted).
+**Deno.Kv.enqueue()/listenQueue()**: Not supported on new platform.
+
+## Known Platform Limitations
+
+| Limitation | Impact |
+|---|---|
+| No static egress IPs | Database must accept connections from all IPs |
+| 2 regions (us, eu) | Higher latency from distant regions |
+| Build timeout: 5 min | May need Pro for larger builds |
+| Log retention: 1 day | Logs available for 24 hours only |
+
+## Gaps & Unimplemented Features
+
+Items referenced in design docs or earlier plans that were **not implemented** but may be needed for production durability.
+
+### `refresh-popular-cache` cron job
+
+A second cron job to proactively refresh Deno KV cache entries (popular recipes, taste note hierarchy) on a 6-hour schedule was planned but never implemented. Currently, cache entries are populated on-demand (cache miss → compute → store). Low priority — no user-facing impact.
+
+### Email notification retry queue
+
+Per ADR-011, all social-event email notifications use a **fire-and-forget** pattern — transient SMTP failures are logged but the email is silently dropped. There is no retry mechanism.
+
+`Deno.Kv.enqueue()` / `listenQueue()` (the natural Deno-native building blocks for a retry queue) are **not available** on the new Deno Deploy GA platform. Alternatives:
+- Store pending emails in a PostgreSQL table with a retry column
+- Use an external queue service (Upstash Redis, QStash)
+- Implement retries via a scheduled `Deno.cron()` job
+
+---
 
 ## CI/CD Pipelines
 
 ### Main Pipeline (`.github/workflows/ci.yml`)
 
-Triggers on push to `main`:
+Triggers on push to `main` and PRs to `main`:
 
-1. **Quality**: Format check, lint, type check
-2. **Test**: PostgreSQL service container, migrations, seed, test suite
-3. **Deploy Backend**: Deploy to Deno Deploy via `deployctl`
-4. **Deploy Frontend**: Build React SPA with `VITE_API_URL`, deploy to GitHub Pages
+1. **Quality**: Install deps, generate Drizzle migration (with `git diff --exit-code`), build email templates, format check, lint, type check
+2. **Test** (requires quality): PostgreSQL service container, migrations, seed, full test suite with coverage
+
+Deployment is handled by Deno Deploy's GitHub integration — **no deploy steps in CI**.
 
 ### PR Checks (`.github/workflows/pr.yml`)
 
 Triggers on pull requests:
 
-1. Format check
-2. Lint
-3. Type check
-4. Shared package unit tests
+1. Format check, lint, type check
+2. Shared package unit tests
 
-## Environment Variables Reference
+## Local Development
 
-See `.env.example` for all configuration options. Key variables:
+### Quick Start
 
-| Variable                | Default                     | Description                                     |
-| ----------------------- | --------------------------- | ----------------------------------------------- |
-| `APP_PORT`              | `8000`                      | Server port                                     |
-| `APP_ENV`               | `development`               | `development`, `production`, or `test`          |
-| `LOG_LEVEL`             | `info`                      | Log level (debug, info, warn, error)            |
-| `DATABASE_URL`          | —                           | **Required.** PostgreSQL connection string      |
-| `CACHE_DRIVER`          | `deno-kv`                   | `deno-kv` or `memory`                           |
-| `JWT_SECRET`            | —                           | **Required.** ≥16 characters                    |
-| `JWT_ACCESS_EXPIRY`     | `15m`                       | Access token validity period                    |
-| `JWT_REFRESH_EXPIRY`    | `7d`                        | Refresh token validity period                   |
-| `CORS_ALLOWED_ORIGINS`  | `http://localhost:5173,...` | Comma-separated allowed origins                 |
-| `SMTP_HOST`             | `localhost`                 | SMTP server host                                |
-| `SMTP_PORT`             | `1025`                      | SMTP server port                                |
-| `UPLOAD_DIR`            | `./uploads`                 | Photo upload directory (local driver only)      |
-| `UPLOAD_MAX_SIZE_BYTES` | `10485760`                  | Max upload size (10 MB)                         |
-| `APP_URL`               | `http://localhost:8000`     | Base URL for QR code generation                 |
-| `OPENAPI_ENABLED`       | `true`                      | Enable /openapi.json endpoint                   |
-| `STORAGE_DRIVER`        | `local`                     | `local` or `s3`                                 |
-| `S3_ENDPOINT`           | —                           | S3 API endpoint (required when `s3`)            |
-| `S3_REGION`             | `auto`                      | S3 region                                       |
-| `S3_BUCKET`             | —                           | S3 bucket name (required when `s3`)             |
-| `S3_ACCESS_KEY`         | —                           | S3 access key (required when `s3`)              |
-| `S3_SECRET_KEY`         | —                           | S3 secret key (required when `s3`)              |
-| `S3_PUBLIC_URL`         | —                           | Public CDN URL for uploads (required when `s3`) |
+```bash
+cp .env.example .env
+make up          # Start infrastructure services
+make install     # Cache Deno dependencies
+make dev         # Full-stack dev (API :8000 + web :5173 with HMR)
+```
+
+### Services
+
+| Service | URL / Port | Purpose |
+|---|---|---|
+| API | http://localhost:8000 | Hono backend (dev + preview) |
+| Web (Vite HMR) | http://localhost:5173 | React dev server with HMR |
+| Web (Caddy) | http://localhost:8080 | Built SPA preview |
+| PostgreSQL | localhost:5432 | Database |
+| Mailpit SMTP | localhost:1025 | SMTP for email testing |
+| Mailpit UI | http://localhost:8025 | Email web UI |
+| pgAdmin | http://localhost:5050 | Database GUI |
+| Garage S3 | http://localhost:3900 | S3-compatible storage |
+
+### Development vs Preview
+
+**Development** (`make dev`): API with `--watch` hot reload + Vite HMR. Proxies `/api` to API container.
+
+**Preview** (`make preview`): Builds production-like setup with Caddy serving static SPA + production API image.
+
+### Useful Commands
+
+```bash
+deno task dev              # API with hot reload
+deno task --cwd apps/web dev   # Vite dev server
+deno task db:generate      # Generate Drizzle migration
+deno task db:migrate       # Run migrations
+deno task db:seed          # Seed data
+deno task email-build      # Compile email templates
+deno task lint             # Lint
+deno task fmt              # Format
+deno task check            # Type check
+deno task test             # Run tests
+```
