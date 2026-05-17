@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "vite": "^8.0.0",
+    "@deno/vite-plugin": "^2.0.0",
     "@vitejs/plugin-react": "^6.0.0",
     "tailwindcss": "^4.1.0",
     "@tailwindcss/vite": "^4.1.0",

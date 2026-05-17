@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { join, resolve } from 'jsr:@std/path';
+import deno from '@deno/vite-plugin';
+import { join, resolve } from 'node:path';
 
 // When running inside Docker Compose, the API is reachable via the service name
 // "app" (http://app:8000). Outside Docker (bare Deno), it's localhost:8000.
@@ -14,7 +15,7 @@ const monorepoRoot = resolve(import.meta.dirname!, '../..');
 const sharedSrc = join(monorepoRoot, 'packages/shared/src');
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [deno(), react(), tailwindcss()],
   resolve: {
     alias: {
       // Local path alias

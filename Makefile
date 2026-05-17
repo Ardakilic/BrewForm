@@ -56,8 +56,31 @@ fmt: ## Format all code
 fmt-check: ## Check formatting without changes
 	docker compose run --rm --no-deps app deno fmt --check
 
-check: install ## Type-check the API entrypoint
-	docker compose run --rm --no-deps app deno check apps/api/src/main.ts
+check: ## Type-check all workspaces (api, web, db, shared)
+	docker compose run --rm --no-deps app deno task check
+
+check-api: ## Type-check API only
+	docker compose run --rm --no-deps app deno task check:api
+
+check-web: ## Lint web frontend
+	docker compose run --rm --no-deps app deno task check:web
+
+check-db: ## Type-check database package
+	docker compose run --rm --no-deps app deno task check:db
+
+check-shared: ## Type-check shared package
+	docker compose run --rm --no-deps app deno task check:shared
+
+# --- Build ---
+
+build-api: ## Build API (email templates)
+	docker compose run --rm --no-deps app deno task build:api
+
+build-web: ## Build React SPA (outputs to apps/web/dist/)
+	docker compose run --rm --no-deps app deno task build:web
+
+build-shared: ## Type-check shared package as build artifact
+	docker compose run --rm --no-deps app deno task build:shared
 
 # --- Testing ---
 
@@ -81,7 +104,7 @@ test-specific: ## Run specific test (use filter=)
 
 # --- Database ---
 
-DRIZZLE_KIT := npm:drizzle-kit@0.31.10
+DRIZZLE_KIT := npm:drizzle-kit@0.31
 
 db-migrate: ## Run database migrations
 	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
@@ -115,7 +138,7 @@ setup: ## Run admin setup
 #
 # Both services run as long-running containers (not one-shot `run`).
 # Use `make down` or Ctrl-C + `docker compose --profile dev down` to stop.
-dev: up ## Start full-stack dev environment
+dev: up ## Start full-stack dev environment (API :8000 + web :5173 with HMR)
 	docker compose --profile dev up app web-dev
 
 # Start API dev server only (hot reload on :8000).
@@ -130,17 +153,17 @@ web-dev: ## Start Vite web dev server only
 # --- Frontend ---
 
 # Build the React SPA (outputs to apps/web/dist/).
-web-build: ## Build the React SPA
-	docker compose run --rm --no-deps app sh -c "cd apps/web && deno run -A npm:vite build"
+# Legacy alias — prefer `make build-web` for consistency with build-api / build-shared.
+web-build: build-web ## Build the React SPA
 
 # Preview production build — builds the web app and serves it via Caddy on :8080
 # alongside the production-like API on :8000.
-preview: web-build up ## Build + preview production build
+preview: build-web up ## Build + preview production build
 	docker compose --profile preview up app-preview web
 
 # --- CI ---
 
-ci: fmt-check lint check check-tests test-coverage ## Run full CI pipeline
+ci: fmt-check lint check build-web check-tests test-coverage ## Run full CI pipeline (fmt, lint, check, build, test)
 
 # ── Serena MCP ──────────────────────────────────────────────────────────
 

@@ -1,12 +1,13 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { join, resolve } from 'jsr:@std/path';
+import deno from '@deno/vite-plugin';
+import { join, resolve } from 'node:path';
 
 const monorepoRoot = resolve(import.meta.dirname!, '../..');
 const sharedSrc = join(monorepoRoot, 'packages/shared/src');
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [deno(), react()],
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname!, './src'),

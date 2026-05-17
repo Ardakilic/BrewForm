@@ -21,7 +21,8 @@ built-in test runner / linter / formatter, and Deno Deploy as a free hosting tar
 workspaces let us share packages (`@brewform/shared`, `@brewform/db`) without a Node.js runtime or
 a separate package manager binary. The `package.json` files serve as dependency manifests that both
 Deno's npm compatibility layer and Renovate understand. Task orchestration uses `deno task` with
-`--recursive`, `--filter`, and `--cwd` flags — no external task runner needed.
+explicit `--cwd`-based sub-tasks (e.g. `check:api`, `build:web`, `dev:api`) that compose into
+aggregate `check`, `build`, and `dev` tasks — no external task runner needed.
 
 **Trade-off.** A single toolchain simplifies the monorepo. `deno task` handles all build, test,
 lint, and dev workflows. All relative imports use explicit `.ts` extensions — no
