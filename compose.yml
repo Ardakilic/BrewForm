@@ -200,6 +200,32 @@ services:
     profiles:
       - preview
 
+  # ── Serena MCP (semantic code retrieval for AI tools) ────────────────────
+  # Started on-demand via `make serena-up` (profile: serena).
+  # NOT started by `make up` or `make dev`.
+  # Indexes all 4 Deno workspace members: apps/api, apps/web, packages/shared,
+  # packages/db via additional_workspace_folders in .serena/project.yml.
+  serena:
+    image: ghcr.io/oraios/serena:latest
+    container_name: brewform-serena
+    restart: unless-stopped
+    environment:
+      - SERENA_DOCKER=1
+    ports:
+      - "10122:9121"   # SSE endpoint (MCP clients connect here)
+      - "34283:24282"  # Web dashboard
+    volumes:
+      - .:/workspace/brewform
+    command: >
+      serena start-mcp-server
+        --transport sse
+        --port 9121
+        --host 0.0.0.0
+        --context desktop-app
+        --project /workspace/brewform
+    profiles:
+      - serena
+
 volumes:
   postgres_data:
   garage_data:

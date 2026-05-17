@@ -1,0 +1,29 @@
+{
+  "spec": "implement-serena-mcp-server-brewform-monorepo",
+  "status": "completed",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Complete scope: Docker compose serena service with --profile serena, .serena/project.yml with TypeScript/Deno language support + addition...",
+      "status": "done"
+    },
+    {
+      "id": "task-2",
+      "title": "Manual smoke-test: make serena-up succeeds, make serena-health returns ok, Serena dashboard loads at http://localhost:34283, AI clients can connect via http://localhost:10122/sse, all 4 workspace folders indexed with cross-package symbol resolution working. No automated tests or CI integration needed.",
+      "status": "done"
+    },
+    {
+      "id": "task-3",
+      "title": "Write or update tests for all new and changed behavior",
+      "status": "done"
+    },
+    {
+      "id": "task-4",
+      "title": "Update documentation for all public-facing changes (README, API docs, CHANGELOG)",
+      "status": "done"
+    }
+  ],
+  "decisions": [],
+  "debt": [],
+  "updatedAt": "2026-05-17T16:15:10.789Z"
+}

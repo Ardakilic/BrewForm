@@ -56,3 +56,7 @@ garage.toml
 
 # Turbo
 .turbo/
+
+# Serena MCP
+.serena/cache/
+.serena/project.local.yml
