@@ -17,6 +17,7 @@ import fc from 'fast-check';
 import { TastingNotesSection } from './TastingNotesSection';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import type { ReactNode } from 'react';
+import { SCAA_CATEGORIES } from '../../utils/radar-chart-data.ts';
 
 function withI18n(ui: ReactNode) {
   return <I18nProvider>{ui}</I18nProvider>;
@@ -168,16 +169,6 @@ describe('TastingNotesSection — unit tests', () => {
 // Property-based test — Property 8: Taste note grouping and intensity display
 // Validates: Requirements 8.3, 8.4
 // ---------------------------------------------------------------------------
-
-const SCAA_CATEGORIES = [
-  'Floral',
-  'Fruity',
-  'Sweet',
-  'Nutty/Cocoa',
-  'Spices',
-  'Roasted',
-  'Other',
-] as const;
 
 /** Arbitrary for a valid intensity value (1, 2, or 3) */
 const intensityArb = fc.integer({ min: 1, max: 3 });

@@ -58,6 +58,26 @@ describe('mapToScaaCategory — unit tests', () => {
     expect(mapToScaaCategory('Cocoa')).toBe('Nutty/Cocoa');
   });
 
+  it('"Sour/Fermented" → "Sour/Fermented"', () => {
+    expect(mapToScaaCategory('Sour/Fermented')).toBe('Sour/Fermented');
+  });
+
+  it('"sour" → "Sour/Fermented"', () => {
+    expect(mapToScaaCategory('sour')).toBe('Sour/Fermented');
+  });
+
+  it('"fermented" → "Sour/Fermented"', () => {
+    expect(mapToScaaCategory('fermented')).toBe('Sour/Fermented');
+  });
+
+  it('"Green/Vegetative" → "Green/Vegetative"', () => {
+    expect(mapToScaaCategory('Green/Vegetative')).toBe('Green/Vegetative');
+  });
+
+  it('"green" → "Green/Vegetative"', () => {
+    expect(mapToScaaCategory('green')).toBe('Green/Vegetative');
+  });
+
   it('"unknown" → "Other"', () => {
     expect(mapToScaaCategory('unknown')).toBe('Other');
   });
@@ -71,10 +91,11 @@ describe('aggregateByCategory — unit tests', () => {
   it('single note: Floral intensity=2 → Floral=2, all others=0', () => {
     const result = aggregateByCategory([makeNote('Floral', 2)]);
 
-    expect(result['Floral']).toBe(2);
+    expect(result.values['Floral']).toBe(2);
+    expect(result.allResolved).toBe(true);
     for (const cat of SCAA_CATEGORIES) {
       if (cat !== 'Floral') {
-        expect(result[cat]).toBe(0);
+        expect(result.values[cat]).toBe(0);
       }
     }
   });
@@ -86,10 +107,11 @@ describe('aggregateByCategory — unit tests', () => {
     ];
     const result = aggregateByCategory(notes);
 
-    expect(result['Fruity']).toBe(4);
+    expect(result.values['Fruity']).toBe(4);
+    expect(result.allResolved).toBe(true);
   });
 
-  it('notes spanning all 7 categories → correct sums per category', () => {
+  it('notes spanning all 9 categories → correct sums per category', () => {
     const notes: TasteNoteForChart[] = [
       makeNote('Floral', 1, 'n1'),
       makeNote('Fruity', 2, 'n2'),
@@ -98,34 +120,58 @@ describe('aggregateByCategory — unit tests', () => {
       makeNote('Spices', 2, 'n5'),
       makeNote('Roasted', 3, 'n6'),
       makeNote('Other', 1, 'n7'),
+      makeNote('Green/Vegetative', 2, 'n8'),
+      makeNote('Sour/Fermented', 1, 'n9'),
     ];
     const result = aggregateByCategory(notes);
 
-    expect(result['Floral']).toBe(1);
-    expect(result['Fruity']).toBe(2);
-    expect(result['Sweet']).toBe(3);
-    expect(result['Nutty/Cocoa']).toBe(1);
-    expect(result['Spices']).toBe(2);
-    expect(result['Roasted']).toBe(3);
-    expect(result['Other']).toBe(1);
+    expect(result.values['Floral']).toBe(1);
+    expect(result.values['Fruity']).toBe(2);
+    expect(result.values['Sweet']).toBe(3);
+    expect(result.values['Nutty/Cocoa']).toBe(1);
+    expect(result.values['Spices']).toBe(2);
+    expect(result.values['Roasted']).toBe(3);
+    expect(result.values['Other']).toBe(1);
+    expect(result.values['Green/Vegetative']).toBe(2);
+    expect(result.values['Sour/Fermented']).toBe(1);
+    expect(result.allResolved).toBe(true);
   });
 
-  it('empty array → all 7 categories=0', () => {
+  it('empty array → all 9 categories=0', () => {
     const result = aggregateByCategory([]);
 
-    expect(Object.keys(result)).toHaveLength(7);
+    expect(Object.keys(result.values)).toHaveLength(9);
     for (const cat of SCAA_CATEGORIES) {
-      expect(result[cat]).toBe(0);
+      expect(result.values[cat]).toBe(0);
+    }
+    expect(result.allResolved).toBe(true);
+  });
+
+  it('always returns all 9 SCAA_CATEGORIES as keys', () => {
+    const result = aggregateByCategory([makeNote('Floral', 1)]);
+
+    expect(Object.keys(result.values)).toHaveLength(9);
+    for (const cat of SCAA_CATEGORIES) {
+      expect(Object.keys(result.values)).toContain(cat);
     }
   });
 
-  it('always returns all 7 SCAA_CATEGORIES as keys', () => {
-    const result = aggregateByCategory([makeNote('Floral', 1)]);
+  it('notes with null rootCategoryName are skipped and allResolved=false', () => {
+    const notes: TasteNoteForChart[] = [
+      makeNote('Floral', 2, 'n1'),
+      {
+        tasteNoteId: 'n2',
+        intensity: 1,
+        name: 'Rose',
+        parentId: 'p1',
+        depth: 1,
+        rootCategoryName: null,
+      },
+    ];
+    const result = aggregateByCategory(notes);
 
-    expect(Object.keys(result)).toHaveLength(7);
-    for (const cat of SCAA_CATEGORIES) {
-      expect(Object.keys(result)).toContain(cat);
-    }
+    expect(result.values['Floral']).toBe(2);
+    expect(result.allResolved).toBe(false);
   });
 });
 
@@ -179,17 +225,17 @@ describe('aggregateByCategory — Property 7: Radar chart category aggregation',
    * **Validates: Requirements 8.1, 8.2**
    *
    * For any array of notes with valid intensities (1-3),
-   * aggregateByCategory always returns exactly 7 keys.
+   * aggregateByCategory always returns exactly 9 keys.
    */
-  it('always returns exactly 7 keys for any input', () => {
+  it('always returns exactly 9 keys for any input', () => {
     fc.assert(
       fc.property(
         fc.array(tasteNoteArbitrary, { minLength: 0, maxLength: 30 }),
         (notes) => {
           const result = aggregateByCategory(notes);
-          const keys = Object.keys(result);
+          const keys = Object.keys(result.values);
 
-          expect(keys).toHaveLength(7);
+          expect(keys).toHaveLength(9);
           for (const cat of SCAA_CATEGORIES) {
             expect(keys).toContain(cat);
           }
@@ -212,7 +258,7 @@ describe('aggregateByCategory — Property 7: Radar chart category aggregation',
           const result = aggregateByCategory(notes);
 
           const totalCategorySum = SCAA_CATEGORIES.reduce(
-            (acc, cat) => acc + result[cat],
+            (acc, cat) => acc + result.values[cat],
             0,
           );
           const totalIntensitySum = notes.reduce(
@@ -240,7 +286,7 @@ describe('aggregateByCategory — Property 7: Radar chart category aggregation',
           const result = aggregateByCategory(notes);
 
           for (const cat of SCAA_CATEGORIES) {
-            expect(result[cat]).toBeGreaterThanOrEqual(0);
+            expect(result.values[cat]).toBeGreaterThanOrEqual(0);
           }
         },
       ),
