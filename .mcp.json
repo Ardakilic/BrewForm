@@ -3,7 +3,7 @@
     "serena": {
       "type": "sse",
       "url": "http://localhost:10122/sse",
-      "disabled": true
+      "disabled": false
     }
   }
 }
