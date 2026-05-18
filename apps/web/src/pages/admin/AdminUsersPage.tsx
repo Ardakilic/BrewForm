@@ -19,6 +19,7 @@ export function AdminUsersPage() {
     total: 0,
     totalPages: 0,
   });
+  const [error, setError] = useState('');
   const [banDialog, setBanDialog] = useState<
     {
       user: AdminUser;
@@ -29,6 +30,7 @@ export function AdminUsersPage() {
 
   function fetchUsers(page: number, q: string) {
     setLoading(true);
+    setError('');
     const params: Record<string, string> = { page: String(page), perPage: '20' };
     if (q) params.q = q;
     adminApi.getUsers(params).then((data) => {
@@ -39,7 +41,10 @@ export function AdminUsersPage() {
         total: data.total,
         totalPages: Math.ceil(data.total / prev.perPage),
       }));
-    }).catch(() => {
+    }).catch((err) => {
+      setError((err as { message?: string })?.message || 'Failed to load users.');
+      setUsers([]);
+      setPagination((prev) => ({ ...prev, page: 1, total: 0, totalPages: 0 }));
     }).finally(() => setLoading(false));
   }
 
@@ -59,8 +64,10 @@ export function AdminUsersPage() {
       await adminApi.banUser(userId, banDialog.reason);
       setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, isBanned: true } : u));
       setBanDialog(null);
-    } catch {
+      setError('');
+    } catch (err) {
       setBanDialog({ ...banDialog, processing: false });
+      setError((err as { message?: string })?.message || 'Failed to ban user.');
     }
   }
 
@@ -68,7 +75,9 @@ export function AdminUsersPage() {
     try {
       await adminApi.unbanUser(userId);
       setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, isBanned: false } : u));
-    } catch {
+      setError('');
+    } catch (err) {
+      setError((err as { message?: string })?.message || 'Failed to unban user.');
     }
   }
 
@@ -82,6 +91,15 @@ export function AdminUsersPage() {
           + New User
         </Link>
       </div>
+
+      {error && (
+        <div
+          className='mb-4 p-3 rounded text-sm'
+          style={{ backgroundColor: 'var(--error-bg, #fef2f2)', color: 'var(--error)' }}
+        >
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSearch} className='mb-4 flex gap-2'>
         <input
@@ -211,7 +229,11 @@ export function AdminUsersPage() {
                                   setUsers((prev) =>
                                     prev.map((u) => u.id === user.id ? { ...u, isAdmin: false } : u)
                                   );
-                                } catch {
+                                } catch (err) {
+                                  setError(
+                                    (err as { message?: string })?.message ||
+                                      'Failed to remove admin privileges.',
+                                  );
                                 }
                               }}
                               className='text-xs'
@@ -229,7 +251,11 @@ export function AdminUsersPage() {
                                   setUsers((prev) =>
                                     prev.map((u) => u.id === user.id ? { ...u, isAdmin: true } : u)
                                   );
-                                } catch {
+                                } catch (err) {
+                                  setError(
+                                    (err as { message?: string })?.message ||
+                                      'Failed to grant admin privileges.',
+                                  );
                                 }
                               }}
                               className='text-xs'

@@ -55,6 +55,19 @@ describe('generateUniqueUsername', () => {
     expect(result.length).toBeLessThanOrEqual(30);
   });
 
+  it('should stay within 30 chars with many collisions on 30-char base', async () => {
+    const base = 'a'.repeat(30);
+    const taken = new Set<string>([base]);
+    for (let i = 1; i <= 10; i++) {
+      const suffix = `-${i}`;
+      taken.add(`${base.slice(0, 30 - suffix.length)}${suffix}`);
+    }
+    const result = await generateUniqueUsername(base, makeTakenSet(taken));
+    expect(result.length).toBeLessThanOrEqual(30);
+    expect(taken.has(result)).toBe(false);
+    expect(result).toBe('a'.repeat(27) + '-11');
+  });
+
   it('should throw when all 100 attempts are taken', async () => {
     await expect(generateUniqueUsername('test', alwaysTaken)).rejects.toThrow(
       'Unable to generate unique username after 100 attempts',

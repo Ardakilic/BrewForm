@@ -49,8 +49,15 @@ export function AdminUserEditPage() {
         isAdmin: data.isAdmin,
         isBanned: data.isBanned,
       });
-    }).catch(() => {
-      setNotFound(true);
+    }).catch((err) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        setNotFound(true);
+      } else {
+        setServerError(
+          (err as { message?: string })?.message || 'Failed to load user details.',
+        );
+      }
     }).finally(() => setLoading(false));
   }, [id, currentUser, navigate]);
 

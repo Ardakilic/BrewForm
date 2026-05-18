@@ -103,19 +103,28 @@ export async function adminCreateUser(data: {
   isBanned?: boolean;
 }) {
   const passwordHash = hashSync(data.password, 10);
-  return db.transaction(async (tx) => {
-    const [user] = await tx.insert(users).values({
-      email: data.email,
-      username: data.username,
-      passwordHash,
-      displayName: data.displayName || null,
-      bio: data.bio || null,
-      isAdmin: data.isAdmin || false,
-      isBanned: data.isBanned || false,
-    }).returning();
-    await tx.insert(userPreferences).values({ userId: user.id });
-    return user;
-  });
+  try {
+    return await db.transaction(async (tx) => {
+      const [user] = await tx.insert(users).values({
+        email: data.email,
+        username: data.username,
+        passwordHash,
+        displayName: data.displayName || null,
+        bio: data.bio || null,
+        isAdmin: data.isAdmin || false,
+        isBanned: data.isBanned || false,
+      }).returning();
+      await tx.insert(userPreferences).values({ userId: user.id });
+      return user;
+    });
+  } catch (err) {
+    const pgErr = err as { name?: string; code?: string; constraint?: string };
+    if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
+      if (pgErr.constraint?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
+      if (pgErr.constraint?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
+    }
+    throw err;
+  }
 }
 
 export async function adminUpdateUser(
@@ -141,10 +150,19 @@ export async function adminUpdateUser(
 
   if (Object.keys(updateData).length === 0) return null;
 
-  const [result] = await db.update(users).set(updateData).where(
-    and(eq(users.id, id), isNull(users.deletedAt)),
-  ).returning();
-  return result ?? null;
+  try {
+    const [result] = await db.update(users).set(updateData).where(
+      and(eq(users.id, id), isNull(users.deletedAt)),
+    ).returning();
+    return result ?? null;
+  } catch (err) {
+    const pgErr = err as { name?: string; code?: string; constraint?: string };
+    if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
+      if (pgErr.constraint?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
+      if (pgErr.constraint?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
+    }
+    throw err;
+  }
 }
 
 export async function softDeleteUser(userId: string) {

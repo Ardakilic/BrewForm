@@ -8,7 +8,9 @@ export async function generateUniqueUsername(
   if (!(await isTaken(clean))) return clean;
 
   for (let i = 1; i <= 100; i++) {
-    const candidate = i === 1 ? `${clean}-1` : `${clean.slice(0, 28)}-${i}`;
+    const suffix = `-${i}`;
+    const maxBase = 30 - suffix.length;
+    const candidate = `${clean.slice(0, maxBase)}${suffix}`;
     if (!(await isTaken(candidate))) return candidate;
   }
 

@@ -71,12 +71,12 @@ account registrations:
 
 The frontend uses this endpoint to conditionally render the registration UI:
 
-| Status   | RegisterPage                                                                      | Navbar                     |
-| -------- | --------------------------------------------------------------------------------- | -------------------------- |
-| Enabled  | Shows the registration form                                                       | Shows "Sign Up" link       |
-| Disabled | Shows a friendly closed message with a link to the login page                     | Hides "Sign Up" link       |
-| Loading  | Shows a centered "Loading..." indicator                                           | Assumes enabled (shows form & link until status resolves) |
-| Error    | Falls back to enabled (API unreachable — shows the registration form)             | Falls back to enabled      |
+| Status   | RegisterPage                                                          | Navbar                                                    |
+| -------- | --------------------------------------------------------------------- | --------------------------------------------------------- |
+| Enabled  | Shows the registration form                                           | Shows "Sign Up" link                                      |
+| Disabled | Shows a friendly closed message with a link to the login page         | Hides "Sign Up" link                                      |
+| Loading  | Shows a centered "Loading..." indicator                               | Assumes enabled (shows form & link until status resolves) |
+| Error    | Falls back to enabled (API unreachable — shows the registration form) | Falls back to enabled                                     |
 
 The Navbar fetches registration status only for unauthenticated users; authenticated users always
 see the full navigation regardless of the flag.
@@ -161,39 +161,44 @@ token naturally expires.
 
 JWT behaviour is configured via environment variables:
 
-| Variable             | Default | Description                                                    |
-| -------------------- | ------- | -------------------------------------------------------------- |
-| `JWT_SECRET`         | —       | **Required.** Cryptographically random, at least 16 characters |
-| `JWT_ACCESS_EXPIRY`  | `15m`   | Access token validity period                                   |
-| `JWT_REFRESH_EXPIRY` | `7d`    | Refresh token validity period                                  |
+| Variable              | Default | Description                                                                                                                                                                                                                                                                                                                                           |
+| --------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`          | —       | **Required.** Cryptographically random, at least 16 characters                                                                                                                                                                                                                                                                                        |
+| `JWT_ACCESS_EXPIRY`   | `15m`   | Access token validity period                                                                                                                                                                                                                                                                                                                          |
+| `JWT_REFRESH_EXPIRY`  | `7d`    | Refresh token validity period                                                                                                                                                                                                                                                                                                                         |
 | `ENABLE_REGISTRATION` | `true`  | When `false`, `POST /auth/register` returns `403 REGISTRATION_DISABLED`, `GET /auth/registration-status` returns `{ enabled: false }`, the RegisterPage shows a closed message with login link, and the Navbar hides the "Sign Up" link. Existing users can still log in, refresh tokens, and reset passwords — only new account creation is blocked. |
 
 Expiry values use human-readable strings parsed by `parseExpiry()` (`15m`, `1h`, `7d`, etc.).
 
 ## Username Uniqueness Strategy
 
-| Scenario | Behavior |
-|----------|----------|
-| **Self-registration** (`POST /auth/register`) | User provides username. If taken → `409 CONFLICT "Username is already taken"`. No auto-suffix. |
-| **Admin create** (explicit username) | Admin provides username. If taken → `409 CONFLICT "Username is already taken"`. No auto-suffix. |
-| **Admin edit** (change username) | Checked against all non-deleted users excluding self. If taken → `409 CONFLICT "Username is already taken by another user"`. |
-| **Admin edit** (same username) | No-op. Allowed without error. |
-| **Future: OAuth/social login** | `generateUniqueUsername()` utility in `@brewform/shared`: tries base name from email prefix, appends `-1`, `-2` etc. on conflict. Max 100 attempts. |
-| **Soft-deleted users** | Their usernames are freed for reuse. Uniqueness checks always filter `deletedAt IS NULL`. |
+| Scenario                                      | Behavior                                                                                                                                            |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Self-registration** (`POST /auth/register`) | User provides username. If taken → `409 CONFLICT "Username is already taken"`. No auto-suffix.                                                      |
+| **Admin create** (explicit username)          | Admin provides username. If taken → `409 CONFLICT "Username is already taken"`. No auto-suffix.                                                     |
+| **Admin edit** (change username)              | Checked against all non-deleted users excluding self. If taken → `409 CONFLICT "Username is already taken by another user"`.                        |
+| **Admin edit** (same username)                | No-op. Allowed without error.                                                                                                                       |
+| **Future: OAuth/social login**                | `generateUniqueUsername()` utility in `@brewform/shared`: tries base name from email prefix, appends `-1`, `-2` etc. on conflict. Max 100 attempts. |
+| **Soft-deleted users**                        | Their usernames are freed for reuse. Uniqueness checks always filter `deletedAt IS NULL`.                                                           |
 
-Registration validates username uniqueness via `isUsernameTaken()`, which queries for an existing non-deleted user with the same username. A duplicate returns `409 CONFLICT`:
+Registration validates username uniqueness via `isUsernameTaken()`, which queries for an existing
+non-deleted user with the same username. A duplicate returns `409 CONFLICT`:
 
 ```json
 {
   "success": false,
   "error": {
     "code": "CONFLICT",
-    "message": "Username already taken",
+    "message": "Username is already taken",
     "requestId": "req_abc123"
   }
 }
 ```
 
-Both `isUsernameTaken()` and `isEmailTaken()` helpers are used across the codebase for uniqueness checks. They always apply a `deletedAt IS NULL` filter, ensuring soft-deleted accounts do not block username or email reuse.
+Both `isUsernameTaken()` and `isEmailTaken()` helpers are used across the codebase for uniqueness
+checks. They always apply a `deletedAt IS NULL` filter, ensuring soft-deleted accounts do not block
+username or email reuse.
 
-For future OAuth flows, `@brewform/shared` exports `generateUniqueUsername(baseUsername)` which creates a unique username by appending a suffix if the base is taken. This handles the edge case where an OAuth provider's username conflicts with an existing user.
+For future OAuth flows, `@brewform/shared` exports `generateUniqueUsername(baseUsername)` which
+creates a unique username by appending a suffix if the base is taken. This handles the edge case
+where an OAuth provider's username conflicts with an existing user.

@@ -11,6 +11,7 @@ export function AdminUserDetailPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [banDialog, setBanDialog] = useState<
     {
       reason: string;
@@ -22,8 +23,13 @@ export function AdminUserDetailPage() {
     if (!id) return;
     adminApi.getUserDetail(id).then((data) => {
       setUser(data);
-    }).catch(() => {
-      setNotFound(true);
+    }).catch((err) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        setNotFound(true);
+      } else {
+        setLoadError(true);
+      }
     }).finally(() => setLoading(false));
   }, [id]);
 
@@ -75,6 +81,22 @@ export function AdminUserDetailPage() {
           className='h-24 rounded animate-pulse'
           style={{ backgroundColor: 'var(--bg-tertiary)' }}
         />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className='text-center py-12'>
+        <h2 className='text-xl font-semibold' style={{ color: 'var(--text-primary)' }}>
+          Failed to Load
+        </h2>
+        <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
+          An error occurred while loading the user details. Please try again.
+        </p>
+        <Link to='/admin/users' className='btn-primary mt-4 inline-block'>
+          Back to Users
+        </Link>
       </div>
     );
   }

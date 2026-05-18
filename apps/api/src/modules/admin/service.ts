@@ -17,14 +17,16 @@ export async function getUserDetail(userId: string) {
 }
 
 export async function banUser(adminId: string, userId: string, reason?: string) {
-  const details = reason ? JSON.stringify({ reason }) : undefined;
   const user = await model.banUser(userId);
+  if (!user) throw new Error('USER_NOT_FOUND');
+  const details = reason ? JSON.stringify({ reason }) : undefined;
   await model.createAuditLog(adminId, 'BAN_USER', 'User', userId, details);
   return user;
 }
 
 export async function unbanUser(adminId: string, userId: string) {
   const user = await model.unbanUser(userId);
+  if (!user) throw new Error('USER_NOT_FOUND');
   await model.createAuditLog(adminId, 'UNBAN_USER', 'User', userId, 'Ban context cleared');
   return user;
 }
@@ -50,12 +52,6 @@ export async function adminCreateUser(adminId: string, data: {
   isAdmin?: boolean;
   isBanned?: boolean;
 }) {
-  const emailTaken = await model.isEmailTaken(data.email);
-  if (emailTaken) throw new Error('EMAIL_ALREADY_EXISTS');
-
-  const usernameTaken = await model.isUsernameTaken(data.username);
-  if (usernameTaken) throw new Error('USERNAME_ALREADY_EXISTS');
-
   const user = await model.adminCreateUser(data);
   await model.createAuditLog(
     adminId,
@@ -85,16 +81,6 @@ export async function adminUpdateUser(adminId: string, targetUserId: string, dat
 }) {
   if (adminId === targetUserId) {
     throw new Error('SELF_EDIT_FORBIDDEN');
-  }
-
-  if (data.email !== undefined) {
-    const emailTaken = await model.isEmailTaken(data.email, targetUserId);
-    if (emailTaken) throw new Error('EMAIL_ALREADY_EXISTS');
-  }
-
-  if (data.username !== undefined) {
-    const usernameTaken = await model.isUsernameTaken(data.username, targetUserId);
-    if (usernameTaken) throw new Error('USERNAME_ALREADY_EXISTS');
   }
 
   const user = await model.adminUpdateUser(targetUserId, data);

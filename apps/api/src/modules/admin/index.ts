@@ -146,13 +146,22 @@ admin.post(
 
 admin.post('/users/:id/ban', zValidator('json', AdminBanUserSchema), async (c) => {
   const adminId = c.get('userId') as string;
-  const { userId, banned, reason } = c.req.valid('json');
-  if (banned) {
-    const user = await service.banUser(adminId, userId, reason);
-    return success(c, user);
-  } else {
-    const user = await service.unbanUser(adminId, userId);
-    return success(c, user);
+  const targetId = c.req.param('id')!;
+  const { banned, reason } = c.req.valid('json');
+  try {
+    if (banned) {
+      const user = await service.banUser(adminId, targetId, reason);
+      return success(c, user);
+    } else {
+      const user = await service.unbanUser(adminId, targetId);
+      return success(c, user);
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'USER_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'User not found.', 404);
+    }
+    throw err;
   }
 });
 
