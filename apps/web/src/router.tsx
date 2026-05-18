@@ -35,6 +35,9 @@ import { AdminCompatibilityPage } from './pages/admin/AdminCompatibilityPage';
 import { AdminBadgesPage } from './pages/admin/AdminBadgesPage';
 import { AdminAuditLogPage } from './pages/admin/AdminAuditLogPage';
 import { AdminCachePage } from './pages/admin/AdminCachePage';
+import { AdminUserCreatePage } from './pages/admin/AdminUserCreatePage';
+import { AdminUserEditPage } from './pages/admin/AdminUserEditPage';
+import { AdminUserDetailPage } from './pages/admin/AdminUserDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -132,6 +135,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminDashboard /> },
       { path: 'users', element: <AdminUsersPage /> },
+      { path: 'users/new', element: <AdminUserCreatePage /> },
+      { path: 'users/:id', element: <AdminUserDetailPage /> },
+      { path: 'users/:id/edit', element: <AdminUserEditPage /> },
       { path: 'recipes', element: <AdminRecipesPage /> },
       { path: 'equipment', element: <AdminEquipmentPage /> },
       { path: 'vendors', element: <AdminVendorsPage /> },

@@ -38,6 +38,8 @@ The frontend **never** imports from `@brewform/db`. All type sharing happens thr
 
 Both are configured as Deno workspace members in the root `deno.json` (`workspace.members`).
 
+Among the utilities in `@brewform/shared` is `generateUniqueUsername(baseUsername)`, which appends a suffix to produce a unique username when the base is already taken. Username and email uniqueness is enforced consistently via `isUsernameTaken` and `isEmailTaken` helpers, both of which apply a `deletedAt IS NULL` filter.
+
 ## Backend Module Pattern
 
 Each API domain module follows a strict 3-layer pattern:

@@ -85,6 +85,39 @@ export const equipmentApi = {
   delete: (id: string) => api.delete<{ message: string }>(`/equipment/${id}`),
 };
 
+export const adminApi = {
+  getUsers: (params?: Record<string, string>) => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.get<{ users: AdminUser[]; total: number }>(`/admin/users${query}`);
+  },
+  getUserDetail: (id: string) => api.get<AdminUserDetail>(`/admin/users/${id}`),
+  createUser: (data: {
+    email: string;
+    username: string;
+    password: string;
+    displayName?: string;
+    bio?: string;
+    isAdmin?: boolean;
+    isBanned?: boolean;
+  }) => api.post<AdminUserDetail>('/admin/users', data),
+  updateUser: (id: string, data: {
+    email?: string;
+    username?: string;
+    password?: string;
+    displayName?: string;
+    bio?: string;
+    isAdmin?: boolean;
+    isBanned?: boolean;
+  }) => api.patch<AdminUserDetail>(`/admin/users/${id}`, data),
+  banUser: (userId: string, reason: string) =>
+    api.post<AdminUserDetail>(`/admin/users/${userId}/ban`, { userId, banned: true, reason }),
+  unbanUser: (userId: string) =>
+    api.post<AdminUserDetail>(`/admin/users/${userId}/ban`, { userId, banned: false }),
+  toggleAdmin: (userId: string, isAdmin: boolean) =>
+    api.patch<AdminUserDetail>(`/admin/users/${userId}/admin`, { isAdmin }),
+  deleteUser: (id: string) => api.delete<{ message: string }>(`/admin/users/${id}`),
+};
+
 export const followApi = {
   follow: (userId: string) => api.post<Record<string, unknown>>(`/follow/${userId}`, {}),
   unfollow: (userId: string) => api.delete(`/follow/${userId}`),
@@ -100,4 +133,23 @@ interface AuthUser {
   avatarUrl: string | null;
   isAdmin: boolean;
   onboardingCompleted: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+  isBanned: boolean;
+  createdAt: string;
+}
+
+export interface AdminUserDetail extends AdminUser {
+  bio: string | null;
+  updatedAt: string;
+  recipeCount?: number;
+  followerCount?: number;
+  followingCount?: number;
 }

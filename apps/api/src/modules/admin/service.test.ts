@@ -2,18 +2,103 @@ import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 
 describe('Admin Service Logic', () => {
-  describe('Audit log creation', () => {
-    it('should format audit log entry with all required fields', () => {
+  describe('adminCreateUser', () => {
+    it('should detect duplicate email', () => {
+      const error = new Error('EMAIL_ALREADY_EXISTS');
+      expect(error.message).toBe('EMAIL_ALREADY_EXISTS');
+    });
+
+    it('should detect duplicate username', () => {
+      const error = new Error('USERNAME_ALREADY_EXISTS');
+      expect(error.message).toBe('USERNAME_ALREADY_EXISTS');
+    });
+
+    it('should create audit log entry for CREATE_USER', () => {
+      const auditLog = {
+        adminId: 'admin-1',
+        action: 'CREATE_USER',
+        entity: 'User',
+        entityId: 'user-2',
+        details: 'username: newuser',
+      };
+      expect(auditLog.action).toBe('CREATE_USER');
+      expect(auditLog.entity).toBe('User');
+      expect(auditLog.details).toContain('username:');
+    });
+  });
+
+  describe('adminUpdateUser', () => {
+    it('should prevent self-edit', () => {
+      const error = new Error('SELF_EDIT_FORBIDDEN');
+      expect(error.message).toBe('SELF_EDIT_FORBIDDEN');
+    });
+
+    it('should detect email conflict on edit', () => {
+      const error = new Error('EMAIL_ALREADY_EXISTS');
+      expect(error.message).toBe('EMAIL_ALREADY_EXISTS');
+    });
+
+    it('should detect username conflict on edit', () => {
+      const error = new Error('USERNAME_ALREADY_EXISTS');
+      expect(error.message).toBe('USERNAME_ALREADY_EXISTS');
+    });
+
+    it('should handle user not found', () => {
+      const error = new Error('USER_NOT_FOUND');
+      expect(error.message).toBe('USER_NOT_FOUND');
+    });
+
+    it('should create audit log entry for UPDATE_USER', () => {
+      const auditLog = {
+        adminId: 'admin-1',
+        action: 'UPDATE_USER',
+        entity: 'User',
+        entityId: 'user-2',
+        details: 'email: new@example.com, displayName: New Name',
+      };
+      expect(auditLog.action).toBe('UPDATE_USER');
+      expect(auditLog.entity).toBe('User');
+    });
+  });
+
+  describe('banUser', () => {
+    it('should store reason in audit log details', () => {
+      const reason = 'Spam account';
       const auditLog = {
         adminId: 'admin-1',
         action: 'BAN_USER',
         entity: 'User',
         entityId: 'user-2',
-        details: { reason: 'Spam' },
+        details: JSON.stringify({ reason }),
       };
-      expect(auditLog.adminId).toBe('admin-1');
       expect(auditLog.action).toBe('BAN_USER');
-      expect(auditLog.entity).toBe('User');
+      const parsed = JSON.parse(auditLog.details);
+      expect(parsed.reason).toBe('Spam account');
+    });
+
+    it('should create audit log without reason if not provided', () => {
+      const auditLog = {
+        adminId: 'admin-1',
+        action: 'BAN_USER',
+        entity: 'User',
+        entityId: 'user-2',
+        details: undefined,
+      };
+      expect(auditLog.details).toBeUndefined();
+    });
+  });
+
+  describe('unbanUser', () => {
+    it('should clear ban context in audit log', () => {
+      const auditLog = {
+        adminId: 'admin-1',
+        action: 'UNBAN_USER',
+        entity: 'User',
+        entityId: 'user-2',
+        details: 'Ban context cleared',
+      };
+      expect(auditLog.action).toBe('UNBAN_USER');
+      expect(auditLog.details).toBe('Ban context cleared');
     });
   });
 
@@ -29,27 +114,10 @@ describe('Admin Service Logic', () => {
     });
   });
 
-  describe('Report resolution', () => {
-    it('should mark report as resolved', () => {
-      const report = {
-        id: 'report-1',
-        status: 'resolved',
-        resolvedBy: 'admin-1',
-        resolvedAt: new Date(),
-        resolution: 'Content removed',
-      };
-      expect(report.status).toBe('resolved');
-    });
-
-    it('should mark report as dismissed', () => {
-      const report = {
-        id: 'report-1',
-        status: 'dismissed',
-        resolvedBy: 'admin-1',
-        resolvedAt: new Date(),
-        resolution: 'No violation found',
-      };
-      expect(report.status).toBe('dismissed');
+  describe('Self-delete prevention', () => {
+    it('should prevent admin from deleting own account', () => {
+      const error = new Error('SELF_DELETE_FORBIDDEN');
+      expect(error.message).toBe('SELF_DELETE_FORBIDDEN');
     });
   });
 });

@@ -22,8 +22,10 @@ export { VendorCreateSchema, VendorUpdateSchema } from './vendor.ts';
 export { BadgeCreateSchema, BadgeUpdateSchema } from './badge.ts';
 export {
   AdminBanUserSchema,
+  AdminCreateUserSchema,
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
+  AdminUpdateUserSchema,
 } from './admin.ts';
 export { PhotoUploadSchema } from './photo.ts';
 export { FollowSchema } from './follow.ts';
