@@ -1,6 +1,6 @@
 import { db } from '@brewform/db';
 import { passwordResets, userPreferences, users } from '@brewform/db/schema';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import { compareSync, hashSync } from 'bcryptjs';
 
 export async function findUserByEmail(email: string) {
@@ -84,4 +84,18 @@ export async function markOnboardingComplete(userId: string) {
     eq(users.id, userId),
   ).returning();
   return result ?? null;
+}
+
+export async function isEmailTaken(email: string, excludeId?: string) {
+  const conditions = [eq(users.email, email), isNull(users.deletedAt)];
+  if (excludeId) conditions.push(ne(users.id, excludeId));
+  const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
+  return !!result;
+}
+
+export async function isUsernameTaken(username: string, excludeId?: string) {
+  const conditions = [eq(users.username, username), isNull(users.deletedAt)];
+  if (excludeId) conditions.push(ne(users.id, excludeId));
+  const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
+  return !!result;
 }

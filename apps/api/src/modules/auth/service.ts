@@ -3,6 +3,8 @@ import * as model from './model.ts';
 import { sendPasswordResetEmail, sendWelcomeEmail } from './email.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { config } from '../../config/env.ts';
+// Standard dedup approach for future OAuth/social login:
+// import { generateUniqueUsername } from '@brewform/shared';
 
 const logger = createLogger('auth-service');
 
@@ -39,13 +41,13 @@ export async function register(data: {
     throw new Error('REGISTRATION_DISABLED');
   }
 
-  const existingEmail = await model.findUserByEmail(data.email);
-  if (existingEmail) {
+  const emailTaken = await model.isEmailTaken(data.email);
+  if (emailTaken) {
     throw new Error('EMAIL_ALREADY_EXISTS');
   }
 
-  const existingUsername = await model.findUserByUsername(data.username);
-  if (existingUsername) {
+  const usernameTaken = await model.isUsernameTaken(data.username);
+  if (usernameTaken) {
     throw new Error('USERNAME_ALREADY_EXISTS');
   }
 

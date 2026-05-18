@@ -13,7 +13,7 @@ import {
   users,
   vendors,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, gte, isNull, like, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNull, like, ne, or } from 'drizzle-orm';
 import { hashSync } from 'bcryptjs';
 
 export async function listUsers(page: number, perPage: number, query?: string) {
@@ -43,6 +43,20 @@ export async function listUsers(page: number, perPage: number, query?: string) {
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };
+}
+
+export async function isEmailTaken(email: string, excludeId?: string) {
+  const conditions = [eq(users.email, email), isNull(users.deletedAt)];
+  if (excludeId) conditions.push(ne(users.id, excludeId));
+  const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
+  return !!result;
+}
+
+export async function isUsernameTaken(username: string, excludeId?: string) {
+  const conditions = [eq(users.username, username), isNull(users.deletedAt)];
+  if (excludeId) conditions.push(ne(users.id, excludeId));
+  const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
+  return !!result;
 }
 
 export async function getUserById(id: string) {
@@ -84,20 +98,71 @@ export async function adminCreateUser(data: {
   username: string;
   password: string;
   displayName?: string;
+  bio?: string;
   isAdmin?: boolean;
+  isBanned?: boolean;
 }) {
   const passwordHash = hashSync(data.password, 10);
-  return db.transaction(async (tx) => {
-    const [user] = await tx.insert(users).values({
-      email: data.email,
-      username: data.username,
-      passwordHash,
-      displayName: data.displayName || null,
-      isAdmin: data.isAdmin || false,
-    }).returning();
-    await tx.insert(userPreferences).values({ userId: user.id });
-    return user;
-  });
+  try {
+    return await db.transaction(async (tx) => {
+      const [user] = await tx.insert(users).values({
+        email: data.email,
+        username: data.username,
+        passwordHash,
+        displayName: data.displayName || null,
+        bio: data.bio || null,
+        isAdmin: data.isAdmin || false,
+        isBanned: data.isBanned || false,
+      }).returning();
+      await tx.insert(userPreferences).values({ userId: user.id });
+      return user;
+    });
+  } catch (err) {
+    const pgErr = err as { name?: string; code?: string; constraint?: string };
+    if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
+      if (pgErr.constraint?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
+      if (pgErr.constraint?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
+    }
+    throw err;
+  }
+}
+
+export async function adminUpdateUser(
+  id: string,
+  data: {
+    email?: string;
+    username?: string;
+    password?: string;
+    displayName?: string;
+    bio?: string;
+    isAdmin?: boolean;
+    isBanned?: boolean;
+  },
+) {
+  const updateData: Record<string, unknown> = {};
+  if (data.email !== undefined) updateData.email = data.email;
+  if (data.username !== undefined) updateData.username = data.username;
+  if (data.password !== undefined) updateData.passwordHash = hashSync(data.password, 10);
+  if (data.displayName !== undefined) updateData.displayName = data.displayName;
+  if (data.bio !== undefined) updateData.bio = data.bio;
+  if (data.isAdmin !== undefined) updateData.isAdmin = data.isAdmin;
+  if (data.isBanned !== undefined) updateData.isBanned = data.isBanned;
+
+  if (Object.keys(updateData).length === 0) return null;
+
+  try {
+    const [result] = await db.update(users).set(updateData).where(
+      and(eq(users.id, id), isNull(users.deletedAt)),
+    ).returning();
+    return result ?? null;
+  } catch (err) {
+    const pgErr = err as { name?: string; code?: string; constraint?: string };
+    if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
+      if (pgErr.constraint?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
+      if (pgErr.constraint?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
+    }
+    throw err;
+  }
 }
 
 export async function softDeleteUser(userId: string) {

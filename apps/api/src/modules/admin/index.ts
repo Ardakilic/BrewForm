@@ -5,8 +5,10 @@ import { z } from 'zod';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import {
   AdminBanUserSchema,
+  AdminCreateUserSchema,
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
+  AdminUpdateUserSchema,
   PaginationSchema,
 } from '@brewform/shared/schemas';
 import * as service from './service.ts';
@@ -120,48 +122,83 @@ admin.get('/users/:id', async (c) => {
   return success(c, user);
 });
 
-admin.post('/users', async (c) => {
+admin.post(
+  '/users',
+  zValidator('json', AdminCreateUserSchema),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const data = c.req.valid('json');
+    try {
+      const user = await service.adminCreateUser(adminId, data);
+      return success(c, user, 201);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'EMAIL_ALREADY_EXISTS') {
+        return error(c, 'CONFLICT', 'Email is already registered.', 409);
+      }
+      if (message === 'USERNAME_ALREADY_EXISTS') {
+        return error(c, 'CONFLICT', 'Username is already taken.', 409);
+      }
+      throw err;
+    }
+  },
+);
+
+admin.post('/users/:id/ban', zValidator('json', AdminBanUserSchema), async (c) => {
   const adminId = c.get('userId') as string;
-  const body = await c.req.json();
-  const parsed = z.object({
-    email: z.email(),
-    username: z.string().min(3).max(30),
-    password: z.string().min(8),
-    displayName: z.string().optional(),
-    isAdmin: z.boolean().optional(),
-  }).safeParse(body);
-  if (!parsed.success) {
-    return error(
-      c,
-      'VALIDATION_ERROR',
-      'Invalid input',
-      400,
-      parsed.error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })),
-    );
-  }
+  const targetId = c.req.param('id')!;
+  const { banned, reason } = c.req.valid('json');
   try {
-    const user = await service.adminCreateUser(adminId, parsed.data);
-    return success(c, user, 201);
+    if (banned) {
+      const user = await service.banUser(adminId, targetId, reason);
+      return success(c, user);
+    } else {
+      const user = await service.unbanUser(adminId, targetId);
+      return success(c, user);
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes('Unique constraint')) {
-      return error(c, 'CONFLICT', 'Email or username already exists', 409);
+    if (message === 'USER_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'User not found.', 404);
     }
     throw err;
   }
 });
 
-admin.post('/users/:id/ban', zValidator('json', AdminBanUserSchema), async (c) => {
-  const adminId = c.get('userId') as string;
-  const { userId, banned } = c.req.valid('json');
-  if (banned) {
-    const user = await service.banUser(adminId, userId);
-    return success(c, user);
-  } else {
-    const user = await service.unbanUser(adminId, userId);
-    return success(c, user);
-  }
-});
+admin.patch(
+  '/users/:id',
+  zValidator('json', AdminUpdateUserSchema),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const targetUserId = c.req.param('id')!;
+    const data = c.req.valid('json');
+
+    try {
+      const user = await service.adminUpdateUser(adminId, targetUserId, data);
+      return success(c, user);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'SELF_EDIT_FORBIDDEN') {
+        return error(
+          c,
+          'FORBIDDEN',
+          'You cannot edit your own account from the admin panel. Use Profile Settings instead.',
+          403,
+        );
+      }
+      if (message === 'EMAIL_ALREADY_EXISTS') {
+        return error(c, 'CONFLICT', 'Email is already registered by another user.', 409);
+      }
+      if (message === 'USERNAME_ALREADY_EXISTS') {
+        return error(c, 'CONFLICT', 'Username is already taken by another user.', 409);
+      }
+      if (message === 'USER_NOT_FOUND') {
+        return error(c, 'NOT_FOUND', 'User not found.', 404);
+      }
+      throw err;
+    }
+  },
+);
 
 admin.patch(
   '/users/:id/admin',
@@ -178,8 +215,16 @@ admin.patch(
 admin.delete('/users/:id', async (c) => {
   const adminId = c.get('userId') as string;
   const userId = c.req.param('id')!;
-  await service.softDeleteUser(adminId, userId);
-  return success(c, { message: 'User deleted' });
+  try {
+    await service.softDeleteUser(adminId, userId);
+    return success(c, { message: 'User deleted' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'SELF_DELETE_FORBIDDEN') {
+      return error(c, 'FORBIDDEN', 'You cannot delete your own account.', 403);
+    }
+    throw err;
+  }
 });
 
 // --- Recipes ---

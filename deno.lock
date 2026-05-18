@@ -51,6 +51,7 @@
     "npm:vite@8": "8.0.13",
     "npm:vitest@*": "4.1.6_@vitest+coverage-v8@4.1.6_jsdom@29.1.1_vite@8.0.13",
     "npm:vitest@4": "4.1.6_@vitest+coverage-v8@4.1.6_jsdom@29.1.1_vite@8.0.13",
+    "npm:zod@*": "4.4.3",
     "npm:zod@4": "4.4.3"
   },
   "jsr": {

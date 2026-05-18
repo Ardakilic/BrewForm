@@ -427,6 +427,7 @@ Report request:
 | GET    | `/admin/users`           | List users (searchable, paginated) |
 | GET    | `/admin/users/:id`       | Get detailed user info             |
 | POST   | `/admin/users`           | Create user as admin               |
+| PATCH  | `/admin/users/:id`       | Partially update a user            |
 | POST   | `/admin/users/:id/ban`   | Ban/unban a user                   |
 | PATCH  | `/admin/users/:id/admin` | Set or remove admin role           |
 | DELETE | `/admin/users/:id`       | Soft-delete a user                 |
@@ -491,3 +492,121 @@ Report request:
 | POST   | `/admin/cache/flush` | Flush Deno KV cache (optionally by key prefix)    |
 
 All admin mutations create an `AuditLog` entry tracking the admin user, action, entity, and details.
+
+### Users Management (Enhanced)
+
+#### POST /admin/users
+
+Creates a new user with admin privileges. Uses `AdminCreateUserSchema` for validation.
+
+```json
+{
+  "email": "user@example.com",
+  "username": "newuser",
+  "password": "securepassword",
+  "displayName": "New User",
+  "isAdmin": false,
+  "isBanned": false
+}
+```
+
+Response `201`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "newuser",
+    "displayName": "New User",
+    "isAdmin": false,
+    "isBanned": false,
+    "createdAt": "..."
+  }
+}
+```
+
+Returns `409 CONFLICT` with a clear message when the email or username already exists:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CONFLICT",
+    "message": "Email is already registered.",
+    "requestId": "req_abc123"
+  }
+}
+```
+
+#### PATCH /admin/users/:id
+
+Partially updates a user. Only provided fields are modified. Returns `403 FORBIDDEN` if an admin attempts to edit their own profile via this endpoint.
+
+```json
+{
+  "displayName": "Updated Name",
+  "isAdmin": true
+}
+```
+
+Response `200`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "existinguser",
+    "displayName": "Updated Name",
+    "isAdmin": true,
+    "isBanned": false,
+    "updatedAt": "..."
+  }
+}
+```
+
+Uniqueness checks are applied when updating `email` or `username` — returns `409 CONFLICT` if the value is already taken by another non-deleted user.
+
+#### POST /admin/users/:id/ban
+
+Bans or unbans a user. The `reason` field is **required** when `banned` is `true`.
+
+```json
+{
+  "userId": "uuid",
+  "banned": true,
+  "reason": "Violation of community guidelines"
+}
+```
+
+```json
+{
+  "userId": "uuid",
+  "banned": false
+}
+```
+
+Response `200`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "username": "user",
+    "displayName": null,
+    "avatarUrl": null,
+    "bio": null,
+    "isAdmin": false,
+    "isBanned": true,
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+
+When `banned` is `false` the ban reason is cleared.

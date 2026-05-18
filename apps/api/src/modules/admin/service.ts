@@ -1,6 +1,10 @@
 // deno-lint-ignore-file require-await
 import * as model from './model.ts';
 import type { CacheProvider } from '../../utils/cache/index.ts';
+import { sendWelcomeEmail } from '../auth/email.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+
+const logger = createLogger('admin-service');
 
 // --- Users ---
 
@@ -12,15 +16,18 @@ export async function getUserDetail(userId: string) {
   return model.getUserById(userId);
 }
 
-export async function banUser(adminId: string, userId: string) {
+export async function banUser(adminId: string, userId: string, reason?: string) {
   const user = await model.banUser(userId);
-  await model.createAuditLog(adminId, 'BAN_USER', 'User', userId);
+  if (!user) throw new Error('USER_NOT_FOUND');
+  const details = reason ? JSON.stringify({ reason }) : undefined;
+  await model.createAuditLog(adminId, 'BAN_USER', 'User', userId, details);
   return user;
 }
 
 export async function unbanUser(adminId: string, userId: string) {
   const user = await model.unbanUser(userId);
-  await model.createAuditLog(adminId, 'UNBAN_USER', 'User', userId);
+  if (!user) throw new Error('USER_NOT_FOUND');
+  await model.createAuditLog(adminId, 'UNBAN_USER', 'User', userId, 'Ban context cleared');
   return user;
 }
 
@@ -41,7 +48,9 @@ export async function adminCreateUser(adminId: string, data: {
   username: string;
   password: string;
   displayName?: string;
+  bio?: string;
   isAdmin?: boolean;
+  isBanned?: boolean;
 }) {
   const user = await model.adminCreateUser(data);
   await model.createAuditLog(
@@ -51,10 +60,56 @@ export async function adminCreateUser(adminId: string, data: {
     (user as any).id,
     `username: ${data.username}`,
   );
+
+  try {
+    await sendWelcomeEmail(data.email, data.username);
+  } catch (err) {
+    logger.warn({ err }, 'Failed to send welcome email on admin create');
+  }
+
+  return user;
+}
+
+export async function adminUpdateUser(adminId: string, targetUserId: string, data: {
+  email?: string;
+  username?: string;
+  password?: string;
+  displayName?: string;
+  bio?: string;
+  isAdmin?: boolean;
+  isBanned?: boolean;
+}) {
+  if (adminId === targetUserId) {
+    throw new Error('SELF_EDIT_FORBIDDEN');
+  }
+
+  const user = await model.adminUpdateUser(targetUserId, data);
+  if (!user) throw new Error('USER_NOT_FOUND');
+
+  const changeDetails: string[] = [];
+  if (data.email !== undefined) changeDetails.push(`email: ${data.email}`);
+  if (data.username !== undefined) changeDetails.push(`username: ${data.username}`);
+  if (data.password !== undefined) changeDetails.push('password: <changed>');
+  if (data.displayName !== undefined) changeDetails.push(`displayName: ${data.displayName}`);
+  if (data.bio !== undefined) changeDetails.push('bio: <changed>');
+  if (data.isAdmin !== undefined) changeDetails.push(`isAdmin: ${data.isAdmin}`);
+  if (data.isBanned !== undefined) changeDetails.push(`isBanned: ${data.isBanned}`);
+
+  await model.createAuditLog(
+    adminId,
+    'UPDATE_USER',
+    'User',
+    targetUserId,
+    changeDetails.join(', '),
+  );
+
   return user;
 }
 
 export async function softDeleteUser(adminId: string, userId: string) {
+  if (adminId === userId) {
+    throw new Error('SELF_DELETE_FORBIDDEN');
+  }
   await model.softDeleteUser(userId);
   await model.createAuditLog(adminId, 'SOFT_DELETE_USER', 'User', userId);
 }
