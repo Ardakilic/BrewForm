@@ -16,7 +16,7 @@ export interface ScaaRadarChartProps {
   size?: number;
 }
 
-const NUM_AXES = 7;
+const NUM_AXES = 9;
 const MAX_RADIUS = 100;
 const LABEL_RADIUS_FACTOR = 1.15;
 const GUIDE_FRACTIONS = [1 / 3, 2 / 3, 1] as const;
@@ -43,7 +43,7 @@ function axisPoint(
 }
 
 /**
- * Build an SVG polygon `points` string for a regular 7-gon at the given radius.
+ * Build an SVG polygon `points` string for a regular 9-gon at the given radius.
  */
 function polygonPoints(cx: number, cy: number, radius: number): string {
   return Array.from({ length: NUM_AXES }, (_, i) => {

@@ -1,6 +1,6 @@
 /**
  * Utility module for transforming taste note data into SCAA radar chart data.
- * Based on the SCAA 2016 Flavor Wheel with 7 top-level categories.
+ * Based on the SCAA 2016 Flavor Wheel with 9 top-level categories.
  */
 
 export const SCAA_CATEGORIES = [
@@ -10,6 +10,8 @@ export const SCAA_CATEGORIES = [
   'Nutty/Cocoa',
   'Spices',
   'Roasted',
+  'Green/Vegetative',
+  'Sour/Fermented',
   'Other',
 ] as const;
 
@@ -21,12 +23,12 @@ export interface TasteNoteForChart {
   name: string;
   parentId: string | null;
   depth: number;
-  // The root category name (depth=0 ancestor)
-  rootCategoryName?: string;
+  // The root category name (depth=0 ancestor), null if not yet resolved
+  rootCategoryName?: string | null;
 }
 
 /**
- * Maps a taste note's root category name to one of the 7 SCAA categories.
+ * Maps a taste note's root category name to one of the 9 SCAA categories.
  * Handles case-insensitive matching and common variations.
  * - "Nutty", "Cocoa", or "Nutty/Cocoa" all map to "Nutty/Cocoa"
  * - Unknown names fall back to "Other"
@@ -46,6 +48,16 @@ export function mapToScaaCategory(rootName: string): ScaaCategory {
   }
   if (normalized === 'spices') return 'Spices';
   if (normalized === 'roasted') return 'Roasted';
+  if (normalized === 'green/vegetative' || normalized === 'green') {
+    return 'Green/Vegetative';
+  }
+  if (
+    normalized === 'sour/fermented' ||
+    normalized === 'sour' ||
+    normalized === 'fermented'
+  ) {
+    return 'Sour/Fermented';
+  }
   if (normalized === 'other') return 'Other';
 
   return 'Other';
@@ -53,24 +65,33 @@ export function mapToScaaCategory(rootName: string): ScaaCategory {
 
 /**
  * Aggregates taste note intensities by SCAA top-level category.
- * Returns a record with all 7 categories, with 0 for categories with no notes.
+ * Returns a record with all 9 categories, with 0 for categories with no notes.
+ * Notes with unresolved rootCategoryName (null) are skipped.
  *
  * @param notes - Array of taste notes with hierarchy info (rootCategoryName must be set)
+ * @returns Object with category sums and a flag indicating if all notes were resolved
  */
 export function aggregateByCategory(
   notes: TasteNoteForChart[],
-): Record<ScaaCategory, number> {
+): { values: Record<ScaaCategory, number>; allResolved: boolean } {
   const result = Object.fromEntries(
     SCAA_CATEGORIES.map((cat) => [cat, 0]),
   ) as Record<ScaaCategory, number>;
 
+  let unresolvedCount = 0;
   for (const note of notes) {
-    const rootName = note.rootCategoryName ?? note.name;
-    const category = mapToScaaCategory(rootName);
+    if (note.rootCategoryName == null) {
+      unresolvedCount++;
+      continue;
+    }
+    const category = mapToScaaCategory(note.rootCategoryName);
     result[category] += note.intensity;
   }
 
-  return result;
+  return {
+    values: result,
+    allResolved: unresolvedCount === 0,
+  };
 }
 
 /**

@@ -7,7 +7,7 @@ const TASTE_CACHE_TTL = 2592000000; // 30 days
 
 export async function getHierarchy(cache: CacheProvider) {
   const cached = await cache.get<any>(TASTE_CACHE_KEY);
-  if (cached) return cached;
+  if (cached !== null && cached.length > 0) return cached;
 
   const hierarchy = await model.getHierarchy();
   await cache.set(TASTE_CACHE_KEY, hierarchy, { ttlMs: TASTE_CACHE_TTL });
@@ -47,7 +47,7 @@ export async function searchTasteNotes(query: string, _cache: CacheProvider) {
 
 export async function getFlatList(cache: CacheProvider) {
   const cached = await cache.get<any>(TASTE_FLAT_CACHE_KEY);
-  if (cached) return cached;
+  if (cached !== null && cached.length > 0) return cached;
 
   const allNotes = await model.findAll();
   await cache.set(TASTE_FLAT_CACHE_KEY, allNotes, { ttlMs: TASTE_CACHE_TTL });

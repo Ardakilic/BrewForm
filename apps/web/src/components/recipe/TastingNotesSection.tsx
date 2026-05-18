@@ -29,12 +29,12 @@ interface TastingNotesSectionProps {
 /**
  * Resolves the root category name for a taste note.
  * Uses `rootCategoryName` if already set, otherwise walks the hierarchy.
- * Falls back to "Other" if resolution fails.
+ * Returns null if resolution is not possible (hierarchy not loaded).
  */
 function getRootCategoryName(
   note: TasteNote,
   allTasteNotes?: Array<{ id: string; name: string; parentId: string | null; depth: number }>,
-): string {
+): string | null {
   if (note.rootCategoryName) {
     return note.rootCategoryName;
   }
@@ -48,7 +48,8 @@ function getRootCategoryName(
   if (note.depth === 0) {
     return note.name;
   }
-  return 'Other';
+  // Cannot resolve without hierarchy data — return null to signal incomplete resolution
+  return null;
 }
 
 export function TastingNotesSection({
@@ -71,14 +72,17 @@ export function TastingNotesSection({
   }));
 
   // Build category values for the radar chart
-  const categoryValues = hasTasteNotes ? aggregateByCategory(enrichedNotes) : {};
+  const aggregation = hasTasteNotes
+    ? aggregateByCategory(enrichedNotes)
+    : { values: {}, allResolved: false };
+  const showChart = hasTasteNotes && aggregation.allResolved;
 
-  // Group chips by root category name
+  // Group chips by root category name (use resolved name or fall back to note name for display)
   const groupedNotes = new Map<string, TasteNote[]>();
   if (hasTasteNotes) {
     for (let i = 0; i < tasteNotes.length; i++) {
       const note = tasteNotes[i];
-      const rootName = enrichedNotes[i].rootCategoryName ?? 'Other';
+      const rootName = enrichedNotes[i].rootCategoryName ?? note.name;
       const existing = groupedNotes.get(rootName);
       if (existing) {
         existing.push(note);
@@ -106,15 +110,17 @@ export function TastingNotesSection({
           className='flex flex-col sm:flex-row gap-6 mb-4'
           style={{ alignItems: 'flex-start' }}
         >
-          {/* Left: Radar chart */}
-          <div className='flex-shrink-0 flex justify-center sm:justify-start'>
-            <div className='hidden sm:block'>
-              <ScaaRadarChart categoryValues={categoryValues} size={200} />
+          {/* Left: Radar chart — only show when all categories are resolved */}
+          {showChart && (
+            <div className='flex-shrink-0 flex justify-center sm:justify-start'>
+              <div className='hidden sm:block'>
+                <ScaaRadarChart categoryValues={aggregation.values} size={200} />
+              </div>
+              <div className='block sm:hidden'>
+                <ScaaRadarChart categoryValues={aggregation.values} size={160} />
+              </div>
             </div>
-            <div className='block sm:hidden'>
-              <ScaaRadarChart categoryValues={categoryValues} size={160} />
-            </div>
-          </div>
+          )}
 
           {/* Right: Grouped chip columns */}
           <div className='flex-1 flex flex-wrap gap-4'>

@@ -176,6 +176,8 @@ const SCAA_CATEGORIES = [
   'Nutty/Cocoa',
   'Spices',
   'Roasted',
+  'Green/Vegetative',
+  'Sour/Fermented',
   'Other',
 ] as const;
 
