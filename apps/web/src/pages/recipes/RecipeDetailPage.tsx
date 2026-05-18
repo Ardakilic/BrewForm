@@ -250,7 +250,9 @@ export function RecipeDetailPage() {
               allTasteNotes={allTasteNotes}
             />
 
-            <RecipeNotesSection recipeId={recipe.id} initialNotes={v.personalNotes} />
+            {isAuthenticated && (
+              <RecipeNotesSection recipeId={recipe.id} initialNotes={v.personalNotes} />
+            )}
           </div>
 
           {/* Sidebar (1/3 width on md+) */}

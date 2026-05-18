@@ -73,6 +73,10 @@ vi.mock(
   '../../components/recipe/ShareSection.tsx',
   () => ({ ShareSection: () => <div data-testid='share-section' /> }),
 );
+vi.mock(
+  '../../components/recipe/RecipeNotesSection.tsx',
+  () => ({ RecipeNotesSection: () => <div data-testid='recipe-notes-section' /> }),
+);
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
@@ -136,6 +140,7 @@ const guestAuth = {
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
+  refreshUser: vi.fn(),
 };
 
 const sampleRecipe = {
@@ -286,6 +291,7 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
+    refreshUser: vi.fn(),
   };
 
   const ownerAuth = {
@@ -303,6 +309,7 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
+    refreshUser: vi.fn(),
   };
 
   it('Fork Recipe button shown for authenticated non-owner', async () => {
@@ -355,6 +362,7 @@ describe('RecipeDetailPage — owner actions', () => {
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
+    refreshUser: vi.fn(),
   };
 
   it('shows Edit button for the recipe owner — English', async () => {
@@ -430,6 +438,7 @@ const nonOwnerAuth = {
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
+  refreshUser: vi.fn(),
 };
 
 describe('RecipeDetailPage — Social_Actions_Card layout', () => {
@@ -503,6 +512,7 @@ describe('RecipeDetailPage — Fork_Card visibility', () => {
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
+      refreshUser: vi.fn(),
     };
     mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
 
@@ -592,6 +602,74 @@ describe('RecipeDetailPage — Responsive layout', () => {
     const sidebar = screen.getByTestId('share-section').parentElement;
     expect(sidebar).not.toBeNull();
     expect(sidebar!.firstElementChild).toBe(screen.getByTestId('share-section'));
+  });
+});
+
+describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
+  const authenticatedAuth = {
+    user: {
+      id: 'other-user',
+      email: 'bob@example.com',
+      username: 'bob',
+      displayName: 'Bob',
+      avatarUrl: null,
+      isAdmin: false,
+      onboardingCompleted: true,
+    },
+    isAuthenticated: true,
+    isLoading: false,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+    refreshUser: vi.fn(),
+  };
+
+  it('guest (isAuthenticated=false): recipe notes section is NOT rendered', async () => {
+    // guestAuth is the default from beforeEach
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('recipe-notes-section')).toBeNull();
+  });
+
+  it('authenticated user: recipe notes section IS rendered', async () => {
+    mockUseAuth.mockReturnValue(authenticatedAuth as ReturnType<typeof useAuth>);
+
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-notes-section')).toBeInTheDocument();
+    });
+  });
+
+  it('recipe owner: recipe notes section IS rendered', async () => {
+    const ownerAuth = {
+      user: {
+        id: 'author-1',
+        email: 'alice@example.com',
+        username: 'alice',
+        displayName: 'Alice',
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: true,
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+      refreshUser: vi.fn(),
+    };
+    mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
+
+    render(<RecipeDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-notes-section')).toBeInTheDocument();
+    });
   });
 });
 
