@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -100,8 +100,13 @@ describe('LoginPage', () => {
   it('should call login with rememberMe: true when checkbox is checked', async () => {
     const loginMock = vi.mocked(authApi.login).mockResolvedValue({
       user: {
-        id: '1', email: 'test@test.com', username: 'testuser',
-        displayName: null, avatarUrl: null, isAdmin: false, onboardingCompleted: false,
+        id: '1',
+        email: 'test@test.com',
+        username: 'testuser',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
       },
       accessToken: 'access-token-xxx',
       refreshToken: 'refresh-token-xxx',
@@ -125,8 +130,13 @@ describe('LoginPage', () => {
   it('should store brewform_remember_me in localStorage when rememberMe is true', async () => {
     vi.mocked(authApi.login).mockResolvedValue({
       user: {
-        id: '1', email: 'test@test.com', username: 'testuser',
-        displayName: null, avatarUrl: null, isAdmin: false, onboardingCompleted: false,
+        id: '1',
+        email: 'test@test.com',
+        username: 'testuser',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
       },
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
@@ -146,8 +156,13 @@ describe('LoginPage', () => {
   it('should call login with rememberMe: false when checkbox is not checked', async () => {
     const loginMock = vi.mocked(authApi.login).mockResolvedValue({
       user: {
-        id: '2', email: 'other@test.com', username: 'other',
-        displayName: null, avatarUrl: null, isAdmin: false, onboardingCompleted: false,
+        id: '2',
+        email: 'other@test.com',
+        username: 'other',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
       },
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
@@ -170,8 +185,13 @@ describe('LoginPage', () => {
   it('should NOT store brewform_remember_me when checkbox is unchecked', async () => {
     vi.mocked(authApi.login).mockResolvedValue({
       user: {
-        id: '2', email: 'other@test.com', username: 'other',
-        displayName: null, avatarUrl: null, isAdmin: false, onboardingCompleted: false,
+        id: '2',
+        email: 'other@test.com',
+        username: 'other',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
       },
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
@@ -200,7 +220,9 @@ describe('LoginPage', () => {
 
   it('should disable button and show loading text while logging in', async () => {
     let resolveLogin: (value: unknown) => void;
-    const loginPromise = new Promise((resolve) => { resolveLogin = resolve; });
+    const loginPromise = new Promise((resolve) => {
+      resolveLogin = resolve;
+    });
     vi.mocked(authApi.login).mockReturnValue(loginPromise as Promise<unknown>);
 
     renderLoginPage();
@@ -212,8 +234,13 @@ describe('LoginPage', () => {
 
     resolveLogin!({
       user: {
-        id: '1', email: 'test@test.com', username: 'testuser',
-        displayName: null, avatarUrl: null, isAdmin: false, onboardingCompleted: false,
+        id: '1',
+        email: 'test@test.com',
+        username: 'testuser',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
       },
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
