@@ -18,9 +18,9 @@ const envSchema = z.object({
   CACHE_DRIVER: z.enum(['deno-kv', 'memory']).default('deno-kv'),
 
   JWT_SECRET: z.string().min(16),
-  JWT_ACCESS_EXPIRY: z.string().default('15m'),
-  JWT_REFRESH_EXPIRY: z.string().default('7d'),
-  JWT_REMEMBER_ME_EXPIRY: z.string().default('180d'),
+  JWT_ACCESS_EXPIRY: z.string().regex(/^\d+[smhdM]$/, 'Invalid JWT_ACCESS_EXPIRY format; expected like 30d, 12h').default('15m'),
+  JWT_REFRESH_EXPIRY: z.string().regex(/^\d+[smhdM]$/, 'Invalid JWT_REFRESH_EXPIRY format; expected like 30d, 12h').default('7d'),
+  JWT_REMEMBER_ME_EXPIRY: z.string().regex(/^\d+[smhdM]$/, 'Invalid JWT_REMEMBER_ME_EXPIRY format; expected like 30d, 12h').default('180d'),
 
   CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://localhost:8000'),
 
