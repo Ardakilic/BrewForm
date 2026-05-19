@@ -10,10 +10,12 @@ export const AuthRegisterSchema = z.object({
 export const AuthLoginSchema = z.object({
   email: z.email(),
   password: z.string(),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 export const AuthRefreshSchema = z.object({
   refreshToken: z.string(),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 export const PasswordResetSchema = z.object({

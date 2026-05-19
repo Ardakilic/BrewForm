@@ -23,6 +23,78 @@ describe('Auth Routes', () => {
     });
   });
 
+  describe('POST /auth/login with rememberMe', () => {
+    it('should accept rememberMe as optional boolean in request body', async () => {
+      const app = createTestApp();
+      const res = await app.request('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'test@example.com',
+          password: 'password123',
+          rememberMe: true,
+        }),
+      });
+      // Schema passes (not 400), service call may fail with different status
+      expect(res.status).not.toBe(400);
+    });
+
+    it('should accept request without rememberMe field', async () => {
+      const app = createTestApp();
+      const res = await app.request('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'test@example.com',
+          password: 'password123',
+        }),
+      });
+      // Schema passes (not 400), service call may fail with different status
+      expect(res.status).not.toBe(400);
+    });
+
+    it('should return 400 when rememberMe is not a boolean', async () => {
+      const app = createTestApp();
+      const res = await app.request('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'test@example.com',
+          password: 'password123',
+          rememberMe: 'yes',
+        }),
+      });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('POST /auth/refresh with rememberMe', () => {
+    it('should accept rememberMe in refresh request body', async () => {
+      const app = createTestApp();
+      const res = await app.request('/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refreshToken: 'some-fake-token',
+          rememberMe: true,
+        }),
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it('should accept refresh request without rememberMe', async () => {
+      const app = createTestApp();
+      const res = await app.request('/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refreshToken: 'some-fake-token',
+        }),
+      });
+      expect(res.status).toBe(401);
+    });
+  });
+
   describe('POST /auth/register', () => {
     it('should return 400 for invalid body', async () => {
       const app = createTestApp();

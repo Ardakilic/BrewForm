@@ -55,14 +55,20 @@ export async function signAccessToken(
   return await sign(payload, JWT_SECRET);
 }
 
-/** Sign a new refresh token with subject only (no identity claims). */
-export async function signRefreshToken(userId: string): Promise<string> {
+/** Sign a new refresh token with subject only (no identity claims).
+ *  When customExpiry is provided (e.g. for "remember me"), it overrides
+ *  the default JWT_REFRESH_EXPIRY. */
+export async function signRefreshToken(
+  userId: string,
+  customExpiry?: string,
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
+  const expirySeconds = customExpiry ? parseExpiry(customExpiry) : parseExpiry(REFRESH_EXPIRY);
   const payload = {
     sub: userId,
     type: 'refresh' as const,
     iat: now,
-    exp: now + parseExpiry(REFRESH_EXPIRY),
+    exp: now + expirySeconds,
   };
   return await sign(payload, JWT_SECRET);
 }
@@ -89,7 +95,7 @@ export function decodeJwt(
 }
 
 function parseExpiry(expiry: string): number {
-  const match = expiry.match(/^(\d+)([smhd])$/);
+  const match = expiry.match(/^(\d+)([smhdM])$/);
   if (!match) throw new Error(`Invalid expiry format: ${expiry}`);
   const value = parseInt(match[1], 10);
   const unit = match[2];
@@ -102,6 +108,8 @@ function parseExpiry(expiry: string): number {
       return value * 3600;
     case 'd':
       return value * 86400;
+    case 'M':
+      return value * 30 * 86400; // 30 days per month
     default:
       throw new Error(`Unknown time unit: ${unit}`);
   }

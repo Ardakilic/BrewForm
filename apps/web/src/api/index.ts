@@ -5,9 +5,9 @@ export { api, ApiError, clearTokens, getAccessToken, setAccessToken };
 export const authApi = {
   register: (data: { email: string; username: string; password: string; displayName?: string }) =>
     api.post<{ user: AuthUser; accessToken: string; refreshToken: string }>('/auth/register', data),
-  login: (data: { email: string; password: string }) =>
+  login: (data: { email: string; password: string; rememberMe?: boolean }) =>
     api.post<{ user: AuthUser; accessToken: string; refreshToken: string }>('/auth/login', data),
-  refresh: (data: { refreshToken: string }) =>
+  refresh: (data: { refreshToken: string; rememberMe?: boolean }) =>
     api.post<{ user: AuthUser; accessToken: string; refreshToken: string }>('/auth/refresh', data),
   forgotPassword: (data: { email: string }) =>
     api.post<{ message: string }>('/auth/forgot-password', data),

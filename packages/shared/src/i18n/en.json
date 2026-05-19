@@ -328,6 +328,7 @@
   "auth.login.forgotPassword": "Forgot password?",
   "auth.login.noAccount": "Don't have an account?",
   "auth.login.signUp": "Sign up",
+"auth.login.rememberMe": "Remember me",
   "auth.register.title": "Create Account",
   "auth.register.creating": "Creating account...",
   "auth.register.hasAccount": "Already have an account?",

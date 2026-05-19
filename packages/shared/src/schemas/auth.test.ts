@@ -91,6 +91,61 @@ describe('AuthLoginSchema', () => {
   });
 });
 
+describe('AuthLoginSchema with rememberMe', () => {
+  it('should accept rememberMe: true', () => {
+    const result = AuthLoginSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      rememberMe: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.rememberMe).toBe(true);
+    }
+  });
+
+  it('should accept rememberMe: false (explicit)', () => {
+    const result = AuthLoginSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      rememberMe: false,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.rememberMe).toBe(false);
+    }
+  });
+
+  it('should default rememberMe to false when omitted', () => {
+    const result = AuthLoginSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.rememberMe).toBe(false);
+    }
+  });
+
+  it('should reject non-boolean rememberMe', () => {
+    const result = AuthLoginSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      rememberMe: 'yes',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject rememberMe as number', () => {
+    const result = AuthLoginSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      rememberMe: 1,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
 describe('AuthRefreshSchema', () => {
   it('should validate a valid refresh request', () => {
     const result = AuthRefreshSchema.safeParse({
@@ -101,6 +156,37 @@ describe('AuthRefreshSchema', () => {
 
   it('should reject missing token', () => {
     const result = AuthRefreshSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('AuthRefreshSchema with rememberMe', () => {
+  it('should accept rememberMe: true', () => {
+    const result = AuthRefreshSchema.safeParse({
+      refreshToken: 'some-token',
+      rememberMe: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.rememberMe).toBe(true);
+    }
+  });
+
+  it('should default rememberMe to false when omitted', () => {
+    const result = AuthRefreshSchema.safeParse({
+      refreshToken: 'some-token',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.rememberMe).toBe(false);
+    }
+  });
+
+  it('should reject non-boolean rememberMe', () => {
+    const result = AuthRefreshSchema.safeParse({
+      refreshToken: 'some-token',
+      rememberMe: 'true',
+    });
     expect(result.success).toBe(false);
   });
 });

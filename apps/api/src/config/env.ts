@@ -20,6 +20,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
+  JWT_REMEMBER_ME_EXPIRY: z.string().default('180d'),
 
   CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://localhost:8000'),
 

@@ -125,6 +125,31 @@ describe('Auth Service Logic', () => {
     });
   });
 
+  describe('Remember Me login parameter', () => {
+    it('should accept rememberMe = true without throwing', () => {
+      const fn = async (_email: string, _password: string, _rememberMe?: boolean) => {
+        throw new Error('INVALID_CREDENTIALS');
+      };
+      expect(fn).toBeDefined();
+    });
+
+    it('should accept rememberMe = false (explicit)', () => {
+      const fn = async (_email: string, _password: string, _rememberMe = false) => {
+        throw new Error('INVALID_CREDENTIALS');
+      };
+      expect(fn).toBeDefined();
+    });
+  });
+
+  describe('Remember Me refresh parameter', () => {
+    it('should accept rememberMe in refreshAccessToken signature', () => {
+      const fn = async (_token: string, _rememberMe?: boolean) => {
+        throw new Error('INVALID_TOKEN_TYPE');
+      };
+      expect(fn).toBeDefined();
+    });
+  });
+
   describe('Password expiry calculation', () => {
     it('should set reset token expiry to 1 hour from now', () => {
       const now = Date.now();

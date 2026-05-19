@@ -1,9 +1,1 @@
-{
-  "mcpServers": {
-    "serena": {
-      "type": "sse",
-      "url": "http://localhost:10122/sse",
-      "disabled": false
-    }
-  }
-}
+{"mcpServers":{"serena":{"type":"sse","url":"http://localhost:10122/sse","disabled":false,"alwaysAllow":["get_current_config"]}}}

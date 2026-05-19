@@ -50,6 +50,8 @@ With --from-plan: extract answers, present for user confirmation.
 
 ## Implementation workflow
 - Use Serena MCP (`serena_*`) tools for code understanding, navigation, and editing.
+  - Tool prefix: opencode namespaces Serena tools by the MCP server name `"serena"` — the raw server logs show bare names but the agent uses `serena_*`.
+  - Activate with `serena_activate_project` using the project **name** `brewform` (from `.serena/project.yml`), NOT the full path `/Users/arda/projects/BrewForm`.
 - Before editing, use `get_symbols_overview` or `find_symbol` to understand the relevant code structure.
 - Use `search_for_pattern` for cross-file searches and `replace_content` for regex-based edits.
 - **Always use Context7 MCP for library, code, language, and framework documentation.**
