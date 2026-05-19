@@ -1,7 +1,7 @@
 import '../../test-setup.ts';
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { reloadConfig, config } from '../../config/env.ts';
+import { config, reloadConfig } from '../../config/env.ts';
 import { register } from './service.ts';
 import { signAccessToken, signRefreshToken, verifyJwt } from './jwt.ts';
 
@@ -132,10 +132,16 @@ describe('Auth Service Logic', () => {
       password: string,
       rememberMe: boolean,
       mockModel: {
-        findUserByEmail: (email: string) => Promise<{
-          id: string; email: string; username: string; passwordHash: string;
-          isAdmin: boolean; isBanned: boolean;
-        } | null>;
+        findUserByEmail: (email: string) => Promise<
+          {
+            id: string;
+            email: string;
+            username: string;
+            passwordHash: string;
+            isAdmin: boolean;
+            isBanned: boolean;
+          } | null
+        >;
         verifyPassword: (plain: string, hashed: string) => boolean;
       },
     ) {
@@ -146,8 +152,10 @@ describe('Auth Service Logic', () => {
         throw new Error('INVALID_CREDENTIALS');
       }
       const accessToken = await signAccessToken({
-        id: rawUser.id, email: rawUser.email,
-        username: rawUser.username, isAdmin: rawUser.isAdmin,
+        id: rawUser.id,
+        email: rawUser.email,
+        username: rawUser.username,
+        isAdmin: rawUser.isAdmin,
       });
       const refreshToken = rememberMe
         ? await signRefreshToken(rawUser.id, config.JWT_REMEMBER_ME_EXPIRY)
@@ -157,8 +165,12 @@ describe('Auth Service Logic', () => {
 
     it('should produce longer-lived refresh token when rememberMe is true', async () => {
       const user = {
-        id: 'user-1', email: 'a@b.com', username: 'u',
-        passwordHash: 'hash', isAdmin: false, isBanned: false,
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        passwordHash: 'hash',
+        isAdmin: false,
+        isBanned: false,
       };
       const { refreshToken } = await loginWithRememberMe('a@b.com', 'pw', true, {
         findUserByEmail: () => Promise.resolve(user),
@@ -173,8 +185,12 @@ describe('Auth Service Logic', () => {
 
     it('should produce default-lived refresh token when rememberMe is false', async () => {
       const user = {
-        id: 'user-1', email: 'a@b.com', username: 'u',
-        passwordHash: 'hash', isAdmin: false, isBanned: false,
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        passwordHash: 'hash',
+        isAdmin: false,
+        isBanned: false,
       };
       const { refreshToken } = await loginWithRememberMe('a@b.com', 'pw', false, {
         findUserByEmail: () => Promise.resolve(user),
@@ -189,8 +205,12 @@ describe('Auth Service Logic', () => {
 
     it('should throw INVALID_CREDENTIALS when password is wrong', async () => {
       const user = {
-        id: 'user-1', email: 'a@b.com', username: 'u',
-        passwordHash: 'hash', isAdmin: false, isBanned: false,
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        passwordHash: 'hash',
+        isAdmin: false,
+        isBanned: false,
       };
       await expect(loginWithRememberMe('a@b.com', 'wrong', false, {
         findUserByEmail: () => Promise.resolve(user),
@@ -207,8 +227,12 @@ describe('Auth Service Logic', () => {
 
     it('should throw USER_BANNED for banned user', async () => {
       const user = {
-        id: 'user-1', email: 'a@b.com', username: 'u',
-        passwordHash: 'hash', isAdmin: false, isBanned: true,
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        passwordHash: 'hash',
+        isAdmin: false,
+        isBanned: true,
       };
       await expect(loginWithRememberMe('a@b.com', 'pw', false, {
         findUserByEmail: () => Promise.resolve(user),
@@ -222,10 +246,16 @@ describe('Auth Service Logic', () => {
       token: string,
       rememberMe: boolean,
       mockModel: {
-        findUserById: (id: string) => Promise<{
-          id: string; email: string; username: string; passwordHash: string;
-          isAdmin: boolean; isBanned: boolean;
-        } | null>;
+        findUserById: (id: string) => Promise<
+          {
+            id: string;
+            email: string;
+            username: string;
+            passwordHash: string;
+            isAdmin: boolean;
+            isBanned: boolean;
+          } | null
+        >;
       },
       mockVerifyJwt: (t: string) => Promise<{ sub: string; type: string }>,
     ) {
@@ -235,8 +265,10 @@ describe('Auth Service Logic', () => {
       if (!rawUser) throw new Error('USER_NOT_FOUND');
       if (rawUser.isBanned) throw new Error('USER_NOT_FOUND');
       const newAccessToken = await signAccessToken({
-        id: rawUser.id, email: rawUser.email,
-        username: rawUser.username, isAdmin: rawUser.isAdmin,
+        id: rawUser.id,
+        email: rawUser.email,
+        username: rawUser.username,
+        isAdmin: rawUser.isAdmin,
       });
       const newRefreshToken = rememberMe
         ? await signRefreshToken(rawUser.id, config.JWT_REMEMBER_ME_EXPIRY)
@@ -246,11 +278,16 @@ describe('Auth Service Logic', () => {
 
     it('should produce longer-lived refresh token when rememberMe is true', async () => {
       const user = {
-        id: 'user-1', email: 'a@b.com', username: 'u',
-        passwordHash: 'hash', isAdmin: false, isBanned: false,
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        passwordHash: 'hash',
+        isAdmin: false,
+        isBanned: false,
       };
       const { refreshToken } = await refreshWithRememberMe(
-        'some-token', true,
+        'some-token',
+        true,
         { findUserById: () => Promise.resolve(user) },
         () => Promise.resolve({ sub: 'user-1', type: 'refresh' }),
       );
@@ -262,11 +299,16 @@ describe('Auth Service Logic', () => {
 
     it('should produce default-lived refresh token when rememberMe is false', async () => {
       const user = {
-        id: 'user-1', email: 'a@b.com', username: 'u',
-        passwordHash: 'hash', isAdmin: false, isBanned: false,
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        passwordHash: 'hash',
+        isAdmin: false,
+        isBanned: false,
       };
       const { refreshToken } = await refreshWithRememberMe(
-        'some-token', false,
+        'some-token',
+        false,
         { findUserById: () => Promise.resolve(user) },
         () => Promise.resolve({ sub: 'user-1', type: 'refresh' }),
       );
@@ -278,11 +320,16 @@ describe('Auth Service Logic', () => {
 
     it('should throw INVALID_TOKEN_TYPE for access token', async () => {
       const user = {
-        id: 'user-1', email: 'a@b.com', username: 'u',
-        passwordHash: 'hash', isAdmin: false, isBanned: false,
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        passwordHash: 'hash',
+        isAdmin: false,
+        isBanned: false,
       };
       await expect(refreshWithRememberMe(
-        'access-token', false,
+        'access-token',
+        false,
         { findUserById: () => Promise.resolve(user) },
         () => Promise.resolve({ sub: 'user-1', type: 'access' }),
       )).rejects.toThrow('INVALID_TOKEN_TYPE');
@@ -290,7 +337,8 @@ describe('Auth Service Logic', () => {
 
     it('should throw USER_NOT_FOUND for non-existent user', async () => {
       await expect(refreshWithRememberMe(
-        'some-token', false,
+        'some-token',
+        false,
         { findUserById: () => Promise.resolve(null) },
         () => Promise.resolve({ sub: 'no-user', type: 'refresh' }),
       )).rejects.toThrow('USER_NOT_FOUND');
@@ -298,11 +346,16 @@ describe('Auth Service Logic', () => {
 
     it('should throw USER_NOT_FOUND for banned user', async () => {
       const user = {
-        id: 'user-1', email: 'a@b.com', username: 'u',
-        passwordHash: 'hash', isAdmin: false, isBanned: true,
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        passwordHash: 'hash',
+        isAdmin: false,
+        isBanned: true,
       };
       await expect(refreshWithRememberMe(
-        'some-token', false,
+        'some-token',
+        false,
         { findUserById: () => Promise.resolve(user) },
         () => Promise.resolve({ sub: 'user-1', type: 'refresh' }),
       )).rejects.toThrow('USER_NOT_FOUND');
