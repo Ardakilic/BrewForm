@@ -22,17 +22,20 @@ export function clearTokens() {
   accessToken = null;
   localStorage.removeItem('brewform_access_token');
   localStorage.removeItem('brewform_refresh_token');
+  localStorage.removeItem('brewform_remember_me');
 }
 
 async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = localStorage.getItem('brewform_refresh_token');
   if (!refreshToken) return null;
 
+  const rememberMe = localStorage.getItem('brewform_remember_me') === 'true';
+
   try {
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      body: JSON.stringify({ refreshToken, rememberMe }),
     });
     const data = await response.json();
     if (data.success) {

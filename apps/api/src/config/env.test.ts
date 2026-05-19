@@ -13,6 +13,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
+  JWT_REMEMBER_ME_EXPIRY: z.string().default('180d'),
   CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://localhost:8000'),
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().default(1025),
@@ -45,6 +46,7 @@ describe('Environment Config Schema', () => {
       expect(result.data.DATABASE_PROVIDER).toBe('postgresql');
       expect(result.data.JWT_ACCESS_EXPIRY).toBe('15m');
       expect(result.data.JWT_REFRESH_EXPIRY).toBe('7d');
+      expect(result.data.JWT_REMEMBER_ME_EXPIRY).toBe('180d');
       expect(result.data.SMTP_PORT).toBe(1025);
       expect(result.data.APP_URL).toBe('http://localhost:8000');
       expect(result.data.UPLOAD_MAX_SIZE_BYTES).toBe(10485760);
@@ -214,5 +216,42 @@ describe('ENABLE_REGISTRATION', () => {
       ENABLE_REGISTRATION: 'maybe',
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('JWT_REMEMBER_ME_EXPIRY', () => {
+  it('should default to 180d', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.JWT_REMEMBER_ME_EXPIRY).toBe('180d');
+    }
+  });
+
+  it('should accept custom value', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+      JWT_REMEMBER_ME_EXPIRY: '365d',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.JWT_REMEMBER_ME_EXPIRY).toBe('365d');
+    }
+  });
+
+  it('should accept month suffix M', () => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
+      JWT_REMEMBER_ME_EXPIRY: '6M',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.JWT_REMEMBER_ME_EXPIRY).toBe('6M');
+    }
   });
 });

@@ -328,6 +328,7 @@
   "auth.login.forgotPassword": "Şifremi unuttum?",
   "auth.login.noAccount": "Hesabınız yok mu?",
   "auth.login.signUp": "Kayıt ol",
+  "auth.login.rememberMe": "Beni hatırla",
   "auth.register.title": "Hesap Oluştur",
   "auth.register.creating": "Hesap oluşturuluyor...",
   "auth.register.hasAccount": "Zaten hesabınız var mı?",

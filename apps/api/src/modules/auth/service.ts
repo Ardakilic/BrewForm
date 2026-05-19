@@ -69,7 +69,7 @@ export async function register(data: {
   return { user, accessToken, refreshToken };
 }
 
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string, rememberMe = false) {
   const rawUser = await model.findUserByEmail(email);
   if (!rawUser) {
     throw new Error('INVALID_CREDENTIALS');
@@ -90,12 +90,15 @@ export async function login(email: string, password: string) {
     username: user.username,
     isAdmin: user.isAdmin,
   });
-  const refreshToken = await jwt.signRefreshToken(user.id);
+
+  const refreshToken = rememberMe
+    ? await jwt.signRefreshToken(user.id, config.JWT_REMEMBER_ME_EXPIRY)
+    : await jwt.signRefreshToken(user.id);
 
   return { user, accessToken, refreshToken };
 }
 
-export async function refreshAccessToken(refreshToken: string) {
+export async function refreshAccessToken(refreshToken: string, rememberMe = false) {
   const payload = await jwt.verifyJwt(refreshToken);
   if (payload.type !== 'refresh') {
     throw new Error('INVALID_TOKEN_TYPE');
@@ -116,7 +119,10 @@ export async function refreshAccessToken(refreshToken: string) {
     username: user.username,
     isAdmin: user.isAdmin,
   });
-  const newRefreshToken = await jwt.signRefreshToken(user.id);
+
+  const newRefreshToken = rememberMe
+    ? await jwt.signRefreshToken(user.id, config.JWT_REMEMBER_ME_EXPIRY)
+    : await jwt.signRefreshToken(user.id);
 
   return { user, accessToken: newAccessToken, refreshToken: newRefreshToken };
 }

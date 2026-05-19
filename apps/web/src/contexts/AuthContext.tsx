@@ -15,7 +15,7 @@ interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (
     data: { email: string; username: string; password: string; displayName?: string },
   ) => Promise<void>;
@@ -50,8 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshUser]);
 
-  async function login(email: string, password: string) {
-    const response = await authApi.login({ email, password });
+  async function login(email: string, password: string, rememberMe = false) {
+    if (rememberMe) {
+      localStorage.setItem('brewform_remember_me', 'true');
+    } else {
+      localStorage.removeItem('brewform_remember_me');
+    }
+    const response = await authApi.login({ email, password, rememberMe });
     setAccessToken(response.accessToken);
     localStorage.setItem('brewform_refresh_token', response.refreshToken);
     setUser(response.user);

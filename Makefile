@@ -171,7 +171,7 @@ serena-up: ## Start Serena MCP service
 	docker compose --profile serena up serena -d
 
 serena-stop: ## Stop Serena MCP service
-	docker compose --profile serena down serena
+	docker compose --profile serena stop serena
 
 serena-logs: ## Follow Serena logs
 	docker compose logs -f serena

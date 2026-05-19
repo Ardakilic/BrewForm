@@ -9,6 +9,7 @@ export function LoginPage() {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +18,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       navigate('/');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t('auth.login.title');
@@ -72,6 +73,23 @@ export function LoginPage() {
             className='input-field'
             required
           />
+        </div>
+        <div className='flex items-center gap-2'>
+          <input
+            type='checkbox'
+            id='rememberMe'
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className='h-4 w-4 cursor-pointer'
+            style={{ accentColor: 'var(--accent-primary)' }}
+          />
+          <label
+            htmlFor='rememberMe'
+            className='text-sm cursor-pointer select-none'
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {t('auth.login.rememberMe')}
+          </label>
         </div>
         <button type='submit' className='btn-primary' disabled={loading}>
           {loading ? t('auth.login.loggingIn') : t('auth.login.title')}

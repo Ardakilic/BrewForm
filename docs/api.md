@@ -106,9 +106,21 @@ Response `201`:
 
 ### POST /auth/login
 
+Request body:
+
 ```json
-{ "email": "user@example.com", "password": "securepassword" }
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "rememberMe": false
+}
 ```
+
+| Field          | Type    | Required | Default | Description                                              |
+| -------------- | ------- | -------- | ------- | -------------------------------------------------------- |
+| `email`        | string  | yes      | —       | User's email address                                     |
+| `password`     | string  | yes      | —       | User's password                                          |
+| `rememberMe`   | boolean | no       | `false` | Request long-lived refresh token (180d by default)       |
 
 Response `200`:
 
@@ -119,6 +131,48 @@ Response `200`:
     "user": { "id": "...", "email": "...", "username": "..." },
     "accessToken": "...",
     "refreshToken": "..."
+  }
+}
+```
+
+### POST /auth/refresh
+
+Request body:
+
+```json
+{
+  "refreshToken": "...",
+  "rememberMe": false
+}
+```
+
+| Field          | Type    | Required | Default | Description                                              |
+| -------------- | ------- | -------- | ------- | -------------------------------------------------------- |
+| `refreshToken` | string  | yes      | —       | Current refresh token                                    |
+| `rememberMe`   | boolean | no       | `false` | Maintain long-lived session if previously set            |
+
+Response `200`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "id": "...", "email": "...", "username": "..." },
+    "accessToken": "...",
+    "refreshToken": "..."
+  }
+}
+```
+
+Response `401` (invalid or expired refresh token):
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_REFRESH_TOKEN",
+    "message": "Invalid or expired refresh token",
+    "requestId": "req_abc123"
   }
 }
 ```

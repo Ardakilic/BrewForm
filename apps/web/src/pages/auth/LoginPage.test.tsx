@@ -1,0 +1,259 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
+import { LoginPage } from './LoginPage';
+import { AuthProvider } from '../../contexts/AuthContext';
+import { I18nProvider } from '../../contexts/I18nContext';
+
+vi.mock('../../api/index', () => ({
+  authApi: {
+    login: vi.fn(),
+    registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
+  },
+  userApi: {
+    me: vi.fn().mockRejectedValue(new Error('Not authenticated')),
+  },
+  clearTokens: vi.fn(),
+  getAccessToken: vi.fn().mockReturnValue(null),
+  setAccessToken: vi.fn(),
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+    upload: vi.fn(),
+  },
+  ApiError: class extends Error {
+    code: string;
+    status: number;
+    constructor(code: string, message: string, status: number) {
+      super(message);
+      this.code = code;
+      this.status = status;
+    }
+  },
+}));
+
+import { authApi } from '../../api/index';
+
+function renderLoginPage() {
+  return render(
+    <MemoryRouter>
+      <I18nProvider>
+        <AuthProvider>
+          <LoginPage />
+        </AuthProvider>
+      </I18nProvider>
+    </MemoryRouter>,
+  );
+}
+
+describe('LoginPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('should render the login form with email, password, and submit button', () => {
+    renderLoginPage();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+  });
+
+  it('should render the remember me checkbox unchecked by default', () => {
+    renderLoginPage();
+    const checkbox = screen.getByRole('checkbox', { name: /remember me/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it('should render forgot password link', () => {
+    renderLoginPage();
+    expect(screen.getByText(/forgot password\?/i)).toBeInTheDocument();
+  });
+
+  it('should render sign up link', () => {
+    renderLoginPage();
+    expect(screen.getByText(/sign up/i)).toBeInTheDocument();
+  });
+
+  it('should toggle remember me checkbox on click', async () => {
+    renderLoginPage();
+    const checkbox = screen.getByRole('checkbox', { name: /remember me/i });
+    await userEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+    await userEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it('should toggle checkbox via label click', async () => {
+    renderLoginPage();
+    const label = screen.getByText(/remember me/i);
+    const checkbox = screen.getByRole('checkbox', { name: /remember me/i });
+    await userEvent.click(label);
+    expect(checkbox).toBeChecked();
+  });
+
+  it('should call login with rememberMe: true when checkbox is checked', async () => {
+    const loginMock = vi.mocked(authApi.login).mockResolvedValue({
+      user: {
+        id: '1',
+        email: 'test@test.com',
+        username: 'testuser',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
+      },
+      accessToken: 'access-token-xxx',
+      refreshToken: 'refresh-token-xxx',
+    });
+
+    renderLoginPage();
+    await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'password123');
+    await userEvent.click(screen.getByRole('checkbox', { name: /remember me/i }));
+    await userEvent.click(screen.getByRole('button', { name: /log in/i }));
+
+    await waitFor(() => {
+      expect(loginMock).toHaveBeenCalledWith({
+        email: 'test@test.com',
+        password: 'password123',
+        rememberMe: true,
+      });
+    });
+  });
+
+  it('should store brewform_remember_me in localStorage when rememberMe is true', async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      user: {
+        id: '1',
+        email: 'test@test.com',
+        username: 'testuser',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
+      },
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+    });
+
+    renderLoginPage();
+    await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'password123');
+    await userEvent.click(screen.getByRole('checkbox', { name: /remember me/i }));
+    await userEvent.click(screen.getByRole('button', { name: /log in/i }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem('brewform_remember_me')).toBe('true');
+    });
+  });
+
+  it('should call login with rememberMe: false when checkbox is not checked', async () => {
+    const loginMock = vi.mocked(authApi.login).mockResolvedValue({
+      user: {
+        id: '2',
+        email: 'other@test.com',
+        username: 'other',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
+      },
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+    });
+
+    renderLoginPage();
+    await userEvent.type(screen.getByLabelText(/email/i), 'other@test.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'password456');
+    await userEvent.click(screen.getByRole('button', { name: /log in/i }));
+
+    await waitFor(() => {
+      expect(loginMock).toHaveBeenCalledWith({
+        email: 'other@test.com',
+        password: 'password456',
+        rememberMe: false,
+      });
+    });
+  });
+
+  it('should NOT store brewform_remember_me when checkbox is unchecked', async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      user: {
+        id: '2',
+        email: 'other@test.com',
+        username: 'other',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
+      },
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+    });
+
+    renderLoginPage();
+    await userEvent.type(screen.getByLabelText(/email/i), 'other@test.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'password456');
+    await userEvent.click(screen.getByRole('button', { name: /log in/i }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem('brewform_remember_me')).toBeNull();
+    });
+  });
+
+  it('should display error message on login failure', async () => {
+    vi.mocked(authApi.login).mockRejectedValue(new Error('Invalid email or password'));
+    renderLoginPage();
+    await userEvent.type(screen.getByLabelText(/email/i), 'bad@test.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'wrong');
+    await userEvent.click(screen.getByRole('button', { name: /log in/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Invalid email or password')).toBeInTheDocument();
+    });
+  });
+
+  it('should disable button and show loading text while logging in', async () => {
+    let resolveLogin: (value: unknown) => void;
+    const loginPromise = new Promise((resolve) => {
+      resolveLogin = resolve;
+    });
+    vi.mocked(authApi.login).mockReturnValue(loginPromise as Promise<unknown>);
+
+    renderLoginPage();
+    await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'password123');
+    await userEvent.click(screen.getByRole('button', { name: /log in/i }));
+
+    expect(screen.getByRole('button', { name: /logging in/i })).toBeDisabled();
+
+    resolveLogin!({
+      user: {
+        id: '1',
+        email: 'test@test.com',
+        username: 'testuser',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: false,
+      },
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+    });
+  });
+
+  it('should require email field', () => {
+    renderLoginPage();
+    expect(screen.getByLabelText(/email/i)).toBeRequired();
+  });
+
+  it('should require password field', () => {
+    renderLoginPage();
+    expect(screen.getByLabelText(/password/i)).toBeRequired();
+  });
+});

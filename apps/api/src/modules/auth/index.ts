@@ -70,7 +70,8 @@ auth.post(
   describeRoute({
     tags: ['Auth'],
     summary: 'Log in with email and password',
-    description: 'Returns access + refresh tokens on success.',
+    description: 'Returns access + refresh tokens on success. ' +
+      'Set rememberMe to true for a long-lived refresh token (6 months by default).',
     responses: {
       200: { description: 'Login succeeded; tokens issued' },
       401: { description: 'Invalid credentials' },
@@ -81,7 +82,7 @@ auth.post(
   async (c) => {
     const body = c.req.valid('json');
     try {
-      const result = await authService.login(body.email, body.password);
+      const result = await authService.login(body.email, body.password, body.rememberMe);
       return success(c, {
         user: sanitizeUser(result.user),
         accessToken: result.accessToken,
@@ -105,6 +106,8 @@ auth.post(
   describeRoute({
     tags: ['Auth'],
     summary: 'Exchange a refresh token for a new access token',
+    description: 'Exchange a refresh token for a new access token. ' +
+      'Pass rememberMe: true to maintain the long-lived session.',
     responses: {
       200: { description: 'New access + refresh tokens issued' },
       401: { description: 'Refresh token invalid or expired' },
@@ -114,7 +117,7 @@ auth.post(
   async (c) => {
     const body = c.req.valid('json');
     try {
-      const result = await authService.refreshAccessToken(body.refreshToken);
+      const result = await authService.refreshAccessToken(body.refreshToken, body.rememberMe);
       return success(c, {
         user: sanitizeUser(result.user),
         accessToken: result.accessToken,
@@ -122,7 +125,11 @@ auth.post(
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      if (message === 'INVALID_TOKEN_TYPE' || message === 'USER_NOT_FOUND') {
+      if (['INVALID_TOKEN_TYPE', 'USER_NOT_FOUND'].includes(message)) {
+        return error(c, 'INVALID_REFRESH_TOKEN', 'Invalid or expired refresh token', 401);
+      }
+      // Catch JWT verification errors (expired, invalid signature, malformed)
+      if (err instanceof Error && err.name.startsWith('Jwt')) {
         return error(c, 'INVALID_REFRESH_TOKEN', 'Invalid or expired refresh token', 401);
       }
       throw err;
