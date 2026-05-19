@@ -53,6 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string, rememberMe = false) {
     if (rememberMe) {
       localStorage.setItem('brewform_remember_me', 'true');
+    } else {
+      localStorage.removeItem('brewform_remember_me');
     }
     const response = await authApi.login({ email, password, rememberMe });
     setAccessToken(response.accessToken);

@@ -63,7 +63,7 @@ export async function signRefreshToken(
   customExpiry?: string,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  const expirySeconds = customExpiry ? parseExpiry(customExpiry) : parseExpiry(REFRESH_EXPIRY);
+  const expirySeconds = parseExpiry(customExpiry ?? REFRESH_EXPIRY);
   const payload = {
     sub: userId,
     type: 'refresh' as const,
