@@ -20,7 +20,7 @@
 **Context7 Note (React Router v7):** Set `ErrorBoundary` on root route. Use `useRouteError()` + `isRouteErrorResponse()`. All thrown errors (components, loaders, actions) propagate to a single boundary.
 
 **Action Plan:**
-1. Create `apps/web/src/components/ErrorBoundary.tsx`:
+- [ ] 1. Create `apps/web/src/components/ErrorBoundary.tsx`:
    ```tsx
    import { useRouteError, isRouteErrorResponse } from 'react-router';
 
@@ -54,7 +54,7 @@
      return <h1>Unknown Error</h1>;
    }
    ```
-2. Add to root route in `apps/web/src/router.tsx`:
+- [ ] 2. Add to root route in `apps/web/src/router.tsx`:
    ```tsx
    {
      path: '/',
@@ -63,7 +63,7 @@
      children: [/* existing routes */],
    }
    ```
-3. Optionally add per-route error boundaries for admin section and RecipeDetailPage.
+- [ ] 3. Optionally add per-route error boundaries for admin section and RecipeDetailPage.
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -81,7 +81,7 @@
 **Context7 Note (Hono `secureHeaders`):** `hono/secure-headers` provides one middleware that sets all 6 standard security headers. Use `app.use('*', secureHeaders({...}))`. Not needed: `compress()` middleware on Deno Deploy — responses auto-compressed.
 
 **Action Plan:**
-1. Import and add in `apps/api/src/main.ts` (after CORS, before rate limit):
+- [ ] 1. Import and add in `apps/api/src/main.ts` (after CORS, before rate limit):
    ```tsx
    import { secureHeaders } from 'hono/secure-headers';
 
@@ -100,8 +100,8 @@
      },
    }));
    ```
-2. This **one middleware call** instantly fixes all 6 headers.
-3. Adjust CSP for production (add analytics domains, S3 image URLs as needed).
+- [ ] 2. This **one middleware call** instantly fixes all 6 headers.
+- [ ] 3. Adjust CSP for production (add analytics domains, S3 image URLs as needed).
 
 **Estimated effort:** Small (30 minutes)
 
@@ -117,14 +117,14 @@
 **Impact:** Anyone can register with any email address. No bot protection, no typo correction. Welcome email is sent but purely informational.
 
 **Action Plan:**
-1. **DB:** Add `emailVerifiedAt TIMESTAMP` column to `users` table (nullable)
-2. **DB:** Create `emailVerificationTokens` table: `id, userId (FK), token, expiresAt, createdAt`
-3. **Schema:** Update `packages/db/src/schema.ts`, run `make db-generate && make db-migrate`
-4. **API:** Create `POST /api/v1/auth/send-verification` — generates token, emails verification link
-5. **API:** Create `POST /api/v1/auth/verify-email` — validates token, sets `emailVerifiedAt`
-6. **API:** Modify registration to gate token issuance behind email verification
-7. **FE:** Add "Please verify your email" banner for unverified users
-8. **FE:** Add `/verify-email?token=xxx` route
+- [ ] 1. **DB:** Add `emailVerifiedAt TIMESTAMP` column to `users` table (nullable)
+- [ ] 2. **DB:** Create `emailVerificationTokens` table: `id, userId (FK), token, expiresAt, createdAt`
+- [ ] 3. **Schema:** Update `packages/db/src/schema.ts`, run `make db-generate && make db-migrate`
+- [ ] 4. **API:** Create `POST /api/v1/auth/send-verification` — generates token, emails verification link
+- [ ] 5. **API:** Create `POST /api/v1/auth/verify-email` — validates token, sets `emailVerifiedAt`
+- [ ] 6. **API:** Modify registration to gate token issuance behind email verification
+- [ ] 7. **FE:** Add "Please verify your email" banner for unverified users
+- [ ] 8. **FE:** Add `/verify-email?token=xxx` route
 
 **Estimated effort:** Medium (4-6 hours)
 
@@ -146,7 +146,7 @@
 **Context7 Note (Hono `hono/cookie`):** Provides `setCookie()`, `getCookie()`, `setSignedCookie()` with `httpOnly`, `secure`, `sameSite`, `maxAge`, `path`, `prefix` options. Supports `__Secure-` and `__Host-` prefixes. Enforces best practices (max 400-day expiry, requires `secure` for `__Secure-` prefix).
 
 **Action Plan:**
-1. **API** — Change login/register to set HTTP-only cookies:
+- [ ] 1. **API** — Change login/register to set HTTP-only cookies:
    ```tsx
    import { setCookie } from 'hono/cookie';
 
@@ -165,14 +165,14 @@
      maxAge: 7 * 24 * 60 * 60, // 7 days
    });
    ```
-2. **API** — Change auth middleware to read from cookies instead of `Authorization` header:
+- [ ] 2. **API** — Change auth middleware to read from cookies instead of `Authorization` header:
    ```tsx
    import { getCookie } from 'hono/cookie';
    const token = getCookie(c, 'access_token');
    ```
-3. **FE** — Remove all `localStorage` token storage from `client.ts`. Cookies sent automatically.
-4. **FE** — Remove manual `Authorization` header. Add `credentials: 'include'` if cross-origin.
-5. **CSRF** — Same-origin (Vite proxies `/api/*`) so CSRF risk is low. Add `X-Requested-With: XMLHttpRequest` header check for extra safety.
+- [ ] 3. **FE** — Remove all `localStorage` token storage from `client.ts`. Cookies sent automatically.
+- [ ] 4. **FE** — Remove manual `Authorization` header. Add `credentials: 'include'` if cross-origin.
+- [ ] 5. **CSRF** — Same-origin (Vite proxies `/api/*`) so CSRF risk is low. Add `X-Requested-With: XMLHttpRequest` header check for extra safety.
 
 **Estimated effort:** Medium (4-6 hours, requires coordinated FE/BE changes)
 

@@ -38,13 +38,13 @@ The single most impactful quick fix: add `secureHeaders` middleware (Hono built-
 **Impact:** Sharing any recipe URL on Twitter/X, Facebook, WhatsApp, Discord, Slack produces a blank preview card. Core social sharing feature is broken.
 
 **Action Plan:**
-1. Create `apps/api/src/middleware/crawler.ts` — a middleware that:
+- [ ] 1. Create `apps/api/src/middleware/crawler.ts` — a middleware that:
    - Checks `User-Agent` header against known social crawlers (`Twitterbot`, `facebookexternalhit`, `WhatsApp`, `Discordbot`, `Slackbot`, `LinkedInBot`)
    - For matching requests to `/recipes/:slug`, fetches recipe meta via `getRecipeMeta(slug)`
    - Returns a minimal HTML page with proper `<meta property="og:*">` and `<meta name="twitter:*">` tags pre-rendered in the `<head>`
-2. Register this middleware in [`apps/api/src/main.ts`](apps/api/src/main.ts) before the SPA fallback, so crawler requests never reach the Vite SPA
-3. Add missing tags: `og:site_name`, `twitter:title`, `twitter:description`, `twitter:image` to the SEOHead component as well for dynamic client-side navigation
-4. Add a static `<meta name="description">` fallback in `index.html` for the home page
+- [ ] 2. Register this middleware in [`apps/api/src/main.ts`](apps/api/src/main.ts) before the SPA fallback, so crawler requests never reach the Vite SPA
+- [ ] 3. Add missing tags: `og:site_name`, `twitter:title`, `twitter:description`, `twitter:image` to the SEOHead component as well for dynamic client-side navigation
+- [ ] 4. Add a static `<meta name="description">` fallback in `index.html` for the home page
 
 **Estimated effort:** Medium (4-6 hours)
 
@@ -60,7 +60,7 @@ The single most impactful quick fix: add `secureHeaders` middleware (Hono built-
 **Impact:** Any uncaught React render error unmounts the entire tree → user sees blank white screen → must manually refresh. No recovery path.
 
 **Action Plan (React Router v7 pattern per Context7):**
-1. Create `apps/web/src/components/ErrorBoundary.tsx`:
+- [ ] 1. Create `apps/web/src/components/ErrorBoundary.tsx`:
 ```tsx
 import { useRouteError, isRouteErrorResponse } from 'react-router';
 
@@ -94,7 +94,7 @@ export function RootErrorBoundary() {
   return <h1>Unknown Error</h1>;
 }
 ```
-2. Add to root route in [`apps/web/src/router.tsx`](apps/web/src/router.tsx):
+- [ ] 2. Add to root route in [`apps/web/src/router.tsx`](apps/web/src/router.tsx):
 ```tsx
 {
   path: '/',
@@ -103,7 +103,7 @@ export function RootErrorBoundary() {
   children: [/* existing routes */],
 }
 ```
-3. Optionally add per-route error boundaries for admin section and heavy pages (RecipeDetailPage).
+- [ ] 3. Optionally add per-route error boundaries for admin section and heavy pages (RecipeDetailPage).
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -123,14 +123,14 @@ export function RootErrorBoundary() {
 **Impact:** New contributors cannot understand parameter contracts without reading full implementation. TypeScript intellisense shows empty tooltips. Complex functions like `forkRecipe` (185 lines, 6 sub-queries, undocumented) are impenetrable.
 
 **Action Plan — Phase 1 (Core):**
-1. Document [`apps/api/src/modules/recipe/model.ts`](apps/api/src/modules/recipe/model.ts) — all 28 exported functions with `@param`, `@returns`, `@throws`
-2. Document [`apps/api/src/modules/recipe/service.ts`](apps/api/src/modules/recipe/service.ts) — all 15 exported functions
-3. Document [`packages/shared/src/types/`](packages/shared/src/types/) — all 16 type files with TSDoc on interfaces
-4. Document [`packages/shared/src/utils/validation.ts`](packages/shared/src/utils/validation.ts)
+- [ ] 1. Document [`apps/api/src/modules/recipe/model.ts`](apps/api/src/modules/recipe/model.ts) — all 28 exported functions with `@param`, `@returns`, `@throws`
+- [ ] 2. Document [`apps/api/src/modules/recipe/service.ts`](apps/api/src/modules/recipe/service.ts) — all 15 exported functions
+- [ ] 3. Document [`packages/shared/src/types/`](packages/shared/src/types/) — all 16 type files with TSDoc on interfaces
+- [ ] 4. Document [`packages/shared/src/utils/validation.ts`](packages/shared/src/utils/validation.ts)
 
 **Action Plan — Phase 2 (Secondary):**
-5. Document remaining 14 module services and models
-6. Document frontend components in `apps/web/src/components/seo/`, `apps/web/src/components/recipe/`
+- [ ] 5. Document remaining 14 module services and models
+- [ ] 6. Document frontend components in `apps/web/src/components/seo/`, `apps/web/src/components/recipe/`
 
 **Estimated effort:** Large (20-30 hours total, spread across sprints)
 
@@ -145,17 +145,17 @@ export function RootErrorBoundary() {
 **Impact:** Search engine crawlers have no guidance on which pages to index or crawl frequency. Zero discoverability via organic search.
 
 **Action Plan:**
-1. Create `apps/web/public/robots.txt`:
+- [ ] 1. Create `apps/web/public/robots.txt`:
 ```
 User-agent: *
 Allow: /
 Sitemap: https://brewform.app/sitemap.xml
 ```
-2. Create `GET /api/v1/sitemap.xml` endpoint in `apps/api/src/routes/sitemap.ts` that dynamically lists:
+- [ ] 2. Create `GET /api/v1/sitemap.xml` endpoint in `apps/api/src/routes/sitemap.ts` that dynamically lists:
    - All public recipe pages (`/recipes/:slug`) with `<lastmod>` from `updatedAt`
    - All public user profiles (`/u/:username`)
    - Static pages: `/`, `/privacy`, `/terms`, `/recipes`
-3. Register the route in [`apps/api/src/routes/index.ts`](apps/api/src/routes/index.ts)
+- [ ] 3. Register the route in [`apps/api/src/routes/index.ts`](apps/api/src/routes/index.ts)
 
 **Estimated effort:** Small (2-3 hours)
 
@@ -171,7 +171,7 @@ Sitemap: https://brewform.app/sitemap.xml
 **Impact:** WCAG 2.4.1 (Bypass Blocks) violation. Keyboard users must tab through the entire navbar on every page load.
 
 **Action Plan:**
-1. Add to [`apps/web/src/components/layout/Layout.tsx`](apps/web/src/components/layout/Layout.tsx) as first focusable element:
+- [ ] 1. Add to [`apps/web/src/components/layout/Layout.tsx`](apps/web/src/components/layout/Layout.tsx) as first focusable element:
 ```tsx
 <a
   href='#main-content'
@@ -180,8 +180,8 @@ Sitemap: https://brewform.app/sitemap.xml
   {t('a11y.skipToContent')}
 </a>
 ```
-2. Add `id="main-content"` and `tabIndex={-1}` to the `<main>` element in Layout.tsx line 10
-3. Add i18n key `a11y.skipToContent` with values `"Skip to main content"` / `"Ana içeriğe geç"` in `packages/shared/src/i18n/en.json` and `tr.json`
+- [ ] 2. Add `id="main-content"` and `tabIndex={-1}` to the `<main>` element in Layout.tsx line 10
+- [ ] 3. Add i18n key `a11y.skipToContent` with values `"Skip to main content"` / `"Ana içeriğe geç"` in `packages/shared/src/i18n/en.json` and `tr.json`
 
 **Estimated effort:** Small (30 minutes)
 
@@ -197,13 +197,13 @@ Sitemap: https://brewform.app/sitemap.xml
 **Impact:** When user switches to Turkish (`tr`), screen readers still use English pronunciation rules. WCAG 3.1.1 (Language of Page) violation.
 
 **Action Plan:**
-1. Add to I18nContext provider effect:
+- [ ] 1. Add to I18nContext provider effect:
 ```tsx
 useEffect(() => {
   document.documentElement.lang = locale;
 }, [locale]);
 ```
-2. Also update the `class` on `<html>` to reflect theme: `document.documentElement.className = theme;`
+- [ ] 2. Also update the `class` on `<html>` to reflect theme: `document.documentElement.className = theme;`
 
 **Estimated effort:** Small (15 minutes)
 
@@ -218,7 +218,7 @@ useEffect(() => {
 **Impact:** Users cannot install BrewForm to home screen as a PWA. No offline support. No splash screen.
 
 **Action Plan:**
-1. Create `apps/web/public/manifest.json`:
+- [ ] 1. Create `apps/web/public/manifest.json`:
 ```json
 {
   "name": "BrewForm — Coffee Brewing Recipes",
@@ -233,13 +233,13 @@ useEffect(() => {
   ]
 }
 ```
-2. Add to `index.html` `<head>`:
+- [ ] 2. Add to `index.html` `<head>`:
 ```html
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#6f4e37" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 ```
-3. Create icon files (generate from SVG favicon)
+- [ ] 3. Create icon files (generate from SVG favicon)
 
 **Estimated effort:** Small (1 hour + icon design)
 
@@ -262,15 +262,15 @@ useEffect(() => {
 **Impact:** TypeScript provides zero protection on recipe data shapes. Runtime type errors are silently swallowed.
 
 **Action Plan:**
-1. Define typed API response interfaces in `apps/web/src/api/types.ts` using `@brewform/shared/types`:
+- [ ] 1. Define typed API response interfaces in `apps/web/src/api/types.ts` using `@brewform/shared/types`:
 ```tsx
 import type { RecipeDetail } from '@brewform/shared/types';
 import type { TasteNote } from '@brewform/shared/types';
 ```
-2. Replace `useState<any>` → `useState<RecipeDetail | null>` in RecipeDetailPage, RecipeCreatePage, RecipeEditPage
-3. Replace `useState<any[]>` → `useState<TasteNote[]>` 
-4. Remove module-level `as unknown as any[]` casts — use proper types from constants
-5. Update API client return types to return typed responses instead of `Record<string, unknown>`
+- [ ] 2. Replace `useState<any>` → `useState<RecipeDetail | null>` in RecipeDetailPage, RecipeCreatePage, RecipeEditPage
+- [ ] 3. Replace `useState<any[]>` → `useState<TasteNote[]>` 
+- [ ] 4. Remove module-level `as unknown as any[]` casts — use proper types from constants
+- [ ] 5. Update API client return types to return typed responses instead of `Record<string, unknown>`
 
 **Estimated effort:** Medium (4-6 hours across all pages)
 
@@ -286,7 +286,7 @@ import type { TasteNote } from '@brewform/shared/types';
 **Impact:** Entire application JS bundle (including 14 admin pages) loads on first visit, even for non-admin users.
 
 **Action Plan (React Router v7 lazy routes per Context7):**
-1. Convert admin routes in [`apps/web/src/router.tsx`](apps/web/src/router.tsx) to lazy imports:
+- [ ] 1. Convert admin routes in [`apps/web/src/router.tsx`](apps/web/src/router.tsx) to lazy imports:
 ```tsx
 {
   path: '/admin',
@@ -300,9 +300,9 @@ import type { TasteNote } from '@brewform/shared/types';
   ],
 }
 ```
-2. Add `<Suspense fallback={<LoadingSpinner />}>` around `<Outlet />` in Layout.tsx
-3. Lazy-load heavy pages: RecipeCreatePage, RecipeEditPage, SettingsPage
-4. Keep public pages (HomePage, RecipeListPage, RecipeDetailPage) eagerly loaded for fast initial navigation
+- [ ] 2. Add `<Suspense fallback={<LoadingSpinner />}>` around `<Outlet />` in Layout.tsx
+- [ ] 3. Lazy-load heavy pages: RecipeCreatePage, RecipeEditPage, SettingsPage
+- [ ] 4. Keep public pages (HomePage, RecipeListPage, RecipeDetailPage) eagerly loaded for fast initial navigation
 
 **Estimated effort:** Medium (3-4 hours)
 
@@ -318,16 +318,16 @@ import type { TasteNote } from '@brewform/shared/types';
 **Impact:** WCAG SC 3.3.2 (Labels or Instructions) violation. Screen reader users cannot identify what the textareas are for. Placeholder text is not a substitute.
 
 **Action Plan:**
-1. Add visually-hidden labels to both textareas in CommentSection.tsx:
+- [ ] 1. Add visually-hidden labels to both textareas in CommentSection.tsx:
 ```tsx
 <label htmlFor='new-comment' className='sr-only'>
   {t('comment.writeComment')}
 </label>
 <textarea id='new-comment' placeholder={t('comment.writeComment')} ... />
 ```
-2. Do the same for reply textarea with `htmlFor='reply-comment-{commentId}'`
-3. Audit all other form controls in the app for missing labels (search for `<input` and `<textarea` without associated `<label>`)
-4. Add `aria-label` as fallback where `<label>` is impractical
+- [ ] 2. Do the same for reply textarea with `htmlFor='reply-comment-{commentId}'`
+- [ ] 3. Audit all other form controls in the app for missing labels (search for `<input` and `<textarea` without associated `<label>`)
+- [ ] 4. Add `aria-label` as fallback where `<label>` is impractical
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -344,13 +344,13 @@ import type { TasteNote } from '@brewform/shared/types';
 **Impact:** Turkish users see English button text despite the rest of the UI being localized. Inconsistent UX.
 
 **Action Plan:**
-1. Replace hardcoded strings in RecipeDetailPage.tsx:
+- [ ] 1. Replace hardcoded strings in RecipeDetailPage.tsx:
 ```tsx
 <button aria-label={t('recipe.print')}>{t('recipe.print')}</button>
 <button aria-label={t('recipe.focusMode')}>{t('recipe.focusMode')}</button>
 <button aria-label={t('recipe.fork')}>{t('recipe.fork')}</button>
 ```
-2. If Turkish translations are longer, ensure buttons accommodate text length
+- [ ] 2. If Turkish translations are longer, ensure buttons accommodate text length
 
 **Estimated effort:** Small (15 minutes)
 
@@ -368,11 +368,11 @@ import type { TasteNote } from '@brewform/shared/types';
 **Impact:** Two styling systems coexist: Tailwind utility classes + inline CSS variable styles. Defeats Tailwind's utility model. Makes consistent theming difficult.
 
 **Action Plan:**
-1. Convert all `style={{ color: 'var(--text-secondary)' }}` to `className='text-[var(--text-secondary)]'`
-2. Convert `style={{ backgroundColor: 'var(--bg-secondary)' }}` to `className='bg-[var(--bg-secondary)]'`
-3. Convert `style={{ borderColor: 'var(--border-primary)' }}` to `className='border-[var(--border-primary)]'`
-4. Start with RecipeDetailPage.tsx, CommentSection.tsx, admin pages (worst offenders)
-5. During migration, use Tailwind's arbitrary value syntax for one-off colors, and define reusable utility classes for repeated patterns
+- [ ] 1. Convert all `style={{ color: 'var(--text-secondary)' }}` to `className='text-[var(--text-secondary)]'`
+- [ ] 2. Convert `style={{ backgroundColor: 'var(--bg-secondary)' }}` to `className='bg-[var(--bg-secondary)]'`
+- [ ] 3. Convert `style={{ borderColor: 'var(--border-primary)' }}` to `className='border-[var(--border-primary)]'`
+- [ ] 4. Start with RecipeDetailPage.tsx, CommentSection.tsx, admin pages (worst offenders)
+- [ ] 5. During migration, use Tailwind's arbitrary value syntax for one-off colors, and define reusable utility classes for repeated patterns
 
 **Estimated effort:** Medium (4-6 hours across all components)
 
@@ -392,7 +392,7 @@ import type { TasteNote } from '@brewform/shared/types';
 **Impact:** Any XSS attack (injected script, compromised npm dependency) can read JWT tokens from `localStorage`. Tokens are accessible to all JavaScript on the page.
 
 **Action Plan (Hono cookie helper per Context7):**
-1. **Backend** — Change login/register to set HTTP-only cookies:
+- [ ] 1. **Backend** — Change login/register to set HTTP-only cookies:
 ```tsx
 import { setCookie } from 'hono/cookie';
 
@@ -412,14 +412,14 @@ setCookie(c, 'refresh_token', refreshToken, {
   maxAge: 7 * 24 * 60 * 60, // 7 days
 });
 ```
-2. **Backend** — Change auth middleware to read from cookies instead of `Authorization` header:
+- [ ] 2. **Backend** — Change auth middleware to read from cookies instead of `Authorization` header:
 ```tsx
 import { getCookie } from 'hono/cookie';
 const token = getCookie(c, 'access_token');
 ```
-3. **Frontend** — Remove all `localStorage` token storage from `client.ts`. Cookies will be sent automatically.
-4. **Frontend** — Remove manual `Authorization` header setting. Add `credentials: 'include'` to fetch calls if API is on different origin.
-5. **CSRF Protection** — Since the SPA and API are same-origin (Vite proxies `/api/*`), CSRF risk is low. For extra safety, add a custom header check (e.g., `X-Requested-With: XMLHttpRequest`).
+- [ ] 3. **Frontend** — Remove all `localStorage` token storage from `client.ts`. Cookies will be sent automatically.
+- [ ] 4. **Frontend** — Remove manual `Authorization` header setting. Add `credentials: 'include'` to fetch calls if API is on different origin.
+- [ ] 5. **CSRF Protection** — Since the SPA and API are same-origin (Vite proxies `/api/*`), CSRF risk is low. For extra safety, add a custom header check (e.g., `X-Requested-With: XMLHttpRequest`).
 
 **Estimated effort:** Medium (4-6 hours, requires coordinated fe/be changes)
 
@@ -435,15 +435,15 @@ const token = getCookie(c, 'access_token');
 **Impact:** Anyone can register with any email address. No bot protection. No typo correction. Welcome email is sent but is purely informational.
 
 **Action Plan:**
-1. **Database** — Add `emailVerifiedAt TIMESTAMP` column to `users` table (nullable)
-2. **Database** — Create `emailVerificationTokens` table: `id, userId (FK), token, expiresAt, createdAt`
-3. **Schema** — Add to `packages/db/src/schema.ts` and run `make db-generate && make db-migrate`
-4. **Backend** — Create `POST /api/v1/auth/send-verification` endpoint that generates a token and emails a verification link
-5. **Backend** — Create `POST /api/v1/auth/verify-email` endpoint that validates the token and sets `emailVerifiedAt`
-6. **Backend** — Modify registration to NOT return tokens immediately; instead send verification email and require verification before login (or allow login but gate sensitive actions)
-7. **Backend** — Add `isVerified` check in auth middleware or individual route handlers
-8. **Frontend** — Add "Please verify your email" banner for unverified users
-9. **Frontend** — Add `/verify-email?token=xxx` route that calls the verification endpoint
+- [ ] 1. **Database** — Add `emailVerifiedAt TIMESTAMP` column to `users` table (nullable)
+- [ ] 2. **Database** — Create `emailVerificationTokens` table: `id, userId (FK), token, expiresAt, createdAt`
+- [ ] 3. **Schema** — Add to `packages/db/src/schema.ts` and run `make db-generate && make db-migrate`
+- [ ] 4. **Backend** — Create `POST /api/v1/auth/send-verification` endpoint that generates a token and emails a verification link
+- [ ] 5. **Backend** — Create `POST /api/v1/auth/verify-email` endpoint that validates the token and sets `emailVerifiedAt`
+- [ ] 6. **Backend** — Modify registration to NOT return tokens immediately; instead send verification email and require verification before login (or allow login but gate sensitive actions)
+- [ ] 7. **Backend** — Add `isVerified` check in auth middleware or individual route handlers
+- [ ] 8. **Frontend** — Add "Please verify your email" banner for unverified users
+- [ ] 9. **Frontend** — Add `/verify-email?token=xxx` route that calls the verification endpoint
 
 **Estimated effort:** Medium (4-6 hours)
 
@@ -459,7 +459,7 @@ const token = getCookie(c, 'access_token');
 **Impact:** No clickjacking protection, no MIME sniffing protection, no HTTPS enforcement, no script/style source restrictions. Vulnerable to common web attacks.
 
 **Action Plan (Hono built-in `secureHeaders` middleware per Context7):**
-1. Add to [`apps/api/src/main.ts`](apps/api/src/main.ts) (after CORS, before rate limit):
+- [ ] 1. Add to [`apps/api/src/main.ts`](apps/api/src/main.ts) (after CORS, before rate limit):
 ```tsx
 import { secureHeaders } from 'hono/secure-headers';
 
@@ -478,8 +478,8 @@ app.use('*', secureHeaders({
   },
 }));
 ```
-2. This **one middleware call** instantly sets all 6 missing security headers.
-3. Adjust CSP directives as needed for production (e.g., add analytics domains, S3 image URLs).
+- [ ] 2. This **one middleware call** instantly sets all 6 missing security headers.
+- [ ] 3. Adjust CSP directives as needed for production (e.g., add analytics domains, S3 image URLs).
 
 **Estimated effort:** Small (30 minutes)
 
@@ -496,11 +496,11 @@ app.use('*', secureHeaders({
 **Impact:** User-generated content (comments, bios, recipe descriptions, taste note labels) stored and rendered without HTML stripping. While React's JSX auto-escaping provides some protection against direct XSS, there's no deliberate content security policy.
 
 **Action Plan:**
-1. **Backend** — Add sanitization on all user-generated text inputs before storage. Options for Deno:
+- [ ] 1. **Backend** — Add sanitization on all user-generated text inputs before storage. Options for Deno:
    - Use `jsr:@kt3k/sanitize-html` or a Deno-compatible HTML sanitizer
    - At minimum, strip HTML tags from text fields: `text.replace(/<[^>]*>/g, '')`
-2. **Backend** — Add sanitization in service layer for: comments (`comment/service.ts`), recipes (`recipe/service.ts`), user bios (`user/service.ts`), taste notes (`taste/service.ts`)
-3. **Frontend** — Add defense-in-depth sanitization before rendering user content (though React JSX escaping handles most cases)
+- [ ] 2. **Backend** — Add sanitization in service layer for: comments (`comment/service.ts`), recipes (`recipe/service.ts`), user bios (`user/service.ts`), taste notes (`taste/service.ts`)
+- [ ] 3. **Frontend** — Add defense-in-depth sanitization before rendering user content (though React JSX escaping handles most cases)
 
 **Estimated effort:** Small (2-3 hours)
 
@@ -516,7 +516,7 @@ app.use('*', secureHeaders({
 **Impact:** Typing "chemex" fires 6 separate API requests. Pagination shows incorrect page counts (e.g., max 1 page even when server has 50+ results).
 
 **Action Plan:**
-1. Add debounce hook to RecipeListPage.tsx:
+- [ ] 1. Add debounce hook to RecipeListPage.tsx:
 ```tsx
 import { useState, useEffect, useRef } from 'react';
 
@@ -534,12 +534,12 @@ const [search, setSearch] = useState('');
 const debouncedSearch = useDebounce(search, 300);
 // Use debouncedSearch in the fetch effect, not raw search
 ```
-2. **Fix pagination total** — Modify `apps/web/src/api/client.ts` to return the full response including `meta`:
+- [ ] 2. **Fix pagination total** — Modify `apps/web/src/api/client.ts` to return the full response including `meta`:
 ```tsx
 // Instead of unwrapping to just data.data, return { items: data.data, meta: data.meta }
 ```
-3. Update RecipeListPage.tsx line 142: `setTotal(data.meta.total)` 
-4. Update StarredRecipesPage.tsx line 142: same fix
+- [ ] 3. Update RecipeListPage.tsx line 142: `setTotal(data.meta.total)` 
+- [ ] 4. Update StarredRecipesPage.tsx line 142: same fix
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -554,14 +554,14 @@ const debouncedSearch = useDebounce(search, 300);
 - **Missing Schema.org Recipe fields:** `cookTime`/`totalTime`, `recipeYield` (servings), `recipeIngredient`, `recipeInstructions`, `nutrition`, `aggregateRating`, `keywords`.
 
 **Action Plan:**
-1. Map coffee recipe data to Schema.org Recipe fields:
+- [ ] 1. Map coffee recipe data to Schema.org Recipe fields:
    - `cookTime` → `extractionTimeSeconds` (ISO 8601 duration)
    - `recipeYield` → `extractionVolumeMl` (e.g., "250ml")
    - `recipeIngredient` → bean name + grind size + water
    - `recipeInstructions` → recipe steps/notes
    - `aggregateRating` → `ratingCount` + `avgRating`
-2. Validate output with Google's Rich Results Test
-3. Add `@type: 'BreadcrumbList'` JSON-LD for breadcrumb navigation
+- [ ] 2. Validate output with Google's Rich Results Test
+- [ ] 3. Add `@type: 'BreadcrumbList'` JSON-LD for breadcrumb navigation
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -577,8 +577,8 @@ const debouncedSearch = useDebounce(search, 300);
 **Impact:** Version history exists but has no photo linkage for non-forked recipes. When a user updates a recipe with new photos, those photos are only linked to the recipe, not the specific version.
 
 **Action Plan:**
-1. In `createVersion()` (model.ts), after inserting the version, insert rows into `recipeVersionPhotos` for each photoId associated with the recipe
-2. Update the photo upload flow to associate photos with the current version, not just the recipe
+- [ ] 1. In `createVersion()` (model.ts), after inserting the version, insert rows into `recipeVersionPhotos` for each photoId associated with the recipe
+- [ ] 2. Update the photo upload flow to associate photos with the current version, not just the recipe
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -591,7 +591,7 @@ const debouncedSearch = useDebounce(search, 300);
 - All loading states use simple `setLoading(true/false)` with conditional text rendering.
 
 **Action Plan:**
-1. Create `apps/web/src/components/ui/Skeleton.tsx` — a reusable skeleton component:
+- [ ] 1. Create `apps/web/src/components/ui/Skeleton.tsx` — a reusable skeleton component:
 ```tsx
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
@@ -599,8 +599,8 @@ export function Skeleton({ className = '' }: { className?: string }) {
   );
 }
 ```
-2. Create skeleton variants: `RecipeCardSkeleton`, `RecipeDetailSkeleton`, `CommentSkeleton`
-3. Use in loading states instead of `"Loading..."` text
+- [ ] 2. Create skeleton variants: `RecipeCardSkeleton`, `RecipeDetailSkeleton`, `CommentSkeleton`
+- [ ] 3. Use in loading states instead of `"Loading..."` text
 
 **Estimated effort:** Medium (3-4 hours)
 
@@ -611,10 +611,10 @@ export function Skeleton({ className = '' }: { className?: string }) {
 (Same evidence as H14, but focused on comment-specific risks.)
 
 **Action Plan:**
-1. In `renderInlineMarkdown()` (CommentSection.tsx:28-62), add input text sanitization:
+- [ ] 1. In `renderInlineMarkdown()` (CommentSection.tsx:28-62), add input text sanitization:
    - Strip HTML tags from raw text: `text.replace(/<[^>]*>/g, '')`
    - Strip zero-width characters: `text.replace(/[\u200B-\u200D\uFEFF]/g, '')`
-2. On the backend, sanitize comment content before storage in `comment/service.ts`
+- [ ] 2. On the backend, sanitize comment content before storage in `comment/service.ts`
 
 **Estimated effort:** Small (30 minutes)
 
@@ -627,10 +627,10 @@ export function Skeleton({ className = '' }: { className?: string }) {
 - `apps/api/src/modules/admin/index.ts` has internal `/analytics/*` endpoints for admin dashboard only.
 
 **Action Plan:**
-1. Choose a privacy-friendly analytics solution (Plausible, Umami, or Matomo — all self-hostable, GDPR-compliant)
-2. Add the analytics script snippet to `index.html` with conditional loading based on cookie consent
-3. Track key events: page views, recipe views, recipe creations, registrations, shares
-4. Update CookieConsent component to actually gate analytics script loading (currently cosmetic only — see L10)
+- [ ] 1. Choose a privacy-friendly analytics solution (Plausible, Umami, or Matomo — all self-hostable, GDPR-compliant)
+- [ ] 2. Add the analytics script snippet to `index.html` with conditional loading based on cookie consent
+- [ ] 3. Track key events: page views, recipe views, recipe creations, registrations, shares
+- [ ] 4. Update CookieConsent component to actually gate analytics script loading (currently cosmetic only — see L10)
 
 **Estimated effort:** Large (6-8 hours + ongoing maintenance)
 
@@ -647,9 +647,9 @@ export function Skeleton({ className = '' }: { className?: string }) {
 **Impact:** Extraction yield is a key coffee metric (TDS × brew ratio). Not computed or displayed.
 
 **Action Plan:**
-1. Add `extractionYield` to `packages/shared/src/utils/metrics.ts` using the formula: `extractionYield = (tds * extractionVolumeMl) / groundWeightGrams`
-2. Add to stat-cards.ts as 6th card (or replace ratio card since yield is more informative)
-3. Compute on-the-fly in StatCards.tsx from `tds`, `extractionVolumeMl`, `groundWeightGrams`
+- [ ] 1. Add `extractionYield` to `packages/shared/src/utils/metrics.ts` using the formula: `extractionYield = (tds * extractionVolumeMl) / groundWeightGrams`
+- [ ] 2. Add to stat-cards.ts as 6th card (or replace ratio card since yield is more informative)
+- [ ] 3. Compute on-the-fly in StatCards.tsx from `tds`, `extractionVolumeMl`, `groundWeightGrams`
 
 **Estimated effort:** Small (1 hour)
 
@@ -668,11 +668,11 @@ export function Skeleton({ className = '' }: { className?: string }) {
 - Wizard collects zero user data.
 
 **Action Plan:**
-1. Make EquipmentStep interactive: inline form to add first equipment
-2. Make BeansStep interactive: inline form to add first bean
-3. Make FirstBrewStep interactive: inline mini recipe creation form
-4. When user completes all steps inline, mark onboarding as complete
-5. Keep the skip/complete links as fallback for users who want to skip
+- [ ] 1. Make EquipmentStep interactive: inline form to add first equipment
+- [ ] 2. Make BeansStep interactive: inline form to add first bean
+- [ ] 3. Make FirstBrewStep interactive: inline mini recipe creation form
+- [ ] 4. When user completes all steps inline, mark onboarding as complete
+- [ ] 5. Keep the skip/complete links as fallback for users who want to skip
 
 **Estimated effort:** Large (8-12 hours — essentially building mini CRUD forms into the wizard)
 
@@ -700,10 +700,10 @@ export function Skeleton({ className = '' }: { className?: string }) {
 - [`apps/web/src/router.tsx`](apps/web/src/router.tsx) — No `/contact`, `/feedback`, or `/support` route.
 
 **Action Plan:**
-1. Create `apps/web/src/pages/ContactPage.tsx` with a simple form (name, email, subject, message)
-2. Create `POST /api/v1/contact` endpoint that sends the message via email to admin
-3. Add `/contact` route and link in Footer
-4. Add rate limiting to prevent spam (reuse `authRateLimitMiddleware` — see M12)
+- [ ] 1. Create `apps/web/src/pages/ContactPage.tsx` with a simple form (name, email, subject, message)
+- [ ] 2. Create `POST /api/v1/contact` endpoint that sends the message via email to admin
+- [ ] 3. Add `/contact` route and link in Footer
+- [ ] 4. Add rate limiting to prevent spam (reuse `authRateLimitMiddleware` — see M12)
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -716,10 +716,10 @@ export function Skeleton({ className = '' }: { className?: string }) {
 - [`apps/api/src/middleware/errorHandler.ts`](apps/api/src/middleware/errorHandler.ts) — Logs errors to console only.
 
 **Action Plan:**
-1. Integrate Sentry (Deno-compatible via `@sentry/deno` or manual API)
-2. Add to `errorHandler.ts`: capture exceptions and send to Sentry
-3. Enable sourcemaps in production for readable stack traces (note: this conflicts with L1 — consider uploading sourcemaps to Sentry instead of public serving)
-4. Add frontend error tracking via `@sentry/react`
+- [ ] 1. Integrate Sentry (Deno-compatible via `@sentry/deno` or manual API)
+- [ ] 2. Add to `errorHandler.ts`: capture exceptions and send to Sentry
+- [ ] 3. Enable sourcemaps in production for readable stack traces (note: this conflicts with L1 — consider uploading sourcemaps to Sentry instead of public serving)
+- [ ] 4. Add frontend error tracking via `@sentry/react`
 
 **Estimated effort:** Medium (3-4 hours)
 
@@ -731,9 +731,9 @@ export function Skeleton({ className = '' }: { className?: string }) {
 - Search for `web-vital`, `LCP`, `CLS`, `INP`, `TTFB`, `PerformanceObserver` in `apps/web/src/` — **zero results**.
 
 **Action Plan:**
-1. Install `web-vitals` library and report metrics to analytics endpoint
-2. Create a simple performance monitoring API endpoint that logs metrics to DB or external service
-3. Track LCP, CLS, INP, TTFB on all page loads
+- [ ] 1. Install `web-vitals` library and report metrics to analytics endpoint
+- [ ] 2. Create a simple performance monitoring API endpoint that logs metrics to DB or external service
+- [ ] 3. Track LCP, CLS, INP, TTFB on all page loads
 
 **Estimated effort:** Medium (2-3 hours)
 
@@ -748,7 +748,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
 - Only reference is its own definition.
 
 **Action Plan:**
-1. Import and apply `authRateLimitMiddleware` to auth routes in [`apps/api/src/modules/auth/index.ts`](apps/api/src/modules/auth/index.ts):
+- [ ] 1. Import and apply `authRateLimitMiddleware` to auth routes in [`apps/api/src/modules/auth/index.ts`](apps/api/src/modules/auth/index.ts):
 ```tsx
 import { authRateLimitMiddleware } from '../../middleware/rateLimit.ts';
 
@@ -769,7 +769,7 @@ authRouter.use('/forgot-password', authRateLimitMiddleware());
 - [`packages/shared/src/schemas/auth.ts:27`](packages/shared/src/schemas/auth.ts) — Reset password: `z.string().min(8).max(128)` — same length-only
 
 **Action Plan:**
-1. Update register schema:
+- [ ] 1. Update register schema:
 ```tsx
 password: z.string()
   .min(12, 'Password must be at least 12 characters')
@@ -779,8 +779,8 @@ password: z.string()
   .regex(/[0-9]/, 'Password must contain at least one number')
   .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character'),
 ```
-2. Update login schema to at least `.min(1)` (currently no min)
-3. Update reset password schema to match new register requirements
+- [ ] 2. Update login schema to at least `.min(1)` (currently no min)
+- [ ] 3. Update reset password schema to match new register requirements
 
 **Estimated effort:** Small (15 minutes)
 
@@ -810,9 +810,9 @@ password: z.string()
 The project uses **Drizzle ORM**, not Prisma.
 
 **Action Plan:**
-1. Replace all `@prisma/client` references with `drizzle-orm` in docs
-2. Replace `Prisma + migration` with `Drizzle + migration`
-3. Update `docs/requirements-audit-report.md` to remove resolved Prisma-related issues
+- [ ] 1. Replace all `@prisma/client` references with `drizzle-orm` in docs
+- [ ] 2. Replace `Prisma + migration` with `Drizzle + migration`
+- [ ] 3. Update `docs/requirements-audit-report.md` to remove resolved Prisma-related issues
 
 **Estimated effort:** Small (30 minutes)
 
@@ -832,10 +832,10 @@ The project uses **Drizzle ORM**, not Prisma.
 - `brewMethodEquipmentRules` table exists but is **only used in admin CRUD** (`admin/model.ts:299-334`). **Zero runtime validation** during recipe creation/editing (`recipe/service.ts`).
 
 **Action Plan:**
-1. Either implement the missing features or update the README to reflect actual state
-2. **Unit conversion:** Add utility to convert metric ↔ imperial in recipe display components
-3. **Version history:** Create a `/recipes/:slug/versions` page showing version timeline
-4. **Compatibility validation:** Wire `brewMethodEquipmentRules` into `recipe/service.ts` create/update
+- [ ] 1. Either implement the missing features or update the README to reflect actual state
+- [ ] 2. **Unit conversion:** Add utility to convert metric ↔ imperial in recipe display components
+- [ ] 3. **Version history:** Create a `/recipes/:slug/versions` page showing version timeline
+- [ ] 4. **Compatibility validation:** Wire `brewMethodEquipmentRules` into `recipe/service.ts` create/update
 
 **Estimated effort:** Medium (6-8 hours for all three features)
 
@@ -848,10 +848,10 @@ The project uses **Drizzle ORM**, not Prisma.
 - No `<img loading="lazy">`, no `srcset`, no `<picture>` elements anywhere.
 
 **Action Plan:**
-1. Add `loading="lazy"` to all `<img>` tags below the fold
-2. Generate thumbnail variants on upload (already done in PhotoUpload.tsx canvas logic)
-3. Add `srcset` with thumbnail + full-size variants for recipe photos
-4. Add explicit `width` and `height` attributes to prevent layout shift (CLS)
+- [ ] 1. Add `loading="lazy"` to all `<img>` tags below the fold
+- [ ] 2. Generate thumbnail variants on upload (already done in PhotoUpload.tsx canvas logic)
+- [ ] 3. Add `srcset` with thumbnail + full-size variants for recipe photos
+- [ ] 4. Add explicit `width` and `height` attributes to prevent layout shift (CLS)
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -911,11 +911,11 @@ Add basic `:focus` outline for all interactive elements as fallback.
 - Search for `**/favicon*` across entire monorepo — **zero results**.
 
 **Action Plan:**
-1. Create a simple SVG favicon (coffee cup icon)
-2. Generate `favicon.ico` (multi-size ICO file)
-3. Generate `apple-touch-icon.png` (180x180)
-4. Generate `icon-192.png` and `icon-512.png` (Android/PWA)
-5. Place all in `apps/web/public/`
+- [ ] 1. Create a simple SVG favicon (coffee cup icon)
+- [ ] 2. Generate `favicon.ico` (multi-size ICO file)
+- [ ] 3. Generate `apple-touch-icon.png` (180x180)
+- [ ] 4. Generate `icon-192.png` and `icon-512.png` (Android/PWA)
+- [ ] 5. Place all in `apps/web/public/`
 
 **Estimated effort:** Small (1 hour + design)
 
@@ -929,9 +929,9 @@ Add basic `:focus` outline for all interactive elements as fallback.
 - Components use `var(--accent-primary)` etc. which happen to map to coffee tones, but not the coffee palette directly.
 
 **Action Plan:**
-1. Align `--accent-primary`, `--bg-primary`, etc. with coffee palette values in the `:root`, `.dark`, `.coffee` blocks
-2. Use `bg-coffee-50`, `text-coffee-500` etc. directly in components instead of CSS variables where the palette values suffice
-3. Or remove unused palette if CSS variables are the preferred theming approach
+- [ ] 1. Align `--accent-primary`, `--bg-primary`, etc. with coffee palette values in the `:root`, `.dark`, `.coffee` blocks
+- [ ] 2. Use `bg-coffee-50`, `text-coffee-500` etc. directly in components instead of CSS variables where the palette values suffice
+- [ ] 3. Or remove unused palette if CSS variables are the preferred theming approach
 
 **Estimated effort:** Small (30 minutes)
 
@@ -942,13 +942,13 @@ Add basic `:focus` outline for all interactive elements as fallback.
 **Evidence:** `.git/hooks/pre-commit` — missing. No `husky`, `lint-staged`, or `.pre-commit-config.yaml`.
 
 **Action Plan:**
-1. Add a simple pre-commit hook in `.git/hooks/pre-commit`:
+- [ ] 1. Add a simple pre-commit hook in `.git/hooks/pre-commit`:
 ```bash
 #!/bin/sh
 deno fmt --check
 deno lint
 ```
-2. Or add a `Makefile` target `make precommit` and document it
+- [ ] 2. Or add a `Makefile` target `make precommit` and document it
 
 **Estimated effort:** Small (15 minutes)
 
@@ -961,7 +961,7 @@ deno lint
 - [`apps/web/src/App.tsx`](apps/web/src/App.tsx) — No scroll restoration imported.
 
 **Action Plan (React Router built-in per Context7):**
-1. Add to [`apps/web/src/components/layout/Layout.tsx`](apps/web/src/components/layout/Layout.tsx):
+- [ ] 1. Add to [`apps/web/src/components/layout/Layout.tsx`](apps/web/src/components/layout/Layout.tsx):
 ```tsx
 import { ScrollRestoration } from 'react-router';
 
@@ -1011,8 +1011,8 @@ import { ScrollRestoration } from 'react-router';
 **Impact:** Legal risk — the consent banner implies user choice but enforces nothing. If analytics are added (M5), the consent mechanism must actually gate them.
 
 **Action Plan:**
-1. When analytics are added (M5), conditionally load the analytics script based on consent status
-2. Store consent in an actual cookie (not just localStorage) so the server can check it
+- [ ] 1. When analytics are added (M5), conditionally load the analytics script based on consent status
+- [ ] 2. Store consent in an actual cookie (not just localStorage) so the server can check it
 
 **Estimated effort:** Small (30 minutes, coordinated with M5)
 
@@ -1026,9 +1026,9 @@ import { ScrollRestoration } from 'react-router';
 - No route uses React Router's `handle` property for declarative metadata.
 
 **Action Plan:**
-1. Option A (declarative): Add `handle: { title: 'Home' }` to each route, create a top-level effect that reads active route's handle and sets `document.title`
-2. Option B: Keep current approach but ensure SEOHead is present on every page
-3. Current approach works for an SPA; low priority unless SSR is added
+- [ ] 1. Option A (declarative): Add `handle: { title: 'Home' }` to each route, create a top-level effect that reads active route's handle and sets `document.title`
+- [ ] 2. Option B: Keep current approach but ensure SEOHead is present on every page
+- [ ] 3. Current approach works for an SPA; low priority unless SSR is added
 
 **Estimated effort:** Small (30 minutes)
 
@@ -1043,10 +1043,10 @@ import { ScrollRestoration } from 'react-router';
 - Recipe cards, comment threads, content blocks all use `<div>` instead of `<article>`.
 
 **Action Plan:**
-1. Add `id="main-content"` to `<main>` (required for skip link — H3)
-2. Wrap recipe detail content in `<article>`
-3. Wrap individual comments in `<article>` (with `aria-label` for threading context)
-4. Use `<section>` with `aria-labelledby` for recipe sub-sections (ingredients, equipment, steps)
+- [ ] 1. Add `id="main-content"` to `<main>` (required for skip link — H3)
+- [ ] 2. Wrap recipe detail content in `<article>`
+- [ ] 3. Wrap individual comments in `<article>` (with `aria-label` for threading context)
+- [ ] 4. Use `<section>` with `aria-labelledby` for recipe sub-sections (ingredients, equipment, steps)
 
 **Estimated effort:** Small (1 hour)
 

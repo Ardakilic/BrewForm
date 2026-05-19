@@ -20,7 +20,7 @@
 **Context7 Note (React Router v7 lazy routes):** Use `lazy: () => import('./Page')` on route definitions. React Router handles async loading internally. Slimmer alternative: `lazy: async () => ({ Component: (await import('./Page')).default })`.
 
 **Action Plan:**
-1. Convert admin routes in `apps/web/src/router.tsx` to lazy imports:
+- [ ] 1. Convert admin routes in `apps/web/src/router.tsx` to lazy imports:
    ```tsx
    {
      path: '/admin',
@@ -34,9 +34,9 @@
      ],
    }
    ```
-2. Add `<Suspense fallback={<LoadingSpinner />}>` around `<Outlet />` in Layout.tsx
-3. Lazy-load heavy pages: RecipeCreatePage, RecipeEditPage, SettingsPage
-4. Keep public pages (HomePage, RecipeListPage, RecipeDetailPage) eagerly loaded for fast initial navigation
+- [ ] 2. Add `<Suspense fallback={<LoadingSpinner />}>` around `<Outlet />` in Layout.tsx
+- [ ] 3. Lazy-load heavy pages: RecipeCreatePage, RecipeEditPage, SettingsPage
+- [ ] 4. Keep public pages (HomePage, RecipeListPage, RecipeDetailPage) eagerly loaded for fast initial navigation
 
 **Estimated effort:** Medium (3-4 hours)
 
@@ -51,10 +51,10 @@
 **Impact:** All images load eagerly on page load, increasing LCP and bandwidth. No responsive image variants for different viewport sizes.
 
 **Action Plan:**
-1. Add `loading="lazy"` to all `<img>` tags below the fold
-2. Generate thumbnail variants on upload (PhotoUpload.tsx already has canvas logic)
-3. Add `srcset` with thumbnail + full-size variants for recipe photos
-4. Add explicit `width` and `height` attributes to prevent layout shift (CLS)
+- [ ] 1. Add `loading="lazy"` to all `<img>` tags below the fold
+- [ ] 2. Generate thumbnail variants on upload (PhotoUpload.tsx already has canvas logic)
+- [ ] 3. Add `srcset` with thumbnail + full-size variants for recipe photos
+- [ ] 4. Add explicit `width` and `height` attributes to prevent layout shift (CLS)
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -69,7 +69,7 @@
 **Impact:** Users see abrupt text-to-content transitions rather than smooth loading placeholders. Perceived performance is worse than actual performance.
 
 **Action Plan:**
-1. Create `apps/web/src/components/ui/Skeleton.tsx`:
+- [ ] 1. Create `apps/web/src/components/ui/Skeleton.tsx`:
    ```tsx
    export function Skeleton({ className = '' }: { className?: string }) {
      return (
@@ -77,8 +77,8 @@
      );
    }
    ```
-2. Create skeleton variants: `RecipeCardSkeleton`, `RecipeDetailSkeleton`, `CommentSkeleton`
-3. Use in loading states instead of `"Loading..."` text
+- [ ] 2. Create skeleton variants: `RecipeCardSkeleton`, `RecipeDetailSkeleton`, `CommentSkeleton`
+- [ ] 3. Use in loading states instead of `"Loading..."` text
 
 **Estimated effort:** Medium (3-4 hours)
 
@@ -95,7 +95,7 @@
 **Context7 Note (React Router built-in):** Import `<ScrollRestoration />` from `react-router` and render it inside the layout. Automatically restores scroll position on back/forward navigation.
 
 **Action Plan:**
-1. Add to `apps/web/src/components/layout/Layout.tsx`:
+- [ ] 1. Add to `apps/web/src/components/layout/Layout.tsx`:
    ```tsx
    import { ScrollRestoration } from 'react-router';
    // First element inside the Layout component:
@@ -114,7 +114,7 @@
 **Impact:** Browser must wait for DNS resolution and connection setup when fetching from the API origin. Adds ~100-300ms latency to first API call.
 
 **Action Plan:**
-1. Add to `apps/web/index.html` `<head>`:
+- [ ] 1. Add to `apps/web/index.html` `<head>`:
    ```html
    <link rel="preconnect" href="https://api.brewform.app" />
    <link rel="dns-prefetch" href="https://api.brewform.app" />

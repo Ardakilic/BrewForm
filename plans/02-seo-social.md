@@ -19,13 +19,13 @@
 **Impact:** Sharing any recipe URL on Twitter/X, Facebook, WhatsApp, Discord, Slack produces a blank preview card. Core social sharing feature is broken.
 
 **Action Plan:**
-1. Create `apps/api/src/middleware/crawler.ts` — middleware that:
+- [ ] 1. Create `apps/api/src/middleware/crawler.ts` — middleware that:
    - Checks `User-Agent` header against known social crawlers (`Twitterbot`, `facebookexternalhit`, `WhatsApp`, `Discordbot`, `Slackbot`, `LinkedInBot`)
    - For matching requests to `/recipes/:slug`, fetches recipe meta via `getRecipeMeta(slug)`
    - Returns a minimal HTML page with pre-rendered `<meta property="og:*">` and `<meta name="twitter:*">` tags in the `<head>`
-2. Register middleware in `apps/api/src/main.ts` before the SPA fallback, so crawler requests never reach the Vite SPA
-3. Add missing tags to `SEOHead.tsx`: `og:site_name`, `twitter:title`, `twitter:description`, `twitter:image`
-4. Add a static `<meta name="description">` fallback in `index.html` for the home page
+- [ ] 2. Register middleware in `apps/api/src/main.ts` before the SPA fallback, so crawler requests never reach the Vite SPA
+- [ ] 3. Add missing tags to `SEOHead.tsx`: `og:site_name`, `twitter:title`, `twitter:description`, `twitter:image`
+- [ ] 4. Add a static `<meta name="description">` fallback in `index.html` for the home page
 
 **Estimated effort:** Medium (4-6 hours)
 
@@ -40,17 +40,17 @@
 **Impact:** Search engine crawlers have no guidance on which pages to index or crawl frequency. Zero discoverability via organic search.
 
 **Action Plan:**
-1. Create `apps/web/public/robots.txt`:
+- [ ] 1. Create `apps/web/public/robots.txt`:
    ```
    User-agent: *
    Allow: /
    Sitemap: https://brewform.app/sitemap.xml
    ```
-2. Create `apps/api/src/routes/sitemap.ts` — `GET /api/v1/sitemap.xml` that dynamically lists:
+- [ ] 2. Create `apps/api/src/routes/sitemap.ts` — `GET /api/v1/sitemap.xml` that dynamically lists:
    - All public recipe pages (`/recipes/:slug`) with `<lastmod>` from `updatedAt`
    - All public user profiles (`/u/:username`)
    - Static pages: `/`, `/privacy`, `/terms`, `/recipes`
-3. Register the route in `apps/api/src/routes/index.ts`
+- [ ] 3. Register the route in `apps/api/src/routes/index.ts`
 
 **Estimated effort:** Small (2-3 hours)
 
@@ -65,15 +65,15 @@
 **Impact:** Search engines cannot surface rich recipe results (cook time, ingredients, ratings) in SERP. Competitors with rich results get higher CTR.
 
 **Action Plan:**
-1. Map coffee recipe data to Schema.org Recipe fields:
+- [ ] 1. Map coffee recipe data to Schema.org Recipe fields:
    - `cookTime` → `extractionTimeSeconds` (ISO 8601 duration)
    - `recipeYield` → `extractionVolumeMl` (e.g., "250ml")
    - `recipeIngredient` → bean name + grind size + water
    - `recipeInstructions` → recipe steps/notes
    - `aggregateRating` → `ratingCount` + `avgRating`
-2. Add `@type: 'BreadcrumbList'` JSON-LD for breadcrumb navigation
-3. Validate output with Google's Rich Results Test
-4. Add `@type: 'Person'` for author profile (currently just `{ @type: Person, name }`)
+- [ ] 2. Add `@type: 'BreadcrumbList'` JSON-LD for breadcrumb navigation
+- [ ] 3. Validate output with Google's Rich Results Test
+- [ ] 4. Add `@type: 'Person'` for author profile (currently just `{ @type: Person, name }`)
 
 **Estimated effort:** Small (1-2 hours)
 

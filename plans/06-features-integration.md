@@ -22,11 +22,11 @@
 **Context7 Note (Tailwind v4):** Use `text-[var(--text-secondary)]`, `bg-[var(--bg-primary)]` syntax for CSS custom properties — preferred over inline `style={{}}`. CSS-first configuration via `@theme {}` block.
 
 **Action Plan:**
-1. Convert `style={{ color: 'var(--text-secondary)' }}` → `className='text-[var(--text-secondary)]'`
-2. Convert `style={{ backgroundColor: 'var(--bg-secondary)' }}` → `className='bg-[var(--bg-secondary)]'`
-3. Convert `style={{ borderColor: 'var(--border-primary)' }}` → `className='border-[var(--border-primary)]'`
-4. Start with worst offenders: RecipeDetailPage, CommentSection, admin pages
-5. During migration, use Tailwind's arbitrary value syntax for one-off colors, define reusable utility classes for repeated patterns
+- [ ] 1. Convert `style={{ color: 'var(--text-secondary)' }}` → `className='text-[var(--text-secondary)]'`
+- [ ] 2. Convert `style={{ backgroundColor: 'var(--bg-secondary)' }}` → `className='bg-[var(--bg-secondary)]'`
+- [ ] 3. Convert `style={{ borderColor: 'var(--border-primary)' }}` → `className='border-[var(--border-primary)]'`
+- [ ] 4. Start with worst offenders: RecipeDetailPage, CommentSection, admin pages
+- [ ] 5. During migration, use Tailwind's arbitrary value syntax for one-off colors, define reusable utility classes for repeated patterns
 
 **Estimated effort:** Medium (4-6 hours across all components)
 
@@ -41,7 +41,7 @@
 **Impact:** Users cannot install BrewForm to home screen as a PWA. No offline support, no splash screen, no standalone display mode.
 
 **Action Plan:**
-1. Create `apps/web/public/manifest.json`:
+- [ ] 1. Create `apps/web/public/manifest.json`:
    ```json
    {
      "name": "BrewForm — Coffee Brewing Recipes",
@@ -56,13 +56,13 @@
      ]
    }
    ```
-2. Add to `index.html` `<head>`:
+- [ ] 2. Add to `index.html` `<head>`:
    ```html
    <link rel="manifest" href="/manifest.json" />
    <meta name="theme-color" content="#6f4e37" />
    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
    ```
-3. Generate icon files (shared with L4)
+- [ ] 3. Generate icon files (shared with L4)
 
 **Estimated effort:** Small (1 hour + icon design)
 
@@ -78,11 +78,11 @@
 **Impact:** Browser shows generic icon in tabs, bookmarks, and history. No brand presence.
 
 **Action Plan:**
-1. Create SVG favicon (coffee cup icon)
-2. Generate `favicon.ico` (multi-size ICO file)
-3. Generate `apple-touch-icon.png` (180x180)
-4. Generate `icon-192.png` and `icon-512.png` (shared with H5)
-5. Place all in `apps/web/public/`
+- [ ] 1. Create SVG favicon (coffee cup icon)
+- [ ] 2. Generate `favicon.ico` (multi-size ICO file)
+- [ ] 3. Generate `apple-touch-icon.png` (180x180)
+- [ ] 4. Generate `icon-192.png` and `icon-512.png` (shared with H5)
+- [ ] 5. Place all in `apps/web/public/`
 
 **Estimated effort:** Small (1 hour + design)
 
@@ -98,8 +98,8 @@
 **Impact:** Version history exists but has no photo linkage for non-forked recipes. When a user updates a recipe with new photos, those photos are only linked to the recipe, not the specific version.
 
 **Action Plan:**
-1. In `createVersion()` (model.ts), after inserting the version, insert rows into `recipeVersionPhotos` for each photoId associated with the recipe
-2. Update the photo upload flow to associate photos with the current version, not just the recipe
+- [ ] 1. In `createVersion()` (model.ts), after inserting the version, insert rows into `recipeVersionPhotos` for each photoId associated with the recipe
+- [ ] 2. Update the photo upload flow to associate photos with the current version, not just the recipe
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -114,10 +114,10 @@
 **Impact:** Users have no channel to report bugs, request features, or ask questions. Support burden shifts to social media or email guesswork.
 
 **Action Plan:**
-1. Create `apps/web/src/pages/ContactPage.tsx` with a simple form (name, email, subject, message)
-2. Create `POST /api/v1/contact` endpoint that sends the message via email to admin
-3. Add `/contact` route and link in Footer
-4. Add rate limiting to prevent spam (reuse `authRateLimitMiddleware` — see M12 in Plan 04)
+- [ ] 1. Create `apps/web/src/pages/ContactPage.tsx` with a simple form (name, email, subject, message)
+- [ ] 2. Create `POST /api/v1/contact` endpoint that sends the message via email to admin
+- [ ] 3. Add `/contact` route and link in Footer
+- [ ] 4. Add rate limiting to prevent spam (reuse `authRateLimitMiddleware` — see M12 in Plan 04)
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -134,9 +134,9 @@
 **Impact:** Extraction yield is a key coffee metric (TDS × brew ratio). Not computed or displayed. Serious omission for coffee enthusiasts.
 
 **Action Plan:**
-1. Add `extractionYield` to `packages/shared/src/utils/metrics.ts`: `extractionYield = (tds * extractionVolumeMl) / groundWeightGrams`
-2. Add as 6th stat card in `stat-cards.ts` (or replace ratio card — yield is more informative)
-3. Compute on-the-fly in `StatCards.tsx` from `tds`, `extractionVolumeMl`, `groundWeightGrams`
+- [ ] 1. Add `extractionYield` to `packages/shared/src/utils/metrics.ts`: `extractionYield = (tds * extractionVolumeMl) / groundWeightGrams`
+- [ ] 2. Add as 6th stat card in `stat-cards.ts` (or replace ratio card — yield is more informative)
+- [ ] 3. Compute on-the-fly in `StatCards.tsx` from `tds`, `extractionVolumeMl`, `groundWeightGrams`
 
 **Estimated effort:** Small (1 hour)
 
@@ -158,11 +158,11 @@
 **Impact:** README misleads users and potential contributors about the product's capabilities. Trust erosion when claims don't match reality.
 
 **Action Plan:**
-1. **Option A:** Implement the missing features:
+- [ ] 1. **Option A:** Implement the missing features:
    - Unit conversion: Add utility to convert metric ↔ imperial in recipe display components
    - Version history: Create a `/recipes/:slug/versions` page showing version timeline
    - Compatibility validation: Wire `brewMethodEquipmentRules` into `recipe/service.ts` create/update
-2. **Option B:** Update README to reflect actual state
+- [ ] 2. **Option B:** Update README to reflect actual state
 
 **Estimated effort:** Medium (6-8 hours for all three features)
 

@@ -18,7 +18,7 @@
 **Impact:** WCAG 2.4.1 (Bypass Blocks) violation. Keyboard users must tab through the entire navbar on every page load.
 
 **Action Plan:**
-1. Add to `apps/web/src/components/layout/Layout.tsx` as first focusable element:
+- [ ] 1. Add to `apps/web/src/components/layout/Layout.tsx` as first focusable element:
    ```tsx
    <a
      href='#main-content'
@@ -27,8 +27,8 @@
      {t('a11y.skipToContent')}
    </a>
    ```
-2. Add `id="main-content"` and `tabIndex={-1}` to `<main>` in Layout.tsx
-3. Add i18n key `a11y.skipToContent`: `"Skip to main content"` / `"Ana içeriğe geç"` in `packages/shared/src/i18n/en.json` and `tr.json`
+- [ ] 2. Add `id="main-content"` and `tabIndex={-1}` to `<main>` in Layout.tsx
+- [ ] 3. Add i18n key `a11y.skipToContent`: `"Skip to main content"` / `"Ana içeriğe geç"` in `packages/shared/src/i18n/en.json` and `tr.json`
 
 **Estimated effort:** Small (30 minutes)
 
@@ -44,13 +44,13 @@
 **Impact:** When user switches to Turkish (`tr`), screen readers still use English pronunciation rules. WCAG 3.1.1 (Language of Page) violation.
 
 **Action Plan:**
-1. Add to `I18nContext.tsx` provider effect:
+- [ ] 1. Add to `I18nContext.tsx` provider effect:
    ```tsx
    useEffect(() => {
      document.documentElement.lang = locale;
    }, [locale]);
    ```
-2. Also sync theme: `document.documentElement.className = theme;`
+- [ ] 2. Also sync theme: `document.documentElement.className = theme;`
 
 **Estimated effort:** Small (15 minutes)
 
@@ -66,16 +66,16 @@
 **Impact:** WCAG SC 3.3.2 (Labels or Instructions) violation. Screen reader users cannot identify what the textareas are for. Placeholder text is not a substitute.
 
 **Action Plan:**
-1. Add to main comment textarea:
+- [ ] 1. Add to main comment textarea:
    ```tsx
    <label htmlFor='new-comment' className='sr-only'>
      {t('comment.writeComment')}
    </label>
    <textarea id='new-comment' placeholder={t('comment.writeComment')} ... />
    ```
-2. Same for reply textarea with `htmlFor='reply-comment-{commentId}'`
-3. Audit all other `<input>` and `<textarea>` elements for missing labels
-4. Add `aria-label` as fallback where `<label>` is impractical
+- [ ] 2. Same for reply textarea with `htmlFor='reply-comment-{commentId}'`
+- [ ] 3. Audit all other `<input>` and `<textarea>` elements for missing labels
+- [ ] 4. Add `aria-label` as fallback where `<label>` is impractical
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -92,10 +92,10 @@
 **Impact:** Screen readers cannot navigate page structure by landmark regions. WCAG 4.1.2 (Name, Role, Value) support is weak.
 
 **Action Plan:**
-1. Add `id="main-content"` to `<main>` (required for H3 skip link)
-2. Wrap recipe detail content in `<article>`
-3. Wrap individual comments in `<article>` with `aria-label` for threading context
-4. Use `<section>` with `aria-labelledby` for recipe sub-sections (ingredients, equipment, steps)
+- [ ] 1. Add `id="main-content"` to `<main>` (required for H3 skip link)
+- [ ] 2. Wrap recipe detail content in `<article>`
+- [ ] 3. Wrap individual comments in `<article>` with `aria-label` for threading context
+- [ ] 4. Use `<section>` with `aria-labelledby` for recipe sub-sections (ingredients, equipment, steps)
 
 **Estimated effort:** Small (1 hour)
 
@@ -111,7 +111,7 @@
 **Context7 Note (Tailwind v4):** Tailwind provides `focus-visible:` variant. Use `focus-visible:outline-2` etc. for keyboard-only outline styles.
 
 **Action Plan:**
-1. Change to:
+- [ ] 1. Change to:
    ```css
    .input-field:focus-visible {
      outline: none;
@@ -119,7 +119,7 @@
      box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
    }
    ```
-2. Add basic `:focus` outline for all interactive elements as fallback
+- [ ] 2. Add basic `:focus` outline for all interactive elements as fallback
 
 **Estimated effort:** Small (5 minutes)
 

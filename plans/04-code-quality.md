@@ -21,13 +21,13 @@
 **Context7 Note (Deno):** Use `jsr:@kt3k/sanitize-html` or similar for server-side HTML sanitization.
 
 **Action Plan:**
-1. **Backend** — Add sanitization in service layer for:
+- [ ] 1. **Backend** — Add sanitization in service layer for:
    - Comments (`comment/service.ts`)
    - Recipes (`recipe/service.ts`)
    - User bios (`user/service.ts`)
    - Taste notes (`taste/service.ts`)
-2. Use `jsr:@kt3k/sanitize-html` or at minimum strip HTML tags: `text.replace(/<[^>]*>/g, '')`
-3. **Frontend** — Add defense-in-depth sanitization before rendering user content
+- [ ] 2. Use `jsr:@kt3k/sanitize-html` or at minimum strip HTML tags: `text.replace(/<[^>]*>/g, '')`
+- [ ] 3. **Frontend** — Add defense-in-depth sanitization before rendering user content
 
 **Estimated effort:** Small (2-3 hours)
 
@@ -50,15 +50,15 @@
 **Impact:** TypeScript provides zero protection on recipe data shapes. Runtime type errors silently swallowed.
 
 **Action Plan:**
-1. Define typed API response interfaces in `apps/web/src/api/types.ts` using `@brewform/shared/types`:
+- [ ] 1. Define typed API response interfaces in `apps/web/src/api/types.ts` using `@brewform/shared/types`:
    ```tsx
    import type { RecipeDetail } from '@brewform/shared/types';
    import type { TasteNote } from '@brewform/shared/types';
    ```
-2. Replace `useState<any>` → `useState<RecipeDetail | null>` in RecipeDetailPage, RecipeCreatePage, RecipeEditPage
-3. Replace `useState<any[]>` → `useState<TasteNote[]>` etc.
-4. Remove module-level `as unknown as any[]` casts — use proper types from constants
-5. Update API client return types to return typed responses instead of `Record<string, unknown>`
+- [ ] 2. Replace `useState<any>` → `useState<RecipeDetail | null>` in RecipeDetailPage, RecipeCreatePage, RecipeEditPage
+- [ ] 3. Replace `useState<any[]>` → `useState<TasteNote[]>` etc.
+- [ ] 4. Remove module-level `as unknown as any[]` casts — use proper types from constants
+- [ ] 5. Update API client return types to return typed responses instead of `Record<string, unknown>`
 
 **Estimated effort:** Medium (4-6 hours across all pages)
 
@@ -75,13 +75,13 @@
 **Impact:** Turkish users see English button text despite the rest of the UI being localized. Inconsistent UX.
 
 **Action Plan:**
-1. Replace hardcoded strings in RecipeDetailPage.tsx:
+- [ ] 1. Replace hardcoded strings in RecipeDetailPage.tsx:
    ```tsx
    <button aria-label={t('recipe.print')}>{t('recipe.print')}</button>
    <button aria-label={t('recipe.focusMode')}>{t('recipe.focusMode')}</button>
    <button aria-label={t('recipe.fork')}>{t('recipe.fork')}</button>
    ```
-2. Ensure buttons accommodate Turkish translation length
+- [ ] 2. Ensure buttons accommodate Turkish translation length
 
 **Estimated effort:** Small (15 minutes)
 
@@ -97,7 +97,7 @@
 **Impact:** Typing "chemex" fires 6 separate API requests. Pagination shows incorrect page counts (max 1 page even when server has 50+ results).
 
 **Action Plan:**
-1. Add debounce hook to RecipeListPage.tsx:
+- [ ] 1. Add debounce hook to RecipeListPage.tsx:
    ```tsx
    import { useState, useEffect, useRef } from 'react';
 
@@ -115,12 +115,12 @@
    const debouncedSearch = useDebounce(search, 300);
    // Use debouncedSearch in the fetch effect, not raw search
    ```
-2. **Fix pagination total** — Modify `apps/web/src/api/client.ts` to return full response including `meta`:
+- [ ] 2. **Fix pagination total** — Modify `apps/web/src/api/client.ts` to return full response including `meta`:
    ```tsx
    // Instead of unwrapping to just data.data, return { items: data.data, meta: data.meta }
    ```
-3. Update RecipeListPage.tsx line 142: `setTotal(data.meta.total)`
-4. Update StarredRecipesPage.tsx line 142: same fix
+- [ ] 3. Update RecipeListPage.tsx line 142: `setTotal(data.meta.total)`
+- [ ] 4. Update StarredRecipesPage.tsx line 142: same fix
 
 **Estimated effort:** Small (1-2 hours)
 
@@ -137,7 +137,7 @@
 **Impact:** Auth endpoints have no brute-force protection. Unlimited login/register/forgot-password attempts.
 
 **Action Plan:**
-1. Import and apply in `apps/api/src/modules/auth/index.ts`:
+- [ ] 1. Import and apply in `apps/api/src/modules/auth/index.ts`:
    ```tsx
    import { authRateLimitMiddleware } from '../../middleware/rateLimit.ts';
 
@@ -160,7 +160,7 @@
 **Impact:** Weak passwords allowed. No uppercase, digit, or special character requirements. Login schema has zero validation on password field.
 
 **Action Plan:**
-1. Update register schema:
+- [ ] 1. Update register schema:
    ```tsx
    password: z.string()
      .min(12, 'Password must be at least 12 characters')
@@ -170,8 +170,8 @@
      .regex(/[0-9]/, 'Password must contain at least one number')
      .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character'),
    ```
-2. Update login schema to at least `.min(1)`
-3. Update reset password schema to match new register requirements
+- [ ] 2. Update login schema to at least `.min(1)`
+- [ ] 3. Update reset password schema to match new register requirements
 
 **Estimated effort:** Small (15 minutes)
 
@@ -193,9 +193,9 @@ The project uses **Drizzle ORM**, not Prisma.
 **Impact:** Developers new to the project see Prisma references and waste time looking for non-existent packages. Documentation drift undermines trust.
 
 **Action Plan:**
-1. Replace all `@prisma/client` references with `drizzle-orm` in docs
-2. Replace `Prisma + migration` with `Drizzle + migration`
-3. Update `docs/requirements-audit-report.md` to remove resolved Prisma-related issues
+- [ ] 1. Replace all `@prisma/client` references with `drizzle-orm` in docs
+- [ ] 2. Replace `Prisma + migration` with `Drizzle + migration`
+- [ ] 3. Update `docs/requirements-audit-report.md` to remove resolved Prisma-related issues
 
 **Estimated effort:** Small (30 minutes)
 

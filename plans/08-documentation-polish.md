@@ -20,14 +20,14 @@
 **Impact:** New contributors cannot understand parameter contracts without reading full implementation. TypeScript intellisense shows empty tooltips. Complex functions like `forkRecipe` (185 lines, 6 sub-queries, undocumented) are impenetrable.
 
 **Action Plan — Phase 1 (Core):**
-1. Document `apps/api/src/modules/recipe/model.ts` — all 28 exported functions with `@param`, `@returns`, `@throws`
-2. Document `apps/api/src/modules/recipe/service.ts` — all 15 exported functions
-3. Document `packages/shared/src/types/` — all 16 type files with TSDoc on interfaces
-4. Document `packages/shared/src/utils/validation.ts`
+- [ ] 1. Document `apps/api/src/modules/recipe/model.ts` — all 28 exported functions with `@param`, `@returns`, `@throws`
+- [ ] 2. Document `apps/api/src/modules/recipe/service.ts` — all 15 exported functions
+- [ ] 3. Document `packages/shared/src/types/` — all 16 type files with TSDoc on interfaces
+- [ ] 4. Document `packages/shared/src/utils/validation.ts`
 
 **Action Plan — Phase 2 (Secondary):**
-5. Document remaining 14 module services and models
-6. Document frontend components in `apps/web/src/components/seo/`, `apps/web/src/components/recipe/`
+- [ ] 5. Document remaining 14 module services and models
+- [ ] 6. Document frontend components in `apps/web/src/components/seo/`, `apps/web/src/components/recipe/`
 
 **Estimated effort:** Large (20-30 hours total, spread across sprints)
 
@@ -48,11 +48,11 @@
 **Impact:** New users are sent away from the onboarding flow instead of guided through it. High drop-off rate. Missed opportunity for first-experience delight.
 
 **Action Plan:**
-1. Make EquipmentStep interactive: inline form to add first equipment
-2. Make BeansStep interactive: inline form to add first bean
-3. Make FirstBrewStep interactive: inline mini recipe creation form
-4. When user completes all steps inline, mark onboarding as complete
-5. Keep the skip/complete links as fallback for users who want to skip
+- [ ] 1. Make EquipmentStep interactive: inline form to add first equipment
+- [ ] 2. Make BeansStep interactive: inline form to add first bean
+- [ ] 3. Make FirstBrewStep interactive: inline mini recipe creation form
+- [ ] 4. When user completes all steps inline, mark onboarding as complete
+- [ ] 5. Keep the skip/complete links as fallback for users who want to skip
 
 **Estimated effort:** Large (8-12 hours — essentially building mini CRUD forms into the wizard)
 
@@ -66,8 +66,8 @@
 **Impact:** Production stack traces point to minified code. Debugging production issues requires reproducing locally with sourcemaps enabled.
 
 **Action Plan:**
-1. If Sentry integrated (Plan 07): set `sourcemap: 'hidden'` and upload to Sentry
-2. Otherwise: keep disabled for production bundle size
+- [ ] 1. If Sentry integrated (Plan 07): set `sourcemap: 'hidden'` and upload to Sentry
+- [ ] 2. Otherwise: keep disabled for production bundle size
 
 **Estimated effort:** Small (5 minutes config change)
 
@@ -83,9 +83,9 @@
 **Impact:** Dead CSS code in the theme configuration. Inconsistency between defined palette and actual usage.
 
 **Action Plan:**
-1. Align `--accent-primary`, `--bg-primary`, etc. with coffee palette values in `:root`, `.dark`, `.coffee` blocks
-2. Use `bg-coffee-50`, `text-coffee-500` directly in components where the palette values suffice
-3. Or remove unused palette if CSS variables are the preferred theming approach
+- [ ] 1. Align `--accent-primary`, `--bg-primary`, etc. with coffee palette values in `:root`, `.dark`, `.coffee` blocks
+- [ ] 2. Use `bg-coffee-50`, `text-coffee-500` directly in components where the palette values suffice
+- [ ] 3. Or remove unused palette if CSS variables are the preferred theming approach
 
 **Estimated effort:** Small (30 minutes)
 
@@ -99,13 +99,13 @@
 **Impact:** Inconsistent code formatting in commits. CI must catch formatting issues that could be caught earlier.
 
 **Action Plan:**
-1. Add a simple pre-commit hook in `.git/hooks/pre-commit`:
+- [ ] 1. Add a simple pre-commit hook in `.git/hooks/pre-commit`:
    ```bash
    #!/bin/sh
    deno fmt --check
    deno lint
    ```
-2. Or add a `Makefile` target `make precommit` and document it
+- [ ] 2. Or add a `Makefile` target `make precommit` and document it
 
 **Estimated effort:** Small (15 minutes)
 
@@ -120,8 +120,8 @@
 **Impact:** Parameter name is misleading. Future developers might assume numeric IDs and add parsing logic that breaks with slugs.
 
 **Action Plan:**
-1. Rename params to `:slug1/:slug2` for clarity
-2. Or keep and add a comment explaining both work
+- [ ] 1. Rename params to `:slug1/:slug2` for clarity
+- [ ] 2. Or keep and add a comment explaining both work
 
 **Estimated effort:** Small (5 minutes)
 
@@ -137,8 +137,8 @@
 **Impact:** Dead code that increases maintenance surface. Low priority — they linger but aren't actively misused.
 
 **Action Plan:**
-1. Remove deprecated functions
-2. Update test files to use non-deprecated equivalents
+- [ ] 1. Remove deprecated functions
+- [ ] 2. Update test files to use non-deprecated equivalents
 
 **Estimated effort:** Small (15 minutes)
 
@@ -154,9 +154,9 @@
 **Impact:** Page titles are scattered across components via `useEffect` calls. Hard to audit which pages set which titles, or if any are missed.
 
 **Action Plan:**
-1. **Option A (declarative):** Add `handle: { title: 'Home' }` to each route, create a top-level effect that reads active route's handle and sets `document.title`
-2. **Option B:** Keep current approach but ensure SEOHead is present on every page
-3. Current approach works for an SPA; low priority unless SSR is added
+- [ ] 1. **Option A (declarative):** Add `handle: { title: 'Home' }` to each route, create a top-level effect that reads active route's handle and sets `document.title`
+- [ ] 2. **Option B:** Keep current approach but ensure SEOHead is present on every page
+- [ ] 3. Current approach works for an SPA; low priority unless SSR is added
 
 **Estimated effort:** Small (30 minutes)
 
