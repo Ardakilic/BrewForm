@@ -304,18 +304,17 @@ function setAuthCookies(
 function clearAuthCookies(c: Context) {
   const isProduction = config.APP_ENV === 'production';
 
+  // NOTE: deleteCookie only accepts `path`, `secure`, and `domain`.
+  // httpOnly/sameSite/maxAge are setCookie-only options — the browser
+  // matches cookies to delete by name + path + domain, not flags.
   deleteCookie(c, 'brewform_access_token', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'Strict',
     path: '/',
+    secure: isProduction,
   });
 
   deleteCookie(c, 'brewform_refresh_token', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'Strict',
     path: '/api/v1/auth',
+    secure: isProduction,
   });
 }
 ```
@@ -1069,10 +1068,12 @@ Create `apps/web/src/pages/auth/VerifyEmailPage.tsx`:
 ```tsx
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router';
+import { useAuth } from '../../contexts/AuthContext';
 import { authApi } from '../../api/index';
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
+  const { refreshUser } = useAuth();
   const token = searchParams.get('token');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -1085,12 +1086,15 @@ export function VerifyEmailPage() {
     }
 
     authApi.verifyEmail({ token })
-      .then(() => setStatus('success'))
+      .then(async () => {
+        await refreshUser(); // re-fetch user so emailVerifiedAt is set in AuthContext
+        setStatus('success');
+      })
       .catch((err) => {
         setStatus('error');
         setErrorMessage(err.message || 'Verification failed.');
       });
-  }, [token]);
+  }, [token, refreshUser]);
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
