@@ -1,132 +1,1078 @@
-# Plan 05: Performance
+# Plan 05 -- Performance Optimizations
 
-**Priority:** 5
-**Source:** [Deep Dive Analysis](deep-dive-analysis.md) — Phase 5
-**Issues:** H7 (Code Splitting), M17 (Lazy Images), M3 (Skeletons), L7 (Scroll Restoration), L2 (preconnect)
-**Effort:** ~7–10 hours
-**Impact:** ⚡ Bundle size, LCP, perceived performance, 🖱️ Navigation UX
+**Priority:** High (H7), Medium (M3, M17), Low (L2, L7)
+**Scope:** Bundle splitting, skeleton loading, image optimization, resource hints, scroll restoration
+**Dependencies:** None -- all items are independent and can be implemented in any order
 
 ---
 
-## H7 — No Code Splitting (All Pages Eagerly Loaded) ✅ CONFIRMED
+## Tech Stack Reference
 
-**Evidence:**
-- Search for `React.lazy`, `lazy(`, `dynamic import` in `apps/web/src/` — **zero results**
-- Search for `Suspense` in `apps/web/src/` — **zero results**
-- [`apps/web/src/router.tsx:1-40`](apps/web/src/router.tsx) — All 37 page imports are static `import { X } from './pages/...'`. Zero `import()` calls.
-
-**Impact:** Entire application JS bundle (including 14 admin pages) loads on first visit, even for non-admin users. Increases TTFB and Time to Interactive.
-
-**Context7 Note (React Router v7 lazy routes):** Use `lazy: () => import('./Page')` on route definitions. React Router handles async loading internally. Slimmer alternative: `lazy: async () => ({ Component: (await import('./Page')).default })`.
-
-**Action Plan:**
-- [ ] 1. Convert admin routes in `apps/web/src/router.tsx` to lazy imports:
-   ```tsx
-   {
-     path: '/admin',
-     lazy: () => import('./pages/admin/AdminLayout'),
-     children: [
-       {
-         index: true,
-         lazy: () => import('./pages/admin/AdminDashboard'),
-       },
-       // ... other admin routes
-     ],
-   }
-   ```
-- [ ] 2. Add `<Suspense fallback={<LoadingSpinner />}>` around `<Outlet />` in Layout.tsx
-- [ ] 3. Lazy-load heavy pages: RecipeCreatePage, RecipeEditPage, SettingsPage
-- [ ] 4. Keep public pages (HomePage, RecipeListPage, RecipeDetailPage) eagerly loaded for fast initial navigation
-
-**Estimated effort:** Medium (3-4 hours)
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Frontend | React | 19.1 |
+| Routing | React Router | v7.5 |
+| Build | Vite | 8 (with @deno/vite-plugin) |
+| Styling | Tailwind CSS | v4.1 |
+| Deployment | Deno Deploy | Static SPA |
 
 ---
 
-## M17 — No Image Lazy Loading or Responsive Images ✅ CONFIRMED
+## Table of Contents
 
-**Evidence:**
-- Search for `loading="lazy"` in `apps/web/src/` — **zero results**.
-- No `<img loading="lazy">`, no `srcset`, no `<picture>` elements anywhere.
-
-**Impact:** All images load eagerly on page load, increasing LCP and bandwidth. No responsive image variants for different viewport sizes.
-
-**Action Plan:**
-- [ ] 1. Add `loading="lazy"` to all `<img>` tags below the fold
-- [ ] 2. Generate thumbnail variants on upload (PhotoUpload.tsx already has canvas logic)
-- [ ] 3. Add `srcset` with thumbnail + full-size variants for recipe photos
-- [ ] 4. Add explicit `width` and `height` attributes to prevent layout shift (CLS)
-
-**Estimated effort:** Small (1-2 hours)
+1. [H7 -- No Code Splitting (All Pages Eagerly Loaded)](#h7--no-code-splitting-all-pages-eagerly-loaded)
+2. [M3 -- No Skeleton Loading States](#m3--no-skeleton-loading-states)
+3. [M17 -- No Image Lazy Loading](#m17--no-image-lazy-loading)
+4. [L2 -- No preconnect/dns-prefetch Hints](#l2--no-preconnectdns-prefetch-hints)
+5. [L7 -- No Scroll Restoration](#l7--no-scroll-restoration)
 
 ---
 
-## M3 — No Skeleton Loading States ✅ CONFIRMED
+## H7 -- No Code Splitting (All Pages Eagerly Loaded)
 
-**Evidence:**
-- Search for `skeleton`, `shimmer`, `Skeleton` across `apps/web/src/` — **zero results**.
-- All loading states use simple `setLoading(true/false)` with conditional text like `"Loading..."`.
+**Priority:** High
+**Status:** CONFIRMED
 
-**Impact:** Users see abrupt text-to-content transitions rather than smooth loading placeholders. Perceived performance is worse than actual performance.
+### Evidence
 
-**Action Plan:**
-- [ ] 1. Create `apps/web/src/components/ui/Skeleton.tsx`:
-   ```tsx
-   export function Skeleton({ className = '' }: { className?: string }) {
-     return (
-       <div className={`animate-pulse bg-[var(--bg-tertiary)] rounded ${className}`} />
-     );
-   }
-   ```
-- [ ] 2. Create skeleton variants: `RecipeCardSkeleton`, `RecipeDetailSkeleton`, `CommentSkeleton`
-- [ ] 3. Use in loading states instead of `"Loading..."` text
+- `apps/web/src/router.tsx:1-40` -- 40 static imports, zero `import()` calls
+- Zero `React.lazy`, zero `Suspense` anywhere in the codebase
+- 13 admin pages (`AdminLayout`, `AdminDashboard`, `AdminUsersPage`, `AdminRecipesPage`, `AdminEquipmentPage`, `AdminVendorsPage`, `AdminTasteNotesPage`, `AdminCompatibilityPage`, `AdminBadgesPage`, `AdminAuditLogPage`, `AdminCachePage`, `AdminUserCreatePage`, `AdminUserEditPage`, `AdminUserDetailPage`) bundled into the main chunk and shipped to every visitor
+- Heavy pages like `RecipeCreatePage`, `RecipeEditPage`, `RecipeComparePage`, `RecipeFocusModePage`, `SettingsPage` loaded eagerly even though most sessions never visit them
 
-**Estimated effort:** Medium (3-4 hours)
+### Impact
+
+- Main JS bundle contains code for all 40+ pages regardless of which page the user visits
+- Admin code (~13 page components + AdminLayout) adds dead weight for 99%+ of users who are not admins
+- Slower initial page load, higher Time to Interactive (TTI), wasted bandwidth on mobile
+- Vite's `chunkSizeWarningLimit` is already raised to 800 kB (`apps/web/vite.config.ts:47`), suggesting the bundle is large
+
+### Action Plan
+
+**Strategy:** Use React Router v7.5's built-in `lazy` route property to split the admin tree and heavy authenticated pages into separate chunks. Keep high-traffic public pages (`HomePage`, `RecipeListPage`, `RecipeDetailPage`, `LoginPage`, `RegisterPage`) eagerly loaded for instant navigation.
+
+**Pages to lazy-load (17 routes):**
+
+| Category | Pages |
+|----------|-------|
+| Admin (13) | `AdminLayout`, `AdminDashboard`, `AdminUsersPage`, `AdminUserCreatePage`, `AdminUserEditPage`, `AdminUserDetailPage`, `AdminRecipesPage`, `AdminEquipmentPage`, `AdminVendorsPage`, `AdminTasteNotesPage`, `AdminCompatibilityPage`, `AdminBadgesPage`, `AdminAuditLogPage`, `AdminCachePage` |
+| Heavy auth (4) | `RecipeCreatePage`, `RecipeEditPage`, `SettingsPage`, `RecipeComparePage` |
+
+**Pages to keep eagerly loaded (public hot paths):**
+
+`HomePage`, `RecipeListPage`, `RecipeDetailPage`, `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `ResetPasswordPage`, `NotFoundPage`, `RecipeNotAvailablePage`, `StarredRecipesPage`, `RecipeFocusModePage`, `UserProfilePage`, `SetupListPage`, `BeanListPage`, `EquipmentListPage`, `TasteNotesPage`, `OnboardingWizard`, `PrivacyPage`, `TermsPage`
+
+#### React Router v7.5 `lazy` Pattern
+
+In React Router v7, the `lazy` property on a route expects the resolved module to export route properties as named exports. The most common pattern destructures the component and re-exports it as `Component`:
+
+```tsx
+// Pattern A: Named export with destructuring (recommended)
+{
+  path: '/admin',
+  lazy: async () => {
+    const { AdminLayout } = await import('./pages/admin/AdminLayout');
+    return { Component: AdminLayout };
+  },
+}
+
+// Pattern B: If the module uses default export
+{
+  path: '/admin',
+  lazy: async () => {
+    const mod = await import('./pages/admin/AdminLayout');
+    return { Component: mod.default };
+  },
+}
+```
+
+The `lazy` function can also return `loader`, `action`, `errorElement`, and other route properties -- but for this codebase we only need `Component`.
+
+**IMPORTANT:** When a route uses `lazy`, it must NOT also have an `element` property. The `Component` returned by `lazy` replaces the `element`. For routes that wrap children in `<RequireAuth>`, the auth guard is moved into the lazy-loaded component or handled in the parent layout.
+
+#### Modified `apps/web/src/router.tsx` (full file)
+
+```tsx
+import { createBrowserRouter } from 'react-router';
+import { Layout } from './components/layout/Layout';
+import { RequireAuth } from './components/auth/RequireAuth';
+
+// Eagerly loaded: high-traffic public pages and lightweight auth pages
+import { HomePage } from './pages/HomePage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
+import { RecipeListPage } from './pages/recipes/RecipeListPage';
+import { StarredRecipesPage } from './pages/recipes/StarredRecipesPage';
+import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage';
+import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage';
+import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage';
+import { UserProfilePage } from './pages/users/UserProfilePage';
+import { SetupListPage } from './pages/setups/SetupListPage';
+import { BeanListPage } from './pages/beans/BeanListPage';
+import { EquipmentListPage } from './pages/equipment/EquipmentListPage';
+import { TasteNotesPage } from './pages/TasteNotesPage';
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { TermsPage } from './pages/TermsPage';
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Layout />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'login', element: <LoginPage /> },
+      { path: 'register', element: <RegisterPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
+      { path: 'recipes', element: <RecipeListPage /> },
+      {
+        path: 'recipes/starred',
+        element: (
+          <RequireAuth>
+            <StarredRecipesPage />
+          </RequireAuth>
+        ),
+      },
+      { path: 'recipes/unavailable', element: <RecipeNotAvailablePage /> },
+      {
+        path: 'recipes/new',
+        lazy: async () => {
+          const { RecipeCreatePage } = await import('./pages/recipes/RecipeCreatePage');
+          return {
+            Component: () => (
+              <RequireAuth>
+                <RecipeCreatePage />
+              </RequireAuth>
+            ),
+          };
+        },
+      },
+      {
+        path: 'recipes/compare/:id1/:id2',
+        lazy: async () => {
+          const { RecipeComparePage } = await import('./pages/recipes/RecipeComparePage');
+          return { Component: RecipeComparePage };
+        },
+      },
+      { path: 'recipes/:slug', element: <RecipeDetailPage /> },
+      { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },
+      {
+        path: 'recipes/:id/edit',
+        lazy: async () => {
+          const { RecipeEditPage } = await import('./pages/recipes/RecipeEditPage');
+          return {
+            Component: () => (
+              <RequireAuth>
+                <RecipeEditPage />
+              </RequireAuth>
+            ),
+          };
+        },
+      },
+      { path: 'u/:username', element: <UserProfilePage /> },
+      {
+        path: 'settings',
+        lazy: async () => {
+          const { SettingsPage } = await import('./pages/settings/SettingsPage');
+          return {
+            Component: () => (
+              <RequireAuth>
+                <SettingsPage />
+              </RequireAuth>
+            ),
+          };
+        },
+      },
+      {
+        path: 'setups',
+        element: (
+          <RequireAuth>
+            <SetupListPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'beans',
+        element: (
+          <RequireAuth>
+            <BeanListPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: 'equipment',
+        element: (
+          <RequireAuth>
+            <EquipmentListPage />
+          </RequireAuth>
+        ),
+      },
+      { path: 'taste-notes', element: <TasteNotesPage /> },
+      {
+        path: 'onboarding',
+        element: (
+          <RequireAuth>
+            <OnboardingWizard />
+          </RequireAuth>
+        ),
+      },
+      { path: 'privacy', element: <PrivacyPage /> },
+      { path: 'terms', element: <TermsPage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+  {
+    path: '/admin',
+    lazy: async () => {
+      const { AdminLayout } = await import('./pages/admin/AdminLayout');
+      return {
+        Component: () => (
+          <RequireAuth requireAdmin>
+            <AdminLayout />
+          </RequireAuth>
+        ),
+      };
+    },
+    children: [
+      {
+        index: true,
+        lazy: async () => {
+          const { AdminDashboard } = await import('./pages/admin/AdminDashboard');
+          return { Component: AdminDashboard };
+        },
+      },
+      {
+        path: 'users',
+        lazy: async () => {
+          const { AdminUsersPage } = await import('./pages/admin/AdminUsersPage');
+          return { Component: AdminUsersPage };
+        },
+      },
+      {
+        path: 'users/new',
+        lazy: async () => {
+          const { AdminUserCreatePage } = await import('./pages/admin/AdminUserCreatePage');
+          return { Component: AdminUserCreatePage };
+        },
+      },
+      {
+        path: 'users/:id',
+        lazy: async () => {
+          const { AdminUserDetailPage } = await import('./pages/admin/AdminUserDetailPage');
+          return { Component: AdminUserDetailPage };
+        },
+      },
+      {
+        path: 'users/:id/edit',
+        lazy: async () => {
+          const { AdminUserEditPage } = await import('./pages/admin/AdminUserEditPage');
+          return { Component: AdminUserEditPage };
+        },
+      },
+      {
+        path: 'recipes',
+        lazy: async () => {
+          const { AdminRecipesPage } = await import('./pages/admin/AdminRecipesPage');
+          return { Component: AdminRecipesPage };
+        },
+      },
+      {
+        path: 'equipment',
+        lazy: async () => {
+          const { AdminEquipmentPage } = await import('./pages/admin/AdminEquipmentPage');
+          return { Component: AdminEquipmentPage };
+        },
+      },
+      {
+        path: 'vendors',
+        lazy: async () => {
+          const { AdminVendorsPage } = await import('./pages/admin/AdminVendorsPage');
+          return { Component: AdminVendorsPage };
+        },
+      },
+      {
+        path: 'taste-notes',
+        lazy: async () => {
+          const { AdminTasteNotesPage } = await import('./pages/admin/AdminTasteNotesPage');
+          return { Component: AdminTasteNotesPage };
+        },
+      },
+      {
+        path: 'compatibility',
+        lazy: async () => {
+          const { AdminCompatibilityPage } = await import('./pages/admin/AdminCompatibilityPage');
+          return { Component: AdminCompatibilityPage };
+        },
+      },
+      {
+        path: 'badges',
+        lazy: async () => {
+          const { AdminBadgesPage } = await import('./pages/admin/AdminBadgesPage');
+          return { Component: AdminBadgesPage };
+        },
+      },
+      {
+        path: 'audit-log',
+        lazy: async () => {
+          const { AdminAuditLogPage } = await import('./pages/admin/AdminAuditLogPage');
+          return { Component: AdminAuditLogPage };
+        },
+      },
+      {
+        path: 'cache',
+        lazy: async () => {
+          const { AdminCachePage } = await import('./pages/admin/AdminCachePage');
+          return { Component: AdminCachePage };
+        },
+      },
+    ],
+  },
+]);
+```
+
+#### Why This Works
+
+1. **Vite automatically code-splits** on dynamic `import()` -- each lazy route becomes its own chunk
+2. **Admin chunk isolation** -- the entire `/admin` tree (13 pages + layout) is a separate chunk never loaded by regular users
+3. **Heavy page isolation** -- `RecipeCreatePage`, `RecipeEditPage`, `RecipeComparePage`, `SettingsPage` become their own chunks
+4. **No Suspense boundary needed at the router level** -- React Router v7 handles the lazy loading internally; it waits for the `lazy` function to resolve before rendering the route. However, adding a Suspense boundary in Layout (see M3 below) provides a fallback for the brief loading period
+5. **RequireAuth preserved** -- auth guards are composed inline within the `lazy` callback's returned `Component`
+
+#### Suspense Boundary in Layout
+
+To provide a visible fallback while lazy chunks load, wrap the `<Outlet />` in `<Suspense>`:
+
+```tsx
+// apps/web/src/components/layout/Layout.tsx
+import { Suspense } from 'react';
+import { Outlet } from 'react-router';
+import { ScrollRestoration } from 'react-router';
+import { Navbar } from './Navbar';
+import { Footer } from './Footer';
+import { CookieConsent } from '../CookieConsent';
+import { PageSkeleton } from '../ui/Skeleton';
+
+export function Layout() {
+  return (
+    <div className='flex min-h-screen flex-col'>
+      <ScrollRestoration />
+      <Navbar />
+      <main className='flex-1'>
+        <Suspense fallback={<PageSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </main>
+      <Footer />
+      <CookieConsent />
+    </div>
+  );
+}
+```
+
+**Note:** This Layout modification also includes the `ScrollRestoration` component from L7 -- both changes go into the same file.
+
+#### Expected Bundle Impact
+
+| Before | After |
+|--------|-------|
+| Single main chunk with all 40 pages | Main chunk with ~23 eagerly loaded pages |
+| Admin code in every user's bundle | Admin chunk loaded only on `/admin/*` |
+| Heavy pages in initial load | Separate chunks loaded on navigation |
+
+Estimated main bundle reduction: 25-40% (depends on page component sizes). Admin users see no difference -- their chunks load transparently on first `/admin` navigation and are cached by the browser thereafter.
 
 ---
 
-## L7 — No Scroll Restoration on Navigation ✅ CONFIRMED
+## M3 -- No Skeleton Loading States
 
-**Evidence:**
-- Search for `ScrollRestoration`, `scrollRestoration` in `apps/web/src/` — **zero results**.
-- [`apps/web/src/App.tsx`](apps/web/src/App.tsx) — No scroll restoration imported.
+**Priority:** Medium
+**Status:** CONFIRMED
 
-**Impact:** When users navigate back, they lose their scroll position and have to manually scroll down. Frustrating UX on recipe lists and search results.
+### Evidence
 
-**Context7 Note (React Router built-in):** Import `<ScrollRestoration />` from `react-router` and render it inside the layout. Automatically restores scroll position on back/forward navigation.
+- Zero dedicated skeleton/shimmer components in `apps/web/src/components/`
+- `apps/web/src/pages/recipes/RecipeDetailPage.tsx:60-68` -- loading state renders plain text: `{t('common.loading')}`
+- `apps/web/src/components/auth/RequireAuth.tsx:12-17` -- loading state renders "Loading..." text
+- `apps/web/src/components/recipe/CommentSection.tsx:72,345` -- uses `setLoading(true/false)` with conditional button text
+- Some admin pages (`AdminUserDetailPage.tsx:69-85`) use inline `animate-pulse` divs but they are ad hoc, not reusable components
 
-**Action Plan:**
-- [ ] 1. Add to `apps/web/src/components/layout/Layout.tsx`:
-   ```tsx
-   import { ScrollRestoration } from 'react-router';
-   // First element inside the Layout component:
-   <ScrollRestoration />
-   ```
+### Impact
 
-**Estimated effort:** Small (5 minutes)
+- Users see blank space or "Loading..." text during data fetches, creating a perception of slowness
+- No visual preview of page structure during loading -- higher perceived latency
+- Cumulative Layout Shift (CLS) when content replaces empty space
+
+### Action Plan
+
+#### Step 1: Create base `Skeleton` component
+
+**New file: `apps/web/src/components/ui/Skeleton.tsx`**
+
+```tsx
+import type { CSSProperties } from 'react';
+
+// ---------------------------------------------------------------------------
+// Base Skeleton
+// ---------------------------------------------------------------------------
+
+interface SkeletonProps {
+  className?: string;
+  /** Width as CSS value (e.g. '70%', '10rem') */
+  width?: string;
+  /** Height as CSS value (e.g. '1.25rem', '8rem') */
+  height?: string;
+  /** Render as a circle (for avatars) */
+  circle?: boolean;
+  style?: CSSProperties;
+}
+
+/**
+ * Base skeleton placeholder with pulse animation.
+ * Uses CSS variables for theme-aware colors so it works in light, dark, and coffee modes.
+ */
+export function Skeleton({ className = '', width, height, circle, style }: SkeletonProps) {
+  return (
+    <div
+      className={`animate-pulse rounded ${circle ? 'rounded-full' : ''} ${className}`}
+      style={{
+        backgroundColor: 'var(--bg-tertiary)',
+        width,
+        height,
+        ...style,
+      }}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SkeletonText -- renders N lines of varying width
+// ---------------------------------------------------------------------------
+
+interface SkeletonTextProps {
+  lines?: number;
+  className?: string;
+}
+
+export function SkeletonText({ lines = 3, className = '' }: SkeletonTextProps) {
+  // Vary the last line width to look natural
+  const widths = ['100%', '100%', '100%', '75%', '60%', '85%'];
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {Array.from({ length: lines }, (_, i) => (
+        <Skeleton
+          key={i}
+          height='0.75rem'
+          width={i === lines - 1 ? widths[Math.min(i, widths.length - 1)] : '100%'}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RecipeCardSkeleton
+// ---------------------------------------------------------------------------
+
+export function RecipeCardSkeleton() {
+  return (
+    <div className='card space-y-3'>
+      {/* Title */}
+      <Skeleton height='1.25rem' width='70%' />
+      {/* Author */}
+      <Skeleton height='0.875rem' width='40%' />
+      {/* Brew method / drink type badges */}
+      <div className='flex gap-2'>
+        <Skeleton height='0.75rem' width='4rem' />
+        <Skeleton height='0.75rem' width='4rem' />
+        <Skeleton height='0.75rem' width='3rem' />
+      </div>
+      {/* Likes / comments / forks */}
+      <div className='flex gap-3'>
+        <Skeleton height='0.75rem' width='2rem' />
+        <Skeleton height='0.75rem' width='2rem' />
+        <Skeleton height='0.75rem' width='2rem' />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RecipeCardSkeletonGrid -- grid of N recipe card skeletons
+// ---------------------------------------------------------------------------
+
+interface RecipeCardSkeletonGridProps {
+  count?: number;
+}
+
+export function RecipeCardSkeletonGrid({ count = 6 }: RecipeCardSkeletonGridProps) {
+  return (
+    <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+      {Array.from({ length: count }, (_, i) => (
+        <RecipeCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RecipeDetailSkeleton -- mirrors RecipeDetailPage layout
+// ---------------------------------------------------------------------------
+
+export function RecipeDetailSkeleton() {
+  return (
+    <div className='mx-auto max-w-4xl px-6 py-8 space-y-6'>
+      {/* Breadcrumb */}
+      <Skeleton height='0.875rem' width='12rem' />
+
+      {/* Title + badges */}
+      <div className='space-y-3'>
+        <Skeleton height='2rem' width='60%' />
+        <div className='flex gap-2'>
+          <Skeleton height='1.5rem' width='5rem' className='rounded-full' />
+          <Skeleton height='1.5rem' width='5rem' className='rounded-full' />
+        </div>
+      </div>
+
+      {/* Stat cards row */}
+      <div className='grid grid-cols-2 gap-4 sm:grid-cols-4'>
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className='card space-y-2'>
+            <Skeleton height='0.75rem' width='3rem' />
+            <Skeleton height='1.5rem' width='4rem' />
+          </div>
+        ))}
+      </div>
+
+      {/* Brew timeline */}
+      <div className='card space-y-3'>
+        <Skeleton height='1.25rem' width='8rem' />
+        <div className='space-y-2'>
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} height='2.5rem' />
+          ))}
+        </div>
+      </div>
+
+      {/* Notes section */}
+      <div className='card space-y-3'>
+        <Skeleton height='1.25rem' width='6rem' />
+        <SkeletonText lines={3} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CommentSkeleton -- single comment placeholder
+// ---------------------------------------------------------------------------
+
+export function CommentSkeleton() {
+  return (
+    <div className='flex gap-3 py-3'>
+      {/* Avatar */}
+      <Skeleton circle width='2.5rem' height='2.5rem' />
+      {/* Content */}
+      <div className='flex-1 space-y-2'>
+        <div className='flex items-center gap-2'>
+          <Skeleton height='0.875rem' width='6rem' />
+          <Skeleton height='0.75rem' width='4rem' />
+        </div>
+        <SkeletonText lines={2} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CommentSectionSkeleton -- N comment skeletons
+// ---------------------------------------------------------------------------
+
+interface CommentSectionSkeletonProps {
+  count?: number;
+}
+
+export function CommentSectionSkeleton({ count = 3 }: CommentSectionSkeletonProps) {
+  return (
+    <div className='divide-y' style={{ borderColor: 'var(--border-primary)' }}>
+      {Array.from({ length: count }, (_, i) => (
+        <CommentSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PageSkeleton -- full-page fallback for Suspense boundaries
+// ---------------------------------------------------------------------------
+
+export function PageSkeleton() {
+  return (
+    <div className='mx-auto max-w-4xl px-6 py-12 space-y-6'>
+      <Skeleton height='2rem' width='50%' />
+      <Skeleton height='1rem' width='30%' />
+      <div className='space-y-4'>
+        <Skeleton height='8rem' />
+        <Skeleton height='8rem' />
+        <Skeleton height='4rem' />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// UserProfileSkeleton
+// ---------------------------------------------------------------------------
+
+export function UserProfileSkeleton() {
+  return (
+    <div className='mx-auto max-w-4xl px-6 py-8 space-y-6'>
+      <div className='flex items-center gap-4'>
+        <Skeleton circle width='4rem' height='4rem' />
+        <div className='space-y-2'>
+          <Skeleton height='1.5rem' width='10rem' />
+          <Skeleton height='0.875rem' width='6rem' />
+        </div>
+      </div>
+      <SkeletonText lines={2} />
+      <RecipeCardSkeletonGrid count={3} />
+    </div>
+  );
+}
+```
+
+#### Step 2: Replace loading text in `RecipeDetailPage`
+
+**File: `apps/web/src/pages/recipes/RecipeDetailPage.tsx`**
+
+Replace the loading block (lines 60-68):
+
+```tsx
+// BEFORE:
+if (loading) {
+  return (
+    <div
+      className='mx-auto max-w-4xl px-6 py-12 text-center'
+      style={{ color: 'var(--text-secondary)' }}
+    >
+      {t('common.loading')}
+    </div>
+  );
+}
+
+// AFTER:
+if (loading) {
+  return <RecipeDetailSkeleton />;
+}
+```
+
+Add import at top of file:
+```tsx
+import { RecipeDetailSkeleton } from '../../components/ui/Skeleton';
+```
+
+#### Step 3: Replace loading text in `RequireAuth`
+
+**File: `apps/web/src/components/auth/RequireAuth.tsx`**
+
+```tsx
+// BEFORE:
+import { Navigate } from 'react-router';
+import { useAuth } from '../../contexts/AuthContext';
+
+interface Props {
+  children: React.ReactNode;
+  requireAdmin?: boolean;
+}
+
+export function RequireAuth({ children, requireAdmin }: Props) {
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className='flex min-h-[40vh] items-center justify-center'>
+        <div className='text-lg' style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+      </div>
+    );
+  }
+  if (!isAuthenticated) return <Navigate to='/login' />;
+  if (requireAdmin && !user?.isAdmin) return <Navigate to='/' />;
+  return <>{children}</>;
+}
+
+// AFTER:
+import { Navigate } from 'react-router';
+import { useAuth } from '../../contexts/AuthContext';
+import { PageSkeleton } from '../ui/Skeleton';
+
+interface Props {
+  children: React.ReactNode;
+  requireAdmin?: boolean;
+}
+
+export function RequireAuth({ children, requireAdmin }: Props) {
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
+  if (!isAuthenticated) return <Navigate to='/login' />;
+  if (requireAdmin && !user?.isAdmin) return <Navigate to='/' />;
+  return <>{children}</>;
+}
+```
+
+#### Step 4: Refactor inline admin skeletons (optional cleanup)
+
+The admin pages (`AdminUserDetailPage.tsx:69-85`, `AdminUsersPage.tsx:123`, `AdminUserEditPage.tsx:123-127`) already use inline `animate-pulse` divs. These can be replaced with the `Skeleton` component for consistency:
+
+```tsx
+// BEFORE (AdminUserDetailPage.tsx):
+if (loading) {
+  return (
+    <div className='space-y-4'>
+      <div className='h-8 w-48 rounded animate-pulse' style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+      <div className='h-48 rounded animate-pulse' style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+      <div className='h-24 rounded animate-pulse' style={{ backgroundColor: 'var(--bg-tertiary)' }} />
+    </div>
+  );
+}
+
+// AFTER:
+if (loading) {
+  return (
+    <div className='space-y-4'>
+      <Skeleton height='2rem' width='12rem' />
+      <Skeleton height='12rem' />
+      <Skeleton height='6rem' />
+    </div>
+  );
+}
+```
+
+#### Design Principles
+
+- All skeletons use `var(--bg-tertiary)` for the pulse color -- this automatically adapts to light, dark, and coffee themes
+- Tailwind's built-in `animate-pulse` provides the animation (no custom CSS needed)
+- Skeletons mirror the real layout dimensions to minimize CLS when content loads
+- Each skeleton is a pure component with no side effects -- safe to use as Suspense fallbacks
 
 ---
 
-## L2 — No preconnect or dns-prefetch Hints ✅ CONFIRMED
+## M17 -- No Image Lazy Loading
 
-**Evidence:**
-- [`apps/web/index.html`](apps/web/index.html) — Only `<link rel="icon">`. No preconnect/dns-prefetch tags.
+**Priority:** Medium
+**Status:** CONFIRMED
 
-**Impact:** Browser must wait for DNS resolution and connection setup when fetching from the API origin. Adds ~100-300ms latency to first API call.
+### Evidence
 
-**Action Plan:**
-- [ ] 1. Add to `apps/web/index.html` `<head>`:
-   ```html
-   <link rel="preconnect" href="https://api.brewform.app" />
-   <link rel="dns-prefetch" href="https://api.brewform.app" />
-   ```
+- Zero `loading="lazy"` attributes in `apps/web/src/`
+- Zero `srcset` or `<picture>` elements
+- No explicit `width`/`height` on any `<img>` tags (CLS risk)
+- Image locations found:
+  - `apps/web/src/components/qrcode/RecipeQRCode.tsx:45` -- QR code image (fixed 128x128)
+  - `apps/web/src/components/photos/PhotoUpload.tsx:133` -- upload preview thumbnails
+  - `apps/web/src/pages/admin/AdminUserDetailPage.tsx:150` -- user avatar (80x80)
+  - `apps/web/src/pages/users/UserProfilePage.tsx:100` -- user avatar (64x64)
 
-**Estimated effort:** Small (5 minutes)
+### Impact
+
+- All images (including those far below the fold) are fetched immediately on page load
+- No explicit dimensions causes layout shift (CLS) when images load
+- Wastes bandwidth on images the user may never scroll to
+
+### Action Plan
+
+#### Image 1: QR Code (`RecipeQRCode.tsx:45`)
+
+```tsx
+// BEFORE:
+<img
+  src={getQRUrl()}
+  alt='Recipe QR Code'
+  className='w-32 h-32'
+/>
+
+// AFTER:
+<img
+  src={getQRUrl()}
+  alt='Recipe QR Code'
+  className='w-32 h-32'
+  loading='lazy'
+  width={128}
+  height={128}
+/>
+```
+
+**Note:** QR codes are typically below the fold (in a share section). `loading="lazy"` is appropriate.
+
+#### Image 2: Photo Upload Previews (`PhotoUpload.tsx:133`)
+
+```tsx
+// BEFORE:
+<img src={preview.url} alt={preview.name} className='w-full h-full object-cover' />
+
+// AFTER:
+<img
+  src={preview.url}
+  alt={preview.name}
+  className='w-full h-full object-cover'
+  loading='lazy'
+  width={200}
+  height={200}
+/>
+```
+
+**Note:** Upload previews are generated from local blobs and appear in a form context. `loading="lazy"` prevents unnecessary decoding if many previews exist. The `width`/`height` are approximations matching the `aspect-square` container.
+
+#### Image 3: Admin User Avatar (`AdminUserDetailPage.tsx:150`)
+
+```tsx
+// BEFORE:
+<img
+  src={user.avatarUrl}
+  alt=''
+  className='w-20 h-20 rounded-full object-cover'
+/>
+
+// AFTER:
+<img
+  src={user.avatarUrl}
+  alt=''
+  className='w-20 h-20 rounded-full object-cover'
+  loading='lazy'
+  width={80}
+  height={80}
+/>
+```
+
+#### Image 4: User Profile Avatar (`UserProfilePage.tsx:100`)
+
+```tsx
+// BEFORE:
+<img
+  src={profile.avatarUrl}
+  alt=''
+  className='w-16 h-16 rounded-full object-cover'
+/>
+
+// AFTER:
+<img
+  src={profile.avatarUrl}
+  alt=''
+  className='w-16 h-16 rounded-full object-cover'
+  loading='lazy'
+  width={64}
+  height={64}
+/>
+```
+
+**Exception:** If an avatar is the very first visible element (above the fold), `loading="eager"` (the default) is acceptable. In this app, both avatar images appear within page content that is below the initial viewport on most screen sizes, so `lazy` is appropriate.
+
+#### Future Consideration: Responsive Images
+
+For a future iteration, consider:
+
+```tsx
+<picture>
+  <source srcset="/images/hero.webp" type="image/webp" />
+  <source srcset="/images/hero.jpg" type="image/jpeg" />
+  <img src="/images/hero.jpg" alt="..." loading="lazy" width={800} height={600} />
+</picture>
+```
+
+This is not needed now because the app serves user-uploaded content and API-generated QR codes (not optimizable at the HTML level), but it would be relevant if static marketing images or recipe photos with multiple resolutions are added.
 
 ---
 
-## Dependencies
+## L2 -- No preconnect/dns-prefetch Hints
 
-- H7 code splitting depends on React Router v7 lazy route API
-- M17 lazy images can be done incrementally on each component
-- M3 skeletons should be coordinated with H7 (Suspense fallbacks)
-- L7 and L2 are standalone 5-minute fixes
+**Priority:** Low
+**Status:** CONFIRMED
+
+### Evidence
+
+- `apps/web/index.html` -- only contains `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`
+- No `preconnect`, `dns-prefetch`, or `preload` hints
+- API calls go to `/api/v1` (same origin in production via Deno Deploy) or a proxied backend in dev
+- Google Fonts (`Inter`, `JetBrains Mono`) are referenced in `globals.css` via `--font-sans` and `--font-mono` but are system-fallback fonts (no external font loading detected)
+
+### Impact
+
+- If the API is on a separate domain in production, the browser must perform DNS + TCP + TLS handshake before the first API call -- adding 100-300ms of latency
+- Resource hints cost zero bytes at runtime and are purely beneficial
+
+### Action Plan
+
+**Modified `apps/web/index.html`:**
+
+```html
+<!DOCTYPE html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BrewForm</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Resource hints: preconnect to API origin (adjust domain for production) -->
+    <!--
+      If the API is on the same origin (e.g., Deno Deploy serving both SPA and API),
+      these hints are unnecessary and can be removed. Add them when the API is on a
+      separate domain (e.g., api.brewform.com).
+    -->
+    <!-- <link rel="preconnect" href="https://api.brewform.com" crossorigin /> -->
+    <!-- <link rel="dns-prefetch" href="https://api.brewform.com" /> -->
+
+    <!-- If using Google Fonts or an external font CDN, uncomment: -->
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com" /> -->
+    <!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /> -->
+    <!-- <link rel="dns-prefetch" href="https://fonts.googleapis.com" /> -->
+  </head>
+  <body>
+    <script>
+      if (sessionStorage.redirect) {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        history.replaceState(null, '', redirect);
+      }
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+**Key considerations:**
+
+1. **Same-origin API:** BrewForm currently proxies `/api/v1` to the same origin in production (Deno Deploy). In this configuration, `preconnect` to the API is unnecessary because the connection is already established. The hints are commented out with instructions to uncomment when the API moves to a separate domain.
+
+2. **When to uncomment:** If the deployment changes to `api.brewform.com` (separate subdomain or service), uncomment the preconnect/dns-prefetch lines and set the correct hostname.
+
+3. **`crossorigin` attribute:** Required on `preconnect` when the connection will be used for CORS requests (API calls with `Authorization` header). Without it, the browser opens a second connection.
+
+4. **`dns-prefetch` as fallback:** Older browsers that do not support `preconnect` still benefit from `dns-prefetch`. It only resolves DNS (no TCP/TLS), so it is strictly less useful but has broader support.
+
+5. **Font CDN:** The current codebase uses system fonts with `Inter` and `JetBrains Mono` as preferences (not loaded from a CDN). If Google Fonts or another CDN is added later, the preconnect hints for `fonts.googleapis.com` and `fonts.gstatic.com` should be uncommented.
+
+---
+
+## L7 -- No Scroll Restoration
+
+**Priority:** Low
+**Status:** CONFIRMED
+
+### Evidence
+
+- Zero instances of `ScrollRestoration` in `apps/web/src/`
+- Zero `scrollRestoration` in any file
+- Users who scroll down a recipe list, click a recipe, then press the browser back button are returned to the top of the list instead of their previous scroll position
+
+### Impact
+
+- Broken back-button navigation experience -- users lose their position in long lists
+- Especially painful on mobile where recipe lists require significant scrolling
+- Standard web behavior that users expect to work
+
+### Action Plan
+
+React Router v7 provides a `<ScrollRestoration />` component that automatically saves and restores scroll positions across navigation.
+
+#### Modified `apps/web/src/components/layout/Layout.tsx` (full file)
+
+This is the same file modified in H7 (Suspense boundary). The complete file with all performance changes applied:
+
+```tsx
+import { Suspense } from 'react';
+import { Outlet } from 'react-router';
+import { ScrollRestoration } from 'react-router';
+import { Navbar } from './Navbar';
+import { Footer } from './Footer';
+import { CookieConsent } from '../CookieConsent';
+import { PageSkeleton } from '../ui/Skeleton';
+
+export function Layout() {
+  return (
+    <div className='flex min-h-screen flex-col'>
+      <ScrollRestoration />
+      <Navbar />
+      <main className='flex-1'>
+        <Suspense fallback={<PageSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </main>
+      <Footer />
+      <CookieConsent />
+    </div>
+  );
+}
+```
+
+#### How `ScrollRestoration` Works
+
+1. **Automatic save:** On every navigation, it saves `window.scrollY` keyed by the current location
+2. **Automatic restore:** When navigating back (via browser back button or `navigate(-1)`), it restores the saved scroll position
+3. **New pages scroll to top:** Forward navigation to a new URL scrolls to the top (expected behavior)
+4. **Hash links respected:** If the URL has a `#hash`, it scrolls to that element instead
+5. **Session storage backed:** Scroll positions survive page refreshes
+
+#### Placement
+
+`<ScrollRestoration />` must be rendered inside a route that uses `createBrowserRouter` (which this app does). It should be placed as a child of the root layout, before any content that scrolls. It renders no visible DOM -- it is a side-effect-only component.
+
+---
+
+## Implementation Order
+
+Recommended order based on impact and dependency:
+
+| Step | Issue | Effort | Files Changed |
+|------|-------|--------|--------------|
+| 1 | L7 -- Scroll Restoration | 5 min | `Layout.tsx` |
+| 2 | M3 -- Skeleton Components | 30 min | New `Skeleton.tsx`, `RecipeDetailPage.tsx`, `RequireAuth.tsx` |
+| 3 | H7 -- Code Splitting | 20 min | `router.tsx`, `Layout.tsx` (already done in step 1-2) |
+| 4 | M17 -- Image Lazy Loading | 10 min | `RecipeQRCode.tsx`, `PhotoUpload.tsx`, `AdminUserDetailPage.tsx`, `UserProfilePage.tsx` |
+| 5 | L2 -- Resource Hints | 5 min | `index.html` |
+
+**Total estimated effort:** ~70 minutes
+
+Steps 1 and 2 should be done first because step 3 (code splitting) references the modified `Layout.tsx` that includes both `ScrollRestoration` and `Suspense`. Steps 4 and 5 are independent and can be done in any order.
+
+---
+
+## Verification Checklist
+
+After implementing all changes:
+
+- [ ] `deno task dev` starts without errors
+- [ ] Navigate to `/recipes` -- page loads eagerly (no loading flash)
+- [ ] Navigate to `/admin` -- observe network tab shows a separate chunk being loaded
+- [ ] Navigate to `/recipes/new` -- observe lazy chunk load
+- [ ] Navigate to `/settings` -- observe lazy chunk load
+- [ ] Scroll down recipe list, click a recipe, press back -- scroll position is restored
+- [ ] Open recipe detail with slow network throttle -- skeleton is visible during load
+- [ ] Check `RequireAuth` loading state -- shows `PageSkeleton` instead of "Loading..." text
+- [ ] Inspect `<img>` tags in DevTools -- all have `loading="lazy"`, `width`, and `height`
+- [ ] Run `deno task build` -- verify no new warnings, check chunk sizes in output
+- [ ] Test in light, dark, and coffee themes -- skeletons use correct background colors
+- [ ] Lighthouse performance audit -- compare TTI and bundle size before/after
+
+---
+
+## Files Created / Modified Summary
+
+| File | Action | Issue |
+|------|--------|-------|
+| `apps/web/src/components/ui/Skeleton.tsx` | **CREATE** | M3 |
+| `apps/web/src/router.tsx` | MODIFY | H7 |
+| `apps/web/src/components/layout/Layout.tsx` | MODIFY | H7, L7, M3 |
+| `apps/web/src/pages/recipes/RecipeDetailPage.tsx` | MODIFY | M3 |
+| `apps/web/src/components/auth/RequireAuth.tsx` | MODIFY | M3 |
+| `apps/web/src/components/qrcode/RecipeQRCode.tsx` | MODIFY | M17 |
+| `apps/web/src/components/photos/PhotoUpload.tsx` | MODIFY | M17 |
+| `apps/web/src/pages/admin/AdminUserDetailPage.tsx` | MODIFY | M17 (+ optional M3 cleanup) |
+| `apps/web/src/pages/users/UserProfilePage.tsx` | MODIFY | M17 |
+| `apps/web/index.html` | MODIFY | L2 |
