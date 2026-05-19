@@ -1,1 +1,1 @@
-{"mcpServers":{"serena":{"type":"sse","url":"http://localhost:10122/sse","disabled":false,"alwaysAllow":["get_current_config"]}}}
+{"mcpServers":{"serena":{"type":"sse","url":"http://localhost:10122/sse","disabled":false,"alwaysAllow":["get_current_config","read_memory","get_symbols_overview","search_for_pattern"]}}}
