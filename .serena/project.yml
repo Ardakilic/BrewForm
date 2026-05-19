@@ -83,7 +83,10 @@ excluded_tools: []
 # list of tools to include that would otherwise be disabled (particularly optional tools that are disabled by default).
 # This extends the existing inclusions (e.g. from the global configuration).
 # Find the list of tools here: https://oraios.github.io/serena/01-about/035_tools.html
-included_optional_tools: []
+included_optional_tools:
+  - delete_lines
+  - get_diagnostics_for_symbol
+  - insert_at_line
 
 # fixed set of tools to use as the base tool set (if non-empty), replacing Serena's default set of tools.
 # This cannot be combined with non-empty excluded_tools or included_optional_tools.
