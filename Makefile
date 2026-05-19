@@ -170,6 +170,9 @@ ci: fmt-check lint check build-web check-tests test-coverage ## Run full CI pipe
 serena-up: ## Start Serena MCP service
 	docker compose --profile serena up serena -d
 
+serena-down: ## Stop and remove Serena containers, networks
+	docker compose --profile serena down
+
 serena-stop: ## Stop Serena MCP service
 	docker compose --profile serena down serena
 
@@ -182,4 +185,4 @@ serena-index: ## Index project with Serena
 serena-health: ## Check Serena health
 	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
 
-.PHONY: help up down build logs restart install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-specific db-migrate db-generate db-push db-seed db-studio db-reset setup dev dev-api web-dev web-build preview ci serena-up serena-stop serena-logs serena-index serena-health
+.PHONY: help up down build logs restart install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-specific db-migrate db-generate db-push db-seed db-studio db-reset setup dev dev-api web-dev web-build preview ci serena-up serena-down serena-stop serena-logs serena-index serena-health
