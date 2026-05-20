@@ -74,6 +74,11 @@ export function validationError(c: Context, details: Array<{ field: string; mess
   return error(c, 'VALIDATION_ERROR', 'Validation failed', 400, details);
 }
 
+export function isEmailVerified(c: Context): boolean {
+  const user = c.get('user') as { emailVerifiedAt: Date | null } | null;
+  return !!user?.emailVerifiedAt;
+}
+
 /**
  * Hook for @hono/zod-validator that formats Zod issues into our standard
  * { success: false, error: { code, message, details } } envelope instead of

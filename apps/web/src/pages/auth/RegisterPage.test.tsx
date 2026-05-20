@@ -19,11 +19,9 @@ vi.mock('../../api/index', () => ({
     code = '';
     status = 500;
   },
-  clearTokens: vi.fn(),
-  getAccessToken: vi.fn(() => null),
-  setAccessToken: vi.fn(),
   authApi: {
     registrationStatus: vi.fn(),
+    logout: vi.fn().mockResolvedValue({ message: 'Logged out successfully' }),
   },
 }));
 

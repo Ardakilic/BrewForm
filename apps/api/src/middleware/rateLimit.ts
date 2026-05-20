@@ -1,7 +1,10 @@
 import type { Context, Next } from 'hono';
-import type { CacheProvider } from '../utils/cache/index.ts';
+import { cacheProvider } from '../utils/cache/singleton.ts';
 
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
 
 export function rateLimitMiddleware(options: {
   windowMs?: number;
@@ -15,14 +18,9 @@ export function rateLimitMiddleware(options: {
   return async (c: Context, next: Next) => {
     const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
     const key = `${keyPrefix}:${ip}`;
-
-    const cache = c.get('cache') as CacheProvider | undefined;
     const now = Date.now();
 
-    const entry = cache
-      ? await cache.get<{ count: number; resetAt: number }>(['ratelimit', key])
-      : null;
-
+    const entry = await cacheProvider.get<RateLimitEntry>(['ratelimit', key]);
     const current = entry || { count: 0, resetAt: now + windowMs };
 
     if (now > current.resetAt) {
@@ -32,9 +30,7 @@ export function rateLimitMiddleware(options: {
 
     current.count++;
 
-    if (cache) {
-      await cache.set(['ratelimit', key], current, { ttlMs: windowMs });
-    }
+    await cacheProvider.set(['ratelimit', key], current, { ttlMs: windowMs });
 
     c.header('X-RateLimit-Limit', String(maxRequests));
     c.header('X-RateLimit-Remaining', String(Math.max(0, maxRequests - current.count)));
@@ -54,22 +50,33 @@ export function rateLimitMiddleware(options: {
   };
 }
 
-export function authRateLimitMiddleware() {
-  const windowMs = 15 * 60_000;
-  const maxAttempts = 5;
+export function authRateLimitMiddleware(options: {
+  windowMs?: number;
+  maxAttempts?: number;
+} = {}) {
+  const windowMs = options.windowMs || 15 * 60_000;
+  const maxAttempts = options.maxAttempts || 5;
 
   return async (c: Context, next: Next) => {
     const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
-    const key = `auth:${ip}`;
+    const key = `auth-ratelimit:${ip}`;
     const now = Date.now();
 
-    const entry = loginAttempts.get(key);
-    if (entry && now > entry.resetAt) {
-      loginAttempts.delete(key);
+    const entry = await cacheProvider.get<RateLimitEntry>(['ratelimit', key]);
+    const current = entry || { count: 0, resetAt: now + windowMs };
+
+    if (now > current.resetAt) {
+      current.count = 0;
+      current.resetAt = now + windowMs;
     }
 
-    const current = loginAttempts.get(key) || { count: 0, resetAt: now + windowMs };
     current.count++;
+
+    await cacheProvider.set(['ratelimit', key], current, { ttlMs: windowMs });
+
+    c.header('X-RateLimit-Limit', String(maxAttempts));
+    c.header('X-RateLimit-Remaining', String(Math.max(0, maxAttempts - current.count)));
+    c.header('X-RateLimit-Reset', String(Math.ceil(current.resetAt / 1000)));
 
     if (current.count > maxAttempts) {
       return c.json({
@@ -81,7 +88,6 @@ export function authRateLimitMiddleware() {
       }, 429);
     }
 
-    loginAttempts.set(key, current);
     await next();
   };
 }

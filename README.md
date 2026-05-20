@@ -128,7 +128,7 @@ Access the Serena dashboard at http://localhost:34283.
 | Command | Description |
 |---------|-------------|
 | `make serena-up` | Start Serena MCP service |
-| `make serena-stop` | Stop Serena MCP service |
+| `make serena-down` | Down Serena MCP service (removes container) |
 | `make serena-logs` | View Serena logs |
 | `make serena-index` | Re-index the project workspace |
 | `make serena-health` | Health check |

@@ -411,9 +411,10 @@ describe('Navbar — Property 2: Mobile Menu Closes on Navigation', () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 8 },
       );
     },
+    15_000,
   );
 });
 

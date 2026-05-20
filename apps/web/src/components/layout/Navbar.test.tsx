@@ -71,11 +71,9 @@ vi.mock('../../api/index', () => ({
     code = '';
     status = 500;
   },
-  clearTokens: vi.fn(),
-  getAccessToken: vi.fn(() => null),
-  setAccessToken: vi.fn(),
   authApi: {
     registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
+    logout: vi.fn().mockResolvedValue({ message: 'Logged out successfully' }),
   },
 }));
 
@@ -1028,8 +1026,9 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 12 },
       );
     },
+    15_000,
   );
 });

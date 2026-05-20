@@ -10,13 +10,11 @@ vi.mock('../../api/index', () => ({
   authApi: {
     login: vi.fn(),
     registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
+    logout: vi.fn().mockResolvedValue({ message: 'Logged out successfully' }),
   },
   userApi: {
     me: vi.fn().mockRejectedValue(new Error('Not authenticated')),
   },
-  clearTokens: vi.fn(),
-  getAccessToken: vi.fn().mockReturnValue(null),
-  setAccessToken: vi.fn(),
   api: {
     get: vi.fn(),
     post: vi.fn(),
@@ -39,7 +37,7 @@ vi.mock('../../api/index', () => ({
 import { authApi } from '../../api/index';
 
 function renderLoginPage() {
-  return render(
+  render(
     <MemoryRouter>
       <I18nProvider>
         <AuthProvider>
@@ -50,15 +48,24 @@ function renderLoginPage() {
   );
 }
 
+async function renderLoginPageAndWait() {
+  renderLoginPage();
+  await waitFor(() => {
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+  });
+}
+
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
   });
 
-  it('should render the login form with email, password, and submit button', () => {
+  it('should render the login form with email, password, and submit button', async () => {
     renderLoginPage();
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    });
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
   });
@@ -108,11 +115,9 @@ describe('LoginPage', () => {
         isAdmin: false,
         onboardingCompleted: false,
       },
-      accessToken: 'access-token-xxx',
-      refreshToken: 'refresh-token-xxx',
     });
 
-    renderLoginPage();
+    await renderLoginPageAndWait();
     await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'password123');
     await userEvent.click(screen.getByRole('checkbox', { name: /remember me/i }));
@@ -127,32 +132,6 @@ describe('LoginPage', () => {
     });
   });
 
-  it('should store brewform_remember_me in localStorage when rememberMe is true', async () => {
-    vi.mocked(authApi.login).mockResolvedValue({
-      user: {
-        id: '1',
-        email: 'test@test.com',
-        username: 'testuser',
-        displayName: null,
-        avatarUrl: null,
-        isAdmin: false,
-        onboardingCompleted: false,
-      },
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
-    });
-
-    renderLoginPage();
-    await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
-    await userEvent.type(screen.getByLabelText(/password/i), 'password123');
-    await userEvent.click(screen.getByRole('checkbox', { name: /remember me/i }));
-    await userEvent.click(screen.getByRole('button', { name: /log in/i }));
-
-    await waitFor(() => {
-      expect(localStorage.getItem('brewform_remember_me')).toBe('true');
-    });
-  });
-
   it('should call login with rememberMe: false when checkbox is not checked', async () => {
     const loginMock = vi.mocked(authApi.login).mockResolvedValue({
       user: {
@@ -164,11 +143,9 @@ describe('LoginPage', () => {
         isAdmin: false,
         onboardingCompleted: false,
       },
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
     });
 
-    renderLoginPage();
+    await renderLoginPageAndWait();
     await userEvent.type(screen.getByLabelText(/email/i), 'other@test.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'password456');
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
@@ -193,11 +170,9 @@ describe('LoginPage', () => {
         isAdmin: false,
         onboardingCompleted: false,
       },
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
     });
 
-    renderLoginPage();
+    await renderLoginPageAndWait();
     await userEvent.type(screen.getByLabelText(/email/i), 'other@test.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'password456');
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
@@ -209,7 +184,7 @@ describe('LoginPage', () => {
 
   it('should display error message on login failure', async () => {
     vi.mocked(authApi.login).mockRejectedValue(new Error('Invalid email or password'));
-    renderLoginPage();
+    await renderLoginPageAndWait();
     await userEvent.type(screen.getByLabelText(/email/i), 'bad@test.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'wrong');
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
@@ -225,7 +200,7 @@ describe('LoginPage', () => {
     });
     vi.mocked(authApi.login).mockReturnValue(loginPromise as Promise<unknown>);
 
-    renderLoginPage();
+    await renderLoginPageAndWait();
     await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
     await userEvent.type(screen.getByLabelText(/password/i), 'password123');
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
@@ -242,18 +217,16 @@ describe('LoginPage', () => {
         isAdmin: false,
         onboardingCompleted: false,
       },
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
     });
   });
 
-  it('should require email field', () => {
-    renderLoginPage();
+  it('should require email field', async () => {
+    await renderLoginPageAndWait();
     expect(screen.getByLabelText(/email/i)).toBeRequired();
   });
 
-  it('should require password field', () => {
-    renderLoginPage();
+  it('should require password field', async () => {
+    await renderLoginPageAndWait();
     expect(screen.getByLabelText(/password/i)).toBeRequired();
   });
 });

@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { CommentCreateSchema, PaginationSchema } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import { error, isEmailVerified, paginated, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const comment = new Hono<AppEnv>();
@@ -13,6 +13,9 @@ comment.post(
   authMiddleware,
   zValidator('json', CommentCreateSchema),
   async (c) => {
+    if (!isEmailVerified(c)) {
+      return error(c, 'EMAIL_NOT_VERIFIED', 'Please verify your email to perform this action', 403);
+    }
     const recipeId = c.req.param('recipeId')!;
     const userId = c.get('userId') as string;
     const user = c.get('user') as { isAdmin: boolean } | null;

@@ -134,6 +134,7 @@ export const users = pgTable(
   {
     id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
     email: varchar('email', { length: 255 }).notNull().unique(),
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
     username: varchar('username', { length: 255 }).notNull().unique(),
     passwordHash: varchar('password_hash', { length: 255 }).notNull(),
     displayName: varchar('display_name', { length: 255 }),
@@ -631,6 +632,25 @@ export const passwordResets = pgTable(
   ],
 );
 
+export const emailVerificationTokens = pgTable(
+  'email_verification_token',
+  {
+    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    token: varchar('token', { length: 255 }).notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('email_verification_token_token_idx').on(table.token),
+    index('email_verification_token_user_id_idx').on(table.userId),
+    index('email_verification_token_expires_at_idx').on(table.expiresAt),
+  ],
+);
+
 export const reports = pgTable(
   'report',
   {
@@ -674,6 +694,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   beans: many(beans),
   auditLogs: many(auditLogs),
   passwordResets: many(passwordResets),
+  emailVerificationTokens: many(emailVerificationTokens),
   reports: many(reports),
 }));
 
@@ -941,3 +962,13 @@ export const reportsRelations = relations(reports, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const emailVerificationTokensRelations = relations(
+  emailVerificationTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [emailVerificationTokens.userId],
+      references: [users.id],
+    }),
+  }),
+);

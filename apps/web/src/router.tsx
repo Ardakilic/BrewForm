@@ -38,17 +38,21 @@ import { AdminCachePage } from './pages/admin/AdminCachePage';
 import { AdminUserCreatePage } from './pages/admin/AdminUserCreatePage';
 import { AdminUserEditPage } from './pages/admin/AdminUserEditPage';
 import { AdminUserDetailPage } from './pages/admin/AdminUserDetailPage';
+import { RootErrorBoundary } from './components/ErrorBoundary';
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
+    errorElement: <RootErrorBoundary />,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
+      { path: 'verify-email', element: <VerifyEmailPage /> },
       { path: 'recipes', element: <RecipeListPage /> },
       {
         path: 'recipes/starred',
@@ -132,6 +136,7 @@ export const router = createBrowserRouter([
         <AdminLayout />
       </RequireAuth>
     ),
+    errorElement: <RootErrorBoundary />,
     children: [
       { index: true, element: <AdminDashboard /> },
       { path: 'users', element: <AdminUsersPage /> },

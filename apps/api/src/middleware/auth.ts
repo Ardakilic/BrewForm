@@ -1,27 +1,26 @@
-/**
- * Authentication middleware for BrewForm API.
- *
- * - authMiddleware: Required auth. Rejects missing/invalid tokens, banned users,
- *   and soft-deleted users. Sets userId and user on Hono context.
- * - optionalAuthMiddleware: Inspects token if present but allows anonymous requests.
- *   Sets userId=null and user=null for unauthenticated requests. Used for endpoints
- *   like GET /recipes/:slug where private recipes are only visible to their author.
- * - adminMiddleware: Must be used AFTER authMiddleware. Rejects non-admin users (403).
- */
 import type { Context, Next } from 'hono';
+import { getCookie } from 'hono/cookie';
 import { verifyJwt } from '../modules/auth/jwt.ts';
 import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 import { forbidden, unauthorized } from '../utils/response/index.ts';
 
-export async function authMiddleware(c: Context, next: Next) {
+function extractAccessToken(c: Context): string | undefined {
   const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+  return getCookie(c, 'brewform_access_token');
+}
+
+export async function authMiddleware(c: Context, next: Next) {
+  const token = extractAccessToken(c);
+
+  if (!token) {
     return unauthorized(c, 'Missing or invalid Authorization header');
   }
 
-  const token = authHeader.slice(7);
   try {
     const payload = await verifyJwt(token);
     if (!payload.sub || payload.type !== 'access') {
@@ -49,15 +48,15 @@ export async function authMiddleware(c: Context, next: Next) {
 }
 
 export async function optionalAuthMiddleware(c: Context, next: Next) {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  const token = extractAccessToken(c);
+
+  if (!token) {
     c.set('userId', null);
     c.set('user', null);
     await next();
     return;
   }
 
-  const token = authHeader.slice(7);
   try {
     const payload = await verifyJwt(token);
     if (payload.sub && payload.type === 'access') {
