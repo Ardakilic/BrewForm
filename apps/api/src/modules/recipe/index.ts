@@ -9,6 +9,8 @@ import {
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import * as model from './model.ts';
+import * as tasteService from '../taste/service.ts';
+import { cacheProvider } from '../../utils/cache/singleton.ts';
 import {
   error,
   isEmailVerified,
@@ -127,12 +129,14 @@ recipe.get(
       // Transform the Drizzle result into the shape the frontend expects:
       // - currentVersion: the latest version (versions[0])
       // - tasteNotes: flattened from currentVersion.tasteNotes[].tasteNote
+      //   with resolved rootCategoryName for radar chart
       // - equipment: flattened from currentVersion.equipment[].equipment
       // - userLiked / userFavourited: actual status for the authenticated user
       const currentVersion = (r as any).versions?.[0] ?? null;
       const userId = c.get('userId');
       const recipeId = (r as any).id;
-      const [likeStatus, favouriteCount, ratingStats, userRating] = await Promise.all([
+      const [rootMap, likeStatus, favouriteCount, ratingStats, userRating] = await Promise.all([
+        tasteService.getTasteNoteRootMap(cacheProvider!),
         userId
           ? model.getUserLikeStatus(userId, recipeId)
           : Promise.resolve({ userLiked: false, userFavourited: false }),
@@ -145,7 +149,8 @@ recipe.get(
         currentVersion,
         tasteNotes: currentVersion?.tasteNotes?.map((t: any) => ({
           ...t.tasteNote,
-          tasteNoteId: t.tasteNote?.id, // explicit tasteNoteId for frontend hierarchy resolution
+          tasteNoteId: t.tasteNote?.id,
+          rootCategoryName: rootMap[t.tasteNote?.id] ?? t.tasteNote?.name,
           intensity: t.intensity ?? 1,
         })) ?? [],
         equipment: currentVersion?.equipment?.map((e: any) => ({

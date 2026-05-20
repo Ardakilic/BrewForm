@@ -35,10 +35,27 @@ export function RecipeDetailPage() {
   const [allTasteNotes, setAllTasteNotes] = useState<any[]>([]);
 
   useEffect(() => {
-    // Fetch the flat taste notes hierarchy once for root category resolution
-    tasteApi.flat().then((data) => {
-      setAllTasteNotes(Array.isArray(data) ? data as any[] : []);
-    }).catch(() => {});
+    let cancelled = false;
+    let retries = 0;
+    const maxRetries = 5;
+
+    const fetchFlat = () => {
+      tasteApi.flat().then((data) => {
+        if (cancelled) return;
+        const notes = Array.isArray(data) ? data as any[] : [];
+        if (notes.length > 0) {
+          setAllTasteNotes(notes);
+        } else if (retries < maxRetries) {
+          retries++;
+          setTimeout(fetchFlat, retries * 1000);
+        }
+      }).catch(() => {});
+    };
+
+    fetchFlat();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

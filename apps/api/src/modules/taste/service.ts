@@ -3,6 +3,7 @@ import type { CacheProvider } from '../../utils/cache/index.ts';
 
 const TASTE_CACHE_KEY = ['cache', 'taste-notes'];
 const TASTE_FLAT_CACHE_KEY = ['cache', 'taste-notes-flat'];
+const TASTE_ROOT_MAP_CACHE_KEY = ['cache', 'taste-notes-root-map'];
 const TASTE_CACHE_TTL = 2592000000; // 30 days
 
 export async function getHierarchy(cache: CacheProvider) {
@@ -10,7 +11,9 @@ export async function getHierarchy(cache: CacheProvider) {
   if (cached !== null && cached.length > 0) return cached;
 
   const hierarchy = await model.getHierarchy();
-  await cache.set(TASTE_CACHE_KEY, hierarchy, { ttlMs: TASTE_CACHE_TTL });
+  if (hierarchy.length > 0) {
+    await cache.set(TASTE_CACHE_KEY, hierarchy, { ttlMs: TASTE_CACHE_TTL });
+  }
   return hierarchy;
 }
 
@@ -50,8 +53,37 @@ export async function getFlatList(cache: CacheProvider) {
   if (cached !== null && cached.length > 0) return cached;
 
   const allNotes = await model.findAll();
-  await cache.set(TASTE_FLAT_CACHE_KEY, allNotes, { ttlMs: TASTE_CACHE_TTL });
+  if (allNotes.length > 0) {
+    await cache.set(TASTE_FLAT_CACHE_KEY, allNotes, { ttlMs: TASTE_CACHE_TTL });
+  }
   return allNotes;
+}
+
+export async function getTasteNoteRootMap(cache: CacheProvider): Promise<Record<string, string>> {
+  const cached = await cache.get<Record<string, string>>(TASTE_ROOT_MAP_CACHE_KEY);
+  if (cached !== null) return cached;
+
+  const allNotes = await getFlatList(cache);
+  const noteMap = new Map<string, any>();
+  for (const note of allNotes) {
+    noteMap.set(note.id, note);
+  }
+
+  const rootMap: Record<string, string> = {};
+  for (const note of allNotes) {
+    let current = noteMap.get(note.id);
+    if (!current) continue;
+    while (current.depth > 0) {
+      if (!current.parentId) break;
+      const parent = noteMap.get(current.parentId);
+      if (!parent) break;
+      current = parent;
+    }
+    rootMap[note.id] = current.name;
+  }
+
+  await cache.set(TASTE_ROOT_MAP_CACHE_KEY, rootMap, { ttlMs: TASTE_CACHE_TTL });
+  return rootMap;
 }
 
 export async function createTasteNote(
