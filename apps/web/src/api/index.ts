@@ -14,8 +14,7 @@ export const authApi = {
     api.post<{ message: string }>('/auth/reset-password', data),
   registrationStatus: () => api.get<{ enabled: boolean }>('/auth/registration-status'),
   sendVerification: () => api.post<{ message: string }>('/auth/send-verification', {}),
-  verifyEmail: (data: { token: string }) =>
-    api.post<{ message: string }>('/auth/verify-email', data),
+  verifyEmail: (token: string) => api.post<{ message: string }>('/auth/verify-email', { token }),
 };
 
 export const userApi = {

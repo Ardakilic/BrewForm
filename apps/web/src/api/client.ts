@@ -26,9 +26,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         headers,
         credentials: 'include',
       });
-    } else {
-      globalThis.location.href = '/login';
-      throw new Error('Session expired');
     }
   }
 

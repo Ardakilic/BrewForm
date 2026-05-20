@@ -6,19 +6,21 @@ import { users } from '@brewform/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 import { forbidden, unauthorized } from '../utils/response/index.ts';
 
-function extractAccessToken(c: Context): string | undefined {
+function extractToken(c: Context): string | null {
+  const cookie = getCookie(c, 'brewform_access_token');
+  if (cookie) return cookie;
+
   const authHeader = c.req.header('Authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.slice(7);
-  }
-  return getCookie(c, 'brewform_access_token');
+  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7);
+
+  return null;
 }
 
 export async function authMiddleware(c: Context, next: Next) {
-  const token = extractAccessToken(c);
+  const token = extractToken(c);
 
   if (!token) {
-    return unauthorized(c, 'Missing or invalid Authorization header');
+    return unauthorized(c, 'Missing or invalid authentication');
   }
 
   try {
@@ -48,7 +50,7 @@ export async function authMiddleware(c: Context, next: Next) {
 }
 
 export async function optionalAuthMiddleware(c: Context, next: Next) {
-  const token = extractAccessToken(c);
+  const token = extractToken(c);
 
   if (!token) {
     c.set('userId', null);
