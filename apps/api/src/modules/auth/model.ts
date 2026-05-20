@@ -1,5 +1,10 @@
 import { db } from '@brewform/db';
-import { passwordResets, userPreferences, users } from '@brewform/db/schema';
+import {
+  emailVerificationTokens,
+  passwordResets,
+  userPreferences,
+  users,
+} from '@brewform/db/schema';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import { compareSync, hashSync } from 'bcryptjs';
 
@@ -98,4 +103,46 @@ export async function isUsernameTaken(username: string, excludeId?: string) {
   if (excludeId) conditions.push(ne(users.id, excludeId));
   const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
   return !!result;
+}
+
+async function hashToken(raw: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function createEmailVerificationToken(
+  userId: string,
+  token: string,
+  expiresAt: Date,
+) {
+  const hashed = await hashToken(token);
+  const [result] = await db.insert(emailVerificationTokens).values({
+    userId,
+    token: hashed,
+    expiresAt,
+  }).returning();
+  return result;
+}
+
+export async function findEmailVerificationByToken(token: string) {
+  const hashed = await hashToken(token);
+  const result = await db.select().from(emailVerificationTokens)
+    .where(eq(emailVerificationTokens.token, hashed))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function markEmailVerified(userId: string, tokenId: string) {
+  await db.transaction(async (tx) => {
+    const [consumed] = await tx.update(emailVerificationTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(emailVerificationTokens.id, tokenId), isNull(emailVerificationTokens.usedAt)))
+      .returning({ id: emailVerificationTokens.id });
+    if (!consumed) {
+      throw new Error('TOKEN_ALREADY_USED');
+    }
+    await tx.update(users)
+      .set({ emailVerifiedAt: new Date() })
+      .where(eq(users.id, userId));
+  });
 }

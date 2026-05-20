@@ -44,12 +44,14 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
         <div>
           <label
+            htmlFor='email'
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
             {t('auth.email')}
           </label>
           <input
+            id='email'
             type='email'
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -60,12 +62,14 @@ export function LoginPage() {
         </div>
         <div>
           <label
+            htmlFor='password'
             className='mb-1 block text-sm font-medium'
             style={{ color: 'var(--text-secondary)' }}
           >
             {t('auth.password')}
           </label>
           <input
+            id='password'
             type='password'
             value={password}
             onChange={(e) => setPassword(e.target.value)}

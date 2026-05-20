@@ -119,6 +119,7 @@ async function seedUsers(tx: any) {
     displayName: 'BrewForm Admin',
     isAdmin: true,
     onboardingCompleted: true,
+    emailVerifiedAt: new Date(),
   }).returning();
 
   await tx.insert(userPreferences).values({ userId: admin.id });
@@ -133,6 +134,7 @@ async function seedUsers(tx: any) {
       displayName: userData.displayName,
       bio: userData.bio,
       onboardingCompleted: userData.onboardingCompleted,
+      emailVerifiedAt: new Date(),
     }).returning();
 
     await tx.insert(userPreferences).values({

@@ -189,7 +189,7 @@ Connect to the SSE endpoint at `http://localhost:10122/sse`.
 | Command | Description |
 |---------|-------------|
 | `make serena-up` | Start Serena MCP service (uses `--profile serena`) |
-| `make serena-stop` | Stop Serena MCP service |
+| `make serena-down` | Down Serena MCP service (removes container) |
 | `make serena-logs` | View Serena container logs |
 | `make serena-index` | Re-index the project workspace |
 | `make serena-health` | Health check — verifies SSE endpoint responds |

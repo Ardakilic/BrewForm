@@ -702,9 +702,12 @@ const token = getCookie(c, 'brewform_access_token')
 4. **Logout** -- Add server-side endpoint that clears cookies:
 
 ```ts
+import { deleteCookie } from 'hono/cookie';
+
 app.post('/auth/logout', (c) => {
-  setCookie(c, 'brewform_access_token', '', { maxAge: 0, path: '/' });
-  setCookie(c, 'brewform_refresh_token', '', { maxAge: 0, path: '/api/v1/auth/refresh' });
+  // deleteCookie only accepts path, secure, and domain (not httpOnly/sameSite)
+  deleteCookie(c, 'brewform_access_token', { path: '/' });
+  deleteCookie(c, 'brewform_refresh_token', { path: '/api/v1/auth/refresh' });
   return c.json({ success: true });
 });
 ```
@@ -753,10 +756,12 @@ emailVerificationExpiry: timestamp('email_verification_expiry'),
    - Clear token fields
    - Return tokens (or redirect to login)
 
-4. **Login guard** -- Check `emailVerified` in login handler:
+4. **Frontend VerifyEmailPage** -- After successful verification, call `refreshUser()` from `AuthContext` before setting success status. This ensures `emailVerifiedAt` is updated in the context and the `EmailVerificationBanner` disappears immediately without requiring a page reload.
+
+5. **Login guard** -- Check `emailVerified` in login handler:
    - If not verified, return 403 with `{ error: 'Email not verified', resendUrl: '/api/v1/auth/resend-verification' }`
 
-5. **Resend endpoint** -- Add `POST /api/v1/auth/resend-verification` with rate limiting.
+6. **Resend endpoint** -- Add `POST /api/v1/auth/resend-verification` with rate limiting.
 
 **Effort:** Medium (6-8 hours)
 

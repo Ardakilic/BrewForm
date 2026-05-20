@@ -2,6 +2,7 @@ import { config } from '../../config/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
 import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
+import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
 import nodemailer from 'npm:nodemailer';
 
 const logger = createLogger('email');
@@ -62,4 +63,16 @@ export async function sendPasswordResetEmail(to: string, token: string, username
     app_name: 'BrewForm',
   });
   await sendEmail(to, 'Reset your BrewForm password', html);
+}
+
+export async function sendVerificationEmail(to: string, token: string, username: string) {
+  const baseUrl = config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173';
+  const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
+
+  const html = renderTemplate(verifyEmailTemplate, {
+    username,
+    verify_url: verifyUrl,
+    app_name: 'BrewForm',
+  });
+  await sendEmail(to, 'Verify your BrewForm email', html);
 }

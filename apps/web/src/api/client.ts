@@ -1,80 +1,32 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
-let accessToken: string | null = null;
-
-export function setAccessToken(token: string | null) {
-  accessToken = token;
-  if (token) {
-    localStorage.setItem('brewform_access_token', token);
-  } else {
-    localStorage.removeItem('brewform_access_token');
-  }
-}
-
-export function getAccessToken(): string | null {
-  if (!accessToken) {
-    accessToken = localStorage.getItem('brewform_access_token');
-  }
-  return accessToken;
-}
-
-export function clearTokens() {
-  accessToken = null;
-  localStorage.removeItem('brewform_access_token');
-  localStorage.removeItem('brewform_refresh_token');
-  localStorage.removeItem('brewform_remember_me');
-}
-
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('brewform_refresh_token');
-  if (!refreshToken) return null;
-
-  const rememberMe = localStorage.getItem('brewform_remember_me') === 'true';
-
-  try {
-    const response = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken, rememberMe }),
-    });
-    const data = await response.json();
-    if (data.success) {
-      setAccessToken(data.data.accessToken);
-      localStorage.setItem('brewform_refresh_token', data.data.refreshToken);
-      return data.data.accessToken;
-    }
-  } catch {
-    clearTokens();
-  }
-  return null;
-}
-
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   let response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
-  if (response.status === 401 && token) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      headers['Authorization'] = `Bearer ${newToken}`;
+  if (response.status === 401 && !endpoint.startsWith('/auth/')) {
+    const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+      credentials: 'include',
+    });
+
+    if (refreshResponse.ok) {
       response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers,
+        credentials: 'include',
       });
     } else {
-      clearTokens();
       globalThis.location.href = '/login';
       throw new Error('Session expired');
     }

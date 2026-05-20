@@ -1,6 +1,6 @@
 import * as jwt from './jwt.ts';
 import * as model from './model.ts';
-import { sendPasswordResetEmail, sendWelcomeEmail } from './email.ts';
+import { sendPasswordResetEmail, sendVerificationEmail } from './email.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { config } from '../../config/env.ts';
 // Standard dedup approach for future OAuth/social login:
@@ -61,9 +61,9 @@ export async function register(data: {
   const refreshToken = await jwt.signRefreshToken(user.id);
 
   try {
-    await sendWelcomeEmail(user.email, user.username);
+    await sendVerificationToken(user.id, user.email, user.username);
   } catch (err) {
-    logger.warn({ err }, 'Failed to send welcome email');
+    logger.warn({ err }, 'Failed to send verification email');
   }
 
   return { user, accessToken, refreshToken };
@@ -98,7 +98,7 @@ export async function login(email: string, password: string, rememberMe = false)
   return { user, accessToken, refreshToken };
 }
 
-export async function refreshAccessToken(refreshToken: string, rememberMe = false) {
+export async function refreshAccessToken(refreshToken: string) {
   const payload = await jwt.verifyJwt(refreshToken);
   if (payload.type !== 'refresh') {
     throw new Error('INVALID_TOKEN_TYPE');
@@ -120,11 +120,12 @@ export async function refreshAccessToken(refreshToken: string, rememberMe = fals
     isAdmin: user.isAdmin,
   });
 
-  const newRefreshToken = rememberMe
+  const wasRememberMe = jwt.isLongLivedRefreshToken(payload);
+  const newRefreshToken = wasRememberMe
     ? await jwt.signRefreshToken(user.id, config.JWT_REMEMBER_ME_EXPIRY)
     : await jwt.signRefreshToken(user.id);
 
-  return { user, accessToken: newAccessToken, refreshToken: newRefreshToken };
+  return { user, accessToken: newAccessToken, refreshToken: newRefreshToken, wasRememberMe };
 }
 
 export async function requestPasswordReset(email: string) {
@@ -170,4 +171,27 @@ export async function getAuthenticatedUser(userId: string) {
     throw new Error('USER_NOT_FOUND');
   }
   return user;
+}
+
+export async function sendVerificationToken(userId: string, email: string, username: string) {
+  const token = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 24 * 3600 * 1000);
+
+  await model.createEmailVerificationToken(userId, token, expiresAt);
+  await sendVerificationEmail(email, token, username);
+}
+
+export async function verifyEmail(token: string) {
+  const record = await model.findEmailVerificationByToken(token);
+  if (!record) {
+    throw new Error('INVALID_VERIFICATION_TOKEN');
+  }
+  if (record.usedAt) {
+    throw new Error('TOKEN_ALREADY_USED');
+  }
+  if (new Date(record.expiresAt) < new Date()) {
+    throw new Error('TOKEN_EXPIRED');
+  }
+
+  await model.markEmailVerified(record.userId, record.id);
 }

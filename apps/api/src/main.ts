@@ -15,7 +15,7 @@
  *   5. Exit cleanly
  *
  * Middleware stack (applied in order):
- *   cors → requestId → rateLimit(100/min) → cache injection → routes
+ *   cors → requestId → secureHeaders → rateLimit(100/min) → cache injection → routes
  */
 import { Hono } from 'hono';
 import * as path from 'jsr:@std/path';
@@ -24,6 +24,7 @@ import { corsMiddleware } from './middleware/cors.ts';
 import { requestIdMiddleware } from './middleware/requestId.ts';
 import { errorHandler } from './middleware/errorHandler.ts';
 import { rateLimitMiddleware } from './middleware/rateLimit.ts';
+import { secureHeaders } from 'hono/secure-headers';
 import { createCacheProvider } from './utils/cache/index.ts';
 import type { CacheProvider } from './utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
@@ -44,6 +45,32 @@ const app = new Hono<{ Variables: Variables }>();
 
 app.use('*', corsMiddleware);
 app.use('*', requestIdMiddleware);
+app.use(
+  '*',
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+    strictTransportSecurity: 'max-age=63072000; includeSubDomains; preload',
+    xContentTypeOptions: 'nosniff',
+    xFrameOptions: 'DENY',
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    permissionsPolicy: {
+      camera: [],
+      microphone: [],
+      geolocation: [],
+    },
+  }),
+);
 app.use('*', rateLimitMiddleware({ windowMs: 60_000, maxRequests: 100 }));
 app.use('*', async (c, next) => {
   c.set('cache', cacheProvider);

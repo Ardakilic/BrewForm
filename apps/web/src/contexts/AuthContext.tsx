@@ -1,9 +1,10 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-import { authApi, clearTokens, getAccessToken, setAccessToken, userApi } from '../api/index';
+import { authApi, userApi } from '../api/index';
 
 interface AuthUser {
   id: string;
   email: string;
+  emailVerifiedAt: string | null;
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
@@ -19,7 +20,7 @@ interface AuthContextType {
   register: (
     data: { email: string; username: string; password: string; displayName?: string },
   ) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -34,7 +35,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await userApi.me();
       setUser(userData);
     } catch {
-      clearTokens();
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -42,23 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (token) {
-      refreshUser();
-    } else {
-      setIsLoading(false);
-    }
+    refreshUser();
   }, [refreshUser]);
 
   async function login(email: string, password: string, rememberMe = false) {
-    if (rememberMe) {
-      localStorage.setItem('brewform_remember_me', 'true');
-    } else {
-      localStorage.removeItem('brewform_remember_me');
-    }
     const response = await authApi.login({ email, password, rememberMe });
-    setAccessToken(response.accessToken);
-    localStorage.setItem('brewform_refresh_token', response.refreshToken);
     setUser(response.user);
   }
 
@@ -66,13 +54,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: { email: string; username: string; password: string; displayName?: string },
   ) {
     const response = await authApi.register(data);
-    setAccessToken(response.accessToken);
-    localStorage.setItem('brewform_refresh_token', response.refreshToken);
     setUser(response.user);
   }
 
-  function logout() {
-    clearTokens();
+  async function logout() {
+    try {
+      await authApi.logout();
+    } catch {
+      // Server might be unreachable; clear local state anyway
+    }
     setUser(null);
   }
 

@@ -9,7 +9,13 @@ import {
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import * as model from './model.ts';
-import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import {
+  error,
+  isEmailVerified,
+  paginated,
+  success,
+  zodValidationHook,
+} from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const recipe = new Hono<AppEnv>();
@@ -179,6 +185,9 @@ recipe.post(
   authMiddleware,
   zValidator('json', RecipeCreateSchema, zodValidationHook),
   async (c) => {
+    if (!isEmailVerified(c)) {
+      return error(c, 'EMAIL_NOT_VERIFIED', 'Please verify your email to perform this action', 403);
+    }
     const authorId = c.get('userId') as string;
     const body = c.req.valid('json');
     try {
