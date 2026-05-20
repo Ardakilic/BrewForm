@@ -12,7 +12,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     credentials: 'include',
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && !endpoint.startsWith('/auth/')) {
     const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

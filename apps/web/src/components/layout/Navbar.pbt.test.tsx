@@ -374,7 +374,7 @@ describe('Navbar — Property 2: Mobile Menu Closes on Navigation', () => {
         fc.asyncProperty(
           fc.integer({ min: 0, max: MOBILE_NAV_ITEMS.length - 1 }),
           async (navItemIndex) => {
-            const user = userEvent.setup();
+            const user = userEvent.setup({ delay: null });
 
             const { unmount } = render(<Navbar />);
 
@@ -411,10 +411,9 @@ describe('Navbar — Property 2: Mobile Menu Closes on Navigation', () => {
             }
           },
         ),
-        { numRuns: 8 },
+        { numRuns: 100 },
       );
     },
-    15_000,
   );
 });
 

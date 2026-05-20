@@ -25,7 +25,6 @@ const authRateLimit = authRateLimitMiddleware({ windowMs: 15 * 60_000, maxAttemp
 
 const CookieRefreshSchema = z.object({
   refreshToken: z.string().optional(),
-  rememberMe: z.boolean().optional().default(false),
 });
 
 function setAuthCookies(
@@ -163,16 +162,24 @@ auth.post(
       401: { description: 'Refresh token invalid or expired' },
     },
   }),
-  zValidator('json', CookieRefreshSchema),
   async (c) => {
-    const body = c.req.valid('json');
-    const refreshTokenValue = body.refreshToken || getCookie(c, 'brewform_refresh_token');
+    let bodyToken: string | undefined;
+    try {
+      const contentType = c.req.header('content-type');
+      if (contentType?.includes('application/json')) {
+        const parsed = CookieRefreshSchema.parse(await c.req.json());
+        bodyToken = parsed.refreshToken;
+      }
+    } catch {
+      // Invalid or missing body — fall through to cookie
+    }
+    const refreshTokenValue = bodyToken || getCookie(c, 'brewform_refresh_token');
     if (!refreshTokenValue) {
       return error(c, 'INVALID_REFRESH_TOKEN', 'No refresh token provided', 401);
     }
     try {
-      const result = await authService.refreshAccessToken(refreshTokenValue, body.rememberMe);
-      setAuthCookies(c, result.accessToken, result.refreshToken, body.rememberMe);
+      const result = await authService.refreshAccessToken(refreshTokenValue);
+      setAuthCookies(c, result.accessToken, result.refreshToken, result.wasRememberMe);
       return success(c, {
         user: sanitizeUser(result.user),
       });

@@ -989,6 +989,7 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
           fc.constantFrom('light', 'dark', 'coffee'),
           fc.constantFrom('en', 'tr'),
           async (theme, locale) => {
+            const user = userEvent.setup({ delay: null });
             const translations = allThemeTranslations[locale];
             const t = (key: string) => translations[key] ?? key;
 
@@ -1012,7 +1013,7 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
               expect(triggers[0]).toHaveTextContent(expectedTriggerLabel);
 
               // Open the popup
-              await userEvent.click(triggers[0]);
+              await user.click(triggers[0]);
 
               // All options in popup should have translated names
               expect(await screen.findByRole('option', { name: translations['theme.light'] }))
@@ -1026,9 +1027,8 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
             }
           },
         ),
-        { numRuns: 12 },
+        { numRuns: 100 },
       );
     },
-    15_000,
   );
 });

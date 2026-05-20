@@ -79,6 +79,12 @@ export async function verifyJwt(token: string): Promise<JwtPayload> {
   return payload as unknown as JwtPayload;
 }
 
+export function isLongLivedRefreshToken(payload: RefreshPayload): boolean {
+  const originalLifetime = payload.exp - payload.iat;
+  const standardLifetime = parseExpiry(REFRESH_EXPIRY);
+  return originalLifetime > standardLifetime;
+}
+
 /** Decode a JWT without verification. Returns null on malformed input. */
 export function decodeJwt(
   token: string,

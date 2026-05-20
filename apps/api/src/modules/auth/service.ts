@@ -98,7 +98,7 @@ export async function login(email: string, password: string, rememberMe = false)
   return { user, accessToken, refreshToken };
 }
 
-export async function refreshAccessToken(refreshToken: string, rememberMe = false) {
+export async function refreshAccessToken(refreshToken: string) {
   const payload = await jwt.verifyJwt(refreshToken);
   if (payload.type !== 'refresh') {
     throw new Error('INVALID_TOKEN_TYPE');
@@ -120,11 +120,12 @@ export async function refreshAccessToken(refreshToken: string, rememberMe = fals
     isAdmin: user.isAdmin,
   });
 
-  const newRefreshToken = rememberMe
+  const wasRememberMe = jwt.isLongLivedRefreshToken(payload);
+  const newRefreshToken = wasRememberMe
     ? await jwt.signRefreshToken(user.id, config.JWT_REMEMBER_ME_EXPIRY)
     : await jwt.signRefreshToken(user.id);
 
-  return { user, accessToken: newAccessToken, refreshToken: newRefreshToken };
+  return { user, accessToken: newAccessToken, refreshToken: newRefreshToken, wasRememberMe };
 }
 
 export async function requestPasswordReset(email: string) {
