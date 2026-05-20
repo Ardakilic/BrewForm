@@ -19,11 +19,12 @@ vi.mock('../../api/index', () => ({
     code = '';
     status = 500;
   },
-  clearTokens: vi.fn(),
-  getAccessToken: vi.fn(() => null),
-  setAccessToken: vi.fn(),
   authApi: {
     registrationStatus: vi.fn(),
+    logout: vi.fn().mockResolvedValue({}),
+  },
+  userApi: {
+    me: vi.fn().mockRejectedValue(new Error('Not authenticated')),
   },
 }));
 

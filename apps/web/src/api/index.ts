@@ -1,19 +1,20 @@
-import { api, ApiError, clearTokens, getAccessToken, setAccessToken } from './client.ts';
+import { api, ApiError } from './client.ts';
 
-export { api, ApiError, clearTokens, getAccessToken, setAccessToken };
+export { api, ApiError };
 
 export const authApi = {
   register: (data: { email: string; username: string; password: string; displayName?: string }) =>
-    api.post<{ user: AuthUser; accessToken: string; refreshToken: string }>('/auth/register', data),
+    api.post<{ user: AuthUser }>('/auth/register', data),
   login: (data: { email: string; password: string; rememberMe?: boolean }) =>
-    api.post<{ user: AuthUser; accessToken: string; refreshToken: string }>('/auth/login', data),
-  refresh: (data: { refreshToken: string; rememberMe?: boolean }) =>
-    api.post<{ user: AuthUser; accessToken: string; refreshToken: string }>('/auth/refresh', data),
+    api.post<{ user: AuthUser }>('/auth/login', data),
+  logout: () => api.post<{ message: string }>('/auth/logout', {}),
   forgotPassword: (data: { email: string }) =>
     api.post<{ message: string }>('/auth/forgot-password', data),
   resetPassword: (data: { token: string; newPassword: string }) =>
     api.post<{ message: string }>('/auth/reset-password', data),
   registrationStatus: () => api.get<{ enabled: boolean }>('/auth/registration-status'),
+  sendVerification: () => api.post<{ message: string }>('/auth/send-verification', {}),
+  verifyEmail: (token: string) => api.post<{ message: string }>('/auth/verify-email', { token }),
 };
 
 export const userApi = {
