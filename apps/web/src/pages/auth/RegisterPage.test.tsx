@@ -21,7 +21,10 @@ vi.mock('../../api/index', () => ({
   },
   authApi: {
     registrationStatus: vi.fn(),
-    logout: vi.fn().mockResolvedValue({ message: 'Logged out successfully' }),
+    logout: vi.fn().mockResolvedValue({}),
+  },
+  userApi: {
+    me: vi.fn().mockRejectedValue(new Error('Not authenticated')),
   },
 }));
 

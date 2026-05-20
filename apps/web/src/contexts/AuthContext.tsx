@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authApi.logout();
     } catch {
-      // Server might be unreachable; clear local state anyway
+      // Ignore errors — cookies may already be cleared
     }
     setUser(null);
   }
