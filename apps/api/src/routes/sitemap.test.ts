@@ -3,7 +3,8 @@ import '../test-setup.ts';
 import { afterEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import sitemap, { deps } from './sitemap.ts';
+import sitemap, { buildXml, deps, SITEMAP_CACHE_KEY } from './sitemap.ts';
+import { cacheProvider } from '../utils/cache/singleton.ts';
 
 describe('Sitemap Route', () => {
   const app = new Hono();
@@ -12,9 +13,10 @@ describe('Sitemap Route', () => {
   const originalGetPublicRecipes = deps.getPublicRecipes;
   const originalGetActiveUsers = deps.getActiveUsers;
 
-  afterEach(() => {
+  afterEach(async () => {
     deps.getPublicRecipes = originalGetPublicRecipes;
     deps.getActiveUsers = originalGetActiveUsers;
+    await cacheProvider.delete(SITEMAP_CACHE_KEY);
   });
 
   const mockRecipes = [
@@ -91,5 +93,76 @@ describe('Sitemap Route', () => {
     const body = await res.text();
     expect(body).toContain('/u/barista</loc>');
     expect(body).toContain('<lastmod>2025-06-01</lastmod>');
+  });
+
+  it('returns cached XML on cache hit without calling deps', async () => {
+    await cacheProvider.set(SITEMAP_CACHE_KEY, '<cached>stale-xml</cached>', {
+      ttlMs: 3600000,
+    });
+
+    let getPublicRecipesCalled = false;
+    let getActiveUsersCalled = false;
+    deps.getPublicRecipes = async () => {
+      getPublicRecipesCalled = true;
+      return [];
+    };
+    deps.getActiveUsers = async () => {
+      getActiveUsersCalled = true;
+      return [];
+    };
+
+    const res = await app.request('/api/v1/sitemap.xml');
+    const body = await res.text();
+    expect(body).toContain('<cached>stale-xml</cached>');
+    expect(getPublicRecipesCalled).toBe(false);
+    expect(getActiveUsersCalled).toBe(false);
+  });
+
+  it('caches generated XML after a cache miss', async () => {
+    deps.getPublicRecipes = async () => [];
+    deps.getActiveUsers = async () => [];
+
+    const res = await app.request('/api/v1/sitemap.xml');
+    const body = await res.text();
+    expect(body).toContain('</urlset>');
+
+    const cached = await cacheProvider.get<string>(SITEMAP_CACHE_KEY);
+    expect(cached).not.toBeNull();
+    expect(cached!).toBe(body);
+  });
+
+  it('second request returns cached data without querying DB deps', async () => {
+    let callCount = 0;
+    deps.getPublicRecipes = async () => {
+      callCount++;
+      return [{ slug: 'only-recipe', updatedAt: new Date('2025-01-01') }];
+    };
+    deps.getActiveUsers = async () => [];
+
+    const res1 = await app.request('/api/v1/sitemap.xml');
+    expect(res1.status).toBe(200);
+    expect(callCount).toBe(1);
+
+    const res2 = await app.request('/api/v1/sitemap.xml');
+    expect(res2.status).toBe(200);
+    expect(callCount).toBe(1);
+
+    const body = await res2.text();
+    expect(body).toContain('/recipes/only-recipe</loc>');
+  });
+
+  it('buildXml includes all sections', () => {
+    const xml = buildXml(
+      'https://brewform.cc',
+      [{ slug: 'test-recipe', updatedAt: new Date('2025-03-15') }],
+      [{ username: 'coffee-lover', updatedAt: new Date('2025-04-01') }],
+    );
+    expect(xml).toContain('<?xml version="1.0"');
+    expect(xml).toContain('<loc>https://brewform.cc/</loc>');
+    expect(xml).toContain('<loc>https://brewform.cc/recipes</loc>');
+    expect(xml).toContain('<loc>https://brewform.cc/recipes/test-recipe</loc>');
+    expect(xml).toContain('<loc>https://brewform.cc/u/coffee-lover</loc>');
+    expect(xml).toContain('<lastmod>2025-03-15</lastmod>');
+    expect(xml).toContain('<priority>0.5</priority>');
   });
 });

@@ -3,8 +3,12 @@ import { recipes, users } from '@brewform/db/schema';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { config } from '../config/index.ts';
 import type { AppEnv } from '../types/hono.ts';
+import { cacheProvider } from '../utils/cache/singleton.ts';
 
 const sitemap = new Hono<AppEnv>();
+
+export const SITEMAP_CACHE_KEY = ['sitemap'];
+export const SITEMAP_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 function escapeXml(str: string): string {
   return str
@@ -57,12 +61,11 @@ export const deps = {
   },
 };
 
-sitemap.get('/', async (_c) => {
-  const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
-
-  const publicRecipes = await deps.getPublicRecipes();
-  const activeUsers = await deps.getActiveUsers();
-
+export function buildXml(
+  baseUrl: string,
+  publicRecipes: Array<{ slug: string; updatedAt: Date }>,
+  activeUsers: Array<{ username: string; updatedAt: Date }>,
+): string {
   const staticPages = [
     { path: '/', priority: '1.0', changefreq: 'daily' },
     { path: '/recipes', priority: '0.9', changefreq: 'daily' },
@@ -105,6 +108,29 @@ sitemap.get('/', async (_c) => {
 
   xml += `
 </urlset>`;
+
+  return xml;
+}
+
+sitemap.get('/', async (_c) => {
+  const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
+
+  const cached = await cacheProvider.get<string>(SITEMAP_CACHE_KEY);
+  if (cached) {
+    return new Response(cached, {
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      },
+    });
+  }
+
+  const publicRecipes = await deps.getPublicRecipes();
+  const activeUsers = await deps.getActiveUsers();
+
+  const xml = buildXml(baseUrl, publicRecipes, activeUsers);
+
+  await cacheProvider.set(SITEMAP_CACHE_KEY, xml, { ttlMs: SITEMAP_CACHE_TTL });
 
   return new Response(xml, {
     headers: {
