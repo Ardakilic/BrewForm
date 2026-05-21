@@ -1,4 +1,9 @@
 :8080
 root * /usr/share/caddy
+
+# Serve robots.txt from API for correct Sitemap URL generation
+# Note: In production, configure your reverse proxy to route /robots.txt to the API
+reverse_proxy /robots.txt http://app-preview:8000
+
 file_server
 try_files {path} /index.html

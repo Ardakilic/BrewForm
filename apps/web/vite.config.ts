@@ -14,6 +14,15 @@ const apiProxyTarget = Deno.env.get('VITE_API_PROXY_TARGET') || 'http://localhos
 const monorepoRoot = resolve(import.meta.dirname!, '../..');
 const sharedSrc = join(monorepoRoot, 'packages/shared/src');
 
+// Ensure VITE_PUBLIC_APP_URL is set for HTML placeholder replacement
+const publicAppUrl = Deno.env.get('VITE_PUBLIC_APP_URL') || 'http://localhost:5173';
+if (!Deno.env.get('VITE_PUBLIC_APP_URL')) {
+  console.warn(
+    'Warning: VITE_PUBLIC_APP_URL is not set. Falling back to http://localhost:5173 for development.',
+  );
+  Deno.env.set('VITE_PUBLIC_APP_URL', publicAppUrl);
+}
+
 export default defineConfig({
   plugins: [deno(), react(), tailwindcss()],
   resolve: {

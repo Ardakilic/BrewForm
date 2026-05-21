@@ -166,15 +166,23 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
     ],
   };
 
+  // Escape JSON-LD to prevent </script> breakout and XSS
+  const escapeJsonLd = (obj: Record<string, unknown>): string => {
+    return JSON.stringify(obj)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/&/g, '\\u0026');
+  };
+
   return (
     <>
       <script
         type='application/ld+json'
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(recipeJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: escapeJsonLd(recipeJsonLd) }}
       />
       <script
         type='application/ld+json'
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: escapeJsonLd(breadcrumbJsonLd) }}
       />
     </>
   );

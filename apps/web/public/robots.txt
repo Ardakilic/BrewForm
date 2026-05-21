@@ -1,4 +1,8 @@
 # robots.txt for BrewForm
+# NOTE: This static file is deprecated and kept only for local development.
+# Production deployments use the dynamic API endpoint which generates
+# the correct Sitemap URL based on the deployment domain.
+
 User-agent: *
 Allow: /
 
@@ -11,4 +15,5 @@ Disallow: /beans
 Disallow: /equipment
 
 # Sitemap location
-Sitemap: https://brewform.cc/api/v1/sitemap.xml
+# For production: See dynamic endpoint at https://[your-domain]/robots.txt
+Sitemap: http://localhost:5173/api/v1/sitemap.xml

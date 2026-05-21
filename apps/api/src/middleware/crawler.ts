@@ -2,6 +2,7 @@ import type { Context, Next } from 'hono';
 import { getRecipeMeta } from '../modules/recipe/service.ts';
 import { escapeHtml, escapeHtmlAttr } from '@brewform/shared/utils';
 import { config } from '../config/index.ts';
+import { logger } from '../utils/logger/index.ts';
 
 const CRAWLER_UA =
   /Twitterbot|facebookexternalhit|WhatsApp|Discordbot|Slackbot|LinkedInBot|Googlebot|bingbot|Pinterestbot|TelegramBot/i;
@@ -26,7 +27,8 @@ export async function crawlerMiddleware(c: Context, next: Next) {
     if (!meta || meta.visibility !== 'public') return next();
 
     const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
-    const canonicalUrl = `${baseUrl}/recipes/${encodeURIComponent(meta.slug)}`;
+    const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+    const canonicalUrl = `${normalizedBaseUrl}/recipes/${encodeURIComponent(meta.slug)}`;
 
     const description = meta.productName
       ? `${meta.brewMethod || 'Coffee'} recipe using ${meta.productName}`
@@ -39,10 +41,10 @@ export async function crawlerMiddleware(c: Context, next: Next) {
   <meta property="og:image" content="${escapeHtmlAttr(meta.photoUrl)}">
   <meta name="twitter:image" content="${escapeHtmlAttr(meta.photoUrl)}">`
       : `
-  <meta property="og:image" content="${escapeHtmlAttr(baseUrl)}/og-default.png">
+  <meta property="og:image" content="${escapeHtmlAttr(normalizedBaseUrl)}/og-default.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta name="twitter:image" content="${escapeHtmlAttr(baseUrl)}/og-default.png">`;
+  <meta name="twitter:image" content="${escapeHtmlAttr(normalizedBaseUrl)}/og-default.png">`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -66,7 +68,8 @@ export async function crawlerMiddleware(c: Context, next: Next) {
 </html>`;
 
     return c.html(html);
-  } catch {
+  } catch (err) {
+    logger.warn({ slug, err }, 'Failed to render crawler meta for recipe');
     return next();
   }
 }

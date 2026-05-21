@@ -31,11 +31,13 @@ import report from '../modules/report/index.ts';
 import admin from '../modules/admin/index.ts';
 import share from './share.ts';
 import sitemap from './sitemap.ts';
+import robots from './robots.ts';
 
 const routes = new Hono<AppEnv>();
 
 routes.route('/', health);
 routes.route('/share', share);
+routes.route('/robots.txt', robots);
 routes.route('/api/v1/sitemap.xml', sitemap);
 routes.route('/api/v1/auth', auth);
 routes.route('/api/v1/users', user);

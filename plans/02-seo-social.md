@@ -155,22 +155,30 @@ app.use('*', crawlerMiddleware);
 
 The middleware insertion point is between the cache injection middleware (line 48-51) and `app.route('/', routes)` (line 96). Since the middleware calls `next()` for non-crawler requests, it has zero overhead for normal users.
 
-#### Step 3: Add `VITE_PUBLIC_APP_URL` to Vite config and compose.yml
+#### Step 3: Ensure `VITE_PUBLIC_APP_URL` is available for HTML placeholder replacement
 
-Before updating `index.html`, wire up the env variable so Vite can replace `%VITE_PUBLIC_APP_URL%` at build time:
+Vite automatically replaces `%VITE_*%` placeholders in `index.html` with environment variables loaded at build time. The `define` block in vite.config.ts only affects JavaScript code, NOT HTML placeholders.
 
-**`apps/web/vite.config.ts`** — add to the `define` block:
+**`apps/web/vite.config.ts`** — ensure the environment variable is set with a fallback:
 ```ts
+// Vite's HTML env interpolation reads from Deno.env automatically.
+// Set a fallback if missing to prevent literal %VITE_PUBLIC_APP_URL% in output.
+const publicAppUrl = Deno.env.get('VITE_PUBLIC_APP_URL') || 'http://localhost:5173';
+if (!Deno.env.get('VITE_PUBLIC_APP_URL')) {
+  console.warn('Warning: VITE_PUBLIC_APP_URL not set, using fallback:', publicAppUrl);
+  Deno.env.set('VITE_PUBLIC_APP_URL', publicAppUrl);
+}
+
+// The define block is for JavaScript replacements only (not HTML):
 define: {
   'import.meta.env.VITE_API_URL': JSON.stringify(
     Deno.env.get('VITE_API_URL') || '/api/v1',
   ),
-  // Fallback to /api/v1 for dev (Vite proxy handles it); production builds MUST set this.
-  'import.meta.env.VITE_PUBLIC_APP_URL': JSON.stringify(
-    Deno.env.get('VITE_PUBLIC_APP_URL') || 'http://localhost:5173',
-  ),
+  'import.meta.env.VITE_PUBLIC_APP_URL': JSON.stringify(publicAppUrl),
 },
 ```
+
+**Important:** Production builds MUST set the `VITE_PUBLIC_APP_URL` environment variable to the actual deployment URL before running `vite build`.
 
 **`compose.yml`** — add to `web-dev` environment:
 ```yaml

@@ -19,7 +19,10 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function toW3CDate(date: Date): string {
+function toW3CDate(date: Date | null | undefined): string {
+  if (!date || isNaN(date.getTime())) {
+    return '';
+  }
   return date.toISOString().split('T')[0];
 }
 
@@ -87,20 +90,22 @@ export function buildXml(
   }
 
   for (const recipe of publicRecipes) {
+    const lastmod = toW3CDate(recipe.updatedAt);
     xml += `
   <url>
-    <loc>${escapeXml(baseUrl)}/recipes/${escapeXml(recipe.slug)}</loc>
-    <lastmod>${toW3CDate(recipe.updatedAt)}</lastmod>
+    <loc>${escapeXml(baseUrl)}/recipes/${escapeXml(recipe.slug)}</loc>${lastmod ? `
+    <lastmod>${lastmod}</lastmod>` : ''}
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`;
   }
 
   for (const user of activeUsers) {
+    const lastmod = toW3CDate(user.updatedAt);
     xml += `
   <url>
-    <loc>${escapeXml(baseUrl)}/u/${escapeXml(user.username)}</loc>
-    <lastmod>${toW3CDate(user.updatedAt)}</lastmod>
+    <loc>${escapeXml(baseUrl)}/u/${escapeXml(user.username)}</loc>${lastmod ? `
+    <lastmod>${lastmod}</lastmod>` : ''}
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>`;
