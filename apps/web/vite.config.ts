@@ -9,13 +9,45 @@ import { join, resolve } from 'node:path';
 // The compose.yml web-dev service sets VITE_API_PROXY_TARGET=http://app:8000.
 const apiProxyTarget = Deno.env.get('VITE_API_PROXY_TARGET') || 'http://localhost:8000';
 
+// Validate VITE_PUBLIC_APP_URL to ensure %VITE_PUBLIC_APP_URL% in index.html always resolves.
+// For production, the deploy pipeline must set this env var before running vite build.
+const vitePublicAppUrl = (Deno.env.get('VITE_PUBLIC_APP_URL') || '').replace(/\/+$/, '');
+
 // Resolve the monorepo root relative to this file's location.
 // vite.config.ts lives at apps/web/, so the root is two levels up.
 const monorepoRoot = resolve(import.meta.dirname!, '../..');
 const sharedSrc = join(monorepoRoot, 'packages/shared/src');
 
 export default defineConfig({
-  plugins: [deno(), react(), tailwindcss()],
+  plugins: [
+    deno(),
+    react(),
+    tailwindcss(),
+    {
+      name: 'build-robots-txt',
+      generateBundle() {
+        const sitemapUrl = vitePublicAppUrl
+          ? `${vitePublicAppUrl}/api/v1/sitemap.xml`
+          : '/api/v1/sitemap.xml';
+        this.emitFile({
+          type: 'asset',
+          fileName: 'robots.txt',
+          source: `User-agent: *
+Allow: /
+
+Disallow: /settings
+Disallow: /admin
+Disallow: /onboarding
+Disallow: /setups
+Disallow: /beans
+Disallow: /equipment
+
+Sitemap: ${sitemapUrl}
+`,
+        });
+      },
+    },
+  ],
   resolve: {
     alias: {
       // Local path alias
@@ -49,6 +81,9 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_API_URL': JSON.stringify(
       Deno.env.get('VITE_API_URL') || '/api/v1',
+    ),
+    'import.meta.env.VITE_PUBLIC_APP_URL': JSON.stringify(
+      vitePublicAppUrl || 'http://localhost:5173',
     ),
   },
 });

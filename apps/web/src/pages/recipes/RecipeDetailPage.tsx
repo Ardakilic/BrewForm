@@ -119,10 +119,28 @@ export function RecipeDetailPage() {
       />
       <RecipeJsonLd
         title={recipe.title}
-        description={v.personalNotes || ''}
+        description={v.personalNotes?.trim() ||
+          [v.brewMethod, v.drinkType, 'recipe'].filter(Boolean).join(' ')}
         slug={recipe.slug}
         authorName={recipe.author?.displayName || recipe.author?.username || ''}
+        authorUsername={recipe.author?.username}
         datePublished={recipe.createdAt}
+        image={recipe.photos?.[0]?.url}
+        extractionTimeSeconds={v.extractionTimeSeconds}
+        extractionVolumeMl={v.extractionVolumeMl}
+        groundWeightGrams={v.groundWeightGrams}
+        grindSize={v.grindSize}
+        productName={v.productName}
+        brewMethod={v.brewMethod}
+        drinkType={v.drinkType}
+        preparationNotes={v.preparationNotes}
+        temperatureCelsius={v.temperatureCelsius}
+        tasteNoteNames={tasteNotes
+          .map((tn: { tasteNote?: { name: string } | null }) => tn.tasteNote?.name)
+          .filter((n): n is string => Boolean(n))}
+        additionalPreparations={v.additionalPreparations}
+        avgRating={recipe.avgRating}
+        ratingCount={recipe.ratingCount}
       />
 
       {/* ── Header section ── */}
