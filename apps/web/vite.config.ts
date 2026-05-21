@@ -48,10 +48,14 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
       },
+      '/robots.txt': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+      },
     },
   },
   build: {
-    outDir: 'dist',
+
     sourcemap: false,
     chunkSizeWarningLimit: 800,
   },
