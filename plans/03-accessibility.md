@@ -10,7 +10,7 @@
 
 ## Overview
 
-BrewForm has a solid accessibility foundation -- `<nav aria-label>` in Navbar, `<section>` usage in 6 files, `<aside>` in AdminLayout/RecipeListPage, and 81 `aria-*` attributes total. However, six gaps prevent WCAG 2.1 AA compliance: no skip navigation link, a hardcoded `lang` attribute that ignores locale changes, unlabeled form controls in the comment section, inconsistent focus indicator styles, missing `<article>` semantic elements, and empty avatar `alt` attributes.
+BrewForm has a solid accessibility foundation -- `<nav aria-label>` in Navbar, `<section>` usage in 7 files, `<aside>` in AdminLayout/RecipeListPage, and 81 `aria-*` attributes total. However, six gaps prevent WCAG 2.1 AA compliance: no skip navigation link, a hardcoded `lang` attribute that ignores locale changes, unlabeled form controls in the comment section, inconsistent focus indicator styles, missing `<article>` semantic elements, and empty avatar `alt` attributes.
 
 ---
 
@@ -47,6 +47,7 @@ import { Outlet } from 'react-router';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { CookieConsent } from '../CookieConsent';
+import { EmailVerificationBanner } from '../EmailVerificationBanner';
 import { useTranslation } from '../../contexts/I18nContext';
 
 export function Layout() {
@@ -64,6 +65,7 @@ export function Layout() {
       >
         {t('a11y.skipToContent')}
       </a>
+      <EmailVerificationBanner />
       <Navbar />
       <main id='main-content' className='flex-1' tabIndex={-1}>
         <Outlet />
@@ -79,7 +81,7 @@ export function Layout() {
 - `sr-only` hides the link visually; `focus:not-sr-only` reveals it when focused via Tab.
 - `focus:fixed focus:top-4 focus:left-4 focus:z-50` positions it above all content when visible.
 - `tabIndex={-1}` on `<main>` allows programmatic focus (the browser scrolls to `#main-content` on click).
-- The skip link is the **first focusable element** in the DOM, before `<Navbar />`.
+- The skip link is the **first focusable element** in the DOM, before `<EmailVerificationBanner />` and `<Navbar />`.
 
 **Effort:** Small (30 minutes)
 
@@ -181,6 +183,7 @@ export function useTranslation() {
 
 **`packages/shared/src/i18n/en.json`** -- add:
 ```json
+"comment.commentBy": "Comment by",
 "comment.label": "Write a comment",
 "comment.replyLabel": "Write a reply",
 "comment.posted": "Comment posted successfully",
@@ -190,6 +193,7 @@ export function useTranslation() {
 
 **`packages/shared/src/i18n/tr.json`** -- add:
 ```json
+"comment.commentBy": "Yorum yazan",
 "comment.label": "Yorum yaz",
 "comment.replyLabel": "Yanit yaz",
 "comment.posted": "Yorum basariyla gonderildi",
@@ -416,7 +420,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
           backgroundColor: 'var(--bg-secondary)',
           border: '1px solid var(--border-primary)',
         }}
-        aria-label={`${t('comment.reply')} ${getAuthorName(comment)}`}
+        aria-label={`${t('comment.commentBy')} ${getAuthorName(comment)}`}
       >
         {/* Comment header */}
         <div className='flex items-center gap-2 mb-2'>
@@ -633,7 +637,7 @@ Update `apps/web/src/styles/globals.css`. Replace the existing `.input-field:foc
   .input-field:focus-visible {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 10%, transparent);
   }
 
   .badge {
@@ -661,11 +665,11 @@ Update `apps/web/src/styles/globals.css`. Replace the existing `.input-field:foc
   }
 
   .btn-primary:focus-visible {
-    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.3);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 30%, transparent);
   }
 
   .btn-secondary:focus-visible {
-    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.15);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 15%, transparent);
   }
 ```
 
@@ -685,7 +689,7 @@ Update `apps/web/src/styles/globals.css`. Replace the existing `.input-field:foc
 **Evidence:**
 - Grep for `<article` across `apps/web/src/` -- **zero results** (before the H8 fix above).
 - `<nav aria-label>` exists in Navbar. `<section>` used in 6 files. `<aside>` in AdminLayout and RecipeListPage. But `<article>` is absent everywhere.
-- `apps/web/src/pages/recipes/RecipeDetailPage.tsx:91-349` -- The entire recipe detail content is wrapped in a plain `<div>`. No `<article>` element.
+- `apps/web/src/pages/recipes/RecipeDetailPage.tsx:109-383` -- The entire recipe detail content is wrapped in a plain `<div>`. No `<article>` element.
 
 **Impact:** Screen readers cannot convey document structure landmarks for self-contained content. RSS readers and content extractors cannot identify article boundaries. Affects WCAG 1.3.1 (Info and Relationships) Level A.
 
@@ -693,9 +697,9 @@ Update `apps/web/src/styles/globals.css`. Replace the existing `.input-field:foc
 
 ### 1. RecipeDetailPage.tsx -- Wrap recipe content in `<article>`
 
-In `apps/web/src/pages/recipes/RecipeDetailPage.tsx`, change the outermost `<div>` wrapper (line 92) of the recipe content to `<article>`:
+In `apps/web/src/pages/recipes/RecipeDetailPage.tsx`, change the outermost `<div>` wrapper (line 109) of the recipe content to `<article>`:
 
-**Before (line 92):**
+**Before (line 109):**
 ```tsx
     <div>
 ```
@@ -705,7 +709,7 @@ In `apps/web/src/pages/recipes/RecipeDetailPage.tsx`, change the outermost `<div
     <article aria-label={recipe.title}>
 ```
 
-**Before (line 348):**
+**Before (line 383):**
 ```tsx
     </div>
 ```
@@ -812,6 +816,7 @@ For `AdminUserDetailPage.tsx`, which does not currently use `useTranslation`, th
 ```json
 "a11y.skipToContent": "Skip to main content",
 "a11y.userAvatar": "{name}'s avatar",
+"comment.commentBy": "Comment by",
 "comment.label": "Write a comment",
 "comment.replyLabel": "Write a reply",
 "comment.posted": "Comment posted successfully",
@@ -824,6 +829,7 @@ For `AdminUserDetailPage.tsx`, which does not currently use `useTranslation`, th
 ```json
 "a11y.skipToContent": "Ana iceriye gec",
 "a11y.userAvatar": "{name} avatari",
+"comment.commentBy": "Yorum yazan",
 "comment.label": "Yorum yaz",
 "comment.replyLabel": "Yanit yaz",
 "comment.posted": "Yorum basariyla gonderildi",
@@ -844,8 +850,8 @@ For `AdminUserDetailPage.tsx`, which does not currently use `useTranslation`, th
 | `apps/web/src/pages/recipes/RecipeDetailPage.tsx` | Outer `<div>` to `<article>` |
 | `apps/web/src/pages/admin/AdminUserDetailPage.tsx` | Descriptive avatar `alt` text |
 | `apps/web/src/pages/users/UserProfilePage.tsx` | Descriptive avatar `alt` text |
-| `packages/shared/src/i18n/en.json` | 7 new keys |
-| `packages/shared/src/i18n/tr.json` | 7 new keys |
+| `packages/shared/src/i18n/en.json` | 8 new keys |
+| `packages/shared/src/i18n/tr.json` | 8 new keys |
 
 ---
 
