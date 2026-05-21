@@ -1,0 +1,14 @@
+# robots.txt for BrewForm
+User-agent: *
+Allow: /
+
+# Disallow authenticated/private areas
+Disallow: /settings
+Disallow: /admin
+Disallow: /onboarding
+Disallow: /setups
+Disallow: /beans
+Disallow: /equipment
+
+# Sitemap location
+Sitemap: https://brewform.cc/api/v1/sitemap.xml

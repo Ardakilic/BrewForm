@@ -81,6 +81,7 @@ services:
     environment:
       - VITE_API_URL=/api/v1
       - VITE_API_PROXY_TARGET=http://app:8000
+      - VITE_PUBLIC_APP_URL=http://localhost:5173
     depends_on:
       app:
         condition: service_started

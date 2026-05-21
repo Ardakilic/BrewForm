@@ -30,6 +30,7 @@ import type { CacheProvider } from './utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import routes from './routes/index.ts';
 import { createLogger } from './utils/logger/index.ts';
+import { crawlerMiddleware } from './middleware/crawler.ts';
 import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
@@ -76,6 +77,7 @@ app.use('*', async (c, next) => {
   c.set('cache', cacheProvider);
   await next();
 });
+app.use('*', crawlerMiddleware);
 app.onError(errorHandler);
 
 // Serve uploads locally when using filesystem storage
