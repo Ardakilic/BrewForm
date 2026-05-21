@@ -375,5 +375,14 @@
   "recipe.stat.yield": "VERİM",
   "recipe.stat.time": "SÜRE",
   "recipe.stat.ratio": "ORAN",
-  "recipe.stat.temp": "SICAKLIK"
+  "recipe.stat.temp": "SICAKLIK",
+  "a11y.skipToContent": "Ana içeriğe geç",
+  "a11y.userAvatar": "{name} avatarı",
+  "comment.commentBy": "Yorum yazan",
+  "comment.label": "Yorum yaz",
+  "comment.replyLabel": "Yanıt yaz",
+  "comment.posted": "Yorum başarıyla gönderildi",
+  "comment.replyPosted": "Yanıt başarıyla gönderildi",
+  "comment.error": "Yorum gönderilemedi. Lütfen tekrar deneyin.",
+  "comment.replyBy": "{name} tarafından yanıt"
 }

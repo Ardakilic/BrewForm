@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../../api/client.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -22,7 +22,7 @@ interface Props {
 }
 
 // ---------------------------------------------------------------------------
-// Inline markdown renderer — bold, italic, underline only. No HTML injection.
+// Inline markdown renderer -- bold, italic, underline only. No HTML injection.
 // Supports: **bold**, *italic*, __underline__, _italic_
 // ---------------------------------------------------------------------------
 function renderInlineMarkdown(text: string): React.ReactNode[] {
@@ -77,6 +77,20 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    const t = setTimeout(() => setStatusMessage(''), 5000);
+    return () => clearTimeout(t);
+  }, [statusMessage]);
+
+  useEffect(() => {
+    if (replyingToId !== null) {
+      textareaRef.current?.focus();
+    }
+  }, [replyingToId]);
 
   // A user can reply if they are: the recipe owner, an admin, OR the author of the top-level comment
   function canReplyToComment(topLevelComment: Comment): boolean {
@@ -105,6 +119,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
     e.preventDefault();
     if (!newComment.trim() || loading) return;
     setLoading(true);
+    setStatusMessage('');
     try {
       const data = await api.post<Record<string, unknown>>(`/comments/recipe/${recipeId}`, {
         content: newComment.trim(),
@@ -124,7 +139,9 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
       setComments((prev) => [optimisticComment, ...prev]);
       setTotal((n) => n + 1);
       setNewComment('');
+      setStatusMessage(t('comment.posted'));
     } catch {
+      setStatusMessage(t('comment.error'));
     } finally {
       setLoading(false);
     }
@@ -134,6 +151,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
     e.preventDefault();
     if (!replyContent.trim() || replyLoading) return;
     setReplyLoading(true);
+    setStatusMessage('');
     try {
       const data = await api.post<Record<string, unknown>>(`/comments/recipe/${recipeId}`, {
         content: replyContent.trim(),
@@ -157,7 +175,9 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
       );
       setReplyContent('');
       setReplyingToId(null);
+      setStatusMessage(t('comment.replyPosted'));
     } catch {
+      setStatusMessage(t('comment.error'));
     } finally {
       setReplyLoading(false);
     }
@@ -198,13 +218,14 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
     const userCanReply = canReplyToComment(comment);
 
     return (
-      <div
+      <article
         key={comment.id}
         className='rounded-lg p-4'
         style={{
           backgroundColor: 'var(--bg-secondary)',
           border: '1px solid var(--border-primary)',
         }}
+        aria-label={`${t('comment.commentBy')} ${getAuthorName(comment)}`}
       >
         {/* Comment header */}
         <div className='flex items-center gap-2 mb-2'>
@@ -215,7 +236,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
           </span>
         </div>
 
-        {/* Comment body — inline markdown */}
+        {/* Comment body -- inline markdown */}
         <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
           {renderInlineMarkdown(comment.content)}
         </p>
@@ -241,16 +262,19 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
         {/* Inline reply form */}
         {isReplyOpen && (
           <form onSubmit={(e) => handleReplySubmit(e, comment.id)} className='mt-3 ml-4'>
+            <label htmlFor={`reply-comment-${comment.id}`} className='sr-only'>
+              {t('comment.replyLabel')}
+            </label>
             <textarea
+              id={`reply-comment-${comment.id}`}
               value={replyContent}
               onChange={(e) =>
                 setReplyContent(e.target.value)}
               placeholder={t('comment.writeReply')}
               className='input-field mb-2'
               rows={2}
-              // deno-lint-ignore no-explicit-any
-              ref={(el: any) =>
-                el?.focus()}
+              aria-required='true'
+              ref={textareaRef}
             />
             <div className='flex gap-2'>
               <button
@@ -280,13 +304,14 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
         {Array.isArray(comment.replies) && comment.replies.length > 0 && (
           <div className='mt-3 ml-4 flex flex-col gap-2'>
             {comment.replies.map((reply) => (
-              <div
+              <article
                 key={reply.id}
                 className='rounded p-3'
                 style={{
                   backgroundColor: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-primary)',
                 }}
+                aria-label={t('comment.replyBy').replace('{name}', getAuthorName(reply))}
               >
                 <div className='flex items-center gap-2 mb-1'>
                   <AuthorLink comment={reply} className='font-medium text-xs' />
@@ -297,11 +322,11 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
                     {new Date(reply.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                {/* Reply body — inline markdown */}
+                {/* Reply body -- inline markdown */}
                 <p className='text-xs' style={{ color: 'var(--text-secondary)' }}>
                   {renderInlineMarkdown(reply.content)}
                 </p>
-                {/* Reply button on a reply — opens form on the parent, pre-fills @username */}
+                {/* Reply button on a reply -- opens form on the parent, pre-fills @username */}
                 {userCanReply && !isReplyOpen && (
                   <button
                     type='button'
@@ -318,28 +343,37 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
                     {t('comment.reply')}
                   </button>
                 )}
-              </div>
+              </article>
             ))}
           </div>
         )}
-      </div>
+      </article>
     );
   }
 
   return (
-    <div>
+    <section aria-label={t('recipe.comments')}>
       <h3 className='text-lg font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
         {t('comment.count').replace('{count}', String(total))}
       </h3>
 
+      <div aria-live='polite' aria-atomic='true' className='sr-only'>
+        {statusMessage}
+      </div>
+
       {isAuthenticated && (
         <form onSubmit={handleSubmit} className='mb-6'>
+          <label htmlFor='new-comment' className='sr-only'>
+            {t('comment.label')}
+          </label>
           <textarea
+            id='new-comment'
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder={t('comment.writeComment')}
             className='input-field mb-2'
             rows={3}
+            aria-required='true'
           />
           <button type='submit' className='btn-primary' disabled={loading || !newComment.trim()}>
             {loading ? t('comment.posting') : t('comment.postComment')}
@@ -358,6 +392,6 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 }

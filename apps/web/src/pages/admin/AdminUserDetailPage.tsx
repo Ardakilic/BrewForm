@@ -149,7 +149,7 @@ export function AdminUserDetailPage() {
             ? (
               <img
                 src={user.avatarUrl}
-                alt=''
+                alt={`${user.displayName || user.username}'s avatar`}
                 className='w-20 h-20 rounded-full object-cover'
               />
             )

@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useCallback, useContext, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getAvailableLocales, t as translate } from '@brewform/shared/i18n';
 
 type Locale = 'en' | 'tr';
@@ -12,12 +12,22 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | null>(null);
 
+const LOCALE_DIR: Record<Locale, 'ltr' | 'rtl'> = {
+  en: 'ltr',
+  tr: 'ltr',
+};
+
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
     const stored = localStorage.getItem('brewform_locale') as Locale | null;
     if (stored && getAvailableLocales().includes(stored)) return stored;
     return 'en';
   });
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = LOCALE_DIR[locale] ?? 'ltr';
+  }, [locale]);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
