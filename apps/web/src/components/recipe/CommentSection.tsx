@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { api } from '../../api/client.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
@@ -78,6 +78,19 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
   const [replyContent, setReplyContent] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    const t = setTimeout(() => setStatusMessage(''), 5000);
+    return () => clearTimeout(t);
+  }, [statusMessage]);
+
+  useEffect(() => {
+    if (replyingToId !== null) {
+      textareaRef.current?.focus();
+    }
+  }, [replyingToId]);
 
   // A user can reply if they are: the recipe owner, an admin, OR the author of the top-level comment
   function canReplyToComment(topLevelComment: Comment): boolean {
@@ -261,9 +274,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
               className='input-field mb-2'
               rows={2}
               aria-required='true'
-              // deno-lint-ignore no-explicit-any
-              ref={(el: any) =>
-                el?.focus()}
+              ref={textareaRef}
             />
             <div className='flex gap-2'>
               <button
@@ -300,7 +311,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
                   backgroundColor: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-primary)',
                 }}
-                aria-label={`${t('comment.reply')} ${getAuthorName(reply)}`}
+                aria-label={t('comment.replyBy').replace('{name}', getAuthorName(reply))}
               >
                 <div className='flex items-center gap-2 mb-1'>
                   <AuthorLink comment={reply} className='font-medium text-xs' />

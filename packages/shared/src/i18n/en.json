@@ -383,5 +383,6 @@
   "comment.replyLabel": "Write a reply",
   "comment.posted": "Comment posted successfully",
   "comment.replyPosted": "Reply posted successfully",
-  "comment.error": "Failed to post comment. Please try again."
+  "comment.error": "Failed to post comment. Please try again.",
+  "comment.replyBy": "Reply by {name}"
 }
