@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { RecipeJsonLd } from './JsonLd.tsx';
 
 describe('RecipeJsonLd', () => {
@@ -45,9 +45,9 @@ describe('RecipeJsonLd', () => {
     const { container } = render(
       <RecipeJsonLd
         {...baseProps}
-        productName="Ethiopian Yirgacheffe"
+        productName='Ethiopian Yirgacheffe'
         groundWeightGrams={18}
-        grindSize="fine"
+        grindSize='fine'
         extractionVolumeMl={250}
       />,
     );
@@ -73,7 +73,7 @@ describe('RecipeJsonLd', () => {
 
   it('renders BreadcrumbList JSON-LD', () => {
     const { container } = render(
-      <RecipeJsonLd {...baseProps} brewMethod="v60" />,
+      <RecipeJsonLd {...baseProps} brewMethod='v60' />,
     );
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');
     const breadcrumb = JSON.parse(scripts[1].textContent || '');
@@ -87,8 +87,8 @@ describe('RecipeJsonLd', () => {
     const { container } = render(
       <RecipeJsonLd
         {...baseProps}
-        brewMethod="v60"
-        drinkType="pour_over"
+        brewMethod='v60'
+        drinkType='pour_over'
         tasteNoteNames={['Chocolate', 'Berry']}
       />,
     );

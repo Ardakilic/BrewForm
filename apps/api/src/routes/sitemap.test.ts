@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import '../test-setup.ts';
-import { describe, it, afterEach } from 'jsr:@std/testing/bdd';
+import { afterEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
 import sitemap, { deps } from './sitemap.ts';

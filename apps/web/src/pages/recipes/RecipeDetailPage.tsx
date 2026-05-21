@@ -119,7 +119,8 @@ export function RecipeDetailPage() {
       />
       <RecipeJsonLd
         title={recipe.title}
-        description={v.personalNotes?.trim() || [v.brewMethod, v.drinkType, 'recipe'].filter(Boolean).join(' ')}
+        description={v.personalNotes?.trim() ||
+          [v.brewMethod, v.drinkType, 'recipe'].filter(Boolean).join(' ')}
         slug={recipe.slug}
         authorName={recipe.author?.displayName || recipe.author?.username || ''}
         authorUsername={recipe.author?.username}

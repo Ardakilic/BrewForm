@@ -102,31 +102,27 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
     author: {
       '@type': 'Person',
       name: authorName,
-      ...(authorUsername
-        ? { url: `${globalThis.location.origin}/u/${authorUsername}` }
-        : {}),
+      ...(authorUsername ? { url: `${globalThis.location.origin}/u/${authorUsername}` } : {}),
     },
     url: `${globalThis.location.origin}/recipes/${slug}`,
     datePublished,
     keywords: keywords.join(', '),
     recipeCategory: brewMethod ? formatBrewMethod(brewMethod) : 'Coffee',
     ...(image ? { image } : {}),
-    ...(extractionTimeSeconds
-      ? { cookTime: toIsoDuration(extractionTimeSeconds) }
-      : {}),
+    ...(extractionTimeSeconds ? { cookTime: toIsoDuration(extractionTimeSeconds) } : {}),
     ...(extractionVolumeMl ? { recipeYield: `${extractionVolumeMl}ml` } : {}),
     ...(ingredients.length ? { recipeIngredient: ingredients } : {}),
     ...(instructions.length ? { recipeInstructions: instructions } : {}),
     ...(avgRating && ratingCount && ratingCount > 0
       ? {
-          aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: avgRating,
-            ratingCount,
-            bestRating: 10,
-            worstRating: 1,
-          },
-        }
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: avgRating,
+          ratingCount,
+          bestRating: 10,
+          worstRating: 1,
+        },
+      }
       : {}),
   };
 
@@ -148,25 +144,25 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
       },
       ...(brewMethod
         ? [
-            {
-              '@type': 'ListItem',
-              position: 3,
-              name: formatBrewMethod(brewMethod),
-              item: `${globalThis.location.origin}/recipes?brewMethod=${brewMethod}`,
-            },
-            {
-              '@type': 'ListItem',
-              position: 4,
-              name: title,
-            },
-          ]
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: formatBrewMethod(brewMethod),
+            item: `${globalThis.location.origin}/recipes?brewMethod=${brewMethod}`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 4,
+            name: title,
+          },
+        ]
         : [
-            {
-              '@type': 'ListItem',
-              position: 3,
-              name: title,
-            },
-          ]),
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: title,
+          },
+        ]),
     ],
   };
 

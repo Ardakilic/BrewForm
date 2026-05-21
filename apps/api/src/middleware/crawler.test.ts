@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import '../test-setup.ts';
-import { describe, it, afterEach } from 'jsr:@std/testing/bdd';
+import { afterEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
 import { crawlerMiddleware, deps } from './crawler.ts';
@@ -76,7 +76,9 @@ describe('Crawler Middleware', () => {
   });
 
   it('falls through when getRecipeMeta throws', async () => {
-    deps.getRecipeMeta = async () => { throw new Error('RECIPE_NOT_FOUND'); };
+    deps.getRecipeMeta = async () => {
+      throw new Error('RECIPE_NOT_FOUND');
+    };
     const res = await app.request('/recipes/missing', {
       headers: { 'User-Agent': 'Discordbot/1.0' },
     });

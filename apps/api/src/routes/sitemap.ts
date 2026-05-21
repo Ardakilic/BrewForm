@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { recipes, users } from '@brewform/db/schema';
-import { eq, and, isNull, desc } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { config } from '../config/index.ts';
 import type { AppEnv } from '../types/hono.ts';
 
@@ -57,7 +57,7 @@ export const deps = {
   },
 };
 
-sitemap.get('/', async (c) => {
+sitemap.get('/', async (_c) => {
   const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
 
   const publicRecipes = await deps.getPublicRecipes();
