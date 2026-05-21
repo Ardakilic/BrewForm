@@ -11,7 +11,7 @@ const apiProxyTarget = Deno.env.get('VITE_API_PROXY_TARGET') || 'http://localhos
 
 // Validate VITE_PUBLIC_APP_URL to ensure %VITE_PUBLIC_APP_URL% in index.html always resolves.
 // For production, the deploy pipeline must set this env var before running vite build.
-const vitePublicAppUrl = Deno.env.get('VITE_PUBLIC_APP_URL');
+const vitePublicAppUrl = (Deno.env.get('VITE_PUBLIC_APP_URL') || '').replace(/\/+$/, '');
 
 // Resolve the monorepo root relative to this file's location.
 // vite.config.ts lives at apps/web/, so the root is two levels up.

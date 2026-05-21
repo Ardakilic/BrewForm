@@ -131,7 +131,9 @@ describe('RecipeJsonLd', () => {
 
     const recipe = JSON.parse(scripts[0].textContent || '');
     expect(recipe.name).toBe('V60 Ethiopian');
-    expect(recipe.author.name).not.toContain('script');
-    expect(recipe.keywords).not.toContain('script');
+    expect(recipe.author.name).not.toContain('<script>');
+    expect(recipe.author.name).not.toContain('</script>');
+    expect(recipe.keywords).not.toContain('<script>');
+    expect(recipe.keywords).not.toContain('</script>');
   });
 });

@@ -69,6 +69,7 @@ export async function crawlerMiddleware(c: Context, next: Next) {
 </html>`;
 
     c.header('Cache-Control', 'public, max-age=300');
+    c.header('Vary', 'User-Agent');
     return c.html(html);
   } catch (err) {
     log.warn({ slug, err }, 'Crawler rendering failed');

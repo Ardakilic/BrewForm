@@ -128,7 +128,7 @@ export function buildXml(
 }
 
 sitemap.get('/', async (_c) => {
-  const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
+  const baseUrl = (config.PUBLIC_APP_URL || config.APP_URL).replace(/\/+$/, '');
 
   const cached = await cacheProvider.get<string>(SITEMAP_CACHE_KEY);
   if (cached) {
