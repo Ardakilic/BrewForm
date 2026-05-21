@@ -371,7 +371,7 @@ describe('Crawler Middleware', () => {
     expect(html).toContain('V60 recipe using Ethiopian Yirgacheffe');
   });
 
-  it('falls back to author name when productName is absent', async () => {
+  it('uses brewMethod and drinkType in description when productName is absent', async () => {
     deps.getRecipeMeta = async () => ({
       ...publicMeta,
       productName: null,
@@ -901,7 +901,7 @@ In `apps/web/src/pages/recipes/RecipeDetailPage.tsx`, the `<RecipeJsonLd>` call 
 // Replace lines 103-109 of RecipeDetailPage.tsx with:
 <RecipeJsonLd
   title={recipe.title}
-  description={v.personalNotes || `${v.brewMethod} ${v.drinkType} recipe`}
+  description={v.personalNotes?.trim() || [v.brewMethod, v.drinkType, 'recipe'].filter(Boolean).join(' ')}
   slug={recipe.slug}
   authorName={recipe.author?.displayName || recipe.author?.username || ''}
   authorUsername={recipe.author?.username}
