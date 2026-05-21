@@ -141,10 +141,10 @@
     width: 100%;
     transition: border-color 0.15s ease;
   }
-  .input-field:focus {
+  .input-field:focus-visible {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 10%, transparent);
   }
 
   .badge {
@@ -156,6 +156,25 @@
     font-weight: 500;
     background-color: var(--accent-primary);
     color: var(--bg-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+  }
+
+  .input-field:focus-visible,
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible {
+    outline: none;
+  }
+
+  .btn-primary:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  }
+
+  .btn-secondary:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 15%, transparent);
   }
 
   .focus-mode header,

@@ -106,7 +106,7 @@ export function RecipeDetailPage() {
   const equipment: any[] = Array.isArray(recipe.equipment) ? recipe.equipment : [];
 
   return (
-    <div>
+    <article aria-label={recipe.title}>
       <SEOHead
         title={recipe.title}
         description={v.personalNotes ||
@@ -380,6 +380,6 @@ export function RecipeDetailPage() {
           <CommentSection recipeId={recipe.id} recipeAuthorId={recipe.authorId} />
         </div>
       </div>
-    </div>
+    </article>
   );
 }

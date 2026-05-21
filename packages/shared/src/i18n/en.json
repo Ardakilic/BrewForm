@@ -375,5 +375,13 @@
   "recipe.stat.yield": "YIELD",
   "recipe.stat.time": "TIME",
   "recipe.stat.ratio": "RATIO",
-  "recipe.stat.temp": "TEMP"
+  "recipe.stat.temp": "TEMP",
+  "a11y.skipToContent": "Skip to main content",
+  "a11y.userAvatar": "{name}'s avatar",
+  "comment.commentBy": "Comment by",
+  "comment.label": "Write a comment",
+  "comment.replyLabel": "Write a reply",
+  "comment.posted": "Comment posted successfully",
+  "comment.replyPosted": "Reply posted successfully",
+  "comment.error": "Failed to post comment. Please try again."
 }

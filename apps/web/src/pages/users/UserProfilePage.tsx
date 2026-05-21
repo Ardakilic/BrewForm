@@ -99,7 +99,10 @@ export function UserProfilePage() {
               ? (
                 <img
                   src={profile.avatarUrl}
-                  alt=''
+                  alt={t('a11y.userAvatar').replace(
+                    '{name}',
+                    profile.displayName || profile.username,
+                  )}
                   className='w-16 h-16 rounded-full object-cover'
                 />
               )

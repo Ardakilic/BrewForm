@@ -375,5 +375,13 @@
   "recipe.stat.yield": "VERİM",
   "recipe.stat.time": "SÜRE",
   "recipe.stat.ratio": "ORAN",
-  "recipe.stat.temp": "SICAKLIK"
+  "recipe.stat.temp": "SICAKLIK",
+  "a11y.skipToContent": "Ana iceriye gec",
+  "a11y.userAvatar": "{name} avatari",
+  "comment.commentBy": "Yorum yazan",
+  "comment.label": "Yorum yaz",
+  "comment.replyLabel": "Yanit yaz",
+  "comment.posted": "Yorum basariyla gonderildi",
+  "comment.replyPosted": "Yanit basariyla gonderildi",
+  "comment.error": "Yorum gonderilemedi. Lutfen tekrar deneyin."
 }
