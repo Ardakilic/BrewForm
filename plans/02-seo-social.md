@@ -92,11 +92,12 @@ export async function crawlerMiddleware(c: Context, next: Next) {
           meta.author?.displayName || meta.author?.username || 'BrewForm user'
         }`;
 
+    // NOTE: og:image:width/height are only included for the controlled og-default.png fallback.
+    // User-uploaded photos have unknown dimensions, so we omit the hints to avoid
+    // misleading platforms (Facebook, Discord) into incorrect cropping decisions.
     const imageTag = meta.photoUrl
       ? `
   <meta property="og:image" content="${escapeHtmlAttr(meta.photoUrl)}">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
   <meta name="twitter:image" content="${escapeHtmlAttr(meta.photoUrl)}">`
       : `
   <meta property="og:image" content="${escapeHtmlAttr(baseUrl)}/og-default.png">
@@ -138,7 +139,7 @@ export async function crawlerMiddleware(c: Context, next: Next) {
 - `RECIPE_PATH_RE` is strict (`[a-z0-9][\w-]*`) to avoid matching static assets like `/recipes/styles.css`.
 - The crawler list includes Googlebot/bingbot because while Google can execute JS, serving pre-rendered HTML is faster and more reliable for SEO indexing.
 - Falls through to `next()` on any error, so the SPA still works if the middleware fails.
-- Always includes `og:image:width` (1200) and `og:image:height` (630) so platforms render the card at the correct aspect ratio without needing to fetch the image first.
+- Emits `og:image:width` (1200) and `og:image:height` (630) only for the controlled `og-default.png` fallback image, where dimensions are known. User-uploaded photos have unknown dimensions; asserting incorrect hints can cause platforms to crop or skip the image.
 
 #### Step 2: Register middleware in `apps/api/src/main.ts`
 
@@ -154,7 +155,34 @@ app.use('*', crawlerMiddleware);
 
 The middleware insertion point is between the cache injection middleware (line 48-51) and `app.route('/', routes)` (line 96). Since the middleware calls `next()` for non-crawler requests, it has zero overhead for normal users.
 
-#### Step 3: Add static OG fallbacks to `apps/web/index.html`
+#### Step 3: Add `VITE_PUBLIC_APP_URL` to Vite config and compose.yml
+
+Before updating `index.html`, wire up the env variable so Vite can replace `%VITE_PUBLIC_APP_URL%` at build time:
+
+**`apps/web/vite.config.ts`** — add to the `define` block:
+```ts
+define: {
+  'import.meta.env.VITE_API_URL': JSON.stringify(
+    Deno.env.get('VITE_API_URL') || '/api/v1',
+  ),
+  // Fallback to /api/v1 for dev (Vite proxy handles it); production builds MUST set this.
+  'import.meta.env.VITE_PUBLIC_APP_URL': JSON.stringify(
+    Deno.env.get('VITE_PUBLIC_APP_URL') || 'http://localhost:5173',
+  ),
+},
+```
+
+**`compose.yml`** — add to `web-dev` environment:
+```yaml
+environment:
+  - VITE_API_URL=/api/v1
+  - VITE_API_PROXY_TARGET=http://app:8000
+  - VITE_PUBLIC_APP_URL=http://localhost:5173   # <-- add this
+```
+
+**Production/CI** — set `VITE_PUBLIC_APP_URL=https://brewform.cc` (or the actual domain) before running `vite build`.
+
+#### Step 4: Add static OG fallbacks to `apps/web/index.html`
 
 Even with the crawler middleware, the `index.html` itself should contain sensible defaults for:
 - Search engines that index the homepage directly
@@ -175,7 +203,9 @@ Even with the crawler middleware, the `index.html` itself should contain sensibl
     <meta property="og:title" content="BrewForm" />
     <meta property="og:description" content="Digitalize, share, and discover coffee brewing recipes and tasting notes." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/og-default.png" />
+    <!-- IMPORTANT: og:image and twitter:image MUST be absolute URLs. Social crawlers (Twitter, Facebook, Discord, etc.) fetch images from their own servers and cannot resolve relative paths. -->
+    <!-- Vite replaces %VITE_PUBLIC_APP_URL% at build time from the env var (set in compose.yml and CI). -->
+    <meta property="og:image" content="%VITE_PUBLIC_APP_URL%/og-default.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="BrewForm" />
@@ -184,7 +214,7 @@ Even with the crawler middleware, the `index.html` itself should contain sensibl
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="BrewForm" />
     <meta name="twitter:description" content="Digitalize, share, and discover coffee brewing recipes and tasting notes." />
-    <meta name="twitter:image" content="/og-default.png" />
+    <meta name="twitter:image" content="%VITE_PUBLIC_APP_URL%/og-default.png" />
   </head>
   <body>
     <script>
@@ -200,7 +230,7 @@ Even with the crawler middleware, the `index.html` itself should contain sensibl
 </html>
 ```
 
-#### Step 4: Create `og-default.png`
+#### Step 5: Create `og-default.png`
 
 A 1200x630 branded placeholder image must be added at `apps/web/public/og-default.png`. This is referenced by `SEOHead.tsx:32` and the static `index.html` tags but currently does not exist.
 
@@ -210,7 +240,7 @@ A 1200x630 branded placeholder image must be added at `apps/web/public/og-defaul
 - Format: PNG (widest platform support; JPEG also acceptable)
 - File size: Keep under 300 KB for fast crawler loads
 
-#### Step 5: Write tests for crawler middleware
+#### Step 6: Write tests for crawler middleware
 
 Create `apps/api/src/middleware/crawler.test.ts` following the pattern in `apps/api/src/routes/share.test.ts`:
 
@@ -264,7 +294,6 @@ describe('Crawler Middleware', () => {
     const html = await res.text();
     expect(html).toContain('<meta property="og:title"');
     expect(html).toContain('V60 Ethiopian');
-    expect(html).toContain('og:image:width');
     expect(html).toContain('twitter:card');
   });
 
@@ -301,14 +330,24 @@ describe('Crawler Middleware', () => {
     expect(await res.text()).toBe('SPA fallback');
   });
 
-  it('includes og:image:width and og:image:height', async () => {
+  it('includes og:image:width and og:image:height only for fallback image', async () => {
+    // With a user photo, dimensions should be omitted (unknown size)
     deps.getRecipeMeta = async () => publicMeta;
-    const res = await app.request('/recipes/v60-ethiopian', {
+    const resWithPhoto = await app.request('/recipes/v60-ethiopian', {
       headers: { 'User-Agent': 'WhatsApp/2.0' },
     });
-    const html = await res.text();
-    expect(html).toContain('content="1200"');
-    expect(html).toContain('content="630"');
+    const htmlWithPhoto = await resWithPhoto.text();
+    expect(htmlWithPhoto).not.toContain('content="1200"');
+    expect(htmlWithPhoto).not.toContain('content="630"');
+
+    // Without a photo (fallback to og-default.png), dimensions should be present
+    deps.getRecipeMeta = async () => ({ ...publicMeta, photoUrl: null });
+    const resFallback = await app.request('/recipes/v60-ethiopian', {
+      headers: { 'User-Agent': 'WhatsApp/2.0' },
+    });
+    const htmlFallback = await resFallback.text();
+    expect(htmlFallback).toContain('content="1200"');
+    expect(htmlFallback).toContain('content="630"');
   });
 
   it('includes twitter meta tags', async () => {
@@ -350,7 +389,9 @@ describe('Crawler Middleware', () => {
 
 - [ ] Create `apps/api/src/middleware/crawler.ts`
 - [ ] Register `crawlerMiddleware` in `apps/api/src/main.ts` before SPA routes
-- [ ] Update `apps/web/index.html` with static OG/twitter meta tags
+- [ ] Add `VITE_PUBLIC_APP_URL` to `apps/web/vite.config.ts` `define` block
+- [ ] Add `VITE_PUBLIC_APP_URL` to `compose.yml` `web-dev` environment
+- [ ] Update `apps/web/index.html` with static OG/twitter meta tags (using `%VITE_PUBLIC_APP_URL%`)
 - [ ] Create `apps/web/public/og-default.png` (1200x630 branded image)
 - [ ] Write `apps/api/src/middleware/crawler.test.ts`
 - [ ] Manual test: `curl -H "User-Agent: Twitterbot/1.0" https://brewform.cc/recipes/<slug>` returns OG tags
@@ -408,7 +449,7 @@ Sitemap: https://brewform.cc/api/v1/sitemap.xml
 import { Hono } from 'hono';
 import { db } from '@brewform/db';
 import { recipes, users } from '@brewform/db/schema';
-import { eq, isNull, desc } from 'drizzle-orm';
+import { eq, and, isNull, desc } from 'drizzle-orm';
 import { config } from '../config/index.ts';
 import type { AppEnv } from '../types/hono.ts';
 
@@ -438,11 +479,11 @@ sitemap.get('/', async (c) => {
     })
     .from(recipes)
     .where(
-      eq(recipes.visibility, 'public'),
+      and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt)),
     )
     .orderBy(desc(recipes.updatedAt));
 
-  // Fetch all non-deleted users with at least one public recipe
+  // Fetch all non-deleted users with at least one public, non-deleted recipe
   // (no point indexing users with zero public content)
   const activeUsers = await db
     .selectDistinct({
@@ -452,7 +493,7 @@ sitemap.get('/', async (c) => {
     .from(users)
     .innerJoin(recipes, eq(recipes.authorId, users.id))
     .where(
-      eq(recipes.visibility, 'public'),
+      and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt)),
     );
 
   // Static pages
@@ -516,7 +557,7 @@ export default sitemap;
 **Design notes:**
 - Returns `application/xml` content type, not `text/xml`, per best practices.
 - Includes `Cache-Control: max-age=3600` (1 hour) to avoid hitting the database on every crawler request. Sitemap data does not need to be real-time.
-- The `visibility='public'` filter ensures only publicly visible recipes appear. Soft-deleted recipes with `deletedAt` set are an edge case -- they should not normally be `public`, but for defense-in-depth you could add `isNull(recipes.deletedAt)` to the WHERE clause.
+- The `visibility='public'` AND `isNull(recipes.deletedAt)` filters ensure only publicly visible, non-deleted recipes appear. Defense-in-depth: even if a delete-handler bug leaves visibility='public' on a soft-deleted recipe, it won't leak into the sitemap.
 - User profiles are included only if the user has at least one public recipe, preventing indexing of empty profile pages.
 - `toW3CDate()` outputs `YYYY-MM-DD` format which is the recommended `<lastmod>` format per the sitemap protocol.
 
@@ -706,7 +747,8 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
     brewMethod,
     drinkType,
     preparationNotes,
-    temperatureCelsius,
+    // temperatureCelsius intentionally omitted from destructuring — kept in interface
+    // and call site for future use (e.g., "Brew at 93°C" instruction step).
     tasteNoteNames,
     additionalPreparations,
     avgRating,
@@ -722,9 +764,10 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
     const grindLabel = grindSize ? ` (${grindSize} grind)` : '';
     ingredients.push(`${groundWeightGrams}g ground coffee${grindLabel}`);
   }
-  if (extractionVolumeMl) {
-    ingredients.push(`${extractionVolumeMl}ml water`);
-  }
+  // NOTE: extractionVolumeMl is the OUTPUT volume (brewed coffee), NOT the input water.
+  // In coffee brewing, input water > output due to grounds absorption and evaporation.
+  // Since there's no separate waterVolumeMl field in the schema, we omit water from ingredients.
+  // extractionVolumeMl is used only for recipeYield below.
   if (additionalPreparations?.length) {
     for (const prep of additionalPreparations) {
       ingredients.push(`${prep.inputAmount} ${prep.name} (${prep.type})`);
@@ -769,11 +812,10 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
     keywords: keywords.join(', '),
     recipeCategory: brewMethod ? formatBrewMethod(brewMethod) : 'Coffee',
     ...(image ? { image } : {}),
+    // NOTE: Only cookTime is set (not totalTime) because we lack prepTime data
+    // (grinding, heating water, etc.). Setting totalTime === cookTime would be misleading.
     ...(extractionTimeSeconds
-      ? {
-          cookTime: toIsoDuration(extractionTimeSeconds),
-          totalTime: toIsoDuration(extractionTimeSeconds),
-        }
+      ? { cookTime: toIsoDuration(extractionTimeSeconds) }
       : {}),
     ...(extractionVolumeMl ? { recipeYield: `${extractionVolumeMl}ml` } : {}),
     ...(ingredients.length ? { recipeIngredient: ingredients } : {}),
@@ -789,9 +831,10 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
           },
         }
       : {}),
-    ...(temperatureCelsius
-      ? { cookingMethod: `Brewed at ${temperatureCelsius}°C` }
-      : {}),
+    // NOTE: temperatureCelsius is NOT included as cookingMethod.
+    // schema.org's cookingMethod expects a technique category (e.g., "Pour Over", "Immersion"),
+    // not a temperature. The brew method already covers the technique via recipeCategory/keywords.
+    // Temperature belongs in recipeInstructions steps if relevant.
   };
 
   // BreadcrumbList JSON-LD
@@ -862,7 +905,7 @@ In `apps/web/src/pages/recipes/RecipeDetailPage.tsx`, the `<RecipeJsonLd>` call 
   slug={recipe.slug}
   authorName={recipe.author?.displayName || recipe.author?.username || ''}
   authorUsername={recipe.author?.username}
-  datePublished={recipe.createdAt}
+  datePublished={recipe.createdAt.toISOString()}
   image={recipe.photos?.[0]?.url}
   extractionTimeSeconds={v.extractionTimeSeconds}
   extractionVolumeMl={v.extractionVolumeMl}
@@ -873,7 +916,9 @@ In `apps/web/src/pages/recipes/RecipeDetailPage.tsx`, the `<RecipeJsonLd>` call 
   drinkType={v.drinkType}
   preparationNotes={v.preparationNotes}
   temperatureCelsius={v.temperatureCelsius}
-  tasteNoteNames={tasteNotes.map((tn: any) => tn.tasteNote?.name).filter(Boolean)}
+  tasteNoteNames={tasteNotes
+    .map((tn: { tasteNote?: { name: string } | null }) => tn.tasteNote?.name)
+    .filter((n): n is string => Boolean(n))}
   additionalPreparations={v.additionalPreparations}
   avgRating={recipe.avgRating}
   ratingCount={recipe.ratingCount}
@@ -913,14 +958,15 @@ describe('RecipeJsonLd', () => {
     expect(recipe.author.name).toBe('Barista');
   });
 
-  it('includes cookTime when extractionTimeSeconds provided', () => {
+  it('includes cookTime (but NOT totalTime) when extractionTimeSeconds provided', () => {
     const { container } = render(
       <RecipeJsonLd {...baseProps} extractionTimeSeconds={150} />,
     );
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');
     const recipe = JSON.parse(scripts[0].textContent || '');
     expect(recipe.cookTime).toBe('PT2M30S');
-    expect(recipe.totalTime).toBe('PT2M30S');
+    // totalTime is intentionally omitted -- we lack prepTime data (grinding, heating water)
+    expect(recipe.totalTime).toBeUndefined();
   });
 
   it('includes recipeYield from extractionVolumeMl', () => {
@@ -946,7 +992,10 @@ describe('RecipeJsonLd', () => {
     const recipe = JSON.parse(scripts[0].textContent || '');
     expect(recipe.recipeIngredient).toContain('Ethiopian Yirgacheffe');
     expect(recipe.recipeIngredient).toContain('18g ground coffee (fine grind)');
-    expect(recipe.recipeIngredient).toContain('250ml water');
+    // extractionVolumeMl is OUTPUT volume, not input water -- so it should NOT appear in ingredients
+    expect(recipe.recipeIngredient).not.toContain('250ml water');
+    // But it SHOULD appear as recipeYield
+    expect(recipe.recipeYield).toBe('250ml');
   });
 
   it('includes aggregateRating when available', () => {
