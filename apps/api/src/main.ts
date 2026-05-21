@@ -15,7 +15,7 @@
  *   5. Exit cleanly
  *
  * Middleware stack (applied in order):
- *   cors → requestId → secureHeaders → rateLimit(100/min) → cache injection → routes
+ *   cors → requestId → secureHeaders → rateLimit(100/min) → cache injection → crawler → routes
  */
 import { Hono } from 'hono';
 import * as path from 'jsr:@std/path';

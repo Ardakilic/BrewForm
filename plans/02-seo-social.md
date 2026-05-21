@@ -157,20 +157,13 @@ The middleware insertion point is between the cache injection middleware (line 4
 
 #### Step 3: Add `VITE_PUBLIC_APP_URL` to Vite config and compose.yml
 
-Before updating `index.html`, wire up the env variable so Vite can replace `%VITE_PUBLIC_APP_URL%` at build time:
+Before updating `index.html`, wire up the env variable so Vite can replace `%VITE_PUBLIC_APP_URL%` at build time.
 
-**`apps/web/vite.config.ts`** — add to the `define` block:
-```ts
-define: {
-  'import.meta.env.VITE_API_URL': JSON.stringify(
-    Deno.env.get('VITE_API_URL') || '/api/v1',
-  ),
-  // Fallback to /api/v1 for dev (Vite proxy handles it); production builds MUST set this.
-  'import.meta.env.VITE_PUBLIC_APP_URL': JSON.stringify(
-    Deno.env.get('VITE_PUBLIC_APP_URL') || 'http://localhost:5173',
-  ),
-},
-```
+**Note:** Vite's HTML env interpolation (`%VITE_PUBLIC_APP_URL%` in `index.html`) is resolved via `import.meta.env`, not the `define` block. The `define` block only affects JavaScript/TypeScript code — it does **not** affect HTML template replacement. However, `VITE_*` variables are automatically loaded by Vite from the environment (via `loadEnv`) into `import.meta.env`. To ensure the env var is available at build time, either:
+- Set `VITE_PUBLIC_APP_URL` in the environment before running `vite build`, or
+- Use `loadEnv` in the Vite config to inject it.
+
+For this project, `VITE_PUBLIC_APP_URL` is set via `compose.yml` for dev and must be set in CI for production builds. The `define` block is kept for JS-level replacements if needed but has no effect on `index.html`. Keep `define` only for JS-level replacements if needed and state that production builds must set `VITE_PUBLIC_APP_URL`.
 
 **`compose.yml`** — add to `web-dev` environment:
 ```yaml
@@ -371,7 +364,7 @@ describe('Crawler Middleware', () => {
     expect(html).toContain('V60 recipe using Ethiopian Yirgacheffe');
   });
 
-  it('uses brewMethod and drinkType in description when productName is absent', async () => {
+  it('falls back to author name in description when productName is absent', async () => {
     deps.getRecipeMeta = async () => ({
       ...publicMeta,
       productName: null,

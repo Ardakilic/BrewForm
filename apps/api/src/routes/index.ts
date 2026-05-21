@@ -37,6 +37,7 @@ const routes = new Hono<AppEnv>();
 routes.route('/', health);
 routes.route('/share', share);
 routes.route('/api/v1/sitemap.xml', sitemap);
+
 routes.route('/api/v1/auth', auth);
 routes.route('/api/v1/users', user);
 routes.route('/api/v1/recipes', recipe);

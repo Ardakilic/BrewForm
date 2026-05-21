@@ -2,6 +2,9 @@ import type { Context, Next } from 'hono';
 import { getRecipeMeta } from '../modules/recipe/service.ts';
 import { escapeHtml, escapeHtmlAttr } from '@brewform/shared/utils';
 import { config } from '../config/index.ts';
+import { createLogger } from '../utils/logger/index.ts';
+
+const log = createLogger('crawler');
 
 const CRAWLER_UA =
   /Twitterbot|facebookexternalhit|WhatsApp|Discordbot|Slackbot|LinkedInBot|Googlebot|bingbot|Pinterestbot|TelegramBot/i;
@@ -25,7 +28,7 @@ export async function crawlerMiddleware(c: Context, next: Next) {
     const meta = await deps.getRecipeMeta(slug);
     if (!meta || meta.visibility !== 'public') return next();
 
-    const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
+    const baseUrl = (config.PUBLIC_APP_URL || config.APP_URL).replace(/\/+$/, '');
     const canonicalUrl = `${baseUrl}/recipes/${encodeURIComponent(meta.slug)}`;
 
     const description = meta.productName
@@ -65,8 +68,10 @@ export async function crawlerMiddleware(c: Context, next: Next) {
 </body>
 </html>`;
 
+    c.header('Cache-Control', 'public, max-age=300');
     return c.html(html);
-  } catch {
+  } catch (err) {
+    log.warn({ slug, err }, 'Crawler rendering failed');
     return next();
   }
 }

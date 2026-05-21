@@ -1,8 +1,6 @@
-# robots.txt for BrewForm
 User-agent: *
 Allow: /
 
-# Disallow authenticated/private areas
 Disallow: /settings
 Disallow: /admin
 Disallow: /onboarding
@@ -10,5 +8,6 @@ Disallow: /setups
 Disallow: /beans
 Disallow: /equipment
 
-# Sitemap location
-Sitemap: https://brewform.cc/api/v1/sitemap.xml
+# Sitemap location derived from VITE_PUBLIC_APP_URL at build time.
+# vite build generates the final robots.txt via the build-robots-txt plugin.
+Sitemap: /api/v1/sitemap.xml

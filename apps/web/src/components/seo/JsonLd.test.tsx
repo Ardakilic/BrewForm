@@ -108,4 +108,30 @@ describe('RecipeJsonLd', () => {
     const recipe = JSON.parse(scripts[0].textContent || '');
     expect(recipe.aggregateRating).toBeUndefined();
   });
+
+  it('escapes malicious strings in JSON-LD to prevent script breakout', () => {
+    const { container } = render(
+      <RecipeJsonLd
+        {...baseProps}
+        productName='</script><script>alert(1)</script>'
+        authorName='</script><script>alert(2)</script>'
+        tasteNoteNames={['<script>alert(3)</script>', '</script>']}
+        brewMethod='<script>alert(4)</script>'
+        drinkType='</script><script>alert(5)</script>'
+      />,
+    );
+    const scripts = container.querySelectorAll('script[type="application/ld+json"]');
+    expect(scripts.length).toBe(2);
+
+    for (const script of scripts) {
+      const text = script.textContent || '';
+      expect(text).not.toContain('</script>');
+      expect(() => JSON.parse(text)).not.toThrow();
+    }
+
+    const recipe = JSON.parse(scripts[0].textContent || '');
+    expect(recipe.name).toBe('V60 Ethiopian');
+    expect(recipe.author.name).not.toContain('script');
+    expect(recipe.keywords).not.toContain('script');
+  });
 });

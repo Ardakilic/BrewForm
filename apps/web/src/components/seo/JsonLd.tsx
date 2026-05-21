@@ -166,15 +166,21 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
     ],
   };
 
+  const sanitizeJsonLd = (obj: unknown): string =>
+    JSON.stringify(obj)
+      .replace(/<\/script>/gi, '\\u003C/script>')
+      .replace(/</g, '\\u003C')
+      .replace(/&/g, '\\u0026');
+
   return (
     <>
       <script
         type='application/ld+json'
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(recipeJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeJsonLd(recipeJsonLd) }}
       />
       <script
         type='application/ld+json'
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeJsonLd(breadcrumbJsonLd) }}
       />
     </>
   );

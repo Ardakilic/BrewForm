@@ -10,6 +10,8 @@ const sitemap = new Hono<AppEnv>();
 export const SITEMAP_CACHE_KEY = ['sitemap'];
 export const SITEMAP_CACHE_TTL = 24 * 60 * 60 * 1000;
 
+let inFlightSitemapBuildPromise: Promise<string> | null = null;
+
 function escapeXml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -19,8 +21,11 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function toW3CDate(date: Date): string {
-  return date.toISOString().split('T')[0];
+function toW3CDate(date: Date | null | undefined): string {
+  if (date && !isNaN(date.getTime())) {
+    return date.toISOString().split('T')[0];
+  }
+  return '';
 }
 
 let _db: any = null;
@@ -87,20 +92,30 @@ export function buildXml(
   }
 
   for (const recipe of publicRecipes) {
+    const lastmod = toW3CDate(recipe.updatedAt);
     xml += `
   <url>
-    <loc>${escapeXml(baseUrl)}/recipes/${escapeXml(recipe.slug)}</loc>
-    <lastmod>${toW3CDate(recipe.updatedAt)}</lastmod>
+    <loc>${escapeXml(baseUrl)}/recipes/${escapeXml(recipe.slug)}</loc>${
+      lastmod
+        ? `
+    <lastmod>${lastmod}</lastmod>`
+        : ''
+    }
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`;
   }
 
   for (const user of activeUsers) {
+    const lastmod = toW3CDate(user.updatedAt);
     xml += `
   <url>
-    <loc>${escapeXml(baseUrl)}/u/${escapeXml(user.username)}</loc>
-    <lastmod>${toW3CDate(user.updatedAt)}</lastmod>
+    <loc>${escapeXml(baseUrl)}/u/${escapeXml(user.username)}</loc>${
+      lastmod
+        ? `
+    <lastmod>${lastmod}</lastmod>`
+        : ''
+    }
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>`;
@@ -125,13 +140,35 @@ sitemap.get('/', async (_c) => {
     });
   }
 
-  const publicRecipes = await deps.getPublicRecipes();
-  const activeUsers = await deps.getActiveUsers();
+  if (inFlightSitemapBuildPromise) {
+    return inFlightSitemapBuildPromise.then((xml) =>
+      new Response(xml, {
+        headers: {
+          'Content-Type': 'application/xml; charset=utf-8',
+          'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+        },
+      })
+    );
+  }
 
-  const xml = buildXml(baseUrl, publicRecipes, activeUsers);
+  inFlightSitemapBuildPromise = (async () => {
+    try {
+      const [publicRecipes, activeUsers] = await Promise.all([
+        deps.getPublicRecipes(),
+        deps.getActiveUsers(),
+      ]);
 
-  await cacheProvider.set(SITEMAP_CACHE_KEY, xml, { ttlMs: SITEMAP_CACHE_TTL });
+      const xml = buildXml(baseUrl, publicRecipes, activeUsers);
 
+      await cacheProvider.set(SITEMAP_CACHE_KEY, xml, { ttlMs: SITEMAP_CACHE_TTL });
+
+      return xml;
+    } finally {
+      inFlightSitemapBuildPromise = null;
+    }
+  })();
+
+  const xml = await inFlightSitemapBuildPromise;
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
