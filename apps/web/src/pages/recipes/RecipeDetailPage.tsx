@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { recipeApi, tasteApi } from '../../api/index.ts';
-import type {
-  RecipeDetailResponse,
-  RateResponse,
-  TasteNoteFlatItem,
-} from '../../api/types.ts';
+import type { RateResponse, RecipeDetailResponse, TasteNoteFlatItem } from '../../api/types.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
 import { LikeButton } from '../../components/recipe/LikeButton.tsx';
@@ -341,11 +337,11 @@ export function RecipeDetailPage() {
                         setRecipe((prev) =>
                           prev
                             ? {
-                                ...prev,
-                                userRating: rating,
-                                avgRating: result.avgRating,
-                                ratingCount: result.ratingCount,
-                              }
+                              ...prev,
+                              userRating: rating,
+                              avgRating: result.avgRating,
+                              ratingCount: result.ratingCount,
+                            }
                             : prev
                         );
                       } catch {

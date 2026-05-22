@@ -1,4 +1,4 @@
-import { sanitizeText, sanitizeName } from '../../utils/sanitize.ts';
+import { sanitizeName, sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import * as followModel from '../follow/model.ts';
 

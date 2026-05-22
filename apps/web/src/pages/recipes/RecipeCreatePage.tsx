@@ -71,9 +71,7 @@ export function RecipeCreatePage() {
     }
   }, [selectedSetupId, setupList]);
 
-  const compatibleDrinks = DRINK_TYPES_LIST.filter((d) =>
-    d.compatibleMethods.includes(brewMethod)
-  );
+  const compatibleDrinks = DRINK_TYPES_LIST.filter((d) => d.compatibleMethods.includes(brewMethod));
 
   useEffect(() => {
     if (!compatibleDrinks.some((d) => d.value === drinkType)) {

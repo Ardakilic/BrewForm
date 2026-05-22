@@ -13,7 +13,6 @@ import {
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 import type { RecipeDetailResponse } from '../../api/types.ts';
 
-
 export function RecipeEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -85,9 +84,7 @@ export function RecipeEditPage() {
     }).finally(() => setFetching(false));
   }, [id]);
 
-  const compatibleDrinks = DRINK_TYPES_LIST.filter((d) =>
-    d.compatibleMethods.includes(brewMethod)
-  );
+  const compatibleDrinks = DRINK_TYPES_LIST.filter((d) => d.compatibleMethods.includes(brewMethod));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

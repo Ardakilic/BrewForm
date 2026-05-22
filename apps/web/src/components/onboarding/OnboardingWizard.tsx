@@ -45,7 +45,9 @@ export function OnboardingWizard() {
       {currentStep === 'explore' && <ExploreStep t={t} />}
 
       <div className='mt-8 flex justify-between'>
-        <button type='button' onClick={skip} className='btn-secondary'>{t('onboarding.skip')}</button>
+        <button type='button' onClick={skip} className='btn-secondary'>
+          {t('onboarding.skip')}
+        </button>
         {step < STEPS.length - 1
           ? (
             <button
@@ -56,7 +58,11 @@ export function OnboardingWizard() {
               {t('onboarding.next')}
             </button>
           )
-          : <button type='button' onClick={complete} className='btn-primary'>{t('onboarding.getStarted')}</button>}
+          : (
+            <button type='button' onClick={complete} className='btn-primary'>
+              {t('onboarding.getStarted')}
+            </button>
+          )}
       </div>
 
       <div className='mt-6 flex justify-center gap-2'>
@@ -107,7 +113,9 @@ function BeansStep({ t }: StepProps) {
   return (
     <>
       <div className='text-6xl mb-4'>🫘</div>
-      <h2 className='text-xl font-bold' style={{ color: 'var(--text-primary)' }}>{t('onboarding.beans')}</h2>
+      <h2 className='text-xl font-bold' style={{ color: 'var(--text-primary)' }}>
+        {t('onboarding.beans')}
+      </h2>
       <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
         {t('onboarding.beansDescription')}
       </p>
@@ -129,7 +137,9 @@ function FirstBrewStep({ t }: StepProps) {
         {t('onboarding.firstBrewDescription')}
       </p>
       <div className='mt-4'>
-        <a href='/recipes/new' className='btn-primary inline-block'>{t('onboarding.firstBrewAction')}</a>
+        <a href='/recipes/new' className='btn-primary inline-block'>
+          {t('onboarding.firstBrewAction')}
+        </a>
       </div>
     </>
   );

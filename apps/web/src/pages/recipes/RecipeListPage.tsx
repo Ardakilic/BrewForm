@@ -4,7 +4,11 @@ import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { BREW_METHODS_LIST, DRINK_TYPES_LIST, VISIBILITY_STATES_LIST } from '@brewform/shared/constants';
+import {
+  BREW_METHODS_LIST,
+  DRINK_TYPES_LIST,
+  VISIBILITY_STATES_LIST,
+} from '@brewform/shared/constants';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
 

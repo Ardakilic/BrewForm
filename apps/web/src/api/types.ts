@@ -107,7 +107,9 @@ export interface RecipeListItem {
   createdAt: string;
   updatedAt: string;
   author: RecipeAuthorResponse | null;
-  currentVersion: Pick<RecipeVersionResponse, 'brewMethod' | 'drinkType' | 'emojiTag' | 'rating'> | null;
+  currentVersion:
+    | Pick<RecipeVersionResponse, 'brewMethod' | 'drinkType' | 'emojiTag' | 'rating'>
+    | null;
   avgRating: number | null;
   userLiked: boolean;
   userFavourited: boolean;

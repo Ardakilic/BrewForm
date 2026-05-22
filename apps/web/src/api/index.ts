@@ -27,7 +27,9 @@ export const userApi = {
 export const recipeApi = {
   list: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return api.getWithMeta<{ data: unknown[]; meta: { pagination?: { total: number } } }>(`/recipes${query}`);
+    return api.getWithMeta<{ data: unknown[]; meta: { pagination?: { total: number } } }>(
+      `/recipes${query}`,
+    );
   },
   starred: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
