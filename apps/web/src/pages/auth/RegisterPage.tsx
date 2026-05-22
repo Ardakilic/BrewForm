@@ -38,7 +38,7 @@ export function RegisterPage() {
     setError('');
 
     if (password.length > 128) {
-      setError('Password must be at most 128 characters');
+      setError(t('password.tooLong'));
       return;
     }
 

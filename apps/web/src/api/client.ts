@@ -1,14 +1,10 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
 async function requestInternal(endpoint: string, options: RequestInit): Promise<unknown> {
-  const hasExplicitContentType = options.headers &&
-    'Content-Type' in (options.headers as Record<string, string>);
-  const headers: Record<string, string> = {
-    ...(!hasExplicitContentType && !(options.body instanceof FormData)
-      ? { 'Content-Type': 'application/json' }
-      : {}),
-    ...((options.headers as Record<string, string>) || {}),
-  };
+  const headers = new Headers(options.headers);
+  if (!(options.body instanceof FormData) && !headers.has('content-type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   let response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,

@@ -67,6 +67,27 @@ interface RecipeListItem {
 let cachedEquipment: EquipmentItem[] | null = null;
 let cachedTasteNotes: TasteNoteFlat[] | null = null;
 
+function isRecipeListItem(value: unknown): value is RecipeListItem {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.id !== 'string' || typeof v.slug !== 'string' || typeof v.title !== 'string') {
+    return false;
+  }
+  if (
+    typeof v.likeCount !== 'number' || typeof v.commentCount !== 'number' ||
+    typeof v.forkCount !== 'number'
+  ) {
+    return false;
+  }
+  if (v.currentVersion !== null && v.currentVersion !== undefined) {
+    if (typeof v.currentVersion !== 'object') return false;
+    const cv = v.currentVersion as Record<string, unknown>;
+    if (typeof cv.brewMethod !== 'string' || typeof cv.drinkType !== 'string') return false;
+    if (cv.rating !== null && typeof cv.rating !== 'number') return false;
+  }
+  return true;
+}
+
 /** Reset the static data cache (used in tests) */
 export function _resetStaticCache() {
   cachedEquipment = null;
@@ -134,8 +155,9 @@ export function StarredRecipesPage() {
     if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
 
     recipeApi.starred(params).then((response) => {
-      const items = Array.isArray(response.data) ? response.data : [];
-      setRecipes(items as RecipeListItem[]);
+      const rawItems: unknown[] = Array.isArray(response.data) ? response.data : [];
+      const items = rawItems.filter(isRecipeListItem);
+      setRecipes(items);
       const serverTotal = response.meta?.pagination?.total ?? items.length;
       setTotal(serverTotal);
     }).catch(() => {
