@@ -7,9 +7,9 @@
  * be plain text or limited markdown (bold/italic only).
  */
 
-/** Strip all HTML tags from a string */
+/** Strip HTML-like tags from a string. Requires a letter after < or </ to avoid matching numeric comparisons like "1 < 2 > 1". */
 function stripHtmlTags(text: string): string {
-  return text.replace(/<[^>]*>/g, '');
+  return text.replace(/<\/?[a-z][^>]*>/gi, '');
 }
 
 /** Remove zero-width and other invisible Unicode characters */

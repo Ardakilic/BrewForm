@@ -33,7 +33,9 @@ export const recipeApi = {
   },
   starred: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return api.getWithMeta<unknown[]>(`/recipes/starred${query}`);
+    return api.getWithMeta<{ data: unknown[]; meta: { pagination?: { total: number } } }>(
+      `/recipes/starred${query}`,
+    );
   },
   get: (slugOrId: string) => api.get<Record<string, unknown>>(`/recipes/${slugOrId}`),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/recipes', data),
