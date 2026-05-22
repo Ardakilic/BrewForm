@@ -1,6 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function requestInternal(endpoint: string, options: RequestInit): Promise<unknown> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
@@ -40,50 +40,16 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     );
   }
 
-  return data.data as T;
+  return data;
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const data = await requestInternal(endpoint, options);
+  return (data as Record<string, unknown>).data as T;
 }
 
 async function requestWithMeta<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...((options.headers as Record<string, string>) || {}),
-  };
-
-  let response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  if (response.status === 401 && !endpoint.startsWith('/auth/')) {
-    const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-      credentials: 'include',
-    });
-
-    if (refreshResponse.ok) {
-      response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-        credentials: 'include',
-      });
-    }
-  }
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new ApiError(
-      data.error?.code || 'UNKNOWN_ERROR',
-      data.error?.message || 'Request failed',
-      data.error?.details,
-      response.status,
-    );
-  }
-
-  return data as T;
+  return requestInternal(endpoint, options) as Promise<T>;
 }
 
 export class ApiError extends Error {
