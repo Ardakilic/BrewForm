@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { api } from '../../api/client';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { api } from '../../api/client.ts';
 
 const STEPS = ['welcome', 'equipment', 'beans', 'first-brew', 'explore'] as const;
 

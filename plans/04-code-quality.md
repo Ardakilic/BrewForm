@@ -1558,7 +1558,7 @@ AFTER:  1. ~~**RESOLVED** (C1): Migrated from Prisma to Drizzle ORM. This issue 
 
 #### Step 5: Update `README.md`
 
-```
+```text
 Tech Stack section:
 BEFORE: Node.js 24 (or any Node.js version)
 AFTER:  Deno 2.x
@@ -1578,7 +1578,7 @@ Remove the entire "API container fails to start with Prisma errors" troubleshoot
 
 #### Step 6: Verify `Makefile`
 
-```
+```text
 Check db target descriptions for Prisma references.
 If any are found, replace with Drizzle equivalents matching the README changes above.
 ```

@@ -120,3 +120,21 @@ export async function getRecipeAuthorId(recipeId: string) {
   ).limit(1);
   return result[0]?.authorId ?? null;
 }
+
+export async function getRecipeForNotification(recipeId: string) {
+  const result = await db.select({
+    id: recipes.id,
+    slug: recipes.slug,
+    title: recipes.title,
+    authorId: recipes.authorId,
+  })
+    .from(recipes)
+    .where(and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getCommenterById(userId: string) {
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return result[0] ?? null;
+}
