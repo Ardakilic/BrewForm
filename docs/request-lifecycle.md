@@ -177,7 +177,7 @@ terminated forcibly — keep job intervals comfortably below that window.
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Reject malformed input             | a Zod schema in `@brewform/shared/schemas`, then `zValidator` in the route                              |
 | Authorize an action                | the service, before the DB call (e.g. compare `recipe.authorId` to `userId`)                            |
-| Add a new DB query                 | the module's `model.ts` only — services never import `@prisma/client`                                   |
+| Add a new DB query                 | the module's `model.ts` only — services never import `drizzle-orm`                                   |
 | Add cross-cutting behaviour        | a new middleware in `apps/api/src/middleware/`, registered in `main.ts` or the relevant sub-router      |
 | Send an email after a social event | a new template in `apps/api/src/templates/email/` plus a helper in `apps/api/src/utils/notify/index.ts` |
 | Schedule periodic work             | `registerJob({...})` in a new file under `apps/api/src/utils/jobs/`                                     |

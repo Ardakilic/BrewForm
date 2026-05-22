@@ -26,7 +26,7 @@ import { errorHandler } from './middleware/errorHandler.ts';
 import { rateLimitMiddleware } from './middleware/rateLimit.ts';
 import { secureHeaders } from 'hono/secure-headers';
 import { createCacheProvider } from './utils/cache/index.ts';
-import type { CacheProvider } from './utils/cache/index.ts';
+import type { AppEnv } from './types/hono.ts';
 import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import routes from './routes/index.ts';
 import { createLogger } from './utils/logger/index.ts';
@@ -35,14 +35,7 @@ import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
 
-type Variables = {
-  requestId: string;
-  cache: CacheProvider;
-  userId: string | null;
-  user: unknown | null;
-};
-
-const app = new Hono<{ Variables: Variables }>();
+const app = new Hono<AppEnv>();
 
 app.use('*', corsMiddleware);
 app.use('*', requestIdMiddleware);

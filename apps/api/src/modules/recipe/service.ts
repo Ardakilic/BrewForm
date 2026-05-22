@@ -1,3 +1,4 @@
+import { sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import { db } from '@brewform/db';
 import {
@@ -37,7 +38,9 @@ export async function getRecipe(slugOrId: string) {
 }
 
 export async function createRecipe(authorId: string, data: any) {
-  const slug = await generateUniqueSlug(data.title);
+  const safeTitle = sanitizeText(data.title);
+  if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
+  const slug = await generateUniqueSlug(safeTitle);
 
   let grinder = data.grinder;
   let brewerDetails = data.brewerDetails;
@@ -64,7 +67,7 @@ export async function createRecipe(authorId: string, data: any) {
   const recipe: any = await db.transaction(async (tx) => {
     const [r] = await tx.insert(recipes).values({
       slug,
-      title: data.title,
+      title: safeTitle,
       authorId,
       visibility: data.visibility || 'draft',
       currentVersionId: null,
@@ -92,8 +95,8 @@ export async function createRecipe(authorId: string, data: any) {
       temperatureCelsius: data.temperatureCelsius,
       brewRatio,
       flowRate,
-      personalNotes: data.personalNotes,
-      preparationNotes: data.preparationNotes,
+      personalNotes: sanitizeText(data.personalNotes),
+      preparationNotes: sanitizeText(data.preparationNotes),
       isFavourite: data.isFavourite || false,
       rating: data.rating,
       emojiTag: data.emojiTag,
@@ -202,8 +205,8 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
       temperatureCelsius: data.temperatureCelsius ?? latestVersion.temperatureCelsius,
       brewRatio,
       flowRate,
-      personalNotes: data.personalNotes ?? latestVersion.personalNotes,
-      preparationNotes: data.preparationNotes ?? latestVersion.preparationNotes,
+      personalNotes: sanitizeText(data.personalNotes ?? latestVersion.personalNotes),
+      preparationNotes: sanitizeText(data.preparationNotes ?? latestVersion.preparationNotes),
       isFavourite: data.isFavourite ?? latestVersion.isFavourite,
       rating: data.rating ?? latestVersion.rating,
       emojiTag: data.emojiTag ?? latestVersion.emojiTag,
@@ -211,14 +214,18 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
       beanId: data.beanId ?? latestVersion.beanId,
     });
 
+    const safeTitle = sanitizeText(data.title ?? recipe.title);
+    if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
     await model.update(recipe.id, {
-      title: data.title ?? recipe.title,
+      title: safeTitle,
       visibility: data.visibility ?? recipe.visibility,
       currentVersionId: version.id,
     });
   } else {
+    const safeTitle = sanitizeText(data.title ?? recipe.title);
+    if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
     await model.update(recipe.id, {
-      title: data.title ?? recipe.title,
+      title: safeTitle,
       visibility: data.visibility ?? recipe.visibility,
     });
   }

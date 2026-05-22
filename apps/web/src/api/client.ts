@@ -1,10 +1,10 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...((options.headers as Record<string, string>) || {}),
-  };
+async function requestInternal(endpoint: string, options: RequestInit): Promise<unknown> {
+  const headers = new Headers(options.headers);
+  if (!(options.body instanceof FormData) && !headers.has('content-type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   let response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -40,7 +40,16 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     );
   }
 
-  return data.data as T;
+  return data;
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const data = await requestInternal(endpoint, options);
+  return (data as Record<string, unknown>).data as T;
+}
+
+async function requestWithMeta<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  return requestInternal(endpoint, options) as Promise<T>;
 }
 
 export class ApiError extends Error {
@@ -63,6 +72,7 @@ export class ApiError extends Error {
 
 export const api = {
   get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
+  getWithMeta: <T>(endpoint: string) => requestWithMeta<T>(endpoint, { method: 'GET' }),
   post: <T>(endpoint: string, body: unknown) =>
     request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) }),
   patch: <T>(endpoint: string, body: unknown) =>

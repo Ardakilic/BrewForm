@@ -5,21 +5,13 @@ import { equipmentApi, recipeApi, setupApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
 import {
-  BREW_METHODS,
-  DRINK_TYPES,
-  EMOJI_TAGS,
-  VISIBILITY_STATES,
+  BREW_METHODS_LIST,
+  DRINK_TYPES_LIST,
+  EMOJI_TAGS_LIST,
+  VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
-
-// deno-lint-ignore no-explicit-any
-const BREW_METHODS_ANY = BREW_METHODS as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const DRINK_TYPES_ANY = DRINK_TYPES as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const VISIBILITY_ANY = VISIBILITY_STATES as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const EMOJI_ANY = EMOJI_TAGS as unknown as any[];
+import type { EquipmentListItem, SetupListItem } from '../../api/types.ts';
 
 export function RecipeCreatePage() {
   const navigate = useNavigate();
@@ -50,8 +42,8 @@ export function RecipeCreatePage() {
   const [grindDate, setGrindDate] = useState('');
 
   // Equipment & Setup state
-  const [equipmentList, setEquipmentList] = useState<any[]>([]);
-  const [setupList, setSetupList] = useState<any[]>([]);
+  const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
+  const [setupList, setSetupList] = useState<SetupListItem[]>([]);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [selectedSetupId, setSelectedSetupId] = useState('');
   const [equipLoading, setEquipLoading] = useState(true);
@@ -59,12 +51,20 @@ export function RecipeCreatePage() {
 
   useEffect(() => {
     Promise.all([
-      equipmentApi.list().then((data) => setEquipmentList(data as any[])).catch(() =>
-        setEquipError('Failed to load equipment')
-      ),
-      setupApi.list().then((data) => setSetupList(data as any[])).catch(() =>
-        setEquipError('Failed to load setups')
-      ),
+      equipmentApi.list().then((data) => {
+        if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
+          setEquipmentList(data as EquipmentListItem[]);
+        } else {
+          setEquipError('Failed to load equipment');
+        }
+      }).catch(() => setEquipError('Failed to load equipment')),
+      setupApi.list().then((data) => {
+        if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
+          setSetupList(data as SetupListItem[]);
+        } else {
+          setEquipError('Failed to load setups');
+        }
+      }).catch(() => setEquipError('Failed to load setups')),
     ]).finally(() => setEquipLoading(false));
   }, []);
 
@@ -79,9 +79,7 @@ export function RecipeCreatePage() {
     }
   }, [selectedSetupId, setupList]);
 
-  const compatibleDrinks = DRINK_TYPES_ANY.filter((d: any) =>
-    d.compatibleMethods.includes(brewMethod)
-  );
+  const compatibleDrinks = DRINK_TYPES_LIST.filter((d) => d.compatibleMethods.includes(brewMethod));
 
   useEffect(() => {
     if (!compatibleDrinks.some((d) => d.value === drinkType)) {
@@ -192,7 +190,7 @@ export function RecipeCreatePage() {
               onChange={(e) => setVisibility(e.target.value as Visibility)}
               className='input-field'
             >
-              {VISIBILITY_ANY.map((v: any) => (
+              {VISIBILITY_STATES_LIST.map((v) => (
                 <option key={v.value} value={v.value}>{v.label} — {v.description}</option>
               ))}
             </select>
@@ -207,7 +205,7 @@ export function RecipeCreatePage() {
                 onChange={(e) => setBrewMethod(e.target.value as BrewMethod)}
                 className='input-field'
               >
-                {BREW_METHODS_ANY.map((m: any) => (
+                {BREW_METHODS_LIST.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
@@ -218,7 +216,7 @@ export function RecipeCreatePage() {
                 onChange={(e) => setDrinkType(e.target.value as DrinkType)}
                 className='input-field'
               >
-                {compatibleDrinks.map((d: any) => (
+                {compatibleDrinks.map((d) => (
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
               </select>
@@ -244,7 +242,7 @@ export function RecipeCreatePage() {
                     className='input-field'
                   >
                     <option value=''>None</option>
-                    {setupList.map((s: any) => (
+                    {setupList.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}
                         {s.isDefault ? ' (default)' : ''}
@@ -262,7 +260,7 @@ export function RecipeCreatePage() {
                         </p>
                       )
                       : (
-                        equipmentList.map((eq: any) => (
+                        equipmentList.map((eq) => (
                           <label
                             key={eq.id}
                             className='flex items-center gap-2 text-sm cursor-pointer'
@@ -429,8 +427,8 @@ export function RecipeCreatePage() {
                 className='input-field'
               >
                 <option value=''>Select...</option>
-                {EMOJI_ANY.map((t: any) => (
-                  <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>
+                {EMOJI_TAGS_LIST.map((t) => (
+                  <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
                 ))}
               </select>
             </Field>

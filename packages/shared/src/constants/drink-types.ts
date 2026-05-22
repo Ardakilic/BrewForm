@@ -17,3 +17,11 @@ export const DRINK_TYPES = [
 ] as const;
 
 export type DrinkTypeValue = (typeof DRINK_TYPES)[number]['value'];
+
+export type DrinkTypeOption = {
+  value: DrinkTypeValue;
+  label: string;
+  compatibleMethods: readonly string[];
+};
+
+export const DRINK_TYPES_LIST: DrinkTypeOption[] = [...DRINK_TYPES];

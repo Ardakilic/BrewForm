@@ -93,7 +93,7 @@ creation is NOT wired. (Critical)
 - `PhotoUpload` component with drag-drop and client-side canvas thumbnail exists.
 - `Photo` and `RecipeVersionPhoto` models exist.
 
-**Gap:** `RecipeVersionPhoto` junction is included in Prisma queries but NEVER populated when a
+**Gap:** `RecipeVersionPhoto` junction is included in Drizzle queries but NEVER populated when a
 recipe is created (photos linked to `Recipe` only). No gallery/carousel on detail page. No
 server-side image resizing. (Major)
 
@@ -270,7 +270,7 @@ first-brew creation with tooltips. (Minor)
 ### §6.2 Abstraction Layers — ✅ Implemented
 
 - `CacheProvider` interface properly abstracted.
-- Prisma used as DB abstraction. No raw SQL found.
+- Drizzle ORM used as DB abstraction. No raw SQL found.
 
 ### §6.3 Docker Setup — ❌ Critical Gaps Found
 
@@ -295,10 +295,7 @@ first-brew creation with tooltips. (Minor)
 
 **Remaining Runtime Gap:**
 
-- App container crashes at runtime with
-  `SyntaxError: The requested module '@prisma/client' does not provide an export named 'Prisma'`
-  (`errorHandler.ts:3`). Deno's npm compat cannot resolve `import { Prisma } from '@prisma/client'`
-  at runtime despite `deno check` passing. (Critical)
+- ~~RESOLVED: Migrated from Prisma to Drizzle ORM. This error no longer applies.~~
 
 ### §6.4 Monorepo Structure — ✅ Implemented
 
@@ -434,7 +431,7 @@ exists but is not used for crawler-facing meta tags. (Critical)
 
 | #  | Gap                                                                                                     | Plan Ref   | Evidence                                                           |
 | -- | ------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------ |
-| C1 | App container crashes at runtime: `import { Prisma } from '@prisma/client'` fails under Deno npm compat | §6.3       | `docker compose logs app` shows `SyntaxError`                      |
+| ~~C1~~ | ~~App container crashes at runtime: `import { Prisma } from '@prisma/client'` fails under Deno npm compat~~ — RESOLVED: Migrated to Drizzle ORM | §6.3       | ~~`docker compose logs app` shows `SyntaxError`~~                      |
 | C2 | Recipe create/edit form has NO equipment selection or setup auto-fill                                   | §2.4, §3.1 | `RecipeCreatePage.tsx` lacks `equipmentIds`/`setupId` fields       |
 | C3 | Badge evaluation never triggered automatically — gamification is dead code                              | §3.13      | `grep` shows `evaluateBadges` only called from manual API endpoint |
 | C4 | OG tags invisible to crawlers — social sharing broken                                                   | §9.5       | `SEOHead.tsx` uses client-side `document.querySelector` injection  |
@@ -450,7 +447,7 @@ exists but is not used for crawler-facing meta tags. (Critical)
 | M5 | `RecipeVersionPhoto` table exists but never populated                  | §2.9       | Model includes it in queries but create path never writes to it |
 | M6 | Photo gallery/carousel absent from recipe detail page                  | §2.9       | No gallery component found in frontend                          |
 | M7 | No version history browsing UI                                         | §3.6       | No version list/timeline page found                             |
-| M8 | Search lacks URL-reflected state and dedicated browse pages            | §3.10      | Search removed; filtering consolidated in RecipeListPage with URL sync |
+| M8 | Search lacks dedicated browse pages                                     | §3.10      | Search removed; filtering consolidated in RecipeListPage with URL sync |
 
 ### 🟡 Minor (Polish, nice-to-have, or partially implemented)
 
@@ -480,9 +477,7 @@ These fixes should be committed to the repo.
 
 ## Recommendations
 
-1. **Fix Prisma/Deno runtime compatibility** (C1): Change `import { Prisma } from '@prisma/client'`
-   to use Prisma's error code strings directly, or switch to a Prisma version with better Deno
-   support.
+1. ~~**Fix Prisma/Deno runtime compatibility** (C1)~~: RESOLVED. Migrated from Prisma to Drizzle ORM. This recommendation no longer applies.
 2. **Wire validation** (M1, M2, M3): Add `.refine()` calls to `RecipeCreateSchema` for brew-method
    compatibility, and call `validateSoftWarnings` in the recipe service to return warnings in the
    API response.

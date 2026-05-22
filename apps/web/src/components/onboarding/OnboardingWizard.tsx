@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext';
-import { api } from '../../api/client';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { api } from '../../api/client.ts';
 
 const STEPS = ['welcome', 'equipment', 'beans', 'first-brew', 'explore'] as const;
 
+type StepProps = { t: ReturnType<typeof useTranslation>['t'] };
+
 export function OnboardingWizard() {
+  const { t } = useTranslation();
   const { user: _user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -34,14 +38,16 @@ export function OnboardingWizard() {
 
   return (
     <div className='mx-auto max-w-lg px-6 py-12 text-center'>
-      {currentStep === 'welcome' && <WelcomeStep />}
-      {currentStep === 'equipment' && <EquipmentStep />}
-      {currentStep === 'beans' && <BeansStep />}
-      {currentStep === 'first-brew' && <FirstBrewStep />}
-      {currentStep === 'explore' && <ExploreStep />}
+      {currentStep === 'welcome' && <WelcomeStep t={t} />}
+      {currentStep === 'equipment' && <EquipmentStep t={t} />}
+      {currentStep === 'beans' && <BeansStep t={t} />}
+      {currentStep === 'first-brew' && <FirstBrewStep t={t} />}
+      {currentStep === 'explore' && <ExploreStep t={t} />}
 
       <div className='mt-8 flex justify-between'>
-        <button type='button' onClick={skip} className='btn-secondary'>Skip</button>
+        <button type='button' onClick={skip} className='btn-secondary'>
+          {t('onboarding.skip')}
+        </button>
         {step < STEPS.length - 1
           ? (
             <button
@@ -49,10 +55,14 @@ export function OnboardingWizard() {
               onClick={() => setStep(Math.min(step + 1, STEPS.length - 1))}
               className='btn-primary'
             >
-              Next
+              {t('onboarding.next')}
             </button>
           )
-          : <button type='button' onClick={complete} className='btn-primary'>Get Started!</button>}
+          : (
+            <button type='button' onClick={complete} className='btn-primary'>
+              {t('onboarding.getStarted')}
+            </button>
+          )}
       </div>
 
       <div className='mt-6 flex justify-center gap-2'>
@@ -68,83 +78,85 @@ export function OnboardingWizard() {
   );
 }
 
-function WelcomeStep() {
+function WelcomeStep({ t }: StepProps) {
   return (
     <>
       <div className='text-6xl mb-4'>☕</div>
       <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-        Welcome to BrewForm{''}!
+        {t('onboarding.welcome')}
       </h1>
       <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
-        Let's set up your brewing profile so you can start logging and sharing your coffee recipes.
+        {t('onboarding.welcomeDescription')}
       </p>
     </>
   );
 }
 
-function EquipmentStep() {
+function EquipmentStep({ t }: StepProps) {
   return (
     <>
       <div className='text-6xl mb-4'>🔧</div>
       <h2 className='text-xl font-bold' style={{ color: 'var(--text-primary)' }}>
-        Add Your Equipment
+        {t('onboarding.equipment')}
       </h2>
       <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
-        Set up your espresso machine, grinder, and accessories. You can create setups for different
-        brewing configurations.
+        {t('onboarding.equipmentDescription')}
       </p>
       <div className='mt-4'>
-        <a href='/setups' className='btn-primary inline-block'>Set Up Equipment</a>
+        <a href='/setups' className='btn-primary inline-block'>{t('onboarding.equipmentAction')}</a>
       </div>
     </>
   );
 }
 
-function BeansStep() {
+function BeansStep({ t }: StepProps) {
   return (
     <>
       <div className='text-6xl mb-4'>🫘</div>
-      <h2 className='text-xl font-bold' style={{ color: 'var(--text-primary)' }}>Add Your Beans</h2>
+      <h2 className='text-xl font-bold' style={{ color: 'var(--text-primary)' }}>
+        {t('onboarding.beans')}
+      </h2>
       <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
-        Add the coffee beans you currently have so you can track them in your recipes.
+        {t('onboarding.beansDescription')}
       </p>
       <div className='mt-4'>
-        <a href='/beans' className='btn-primary inline-block'>Add Beans</a>
+        <a href='/beans' className='btn-primary inline-block'>{t('onboarding.beansAction')}</a>
       </div>
     </>
   );
 }
 
-function FirstBrewStep() {
+function FirstBrewStep({ t }: StepProps) {
   return (
     <>
       <div className='text-6xl mb-4'>📝</div>
       <h2 className='text-xl font-bold' style={{ color: 'var(--text-primary)' }}>
-        Log Your First Brew
+        {t('onboarding.firstBrew')}
       </h2>
       <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
-        Time to record your first recipe! Fill in the brew parameters, taste notes, and personal
-        observations.
+        {t('onboarding.firstBrewDescription')}
       </p>
       <div className='mt-4'>
-        <a href='/recipes/new' className='btn-primary inline-block'>Create Recipe</a>
+        <a href='/recipes/new' className='btn-primary inline-block'>
+          {t('onboarding.firstBrewAction')}
+        </a>
       </div>
     </>
   );
 }
 
-function ExploreStep() {
+function ExploreStep({ t }: StepProps) {
   return (
     <>
       <div className='text-6xl mb-4'>🌍</div>
       <h2 className='text-xl font-bold' style={{ color: 'var(--text-primary)' }}>
-        Explore & Discover
+        {t('onboarding.explore')}
       </h2>
       <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
-        Browse popular recipes, follow other brewers, and discover new techniques. You're all set!
+        {t('onboarding.exploreDescription')}
       </p>
       <div className='mt-4'>
-        <a href='/recipes' className='btn-primary inline-block'>Browse Recipes</a>
+        <a href='/recipes' className='btn-primary inline-block'>{t('onboarding.exploreAction')}</a>
       </div>
     </>
   );

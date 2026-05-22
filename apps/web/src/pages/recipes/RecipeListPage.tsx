@@ -4,19 +4,17 @@ import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { BREW_METHODS, DRINK_TYPES, VISIBILITY_STATES } from '@brewform/shared/constants';
+import {
+  BREW_METHODS_LIST,
+  DRINK_TYPES_LIST,
+  VISIBILITY_STATES_LIST,
+} from '@brewform/shared/constants';
+import { useDebounce } from '../../hooks/useDebounce.ts';
 import { TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
-
-// deno-lint-ignore no-explicit-any
-const BREW_METHODS_ANY = BREW_METHODS as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const DRINK_TYPES_ANY = DRINK_TYPES as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const VISIBILITY_ANY = VISIBILITY_STATES as unknown as any[];
 
 /** Equipment type → human-readable label */
 export const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
@@ -96,6 +94,7 @@ export function RecipeListPage() {
   const visibility = searchParams.get('visibility') || '';
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
+  const debouncedSearch = useDebounce(search, 300);
   const equipmentId = searchParams.get('equipmentId') || '';
   const mainBrewer = searchParams.get('mainBrewer') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
@@ -131,15 +130,16 @@ export function RecipeListPage() {
     if (brewMethod) params.brewMethod = brewMethod;
     if (drinkType) params.drinkType = drinkType;
     if (visibility && user?.isAdmin === true) params.visibility = visibility;
-    if (search) params.search = search;
+    if (debouncedSearch) params.search = debouncedSearch;
     if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
     if (mainBrewer) params.mainBrewer = mainBrewer;
     if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
 
-    recipeApi.list(params).then((data) => {
-      const items = Array.isArray(data) ? (data as RecipeListItem[]) : [];
-      setRecipes(items);
-      setTotal(items.length);
+    recipeApi.list(params).then((response) => {
+      const items = Array.isArray(response.data) ? response.data : [];
+      setRecipes(items as RecipeListItem[]);
+      const serverTotal = response.meta?.pagination?.total ?? items.length;
+      setTotal(serverTotal);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, [
@@ -148,7 +148,7 @@ export function RecipeListPage() {
     drinkType,
     visibility,
     sortBy,
-    search,
+    debouncedSearch,
     user,
     equipmentId,
     mainBrewer,
@@ -297,7 +297,7 @@ export function RecipeListPage() {
                 className='input-field text-sm'
               >
                 <option value=''>{t('recipe.list.all')}</option>
-                {BREW_METHODS_ANY.map((m: any) => (
+                {BREW_METHODS_LIST.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
@@ -311,7 +311,7 @@ export function RecipeListPage() {
                 className='input-field text-sm'
               >
                 <option value=''>{t('recipe.list.all')}</option>
-                {DRINK_TYPES_ANY.map((d: any) => (
+                {DRINK_TYPES_LIST.map((d) => (
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
               </select>
@@ -326,7 +326,7 @@ export function RecipeListPage() {
                   className='input-field text-sm'
                 >
                   <option value=''>{t('recipe.list.all')}</option>
-                  {VISIBILITY_ANY.map((v: any) => (
+                  {VISIBILITY_STATES_LIST.map((v) => (
                     <option key={v.value} value={v.value}>{v.label}</option>
                   ))}
                 </select>

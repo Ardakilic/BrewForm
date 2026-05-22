@@ -91,7 +91,7 @@ Models use Drizzle's typed query API; `as any` is used sparingly for complex sub
 `model.ts`, `service.ts`, `index.ts`.
 
 **Why.** Hard-line layering catches violations early. The lint rule "services never import
-`@prisma/client`" is enforceable simply by grepping. Controllers stay focused on HTTP concerns
+`drizzle-orm`" is enforceable simply by grepping. Controllers stay focused on HTTP concerns
 (validation, status codes, envelope), services stay focused on business rules, models stay focused
 on persistence.
 

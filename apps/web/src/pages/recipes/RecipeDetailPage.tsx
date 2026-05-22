@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { recipeApi, tasteApi } from '../../api/index.ts';
+import type { RecipeDetailResponse, TasteNoteFlatItem } from '../../api/types.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
 import { LikeButton } from '../../components/recipe/LikeButton.tsx';
@@ -19,7 +20,7 @@ import { RecipeNotesSection } from '../../components/recipe/RecipeNotesSection.t
 import { ShareSection } from '../../components/recipe/ShareSection.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { EMOJI_TAGS } from '@brewform/shared/constants';
+import { EMOJI_TAGS_LIST } from '@brewform/shared/constants';
 
 export function RecipeDetailPage() {
   const { slug } = useParams();
@@ -28,11 +29,9 @@ export function RecipeDetailPage() {
   const fromQr = searchParams.get('from') === 'qr';
   const { user, isAuthenticated } = useAuth();
   const { t } = useTranslation();
-  // deno-lint-ignore no-explicit-any
-  const [recipe, setRecipe] = useState<any>(null);
+  const [recipe, setRecipe] = useState<RecipeDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  // deno-lint-ignore no-explicit-any
-  const [allTasteNotes, setAllTasteNotes] = useState<any[]>([]);
+  const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteFlatItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +41,7 @@ export function RecipeDetailPage() {
     const fetchFlat = () => {
       tasteApi.flat().then((data) => {
         if (cancelled) return;
-        const notes = Array.isArray(data) ? data as any[] : [];
+        const notes = Array.isArray(data) ? (data as TasteNoteFlatItem[]) : [];
         if (notes.length > 0) {
           setAllTasteNotes(notes);
         } else if (retries < maxRetries) {
@@ -61,8 +60,8 @@ export function RecipeDetailPage() {
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    recipeApi.get(slug).then((data: Record<string, unknown>) => {
-      if (fromQr && data && data.visibility !== 'public') {
+    recipeApi.get(slug).then((data: RecipeDetailResponse) => {
+      if (fromQr && data.visibility !== 'public') {
         navigate('/recipes/unavailable', { replace: true });
         return;
       }
@@ -98,12 +97,9 @@ export function RecipeDetailPage() {
 
   const isOwner = user?.id === recipe.authorId;
   const v = recipe.currentVersion ?? {};
-  // deno-lint-ignore no-explicit-any
-  const emojiInfo = v?.emojiTag ? EMOJI_TAGS.find((e: any) => e.key === v.emojiTag) : null;
-  // deno-lint-ignore no-explicit-any
-  const tasteNotes: any[] = Array.isArray(recipe.tasteNotes) ? recipe.tasteNotes : [];
-  // deno-lint-ignore no-explicit-any
-  const equipment: any[] = Array.isArray(recipe.equipment) ? recipe.equipment : [];
+  const emojiInfo = v?.emojiTag ? EMOJI_TAGS_LIST.find((e) => e.value === v.emojiTag) : null;
+  const tasteNotes = Array.isArray(recipe.tasteNotes) ? recipe.tasteNotes : [];
+  const equipment = Array.isArray(recipe.equipment) ? recipe.equipment : [];
 
   return (
     <article aria-label={recipe.title}>
@@ -182,9 +178,9 @@ export function RecipeDetailPage() {
                 type='button'
                 onClick={() => globalThis.print()}
                 className='btn-secondary text-sm min-h-11 px-3'
-                aria-label='Print recipe'
+                aria-label={t('recipe.printAriaLabel')}
               >
-                Print
+                {t('recipe.print')}
               </button>
 
               {/* Focus button */}
@@ -192,9 +188,9 @@ export function RecipeDetailPage() {
                 type='button'
                 onClick={() => navigate(`/recipes/${recipe.slug}/focus`)}
                 className='btn-secondary text-sm min-h-11 px-3'
-                aria-label='Focus mode'
+                aria-label={t('recipe.focusModeAriaLabel')}
               >
-                Focus
+                {t('recipe.focusMode')}
               </button>
 
               {/* Fork Recipe button — hidden if not authenticated OR is owner */}
@@ -203,9 +199,9 @@ export function RecipeDetailPage() {
                   type='button'
                   onClick={() => navigate(`/recipes/${recipe.id}/fork`)}
                   className='btn-secondary text-sm min-h-11 px-3'
-                  aria-label='Fork recipe'
+                  aria-label={t('recipe.forkAriaLabel')}
                 >
-                  Fork Recipe
+                  {t('recipe.fork')}
                 </button>
               )}
 
@@ -338,12 +334,16 @@ export function RecipeDetailPage() {
                     onRate={async (rating) => {
                       try {
                         const result = await recipeApi.rate(recipe.id, rating);
-                        setRecipe((prev: any) => ({
-                          ...prev,
-                          userRating: rating,
-                          avgRating: (result as any).avgRating,
-                          ratingCount: (result as any).ratingCount,
-                        }));
+                        setRecipe((prev) =>
+                          prev
+                            ? {
+                              ...prev,
+                              userRating: rating,
+                              avgRating: result.avgRating,
+                              ratingCount: result.ratingCount,
+                            }
+                            : prev
+                        );
                       } catch {
                       }
                     }}
