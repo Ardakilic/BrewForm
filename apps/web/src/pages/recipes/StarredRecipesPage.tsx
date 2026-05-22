@@ -4,17 +4,13 @@ import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { BREW_METHODS, DRINK_TYPES } from '@brewform/shared/constants';
+import { BREW_METHODS_LIST, DRINK_TYPES_LIST } from '@brewform/shared/constants';
 import { TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
+import { useDebounce } from '../../hooks/useDebounce.ts';
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
-
-// deno-lint-ignore no-explicit-any
-const BREW_METHODS_ANY = BREW_METHODS as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const DRINK_TYPES_ANY = DRINK_TYPES as unknown as any[];
 
 /** Equipment type → human-readable label */
 export const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
@@ -71,6 +67,27 @@ interface RecipeListItem {
 let cachedEquipment: EquipmentItem[] | null = null;
 let cachedTasteNotes: TasteNoteFlat[] | null = null;
 
+function isRecipeListItem(value: unknown): value is RecipeListItem {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.id !== 'string' || typeof v.slug !== 'string' || typeof v.title !== 'string') {
+    return false;
+  }
+  if (
+    typeof v.likeCount !== 'number' || typeof v.commentCount !== 'number' ||
+    typeof v.forkCount !== 'number'
+  ) {
+    return false;
+  }
+  if (v.currentVersion !== null && v.currentVersion !== undefined) {
+    if (typeof v.currentVersion !== 'object') return false;
+    const cv = v.currentVersion as Record<string, unknown>;
+    if (typeof cv.brewMethod !== 'string' || typeof cv.drinkType !== 'string') return false;
+    if (cv.rating !== null && typeof cv.rating !== 'number') return false;
+  }
+  return true;
+}
+
 /** Reset the static data cache (used in tests) */
 export function _resetStaticCache() {
   cachedEquipment = null;
@@ -93,6 +110,7 @@ export function StarredRecipesPage() {
   const drinkType = searchParams.get('drinkType') || '';
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
+  const debouncedSearch = useDebounce(search, 300);
   const equipmentId = searchParams.get('equipmentId') || '';
   const mainBrewer = searchParams.get('mainBrewer') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
@@ -131,15 +149,17 @@ export function StarredRecipesPage() {
     const params: Record<string, string> = { page: String(page), perPage: '12', sortBy };
     if (brewMethod) params.brewMethod = brewMethod;
     if (drinkType) params.drinkType = drinkType;
-    if (search) params.search = search;
+    if (debouncedSearch) params.search = debouncedSearch;
     if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
     if (mainBrewer) params.mainBrewer = mainBrewer;
     if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
 
-    recipeApi.starred(params).then((data) => {
-      const items = Array.isArray(data) ? (data as RecipeListItem[]) : [];
+    recipeApi.starred(params).then((response) => {
+      const rawItems: unknown[] = Array.isArray(response.data) ? response.data : [];
+      const items = rawItems.filter(isRecipeListItem);
       setRecipes(items);
-      setTotal(items.length);
+      const serverTotal = response.meta?.pagination?.total ?? items.length;
+      setTotal(serverTotal);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, [
@@ -147,7 +167,7 @@ export function StarredRecipesPage() {
     brewMethod,
     drinkType,
     sortBy,
-    search,
+    debouncedSearch,
     equipmentId,
     mainBrewer,
     tasteNoteIds,
@@ -295,7 +315,7 @@ export function StarredRecipesPage() {
                 className='input-field text-sm'
               >
                 <option value=''>{t('recipe.list.all')}</option>
-                {BREW_METHODS_ANY.map((m: any) => (
+                {BREW_METHODS_LIST.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
@@ -309,7 +329,7 @@ export function StarredRecipesPage() {
                 className='input-field text-sm'
               >
                 <option value=''>{t('recipe.list.all')}</option>
-                {DRINK_TYPES_ANY.map((d: any) => (
+                {DRINK_TYPES_LIST.map((d) => (
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
               </select>

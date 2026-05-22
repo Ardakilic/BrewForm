@@ -1,3 +1,4 @@
+import { sanitizeName, sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import * as followModel from '../follow/model.ts';
 
@@ -32,6 +33,8 @@ export async function updateProfile(
   userId: string,
   data: { displayName?: string; bio?: string; avatarUrl?: string },
 ) {
+  if (data.displayName !== undefined) data.displayName = sanitizeName(data.displayName);
+  if (data.bio !== undefined) data.bio = sanitizeText(data.bio);
   const user = await model.updateProfile(userId, data);
   // deno-lint-ignore no-explicit-any
   const { passwordHash: _passwordHash, ...safe } = user as any;

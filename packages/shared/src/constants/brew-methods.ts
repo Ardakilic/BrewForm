@@ -25,3 +25,12 @@ export const BREW_METHODS = [
 ] as const;
 
 export type BrewMethodValue = (typeof BREW_METHODS)[number]['value'];
+
+export type BrewMethodOption = {
+  value: BrewMethodValue;
+  label: string;
+  equipmentTypes: readonly string[];
+};
+
+/** Mutable copy for use in .map()/.filter() in React components */
+export const BREW_METHODS_LIST: BrewMethodOption[] = [...BREW_METHODS];

@@ -88,6 +88,7 @@ export type Env = z.infer<typeof envSchema>;
 function loadEnv(): Env {
   const result = envSchema.safeParse(Deno.env.toObject());
   if (!result.success) {
+    // Logger is not available here — config must be validated before logger can be initialized.
     console.error('Invalid environment variables:', result.error.flatten().fieldErrors);
     throw new Error('Invalid environment variables');
   }

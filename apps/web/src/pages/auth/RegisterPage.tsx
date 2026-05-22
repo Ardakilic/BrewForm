@@ -37,6 +37,11 @@ export function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    if (password.length > 128) {
+      setError(t('password.tooLong'));
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError(t('auth.register.passwordsMismatch'));
       return;
@@ -166,7 +171,51 @@ export function RegisterPage() {
             className='input-field'
             required
             minLength={8}
+            maxLength={128}
           />
+          {password.length > 0 && (
+            <ul className='mt-1 text-xs space-y-0.5' style={{ color: 'var(--text-tertiary)' }}>
+              <li
+                style={{
+                  color: password.length >= 8 && password.length <= 128
+                    ? 'var(--success)'
+                    : 'var(--text-tertiary)',
+                }}
+              >
+                {password.length >= 8 && password.length <= 128 ? '\u2713' : '\u25CB'}{' '}
+                {t('password.requiresLength')}
+              </li>
+              <li
+                style={{
+                  color: /[a-z]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)',
+                }}
+              >
+                {/[a-z]/.test(password) ? '\u2713' : '\u25CB'} {t('password.requiresLowercase')}
+              </li>
+              <li
+                style={{
+                  color: /[A-Z]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)',
+                }}
+              >
+                {/[A-Z]/.test(password) ? '\u2713' : '\u25CB'} {t('password.requiresUppercase')}
+              </li>
+              <li
+                style={{
+                  color: /[0-9]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)',
+                }}
+              >
+                {/[0-9]/.test(password) ? '\u2713' : '\u25CB'} {t('password.requiresDigit')}
+              </li>
+              <li
+                style={{
+                  color: /[^a-zA-Z0-9]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)',
+                }}
+              >
+                {/[^a-zA-Z0-9]/.test(password) ? '\u2713' : '\u25CB'}{' '}
+                {t('password.requiresSpecial')}
+              </li>
+            </ul>
+          )}
         </div>
         <div>
           <label

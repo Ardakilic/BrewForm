@@ -17,6 +17,7 @@ import { createLogger } from '../../utils/logger/index.ts';
 import { authRateLimitMiddleware } from '../../middleware/rateLimit.ts';
 import { authMiddleware } from '../../middleware/auth.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import type { User } from '@brewform/shared/types';
 
 const log = createLogger('auth');
 
@@ -279,7 +280,7 @@ auth.post(
     },
   }),
   async (c) => {
-    const user = c.get('user') as {
+    const user = c.get('user') as unknown as {
       id: string;
       email: string;
       username: string;
@@ -341,8 +342,12 @@ auth.post(
   },
 );
 
-// deno-lint-ignore no-explicit-any
-function sanitizeUser(user: any): Record<string, unknown> {
+interface UserWithPasswordHash extends Omit<User, 'preferences'> {
+  passwordHash: string;
+  preferences?: User['preferences'];
+}
+
+function sanitizeUser(user: UserWithPasswordHash): Omit<UserWithPasswordHash, 'passwordHash'> {
   const { passwordHash: _passwordHash, ...safe } = user;
   return safe;
 }

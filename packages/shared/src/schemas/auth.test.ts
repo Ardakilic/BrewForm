@@ -13,7 +13,7 @@ describe('AuthRegisterSchema', () => {
     const result = AuthRegisterSchema.safeParse({
       email: 'test@example.com',
       username: 'testuser',
-      password: 'password123',
+      password: 'Password1!',
     });
     expect(result.success).toBe(true);
   });
@@ -22,7 +22,7 @@ describe('AuthRegisterSchema', () => {
     const result = AuthRegisterSchema.safeParse({
       email: 'test@example.com',
       username: 'testuser',
-      password: 'password123',
+      password: 'Password1!',
       displayName: 'Test User',
     });
     expect(result.success).toBe(true);
@@ -32,7 +32,7 @@ describe('AuthRegisterSchema', () => {
     const result = AuthRegisterSchema.safeParse({
       email: 'not-an-email',
       username: 'testuser',
-      password: 'password123',
+      password: 'Password1!',
     });
     expect(result.success).toBe(false);
   });
@@ -41,7 +41,7 @@ describe('AuthRegisterSchema', () => {
     const result = AuthRegisterSchema.safeParse({
       email: 'test@example.com',
       username: 'ab',
-      password: 'password123',
+      password: 'Password1!',
     });
     expect(result.success).toBe(false);
   });
@@ -50,7 +50,7 @@ describe('AuthRegisterSchema', () => {
     const result = AuthRegisterSchema.safeParse({
       email: 'test@example.com',
       username: 'test user!',
-      password: 'password123',
+      password: 'Password1!',
     });
     expect(result.success).toBe(false);
   });
@@ -64,11 +64,56 @@ describe('AuthRegisterSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('should reject password missing lowercase', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'PASSWORD1!',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject password missing uppercase', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'password1!',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject password missing digit', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'Password!',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject password missing special character', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'Password1',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject over-length password (>128)', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'Password1!' + 'x'.repeat(120),
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('should accept username with hyphens and underscores', () => {
     const result = AuthRegisterSchema.safeParse({
       email: 'test@example.com',
       username: 'test_user-123',
-      password: 'password123',
+      password: 'Password1!',
     });
     expect(result.success).toBe(true);
   });
@@ -78,14 +123,14 @@ describe('AuthLoginSchema', () => {
   it('should validate a valid login', () => {
     const result = AuthLoginSchema.safeParse({
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password1!',
     });
     expect(result.success).toBe(true);
   });
 
   it('should reject missing email', () => {
     const result = AuthLoginSchema.safeParse({
-      password: 'password123',
+      password: 'Password1!',
     });
     expect(result.success).toBe(false);
   });
@@ -95,7 +140,7 @@ describe('AuthLoginSchema with rememberMe', () => {
   it('should accept rememberMe: true', () => {
     const result = AuthLoginSchema.safeParse({
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password1!',
       rememberMe: true,
     });
     expect(result.success).toBe(true);
@@ -107,7 +152,7 @@ describe('AuthLoginSchema with rememberMe', () => {
   it('should accept rememberMe: false (explicit)', () => {
     const result = AuthLoginSchema.safeParse({
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password1!',
       rememberMe: false,
     });
     expect(result.success).toBe(true);
@@ -119,7 +164,7 @@ describe('AuthLoginSchema with rememberMe', () => {
   it('should default rememberMe to false when omitted', () => {
     const result = AuthLoginSchema.safeParse({
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password1!',
     });
     expect(result.success).toBe(true);
     if (result.success) {
@@ -130,7 +175,7 @@ describe('AuthLoginSchema with rememberMe', () => {
   it('should reject non-boolean rememberMe', () => {
     const result = AuthLoginSchema.safeParse({
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password1!',
       rememberMe: 'yes',
     });
     expect(result.success).toBe(false);
@@ -139,7 +184,7 @@ describe('AuthLoginSchema with rememberMe', () => {
   it('should reject rememberMe as number', () => {
     const result = AuthLoginSchema.safeParse({
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password1!',
       rememberMe: 1,
     });
     expect(result.success).toBe(false);
@@ -211,7 +256,7 @@ describe('PasswordResetConfirmSchema', () => {
   it('should validate valid confirmation', () => {
     const result = PasswordResetConfirmSchema.safeParse({
       token: 'reset-token-123',
-      newPassword: 'newPassword123',
+      newPassword: 'NewPassword1!',
     });
     expect(result.success).toBe(true);
   });
