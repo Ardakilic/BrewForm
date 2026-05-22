@@ -30,6 +30,20 @@
       content="Digitalize, share, and discover coffee brewing recipes and tasting notes."
     />
     <meta name="twitter:image" content="%VITE_PUBLIC_APP_URL%/og-default.png" />
+
+    <!-- Resource hints: preconnect to API origin (adjust domain for production) -->
+    <!--
+      If the API is on the same origin (e.g., Deno Deploy serving both SPA and API),
+      these hints are unnecessary and can be removed. Add them when the API is on a
+      separate domain (e.g., api.brewform.com).
+    -->
+    <!-- <link rel="preconnect" href="https://api.brewform.com" crossorigin /> -->
+    <!-- <link rel="dns-prefetch" href="https://api.brewform.com" /> -->
+
+    <!-- If using Google Fonts or an external font CDN, uncomment: -->
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com" /> -->
+    <!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /> -->
+    <!-- <link rel="dns-prefetch" href="https://fonts.googleapis.com" /> -->
   </head>
   <body>
     <script>

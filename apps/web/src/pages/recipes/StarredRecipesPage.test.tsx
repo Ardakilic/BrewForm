@@ -30,9 +30,9 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 }));
 
 vi.mock('@brewform/shared/constants', () => ({
-  BREW_METHODS: [{ value: 'ESPRESSO', label: 'Espresso' }],
-  DRINK_TYPES: [{ value: 'ESPRESSO', label: 'Espresso' }],
-  VISIBILITY_STATES: [{ value: 'public', label: 'Public' }],
+  BREW_METHODS_LIST: [{ value: 'ESPRESSO', label: 'Espresso' }],
+  DRINK_TYPES_LIST: [{ value: 'ESPRESSO', label: 'Espresso' }],
+  VISIBILITY_STATES_LIST: [{ value: 'public', label: 'Public' }],
 }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ describe('StarredRecipesPage', () => {
   it('renders page title and filter labels', async () => {
     render(<StarredRecipesPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByRole('heading', { name: 'Starred Recipes' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Filters' })).toBeInTheDocument();
@@ -151,7 +151,7 @@ describe('StarredRecipesPage', () => {
 
     render(<StarredRecipesPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByText('Please log in to view your starred recipes.')).toBeInTheDocument();
   });
@@ -167,24 +167,27 @@ describe('StarredRecipesPage', () => {
   });
 
   it('renders recipe cards with clickable author link when API returns data', async () => {
-    mockRecipeApi.starred.mockResolvedValue([
-      {
-        id: 'recipe-1',
-        slug: 'test-recipe',
-        title: 'Test Recipe',
-        visibility: 'public',
-        likeCount: 5,
-        commentCount: 2,
-        forkCount: 1,
-        author: { username: 'testuser', displayName: 'Test User' },
-        currentVersion: { brewMethod: 'espresso_machine', drinkType: 'espresso', rating: null },
-        createdAt: '2025-01-01T00:00:00Z',
-      },
-    ]);
+    mockRecipeApi.starred.mockResolvedValue({
+      data: [
+        {
+          id: 'recipe-1',
+          slug: 'test-recipe',
+          title: 'Test Recipe',
+          visibility: 'public',
+          likeCount: 5,
+          commentCount: 2,
+          forkCount: 1,
+          author: { username: 'testuser', displayName: 'Test User' },
+          currentVersion: { brewMethod: 'espresso_machine', drinkType: 'espresso', rating: null },
+          createdAt: '2025-01-01T00:00:00Z',
+        },
+      ],
+      meta: { pagination: { total: 1 } },
+    });
 
     render(<StarredRecipesPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByText('Test Recipe')).toBeInTheDocument();
 
@@ -198,7 +201,7 @@ describe('StarredRecipesPage', () => {
 
     render(<StarredRecipesPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(mockRecipeApi.starred).toHaveBeenCalledWith(
       expect.objectContaining({ brewMethod: 'espresso_machine' }),

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { recipeApi, tasteApi } from '../../api/index.ts';
 import type { RecipeDetailResponse, TasteNoteFlatItem } from '../../api/types.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { RecipeDetailSkeleton } from '../../components/ui/Skeleton.tsx';
 import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
 import { LikeButton } from '../../components/recipe/LikeButton.tsx';
 import { FavouriteButton } from '../../components/recipe/FavouriteButton.tsx';
@@ -74,14 +75,7 @@ export function RecipeDetailPage() {
   }, [slug, fromQr, navigate]);
 
   if (loading) {
-    return (
-      <div
-        className='mx-auto max-w-4xl px-6 py-12 text-center'
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {t('common.loading')}
-      </div>
-    );
+    return <RecipeDetailSkeleton />;
   }
 
   if (!recipe) {

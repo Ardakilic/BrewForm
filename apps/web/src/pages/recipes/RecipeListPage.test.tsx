@@ -31,9 +31,9 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 }));
 
 vi.mock('@brewform/shared/constants', () => ({
-  BREW_METHODS: [{ value: 'ESPRESSO', label: 'Espresso' }],
-  DRINK_TYPES: [{ value: 'ESPRESSO', label: 'Espresso' }],
-  VISIBILITY_STATES: [{ value: 'public', label: 'Public' }],
+  BREW_METHODS_LIST: [{ value: 'ESPRESSO', label: 'Espresso' }],
+  DRINK_TYPES_LIST: [{ value: 'ESPRESSO', label: 'Espresso' }],
+  VISIBILITY_STATES_LIST: [{ value: 'public', label: 'Public' }],
 }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
@@ -159,7 +159,7 @@ describe('RecipeListPage — i18n', () => {
   it('renders page title and filter labels using t() — English', async () => {
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByRole('heading', { name: 'Recipes' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Filters' })).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe('RecipeListPage — i18n', () => {
   it('renders sort options using t()', async () => {
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByRole('option', { name: 'Newest' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Most Liked' })).toBeInTheDocument();
@@ -224,21 +224,23 @@ describe('RecipeListPage — i18n', () => {
     });
   });
 
-  it('shows "Loading..." while fetching — English', () => {
+  it('shows skeleton grid while fetching — English', () => {
     mockRecipeApi.list.mockReturnValue(new Promise(() => {}));
 
     render(<RecipeListPage />);
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    const skeletons = document.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  it('shows "Yükleniyor..." while fetching — Turkish', () => {
+  it('shows skeleton grid while fetching — Turkish', () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
     mockRecipeApi.list.mockReturnValue(new Promise(() => {}));
 
     render(<RecipeListPage />);
 
-    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
+    const skeletons = document.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 
   it('shows Visibility filter only for admin users', async () => {
@@ -257,7 +259,7 @@ describe('RecipeListPage — i18n', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByText('Visibility (Admins only)')).toBeInTheDocument();
   });
@@ -265,7 +267,7 @@ describe('RecipeListPage — i18n', () => {
   it('does not show Visibility filter for non-admin users', async () => {
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.queryByText('Visibility (Admins only)')).not.toBeInTheDocument();
   });
@@ -273,7 +275,7 @@ describe('RecipeListPage — i18n', () => {
   it('shows search placeholder using t()', async () => {
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByPlaceholderText('Search recipes...')).toBeInTheDocument();
   });
@@ -303,12 +305,12 @@ describe('RecipeListPage — i18n', () => {
         createdAt: '2025-01-01T00:00:00Z',
       },
     ];
-    mockRecipeApi.list.mockResolvedValue(mockRecipes);
+    mockRecipeApi.list.mockResolvedValue({ data: mockRecipes, meta: { pagination: { total: 1 } } });
 
     render(<RecipeListPage />);
 
     await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      expect(document.querySelector('.animate-pulse')).toBeFalsy();
     });
 
     // Recipe title should render
@@ -331,7 +333,7 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(mockRecipeApi.list).toHaveBeenCalledWith(
       expect.objectContaining({ equipmentId: VALID_UUID }),
@@ -343,7 +345,7 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     const callArgs = mockRecipeApi.list.mock.calls[0][0] as Record<string, string>;
     expect(callArgs).not.toHaveProperty('equipmentId');
@@ -357,7 +359,7 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     // Scale dropdown should appear
     expect(screen.getByLabelText('Filter by Scale')).toBeInTheDocument();
@@ -422,7 +424,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByText('Taste Notes')).toBeInTheDocument();
   });
@@ -432,7 +434,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.queryByText('Taste Notes')).not.toBeInTheDocument();
   });
@@ -442,7 +444,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     const trigger = screen.getAllByRole('combobox').find((el) =>
       el.textContent?.includes('Select taste notes...')
@@ -460,7 +462,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(mockRecipeApi.list).toHaveBeenCalledWith(
       expect.objectContaining({ tasteNoteIds: VALID_UUID }),
@@ -472,7 +474,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     const callArgs = mockRecipeApi.list.mock.calls[0][0] as Record<string, string>;
     expect(callArgs).not.toHaveProperty('tasteNoteIds');
@@ -519,7 +521,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(mockRecipeApi.list).toHaveBeenCalledTimes(1);
     expect(mockRecipeApi.list).toHaveBeenCalledWith(
@@ -539,7 +541,7 @@ describe('RecipeListPage — taste note filter', () => {
 
     render(<RecipeListPage />);
 
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     const filtersHeading = screen.getByRole('heading', { name: 'Filters' });
     const searchLabel = screen.getByText('Search');
@@ -592,7 +594,7 @@ describe('RecipeListPage — property-based tests', () => {
 
           render(<RecipeListPage />);
 
-          await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+          await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
           const distinctTypes = new Set(equipmentList.map((e) => e.type));
 
@@ -622,7 +624,7 @@ describe('RecipeListPage — property-based tests', () => {
 
           render(<RecipeListPage />);
 
-          await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+          await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
           const callArgs = mockRecipeApi.list.mock.calls[0]?.[0] as
             | Record<string, string>
@@ -658,7 +660,7 @@ describe('RecipeListPage — property-based tests', () => {
 
           render(<RecipeListPage />);
 
-          await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+          await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
           const expectedHasActive = active.brewMethod ||
             active.drinkType ||

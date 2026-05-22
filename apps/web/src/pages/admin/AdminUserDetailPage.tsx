@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { adminApi, type AdminUserDetail } from '../../api/index.ts';
+import { Skeleton } from '../../components/ui/Skeleton.tsx';
 
 export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -69,18 +70,9 @@ export function AdminUserDetailPage() {
   if (loading) {
     return (
       <div className='space-y-4'>
-        <div
-          className='h-8 w-48 rounded animate-pulse'
-          style={{ backgroundColor: 'var(--bg-tertiary)' }}
-        />
-        <div
-          className='h-48 rounded animate-pulse'
-          style={{ backgroundColor: 'var(--bg-tertiary)' }}
-        />
-        <div
-          className='h-24 rounded animate-pulse'
-          style={{ backgroundColor: 'var(--bg-tertiary)' }}
-        />
+        <Skeleton height='2rem' width='12rem' />
+        <Skeleton height='12rem' />
+        <Skeleton height='6rem' />
       </div>
     );
   }
@@ -151,6 +143,9 @@ export function AdminUserDetailPage() {
                 src={user.avatarUrl}
                 alt={`${user.displayName || user.username}'s avatar`}
                 className='w-20 h-20 rounded-full object-cover'
+                loading='lazy'
+                width={80}
+                height={80}
               />
             )
             : (

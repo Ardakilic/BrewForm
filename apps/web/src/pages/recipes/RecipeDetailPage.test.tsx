@@ -107,6 +107,12 @@ const enT = (key: string) => {
     'recipe.rateThis': 'Rate this recipe',
     'recipe.yourRating': 'Your rating',
     'recipe.fork': 'Fork Recipe',
+    'recipe.print': 'Print recipe',
+    'recipe.printAriaLabel': 'Print recipe',
+    'recipe.focusMode': 'Focus mode',
+    'recipe.focusModeAriaLabel': 'Focus mode',
+    'recipe.forkAriaLabel': 'Fork recipe',
+    'recipe.preparationNotes': 'Preparation notes',
   };
   return map[key] ?? key;
 };
@@ -122,6 +128,12 @@ const trT = (key: string) => {
     'recipe.rateThis': 'Bu tarifi puanla',
     'recipe.yourRating': 'Puanınız',
     'recipe.fork': 'Tarifi Çatalla',
+    'recipe.print': 'Tarifi Yazdır',
+    'recipe.printAriaLabel': 'Tarifi Yazdır',
+    'recipe.focusMode': 'Odak Modu',
+    'recipe.focusModeAriaLabel': 'Odak Modu',
+    'recipe.forkAriaLabel': 'Tarifi Çatalla',
+    'recipe.preparationNotes': 'Hazırlık Notları',
   };
   return map[key] ?? key;
 };
@@ -194,21 +206,23 @@ beforeEach(() => {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('RecipeDetailPage — loading and not-found states', () => {
-  it('shows "Loading..." while fetching — English', () => {
+  it('shows skeleton while fetching — English', () => {
     mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
 
     render(<RecipeDetailPage />);
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    const skeletons = document.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  it('shows "Yükleniyor..." while fetching — Turkish', () => {
+  it('shows skeleton while fetching — Turkish', () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
     mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
 
     render(<RecipeDetailPage />);
 
-    expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
+    const skeletons = document.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 
   it('shows "Recipe not found" when API returns null — English', async () => {

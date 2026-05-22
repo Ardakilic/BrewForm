@@ -92,7 +92,30 @@ The `lazy` function can also return `loader`, `action`, `errorElement`, and othe
 
 **IMPORTANT:** When a route uses `lazy`, it must NOT also have an `element` property. The `Component` returned by `lazy` replaces the `element`. For routes that wrap children in `<RequireAuth>`, the auth guard is moved into the lazy-loaded component or handled in the parent layout.
 
-#### Modified `apps/web/src/router.tsx` (full file)
+#### Step 1: Modify `apps/web/src/main.tsx` — Root Suspense boundary
+
+The router has two top-level entries (`/` and `/admin`). The `<Suspense>` in `Layout.tsx` only covers children of the `/` route. The `/admin` route is a peer, rendered outside `Layout`. Without a root-level Suspense, a user directly loading any `/admin/*` URL will see a blank page until the lazy chunk resolves.
+
+```tsx
+// apps/web/src/main.tsx
+import { StrictMode, Suspense } from 'react';
+import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router';
+import { router } from './router';
+import { PageSkeleton } from './components/ui/Skeleton';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Suspense fallback={<PageSkeleton />}>
+      <RouterProvider router={router} />
+    </Suspense>
+  </StrictMode>,
+);
+```
+
+**Note:** The in-`Layout` `<Suspense>` in `Layout.tsx` (added in Step 2 below) should remain. It provides an in-layout fallback (preserving `Navbar` and `Footer`) for in-app navigation to lazy routes under `/`. Both Suspense boundaries coexist without conflict — the nearest one wins per React's rules.
+
+#### Step 2: Modified `apps/web/src/router.tsx` (full file)
 
 ```tsx
 import { createBrowserRouter } from 'react-router';
@@ -338,42 +361,17 @@ export const router = createBrowserRouter([
 1. **Vite automatically code-splits** on dynamic `import()` -- each lazy route becomes its own chunk
 2. **Admin chunk isolation** -- the entire `/admin` tree (13 pages + layout) is a separate chunk never loaded by regular users
 3. **Heavy page isolation** -- `RecipeCreatePage`, `RecipeEditPage`, `RecipeComparePage`, `SettingsPage` become their own chunks
-4. **Suspense boundary required** -- React Router v7 uses React Suspense internally for lazy route loading. A `<Suspense>` boundary around `<Outlet />` is **required** so lazy routes can suspend properly; omitting it would cause runtime errors. This boundary also provides a visible fallback (the `PageSkeleton` from M3) during chunk loading
+4. **Suspense boundary required** -- React Router v7 uses React Suspense internally for lazy route loading. A `<Suspense>` boundary is **required** so lazy routes can suspend properly; omitting it would cause a blank page on direct URL loads. Two boundaries are used: a root one in `main.tsx` (covers all routes) and an in-layout one in `Layout.tsx` (preserves Navbar/Footer for in-app navigation)
 5. **RequireAuth preserved** -- auth guards are composed inline within the `lazy` callback's returned `Component`
 6. **Named guard components** -- all `RequireAuth` wrappers use named functions (e.g., `function RecipeCreatePageGuarded()`) instead of anonymous arrow functions. This gives React DevTools meaningful display names and ensures stable component identity if caching behavior changes
 
-#### Suspense Boundary in Layout
+#### Suspense Boundaries
 
-To provide a visible fallback while lazy chunks load, wrap the `<Outlet />` in `<Suspense>`:
+Two Suspense boundaries are required:
 
-```tsx
-// apps/web/src/components/layout/Layout.tsx
-import { Suspense } from 'react';
-import { Outlet } from 'react-router';
-import { ScrollRestoration } from 'react-router';
-import { Navbar } from './Navbar';
-import { Footer } from './Footer';
-import { CookieConsent } from '../CookieConsent';
-import { PageSkeleton } from '../ui/Skeleton';
+**Root boundary in `main.tsx`** (see Step 1 above) -- covers all lazy routes app-wide, including the top-level `/admin` route. Without this, direct loads to `/admin/*` show a blank page.
 
-export function Layout() {
-  return (
-    <div className='flex min-h-screen flex-col'>
-      <ScrollRestoration />
-      <Navbar />
-      <main className='flex-1'>
-        <Suspense fallback={<PageSkeleton />}>
-          <Outlet />
-        </Suspense>
-      </main>
-      <Footer />
-      <CookieConsent />
-    </div>
-  );
-}
-```
-
-**Note:** This Layout modification also includes the `ScrollRestoration` component from L7 -- both changes go into the same file.
+**In-layout boundary in `Layout.tsx`** (see L7 section for the complete file) -- preserves `Navbar` and `Footer` during in-app navigation to lazy routes under `/`. The skeleton is shown inside the layout frame rather than as a full blank screen.
 
 #### Expected Bundle Impact
 
@@ -395,10 +393,12 @@ Estimated main bundle reduction: 25-40% (depends on page component sizes). Admin
 ### Evidence
 
 - Zero dedicated skeleton/shimmer components in `apps/web/src/components/`
-- `apps/web/src/pages/recipes/RecipeDetailPage.tsx:60-68` -- loading state renders plain text: `{t('common.loading')}`
-- `apps/web/src/components/auth/RequireAuth.tsx:12-17` -- loading state renders "Loading..." text
-- `apps/web/src/components/recipe/CommentSection.tsx:72,345` -- uses `setLoading(true/false)` with conditional button text
-- Some admin pages (`AdminUserDetailPage.tsx:69-85`) use inline `animate-pulse` divs but they are ad hoc, not reusable components
+- `apps/web/src/pages/recipes/RecipeDetailPage.tsx` -- loading state renders plain text: `{t('common.loading')}`
+- `apps/web/src/components/auth/RequireAuth.tsx` -- loading state renders "Loading..." text
+- `apps/web/src/components/recipe/CommentSection.tsx` -- uses `setLoading(true/false)` with conditional button text
+- Some admin pages (`AdminUserDetailPage.tsx`, `AdminUsersPage.tsx`, `AdminUserEditPage.tsx`) use inline `animate-pulse` divs but they are ad hoc, not reusable components
+
+**Note on line numbers:** After the rebase, line numbers in the original evidence may have shifted. Verify the BEFORE code blocks match the current file state before applying each step.
 
 ### Impact
 
@@ -648,7 +648,7 @@ export function UserProfileSkeleton() {
 
 **File: `apps/web/src/pages/recipes/RecipeDetailPage.tsx`**
 
-Replace the loading block (lines 60-68):
+Replace the loading block:
 
 ```tsx
 // BEFORE:
@@ -727,7 +727,7 @@ export function RequireAuth({ children, requireAdmin }: Props) {
 
 #### Step 4: Refactor inline admin skeletons (optional cleanup)
 
-The admin pages (`AdminUserDetailPage.tsx:69-85`, `AdminUsersPage.tsx:123`, `AdminUserEditPage.tsx:123-127`) already use inline `animate-pulse` divs. These can be replaced with the `Skeleton` component for consistency:
+The admin pages (`AdminUserDetailPage.tsx`, `AdminUsersPage.tsx`, `AdminUserEditPage.tsx`) already use inline `animate-pulse` divs. These can be replaced with the `Skeleton` component for consistency:
 
 ```tsx
 // BEFORE (AdminUserDetailPage.tsx):
@@ -757,7 +757,7 @@ if (loading) {
 
 **File: `apps/web/src/pages/recipes/RecipeListPage.tsx`**
 
-Replace the loading block (lines 387-391):
+Replace the loading block:
 
 ```tsx
 // BEFORE:
@@ -784,7 +784,7 @@ import { RecipeCardSkeletonGrid } from '../../components/ui/Skeleton';
 
 **File: `apps/web/src/pages/users/UserProfilePage.tsx`**
 
-Replace the loading block (lines 57-66):
+Replace the loading block:
 
 ```tsx
 // BEFORE:
@@ -842,10 +842,12 @@ These are built now to keep the skeleton library complete and avoid duplicate ef
 - Zero `srcset` or `<picture>` elements
 - No explicit `width`/`height` on any `<img>` tags (CLS risk)
 - Image locations found:
-  - `apps/web/src/components/qrcode/RecipeQRCode.tsx:45` -- QR code image (fixed 128x128)
-  - `apps/web/src/components/photos/PhotoUpload.tsx:133` -- upload preview thumbnails
-  - `apps/web/src/pages/admin/AdminUserDetailPage.tsx:150` -- user avatar (80x80)
-  - `apps/web/src/pages/users/UserProfilePage.tsx:100` -- user avatar (64x64)
+  - `apps/web/src/components/qrcode/RecipeQRCode.tsx` -- QR code image (fixed 128x128)
+  - `apps/web/src/components/photos/PhotoUpload.tsx` -- upload preview thumbnails
+  - `apps/web/src/pages/admin/AdminUserDetailPage.tsx` -- user avatar (80x80)
+  - `apps/web/src/pages/users/UserProfilePage.tsx` -- user avatar (64x64)
+
+**Note on line numbers:** After the rebase, line numbers in the original evidence may have shifted. Verify the BEFORE code blocks match the current file state before applying each change.
 
 ### Impact
 
@@ -855,7 +857,7 @@ These are built now to keep the skeleton library complete and avoid duplicate ef
 
 ### Action Plan
 
-#### Image 1: QR Code (`RecipeQRCode.tsx:45`)
+#### Image 1: QR Code (`RecipeQRCode.tsx`)
 
 ```tsx
 // BEFORE:
@@ -878,7 +880,7 @@ These are built now to keep the skeleton library complete and avoid duplicate ef
 
 **Note:** QR codes are typically below the fold (in a share section). `loading="lazy"` is appropriate.
 
-#### Image 2: Photo Upload Previews (`PhotoUpload.tsx:133`)
+#### Image 2: Photo Upload Previews (`PhotoUpload.tsx`)
 
 ```tsx
 // BEFORE:
@@ -897,7 +899,7 @@ These are built now to keep the skeleton library complete and avoid duplicate ef
 
 **Note:** `preview.url` is a blob URL (`blob:http://...`) — an in-memory object URL pointing to data the browser already holds locally. Blob URLs carry zero network cost, so `loading="lazy"` is incorrect here: it would defer rendering and delay the preview appearing immediately after the user selects a file. Use `loading="eager"` (the default) for instant display. Keep `width`/`height` to prevent CLS.
 
-#### Image 3: Admin User Avatar (`AdminUserDetailPage.tsx:150`)
+#### Image 3: Admin User Avatar (`AdminUserDetailPage.tsx`)
 
 ```tsx
 // BEFORE:
@@ -918,7 +920,7 @@ These are built now to keep the skeleton library complete and avoid duplicate ef
 />
 ```
 
-#### Image 4: User Profile Avatar (`UserProfilePage.tsx:100`)
+#### Image 4: User Profile Avatar (`UserProfilePage.tsx`)
 
 ```tsx
 // BEFORE:
@@ -1094,6 +1096,8 @@ export function Layout() {
 
 `<ScrollRestoration />` must be rendered inside a route that uses `createBrowserRouter` (which this app does). It should be placed as a child of the root layout, before any content that scrolls. It renders no visible DOM -- it is a side-effect-only component.
 
+**Note:** `ScrollRestoration` is inside `Layout`, which is not rendered for `/admin` routes. Admin pages do not benefit from scroll restoration. This is acceptable -- admin is internal tooling with shorter, less scroll-heavy pages.
+
 ---
 
 ## Implementation Order
@@ -1104,13 +1108,13 @@ Recommended order based on impact and dependency:
 |------|-------|--------|--------------|
 | 1 | L7 -- Scroll Restoration | 5 min | `Layout.tsx` |
 | 2 | M3 -- Skeleton Components | 45 min | New `Skeleton.tsx`, `RecipeDetailPage.tsx`, `RequireAuth.tsx`, `RecipeListPage.tsx`, `UserProfilePage.tsx` |
-| 3 | H7 -- Code Splitting | 20 min | `router.tsx`, `Layout.tsx` (already done in step 1-2) |
+| 3 | H7 -- Code Splitting | 25 min | `main.tsx`, `router.tsx`, `Layout.tsx` (already done in step 1-2) |
 | 4 | M17 -- Image Lazy Loading | 10 min | `RecipeQRCode.tsx`, `PhotoUpload.tsx`, `AdminUserDetailPage.tsx`, `UserProfilePage.tsx` |
 | 5 | L2 -- Resource Hints | 5 min | `index.html` |
 
-**Total estimated effort:** ~85 minutes
+**Total estimated effort:** ~90 minutes
 
-Steps 1 and 2 should be done first because step 3 (code splitting) references the modified `Layout.tsx` that includes both `ScrollRestoration` and `Suspense`. Steps 4 and 5 are independent and can be done in any order.
+Steps 1 and 2 should be done first because step 3 (code splitting) references the modified `Layout.tsx` that includes both `ScrollRestoration` and `Suspense`, and `main.tsx` imports `PageSkeleton` from the new `Skeleton.tsx`. Steps 4 and 5 are independent and can be done in any order.
 
 ---
 
@@ -1123,6 +1127,7 @@ After implementing all changes:
 - [ ] Navigate to `/admin` -- observe network tab shows a separate chunk being loaded
 - [ ] Navigate to `/recipes/new` -- observe lazy chunk load
 - [ ] Navigate to `/settings` -- observe lazy chunk load
+- [ ] **Direct load** `/admin/users` (hard refresh or new tab) -- `PageSkeleton` shows briefly, then admin page loads (no blank page)
 - [ ] Scroll down recipe list, click a recipe, press back -- scroll position is restored
 - [ ] Open recipe detail with slow network throttle -- skeleton is visible during load
 - [ ] Open recipe list with slow network throttle -- `RecipeCardSkeletonGrid` is visible
@@ -1140,6 +1145,7 @@ After implementing all changes:
 | File | Action | Issue |
 |------|--------|-------|
 | `apps/web/src/components/ui/Skeleton.tsx` | **CREATE** | M3 |
+| `apps/web/src/main.tsx` | MODIFY | H7 |
 | `apps/web/src/router.tsx` | MODIFY | H7 |
 | `apps/web/src/components/layout/Layout.tsx` | MODIFY | H7, L7, M3 |
 | `apps/web/src/pages/recipes/RecipeDetailPage.tsx` | MODIFY | M3 |
