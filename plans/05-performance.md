@@ -38,7 +38,7 @@
 - `apps/web/src/router.tsx:1-40` -- 40 static imports, zero `import()` calls
 - Zero `React.lazy`, zero `Suspense` anywhere in the codebase
 - 13 admin pages (`AdminLayout`, `AdminDashboard`, `AdminUsersPage`, `AdminRecipesPage`, `AdminEquipmentPage`, `AdminVendorsPage`, `AdminTasteNotesPage`, `AdminCompatibilityPage`, `AdminBadgesPage`, `AdminAuditLogPage`, `AdminCachePage`, `AdminUserCreatePage`, `AdminUserEditPage`, `AdminUserDetailPage`) bundled into the main chunk and shipped to every visitor
-- Heavy pages like `RecipeCreatePage`, `RecipeEditPage`, `RecipeComparePage`, `RecipeFocusModePage`, `SettingsPage` loaded eagerly even though most sessions never visit them
+- Heavy pages like `RecipeCreatePage`, `RecipeEditPage`, `RecipeComparePage`, `SettingsPage` loaded eagerly even though most sessions never visit them
 
 ### Impact
 
@@ -58,9 +58,11 @@
 | Admin (13) | `AdminLayout`, `AdminDashboard`, `AdminUsersPage`, `AdminUserCreatePage`, `AdminUserEditPage`, `AdminUserDetailPage`, `AdminRecipesPage`, `AdminEquipmentPage`, `AdminVendorsPage`, `AdminTasteNotesPage`, `AdminCompatibilityPage`, `AdminBadgesPage`, `AdminAuditLogPage`, `AdminCachePage` |
 | Heavy auth (4) | `RecipeCreatePage`, `RecipeEditPage`, `SettingsPage`, `RecipeComparePage` |
 
+**Note on `RecipeComparePage`:** Verified against the current router — it is a **public** route (no `RequireAuth` wrapper). The plan preserves this correctly. Recipe comparison is a read-only feature accessible without login.
+
 **Pages to keep eagerly loaded (public hot paths):**
 
-`HomePage`, `RecipeListPage`, `RecipeDetailPage`, `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `ResetPasswordPage`, `NotFoundPage`, `RecipeNotAvailablePage`, `StarredRecipesPage`, `RecipeFocusModePage`, `UserProfilePage`, `SetupListPage`, `BeanListPage`, `EquipmentListPage`, `TasteNotesPage`, `OnboardingWizard`, `PrivacyPage`, `TermsPage`
+`HomePage`, `RecipeListPage`, `RecipeDetailPage`, `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `ResetPasswordPage`, `VerifyEmailPage`, `NotFoundPage`, `RecipeNotAvailablePage`, `StarredRecipesPage`, `RecipeFocusModePage`, `UserProfilePage`, `SetupListPage`, `BeanListPage`, `EquipmentListPage`, `TasteNotesPage`, `OnboardingWizard`, `PrivacyPage`, `TermsPage`
 
 #### React Router v7.5 `lazy` Pattern
 
@@ -117,17 +119,21 @@ import { TasteNotesPage } from './pages/TasteNotesPage';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { TermsPage } from './pages/TermsPage';
+import { RootErrorBoundary } from './components/ErrorBoundary';
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
+    errorElement: <RootErrorBoundary />,
     children: [
       { index: true, element: <HomePage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
+      { path: 'verify-email', element: <VerifyEmailPage /> },
       { path: 'recipes', element: <RecipeListPage /> },
       {
         path: 'recipes/starred',
@@ -143,11 +149,9 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const { RecipeCreatePage } = await import('./pages/recipes/RecipeCreatePage');
           return {
-            Component: () => (
-              <RequireAuth>
-                <RecipeCreatePage />
-              </RequireAuth>
-            ),
+            Component: function RecipeCreatePageGuarded() {
+              return <RequireAuth><RecipeCreatePage /></RequireAuth>;
+            },
           };
         },
       },
@@ -165,11 +169,9 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const { RecipeEditPage } = await import('./pages/recipes/RecipeEditPage');
           return {
-            Component: () => (
-              <RequireAuth>
-                <RecipeEditPage />
-              </RequireAuth>
-            ),
+            Component: function RecipeEditPageGuarded() {
+              return <RequireAuth><RecipeEditPage /></RequireAuth>;
+            },
           };
         },
       },
@@ -179,11 +181,9 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const { SettingsPage } = await import('./pages/settings/SettingsPage');
           return {
-            Component: () => (
-              <RequireAuth>
-                <SettingsPage />
-              </RequireAuth>
-            ),
+            Component: function SettingsPageGuarded() {
+              return <RequireAuth><SettingsPage /></RequireAuth>;
+            },
           };
         },
       },
@@ -230,13 +230,12 @@ export const router = createBrowserRouter([
     lazy: async () => {
       const { AdminLayout } = await import('./pages/admin/AdminLayout');
       return {
-        Component: () => (
-          <RequireAuth requireAdmin>
-            <AdminLayout />
-          </RequireAuth>
-        ),
+        Component: function AdminLayoutGuarded() {
+          return <RequireAuth requireAdmin><AdminLayout /></RequireAuth>;
+        },
       };
     },
+    errorElement: <RootErrorBoundary />,
     children: [
       {
         index: true,
@@ -339,8 +338,9 @@ export const router = createBrowserRouter([
 1. **Vite automatically code-splits** on dynamic `import()` -- each lazy route becomes its own chunk
 2. **Admin chunk isolation** -- the entire `/admin` tree (13 pages + layout) is a separate chunk never loaded by regular users
 3. **Heavy page isolation** -- `RecipeCreatePage`, `RecipeEditPage`, `RecipeComparePage`, `SettingsPage` become their own chunks
-4. **No Suspense boundary needed at the router level** -- React Router v7 handles the lazy loading internally; it waits for the `lazy` function to resolve before rendering the route. However, adding a Suspense boundary in Layout (see M3 below) provides a fallback for the brief loading period
+4. **Suspense boundary required** -- React Router v7 uses React Suspense internally for lazy route loading. A `<Suspense>` boundary around `<Outlet />` is **required** so lazy routes can suspend properly; omitting it would cause runtime errors. This boundary also provides a visible fallback (the `PageSkeleton` from M3) during chunk loading
 5. **RequireAuth preserved** -- auth guards are composed inline within the `lazy` callback's returned `Component`
+6. **Named guard components** -- all `RequireAuth` wrappers use named functions (e.g., `function RecipeCreatePageGuarded()`) instead of anonymous arrow functions. This gives React DevTools meaningful display names and ensures stable component identity if caching behavior changes
 
 #### Suspense Boundary in Layout
 
@@ -379,7 +379,7 @@ export function Layout() {
 
 | Before | After |
 |--------|-------|
-| Single main chunk with all 40 pages | Main chunk with ~23 eagerly loaded pages |
+| Single main chunk with all 40 pages | Main chunk with ~20 eagerly loaded pages |
 | Admin code in every user's bundle | Admin chunk loaded only on `/admin/*` |
 | Heavy pages in initial load | Separate chunks loaded on navigation |
 
@@ -437,7 +437,7 @@ interface SkeletonProps {
 export function Skeleton({ className = '', width, height, circle, style }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse rounded ${circle ? 'rounded-full' : ''} ${className}`}
+      className={`animate-pulse ${circle ? 'rounded-full' : 'rounded'} ${className}`}
       style={{
         backgroundColor: 'var(--bg-tertiary)',
         width,
@@ -459,7 +459,7 @@ interface SkeletonTextProps {
 
 export function SkeletonText({ lines = 3, className = '' }: SkeletonTextProps) {
   // Vary the last line width to look natural
-  const widths = ['100%', '100%', '100%', '75%', '60%', '85%'];
+  const widths = ['65%', '75%', '70%', '80%', '60%', '85%'];
   return (
     <div className={`space-y-2 ${className}`}>
       {Array.from({ length: lines }, (_, i) => (
@@ -753,6 +753,75 @@ if (loading) {
 }
 ```
 
+#### Step 5: Replace loading text in `RecipeListPage`
+
+**File: `apps/web/src/pages/recipes/RecipeListPage.tsx`**
+
+Replace the loading block (lines 387-391):
+
+```tsx
+// BEFORE:
+{loading
+  ? (
+    <div className='text-center py-12' style={{ color: 'var(--text-secondary)' }}>
+      {t('common.loading')}
+    </div>
+  )
+  : ...results...
+
+// AFTER:
+{loading
+  ? <RecipeCardSkeletonGrid />
+  : ...results...
+```
+
+Add import at top of file:
+```tsx
+import { RecipeCardSkeletonGrid } from '../../components/ui/Skeleton';
+```
+
+#### Step 6: Replace loading text in `UserProfilePage`
+
+**File: `apps/web/src/pages/users/UserProfilePage.tsx`**
+
+Replace the loading block (lines 57-66):
+
+```tsx
+// BEFORE:
+if (loading) {
+  return (
+    <div
+      className='mx-auto max-w-4xl px-6 py-12 text-center'
+      style={{ color: 'var(--text-secondary)' }}
+    >
+      {t('common.loading')}
+    </div>
+  );
+}
+
+// AFTER:
+if (loading) {
+  return <UserProfileSkeleton />;
+}
+```
+
+Add import at top of file:
+```tsx
+import { UserProfileSkeleton } from '../../components/ui/Skeleton';
+```
+
+#### Step 7: Forward-planned skeleton components
+
+The following exported components are ready for use but not wired in this plan because their target files lack a content-level loading state to replace:
+
+| Component | Target file | Reason deferred |
+|---|---|---|
+| `RecipeCardSkeleton` | _(internal use by `RecipeCardSkeletonGrid`)_ | Used internally — no separate wiring needed |
+| `CommentSkeleton` | `CommentSection.tsx` | No initial content fetch loading state exists (the `loading` flag controls button submission text, not a content placeholder) |
+| `CommentSectionSkeleton` | `CommentSection.tsx` | Same as above — requires adding a new loading state to track initial comment fetch before this can be used |
+
+These are built now to keep the skeleton library complete and avoid duplicate effort. They can be wired in a follow-up when `CommentSection` gains an initial fetch loading indicator.
+
 #### Design Principles
 
 - All skeletons use `var(--bg-tertiary)` for the pulse color -- this automatically adapts to light, dark, and coffee themes
@@ -820,13 +889,13 @@ if (loading) {
   src={preview.url}
   alt={preview.name}
   className='w-full h-full object-cover'
-  loading='lazy'
+  loading='eager'
   width={200}
   height={200}
 />
 ```
 
-**Note:** Upload previews are generated from local blobs and appear in a form context. `loading="lazy"` prevents unnecessary decoding if many previews exist. The `width`/`height` are approximations matching the `aspect-square` container.
+**Note:** `preview.url` is a blob URL (`blob:http://...`) — an in-memory object URL pointing to data the browser already holds locally. Blob URLs carry zero network cost, so `loading="lazy"` is incorrect here: it would defer rendering and delay the preview appearing immediately after the user selects a file. Use `loading="eager"` (the default) for instant display. Keep `width`/`height` to prevent CLS.
 
 #### Image 3: Admin User Avatar (`AdminUserDetailPage.tsx:150`)
 
@@ -958,6 +1027,8 @@ This is not needed now because the app serves user-uploaded content and API-gene
 
 5. **Font CDN:** The current codebase uses system fonts with `Inter` and `JetBrains Mono` as preferences (not loaded from a CDN). If Google Fonts or another CDN is added later, the preconnect hints for `fonts.googleapis.com` and `fonts.gstatic.com` should be uncommented.
 
+6. **Deferral option:** Because all hints are commented out under the current same-origin architecture, L2 produces zero runtime change today. If preferred, this item can be deferred entirely and re-introduced alongside a future domain-split architecture change (e.g., moving the API to `api.brewform.com`). The commented-out HTML in `index.html` adds minimal maintenance noise, so shipping now or deferring are both acceptable.
+
 ---
 
 ## L7 -- No Scroll Restoration
@@ -1032,12 +1103,12 @@ Recommended order based on impact and dependency:
 | Step | Issue | Effort | Files Changed |
 |------|-------|--------|--------------|
 | 1 | L7 -- Scroll Restoration | 5 min | `Layout.tsx` |
-| 2 | M3 -- Skeleton Components | 30 min | New `Skeleton.tsx`, `RecipeDetailPage.tsx`, `RequireAuth.tsx` |
+| 2 | M3 -- Skeleton Components | 45 min | New `Skeleton.tsx`, `RecipeDetailPage.tsx`, `RequireAuth.tsx`, `RecipeListPage.tsx`, `UserProfilePage.tsx` |
 | 3 | H7 -- Code Splitting | 20 min | `router.tsx`, `Layout.tsx` (already done in step 1-2) |
 | 4 | M17 -- Image Lazy Loading | 10 min | `RecipeQRCode.tsx`, `PhotoUpload.tsx`, `AdminUserDetailPage.tsx`, `UserProfilePage.tsx` |
 | 5 | L2 -- Resource Hints | 5 min | `index.html` |
 
-**Total estimated effort:** ~70 minutes
+**Total estimated effort:** ~85 minutes
 
 Steps 1 and 2 should be done first because step 3 (code splitting) references the modified `Layout.tsx` that includes both `ScrollRestoration` and `Suspense`. Steps 4 and 5 are independent and can be done in any order.
 
@@ -1054,8 +1125,10 @@ After implementing all changes:
 - [ ] Navigate to `/settings` -- observe lazy chunk load
 - [ ] Scroll down recipe list, click a recipe, press back -- scroll position is restored
 - [ ] Open recipe detail with slow network throttle -- skeleton is visible during load
+- [ ] Open recipe list with slow network throttle -- `RecipeCardSkeletonGrid` is visible
+- [ ] Open user profile with slow network throttle -- `UserProfileSkeleton` is visible
 - [ ] Check `RequireAuth` loading state -- shows `PageSkeleton` instead of "Loading..." text
-- [ ] Inspect `<img>` tags in DevTools -- all have `loading="lazy"`, `width`, and `height`
+- [ ] Inspect `<img>` tags in DevTools -- QR code and avatars have `loading="lazy"`, photo previews use `loading="eager"`; all have `width` and `height`
 - [ ] Run `deno task build` -- verify no new warnings, check chunk sizes in output
 - [ ] Test in light, dark, and coffee themes -- skeletons use correct background colors
 - [ ] Lighthouse performance audit -- compare TTI and bundle size before/after
@@ -1070,9 +1143,10 @@ After implementing all changes:
 | `apps/web/src/router.tsx` | MODIFY | H7 |
 | `apps/web/src/components/layout/Layout.tsx` | MODIFY | H7, L7, M3 |
 | `apps/web/src/pages/recipes/RecipeDetailPage.tsx` | MODIFY | M3 |
+| `apps/web/src/pages/recipes/RecipeListPage.tsx` | MODIFY | M3 |
 | `apps/web/src/components/auth/RequireAuth.tsx` | MODIFY | M3 |
 | `apps/web/src/components/qrcode/RecipeQRCode.tsx` | MODIFY | M17 |
 | `apps/web/src/components/photos/PhotoUpload.tsx` | MODIFY | M17 |
 | `apps/web/src/pages/admin/AdminUserDetailPage.tsx` | MODIFY | M17 (+ optional M3 cleanup) |
-| `apps/web/src/pages/users/UserProfilePage.tsx` | MODIFY | M17 |
+| `apps/web/src/pages/users/UserProfilePage.tsx` | MODIFY | M17, M3 |
 | `apps/web/index.html` | MODIFY | L2 |
