@@ -8,3 +8,16 @@ export const EMOJI_TAGS = [
 ] as const;
 
 export type EmojiTagKey = (typeof EMOJI_TAGS)[number]['key'];
+
+export type EmojiTagOption = {
+  value: EmojiTagKey;
+  emoji: string;
+  label: string;
+};
+
+/** key is aliased to value for consistent option pattern */
+export const EMOJI_TAGS_LIST: EmojiTagOption[] = EMOJI_TAGS.map((t) => ({
+  value: t.key,
+  emoji: t.emoji,
+  label: t.label,
+}));

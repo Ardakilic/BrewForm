@@ -5,21 +5,14 @@ import { recipeApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
 import {
-  BREW_METHODS,
-  DRINK_TYPES,
-  EMOJI_TAGS,
-  VISIBILITY_STATES,
+  BREW_METHODS_LIST,
+  DRINK_TYPES_LIST,
+  EMOJI_TAGS_LIST,
+  VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
+import type { RecipeDetailResponse } from '../../api/types.ts';
 
-// deno-lint-ignore no-explicit-any
-const BREW_METHODS_ANY = BREW_METHODS as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const DRINK_TYPES_ANY = DRINK_TYPES as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const VISIBILITY_ANY = VISIBILITY_STATES as unknown as any[];
-// deno-lint-ignore no-explicit-any
-const EMOJI_ANY = EMOJI_TAGS as unknown as any[];
 
 export function RecipeEditPage() {
   const { id } = useParams();
@@ -56,7 +49,7 @@ export function RecipeEditPage() {
   useEffect(() => {
     if (!id) return;
     recipeApi.get(id).then((data) => {
-      const r: any = data;
+      const r = data as RecipeDetailResponse;
       setTitle(r.title);
       setVisibility(r.visibility as Visibility);
       setBrewMethod(r.currentVersion.brewMethod as BrewMethod);
@@ -75,10 +68,10 @@ export function RecipeEditPage() {
       setPreparationNotes(r.currentVersion.preparationNotes || '');
       setRating(r.currentVersion.rating?.toString() || '');
       setEmojiTag(r.currentVersion.emojiTag || '');
-      setTasteNoteIds((r as any).tasteNotes.map((t: any) => t.id));
+      setTasteNoteIds(r.tasteNotes.map((t) => t.id));
       // Pre-populate intensities from existing taste notes
       const existingIntensities: Record<string, number> = {};
-      for (const t of (r as any).tasteNotes) {
+      for (const t of r.tasteNotes) {
         existingIntensities[t.id] = t.intensity ?? 2;
       }
       setTasteNoteIntensities(existingIntensities);
@@ -92,7 +85,7 @@ export function RecipeEditPage() {
     }).finally(() => setFetching(false));
   }, [id]);
 
-  const compatibleDrinks = DRINK_TYPES_ANY.filter((d: any) =>
+  const compatibleDrinks = DRINK_TYPES_LIST.filter((d) =>
     d.compatibleMethods.includes(brewMethod)
   );
 
@@ -204,7 +197,7 @@ export function RecipeEditPage() {
               onChange={(e) => setVisibility(e.target.value as Visibility)}
               className='input-field'
             >
-              {VISIBILITY_ANY.map((v: any) => (
+              {VISIBILITY_STATES_LIST.map((v) => (
                 <option key={v.value} value={v.value}>{v.label}</option>
               ))}
             </select>
@@ -219,7 +212,7 @@ export function RecipeEditPage() {
                 onChange={(e) => setBrewMethod(e.target.value as BrewMethod)}
                 className='input-field'
               >
-                {BREW_METHODS_ANY.map((m: any) => (
+                {BREW_METHODS_LIST.map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
@@ -230,7 +223,7 @@ export function RecipeEditPage() {
                 onChange={(e) => setDrinkType(e.target.value as DrinkType)}
                 className='input-field'
               >
-                {compatibleDrinks.map((d: any) => (
+                {compatibleDrinks.map((d) => (
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
               </select>
@@ -379,8 +372,8 @@ export function RecipeEditPage() {
                 className='input-field'
               >
                 <option value=''>Select...</option>
-                {EMOJI_ANY.map((t: any) => (
-                  <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>
+                {EMOJI_TAGS_LIST.map((t) => (
+                  <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
                 ))}
               </select>
             </EditField>

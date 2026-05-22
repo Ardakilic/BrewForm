@@ -81,7 +81,7 @@ beyond a single "skipped" line per send.
 2. Add a new `notifyXxx({ ... })` helper to `apps/api/src/utils/notify/index.ts` that loads the
    template, renders, and calls `sendEmail` — copy-paste from an existing helper.
 3. Decide whether the new category needs its own preference flag. If yes, add the column to
-   `UserPreferences` (Prisma + migration), update the preference DTO in `@brewform/shared`, and gate
+   `UserPreferences` (Drizzle schema + migration), update the preference DTO in `@brewform/shared`, and gate
    the helper on the flag. If no (it's transactional like welcome/reset), invoke unconditionally.
 4. Wire the helper into the originating service as a fire-and-forget IIFE — see existing call sites
    for the pattern.

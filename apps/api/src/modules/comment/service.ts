@@ -1,3 +1,4 @@
+import { sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
 import { db } from '@brewform/db';
@@ -17,7 +18,7 @@ export async function createComment(
   parentCommentId?: string,
 ) {
   let effectiveParentCommentId: string | null = parentCommentId || null;
-  let effectiveContent = content;
+  let effectiveContent = sanitizeText(content);
 
   if (parentCommentId) {
     const targetComment = await model.findById(parentCommentId);
@@ -47,7 +48,7 @@ export async function createComment(
 
       // Prepend @username mention if author username is available
       if (directTarget.author?.username) {
-        effectiveContent = `@${directTarget.author.username} ${content}`;
+        effectiveContent = `@${directTarget.author.username} ${sanitizeText(content)}`;
       }
     }
   }

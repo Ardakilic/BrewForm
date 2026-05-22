@@ -27,14 +27,11 @@ export const userApi = {
 export const recipeApi = {
   list: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    // The API uses paginated() which puts the array directly in data.data.
-    // The client unwraps data.data, so the resolved value is the array itself.
-    // Using unknown[] so callers can cast to their specific type.
-    return api.get<unknown[]>(`/recipes${query}`);
+    return api.getWithMeta<{ data: unknown[]; meta: { pagination?: { total: number } } }>(`/recipes${query}`);
   },
   starred: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return api.get<unknown[]>(`/recipes/starred${query}`);
+    return api.getWithMeta<unknown[]>(`/recipes/starred${query}`);
   },
   get: (slugOrId: string) => api.get<Record<string, unknown>>(`/recipes/${slugOrId}`),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/recipes', data),

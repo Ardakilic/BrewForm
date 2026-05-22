@@ -167,6 +167,25 @@ export function RegisterPage() {
             required
             minLength={8}
           />
+          {password.length > 0 && (
+            <ul className='mt-1 text-xs space-y-0.5' style={{ color: 'var(--text-tertiary)' }}>
+              <li style={{ color: password.length >= 8 ? 'var(--success)' : 'var(--text-tertiary)' }}>
+                {password.length >= 8 ? '\u2713' : '\u25CB'} {t('password.requiresLength')}
+              </li>
+              <li style={{ color: /[a-z]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)' }}>
+                {/[a-z]/.test(password) ? '\u2713' : '\u25CB'} {t('password.requiresLowercase')}
+              </li>
+              <li style={{ color: /[A-Z]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)' }}>
+                {/[A-Z]/.test(password) ? '\u2713' : '\u25CB'} {t('password.requiresUppercase')}
+              </li>
+              <li style={{ color: /[0-9]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)' }}>
+                {/[0-9]/.test(password) ? '\u2713' : '\u25CB'} {t('password.requiresDigit')}
+              </li>
+              <li style={{ color: /[^a-zA-Z0-9]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)' }}>
+                {/[^a-zA-Z0-9]/.test(password) ? '\u2713' : '\u25CB'} {t('password.requiresSpecial')}
+              </li>
+            </ul>
+          )}
         </div>
         <div>
           <label

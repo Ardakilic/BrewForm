@@ -38,7 +38,7 @@ vi.mock(
   '../../components/recipe/ForkCard.tsx',
   () => ({ ForkCard: () => <div data-testid='fork-card'>ForkCard</div> }),
 );
-vi.mock('@brewform/shared/constants', () => ({ EMOJI_TAGS: [] }));
+vi.mock('@brewform/shared/constants', () => ({ EMOJI_TAGS_LIST: [] }));
 
 // New component mocks for redesigned page
 vi.mock(
