@@ -46,6 +46,9 @@ export function RecipeQRCode({ slug, visibility }: Props) {
           src={getQRUrl()}
           alt='Recipe QR Code'
           className='w-32 h-32'
+          loading='lazy'
+          width={128}
+          height={128}
         />
       </div>
     </div>

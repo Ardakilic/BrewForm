@@ -4,6 +4,7 @@ import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { RecipeCardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import {
   BREW_METHODS_LIST,
   DRINK_TYPES_LIST,
@@ -385,11 +386,7 @@ export function RecipeListPage() {
         {/* ── Recipe grid ── */}
         <main className='flex-1'>
           {loading
-            ? (
-              <div className='text-center py-12' style={{ color: 'var(--text-secondary)' }}>
-                {t('common.loading')}
-              </div>
-            )
+            ? <RecipeCardSkeletonGrid />
             : recipes.length === 0
             ? (
               <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>

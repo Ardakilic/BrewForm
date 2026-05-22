@@ -130,7 +130,14 @@ export function PhotoUpload({ recipeId, onUploadComplete }: Props) {
         <div className='mt-4 grid grid-cols-3 gap-2'>
           {previews.map((preview) => (
             <div key={preview.name} className='relative aspect-square rounded overflow-hidden'>
-              <img src={preview.url} alt={preview.name} className='w-full h-full object-cover' />
+              <img
+                src={preview.url}
+                alt={preview.name}
+                className='w-full h-full object-cover'
+                loading='eager'
+                width={200}
+                height={200}
+              />
             </div>
           ))}
         </div>

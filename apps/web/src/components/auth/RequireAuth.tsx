@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { PageSkeleton } from '../ui/Skeleton.tsx';
 
 interface Props {
   children: React.ReactNode;
@@ -10,11 +11,7 @@ export function RequireAuth({ children, requireAdmin }: Props) {
   const { isAuthenticated, user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className='flex min-h-[40vh] items-center justify-center'>
-        <div className='text-lg' style={{ color: 'var(--text-secondary)' }}>Loading...</div>
-      </div>
-    );
+    return <PageSkeleton />;
   }
   if (!isAuthenticated) return <Navigate to='/login' />;
   if (requireAdmin && !user?.isAdmin) return <Navigate to='/' />;
