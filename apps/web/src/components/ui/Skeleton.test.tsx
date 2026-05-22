@@ -10,7 +10,7 @@ import {
   Skeleton,
   SkeletonText,
   UserProfileSkeleton,
-} from './Skeleton';
+} from './Skeleton.tsx';
 
 // ---------------------------------------------------------------------------
 // Skeleton

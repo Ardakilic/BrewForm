@@ -1,29 +1,29 @@
 import { createBrowserRouter } from 'react-router';
-import { Layout } from './components/layout/Layout';
-import { RequireAuth } from './components/auth/RequireAuth';
+import { Layout } from './components/layout/Layout.tsx';
+import { RequireAuth } from './components/auth/RequireAuth.tsx';
 
 // Eagerly loaded: high-traffic public pages and lightweight auth pages
-import { HomePage } from './pages/HomePage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
-import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
-import { RecipeListPage } from './pages/recipes/RecipeListPage';
-import { StarredRecipesPage } from './pages/recipes/StarredRecipesPage';
-import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage';
-import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage';
-import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage';
-import { UserProfilePage } from './pages/users/UserProfilePage';
-import { SetupListPage } from './pages/setups/SetupListPage';
-import { BeanListPage } from './pages/beans/BeanListPage';
-import { EquipmentListPage } from './pages/equipment/EquipmentListPage';
-import { TasteNotesPage } from './pages/TasteNotesPage';
-import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { PrivacyPage } from './pages/PrivacyPage';
-import { TermsPage } from './pages/TermsPage';
-import { RootErrorBoundary } from './components/ErrorBoundary';
-import { VerifyEmailPage } from './pages/auth/VerifyEmailPage';
+import { HomePage } from './pages/HomePage.tsx';
+import { NotFoundPage } from './pages/NotFoundPage.tsx';
+import { LoginPage } from './pages/auth/LoginPage.tsx';
+import { RegisterPage } from './pages/auth/RegisterPage.tsx';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.tsx';
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage.tsx';
+import { RecipeListPage } from './pages/recipes/RecipeListPage.tsx';
+import { StarredRecipesPage } from './pages/recipes/StarredRecipesPage.tsx';
+import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
+import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
+import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
+import { UserProfilePage } from './pages/users/UserProfilePage.tsx';
+import { SetupListPage } from './pages/setups/SetupListPage.tsx';
+import { BeanListPage } from './pages/beans/BeanListPage.tsx';
+import { EquipmentListPage } from './pages/equipment/EquipmentListPage.tsx';
+import { TasteNotesPage } from './pages/TasteNotesPage.tsx';
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard.tsx';
+import { PrivacyPage } from './pages/PrivacyPage.tsx';
+import { TermsPage } from './pages/TermsPage.tsx';
+import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.tsx';
 
 export const router = createBrowserRouter([
   {
@@ -50,7 +50,7 @@ export const router = createBrowserRouter([
       {
         path: 'recipes/new',
         lazy: async () => {
-          const { RecipeCreatePage } = await import('./pages/recipes/RecipeCreatePage');
+          const { RecipeCreatePage } = await import('./pages/recipes/RecipeCreatePage.tsx');
           return {
             Component: function RecipeCreatePageGuarded() {
               return (
@@ -65,7 +65,7 @@ export const router = createBrowserRouter([
       {
         path: 'recipes/compare/:id1/:id2',
         lazy: async () => {
-          const { RecipeComparePage } = await import('./pages/recipes/RecipeComparePage');
+          const { RecipeComparePage } = await import('./pages/recipes/RecipeComparePage.tsx');
           return { Component: RecipeComparePage };
         },
       },
@@ -74,7 +74,7 @@ export const router = createBrowserRouter([
       {
         path: 'recipes/:id/edit',
         lazy: async () => {
-          const { RecipeEditPage } = await import('./pages/recipes/RecipeEditPage');
+          const { RecipeEditPage } = await import('./pages/recipes/RecipeEditPage.tsx');
           return {
             Component: function RecipeEditPageGuarded() {
               return (
@@ -90,7 +90,7 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         lazy: async () => {
-          const { SettingsPage } = await import('./pages/settings/SettingsPage');
+          const { SettingsPage } = await import('./pages/settings/SettingsPage.tsx');
           return {
             Component: function SettingsPageGuarded() {
               return (
@@ -143,7 +143,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     lazy: async () => {
-      const { AdminLayout } = await import('./pages/admin/AdminLayout');
+      const { AdminLayout } = await import('./pages/admin/AdminLayout.tsx');
       return {
         Component: function AdminLayoutGuarded() {
           return (
@@ -159,91 +159,93 @@ export const router = createBrowserRouter([
       {
         index: true,
         lazy: async () => {
-          const { AdminDashboard } = await import('./pages/admin/AdminDashboard');
+          const { AdminDashboard } = await import('./pages/admin/AdminDashboard.tsx');
           return { Component: AdminDashboard };
         },
       },
       {
         path: 'users',
         lazy: async () => {
-          const { AdminUsersPage } = await import('./pages/admin/AdminUsersPage');
+          const { AdminUsersPage } = await import('./pages/admin/AdminUsersPage.tsx');
           return { Component: AdminUsersPage };
         },
       },
       {
         path: 'users/new',
         lazy: async () => {
-          const { AdminUserCreatePage } = await import('./pages/admin/AdminUserCreatePage');
+          const { AdminUserCreatePage } = await import('./pages/admin/AdminUserCreatePage.tsx');
           return { Component: AdminUserCreatePage };
         },
       },
       {
         path: 'users/:id',
         lazy: async () => {
-          const { AdminUserDetailPage } = await import('./pages/admin/AdminUserDetailPage');
+          const { AdminUserDetailPage } = await import('./pages/admin/AdminUserDetailPage.tsx');
           return { Component: AdminUserDetailPage };
         },
       },
       {
         path: 'users/:id/edit',
         lazy: async () => {
-          const { AdminUserEditPage } = await import('./pages/admin/AdminUserEditPage');
+          const { AdminUserEditPage } = await import('./pages/admin/AdminUserEditPage.tsx');
           return { Component: AdminUserEditPage };
         },
       },
       {
         path: 'recipes',
         lazy: async () => {
-          const { AdminRecipesPage } = await import('./pages/admin/AdminRecipesPage');
+          const { AdminRecipesPage } = await import('./pages/admin/AdminRecipesPage.tsx');
           return { Component: AdminRecipesPage };
         },
       },
       {
         path: 'equipment',
         lazy: async () => {
-          const { AdminEquipmentPage } = await import('./pages/admin/AdminEquipmentPage');
+          const { AdminEquipmentPage } = await import('./pages/admin/AdminEquipmentPage.tsx');
           return { Component: AdminEquipmentPage };
         },
       },
       {
         path: 'vendors',
         lazy: async () => {
-          const { AdminVendorsPage } = await import('./pages/admin/AdminVendorsPage');
+          const { AdminVendorsPage } = await import('./pages/admin/AdminVendorsPage.tsx');
           return { Component: AdminVendorsPage };
         },
       },
       {
         path: 'taste-notes',
         lazy: async () => {
-          const { AdminTasteNotesPage } = await import('./pages/admin/AdminTasteNotesPage');
+          const { AdminTasteNotesPage } = await import('./pages/admin/AdminTasteNotesPage.tsx');
           return { Component: AdminTasteNotesPage };
         },
       },
       {
         path: 'compatibility',
         lazy: async () => {
-          const { AdminCompatibilityPage } = await import('./pages/admin/AdminCompatibilityPage');
+          const { AdminCompatibilityPage } = await import(
+            './pages/admin/AdminCompatibilityPage.tsx'
+          );
           return { Component: AdminCompatibilityPage };
         },
       },
       {
         path: 'badges',
         lazy: async () => {
-          const { AdminBadgesPage } = await import('./pages/admin/AdminBadgesPage');
+          const { AdminBadgesPage } = await import('./pages/admin/AdminBadgesPage.tsx');
           return { Component: AdminBadgesPage };
         },
       },
       {
         path: 'audit-log',
         lazy: async () => {
-          const { AdminAuditLogPage } = await import('./pages/admin/AdminAuditLogPage');
+          const { AdminAuditLogPage } = await import('./pages/admin/AdminAuditLogPage.tsx');
           return { Component: AdminAuditLogPage };
         },
       },
       {
         path: 'cache',
         lazy: async () => {
-          const { AdminCachePage } = await import('./pages/admin/AdminCachePage');
+          const { AdminCachePage } = await import('./pages/admin/AdminCachePage.tsx');
           return { Component: AdminCachePage };
         },
       },

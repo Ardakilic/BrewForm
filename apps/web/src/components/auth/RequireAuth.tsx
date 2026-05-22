@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext';
-import { PageSkeleton } from '../ui/Skeleton';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { PageSkeleton } from '../ui/Skeleton.tsx';
 
 interface Props {
   children: React.ReactNode;

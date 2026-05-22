@@ -1,10 +1,10 @@
 import { Suspense } from 'react';
 import { Outlet, ScrollRestoration } from 'react-router';
-import { Navbar } from './Navbar';
-import { Footer } from './Footer';
-import { CookieConsent } from '../CookieConsent';
-import { EmailVerificationBanner } from '../EmailVerificationBanner';
-import { PageSkeleton } from '../ui/Skeleton';
+import { Navbar } from './Navbar.tsx';
+import { Footer } from './Footer.tsx';
+import { CookieConsent } from '../CookieConsent.tsx';
+import { EmailVerificationBanner } from '../EmailVerificationBanner.tsx';
+import { PageSkeleton } from '../ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 export function Layout() {
