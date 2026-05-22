@@ -31,7 +31,7 @@
 | H15 | Search has no debounce + pagination bug | High | [4](#4-h15--search-no-debounce--pagination-bug) |
 | M12 | `authRateLimitMiddleware` dead code | Medium | [5](#5-m12--authratelimitmiddleware-dead-code) |
 | M13 | Password strength is length-only | Medium | [6](#6-m13--password-strength-length-only) |
-| M15 | 10 stale Prisma references in docs | Medium | [7](#7-m15--stale-prisma-references-in-docs) |
+| M15 | 14+ stale Prisma refs in docs + README | Medium | [7](#7-m15--stale-prisma-references-in-docs) |
 | N2 | `console.log` in production code | Nit | [8](#8-n2--consolelog-in-production-code) |
 | N4 | Hono Variables type uses `unknown` for user | Nit | [9](#9-n4--hono-variables-type-uses-unknown) |
 
@@ -117,6 +117,16 @@ export const EMOJI_TAGS_LIST: EmojiTagOption[] = EMOJI_TAGS.map((t) => ({
   emoji: t.emoji,
   label: t.label,
 }));
+```
+
+**File: `packages/shared/src/constants/index.ts`** -- add barrel re-exports for all new symbols:
+
+```ts
+// Add to existing exports:
+export { BREW_METHODS_LIST, type BrewMethodOption } from './brew-methods.ts';
+export { DRINK_TYPES_LIST, type DrinkTypeOption } from './drink-types.ts';
+export { VISIBILITY_STATES_LIST, type VisibilityOption } from './visibility.ts';
+export { EMOJI_TAGS_LIST, type EmojiTagOption } from './emoji-tags.ts';
 ```
 
 #### Step 2: Create typed API response interfaces for the frontend
@@ -223,6 +233,28 @@ export interface RecipeBeanResponse {
 export interface RecipePhotoResponse {
   id: string;
   url: string;
+}
+
+// ── Recipe list item (what GET /recipes and GET /recipes/starred return per item) ──
+
+export interface RecipeListItem {
+  id: string;
+  slug: string;
+  title: string;
+  visibility: string;
+  brewMethod: string;
+  drinkType: string;
+  likeCount: number;
+  commentCount: number;
+  forkCount: number;
+  featured: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author: RecipeAuthorResponse | null;
+  currentVersion: Pick<RecipeVersionResponse, 'brewMethod' | 'drinkType' | 'emojiTag' | 'rating'> | null;
+  avgRating: number | null;
+  userLiked: boolean;
+  userFavourited: boolean;
 }
 
 // ── Rate response ──
@@ -482,6 +514,10 @@ const compatibleDrinks = DRINK_TYPES_LIST.filter((d) =>
 // BEFORE:  EMOJI_ANY.map((t: any) => ...)
 // AFTER:   EMOJI_TAGS_LIST.map((t) => ...)
 //
+// ⚠️ NOTE: EMOJI_TAGS_LIST[n].value corresponds to EMOJI_TAGS[n].key — the field was renamed.
+// Any JSX option value={t.key} must be updated to value={t.value}.
+// The original EMOJI_TAGS array (with .key) is still used in RecipeDetailPage for .find() lookups.
+//
 // BEFORE:  setupList.map((s: any) => ...)
 // AFTER:   setupList.map((s) => ...)
 //
@@ -733,6 +769,8 @@ import { api } from '../../api/client';
 
 const STEPS = ['welcome', 'equipment', 'beans', 'first-brew', 'explore'] as const;
 
+type StepProps = { t: ReturnType<typeof useTranslation>['t'] };
+
 export function OnboardingWizard() {
   const { user: _user, refreshUser } = useAuth();
   const navigate = useNavigate();
@@ -804,8 +842,6 @@ export function OnboardingWizard() {
     </div>
   );
 }
-
-type StepProps = { t: (key: string) => string };
 
 function WelcomeStep({ t }: StepProps) {
   return (
@@ -1129,17 +1165,17 @@ export function useDebounce<T>(value: T, delay: number = 300): T {
 
 ```ts
 // Add import at top:
-import type { PaginatedResponse } from './types.ts';
+import type { RecipeListItem } from './types.ts';
 
 // Replace recipeApi.list and recipeApi.starred:
 export const recipeApi = {
   list: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return api.getWithMeta<unknown[]>(`/recipes${query}`);
+    return api.getWithMeta<RecipeListItem[]>(`/recipes${query}`);
   },
   starred: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return api.getWithMeta<unknown[]>(`/recipes/starred${query}`);
+    return api.getWithMeta<RecipeListItem[]>(`/recipes/starred${query}`);
   },
   // ... rest unchanged, still use api.get
 };
@@ -1173,7 +1209,7 @@ useEffect(() => {
 
   recipeApi.list(params).then((response) => {
     // response is now { data, meta } from getWithMeta
-    const items = Array.isArray(response.data) ? (response.data as RecipeListItem[]) : [];
+    const items = Array.isArray(response.data) ? response.data : [];
     setRecipes(items);
     // Use server-provided total instead of items.length
     const serverTotal = response.meta?.pagination?.total ?? items.length;
@@ -1206,7 +1242,7 @@ const debouncedSearch = useDebounce(search, 300);
 
 // In the useEffect:
 recipeApi.starred(params).then((response) => {
-  const items = Array.isArray(response.data) ? (response.data as RecipeListItem[]) : [];
+  const items = Array.isArray(response.data) ? response.data : [];
   setRecipes(items);
   const serverTotal = response.meta?.pagination?.total ?? items.length;
   setTotal(serverTotal);
@@ -1353,6 +1389,11 @@ export const PasswordResetConfirmSchema = z.object({
   "password.needsDigit": "Password must contain at least one digit",
   "password.needsSpecial": "Password must contain at least one special character",
   "password.required": "Password is required",
+  "password.requiresLength": "At least 8 characters",
+  "password.requiresLowercase": "One lowercase letter",
+  "password.requiresUppercase": "One uppercase letter",
+  "password.requiresDigit": "One number",
+  "password.requiresSpecial": "One special character",
 ```
 
 **File: `packages/shared/src/i18n/tr.json`** -- add:
@@ -1365,6 +1406,11 @@ export const PasswordResetConfirmSchema = z.object({
   "password.needsDigit": "Sifre en az bir rakam icermelidir",
   "password.needsSpecial": "Sifre en az bir ozel karakter icermelidir",
   "password.required": "Sifre gereklidir",
+  "password.requiresLength": "En az 8 karakter",
+  "password.requiresLowercase": "Bir kucuk harf",
+  "password.requiresUppercase": "Bir buyuk harf",
+  "password.requiresDigit": "Bir rakam",
+  "password.requiresSpecial": "Bir ozel karakter",
 ```
 
 #### Step 3: Update frontend registration form (optional UX enhancement)
@@ -1376,23 +1422,23 @@ export const PasswordResetConfirmSchema = z.object({
 {password.length > 0 && (
   <ul className='mt-1 text-xs space-y-0.5' style={{ color: 'var(--text-tertiary)' }}>
     <li style={{ color: password.length >= 8 ? 'var(--success)' : 'var(--text-tertiary)' }}>
-      {password.length >= 8 ? '✓' : '○'} {t('password.tooShort')}
+      {password.length >= 8 ? '✓' : '○'} {t('password.requiresLength')}
     </li>
     <li style={{ color: /[a-z]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)' }}>
-      {/[a-z]/.test(password) ? '✓' : '○'} {t('password.needsLowercase')}
+      {/[a-z]/.test(password) ? '✓' : '○'} {t('password.requiresLowercase')}
     </li>
     <li style={{ color: /[A-Z]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)' }}>
-      {/[A-Z]/.test(password) ? '✓' : '○'} {t('password.needsUppercase')}
+      {/[A-Z]/.test(password) ? '✓' : '○'} {t('password.requiresUppercase')}
     </li>
     <li style={{ color: /[0-9]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)' }}>
-      {/[0-9]/.test(password) ? '✓' : '○'} {t('password.needsDigit')}
+      {/[0-9]/.test(password) ? '✓' : '○'} {t('password.requiresDigit')}
     </li>
     <li
       style={{
         color: /[^a-zA-Z0-9]/.test(password) ? 'var(--success)' : 'var(--text-tertiary)',
       }}
     >
-      {/[^a-zA-Z0-9]/.test(password) ? '✓' : '○'} {t('password.needsSpecial')}
+      {/[^a-zA-Z0-9]/.test(password) ? '✓' : '○'} {t('password.requiresSpecial')}
     </li>
   </ul>
 )}
@@ -1431,9 +1477,23 @@ deno test packages/shared/
 | `docs/requirements-audit-report.md` | 483 | `"Fix Prisma/Deno runtime compatibility"` |
 | `docs/requirements-audit-report.md` | 484 | `"switch to a Prisma version"` |
 
+Additionally, the **`README.md`** still describes the full Prisma stack verbatim:
+
+| File | Reference |
+|------|-----------|
+| `README.md` | "Backend > Database: PostgreSQL with **Prisma ORM**" |
+| `README.md` | "Available Commands: `make db-generate` — **Generate Prisma client**" |
+| `README.md` | "Available Commands: `make db-studio` — **Open Prisma Studio**" |
+| `README.md` | Troubleshooting section: "API container fails to start with **Prisma errors**" |
+| `README.md` | "Runtime: Node.js 24" (should be Deno 2.x) |
+
+The `Makefile` should also be verified for any lingering Prisma-specific language in target descriptions.
+
 ### Impact
 
 - New developers reading docs will be confused about the actual ORM in use
+- README is the first file any contributor reads -- an onboarding developer will try `make db-generate` expecting Prisma
+- The troubleshooting section actively misleads anyone encountering runtime errors
 - Onboarding documentation is misleading
 - The requirements audit report lists a resolved Prisma bug (C1) as still open
 
@@ -1496,11 +1556,46 @@ BEFORE: 1. **Fix Prisma/Deno runtime compatibility** (C1): Change `import { Pris
 AFTER:  1. ~~**RESOLVED** (C1): Migrated from Prisma to Drizzle ORM. This issue no longer applies.~~
 ```
 
+#### Step 5: Update `README.md`
+
+```
+Tech Stack section:
+BEFORE: Node.js 24 (or any Node.js version)
+AFTER:  Deno 2.x
+
+BEFORE: PostgreSQL with Prisma ORM
+AFTER:  PostgreSQL with Drizzle ORM
+
+Available Commands section:
+BEFORE: make db-generate — Generate Prisma client
+AFTER:  make db-generate — Generate Drizzle schema types
+
+BEFORE: make db-studio — Open Prisma Studio
+AFTER:  make db-studio — Open Drizzle Studio
+
+Remove the entire "API container fails to start with Prisma errors" troubleshooting section.
+```
+
+#### Step 6: Verify `Makefile`
+
+```
+Check db target descriptions for Prisma references.
+If any are found, replace with Drizzle equivalents matching the README changes above.
+```
+
 ### Verification
 
 ```bash
-# Confirm zero Prisma references remain (excluding this plan file itself)
+# Confirm zero Prisma references remain in docs (excluding resolved annotations)
 grep -rn "prisma\|Prisma\|@prisma" docs/ | grep -v "RESOLVED\|Migrated\|no longer applies"
+# Should return 0 lines
+
+# Confirm README no longer references Prisma
+grep -in "prisma\|Prisma" README.md
+# Should return 0 lines
+
+# Confirm Makefile db targets don't reference Prisma
+grep -in "prisma\|Prisma" Makefile
 # Should return 0 lines
 ```
 
@@ -1614,7 +1709,8 @@ import type { User } from '@brewform/shared/types';
 
 /**
  * The user object stored in the Hono context.
- * This is the database user row minus the passwordHash field.
+ * Mirrors the shared User type with `preferences` made optional,
+ * since not all middleware paths guarantee preferences are loaded.
  */
 export type ContextUser = Omit<User, 'preferences'> & {
   preferences?: User['preferences'];
@@ -1673,8 +1769,8 @@ The issues in this plan can be addressed in any order as they are independent. H
 
 | Order | ID | Reason |
 |-------|-----|--------|
-| 1 | H6 (Step 1--2) | Create shared types and constant helpers first -- other H6 steps depend on them |
-| 2 | H15 | Fixes a user-visible bug (pagination never shows page 2) |
+| 1 | H6 (Step 1--2) | Create shared types, constants, barrel exports, and API response interfaces first -- other H6 and H15 steps depend on them |
+| 2 | H15 | Fixes a user-visible bug (pagination never shows page 2). **Depends on H6 Step 2** (`RecipeListItem` must be defined in `api/types.ts` before H15 Steps 3--5). |
 | 3 | H6 (Steps 3--8) | Replace `any` across all frontend pages |
 | 4 | H14 | Security: add server-side sanitization |
 | 5 | M13 | Security: strengthen password validation |
@@ -1704,6 +1800,7 @@ The issues in this plan can be addressed in any order as they are independent. H
 | `packages/shared/src/constants/drink-types.ts` | Add `DrinkTypeOption` type + `DRINK_TYPES_LIST` |
 | `packages/shared/src/constants/visibility.ts` | Add `VisibilityOption` type + `VISIBILITY_STATES_LIST` |
 | `packages/shared/src/constants/emoji-tags.ts` | Add `EmojiTagOption` type + `EMOJI_TAGS_LIST` |
+| `packages/shared/src/constants/index.ts` | Re-export all new `*_LIST` constants and their Option types |
 | `packages/shared/src/schemas/auth.ts` | Password complexity rules + `.min(1)` on login |
 | `packages/shared/src/i18n/en.json` | New keys: onboarding descriptions, password errors, aria labels |
 | `packages/shared/src/i18n/tr.json` | Turkish translations for all new keys |
@@ -1727,3 +1824,5 @@ The issues in this plan can be addressed in any order as they are independent. H
 | `docs/request-lifecycle.md` | Prisma -> Drizzle |
 | `docs/notifications.md` | Prisma -> Drizzle |
 | `docs/requirements-audit-report.md` | Mark Prisma issues as resolved, update terminology |
+| `README.md` | Update stale Node.js/Prisma references in Tech Stack, Commands, Troubleshooting |
+| `Makefile` | Verify and fix any Prisma-specific language in db target descriptions |
