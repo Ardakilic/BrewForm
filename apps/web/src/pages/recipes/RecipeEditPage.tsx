@@ -47,8 +47,7 @@ export function RecipeEditPage() {
 
   useEffect(() => {
     if (!id) return;
-    recipeApi.get(id).then((data) => {
-      const r = data as RecipeDetailResponse;
+    recipeApi.get(id).then((r: RecipeDetailResponse) => {
       setTitle(r.title);
       setVisibility(r.visibility as Visibility);
       setBrewMethod(r.currentVersion.brewMethod as BrewMethod);

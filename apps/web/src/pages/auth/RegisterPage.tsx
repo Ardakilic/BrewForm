@@ -37,6 +37,11 @@ export function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    if (password.length > 128) {
+      setError('Password must be at most 128 characters');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError(t('auth.register.passwordsMismatch'));
       return;
@@ -166,13 +171,19 @@ export function RegisterPage() {
             className='input-field'
             required
             minLength={8}
+            maxLength={128}
           />
           {password.length > 0 && (
             <ul className='mt-1 text-xs space-y-0.5' style={{ color: 'var(--text-tertiary)' }}>
               <li
-                style={{ color: password.length >= 8 ? 'var(--success)' : 'var(--text-tertiary)' }}
+                style={{
+                  color: password.length >= 8 && password.length <= 128
+                    ? 'var(--success)'
+                    : 'var(--text-tertiary)',
+                }}
               >
-                {password.length >= 8 ? '\u2713' : '\u25CB'} {t('password.requiresLength')}
+                {password.length >= 8 && password.length <= 128 ? '\u2713' : '\u25CB'}{' '}
+                {t('password.requiresLength')}
               </li>
               <li
                 style={{

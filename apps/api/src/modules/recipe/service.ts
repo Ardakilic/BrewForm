@@ -39,6 +39,7 @@ export async function getRecipe(slugOrId: string) {
 
 export async function createRecipe(authorId: string, data: any) {
   const safeTitle = sanitizeText(data.title);
+  if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
   const slug = await generateUniqueSlug(safeTitle);
 
   let grinder = data.grinder;
@@ -213,14 +214,18 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
       beanId: data.beanId ?? latestVersion.beanId,
     });
 
+    const safeTitle = sanitizeText(data.title ?? recipe.title);
+    if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
     await model.update(recipe.id, {
-      title: sanitizeText(data.title ?? recipe.title),
+      title: safeTitle,
       visibility: data.visibility ?? recipe.visibility,
       currentVersionId: version.id,
     });
   } else {
+    const safeTitle = sanitizeText(data.title ?? recipe.title);
+    if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
     await model.update(recipe.id, {
-      title: sanitizeText(data.title ?? recipe.title),
+      title: safeTitle,
       visibility: data.visibility ?? recipe.visibility,
     });
   }

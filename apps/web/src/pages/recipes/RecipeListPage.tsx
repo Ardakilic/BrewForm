@@ -136,8 +136,8 @@ export function RecipeListPage() {
     if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
 
     recipeApi.list(params).then((response) => {
-      const items = Array.isArray(response.data) ? (response.data as RecipeListItem[]) : [];
-      setRecipes(items);
+      const items = Array.isArray(response.data) ? response.data : [];
+      setRecipes(items as RecipeListItem[]);
       const serverTotal = response.meta?.pagination?.total ?? items.length;
       setTotal(serverTotal);
     }).catch(() => {

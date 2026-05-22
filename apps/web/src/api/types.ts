@@ -151,11 +151,13 @@ export interface TasteNoteFlatItem {
 // ── Paginated response (for when we need the meta wrapper) ──
 
 export interface PaginatedResponse<T> {
-  items: T[];
-  pagination: {
-    page: number;
-    perPage: number;
-    total: number;
-    totalPages: number;
+  data: T[];
+  meta: {
+    pagination: {
+      page: number;
+      perPage: number;
+      total: number;
+      totalPages: number;
+    };
   };
 }

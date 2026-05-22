@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { recipeApi, tasteApi } from '../../api/index.ts';
-import type { RateResponse, RecipeDetailResponse, TasteNoteFlatItem } from '../../api/types.ts';
+import type { RecipeDetailResponse, TasteNoteFlatItem } from '../../api/types.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
 import { LikeButton } from '../../components/recipe/LikeButton.tsx';
@@ -61,7 +61,7 @@ export function RecipeDetailPage() {
     if (!slug) return;
     setLoading(true);
     recipeApi.get(slug).then((data: RecipeDetailResponse) => {
-      if (fromQr && data && data.visibility !== 'public') {
+      if (fromQr && data.visibility !== 'public') {
         navigate('/recipes/unavailable', { replace: true });
         return;
       }
@@ -333,7 +333,7 @@ export function RecipeDetailPage() {
                     value={recipe.userRating ?? null}
                     onRate={async (rating) => {
                       try {
-                        const result = await recipeApi.rate(recipe.id, rating) as RateResponse;
+                        const result = await recipeApi.rate(recipe.id, rating);
                         setRecipe((prev) =>
                           prev
                             ? {

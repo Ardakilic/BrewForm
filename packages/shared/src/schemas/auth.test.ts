@@ -64,6 +64,51 @@ describe('AuthRegisterSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('should reject password missing lowercase', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'PASSWORD1!',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject password missing uppercase', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'password1!',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject password missing digit', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'Password!',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject password missing special character', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'Password1',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject over-length password (>128)', () => {
+    const result = AuthRegisterSchema.safeParse({
+      email: 'test@example.com',
+      username: 'testuser',
+      password: 'Password1!' + 'x'.repeat(120),
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('should accept username with hyphens and underscores', () => {
     const result = AuthRegisterSchema.safeParse({
       email: 'test@example.com',

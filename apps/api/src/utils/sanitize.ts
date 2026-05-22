@@ -33,8 +33,8 @@ function normalizeWhitespace(text: string): string {
 export function sanitizeText(input: string | null | undefined): string {
   if (!input) return '';
   let text = input;
-  text = stripHtmlTags(text);
   text = stripZeroWidthChars(text);
+  text = stripHtmlTags(text);
   text = normalizeWhitespace(text);
   return text;
 }

@@ -51,12 +51,20 @@ export function RecipeCreatePage() {
 
   useEffect(() => {
     Promise.all([
-      equipmentApi.list().then((data) => setEquipmentList(data as EquipmentListItem[])).catch(() =>
-        setEquipError('Failed to load equipment')
-      ),
-      setupApi.list().then((data) => setSetupList(data as SetupListItem[])).catch(() =>
-        setEquipError('Failed to load setups')
-      ),
+      equipmentApi.list().then((data) => {
+        if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
+          setEquipmentList(data as EquipmentListItem[]);
+        } else {
+          setEquipError('Failed to load equipment');
+        }
+      }).catch(() => setEquipError('Failed to load equipment')),
+      setupApi.list().then((data) => {
+        if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
+          setSetupList(data as SetupListItem[]);
+        } else {
+          setEquipError('Failed to load setups');
+        }
+      }).catch(() => setEquipError('Failed to load setups')),
     ]).finally(() => setEquipLoading(false));
   }, []);
 

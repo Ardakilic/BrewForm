@@ -135,6 +135,9 @@ export async function getRecipeForNotification(recipeId: string) {
 }
 
 export async function getCommenterById(userId: string) {
-  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const result = await db.select({ id: users.id, username: users.username })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
   return result[0] ?? null;
 }
