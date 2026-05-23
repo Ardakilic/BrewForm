@@ -73,7 +73,10 @@ export function ContactPage() {
 
       <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
         <div>
-          <label htmlFor='contact-name' className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
+          <label
+            htmlFor='contact-name'
+            className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'
+          >
             {t('contact.form.name')}
           </label>
           <input
@@ -87,7 +90,10 @@ export function ContactPage() {
           />
         </div>
         <div>
-          <label htmlFor='contact-email' className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
+          <label
+            htmlFor='contact-email'
+            className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'
+          >
             {t('contact.form.email')}
           </label>
           <input
@@ -100,7 +106,10 @@ export function ContactPage() {
           />
         </div>
         <div>
-          <label htmlFor='contact-subject' className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
+          <label
+            htmlFor='contact-subject'
+            className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'
+          >
             {t('contact.form.subject')}
           </label>
           <input
@@ -114,7 +123,10 @@ export function ContactPage() {
           />
         </div>
         <div>
-          <label htmlFor='contact-message' className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
+          <label
+            htmlFor='contact-message'
+            className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'
+          >
             {t('contact.form.message')}
           </label>
           <textarea
