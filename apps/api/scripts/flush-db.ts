@@ -6,39 +6,35 @@
  *   make flush-db
  */
 
-import { client } from '@brewform/db';
+import { getTableConfig } from 'drizzle-orm/pg-core';
+import * as schema from '@brewform/db/schema';
 
-const TABLE_NAMES = [
-  'recipe_version_photo',
-  'recipe_taste_note',
-  'recipe_equipment',
-  'recipe_additional_preparation',
-  'user_recipe_favourite',
-  'user_recipe_like',
-  'user_recipe_rating',
-  'user_follow',
-  'user_badge',
-  'comment',
-  'report',
-  'password_reset',
-  'email_verification_token',
-  'audit_log',
-  'recipe_version',
-  'setup',
-  'recipe',
-  'photo',
-  'equipment',
-  'bean',
-  'vendor',
-  'taste_note',
-  'badge',
-  'brew_method_equipment_rule',
-  'user_preferences',
-  'user',
-];
+if (!Deno.env.get('DATABASE_URL')) {
+  console.error('DATABASE_URL environment variable is required.');
+  Deno.exit(1);
+}
 
-console.log('Truncating all database tables...');
-await client.unsafe(`TRUNCATE TABLE ${TABLE_NAMES.join(', ')} RESTART IDENTITY CASCADE`);
-console.log(`Truncated ${TABLE_NAMES.length} tables successfully.`);
+const { client } = await import('@brewform/db');
 
-await client.end();
+const TABLE_NAMES: string[] = [];
+for (const value of Object.values(schema)) {
+  try {
+    TABLE_NAMES.push(getTableConfig(value as never).name);
+  } catch {
+    // skip non-table exports (enums, relations, etc.)
+  }
+}
+
+console.log(`Truncating ${TABLE_NAMES.length} database tables...`);
+try {
+  await client.unsafe(
+    `TRUNCATE TABLE ${TABLE_NAMES.join(', ')} RESTART IDENTITY CASCADE`,
+  );
+  console.log(`Truncated ${TABLE_NAMES.length} tables successfully.`);
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`Failed to truncate tables: ${message}`);
+  Deno.exit(1);
+} finally {
+  await client.end();
+}
