@@ -125,8 +125,17 @@ db-seed: ## Seed the database
 db-studio: ## Open Drizzle Studio
 	docker compose run --rm -p 5555:5555 app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) studio --host=0.0.0.0 --port=5555"
 
-db-reset: ## Instructions to reset database
-	docker compose run --rm app bash -c "echo 'Drop and recreate database manually, then run db-migrate and db-seed'"
+flush-db: ## Truncate all database tables
+	docker compose run --rm app deno run --allow-env --allow-net apps/api/scripts/flush-db.ts
+
+flush-cache: ## Clear Deno KV cache
+	docker compose run --rm app deno run --allow-env --allow-read --allow-write apps/api/scripts/flush-cache.ts
+
+flush-contents: flush-db flush-cache ## Truncate all database tables and clear Deno KV cache
+
+db-reset: flush-contents ## Full reset: truncate tables, clear cache, run migrations, re-seed
+	$(MAKE) db-migrate
+	$(MAKE) db-seed
 
 # --- Admin Setup ---
 
@@ -192,4 +201,4 @@ serena-index: ## Index project with Serena
 serena-health: ## Check Serena health
 	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
 
-.PHONY: help up down build logs restart install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health
+.PHONY: help up down build logs restart install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health

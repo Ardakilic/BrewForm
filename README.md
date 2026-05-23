@@ -168,11 +168,14 @@ See [docs/serena-mcp.md](docs/serena-mcp.md) for detailed setup, architecture, a
 ## Database
 
 ```bash
-make db-generate   # Generate Drizzle migration SQL
-make db-migrate    # Apply pending migrations
-make db-seed       # Seed sample data
-make db-studio     # Open Drizzle Studio (GUI)
-make db-reset      # Reset database (destroys all data)
+make db-generate     # Generate Drizzle migration SQL
+make db-migrate      # Apply pending migrations
+make db-seed         # Seed sample data
+make db-studio       # Open Drizzle Studio (GUI)
+make flush-db        # Truncate all database tables
+make flush-cache     # Clear Deno KV cache
+make flush-contents  # Truncate all tables + clear Deno KV cache
+make db-reset        # Full reset: flush-db, flush-cache, migrate, re-seed
 ```
 
 ## Architecture
