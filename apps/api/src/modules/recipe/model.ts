@@ -367,6 +367,24 @@ export async function toggleFeature(id: string) {
   return { featured: recipe.featured };
 }
 
+export async function getVersionsByRecipeId(recipeId: string) {
+  return db
+    .select({
+      id: recipeVersions.id,
+      versionNumber: recipeVersions.versionNumber,
+      brewDate: recipeVersions.brewDate,
+      brewMethod: recipeVersions.brewMethod,
+      groundWeightGrams: recipeVersions.groundWeightGrams,
+      extractionVolumeMl: recipeVersions.extractionVolumeMl,
+      extractionTimeSeconds: recipeVersions.extractionTimeSeconds,
+      temperatureCelsius: recipeVersions.temperatureCelsius,
+      brewRatio: recipeVersions.brewRatio,
+    })
+    .from(recipeVersions)
+    .where(eq(recipeVersions.recipeId, recipeId))
+    .orderBy(desc(recipeVersions.versionNumber));
+}
+
 export async function updateVersionNotes(versionId: string, notes: string) {
   await db.update(recipeVersions)
     .set({ personalNotes: notes })

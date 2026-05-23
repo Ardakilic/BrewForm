@@ -96,20 +96,14 @@ export function TastingNotesSection({
     <section className='card' aria-label='Tasting notes'>
       {/* Section header */}
       <div className='flex items-center justify-between mb-4'>
-        <span
-          className='text-xs font-semibold uppercase tracking-widest'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
+        <span className='text-xs font-semibold uppercase tracking-widest text-[color:var(--text-tertiary)]'>
           {t('recipe.tastingNotes.title')}
         </span>
       </div>
 
       {hasTasteNotes && (
         /* Radar chart + grouped chips side by side */
-        <div
-          className='flex flex-col sm:flex-row gap-6 mb-4'
-          style={{ alignItems: 'flex-start' }}
-        >
+        <div className='flex flex-col sm:flex-row gap-6 mb-4 items-start'>
           {/* Left: Radar chart — only show when all categories are resolved */}
           {showChart && (
             <div className='flex-shrink-0 flex justify-center sm:justify-start'>
@@ -127,10 +121,7 @@ export function TastingNotesSection({
             {Array.from(groupedNotes.entries()).map(([category, notes]) => (
               <div key={category} className='flex flex-col gap-2 min-w-0'>
                 {/* Category label */}
-                <span
-                  className='text-xs uppercase tracking-widest font-semibold'
-                  style={{ color: 'var(--text-tertiary)' }}
-                >
+                <span className='text-xs uppercase tracking-widest font-semibold text-[color:var(--text-tertiary)]'>
                   {category}
                 </span>
                 {/* Chips */}
@@ -142,13 +133,7 @@ export function TastingNotesSection({
                         key={note.id}
                         type='button'
                         onClick={() => navigate(`/recipes?tasteNoteIds=${noteId}`)}
-                        className='inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-75'
-                        style={{
-                          backgroundColor: 'var(--bg-tertiary)',
-                          border: '1px solid var(--border-primary)',
-                          color: 'var(--text-primary)',
-                          cursor: 'pointer',
-                        }}
+                        className='inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-75 bg-[color:var(--bg-tertiary)] border border-[color:var(--border-primary)] text-[color:var(--text-primary)] cursor-pointer'
                         aria-label={`Filter recipes by ${note.name}`}
                       >
                         <span>{note.name}</span>
@@ -165,28 +150,11 @@ export function TastingNotesSection({
 
       {/* Personal notes blockquote */}
       {personalNotes && (
-        <blockquote
-          style={{
-            borderLeft: '3px solid var(--accent-primary)',
-            paddingLeft: '1rem',
-            margin: hasTasteNotes ? '0' : '0',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          <p
-            className='text-sm'
-            style={{
-              fontStyle: 'italic',
-              lineHeight: '1.6',
-              margin: 0,
-            }}
-          >
+        <blockquote className='border-l-[3px_solid_var(--accent-primary)] pl-4 m-0 text-[color:var(--text-secondary)]'>
+          <p className='text-sm italic leading-[1.6] m-0'>
             {personalNotes}
           </p>
-          <footer
-            className='text-xs mt-2 uppercase tracking-widest'
-            style={{ color: 'var(--text-tertiary)', fontStyle: 'normal' }}
-          >
+          <footer className='text-xs mt-2 uppercase tracking-widest text-[color:var(--text-tertiary)] not-italic'>
             {t('recipe.tastingNotes.personalNote')}
           </footer>
         </blockquote>
@@ -194,7 +162,7 @@ export function TastingNotesSection({
 
       {/* Empty state: no taste notes and no personal notes */}
       {!hasTasteNotes && !personalNotes && (
-        <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
+        <p className='text-sm text-[color:var(--text-tertiary)]'>
           {t('recipe.tastingNotes.empty')}
         </p>
       )}

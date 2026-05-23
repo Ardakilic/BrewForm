@@ -28,6 +28,7 @@ import setup from '../modules/setup/index.ts';
 import preference from '../modules/preference/index.ts';
 import qrcode from '../modules/qrcode/index.ts';
 import report from '../modules/report/index.ts';
+import contact from '../modules/contact/index.ts';
 import admin from '../modules/admin/index.ts';
 import share from './share.ts';
 import sitemap from './sitemap.ts';
@@ -53,6 +54,7 @@ routes.route('/api/v1/setups', setup);
 routes.route('/api/v1/preferences', preference);
 routes.route('/api/v1/qrcode', qrcode);
 routes.route('/api/v1/reports', report);
+routes.route('/api/v1/contact', contact);
 routes.route('/api/v1/admin', admin);
 
 registerOpenApi(routes);

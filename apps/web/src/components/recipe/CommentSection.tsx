@@ -203,14 +203,13 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
       return (
         <Link
           to={`/u/${username}`}
-          className={className}
-          style={{ color: 'var(--accent-primary)' }}
+          className={`${className ?? ''} text-[color:var(--accent-primary)]`}
         >
           {name}
         </Link>
       );
     }
-    return <span className={className} style={{ color: 'var(--text-primary)' }}>{name}</span>;
+    return <span className={`${className ?? ''} text-[color:var(--text-primary)]`}>{name}</span>;
   }
 
   function renderComment(comment: Comment) {
@@ -220,24 +219,20 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
     return (
       <article
         key={comment.id}
-        className='rounded-lg p-4'
-        style={{
-          backgroundColor: 'var(--bg-secondary)',
-          border: '1px solid var(--border-primary)',
-        }}
+        className='rounded-lg p-4 bg-[color:var(--bg-secondary)] border border-[color:var(--border-primary)]'
         aria-label={`${t('comment.commentBy')} ${getAuthorName(comment)}`}
       >
         {/* Comment header */}
         <div className='flex items-center gap-2 mb-2'>
           <AuthorLink comment={comment} className='font-medium text-sm' />
           {isRecipeAuthor(comment) && <span className='badge text-xs'>{t('comment.op')}</span>}
-          <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+          <span className='text-xs text-[color:var(--text-tertiary)]'>
             {new Date(comment.createdAt).toLocaleDateString()}
           </span>
         </div>
 
         {/* Comment body -- inline markdown */}
-        <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
+        <p className='text-sm text-[color:var(--text-secondary)]'>
           {renderInlineMarkdown(comment.content)}
         </p>
 
@@ -246,14 +241,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
           <button
             type='button'
             onClick={() => openReplyForm(comment.id)}
-            className='mt-2 text-xs'
-            style={{
-              color: 'var(--accent-primary)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
+            className='mt-2 text-xs text-[color:var(--accent-primary)] bg-transparent border-none cursor-pointer p-0'
           >
             {t('comment.reply')}
           </button>
@@ -279,16 +267,14 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
             <div className='flex gap-2'>
               <button
                 type='submit'
-                className='btn-primary'
-                style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}
+                className='btn-primary text-xs py-1 px-3'
                 disabled={replyLoading || !replyContent.trim()}
               >
                 {replyLoading ? t('comment.posting') : t('comment.postReply')}
               </button>
               <button
                 type='button'
-                className='btn-secondary'
-                style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}
+                className='btn-secondary text-xs py-1 px-3'
                 onClick={() => {
                   setReplyingToId(null);
                   setReplyContent('');
@@ -306,11 +292,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
             {comment.replies.map((reply) => (
               <article
                 key={reply.id}
-                className='rounded p-3'
-                style={{
-                  backgroundColor: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-primary)',
-                }}
+                className='rounded p-3 bg-[color:var(--bg-tertiary)] border border-[color:var(--border-primary)]'
                 aria-label={t('comment.replyBy').replace('{name}', getAuthorName(reply))}
               >
                 <div className='flex items-center gap-2 mb-1'>
@@ -318,12 +300,12 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
                   {isRecipeAuthor(reply) && (
                     <span className='badge text-xs'>{t('comment.op')}</span>
                   )}
-                  <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                  <span className='text-xs text-[color:var(--text-tertiary)]'>
                     {new Date(reply.createdAt).toLocaleDateString()}
                   </span>
                 </div>
                 {/* Reply body -- inline markdown */}
-                <p className='text-xs' style={{ color: 'var(--text-secondary)' }}>
+                <p className='text-xs text-[color:var(--text-secondary)]'>
                   {renderInlineMarkdown(reply.content)}
                 </p>
                 {/* Reply button on a reply -- opens form on the parent, pre-fills @username */}
@@ -331,14 +313,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
                   <button
                     type='button'
                     onClick={() => openReplyForm(comment.id, getAuthorUsername(reply) ?? undefined)}
-                    className='mt-1 text-xs'
-                    style={{
-                      color: 'var(--accent-primary)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
+                    className='mt-1 text-xs text-[color:var(--accent-primary)] bg-transparent border-none cursor-pointer p-0'
                   >
                     {t('comment.reply')}
                   </button>
@@ -353,7 +328,7 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
 
   return (
     <section aria-label={t('recipe.comments')}>
-      <h3 className='text-lg font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+      <h3 className='text-lg font-semibold mb-4 text-[color:var(--text-primary)]'>
         {t('comment.count').replace('{count}', String(total))}
       </h3>
 

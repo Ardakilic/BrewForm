@@ -34,7 +34,7 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
 
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 
-function getTransporter() {
+export function getTransporter() {
   if (!transporter) {
     transporter = nodemailer.createTransport({
       host: config.SMTP_HOST,

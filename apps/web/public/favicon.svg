@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72" fill="none">
+  <!-- Steam wisps -->
+  <path
+    d="M22 16c0-4 4-4 4-8"
+    stroke="#c8a27a"
+    stroke-width="2"
+    stroke-linecap="round"
+    opacity="0.6"
+  />
+  <path
+    d="M32 14c0-4 4-4 4-8"
+    stroke="#c8a27a"
+    stroke-width="2"
+    stroke-linecap="round"
+    opacity="0.4"
+  />
+  <path
+    d="M42 16c0-4 4-4 4-8"
+    stroke="#c8a27a"
+    stroke-width="2"
+    stroke-linecap="round"
+    opacity="0.6"
+  />
+  <!-- Cup body -->
+  <rect x="12" y="24" width="36" height="28" rx="4" fill="#c8a27a" />
+  <!-- Coffee surface -->
+  <ellipse cx="30" cy="32" rx="14" ry="3" fill="#8b6914" />
+  <!-- Handle -->
+  <path
+    d="M48 30c6 0 8 4 8 8s-2 8-8 8"
+    stroke="#c8a27a"
+    stroke-width="4"
+    stroke-linecap="round"
+    fill="none"
+  />
+  <!-- Saucer -->
+  <ellipse cx="30" cy="56" rx="22" ry="5" fill="#a0845c" />
+  <!-- Cup base connection -->
+  <rect x="18" y="52" width="24" height="4" rx="2" fill="#c8a27a" />
+</svg>

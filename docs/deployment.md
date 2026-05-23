@@ -261,3 +261,11 @@ deno task lint             # Lint
 deno task fmt              # Format
 deno task test             # Run tests
 ```
+
+## PWA
+
+The app includes a `manifest.json` for Progressive Web App support. In production:
+- Ensure `/manifest.json` is served with `Content-Type: application/manifest+json`
+- Ensure `/favicon.svg`, `/apple-touch-icon.png`, `/icon-192.png`, and `/icon-512.png` are served from the web root
+- The `theme-color` meta tag enables branded browser chrome on Android
+- The PWA manifest must be served from `/manifest.json` (Caddy/static hosting must not block this path).

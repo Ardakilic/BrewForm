@@ -2,10 +2,13 @@ import { sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import { db } from '@brewform/db';
 import {
+  brewMethodEquipmentRules,
+  equipment,
   recipeAdditionalPreparations,
   recipeEquipment,
   recipes,
   recipeTasteNotes,
+  recipeVersionPhotos,
   recipeVersions,
   setups,
   users,
@@ -37,7 +40,47 @@ export async function getRecipe(slugOrId: string) {
   return recipe;
 }
 
+async function validateEquipmentCompatibility(
+  brewMethod: string,
+  equipmentIds: string[],
+): Promise<void> {
+  if (!brewMethod || !equipmentIds?.length) return;
+
+  const equipmentList = await db
+    .select({ id: equipment.id, type: equipment.type })
+    .from(equipment)
+    .where(inArray(equipment.id, equipmentIds));
+
+  const incompatible: string[] = [];
+
+  for (const eqItem of equipmentList) {
+    const [rule] = await db
+      .select()
+      .from(brewMethodEquipmentRules)
+      .where(
+        and(
+          eq(brewMethodEquipmentRules.brewMethod, brewMethod as any),
+          eq(brewMethodEquipmentRules.equipmentType, eqItem.type as any),
+        ),
+      )
+      .limit(1);
+
+    if (rule && !rule.compatible) {
+      incompatible.push(`${eqItem.type} is not compatible with ${brewMethod}`);
+    }
+  }
+
+  if (incompatible.length) {
+    throw Object.assign(
+      new Error('EQUIPMENT_INCOMPATIBLE'),
+      { code: 'EQUIPMENT_INCOMPATIBLE', details: incompatible },
+    );
+  }
+}
+
 export async function createRecipe(authorId: string, data: any) {
+  await validateEquipmentCompatibility(data.brewMethod, data.equipmentIds ?? []);
+
   const safeTitle = sanitizeText(data.title);
   if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
   const slug = await generateUniqueSlug(safeTitle);
@@ -133,6 +176,16 @@ export async function createRecipe(authorId: string, data: any) {
       );
     }
 
+    if (data.photoIds?.length) {
+      await tx.insert(recipeVersionPhotos).values(
+        data.photoIds.map((photoId: string, i: number) => ({
+          recipeVersionId: version.id,
+          photoId,
+          sortOrder: i,
+        })),
+      );
+    }
+
     await tx.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, r.id));
 
     return { ...r, versions: [version] };
@@ -167,6 +220,13 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
   if (data.bumpVersion) {
     const latestVersion: any = recipe.versions?.[0];
     const newVersionNumber = latestVersion.versionNumber + 1;
+
+    if (data.brewMethod || data.equipmentIds) {
+      await validateEquipmentCompatibility(
+        data.brewMethod ?? latestVersion.brewMethod,
+        data.equipmentIds ?? [],
+      );
+    }
 
     const brewRatio = data.groundWeightGrams || data.extractionVolumeMl
       ? computeBrewRatio(
@@ -216,6 +276,31 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
 
     const safeTitle = sanitizeText(data.title ?? recipe.title);
     if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
+
+    if (data.photoIds?.length) {
+      await db.insert(recipeVersionPhotos).values(
+        data.photoIds.map((photoId: string, i: number) => ({
+          recipeVersionId: version.id,
+          photoId,
+          sortOrder: i,
+        })),
+      );
+    } else {
+      const previousPhotos = await db
+        .select()
+        .from(recipeVersionPhotos)
+        .where(eq(recipeVersionPhotos.recipeVersionId, latestVersion.id));
+      if (previousPhotos.length) {
+        await db.insert(recipeVersionPhotos).values(
+          previousPhotos.map((vp) => ({
+            recipeVersionId: version.id,
+            photoId: vp.photoId,
+            sortOrder: vp.sortOrder,
+          })),
+        );
+      }
+    }
+
     await model.update(recipe.id, {
       title: safeTitle,
       visibility: data.visibility ?? recipe.visibility,

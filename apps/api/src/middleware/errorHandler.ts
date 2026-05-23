@@ -7,6 +7,26 @@ const log = createLogger('errorHandler');
 export function errorHandler(err: Error, c: Context) {
   const requestId = c.get('requestId') as string | undefined;
 
+  if (err instanceof Error && 'code' in err && err.code === 'EQUIPMENT_INCOMPATIBLE') {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Equipment is not compatible with the selected brew method',
+          details: ((err as unknown as Error & { details: string[] }).details || []).map((
+            d: string,
+          ) => ({
+            field: 'equipmentIds',
+            message: d,
+          })),
+          requestId,
+        },
+      },
+      422,
+    );
+  }
+
   if (err.name === 'PostgresError') {
     const pgErr = err as { code?: string };
     log.error({ err, requestId, pgCode: pgErr.code }, 'Database error');

@@ -26,7 +26,7 @@ function Star({ index, activeValue }: { index: number; activeValue: number }) {
       viewBox='0 0 24 24'
       width='28'
       height='28'
-      style={{ display: 'block', overflow: 'visible' }}
+      className='block overflow-visible'
     >
       {/* Empty / outline */}
       <path
@@ -72,33 +72,31 @@ export function StarRating({ value, count, onRate, interactive = true }: Props) 
   return (
     <div>
       <div
-        className='flex items-center gap-1'
+        className={`flex items-center gap-1 ${
+          interactive ? 'cursor-pointer' : 'cursor-default'
+        } select-none`}
         onMouseLeave={() => interactive && setHovered(0)}
-        style={{ cursor: interactive ? 'pointer' : 'default', userSelect: 'none' }}
       >
         {Array.from({ length: STARS }, (_, i) => i + 1).map((starIndex) => (
           <div
             key={starIndex}
+            className='leading-[0]'
             onMouseMove={(e) => interactive && setHovered(valueFromEvent(e, starIndex))}
             onClick={(e) => interactive && onRate?.(valueFromEvent(e, starIndex))}
-            style={{ lineHeight: 0 }}
           >
             <Star index={starIndex} activeValue={displayValue} />
           </div>
         ))}
 
         {/* Numeric label */}
-        <span
-          className='ml-1 text-sm font-medium tabular-nums'
-          style={{ color: 'var(--text-secondary)', minWidth: '2.5rem' }}
-        >
+        <span className='ml-1 text-sm font-medium tabular-nums text-[color:var(--text-secondary)] min-w-[2.5rem]'>
           {hovered > 0 ? label(hovered) : value ? label(value) : interactive ? '' : '—'}
         </span>
       </div>
 
       {/* Community count — always shown when prop is provided */}
       {count !== undefined && (
-        <p className='text-xs mt-0.5' style={{ color: 'var(--text-tertiary)' }}>
+        <p className='text-xs mt-0.5 text-[color:var(--text-tertiary)]'>
           {count === 0
             ? 'No community votes yet'
             : `${count} community ${count === 1 ? 'vote' : 'votes'}`}

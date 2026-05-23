@@ -410,5 +410,20 @@
   "password.requiresLowercase": "One lowercase letter",
   "password.requiresUppercase": "One uppercase letter",
   "password.requiresDigit": "One number",
-  "password.requiresSpecial": "One special character"
+  "password.requiresSpecial": "One special character",
+  "recipe.stat.extractionYield": "EY",
+  "recipe.form.tds": "TDS (%)",
+  "recipe.form.tds.placeholder": "e.g. 1.35",
+  "contact.title": "Contact Us",
+  "contact.description": "Have a question, suggestion, or found a bug? We'd love to hear from you.",
+  "contact.form.name": "Name",
+  "contact.form.email": "Email",
+  "contact.form.subject": "Subject",
+  "contact.form.message": "Message",
+  "contact.form.submit": "Send Message",
+  "contact.form.sending": "Sending\u2026",
+  "contact.success.title": "Message Sent!",
+  "contact.success.message": "Thank you for reaching out. We'll get back to you as soon as possible.",
+  "footer.contact": "Contact",
+  "recipe.viewVersionHistory": "View version history"
 }

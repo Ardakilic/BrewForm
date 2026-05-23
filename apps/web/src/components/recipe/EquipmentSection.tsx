@@ -31,16 +31,10 @@ export function EquipmentSection(
     <div className='card'>
       {/* Section header */}
       <div className='flex items-center justify-between mb-4'>
-        <span
-          className='text-xs font-semibold uppercase tracking-widest'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
+        <span className='text-xs font-semibold uppercase tracking-widest text-[color:var(--text-tertiary)]'>
           {t('recipe.equipment.title')}
         </span>
-        <span
-          className='text-xs'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
+        <span className='text-xs text-[color:var(--text-tertiary)]'>
           {items.length}{' '}
           {items.length === 1 ? t('recipe.equipment.item') : t('recipe.equipment.items')}
         </span>
@@ -63,12 +57,9 @@ export function EquipmentSection(
                 navigate(`/recipes?mainBrewer=${encodeURIComponent(brewerDetails)}`);
               }
             }}
-            className='flex items-center gap-3 rounded-lg p-3 text-left transition-colors min-h-11'
-            style={{
-              border: '1px solid var(--border-primary)',
-              backgroundColor: 'var(--bg-primary)',
-              cursor: brewerDetails ? 'pointer' : 'default',
-            }}
+            className={`flex items-center gap-3 rounded-lg p-3 text-left transition-colors min-h-11 border border-[color:var(--border-primary)] bg-[color:var(--bg-primary)] ${
+              brewerDetails ? 'cursor-pointer' : 'cursor-default'
+            }`}
             onMouseEnter={(e) => {
               if (brewerDetails) {
                 (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-tertiary)';
@@ -78,24 +69,15 @@ export function EquipmentSection(
               (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-primary)';
             }}
           >
-            <span
-              className='flex-shrink-0'
-              style={{ color: 'var(--text-secondary)' }}
-            >
+            <span className='flex-shrink-0 text-[color:var(--text-secondary)]'>
               <BrewerIcon size={24} />
             </span>
 
             <span className='flex flex-col min-w-0'>
-              <span
-                className='font-semibold text-sm truncate'
-                style={{ color: 'var(--text-primary)' }}
-              >
+              <span className='font-semibold text-sm truncate text-[color:var(--text-primary)]'>
                 {brewerDetails}
               </span>
-              <span
-                className='text-xs uppercase tracking-wide'
-                style={{ color: 'var(--text-tertiary)' }}
-              >
+              <span className='text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]'>
                 {mainBrewerLabel === 'recipe.mainBrewer' ? 'Main Brewer' : mainBrewerLabel}
               </span>
             </span>
@@ -116,12 +98,7 @@ export function EquipmentSection(
                   navigate(`/recipes?equipmentId=${item.equipmentId}`);
                 }
               }}
-              className='flex items-center gap-3 rounded-lg p-3 text-left transition-colors min-h-11'
-              style={{
-                border: '1px solid var(--border-primary)',
-                backgroundColor: 'var(--bg-primary)',
-                cursor: 'pointer',
-              }}
+              className='flex items-center gap-3 rounded-lg p-3 text-left transition-colors min-h-11 border border-[color:var(--border-primary)] bg-[color:var(--bg-primary)] cursor-pointer'
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-tertiary)';
               }}
@@ -129,24 +106,15 @@ export function EquipmentSection(
                 (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--bg-primary)';
               }}
             >
-              <span
-                className='flex-shrink-0'
-                style={{ color: 'var(--text-secondary)' }}
-              >
+              <span className='flex-shrink-0 text-[color:var(--text-secondary)]'>
                 <Icon size={24} />
               </span>
 
               <span className='flex flex-col min-w-0'>
-                <span
-                  className='font-semibold text-sm truncate'
-                  style={{ color: 'var(--text-primary)' }}
-                >
+                <span className='font-semibold text-sm truncate text-[color:var(--text-primary)]'>
                   {item.name ?? ''}
                 </span>
-                <span
-                  className='text-xs uppercase tracking-wide'
-                  style={{ color: 'var(--text-tertiary)' }}
-                >
+                <span className='text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]'>
                   {item.type?.replace(/_/g, ' ') ?? ''}
                 </span>
               </span>

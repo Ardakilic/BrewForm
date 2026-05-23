@@ -1,5 +1,5 @@
 export type { ApiError, ApiResponse, PaginationMeta, PaginationQuery } from './api.ts';
-export type { User, UserPreferences, UserProfile } from './user.ts';
+export type { UnitSystem, User, UserPreferences, UserProfile } from './user.ts';
 export type {
   AdditionalPreparation,
   BrewMethod,

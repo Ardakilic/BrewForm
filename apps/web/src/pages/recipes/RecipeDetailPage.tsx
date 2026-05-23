@@ -163,6 +163,9 @@ export function RecipeDetailPage() {
               brewMethod={v.brewMethod}
               versionNumber={v.versionNumber ?? 1}
               versionCount={recipe.versionCount ?? 1}
+              onVersionHistoryClick={recipe.versionCount > 1
+                ? () => navigate(`/recipes/${recipe.slug}/versions`)
+                : undefined}
             />
 
             {/* Action buttons */}

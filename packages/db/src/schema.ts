@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm';
 import {
   AnyPgColumn,
   boolean,
+  decimal,
   foreignKey,
   index,
   integer,
@@ -231,6 +232,7 @@ export const recipeVersions = pgTable(
     extractionTimeSeconds: integer('extraction_time_seconds'),
     extractionVolumeMl: real('extraction_volume_ml'),
     temperatureCelsius: real('temperature_celsius'),
+    tds: decimal('tds', { precision: 4, scale: 2 }),
     brewRatio: real('brew_ratio'),
     flowRate: real('flow_rate'),
     preInfusionTimeSeconds: integer('pre_infusion_time_seconds'),

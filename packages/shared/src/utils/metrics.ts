@@ -12,3 +12,14 @@ export function computeExtractionYield(doseGrams: number, yieldGrams: number): n
   if (!doseGrams || !yieldGrams || doseGrams <= 0) return null;
   return ((yieldGrams - doseGrams) / doseGrams) * 100;
 }
+
+export function computeExtractionYieldFromTds(
+  tds: number,
+  extractionVolumeMl: number,
+  groundWeightGrams: number,
+): number | null {
+  if (!tds || !extractionVolumeMl || !groundWeightGrams || groundWeightGrams === 0) {
+    return null;
+  }
+  return (tds / 100) * extractionVolumeMl / groundWeightGrams * 100;
+}

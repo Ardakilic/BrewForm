@@ -107,6 +107,39 @@ recipe.get(
 );
 
 recipe.get(
+  '/:slug/versions',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'List recipe version history',
+    description:
+      'Returns recipe title, slug, and all versions ordered by version number descending.',
+    responses: {
+      200: { description: 'Version history payload' },
+      404: { description: 'Recipe not found' },
+    },
+  }),
+  optionalAuthMiddleware,
+  async (c) => {
+    const { slug } = c.req.param();
+    try {
+      const recipe: any = await service.getRecipe(slug);
+      if (!recipe) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      const versions = await model.getVersionsByRecipeId(recipe.id);
+      return success(c, {
+        id: recipe.id,
+        title: recipe.title,
+        slug: recipe.slug,
+        versions,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      throw err;
+    }
+  },
+);
+
+recipe.get(
   '/:slugOrId',
   describeRoute({
     tags: ['Recipes'],
