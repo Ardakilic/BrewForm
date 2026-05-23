@@ -10,6 +10,20 @@ export interface StatCardItem {
   value: string;
 }
 
+function getUnitPlaceholder(
+  type: 'weight' | 'volume' | 'temp',
+  unitSystem: 'metric' | 'imperial',
+): string {
+  if (unitSystem === 'imperial') {
+    if (type === 'weight') return '—oz';
+    if (type === 'volume') return '—fl oz';
+    if (type === 'temp') return '—°F';
+  }
+  if (type === 'weight') return '—g';
+  if (type === 'volume') return '—ml';
+  return '—°C';
+}
+
 export function buildStatCards(
   version: {
     groundWeightGrams?: number | null;
@@ -25,14 +39,14 @@ export function buildStatCards(
     label: 'recipe.stat.dose',
     value: version.groundWeightGrams != null
       ? formatWeight(version.groundWeightGrams, unitSystem)
-      : '—g',
+      : getUnitPlaceholder('weight', unitSystem),
   };
 
   const yieldCard: StatCardItem = {
     label: 'recipe.stat.yield',
     value: version.extractionVolumeMl != null
       ? formatVolume(version.extractionVolumeMl, unitSystem)
-      : '—ml',
+      : getUnitPlaceholder('volume', unitSystem),
   };
 
   const time: StatCardItem = {
@@ -52,7 +66,7 @@ export function buildStatCards(
         version.temperatureCelsius,
         unitSystem === 'imperial' ? 'fahrenheit' : 'celsius',
       )
-      : '—°C',
+      : getUnitPlaceholder('temp', unitSystem),
   };
 
   const cards: StatCardItem[] = [dose, yieldCard, time, ratio, temp];

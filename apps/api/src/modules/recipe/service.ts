@@ -40,6 +40,34 @@ export async function getRecipe(slugOrId: string) {
   return recipe;
 }
 
+export interface CompatibilityCheckItem {
+  id: string;
+  type: string;
+}
+
+export interface CompatibilityRule {
+  brewMethod: string;
+  equipmentType: string;
+  compatible: boolean;
+}
+
+export function checkEquipmentCompatibility(
+  equipmentItems: CompatibilityCheckItem[],
+  brewMethod: string,
+  rules: CompatibilityRule[],
+): string[] {
+  const incompatible: string[] = [];
+  for (const eqItem of equipmentItems) {
+    const rule = rules.find(
+      (r) => r.brewMethod === brewMethod && r.equipmentType === eqItem.type,
+    );
+    if (rule && !rule.compatible) {
+      incompatible.push(`${eqItem.type} is not compatible with ${brewMethod}`);
+    }
+  }
+  return incompatible;
+}
+
 async function validateEquipmentCompatibility(
   brewMethod: string,
   equipmentIds: string[],
@@ -51,24 +79,16 @@ async function validateEquipmentCompatibility(
     .from(equipment)
     .where(inArray(equipment.id, equipmentIds));
 
-  const incompatible: string[] = [];
+  const allRules = await db
+    .select()
+    .from(brewMethodEquipmentRules)
+    .where(eq(brewMethodEquipmentRules.brewMethod, brewMethod as any));
 
-  for (const eqItem of equipmentList) {
-    const [rule] = await db
-      .select()
-      .from(brewMethodEquipmentRules)
-      .where(
-        and(
-          eq(brewMethodEquipmentRules.brewMethod, brewMethod as any),
-          eq(brewMethodEquipmentRules.equipmentType, eqItem.type as any),
-        ),
-      )
-      .limit(1);
-
-    if (rule && !rule.compatible) {
-      incompatible.push(`${eqItem.type} is not compatible with ${brewMethod}`);
-    }
-  }
+  const incompatible = checkEquipmentCompatibility(
+    equipmentList.map((e) => ({ id: e.id, type: e.type })),
+    brewMethod,
+    allRules as CompatibilityRule[],
+  );
 
   if (incompatible.length) {
     throw Object.assign(
@@ -222,9 +242,10 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
     const newVersionNumber = latestVersion.versionNumber + 1;
 
     if (data.brewMethod || data.equipmentIds) {
+      const existingEquipmentIds = latestVersion.equipment?.map((e: any) => e.equipmentId) ?? [];
       await validateEquipmentCompatibility(
         data.brewMethod ?? latestVersion.brewMethod,
-        data.equipmentIds ?? [],
+        data.equipmentIds ?? existingEquipmentIds,
       );
     }
 

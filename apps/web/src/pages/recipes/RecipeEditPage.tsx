@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { ApiError } from '../../api/client';
 import { recipeApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
@@ -111,7 +111,7 @@ export function RecipeEditPage() {
         ...(extractionTimeSeconds ? { extractionTimeSeconds: Number(extractionTimeSeconds) } : {}),
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
         ...(temperatureCelsius ? { temperatureCelsius: Number(temperatureCelsius) } : {}),
-        ...(tds ? { tds: Number(tds) } : {}),
+        ...(tds !== '' ? { tds: Number(tds) } : { tds: null }),
         ...(personalNotes ? { personalNotes } : {}),
         preparationNotes: preparationNotes.trim(),
         ...(rating ? { rating: Number(rating) } : {}),

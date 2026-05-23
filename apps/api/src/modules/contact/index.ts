@@ -32,7 +32,7 @@ contact.post('/', zValidator('json', contactSchema), async (c) => {
   const data = c.req.valid('json');
 
   logger.info(
-    { name: data.name, email: data.email, subject: data.subject },
+    { subject: data.subject },
     'Contact form submission',
   );
 

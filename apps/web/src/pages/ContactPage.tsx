@@ -73,12 +73,13 @@ export function ContactPage() {
 
       <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
         <div>
-          <label className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
+          <label htmlFor='contact-name' className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
             {t('contact.form.name')}
           </label>
           <input
             type='text'
             name='name'
+            id='contact-name'
             className='input-field'
             required
             minLength={1}
@@ -86,24 +87,26 @@ export function ContactPage() {
           />
         </div>
         <div>
-          <label className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
+          <label htmlFor='contact-email' className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
             {t('contact.form.email')}
           </label>
           <input
             type='email'
             name='email'
+            id='contact-email'
             className='input-field'
             required
             maxLength={255}
           />
         </div>
         <div>
-          <label className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
+          <label htmlFor='contact-subject' className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
             {t('contact.form.subject')}
           </label>
           <input
             type='text'
             name='subject'
+            id='contact-subject'
             className='input-field'
             required
             minLength={1}
@@ -111,11 +114,12 @@ export function ContactPage() {
           />
         </div>
         <div>
-          <label className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
+          <label htmlFor='contact-message' className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'>
             {t('contact.form.message')}
           </label>
           <textarea
             name='message'
+            id='contact-message'
             className='input-field min-h-[120px]'
             required
             minLength={10}

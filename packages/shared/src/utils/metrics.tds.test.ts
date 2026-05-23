@@ -9,8 +9,8 @@ describe('computeExtractionYieldFromTds', () => {
     expect(Math.abs(result! - 22.5)).toBeLessThan(0.01);
   });
 
-  it('returns null when tds is 0', () => {
-    expect(computeExtractionYieldFromTds(0, 250, 15)).toBeNull();
+  it('returns 0 when tds is 0 (valid yield)', () => {
+    expect(computeExtractionYieldFromTds(0, 250, 15)).toBe(0);
   });
 
   it('returns null when groundWeight is 0 (division by zero guard)', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { ApiError } from '../../api/client';
 import { equipmentApi, recipeApi, setupApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';

@@ -28,6 +28,8 @@ export function RecipeVersionsPage() {
 
   useEffect(() => {
     if (!slug) return;
+    setLoading(true);
+    setData(null);
     api.get<{ title: string; slug: string; versions: VersionSummary[] }>(
       `/recipes/${slug}/versions`,
     )

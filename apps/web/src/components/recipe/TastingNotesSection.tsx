@@ -150,7 +150,7 @@ export function TastingNotesSection({
 
       {/* Personal notes blockquote */}
       {personalNotes && (
-        <blockquote className='border-l-[3px_solid_var(--accent-primary)] pl-4 m-0 text-[color:var(--text-secondary)]'>
+        <blockquote className='[border-left:3px_solid_var(--accent-primary)] pl-4 m-0 text-[color:var(--text-secondary)]'>
           <p className='text-sm italic leading-[1.6] m-0'>
             {personalNotes}
           </p>

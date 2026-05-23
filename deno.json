@@ -38,7 +38,7 @@
     "db:seed": "deno run --allow-all packages/db/src/seed.ts",
 
     "email-build": "deno task --cwd apps/api email-build",
-    "ci": "deno task fmt-check && deno task lint && deno task check && deno task build && deno task test-coverage && deno task --cwd apps/web test"
+    "ci": "deno task fmt-check && deno task lint && deno task check && deno task build && deno task test-coverage && deno task test:db && deno task --cwd apps/web test"
   },
   "compilerOptions": {
     "strict": true,

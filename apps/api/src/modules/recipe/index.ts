@@ -124,6 +124,10 @@ recipe.get(
     try {
       const recipe: any = await service.getRecipe(slug);
       if (!recipe) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      if (recipe.visibility === 'draft' || recipe.visibility === 'private') {
+        const userId = c.get('userId');
+        if (userId !== recipe.authorId) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      }
       const versions = await model.getVersionsByRecipeId(recipe.id);
       return success(c, {
         id: recipe.id,
