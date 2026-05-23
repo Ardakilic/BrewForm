@@ -234,6 +234,7 @@ async function seedRecipes(
       extractionTimeSeconds: version.extractionTimeSeconds,
       extractionVolumeMl: version.extractionVolumeMl,
       temperatureCelsius: version.temperatureCelsius,
+      tds: version.tds,
       brewRatio: version.brewRatio,
       flowRate: version.flowRate,
       preInfusionTimeSeconds: (version as any).preInfusionTimeSeconds ?? null,
