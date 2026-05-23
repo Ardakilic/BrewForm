@@ -75,11 +75,10 @@ describe('MetadataBadges — visibility badge (Req 2.2)', () => {
 
   it('renders draft badge with dashed border', () => {
     render(<MetadataBadges {...baseProps} visibility='draft' />);
-    // Find the visibility badge span (contains the dot and the label)
     const draftText = screen.getByText('Draft');
     const badge = draftText.closest('span');
     expect(badge).not.toBeNull();
-    expect(badge!.style.border).toContain('dashed');
+    expect(badge!.className).toContain('border-dashed');
   });
 
   it('does not render dashed border for non-draft visibility', () => {
@@ -87,7 +86,7 @@ describe('MetadataBadges — visibility badge (Req 2.2)', () => {
     const publicText = screen.getByText('Public');
     const badge = publicText.closest('span');
     expect(badge).not.toBeNull();
-    expect(badge!.style.border).toBe('');
+    expect(badge!.className).not.toContain('border-dashed');
   });
 });
 

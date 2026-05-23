@@ -15,5 +15,8 @@
     "fmt": "deno task fmt",
     "fmt-check": "deno task fmt-check",
     "ci": "deno task ci"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2"
   }
 }

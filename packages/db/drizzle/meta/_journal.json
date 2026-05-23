@@ -43,6 +43,13 @@
       "when": 1779303614363,
       "tag": "0005_wooden_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779536123549,
+      "tag": "0006_pale_senator_kelly",
+      "breakpoints": true
     }
   ]
 }

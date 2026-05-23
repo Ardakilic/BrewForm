@@ -12,6 +12,7 @@ import { ResetPasswordPage } from './pages/auth/ResetPasswordPage.tsx';
 import { RecipeListPage } from './pages/recipes/RecipeListPage.tsx';
 import { StarredRecipesPage } from './pages/recipes/StarredRecipesPage.tsx';
 import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
+import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
 import { UserProfilePage } from './pages/users/UserProfilePage.tsx';
@@ -24,6 +25,7 @@ import { PrivacyPage } from './pages/PrivacyPage.tsx';
 import { TermsPage } from './pages/TermsPage.tsx';
 import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.tsx';
+import { ContactPage } from './pages/ContactPage.tsx';
 
 export const router = createBrowserRouter([
   {
@@ -69,6 +71,7 @@ export const router = createBrowserRouter([
           return { Component: RecipeComparePage };
         },
       },
+      { path: 'recipes/:slug/versions', element: <RecipeVersionsPage /> },
       { path: 'recipes/:slug', element: <RecipeDetailPage /> },
       { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },
       {
@@ -135,6 +138,7 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
+      { path: 'contact', element: <ContactPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
       { path: 'terms', element: <TermsPage /> },
       { path: '*', element: <NotFoundPage /> },

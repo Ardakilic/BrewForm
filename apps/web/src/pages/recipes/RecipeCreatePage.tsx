@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { ApiError } from '../../api/client';
 import { equipmentApi, recipeApi, setupApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
@@ -15,6 +16,7 @@ import type { EquipmentListItem, SetupListItem } from '../../api/types.ts';
 
 export function RecipeCreatePage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,6 +32,7 @@ export function RecipeCreatePage() {
   const [groundWeightGrams, setGroundWeightGrams] = useState('');
   const [extractionTimeSeconds, setExtractionTimeSeconds] = useState('');
   const [extractionVolumeMl, setExtractionVolumeMl] = useState('');
+  const [tds, setTds] = useState('');
   const [temperatureCelsius, setTemperatureCelsius] = useState('');
   const [personalNotes, setPersonalNotes] = useState('');
   const [preparationNotes, setPreparationNotes] = useState('');
@@ -125,6 +128,7 @@ export function RecipeCreatePage() {
         ...(extractionTimeSeconds ? { extractionTimeSeconds: Number(extractionTimeSeconds) } : {}),
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
         ...(temperatureCelsius ? { temperatureCelsius: Number(temperatureCelsius) } : {}),
+        ...(tds ? { tds: Number(tds) } : {}),
         ...(personalNotes ? { personalNotes } : {}),
         preparationNotes: preparationNotes.trim(),
         ...(rating ? { rating: Number(rating) } : {}),
@@ -403,6 +407,18 @@ export function RecipeCreatePage() {
                 onChange={(e) => setTemperatureCelsius(e.target.value)}
                 className='input-field'
                 step='0.5'
+              />
+            </Field>
+            <Field label={t('recipe.form.tds')}>
+              <input
+                type='number'
+                value={tds}
+                onChange={(e) => setTds(e.target.value)}
+                className='input-field'
+                placeholder={t('recipe.form.tds.placeholder')}
+                step='0.01'
+                min='0'
+                max='25'
               />
             </Field>
           </div>

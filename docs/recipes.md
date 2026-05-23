@@ -19,7 +19,10 @@ data.
 - Each version has a monotonically increasing `versionNumber`
 - Versions are **immutable** — once created, they cannot be modified
 - The recipe's `currentVersionId` always points to the latest version
-- Full version history is browsable via the API
+- Full version history is accessible via:
+  - API: `GET /api/v1/recipes/:slug/versions` — returns all versions for a recipe
+  - UI: `/recipes/:slug/versions` — browsable version history page (linked from the
+    recipe detail page when `versionCount > 1`)
 - Updating with `bumpVersion: false` modifies the current version in place (only for minor
   corrections)
 
@@ -63,6 +66,9 @@ BrewForm implements two levels of validation:
 - Numeric values must be physically valid (non-negative where required, e.g. dose and yield)
 - Taste note IDs must reference existing taste notes
 - Equipment IDs must reference existing equipment
+- Brew method and equipment compatibility is enforced at save time via the
+  `BrewMethodEquipmentRule` table. Incompatible combinations return a `422
+  VALIDATION_ERROR` with a `details` array naming each incompatible equipment type.
 
 ### Soft Validation (warnings only)
 
@@ -96,9 +102,16 @@ All numeric values are stored in canonical (metric) units:
 | Brew temperature | Celsius                |
 | Extraction time  | seconds                |
 | Grind size       | micrometers (optional) |
+| TDS (Total Dissolved Solids) | percentage (e.g. 1.35 for 1.35%) |
 
-The UI layer converts to user preferences (imperial, Fahrenheit, etc.) based on
-`UserPreferences.unitSystem` and `UserPreferences.temperatureUnit`.
+Extraction Yield is **not stored** — it is derived on the client from TDS, extraction
+volume, and dose when all three are present:
+
+  EY% = (TDS% / 100 × extractionVolumeMl) / groundWeightGrams × 100
+
+The UI reads `UserPreferences.unitSystem` and `UserPreferences.temperatureUnit` from
+the preferences API at page load and converts all displayed measurements via
+`packages/shared/src/utils/conversion.ts`.
 
 ## Comparison
 

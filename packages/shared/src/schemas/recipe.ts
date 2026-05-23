@@ -64,6 +64,7 @@ export const RecipeCreateObjectSchema = z.object({
   extractionTimeSeconds: z.number().positive().optional(),
   extractionVolumeMl: z.number().min(0).optional(),
   temperatureCelsius: z.number().min(-40).max(100).optional(),
+  tds: z.number().min(0).max(25).optional().nullable(),
   personalNotes: z.string().max(10000).optional(),
   preparationNotes: z.string().min(1).max(10000),
   isFavourite: z.boolean().default(false),

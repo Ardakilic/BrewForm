@@ -410,5 +410,20 @@
   "password.requiresLowercase": "Bir küçük harf",
   "password.requiresUppercase": "Bir büyük harf",
   "password.requiresDigit": "Bir rakam",
-  "password.requiresSpecial": "Bir özel karakter"
+  "password.requiresSpecial": "Bir özel karakter",
+  "recipe.stat.extractionYield": "EY",
+  "recipe.form.tds": "TDS (%)",
+  "recipe.form.tds.placeholder": "ör. 1.35",
+  "contact.title": "Bize Ulaşın",
+  "contact.description": "Bir sorunuz, öneriniz veya bir hata mı buldunuz? Sizden duymak isteriz.",
+  "contact.form.name": "Ad",
+  "contact.form.email": "E-posta",
+  "contact.form.subject": "Konu",
+  "contact.form.message": "Mesaj",
+  "contact.form.submit": "Mesaj Gönder",
+  "contact.form.sending": "Gönderiliyor\u2026",
+  "contact.success.title": "Mesaj Gönderildi!",
+  "contact.success.message": "Bize ulaştığınız için teşekkürler. En kısa sürede size geri döneceğiz.",
+  "footer.contact": "İletişim",
+  "recipe.viewVersionHistory": "Sürüm geçmişini görüntüle"
 }

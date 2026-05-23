@@ -87,8 +87,9 @@ build-shared: ## Type-check shared package as build artifact
 check-tests: ## Type-check test files
 	docker compose run --rm --no-deps app deno check apps/api/src/ packages/shared/src/
 
-test: ## Run all tests
-	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/
+test: ## Run all tests (API + shared + web)
+	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/ && \
+	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
 test-coverage: ## Run all tests with coverage
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
@@ -98,6 +99,9 @@ test-api: ## Run API tests only
 
 test-shared: ## Run shared package tests only
 	docker compose run --rm --no-deps app deno test --allow-env --allow-read --allow-write --allow-net packages/shared/src/
+
+test-web: ## Run web (Vitest) tests
+	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
 test-specific: ## Run specific test (use filter=)
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
@@ -163,7 +167,13 @@ preview: build-web up ## Build + preview production build
 
 # --- CI ---
 
-ci: fmt-check lint check build-web check-tests test-coverage ## Run full CI pipeline (fmt, lint, check, build, test)
+ci: fmt-check lint check build-web check-tests test-coverage test-web ## Run full CI pipeline (fmt, lint, check, build, test)
+
+# ── Icons ──────────────────────────────────────────────────────────────
+
+generate-icons: ## Generate PNG icons from favicon.svg
+	docker compose run --rm --no-deps app \
+	  deno run --allow-read --allow-write --allow-ffi scripts/generate-icons.ts
 
 # ── Serena MCP ──────────────────────────────────────────────────────────
 
@@ -182,4 +192,4 @@ serena-index: ## Index project with Serena
 serena-health: ## Check Serena health
 	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
 
-.PHONY: help up down build logs restart install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-specific db-migrate db-generate db-push db-seed db-studio db-reset setup dev dev-api web-dev web-build preview ci serena-up serena-down serena-logs serena-index serena-health
+.PHONY: help up down build logs restart install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health

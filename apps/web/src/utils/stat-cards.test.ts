@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { buildStatCards } from './stat-cards';
+import { buildStatCards } from './stat-cards.ts';
 
 // ─── Unit Tests ───────────────────────────────────────────────────────────────
 
@@ -32,11 +32,11 @@ describe('buildStatCards — unit tests', () => {
       brewRatio: 2,
       temperatureCelsius: 93,
     });
-    expect(cards[0]).toEqual({ label: 'recipe.stat.dose', value: '18g' });
-    expect(cards[1]).toEqual({ label: 'recipe.stat.yield', value: '36ml' });
+    expect(cards[0]).toEqual({ label: 'recipe.stat.dose', value: '18.0 g' });
+    expect(cards[1]).toEqual({ label: 'recipe.stat.yield', value: '36 ml' });
     expect(cards[2]).toEqual({ label: 'recipe.stat.time', value: '30s' });
     expect(cards[3]).toEqual({ label: 'recipe.stat.ratio', value: '1:2' });
-    expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '93°C' });
+    expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '93.0°C' });
   });
 
   it('returns exactly 5 cards when all values are null', () => {
@@ -73,11 +73,11 @@ describe('buildStatCards — unit tests', () => {
       brewRatio: null,
       temperatureCelsius: 93,
     });
-    expect(cards[0]).toEqual({ label: 'recipe.stat.dose', value: '18g' });
+    expect(cards[0]).toEqual({ label: 'recipe.stat.dose', value: '18.0 g' });
     expect(cards[1]).toEqual({ label: 'recipe.stat.yield', value: '—ml' });
     expect(cards[2]).toEqual({ label: 'recipe.stat.time', value: '30s' });
     expect(cards[3]).toEqual({ label: 'recipe.stat.ratio', value: '1:—' });
-    expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '93°C' });
+    expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '93.0°C' });
   });
 
   it('always returns exactly 5 cards regardless of input', () => {
@@ -110,14 +110,14 @@ describe('buildStatCards — unit tests', () => {
     expect(cards[3].value).toBe('1:2');
   });
 
-  it('displays whole numbers without decimal: 18.0 → "18g"', () => {
+  it('displays whole numbers with one decimal from formatWeight: 18 → "18.0 g"', () => {
     const cards = buildStatCards({ groundWeightGrams: 18.0 });
-    expect(cards[0].value).toBe('18g');
+    expect(cards[0].value).toBe('18.0 g');
   });
 
-  it('displays non-whole numbers with one decimal: 18.5 → "18.5g"', () => {
+  it('displays non-whole numbers with one decimal: 18.5 → "18.5 g"', () => {
     const cards = buildStatCards({ groundWeightGrams: 18.5 });
-    expect(cards[0].value).toBe('18.5g');
+    expect(cards[0].value).toBe('18.5 g');
   });
 
   it('displays non-whole ratio with one decimal: 1.5 → "1:1.5"', () => {
@@ -231,5 +231,49 @@ describe('buildStatCards — property-based tests', () => {
       }),
       { numRuns: 200 },
     );
+  });
+});
+
+// ─── TDS / Extraction Yield (M6) ────────────────────────────────────────────
+
+describe('buildStatCards — TDS / extraction yield (M6)', () => {
+  it('returns 5 cards when tds is null', () => {
+    const cards = buildStatCards({
+      groundWeightGrams: 18,
+      extractionVolumeMl: 36,
+      tds: null,
+    });
+    expect(cards).toHaveLength(5);
+  });
+
+  it('returns 6 cards when tds is provided with valid volume and dose', () => {
+    const cards = buildStatCards({
+      groundWeightGrams: 15,
+      extractionVolumeMl: 250,
+      tds: 1.35,
+    });
+    expect(cards).toHaveLength(6);
+    expect(cards[5]).toEqual({
+      label: 'recipe.stat.extractionYield',
+      value: '22.5%',
+    });
+  });
+
+  it('returns 5 cards when tds is provided but extractionVolumeMl is null', () => {
+    const cards = buildStatCards({
+      groundWeightGrams: 15,
+      extractionVolumeMl: null,
+      tds: 1.35,
+    });
+    expect(cards).toHaveLength(5);
+  });
+
+  it('returns 5 cards when tds is provided but groundWeightGrams is null', () => {
+    const cards = buildStatCards({
+      groundWeightGrams: null,
+      extractionVolumeMl: 250,
+      tds: 1.35,
+    });
+    expect(cards).toHaveLength(5);
   });
 });

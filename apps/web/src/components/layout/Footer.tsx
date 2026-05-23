@@ -37,6 +37,12 @@ export function Footer() {
               >
                 {t('taste.reference')}
               </Link>
+              <Link
+                to='/contact'
+                className='text-sm text-[color:var(--text-secondary)]'
+              >
+                {t('footer.contact')}
+              </Link>
             </div>
           </div>
           <div>

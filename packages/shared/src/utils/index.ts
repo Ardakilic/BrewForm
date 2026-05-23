@@ -15,7 +15,12 @@ export {
 } from './conversion.ts';
 
 /** Coffee brewing metrics: brew ratio, extraction yield, flow rate. */
-export { computeBrewRatio, computeExtractionYield, computeFlowRate } from './metrics.ts';
+export {
+  computeBrewRatio,
+  computeExtractionYield,
+  computeExtractionYieldFromTds,
+  computeFlowRate,
+} from './metrics.ts';
 /** Recipe validation: hard (blocks save) and soft (warnings only) checks. */
 export {
   validateBrewMethodCompatibility,

@@ -214,6 +214,7 @@ Response `401` (invalid or expired refresh token):
 | POST   | `/recipes/:id/like`      | required | Toggle like on a recipe                               |
 | POST   | `/recipes/:id/favourite` | required | Toggle favourite on a recipe                          |
 | POST   | `/recipes/:id/feature`   | required | Toggle featured status (author only)                  |
+| GET    | `/recipes/:slug/versions` | optional | List all versions for a recipe |
 
 ### Query Parameters (GET /recipes)
 
@@ -447,6 +448,45 @@ Report request:
   "description": "This recipe contains..."
 }
 ```
+
+---
+
+## Contact
+
+| Method | Endpoint   | Auth | Description                |
+|--------|-----------|------|----------------------------|
+| POST   | `/contact` | none | Submit a contact form message |
+
+### POST /contact
+
+Rate limited: **3 requests per 15 minutes per IP**.
+
+Request body:
+
+```json
+{
+  "name": "Jane Brewer",
+  "email": "jane@example.com",
+  "subject": "Feature request",
+  "message": "It would be great if..."
+}
+```
+
+| Field     | Type   | Required | Constraints            |
+|-----------|--------|----------|------------------------|
+| `name`    | string | yes      | max 100 chars          |
+| `email`   | string | yes      | valid email, max 255   |
+| `subject` | string | yes      | max 200 chars          |
+| `message` | string | yes      | min 10 chars, max 5000 |
+
+Response `200`:
+
+```json
+{ "success": true, "data": { "message": "Thank you for your message. We will get back to you soon." } }
+```
+
+Response `422` — validation failed (standard `VALIDATION_ERROR` envelope).
+Response `429` — rate limit exceeded.
 
 ---
 

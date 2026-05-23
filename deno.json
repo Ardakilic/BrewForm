@@ -24,7 +24,7 @@
     "fmt": "deno fmt",
     "fmt-check": "deno fmt --check",
 
-    "test": "deno task test:api && deno task test:shared && deno task test:db",
+    "test": "deno task test:api && deno task test:shared && deno task test:db && deno task --cwd apps/web test",
     "test:api": "deno task --cwd apps/api test",
     "test:shared": "deno task --cwd packages/shared test",
     "test:db": "deno task --cwd packages/db test",
@@ -38,7 +38,7 @@
     "db:seed": "deno run --allow-all packages/db/src/seed.ts",
 
     "email-build": "deno task --cwd apps/api email-build",
-    "ci": "deno task fmt-check && deno task lint && deno task check && deno task build && deno task test-coverage"
+    "ci": "deno task fmt-check && deno task lint && deno task check && deno task build && deno task test-coverage && deno task test:db && deno task --cwd apps/web test"
   },
   "compilerOptions": {
     "strict": true,

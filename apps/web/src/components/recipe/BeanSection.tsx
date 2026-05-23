@@ -126,17 +126,14 @@ export function BeanSection(props: BeanSectionProps) {
     <section className='card' aria-label='Bean information'>
       {/* Section header */}
       <div className='flex items-center justify-between mb-4'>
-        <span
-          className='text-xs uppercase tracking-widest font-semibold'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
+        <span className='text-xs uppercase tracking-widest font-semibold text-[color:var(--text-tertiary)]'>
           {t('recipe.bean.title')}
         </span>
         {roastHeaderLabel && (
-          <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+          <span className='text-xs text-[color:var(--text-tertiary)]'>
             {roastHeaderLabel}
             {showPeakWindow && (
-              <span style={{ color: 'var(--accent-primary)' }}>
+              <span className='text-[color:var(--accent-primary)]'>
                 · {t('recipe.bean.peakWindow')}
               </span>
             )}
@@ -148,14 +145,7 @@ export function BeanSection(props: BeanSectionProps) {
       <div className='flex gap-4 items-start'>
         {/* Bean image placeholder */}
         <div
-          className='flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center'
-          style={{
-            width: '72px',
-            height: '72px',
-            backgroundColor: 'var(--bg-tertiary)',
-            color: 'var(--text-tertiary)',
-            fontSize: '1.5rem',
-          }}
+          className='flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center w-[72px] h-[72px] bg-[color:var(--bg-tertiary)] text-[color:var(--text-tertiary)] text-2xl'
           aria-label='Coffee bean image placeholder'
           role='img'
         >
@@ -166,20 +156,14 @@ export function BeanSection(props: BeanSectionProps) {
         <div className='flex-1 min-w-0'>
           {/* Product name */}
           {productName && (
-            <span
-              className='block text-xl font-bold leading-tight mb-0.5'
-              style={{ color: 'var(--text-primary)' }}
-            >
+            <span className='block text-xl font-bold leading-tight mb-0.5 text-[color:var(--text-primary)]'>
               {productName}
             </span>
           )}
 
           {/* Subtitle: "Heart Roasters · Washed process" */}
           {subtitle && (
-            <span
-              className='block text-sm mb-3'
-              style={{ color: 'var(--text-secondary)' }}
-            >
+            <span className='block text-sm mb-3 text-[color:var(--text-secondary)]'>
               {subtitle}
             </span>
           )}
@@ -209,16 +193,10 @@ export function BeanSection(props: BeanSectionProps) {
             )}
             {origin && (
               <div className='flex flex-col gap-0.5'>
-                <span
-                  className='text-xs uppercase tracking-widest'
-                  style={{ color: 'var(--text-tertiary)' }}
-                >
+                <span className='text-xs uppercase tracking-widest text-[color:var(--text-tertiary)]'>
                   {t('recipe.bean.origin')}
                 </span>
-                <span
-                  className='text-sm font-bold'
-                  style={{ color: 'var(--text-primary)' }}
-                >
+                <span className='text-sm font-bold text-[color:var(--text-primary)]'>
                   {origin}
                 </span>
               </div>
@@ -239,24 +217,15 @@ interface DateFieldProps {
 function DateField({ label, date, relative }: DateFieldProps) {
   return (
     <div className='flex flex-col gap-0.5'>
-      <span
-        className='text-xs uppercase tracking-widest'
-        style={{ color: 'var(--text-tertiary)' }}
-      >
+      <span className='text-xs uppercase tracking-widest text-[color:var(--text-tertiary)]'>
         {label}
       </span>
       {/* Date + short relative on one line */}
       <span className='flex items-baseline gap-1.5'>
-        <span
-          className='text-sm font-bold'
-          style={{ color: 'var(--text-primary)' }}
-        >
+        <span className='text-sm font-bold text-[color:var(--text-primary)]'>
           {formatDateISO(date)}
         </span>
-        <span
-          className='text-xs'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
+        <span className='text-xs text-[color:var(--text-tertiary)]'>
           {relative}
         </span>
       </span>

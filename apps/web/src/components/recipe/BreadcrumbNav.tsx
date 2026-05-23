@@ -26,15 +26,11 @@ export function BreadcrumbNav({ brewMethod, recipeTitle }: BreadcrumbNavProps) {
 
   return (
     <nav aria-label='Breadcrumb'>
-      <ol
-        className='flex items-center gap-1 flex-wrap'
-        style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem' }}
-      >
+      <ol className='flex items-center gap-1 flex-wrap text-[color:var(--text-tertiary)] text-xs'>
         <li>
           <Link
             to='/recipes'
-            className='transition-colors'
-            style={{ color: 'var(--text-secondary)' }}
+            className='transition-colors text-[color:var(--text-secondary)]'
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
             }}
@@ -50,16 +46,14 @@ export function BreadcrumbNav({ brewMethod, recipeTitle }: BreadcrumbNavProps) {
           <>
             <li
               aria-hidden='true'
-              className='select-none'
-              style={{ color: 'var(--text-tertiary)' }}
+              className='select-none text-[color:var(--text-tertiary)]'
             >
               ›
             </li>
             <li>
               <Link
                 to={`/recipes?brewMethod=${brewMethod}`}
-                className='transition-colors'
-                style={{ color: 'var(--text-secondary)' }}
+                className='transition-colors text-[color:var(--text-secondary)]'
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
                 }}
@@ -73,10 +67,10 @@ export function BreadcrumbNav({ brewMethod, recipeTitle }: BreadcrumbNavProps) {
           </>
         )}
 
-        <li aria-hidden='true' className='select-none' style={{ color: 'var(--text-tertiary)' }}>
+        <li aria-hidden='true' className='select-none text-[color:var(--text-tertiary)]'>
           ›
         </li>
-        <li aria-current='page' style={{ color: 'var(--text-secondary)' }}>
+        <li aria-current='page' className='text-[color:var(--text-secondary)]'>
           {displayTitle}
         </li>
       </ol>

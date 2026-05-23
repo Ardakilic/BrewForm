@@ -103,27 +103,18 @@ export function BrewTimeline({
     <div className='card'>
       {/* Header */}
       <div className='flex items-center justify-between mb-3'>
-        <span
-          className='text-xs font-semibold uppercase tracking-widest'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
+        <span className='text-xs font-semibold uppercase tracking-widest text-[color:var(--text-tertiary)]'>
           {t('recipe.brewTimeline.title')}
         </span>
         {flowRate != null && (
-          <span
-            className='text-sm font-medium'
-            style={{ color: 'var(--text-secondary)' }}
-          >
+          <span className='text-sm font-medium text-[color:var(--text-secondary)]'>
             {flowRate} ml/s
           </span>
         )}
       </div>
 
       {/* Chart */}
-      <div
-        className='relative w-full overflow-hidden'
-        style={{ borderRadius: '0.5rem' }}
-      >
+      <div className='relative w-full overflow-hidden rounded-lg'>
         {
           /*
           Invisible semantic structure preserved for tests.
@@ -131,20 +122,11 @@ export function BrewTimeline({
         */
         }
         <div
-          className='flex w-full'
+          className='flex w-full absolute top-0 left-0 h-full opacity-0 pointer-events-none'
           role='img'
           aria-label={`Brew timeline: ${
             preInfusion != null ? `${preInfusion}s pre-infusion, ` : ''
           }${preInfusion != null ? total - preInfusion : total}s extraction`}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            opacity: 0,
-            pointerEvents: 'none',
-          }}
         >
           {preInfusion != null && <div style={{ width: `${preInfusionPct}%` }} />}
           <div style={{ width: `${extractionPct}%` }} />
@@ -155,7 +137,7 @@ export function BrewTimeline({
           viewBox={`0 0 ${svgW} ${svgH}`}
           preserveAspectRatio='none'
           width='100%'
-          style={{ display: 'block', height: '80px' }}
+          className='block h-[80px]'
           aria-hidden='true'
         >
           <defs>
@@ -258,7 +240,7 @@ export function BrewTimeline({
       </div>
 
       {/* Time axis */}
-      <div className='relative mt-1' style={{ height: '20px' }}>
+      <div className='relative mt-1 h-[20px]'>
         {markers.map((seconds) => {
           const positionPct = (seconds / total) * 100;
           return (
@@ -275,14 +257,7 @@ export function BrewTimeline({
                 top: 0,
               }}
             >
-              <span
-                className='text-xs'
-                style={{
-                  color: 'var(--text-tertiary)',
-                  fontSize: '0.65rem',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <span className='text-xs text-[color:var(--text-tertiary)] text-[0.65rem] whitespace-nowrap'>
                 {seconds}s
               </span>
             </div>
