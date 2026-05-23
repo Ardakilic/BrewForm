@@ -193,7 +193,11 @@ export function TasteNotesFilter({
                   'placeholder:text-[color:var(--text-tertiary)]',
                   'focus:outline-none focus:border-[color:var(--accent-primary)]',
                 ].join(' ')}
-                onKeyDown={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Escape') {
+                    e.stopPropagation();
+                  }
+                }}
               />
             </div>
 
