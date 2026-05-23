@@ -118,7 +118,7 @@ Every domain module follows 3-layer pattern: `model.ts` → `service.ts` → `in
 - Formatting: `deno fmt` (lineWidth 100, indentWidth 2, singleQuote, semiColons).
 - Lint exclusions: `no-explicit-any`, `require-await`, `no-empty`, `no-import-prefix`, `no-unversioned-import`.
 - Module files use `// deno-lint-ignore-file no-explicit-any require-await`.
-- All imports use explicit `.ts` extensions.
+- All imports use explicit file extensions (`.ts`, `.tsx`, etc.) — no sloppy imports.
 - Cache: never call `Deno.openKv()` directly — use `CacheProvider` interface via DI.
 
 ## Other conventions

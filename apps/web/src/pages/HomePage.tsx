@@ -1,17 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { recipeApi } from '../api/index.ts';
-import { useTranslation } from '../contexts/I18nContext';
-
-interface RecipeListItem {
-  id: string;
-  slug: string;
-  title: string;
-  author?: { username: string; displayName: string | null };
-  likeCount: number;
-  commentCount: number;
-  forkCount: number;
-}
+import type { RecipeListItem } from '../api/types.ts';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 export function HomePage() {
   const [latestRecipes, setLatestRecipes] = useState<RecipeListItem[]>([]);
@@ -19,11 +10,11 @@ export function HomePage() {
   const { t } = useTranslation();
 
   useEffect(() => {
-    recipeApi.list({ perPage: '6', sortBy: 'createdAt' }).then((recipes) => {
-      setLatestRecipes(Array.isArray(recipes) ? (recipes as RecipeListItem[]) : []);
+    recipeApi.list({ perPage: '6', sortBy: 'createdAt' }).then((response) => {
+      setLatestRecipes(response.data ?? []);
     }).catch(() => {});
-    recipeApi.list({ perPage: '6', sortBy: 'likeCount' }).then((recipes) => {
-      setPopularRecipes(Array.isArray(recipes) ? (recipes as RecipeListItem[]) : []);
+    recipeApi.list({ perPage: '6', sortBy: 'likeCount' }).then((response) => {
+      setPopularRecipes(response.data ?? []);
     }).catch(() => {});
   }, []);
 

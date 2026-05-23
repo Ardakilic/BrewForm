@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { HomePage } from './HomePage';
+import { HomePage } from './HomePage.tsx';
+import type { RecipeListItem } from '../api/types.ts';
 
 vi.mock('react-router', () => ({
   Link: (
@@ -12,13 +13,19 @@ vi.mock('../contexts/I18nContext', () => ({
   useTranslation: vi.fn(),
 }));
 
-vi.mock('../api/index.ts', () => ({
-  recipeApi: {
-    list: vi.fn().mockResolvedValue([]),
-  },
-}));
+vi.mock('../api/index.ts', () => {
+  const empty = {
+    data: [],
+    meta: { pagination: { page: 1, perPage: 6, total: 0, totalPages: 0 } },
+  };
+  return {
+    recipeApi: {
+      list: vi.fn().mockResolvedValue(empty),
+    },
+  };
+});
 
-import { useTranslation } from '../contexts/I18nContext';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 
@@ -109,19 +116,22 @@ describe('HomePage — i18n', () => {
   });
 
   it('renders recipe cards with clickable author link when API returns data', async () => {
-    const mockRecipes = [
-      {
-        id: 'recipe-1',
-        slug: 'test-recipe',
-        title: 'Test Recipe',
-        likeCount: 5,
-        commentCount: 2,
-        forkCount: 1,
-        author: { username: 'testuser', displayName: 'Test User' },
-      },
-    ];
+    const mockResponse = {
+      data: [
+        {
+          id: 'recipe-1',
+          slug: 'test-recipe',
+          title: 'Test Recipe',
+          likeCount: 5,
+          commentCount: 2,
+          forkCount: 1,
+          author: { username: 'testuser', displayName: 'Test User' },
+        } as RecipeListItem,
+      ],
+      meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+    };
     const { recipeApi } = await import('../api/index.ts');
-    vi.mocked(recipeApi.list).mockResolvedValue(mockRecipes);
+    vi.mocked(recipeApi.list).mockResolvedValue(mockResponse);
 
     render(<HomePage />);
 
@@ -133,5 +143,86 @@ describe('HomePage — i18n', () => {
     authorLinks.forEach((link) => {
       expect(link).toHaveAttribute('href', '/u/testuser');
     });
+  });
+
+  it('renders "unknown" author when author is null', async () => {
+    const mockResponse = {
+      data: [
+        {
+          id: 'recipe-2',
+          slug: 'no-author',
+          title: 'Anonymous Recipe',
+          likeCount: 3,
+          commentCount: 0,
+          forkCount: 0,
+          author: null,
+        } as RecipeListItem,
+      ],
+      meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+    };
+    const { recipeApi } = await import('../api/index.ts');
+    vi.mocked(recipeApi.list).mockResolvedValue(mockResponse);
+
+    render(<HomePage />);
+
+    const titles = await screen.findAllByText('Anonymous Recipe');
+    expect(titles).toHaveLength(2);
+    const unknowns = screen.getAllByText('unknown', { exact: false });
+    expect(unknowns).toHaveLength(2);
+  });
+
+  it('extracts data from the response envelope for both latest and popular sections', async () => {
+    const latestResponse = {
+      data: [
+        {
+          id: 'latest-1',
+          slug: 'latest',
+          title: 'Latest Brew',
+          likeCount: 1,
+          commentCount: 0,
+          forkCount: 0,
+          author: { username: 'u1', displayName: 'User 1' },
+        } as RecipeListItem,
+      ],
+      meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+    };
+    const popularResponse = {
+      data: [
+        {
+          id: 'popular-1',
+          slug: 'popular',
+          title: 'Popular Brew',
+          likeCount: 10,
+          commentCount: 3,
+          forkCount: 2,
+          author: { username: 'u2', displayName: 'User 2' },
+        } as RecipeListItem,
+      ],
+      meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+    };
+    const { recipeApi } = await import('../api/index.ts');
+    vi.mocked(recipeApi.list)
+      .mockResolvedValueOnce(latestResponse)
+      .mockResolvedValueOnce(popularResponse);
+
+    render(<HomePage />);
+
+    expect(await screen.findByText('Latest Brew')).toBeInTheDocument();
+    expect(await screen.findByText('Popular Brew')).toBeInTheDocument();
+  });
+
+  it('handles empty data in response envelope gracefully', async () => {
+    const { recipeApi } = await import('../api/index.ts');
+    const emptyResponse = {
+      data: [],
+      meta: { pagination: { page: 1, perPage: 6, total: 0, totalPages: 0 } },
+    };
+    vi.mocked(recipeApi.list).mockResolvedValue(emptyResponse);
+
+    render(<HomePage />);
+
+    expect(screen.getByText('Latest Recipes')).toBeInTheDocument();
+    expect(screen.getByText('Popular Recipes')).toBeInTheDocument();
+    expect(screen.queryByText(/❤️/)).not.toBeInTheDocument();
   });
 });
