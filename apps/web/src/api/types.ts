@@ -43,6 +43,7 @@ export interface RecipeVersionResponse {
   extractionTimeSeconds: number | null;
   extractionVolumeMl: number | null;
   temperatureCelsius: number | null;
+  tds: number | null;
   brewRatio: number | null;
   flowRate: number | null;
   preInfusionTimeSeconds: number | null;

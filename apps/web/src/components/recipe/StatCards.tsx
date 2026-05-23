@@ -10,11 +10,12 @@ interface StatCardsProps {
     temperatureCelsius?: number | null;
     tds?: number | null;
   };
+  unitSystem?: 'metric' | 'imperial';
 }
 
-export function StatCards({ version }: StatCardsProps) {
+export function StatCards({ version, unitSystem = 'metric' }: StatCardsProps) {
   const { t } = useTranslation();
-  const cards = buildStatCards(version, 'metric');
+  const cards = buildStatCards(version, unitSystem);
 
   return (
     <div className='flex flex-row overflow-x-auto gap-3 md:grid md:grid-cols-5 lg:grid-cols-6 md:overflow-visible'>

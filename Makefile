@@ -87,8 +87,9 @@ build-shared: ## Type-check shared package as build artifact
 check-tests: ## Type-check test files
 	docker compose run --rm --no-deps app deno check apps/api/src/ packages/shared/src/
 
-test: ## Run all tests
-	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/
+test: ## Run all tests (API + shared + web)
+	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/ && \
+	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
 test-coverage: ## Run all tests with coverage
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/

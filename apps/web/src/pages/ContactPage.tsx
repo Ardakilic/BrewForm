@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react';
-import { SEOHead } from '../components/seo/SEOHead';
-import { api } from '../api/client';
-import { useTranslation } from '../contexts/I18nContext';
+import { SEOHead } from '../components/seo/SEOHead.tsx';
+import { api } from '../api/client.ts';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 interface ContactFormData {
   name: string;

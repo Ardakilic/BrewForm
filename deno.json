@@ -24,7 +24,7 @@
     "fmt": "deno fmt",
     "fmt-check": "deno fmt --check",
 
-    "test": "deno task test:api && deno task test:shared && deno task test:db",
+    "test": "deno task test:api && deno task test:shared && deno task test:db && deno task --cwd apps/web test",
     "test:api": "deno task --cwd apps/api test",
     "test:shared": "deno task --cwd packages/shared test",
     "test:db": "deno task --cwd packages/db test",

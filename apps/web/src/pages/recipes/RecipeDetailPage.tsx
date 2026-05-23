@@ -21,6 +21,7 @@ import { RecipeNotesSection } from '../../components/recipe/RecipeNotesSection.t
 import { ShareSection } from '../../components/recipe/ShareSection.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
 import { EMOJI_TAGS_LIST } from '@brewform/shared/constants';
 
 export function RecipeDetailPage() {
@@ -30,6 +31,7 @@ export function RecipeDetailPage() {
   const fromQr = searchParams.get('from') === 'qr';
   const { user, isAuthenticated } = useAuth();
   const { t } = useTranslation();
+  const unitSystem = useUnitSystem();
   const [recipe, setRecipe] = useState<RecipeDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteFlatItem[]>([]);
@@ -219,7 +221,7 @@ export function RecipeDetailPage() {
       {/* ── Stat Cards (full width below header) ── */}
       <div className='py-4' style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className='mx-auto max-w-4xl px-6'>
-          <StatCards version={v} />
+          <StatCards version={v} unitSystem={unitSystem} />
         </div>
       </div>
 

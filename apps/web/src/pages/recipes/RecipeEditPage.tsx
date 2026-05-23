@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { useTranslation } from '../../contexts/I18nContext';
 import { ApiError } from '../../api/client';
 import { recipeApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
@@ -16,6 +17,7 @@ import type { RecipeDetailResponse } from '../../api/types.ts';
 export function RecipeEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
@@ -33,6 +35,7 @@ export function RecipeEditPage() {
   const [groundWeightGrams, setGroundWeightGrams] = useState('');
   const [extractionTimeSeconds, setExtractionTimeSeconds] = useState('');
   const [extractionVolumeMl, setExtractionVolumeMl] = useState('');
+  const [tds, setTds] = useState('');
   const [temperatureCelsius, setTemperatureCelsius] = useState('');
   const [personalNotes, setPersonalNotes] = useState('');
   const [preparationNotes, setPreparationNotes] = useState('');
@@ -61,6 +64,7 @@ export function RecipeEditPage() {
       setGroundWeightGrams(r.currentVersion.groundWeightGrams?.toString() || '');
       setExtractionTimeSeconds(r.currentVersion.extractionTimeSeconds?.toString() || '');
       setExtractionVolumeMl(r.currentVersion.extractionVolumeMl?.toString() || '');
+      setTds(r.currentVersion.tds?.toString() || '');
       setTemperatureCelsius(r.currentVersion.temperatureCelsius?.toString() || '');
       setPersonalNotes(r.currentVersion.personalNotes || '');
       setPreparationNotes(r.currentVersion.preparationNotes || '');
@@ -107,6 +111,7 @@ export function RecipeEditPage() {
         ...(extractionTimeSeconds ? { extractionTimeSeconds: Number(extractionTimeSeconds) } : {}),
         ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
         ...(temperatureCelsius ? { temperatureCelsius: Number(temperatureCelsius) } : {}),
+        ...(tds ? { tds: Number(tds) } : {}),
         ...(personalNotes ? { personalNotes } : {}),
         preparationNotes: preparationNotes.trim(),
         ...(rating ? { rating: Number(rating) } : {}),
@@ -344,6 +349,18 @@ export function RecipeEditPage() {
                 onChange={(e) => setTemperatureCelsius(e.target.value)}
                 className='input-field'
                 step='0.5'
+              />
+            </EditField>
+            <EditField label={t('recipe.form.tds')}>
+              <input
+                type='number'
+                value={tds}
+                onChange={(e) => setTds(e.target.value)}
+                className='input-field'
+                placeholder={t('recipe.form.tds.placeholder')}
+                step='0.01'
+                min='0'
+                max='25'
               />
             </EditField>
           </div>
