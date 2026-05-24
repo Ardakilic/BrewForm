@@ -15,10 +15,13 @@ jobs:
           deno-version: v2.x
 
       - name: Install dependencies
-        run: deno install
+        run: deno install --frozen
 
       - name: Generate Drizzle migration
         run: deno task db:generate
+
+      - name: Build email templates
+        run: deno task email-build
 
       - name: Format check
         run: deno fmt --check
@@ -29,14 +32,52 @@ jobs:
       - name: Type check
         run: deno task check
 
-      - name: Build
-        run: deno task build
+      - name: Build web
+        run: deno task build:web
 
   test-unit:
     runs-on: ubuntu-latest
     needs: check
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies
+        run: deno install --frozen
+
+      - name: Run shared package tests
+        run: >
+          deno test
+          --allow-env
+          --allow-read
+          --allow-write
+          --allow-net
+          packages/shared/src/
+
+  test-api:
+    runs-on: ubuntu-latest
+    needs: check
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: brewform
+          POSTGRES_PASSWORD: brewform
+          POSTGRES_DB: brewform_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       DATABASE_URL: postgresql://brewform:brewform@localhost:5432/brewform_test
+      DATABASE_PROVIDER: postgresql
       JWT_SECRET: test-secret-for-ci-only-minimum-16-chars
       CACHE_DRIVER: memory
       APP_ENV: test
@@ -44,6 +85,8 @@ jobs:
       CORS_ALLOWED_ORIGINS: http://localhost:5173
       LOG_LEVEL: info
       LOG_FORMAT: json
+      STORAGE_DRIVER: local
+      ENABLE_REGISTRATION: true
 
     steps:
       - uses: actions/checkout@v6
@@ -53,7 +96,55 @@ jobs:
           deno-version: v2.x
 
       - name: Install dependencies
-        run: deno install
+        run: deno install --frozen
 
-      - name: Run shared package tests
-        run: deno task --cwd packages/shared test
+      - name: Assert no uncommitted migrations
+        run: |
+          deno task db:generate
+          git diff --exit-code
+
+      - name: Build email templates
+        run: deno task email-build
+
+      - name: Run database migrations
+        run: deno task db:migrate
+
+      - name: Seed test database
+        run: deno run --allow-all packages/db/src/seed.ts
+
+      - name: Run API tests
+        run: >
+          deno test
+          --no-check
+          --coverage=coverage
+          --allow-env
+          --allow-read
+          --allow-write
+          --allow-net
+          --allow-sys
+          --allow-ffi
+          apps/api/src/
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-api-pr
+          path: coverage/
+          retention-days: 7
+
+  test-web:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies
+        run: deno install --frozen
+
+      - name: Run web tests
+        run: deno task --cwd apps/web test

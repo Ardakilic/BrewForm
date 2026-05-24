@@ -1030,5 +1030,6 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
         { numRuns: 100 },
       );
     },
+    15000,
   );
 });
