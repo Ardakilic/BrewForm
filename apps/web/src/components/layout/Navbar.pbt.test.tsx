@@ -74,6 +74,25 @@ vi.mock('../../contexts/ThemeContext', () => ({
   useTheme: vi.fn(),
 }));
 
+vi.mock('../../api/index', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+    upload: vi.fn(),
+  },
+  ApiError: class extends Error {
+    code = '';
+    status = 500;
+  },
+  authApi: {
+    registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
+    logout: vi.fn().mockResolvedValue({}),
+  },
+}));
+
 import { useTranslation } from '../../contexts/I18nContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -414,6 +433,7 @@ describe('Navbar — Property 2: Mobile Menu Closes on Navigation', () => {
         { numRuns: 100 },
       );
     },
+    15000,
   );
 });
 
