@@ -33,7 +33,9 @@ export async function updateBean(userId: string, id: string, data: any) {
   const bean = await model.findById(id);
   if (!bean) throw new Error('BEAN_NOT_FOUND');
   if (bean.userId !== userId) throw new Error('FORBIDDEN');
-  return model.update(id, data);
+  const updated = await model.update(id, data);
+  if (!updated) throw new Error('BEAN_NOT_FOUND');
+  return updated;
 }
 
 /**
@@ -46,5 +48,6 @@ export async function deleteBean(userId: string, id: string) {
   const bean = await model.findById(id);
   if (!bean) throw new Error('BEAN_NOT_FOUND');
   if (bean.userId !== userId) throw new Error('FORBIDDEN');
-  await model.softDelete(id);
+  const deleted = await model.softDelete(id);
+  if (!deleted) throw new Error('BEAN_NOT_FOUND');
 }

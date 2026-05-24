@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { ApiError } from '../../api/client';
-import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index';
+import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
 import {

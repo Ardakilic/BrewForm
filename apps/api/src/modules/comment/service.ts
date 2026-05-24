@@ -110,4 +110,5 @@ export async function deleteComment(userId: string, id: string, isAdmin: boolean
   if (!comment) throw new Error('COMMENT_NOT_FOUND');
   if (!isAdmin && comment.authorId !== userId) throw new Error('FORBIDDEN');
   await model.softDelete(id);
+  await recipeModel.decrementComments(comment.recipeId);
 }

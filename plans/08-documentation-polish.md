@@ -18,8 +18,8 @@
 
 | ID | Title | Priority | Effort | Section |
 |----|-------|----------|--------|---------|
-| H1 | Zero JSDoc/TSDoc (~9% coverage) | High | 20-30h | [Link](#h1--zero-jsdoctsdoc-9-coverage) |
-| M7 | Onboarding wizard is static links | Medium | 6-10h | [Link](#m7--onboarding-wizard-is-static-links) |
+| H1 | Zero JSDoc/TSDoc (~9% coverage) | High | 20-30h | [Jump to H1](#h1-zero-jsdoc-tsdoc) |
+| M7 | Onboarding wizard is static links | Medium | 6-10h | [Jump to M7](#m7-onboarding-wizard-is-static-links) |
 | L5 | Coffee palette defined but unused | Low | 15min | [Link](#l5--coffee-palette-defined-but-unused) |
 | L6 | No pre-commit formatting hooks | Low | 30min | [Link](#l6--no-pre-commit-formatting-hooks) |
 | L8 | ComparePage route params naming | Low | 15min | [Link](#l8--comparepage-route-params-naming) |

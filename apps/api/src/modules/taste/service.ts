@@ -136,7 +136,7 @@ export async function updateTasteNote(
 
 /** Delete a taste note by ID and flush the cache. */
 export async function deleteTasteNote(id: string, cache: CacheProvider) {
-  await model.remove(id);
+  await model.update(id, { deletedAt: new Date() });
   await flushCache(cache);
 }
 

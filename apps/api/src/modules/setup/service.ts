@@ -30,6 +30,19 @@ export async function createSetup(userId: string, data: any) {
   return model.create({ ...data, userId });
 }
 
+/** User-editable fields for a setup update. */
+export interface UpdateSetupPayload {
+  name?: string;
+  brewerDetails?: string | null;
+  grinder?: string | null;
+  portafilterId?: string | null;
+  basketId?: string | null;
+  puckScreenId?: string | null;
+  paperFilterId?: string | null;
+  tamperId?: string | null;
+  isDefault?: boolean;
+}
+
 /**
  * Update a setup. Only the owner may update.
  *
@@ -37,7 +50,7 @@ export async function createSetup(userId: string, data: any) {
  * @throws SETUP_NOT_FOUND if the setup doesn't exist
  * @throws FORBIDDEN if the user doesn't own the setup
  */
-export async function updateSetup(userId: string, id: string, data: any) {
+export async function updateSetup(userId: string, id: string, data: UpdateSetupPayload) {
   const setup = await model.findById(id);
   if (!setup) throw new Error('SETUP_NOT_FOUND');
   if (setup.userId !== userId) throw new Error('FORBIDDEN');

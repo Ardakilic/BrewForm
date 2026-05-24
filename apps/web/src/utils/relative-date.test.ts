@@ -13,7 +13,7 @@ import {
   grindDateResult,
   packageOpenDateResult,
   roastDateResult,
-} from './relative-date';
+} from './relative-date.ts';
 
 describe('daysBetween', () => {
   it('returns 0 for the same date', () => {

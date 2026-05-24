@@ -39,8 +39,22 @@ export async function create(data: typeof setups.$inferInsert) {
   return result;
 }
 
+/** User-editable fields for a setup. */
+export type UpdatableSetup = Pick<
+  typeof setups.$inferInsert,
+  | 'name'
+  | 'brewerDetails'
+  | 'grinder'
+  | 'portafilterId'
+  | 'basketId'
+  | 'puckScreenId'
+  | 'paperFilterId'
+  | 'tamperId'
+  | 'isDefault'
+>;
+
 /** Update a setup by ID. Returns null if not found. */
-export async function update(id: string, data: Partial<typeof setups.$inferInsert>) {
+export async function update(id: string, data: Partial<UpdatableSetup>) {
   const [result] = await db.update(setups).set(data).where(eq(setups.id, id)).returning();
   return result ?? null;
 }

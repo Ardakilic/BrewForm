@@ -49,6 +49,7 @@ export async function unbanUser(adminId: string, userId: string) {
 /** Grant or revoke admin role for a user and log the action. */
 export async function setUserAdminRole(adminId: string, userId: string, isAdmin: boolean) {
   const user = await model.setUserAdminRole(userId, isAdmin);
+  if (!user) throw new Error('USER_NOT_FOUND');
   await model.createAuditLog(
     adminId,
     isAdmin ? 'SET_ADMIN' : 'REMOVE_ADMIN',

@@ -62,6 +62,7 @@ export async function updateProfile(
   if (data.displayName !== undefined) data.displayName = sanitizeName(data.displayName);
   if (data.bio !== undefined) data.bio = sanitizeText(data.bio);
   const user = await model.updateProfile(userId, data);
+  if (!user) throw new Error('USER_NOT_FOUND');
   // deno-lint-ignore no-explicit-any
   const { passwordHash: _passwordHash, ...safe } = user as any;
   return safe;

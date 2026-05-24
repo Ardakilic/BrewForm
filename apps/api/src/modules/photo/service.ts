@@ -6,6 +6,7 @@
  */
 // deno-lint-ignore-file no-explicit-any
 import * as model from './model.ts';
+import * as recipeModel from '../recipe/model.ts';
 import {
   generateFilename,
   getPublicUrl,
@@ -63,8 +64,10 @@ export async function listPhotos(recipeId: string) {
 }
 
 /** Soft-delete a photo. Throws PHOTO_NOT_FOUND if the photo doesn't exist. */
-export async function deletePhoto(_userId: string, id: string) {
+export async function deletePhoto(userId: string, id: string) {
   const photo = await model.findById(id);
   if (!photo) throw new Error('PHOTO_NOT_FOUND');
+  const recipe = await recipeModel.findById(photo.recipeId);
+  if (!recipe || recipe.authorId !== userId) throw new Error('FORBIDDEN');
   await model.softDelete(id);
 }
