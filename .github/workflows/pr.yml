@@ -116,6 +116,7 @@ jobs:
         run: >
           deno test
           --no-check
+          --coverage=coverage
           --allow-env
           --allow-read
           --allow-write

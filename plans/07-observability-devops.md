@@ -225,7 +225,7 @@ sourcemap: 'hidden',
 
 Append at the end if not already present:
 
-```
+```gitignore
 apps/web/dist/**/*.map
 ```
 
