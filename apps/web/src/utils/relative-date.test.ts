@@ -8,7 +8,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { daysBetween, grindDateResult, packageOpenDateResult, roastDateResult } from './relative-date';
+import {
+  daysBetween,
+  grindDateResult,
+  packageOpenDateResult,
+  roastDateResult,
+} from './relative-date';
 
 describe('daysBetween', () => {
   it('returns 0 for the same date', () => {
@@ -149,8 +154,6 @@ describe('Property 3: Relative date calculation (PBT)', () => {
   function toMidnightUTC(d: Date): Date {
     return new Date(d.toISOString().slice(0, 10) + 'T00:00:00.000Z');
   }
-
-
 
   it('same-day property: all three result functions return { type: "today" } when both arguments are the same date', () => {
     fc.assert(

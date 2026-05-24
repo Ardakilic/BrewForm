@@ -66,4 +66,3 @@ export function grindDateResult(grindDate: Date, brewDate: Date): RelativeDateRe
   if (isSameCalendarDay(grindDate, brewDate)) return { type: 'today' };
   return { type: 'daysAgo', days: daysBetween(grindDate, brewDate) };
 }
-

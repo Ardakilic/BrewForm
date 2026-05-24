@@ -41,12 +41,8 @@ export function OnboardingWizard() {
   return (
     <div className='mx-auto max-w-lg px-6 py-12 text-center'>
       {currentStep === 'welcome' && <WelcomeStep t={t} />}
-      {currentStep === 'equipment' && (
-        <EquipmentStep t={t} onSelect={setSelectedSetupId} />
-      )}
-      {currentStep === 'beans' && (
-        <BeansStep t={t} onBeanSaved={setSavedBeanId} />
-      )}
+      {currentStep === 'equipment' && <EquipmentStep t={t} onSelect={setSelectedSetupId} />}
+      {currentStep === 'beans' && <BeansStep t={t} onBeanSaved={setSavedBeanId} />}
       {currentStep === 'first-brew' && (
         <FirstBrewStep t={t} setupId={selectedSetupId} beanId={savedBeanId} />
       )}
@@ -105,7 +101,9 @@ function EquipmentStep({ t, onSelect }: StepProps & { onSelect: (id: string | nu
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<{ id: string; name: string }[]>('/setups').then((data) => setSetups(data ?? [])).catch(() => {});
+    api.get<{ id: string; name: string }[]>('/setups').then((data) => setSetups(data ?? [])).catch(
+      () => {},
+    );
   }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -125,7 +123,11 @@ function EquipmentStep({ t, onSelect }: StepProps & { onSelect: (id: string | nu
       </p>
       {setups.length > 0
         ? (
-          <select value={selectedId ?? ''} onChange={handleChange} className='mt-4 w-full input-primary'>
+          <select
+            value={selectedId ?? ''}
+            onChange={handleChange}
+            className='mt-4 w-full input-primary'
+          >
             <option value=''>{t('onboarding.equipment.selectPlaceholder')}</option>
             {setups.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -168,23 +170,39 @@ function BeansStep({ t, onBeanSaved }: StepProps & { onBeanSaved: (id: string) =
         ? <p className='mt-4' style={{ color: 'var(--success)' }}>{t('onboarding.beans.saved')}</p>
         : (
           <div className='mt-4 space-y-3 text-left'>
-            <input type='text' placeholder={t('onboarding.beans.originPlaceholder')} value={origin}
-              onChange={(e) => setOrigin(e.target.value)} className='w-full input-primary' />
-            <input type='text' placeholder={t('onboarding.beans.roasterPlaceholder')} value={roaster}
-              onChange={(e) => setRoaster(e.target.value)} className='w-full input-primary' />
+            <input
+              type='text'
+              placeholder={t('onboarding.beans.originPlaceholder')}
+              value={origin}
+              onChange={(e) => setOrigin(e.target.value)}
+              className='w-full input-primary'
+            />
+            <input
+              type='text'
+              placeholder={t('onboarding.beans.roasterPlaceholder')}
+              value={roaster}
+              onChange={(e) => setRoaster(e.target.value)}
+              className='w-full input-primary'
+            />
             <button type='button' onClick={handleQuickAdd} className='btn-primary w-full'>
               {t('onboarding.beansAction')}
             </button>
           </div>
         )}
-      <a href='/beans' className='text-sm mt-3 inline-block' style={{ color: 'var(--text-tertiary)' }}>
+      <a
+        href='/beans'
+        className='text-sm mt-3 inline-block'
+        style={{ color: 'var(--text-tertiary)' }}
+      >
         {t('onboarding.beans.advancedLink')}
       </a>
     </>
   );
 }
 
-function FirstBrewStep({ t, setupId, beanId }: StepProps & { setupId: string | null; beanId: string | null }) {
+function FirstBrewStep(
+  { t, setupId, beanId }: StepProps & { setupId: string | null; beanId: string | null },
+) {
   const navigate = useNavigate();
 
   function startRecipe() {

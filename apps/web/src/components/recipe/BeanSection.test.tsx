@@ -35,7 +35,6 @@ vi.mock('../../utils/relative-date.ts', () => ({
   grindDateResult: (_grindDate: Date, _brewDate: Date) => ({ type: 'daysAgo', days: 1 }),
   // daysBetween is used by isPeakWindow inside BeanSection
   daysBetween: (_a: Date, _b: Date) => 14,
-
 }));
 
 // ---------------------------------------------------------------------------
