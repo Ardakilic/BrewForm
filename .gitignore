@@ -51,6 +51,9 @@ pr_description.md
 # Garage config (contains secrets)
 garage.toml
 
+# Hidden sourcemaps (never served to users)
+apps/web/dist/**/*.map
+
 # other
 .kiro/
 

@@ -75,7 +75,7 @@ Sitemap: ${sitemapUrl}
   },
   build: {
     outDir: 'dist',
-    sourcemap: false,
+    sourcemap: 'hidden',
     chunkSizeWarningLimit: 800,
   },
   define: {
