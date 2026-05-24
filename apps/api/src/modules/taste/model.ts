@@ -39,6 +39,7 @@ export async function searchByName(query: string) {
  */
 export async function getHierarchy() {
   const allNotes = await db.select().from(tasteNotes)
+    .where(isNull(tasteNotes.deletedAt))
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
 
   const nodeMap = new Map<string, any>();

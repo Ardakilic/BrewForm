@@ -58,7 +58,9 @@ export async function updateSetup(userId: string, id: string, data: UpdateSetupP
   if (data.isDefault) {
     await model.clearDefaultForUser(userId);
   }
-  return model.update(id, data);
+  const updated = await model.update(id, data);
+  if (!updated) throw new Error('SETUP_NOT_FOUND');
+  return updated;
 }
 
 /**
@@ -71,7 +73,8 @@ export async function deleteSetup(userId: string, id: string) {
   const setup = await model.findById(id);
   if (!setup) throw new Error('SETUP_NOT_FOUND');
   if (setup.userId !== userId) throw new Error('FORBIDDEN');
-  await model.softDelete(id);
+  const deleted = await model.softDelete(id);
+  if (!deleted) throw new Error('SETUP_NOT_FOUND');
 }
 
 /**
