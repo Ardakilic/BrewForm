@@ -1,3 +1,10 @@
+/**
+ * Badge database operations and evaluation logic for BrewForm.
+ *
+ * Lists available badge definitions, retrieves awarded badges for a user, and
+ * evaluates badge criteria (recipe count, likes, comments, forks, followers,
+ * brewing methods, precision metrics) awarding them via upsert.
+ */
 import { db } from '@brewform/db';
 import {
   badges,
@@ -9,10 +16,12 @@ import {
 } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 
+/** List all available badge definitions ordered by threshold ascending. */
 export async function listBadges() {
   return db.select().from(badges).orderBy(asc(badges.threshold));
 }
 
+/** Get all badges awarded to a user, with badge definition joined. */
 export async function getUserBadges(userId: string) {
   return db.select({
     id: userBadges.id,
@@ -34,6 +43,13 @@ export async function getUserBadges(userId: string) {
     .orderBy(desc(userBadges.awardedAt));
 }
 
+/**
+ * Evaluate all badge criteria for a user and award any newly met badges.
+ *
+ * Checks: first_brew, decade_brewer, centurion, first_fork, fan_favourite,
+ * community_star, conversationalist, precision_brewer, explorer, influencer.
+ * Uses onConflictDoNothing to avoid duplicate awards.
+ */
 export async function evaluateBadges(userId: string) {
   const userRecipesResult = await db.select({ count: count() }).from(recipes)
     .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));

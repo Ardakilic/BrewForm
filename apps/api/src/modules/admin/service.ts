@@ -1,3 +1,14 @@
+/**
+ * Admin business-logic layer (service) for BrewForm.
+ *
+ * Wraps every model call with audit logging, permission checks
+ * (e.g. admins cannot self-delete or self-edit), cache invalidation,
+ * and email notifications. Pass-through functions exist so controllers
+ * never call the model directly.
+ *
+ * This is the middle layer of the 3-layer admin module:
+ * controllers -> service.ts (this file) -> model.ts
+ */
 // deno-lint-ignore-file require-await
 import * as model from './model.ts';
 import type { CacheProvider } from '../../utils/cache/index.ts';
@@ -8,14 +19,17 @@ const logger = createLogger('admin-service');
 
 // --- Users ---
 
+/** Pass-through: fetch a paginated list of non-deleted users with optional search. */
 export async function listUsers(page: number, perPage: number, query?: string) {
   return model.listUsers(page, perPage, query);
 }
 
+/** Pass-through: fetch a single non-deleted user by ID. */
 export async function getUserDetail(userId: string) {
   return model.getUserById(userId);
 }
 
+/** Ban a user and log the action. Throws if the user is not found. */
 export async function banUser(adminId: string, userId: string, reason?: string) {
   const user = await model.banUser(userId);
   if (!user) throw new Error('USER_NOT_FOUND');
@@ -24,6 +38,7 @@ export async function banUser(adminId: string, userId: string, reason?: string) 
   return user;
 }
 
+/** Unban a user and log the action. Throws if the user is not found. */
 export async function unbanUser(adminId: string, userId: string) {
   const user = await model.unbanUser(userId);
   if (!user) throw new Error('USER_NOT_FOUND');
@@ -31,8 +46,10 @@ export async function unbanUser(adminId: string, userId: string) {
   return user;
 }
 
+/** Grant or revoke admin role for a user and log the action. */
 export async function setUserAdminRole(adminId: string, userId: string, isAdmin: boolean) {
   const user = await model.setUserAdminRole(userId, isAdmin);
+  if (!user) throw new Error('USER_NOT_FOUND');
   await model.createAuditLog(
     adminId,
     isAdmin ? 'SET_ADMIN' : 'REMOVE_ADMIN',
@@ -43,6 +60,10 @@ export async function setUserAdminRole(adminId: string, userId: string, isAdmin:
   return user;
 }
 
+/**
+ * Admin-created user account with hashed password.
+ * Logs the action, sends a welcome email (best-effort), and handles unique constraint errors.
+ */
 export async function adminCreateUser(adminId: string, data: {
   email: string;
   username: string;
@@ -70,6 +91,11 @@ export async function adminCreateUser(adminId: string, data: {
   return user;
 }
 
+/**
+ * Partially update a target user's profile. Admin cannot edit themselves.
+ * Logs each changed field and re-hashes password if provided.
+ * Throws SELF_EDIT_FORBIDDEN or USER_NOT_FOUND.
+ */
 export async function adminUpdateUser(adminId: string, targetUserId: string, data: {
   email?: string;
   username?: string;
@@ -106,6 +132,7 @@ export async function adminUpdateUser(adminId: string, targetUserId: string, dat
   return user;
 }
 
+/** Soft-delete a user and log the action. Admin cannot delete themselves. */
 export async function softDeleteUser(adminId: string, userId: string) {
   if (adminId === userId) {
     throw new Error('SELF_DELETE_FORBIDDEN');
@@ -116,10 +143,12 @@ export async function softDeleteUser(adminId: string, userId: string) {
 
 // --- Recipes ---
 
+/** Pass-through: list all non-deleted recipes with optional visibility filter. */
 export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
   return model.listAllRecipes(page, perPage, visibility);
 }
 
+/** Update a recipe's visibility and log the action. Returns null if the visibility is invalid. */
 export async function updateRecipeVisibility(
   adminId: string,
   recipeId: string,
@@ -137,6 +166,7 @@ export async function updateRecipeVisibility(
   return recipe;
 }
 
+/** Soft-delete a recipe and log the action. */
 export async function softDeleteRecipe(adminId: string, recipeId: string) {
   await model.softDeleteRecipe(recipeId);
   await model.createAuditLog(adminId, 'SOFT_DELETE_RECIPE', 'Recipe', recipeId);
@@ -144,10 +174,12 @@ export async function softDeleteRecipe(adminId: string, recipeId: string) {
 
 // --- Equipment ---
 
+/** Pass-through: list all non-deleted equipment entries. */
 export async function listEquipment(page: number, perPage: number) {
   return model.listEquipment(page, perPage);
 }
 
+/** Create an equipment record and log the action. */
 export async function createEquipment(
   adminId: string,
   data: { name: string; type: string; brand?: string; model?: string; description?: string },
@@ -157,12 +189,14 @@ export async function createEquipment(
   return equipment;
 }
 
+/** Update an equipment record and log the action. */
 export async function updateEquipment(adminId: string, id: string, data: any) {
   const equipment = await model.updateEquipment(id, data);
   await model.createAuditLog(adminId, 'UPDATE_EQUIPMENT', 'Equipment', id);
   return equipment;
 }
 
+/** Soft-delete an equipment record and log the action. */
 export async function deleteEquipment(adminId: string, id: string) {
   await model.deleteEquipment(id);
   await model.createAuditLog(adminId, 'DELETE_EQUIPMENT', 'Equipment', id);
@@ -170,10 +204,12 @@ export async function deleteEquipment(adminId: string, id: string) {
 
 // --- Vendors ---
 
+/** Pass-through: list all non-deleted vendors. */
 export async function listVendors(page: number, perPage: number) {
   return model.listVendors(page, perPage);
 }
 
+/** Create a vendor and log the action. */
 export async function createVendor(
   adminId: string,
   data: { name: string; website?: string; description?: string },
@@ -183,12 +219,14 @@ export async function createVendor(
   return vendor;
 }
 
+/** Update a vendor and log the action. */
 export async function updateVendor(adminId: string, id: string, data: any) {
   const vendor = await model.updateVendor(id, data);
   await model.createAuditLog(adminId, 'UPDATE_VENDOR', 'Vendor', id);
   return vendor;
 }
 
+/** Soft-delete a vendor and log the action. */
 export async function deleteVendor(adminId: string, id: string) {
   await model.deleteVendor(id);
   await model.createAuditLog(adminId, 'DELETE_VENDOR', 'Vendor', id);
@@ -196,11 +234,13 @@ export async function deleteVendor(adminId: string, id: string) {
 
 // --- Taste Notes (admin) ---
 
+/** Delegates to the taste module to return the full taste note hierarchy (cached). */
 export async function listTasteNotes(cache: CacheProvider) {
   const { getHierarchy } = await import('../taste/service.ts');
   return getHierarchy(cache);
 }
 
+/** Delegates to the taste module to create a note and logs the action. */
 export async function createTasteNote(
   adminId: string,
   data: { name: string; parentId?: string; color?: string; definition?: string; depth: number },
@@ -218,6 +258,7 @@ export async function createTasteNote(
   return note;
 }
 
+/** Delegates to the taste module to update a note and logs the action. */
 export async function updateTasteNote(
   adminId: string,
   id: string,
@@ -230,6 +271,7 @@ export async function updateTasteNote(
   return note;
 }
 
+/** Delegates to the taste module to delete a note and logs the action. */
 export async function deleteTasteNote(adminId: string, id: string, cache: CacheProvider) {
   const { deleteTasteNote } = await import('../taste/service.ts');
   await deleteTasteNote(id, cache);
@@ -238,10 +280,12 @@ export async function deleteTasteNote(adminId: string, id: string, cache: CacheP
 
 // --- Brew Method Compatibility Matrix ---
 
+/** Pass-through: list all brew method compatibility rules. */
 export async function listCompatibilityRules() {
   return model.listCompatibilityRules();
 }
 
+/** Update a compatibility rule, log the action, and invalidate the compatibility cache. */
 export async function updateCompatibilityRule(
   adminId: string,
   id: string,
@@ -260,6 +304,7 @@ export async function updateCompatibilityRule(
   return rule;
 }
 
+/** Create a compatibility rule, log the action, and invalidate the compatibility cache. */
 export async function createCompatibilityRule(adminId: string, data: any, cache: CacheProvider) {
   const rule = await model.createCompatibilityRule(data);
   await model.createAuditLog(
@@ -272,6 +317,7 @@ export async function createCompatibilityRule(adminId: string, data: any, cache:
   return rule;
 }
 
+/** Hard-delete a compatibility rule, log the action, and invalidate the compatibility cache. */
 export async function deleteCompatibilityRule(adminId: string, id: string, cache: CacheProvider) {
   await model.deleteCompatibilityRule(id);
   await model.createAuditLog(adminId, 'DELETE_COMPATIBILITY_RULE', 'BrewMethodEquipmentRule', id);
@@ -280,6 +326,7 @@ export async function deleteCompatibilityRule(adminId: string, id: string, cache
 
 // --- Reports (admin) ---
 
+/** Pass-through: list reports with optional status and entity type filters. */
 export async function listReports(
   page: number,
   perPage: number,
@@ -289,12 +336,14 @@ export async function listReports(
   return model.listReports(page, perPage, status, entityType);
 }
 
+/** Resolve a report and log the action. */
 export async function resolveReport(adminId: string, id: string) {
   const report = await model.resolveReport(id, adminId);
   await model.createAuditLog(adminId, 'RESOLVE_REPORT', 'Report', id);
   return report;
 }
 
+/** Dismiss a report and log the action. */
 export async function dismissReport(adminId: string, id: string) {
   const report = await model.dismissReport(id, adminId);
   await model.createAuditLog(adminId, 'DISMISS_REPORT', 'Report', id);
@@ -303,12 +352,17 @@ export async function dismissReport(adminId: string, id: string) {
 
 // --- Audit Logs ---
 
+/** Pass-through: list audit log entries with optional entity filter. */
 export async function listAuditLogs(page: number, perPage: number, entity?: string) {
   return model.listAuditLogs(page, perPage, entity);
 }
 
 // --- Cache Flush ---
 
+/**
+ * Flush the entire cache or specific keys via cache provider.
+ * Logs the action with key details (or 'ALL' if no keys specified).
+ */
 export async function flushCache(cache: CacheProvider, keys: string[]) {
   if (keys.length === 0) {
     await cache.deleteByPrefix(['cache']);
@@ -328,22 +382,27 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
 
 // --- Analytics ---
 
+/** Pass-through: aggregate dashboard statistics (users, recipes, comments, reports, etc.). */
 export async function getDashboardStats() {
   return model.getDashboardStats();
 }
 
+/** Pass-through: fetch user creation dates over N days for growth charting. */
 export async function getUserGrowth(days: number) {
   return model.getUserGrowth(days);
 }
 
+/** Pass-through: fetch recipe creation dates over N days for growth charting. */
 export async function getRecipeGrowth(days: number) {
   return model.getRecipeGrowth(days);
 }
 
+/** Pass-through: fetch top public recipes by like count. */
 export async function getTopRecipes(limit: number) {
   return model.getTopRecipes(limit);
 }
 
+/** Pass-through: fetch top users ranked by recipe count. */
 export async function getTopUsers(limit: number) {
   return model.getTopUsers(limit);
 }

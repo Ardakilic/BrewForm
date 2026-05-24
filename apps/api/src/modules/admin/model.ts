@@ -1,3 +1,14 @@
+/**
+ * Admin data-access layer (model) for BrewForm.
+ *
+ * Direct database queries and mutations for administrative operations
+ * including user management, recipe moderation, equipment/vendor CRUD,
+ * compatibility rules, report handling, audit logging, and dashboard analytics.
+ * All user-facing deletes use soft-delete (sets `deletedAt`).
+ *
+ * This is the bottom layer of the 3-layer admin module:
+ * controllers -> service.ts -> model.ts (this file)
+ */
 import { db } from '@brewform/db';
 import {
   auditLogs,
@@ -16,6 +27,7 @@ import {
 import { and, asc, count, desc, eq, gte, isNull, like, ne, or } from 'drizzle-orm';
 import { hashSync } from 'bcryptjs';
 
+/** Fetch a paginated list of non-deleted users, optionally filtered by email, username, or display name. */
 export async function listUsers(page: number, perPage: number, query?: string) {
   const where = query
     ? and(
@@ -45,6 +57,7 @@ export async function listUsers(page: number, perPage: number, query?: string) {
   return { users: data, total: totalResult[0].count };
 }
 
+/** Check whether an email is already taken by a non-deleted user, excluding an optional user ID. */
 export async function isEmailTaken(email: string, excludeId?: string) {
   const conditions = [eq(users.email, email), isNull(users.deletedAt)];
   if (excludeId) conditions.push(ne(users.id, excludeId));
@@ -52,6 +65,7 @@ export async function isEmailTaken(email: string, excludeId?: string) {
   return !!result;
 }
 
+/** Check whether a username is already taken by a non-deleted user, excluding an optional user ID. */
 export async function isUsernameTaken(username: string, excludeId?: string) {
   const conditions = [eq(users.username, username), isNull(users.deletedAt)];
   if (excludeId) conditions.push(ne(users.id, excludeId));
@@ -59,6 +73,7 @@ export async function isUsernameTaken(username: string, excludeId?: string) {
   return !!result;
 }
 
+/** Fetch a single non-deleted user by ID. Returns null if not found. */
 export async function getUserById(id: string) {
   const result = await db.select({
     id: users.id,
@@ -76,23 +91,30 @@ export async function getUserById(id: string) {
   return result[0] ?? null;
 }
 
+/** Ban a user by setting `isBanned = true`. Returns the updated user or null. */
 export async function banUser(userId: string) {
   const [result] = await db.update(users).set({ isBanned: true }).where(eq(users.id, userId))
     .returning();
   return result ?? null;
 }
 
+/** Unban a user by setting `isBanned = false`. Returns the updated user or null. */
 export async function unbanUser(userId: string) {
   const [result] = await db.update(users).set({ isBanned: false }).where(eq(users.id, userId))
     .returning();
   return result ?? null;
 }
 
+/** Set or clear the admin role for a user. Returns the updated user or null. */
 export async function setUserAdminRole(userId: string, isAdmin: boolean) {
   const [result] = await db.update(users).set({ isAdmin }).where(eq(users.id, userId)).returning();
   return result ?? null;
 }
 
+/**
+ * Create a new user with hashed password, user preferences, and unique constraint handling.
+ * Runs inside a transaction. Throws EMAIL_ALREADY_EXISTS or USERNAME_ALREADY_EXISTS on conflict.
+ */
 export async function adminCreateUser(data: {
   email: string;
   username: string;
@@ -127,6 +149,10 @@ export async function adminCreateUser(data: {
   }
 }
 
+/**
+ * Partially update a user's profile fields (including password re-hash).
+ * Returns null if no fields were provided. Throws EMAIL_ALREADY_EXISTS or USERNAME_ALREADY_EXISTS on conflict.
+ */
 export async function adminUpdateUser(
   id: string,
   data: {
@@ -165,6 +191,7 @@ export async function adminUpdateUser(
   }
 }
 
+/** Soft-delete a user by setting `deletedAt`. Returns the updated user or null. */
 export async function softDeleteUser(userId: string) {
   const [result] = await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId))
     .returning();
@@ -177,6 +204,7 @@ function isValidVisibility(v: string): v is RecipeVisibility {
   return RECIPE_VISIBILITIES.includes(v);
 }
 
+/** List all non-deleted recipes with optional visibility filter, ordered by newest first. */
 export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
   const where = visibility && isValidVisibility(visibility)
     ? and(isNull(recipes.deletedAt), eq(recipes.visibility, visibility))
@@ -190,6 +218,7 @@ export async function listAllRecipes(page: number, perPage: number, visibility?:
   return { recipes: data, total: totalResult[0].count };
 }
 
+/** Update a recipe's visibility. Returns null if the visibility value is invalid. */
 export async function updateRecipeVisibility(recipeId: string, visibility: string) {
   if (!isValidVisibility(visibility)) {
     return null;
@@ -200,6 +229,7 @@ export async function updateRecipeVisibility(recipeId: string, visibility: strin
   return result ?? null;
 }
 
+/** Soft-delete a recipe by setting `deletedAt`. Returns the updated recipe or null. */
 export async function softDeleteRecipe(recipeId: string) {
   const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(
     eq(recipes.id, recipeId),
@@ -207,6 +237,7 @@ export async function softDeleteRecipe(recipeId: string) {
   return result ?? null;
 }
 
+/** List all non-deleted equipment entries, paginated and ordered by newest first. */
 export async function listEquipment(page: number, perPage: number) {
   const where = isNull(equipment.deletedAt);
   const [data, totalResult] = await Promise.all([
@@ -217,6 +248,7 @@ export async function listEquipment(page: number, perPage: number) {
   return { equipment: data, total: totalResult[0].count };
 }
 
+/** Create a new equipment record. Throws if the type is not a valid equipment type enum value. */
 export async function createEquipment(
   data: { name: string; type: string; brand?: string; model?: string; description?: string },
 ) {
@@ -230,6 +262,7 @@ export async function createEquipment(
   return result;
 }
 
+/** Partially update an equipment record. Only valid enum values for type are applied. Returns the updated record or null. */
 export async function updateEquipment(
   id: string,
   data: Partial<
@@ -252,6 +285,7 @@ export async function updateEquipment(
   return result ?? null;
 }
 
+/** Soft-delete an equipment record by setting `deletedAt`. Returns the updated record or null. */
 export async function deleteEquipment(id: string) {
   const [result] = await db.update(equipment).set({ deletedAt: new Date() }).where(
     eq(equipment.id, id),
@@ -259,6 +293,7 @@ export async function deleteEquipment(id: string) {
   return result ?? null;
 }
 
+/** List all non-deleted vendors, paginated and ordered by newest first. */
 export async function listVendors(page: number, perPage: number) {
   const where = isNull(vendors.deletedAt);
   const [data, totalResult] = await Promise.all([
@@ -270,11 +305,13 @@ export async function listVendors(page: number, perPage: number) {
   return { vendors: data, total: totalResult[0].count };
 }
 
+/** Create a new vendor. */
 export async function createVendor(data: { name: string; website?: string; description?: string }) {
   const [result] = await db.insert(vendors).values(data).returning();
   return result;
 }
 
+/** Partially update a vendor's name, website, or description. */
 export async function updateVendor(
   id: string,
   data: Partial<Pick<typeof vendors.$inferInsert, 'name' | 'website' | 'description'>>,
@@ -289,12 +326,14 @@ export async function updateVendor(
   return result ?? null;
 }
 
+/** Soft-delete a vendor by setting `deletedAt`. Returns the updated vendor or null. */
 export async function deleteVendor(id: string) {
   const [result] = await db.update(vendors).set({ deletedAt: new Date() }).where(eq(vendors.id, id))
     .returning();
   return result ?? null;
 }
 
+/** List all brew method ↔ equipment type compatibility rules. */
 export async function listCompatibilityRules() {
   return db.select().from(brewMethodEquipmentRules).orderBy(
     asc(brewMethodEquipmentRules.brewMethod),
@@ -302,6 +341,7 @@ export async function listCompatibilityRules() {
   );
 }
 
+/** Update the compatible flag on a brew method ↔ equipment type rule. */
 export async function updateCompatibilityRule(id: string, compatible: boolean) {
   const [result] = await db.update(brewMethodEquipmentRules).set({ compatible }).where(
     eq(brewMethodEquipmentRules.id, id),
@@ -309,6 +349,7 @@ export async function updateCompatibilityRule(id: string, compatible: boolean) {
   return result ?? null;
 }
 
+/** Create a compatibility rule. Throws if the brew method or equipment type is not a valid enum value. */
 export async function createCompatibilityRule(
   data: { brewMethod: string; equipmentType: string; compatible: boolean },
 ) {
@@ -330,10 +371,12 @@ export async function createCompatibilityRule(
   return result;
 }
 
+/** Hard-delete a compatibility rule (no soft-delete on this table). */
 export async function deleteCompatibilityRule(id: string) {
   await db.delete(brewMethodEquipmentRules).where(eq(brewMethodEquipmentRules.id, id));
 }
 
+/** List reports with optional filters for status and entity type, paginated. */
 export async function listReports(
   page: number,
   perPage: number,
@@ -356,6 +399,7 @@ export async function listReports(
   return { reports: data, total: totalResult[0].count };
 }
 
+/** Mark a report as resolved, recording who resolved it and when. */
 export async function resolveReport(id: string, resolvedBy: string) {
   const [result] = await db.update(reports)
     .set({ status: 'resolved', resolvedBy, resolvedAt: new Date() })
@@ -364,6 +408,7 @@ export async function resolveReport(id: string, resolvedBy: string) {
   return result ?? null;
 }
 
+/** Mark a report as dismissed, recording who dismissed it and when. */
 export async function dismissReport(id: string, resolvedBy: string) {
   const [result] = await db.update(reports)
     .set({ status: 'dismissed', resolvedBy, resolvedAt: new Date() })
@@ -372,6 +417,7 @@ export async function dismissReport(id: string, resolvedBy: string) {
   return result ?? null;
 }
 
+/** Insert an audit log entry recording an admin action on an entity. */
 export async function createAuditLog(
   adminId: string,
   action: string,
@@ -384,6 +430,7 @@ export async function createAuditLog(
   return result;
 }
 
+/** List audit log entries with optional entity filter, paginated newest first. */
 export async function listAuditLogs(page: number, perPage: number, entity?: string) {
   let where = undefined;
   if (entity) where = eq(auditLogs.entity, entity);
@@ -395,6 +442,10 @@ export async function listAuditLogs(page: number, perPage: number, entity?: stri
   return { logs: data, total: totalResult[0].count };
 }
 
+/**
+ * Aggregate dashboard statistics: total users, recipes, comments, reports,
+ * pending reports, new users today, and new recipes today.
+ */
 export async function getDashboardStats() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -432,6 +483,7 @@ export async function getDashboardStats() {
   };
 }
 
+/** Fetch user creation dates over the past N days for growth charting. */
 export async function getUserGrowth(days: number) {
   const since = new Date();
   since.setDate(since.getDate() - days);
@@ -442,6 +494,7 @@ export async function getUserGrowth(days: number) {
   return data.map((u) => ({ date: u.createdAt.toISOString().split('T')[0] }));
 }
 
+/** Fetch recipe creation dates over the past N days for growth charting. */
 export async function getRecipeGrowth(days: number) {
   const since = new Date();
   since.setDate(since.getDate() - days);
@@ -452,6 +505,7 @@ export async function getRecipeGrowth(days: number) {
   return data.map((r) => ({ date: r.createdAt.toISOString().split('T')[0] }));
 }
 
+/** Fetch the top public recipes ordered by like count, limited to N results. */
 export async function getTopRecipes(limit: number) {
   return db.select().from(recipes)
     .where(and(isNull(recipes.deletedAt), eq(recipes.visibility, 'public')))
@@ -459,6 +513,7 @@ export async function getTopRecipes(limit: number) {
     .limit(limit);
 }
 
+/** Fetch the top users ranked by recipe count, limited to N results. */
 export async function getTopUsers(limit: number) {
   const result = await db.select({
     id: users.id,

@@ -1,3 +1,10 @@
+/**
+ * Comment business logic for BrewForm.
+ *
+ * Orchestrates comment creation with thread-flattening (replies always attach
+ * to top-level comments), @mention auto-prepend for nested replies, content
+ * sanitization, and async notification + badge evaluation side-effects.
+ */
 import { sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
@@ -7,6 +14,21 @@ import { evaluateBadges } from '../badge/service.ts';
 
 const logger = createLogger('comment-service');
 
+/**
+ * Create a comment with thread-flattening, @mention, sanitization, and side-effects.
+ *
+ * Only recipe authors and admins may add replies. Nested replies are flattened
+ * to always attach under the top-level comment. If the direct reply target is
+ * nested, the author's @username is prepended to the content. Triggers async
+ * notification and badge evaluation.
+ *
+ * @param userId - The comment author
+ * @param recipeId - The recipe being commented on
+ * @param content - Raw comment text (will be sanitized)
+ * @param isAdmin - Whether the user has admin privileges
+ * @param parentCommentId - Optional parent comment for threaded replies
+ * @returns The created comment record
+ */
 export async function createComment(
   userId: string,
   recipeId: string,
@@ -77,13 +99,16 @@ export async function createComment(
   return comment;
 }
 
+/** List paginated comments for a recipe with nested replies. */
 export async function listComments(recipeId: string, page: number, perPage: number) {
   return model.findByRecipe(recipeId, page, perPage);
 }
 
+/** Delete a comment. Only the author or an admin may delete. */
 export async function deleteComment(userId: string, id: string, isAdmin: boolean): Promise<void> {
   const comment = await model.findById(id);
   if (!comment) throw new Error('COMMENT_NOT_FOUND');
   if (!isAdmin && comment.authorId !== userId) throw new Error('FORBIDDEN');
   await model.softDelete(id);
+  await recipeModel.decrementComments(comment.recipeId);
 }

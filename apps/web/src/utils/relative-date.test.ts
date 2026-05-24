@@ -8,7 +8,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { daysBetween, grindDateLabel, packageOpenDateLabel, roastDateLabel } from './relative-date';
+import {
+  daysBetween,
+  grindDateResult,
+  packageOpenDateResult,
+  roastDateResult,
+} from './relative-date.ts';
 
 describe('daysBetween', () => {
   it('returns 0 for the same date', () => {
@@ -53,78 +58,78 @@ describe('daysBetween', () => {
   });
 });
 
-describe('roastDateLabel', () => {
-  it('returns "today" when roast date and brew date are the same calendar day', () => {
+describe('roastDateResult', () => {
+  it('returns { type: "today" } when roast date and brew date are the same calendar day', () => {
     const date = new Date('2024-03-10T08:00:00Z');
-    expect(roastDateLabel(date, date)).toBe('today');
+    expect(roastDateResult(date, date)).toEqual({ type: 'today' });
   });
 
-  it('returns "today" for same calendar day at different times', () => {
+  it('returns { type: "today" } for same calendar day at different times', () => {
     const roast = new Date('2024-03-10T06:00:00Z');
     const brew = new Date('2024-03-10T14:00:00Z');
-    expect(roastDateLabel(roast, brew)).toBe('today');
+    expect(roastDateResult(roast, brew)).toEqual({ type: 'today' });
   });
 
-  it('returns "1 days post-roast" for a 1-day difference', () => {
+  it('returns { type: "daysPostRoast", days: 1 } for a 1-day difference', () => {
     const roast = new Date('2024-03-09T00:00:00Z');
     const brew = new Date('2024-03-10T00:00:00Z');
-    expect(roastDateLabel(roast, brew)).toBe('1 days post-roast');
+    expect(roastDateResult(roast, brew)).toEqual({ type: 'daysPostRoast', days: 1 });
   });
 
-  it('returns "X days post-roast" for a multi-day difference', () => {
+  it('returns { type: "daysPostRoast", days: 9 } for a multi-day difference', () => {
     const roast = new Date('2024-03-01T00:00:00Z');
     const brew = new Date('2024-03-10T00:00:00Z');
-    expect(roastDateLabel(roast, brew)).toBe('9 days post-roast');
+    expect(roastDateResult(roast, brew)).toEqual({ type: 'daysPostRoast', days: 9 });
   });
 });
 
-describe('packageOpenDateLabel', () => {
-  it('returns "today" when package open date and brew date are the same calendar day', () => {
+describe('packageOpenDateResult', () => {
+  it('returns { type: "today" } when package open date and brew date are the same calendar day', () => {
     const date = new Date('2024-03-10T08:00:00Z');
-    expect(packageOpenDateLabel(date, date)).toBe('today');
+    expect(packageOpenDateResult(date, date)).toEqual({ type: 'today' });
   });
 
-  it('returns "today" for same calendar day at different times', () => {
+  it('returns { type: "today" } for same calendar day at different times', () => {
     const opened = new Date('2024-03-10T07:00:00Z');
     const brew = new Date('2024-03-10T15:00:00Z');
-    expect(packageOpenDateLabel(opened, brew)).toBe('today');
+    expect(packageOpenDateResult(opened, brew)).toEqual({ type: 'today' });
   });
 
-  it('returns "1 days since opened" for a 1-day difference', () => {
+  it('returns { type: "daysSinceOpened", days: 1 } for a 1-day difference', () => {
     const opened = new Date('2024-03-09T00:00:00Z');
     const brew = new Date('2024-03-10T00:00:00Z');
-    expect(packageOpenDateLabel(opened, brew)).toBe('1 days since opened');
+    expect(packageOpenDateResult(opened, brew)).toEqual({ type: 'daysSinceOpened', days: 1 });
   });
 
-  it('returns "X days since opened" for a multi-day difference', () => {
+  it('returns { type: "daysSinceOpened", days: 14 } for a multi-day difference', () => {
     const opened = new Date('2024-02-25T00:00:00Z');
     const brew = new Date('2024-03-10T00:00:00Z');
-    expect(packageOpenDateLabel(opened, brew)).toBe('14 days since opened');
+    expect(packageOpenDateResult(opened, brew)).toEqual({ type: 'daysSinceOpened', days: 14 });
   });
 });
 
-describe('grindDateLabel', () => {
-  it('returns "today" when grind date and brew date are the same calendar day', () => {
+describe('grindDateResult', () => {
+  it('returns { type: "today" } when grind date and brew date are the same calendar day', () => {
     const date = new Date('2024-03-10T08:00:00Z');
-    expect(grindDateLabel(date, date)).toBe('today');
+    expect(grindDateResult(date, date)).toEqual({ type: 'today' });
   });
 
-  it('returns "today" for same calendar day at different times', () => {
+  it('returns { type: "today" } for same calendar day at different times', () => {
     const grind = new Date('2024-03-10T05:00:00Z');
     const brew = new Date('2024-03-10T09:00:00Z');
-    expect(grindDateLabel(grind, brew)).toBe('today');
+    expect(grindDateResult(grind, brew)).toEqual({ type: 'today' });
   });
 
-  it('returns "1 days ago" for a 1-day difference', () => {
+  it('returns { type: "daysAgo", days: 1 } for a 1-day difference', () => {
     const grind = new Date('2024-03-09T00:00:00Z');
     const brew = new Date('2024-03-10T00:00:00Z');
-    expect(grindDateLabel(grind, brew)).toBe('1 days ago');
+    expect(grindDateResult(grind, brew)).toEqual({ type: 'daysAgo', days: 1 });
   });
 
-  it('returns "X days ago" for a multi-day difference', () => {
+  it('returns { type: "daysAgo", days: 3 } for a multi-day difference', () => {
     const grind = new Date('2024-03-07T00:00:00Z');
     const brew = new Date('2024-03-10T00:00:00Z');
-    expect(grindDateLabel(grind, brew)).toBe('3 days ago');
+    expect(grindDateResult(grind, brew)).toEqual({ type: 'daysAgo', days: 3 });
   });
 });
 
@@ -150,25 +155,17 @@ describe('Property 3: Relative date calculation (PBT)', () => {
     return new Date(d.toISOString().slice(0, 10) + 'T00:00:00.000Z');
   }
 
-  /**
-   * Helper: extract the leading integer from a label like "7 days post-roast".
-   * Returns NaN if the label does not start with a number.
-   */
-  function leadingInt(label: string): number {
-    return parseInt(label.split(' ')[0], 10);
-  }
-
-  it('same-day property: all three label functions return "today" when both arguments are the same date', () => {
+  it('same-day property: all three result functions return { type: "today" } when both arguments are the same date', () => {
     fc.assert(
       fc.property(dateArb, (date) => {
-        expect(roastDateLabel(date, date)).toBe('today');
-        expect(packageOpenDateLabel(date, date)).toBe('today');
-        expect(grindDateLabel(date, date)).toBe('today');
+        expect(roastDateResult(date, date)).toEqual({ type: 'today' });
+        expect(packageOpenDateResult(date, date)).toEqual({ type: 'today' });
+        expect(grindDateResult(date, date)).toEqual({ type: 'today' });
       }),
     );
   });
 
-  it('non-zero days property: for different calendar days, all three label functions return a string containing a positive integer (not "today")', () => {
+  it('non-zero days property: for different calendar days, all three result functions return a non-"today" type with positive days', () => {
     // Generate two dates that land on different calendar days by using two
     // independent date arbitraries and filtering out same-day pairs.
     fc.assert(
@@ -185,57 +182,56 @@ describe('Property 3: Relative date calculation (PBT)', () => {
           ctx.log(`dateA=${a.toISOString()}, dateB=${b.toISOString()}`);
 
           for (
-            const label of [
-              roastDateLabel(dateA, dateB),
-              packageOpenDateLabel(dateA, dateB),
-              grindDateLabel(dateA, dateB),
+            const result of [
+              roastDateResult(dateA, dateB),
+              packageOpenDateResult(dateA, dateB),
+              grindDateResult(dateA, dateB),
             ]
           ) {
-            expect(label).not.toBe('today');
-            const days = leadingInt(label);
-            expect(Number.isInteger(days)).toBe(true);
-            expect(days).toBeGreaterThan(0);
+            expect(result.type).not.toBe('today');
+            expect(Number.isInteger(result.days)).toBe(true);
+            expect(result.days).toBeGreaterThan(0);
           }
         },
       ),
     );
   });
 
-  it('roastDateLabel suffix property: for different calendar days, roastDateLabel returns a string ending with "days post-roast"', () => {
+  it('roastDateResult type property: for different calendar days, roastDateResult returns { type: "daysPostRoast" }', () => {
     fc.assert(
       fc.property(dateArb, dateArb, (dateA, dateB) => {
         const a = toMidnightUTC(dateA);
         const b = toMidnightUTC(dateB);
         fc.pre(a.getTime() !== b.getTime());
 
-        const label = roastDateLabel(dateA, dateB);
-        expect(label.endsWith('days post-roast')).toBe(true);
+        const result = roastDateResult(dateA, dateB);
+        expect(result.type).toBe('daysPostRoast');
       }),
     );
   });
 
-  it('packageOpenDateLabel suffix property: for different calendar days, packageOpenDateLabel returns a string ending with "days since opened"', () => {
+  it('packageOpenDateResult type property: for different calendar days, packageOpenDateResult returns { type: "daysSinceOpened" }', () => {
     fc.assert(
       fc.property(dateArb, dateArb, (dateA, dateB) => {
         const a = toMidnightUTC(dateA);
         const b = toMidnightUTC(dateB);
         fc.pre(a.getTime() !== b.getTime());
 
-        const label = packageOpenDateLabel(dateA, dateB);
-        expect(label.endsWith('days since opened')).toBe(true);
+        const result = packageOpenDateResult(dateA, dateB);
+        expect(result.type).toBe('daysSinceOpened');
       }),
     );
   });
 
-  it('grindDateLabel suffix property: for different calendar days, grindDateLabel returns a string ending with "days ago"', () => {
+  it('grindDateResult type property: for different calendar days, grindDateResult returns { type: "daysAgo" }', () => {
     fc.assert(
       fc.property(dateArb, dateArb, (dateA, dateB) => {
         const a = toMidnightUTC(dateA);
         const b = toMidnightUTC(dateB);
         fc.pre(a.getTime() !== b.getTime());
 
-        const label = grindDateLabel(dateA, dateB);
-        expect(label.endsWith('days ago')).toBe(true);
+        const result = grindDateResult(dateA, dateB);
+        expect(result.type).toBe('daysAgo');
       }),
     );
   });

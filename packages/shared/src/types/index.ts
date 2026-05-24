@@ -1,3 +1,10 @@
+/**
+ * Barrel file re-exporting all shared type definitions.
+ *
+ * Consumers should import from `@brewform/shared` or `@brewform/shared/types`
+ * rather than individual type files.
+ */
+
 export type { ApiError, ApiResponse, PaginationMeta, PaginationQuery } from './api.ts';
 export type { UnitSystem, User, UserPreferences, UserProfile } from './user.ts';
 export type {

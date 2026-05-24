@@ -1,3 +1,12 @@
+/**
+ * Recipe data-access layer.
+ *
+ * Pure Drizzle ORM operations — no business logic, no authorization, no side effects.
+ * Called exclusively by `recipe/service.ts`.
+ *
+ * Soft-delete convention: all queries filter `isNull(recipes.deletedAt)`.
+ */
+
 import { db } from '@brewform/db';
 import {
   recipeAdditionalPreparations,
@@ -12,11 +21,18 @@ import {
 } from '@brewform/db/schema';
 import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
 
+/** Insert a new recipe row and return it with all database-generated fields. */
 export async function create(data: typeof recipes.$inferInsert) {
   const [recipe] = await db.insert(recipes).values(data).returning();
   return recipe;
 }
 
+/**
+ * Fetch a recipe by its UUID primary key, excluding soft-deleted rows.
+ *
+ * Loads all relations: author, versions (with taste notes, equipment, preparations,
+ * photos, bean), photos, and forked-from recipe.
+ */
 export async function findById(id: string) {
   return db.query.recipes.findFirst({
     where: and(eq(recipes.id, id), isNull(recipes.deletedAt)),
@@ -38,6 +54,12 @@ export async function findById(id: string) {
   });
 }
 
+/**
+ * Fetch a recipe by its unique slug, excluding soft-deleted rows.
+ *
+ * Loads the same relation tree as {@link findById}: author, versions (with taste notes,
+ * equipment, preparations, photos, bean), photos, and forked-from recipe.
+ */
 export async function findBySlug(slug: string) {
   return db.query.recipes.findFirst({
     where: and(eq(recipes.slug, slug), isNull(recipes.deletedAt)),
@@ -59,6 +81,16 @@ export async function findBySlug(slug: string) {
   });
 }
 
+/**
+ * Fetch a paginated, sorted list of recipes with optional filters.
+ *
+ * @param where     - Optional Drizzle SQL WHERE clause for additional filtering
+ * @param page      - One-based page number
+ * @param perPage   - Number of recipes per page
+ * @param sortBy    - Column to sort by: `'createdAt'` (default) or `'likeCount'`
+ * @param sortOrder - Sort direction: `'desc'` (default) or `'asc'`
+ * @returns Paginated result with `recipes` array and `total` count
+ */
 export async function findMany(
   where: SQL | undefined,
   page: number,
@@ -86,22 +118,40 @@ export async function findMany(
   return { recipes: data, total: totalResult[0].count };
 }
 
+/** Patch a recipe row with partial data, identified by UUID. Returns the updated row or null. */
 export async function update(id: string, data: Partial<typeof recipes.$inferInsert>) {
   const [result] = await db.update(recipes).set(data).where(eq(recipes.id, id)).returning();
   return result ?? null;
 }
 
+/** Soft-delete a recipe by setting its `deletedAt` timestamp. Returns the updated row or null. */
 export async function softDelete(id: string) {
   const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, id))
     .returning();
   return result ?? null;
 }
 
+/** Insert a new recipe version row and return it with all database-generated fields. */
 export async function createVersion(data: typeof recipeVersions.$inferInsert) {
   const [result] = await db.insert(recipeVersions).values(data).returning();
   return result;
 }
 
+/**
+ * Deep-copy a recipe for a new author inside a single database transaction.
+ *
+ * Creates a new recipe linked to the source via `forkedFromId`, then copies
+ * the latest version including taste notes, equipment, additional preparations,
+ * and version photos. Also increments the source recipe's `forkCount`.
+ *
+ * @param sourceId - UUID of the recipe to fork
+ * @param authorId - UUID of the user creating the fork
+ * @param title    - Title for the forked recipe
+ * @param slug     - Pre-generated unique slug for the fork
+ * @returns The new recipe row with its first version and all copied relations
+ * @throws {Error} `RECIPE_NOT_FOUND` if sourceId does not exist or is soft-deleted
+ * @throws {Error} `RECIPE_NO_VERSIONS` if the source recipe has no published versions
+ */
 export async function forkRecipe(sourceId: string, authorId: string, title: string, slug: string) {
   const source = await findById(sourceId);
   if (!source) throw new Error('RECIPE_NOT_FOUND');
@@ -227,6 +277,7 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
   });
 }
 
+/** Atomically increment a recipe's `likeCount` by 1. Returns the updated row or null. */
 export async function incrementLikes(id: string) {
   const [result] = await db.update(recipes).set({ likeCount: sql`${recipes.likeCount} + 1` }).where(
     eq(recipes.id, id),
@@ -234,6 +285,7 @@ export async function incrementLikes(id: string) {
   return result ?? null;
 }
 
+/** Atomically decrement a recipe's `likeCount` by 1. Returns the updated row or null. */
 export async function decrementLikes(id: string) {
   const [result] = await db.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
     eq(recipes.id, id),
@@ -241,18 +293,31 @@ export async function decrementLikes(id: string) {
   return result ?? null;
 }
 
+/** Atomically increment a recipe's `commentCount` by 1. Returns the updated row or null. */
 export async function incrementComments(id: string) {
   const [result] = await db.update(recipes).set({ commentCount: sql`${recipes.commentCount} + 1` })
     .where(eq(recipes.id, id)).returning();
   return result ?? null;
 }
 
+/** Atomically decrement a recipe's `commentCount` by 1. Returns the updated row or null. */
 export async function decrementComments(id: string) {
   const [result] = await db.update(recipes).set({ commentCount: sql`${recipes.commentCount} - 1` })
     .where(eq(recipes.id, id)).returning();
   return result ?? null;
 }
 
+/**
+ * Insert or update a user's rating for a recipe.
+ *
+ * Uses a SELECT-then-INSERT-or-UPDATE approach (not `onConflictDoUpdate`)
+ * to ensure consistent behavior across the ratings table.
+ *
+ * @param userId   - UUID of the user submitting the rating
+ * @param recipeId - UUID of the recipe being rated
+ * @param rating   - Numeric rating value
+ * @returns An object containing the persisted rating value
+ */
 export async function upsertUserRating(userId: string, recipeId: string, rating: number) {
   const existing = await db.select({ id: userRecipeRatings.id })
     .from(userRecipeRatings)
@@ -269,6 +334,12 @@ export async function upsertUserRating(userId: string, recipeId: string, rating:
   return { rating };
 }
 
+/**
+ * Compute the average rating and total rating count for a recipe.
+ *
+ * @returns Object with `avgRating` (rounded to 1 decimal, or null if no ratings)
+ *          and `ratingCount` (0 if no ratings exist)
+ */
 export async function getRecipeRatingStats(recipeId: string) {
   const [result] = await db.select({
     avgRating: avg(userRecipeRatings.rating),
@@ -282,6 +353,7 @@ export async function getRecipeRatingStats(recipeId: string) {
   };
 }
 
+/** Fetch a specific user's rating for a recipe, or null if they haven't rated it. */
 export async function getUserRating(userId: string, recipeId: string): Promise<number | null> {
   const [result] = await db.select({ rating: userRecipeRatings.rating })
     .from(userRecipeRatings)
@@ -290,6 +362,7 @@ export async function getUserRating(userId: string, recipeId: string): Promise<n
   return result?.rating ?? null;
 }
 
+/** Count the total number of users who have favourited a recipe. */
 export async function getFavouriteCount(recipeId: string): Promise<number> {
   const [result] = await db.select({ count: count() })
     .from(userRecipeFavourites)
@@ -297,6 +370,11 @@ export async function getFavouriteCount(recipeId: string): Promise<number> {
   return result?.count ?? 0;
 }
 
+/**
+ * Fetch the current user's like and favourite status for a recipe.
+ *
+ * @returns Object with `userLiked` (boolean) and `userFavourited` (boolean) flags
+ */
 export async function getUserLikeStatus(userId: string, recipeId: string) {
   const [[like], [fav]] = await Promise.all([
     db.select({ id: userRecipeLikes.userId })
@@ -313,6 +391,15 @@ export async function getUserLikeStatus(userId: string, recipeId: string) {
   return { userLiked: !!like, userFavourited: !!fav };
 }
 
+/**
+ * Toggle a user's like on a recipe inside a single database transaction.
+ *
+ * Attempts an INSERT with `onConflictDoNothing`. If a row already exists,
+ * deletes it instead. Atomically increments or decrements the recipe's
+ * `likeCount` to match.
+ *
+ * @returns `{ liked: true }` if the like was added, `{ liked: false }` if removed
+ */
 export async function toggleLike(userId: string, recipeId: string) {
   return db.transaction(async (tx) => {
     const inserted = await tx.insert(userRecipeLikes)
@@ -340,6 +427,14 @@ export async function toggleLike(userId: string, recipeId: string) {
   });
 }
 
+/**
+ * Toggle a user's favourite bookmark on a recipe.
+ *
+ * Attempts an INSERT with `onConflictDoNothing`. If a row already exists,
+ * deletes it instead.
+ *
+ * @returns `{ favourited: true }` if the favourite was added, `{ favourited: false }` if removed
+ */
 export async function toggleFavourite(userId: string, recipeId: string) {
   const inserted = await db.insert(userRecipeFavourites)
     .values({ userId, recipeId })
@@ -356,6 +451,15 @@ export async function toggleFavourite(userId: string, recipeId: string) {
   return { favourited: true };
 }
 
+/**
+ * Toggle a recipe's `featured` flag via an atomic NOT expression.
+ *
+ * Authorization is enforced at the service layer; this model assumes
+ * the caller has already verified admin privileges.
+ *
+ * @throws {Error} `RECIPE_NOT_FOUND` if the recipe does not exist
+ * @returns `{ featured: boolean }` — the new featured state
+ */
 export async function toggleFeature(id: string) {
   const [recipe] = await db.update(recipes)
     .set({ featured: sql`not ${recipes.featured}` })
@@ -367,6 +471,7 @@ export async function toggleFeature(id: string) {
   return { featured: recipe.featured };
 }
 
+/** Fetch all versions for a recipe (summary fields only), ordered newest-first. */
 export async function getVersionsByRecipeId(recipeId: string) {
   return db
     .select({
@@ -385,12 +490,14 @@ export async function getVersionsByRecipeId(recipeId: string) {
     .orderBy(desc(recipeVersions.versionNumber));
 }
 
+/** Update the `personalNotes` field on a specific recipe version. */
 export async function updateVersionNotes(versionId: string, notes: string) {
   await db.update(recipeVersions)
     .set({ personalNotes: notes })
     .where(eq(recipeVersions.id, versionId));
 }
 
+/** Fetch a paginated feed of public recipes from a set of followed author IDs. */
 export async function getFeed(authorIds: string[], page: number, perPage: number) {
   const where = and(
     inArray(recipes.authorId, authorIds),
@@ -399,6 +506,19 @@ export async function getFeed(authorIds: string[], page: number, perPage: number
   return findMany(where, page, perPage, 'createdAt', 'desc');
 }
 
+/**
+ * Fetch a paginated, filtered list of recipes the given user has favourited.
+ *
+ * Supports filtering by brew method, drink type, text search (title + product name),
+ * main brewer, equipment, and taste notes. All filters are combined with AND.
+ *
+ * @param userId  - UUID of the user whose favourites to query
+ * @param filters - Optional filter criteria (brewMethod, drinkType, search, equipmentId,
+ *                  tasteNoteIds, mainBrewer, sortBy, sortOrder)
+ * @param page    - One-based page number
+ * @param perPage - Number of recipes per page
+ * @returns Paginated result with `recipes` array and `total` count
+ */
 export async function findStarred(
   userId: string,
   filters: {

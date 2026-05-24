@@ -1,5 +1,12 @@
+/**
+ * Photo upload and management for BrewForm.
+ *
+ * Handles image validation, file persistence via the upload utility, thumbnail
+ * generation, and soft-deletion of recipe photos.
+ */
 // deno-lint-ignore-file no-explicit-any
 import * as model from './model.ts';
+import * as recipeModel from '../recipe/model.ts';
 import {
   generateFilename,
   getPublicUrl,
@@ -11,6 +18,18 @@ import { createLogger } from '../../utils/logger/index.ts';
 
 const logger = createLogger('photo-service');
 
+/**
+ * Upload a photo for a recipe.
+ *
+ * Validates the image, generates a unique filename, persists the file and
+ * optional thumbnail, then creates a photo record.
+ *
+ * @param file - Uploaded file metadata and binary data
+ * @param thumbnail - Optional thumbnail binary data
+ * @param alt - Optional alt text
+ * @param sortOrder - Optional display order (defaults to 0)
+ * @returns The created photo record
+ */
 export async function uploadPhoto(
   _userId: string,
   recipeId: string,
@@ -39,12 +58,16 @@ export async function uploadPhoto(
   return photo;
 }
 
+/** List all non-deleted photos for a recipe. */
 export async function listPhotos(recipeId: string) {
   return model.findByRecipe(recipeId);
 }
 
-export async function deletePhoto(_userId: string, id: string) {
+/** Soft-delete a photo. Throws PHOTO_NOT_FOUND if the photo doesn't exist. */
+export async function deletePhoto(userId: string, id: string) {
   const photo = await model.findById(id);
   if (!photo) throw new Error('PHOTO_NOT_FOUND');
+  const recipe = await recipeModel.findById(photo.recipeId);
+  if (!recipe || recipe.authorId !== userId) throw new Error('FORBIDDEN');
   await model.softDelete(id);
 }

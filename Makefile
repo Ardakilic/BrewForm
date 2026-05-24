@@ -34,6 +34,12 @@ logs: ## Follow logs of all services
 restart: ## Restart the app service
 	docker compose --profile dev restart app
 
+# --- Developer Setup ---
+
+setup-hooks: ## Configure git to use .githooks/ for pre-commit checks
+	git config core.hooksPath .githooks
+	@echo "Git hooks configured. Pre-commit runs 'deno fmt --check' and 'deno lint'."
+
 # --- Dependencies ---
 
 # Cache Deno dependencies inside the container (uses deno_cache volume).
@@ -201,4 +207,4 @@ serena-index: ## Index project with Serena
 serena-health: ## Check Serena health
 	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
 
-.PHONY: help up down build logs restart install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health
+.PHONY: help up down build logs restart setup-hooks install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health

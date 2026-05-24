@@ -66,29 +66,3 @@ export function grindDateResult(grindDate: Date, brewDate: Date): RelativeDateRe
   if (isSameCalendarDay(grindDate, brewDate)) return { type: 'today' };
   return { type: 'daysAgo', days: daysBetween(grindDate, brewDate) };
 }
-
-// ---------------------------------------------------------------------------
-// Legacy string helpers — kept for backward compatibility with existing tests
-// and any other callers. These return English strings.
-// ---------------------------------------------------------------------------
-
-/** @deprecated Use roastDateResult() + t() for localized output */
-export function roastDateLabel(roastDate: Date, brewDate: Date): string {
-  const r = roastDateResult(roastDate, brewDate);
-  if (r.type === 'today') return 'today';
-  return `${r.days} days post-roast`;
-}
-
-/** @deprecated Use packageOpenDateResult() + t() for localized output */
-export function packageOpenDateLabel(packageOpenDate: Date, brewDate: Date): string {
-  const r = packageOpenDateResult(packageOpenDate, brewDate);
-  if (r.type === 'today') return 'today';
-  return `${r.days} days since opened`;
-}
-
-/** @deprecated Use grindDateResult() + t() for localized output */
-export function grindDateLabel(grindDate: Date, brewDate: Date): string {
-  const r = grindDateResult(grindDate, brewDate);
-  if (r.type === 'today') return 'today';
-  return `${r.days} days ago`;
-}

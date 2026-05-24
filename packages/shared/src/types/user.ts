@@ -1,7 +1,25 @@
+/**
+ * User and profile type definitions shared between API and frontend.
+ *
+ * Defines the authenticated user object, public profile shape,
+ * and user-configurable preferences.
+ */
+
+/** UI colour theme. */
 export type Theme = 'light' | 'dark' | 'coffee';
+
+/** Measurement system for weight and volume display. */
 export type UnitSystem = 'metric' | 'imperial';
+
+/** Date display format. */
 export type DateFormat = 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD';
 
+/**
+ * Serialisable user preferences stored in the `preferences` JSON column.
+ *
+ * These control display behaviour (units, theme, locale) and email
+ * notification settings.
+ */
 export interface UserPreferences {
   unitSystem: UnitSystem;
   temperatureUnit: 'celsius' | 'fahrenheit';
@@ -17,14 +35,21 @@ export interface UserPreferences {
   };
 }
 
+/**
+ * Authenticated user object returned on login/signup and accessible
+ * via `ctx.get('user')` in route handlers.
+ */
 export interface User {
+  /** UUID primary key */
   id: string;
   email: string;
+  /** Unique public handle */
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
   bio: string | null;
   preferences: UserPreferences;
+  /** Whether the onboarding flow has been completed */
   onboardingCompleted: boolean;
   isAdmin: boolean;
   isBanned: boolean;
@@ -33,16 +58,26 @@ export interface User {
   deletedAt: Date | null;
 }
 
+/**
+ * Public-facing user profile returned by `GET /api/v1/users/:username`.
+ *
+ * Sensitive fields (email, full preferences) are excluded.
+ */
 export interface UserProfile {
+  /** UUID primary key */
   id: string;
+  /** Unique public handle */
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  /** Number of public recipes */
   publicRecipeCount: number;
   followerCount: number;
   followingCount: number;
+  /** Badges the user has earned */
   badges: Array<{ id: string; name: string; icon: string }>;
+  /** User's hand-picked featured recipes (up to a platform limit) */
   featuredRecipes: Array<{
     id: string;
     slug: string;

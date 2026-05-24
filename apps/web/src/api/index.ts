@@ -73,6 +73,7 @@ export const setupApi = {
 
 export const beanApi = {
   list: () => api.get<Record<string, unknown>[]>('/beans'),
+  get: (id: string) => api.get<Record<string, unknown>>(`/beans/${id}`),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/beans', data),
   update: (id: string, data: Record<string, unknown>) =>
     api.patch<Record<string, unknown>>(`/beans/${id}`, data),

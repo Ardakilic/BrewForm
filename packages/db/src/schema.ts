@@ -427,6 +427,7 @@ export const tasteNotes = pgTable(
     definition: text('definition'),
     depth: integer('depth').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (table) => [
     index('taste_note_parent_id_idx').on(table.parentId),

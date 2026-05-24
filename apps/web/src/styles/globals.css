@@ -1,17 +1,6 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-coffee-50: #faf6f1;
-  --color-coffee-100: #f0e6d6;
-  --color-coffee-200: #e0ccb0;
-  --color-coffee-300: #c9a96e;
-  --color-coffee-400: #b8914f;
-  --color-coffee-500: #6f4e37;
-  --color-coffee-600: #5a3e2b;
-  --color-coffee-700: #4a3222;
-  --color-coffee-800: #3e2723;
-  --color-coffee-900: #2c1a12;
-
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 

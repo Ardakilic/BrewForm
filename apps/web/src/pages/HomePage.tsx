@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { recipeApi } from '../api/index.ts';
 import type { RecipeListItem } from '../api/types.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
+import { SEOHead } from '../components/seo/SEOHead.tsx';
 
 export function HomePage() {
   const [latestRecipes, setLatestRecipes] = useState<RecipeListItem[]>([]);
@@ -20,6 +21,7 @@ export function HomePage() {
 
   return (
     <div>
+      <SEOHead title='Home' />
       <section className='mx-auto max-w-6xl px-6 py-12 text-center'>
         <h1 className='text-4xl font-bold' style={{ color: 'var(--accent-primary)' }}>
           ☕ {t('app.name')}

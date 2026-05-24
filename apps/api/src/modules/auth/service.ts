@@ -1,3 +1,11 @@
+/**
+ * Auth service — business logic layer for authentication workflows.
+ *
+ * Orchestrates user registration, login, token refresh, email verification,
+ * and password reset flows. Delegates data access to `model.ts` and token
+ * operations to `jwt.ts`. Email side-effects are fire-and-forget for
+ * registration (non-blocking) but blocking for password resets.
+ */
 import * as jwt from './jwt.ts';
 import * as model from './model.ts';
 import { sendPasswordResetEmail, sendVerificationEmail } from './email.ts';
@@ -31,6 +39,18 @@ function toAuthUser(user: any): AuthUser {
   return user as AuthUser;
 }
 
+/**
+ * Register a new user account.
+ *
+ * @param data.email - User's email address (must be unique)
+ * @param data.username - Chosen username (must be unique)
+ * @param data.password - Plaintext password (hashed via model.createUser)
+ * @param data.displayName - Optional display name
+ * @returns Created user object, access token, and refresh token
+ * @throws {Error} REGISTRATION_DISABLED if ENABLE_REGISTRATION env var is false
+ * @throws {Error} EMAIL_ALREADY_EXISTS if the email is taken
+ * @throws {Error} USERNAME_ALREADY_EXISTS if the username is taken
+ */
 export async function register(data: {
   email: string;
   username: string;
@@ -69,6 +89,16 @@ export async function register(data: {
   return { user, accessToken, refreshToken };
 }
 
+/**
+ * Authenticate a user with email and password.
+ *
+ * @param email - Registered email address
+ * @param password - Plaintext password to verify
+ * @param rememberMe - If true, refresh token uses the longer JWT_REMEMBER_ME_EXPIRY
+ * @returns Authenticated user, access token, and refresh token
+ * @throws {Error} INVALID_CREDENTIALS if email not found or password mismatch
+ * @throws {Error} USER_BANNED if the user account is banned
+ */
 export async function login(email: string, password: string, rememberMe = false) {
   const rawUser = await model.findUserByEmail(email);
   if (!rawUser) {
@@ -98,6 +128,15 @@ export async function login(email: string, password: string, rememberMe = false)
   return { user, accessToken, refreshToken };
 }
 
+/**
+ * Issue a new access token using a valid refresh token (token rotation).
+ *
+ * @param refreshToken - A valid, non-expired refresh token
+ * @returns Fresh user object, new access token, new refresh token, and a flag
+ *          indicating whether the original refresh was a "remember me" token
+ * @throws {Error} INVALID_TOKEN_TYPE if the token is not a refresh token
+ * @throws {Error} USER_NOT_FOUND if the user no longer exists or is banned
+ */
 export async function refreshAccessToken(refreshToken: string) {
   const payload = await jwt.verifyJwt(refreshToken);
   if (payload.type !== 'refresh') {
@@ -128,6 +167,13 @@ export async function refreshAccessToken(refreshToken: string) {
   return { user, accessToken: newAccessToken, refreshToken: newRefreshToken, wasRememberMe };
 }
 
+/**
+ * Initiate a password reset flow. Creates a reset token and emails it.
+ * Silently succeeds for non-existent emails to prevent enumeration.
+ *
+ * @param email - Email to send the reset link to
+ * @throws {Error} EMAIL_SEND_FAILED if the email provider rejects delivery
+ */
 export async function requestPasswordReset(email: string) {
   const rawUser = await model.findUserByEmail(email);
   if (!rawUser) {
@@ -149,6 +195,15 @@ export async function requestPasswordReset(email: string) {
   }
 }
 
+/**
+ * Complete a password reset by consuming the token and updating the password.
+ *
+ * @param token - Password reset token from the email link
+ * @param newPassword - New plaintext password (hashed before storage)
+ * @throws {Error} INVALID_RESET_TOKEN if the token does not exist
+ * @throws {Error} TOKEN_ALREADY_USED if the token has been consumed
+ * @throws {Error} TOKEN_EXPIRED if the token has passed its expiry
+ */
 export async function confirmPasswordReset(token: string, newPassword: string) {
   const reset = await model.findPasswordResetByToken(token);
   if (!reset) {
@@ -165,6 +220,7 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
   await model.markPasswordResetUsed(reset.id);
 }
 
+/** Fetch the currently authenticated user by ID. */
 export async function getAuthenticatedUser(userId: string) {
   const user = await model.findUserById(userId);
   if (!user) {
@@ -173,6 +229,13 @@ export async function getAuthenticatedUser(userId: string) {
   return user;
 }
 
+/**
+ * Generate and deliver an email verification token.
+ *
+ * @param userId - The user to associate the token with
+ * @param email - Recipient email address
+ * @param username - Used for personalizing the verification email template
+ */
 export async function sendVerificationToken(userId: string, email: string, username: string) {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 24 * 3600 * 1000);
@@ -181,6 +244,14 @@ export async function sendVerificationToken(userId: string, email: string, usern
   await sendVerificationEmail(email, token, username);
 }
 
+/**
+ * Verify an email address by consuming a verification token.
+ *
+ * @param token - Email verification token (raw, will be hashed for lookup)
+ * @throws {Error} INVALID_VERIFICATION_TOKEN if the token does not exist
+ * @throws {Error} TOKEN_ALREADY_USED if the token has been consumed
+ * @throws {Error} TOKEN_EXPIRED if the token has passed its expiry
+ */
 export async function verifyEmail(token: string) {
   const record = await model.findEmailVerificationByToken(token);
   if (!record) {

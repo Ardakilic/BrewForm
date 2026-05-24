@@ -1,0 +1,16 @@
+#!/bin/sh
+# BrewForm pre-commit hook
+# Runs Deno format check and lint before each commit.
+#
+# Install once after cloning:
+#   make setup-hooks
+# Or manually:
+#   git config core.hooksPath .githooks
+
+set -e
+
+echo "Pre-commit: checking formatting..."
+deno fmt --check
+
+echo "Pre-commit: linting..."
+deno lint apps/ packages/

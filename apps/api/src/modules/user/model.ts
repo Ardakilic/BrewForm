@@ -1,13 +1,22 @@
+/**
+ * User database operations for BrewForm.
+ *
+ * Provides user lookup by ID or username, profile updates, soft-delete,
+ * aggregated stats (recipe/follower/following counts), public recipe listing
+ * with latest version metadata, and full-text username/displayName search.
+ */
 import { db } from '@brewform/db';
 import { recipes, recipeVersions, userFollows, users } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, isNull, like, or } from 'drizzle-orm';
 
+/** Find a user by ID. Returns null if deleted or not found. */
 export async function findById(id: string) {
   const result = await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt)))
     .limit(1);
   return result[0] ?? null;
 }
 
+/** Find a user by username. Returns null if deleted or not found. */
 export async function findByUsername(username: string) {
   const result = await db.select().from(users).where(
     and(eq(users.username, username), isNull(users.deletedAt)),
@@ -15,6 +24,7 @@ export async function findByUsername(username: string) {
   return result[0] ?? null;
 }
 
+/** Update a user's display name, bio, or avatar URL. Returns null if user not found. */
 export async function updateProfile(
   id: string,
   data: { displayName?: string; bio?: string; avatarUrl?: string },
@@ -25,12 +35,18 @@ export async function updateProfile(
   return result ?? null;
 }
 
+/** Soft-delete a user by setting their deletedAt timestamp. */
 export async function deleteUser(id: string) {
   const [result] = await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, id))
     .returning();
   return result ?? null;
 }
 
+/**
+ * Get aggregated stats for a user (public recipe count, followers, following).
+ *
+ * @returns Object with recipeCount, followerCount, and followingCount
+ */
 export async function getUserStats(id: string) {
   const [recipeCountResult, followerCountResult, followingCountResult] = await Promise.all([
     db.select({ count: count() }).from(recipes).where(
@@ -46,6 +62,7 @@ export async function getUserStats(id: string) {
   };
 }
 
+/** Get a user's public recipes with their latest version's brew method and drink type. */
 export async function getUserPublicRecipes(userId: string) {
   // Fetch the user's public recipes with their latest version's brew method and drink type.
   const userRecipes = await db.query.recipes.findMany({
@@ -83,6 +100,14 @@ export async function getUserPublicRecipes(userId: string) {
   }));
 }
 
+/**
+ * Search users by username or displayName with pagination.
+ *
+ * @param query - Search term (LIKE match)
+ * @param page - 1-based page number
+ * @param perPage - Results per page
+ * @returns Paginated user list with total count
+ */
 export async function searchUsers(query: string, page: number, perPage: number) {
   const where = and(
     isNull(users.deletedAt),
