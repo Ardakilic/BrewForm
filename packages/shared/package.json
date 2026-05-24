@@ -9,8 +9,7 @@
     "./i18n": { "types": "./src/i18n/index.ts", "default": "./src/i18n/index.ts" }
   },
   "dependencies": {
-    "zod": "^4.0.0",
-    "date-fns": "^4.1.0"
+    "zod": "^4.0.0"
   },
   "scripts": {}
 }
