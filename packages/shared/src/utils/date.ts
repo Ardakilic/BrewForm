@@ -24,7 +24,11 @@ export function formatDate(date: Date | string, dateFormat: string = 'yyyy-MM-dd
 }
 
 export function isDateBefore(date1: Date | string, date2: Date | string): boolean {
-  const d1 = toPlainDate(date1);
-  const d2 = toPlainDate(date2);
-  return Temporal.PlainDate.compare(d1, d2) < 0;
+  try {
+    const d1 = toPlainDate(date1);
+    const d2 = toPlainDate(date2);
+    return Temporal.PlainDate.compare(d1, d2) < 0;
+  } catch {
+    return false;
+  }
 }
