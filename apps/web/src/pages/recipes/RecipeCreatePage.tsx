@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { ApiError } from '../../api/client';
-import { equipmentApi, recipeApi, setupApi } from '../../api/index';
+import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index';
 import { SEOHead } from '../../components/seo/SEOHead';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete';
 import {
@@ -17,6 +17,7 @@ import type { EquipmentListItem, SetupListItem } from '../../api/types.ts';
 export function RecipeCreatePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -48,7 +49,7 @@ export function RecipeCreatePage() {
   const [equipmentList, setEquipmentList] = useState<EquipmentListItem[]>([]);
   const [setupList, setSetupList] = useState<SetupListItem[]>([]);
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
-  const [selectedSetupId, setSelectedSetupId] = useState('');
+  const [selectedSetupId, setSelectedSetupId] = useState(searchParams.get('setupId') || '');
   const [equipLoading, setEquipLoading] = useState(true);
   const [equipError, setEquipError] = useState('');
 
@@ -69,6 +70,21 @@ export function RecipeCreatePage() {
         }
       }).catch(() => setEquipError('Failed to load setups')),
     ]).finally(() => setEquipLoading(false));
+  }, []);
+
+  // Pre-fill bean info from URL param
+  useEffect(() => {
+    const beanId = searchParams.get('beanId');
+    if (!beanId) return;
+    beanApi.get(beanId).then((data) => {
+      if (data && typeof data === 'object') {
+        const bean = data as Record<string, unknown>;
+        if (bean.name) setProductName(String(bean.name));
+        if (bean.brand) setCoffeeBrand(String(bean.brand));
+        else if (bean.roaster) setCoffeeBrand(String(bean.roaster));
+        if (bean.processing) setCoffeeProcessing(String(bean.processing));
+      }
+    }).catch(() => {});
   }, []);
 
   // Auto-fill grinder and brewerDetails when setup changes

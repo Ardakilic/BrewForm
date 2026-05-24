@@ -35,10 +35,7 @@ vi.mock('../../utils/relative-date.ts', () => ({
   grindDateResult: (_grindDate: Date, _brewDate: Date) => ({ type: 'daysAgo', days: 1 }),
   // daysBetween is used by isPeakWindow inside BeanSection
   daysBetween: (_a: Date, _b: Date) => 14,
-  // Legacy exports kept for any other callers
-  roastDateLabel: (_roastDate: Date, _brewDate: Date) => '7 days post-roast',
-  packageOpenDateLabel: (_openDate: Date, _brewDate: Date) => '3 days since opened',
-  grindDateLabel: (_grindDate: Date, _brewDate: Date) => '1 days ago',
+
 }));
 
 // ---------------------------------------------------------------------------
@@ -116,7 +113,7 @@ describe('BeanSection — conditional rendering unit tests', () => {
 
   it('shows relative date label for roast date', () => {
     render(withI18n(<BeanSection roastDate='2024-01-01' />));
-    // The mocked roastDateLabel returns '7 days post-roast'
+    // The mocked roastDateResult returns { type: 'daysPostRoast', days: 7 } which t() renders as '7 days post-roast'
     // The label appears in both the section header and the date field
     const labels = screen.getAllByText('7 days post-roast');
     expect(labels.length).toBeGreaterThanOrEqual(1);

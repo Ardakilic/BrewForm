@@ -1,3 +1,14 @@
+/**
+ * Recipe business-logic / service layer.
+ *
+ * Sits between controllers and the data-access layer ({@link ./model.ts}).
+ * Orchestrates multi-step operations (creation, version bumping, forking),
+ * enforces business rules (equipment compatibility, visibility checks),
+ * and triggers side effects (badge evaluation, follower notifications).
+ *
+ * All DB access is delegated to `model.ts` — no Drizzle calls directly
+ * from this module except for the compatibility validation helper.
+ */
 import { sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import { db } from '@brewform/db';
@@ -29,6 +40,7 @@ async function generateUniqueSlug(title: string): Promise<string> {
   return ensureUniqueSlug(slug, []);
 }
 
+/** Retrieve a recipe by slug or UUID. Throws `RECIPE_NOT_FOUND` if neither matches. */
 export async function getRecipe(slugOrId: string) {
   let recipe: any;
   if (slugOrId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
@@ -40,17 +52,37 @@ export async function getRecipe(slugOrId: string) {
   return recipe;
 }
 
+/** Lightweight shape used by `checkEquipmentCompatibility` to validate equipment items against brew method rules. */
 export interface CompatibilityCheckItem {
+  /** Equipment UUID from the `equipment` table. */
   id: string;
+  /** Equipment category (e.g. `'pressurized_basket'`, `'paper_filter'`). */
   type: string;
 }
 
+/** Row shape from the `brewMethodEquipmentRules` DB table. */
 export interface CompatibilityRule {
+  /** Brew method key (e.g. `'espresso'`, `'pour_over'`). */
   brewMethod: string;
+  /** Equipment type this rule applies to. */
   equipmentType: string;
+  /** Whether the equipment type is compatible with the brew method. */
   compatible: boolean;
 }
 
+/**
+ * Validate that equipment items are compatible with a given brew method.
+ *
+ * Compatibility rules are defined in the `brewMethodEquipmentRules` DB table.
+ * Each rule specifies whether an equipment type is allowed for a brew method
+ * (e.g. espresso requires a pressurized brewer, prohibits French press).
+ * Pure function — no I/O, suitable for both server and client use.
+ *
+ * @param equipmentItems - Equipment items to check (id + type per item).
+ * @param brewMethod     - The brew method being validated against.
+ * @param rules          - Full list of compatibility rules (fetched from DB).
+ * @returns Array of human-readable incompatibility messages. Empty array means all compatible.
+ */
 export function checkEquipmentCompatibility(
   equipmentItems: CompatibilityCheckItem[],
   brewMethod: string,
@@ -98,6 +130,24 @@ async function validateEquipmentCompatibility(
   }
 }
 
+/**
+ * Create a new recipe with its first version and all related entities.
+ *
+ * Orchestration steps:
+ * 1. Validate equipment compatibility against the selected brew method
+ * 2. Generate a unique slug from the sanitized title
+ * 3. Inherit `grinder` and `brewerDetails` from the user's setup when `setupId`
+ *    is provided (falling back to explicitly supplied values)
+ * 4. Compute derived metrics (`brewRatio`, `flowRate`) from raw measurements
+ * 5. Insert recipe, version, taste notes, equipment, additional preparations,
+ *    and version photos inside a single transaction
+ * 6. If visibility is `'public'`, asynchronously notify the author's followers
+ * 7. Asynchronously evaluate badge eligibility for the author
+ *
+ * @param authorId - UUID of the authenticated user creating the recipe.
+ * @param data     - Creation payload (validated Zod schema from `@brewform/shared`).
+ * @returns The complete recipe object with version, relations, and author summary.
+ */
 export async function createRecipe(authorId: string, data: any) {
   await validateEquipmentCompatibility(data.brewMethod, data.equipmentIds ?? []);
 
@@ -232,6 +282,20 @@ export async function createRecipe(authorId: string, data: any) {
   return finalRecipe;
 }
 
+/**
+ * Update an existing recipe, optionally creating a new version.
+ *
+ * When `data.bumpVersion` is truthy, a new version row is created with any
+ * supplied fields merged over the latest version's values. Derived metrics
+ * (`brewRatio`, `flowRate`) are recomputed when raw measurements change.
+ * The recipe's `currentVersionId` is updated to point to the new version.
+ *
+ * When `bumpVersion` is falsy, only top-level recipe fields (title, visibility)
+ * are updated — no new version is created.
+ *
+ * @throws `RECIPE_NOT_FOUND` if the recipe does not exist.
+ * @throws `FORBIDDEN` if the requesting user is not the recipe author.
+ */
 export async function updateRecipe(recipeId: string, authorId: string, data: any) {
   const recipe: any = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
@@ -339,6 +403,7 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
   return model.findById(recipeId);
 }
 
+/** Soft-delete a recipe. Throws `RECIPE_NOT_FOUND` or `FORBIDDEN` on failure. */
 export async function deleteRecipe(recipeId: string, authorId: string) {
   const recipe: any = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
@@ -346,6 +411,19 @@ export async function deleteRecipe(recipeId: string, authorId: string) {
   await model.softDelete(recipeId);
 }
 
+/**
+ * Fork an existing recipe into the caller's account.
+ *
+ * Only public/unlisted recipes can be freely forked; draft/private recipes
+ * require the caller to be the original author. A unique slug is generated
+ * from the fork title (defaults to `"Fork of <original title>"`).
+ * Badge eligibility is re-evaluated for the forking user after creation.
+ *
+ * @param sourceId - UUID of the recipe to fork.
+ * @param authorId - UUID of the user performing the fork.
+ * @param title    - Optional custom title for the forked recipe.
+ * @returns The newly created forked recipe.
+ */
 export async function forkRecipe(sourceId: string, authorId: string, title?: string) {
   const source: any = await model.findById(sourceId);
   if (!source) throw new Error('RECIPE_NOT_FOUND');
@@ -364,6 +442,21 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   return forked;
 }
 
+/**
+ * List recipes with filtering, pagination, and sorting.
+ *
+ * Applies visibility rules (public-only for non-admins unless a specific
+ * visibility filter is passed by an admin). Supports filtering by author,
+ * brew method, drink type, equipment, taste notes (AND logic for multiple),
+ * text search (title + product name), and main brewer name.
+ *
+ * @param filters           - Filter criteria (see controller for accepted keys).
+ * @param page              - Page number (1-based).
+ * @param perPage           - Items per page.
+ * @param _requestingUserId - Unused; reserved for future scoped queries.
+ * @param isAdmin           - Whether the requester is an admin (bypasses visibility restrictions).
+ * @returns Paginated recipe list with total count.
+ */
 export async function listRecipes(
   filters: any,
   page: number,
@@ -477,6 +570,12 @@ export async function listRecipes(
   return model.findMany(where, page, perPage, sortBy, sortOrder);
 }
 
+/**
+ * Toggle a user's like on a recipe.
+ *
+ * Returns the new liked state. When liking (not un-liking) a recipe by a
+ * different author, fires an asynchronous `notifyRecipeLiked` side effect.
+ */
 export async function toggleLike(userId: string, recipeId: string) {
   const recipe: any = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
@@ -499,12 +598,14 @@ export async function toggleLike(userId: string, recipeId: string) {
   return result;
 }
 
+/** Toggle a recipe in the user's favourites. Returns the new favourited state. */
 export async function toggleFavourite(userId: string, recipeId: string) {
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   return model.toggleFavourite(userId, recipeId);
 }
 
+/** Toggle the featured flag on the requesting user's own recipe. Throws `FORBIDDEN` if not the author. */
 export async function toggleFeature(recipeId: string, authorId: string) {
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
@@ -512,6 +613,7 @@ export async function toggleFeature(recipeId: string, authorId: string) {
   return model.toggleFeature(recipeId);
 }
 
+/** Save custom notes on the current version of a recipe. Throws `RECIPE_NOT_FOUND` if there is no current version. */
 export async function saveNotes(recipeId: string, notes: string) {
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
@@ -519,6 +621,7 @@ export async function saveNotes(recipeId: string, notes: string) {
   await model.updateVersionNotes(recipe.currentVersionId, notes);
 }
 
+/** List recipes starred (favourited) by the given user, with filtering and pagination. */
 export async function listStarredRecipes(
   filters: any,
   page: number,
@@ -528,6 +631,12 @@ export async function listStarredRecipes(
   return model.findStarred(userId, filters, page, perPage);
 }
 
+/**
+ * Return lightweight metadata for a recipe by slug.
+ *
+ * Includes title, author, visibility, counts, and the primary photo URL.
+ * Used for SEO / social sharing previews and link unfurling.
+ */
 export async function getRecipeMeta(slug: string) {
   const recipe: any = await model.findBySlug(slug);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');

@@ -1,7 +1,15 @@
+/**
+ * Comment database operations for BrewForm.
+ *
+ * Handles querying, creating, and soft-deleting recipe comments with nested
+ * reply support. Joins author profile data via the users table and provides
+ * helper queries for notification lookups (recipe author, commenter identity).
+ */
 import { db } from '@brewform/db';
 import { comments, recipes, users } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, inArray, isNull } from 'drizzle-orm';
 
+/** Find a single comment by ID with author profile joined. */
 export async function findById(id: string) {
   const result = await db.select({
     id: comments.id,
@@ -26,6 +34,14 @@ export async function findById(id: string) {
   return result[0] ?? null;
 }
 
+/**
+ * List paginated top-level comments for a recipe with nested replies.
+ *
+ * @param recipeId - The recipe to fetch comments for
+ * @param page - 1-based page number
+ * @param perPage - Number of top-level comments per page
+ * @returns Paginated comments with nested replies array attached to each
+ */
 export async function findByRecipe(recipeId: string, page: number, perPage: number) {
   const where = and(
     eq(comments.recipeId, recipeId),
@@ -102,11 +118,13 @@ export async function findByRecipe(recipeId: string, page: number, perPage: numb
   return { comments: commentsWithReplies, total: totalResult[0].count };
 }
 
+/** Create a new comment. */
 export async function create(data: typeof comments.$inferInsert) {
   const [result] = await db.insert(comments).values(data).returning();
   return result;
 }
 
+/** Soft-delete a comment by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
   const [result] = await db.update(comments).set({ deletedAt: new Date() }).where(
     eq(comments.id, id),
@@ -114,6 +132,7 @@ export async function softDelete(id: string) {
   return result ?? null;
 }
 
+/** Get the author ID of a recipe (for permission checks). */
 export async function getRecipeAuthorId(recipeId: string) {
   const result = await db.select({ authorId: recipes.authorId }).from(recipes).where(
     eq(recipes.id, recipeId),
@@ -121,6 +140,7 @@ export async function getRecipeAuthorId(recipeId: string) {
   return result[0]?.authorId ?? null;
 }
 
+/** Get minimal recipe info (id, slug, title, authorId) for notification context. */
 export async function getRecipeForNotification(recipeId: string) {
   const result = await db.select({
     id: recipes.id,
@@ -134,6 +154,7 @@ export async function getRecipeForNotification(recipeId: string) {
   return result[0] ?? null;
 }
 
+/** Get a commenter's ID and username for mention text. */
 export async function getCommenterById(userId: string) {
   const result = await db.select({ id: users.id, username: users.username })
     .from(users)

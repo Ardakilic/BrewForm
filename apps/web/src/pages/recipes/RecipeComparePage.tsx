@@ -10,7 +10,7 @@ function labelFor(value: string, constants: any) {
 }
 
 export function RecipeComparePage() {
-  const { id1, id2 } = useParams();
+  const { slug1, slug2 } = useParams();
   // deno-lint-ignore no-explicit-any
   const [recipe1, setRecipe1] = useState<any>(null);
   // deno-lint-ignore no-explicit-any
@@ -18,16 +18,16 @@ export function RecipeComparePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id1 || !id2) return;
+    if (!slug1 || !slug2) return;
     setLoading(true);
     Promise.all([
-      recipeApi.get(id1).catch(() => null),
-      recipeApi.get(id2).catch(() => null),
+      recipeApi.get(slug1).catch(() => null),
+      recipeApi.get(slug2).catch(() => null),
     ]).then(([r1, r2]) => {
       setRecipe1(r1);
       setRecipe2(r2);
     }).finally(() => setLoading(false));
-  }, [id1, id2]);
+  }, [slug1, slug2]);
 
   if (loading) {
     return (

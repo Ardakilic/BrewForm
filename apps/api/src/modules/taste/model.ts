@@ -1,17 +1,27 @@
+/**
+ * Taste note database operations for BrewForm.
+ *
+ * Manages the hierarchical taste-note taxonomy. Supports flat listing, child
+ * lookup, name-based search, tree-building (getHierarchy), and full CRUD
+ * operations on individual taste notes.
+ */
 import { db } from '@brewform/db';
 import { tasteNotes } from '@brewform/db/schema';
 import { asc, eq, like } from 'drizzle-orm';
 
+/** Get all taste notes ordered by depth then name. */
 export async function findAll() {
   return db.select().from(tasteNotes).orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
 }
 
+/** Get all child taste notes for a given parent, ordered by name. */
 export async function findChildren(parentId: string) {
   return db.select().from(tasteNotes).where(eq(tasteNotes.parentId, parentId)).orderBy(
     asc(tasteNotes.name),
   );
 }
 
+/** Search taste notes by name (LIKE match), limited to 50 results. */
 export async function searchByName(query: string) {
   return db.select().from(tasteNotes)
     .where(like(tasteNotes.name, `%${query}%`))
@@ -19,6 +29,13 @@ export async function searchByName(query: string) {
     .limit(50);
 }
 
+/**
+ * Build the full taste-note hierarchy tree.
+ *
+ * Assembles all notes into a nested tree structure where depth-0 notes are
+ * roots and each note carries its children array.
+ * @returns Array of root-level taste notes with nested children
+ */
 export async function getHierarchy() {
   const allNotes = await db.select().from(tasteNotes)
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
@@ -41,21 +58,25 @@ export async function getHierarchy() {
   return roots;
 }
 
+/** Find a single taste note by ID. */
 export async function findById(id: string) {
   const result = await db.select().from(tasteNotes).where(eq(tasteNotes.id, id)).limit(1);
   return result[0] ?? null;
 }
 
+/** Create a new taste note. */
 export async function create(data: typeof tasteNotes.$inferInsert) {
   const [result] = await db.insert(tasteNotes).values(data).returning();
   return result;
 }
 
+/** Update a taste note by ID. Returns null if not found. */
 export async function update(id: string, data: Partial<typeof tasteNotes.$inferInsert>) {
   const [result] = await db.update(tasteNotes).set(data).where(eq(tasteNotes.id, id)).returning();
   return result ?? null;
 }
 
+/** Hard-delete a taste note by ID. */
 export async function remove(id: string) {
   const [result] = await db.delete(tasteNotes).where(eq(tasteNotes.id, id)).returning();
   return result ?? null;

@@ -121,6 +121,12 @@ Every domain module follows 3-layer pattern: `model.ts` → `service.ts` → `in
 - All imports use explicit file extensions (`.ts`, `.tsx`, etc.) — no sloppy imports.
 - Cache: never call `Deno.openKv()` directly — use `CacheProvider` interface via DI.
 
+## Git Hooks
+
+Run `make setup-hooks` once after cloning to enable pre-commit format and lint checks.
+This sets `git config core.hooksPath .githooks` locally — it does not affect other contributors
+until they also run the command.
+
 ## Other conventions
 
 - Check `/deno.json` `tasks` field for all build/test/lint/dev commands.

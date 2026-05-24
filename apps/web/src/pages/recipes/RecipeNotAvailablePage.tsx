@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
 
 /**
  * Shown when a public-only QR scan resolves to a recipe that is no longer
@@ -10,6 +11,7 @@ export function RecipeNotAvailablePage() {
 
   return (
     <div className='flex min-h-[60vh] flex-col items-center justify-center px-6 text-center'>
+      <SEOHead title='Recipe Not Available' noIndex />
       <div className='text-8xl'>☕</div>
       <h1 className='mt-4 text-3xl font-bold' style={{ color: 'var(--text-primary)' }}>
         {t('recipe.unavailable.title')}

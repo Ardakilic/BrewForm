@@ -65,7 +65,7 @@ export const router = createBrowserRouter([
         },
       },
       {
-        path: 'recipes/compare/:id1/:id2',
+        path: 'recipes/compare/:slug1/:slug2',
         lazy: async () => {
           const { RecipeComparePage } = await import('./pages/recipes/RecipeComparePage.tsx');
           return { Component: RecipeComparePage };

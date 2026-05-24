@@ -1,3 +1,18 @@
+/**
+ * Auth middleware — Hono route middleware for JWT-based authentication.
+ *
+ * Three middlewares are provided:
+ *   - `authMiddleware` — mandatory auth, returns 401 on failure
+ *   - `optionalAuthMiddleware` — best-effort auth, continues regardless
+ *   - `adminMiddleware` — must follow authMiddleware, returns 403 if not admin
+ *
+ * Tokens are accepted from a cookie (`brewform_access_token`) or an
+ * `Authorization: Bearer <token>` header, checked in that order.
+ *
+ * On success both `authMiddleware` and `optionalAuthMiddleware` set:
+ *   - `c.set('userId', user.id)`
+ *   - `c.set('user', user)` (the full user row, which includes `.isAdmin`)
+ */
 import type { Context, Next } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { verifyJwt } from '../modules/auth/jwt.ts';
@@ -6,6 +21,8 @@ import { users } from '@brewform/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 import { forbidden, unauthorized } from '../utils/response/index.ts';
 
+/** Extract a JWT from the `brewform_access_token` cookie, falling back to
+ *  the `Authorization: Bearer <token>` header. Returns null if neither is present. */
 function extractToken(c: Context): string | null {
   const cookie = getCookie(c, 'brewform_access_token');
   if (cookie) return cookie;
@@ -16,6 +33,24 @@ function extractToken(c: Context): string | null {
   return null;
 }
 
+/**
+ * Mandatory authentication middleware.
+ *
+ * **Token sources** (checked in order):
+ *   1. Cookie `brewform_access_token`
+ *   2. Header `Authorization: Bearer <token>`
+ *
+ * **Side effects on success**:
+ *   - `c.set('userId', user.id)`
+ *   - `c.set('user', user)` — full user row, `.isAdmin` is available
+ *
+ * **On failure** returns `401 Unauthorized` with JSON body:
+ *   `{ error: 'Missing or invalid authentication' }`
+ *   `{ error: 'Invalid token payload' }`
+ *   `{ error: 'User not found' }`
+ *   `{ error: 'User account is banned' }`
+ *   `{ error: 'Invalid or expired token' }`
+ */
 export async function authMiddleware(c: Context, next: Next) {
   const token = extractToken(c);
 
@@ -49,6 +84,21 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 }
 
+/**
+ * Optional authentication middleware — best-effort auth, never blocks.
+ *
+ * **Token sources** (checked in order):
+ *   1. Cookie `brewform_access_token`
+ *   2. Header `Authorization: Bearer <token>`
+ *
+ * **Side effects**:
+ *   - On success: `c.set('userId', user.id)`, `c.set('user', user)`
+ *   - On failure / missing token / banned user: `c.set('userId', null)`,
+ *     `c.set('user', null)`
+ *
+ * Always calls `await next()` — downstream handlers should check whether
+ * `c.get('userId')` is null to determine if a user is authenticated.
+ */
 export async function optionalAuthMiddleware(c: Context, next: Next) {
   const token = extractToken(c);
 
@@ -84,6 +134,13 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
   await next();
 }
 
+/**
+ * Admin-only guard middleware. Must be registered **after** `authMiddleware`.
+ *
+ * Reads `c.get('user')` (set by `authMiddleware`) and checks `.isAdmin`.
+ * Returns `403 Forbidden` with `{ error: 'Admin access required' }` if the
+ * user is missing or not an admin.
+ */
 export async function adminMiddleware(c: Context, next: Next) {
   const user = c.get('user') as { isAdmin: boolean } | null;
   if (!user || !user.isAdmin) {
