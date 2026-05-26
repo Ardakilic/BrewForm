@@ -1,0 +1,1808 @@
+{
+  "meta": {
+    "title": "Global Coffee Varieties Database — Merged v2",
+    "version": "2.1",
+    "last_updated": "2026-05-26",
+    "total_varieties": 98,
+    "categories": 6,
+    "sources": [
+      "Ardakilic Global Coffee Varieties Database v0 (120 entries)",
+      "Complete Global Coffee Types Database v1 (94 entries)",
+      "World Coffee Research Varieties Catalog (WCR)",
+      "SCA Processing Standards",
+      "JARC (Jimma Agricultural Research Center) variety releases",
+      "Additional research: Reddit r/Coffee, specialty forums, academic papers"
+    ]
+  },
+  "categories": [
+    {
+      "id": "arabica_heirloom",
+      "name": "Arabica — Heirloom & Landrace",
+      "description": "Ancient, unimproved Arabica varieties found in Ethiopia and Yemen. Genetic origin of virtually all cultivated coffee.",
+      "varieties": [
+        {
+          "name": "Typica",
+          "species": "Coffea arabica",
+          "origin": "Ethiopia / Yemen",
+          "spread": "Worldwide via Dutch / French colonial trade routes (1600s–1700s)",
+          "altitude_range_m": "1200–1800",
+          "cup_profile": "Delicate, sweet, clean, mild acidity, light-to-medium body",
+          "body": "Light–Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low",
+          "plant_size": "Tall",
+          "notes": "The oldest cultivated Arabica variety; parent of Bourbon, Blue Mountain, Kona, and hundreds of other cultivars. Still grown in Papua New Guinea, Haiti, Peru, and Jamaica.",
+          "_source": "v0"
+        },
+        {
+          "name": "Bourbon",
+          "species": "Coffea arabica",
+          "origin": "Réunion Island (formerly Île Bourbon) — natural mutation of Typica",
+          "spread": "Latin America, East Africa (1800s)",
+          "altitude_range_m": "1000–2000",
+          "cup_profile": "Complex sweetness, caramel, stone fruit, red apple, balanced acidity",
+          "body": "Full",
+          "acidity": "Medium–High",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural",
+            "Honey"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium (20–30% more than Typica)",
+          "plant_size": "Tall",
+          "sub_varieties": [
+            "Red Bourbon",
+            "Yellow Bourbon",
+            "Orange Bourbon",
+            "Pink Bourbon"
+          ],
+          "notes": "One of the most important Arabica varieties globally; parent of Caturra, Pacas, and many Brazilian cultivars.",
+          "_source": "v0"
+        },
+        {
+          "name": "Red Bourbon",
+          "species": "Coffea arabica",
+          "origin": "Réunion Island",
+          "spread": "Central America, East Africa",
+          "altitude_range_m": "1200–2000",
+          "cup_profile": "Balanced sweetness, caramel, red fruit, mild citrus",
+          "body": "Medium–Full",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "Standard Bourbon variety; red cherry ripening.",
+          "_source": "v0"
+        },
+        {
+          "name": "Yellow Bourbon",
+          "species": "Coffea arabica",
+          "origin": "Brazil (natural mutation of Red Bourbon)",
+          "spread": "Brazil, Central America",
+          "altitude_range_m": "900–1600",
+          "cup_profile": "Sweeter than Red Bourbon, tropical fruit, lower acidity",
+          "body": "Medium",
+          "acidity": "Low–Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Natural",
+            "Washed"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "Yellow cherry ripening; widely grown in Minas Gerais, Brazil. Less common outside Brazil.",
+          "_source": "v0"
+        },
+        {
+          "name": "Orange Bourbon",
+          "species": "Coffea arabica",
+          "origin": "El Salvador / Guatemala",
+          "spread": "Central America",
+          "altitude_range_m": "1200–1800",
+          "cup_profile": "Bright citrus, tropical, floral, complex",
+          "body": "Medium",
+          "acidity": "High",
+          "caffeine_pct": "1.2–1.4",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "Possibly a natural cross between Red and Yellow Bourbon; prized in specialty market.",
+          "_source": "v0"
+        },
+        {
+          "name": "Pink Bourbon",
+          "species": "Coffea arabica",
+          "origin": "Colombia (Huila region)",
+          "spread": "Colombia, El Salvador",
+          "altitude_range_m": "1600–2100",
+          "cup_profile": "Intensely floral, jasmine, lychee, peach, candy sweetness",
+          "body": "Light–Medium",
+          "acidity": "High",
+          "caffeine_pct": "1.2–1.4",
+          "processing_compatibility": [
+            "Washed",
+            "Natural",
+            "Anaerobic"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low",
+          "plant_size": "Tall",
+          "notes": "Increasingly popular in specialty; genetic origin debated — may be cross of Red and Yellow Bourbon, or separate mutation. Commands high prices.",
+          "_source": "v0"
+        },
+        {
+          "name": "Gesha / Geisha",
+          "species": "Coffea arabica",
+          "origin": "Gori Gesha forest, Ethiopia",
+          "spread": "Panama (via CATIE genebank, 1960s); now worldwide specialty",
+          "altitude_range_m": "1500–2200",
+          "cup_profile": "Jasmine, bergamot, peach, tropical fruit, rose, Earl Grey tea",
+          "body": "Light–Silky",
+          "acidity": "Vibrant, tea-like",
+          "caffeine_pct": "0.9–1.2",
+          "processing_compatibility": [
+            "Washed",
+            "Natural",
+            "Anaerobic",
+            "Honey"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Very Low",
+          "plant_size": "Tall, elongated leaves",
+          "notable_farms": [
+            "Hacienda La Esmeralda (Panama)",
+            "Ninety Plus",
+            "Finca Deborah"
+          ],
+          "notes": "Most celebrated specialty variety in the world. Panama Gesha holds auction records over $10,000/kg. Ethiopian Gesha and Panamanian Gesha are distinct genetics despite the name.",
+          "_source": "v0"
+        },
+        {
+          "name": "Ethiopian Heirloom / Landrace",
+          "species": "Coffea arabica",
+          "origin": "Ethiopia (Kaffa, Jimma, Illubabor, Bale forests)",
+          "spread": "Domestic Ethiopia",
+          "altitude_range_m": "1400–2200",
+          "cup_profile": "Extremely diverse — blueberry, wine, jasmine, tropical fruit, herbs",
+          "body": "Varies",
+          "acidity": "Varies",
+          "caffeine_pct": "1.0–1.5",
+          "processing_compatibility": [
+            "Natural",
+            "Washed"
+          ],
+          "disease_resistance": "Medium",
+          "yield": "Medium",
+          "plant_size": "Varies",
+          "notable_regions": [
+            "Yirgacheffe",
+            "Sidama",
+            "Guji",
+            "Harrar",
+            "Limmu",
+            "Kaffa",
+            "Bench Maji"
+          ],
+          "notes": "Ethiopia is the genetic center of diversity for Coffea arabica. Thousands of distinct varieties exist; most are unnamed or listed simply as 'heirloom' on specialty bags.",
+          "_source": "v0"
+        },
+        {
+          "name": "Sudan Rume",
+          "species": "Coffea arabica",
+          "origin": "Boma Plateau, South Sudan",
+          "spread": "Research programs in Colombia, Central America",
+          "altitude_range_m": "1600–2200",
+          "cup_profile": "Intensely sweet, blackcurrant, stone fruit, complex",
+          "body": "Medium",
+          "acidity": "High",
+          "caffeine_pct": "0.7–1.0",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Very Low",
+          "plant_size": "Medium",
+          "notes": "Prized by breeders for exceptional cup quality and low caffeine. Used in breeding of Centroamericano. Rarely available commercially.",
+          "_source": "v0"
+        },
+        {
+          "name": "Mokka (Yemen Mokha)",
+          "species": "Coffea arabica",
+          "origin": "Yemen",
+          "spread": "Yemen, Hawaii (Kona and Maui as Moka cultivar)",
+          "altitude_range_m": "1500–2200",
+          "cup_profile": "Intense chocolate, spice, wine, dried fruit",
+          "body": "Full",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Natural (dry)"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Very Low",
+          "plant_size": "Dwarf",
+          "notes": "Very small beans; naturally dwarf plant. Yemen's ancient traditional variety; historically exported through the port of Mokha giving coffee its name.",
+          "_source": "v0"
+        },
+        {
+          "name": "Laurina (Bourbon Pointu)",
+          "species": "Coffea arabica",
+          "origin": "Réunion Island (natural mutation of Bourbon)",
+          "spread": "Réunion, small pockets of Central America and New Caledonia",
+          "altitude_range_m": "800–1600",
+          "cup_profile": "Delicate, mild, sweet, floral, low bitterness",
+          "body": "Light",
+          "acidity": "Low–Medium",
+          "caffeine_pct": "0.6–0.8",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Very Low",
+          "yield": "Very Low",
+          "plant_size": "Medium",
+          "notes": "Naturally very low caffeine (~half of standard Arabica). Near-extinct historically; revival efforts on Réunion. Pointed cherry shape distinguishes it.",
+          "_source": "v0"
+        },
+        {
+          "name": "Kurume",
+          "species": "Coffea arabica",
+          "type": "Ethiopian Landrace",
+          "origin": "Ethiopia (Guji, Yirgacheffe)",
+          "spread": "Ethiopia",
+          "altitude_range_m": "1600–2200",
+          "cup_profile": "Floral, jasmine, tea-like, citrus, delicate",
+          "body": "Light–Medium",
+          "acidity": "Vibrant, tea-like",
+          "caffeine_pct": "1.0–1.4",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Medium",
+          "yield": "Medium",
+          "plant_size": "Medium–Tall",
+          "notes": "One of Ethiopia's most prized local landraces; increasingly marketed by name. Known for exceptional floral and tea-like qualities.",
+          "_source": "research"
+        },
+        {
+          "name": "Wolisho",
+          "species": "Coffea arabica",
+          "type": "Ethiopian Landrace",
+          "origin": "Ethiopia (Sidama, Gedeb)",
+          "spread": "Ethiopia",
+          "altitude_range_m": "1700–2200",
+          "cup_profile": "Stone fruit, citrus, winey, complex",
+          "body": "Medium",
+          "acidity": "Bright",
+          "caffeine_pct": "1.0–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Medium",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "Common landrace in Sidama region; contributes balanced complexity to regional blends.",
+          "_source": "research"
+        },
+        {
+          "name": "Dega",
+          "species": "Coffea arabica",
+          "type": "Ethiopian Landrace",
+          "origin": "Ethiopia (Sidama, Yirgacheffe)",
+          "spread": "Ethiopia",
+          "altitude_range_m": "1600–2100",
+          "cup_profile": "Berries, dark chocolate, herbal, sweet",
+          "body": "Medium–Full",
+          "acidity": "Medium",
+          "caffeine_pct": "1.0–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Medium",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "Important Ethiopian landrace; contributes body and chocolate notes to regional blends.",
+          "_source": "research"
+        },
+        {
+          "name": "Chiroso",
+          "species": "Coffea arabica",
+          "type": "Ethiopian Landrace (found in Colombia)",
+          "origin": "Ethiopia (genetic origin) / Colombia (Urrao, Antioquia)",
+          "spread": "Colombia",
+          "altitude_range_m": "1700–2100",
+          "cup_profile": "Intensely floral, jasmine, stone fruit, candy sweetness, complex",
+          "body": "Light–Medium",
+          "acidity": "Vibrant, complex",
+          "caffeine_pct": "1.0–1.4",
+          "processing_compatibility": [
+            "Washed",
+            "Natural",
+            "Anaerobic"
+          ],
+          "disease_resistance": "Low–Medium",
+          "yield": "Medium",
+          "plant_size": "Medium–Tall",
+          "notes": "Long misidentified as a Caturra mutation; DNA testing revealed distinct Ethiopian lineage. Became famous when Carmen Montoya won 2023 WBC prelims with Chiroso. Exclusively grown in Urrao, Colombia.",
+          "_source": "research"
+        },
+        {
+          "name": "Bernardina",
+          "species": "Coffea arabica",
+          "type": "Heirloom / Landrace",
+          "origin": "Finca Los Bellotos, El Salvador (related to Ethiopian Agaro landraces)",
+          "spread": "El Salvador",
+          "altitude_range_m": "1400–1800",
+          "cup_profile": "Jasmine, peach, bergamot, honey, delicate — resembles Gesha",
+          "body": "Light–Medium",
+          "acidity": "Vibrant, tea-like",
+          "caffeine_pct": "1.0–1.4",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low",
+          "plant_size": "Medium–Tall",
+          "notes": "Discovered at Finca Los Bellotos; originally mistaken for Gesha due to aromatic profile. DNA testing confirmed distinct variety related to Ethiopian Agaro landraces. Extremely rare; only a few farms grow it.",
+          "_source": "research"
+        }
+      ]
+    },
+    {
+      "id": "arabica_improved",
+      "name": "Arabica — Improved & Selected Cultivars",
+      "description": "Selected, bred, or intentionally crossed varieties optimized for cup quality, yield, or disease resistance.",
+      "varieties": [
+        {
+          "name": "Caturra",
+          "species": "Coffea arabica",
+          "origin": "Minas Gerais, Brazil (natural dwarf mutation of Bourbon, discovered ~1915)",
+          "spread": "Colombia, Central America, Brazil",
+          "altitude_range_m": "700–1700",
+          "cup_profile": "Bright citrus, clean, light body, lively acidity",
+          "body": "Light–Medium",
+          "acidity": "High",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low (susceptible to leaf rust)",
+          "yield": "Medium–High",
+          "plant_size": "Compact dwarf",
+          "sub_varieties": [
+            "Red Caturra",
+            "Yellow Caturra"
+          ],
+          "notes": "First compact Arabica cultivar; enabled higher-density planting. Still widely grown in Colombia and Central America despite vulnerability to leaf rust.",
+          "_source": "v0"
+        },
+        {
+          "name": "Catuaí",
+          "species": "Coffea arabica",
+          "origin": "Brazil (Mundo Novo × Caturra cross, IAC Campinas, 1949)",
+          "spread": "Brazil, Central America",
+          "altitude_range_m": "700–1500",
+          "cup_profile": "Soft, sweet, mild, nutty, low acidity",
+          "body": "Medium",
+          "acidity": "Low–Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low",
+          "yield": "High",
+          "plant_size": "Compact dwarf",
+          "sub_varieties": [
+            "Red Catuaí",
+            "Yellow Catuaí"
+          ],
+          "notes": "One of the most planted varieties in Brazil. Strong branch structure resists fruit drop. Less complex than Bourbon or Typica but reliable.",
+          "_source": "v0"
+        },
+        {
+          "name": "Mundo Novo",
+          "species": "Coffea arabica",
+          "origin": "Brazil (Typica × Bourbon natural hybrid, discovered in São Paulo 1943)",
+          "spread": "Brazil",
+          "altitude_range_m": "1000–1400",
+          "cup_profile": "Sweet, balanced, mild, clean",
+          "body": "Medium–Full",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Natural",
+            "Washed"
+          ],
+          "disease_resistance": "Low–Medium",
+          "yield": "High",
+          "plant_size": "Tall",
+          "notes": "Backbone of Brazilian coffee production for decades. Large plant suited to Brazil's lower-altitude farms. Parent of Catuaí.",
+          "_source": "v0"
+        },
+        {
+          "name": "SL28",
+          "species": "Coffea arabica",
+          "origin": "Kenya (selected by Scott Agricultural Laboratories from Tanganyika drought-resistant variety, 1931)",
+          "spread": "Kenya, some Central American specialty farms",
+          "altitude_range_m": "1500–2100",
+          "cup_profile": "Intense blackcurrant, citrus, berry, wine, full body",
+          "body": "Full",
+          "acidity": "Very High",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low–Medium",
+          "plant_size": "Tall",
+          "notes": "Widely regarded as one of the finest cup-quality varieties ever selected. Defines the classic 'Kenyan coffee' profile. Susceptible to coffee berry disease (CBD) and leaf rust.",
+          "_source": "v0"
+        },
+        {
+          "name": "SL34",
+          "species": "Coffea arabica",
+          "origin": "Kenya (selected from Loresho, a French Mission Bourbon derivative, 1935)",
+          "spread": "Kenya",
+          "altitude_range_m": "1500–2000",
+          "cup_profile": "Citrus, peach, floral, bright structured acidity",
+          "body": "Medium–Full",
+          "acidity": "High",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "Often blended with SL28 in Kenyan lots. Performs well in higher-rainfall areas. Less common than SL28 in specialty market.",
+          "_source": "v0"
+        },
+        {
+          "name": "K7",
+          "species": "Coffea arabica",
+          "origin": "Kenya (Scott Labs selection from French Mission Bourbon)",
+          "spread": "Kenya (lower altitudes)",
+          "altitude_range_m": "1200–1600",
+          "cup_profile": "Mild, balanced, moderate acidity",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium",
+          "plant_size": "Medium–Tall",
+          "notes": "Older Kenyan selection; being replaced by Ruiru 11 and Batian in most farms.",
+          "_source": "v0"
+        },
+        {
+          "name": "Ruiru 11",
+          "species": "Coffea arabica",
+          "origin": "Kenya (Coffee Research Foundation, 1985 — complex hybrid including Timor Hybrid, SL28, N39, K7)",
+          "spread": "Kenya",
+          "altitude_range_m": "1200–1800",
+          "cup_profile": "Mild, acceptable but less complex than SL28/SL34",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "High (CBD and leaf rust resistant)",
+          "yield": "Very High",
+          "plant_size": "Compact dwarf",
+          "notes": "Bred primarily for disease resistance and yield; specialty community often considers its cup inferior to SL28. Widely adopted by smallholder farmers.",
+          "_source": "v0"
+        },
+        {
+          "name": "Batian",
+          "species": "Coffea arabica",
+          "origin": "Kenya (Coffee Research Institute, 2010 — Ruiru 11 × SL28/SL34 back-cross)",
+          "spread": "Kenya",
+          "altitude_range_m": "1200–2000",
+          "cup_profile": "Improved on Ruiru 11; approaching SL28 quality",
+          "body": "Medium–Full",
+          "acidity": "Medium–High",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "High",
+          "yield": "High",
+          "plant_size": "Medium",
+          "notes": "Named after a Kenyan peak. Bred to combine disease resistance with better cup quality than Ruiru 11.",
+          "_source": "v0"
+        },
+        {
+          "name": "Maragogipe (Maragogype)",
+          "species": "Coffea arabica",
+          "origin": "Maragogipe, Bahia, Brazil (natural giant-bean Typica mutation, ~1870)",
+          "spread": "Brazil, Central America, Mexico",
+          "altitude_range_m": "600–1400",
+          "cup_profile": "Mild, sweet, slightly earthy, low acidity",
+          "body": "Light–Medium",
+          "acidity": "Low",
+          "caffeine_pct": "1.0–1.3",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Very Low",
+          "yield": "Very Low",
+          "plant_size": "Very Tall",
+          "notes": "Known as the 'elephant bean'; beans 2–3× normal size. Poor yield makes it uneconomical for most farmers. Notable curiosity in specialty market.",
+          "_source": "v0"
+        },
+        {
+          "name": "Pacas",
+          "species": "Coffea arabica",
+          "origin": "El Salvador (natural Bourbon dwarf mutation, discovered 1949 by Pacas family)",
+          "spread": "El Salvador, Honduras",
+          "altitude_range_m": "500–1600",
+          "cup_profile": "Sweet, balanced, mild fruit, caramel",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium–High",
+          "plant_size": "Compact dwarf",
+          "notes": "El Salvador's primary Bourbon-family compact variety; parent of Pacamara. Similar to Caturra but suited to El Salvador's conditions.",
+          "_source": "v0"
+        },
+        {
+          "name": "Pacamara",
+          "species": "Coffea arabica",
+          "origin": "El Salvador (ISIC, Pacas × Maragogipe cross, 1958)",
+          "spread": "El Salvador, Guatemala, Honduras, Nicaragua",
+          "altitude_range_m": "1200–1800",
+          "cup_profile": "Floral, dark chocolate, herbal, complex, full body",
+          "body": "Full",
+          "acidity": "Bright",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural",
+            "Honey"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low–Medium",
+          "plant_size": "Large",
+          "notes": "Large, irregular beans; prized in Central American specialty market. Has won numerous Cup of Excellence competitions.",
+          "_source": "v0"
+        },
+        {
+          "name": "Villa Sarchi (Villalobos)",
+          "species": "Coffea arabica",
+          "origin": "Sarchi, Costa Rica (natural Bourbon dwarf mutation)",
+          "spread": "Costa Rica, Guatemala",
+          "altitude_range_m": "1200–1800",
+          "cup_profile": "Bright, fruity, floral, wine notes",
+          "body": "Medium",
+          "acidity": "High",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Honey"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium",
+          "plant_size": "Compact dwarf",
+          "notes": "Costa Rican compact Bourbon mutation; used in breeding of Sarchimor. Suited to high-altitude, windy conditions.",
+          "_source": "v0"
+        },
+        {
+          "name": "Kent",
+          "species": "Coffea arabica",
+          "origin": "India (Mysore, Kent Estate, 1920s — selected from Typica)",
+          "spread": "India, parts of Africa",
+          "altitude_range_m": "1000–1600",
+          "cup_profile": "Mild, balanced, low acidity",
+          "body": "Medium",
+          "acidity": "Low",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Dry"
+          ],
+          "disease_resistance": "Medium (historically good, now somewhat overcome)",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "First commercial leaf-rust resistant selection; historically important for Indian coffee production.",
+          "_source": "v0"
+        },
+        {
+          "name": "S795",
+          "species": "Coffea arabica",
+          "origin": "India (CCRI Mysore, 1940s — Kent × Liberica hybrid back-cross)",
+          "spread": "India, Indonesia",
+          "altitude_range_m": "1000–1600",
+          "cup_profile": "Mild, clean, balanced",
+          "body": "Medium",
+          "acidity": "Low–Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Dry"
+          ],
+          "disease_resistance": "Medium–High",
+          "yield": "Medium–High",
+          "plant_size": "Tall",
+          "notes": "Most widely planted variety in India's Arabica belt; also grown in Sumatra, Indonesia.",
+          "_source": "v0"
+        },
+        {
+          "name": "Blue Mountain",
+          "species": "Coffea arabica",
+          "origin": "Jamaica (Typica selection from Martinique, introduced 1728)",
+          "spread": "Jamaica, Papua New Guinea, Kenya (as a named cultivar)",
+          "altitude_range_m": "1200–1800",
+          "cup_profile": "Mild, sweet, clean, balanced, no bitterness",
+          "body": "Medium",
+          "acidity": "Low–Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low",
+          "plant_size": "Tall",
+          "notes": "Jamaica Blue Mountain is a protected designation of origin. Commands very high prices ($50–$80+/100g). Historically exported in wooden barrels to Japan.",
+          "_source": "v0"
+        },
+        {
+          "name": "Kona",
+          "species": "Coffea arabica",
+          "origin": "Hawaii, USA (Typica brought from Guatemala ~1828)",
+          "spread": "Hawaii (Kona district of Big Island)",
+          "altitude_range_m": "500–900",
+          "cup_profile": "Mild, sweet, clean, slight nuttiness",
+          "body": "Medium",
+          "acidity": "Low–Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low",
+          "plant_size": "Tall",
+          "notes": "Protected origin; 'Kona Blend' is legally only 10% Kona. 100% Kona coffee is among the most expensive origin coffees. Grown in unique volcanic soil microclimate.",
+          "_source": "v0"
+        },
+        {
+          "name": "Maracaturra",
+          "species": "Coffea arabica",
+          "origin": "Nicaragua (Maragogipe × Caturra cross)",
+          "spread": "Nicaragua, Honduras",
+          "altitude_range_m": "1000–1500",
+          "cup_profile": "Sweet, fruity, balanced, medium complexity",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Medium",
+          "plant_size": "Large",
+          "notes": "Large-bean variety like its Maragogipe parent; grown in Nicaragua and Honduras.",
+          "_source": "v0"
+        },
+        {
+          "name": "Castillo",
+          "species": "Coffea arabica",
+          "origin": "Colombia (CENICAFÉ, 2005 — Caturra × Timor Hybrid back-cross program)",
+          "spread": "Colombia",
+          "altitude_range_m": "1200–1900",
+          "cup_profile": "Balanced, sweet, mild citrus, clean",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "High (leaf rust)",
+          "yield": "High",
+          "plant_size": "Compact",
+          "regional_variants": [
+            "Castillo El Tambo",
+            "Castillo Naranjal",
+            "Castillo Paraguaicito",
+            "Castillo La Trinidad",
+            "Castillo Florentino"
+          ],
+          "notes": "Colombia's primary commercial variety since leaf rust devastated older plantings. Specialty community divided on cup quality vs. SL28/Caturra.",
+          "_source": "v0"
+        },
+        {
+          "name": "Colombia",
+          "species": "Coffea arabica",
+          "origin": "Colombia (CENICAFÉ, 1982 — Caturra × Timor Hybrid)",
+          "spread": "Colombia",
+          "altitude_range_m": "1200–1800",
+          "cup_profile": "Mild, clean, balanced",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "High",
+          "yield": "High",
+          "plant_size": "Compact",
+          "notes": "Predecessor to Castillo; first leaf-rust resistant Colombian variety.",
+          "_source": "v0"
+        },
+        {
+          "name": "Tabi",
+          "species": "Coffea arabica",
+          "origin": "Colombia (CENICAFÉ, 2002 — Typica × Bourbon × Timor Hybrid)",
+          "spread": "Colombia",
+          "altitude_range_m": "1500–2100",
+          "cup_profile": "Excellent cup quality; fruity, sweet, complex",
+          "body": "Medium–Full",
+          "acidity": "Bright",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "High",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "'Tabi' means 'good' in Guambiano language. Combines superior cup quality with rust resistance — rare trait. Growing specialty interest.",
+          "_source": "v0"
+        },
+        {
+          "name": "Catimor",
+          "species": "Coffea arabica",
+          "origin": "Portugal (CIFC, 1959 — Timor Hybrid × Caturra)",
+          "spread": "Vietnam, Indonesia, India, Central America, East Africa",
+          "altitude_range_m": "700–1500",
+          "cup_profile": "Often earthy, harsh, medicinal at lower altitudes; can be mild to good at high altitude",
+          "body": "Full",
+          "acidity": "Low",
+          "caffeine_pct": "1.3–1.7",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Very High",
+          "yield": "Very High",
+          "plant_size": "Compact",
+          "notes": "Timor Hybrid introduced Robusta genetics; controversial in specialty due to cup quality. Vietnam's main Arabica cultivar. Many regional sub-lines (T5175, T8667, Linie S, etc.).",
+          "_source": "v0"
+        },
+        {
+          "name": "Sarchimor",
+          "species": "Coffea arabica",
+          "origin": "Portugal (CIFC, 1960s — Timor Hybrid × Villa Sarchi)",
+          "spread": "Costa Rica, El Salvador, Honduras, India (as S1, S2, S4, S6)",
+          "altitude_range_m": "1000–1800",
+          "cup_profile": "Better than Catimor; clean, balanced, mild",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.6",
+          "processing_compatibility": [
+            "Washed",
+            "Honey"
+          ],
+          "disease_resistance": "Very High",
+          "yield": "High",
+          "plant_size": "Compact",
+          "notes": "Parent of several named varieties: Marsellesa, Lempira, IHCAFE 90, Obatã. Generally better cup than Catimor-based crosses.",
+          "_source": "v0"
+        },
+        {
+          "name": "Marsellesa",
+          "species": "Coffea arabica",
+          "origin": "CIRAD France / PROMECAFE (Sarchimor × Villa Sarchi T3751 × Caturra)",
+          "spread": "Central America (Guatemala, Nicaragua, Honduras)",
+          "altitude_range_m": "1000–1600",
+          "cup_profile": "Mild, clean, sweet, balanced",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "High",
+          "yield": "High",
+          "plant_size": "Compact",
+          "notes": "Commercial hybrid for Central America; bred by CIRAD.",
+          "_source": "v0"
+        },
+        {
+          "name": "Lempira",
+          "species": "Coffea arabica",
+          "origin": "Honduras (IHCAFE, 1990s — Sarchimor selection)",
+          "spread": "Honduras",
+          "altitude_range_m": "1000–1600",
+          "cup_profile": "Mild, acceptable specialty cup",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "High",
+          "yield": "High",
+          "plant_size": "Compact",
+          "notes": "Honduras' most planted variety; named after an indigenous chief.",
+          "_source": "v0"
+        },
+        {
+          "name": "IHCAFE 90",
+          "species": "Coffea arabica",
+          "origin": "Honduras (Sarchimor selection)",
+          "spread": "Honduras, Central America",
+          "altitude_range_m": "1000–1600",
+          "cup_profile": "Mild, balanced",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "High",
+          "yield": "Very High",
+          "plant_size": "Compact",
+          "notes": "Often used interchangeably with Lempira in Honduras; both are Sarchimor selections.",
+          "_source": "v0"
+        },
+        {
+          "name": "Centroamericano (H3)",
+          "species": "Coffea arabica",
+          "origin": "CATIE, Costa Rica (Sudan Rume × Timor Hybrid T17, 2010s)",
+          "spread": "Honduras, Guatemala, Nicaragua, Costa Rica",
+          "altitude_range_m": "1200–1800",
+          "cup_profile": "Exceptional — floral, fruity, complex, resembles Gesha in good conditions",
+          "body": "Light–Medium",
+          "acidity": "High",
+          "caffeine_pct": "0.9–1.2",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "High",
+          "yield": "Medium",
+          "plant_size": "Medium–Tall",
+          "notes": "Exciting new variety combining Sudan Rume's cup quality with disease resistance. Increasingly winning Cup of Excellence competitions.",
+          "_source": "v0"
+        },
+        {
+          "name": "Obatã",
+          "species": "Coffea arabica",
+          "origin": "Brazil (IAC Campinas — Sarchimor × Yellow Bourbon, 1999)",
+          "spread": "Brazil",
+          "altitude_range_m": "900–1400",
+          "cup_profile": "Soft, sweet, mild, clean",
+          "body": "Medium",
+          "acidity": "Low–Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Natural",
+            "Washed"
+          ],
+          "disease_resistance": "High",
+          "yield": "High",
+          "plant_size": "Compact",
+          "notes": "IAC Campinas selection combining disease resistance with Bourbon-like cup. Growing in Brazilian specialty market.",
+          "_source": "v0"
+        },
+        {
+          "name": "Tupi",
+          "species": "Coffea arabica",
+          "origin": "Brazil (IAC Campinas — Timor Hybrid × Catuaí)",
+          "spread": "Brazil",
+          "altitude_range_m": "900–1400",
+          "cup_profile": "Soft, sweet, balanced",
+          "body": "Medium",
+          "acidity": "Low",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Natural"
+          ],
+          "disease_resistance": "High",
+          "yield": "Very High",
+          "plant_size": "Compact",
+          "notes": "Brazilian commercial variety with rust resistance; bred by IAC.",
+          "_source": "v0"
+        },
+        {
+          "name": "Arusha",
+          "species": "Coffea arabica",
+          "origin": "Mount Meru, Tanzania (Typica type)",
+          "spread": "Tanzania, Papua New Guinea",
+          "altitude_range_m": "1400–2000",
+          "cup_profile": "Mild, sweet, floral, citrus",
+          "body": "Light–Medium",
+          "acidity": "Bright",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low",
+          "plant_size": "Tall",
+          "notes": "Named after Tanzania's Arusha region; similar genetics to Typica. Grown on Kilimanjaro and Meru slopes.",
+          "_source": "v0"
+        },
+        {
+          "name": "Jackson (Mibirizi)",
+          "species": "Coffea arabica",
+          "origin": "Burundi / Rwanda (Bourbon selection from 1930s Belgian missionaries)",
+          "spread": "Burundi, Rwanda, Congo",
+          "altitude_range_m": "1500–2000",
+          "cup_profile": "Juicy, stone fruit, tropical, floral",
+          "body": "Medium",
+          "acidity": "High",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Low",
+          "yield": "Low",
+          "plant_size": "Tall",
+          "notes": "Bourbon-derivative grown in the volcanic soils of the Great Lakes region. Defines Burundian and Rwandan specialty coffee character.",
+          "_source": "v0"
+        },
+        {
+          "name": "74110 (JARC Selection)",
+          "species": "Coffea arabica",
+          "type": "Improved Cultivar (Ethiopian selection)",
+          "origin": "Ethiopia (Jimma Agricultural Research Center, 1974)",
+          "spread": "Ethiopia",
+          "altitude_range_m": "1600–2200",
+          "cup_profile": "Citrus, floral, very clean, delicate",
+          "body": "Light–Medium",
+          "acidity": "Bright",
+          "caffeine_pct": "1.0–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Medium",
+          "yield": "Medium",
+          "plant_size": "Medium",
+          "notes": "Released 1979 from JARC selections. Increasingly common in single-variety Ethiopian specialty lots.",
+          "_source": "research"
+        },
+        {
+          "name": "74112 (JARC Selection)",
+          "species": "Coffea arabica",
+          "type": "Improved Cultivar (Ethiopian selection)",
+          "origin": "Ethiopia (Jimma Agricultural Research Center, 1974)",
+          "spread": "Ethiopia",
+          "altitude_range_m": "1600–2200",
+          "cup_profile": "Stone fruit, honey, balanced acidity",
+          "body": "Medium",
+          "acidity": "Medium–High",
+          "caffeine_pct": "1.0–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Medium",
+          "yield": "Medium",
+          "plant_size": "Medium",
+          "notes": "Released 1979; selected for disease resistance and cup quality. Common in specialty microlots.",
+          "_source": "research"
+        },
+        {
+          "name": "74158 (JARC Selection)",
+          "species": "Coffea arabica",
+          "type": "Improved Cultivar (Ethiopian selection)",
+          "origin": "Ethiopia (Jimma Agricultural Research Center, 1974)",
+          "spread": "Ethiopia",
+          "altitude_range_m": "1600–2200",
+          "cup_profile": "Berry jam, winey, rich, complex",
+          "body": "Medium–Full",
+          "acidity": "Medium",
+          "caffeine_pct": "1.0–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Medium",
+          "yield": "Medium",
+          "plant_size": "Medium",
+          "notes": "Released 1979; known for rich berry character. Frequently appears in Guji and Sidama lots.",
+          "_source": "research"
+        },
+        {
+          "name": "Starmaya",
+          "species": "Coffea arabica (F1 hybrid)",
+          "type": "F1 Hybrid",
+          "origin": "CIRAD France / WCR / ECOM (released 2018)",
+          "spread": "Nicaragua, Costa Rica, Central America",
+          "altitude_range_m": "800–1600",
+          "cup_profile": "Good to very good; sweet, balanced, clean",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.2–1.5",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Very High",
+          "yield": "Very High",
+          "plant_size": "Compact",
+          "notes": "First F1 hybrid propagated by seed (not grafting). Combines high yield, disease resistance, and good cup.",
+          "_source": "research"
+        },
+        {
+          "name": "Milenio (H10)",
+          "species": "Coffea arabica (F1 hybrid)",
+          "type": "F1 Hybrid",
+          "origin": "CATIE / CIRAD / PROMECAFE (2010s)",
+          "spread": "Costa Rica, Guatemala, Honduras",
+          "altitude_range_m": "1000–1800",
+          "cup_profile": "Very good; fruity, floral, high quality",
+          "body": "Medium",
+          "acidity": "High",
+          "caffeine_pct": "1.0–1.4",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "High",
+          "yield": "Very High",
+          "plant_size": "Medium–Tall",
+          "notes": "Part of WCR/CATIE F1 hybrid series; T5296 × Ethiopian landrace. Exceptional cup for a disease-resistant hybrid.",
+          "_source": "research"
+        },
+        {
+          "name": "Casiopea",
+          "species": "Coffea arabica (F1 hybrid)",
+          "type": "F1 Hybrid",
+          "origin": "CATIE / CIRAD / PROMECAFE (2010s)",
+          "spread": "Central America",
+          "altitude_range_m": "1000–1800",
+          "cup_profile": "Good to very good; balanced, sweet",
+          "body": "Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "1.0–1.5",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "High",
+          "yield": "Very High",
+          "plant_size": "Compact",
+          "notes": "F1 hybrid; good cup quality for a high-yielding disease-resistant plant.",
+          "_source": "research"
+        },
+        {
+          "name": "Sidra",
+          "species": "Coffea arabica",
+          "type": "Improved Cultivar (Ecuadorian hybrid)",
+          "origin": "Ecuador (Pichincha province)",
+          "spread": "Ecuador, Colombia",
+          "altitude_range_m": "1500–2000",
+          "cup_profile": "Tropical fruit, red apple, intense acidity, complex, wine-like",
+          "body": "Medium",
+          "acidity": "Very High",
+          "caffeine_pct": "1.0–1.4",
+          "processing_compatibility": [
+            "Washed",
+            "Natural",
+            "Anaerobic",
+            "Honey"
+          ],
+          "disease_resistance": "Low–Medium",
+          "yield": "Medium",
+          "plant_size": "Tall",
+          "notes": "Believed to be a Bourbon × Typica × Ethiopian heirloom hybrid. Not in WCR catalog. Prized for complex tropical fruit acidity. Used by multiple WBC competitors. Increasingly sold as a named variety.",
+          "_source": "research"
+        }
+      ]
+    },
+    {
+      "id": "robusta",
+      "name": "Robusta (Coffea canephora)",
+      "description": "Second-largest traded coffee species. Higher caffeine, lower altitude requirements, stronger disease resistance than Arabica.",
+      "varieties": [
+        {
+          "name": "Robusta (Coffea canephora var. robusta)",
+          "species": "Coffea canephora",
+          "origin": "Congo Basin, Central / West Africa",
+          "spread": "Vietnam, Indonesia, Uganda, India, Ivory Coast, Philippines",
+          "altitude_range_m": "0–800",
+          "cup_profile": "Strong, earthy, rubbery, dark, bitter, tobacco",
+          "body": "Very Full",
+          "acidity": "Very Low",
+          "caffeine_pct": "2.0–2.7",
+          "processing_compatibility": [
+            "Washed",
+            "Natural"
+          ],
+          "disease_resistance": "Very High",
+          "yield": "Very High",
+          "plant_size": "Large shrub / small tree",
+          "global_share_pct": "~40",
+          "notes": "Approximately 40% of world coffee production. Essential for espresso blends (crema, intensity), instant coffee, and Vietnamese ca phe. Twice the caffeine of Arabica.",
+          "_source": "v0"
+        },
+        {
+          "name": "Coffea canephora var. nganda (Kouillou)",
+          "species": "Coffea canephora",
+          "origin": "Congo Basin (wild)",
+          "spread": "Congo, Ivory Coast",
+          "altitude_range_m": "0–600",
+          "cup_profile": "Harsh, intensely bitter, very woody",
+          "body": "Very Full",
+          "acidity": "Very Low",
+          "caffeine_pct": "2.0–3.0",
+          "processing_compatibility": [
+            "Natural"
+          ],
+          "disease_resistance": "Very High",
+          "yield": "Medium",
+          "plant_size": "Spreading shrub",
+          "notes": "Wild sub-variety of Canephora; spreading rather than erect. Less commercially cultivated.",
+          "_source": "v0"
+        },
+        {
+          "name": "Conillon (Conilon)",
+          "species": "Coffea canephora",
+          "origin": "Brazil (Espírito Santo state)",
+          "spread": "Brazil (Espírito Santo, Rondônia, Bahia)",
+          "altitude_range_m": "200–800",
+          "cup_profile": "Nutty, bold, lower bitterness than standard Robusta",
+          "body": "Full",
+          "acidity": "Low",
+          "caffeine_pct": "1.8–2.5",
+          "processing_compatibility": [
+            "Natural",
+            "Washed"
+          ],
+          "disease_resistance": "High",
+          "yield": "Very High",
+          "plant_size": "Large",
+          "notes": "Brazil's main Robusta; used in domestic espresso blends. Considered a distinct variety from central African Robusta.",
+          "_source": "v0"
+        },
+        {
+          "name": "Specialty Robusta / Fine Robusta",
+          "species": "Coffea canephora",
+          "origin": "Uganda (Mount Elgon / Rwenzori), Vietnam (Dak Lak highlands)",
+          "spread": "Uganda, Vietnam, India (Chikmagalur), Indonesia (Flores, Sulawesi)",
+          "altitude_range_m": "400–1200",
+          "cup_profile": "Dark chocolate, tobacco, walnut, pepper, low bitterness",
+          "body": "Full",
+          "acidity": "Low–Medium",
+          "caffeine_pct": "1.8–2.3",
+          "processing_compatibility": [
+            "Washed",
+            "Honey"
+          ],
+          "disease_resistance": "High",
+          "yield": "High",
+          "plant_size": "Medium–Large",
+          "notes": "Grown at higher altitudes than conventional Robusta; gaining specialty recognition. WCR and SCA have established Fine Robusta standards. Uganda produces exceptional examples.",
+          "_source": "v0"
+        },
+        {
+          "name": "Timor Hybrid (Hibrido de Timor / HDT)",
+          "species": "Natural Coffea arabica × canephora hybrid",
+          "origin": "Timor-Leste (discovered ~1927)",
+          "spread": "Breeding programs worldwide (Portugal, Colombia, India, Brazil)",
+          "altitude_range_m": "1000–1800",
+          "cup_profile": "Variable; often earthy, harsh; introgression used for breeding only",
+          "body": "Full",
+          "acidity": "Low",
+          "caffeine_pct": "1.5–2.0",
+          "processing_compatibility": [
+            "Washed"
+          ],
+          "disease_resistance": "Very High (carries Robusta resistance genes)",
+          "yield": "Medium",
+          "plant_size": "Medium–Large",
+          "notes": "Not commercially grown for its own cup quality; genetically critical as the source of leaf-rust resistance in most modern hybrid varieties (Catimor, Sarchimor, Castillo, Colombia).",
+          "_source": "v0"
+        },
+        {
+          "name": "BA-10 (Vietnamese Robusta clone)",
+          "species": "Coffea canephora",
+          "origin": "Vietnam (WASI selection)",
+          "spread": "Vietnam",
+          "altitude_range_m": "500–800",
+          "cup_profile": "Bold, bitter, earthy",
+          "body": "Very Full",
+          "acidity": "Very Low",
+          "caffeine_pct": "2.0–2.5",
+          "processing_compatibility": [
+            "Natural"
+          ],
+          "disease_resistance": "High",
+          "yield": "Very High",
+          "plant_size": "Large",
+          "notes": "Vietnam's most planted Robusta clone; dominant in the world's largest Robusta-producing country.",
+          "_source": "v0"
+        }
+      ]
+    },
+    {
+      "id": "liberica_other",
+      "name": "Liberica, Excelsa & Rare Species",
+      "description": "Lesser-known coffee species with niche but growing importance. Together represent ~1–2% of global production.",
+      "varieties": [
+        {
+          "name": "Liberica (Coffea liberica)",
+          "species": "Coffea liberica",
+          "origin": "Liberia, West Africa",
+          "spread": "Philippines (as 'Barako'), Malaysia, Indonesia",
+          "altitude_range_m": "0–500",
+          "cup_profile": "Floral, woody, smoky, jackfruit, full-bodied, slightly harsh",
+          "body": "Full–Heavy",
+          "acidity": "Low",
+          "caffeine_pct": "1.2–1.7",
+          "processing_compatibility": [
+            "Natural",
+            "Washed"
+          ],
+          "disease_resistance": "High (leaf rust resistant historically)",
+          "yield": "Medium",
+          "plant_size": "Very Large tree (up to 9m)",
+          "notes": "Unique irregular, large beans. Briefly replaced Arabica after 1890s leaf rust devastation in Philippines. 'Barako' (Filipino Liberica) is a beloved national symbol.",
+          "_source": "v0"
+        },
+        {
+          "name": "Excelsa (Coffea liberica var. dewevrei)",
+          "species": "Coffea liberica var. dewevrei",
+          "origin": "Central Africa (Chad Basin, originally)",
+          "spread": "Philippines, Vietnam, SE Asia, parts of Africa",
+          "altitude_range_m": "0–1000",
+          "cup_profile": "Tart, dark, fruity, winey, funky, complex",
+          "body": "Light–Medium",
+          "acidity": "High",
+          "caffeine_pct": "1.0–1.5",
+          "processing_compatibility": [
+            "Natural"
+          ],
+          "disease_resistance": "High",
+          "yield": "Medium",
+          "plant_size": "Large",
+          "notes": "Reclassified as a Liberica variant in 2006. Used in Philippines to add complexity and depth to blends. Growing specialty interest.",
+          "_source": "v0"
+        },
+        {
+          "name": "Coffea Stenophylla",
+          "species": "Coffea stenophylla",
+          "origin": "Sierra Leone, Guinea, Ivory Coast",
+          "spread": "Very limited; research stage",
+          "altitude_range_m": "0–800",
+          "cup_profile": "Sweet, berry, stone fruit, complex — described as 'tastes like Arabica'",
+          "body": "Light–Medium",
+          "acidity": "Medium",
+          "caffeine_pct": "0.6–1.0",
+          "processing_compatibility": [
+            "Natural",
+            "Washed (experimental)"
+          ],
+          "disease_resistance": "Medium",
+          "yield": "Low",
+          "plant_size": "Small tree",
+          "notes": "Rediscovered wild in Sierra Leone in 2018 by researchers (Davis et al.). Highly heat-tolerant (survives at lower altitudes than Arabica); potential climate-change resilience candidate.",
+          "_source": "v0"
+        },
+        {
+          "name": "Coffea Racemosa",
+          "species": "Coffea racemosa",
+          "origin": "Mozambique, southern Africa, coastal Tanzania",
+          "spread": "Limited; Mozambique",
+          "altitude_range_m": "0–300",
+          "cup_profile": "Mild, grassy, herbal, neutral",
+          "body": "Very Light",
+          "acidity": "Low",
+          "caffeine_pct": "0.2–0.4",
+          "processing_compatibility": [
+            "Natural"
+          ],
+          "disease_resistance": "High",
+          "yield": "Low",
+          "plant_size": "Small shrub",
+          "notes": "Extremely low caffeine — one of the lowest of any Coffea species. Highly drought-tolerant. Being studied for climate adaptation and caffeine-free crossing.",
+          "_source": "v0"
+        },
+        {
+          "name": "Coffea Eugenioides",
+          "species": "Coffea eugenioides",
+          "origin": "Central Africa (Uganda, Congo, Kenya)",
+          "spread": "Experimental farms in Colombia, Kenya",
+          "altitude_range_m": "1500–2500",
+          "cup_profile": "Sweet, caramel, very low caffeine, smooth",
+          "body": "Light",
+          "acidity": "Low",
+          "caffeine_pct": "0.2–0.3",
+          "processing_compatibility": [
+            "Washed (experimental)"
+          ],
+          "disease_resistance": "Unknown",
+          "yield": "Very Low",
+          "plant_size": "Small",
+          "notes": "Progenitor species of Coffea arabica (along with Robusta). Naturally very low caffeine. Being commercially explored by a few specialty producers in Colombia.",
+          "_source": "v0"
+        },
+        {
+          "name": "Coffea Charrieriana",
+          "species": "Coffea charrieriana",
+          "origin": "Cameroon",
+          "spread": "None (lab/research only)",
+          "altitude_range_m": "Unknown",
+          "cup_profile": "Unknown / under study",
+          "body": "Unknown",
+          "acidity": "Unknown",
+          "caffeine_pct": "0.0",
+          "processing_compatibility": [],
+          "disease_resistance": "Unknown",
+          "yield": "Unknown",
+          "plant_size": "Unknown",
+          "notes": "First naturally caffeine-free Coffea species discovered (2008, Cameroon). Not commercially viable but important for breeding decaffeinated varieties.",
+          "_source": "v0"
+        },
+        {
+          "name": "Coffea Canephora × Liberica (Hybrid)",
+          "species": "Interspecific hybrid",
+          "origin": "Research programs (CIRAD, WCR)",
+          "spread": "Experimental",
+          "altitude_range_m": "0–800",
+          "cup_profile": "Variable / experimental",
+          "body": "Full",
+          "acidity": "Low",
+          "caffeine_pct": "1.5–2.0",
+          "processing_compatibility": [
+            "Natural"
+          ],
+          "disease_resistance": "Very High",
+          "yield": "High",
+          "plant_size": "Large",
+          "notes": "Experimental crosses being studied for climate resilience and disease resistance.",
+          "_source": "v0"
+        },
+        {
+          "name": "Coffea Congensis",
+          "species": "Coffea congensis",
+          "type": "Rare species",
+          "origin": "Congo River Basin",
+          "spread": "Research level only",
+          "altitude_range_m": "0–500",
+          "cup_profile": "Mild, neutral, low bitterness, slightly fruity",
+          "body": "Light",
+          "acidity": "Low",
+          "caffeine_pct": "0.8–1.2",
+          "processing_compatibility": [
+            "Natural (experimental)"
+          ],
+          "disease_resistance": "High (flood-tolerant)",
+          "yield": "Low",
+          "plant_size": "Medium shrub",
+          "notes": "One of few Coffea species that tolerates flooding. Being studied for climate adaptation.",
+          "_source": "research"
+        }
+      ]
+    },
+    {
+      "id": "processing_styles",
+      "name": "Processing & Fermentation Styles",
+      "description": "Post-harvest processing methods that profoundly shape the final cup regardless of variety.",
+      "varieties": [
+        {
+          "name": "Natural (Dry) Process",
+          "category": "Processing",
+          "origin": "Ethiopia, Yemen (oldest method)",
+          "regions": "Ethiopia, Yemen, Brazil, El Salvador, Indonesia",
+          "cup_profile": "Fruity, winey, jammy, strawberry, blueberry, tropical fruit, heavy sweetness",
+          "body": "Full",
+          "acidity": "Low–Medium",
+          "fermentation": "Natural aerobic fermentation inside fruit",
+          "drying_method": "Dried whole cherry on raised beds or patios",
+          "drying_time_days": "20–35",
+          "notes": "Oldest processing method; no water used. Higher risk of defects if poorly managed; exceptional when done well. Ethiopia Naturals (Yirgacheffe, Guji) are iconic examples.",
+          "_source": "v0"
+        },
+        {
+          "name": "Washed (Wet) Process",
+          "category": "Processing",
+          "origin": "Central America / East Africa (developed 17th–18th century)",
+          "regions": "Colombia, Ethiopia (Yirgacheffe washed), Kenya, Central America, Rwanda",
+          "cup_profile": "Clean, bright, nuanced, transparent terroir expression, citrus, florals",
+          "body": "Light–Medium",
+          "acidity": "High",
+          "fermentation": "Wet fermentation 24–72 hours after pulping",
+          "drying_method": "Raised beds after washing",
+          "drying_time_days": "10–20",
+          "notes": "Pulp removed mechanically before drying; mucilage removed by fermentation and washing. Best for showcasing variety and terroir. Standard in East Africa and Colombia.",
+          "_source": "v0"
+        },
+        {
+          "name": "Yellow Honey Process",
+          "category": "Processing",
+          "origin": "Costa Rica",
+          "regions": "Costa Rica, El Salvador, Brazil",
+          "cup_profile": "Slightly fruity, sweet, balanced, minimal fermentation notes",
+          "body": "Medium",
+          "acidity": "Medium",
+          "fermentation": "Minimal; low mucilage retention",
+          "mucilage_retention_pct": "10–25",
+          "drying_time_days": "8–12",
+          "notes": "Least mucilage of honey variants retained; cleaner than Red/Black Honey; more fruit than Washed.",
+          "_source": "v0"
+        },
+        {
+          "name": "Red Honey Process",
+          "category": "Processing",
+          "origin": "Costa Rica",
+          "regions": "Costa Rica, El Salvador, Guatemala",
+          "cup_profile": "Juicy, fruity, caramel, balanced",
+          "body": "Medium–Full",
+          "acidity": "Medium",
+          "fermentation": "Some mucilage fermentation",
+          "mucilage_retention_pct": "50",
+          "drying_time_days": "12–18",
+          "notes": "Half of mucilage retained; moderate fruit character with good sweetness.",
+          "_source": "v0"
+        },
+        {
+          "name": "Black Honey Process",
+          "category": "Processing",
+          "origin": "Costa Rica",
+          "regions": "Costa Rica, El Salvador",
+          "cup_profile": "Intense fruit, wine-like, very sweet, complex",
+          "body": "Full",
+          "acidity": "Medium",
+          "fermentation": "Extended mucilage fermentation",
+          "mucilage_retention_pct": "90–100",
+          "drying_time_days": "20–30",
+          "notes": "Nearly all mucilage retained; closest to Natural in profile while still being a Honey process.",
+          "_source": "v0"
+        },
+        {
+          "name": "Wet-Hulled (Giling Basah)",
+          "category": "Processing",
+          "origin": "Sumatra, Indonesia",
+          "regions": "Sumatra (Mandheling, Lintong, Gayo), Sulawesi (Toraja), Flores",
+          "cup_profile": "Earthy, cedar, tobacco, dark chocolate, mushroom, full body, very low acidity",
+          "body": "Very Full",
+          "acidity": "Very Low",
+          "fermentation": "Brief; high-moisture hulling",
+          "drying_time_days": "2–3 (to ~50% moisture) then 3–5 after hulling",
+          "notes": "Unique to Indonesia; beans hulled at ~50% moisture content (instead of standard ~12%), resulting in distinctive blue-green appearance and earthy flavor. Classic Sumatran profile.",
+          "_source": "v0"
+        },
+        {
+          "name": "Anaerobic Natural",
+          "category": "Processing",
+          "origin": "Colombia / specialty world (emerged ~2015)",
+          "regions": "Colombia, Ethiopia, Costa Rica, Panama, Honduras",
+          "cup_profile": "Intense tropical fruit, bubblegum, fermented sweetness, wine, extreme complexity",
+          "body": "Full",
+          "acidity": "Low–Medium",
+          "fermentation": "Sealed-tank anaerobic fermentation of whole cherry (24–200 hours)",
+          "drying_time_days": "18–30 post-fermentation",
+          "notes": "Fermented in sealed oxygen-free tanks; produces extremely distinct and polarizing flavor profiles. Dominant in competition coffee.",
+          "_source": "v0"
+        },
+        {
+          "name": "Anaerobic Washed",
+          "category": "Processing",
+          "origin": "Colombia / specialty world",
+          "regions": "Specialty farms worldwide",
+          "cup_profile": "Clean but unusual fermentation notes; whiskey, tropical, bright",
+          "body": "Medium",
+          "acidity": "Bright",
+          "fermentation": "Sealed-tank anaerobic fermentation before pulping and washing",
+          "drying_time_days": "10–18",
+          "notes": "Combines anaerobic fermentation with washed processing for cleaner but still adventurous cup.",
+          "_source": "v0"
+        },
+        {
+          "name": "Carbonic Maceration",
+          "category": "Processing",
+          "origin": "Wine industry; adapted to coffee ~2015 by Sasa Sestic",
+          "regions": "Colombia, specialty farms worldwide",
+          "cup_profile": "Sparkling, bright, cherry cola, clean fermentation, unique complexity",
+          "body": "Light–Medium",
+          "acidity": "Vibrant",
+          "fermentation": "CO2-saturated sealed tank; intracellular fermentation",
+          "drying_time_days": "12–20",
+          "notes": "Sasa Sestic won 2015 World Barista Championship with this method. Borrowed directly from Beaujolais wine production.",
+          "_source": "v0"
+        },
+        {
+          "name": "Lactic Fermentation",
+          "category": "Processing",
+          "origin": "Specialty innovation (2015–present)",
+          "regions": "Colombia, Costa Rica",
+          "cup_profile": "Creamy, yogurt-like, clean sweetness, low acidity",
+          "body": "Medium",
+          "acidity": "Low",
+          "fermentation": "Anaerobic; conditions favor lactic acid bacteria",
+          "drying_time_days": "15–25",
+          "notes": "Temperature and water levels managed to promote lactic acid bacteria dominance in fermentation.",
+          "_source": "v0"
+        },
+        {
+          "name": "Washed Natural (Semi-Washed / Pulped Natural)",
+          "category": "Processing",
+          "origin": "Brazil (COFEE / ABIC, 1990s)",
+          "regions": "Brazil, some Central America",
+          "cup_profile": "Body of Natural, cleanliness of Washed; sweet, balanced",
+          "body": "Medium–Full",
+          "acidity": "Low–Medium",
+          "fermentation": "Minimal; mucilage dries naturally",
+          "drying_time_days": "10–15",
+          "notes": "Cherry pulped but mucilage not washed off; dried as-is. Brazilian standard process.",
+          "_source": "v0"
+        },
+        {
+          "name": "Yeast-Inoculated Fermentation",
+          "category": "Processing",
+          "origin": "Specialty innovation (Saša Šestić / WCR, 2016–present)",
+          "regions": "Colombia, Kenya, Panama",
+          "cup_profile": "Precise, consistent, controlled fruit and floral notes",
+          "body": "Varies",
+          "acidity": "Varies",
+          "fermentation": "Specific yeast strains (wine, beer, bakery) inoculated into fermentation tank",
+          "drying_time_days": "Varies",
+          "notes": "Adding commercial yeast strains to fermentation to produce predictable, reproducible flavor. Controversial in competition; some classes permit it, others do not.",
+          "_source": "v0"
+        },
+        {
+          "name": "Koji Fermentation",
+          "category": "Processing",
+          "origin": "Japan/Specialty innovation (2020–present)",
+          "regions": "Colombia, Panama, Costa Rica (experimental)",
+          "cup_profile": "Umami, miso, soy sauce, savory-sweet, unprecedented complexity",
+          "body": "Medium–Full",
+          "acidity": "Medium",
+          "fermentation": "Koji mold (Aspergillus oryzae) inoculated onto coffee cherry/mucilage",
+          "drying_time_days": "15–25",
+          "notes": "Breakthrough technique borrowed from Japanese sake/soy sauce. Koji enzymes produce unique umami compounds. Extremely experimental.",
+          "_source": "research"
+        },
+        {
+          "name": "Thermal Shock Process",
+          "category": "Processing",
+          "origin": "Colombia (Diego Bermudez, Finca El Paraíso, ~2018)",
+          "regions": "Colombia, specialty farms",
+          "cup_profile": "Intense fruit, candy sweetness, clean, no ferment defects",
+          "body": "Medium",
+          "acidity": "Vibrant",
+          "fermentation": "Rapid temperature cycling (hot/cold) after anaerobic fermentation",
+          "drying_time_days": "15–25",
+          "notes": "Pioneered by Diego Bermudez; uses rapid hot/cold water cycling to lock in fruit flavors while eliminating fermentation defects.",
+          "_source": "research"
+        },
+        {
+          "name": "Fruit Co-Fermentation",
+          "category": "Processing",
+          "origin": "Colombia (Jairo Arcila, Diego Bermudez, ~2019–present)",
+          "regions": "Colombia, Costa Rica, specialty farms worldwide",
+          "cup_profile": "Intense fruit infusion; strawberry, passionfruit, peach, wine, highly aromatic",
+          "body": "Medium–Full",
+          "acidity": "Varies",
+          "fermentation": "Fruit must, yeast strains, spices, or hops added during sealed-tank anaerobic fermentation",
+          "drying_time_days": "18–30",
+          "notes": "Fruit musts, spices, or hops are co-fermented with coffee cherry or mucilage in anaerobic tanks. Creates intensely fruity, unconventional profiles. Growing trend in specialty; some controversy over transparency in competitions.",
+          "_source": "research"
+        }
+      ]
+    },
+    {
+      "id": "market_names",
+      "name": "Commercially Known Names & Specialty Lots",
+      "description": "Coffees known by trade, origin, or estate names rather than botanical variety names.",
+      "varieties": [
+        {
+          "name": "Panama Gesha (Hacienda La Esmeralda)",
+          "species": "Coffea arabica — Gesha",
+          "origin": "Boquete, Chiriquí, Panama",
+          "cup_profile": "Jasmine, bergamot, peach, tropical, mandarin",
+          "body": "Light–Silky",
+          "acidity": "Tea-like, complex",
+          "price_range": "$100–$10,000+/kg at auction",
+          "notes": "Hacienda La Esmeralda sparked the global Gesha revolution in 2004. Annual Best of Panama auction lot.",
+          "_source": "v0"
+        },
+        {
+          "name": "Yirgacheffe (Washed)",
+          "species": "Coffea arabica — Ethiopian Heirloom",
+          "origin": "Yirgacheffe, Southern Nations, Ethiopia",
+          "cup_profile": "Jasmine, lemon verbena, bergamot, tea-like, delicate",
+          "body": "Light",
+          "acidity": "Bright, citrus",
+          "notes": "Benchmark for washed Ethiopian coffee; Yirgacheffe W2 grade most common specialty version.",
+          "_source": "v0"
+        },
+        {
+          "name": "Yirgacheffe (Natural)",
+          "species": "Coffea arabica — Ethiopian Heirloom",
+          "origin": "Yirgacheffe, Southern Nations, Ethiopia",
+          "cup_profile": "Blueberry jam, strawberry, wine, floral",
+          "body": "Full",
+          "acidity": "Medium",
+          "notes": "Natural-processed version of Yirgacheffe; more fruit-driven than washed counterpart.",
+          "_source": "v0"
+        },
+        {
+          "name": "Sidama / Sidamo",
+          "species": "Coffea arabica — Ethiopian Heirloom",
+          "origin": "Sidama Zone, Ethiopia",
+          "cup_profile": "Berry, citrus, chocolate, balanced complexity",
+          "body": "Medium",
+          "acidity": "Bright",
+          "notes": "Sidama became Ethiopia's first protected origin via WTO in 2021.",
+          "_source": "v0"
+        },
+        {
+          "name": "Harrar (Harar)",
+          "species": "Coffea arabica — Ethiopian Heirloom",
+          "origin": "Harrar, Eastern Ethiopia",
+          "cup_profile": "Winey, blueberry, dark chocolate, earthy, intense",
+          "body": "Full",
+          "acidity": "Medium",
+          "processing": "Natural (dry process)",
+          "notes": "Ancient trading city; dry-processed at high altitude. Mocha-Harrar is a classic blend component.",
+          "_source": "v0"
+        },
+        {
+          "name": "Guji",
+          "species": "Coffea arabica — Ethiopian Heirloom",
+          "origin": "Guji Zone, Oromia, Ethiopia",
+          "cup_profile": "Stone fruit, floral, tropical, clean",
+          "body": "Medium",
+          "acidity": "Bright",
+          "notes": "Formerly sold as Yirgacheffe or Sidama; given its own regional identity in recent years.",
+          "_source": "v0"
+        },
+        {
+          "name": "Sumatra Mandheling",
+          "species": "Coffea arabica (Typica, S795, Catimor)",
+          "origin": "Mandailing Batak highlands, North Sumatra, Indonesia",
+          "cup_profile": "Earthy, cedar, dark chocolate, low acidity, full body, syrupy",
+          "body": "Very Full",
+          "acidity": "Very Low",
+          "processing": "Wet-hulled (Giling Basah)",
+          "notes": "Mandheling is a trade name, not a village; processed by wet-hulling method unique to Indonesia.",
+          "_source": "v0"
+        },
+        {
+          "name": "Sumatra Lintong",
+          "species": "Coffea arabica",
+          "origin": "Lintong Nihuta, North Sumatra, Indonesia",
+          "cup_profile": "Earthy, herbal, tobacco, less intense than Mandheling",
+          "body": "Full",
+          "acidity": "Low",
+          "processing": "Wet-hulled",
+          "notes": "Grown near Lake Toba; considered slightly cleaner than Mandheling.",
+          "_source": "v0"
+        },
+        {
+          "name": "Sulawesi Toraja",
+          "species": "Coffea arabica",
+          "origin": "Tana Toraja, Sulawesi, Indonesia",
+          "cup_profile": "Dark chocolate, black pepper, earthy, full",
+          "body": "Full",
+          "acidity": "Low",
+          "processing": "Wet-hulled",
+          "notes": "Grown by Toraja ethnic group; famous for elaborate funeral ceremonies and unique coffee character.",
+          "_source": "v0"
+        },
+        {
+          "name": "Kopi Luwak",
+          "species": "Coffea arabica or Robusta",
+          "origin": "Indonesia (Sumatra, Java, Sulawesi, Bali); also Philippines (Kape Alamid)",
+          "cup_profile": "Earthy, smooth, low bitterness, mild, chocolatey",
+          "body": "Medium",
+          "acidity": "Very Low",
+          "processing": "Civet-processed (passes through Asian palm civet digestive system)",
+          "price_range": "$200–$600+/kg",
+          "notes": "Most expensive widely traded coffee. Fermentation by civet enzymes reduces bitterness. Serious animal welfare concerns around caged civets; wild-sourced versions exist.",
+          "_source": "v0"
+        },
+        {
+          "name": "Black Ivory Coffee",
+          "species": "Coffea arabica (Thai Arabica)",
+          "origin": "Chiang Rai, Thailand",
+          "cup_profile": "Smooth, low bitterness, earthy, hint of fruit, tamarind",
+          "body": "Full",
+          "acidity": "Very Low",
+          "processing": "Elephant-processed",
+          "price_range": "$500–$1,500/kg",
+          "notes": "World's most expensive coffee; passed through Asian elephant digestive system. Produced by Black Ivory Coffee Company in Golden Triangle. Portion of proceeds funds elephant welfare.",
+          "_source": "v0"
+        },
+        {
+          "name": "Jamaican Blue Mountain",
+          "species": "Coffea arabica (Blue Mountain cultivar)",
+          "origin": "Blue Mountains, Jamaica (1200–1800 m)",
+          "cup_profile": "Mild, clean, sweet, balanced, no defects",
+          "body": "Medium",
+          "acidity": "Low–Medium",
+          "processing": "Washed",
+          "price_range": "$50–$80/100g",
+          "notes": "Protected Designation of Origin; sold in traditional wooden barrels; 80%+ exported to Japan.",
+          "_source": "v0"
+        },
+        {
+          "name": "Hawaiian Kona Extra Fancy",
+          "species": "Coffea arabica (Kona/Typica)",
+          "origin": "Kona district, Big Island, Hawaii, USA",
+          "cup_profile": "Mild, sweet, light nutty, clean",
+          "body": "Medium",
+          "acidity": "Low–Medium",
+          "processing": "Washed",
+          "price_range": "$40–$70/100g",
+          "notes": "Extra Fancy is highest grade; beans must be ≥19/64 inch screen. Grown in 'the coffee belt' between Hualalai and Mauna Loa volcanoes.",
+          "_source": "v0"
+        },
+        {
+          "name": "Yemen Mocha",
+          "species": "Coffea arabica (ancient indigenous varieties)",
+          "origin": "Yemen (Haraaz, Haima, Bani Matar highlands)",
+          "cup_profile": "Winey, blueberry, dark fruit, chocolate, spice",
+          "body": "Full",
+          "acidity": "Medium",
+          "processing": "Natural (ancient dry process on rooftops)",
+          "price_range": "$50–$200/kg",
+          "notes": "Origin of the word 'mocha'; has been naturally dry-processed for centuries. Ongoing conflict has disrupted production. Among the world's most historically significant coffees.",
+          "_source": "v0"
+        },
+        {
+          "name": "Panama Geisha (Finca Deborah)",
+          "species": "Coffea arabica — Gesha",
+          "origin": "Volcán, Chiriquí, Panama (1900+ m)",
+          "cup_profile": "Jasmine, bergamot, peach, candied lemon, extraordinary clarity",
+          "body": "Light–Silky",
+          "acidity": "Vibrant, tea-like",
+          "price_range": "$500–$3,000+/kg at auction",
+          "processing": "Washed, Natural, Anaerobic",
+          "notes": "One of the highest-altitude Gesha farms in Panama. Multiple Best of Panama wins. Ultra-clean profiles.",
+          "_source": "research"
+        },
+        {
+          "name": "Finca El Paraíso (Diego Bermudez)",
+          "species": "Coffea arabica (Castillo, Colombia, Gesha)",
+          "origin": "Cauca, Colombia (1700–1900 m)",
+          "cup_profile": "Intense tropical fruit, candy sweetness, extraordinary complexity from advanced processing",
+          "body": "Medium",
+          "acidity": "Vibrant, complex",
+          "price_range": "$50–$500+/kg at auction",
+          "processing": "Thermal Shock, Anaerobic, Yeast-inoculated (pioneer of advanced methods)",
+          "notes": "Diego Bermudez is one of the most innovative coffee processors globally. Pioneer of thermal shock processing. Multiple competition wins. Coffees sold by farm name with specific lot codes as branded products.",
+          "_source": "research"
+        }
+      ]
+    }
+  ]
+}
