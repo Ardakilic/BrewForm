@@ -44,7 +44,7 @@ setup-hooks: ## Configure git to use .githooks/ for pre-commit checks
 
 # Cache Deno dependencies inside the container (uses deno_cache volume).
 install: ## Cache Deno dependencies
-	docker compose run --rm --no-deps app deno install --frozen
+	docker compose run --rm --no-deps app deno install
 
 # --- Email Templates ---
 
@@ -139,8 +139,11 @@ flush-cache: ## Clear Deno KV cache
 
 flush-contents: flush-db flush-cache ## Truncate all database tables and clear Deno KV cache
 
-db-reset: flush-contents ## Full reset: truncate tables, clear cache, run migrations, re-seed
-	$(MAKE) db-migrate
+db-reset: ## Full reset: drop volumes, recreate DB, push schema, seed
+	docker compose down -v
+	docker compose up -d postgres
+	@sleep 3
+	$(MAKE) db-push
 	$(MAKE) db-seed
 
 # --- Admin Setup ---

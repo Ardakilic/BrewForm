@@ -160,6 +160,8 @@ interface NavItemConfig {
 
 const NAV_ITEMS = [
   { to: '/recipes', labelKey: 'nav.recipes', end: true, authRequired: false },
+  { to: '/coffee-varieties', labelKey: 'nav.varieties', end: true, authRequired: false },
+  { to: '/equipment/catalog', labelKey: 'nav.equipment', end: true, authRequired: false },
   { to: '/recipes/new', labelKey: 'recipe.create', end: true, authRequired: true },
   { to: '/recipes/starred', labelKey: 'recipe.starred.title', end: true, authRequired: true },
   { to: '/setups', labelKey: 'setup.title', end: false, authRequired: true },

@@ -3,6 +3,7 @@ import {
   badges,
   beans,
   brewMethodEquipmentRules,
+  coffeeVarieties,
   comments,
   equipment,
   photos,
@@ -36,7 +37,11 @@ import {
   socialSeedData,
   userSeedData,
   vendorSeedData,
-} from './seed-data.ts';
+} from './seed-users-recipes.ts';
+import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
+import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
+
+type SeedTX = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 interface ScaaChild {
   name: string;
@@ -173,6 +178,53 @@ async function seedEquipment(tx: any, createdUsers: Record<string, any>) {
   return createdEquipment;
 }
 
+async function seedEquipmentCatalog(
+  tx: SeedTX,
+): Promise<Record<string, typeof equipment.$inferSelect>> {
+  const created: Record<string, typeof equipment.$inferSelect> = {};
+  for (const equipData of equipmentCatalogSeedData) {
+    const [equip] = await tx.insert(equipment).values({
+      id: equipData.id,
+      name: equipData.name,
+      type: equipData.type as typeof equipment.$inferInsert['type'],
+      brand: equipData.brand,
+      model: equipData.model,
+      description: equipData.description,
+      isSystem: true,
+    }).onConflictDoNothing().returning();
+    if (equip) created[equip.name] = equip;
+  }
+  return created;
+}
+
+async function seedCoffeeVarietiesCatalogue(
+  tx: SeedTX,
+): Promise<Record<string, typeof coffeeVarieties.$inferSelect>> {
+  const created: Record<string, typeof coffeeVarieties.$inferSelect> = {};
+  for (const varietyData of coffeeVarietySeedData) {
+    const [row] = await tx.insert(coffeeVarieties).values({
+      id: varietyData.id, name: varietyData.name,
+      category: varietyData.category as typeof coffeeVarieties.$inferInsert['category'],
+      species: varietyData.species, origin: varietyData.origin,
+      spread: varietyData.spread, altitudeRangeM: varietyData.altitudeRangeM,
+      cupProfile: varietyData.cupProfile, body: varietyData.body,
+      acidity: varietyData.acidity, caffeinePct: varietyData.caffeinePct,
+      processingCompatibility: varietyData.processingCompatibility,
+      diseaseResistance: varietyData.diseaseResistance,
+      yield: varietyData.yield, plantSize: varietyData.plantSize,
+      notes: varietyData.notes, subVarieties: varietyData.subVarieties,
+      fermentation: varietyData.fermentation, dryingTimeDays: varietyData.dryingTimeDays,
+      dryingMethod: varietyData.dryingMethod, mucilageRetentionPct: varietyData.mucilageRetentionPct,
+      priceRange: varietyData.priceRange, processing: varietyData.processing,
+      typeLabel: varietyData.typeLabel, notableFarms: varietyData.notableFarms,
+      notableRegions: varietyData.notableRegions, regionalVariants: varietyData.regionalVariants,
+      globalSharePct: varietyData.globalSharePct, isSystem: true,
+    }).onConflictDoNothing().returning();
+    if (row) created[varietyData.name] = row;
+  }
+  return created;
+}
+
 async function seedBeans(
   tx: any,
   createdUsers: Record<string, any>,
@@ -197,6 +249,7 @@ async function seedRecipes(
   createdUsers: Record<string, any>,
   createdVendors: Record<string, any>,
   createdEquipment: Record<string, any>,
+  createdCoffeeVarieties: Record<string, any>,
 ) {
   const createdRecipes: Record<string, any> = {};
   const createdVersions: Record<string, any> = {};
@@ -238,6 +291,10 @@ async function seedRecipes(
       brewRatio: version.brewRatio,
       flowRate: version.flowRate,
       preInfusionTimeSeconds: (version as any).preInfusionTimeSeconds ?? null,
+      coffeeVarietyId: (recipeData as any).coffeeVarietyName
+        ? createdCoffeeVarieties[(recipeData as any).coffeeVarietyName]?.id ?? null
+        : null,
+      coffeeVarietyName: (recipeData as any).coffeeVarietyName ?? null,
       personalNotes: version.personalNotes,
       preparationNotes: version.preparationNotes,
       isFavourite: version.isFavourite,
@@ -441,16 +498,17 @@ async function main() {
     await seedBadges(tx);
 
     const createdUsers = await seedUsers(tx);
+    const createdEquipmentCatalog = await seedEquipmentCatalog(tx);
+    const createdCoffeeVarieties = await seedCoffeeVarietiesCatalogue(tx);
     const createdVendors = await seedVendors(tx);
     const createdEquipment = await seedEquipment(tx, createdUsers);
 
     await seedBeans(tx, createdUsers, createdVendors);
 
     const { createdRecipes, createdVersions } = await seedRecipes(
-      tx,
-      createdUsers,
-      createdVendors,
-      createdEquipment,
+      tx, createdUsers, createdVendors,
+      { ...createdEquipmentCatalog, ...createdEquipment },
+      createdCoffeeVarieties,
     );
 
     await seedSocialData(tx, createdUsers, createdRecipes);

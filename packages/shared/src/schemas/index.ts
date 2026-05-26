@@ -4,7 +4,12 @@ export {
   RecipeFilterSchema,
   RecipeUpdateSchema,
 } from './recipe.ts';
-export { EquipmentCreateSchema, EquipmentUpdateSchema } from './equipment.ts';
+export { EquipmentCreateSchema, EquipmentFilterSchema, EquipmentUpdateSchema } from './equipment.ts';
+export {
+  CoffeeVarietyCreateSchema,
+  CoffeeVarietyUpdateSchema,
+  CoffeeVarietyFilterSchema,
+} from './coffee-variety.ts';
 export {
   AuthLoginSchema,
   AuthRefreshSchema,

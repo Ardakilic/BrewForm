@@ -21,6 +21,7 @@ export function AdminLayout() {
           <AdminNavLink to='/admin/users'>Users</AdminNavLink>
           <AdminNavLink to='/admin/recipes'>Recipes</AdminNavLink>
           <AdminNavLink to='/admin/equipment'>Equipment</AdminNavLink>
+          <AdminNavLink to='/admin/coffee-varieties'>Coffee Varieties</AdminNavLink>
           <AdminNavLink to='/admin/vendors'>Vendors</AdminNavLink>
           <AdminNavLink to='/admin/taste-notes'>Taste Notes</AdminNavLink>
           <AdminNavLink to='/admin/compatibility'>Compatibility</AdminNavLink>

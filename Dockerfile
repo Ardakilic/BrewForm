@@ -17,7 +17,7 @@ COPY apps/api/package.json apps/api/deno.json ./apps/api/
 COPY apps/web/package.json apps/web/deno.json ./apps/web/
 COPY packages/shared/package.json packages/shared/deno.json ./packages/shared/
 COPY packages/db/package.json packages/db/deno.json ./packages/db/
-RUN deno install --frozen
+RUN deno install
 
 # --- Stage 2: Build ---
 # Full source copy + type check. Used by CI and as the base for the runner.

@@ -1,15 +1,21 @@
 import { z } from 'zod';
 
 const EquipmentTypeEnum = z.enum([
+  'espresso_machine',
+  'grinder',
+  'pour_over_brewer',
+  'immersion_brewer',
+  'kettle',
+  'milk_tool',
+  'scale_accessory',
+  'roaster',
   'portafilter',
   'basket',
   'puck_screen',
   'paper_filter',
   'tamper',
-  'gooseneck_kettle',
   'mesh_filter',
   'cezve',
-  'scale',
   'thermometer',
   'other',
 ]);
@@ -23,3 +29,10 @@ export const EquipmentCreateSchema = z.object({
 });
 
 export const EquipmentUpdateSchema = EquipmentCreateSchema.partial();
+
+export const EquipmentFilterSchema = z.object({
+  type: EquipmentTypeEnum.optional(),
+  search: z.string().max(200).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  perPage: z.coerce.number().int().positive().max(100).default(20),
+});
