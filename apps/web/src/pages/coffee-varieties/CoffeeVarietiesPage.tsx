@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any require-await
+// deno-lint-ignore-file require-await
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';
@@ -46,10 +46,12 @@ export function CoffeeVarietiesPage() {
     if (category) params.set('category', category);
     if (debouncedSearch) params.set('search', debouncedSearch);
 
-    api.getWithMeta<any>(`/coffee-varieties?${params.toString()}`)
+    api.getWithMeta<{ data: CoffeeVarietyItem[]; meta: { pagination?: { total: number } } }>(
+      `/coffee-varieties?${params.toString()}`,
+    )
       .then((data) => {
         const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
-        setVarieties(items as CoffeeVarietyItem[]);
+        setVarieties(items);
         setTotalPages(Math.ceil((data?.meta?.pagination?.total ?? items.length) / 12) || 1);
       })
       .catch(() => setError(t('coffeeVarieties.error.load')))

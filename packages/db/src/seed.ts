@@ -2,10 +2,12 @@ import { eq, ilike } from 'drizzle-orm';
 import {
   badges,
   beans,
+  brewMethodEnum,
   brewMethodEquipmentRules,
   coffeeVarieties,
   comments,
   equipment,
+  equipmentTypeEnum,
   photos,
   recipeAdditionalPreparations,
   recipeEquipment,
@@ -13,6 +15,7 @@ import {
   recipeTasteNotes,
   recipeVersionPhotos,
   recipeVersions,
+  type RecipeVisibility,
   setups,
   tasteNotes,
   userBadges,
@@ -61,7 +64,7 @@ interface ScaaFile {
   data: ScaaRoot[];
 }
 
-async function seedTasteNotes(tx: any, data: ScaaRoot[]) {
+async function seedTasteNotes(tx: SeedTX, data: ScaaRoot[]) {
   for (const root of data) {
     const [rootNote] = await tx.insert(tasteNotes).values({
       name: root.name,
@@ -85,8 +88,8 @@ async function seedTasteNotes(tx: any, data: ScaaRoot[]) {
             await tx.insert(tasteNotes).values({
               name: grandChild.name,
               parentId: childNote.id,
-              color: (grandChild as any).colour ?? null,
-              definition: (grandChild as any).definition ?? null,
+              color: grandChild.colour ?? null,
+              definition: grandChild.definition ?? null,
               depth: 2,
             });
           }
@@ -96,23 +99,23 @@ async function seedTasteNotes(tx: any, data: ScaaRoot[]) {
   }
 }
 
-async function seedBrewMethodCompatibility(tx: any) {
+async function seedBrewMethodCompatibility(tx: SeedTX) {
   for (const rule of brewMethodCompatibilityRules) {
     await tx.insert(brewMethodEquipmentRules).values({
-      brewMethod: rule.brewMethod as any,
-      equipmentType: rule.equipmentType as any,
+      brewMethod: rule.brewMethod as typeof brewMethodEnum.enumValues[number],
+      equipmentType: rule.equipmentType as typeof equipmentTypeEnum.enumValues[number],
       compatible: rule.compatible,
     });
   }
 }
 
-async function seedBadges(tx: any) {
+async function seedBadges(tx: SeedTX) {
   for (const badge of badgeSeedData) {
     await tx.insert(badges).values(badge);
   }
 }
 
-async function seedUsers(tx: any) {
+async function seedUsers(tx: SeedTX) {
   const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
   const adminUsername = Deno.env.get('ADMIN_USERNAME') || 'admin';
   const adminPassword = hashPassword(Deno.env.get('ADMIN_PASSWORD') || 'admin123456');
@@ -129,7 +132,7 @@ async function seedUsers(tx: any) {
 
   await tx.insert(userPreferences).values({ userId: admin.id });
 
-  const createdUsers: Record<string, any> = { admin };
+  const createdUsers: Record<string, typeof users.$inferSelect> = { admin };
 
   for (const userData of userSeedData) {
     const [user] = await tx.insert(users).values({
@@ -144,8 +147,8 @@ async function seedUsers(tx: any) {
 
     await tx.insert(userPreferences).values({
       userId: user.id,
-      unitSystem: userData.preferences.unitSystem as any,
-      theme: userData.preferences.theme as any,
+      unitSystem: userData.preferences.unitSystem as typeof userPreferences.$inferInsert.unitSystem,
+      theme: userData.preferences.theme as typeof userPreferences.$inferInsert.theme,
     });
 
     createdUsers[userData.username] = user;
@@ -154,8 +157,8 @@ async function seedUsers(tx: any) {
   return createdUsers;
 }
 
-async function seedVendors(tx: any) {
-  const createdVendors: Record<string, any> = {};
+async function seedVendors(tx: SeedTX) {
+  const createdVendors: Record<string, typeof vendors.$inferSelect> = {};
   for (const vendorData of vendorSeedData) {
     const [vendor] = await tx.insert(vendors).values(vendorData).returning();
     createdVendors[vendorData.name] = vendor;
@@ -163,12 +166,15 @@ async function seedVendors(tx: any) {
   return createdVendors;
 }
 
-async function seedEquipment(tx: any, createdUsers: Record<string, any>) {
-  const createdEquipment: Record<string, any> = {};
+async function seedEquipment(
+  tx: SeedTX,
+  createdUsers: Record<string, typeof users.$inferSelect>,
+) {
+  const createdEquipment: Record<string, typeof equipment.$inferSelect> = {};
   for (const equipData of equipmentSeedData) {
     const [equip] = await tx.insert(equipment).values({
       name: equipData.name,
-      type: equipData.type as any,
+      type: equipData.type as typeof equipmentTypeEnum.enumValues[number],
       brand: equipData.brand,
       description: equipData.description ?? null,
       createdBy: createdUsers[equipData.createdByUsername]?.id,
@@ -203,22 +209,35 @@ async function seedCoffeeVarietiesCatalogue(
   const created: Record<string, typeof coffeeVarieties.$inferSelect> = {};
   for (const varietyData of coffeeVarietySeedData) {
     const [row] = await tx.insert(coffeeVarieties).values({
-      id: varietyData.id, name: varietyData.name,
+      id: varietyData.id,
+      name: varietyData.name,
       category: varietyData.category as typeof coffeeVarieties.$inferInsert['category'],
-      species: varietyData.species, origin: varietyData.origin,
-      spread: varietyData.spread, altitudeRangeM: varietyData.altitudeRangeM,
-      cupProfile: varietyData.cupProfile, body: varietyData.body,
-      acidity: varietyData.acidity, caffeinePct: varietyData.caffeinePct,
+      species: varietyData.species,
+      origin: varietyData.origin,
+      spread: varietyData.spread,
+      altitudeRangeM: varietyData.altitudeRangeM,
+      cupProfile: varietyData.cupProfile,
+      body: varietyData.body,
+      acidity: varietyData.acidity,
+      caffeinePct: varietyData.caffeinePct,
       processingCompatibility: varietyData.processingCompatibility,
       diseaseResistance: varietyData.diseaseResistance,
-      yield: varietyData.yield, plantSize: varietyData.plantSize,
-      notes: varietyData.notes, subVarieties: varietyData.subVarieties,
-      fermentation: varietyData.fermentation, dryingTimeDays: varietyData.dryingTimeDays,
-      dryingMethod: varietyData.dryingMethod, mucilageRetentionPct: varietyData.mucilageRetentionPct,
-      priceRange: varietyData.priceRange, processing: varietyData.processing,
-      typeLabel: varietyData.typeLabel, notableFarms: varietyData.notableFarms,
-      notableRegions: varietyData.notableRegions, regionalVariants: varietyData.regionalVariants,
-      globalSharePct: varietyData.globalSharePct, isSystem: true,
+      yield: varietyData.yield,
+      plantSize: varietyData.plantSize,
+      notes: varietyData.notes,
+      subVarieties: varietyData.subVarieties,
+      fermentation: varietyData.fermentation,
+      dryingTimeDays: varietyData.dryingTimeDays,
+      dryingMethod: varietyData.dryingMethod,
+      mucilageRetentionPct: varietyData.mucilageRetentionPct,
+      priceRange: varietyData.priceRange,
+      processing: varietyData.processing,
+      typeLabel: varietyData.typeLabel,
+      notableFarms: varietyData.notableFarms,
+      notableRegions: varietyData.notableRegions,
+      regionalVariants: varietyData.regionalVariants,
+      globalSharePct: varietyData.globalSharePct,
+      isSystem: true,
     }).onConflictDoNothing().returning();
     if (row) created[varietyData.name] = row;
   }
@@ -226,9 +245,9 @@ async function seedCoffeeVarietiesCatalogue(
 }
 
 async function seedBeans(
-  tx: any,
-  createdUsers: Record<string, any>,
-  createdVendors: Record<string, any>,
+  tx: SeedTX,
+  createdUsers: Record<string, typeof users.$inferSelect>,
+  createdVendors: Record<string, typeof vendors.$inferSelect>,
 ) {
   for (const beanData of beanSeedData) {
     await tx.insert(beans).values({
@@ -245,21 +264,21 @@ async function seedBeans(
 }
 
 async function seedRecipes(
-  tx: any,
-  createdUsers: Record<string, any>,
-  createdVendors: Record<string, any>,
-  createdEquipment: Record<string, any>,
-  createdCoffeeVarieties: Record<string, any>,
+  tx: SeedTX,
+  createdUsers: Record<string, typeof users.$inferSelect>,
+  createdVendors: Record<string, typeof vendors.$inferSelect>,
+  createdEquipment: Record<string, typeof equipment.$inferSelect>,
+  createdCoffeeVarieties: Record<string, typeof coffeeVarieties.$inferSelect>,
 ) {
-  const createdRecipes: Record<string, any> = {};
-  const createdVersions: Record<string, any> = {};
+  const createdRecipes: Record<string, typeof recipes.$inferSelect> = {};
+  const createdVersions: Record<string, typeof recipeVersions.$inferSelect> = {};
 
   for (const recipeData of recipeSeedData) {
     const [recipe] = await tx.insert(recipes).values({
       slug: recipeData.slug,
       title: recipeData.title,
       authorId: createdUsers[recipeData.authorUsername]?.id,
-      visibility: recipeData.visibility as any,
+      visibility: recipeData.visibility as RecipeVisibility,
       likeCount: recipeData.likeCount,
       commentCount: recipeData.commentCount,
       forkCount: recipeData.forkCount,
@@ -278,8 +297,8 @@ async function seedRecipes(
       packageOpenDate: new Date(version.packageOpenDate),
       grindDate: new Date(version.grindDate),
       brewDate: new Date(version.brewDate),
-      brewMethod: version.brewMethod as any,
-      drinkType: version.drinkType as any,
+      brewMethod: version.brewMethod as typeof brewMethodEnum.enumValues[number],
+      drinkType: version.drinkType as typeof recipeVersions.$inferInsert.drinkType,
       brewerDetails: version.brewerDetails,
       grinder: version.grinder,
       grindSize: version.grindSize,
@@ -287,19 +306,21 @@ async function seedRecipes(
       extractionTimeSeconds: version.extractionTimeSeconds,
       extractionVolumeMl: version.extractionVolumeMl,
       temperatureCelsius: version.temperatureCelsius,
-      tds: version.tds,
+      tds: version.tds != null ? String(version.tds) : null,
       brewRatio: version.brewRatio,
       flowRate: version.flowRate,
-      preInfusionTimeSeconds: (version as any).preInfusionTimeSeconds ?? null,
-      coffeeVarietyId: (recipeData as any).coffeeVarietyName
-        ? createdCoffeeVarieties[(recipeData as any).coffeeVarietyName]?.id ?? null
+      preInfusionTimeSeconds:
+        (version as { preInfusionTimeSeconds?: number }).preInfusionTimeSeconds ?? null,
+      coffeeVarietyId: (recipeData as { coffeeVarietyName?: string }).coffeeVarietyName
+        ? createdCoffeeVarieties[(recipeData as { coffeeVarietyName?: string }).coffeeVarietyName!]
+          ?.id ?? null
         : null,
-      coffeeVarietyName: (recipeData as any).coffeeVarietyName ?? null,
+      coffeeVarietyName: (recipeData as { coffeeVarietyName?: string }).coffeeVarietyName ?? null,
       personalNotes: version.personalNotes,
       preparationNotes: version.preparationNotes,
       isFavourite: version.isFavourite,
       rating: version.rating,
-      emojiTag: version.emojiTag as any,
+      emojiTag: version.emojiTag as typeof recipeVersions.$inferInsert.emojiTag,
     }).returning();
 
     await tx.update(recipes).set({ currentVersionId: recipeVersion.id }).where(
@@ -316,7 +337,9 @@ async function seedRecipes(
       .filter(Boolean);
 
     if (equipAssociations.length > 0) {
-      await tx.insert(recipeEquipment).values(equipAssociations as any[]);
+      await tx.insert(recipeEquipment).values(
+        equipAssociations as typeof recipeEquipment.$inferInsert[],
+      );
     }
 
     // Additional preparations
@@ -324,7 +347,7 @@ async function seedRecipes(
       const prepValues = recipeData.additionalPreparations.map((prep) => ({
         recipeVersionId: recipeVersion.id,
         name: prep.name,
-        type: prep.type as any,
+        type: prep.type as typeof recipeAdditionalPreparations.$inferInsert.type,
         inputAmount: prep.inputAmount,
         preparationType: prep.preparationType,
         sortOrder: prep.sortOrder,
@@ -358,14 +381,14 @@ async function seedRecipes(
 }
 
 async function seedRecipeTasteNotes(
-  tx: any,
-  createdVersions: Record<string, any>,
+  tx: SeedTX,
+  createdVersions: Record<string, typeof recipeVersions.$inferSelect>,
 ) {
   for (const recipeData of recipeSeedData) {
     const recipeVersion = createdVersions[recipeData.slug];
     if (!recipeVersion || !recipeData.tasteNotes) continue;
 
-    const notesToInsert: any[] = [];
+    const notesToInsert: typeof recipeTasteNotes.$inferInsert[] = [];
     for (const note of recipeData.tasteNotes) {
       const [found] = await tx.select().from(tasteNotes).where(
         ilike(tasteNotes.name, note.name),
@@ -386,9 +409,9 @@ async function seedRecipeTasteNotes(
 }
 
 async function seedSocialData(
-  tx: any,
-  createdUsers: Record<string, any>,
-  createdRecipes: Record<string, any>,
+  tx: SeedTX,
+  createdUsers: Record<string, typeof users.$inferSelect>,
+  createdRecipes: Record<string, typeof recipes.$inferSelect>,
 ) {
   // Follows
   for (const follow of socialSeedData.follows) {
@@ -443,8 +466,9 @@ async function seedSocialData(
 
   // Badges
   for (const badge of socialSeedData.badges) {
-    const badgeRows = await tx.select().from(badges).where(eq(badges.rule, badge.badgeRule as any))
-      .limit(1);
+    const badgeRows = await tx.select().from(badges).where(
+      eq(badges.rule, badge.badgeRule as typeof badges.$inferInsert.rule),
+    ).limit(1);
     if (badgeRows.length > 0) {
       await tx.insert(userBadges).values({
         userId: createdUsers[badge.userUsername]?.id,
@@ -455,9 +479,9 @@ async function seedSocialData(
 }
 
 async function seedSetups(
-  tx: any,
-  createdUsers: Record<string, any>,
-  createdEquipment: Record<string, any>,
+  tx: SeedTX,
+  createdUsers: Record<string, typeof users.$inferSelect>,
+  createdEquipment: Record<string, typeof equipment.$inferSelect>,
 ) {
   for (const setupData of setupSeedData) {
     const equipMap: Record<string, string | undefined> = {};
@@ -506,7 +530,9 @@ async function main() {
     await seedBeans(tx, createdUsers, createdVendors);
 
     const { createdRecipes, createdVersions } = await seedRecipes(
-      tx, createdUsers, createdVendors,
+      tx,
+      createdUsers,
+      createdVendors,
       { ...createdEquipmentCatalog, ...createdEquipment },
       createdCoffeeVarieties,
     );

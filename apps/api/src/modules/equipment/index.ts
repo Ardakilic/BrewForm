@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import {
   EquipmentCreateSchema,
+  EquipmentFilterSchema,
   EquipmentUpdateSchema,
-  PaginationSchema,
 } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
@@ -12,15 +12,14 @@ import type { AppEnv } from '../../types/hono.ts';
 
 const equipment = new Hono<AppEnv>();
 
-equipment.get('/', zValidator('query', PaginationSchema), async (c) => {
-  const { page, perPage } = c.req.valid('query');
-  const type = c.req.query('type');
-  const result = await service.listEquipment(type, page, perPage);
+equipment.get('/', zValidator('query', EquipmentFilterSchema), async (c) => {
+  const query = c.req.valid('query');
+  const result = await service.listEquipmentWithFilters(query);
   return paginated(c, result.items, {
-    page,
-    perPage,
+    page: query.page,
+    perPage: query.perPage,
     total: result.total,
-    totalPages: Math.ceil(result.total / perPage),
+    totalPages: Math.ceil(result.total / query.perPage),
   });
 });
 
@@ -36,6 +35,33 @@ equipment.post('/', authMiddleware, zValidator('json', EquipmentCreateSchema), a
   const body = c.req.valid('json');
   const item = await service.createEquipment(userId, body);
   return success(c, item, 201);
+});
+
+equipment.get('/:id/recipes', async (c) => {
+  const id = c.req.param('id')!;
+  const page = Number(c.req.query('page') || '1');
+  const perPage = Number(c.req.query('perPage') || '12');
+  const result = await service.getRecipesForEquipment(id, page, perPage);
+  return c.json({ success: true, ...result });
+});
+
+equipment.post('/:id/delete-request', authMiddleware, async (c) => {
+  const userId = c.get('userId') as string;
+  const reason = c.req.query('reason');
+  try {
+    const result = await service.requestEquipmentDeletion(
+      c.req.param('id')!,
+      userId,
+      reason ?? undefined,
+    );
+    return c.json({ success: true, data: result }, 201);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message === 'EQUIPMENT_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+    }
+    throw e;
+  }
 });
 
 equipment.get('/:id', async (c) => {

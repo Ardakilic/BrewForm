@@ -1,5 +1,5 @@
 import { Link, Outlet } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext.tsx';
 
 export function AdminLayout() {
   const { user } = useAuth();

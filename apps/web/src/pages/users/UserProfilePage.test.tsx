@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { UserProfilePage } from './UserProfilePage';
+import { UserProfilePage } from './UserProfilePage.tsx';
 
 vi.mock('react-router', () => ({
   Link: (

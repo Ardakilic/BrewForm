@@ -44,6 +44,10 @@ setup-hooks: ## Configure git to use .githooks/ for pre-commit checks
 
 # Cache Deno dependencies inside the container (uses deno_cache volume).
 install: ## Cache Deno dependencies
+	docker compose run --rm --no-deps app deno install --frozen
+
+# Regenerate deno.lock inside Docker (use after adding/updating dependencies).
+lockfile-update: ## Regenerate deno.lock inside Docker
 	docker compose run --rm --no-deps app deno install
 
 # --- Email Templates ---
@@ -210,4 +214,4 @@ serena-index: ## Index project with Serena
 serena-health: ## Check Serena health
 	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
 
-.PHONY: help up down build logs restart setup-hooks install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health
+.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health

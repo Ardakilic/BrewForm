@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../../api/index';
+import { api } from '../../api/index.ts';
 import { IntensityDots } from '../recipe/IntensityDots.tsx';
 
 interface TasteNote {

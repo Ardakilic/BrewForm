@@ -159,6 +159,7 @@ export const RecipeFilterSchema = z.object({
   tasteNoteId: z.uuid().optional(),
   grinder: z.string().optional(),
   mainBrewer: z.string().max(200).optional(),
+  coffeeVarietyId: z.uuid().optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
   perPage: z.coerce.number().int().positive().max(100).default(20),

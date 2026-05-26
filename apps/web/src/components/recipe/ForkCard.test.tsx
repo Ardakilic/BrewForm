@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ForkCard } from './ForkCard';
+import { ForkCard } from './ForkCard.tsx';
 
 vi.mock('../../contexts/I18nContext', () => ({
   useTranslation: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock('react-router', () => ({
   ) => <a href={to} {...props}>{children}</a>,
 }));
 
-import { useTranslation } from '../../contexts/I18nContext';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 

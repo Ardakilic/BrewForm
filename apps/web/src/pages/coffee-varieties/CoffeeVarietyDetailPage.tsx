@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any require-await
+// deno-lint-ignore-file require-await
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { api } from '../../api/client.ts';
@@ -53,15 +53,15 @@ export function CoffeeVarietyDetailPage() {
     setError(false);
 
     Promise.all([
-      api.get<any>(`/coffee-varieties/${id}`),
-      api.get<any>(`/coffee-varieties/${id}/recipes?perPage=6`),
+      api.get<VarietyDetail>(`/coffee-varieties/${id}`),
+      api.get<{ data: RecipeEntry[] }>(`/coffee-varieties/${id}/recipes?perPage=6`),
     ])
       .then(([varietyData, recipesData]) => {
-        setVariety(varietyData as VarietyDetail);
+        setVariety(varietyData);
         const items = Array.isArray(recipesData?.data)
           ? recipesData.data
           : (Array.isArray(recipesData) ? recipesData : []);
-        setRecipes(items as RecipeEntry[]);
+        setRecipes(items);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));

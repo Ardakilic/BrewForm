@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RecipeListPage } from './RecipeListPage';
+import { RecipeListPage } from './RecipeListPage.tsx';
 
 // ── External deps ──────────────────────────────────────────────────────────
 
@@ -24,6 +24,8 @@ vi.mock('../../api/index.ts', () => ({
   recipeApi: { list: vi.fn() },
   equipmentApi: { list: vi.fn() },
   tasteApi: { flat: vi.fn() },
+  coffeeVarietyApi: { search: vi.fn() },
+  api: { get: vi.fn() },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
@@ -41,9 +43,13 @@ vi.mock('@brewform/shared/constants', () => ({
 import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
+import { api, coffeeVarietyApi, equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 import fc from 'fast-check';
-import { _resetStaticCache, EQUIPMENT_FILTER_TYPES, EQUIPMENT_TYPE_LABELS } from './RecipeListPage';
+import {
+  _resetStaticCache,
+  EQUIPMENT_FILTER_TYPES,
+  EQUIPMENT_TYPE_LABELS,
+} from './RecipeListPage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -51,6 +57,8 @@ const mockUseAuth = vi.mocked(useAuth);
 const mockRecipeApi = vi.mocked(recipeApi);
 const mockEquipmentApi = vi.mocked(equipmentApi);
 const mockTasteApi = vi.mocked(tasteApi);
+const mockCoffeeVarietyApi = vi.mocked(coffeeVarietyApi);
+const mockApi = vi.mocked(api);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -79,6 +87,9 @@ const enT = (key: string) => {
     'recipe.list.tasteNotesPlaceholder': 'Select taste notes...',
     'recipe.list.tasteNotesSelected': '{count} selected',
     'recipe.list.tasteNotesMax': 'Maximum 10 taste notes',
+    'recipe.list.coffeeVarietyFilter': 'Coffee Variety',
+    'recipe.list.coffeeVarietyPlaceholder': 'Search varieties...',
+    'recipe.list.coffeeVarietyActive': 'Coffee variety filter active',
     'common.loading': 'Loading...',
     'common.previous': 'Previous',
     'common.next': 'Next',
@@ -111,6 +122,9 @@ const trT = (key: string) => {
     'recipe.list.tasteNotesPlaceholder': 'Tat notası seçin...',
     'recipe.list.tasteNotesSelected': '{count} seçili',
     'recipe.list.tasteNotesMax': 'En fazla 10 tat notası',
+    'recipe.list.coffeeVarietyFilter': 'Kahve Çeşidi',
+    'recipe.list.coffeeVarietyPlaceholder': 'Çeşit ara...',
+    'recipe.list.coffeeVarietyActive': 'Kahve çeşidi filtresi aktif',
     'common.loading': 'Yükleniyor...',
     'common.previous': 'Önceki',
     'common.next': 'İleri',
@@ -151,6 +165,8 @@ beforeEach(() => {
   mockRecipeApi.list.mockResolvedValue([]);
   mockEquipmentApi.list.mockResolvedValue([]);
   mockTasteApi.flat.mockResolvedValue([]);
+  mockCoffeeVarietyApi.search.mockResolvedValue([]);
+  mockApi.get.mockResolvedValue({});
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -328,7 +344,7 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
   it('passes equipmentId to API when URL has a valid UUID', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
     mockEquipmentApi.list.mockResolvedValue([
-      { id: VALID_UUID, name: 'Acaia Lunar', type: 'scale' },
+      { id: VALID_UUID, name: 'Acaia Lunar', type: 'scale_accessory' },
     ]);
 
     render(<RecipeListPage />);
@@ -353,16 +369,16 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
 
   it('renders a dropdown for each equipment type that has items', async () => {
     mockEquipmentApi.list.mockResolvedValue([
-      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale' },
-      { id: 'eq-2', name: 'Fellow Stagg', type: 'gooseneck_kettle' },
+      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale_accessory' },
+      { id: 'eq-2', name: 'Fellow Stagg', type: 'kettle' },
     ]);
 
     render(<RecipeListPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    // Scale dropdown should appear
-    expect(screen.getByLabelText('Filter by Scale')).toBeInTheDocument();
+    // Scale & Accessory dropdown should appear
+    expect(screen.getByLabelText('Filter by Scale & Accessory')).toBeInTheDocument();
     // Kettle dropdown should appear
     expect(screen.getByLabelText('Filter by Kettle')).toBeInTheDocument();
     // Portafilter dropdown should NOT appear (no items)
@@ -371,7 +387,7 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
 
   it('shows equipment name in the dropdown when equipment is loaded', async () => {
     mockEquipmentApi.list.mockResolvedValue([
-      { id: VALID_UUID, name: 'My Espresso Scale', type: 'scale' },
+      { id: VALID_UUID, name: 'My Espresso Scale', type: 'scale_accessory' },
     ]);
 
     render(<RecipeListPage />);
@@ -384,7 +400,7 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
   it('shows active equipment filter badge when equipmentId is in URL', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
     mockEquipmentApi.list.mockResolvedValue([
-      { id: VALID_UUID, name: 'Acaia Lunar', type: 'scale' },
+      { id: VALID_UUID, name: 'Acaia Lunar', type: 'scale_accessory' },
     ]);
 
     render(<RecipeListPage />);
@@ -536,7 +552,7 @@ describe('RecipeListPage — taste note filter', () => {
     }));
     mockTasteApi.flat.mockResolvedValue(sampleTasteNotes);
     mockEquipmentApi.list.mockResolvedValue([
-      { id: '11111111-1111-1111-1111-111111111111', name: 'Acaia Lunar', type: 'scale' },
+      { id: '11111111-1111-1111-1111-111111111111', name: 'Acaia Lunar', type: 'scale_accessory' },
     ]);
 
     render(<RecipeListPage />);
@@ -678,5 +694,76 @@ describe('RecipeListPage — property-based tests', () => {
       ),
       { numRuns: 30 },
     );
+  });
+});
+
+describe('RecipeListPage — coffee variety filter', () => {
+  const VARIETY_UUID = '33333333-3333-3333-3333-333333333333';
+
+  it('renders coffee variety search input in the sidebar', async () => {
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    expect(screen.getByText('Coffee Variety')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search varieties...')).toBeInTheDocument();
+  });
+
+  it('passes coffeeVarietyId to API when a variety is selected', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ coffeeVarietyId: VARIETY_UUID }));
+    mockApi.get.mockResolvedValue({ id: VARIETY_UUID, name: 'Bourbon', category: 'variety' });
+
+    render(<RecipeListPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    expect(mockRecipeApi.list).toHaveBeenCalledWith(
+      expect.objectContaining({ coffeeVarietyId: VARIETY_UUID }),
+    );
+  });
+
+  it('shows active coffee variety filter badge when coffeeVarietyId is in URL', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ coffeeVarietyId: VARIETY_UUID }));
+    mockApi.get.mockResolvedValue({ id: VARIETY_UUID, name: 'Bourbon', category: 'variety' });
+
+    render(<RecipeListPage />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument()
+    );
+    expect(screen.getAllByText('Bourbon').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows fallback text in badge when variety name is not resolved', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ coffeeVarietyId: VARIETY_UUID }));
+    mockApi.get.mockRejectedValue(new Error('not found'));
+
+    render(<RecipeListPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Coffee variety filter active')).toBeInTheDocument()
+    );
+  });
+
+  it('clears coffee variety filter when clear button is clicked', async () => {
+    const setSearchParamsMock = vi.fn();
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ coffeeVarietyId: VARIETY_UUID }),
+      setSearchParamsMock,
+    ] as ReturnType<typeof useSearchParams>);
+    mockApi.get.mockResolvedValue({ id: VARIETY_UUID, name: 'Bourbon', category: 'variety' });
+
+    render(<RecipeListPage />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument()
+    );
+
+    const removeButton = screen.getByLabelText('Remove Coffee Variety filter');
+    await userEvent.click(removeButton);
+
+    expect(setSearchParamsMock).toHaveBeenCalled();
+    const calledParams = setSearchParamsMock.mock.calls[0][0] as URLSearchParams;
+    expect(calledParams.get('coffeeVarietyId')).toBeNull();
   });
 });

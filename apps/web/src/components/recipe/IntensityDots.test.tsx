@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { IntensityDots } from './IntensityDots';
+import { IntensityDots } from './IntensityDots.tsx';
 
 // ── Requirement 8.4 — IntensityDots ─────────────────────────────────────────
 

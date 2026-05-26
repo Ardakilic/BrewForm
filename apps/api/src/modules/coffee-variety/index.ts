@@ -38,8 +38,8 @@ router.post('/', authMiddleware, zValidator('json', CoffeeVarietyCreateSchema), 
   try {
     const result = await service.createCoffeeVariety(body, userId);
     return success(c, result, 201);
-  } catch (e: any) {
-    return error(c, 'BAD_REQUEST', e.message, 400);
+  } catch (e: unknown) {
+    return error(c, 'BAD_REQUEST', e instanceof Error ? e.message : String(e), 400);
   }
 });
 
@@ -57,8 +57,8 @@ router.patch('/:id', authMiddleware, zValidator('json', CoffeeVarietyUpdateSchem
   try {
     const result = await service.updateCoffeeVariety(c.req.param('id')!, body, userId);
     return success(c, result);
-  } catch (e: any) {
-    return error(c, 'BAD_REQUEST', e.message, 400);
+  } catch (e: unknown) {
+    return error(c, 'BAD_REQUEST', e instanceof Error ? e.message : String(e), 400);
   }
 });
 
@@ -67,8 +67,8 @@ router.delete('/:id', authMiddleware, async (c) => {
   try {
     const result = await service.deleteCoffeeVariety(c.req.param('id')!, userId);
     return success(c, result);
-  } catch (e: any) {
-    return error(c, 'BAD_REQUEST', e.message, 400);
+  } catch (e: unknown) {
+    return error(c, 'BAD_REQUEST', e instanceof Error ? e.message : String(e), 400);
   }
 });
 

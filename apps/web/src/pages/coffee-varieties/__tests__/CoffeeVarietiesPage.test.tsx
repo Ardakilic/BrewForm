@@ -125,7 +125,8 @@ describe('CoffeeVarietiesPage', () => {
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByRole('heading', { name: 'Coffee Varieties' })).toBeInTheDocument();
-    expect(screen.getByText('Explore different varieties, processing methods, and market names')).toBeInTheDocument();
+    expect(screen.getByText('Explore different varieties, processing methods, and market names'))
+      .toBeInTheDocument();
   });
 
   it('renders page title and subtitle — Turkish', async () => {
@@ -136,13 +137,30 @@ describe('CoffeeVarietiesPage', () => {
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByRole('heading', { name: 'Kahve Çeşitleri' })).toBeInTheDocument();
-    expect(screen.getByText('Farklı çeşitleri, işleme yöntemlerini ve pazar adlarını keşfedin')).toBeInTheDocument();
+    expect(screen.getByText('Farklı çeşitleri, işleme yöntemlerini ve pazar adlarını keşfedin'))
+      .toBeInTheDocument();
   });
 
   it('renders coffee variety cards when API returns data', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      { id: 'v1', name: 'Bourbon', species: 'Arabica', category: 'variety', origin: 'Ethiopia', cupProfile: 'Sweet and fruity', slug: 'bourbon' },
-      { id: 'v2', name: 'Washed', species: 'Arabica', category: 'processing', origin: null, cupProfile: null, slug: 'washed' },
+      {
+        id: 'v1',
+        name: 'Bourbon',
+        species: 'Arabica',
+        category: 'variety',
+        origin: 'Ethiopia',
+        cupProfile: 'Sweet and fruity',
+        slug: 'bourbon',
+      },
+      {
+        id: 'v2',
+        name: 'Washed',
+        species: 'Arabica',
+        category: 'processing',
+        origin: null,
+        cupProfile: null,
+        slug: 'washed',
+      },
     ], 2));
     render(<CoffeeVarietiesPage />);
 
@@ -279,7 +297,15 @@ describe('CoffeeVarietiesPage', () => {
 
   it('shows pagination when multiple pages exist', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      { id: 'v1', name: 'Bourbon', species: 'Arabica', category: 'variety', origin: null, cupProfile: null, slug: 'bourbon' },
+      {
+        id: 'v1',
+        name: 'Bourbon',
+        species: 'Arabica',
+        category: 'variety',
+        origin: null,
+        cupProfile: null,
+        slug: 'bourbon',
+      },
     ], 25));
     render(<CoffeeVarietiesPage />);
 
@@ -292,7 +318,15 @@ describe('CoffeeVarietiesPage', () => {
   it('shows pagination in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      { id: 'v1', name: 'Bourbon', species: 'Arabica', category: 'variety', origin: null, cupProfile: null, slug: 'bourbon' },
+      {
+        id: 'v1',
+        name: 'Bourbon',
+        species: 'Arabica',
+        category: 'variety',
+        origin: null,
+        cupProfile: null,
+        slug: 'bourbon',
+      },
     ], 25));
     render(<CoffeeVarietiesPage />);
 
@@ -304,7 +338,15 @@ describe('CoffeeVarietiesPage', () => {
 
   it('paginated response with meta.pagination.total calculates correct totalPages', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      { id: 'v1', name: 'Test', species: null, category: null, origin: null, cupProfile: null, slug: 'test' },
+      {
+        id: 'v1',
+        name: 'Test',
+        species: null,
+        category: null,
+        origin: null,
+        cupProfile: null,
+        slug: 'test',
+      },
     ], 30));
     render(<CoffeeVarietiesPage />);
 
@@ -315,7 +357,15 @@ describe('CoffeeVarietiesPage', () => {
 
   it('renders category badges on cards — variety type', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      { id: 'v1', name: 'Geisha', species: 'Arabica', category: 'variety', origin: 'Panama', cupProfile: null, slug: 'geisha' },
+      {
+        id: 'v1',
+        name: 'Geisha',
+        species: 'Arabica',
+        category: 'variety',
+        origin: 'Panama',
+        cupProfile: null,
+        slug: 'geisha',
+      },
     ], 1));
     render(<CoffeeVarietiesPage />);
 
@@ -326,7 +376,15 @@ describe('CoffeeVarietiesPage', () => {
 
   it('renders category badges on cards — processing type', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      { id: 'v1', name: 'Natural', species: 'Arabica', category: 'processing', origin: null, cupProfile: null, slug: 'natural' },
+      {
+        id: 'v1',
+        name: 'Natural',
+        species: 'Arabica',
+        category: 'processing',
+        origin: null,
+        cupProfile: null,
+        slug: 'natural',
+      },
     ], 1));
     render(<CoffeeVarietiesPage />);
 
@@ -337,7 +395,15 @@ describe('CoffeeVarietiesPage', () => {
 
   it('renders category badges on cards — market_name type', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      { id: 'v1', name: 'Yirgacheffe', species: 'Arabica', category: 'market_name', origin: null, cupProfile: null, slug: 'yirgacheffe' },
+      {
+        id: 'v1',
+        name: 'Yirgacheffe',
+        species: 'Arabica',
+        category: 'market_name',
+        origin: null,
+        cupProfile: null,
+        slug: 'yirgacheffe',
+      },
     ], 1));
     render(<CoffeeVarietiesPage />);
 
@@ -360,7 +426,15 @@ describe('CoffeeVarietiesPage', () => {
 
   it('links coffee variety cards to detail page', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      { id: 'v1', name: 'Bourbon', species: null, category: null, origin: null, cupProfile: null, slug: 'bourbon' },
+      {
+        id: 'v1',
+        name: 'Bourbon',
+        species: null,
+        category: null,
+        origin: null,
+        cupProfile: null,
+        slug: 'bourbon',
+      },
     ], 1));
     render(<CoffeeVarietiesPage />);
 

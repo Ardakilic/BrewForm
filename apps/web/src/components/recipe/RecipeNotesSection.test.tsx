@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RecipeNotesSection } from './RecipeNotesSection';
+import { RecipeNotesSection } from './RecipeNotesSection.tsx';
 
 vi.mock('../../api/index.ts', () => ({
   recipeApi: {

@@ -61,10 +61,23 @@ export const drinkTypeEnum = pgEnum('drink_type', [
 ]);
 
 export const equipmentTypeEnum = pgEnum('equipment_type', [
-  'espresso_machine', 'grinder', 'pour_over_brewer', 'immersion_brewer',
-  'kettle', 'milk_tool', 'scale_accessory', 'roaster',
-  'portafilter', 'basket', 'puck_screen', 'paper_filter', 'tamper',
-  'mesh_filter', 'cezve', 'thermometer', 'other',
+  'espresso_machine',
+  'grinder',
+  'pour_over_brewer',
+  'immersion_brewer',
+  'kettle',
+  'milk_tool',
+  'scale_accessory',
+  'roaster',
+  'portafilter',
+  'basket',
+  'puck_screen',
+  'paper_filter',
+  'tamper',
+  'mesh_filter',
+  'cezve',
+  'thermometer',
+  'other',
 ]);
 
 export const emojiTagEnum = pgEnum('emoji_tag', [
@@ -398,7 +411,9 @@ export const beans = pgTable(
 );
 
 export const coffeeVarietyCategoryEnum = pgEnum('coffee_variety_category', [
-  'variety', 'processing', 'market_name',
+  'variety',
+  'processing',
+  'market_name',
 ]);
 
 export const coffeeVarieties = pgTable('coffee_variety', {
@@ -642,7 +657,9 @@ export const brewMethodEquipmentRules = pgTable(
 );
 
 export const equipmentDeleteRequestStatusEnum = pgEnum('equipment_delete_request_status', [
-  'pending', 'approved', 'rejected',
+  'pending',
+  'approved',
+  'rejected',
 ]);
 
 export const equipmentDeleteRequests = pgTable('equipment_delete_request', {
@@ -799,7 +816,11 @@ export const recipeVersionsRelations = relations(recipeVersions, ({ one, many })
     fields: [recipeVersions.beanId],
     references: [beans.id],
   }),
-  coffeeVariety: one(coffeeVarieties, { fields: [recipeVersions.coffeeVarietyId], references: [coffeeVarieties.id], relationName: 'coffee_variety_versions' }),
+  coffeeVariety: one(coffeeVarieties, {
+    fields: [recipeVersions.coffeeVarietyId],
+    references: [coffeeVarieties.id],
+    relationName: 'coffee_variety_versions',
+  }),
   tasteNotes: many(recipeTasteNotes),
   equipment: many(recipeEquipment),
   additionalPreparations: many(recipeAdditionalPreparations),
@@ -1008,14 +1029,29 @@ export const userBadgesRelations = relations(userBadges, ({ one }) => ({
 export const brewMethodEquipmentRulesRelations = relations(brewMethodEquipmentRules, () => ({}));
 
 export const coffeeVarietiesRelations = relations(coffeeVarieties, ({ one, many }) => ({
-  createdByUser: one(users, { fields: [coffeeVarieties.createdBy], references: [users.id], relationName: 'coffee_variety_creator' }),
+  createdByUser: one(users, {
+    fields: [coffeeVarieties.createdBy],
+    references: [users.id],
+    relationName: 'coffee_variety_creator',
+  }),
   recipeVersions: many(recipeVersions, { relationName: 'coffee_variety_versions' }),
 }));
 
 export const equipmentDeleteRequestsRelations = relations(equipmentDeleteRequests, ({ one }) => ({
-  equipment: one(equipment, { fields: [equipmentDeleteRequests.equipmentId], references: [equipment.id] }),
-  requestedBy: one(users, { fields: [equipmentDeleteRequests.requestedById], references: [users.id], relationName: 'delete_request_requester' }),
-  reviewedBy: one(users, { fields: [equipmentDeleteRequests.reviewedById], references: [users.id], relationName: 'delete_request_reviewer' }),
+  equipment: one(equipment, {
+    fields: [equipmentDeleteRequests.equipmentId],
+    references: [equipment.id],
+  }),
+  requestedBy: one(users, {
+    fields: [equipmentDeleteRequests.requestedById],
+    references: [users.id],
+    relationName: 'delete_request_requester',
+  }),
+  reviewedBy: one(users, {
+    fields: [equipmentDeleteRequests.reviewedById],
+    references: [users.id],
+    relationName: 'delete_request_reviewer',
+  }),
 }));
 
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({

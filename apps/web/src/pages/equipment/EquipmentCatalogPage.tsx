@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any require-await
+// deno-lint-ignore-file require-await
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';
@@ -49,10 +49,12 @@ export function EquipmentCatalogPage() {
     if (type) params.set('type', type);
     if (debouncedSearch) params.set('search', debouncedSearch);
 
-    api.getWithMeta<any>(`/equipment?${params.toString()}`)
+    api.getWithMeta<{ data: CatalogEquipmentItem[]; total?: number }>(
+      `/equipment?${params.toString()}`,
+    )
       .then((data) => {
         const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
-        setEquipment(items as CatalogEquipmentItem[]);
+        setEquipment(items);
         setTotalPages(Math.ceil((data?.total ?? items.length) / 12) || 1);
       })
       .catch(() => setError(t('equipment.catalog.error.load')))

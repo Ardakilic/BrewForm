@@ -141,8 +141,22 @@ describe('EquipmentCatalogPage', () => {
   it('renders equipment items from API', async () => {
     mockApiGetWithMeta.mockResolvedValue({
       data: [
-        { id: 'eq-1', name: 'Fellow Stagg', brand: 'Fellow', model: 'Stagg EKG', type: 'kettle', description: 'Electric pour-over kettle' },
-        { id: 'eq-2', name: 'Acaia Lunar', brand: 'Acaia', model: 'Lunar', type: 'scale_accessory', description: 'Precision scale' },
+        {
+          id: 'eq-1',
+          name: 'Fellow Stagg',
+          brand: 'Fellow',
+          model: 'Stagg EKG',
+          type: 'kettle',
+          description: 'Electric pour-over kettle',
+        },
+        {
+          id: 'eq-2',
+          name: 'Acaia Lunar',
+          brand: 'Acaia',
+          model: 'Lunar',
+          type: 'scale_accessory',
+          description: 'Precision scale',
+        },
       ],
       total: 2,
     });
@@ -311,7 +325,14 @@ describe('EquipmentCatalogPage', () => {
 
   it('shows pagination when multiple pages exist', async () => {
     mockApiGetWithMeta.mockResolvedValue({
-      data: [{ id: 'eq-1', name: 'Test', brand: null, model: null, type: 'kettle', description: null }],
+      data: [{
+        id: 'eq-1',
+        name: 'Test',
+        brand: null,
+        model: null,
+        type: 'kettle',
+        description: null,
+      }],
       total: 25,
     });
     render(<EquipmentCatalogPage />);
@@ -325,7 +346,14 @@ describe('EquipmentCatalogPage', () => {
   it('shows pagination in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
     mockApiGetWithMeta.mockResolvedValue({
-      data: [{ id: 'eq-1', name: 'Test', brand: null, model: null, type: 'kettle', description: null }],
+      data: [{
+        id: 'eq-1',
+        name: 'Test',
+        brand: null,
+        model: null,
+        type: 'kettle',
+        description: null,
+      }],
       total: 25,
     });
     render(<EquipmentCatalogPage />);

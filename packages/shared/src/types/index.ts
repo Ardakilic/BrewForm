@@ -37,3 +37,4 @@ export type { AuditLog } from './audit.ts';
 export type { PasswordReset } from './password-reset.ts';
 export type { RecipeAdditionalPreparation } from './additional-preparation.ts';
 export type { BrewMethodEquipmentRule } from './brew-method-rule.ts';
+export type { CoffeeVariety, CoffeeVarietyCategory } from './coffee-variety.ts';

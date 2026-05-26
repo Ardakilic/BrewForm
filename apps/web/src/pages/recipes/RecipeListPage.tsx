@@ -1,6 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
+import {
+  api,
+  coffeeVarietyApi,
+  type CoffeeVarietySearchResult,
+  equipmentApi,
+  recipeApi,
+  tasteApi,
+} from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
@@ -19,28 +26,39 @@ function isValidUuid(value: string): boolean {
 
 /** Equipment type → human-readable label */
 export const EQUIPMENT_TYPE_LABELS: Record<string, string> = {
+  espresso_machine: 'Espresso Machine',
+  grinder: 'Grinder',
+  pour_over_brewer: 'Pour-Over Brewer',
+  immersion_brewer: 'Immersion Brewer',
+  kettle: 'Kettle',
+  milk_tool: 'Milk Tool',
+  scale_accessory: 'Scale & Accessory',
+  roaster: 'Roaster',
   portafilter: 'Portafilter',
   basket: 'Basket',
   puck_screen: 'Puck Screen',
   paper_filter: 'Paper Filter',
-  mesh_filter: 'Mesh Filter',
   tamper: 'Tamper',
-  gooseneck_kettle: 'Kettle',
-  scale: 'Scale',
-  thermometer: 'Thermometer',
+  mesh_filter: 'Mesh Filter',
   cezve: 'Cezve',
+  thermometer: 'Thermometer',
   other: 'Other',
 };
 
-/** Ordered list of equipment types to show as separate dropdowns */
 export const EQUIPMENT_FILTER_TYPES = [
+  'espresso_machine',
+  'grinder',
+  'pour_over_brewer',
+  'immersion_brewer',
+  'kettle',
+  'milk_tool',
+  'scale_accessory',
+  'roaster',
   'portafilter',
   'basket',
-  'tamper',
   'puck_screen',
-  'scale',
-  'gooseneck_kettle',
   'paper_filter',
+  'tamper',
   'mesh_filter',
   'cezve',
   'thermometer',
@@ -99,6 +117,13 @@ export function RecipeListPage() {
   const equipmentId = searchParams.get('equipmentId') || '';
   const mainBrewer = searchParams.get('mainBrewer') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
+  const coffeeVarietyId = searchParams.get('coffeeVarietyId') || '';
+  const [varietySearch, setVarietySearch] = useState('');
+  const [varietyResults, setVarietyResults] = useState<CoffeeVarietySearchResult[]>([]);
+  const [varietyDropdownOpen, setVarietyDropdownOpen] = useState(false);
+  const [selectedVarietyName, setSelectedVarietyName] = useState<string | null>(null);
+  const varietyRef = useRef<HTMLDivElement>(null);
+  const debouncedVarietySearch = useDebounce(varietySearch, 300);
   const tasteNoteIds = useMemo(
     () =>
       tasteNoteIdsParam
@@ -124,6 +149,36 @@ export function RecipeListPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (debouncedVarietySearch.length >= 2) {
+      coffeeVarietyApi.search(debouncedVarietySearch).then((data) => {
+        setVarietyResults(data);
+        setVarietyDropdownOpen(true);
+      }).catch(() => {});
+    } else {
+      setVarietyResults([]);
+      setVarietyDropdownOpen(false);
+    }
+  }, [debouncedVarietySearch]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (varietyRef.current && !varietyRef.current.contains(e.target as Node)) {
+        setVarietyDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (coffeeVarietyId && isValidUuid(coffeeVarietyId) && !selectedVarietyName) {
+      api.get<CoffeeVarietySearchResult>(`/coffee-varieties/${coffeeVarietyId}`)
+        .then((v) => setSelectedVarietyName(v.name))
+        .catch(() => {});
+    }
+  }, [coffeeVarietyId]);
+
   // Fetch recipes when filters change
   useEffect(() => {
     setLoading(true);
@@ -135,6 +190,7 @@ export function RecipeListPage() {
     if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
     if (mainBrewer) params.mainBrewer = mainBrewer;
     if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
+    if (coffeeVarietyId && isValidUuid(coffeeVarietyId)) params.coffeeVarietyId = coffeeVarietyId;
 
     recipeApi.list(params).then((response) => {
       const items = Array.isArray(response.data) ? response.data : [];
@@ -154,6 +210,7 @@ export function RecipeListPage() {
     equipmentId,
     mainBrewer,
     tasteNoteIds,
+    coffeeVarietyId,
   ]);
 
   function updateFilter(key: string, value: string | string[]) {
@@ -192,6 +249,7 @@ export function RecipeListPage() {
     (equipmentId && isValidUuid(equipmentId)) ||
     mainBrewer ||
     tasteNoteIds.length > 0 ||
+    (coffeeVarietyId && isValidUuid(coffeeVarietyId)) ||
     search
   );
 
@@ -278,6 +336,18 @@ export function RecipeListPage() {
                   />
                 );
               })}
+            {(coffeeVarietyId && isValidUuid(coffeeVarietyId)) && (
+              <ActiveFilterBadge
+                label={t('recipe.list.coffeeVarietyFilter')}
+                value={selectedVarietyName || t('recipe.list.coffeeVarietyActive')}
+                onRemove={() => {
+                  setSelectedVarietyName(null);
+                  setVarietySearch('');
+                  setVarietyResults([]);
+                  updateFilter('coffeeVarietyId', '');
+                }}
+              />
+            )}
 
             {/* Search */}
             <FilterField label={t('recipe.list.search')}>
@@ -367,6 +437,86 @@ export function RecipeListPage() {
                 />
               </FilterField>
             )}
+
+            {/* ── Coffee Variety search filter ── */}
+            <FilterField label={t('recipe.list.coffeeVarietyFilter')}>
+              <div ref={varietyRef} className='relative'>
+                <input
+                  type='text'
+                  value={varietySearch}
+                  onChange={(e) => {
+                    setVarietySearch(e.target.value);
+                    if (!e.target.value) {
+                      setVarietyResults([]);
+                      setVarietyDropdownOpen(false);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (varietyResults.length > 0) setVarietyDropdownOpen(true);
+                  }}
+                  placeholder={t('recipe.list.coffeeVarietyPlaceholder')}
+                  className='input-field text-sm'
+                />
+                {varietyDropdownOpen && varietyResults.length > 0 && (
+                  <div
+                    className={[
+                      'absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-lg py-1',
+                      'bg-[color:var(--bg-tertiary)]',
+                      'border border-[color:var(--border-primary)]',
+                      'shadow-lg',
+                    ].join(' ')}
+                  >
+                    {varietyResults.map((v) => (
+                      <button
+                        key={v.id}
+                        type='button'
+                        onClick={() => {
+                          setSelectedVarietyName(v.name);
+                          setVarietySearch('');
+                          setVarietyResults([]);
+                          setVarietyDropdownOpen(false);
+                          updateFilter('coffeeVarietyId', v.id);
+                        }}
+                        className={[
+                          'flex items-center justify-between gap-2 w-full px-3 py-2',
+                          'text-sm text-left cursor-default select-none',
+                          'text-[color:var(--text-primary)]',
+                          'hover:bg-[color:var(--bg-secondary)]',
+                          'transition-colors duration-150',
+                        ].join(' ')}
+                      >
+                        <span className='truncate'>{v.name}</span>
+                        <span
+                          className='text-xs px-1.5 py-0.5 rounded flex-shrink-0'
+                          style={{
+                            background: 'var(--bg-secondary)',
+                            color: 'var(--text-tertiary)',
+                          }}
+                        >
+                          {v.category}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {coffeeVarietyId && (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setSelectedVarietyName(null);
+                      setVarietySearch('');
+                      setVarietyResults([]);
+                      updateFilter('coffeeVarietyId', '');
+                    }}
+                    className='absolute right-2 top-1/2 -translate-y-1/2 text-xs'
+                    style={{ color: 'var(--text-tertiary)' }}
+                    aria-label='Clear variety filter'
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </FilterField>
 
             {/* Sort */}
             <FilterField label={t('recipe.list.sortBy')}>

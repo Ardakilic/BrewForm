@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Navbar } from './Navbar';
+import { Navbar } from './Navbar.tsx';
 
 // Use vi.hoisted so the mockActivePath variable is available inside the vi.mock factory
 // (vi.mock calls are hoisted to the top of the file by Vitest, before any imports/variables).
@@ -77,10 +77,10 @@ vi.mock('../../api/index', () => ({
   },
 }));
 
-import { useTranslation } from '../../contexts/I18nContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { authApi } from '../../api/index';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTheme } from '../../contexts/ThemeContext.tsx';
+import { authApi } from '../../api/index.ts';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);

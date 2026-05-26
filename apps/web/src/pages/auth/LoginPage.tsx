@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTranslation } from '../../contexts/I18nContext';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 export function LoginPage() {
   const { login } = useAuth();

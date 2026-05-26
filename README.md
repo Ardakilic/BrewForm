@@ -7,6 +7,8 @@ notes.
 
 - **Recipe Management** — Create, version, and fork coffee brewing recipes with full parameter
   tracking
+- **Coffee Varieties** — Browse 98 coffee varieties (botanical, processing methods, specialty lots) with search, filtering, and recipe linkage
+- **Equipment Catalog** — 378 coffee machines, grinders, brewers, kettles, and tools across 17 equipment types with branded search and recipe integration
 - **SCAA Taste Notes** — Structured tasting notes from the SCAA 2016 Flavor Wheel with autocomplete
 - **Brew Method Compatibility** — Data-driven validation ensures brew methods and equipment are
   compatible
@@ -99,6 +101,10 @@ make lint           # Lint all apps and packages
 make fmt            # Format the codebase
 make fmt-check      # Check formatting without changes
 
+# Dependencies
+make install          # Cache Deno dependencies (frozen lockfile)
+make lockfile-update  # Regenerate deno.lock inside Docker (after dep changes)
+
 # Testing
 make test           # Run all tests
 make test-coverage  # Run tests with coverage
@@ -168,14 +174,15 @@ See [docs/serena-mcp.md](docs/serena-mcp.md) for detailed setup, architecture, a
 ## Database
 
 ```bash
+make db-push         # Push schema changes (always use for enum changes)
 make db-generate     # Generate Drizzle migration SQL
 make db-migrate      # Apply pending migrations
-make db-seed         # Seed sample data
+make db-seed         # Seed sample data (378 equipment + 98 varieties + 6 recipes)
 make db-studio       # Open Drizzle Studio (GUI)
 make flush-db        # Truncate all database tables
 make flush-cache     # Clear Deno KV cache
 make flush-contents  # Truncate all tables + clear Deno KV cache
-make db-reset        # Full reset: flush-db, flush-cache, migrate, re-seed
+make db-reset        # Full reset: drop volumes, push schema, re-seed
 ```
 
 ## Architecture
@@ -220,7 +227,9 @@ brewform/
 │   ├── shared/                 # Types, schemas, constants, utils, i18n
 │   └── db/                    # Drizzle schema, migrations, seed
 ├── files/
-│   └── scaa-2.json            # SCAA 2016 flavor wheel data
+│   ├── scaa-2.json              # SCAA 2016 flavor wheel data
+│   ├── coffee_types_v2.json     # Coffee varieties reference data (98 entries)
+│   └── coffee_equipments_v2.json # Equipment catalog reference data (378 items)
 ├── docs/                      # Feature & API documentation
 ├── .github/workflows/         # CI/CD pipelines
 ├── compose.yml
@@ -257,6 +266,8 @@ The API is versioned at `/api/v1/`. See [docs/api.md](docs/api.md) for the full 
 | [docs/api.md](docs/api.md)                             | Complete API endpoint reference                             |
 | [docs/auth.md](docs/auth.md)                           | Authentication flows and token strategy                     |
 | [docs/recipes.md](docs/recipes.md)                     | Recipe versioning, forking, validation                      |
+| [docs/coffee-data.md](docs/coffee-data.md)             | Coffee varieties (98 entries) and equipment catalog         |
+| [docs/coffee-equipments.md](docs/coffee-equipments.md) | Equipment catalog reference (378 items, 17 types)           |
 | [docs/taste-notes.md](docs/taste-notes.md)             | SCAA Flavor Wheel integration and autocomplete              |
 | [docs/notifications.md](docs/notifications.md)         | Email categories, triggers, and delivery model              |
 | [docs/deployment.md](docs/deployment.md)               | Production deployment guide                                 |

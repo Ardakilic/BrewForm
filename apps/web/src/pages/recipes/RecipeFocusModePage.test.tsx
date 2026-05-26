@@ -15,7 +15,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { RecipeFocusModePage } from './RecipeFocusModePage';
+import { RecipeFocusModePage } from './RecipeFocusModePage.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 

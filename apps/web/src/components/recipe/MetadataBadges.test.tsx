@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MetadataBadges } from './MetadataBadges';
+import { MetadataBadges } from './MetadataBadges.tsx';
 
 vi.mock('react-router', () => ({
   Link: ({

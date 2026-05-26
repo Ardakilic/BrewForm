@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
-import { Navbar } from './Navbar';
+import { Navbar } from './Navbar.tsx';
 
 // ---------------------------------------------------------------------------
 // React-router mock — mirrors the mock in Navbar.test.tsx but uses a
@@ -93,9 +93,9 @@ vi.mock('../../api/index', () => ({
   },
 }));
 
-import { useTranslation } from '../../contexts/I18nContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTheme } from '../../contexts/ThemeContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);

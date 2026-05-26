@@ -132,7 +132,9 @@ export const router = createBrowserRouter([
       {
         path: 'equipment/catalog',
         lazy: async () => {
-          const { EquipmentCatalogPage } = await import('./pages/equipment/EquipmentCatalogPage.tsx');
+          const { EquipmentCatalogPage } = await import(
+            './pages/equipment/EquipmentCatalogPage.tsx'
+          );
           return { Component: EquipmentCatalogPage };
         },
       },
@@ -146,14 +148,18 @@ export const router = createBrowserRouter([
       {
         path: 'coffee-varieties',
         lazy: async () => {
-          const { CoffeeVarietiesPage } = await import('./pages/coffee-varieties/CoffeeVarietiesPage.tsx');
+          const { CoffeeVarietiesPage } = await import(
+            './pages/coffee-varieties/CoffeeVarietiesPage.tsx'
+          );
           return { Component: CoffeeVarietiesPage };
         },
       },
       {
         path: 'coffee-varieties/:id',
         lazy: async () => {
-          const { CoffeeVarietyDetailPage } = await import('./pages/coffee-varieties/CoffeeVarietyDetailPage.tsx');
+          const { CoffeeVarietyDetailPage } = await import(
+            './pages/coffee-varieties/CoffeeVarietyDetailPage.tsx'
+          );
           return { Component: CoffeeVarietyDetailPage };
         },
       },

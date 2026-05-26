@@ -528,6 +528,7 @@ export async function findStarred(
     equipmentId?: string;
     tasteNoteIds?: string;
     mainBrewer?: string;
+    coffeeVarietyId?: string;
     sortBy?: string;
     sortOrder?: string;
   },
@@ -591,6 +592,17 @@ export async function findStarred(
         ),
       );
     }
+  }
+
+  if (filters.coffeeVarietyId) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.coffeeVarietyId, filters.coffeeVarietyId),
+        ),
+      ),
+    );
   }
 
   if (filters.equipmentId) {

@@ -169,7 +169,12 @@ describe('Equipment Routes — Integration', () => {
       const res = await app.request('/equipment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Fellow Stagg', type: 'kettle', brand: 'Fellow', model: 'Stagg EKG' }),
+        body: JSON.stringify({
+          name: 'Fellow Stagg',
+          type: 'kettle',
+          brand: 'Fellow',
+          model: 'Stagg EKG',
+        }),
       });
       expect(res.status).toBe(201);
       const body = await res.json();

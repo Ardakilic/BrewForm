@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { LikeButton } from './LikeButton';
+import { LikeButton } from './LikeButton.tsx';
 
 vi.mock('../../api/client.ts', () => ({
   api: {

@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import fc from 'fast-check';
-import { BreadcrumbNav } from './BreadcrumbNav';
+import { BreadcrumbNav } from './BreadcrumbNav.tsx';
 
 vi.mock('react-router', () => ({
   Link: (

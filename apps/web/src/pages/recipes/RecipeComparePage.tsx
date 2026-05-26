@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { recipeApi } from '../../api/index';
-import { SEOHead } from '../../components/seo/SEOHead';
+import { recipeApi } from '../../api/index.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS, DRINK_TYPES } from '@brewform/shared/constants';
 
 // deno-lint-ignore no-explicit-any

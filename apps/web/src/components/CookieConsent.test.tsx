@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CookieConsent } from './CookieConsent';
+import { CookieConsent } from './CookieConsent.tsx';
 
 vi.mock('../contexts/I18nContext', () => ({
   useTranslation: vi.fn(),
 }));
 
-import { useTranslation } from '../contexts/I18nContext';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 

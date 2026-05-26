@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
-import { SEOHead } from './SEOHead';
+import { SEOHead } from './SEOHead.tsx';
 
 // SEOHead manipulates document.head directly via useEffect.
 // jsdom provides a real document, so we can assert on head elements.

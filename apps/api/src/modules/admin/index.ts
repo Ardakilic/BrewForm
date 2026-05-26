@@ -9,6 +9,8 @@ import {
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
   AdminUpdateUserSchema,
+  CoffeeVarietyCreateSchema,
+  CoffeeVarietyUpdateSchema,
   PaginationSchema,
 } from '@brewform/shared/schemas';
 import * as service from './service.ts';
@@ -460,6 +462,110 @@ admin.post('/cache/flush', zValidator('json', AdminFlushCacheSchema.optional()),
   const body = c.req.valid('json') ?? { keys: [] };
   await service.flushCache(cacheProvider!, body.keys ?? []);
   return success(c, { message: 'Cache flushed' });
+});
+
+// --- Coffee Varieties (admin) ---
+admin.get(
+  '/coffee-varieties',
+  zValidator(
+    'query',
+    PaginationSchema.extend({
+      category: z.string().optional(),
+      search: z.string().optional(),
+    }),
+  ),
+  async (c) => {
+    const { page, perPage, category, search } = c.req.valid('query');
+    const result = await service.listCoffeeVarieties(page, perPage, category, search);
+    return paginated(c, result.varieties, {
+      page,
+      perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / perPage),
+    });
+  },
+);
+
+admin.post(
+  '/coffee-varieties',
+  zValidator('json', CoffeeVarietyCreateSchema),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const data = c.req.valid('json');
+    const variety = await service.createCoffeeVariety(adminId, data);
+    return success(c, variety, 201);
+  },
+);
+
+admin.patch(
+  '/coffee-varieties/:id',
+  zValidator('json', CoffeeVarietyUpdateSchema),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const id = c.req.param('id')!;
+    const data = c.req.valid('json');
+    const variety = await service.updateCoffeeVariety(adminId, id, data);
+    return success(c, variety);
+  },
+);
+
+admin.delete('/coffee-varieties/:id', async (c) => {
+  const adminId = c.get('userId') as string;
+  const id = c.req.param('id')!;
+  await service.deleteCoffeeVariety(adminId, id);
+  return success(c, { message: 'Coffee variety deleted' });
+});
+
+admin.get('/coffee-varieties/:id/recipe-count', async (c) => {
+  const id = c.req.param('id')!;
+  const count = await service.getVarietyRecipeCount(id);
+  return success(c, { count });
+});
+
+// --- Equipment Delete Requests (admin) ---
+admin.get(
+  '/equipment/delete-requests',
+  zValidator('query', PaginationSchema.extend({ status: z.string().optional() })),
+  async (c) => {
+    const { page, perPage, status } = c.req.valid('query');
+    const result = await service.listEquipmentDeleteRequests(page, perPage, status);
+    return paginated(c, result.requests, {
+      page,
+      perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / perPage),
+    });
+  },
+);
+
+admin.post('/equipment/delete-requests/:id/approve', async (c) => {
+  const adminId = c.get('userId') as string;
+  const id = c.req.param('id')!;
+  try {
+    const request = await service.approveEquipmentDeleteRequest(adminId, id);
+    return success(c, request);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'DELETE_REQUEST_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'Delete request not found', 404);
+    }
+    throw err;
+  }
+});
+
+admin.post('/equipment/delete-requests/:id/reject', async (c) => {
+  const adminId = c.get('userId') as string;
+  const id = c.req.param('id')!;
+  try {
+    const request = await service.rejectEquipmentDeleteRequest(adminId, id);
+    return success(c, request);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'DELETE_REQUEST_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'Delete request not found', 404);
+    }
+    throw err;
+  }
 });
 
 export default admin;

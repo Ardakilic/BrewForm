@@ -14,7 +14,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import fc from 'fast-check';
-import { BeanSection } from './BeanSection';
+import { BeanSection } from './BeanSection.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import type { ReactNode } from 'react';
 

@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext';
-import { LanguageSelector } from './LanguageSelector';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { LanguageSelector } from './LanguageSelector.tsx';
 
 export function Footer() {
   const { locale, setLocale, t, availableLocales } = useTranslation();
