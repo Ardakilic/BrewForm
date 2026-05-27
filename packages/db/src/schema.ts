@@ -1,7 +1,10 @@
 import { relations } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+
 import {
   AnyPgColumn,
   boolean,
+  check,
   decimal,
   foreignKey,
   index,
@@ -283,6 +286,7 @@ export const recipeTasteNotes = pgTable(
     ),
     index('recipe_taste_note_recipe_version_id_idx').on(table.recipeVersionId),
     index('recipe_taste_note_taste_note_id_idx').on(table.tasteNoteId),
+    check('recipe_taste_note_intensity_check', sql`${table.intensity} BETWEEN 1 AND 3`),
   ],
 );
 
@@ -601,6 +605,7 @@ export const userRecipeRatings = pgTable(
     unique('user_recipe_rating_user_id_recipe_id_unique').on(table.userId, table.recipeId),
     index('user_recipe_rating_user_id_idx').on(table.userId),
     index('user_recipe_rating_recipe_id_idx').on(table.recipeId),
+    check('user_recipe_rating_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
   ],
 );
 

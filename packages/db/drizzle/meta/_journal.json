@@ -8,6 +8,13 @@
       "when": 1779839186105,
       "tag": "0000_opposite_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779893576707,
+      "tag": "0001_wise_forge",
+      "breakpoints": true
     }
   ]
 }

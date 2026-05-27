@@ -1,0 +1,2 @@
+ALTER TABLE "recipe_taste_note" ADD CONSTRAINT "recipe_taste_note_intensity_check" CHECK ("recipe_taste_note"."intensity" BETWEEN 1 AND 3);--> statement-breakpoint
+ALTER TABLE "user_recipe_rating" ADD CONSTRAINT "user_recipe_rating_rating_check" CHECK ("user_recipe_rating"."rating" BETWEEN 1 AND 10);
