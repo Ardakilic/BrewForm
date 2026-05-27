@@ -278,10 +278,7 @@ See [docs/recipes.md](recipes.md) for versioning, forking, and validation rules.
 
 ### Equipment Types
 
-`portafilter`, `basket`, `puck_screen`, `paper_filter`, `tamper`, `gooseneck_kettle`, `mesh_filter`,
-`cezve`, `scale`, `thermometer`, `other`
-
-See [docs/coffee-equipments.md](coffee-equipments.md) for the full equipment catalog structure.
+See [docs/coffee-equipments.md](coffee-equipments.md) for the full equipment catalog.
 
 ---
 

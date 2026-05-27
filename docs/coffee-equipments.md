@@ -40,7 +40,7 @@ Equipment catalog entries are stored in `packages/db/src/seed-equipment-catalog.
 
 Recipes link to equipment via the `recipe_equipment` junction table:
 
-```
+```text
 recipe → recipe_version → recipe_equipment → equipment
 ```
 

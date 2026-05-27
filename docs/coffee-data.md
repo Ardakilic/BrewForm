@@ -74,7 +74,7 @@ Each recipe version can optionally reference a coffee variety via `recipe_versio
 Additionally, recipe versions carry a free-text `coffee_variety_name` field for cases where a
 specific variety isn't in the database.
 
-```
+```text
 recipe → recipe_version → coffee_variety
 ```
 
@@ -83,7 +83,7 @@ recipe → recipe_version → coffee_variety
 Recipe versions are linked to equipment through a many-to-many junction table
 (`recipe_equipment`). Each recipe can specify multiple pieces of equipment used during brewing.
 
-```
+```text
 recipe → recipe_version → recipe_equipment → equipment
 ```
 
@@ -92,7 +92,7 @@ recipe → recipe_version → recipe_equipment → equipment
 User setups (brewing station configurations) also link to equipment, allowing users to specify
 their exact gear:
 
-```
+```text
 setup → equipment (via portafilter_id, basket_id, puck_screen_id, etc.)
 ```
 

@@ -441,7 +441,6 @@ CREATE INDEX "comment_author_id_idx" ON "comment" USING btree ("author_id");--> 
 CREATE INDEX "comment_parent_comment_id_idx" ON "comment" USING btree ("parent_comment_id");--> statement-breakpoint
 CREATE INDEX "comment_created_at_idx" ON "comment" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "comment_deleted_at_idx" ON "comment" USING btree ("deleted_at");--> statement-breakpoint
-CREATE INDEX "email_verification_token_token_idx" ON "email_verification_token" USING btree ("token");--> statement-breakpoint
 CREATE INDEX "email_verification_token_user_id_idx" ON "email_verification_token" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "email_verification_token_expires_at_idx" ON "email_verification_token" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "equipment_type_idx" ON "equipment" USING btree ("type");--> statement-breakpoint

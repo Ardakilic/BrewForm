@@ -20,7 +20,7 @@ Overlays the container's own `node_modules` directory, **hiding** the host's `no
 - **Native bindings are platform-specific.** When you run `deno install` on macOS, it downloads `@rolldown/binding-darwin-arm64`. The Docker container (Linux) needs `@rolldown/binding-linux-arm64-gnu`.
 - Without the named volume, the host's macOS bindings would shadow the container's Linux bindings, causing runtime errors like:
 
-```
+```text
 Error: Cannot find module '@rolldown/binding-linux-arm64-gnu'
 ```
 
@@ -32,7 +32,7 @@ A persistent named volume for the global Deno cache (`/root/.cache/deno`). This 
 
 Inside the container, the filesystem looks like this:
 
-```
+```text
 /app
 ├── apps/              ← from bind mount (host)
 ├── packages/          ← from bind mount (host)

@@ -937,21 +937,6 @@
         }
       },
       "indexes": {
-        "email_verification_token_token_idx": {
-          "name": "email_verification_token_token_idx",
-          "columns": [
-            {
-              "expression": "token",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "email_verification_token_user_id_idx": {
           "name": "email_verification_token_user_id_idx",
           "columns": [
