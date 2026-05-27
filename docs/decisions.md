@@ -224,3 +224,15 @@ noise; JSDoc on the cache interface is documentation.
 
 **Trade-off.** Tooling that builds API docs from JSDoc (`typedoc`) would produce a sparse output. We
 don't use it; the per-feature docs in this directory are the user-facing reference.
+
+---
+
+## ADR-014 — Suppress jsdom "Not implemented: navigation" warnings in frontend tests
+
+**Decision.** Add a global `click` listener in `apps/web/src/test-setup.ts` that calls `event.preventDefault()` on clicks to internal anchor links (`<a href="/...">`). This silences jsdom's "Not implemented: navigation to another Document" warning without affecting test assertions.
+
+**Why.** The frontend test suite runs in jsdom via Vitest. jsdom does not implement actual page navigation, so clicking any `<a>` element that has an `href` triggers a console warning. The Navbar PBT test (`Navbar.pbt.test.tsx`) clicks mobile nav links 100 times per run; combined with a few other tests that click internal links, this produced ~101 scattered warnings across the full suite, making the test output noisy and masking real issues.
+
+**Trade-off.** The listener prevents default only for `href` values starting with `/`, so external links and non-link clicks are unaffected. Navigation never actually worked in jsdom anyway, so no test behaviour changes — the warning was purely cosmetic. If we ever switch to `happy-dom` or a real browser runner, this listener becomes harmless (`preventDefault` on a non-navigating click is a no-op).
+
+**Reference.** See `apps/web/src/test-setup.ts` for the implementation.
