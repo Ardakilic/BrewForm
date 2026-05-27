@@ -10,6 +10,7 @@ export {
   EquipmentUpdateSchema,
 } from './equipment.ts';
 export {
+  CoffeeVarietyCategoryEnum,
   CoffeeVarietyCreateSchema,
   CoffeeVarietyFilterSchema,
   CoffeeVarietyUpdateSchema,

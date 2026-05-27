@@ -9,6 +9,7 @@ import {
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
   AdminUpdateUserSchema,
+  CoffeeVarietyCategoryEnum,
   CoffeeVarietyCreateSchema,
   CoffeeVarietyUpdateSchema,
   PaginationSchema,
@@ -470,7 +471,7 @@ admin.get(
   zValidator(
     'query',
     PaginationSchema.extend({
-      category: z.string().optional(),
+      category: CoffeeVarietyCategoryEnum.optional(),
       search: z.string().optional(),
     }),
   ),
@@ -525,7 +526,10 @@ admin.get('/coffee-varieties/:id/recipe-count', async (c) => {
 // --- Equipment Delete Requests (admin) ---
 admin.get(
   '/equipment/delete-requests',
-  zValidator('query', PaginationSchema.extend({ status: z.string().optional() })),
+  zValidator(
+    'query',
+    PaginationSchema.extend({ status: z.enum(['pending', 'approved', 'rejected']).optional() }),
+  ),
   async (c) => {
     const { page, perPage, status } = c.req.valid('query');
     const result = await service.listEquipmentDeleteRequests(page, perPage, status);

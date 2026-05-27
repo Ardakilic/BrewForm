@@ -436,20 +436,22 @@ export async function createCoffeeVariety(
   return variety;
 }
 
-/** Update a coffee variety and log the action. */
+/** Update a coffee variety and log the action. Throws if variety is not found. */
 export async function updateCoffeeVariety(
   adminId: string,
   id: string,
   data: Partial<typeof coffeeVarieties.$inferInsert>,
 ) {
   const variety = await model.updateCoffeeVariety(id, data);
+  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
   await model.createAuditLog(adminId, 'UPDATE_COFFEE_VARIETY', 'CoffeeVariety', id);
   return variety;
 }
 
-/** Soft-delete a coffee variety and log the action. */
+/** Soft-delete a coffee variety and log the action. Throws if variety is not found. */
 export async function deleteCoffeeVariety(adminId: string, id: string) {
-  await model.deleteCoffeeVariety(id);
+  const variety = await model.deleteCoffeeVariety(id);
+  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
   await model.createAuditLog(adminId, 'DELETE_COFFEE_VARIETY', 'CoffeeVariety', id);
 }
 

@@ -451,7 +451,10 @@ function createEquipmentDeleteRequestApp() {
 
   app.get(
     '/equipment/delete-requests',
-    zValidator('query', PaginationSchema.extend({ status: z.string().optional() })),
+    zValidator(
+      'query',
+      PaginationSchema.extend({ status: z.enum(['pending', 'approved', 'rejected']).optional() }),
+    ),
     (c) => {
       const { page, perPage } = c.req.valid('query');
       return c.json({

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const CoffeeVarietyCategoryEnum = z.enum(['variety', 'processing', 'market_name']);
+export const CoffeeVarietyCategoryEnum = z.enum(['variety', 'processing', 'market_name']);
 
 export const CoffeeVarietyCreateSchema = z.object({
   name: z.string().min(1).max(255),
