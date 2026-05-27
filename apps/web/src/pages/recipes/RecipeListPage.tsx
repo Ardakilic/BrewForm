@@ -151,10 +151,15 @@ export function RecipeListPage() {
 
   useEffect(() => {
     if (debouncedVarietySearch.length >= 2) {
+      let cancelled = false;
       coffeeVarietyApi.search(debouncedVarietySearch).then((data) => {
+        if (cancelled) return;
         setVarietyResults(data);
         setVarietyDropdownOpen(true);
       }).catch(() => {});
+      return () => {
+        cancelled = true;
+      };
     } else {
       setVarietyResults([]);
       setVarietyDropdownOpen(false);
