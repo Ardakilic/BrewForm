@@ -2,90 +2,58 @@ import '../../test-setup.ts';
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import type { Context, Next } from 'hono';
 import type { AppEnv } from '../../types/hono.ts';
-import {
-  EquipmentCreateSchema,
-  EquipmentFilterSchema,
-  EquipmentUpdateSchema,
-} from '@brewform/shared/schemas';
+import equipmentRouter, { deps } from './index.ts';
+
+deps.authMiddleware = async (_c: Context, next: Next) => {
+  await next();
+};
+
+const mockService = {
+  listEquipmentWithFilters: (
+    _params: { type?: string; search?: string; page: number; perPage: number },
+  ) => Promise.resolve({ items: [], total: 0 }),
+  searchEquipment: (q: string) => {
+    const results = q.length >= 2
+      ? [{ id: 'eq-1', name: 'Fellow Stagg', type: 'kettle', brand: 'Fellow', model: 'Stagg EKG' }]
+      : [];
+    return Promise.resolve(results);
+  },
+  createEquipment: (_userId: string, data: Record<string, unknown>) => Promise.resolve(data),
+  getEquipment: (id: string) => {
+    if (id === 'nonexistent') return Promise.reject(new Error('EQUIPMENT_NOT_FOUND'));
+    return Promise.resolve({
+      id,
+      name: 'Fellow Stagg',
+      type: 'kettle',
+      brand: 'Fellow',
+      model: 'Stagg EKG',
+    });
+  },
+  updateEquipment: (_userId: string, id: string, data: Record<string, unknown>) =>
+    Promise.resolve({ id, ...data }),
+  deleteEquipment: () => Promise.resolve(),
+  getRecipesForEquipment: () => Promise.resolve({ data: [], total: 0 }),
+  requestEquipmentDeletion: (equipmentId: string, _userId: string, reason?: string) => {
+    if (equipmentId === 'nonexistent') return Promise.reject(new Error('EQUIPMENT_NOT_FOUND'));
+    return Promise.resolve({ equipmentId, reason: reason ?? null });
+  },
+};
+
+deps.service = { ...deps.service, ...mockService } as typeof deps.service;
 
 function createTestApp() {
   const app = new Hono<AppEnv>();
 
   app.use('*', async (c, next) => {
+    c.set('requestId', crypto.randomUUID());
     c.set('userId', 'test-user-id');
     c.set('user', { id: 'test-user-id', isAdmin: false } as any);
     await next();
   });
 
-  app.get('/equipment', zValidator('query', EquipmentFilterSchema), (c) => {
-    const query = c.req.valid('query');
-    return c.json({
-      success: true,
-      data: [],
-      meta: {
-        page: query.page ?? 1,
-        perPage: query.perPage ?? 20,
-        total: 0,
-        totalPages: 0,
-      },
-    });
-  });
-
-  app.get('/equipment/search', (c) => {
-    const q = c.req.query('q');
-    if (!q || q.length < 2) {
-      return c.json({ success: true, data: [] });
-    }
-    return c.json({ success: true, data: [{ id: 'eq-1', name: 'Fellow Stagg', type: 'kettle' }] });
-  });
-
-  app.post('/equipment', zValidator('json', EquipmentCreateSchema), (c) => {
-    return c.json({ success: true, data: {} }, 201);
-  });
-
-  app.get('/equipment/:id', (c) => {
-    const id = c.req.param('id');
-    if (id === 'nonexistent') {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Equipment not found' } },
-        404,
-      );
-    }
-    return c.json({
-      success: true,
-      data: { id, name: 'Fellow Stagg', type: 'kettle', brand: 'Fellow', model: 'Stagg EKG' },
-    });
-  });
-
-  app.patch('/equipment/:id', zValidator('json', EquipmentUpdateSchema), (c) => {
-    const body = c.req.valid('json');
-    return c.json({
-      success: true,
-      data: { id: c.req.param('id'), ...body },
-    });
-  });
-
-  app.delete('/equipment/:id', (c) => {
-    return c.json({ success: true, data: { message: 'Equipment deleted' } });
-  });
-
-  app.get('/equipment/:id/recipes', (c) => {
-    return c.json({
-      success: true,
-      data: [],
-      meta: { page: 1, perPage: 12, total: 0, totalPages: 0 },
-    });
-  });
-
-  app.post('/equipment/:id/delete-request', (c) => {
-    const reason = c.req.query('reason');
-    return c.json({
-      success: true,
-      data: { equipmentId: c.req.param('id'), reason: reason ?? null },
-    }, 201);
-  });
+  app.route('/equipment', equipmentRouter);
 
   return app;
 }
@@ -107,8 +75,8 @@ describe('Equipment Routes — Integration', () => {
       const res = await app.request('/equipment?page=2&perPage=10');
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body.meta.page).toBe(2);
-      expect(body.meta.perPage).toBe(10);
+      expect(body.meta.pagination.page).toBe(2);
+      expect(body.meta.pagination.perPage).toBe(10);
     });
 
     it('should accept type filter', async () => {
@@ -267,7 +235,7 @@ describe('Equipment Routes — Integration', () => {
       const body = await res.json();
       expect(body.success).toBe(true);
       expect(body.data).toEqual([]);
-      expect(body.meta).toBeDefined();
+      expect(body.total).toBe(0);
     });
   });
 
