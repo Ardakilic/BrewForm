@@ -9,3 +9,16 @@ if (typeof globalThis !== 'undefined') {
     console.error(error);
   };
 }
+
+// jsdom does not implement navigation, so clicking <a href="..."> elements
+// emits a noisy "Not implemented: navigation to another Document" warning.
+// Suppress it by preventing default on internal link clicks during tests.
+if (typeof globalThis !== 'undefined') {
+  globalThis.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (anchor && anchor.getAttribute('href')?.startsWith('/')) {
+      event.preventDefault();
+    }
+  });
+}
