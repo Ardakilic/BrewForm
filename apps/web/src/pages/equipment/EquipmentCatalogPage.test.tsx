@@ -20,7 +20,7 @@ vi.mock('../../api/client.ts', () => ({
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
-  SEOHead: () => null,
+  SEOHead: vi.fn(() => null),
 }));
 
 vi.mock('../../hooks/useDebounce.ts', () => ({
@@ -32,10 +32,12 @@ vi.mock('../../hooks/useDebounce.ts', () => ({
 import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { api } from '../../api/client.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockApiGetWithMeta = vi.mocked(api.getWithMeta);
+const mockSEOHead = vi.mocked(SEOHead);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -461,5 +463,28 @@ describe('EquipmentCatalogPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
     await waitFor(() => expect(mockApiGetWithMeta).toHaveBeenCalledTimes(2));
+  });
+
+  it('passes translated title to SEOHead', async () => {
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+    render(<EquipmentCatalogPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    const calls = mockSEOHead.mock.calls;
+    const lastProps = calls[calls.length - 1][0] as { title?: string };
+    expect(lastProps.title).toBe('Coffee Equipment');
+  });
+
+  it('passes translated title to SEOHead — Turkish', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+    render(<EquipmentCatalogPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    const calls = mockSEOHead.mock.calls;
+    const lastProps = calls[calls.length - 1][0] as { title?: string };
+    expect(lastProps.title).toBe('Kahve Ekipmanları');
   });
 });

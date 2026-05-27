@@ -89,7 +89,14 @@ export function EquipmentDetailPage() {
 
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>
-      <SEOHead title={displayTitle} />
+      <SEOHead
+        title={displayTitle}
+        description={equipment.description ||
+          [equipment.brand, equipment.type ? equipment.type.replace(/_/g, ' ') : '']
+            .filter(Boolean).join(' ') ||
+          undefined}
+        canonical={`${globalThis.location.origin}/equipment/${equipment.id}`}
+      />
 
       {/* Breadcrumb */}
       <nav aria-label='Breadcrumb' className='mb-4'>

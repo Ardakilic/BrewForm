@@ -124,7 +124,13 @@ export function CoffeeVarietyDetailPage() {
 
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>
-      <SEOHead title={variety.name} />
+      <SEOHead
+        title={variety.name}
+        description={variety.cupProfile ||
+          [variety.species, variety.origin].filter(Boolean).join(' from ') ||
+          undefined}
+        canonical={`${globalThis.location.origin}/coffee-varieties/${variety.id}`}
+      />
 
       {/* Breadcrumb */}
       <nav aria-label='Breadcrumb' className='mb-4'>
