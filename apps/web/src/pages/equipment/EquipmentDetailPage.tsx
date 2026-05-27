@@ -25,6 +25,7 @@ interface RecipeEntry {
   commentCount: number;
 }
 
+/** Displays a single equipment item's details, description, and associated recipes. */
 export function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [equipment, setEquipment] = useState<EquipmentDetail | null>(null);
@@ -89,7 +90,14 @@ export function EquipmentDetailPage() {
 
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>
-      <SEOHead title={displayTitle} />
+      <SEOHead
+        title={displayTitle}
+        description={equipment.description ||
+          [equipment.brand, equipment.type ? equipment.type.replace(/_/g, ' ') : '']
+            .filter(Boolean).join(' ') ||
+          undefined}
+        canonical={`${globalThis.location.origin}/equipment/${equipment.id}`}
+      />
 
       {/* Breadcrumb */}
       <nav aria-label='Breadcrumb' className='mb-4'>

@@ -22,16 +22,18 @@ vi.mock('../../../hooks/useDebounce.ts', () => ({
 }));
 
 vi.mock('../../../components/seo/SEOHead.tsx', () => ({
-  SEOHead: () => null,
+  SEOHead: vi.fn(() => null),
 }));
 
 import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../../contexts/I18nContext.tsx';
 import { api } from '../../../api/client.ts';
+import { SEOHead } from '../../../components/seo/SEOHead.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockApiGetWithMeta = vi.mocked(api.getWithMeta);
+const mockSEOHead = vi.mocked(SEOHead);
 
 const enT = (key: string) => {
   const map: Record<string, string> = {
@@ -118,6 +120,7 @@ beforeEach(() => {
   mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
 });
 
+/** Tests for CoffeeVarietiesPage — rendering, category tabs, search, pagination, SEO, and i18n. */
 describe('CoffeeVarietiesPage', () => {
   it('renders page title and subtitle — English', async () => {
     render(<CoffeeVarietiesPage />);
@@ -513,5 +516,28 @@ describe('CoffeeVarietiesPage', () => {
 
     expect(screen.getByText('No varieties found')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
+  });
+
+  it('passes translated title to SEOHead', async () => {
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+    render(<CoffeeVarietiesPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    const calls = mockSEOHead.mock.calls;
+    const lastProps = calls[calls.length - 1][0] as { title?: string };
+    expect(lastProps.title).toBe('Coffee Varieties');
+  });
+
+  it('passes translated title to SEOHead — Turkish', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+    render(<CoffeeVarietiesPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    const calls = mockSEOHead.mock.calls;
+    const lastProps = calls[calls.length - 1][0] as { title?: string };
+    expect(lastProps.title).toBe('Kahve Çeşitleri');
   });
 });
