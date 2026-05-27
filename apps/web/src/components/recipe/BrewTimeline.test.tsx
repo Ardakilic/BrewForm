@@ -34,18 +34,21 @@ function withI18n(ui: ReactNode) {
 // ---------------------------------------------------------------------------
 
 describe('BrewTimeline — rendering unit tests', () => {
-  it('returns null when extractionTimeSeconds is null', () => {
+  it('returns null when extractionTimeSeconds is null', async () => {
     const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={null} />));
+    await new Promise((r) => setTimeout(r, 0));
     expect(container.firstChild).toBeNull();
   });
 
-  it('returns null when extractionTimeSeconds is undefined', () => {
+  it('returns null when extractionTimeSeconds is undefined', async () => {
     const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={undefined} />));
+    await new Promise((r) => setTimeout(r, 0));
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders when extractionTimeSeconds is present', () => {
+  it('renders when extractionTimeSeconds is present', async () => {
     const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={30} />));
+    await new Promise((r) => setTimeout(r, 0));
     expect(container.firstChild).not.toBeNull();
   });
 

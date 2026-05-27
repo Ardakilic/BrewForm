@@ -22,9 +22,11 @@ export function EquipmentCatalogPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCounter, setRetryCounter] = useState(0);
   const { t } = useTranslation();
 
-  const page = Number(searchParams.get('page')) || 1;
+  const raw = Number(searchParams.get('page'));
+  const page = Number.isFinite(raw) ? Math.max(1, Math.floor(raw)) : 1;
   const type = searchParams.get('type') || '';
   const search = searchParams.get('search') || '';
   const debouncedSearch = useDebounce(search, 300);
@@ -65,7 +67,7 @@ export function EquipmentCatalogPage() {
       })
       .catch(() => setError(t('equipment.catalog.error.load')))
       .finally(() => setLoading(false));
-  }, [page, type, debouncedSearch]);
+  }, [page, type, debouncedSearch, retryCounter]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams);
@@ -179,6 +181,7 @@ export function EquipmentCatalogPage() {
                 const params = new URLSearchParams(searchParams);
                 params.delete('page');
                 setSearchParams(params);
+                setRetryCounter((c) => c + 1);
               }}
               className='btn-primary'
             >

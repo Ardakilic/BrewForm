@@ -421,4 +421,45 @@ describe('EquipmentCatalogPage', () => {
     const [params] = setSearchParams.mock.calls[0];
     expect(params.get('page')).toBe('2');
   });
+
+  it('clamps negative page to 1', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ page: '-5' }));
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+    render(<EquipmentCatalogPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
+      expect.stringContaining('page=1'),
+    );
+  });
+
+  it('floors non-integer page to integer', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ page: '2.7' }));
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+    render(<EquipmentCatalogPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
+      expect.stringContaining('page=2'),
+    );
+  });
+
+  it('retries fetch when retry button is clicked', async () => {
+    mockApiGetWithMeta.mockRejectedValue(new Error('Network error'));
+    render(<EquipmentCatalogPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    expect(screen.getByText('Failed to load equipment')).toBeInTheDocument();
+    expect(mockApiGetWithMeta).toHaveBeenCalledTimes(1);
+
+    // Reset mock to resolve on next call
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => expect(mockApiGetWithMeta).toHaveBeenCalledTimes(2));
+  });
 });
