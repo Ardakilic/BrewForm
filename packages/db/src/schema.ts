@@ -678,9 +678,11 @@ export const equipmentDeleteRequests = pgTable('equipment_delete_request', {
   reviewedById: varchar('reviewed_by_id', { length: 36 }).references(() => users.id),
   reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => [
   index('edr_equipment_id_idx').on(table.equipmentId),
   index('edr_status_idx').on(table.status),
+  index('edr_deleted_at_idx').on(table.deletedAt),
 ]);
 
 export const auditLogs = pgTable(

@@ -15,6 +15,13 @@
       "when": 1779893576707,
       "tag": "0001_wise_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779894870038,
+      "tag": "0002_nasty_jackpot",
+      "breakpoints": true
     }
   ]
 }
