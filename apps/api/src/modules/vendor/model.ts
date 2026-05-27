@@ -54,7 +54,9 @@ export async function update(id: string, data: Partial<typeof vendors.$inferInse
 
 /** Soft-delete a vendor by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(vendors).set({ deletedAt: new Date() }).where(and(eq(vendors.id, id), isNull(vendors.deletedAt)))
+  const [result] = await db.update(vendors).set({ deletedAt: new Date() }).where(
+    and(eq(vendors.id, id), isNull(vendors.deletedAt)),
+  )
     .returning();
   return result ?? null;
 }

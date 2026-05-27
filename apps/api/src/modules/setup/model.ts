@@ -61,7 +61,9 @@ export async function update(id: string, data: Partial<UpdatableSetup>) {
 
 /** Soft-delete a setup by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(setups).set({ deletedAt: new Date() }).where(and(eq(setups.id, id), isNull(setups.deletedAt)))
+  const [result] = await db.update(setups).set({ deletedAt: new Date() }).where(
+    and(eq(setups.id, id), isNull(setups.deletedAt)),
+  )
     .returning();
   return result ?? null;
 }

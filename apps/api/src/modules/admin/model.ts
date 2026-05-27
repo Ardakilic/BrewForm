@@ -196,7 +196,9 @@ export async function adminUpdateUser(
 
 /** Soft-delete a user by setting `deletedAt`. Returns the updated user or null. */
 export async function softDeleteUser(userId: string) {
-  const [result] = await db.update(users).set({ deletedAt: new Date() }).where(and(eq(users.id, userId), isNull(users.deletedAt)))
+  const [result] = await db.update(users).set({ deletedAt: new Date() }).where(
+    and(eq(users.id, userId), isNull(users.deletedAt)),
+  )
     .returning();
   return result ?? null;
 }
