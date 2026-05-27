@@ -48,7 +48,10 @@ export function CoffeeVarietyDetailPage() {
   const { t } = useTranslation();
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(false);
 

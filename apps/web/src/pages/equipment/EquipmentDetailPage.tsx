@@ -168,7 +168,7 @@ export function EquipmentDetailPage() {
                   </h3>
                   {r.author && (
                     <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
-                      by {r.author.displayName || r.author.username}
+                      {t('recipe.focusMode.by')} {r.author.displayName || r.author.username}
                     </p>
                   )}
                   {r.currentVersion && (
