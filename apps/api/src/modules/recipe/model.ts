@@ -21,6 +21,16 @@ import {
 } from '@brewform/db/schema';
 import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
 
+/** Return a Drizzle condition that matches recipes whose versions reference the given coffee variety. */
+export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
+  return inArray(
+    recipes.id,
+    db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+      eq(recipeVersions.coffeeVarietyId, coffeeVarietyId),
+    ),
+  );
+}
+
 /** Insert a new recipe row and return it with all database-generated fields. */
 export async function create(data: typeof recipes.$inferInsert) {
   const [recipe] = await db.insert(recipes).values(data).returning();

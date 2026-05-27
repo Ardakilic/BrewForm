@@ -565,14 +565,7 @@ export async function listRecipes(
   }
 
   if (filters.coffeeVarietyId) {
-    conditions.push(
-      inArray(
-        recipes.id,
-        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.coffeeVarietyId, filters.coffeeVarietyId),
-        ),
-      ),
-    );
+    conditions.push(model.recipeCoffeeVarietyCondition(filters.coffeeVarietyId));
   }
 
   const where = conditions.length > 1 ? and(...conditions) : conditions[0];

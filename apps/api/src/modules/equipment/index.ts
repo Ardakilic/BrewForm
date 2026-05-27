@@ -47,8 +47,12 @@ equipment.post('/', authGuard, zValidator('json', EquipmentCreateSchema), async 
 
 equipment.get('/:id/recipes', async (c) => {
   const id = c.req.param('id')!;
-  const page = Number(c.req.query('page') || '1');
-  const perPage = Number(c.req.query('perPage') || '12');
+  const rawPage = Number(c.req.query('page') ?? '1');
+  const rawPerPage = Number(c.req.query('perPage') ?? '12');
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+  const perPage = Number.isFinite(rawPerPage) && rawPerPage > 0
+    ? Math.min(Math.floor(rawPerPage), 100)
+    : 12;
   const result = await deps.service.getRecipesForEquipment(id, page, perPage);
   return c.json({ success: true, ...result });
 });
