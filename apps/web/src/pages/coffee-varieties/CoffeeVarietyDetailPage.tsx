@@ -39,6 +39,7 @@ interface RecipeEntry {
   commentCount: number;
 }
 
+/** Displays a single coffee variety's details, properties, and associated recipes. */
 export function CoffeeVarietyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [variety, setVariety] = useState<VarietyDetail | null>(null);

@@ -132,6 +132,7 @@ beforeEach(() => {
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
+/** Tests for EquipmentCatalogPage — rendering, category filters, search, pagination, SEO, and i18n. */
 describe('EquipmentCatalogPage', () => {
   it('renders page title and subtitle — English', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));

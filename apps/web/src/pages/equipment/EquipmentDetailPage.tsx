@@ -25,6 +25,7 @@ interface RecipeEntry {
   commentCount: number;
 }
 
+/** Displays a single equipment item's details, description, and associated recipes. */
 export function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [equipment, setEquipment] = useState<EquipmentDetail | null>(null);

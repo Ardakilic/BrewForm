@@ -94,6 +94,7 @@ beforeEach(() => {
     .mockResolvedValueOnce(mockRecipes);
 });
 
+/** Tests for EquipmentDetailPage — loading, error, brand/model, description, recipes, breadcrumb, SEO props, and i18n. */
 describe('EquipmentDetailPage', () => {
   it('shows loading skeleton while fetching', () => {
     (mockApiGet as ReturnType<typeof vi.fn>).mockReset();

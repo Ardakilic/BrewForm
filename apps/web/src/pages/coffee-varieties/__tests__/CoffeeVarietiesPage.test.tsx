@@ -120,6 +120,7 @@ beforeEach(() => {
   mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
 });
 
+/** Tests for CoffeeVarietiesPage — rendering, category tabs, search, pagination, SEO, and i18n. */
 describe('CoffeeVarietiesPage', () => {
   it('renders page title and subtitle — English', async () => {
     render(<CoffeeVarietiesPage />);

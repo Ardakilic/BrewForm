@@ -155,6 +155,7 @@ beforeEach(() => {
     .mockResolvedValueOnce(mockRecipes);
 });
 
+/** Tests for CoffeeVarietyDetailPage — loading, error, detail fields, recipes, breadcrumb, SEO props, and i18n. */
 describe('CoffeeVarietyDetailPage', () => {
   it('shows loading skeleton while fetching', () => {
     (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
