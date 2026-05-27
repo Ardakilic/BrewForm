@@ -26,7 +26,8 @@ export function CoffeeVarietiesPage() {
   const [retryNonce, setRetryNonce] = useState(0);
   const { t } = useTranslation();
 
-  const page = Number(searchParams.get('page')) || 1;
+  const rawPage = Number(searchParams.get('page'));
+  const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
   const category = searchParams.get('category') || '';
   const search = searchParams.get('search') || '';
   const debouncedSearch = useDebounce(search, 300);
