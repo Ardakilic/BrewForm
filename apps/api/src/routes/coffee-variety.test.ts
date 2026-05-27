@@ -1,20 +1,32 @@
 import '../test-setup.ts';
-import { describe, it } from 'jsr:@std/testing/bdd';
+import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
 import type { AppEnv } from '../types/hono.ts';
 import coffeeVarietyRouter, { deps } from '../modules/coffee-variety/index.ts';
 
-deps.authMiddleware = async (_c: Context, next: Next) => {
-  await next();
-};
-
 const mockService = {
   listCoffeeVarieties: () => Promise.resolve({ data: [], total: 0 }),
 };
 
-deps.service = { ...deps.service, ...mockService } as typeof deps.service;
+const originalDeps = {
+  authMiddleware: deps.authMiddleware,
+  service: deps.service,
+};
+
+beforeEach(() => {
+  deps.authMiddleware = async (_c: Context, next: Next) => {
+    await next();
+  };
+
+  deps.service = { ...deps.service, ...mockService } as typeof deps.service;
+});
+
+afterEach(() => {
+  deps.authMiddleware = originalDeps.authMiddleware;
+  deps.service = originalDeps.service;
+});
 
 function createTestApp() {
   const app = new Hono<AppEnv>();

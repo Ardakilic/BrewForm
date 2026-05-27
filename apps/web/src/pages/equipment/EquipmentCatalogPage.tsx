@@ -180,7 +180,7 @@ export function EquipmentCatalogPage() {
                 setLoading(true);
                 const params = new URLSearchParams(searchParams);
                 params.delete('page');
-                setSearchParams(params);
+                setSearchParams(params, { preventScrollReset: true });
                 setRetryCounter((c) => c + 1);
               }}
               className='btn-primary'

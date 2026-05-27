@@ -11,7 +11,7 @@ vi.mock('react-router', () => ({
 }));
 
 // Mock the I18nContext module so we can control useTranslation's return values
-vi.mock('../../contexts/I18nContext', () => ({
+vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: vi.fn(),
 }));
 
