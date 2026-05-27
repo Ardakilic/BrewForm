@@ -8,107 +8,282 @@ import * as model from './model.ts';
 
 describe('Coffee Variety Model', { sanitizeOps: false, sanitizeResources: false }, () => {
   describe('findMany pagination', () => {
-    it('should compute correct offset from page and perPage', () => {
-      const page = 3;
-      const perPage = 20;
-      const offset = (page - 1) * perPage;
-      expect(offset).toBe(40);
+    let userId: string;
+    const varietyIds: string[] = [];
+
+    beforeEach(async () => {
+      userId = crypto.randomUUID();
+      await db.insert(users).values({
+        id: userId,
+        email: `test-${userId}@example.com`,
+        username: `testuser-${userId}`,
+        passwordHash: 'hash',
+      });
+
+      for (let i = 1; i <= 3; i++) {
+        const id = crypto.randomUUID();
+        varietyIds.push(id);
+        await db.insert(coffeeVarieties).values({
+          id,
+          name: `Pagination Variety ${i}`,
+          category: 'variety',
+          isSystem: false,
+          createdBy: userId,
+        });
+      }
     });
 
-    it('should compute zero offset for first page', () => {
-      const page = 1;
-      const perPage = 20;
-      const offset = (page - 1) * perPage;
-      expect(offset).toBe(0);
+    afterEach(async () => {
+      await db.delete(coffeeVarieties).where(eq(coffeeVarieties.createdBy, userId));
+      await db.delete(users).where(eq(users.id, userId));
+      varietyIds.length = 0;
     });
 
-    it('should extract total from count query result', () => {
-      const countResult = [{ count: 42 as unknown as string }];
-      const total = Number(countResult[0]?.count ?? 0);
-      expect(total).toBe(42);
+    it('should return paginated results with correct total', async () => {
+      const result = await model.findMany({ page: 1, perPage: 2 });
+      expect(result.total).toBeGreaterThanOrEqual(3);
+      expect(result.data.length).toBe(2);
     });
 
-    it('should default total to 0 when countResult is empty', () => {
-      const countResult: { count: number }[] = [];
-      const total = Number(countResult[0]?.count ?? 0);
-      expect(total).toBe(0);
+    it('should return next page with offset', async () => {
+      const result = await model.findMany({ page: 2, perPage: 2 });
+      expect(result.total).toBeGreaterThanOrEqual(3);
+      expect(result.data.length).toBeGreaterThanOrEqual(1);
     });
   });
 
   describe('findMany filtering', () => {
-    it('should build category filter when category is provided', () => {
-      const conditions: string[] = [];
-      const category = 'variety';
-      if (category) conditions.push(`category = ${category}`);
-      expect(conditions).toHaveLength(1);
+    let userId: string;
+    let varietyId1: string;
+    let varietyId2: string;
+
+    beforeEach(async () => {
+      userId = crypto.randomUUID();
+      varietyId1 = crypto.randomUUID();
+      varietyId2 = crypto.randomUUID();
+
+      await db.insert(users).values({
+        id: userId,
+        email: `test-${userId}@example.com`,
+        username: `testuser-${userId}`,
+        passwordHash: 'hash',
+      });
+
+      await db.insert(coffeeVarieties).values({
+        id: varietyId1,
+        name: 'FilterTest Arabica',
+        category: 'variety',
+        species: 'Coffea arabica',
+        isSystem: false,
+        createdBy: userId,
+      });
+
+      await db.insert(coffeeVarieties).values({
+        id: varietyId2,
+        name: 'FilterTest Robusta',
+        category: 'processing',
+        species: 'Coffea canephora',
+        isSystem: false,
+        createdBy: userId,
+      });
     });
 
-    it('should not add category filter when category is undefined', () => {
-      const conditions: string[] = [];
-      const category: string | undefined = undefined;
-      if (category) conditions.push(`category = ${category}`);
-      expect(conditions).toHaveLength(0);
+    afterEach(async () => {
+      await db.delete(coffeeVarieties).where(eq(coffeeVarieties.createdBy, userId));
+      await db.delete(users).where(eq(users.id, userId));
     });
 
-    it('should build search filter when search is provided', () => {
-      const conditions: string[] = [];
-      const search = 'arabica';
-      if (search) conditions.push(`search = ${search}`);
-      expect(conditions).toHaveLength(1);
+    it('should filter by category when provided', async () => {
+      const result = await model.findMany({ category: 'variety', page: 1, perPage: 1000 });
+      expect(result.data.every((v) => v.category === 'variety')).toBe(true);
+      expect(result.data.some((v) => v.id === varietyId1)).toBe(true);
     });
 
-    it('should not add search filter when search is empty', () => {
-      const conditions: string[] = [];
-      const search = '';
-      if (search) conditions.push(`search = ${search}`);
-      expect(conditions).toHaveLength(0);
+    it('should not filter by category when undefined', async () => {
+      const result = await model.findMany({ page: 1, perPage: 1000 });
+      const ids = result.data.map((v) => v.id);
+      expect(ids).toContain(varietyId1);
+      expect(ids).toContain(varietyId2);
+    });
+
+    it('should filter by search when provided', async () => {
+      const result = await model.findMany({ search: 'FilterTest Arabica', page: 1, perPage: 10 });
+      expect(result.data.some((v) => v.id === varietyId1)).toBe(true);
+      expect(result.data.every((v) => v.name.includes('FilterTest Arabica'))).toBe(true);
+    });
+
+    it('should not filter by search when empty', async () => {
+      const result = await model.findMany({ search: '', page: 1, perPage: 1000 });
+      const ids = result.data.map((v) => v.id);
+      expect(ids).toContain(varietyId1);
+      expect(ids).toContain(varietyId2);
     });
   });
 
   describe('findById null filtering', () => {
-    it('should filter by id and deletedAt is null for active records', () => {
-      const conditions: string[] = [];
-      const id = 'abc-123';
-      conditions.push(`id = ${id}`);
-      conditions.push('deletedAt IS NULL');
-      expect(conditions).toEqual(['id = abc-123', 'deletedAt IS NULL']);
+    let userId: string;
+    let varietyId: string;
+
+    beforeEach(async () => {
+      userId = crypto.randomUUID();
+      varietyId = crypto.randomUUID();
+
+      await db.insert(users).values({
+        id: userId,
+        email: `test-${userId}@example.com`,
+        username: `testuser-${userId}`,
+        passwordHash: 'hash',
+      });
+
+      await db.insert(coffeeVarieties).values({
+        id: varietyId,
+        name: 'Test Variety',
+        category: 'variety',
+        isSystem: false,
+        createdBy: userId,
+      });
+    });
+
+    afterEach(async () => {
+      await db.delete(coffeeVarieties).where(eq(coffeeVarieties.id, varietyId));
+      await db.delete(users).where(eq(users.id, userId));
+    });
+
+    it('should return the variety when it exists and is not deleted', async () => {
+      const result = await model.findById(varietyId);
+      expect(result).toBeDefined();
+      expect(result!.id).toBe(varietyId);
+    });
+
+    it('should return null for soft-deleted records', async () => {
+      await db.update(coffeeVarieties)
+        .set({ deletedAt: new Date() })
+        .where(eq(coffeeVarieties.id, varietyId));
+
+      const result = await model.findById(varietyId);
+      expect(result).toBeUndefined();
     });
   });
 
   describe('softDelete behavior', () => {
-    it('should set deletedAt and updatedAt to current date', () => {
-      const now = new Date();
-      const result = { deletedAt: now, updatedAt: now };
-      expect(result.deletedAt).toBeInstanceOf(Date);
-      expect(result.updatedAt).toBeInstanceOf(Date);
+    let userId: string;
+    let varietyId: string;
+
+    beforeEach(async () => {
+      userId = crypto.randomUUID();
+      varietyId = crypto.randomUUID();
+
+      await db.insert(users).values({
+        id: userId,
+        email: `test-${userId}@example.com`,
+        username: `testuser-${userId}`,
+        passwordHash: 'hash',
+      });
+
+      await db.insert(coffeeVarieties).values({
+        id: varietyId,
+        name: 'Test Variety',
+        category: 'variety',
+        isSystem: false,
+        createdBy: userId,
+      });
+    });
+
+    afterEach(async () => {
+      await db.delete(coffeeVarieties).where(eq(coffeeVarieties.id, varietyId));
+      await db.delete(users).where(eq(users.id, userId));
+    });
+
+    it('should set deletedAt and updatedAt on the record', async () => {
+      const before = new Date();
+      const result = await model.softDelete(varietyId);
+
+      expect(result).toBeDefined();
+      expect(result!.deletedAt).not.toBeNull();
+      expect(result!.updatedAt).not.toBeNull();
+      expect(result!.deletedAt!.getTime()).toBeGreaterThanOrEqual(before.getTime());
     });
   });
 
   describe('create behavior', () => {
-    it('should return the first inserted record from returning()', () => {
-      const results = [
-        { id: 'var-1', name: 'Arabica', category: 'variety', createdBy: null, isSystem: false },
-      ];
-      const result = results[0];
+    let userId: string;
+
+    beforeEach(async () => {
+      userId = crypto.randomUUID();
+      await db.insert(users).values({
+        id: userId,
+        email: `test-${userId}@example.com`,
+        username: `testuser-${userId}`,
+        passwordHash: 'hash',
+      });
+    });
+
+    afterEach(async () => {
+      await db.delete(coffeeVarieties).where(eq(coffeeVarieties.createdBy, userId));
+      await db.delete(users).where(eq(users.id, userId));
+    });
+
+    it('should insert and return the created variety', async () => {
+      const data = {
+        name: 'Arabica',
+        category: 'variety' as const,
+        isSystem: false,
+        createdBy: userId,
+      };
+
+      const result = await model.create(data);
       expect(result).toBeDefined();
       expect(result.name).toBe('Arabica');
+      expect(result.category).toBe('variety');
+      expect(result.id).toBeDefined();
     });
   });
 
   describe('update behavior', () => {
-    it('should set updatedAt when updating a variety', () => {
-      const data: Record<string, unknown> = { name: 'Updated Name' };
-      const updated: Record<string, unknown> = { ...data, updatedAt: new Date() };
-      expect(updated.updatedAt).toBeInstanceOf(Date);
-      expect(updated.name).toBe('Updated Name');
+    let userId: string;
+    let varietyId: string;
+
+    beforeEach(async () => {
+      userId = crypto.randomUUID();
+      varietyId = crypto.randomUUID();
+
+      await db.insert(users).values({
+        id: userId,
+        email: `test-${userId}@example.com`,
+        username: `testuser-${userId}`,
+        passwordHash: 'hash',
+      });
+
+      await db.insert(coffeeVarieties).values({
+        id: varietyId,
+        name: 'Test Variety',
+        category: 'variety',
+        isSystem: false,
+        createdBy: userId,
+      });
     });
 
-    it('should only update non-deleted records', () => {
-      const conditions: string[] = [];
-      const id = 'var-1';
-      conditions.push(`id = ${id}`);
-      conditions.push('deletedAt IS NULL');
-      expect(conditions).toHaveLength(2);
+    afterEach(async () => {
+      await db.delete(coffeeVarieties).where(eq(coffeeVarieties.id, varietyId));
+      await db.delete(users).where(eq(users.id, userId));
+    });
+
+    it('should update and set updatedAt', async () => {
+      const before = new Date();
+      const result = await model.update(varietyId, { name: 'Updated Name' });
+
+      expect(result).toBeDefined();
+      expect(result!.name).toBe('Updated Name');
+      expect(result!.updatedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+    });
+
+    it('should not update soft-deleted records', async () => {
+      await db.update(coffeeVarieties)
+        .set({ deletedAt: new Date() })
+        .where(eq(coffeeVarieties.id, varietyId));
+
+      const result = await model.update(varietyId, { name: 'Updated Name' });
+      expect(result).toBeUndefined();
     });
   });
 
