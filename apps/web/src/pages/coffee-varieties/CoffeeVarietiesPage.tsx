@@ -23,6 +23,7 @@ export function CoffeeVarietiesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const { t } = useTranslation();
 
   const page = Number(searchParams.get('page')) || 1;
@@ -56,7 +57,7 @@ export function CoffeeVarietiesPage() {
       })
       .catch(() => setError(t('coffeeVarieties.error.load')))
       .finally(() => setLoading(false));
-  }, [page, category, debouncedSearch]);
+  }, [page, category, debouncedSearch, retryNonce]);
 
   function updateFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams);
@@ -156,6 +157,7 @@ export function CoffeeVarietiesPage() {
               onClick={() => {
                 setError(null);
                 setLoading(true);
+                setRetryNonce((n) => n + 1);
                 const params = new URLSearchParams(searchParams);
                 params.delete('page');
                 setSearchParams(params);
