@@ -43,6 +43,6 @@ apps/api  ─┬──→ @brewform/shared
 ## Serena
 
 - Project name is `brewform` (from `.serena/project.yml`). Activate with `serena_activate_project` using the name, not the path.
-- MCP server on :10122. Dashboard on :34283. Start with `make serena-up`.
+- MCP server on :10122. Dashboard on :24282. Start with `make serena-up`.
 
 For exact commands: `mem:suggested_commands`. For code conventions: `mem:conventions`. For tech details: `mem:tech_stack`.

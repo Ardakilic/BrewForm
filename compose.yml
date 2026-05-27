@@ -216,7 +216,7 @@ services:
       - SERENA_DOCKER=1
     ports:
       - "10122:9121"   # SSE endpoint (MCP clients connect here)
-      - "34283:24282"  # Web dashboard
+      - "24282:24282"  # Web dashboard
     volumes:
       - .:/workspace/brewform
     command: >

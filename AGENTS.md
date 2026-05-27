@@ -132,6 +132,6 @@ until they also run the command.
 ## Other conventions
 
 - Check `/deno.json` `tasks` field for all build/test/lint/dev commands.
-- Serena MCP: `make serena-up` to start (SSE on :10122, dashboard :34283).
+- Serena MCP: `make serena-up` to start (SSE on :10122, dashboard :24282).
 - OpenAPI docs: `GET /api/v1/docs` (Scalar UI), `GET /api/v1/openapi.json`; gated by `OPENAPI_ENABLED` env.
 - **Serena memory sync:** When adding a new `docs/*.md` file covering a stable, non-obvious convention (auth, docker, request-lifecycle, recipe-system, comments, notifications), also create or update the corresponding Serena memory via `serena_write_memory` so Serena can discover it from `mem:core`. Avoid prose — use dense agent notes, invariants, and terse bullets per `mem:memory_maintenance`.

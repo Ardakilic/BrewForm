@@ -40,7 +40,7 @@ Without Serena, AI tools read files blindly — no understanding of cross-worksp
 │   VS Code)      │     │   Dashboard :24282  │     │  (ts_ls)     │
 └─────────────────┘     └─────────────────────┘     └─────────────┘
         │                        │
-   localhost:10122          localhost:34283
+   localhost:10122          localhost:24282
    (SSE endpoint)           (Web dashboard)
 ```
 
@@ -85,11 +85,11 @@ serena start-mcp-server \
 | Endpoint | Container Port | Host Port | Purpose |
 |----------|-----------------|-----------|----------|
 | SSE | 9121 | 10122 | MCP client connections |
-| Dashboard | 24282 | 34283 | Serena web UI for inspection |
+| Dashboard | 24282 | 24282 | Serena web UI for inspection |
 
 Non-standard host ports are used to avoid conflicts with other projects and the existing BrewForm services (8000, 5173, 5432, 1025, 8025, 5050, 3900, 3902, 8080).
 
-Access the dashboard at http://localhost:34283
+Access the dashboard at http://localhost:24282
 
 ## Monorepo Indexing Strategy
 
@@ -253,15 +253,15 @@ make serena-index
 
 ### Dashboard Unreachable
 
-Ensure the dashboard port (34283) is not in use by another application:
+Ensure the dashboard port (24282) is not in use by another application:
 
 ```bash
-lsof -i :34283
+lsof -i :24282
 ```
 
 ### Port Conflicts
 
-If ports 10122 or 34283 are in use, modify the host port mappings in `compose.yml`:
+If ports 10122 or 24282 are in use, modify the host port mappings in `compose.yml`. **Important**: The dashboard host port MUST match the internal port (24282) due to Serena's host-header security check.
 
 ```yaml
 ports:

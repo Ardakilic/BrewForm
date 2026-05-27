@@ -127,7 +127,7 @@ make serena-up     # Start Serena MCP service
 make serena-health  # Verify it's healthy
 ```
 
-Access the Serena dashboard at http://localhost:34283.
+Access the Serena dashboard at http://localhost:24282.
 
 ### Available Commands
 
@@ -144,7 +144,7 @@ Access the Serena dashboard at http://localhost:34283.
 | Service | Port |
 |---------|------|
 | SSE (MCP endpoint) | 10122 |
-| Dashboard | 34283 |
+| Dashboard | 24282 |
 
 ### Connecting AI Clients
 
@@ -258,7 +258,7 @@ brewform/
 | Garage S3 API   | http://localhost:3900     | S3-compatible object storage     |
 | Garage Web      | http://localhost:3902     | Garage web gateway               |
 | Serena SSE      | http://localhost:10122    | Semantic code retrieval for AI   |
-| Serena Dashboard| http://localhost:34283    | Serena web UI for inspection     |
+| Serena Dashboard| http://localhost:24282    | Serena web UI for inspection     |
 
 ## API
 
