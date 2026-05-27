@@ -181,16 +181,14 @@ export function AdminCoffeeVarietiesPage() {
 
     try {
       if (editId) {
-        const updated = await api.patch<CoffeeVarietyItem>(
+        await api.patch<CoffeeVarietyItem>(
           `/admin/coffee-varieties/${editId}`,
           body,
         );
-        setItems((prev) => prev.map((it) => it.id === editId ? updated as CoffeeVarietyItem : it));
       } else {
-        const created = await api.post<CoffeeVarietyItem>('/admin/coffee-varieties', body);
-        setItems((prev) => [...prev, created as CoffeeVarietyItem]);
-        setTotal((t) => t + 1);
+        await api.post<CoffeeVarietyItem>('/admin/coffee-varieties', body);
       }
+      await fetchData();
       resetForm();
     } catch {
     } finally {
@@ -206,8 +204,7 @@ export function AdminCoffeeVarietiesPage() {
     if (!deleteConfirm) return;
     try {
       await api.delete(`/admin/coffee-varieties/${deleteConfirm}`);
-      setItems((prev) => prev.filter((it) => it.id !== deleteConfirm));
-      setTotal((t) => t - 1);
+      await fetchData();
     } catch {
     } finally {
       setDeleteConfirm(null);
