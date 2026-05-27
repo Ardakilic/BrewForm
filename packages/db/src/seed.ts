@@ -198,7 +198,14 @@ async function seedEquipmentCatalog(
       description: equipData.description,
       isSystem: true,
     }).onConflictDoNothing().returning();
-    if (equip) created[equip.name] = equip;
+    if (equip) {
+      created[equip.name] = equip;
+      continue;
+    }
+    const [existing] = await tx.select().from(equipment).where(
+      eq(equipment.id, equipData.id),
+    ).limit(1);
+    if (existing) created[equipData.name] = existing;
   }
   return created;
 }
@@ -239,7 +246,14 @@ async function seedCoffeeVarietiesCatalogue(
       globalSharePct: varietyData.globalSharePct,
       isSystem: true,
     }).onConflictDoNothing().returning();
-    if (row) created[varietyData.name] = row;
+    if (row) {
+      created[varietyData.name] = row;
+      continue;
+    }
+    const [existing] = await tx.select().from(coffeeVarieties).where(
+      eq(coffeeVarieties.id, varietyData.id),
+    ).limit(1);
+    if (existing) created[varietyData.name] = existing;
   }
   return created;
 }
