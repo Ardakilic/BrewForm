@@ -1,3 +1,16 @@
+## Key Memories
+
+- `mem:conventions` — API module pattern (model → service → index), Hono context vars, CacheProvider, lint/format rules, testing framework
+- `mem:auth` — JWT access/refresh tokens, authMiddleware vs optionalAuthMiddleware vs adminMiddleware, registration, password reset, remember-me
+- `mem:docker-setup` — Dual-volume strategy (critical for Linux-native binaries), service profiles, rebuild workflow after deps change, common failures
+- `mem:request-lifecycle` — Global middleware stack order, error path with domain-error mapping, response envelope helpers, graceful shutdown, background jobs
+- `mem:recipe-system` — Two-layer model (Recipe mutable / RecipeVersion immutable), versioning, forking, visibility states, hard vs soft validation, canonical units, filtering
+- `mem:comments` — One-level threading, reply-flattening with mention prefix, admin authorization matrix, client-side markdown rendering
+- `mem:notifications` — Fire-and-forget IIFE delivery, conservative trigger rules (no self-notify, no un-like), preference flags, Mailpit testing
+- `mem:tech_stack` — Runtime, framework, ORM, cache, storage, email, testing, CI/CD, package identifiers, test env requirements
+- `mem:suggested_commands` — All make targets (dev, check, lint, test, build, db, serena)
+- `mem:task_completion` — Post-edit verification order (check → lint → test), CI pipeline
+
 ## Project Overview
 
 BrewForm — web application for digitalizing, sharing, and discovering coffee brewing recipes.
