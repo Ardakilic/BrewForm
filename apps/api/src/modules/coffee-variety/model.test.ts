@@ -1,12 +1,12 @@
 import '../../test-setup.ts';
-import { afterAll, afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
+import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { eq } from 'drizzle-orm';
-import { db, client } from '@brewform/db';
+import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions, users } from '@brewform/db/schema';
 import * as model from './model.ts';
 
-describe('Coffee Variety Model', () => {
+describe('Coffee Variety Model', { sanitizeOps: false, sanitizeResources: false }, () => {
   describe('findMany pagination', () => {
     it('should compute correct offset from page and perPage', () => {
       const page = 3;
@@ -110,10 +110,6 @@ describe('Coffee Variety Model', () => {
       conditions.push('deletedAt IS NULL');
       expect(conditions).toHaveLength(2);
     });
-  });
-
-  afterAll(async () => {
-    await client.end();
   });
 
   describe('getRecipesUsingVariety — integration', () => {
