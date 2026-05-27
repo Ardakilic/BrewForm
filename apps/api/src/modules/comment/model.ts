@@ -127,7 +127,7 @@ export async function create(data: typeof comments.$inferInsert) {
 /** Soft-delete a comment by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
   const [result] = await db.update(comments).set({ deletedAt: new Date() }).where(
-    eq(comments.id, id),
+    and(eq(comments.id, id), isNull(comments.deletedAt)),
   ).returning();
   return result ?? null;
 }

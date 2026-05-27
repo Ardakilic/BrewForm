@@ -30,7 +30,7 @@ export async function create(data: typeof photos.$inferInsert) {
 
 /** Soft-delete a photo by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(photos).set({ deletedAt: new Date() }).where(eq(photos.id, id))
+  const [result] = await db.update(photos).set({ deletedAt: new Date() })    .where(and(eq(photos.id, id), isNull(photos.deletedAt)))
     .returning();
   return result ?? null;
 }

@@ -51,7 +51,7 @@ export async function update(id: string, data: Partial<typeof equipment.$inferIn
 
 export async function softDelete(id: string) {
   const [result] = await db.update(equipment).set({ deletedAt: new Date() }).where(
-    eq(equipment.id, id),
+    and(eq(equipment.id, id), isNull(equipment.deletedAt)),
   ).returning();
   return result ?? null;
 }

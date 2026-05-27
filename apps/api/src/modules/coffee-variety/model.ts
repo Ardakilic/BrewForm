@@ -61,7 +61,7 @@ export async function update(id: string, data: Partial<typeof coffeeVarieties.$i
 export async function softDelete(id: string) {
   const [result] = await db.update(coffeeVarieties)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(eq(coffeeVarieties.id, id))
+    .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
     .returning();
   return result;
 }

@@ -196,7 +196,7 @@ export async function adminUpdateUser(
 
 /** Soft-delete a user by setting `deletedAt`. Returns the updated user or null. */
 export async function softDeleteUser(userId: string) {
-  const [result] = await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId))
+  const [result] = await db.update(users).set({ deletedAt: new Date() }).where(and(eq(users.id, userId), isNull(users.deletedAt)))
     .returning();
   return result ?? null;
 }
@@ -235,7 +235,7 @@ export async function updateRecipeVisibility(recipeId: string, visibility: strin
 /** Soft-delete a recipe by setting `deletedAt`. Returns the updated recipe or null. */
 export async function softDeleteRecipe(recipeId: string) {
   const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(
-    eq(recipes.id, recipeId),
+    and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)),
   ).returning();
   return result ?? null;
 }

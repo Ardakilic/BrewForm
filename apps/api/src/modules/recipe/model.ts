@@ -136,7 +136,7 @@ export async function update(id: string, data: Partial<typeof recipes.$inferInse
 
 /** Soft-delete a recipe by setting its `deletedAt` timestamp. Returns the updated row or null. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, id))
+  const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(and(eq(recipes.id, id), isNull(recipes.deletedAt)))
     .returning();
   return result ?? null;
 }
