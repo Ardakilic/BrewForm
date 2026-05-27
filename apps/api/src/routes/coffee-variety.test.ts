@@ -2,32 +2,40 @@ import '../test-setup.ts';
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { CoffeeVarietyFilterSchema } from '@brewform/shared/schemas';
+import type { Context, Next } from 'hono';
+import type { AppEnv } from '../types/hono.ts';
+import coffeeVarietyRouter, { deps } from '../modules/coffee-variety/index.ts';
 
-function createCoffeeVarietyRouteApp() {
-  const app = new Hono();
+deps.authMiddleware = async (_c: Context, next: Next) => {
+  await next();
+};
 
-  app.get('/coffee-varieties', zValidator('query', CoffeeVarietyFilterSchema), (c) => {
-    return c.json({ success: true, data: [], meta: { pagination: { total: 0 } } });
+const mockService = {
+  listCoffeeVarieties: () => Promise.resolve({ data: [], total: 0 }),
+};
+
+deps.service = { ...deps.service, ...mockService } as typeof deps.service;
+
+function createTestApp() {
+  const app = new Hono<AppEnv>();
+
+  app.use('*', async (c, next) => {
+    c.set('requestId', crypto.randomUUID());
+    c.set('userId', 'test-user-id');
+    c.set('user', { id: 'test-user-id', isAdmin: false } as any);
+    await next();
   });
 
-  app.get('/coffee-varieties/search', (c) => {
-    const q = c.req.query('q');
-    if (!q || q.length < 2) {
-      return c.json({ success: true, data: [] });
-    }
-    return c.json({ success: true, data: [{ id: 'v1', name: 'Test Variety' }] });
-  });
+  app.route('/api/v1/coffee-varieties', coffeeVarietyRouter);
 
   return app;
 }
 
 describe('Coffee Variety Route Registration', () => {
-  const app = createCoffeeVarietyRouteApp();
+  const app = createTestApp();
 
   it('GET /api/v1/coffee-varieties returns a response (not 404)', async () => {
-    const res = await app.request('/coffee-varieties');
+    const res = await app.request('/api/v1/coffee-varieties');
     expect(res.status).not.toBe(404);
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -35,7 +43,7 @@ describe('Coffee Variety Route Registration', () => {
   });
 
   it('GET /api/v1/coffee-varieties/search?q=test returns a response', async () => {
-    const res = await app.request('/coffee-varieties/search?q=test');
+    const res = await app.request('/api/v1/coffee-varieties/search?q=test');
     expect(res.status).not.toBe(404);
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -43,19 +51,19 @@ describe('Coffee Variety Route Registration', () => {
   });
 
   it('GET /api/v1/coffee-varieties/search returns empty for short query', async () => {
-    const res = await app.request('/coffee-varieties/search?q=a');
+    const res = await app.request('/api/v1/coffee-varieties/search?q=a');
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data).toEqual([]);
   });
 
   it('GET /api/v1/coffee-varieties accepts pagination params', async () => {
-    const res = await app.request('/coffee-varieties?page=2&perPage=10');
+    const res = await app.request('/api/v1/coffee-varieties?page=2&perPage=10');
     expect(res.status).toBe(200);
   });
 
   it('GET /api/v1/coffee-varieties accepts category and search filters', async () => {
-    const res = await app.request('/coffee-varieties?category=variety&search=bourbon');
+    const res = await app.request('/api/v1/coffee-varieties?category=variety&search=bourbon');
     expect(res.status).toBe(200);
   });
 });
