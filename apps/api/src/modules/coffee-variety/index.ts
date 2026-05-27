@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import type { AppEnv } from '../../types/hono.ts';
 import { authMiddleware } from '../../middleware/auth.ts';
 import {
@@ -17,6 +18,11 @@ export const deps = { authMiddleware, service };
 async function authGuard(c: Context, next: Next) {
   return deps.authMiddleware(c, next);
 }
+
+const CoffeeVarietyRecipesQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  perPage: z.coerce.number().int().positive().max(100).default(12),
+});
 
 const router = new Hono<AppEnv>();
 
@@ -80,9 +86,10 @@ router.delete('/:id', authGuard, async (c) => {
   }
 });
 
-router.get('/:id/recipes', async (c) => {
-  const page = Number(c.req.query('page') || '1');
-  const perPage = Number(c.req.query('perPage') || '12');
+router.get('/:id/recipes', zValidator('query', CoffeeVarietyRecipesQuerySchema), async (c) => {
+  const query = c.req.valid('query');
+  const page = query.page;
+  const perPage = query.perPage;
   const result = await deps.service.getRecipesForVariety(
     c.req.param('id'),
     page,
