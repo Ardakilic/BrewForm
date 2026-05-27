@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { Layout } from './components/layout/Layout.tsx';
 import { RequireAuth } from './components/auth/RequireAuth.tsx';
 
@@ -129,6 +129,44 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
+      {
+        path: 'equipments',
+        lazy: async () => {
+          const { EquipmentCatalogPage } = await import(
+            './pages/equipment/EquipmentCatalogPage.tsx'
+          );
+          return { Component: EquipmentCatalogPage };
+        },
+      },
+      {
+        path: 'equipment/catalog',
+        element: <Navigate to='/equipments' replace />,
+      },
+      {
+        path: 'equipment/:id',
+        lazy: async () => {
+          const { EquipmentDetailPage } = await import('./pages/equipment/EquipmentDetailPage.tsx');
+          return { Component: EquipmentDetailPage };
+        },
+      },
+      {
+        path: 'coffee-varieties',
+        lazy: async () => {
+          const { CoffeeVarietiesPage } = await import(
+            './pages/coffee-varieties/CoffeeVarietiesPage.tsx'
+          );
+          return { Component: CoffeeVarietiesPage };
+        },
+      },
+      {
+        path: 'coffee-varieties/:id',
+        lazy: async () => {
+          const { CoffeeVarietyDetailPage } = await import(
+            './pages/coffee-varieties/CoffeeVarietyDetailPage.tsx'
+          );
+          return { Component: CoffeeVarietyDetailPage };
+        },
+      },
       { path: 'taste-notes', element: <TasteNotesPage /> },
       {
         path: 'onboarding',
@@ -221,6 +259,15 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const { AdminTasteNotesPage } = await import('./pages/admin/AdminTasteNotesPage.tsx');
           return { Component: AdminTasteNotesPage };
+        },
+      },
+      {
+        path: 'coffee-varieties',
+        lazy: async () => {
+          const { AdminCoffeeVarietiesPage } = await import(
+            './pages/admin/AdminCoffeeVarietiesPage.tsx'
+          );
+          return { Component: AdminCoffeeVarietiesPage };
         },
       },
       {

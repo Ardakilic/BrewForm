@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { SEOHead } from '../../components/seo/SEOHead';
-import { useTranslation } from '../../contexts/I18nContext';
-import { api } from '../../api/client';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { api } from '../../api/client.ts';
 
 interface EquipmentItem {
   id: string;

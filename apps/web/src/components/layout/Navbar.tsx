@@ -1,10 +1,10 @@
 import { Link, NavLink } from 'react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Select } from '@base-ui/react/select';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useTranslation } from '../../contexts/I18nContext';
-import { authApi } from '../../api/index';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTheme } from '../../contexts/ThemeContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { authApi } from '../../api/index.ts';
 
 const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -160,6 +160,8 @@ interface NavItemConfig {
 
 const NAV_ITEMS = [
   { to: '/recipes', labelKey: 'nav.recipes', end: true, authRequired: false },
+  { to: '/coffee-varieties', labelKey: 'nav.varieties', end: true, authRequired: false },
+  { to: '/equipments', labelKey: 'nav.equipment', end: true, authRequired: false },
   { to: '/recipes/new', labelKey: 'recipe.create', end: true, authRequired: true },
   { to: '/recipes/starred', labelKey: 'recipe.starred.title', end: true, authRequired: true },
   { to: '/setups', labelKey: 'setup.title', end: false, authRequired: true },

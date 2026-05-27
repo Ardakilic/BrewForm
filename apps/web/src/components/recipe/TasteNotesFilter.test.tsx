@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
-import { type TasteNoteFlat, TasteNotesFilter } from './TasteNotesFilter';
+import { type TasteNoteFlat, TasteNotesFilter } from './TasteNotesFilter.tsx';
 
 // ---------------------------------------------------------------------------
 // Arbitrary generators

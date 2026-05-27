@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useTranslation } from '../../contexts/I18nContext';
-import { SEOHead } from '../../components/seo/SEOHead';
-import { api } from '../../api/client';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTheme } from '../../contexts/ThemeContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { api } from '../../api/client.ts';
 
 interface Preferences {
   unitSystem: 'metric' | 'imperial';

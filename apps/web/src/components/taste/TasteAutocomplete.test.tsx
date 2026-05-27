@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TasteAutocomplete } from './TasteAutocomplete';
+import { TasteAutocomplete } from './TasteAutocomplete.tsx';
 
 // ── Mock API ───────────────────────────────────────────────────────────────
 

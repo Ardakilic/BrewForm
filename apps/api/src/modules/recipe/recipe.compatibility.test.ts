@@ -41,7 +41,7 @@ describe('Brew Method Compatibility Validation', () => {
   describe('checkEquipmentCompatibility — unit tests', () => {
     const rules: CompatibilityRule[] = [
       { brewMethod: 'espresso_machine', equipmentType: 'portafilter', compatible: true },
-      { brewMethod: 'espresso_machine', equipmentType: 'scale', compatible: true },
+      { brewMethod: 'espresso_machine', equipmentType: 'scale_accessory', compatible: true },
       { brewMethod: 'espresso_machine', equipmentType: 'cezve', compatible: false },
       { brewMethod: 'v60', equipmentType: 'paper_filter', compatible: true },
       { brewMethod: 'v60', equipmentType: 'portafilter', compatible: false },
@@ -51,7 +51,7 @@ describe('Brew Method Compatibility Validation', () => {
     it('should return empty array when all equipment is compatible', () => {
       const items: CompatibilityCheckItem[] = [
         { id: '1', type: 'portafilter' },
-        { id: '2', type: 'scale' },
+        { id: '2', type: 'scale_accessory' },
       ];
       const result = checkEquipmentCompatibility(items, 'espresso_machine', rules);
       expect(result).toHaveLength(0);
@@ -93,14 +93,14 @@ describe('Brew Method Compatibility Validation', () => {
       const items: CompatibilityCheckItem[] = [
         { id: '1', type: 'cezve' },
         { id: '2', type: 'mesh_filter' },
-        { id: '3', type: 'scale' },
+        { id: '3', type: 'scale_accessory' },
       ];
       const result = checkEquipmentCompatibility(items, 'espresso_machine', rulesWithMultiple);
       expect(result).toHaveLength(2);
     });
 
     it('should treat missing rule as compatible (no explicit incompatibility)', () => {
-      const items: CompatibilityCheckItem[] = [{ id: '1', type: 'scale' }];
+      const items: CompatibilityCheckItem[] = [{ id: '1', type: 'scale_accessory' }];
       const result = checkEquipmentCompatibility(items, 'v60', rules);
       expect(result).toHaveLength(0);
     });

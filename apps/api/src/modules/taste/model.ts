@@ -83,6 +83,6 @@ export async function update(id: string, data: Partial<typeof tasteNotes.$inferI
 /** Soft-delete a taste note by ID. */
 export async function softDelete(id: string) {
   const [result] = await db.update(tasteNotes).set({ deletedAt: new Date() })
-    .where(eq(tasteNotes.id, id)).returning();
+    .where(and(eq(tasteNotes.id, id), isNull(tasteNotes.deletedAt))).returning();
   return result ?? null;
 }

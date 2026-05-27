@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { RegisterPage } from './RegisterPage';
-import { AuthProvider } from '../../contexts/AuthContext';
-import { I18nProvider } from '../../contexts/I18nContext';
-import { authApi } from '../../api/index';
+import { RegisterPage } from './RegisterPage.tsx';
+import { AuthProvider } from '../../contexts/AuthContext.tsx';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { authApi } from '../../api/index.ts';
 
 vi.mock('../../api/index', () => ({
   api: {

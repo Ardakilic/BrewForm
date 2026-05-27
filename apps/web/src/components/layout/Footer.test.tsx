@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Footer } from './Footer';
+import { Footer } from './Footer.tsx';
 
 // Mock react-router's Link component so we don't need a Router context
 vi.mock('react-router', () => ({
@@ -11,11 +11,11 @@ vi.mock('react-router', () => ({
 }));
 
 // Mock the I18nContext module so we can control useTranslation's return values
-vi.mock('../../contexts/I18nContext', () => ({
+vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: vi.fn(),
 }));
 
-import { useTranslation } from '../../contexts/I18nContext';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 

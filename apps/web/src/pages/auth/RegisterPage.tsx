@@ -1,8 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTranslation } from '../../contexts/I18nContext';
-import { authApi } from '../../api/index';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { authApi } from '../../api/index.ts';
 
 export function RegisterPage() {
   const { register } = useAuth();

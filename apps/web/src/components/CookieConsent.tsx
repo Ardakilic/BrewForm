@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from '../contexts/I18nContext';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 export function CookieConsent() {
   const [show, setShow] = useState(false);

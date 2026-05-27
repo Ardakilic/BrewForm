@@ -14,17 +14,20 @@ import {
   auditLogs,
   brewMethodEnum,
   brewMethodEquipmentRules,
+  coffeeVarieties,
   comments,
   equipment,
+  equipmentDeleteRequests,
   equipmentTypeEnum,
   recipes,
+  recipeVersions,
   type RecipeVisibility,
   reports,
   userPreferences,
   users,
   vendors,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, gte, isNull, like, ne, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNull, like, ne, or, sql } from 'drizzle-orm';
 import { hashSync } from 'bcryptjs';
 
 /** Fetch a paginated list of non-deleted users, optionally filtered by email, username, or display name. */
@@ -193,7 +196,9 @@ export async function adminUpdateUser(
 
 /** Soft-delete a user by setting `deletedAt`. Returns the updated user or null. */
 export async function softDeleteUser(userId: string) {
-  const [result] = await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId))
+  const [result] = await db.update(users).set({ deletedAt: new Date() }).where(
+    and(eq(users.id, userId), isNull(users.deletedAt)),
+  )
     .returning();
   return result ?? null;
 }
@@ -232,7 +237,7 @@ export async function updateRecipeVisibility(recipeId: string, visibility: strin
 /** Soft-delete a recipe by setting `deletedAt`. Returns the updated recipe or null. */
 export async function softDeleteRecipe(recipeId: string) {
   const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(
-    eq(recipes.id, recipeId),
+    and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)),
   ).returning();
   return result ?? null;
 }
@@ -536,4 +541,139 @@ export async function getTopUsers(limit: number) {
     avatarUrl: r.avatarUrl,
     _count: { recipes: r.recipeCount },
   }));
+}
+
+// --- Coffee Varieties ---
+
+export async function listCoffeeVarieties(
+  page: number,
+  perPage: number,
+  category?: string,
+  search?: string,
+) {
+  const conditions = [isNull(coffeeVarieties.deletedAt)];
+
+  if (category) {
+    conditions.push(
+      eq(coffeeVarieties.category, category as typeof coffeeVarieties.category._.data),
+    );
+  }
+  if (search) {
+    const searchPattern = `%${search}%`;
+    conditions.push(
+      or(
+        like(coffeeVarieties.name, searchPattern),
+        like(coffeeVarieties.species, searchPattern),
+        like(coffeeVarieties.origin, searchPattern),
+      )!,
+    );
+  }
+
+  const where = and(...conditions)!;
+  const offset = (page - 1) * perPage;
+
+  const [data, countResult] = await Promise.all([
+    db.select().from(coffeeVarieties).where(where)
+      .orderBy(asc(coffeeVarieties.name))
+      .limit(perPage).offset(offset),
+    db.select({ count: count() }).from(coffeeVarieties).where(where),
+  ]);
+
+  return { varieties: data, total: countResult[0].count };
+}
+
+export async function createCoffeeVariety(data: typeof coffeeVarieties.$inferInsert) {
+  const [result] = await db.insert(coffeeVarieties).values(data).returning();
+  return result;
+}
+
+export async function updateCoffeeVariety(
+  id: string,
+  data: Partial<typeof coffeeVarieties.$inferInsert>,
+) {
+  const [result] = await db.update(coffeeVarieties)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
+    .returning();
+  return result ?? null;
+}
+
+export async function deleteCoffeeVariety(id: string) {
+  const [result] = await db.update(coffeeVarieties)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(coffeeVarieties.id, id))
+    .returning();
+  return result ?? null;
+}
+
+export async function getVarietyRecipeCount(varietyId: string) {
+  const [result] = await db.select({ count: sql<number>`count(distinct ${recipes.id})` })
+    .from(recipes)
+    .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
+    .where(
+      and(
+        eq(recipeVersions.coffeeVarietyId, varietyId),
+        isNull(recipes.deletedAt),
+      ),
+    );
+  return Number(result?.count ?? 0);
+}
+
+// --- Equipment Delete Requests ---
+
+export async function listEquipmentDeleteRequests(
+  page: number,
+  perPage: number,
+  status?: string,
+) {
+  const conditions = [];
+  if (status) {
+    conditions.push(
+      eq(equipmentDeleteRequests.status, status as typeof equipmentDeleteRequests.status._.data),
+    );
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const offset = (page - 1) * perPage;
+
+  const [data, countResult] = await Promise.all([
+    db.query.equipmentDeleteRequests.findMany({
+      where,
+      with: {
+        equipment: true,
+        requestedBy: { columns: { id: true, username: true, displayName: true } },
+        reviewedBy: { columns: { id: true, username: true, displayName: true } },
+      },
+      orderBy: desc(equipmentDeleteRequests.createdAt),
+      limit: perPage,
+      offset,
+    }),
+    db.select({ count: count() }).from(equipmentDeleteRequests).where(where),
+  ]);
+
+  return { requests: data, total: countResult[0].count };
+}
+
+export async function approveEquipmentDeleteRequest(id: string, adminId: string) {
+  return await db.transaction(async (tx) => {
+    const [request] = await tx.update(equipmentDeleteRequests)
+      .set({ status: 'approved', reviewedById: adminId, reviewedAt: new Date() })
+      .where(eq(equipmentDeleteRequests.id, id))
+      .returning();
+    if (!request) return null;
+
+    await tx.update(equipment)
+      .set({ deletedAt: new Date() })
+      .where(eq(equipment.id, request.equipmentId));
+
+    return request;
+  });
+}
+
+export async function rejectEquipmentDeleteRequest(id: string, adminId: string) {
+  const [request] = await db.update(equipmentDeleteRequests)
+    .set({ status: 'rejected', reviewedById: adminId, reviewedAt: new Date() })
+    .where(eq(equipmentDeleteRequests.id, id))
+    .returning();
+  return request ?? null;
 }

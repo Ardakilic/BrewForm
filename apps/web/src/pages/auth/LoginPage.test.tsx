@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { LoginPage } from './LoginPage';
-import { AuthProvider } from '../../contexts/AuthContext';
-import { I18nProvider } from '../../contexts/I18nContext';
+import { LoginPage } from './LoginPage.tsx';
+import { AuthProvider } from '../../contexts/AuthContext.tsx';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
 
 vi.mock('../../api/index', () => ({
   authApi: {
@@ -34,7 +34,7 @@ vi.mock('../../api/index', () => ({
   },
 }));
 
-import { authApi } from '../../api/index';
+import { authApi } from '../../api/index.ts';
 
 async function renderLoginPage() {
   const result = render(

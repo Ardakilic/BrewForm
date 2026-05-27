@@ -1,0 +1,2 @@
+ALTER TABLE "equipment_delete_request" ADD COLUMN "deleted_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "edr_deleted_at_idx" ON "equipment_delete_request" USING btree ("deleted_at");

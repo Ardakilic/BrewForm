@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { authApi } from '../api/index';
+import { useAuth } from '../contexts/AuthContext.tsx';
+import { authApi } from '../api/index.ts';
 
 export function EmailVerificationBanner() {
   const { user } = useAuth();

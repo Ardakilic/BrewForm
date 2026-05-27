@@ -88,6 +88,11 @@ export const equipmentApi = {
   delete: (id: string) => api.delete<{ message: string }>(`/equipment/${id}`),
 };
 
+export const coffeeVarietyApi = {
+  search: (q: string) =>
+    api.get<CoffeeVarietySearchResult[]>(`/coffee-varieties/search?q=${encodeURIComponent(q)}`),
+};
+
 export const adminApi = {
   getUsers: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
@@ -156,4 +161,10 @@ export interface AdminUserDetail extends AdminUser {
   recipeCount?: number;
   followerCount?: number;
   followingCount?: number;
+}
+
+export interface CoffeeVarietySearchResult {
+  id: string;
+  name: string;
+  category: string;
 }

@@ -29,15 +29,21 @@ describe('EquipmentCreateSchema', () => {
 
   it('should accept all valid equipment types', () => {
     const types = [
+      'espresso_machine',
+      'grinder',
+      'pour_over_brewer',
+      'immersion_brewer',
+      'kettle',
+      'milk_tool',
+      'scale_accessory',
+      'roaster',
       'portafilter',
       'basket',
       'puck_screen',
       'paper_filter',
       'tamper',
-      'gooseneck_kettle',
       'mesh_filter',
       'cezve',
-      'scale',
       'thermometer',
       'other',
     ];

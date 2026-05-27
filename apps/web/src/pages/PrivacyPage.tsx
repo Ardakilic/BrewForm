@@ -1,4 +1,4 @@
-import { SEOHead } from '../components/seo/SEOHead';
+import { SEOHead } from '../components/seo/SEOHead.tsx';
 
 export function PrivacyPage() {
   return (

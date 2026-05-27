@@ -30,15 +30,21 @@ interface IconProps {
 }
 
 const ICON_MAP: Record<string, React.FC<IconProps>> = {
+  espresso_machine: OtherIcon,
+  grinder: OtherIcon,
+  pour_over_brewer: PaperFilterIcon,
+  immersion_brewer: OtherIcon,
+  kettle: GooseneckKettleIcon,
+  milk_tool: OtherIcon,
+  scale_accessory: ScaleIcon,
+  roaster: OtherIcon,
   portafilter: PortafilterIcon,
   basket: BasketIcon,
   puck_screen: PuckScreenIcon,
   paper_filter: PaperFilterIcon,
   tamper: TamperIcon,
-  gooseneck_kettle: GooseneckKettleIcon,
   mesh_filter: MeshFilterIcon,
   cezve: CezveIcon,
-  scale: ScaleIcon,
   thermometer: ThermometerIcon,
   other: OtherIcon,
 };

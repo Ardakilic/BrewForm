@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { SEOHead } from '../../components/seo/SEOHead';
-import { api } from '../../api/client';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { api } from '../../api/client.ts';
 
 interface DashboardStats {
   totalUsers: number;

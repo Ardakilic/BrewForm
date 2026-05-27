@@ -123,15 +123,15 @@ BrewForm maintains database portability:
 
 ### Schema Overview
 
-24 tables and 12 enums in a single Drizzle schema:
+28 tables and 12 enums in a single Drizzle schema:
 
 - **Core**: User, UserPreferences, Recipe, RecipeVersion
 - **Recipe parts**: RecipeTasteNote, RecipeEquipment, RecipeAdditionalPreparation
-- **Social**: Comment, UserFollow, UserRecipeLike, UserRecipeFavourite
-- **Assets**: Photo, RecipeVersionPhoto, Bean, Vendor, Equipment
+- **Social**: Comment, UserFollow, UserRecipeLike, UserRecipeFavourite, UserRecipeRating
+- **Assets**: Photo, RecipeVersionPhoto, Bean, Vendor, Equipment, CoffeeVariety
 - **Configuration**: Setup, TasteNote, BrewMethodEquipmentRule
 - **Gamification**: Badge, UserBadge
-- **Moderation**: Report, AuditLog, PasswordReset
+- **Moderation**: Report, AuditLog, PasswordReset, EquipmentDeleteRequest, EmailVerificationToken
 
 ### Soft Deletes
 

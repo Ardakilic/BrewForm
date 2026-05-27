@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CommentSection } from './CommentSection';
+import { CommentSection } from './CommentSection.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 

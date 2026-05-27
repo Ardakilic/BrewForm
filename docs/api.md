@@ -278,8 +278,44 @@ See [docs/recipes.md](recipes.md) for versioning, forking, and validation rules.
 
 ### Equipment Types
 
-`portafilter`, `basket`, `puck_screen`, `paper_filter`, `tamper`, `gooseneck_kettle`, `mesh_filter`,
-`cezve`, `scale`, `thermometer`, `other`
+See [docs/coffee-equipments.md](coffee-equipments.md) for the full equipment catalog.
+
+---
+
+## Coffee Varieties
+
+| Method | Endpoint                    | Auth     | Description                                          |
+| ------ | --------------------------- | -------- | ---------------------------------------------------- |
+| GET    | `/coffee-varieties`         | none     | List coffee varieties (paginated, filterable)        |
+| GET    | `/coffee-varieties/search`  | none     | Autocomplete search (min 2 chars)                    |
+| POST   | `/coffee-varieties`         | required | Create a coffee variety                              |
+| GET    | `/coffee-varieties/:id`     | none     | Get a single coffee variety                          |
+| PATCH  | `/coffee-varieties/:id`     | required | Update a coffee variety (creator or admin)           |
+| DELETE | `/coffee-varieties/:id`     | required | Delete a coffee variety (creator or admin)           |
+| GET    | `/coffee-varieties/:id/recipes` | none | List recipes using this variety (paginated)          |
+
+### Query Parameters (GET /coffee-varieties)
+
+| Parameter  | Default | Description                                    |
+| ---------- | ------- | ---------------------------------------------- |
+| `page`     | 1       | Page number                                    |
+| `perPage`  | 20      | Items per page                                 |
+| `category` | —       | Filter by category (`variety`, `processing`, `market_name`) |
+| `search`   | —       | Search by name                                 |
+
+### POST /coffee-varieties
+
+```json
+{
+  "name": "Gesha",
+  "category": "variety",
+  "species": "Coffea arabica",
+  "origin": "Ethiopia",
+  "cupProfile": "Floral, jasmine, bergamot"
+}
+```
+
+See [docs/coffee-data.md](coffee-data.md) for the full coffee variety structure and seed data.
 
 ---
 
@@ -542,6 +578,24 @@ Response `429` — rate limit exceeded.
 | POST   | `/admin/equipment`     | Create equipment           |
 | PATCH  | `/admin/equipment/:id` | Update equipment           |
 | DELETE | `/admin/equipment/:id` | Delete equipment           |
+
+### Coffee Varieties Management
+
+| Method | Endpoint                                | Description                                      |
+| ------ | --------------------------------------- | ------------------------------------------------ |
+| GET    | `/admin/coffee-varieties`               | List coffee varieties (paginated, filterable)    |
+| POST   | `/admin/coffee-varieties`               | Create a coffee variety                          |
+| PATCH  | `/admin/coffee-varieties/:id`           | Update a coffee variety                          |
+| DELETE | `/admin/coffee-varieties/:id`           | Delete a coffee variety                          |
+| GET    | `/admin/coffee-varieties/:id/recipe-count` | Get count of recipes using this variety       |
+
+### Equipment Delete Requests
+
+| Method | Endpoint                                      | Description                              |
+| ------ | --------------------------------------------- | ---------------------------------------- |
+| GET    | `/admin/equipment/delete-requests`            | List delete requests (filterable by status) |
+| POST   | `/admin/equipment/delete-requests/:id/approve` | Approve and execute a delete request     |
+| POST   | `/admin/equipment/delete-requests/:id/reject`  | Reject a delete request                  |
 
 ### Vendors Management
 

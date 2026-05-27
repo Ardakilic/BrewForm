@@ -46,6 +46,10 @@ setup-hooks: ## Configure git to use .githooks/ for pre-commit checks
 install: ## Cache Deno dependencies
 	docker compose run --rm --no-deps app deno install --frozen
 
+# Regenerate deno.lock inside Docker (use after adding/updating dependencies).
+lockfile-update: ## Regenerate deno.lock inside Docker
+	docker compose run --rm --no-deps app deno install
+
 # --- Email Templates ---
 
 email-build: ## Build email templates
@@ -93,14 +97,14 @@ build-shared: ## Type-check shared package as build artifact
 check-tests: ## Type-check test files
 	docker compose run --rm --no-deps app deno check apps/api/src/ packages/shared/src/
 
-test: ## Run all tests (API + shared + web)
+test: up ## Run all tests (API + shared + web)
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/ && \
 	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
-test-coverage: ## Run all tests with coverage
+test-coverage: up ## Run all tests with coverage
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
 
-test-api: ## Run API tests only
+test-api: up ## Run API tests only
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/
 
 test-shared: ## Run shared package tests only
@@ -109,43 +113,48 @@ test-shared: ## Run shared package tests only
 test-web: ## Run web (Vitest) tests
 	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
-test-specific: ## Run specific test (use filter=)
+test-specific: up ## Run specific test (use filter=)
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
 
 # --- Database ---
 
 DRIZZLE_KIT := npm:drizzle-kit@0.31
 
-db-migrate: ## Run database migrations
+db-migrate: up ## Run database migrations
 	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
 
-db-generate: ## Generate database migrations
+db-generate: up ## Generate database migrations
 	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) generate"
 
-db-push: ## Push schema changes
+db-push: up ## Push schema changes
 	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) push"
 
-db-seed: ## Seed the database
+db-seed: up ## Seed the database
 	docker compose run --rm app deno run --allow-all packages/db/src/seed.ts
 
-db-studio: ## Open Drizzle Studio
+db-studio: up ## Open Drizzle Studio
 	docker compose run --rm -p 5555:5555 app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) studio --host=0.0.0.0 --port=5555"
 
-flush-db: ## Truncate all database tables
+flush-db: up ## Truncate all database tables
 	docker compose run --rm app deno run --allow-env --allow-net apps/api/scripts/flush-db.ts
 
-flush-cache: ## Clear Deno KV cache
+flush-cache: up ## Clear Deno KV cache
 	docker compose run --rm app deno run --allow-env --allow-read --allow-write apps/api/scripts/flush-cache.ts
 
 flush-contents: flush-db flush-cache ## Truncate all database tables and clear Deno KV cache
 
-db-reset: flush-contents ## Full reset: truncate tables, clear cache, run migrations, re-seed
-	$(MAKE) db-migrate
+db-reset: ## Full reset: recreate DB, push schema, seed, flush cache
+	docker compose up -d postgres
+	@until docker compose exec postgres pg_isready -U brewform > /dev/null 2>&1; do sleep 1; done
+	-docker compose exec -T postgres psql -U brewform -d postgres -c "DROP DATABASE IF EXISTS brewform WITH (FORCE);"
+	-docker compose exec -T postgres psql -U brewform -d postgres -c "CREATE DATABASE brewform;"
+	$(MAKE) db-push
 	$(MAKE) db-seed
+	$(MAKE) flush-cache
 
 # --- Admin Setup ---
 
-setup: ## Run admin setup
+setup: up ## Run admin setup
 	docker compose run --rm app deno run --allow-all apps/api/src/setup.ts
 
 # --- Development ---
@@ -207,4 +216,4 @@ serena-index: ## Index project with Serena
 serena-health: ## Check Serena health
 	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
 
-.PHONY: help up down build logs restart setup-hooks install email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health
+.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health

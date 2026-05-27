@@ -14,7 +14,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import fc from 'fast-check';
-import { BeanSection } from './BeanSection';
+import { BeanSection } from './BeanSection.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import type { ReactNode } from 'react';
 
@@ -52,25 +52,29 @@ function renderBeanSection(props: Parameters<typeof BeanSection>[0]) {
 // ---------------------------------------------------------------------------
 
 describe('BeanSection — conditional rendering unit tests', () => {
-  it('renders when productName is present', () => {
+  it('renders when productName is present', async () => {
     const node = renderBeanSection({ productName: 'Ethiopia Yirgacheffe' });
+    await new Promise((r) => setTimeout(r, 0));
     expect(node).not.toBeNull();
   });
 
-  it('renders when only coffeeBrand is present', () => {
+  it('renders when only coffeeBrand is present', async () => {
     const node = renderBeanSection({ coffeeBrand: 'Blue Bottle' });
+    await new Promise((r) => setTimeout(r, 0));
     expect(node).not.toBeNull();
   });
 
-  it('renders when only roastDate is present', () => {
+  it('renders when only roastDate is present', async () => {
     const node = renderBeanSection({ roastDate: '2024-01-15' });
+    await new Promise((r) => setTimeout(r, 0));
     expect(node).not.toBeNull();
   });
 
-  it('renders when only bean.origin is present', () => {
+  it('renders when only bean.origin is present', async () => {
     const node = renderBeanSection({
       bean: { origin: 'Ethiopia', roaster: null, roastLevel: null },
     });
+    await new Promise((r) => setTimeout(r, 0));
     expect(node).not.toBeNull();
   });
 

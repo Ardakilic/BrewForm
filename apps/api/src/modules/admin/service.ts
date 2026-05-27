@@ -14,6 +14,7 @@ import * as model from './model.ts';
 import type { CacheProvider } from '../../utils/cache/index.ts';
 import { sendWelcomeEmail } from '../auth/email.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import { coffeeVarieties } from '@brewform/db/schema';
 
 const logger = createLogger('admin-service');
 
@@ -78,7 +79,7 @@ export async function adminCreateUser(adminId: string, data: {
     adminId,
     'CREATE_USER',
     'User',
-    (user as any).id,
+    user!.id,
     `username: ${data.username}`,
   );
 
@@ -405,4 +406,94 @@ export async function getTopRecipes(limit: number) {
 /** Pass-through: fetch top users ranked by recipe count. */
 export async function getTopUsers(limit: number) {
   return model.getTopUsers(limit);
+}
+
+// --- Coffee Varieties (admin) ---
+
+/** Pass-through: list all non-deleted coffee varieties with optional filters. */
+export async function listCoffeeVarieties(
+  page: number,
+  perPage: number,
+  category?: string,
+  search?: string,
+) {
+  return model.listCoffeeVarieties(page, perPage, category, search);
+}
+
+/** Create a coffee variety and log the action. */
+export async function createCoffeeVariety(
+  adminId: string,
+  data: typeof coffeeVarieties.$inferInsert,
+) {
+  const variety = await model.createCoffeeVariety(data);
+  await model.createAuditLog(
+    adminId,
+    'CREATE_COFFEE_VARIETY',
+    'CoffeeVariety',
+    variety.id,
+    `name: ${data.name}`,
+  );
+  return variety;
+}
+
+/** Update a coffee variety and log the action. Throws if variety is not found. */
+export async function updateCoffeeVariety(
+  adminId: string,
+  id: string,
+  data: Partial<typeof coffeeVarieties.$inferInsert>,
+) {
+  const variety = await model.updateCoffeeVariety(id, data);
+  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
+  await model.createAuditLog(adminId, 'UPDATE_COFFEE_VARIETY', 'CoffeeVariety', id);
+  return variety;
+}
+
+/** Soft-delete a coffee variety and log the action. Throws if variety is not found. */
+export async function deleteCoffeeVariety(adminId: string, id: string) {
+  const variety = await model.deleteCoffeeVariety(id);
+  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
+  await model.createAuditLog(adminId, 'DELETE_COFFEE_VARIETY', 'CoffeeVariety', id);
+}
+
+/** Pass-through: count recipes using a coffee variety. */
+export async function getVarietyRecipeCount(varietyId: string) {
+  return model.getVarietyRecipeCount(varietyId);
+}
+
+// --- Equipment Delete Requests (admin) ---
+
+/** Pass-through: list equipment delete requests with optional status filter. */
+export async function listEquipmentDeleteRequests(
+  page: number,
+  perPage: number,
+  status?: string,
+) {
+  return model.listEquipmentDeleteRequests(page, perPage, status);
+}
+
+/** Approve an equipment delete request, soft-delete the equipment, and log the action. */
+export async function approveEquipmentDeleteRequest(adminId: string, requestId: string) {
+  const request = await model.approveEquipmentDeleteRequest(requestId, adminId);
+  if (!request) throw new Error('DELETE_REQUEST_NOT_FOUND');
+  await model.createAuditLog(
+    adminId,
+    'APPROVE_EQUIPMENT_DELETE',
+    'EquipmentDeleteRequest',
+    requestId,
+    `equipmentId: ${request.equipmentId}`,
+  );
+  return request;
+}
+
+/** Reject an equipment delete request and log the action. */
+export async function rejectEquipmentDeleteRequest(adminId: string, requestId: string) {
+  const request = await model.rejectEquipmentDeleteRequest(requestId, adminId);
+  if (!request) throw new Error('DELETE_REQUEST_NOT_FOUND');
+  await model.createAuditLog(
+    adminId,
+    'REJECT_EQUIPMENT_DELETE',
+    'EquipmentDeleteRequest',
+    requestId,
+  );
+  return request;
 }

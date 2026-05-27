@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
-import { EquipmentSection } from './EquipmentSection';
+import { EquipmentSection } from './EquipmentSection.tsx';
 
 // ---------------------------------------------------------------------------
 // Mocks

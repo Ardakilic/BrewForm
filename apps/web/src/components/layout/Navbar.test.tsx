@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Navbar } from './Navbar';
+import { Navbar } from './Navbar.tsx';
 
 // Use vi.hoisted so the mockActivePath variable is available inside the vi.mock factory
 // (vi.mock calls are hoisted to the top of the file by Vitest, before any imports/variables).
@@ -46,19 +46,19 @@ vi.mock('react-router', () => ({
   },
 }));
 
-vi.mock('../../contexts/I18nContext', () => ({
+vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: vi.fn(),
 }));
 
-vi.mock('../../contexts/AuthContext', () => ({
+vi.mock('../../contexts/AuthContext.tsx', () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock('../../contexts/ThemeContext', () => ({
+vi.mock('../../contexts/ThemeContext.tsx', () => ({
   useTheme: vi.fn(),
 }));
 
-vi.mock('../../api/index', () => ({
+vi.mock('../../api/index.ts', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
@@ -77,10 +77,10 @@ vi.mock('../../api/index', () => ({
   },
 }));
 
-import { useTranslation } from '../../contexts/I18nContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
-import { authApi } from '../../api/index';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTheme } from '../../contexts/ThemeContext.tsx';
+import { authApi } from '../../api/index.ts';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
@@ -91,6 +91,7 @@ const mockUseTheme = vi.mocked(useTheme);
 const trTranslations: Record<string, string> = {
   'app.name': 'BrewForm',
   'nav.recipes': 'Tarifler',
+  'nav.equipment': 'Ekipmanlar',
   'nav.login': 'Giriş Yap',
   'nav.register': 'Kayıt Ol',
   'nav.logout': 'Çıkış Yap',
@@ -109,6 +110,7 @@ const trTranslations: Record<string, string> = {
 const enTranslations: Record<string, string> = {
   'app.name': 'BrewForm',
   'nav.recipes': 'Recipes',
+  'nav.equipment': 'Equipment',
   'nav.login': 'Log In',
   'nav.register': 'Sign Up',
   'nav.logout': 'Log Out',
@@ -898,6 +900,43 @@ describe('Navbar — active route indicator', () => {
 
     // Other items should be inactive
     const recipesLink = getNavLinkByHref('/recipes');
+    expect(recipesLink).toBeDefined();
+    expect(recipesLink!.className).toContain(INACTIVE_CLASS_FRAGMENT);
+    expect(recipesLink!.className).not.toContain(ACTIVE_CLASS_FRAGMENT);
+  });
+
+  it('renders equipment nav link with correct href', () => {
+    render(<Navbar />);
+
+    const equipmentLink = getNavLinkByHref('/equipments');
+    expect(equipmentLink).toBeDefined();
+    expect(equipmentLink!.textContent).toContain('Equipment');
+  });
+
+  it('renders equipment nav link in Turkish', () => {
+    mockUseTranslation.mockReturnValue({
+      ...defaultTranslation,
+      locale: 'tr',
+      t: (key: string) => trTranslations[key] ?? key,
+    });
+    render(<Navbar />);
+
+    const equipmentLink = getNavLinkByHref('/equipments');
+    expect(equipmentLink).toBeDefined();
+    expect(equipmentLink!.textContent).toContain('Ekipmanlar');
+  });
+
+  it('highlights Equipment link when current path is /equipments', () => {
+    mockNavState.activePath = '/equipments';
+    render(<Navbar />);
+
+    const equipmentLink = getNavLinkByHref('/equipments');
+    expect(equipmentLink).toBeDefined();
+    expect(equipmentLink!.className).toContain(ACTIVE_CLASS_FRAGMENT);
+
+    // Other items should be inactive
+    const recipesLink = getNavLinkByHref('/recipes');
+    expect(recipesLink).toBeDefined();
     expect(recipesLink!.className).toContain(INACTIVE_CLASS_FRAGMENT);
     expect(recipesLink!.className).not.toContain(ACTIVE_CLASS_FRAGMENT);
   });

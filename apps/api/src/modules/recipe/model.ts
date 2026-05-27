@@ -21,6 +21,16 @@ import {
 } from '@brewform/db/schema';
 import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
 
+/** Return a Drizzle condition that matches recipes whose versions reference the given coffee variety. */
+export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
+  return inArray(
+    recipes.id,
+    db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+      eq(recipeVersions.coffeeVarietyId, coffeeVarietyId),
+    ),
+  );
+}
+
 /** Insert a new recipe row and return it with all database-generated fields. */
 export async function create(data: typeof recipes.$inferInsert) {
   const [recipe] = await db.insert(recipes).values(data).returning();
@@ -126,7 +136,9 @@ export async function update(id: string, data: Partial<typeof recipes.$inferInse
 
 /** Soft-delete a recipe by setting its `deletedAt` timestamp. Returns the updated row or null. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, id))
+  const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(
+    and(eq(recipes.id, id), isNull(recipes.deletedAt)),
+  )
     .returning();
   return result ?? null;
 }
@@ -528,6 +540,7 @@ export async function findStarred(
     equipmentId?: string;
     tasteNoteIds?: string;
     mainBrewer?: string;
+    coffeeVarietyId?: string;
     sortBy?: string;
     sortOrder?: string;
   },
@@ -591,6 +604,17 @@ export async function findStarred(
         ),
       );
     }
+  }
+
+  if (filters.coffeeVarietyId) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+          eq(recipeVersions.coffeeVarietyId, filters.coffeeVarietyId),
+        ),
+      ),
+    );
   }
 
   if (filters.equipmentId) {

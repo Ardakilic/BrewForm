@@ -1,7 +1,7 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { TasteNotesPage } from './TasteNotesPage';
+import { TasteNotesPage } from './TasteNotesPage.tsx';
 
 vi.mock('react-router', () => ({
   Link: (
@@ -86,7 +86,7 @@ vi.mock('../api/index.ts', () => ({
   },
 }));
 
-import { useTranslation } from '../contexts/I18nContext';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 

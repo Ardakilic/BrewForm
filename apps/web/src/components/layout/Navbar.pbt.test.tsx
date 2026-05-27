@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
-import { Navbar } from './Navbar';
+import { Navbar } from './Navbar.tsx';
 
 // ---------------------------------------------------------------------------
 // React-router mock — mirrors the mock in Navbar.test.tsx but uses a
@@ -62,19 +62,19 @@ vi.mock('react-router', () => ({
   },
 }));
 
-vi.mock('../../contexts/I18nContext', () => ({
+vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: vi.fn(),
 }));
 
-vi.mock('../../contexts/AuthContext', () => ({
+vi.mock('../../contexts/AuthContext.tsx', () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock('../../contexts/ThemeContext', () => ({
+vi.mock('../../contexts/ThemeContext.tsx', () => ({
   useTheme: vi.fn(),
 }));
 
-vi.mock('../../api/index', () => ({
+vi.mock('../../api/index.ts', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
@@ -93,9 +93,9 @@ vi.mock('../../api/index', () => ({
   },
 }));
 
-import { useTranslation } from '../../contexts/I18nContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTheme } from '../../contexts/ThemeContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);

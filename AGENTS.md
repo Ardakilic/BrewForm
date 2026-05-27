@@ -105,6 +105,8 @@ Every domain module follows 3-layer pattern: `model.ts` → `service.ts` → `in
 - **Soft deletes** on all main entities (`deletedAt`). Queries use `findFirst({ where: eq(t.deletedAt, null) })`, never `findUnique`.
 - Connection pool: `max: 10` via `postgres-js` driver in `packages/db/src/index.ts`.
 - Migrations: `deno task db:generate` (creates SQL) then `deno task db:migrate` (applies); seed is `deno run -A packages/db/src/seed.ts`.
+- **Schema sync:** Always use `make db-push` to sync schema changes (especially enum additions) — never edit Drizzle migration SQL files manually. Manual SQL edits break Drizzle's hash-based migration tracking and cause silent migration failures.
+- **Full DB reset:** `make db-reset` drops and recreates the database, pushes the schema fresh, re-seeds, and flushes the Deno KV cache.
 
 ## Testing
 

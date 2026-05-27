@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { api } from '../../api/client';
+import { api } from '../../api/client.ts';
 
 interface Props {
   recipeId: string;

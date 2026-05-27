@@ -12,7 +12,7 @@
 # Used as the base for the dev containers (source is volume-mounted at runtime).
 FROM denoland/deno:debian-2.7.14 AS deps
 WORKDIR /app
-COPY deno.json deno.lock ./
+COPY deno.json deno.lock package.json ./
 COPY apps/api/package.json apps/api/deno.json ./apps/api/
 COPY apps/web/package.json apps/web/deno.json ./apps/web/
 COPY packages/shared/package.json packages/shared/deno.json ./packages/shared/

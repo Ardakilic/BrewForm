@@ -11,7 +11,9 @@ import {
   socialSeedData,
   userSeedData,
   vendorSeedData,
-} from './seed-data.ts';
+} from './seed-users-recipes.ts';
+import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
+import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 
 const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
 const scaaData = JSON.parse(await Deno.readTextFile(scaaPath));
@@ -106,15 +108,21 @@ describe('Seed Data Integrity', () => {
 
     it('should have valid equipment types', () => {
       const validTypes = new Set([
+        'espresso_machine',
+        'grinder',
+        'pour_over_brewer',
+        'immersion_brewer',
+        'kettle',
+        'milk_tool',
+        'scale_accessory',
+        'roaster',
         'portafilter',
         'basket',
         'puck_screen',
         'paper_filter',
         'tamper',
-        'gooseneck_kettle',
         'mesh_filter',
         'cezve',
-        'scale',
         'thermometer',
         'other',
       ]);
@@ -232,7 +240,10 @@ describe('Seed Data Integrity', () => {
     });
 
     it('should reference existing equipment by name', () => {
-      const validEquipment = new Set(equipmentSeedData.map((e) => e.name));
+      const validEquipment = new Set([
+        ...equipmentSeedData.map((e) => e.name),
+        ...equipmentCatalogSeedData.map((e) => e.name),
+      ]);
       for (const recipe of recipeSeedData) {
         for (const equipName of recipe.equipmentNames) {
           expect(validEquipment.has(equipName)).toBe(true);
@@ -299,15 +310,21 @@ describe('Seed Data Integrity', () => {
 
     it('should have valid equipment types', () => {
       const validTypes = new Set([
+        'espresso_machine',
+        'grinder',
+        'pour_over_brewer',
+        'immersion_brewer',
+        'kettle',
+        'milk_tool',
+        'scale_accessory',
+        'roaster',
         'portafilter',
         'basket',
         'puck_screen',
         'paper_filter',
         'tamper',
-        'gooseneck_kettle',
         'mesh_filter',
         'cezve',
-        'scale',
         'thermometer',
         'other',
       ]);
@@ -410,6 +427,47 @@ describe('Seed Data Integrity', () => {
       }
       for (const name of referencedNotes) {
         expect(scaaNames.has(name)).toBe(true);
+      }
+    });
+  });
+
+  describe('Equipment catalog data', () => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+    it('should have 378 entries', () => {
+      expect(equipmentCatalogSeedData).toHaveLength(378);
+    });
+
+    it('should have all entries with isSystem: true', () => {
+      for (const entry of equipmentCatalogSeedData) {
+        expect(entry.isSystem).toBe(true);
+      }
+    });
+
+    it('should have valid UUID format for all IDs', () => {
+      for (const entry of equipmentCatalogSeedData) {
+        expect(uuidRegex.test(entry.id)).toBe(true);
+      }
+    });
+  });
+
+  describe('Coffee variety data', () => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    const validCategories = new Set(['variety', 'processing', 'market_name']);
+
+    it('should have 98 entries', () => {
+      expect(coffeeVarietySeedData).toHaveLength(98);
+    });
+
+    it('should have valid categories for all entries', () => {
+      for (const entry of coffeeVarietySeedData) {
+        expect(validCategories.has(entry.category)).toBe(true);
+      }
+    });
+
+    it('should have valid UUID format for all IDs', () => {
+      for (const entry of coffeeVarietySeedData) {
+        expect(uuidRegex.test(entry.id)).toBe(true);
       }
     });
   });

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ErrorPage, ForbiddenPage, NotFoundPage, ServerErrorPage } from './ErrorPage';
+import { ErrorPage, ForbiddenPage, NotFoundPage, ServerErrorPage } from './ErrorPage.tsx';
 
 vi.mock('react-router', () => ({
   Link: (
@@ -12,7 +12,7 @@ vi.mock('../contexts/I18nContext', () => ({
   useTranslation: vi.fn(),
 }));
 
-import { useTranslation } from '../contexts/I18nContext';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 

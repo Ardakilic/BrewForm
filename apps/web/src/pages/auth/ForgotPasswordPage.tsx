@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router';
-import { authApi } from '../../api/index';
-import { useTranslation } from '../../contexts/I18nContext';
+import { authApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');

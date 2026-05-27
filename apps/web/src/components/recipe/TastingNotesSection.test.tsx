@@ -14,7 +14,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import fc from 'fast-check';
-import { TastingNotesSection } from './TastingNotesSection';
+import { TastingNotesSection } from './TastingNotesSection.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import type { ReactNode } from 'react';
 import { SCAA_CATEGORIES } from '../../utils/radar-chart-data.ts';

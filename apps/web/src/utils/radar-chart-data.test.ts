@@ -15,7 +15,7 @@ import {
   resolveRootCategory,
   SCAA_CATEGORIES,
   type TasteNoteForChart,
-} from './radar-chart-data';
+} from './radar-chart-data.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers

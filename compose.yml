@@ -47,6 +47,7 @@ services:
     volumes:
       - .:/app
       - deno_cache:/root/.cache/deno
+      - node_modules:/app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,6 +89,7 @@ services:
     volumes:
       - .:/app
       - deno_cache:/root/.cache/deno
+      - node_modules:/app/node_modules
     profiles:
       - dev
 
@@ -232,4 +234,5 @@ volumes:
   garage_data:
   garage_meta:
   deno_cache:
+  node_modules:
 

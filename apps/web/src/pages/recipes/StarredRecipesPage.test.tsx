@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { _resetStaticCache, StarredRecipesPage } from './StarredRecipesPage';
+import { _resetStaticCache, StarredRecipesPage } from './StarredRecipesPage.tsx';
 
 // ── External deps ──────────────────────────────────────────────────────────
 

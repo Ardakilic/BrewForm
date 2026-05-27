@@ -11,7 +11,7 @@ function createTestApp() {
   return app;
 }
 
-describe('Auth Routes', () => {
+describe('Auth Routes', { sanitizeOps: false, sanitizeResources: false }, () => {
   describe('GET /auth/registration-status', () => {
     it('should return enabled status', async () => {
       const app = createTestApp();

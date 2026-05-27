@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../../api/client';
+import { api } from '../../api/client.ts';
 
 export function AdminCachePage() {
   const [flushing, setFlushing] = useState(false);

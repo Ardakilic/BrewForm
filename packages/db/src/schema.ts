@@ -1,7 +1,10 @@
 import { relations } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+
 import {
   AnyPgColumn,
   boolean,
+  check,
   decimal,
   foreignKey,
   index,
@@ -61,15 +64,21 @@ export const drinkTypeEnum = pgEnum('drink_type', [
 ]);
 
 export const equipmentTypeEnum = pgEnum('equipment_type', [
+  'espresso_machine',
+  'grinder',
+  'pour_over_brewer',
+  'immersion_brewer',
+  'kettle',
+  'milk_tool',
+  'scale_accessory',
+  'roaster',
   'portafilter',
   'basket',
   'puck_screen',
   'paper_filter',
   'tamper',
-  'gooseneck_kettle',
   'mesh_filter',
   'cezve',
-  'scale',
   'thermometer',
   'other',
 ]);
@@ -237,6 +246,9 @@ export const recipeVersions = pgTable(
     flowRate: real('flow_rate'),
     preInfusionTimeSeconds: integer('pre_infusion_time_seconds'),
     beanId: varchar('bean_id', { length: 36 }).references(() => beans.id),
+    coffeeVarietyId: varchar('coffee_variety_id', { length: 36 })
+      .references((): AnyPgColumn => coffeeVarieties.id),
+    coffeeVarietyName: varchar('coffee_variety_name', { length: 255 }),
     personalNotes: text('personal_notes'),
     preparationNotes: text('preparation_notes').notNull(),
     isFavourite: boolean('is_favourite').notNull().default(false),
@@ -274,6 +286,7 @@ export const recipeTasteNotes = pgTable(
     ),
     index('recipe_taste_note_recipe_version_id_idx').on(table.recipeVersionId),
     index('recipe_taste_note_taste_note_id_idx').on(table.tasteNoteId),
+    check('recipe_taste_note_intensity_check', sql`${table.intensity} BETWEEN 1 AND 3`),
   ],
 );
 
@@ -367,6 +380,7 @@ export const equipment = pgTable(
     model: varchar('model', { length: 255 }),
     description: text('description'),
     createdBy: varchar('created_by', { length: 36 }).references(() => users.id),
+    isSystem: boolean('is_system').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -399,6 +413,52 @@ export const beans = pgTable(
     index('bean_deleted_at_idx').on(table.deletedAt),
   ],
 );
+
+export const coffeeVarietyCategoryEnum = pgEnum('coffee_variety_category', [
+  'variety',
+  'processing',
+  'market_name',
+]);
+
+export const coffeeVarieties = pgTable('coffee_variety', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar('name', { length: 255 }).notNull(),
+  category: coffeeVarietyCategoryEnum('category').notNull(),
+  species: varchar('species', { length: 255 }),
+  origin: varchar('origin', { length: 500 }),
+  spread: text('spread'),
+  altitudeRangeM: varchar('altitude_range_m', { length: 100 }),
+  cupProfile: text('cup_profile'),
+  body: varchar('body', { length: 100 }),
+  acidity: varchar('acidity', { length: 100 }),
+  caffeinePct: varchar('caffeine_pct', { length: 50 }),
+  processingCompatibility: text('processing_compatibility').array(),
+  diseaseResistance: varchar('disease_resistance', { length: 100 }),
+  yield: varchar('yield', { length: 100 }),
+  plantSize: varchar('plant_size', { length: 100 }),
+  notes: text('notes'),
+  subVarieties: text('sub_varieties').array(),
+  fermentation: text('fermentation'),
+  dryingTimeDays: varchar('drying_time_days', { length: 50 }),
+  dryingMethod: text('drying_method'),
+  mucilageRetentionPct: varchar('mucilage_retention_pct', { length: 50 }),
+  priceRange: varchar('price_range', { length: 100 }),
+  processing: varchar('processing', { length: 255 }),
+  typeLabel: varchar('type_label', { length: 255 }),
+  notableFarms: text('notable_farms').array(),
+  notableRegions: text('notable_regions').array(),
+  regionalVariants: text('regional_variants').array(),
+  globalSharePct: varchar('global_share_pct', { length: 50 }),
+  isSystem: boolean('is_system').notNull().default(true),
+  createdBy: varchar('created_by', { length: 36 }).references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+}, (table) => [
+  index('coffee_variety_name_idx').on(table.name),
+  index('coffee_variety_category_idx').on(table.category),
+  index('coffee_variety_deleted_at_idx').on(table.deletedAt),
+]);
 
 export const vendors = pgTable(
   'vendor',
@@ -545,6 +605,7 @@ export const userRecipeRatings = pgTable(
     unique('user_recipe_rating_user_id_recipe_id_unique').on(table.userId, table.recipeId),
     index('user_recipe_rating_user_id_idx').on(table.userId),
     index('user_recipe_rating_recipe_id_idx').on(table.recipeId),
+    check('user_recipe_rating_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
   ],
 );
 
@@ -600,6 +661,30 @@ export const brewMethodEquipmentRules = pgTable(
   ],
 );
 
+export const equipmentDeleteRequestStatusEnum = pgEnum('equipment_delete_request_status', [
+  'pending',
+  'approved',
+  'rejected',
+]);
+
+export const equipmentDeleteRequests = pgTable('equipment_delete_request', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  equipmentId: varchar('equipment_id', { length: 36 }).notNull()
+    .references(() => equipment.id, { onDelete: 'cascade' }),
+  requestedById: varchar('requested_by_id', { length: 36 }).notNull()
+    .references(() => users.id),
+  reason: text('reason'),
+  status: equipmentDeleteRequestStatusEnum('status').notNull().default('pending'),
+  reviewedById: varchar('reviewed_by_id', { length: 36 }).references(() => users.id),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+}, (table) => [
+  index('edr_equipment_id_idx').on(table.equipmentId),
+  index('edr_status_idx').on(table.status),
+  index('edr_deleted_at_idx').on(table.deletedAt),
+]);
+
 export const auditLogs = pgTable(
   'audit_log',
   {
@@ -648,7 +733,6 @@ export const emailVerificationTokens = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index('email_verification_token_token_idx').on(table.token),
     index('email_verification_token_user_id_idx').on(table.userId),
     index('email_verification_token_expires_at_idx').on(table.expiresAt),
   ],
@@ -737,6 +821,11 @@ export const recipeVersionsRelations = relations(recipeVersions, ({ one, many })
   bean: one(beans, {
     fields: [recipeVersions.beanId],
     references: [beans.id],
+  }),
+  coffeeVariety: one(coffeeVarieties, {
+    fields: [recipeVersions.coffeeVarietyId],
+    references: [coffeeVarieties.id],
+    relationName: 'coffee_variety_versions',
   }),
   tasteNotes: many(recipeTasteNotes),
   equipment: many(recipeEquipment),
@@ -944,6 +1033,32 @@ export const userBadgesRelations = relations(userBadges, ({ one }) => ({
 }));
 
 export const brewMethodEquipmentRulesRelations = relations(brewMethodEquipmentRules, () => ({}));
+
+export const coffeeVarietiesRelations = relations(coffeeVarieties, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [coffeeVarieties.createdBy],
+    references: [users.id],
+    relationName: 'coffee_variety_creator',
+  }),
+  recipeVersions: many(recipeVersions, { relationName: 'coffee_variety_versions' }),
+}));
+
+export const equipmentDeleteRequestsRelations = relations(equipmentDeleteRequests, ({ one }) => ({
+  equipment: one(equipment, {
+    fields: [equipmentDeleteRequests.equipmentId],
+    references: [equipment.id],
+  }),
+  requestedBy: one(users, {
+    fields: [equipmentDeleteRequests.requestedById],
+    references: [users.id],
+    relationName: 'delete_request_requester',
+  }),
+  reviewedBy: one(users, {
+    fields: [equipmentDeleteRequests.reviewedById],
+    references: [users.id],
+    relationName: 'delete_request_reviewer',
+  }),
+}));
 
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   admin: one(users, {

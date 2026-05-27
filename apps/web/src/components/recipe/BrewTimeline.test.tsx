@@ -19,7 +19,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import fc from 'fast-check';
 import { BrewTimeline } from './BrewTimeline.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
@@ -34,19 +34,19 @@ function withI18n(ui: ReactNode) {
 // ---------------------------------------------------------------------------
 
 describe('BrewTimeline — rendering unit tests', () => {
-  it('returns null when extractionTimeSeconds is null', () => {
+  it('returns null when extractionTimeSeconds is null', async () => {
     const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={null} />));
-    expect(container.firstChild).toBeNull();
+    await waitFor(() => expect(container.firstChild).toBeNull());
   });
 
-  it('returns null when extractionTimeSeconds is undefined', () => {
+  it('returns null when extractionTimeSeconds is undefined', async () => {
     const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={undefined} />));
-    expect(container.firstChild).toBeNull();
+    await waitFor(() => expect(container.firstChild).toBeNull());
   });
 
-  it('renders when extractionTimeSeconds is present', () => {
+  it('renders when extractionTimeSeconds is present', async () => {
     const { container } = render(withI18n(<BrewTimeline extractionTimeSeconds={30} />));
-    expect(container.firstChild).not.toBeNull();
+    await waitFor(() => expect(container.firstChild).not.toBeNull());
   });
 
   it('shows flow rate when present', () => {

@@ -1,10 +1,12 @@
 CREATE TYPE "public"."additional_preparation_type" AS ENUM('milk', 'water', 'syrup', 'spice', 'other');--> statement-breakpoint
 CREATE TYPE "public"."badge_rule" AS ENUM('first_brew', 'decade_brewer', 'centurion', 'first_fork', 'fan_favourite', 'community_star', 'conversationalist', 'precision_brewer', 'explorer', 'influencer');--> statement-breakpoint
 CREATE TYPE "public"."brew_method" AS ENUM('espresso_machine', 'v60', 'french_press', 'aeropress', 'turkish_coffee', 'drip_coffee', 'chemex', 'kalita_wave', 'moka_pot', 'cold_brew', 'siphon');--> statement-breakpoint
+CREATE TYPE "public"."coffee_variety_category" AS ENUM('variety', 'processing', 'market_name');--> statement-breakpoint
 CREATE TYPE "public"."date_format" AS ENUM('DD_MM_YYYY', 'MM_DD_YYYY', 'YYYY_MM_DD');--> statement-breakpoint
-CREATE TYPE "public"."drink_type" AS ENUM('espresso', 'americano', 'flat_white', 'latte', 'cappuccino', 'cortado', 'macchiato', 'turkish_coffee', 'pour_over', 'cold_brew', 'french_press');--> statement-breakpoint
+CREATE TYPE "public"."drink_type" AS ENUM('espresso', 'americano', 'flat_white', 'latte', 'cappuccino', 'cortado', 'macchiato', 'turkish_coffee', 'pour_over', 'cold_brew', 'french_press', 'aeropress', 'drip_coffee', 'moka_pot', 'siphon');--> statement-breakpoint
 CREATE TYPE "public"."emoji_tag" AS ENUM('fire', 'rocket', 'thumbsup', 'neutral', 'thumbsdown', 'nauseated');--> statement-breakpoint
-CREATE TYPE "public"."equipment_type" AS ENUM('portafilter', 'basket', 'puck_screen', 'paper_filter', 'tamper', 'gooseneck_kettle', 'mesh_filter', 'cezve', 'scale', 'thermometer', 'other');--> statement-breakpoint
+CREATE TYPE "public"."equipment_delete_request_status" AS ENUM('pending', 'approved', 'rejected');--> statement-breakpoint
+CREATE TYPE "public"."equipment_type" AS ENUM('espresso_machine', 'grinder', 'pour_over_brewer', 'immersion_brewer', 'kettle', 'milk_tool', 'scale_accessory', 'roaster', 'portafilter', 'basket', 'puck_screen', 'paper_filter', 'tamper', 'mesh_filter', 'cezve', 'thermometer', 'other');--> statement-breakpoint
 CREATE TYPE "public"."temperature_unit" AS ENUM('celsius', 'fahrenheit');--> statement-breakpoint
 CREATE TYPE "public"."theme" AS ENUM('light', 'dark', 'coffee');--> statement-breakpoint
 CREATE TYPE "public"."unit_system" AS ENUM('metric', 'imperial');--> statement-breakpoint
@@ -55,6 +57,42 @@ CREATE TABLE "brew_method_equipment_rule" (
 	CONSTRAINT "brew_method_equipment_rule_brew_method_equipment_type_unique" UNIQUE("brew_method","equipment_type")
 );
 --> statement-breakpoint
+CREATE TABLE "coffee_variety" (
+	"id" varchar(36) PRIMARY KEY NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"category" "coffee_variety_category" NOT NULL,
+	"species" varchar(255),
+	"origin" varchar(500),
+	"spread" text,
+	"altitude_range_m" varchar(100),
+	"cup_profile" text,
+	"body" varchar(100),
+	"acidity" varchar(100),
+	"caffeine_pct" varchar(50),
+	"processing_compatibility" text[],
+	"disease_resistance" varchar(100),
+	"yield" varchar(100),
+	"plant_size" varchar(100),
+	"notes" text,
+	"sub_varieties" text[],
+	"fermentation" text,
+	"drying_time_days" varchar(50),
+	"drying_method" text,
+	"mucilage_retention_pct" varchar(50),
+	"price_range" varchar(100),
+	"processing" varchar(255),
+	"type_label" varchar(255),
+	"notable_farms" text[],
+	"notable_regions" text[],
+	"regional_variants" text[],
+	"global_share_pct" varchar(50),
+	"is_system" boolean DEFAULT true NOT NULL,
+	"created_by" varchar(36),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
+);
+--> statement-breakpoint
 CREATE TABLE "comment" (
 	"id" varchar(36) PRIMARY KEY NOT NULL,
 	"recipe_id" varchar(36) NOT NULL,
@@ -66,6 +104,16 @@ CREATE TABLE "comment" (
 	"deleted_at" timestamp with time zone
 );
 --> statement-breakpoint
+CREATE TABLE "email_verification_token" (
+	"id" varchar(36) PRIMARY KEY NOT NULL,
+	"user_id" varchar(36) NOT NULL,
+	"token" varchar(255) NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"used_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "email_verification_token_token_unique" UNIQUE("token")
+);
+--> statement-breakpoint
 CREATE TABLE "equipment" (
 	"id" varchar(36) PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -74,9 +122,21 @@ CREATE TABLE "equipment" (
 	"model" varchar(255),
 	"description" text,
 	"created_by" varchar(36),
+	"is_system" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "equipment_delete_request" (
+	"id" varchar(36) PRIMARY KEY NOT NULL,
+	"equipment_id" varchar(36) NOT NULL,
+	"requested_by_id" varchar(36) NOT NULL,
+	"reason" text,
+	"status" "equipment_delete_request_status" DEFAULT 'pending' NOT NULL,
+	"reviewed_by_id" varchar(36),
+	"reviewed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "password_reset" (
@@ -121,6 +181,7 @@ CREATE TABLE "recipe_taste_note" (
 	"id" varchar(36) PRIMARY KEY NOT NULL,
 	"recipe_version_id" varchar(36) NOT NULL,
 	"taste_note_id" varchar(36) NOT NULL,
+	"intensity" integer DEFAULT 1 NOT NULL,
 	CONSTRAINT "recipe_taste_note_recipe_version_id_taste_note_id_unique" UNIQUE("recipe_version_id","taste_note_id")
 );
 --> statement-breakpoint
@@ -153,9 +214,15 @@ CREATE TABLE "recipe_version" (
 	"extraction_time_seconds" integer,
 	"extraction_volume_ml" real,
 	"temperature_celsius" real,
+	"tds" numeric(4, 2),
 	"brew_ratio" real,
 	"flow_rate" real,
+	"pre_infusion_time_seconds" integer,
+	"bean_id" varchar(36),
+	"coffee_variety_id" varchar(36),
+	"coffee_variety_name" varchar(255),
 	"personal_notes" text,
+	"preparation_notes" text NOT NULL,
 	"is_favourite" boolean DEFAULT false NOT NULL,
 	"rating" integer,
 	"emoji_tag" "emoji_tag",
@@ -218,7 +285,8 @@ CREATE TABLE "taste_note" (
 	"color" varchar(50),
 	"definition" text,
 	"depth" integer DEFAULT 0 NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "user_badge" (
@@ -271,9 +339,20 @@ CREATE TABLE "user_recipe_like" (
 	CONSTRAINT "user_recipe_like_user_id_recipe_id_unique" UNIQUE("user_id","recipe_id")
 );
 --> statement-breakpoint
+CREATE TABLE "user_recipe_rating" (
+	"id" varchar(36) PRIMARY KEY NOT NULL,
+	"user_id" varchar(36) NOT NULL,
+	"recipe_id" varchar(36) NOT NULL,
+	"rating" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_recipe_rating_user_id_recipe_id_unique" UNIQUE("user_id","recipe_id")
+);
+--> statement-breakpoint
 CREATE TABLE "user" (
 	"id" varchar(36) PRIMARY KEY NOT NULL,
 	"email" varchar(255) NOT NULL,
+	"email_verified_at" timestamp with time zone,
 	"username" varchar(255) NOT NULL,
 	"password_hash" varchar(255) NOT NULL,
 	"display_name" varchar(255),
@@ -302,10 +381,15 @@ CREATE TABLE "vendor" (
 ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_admin_id_user_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bean" ADD CONSTRAINT "bean_vendor_id_vendor_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendor"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bean" ADD CONSTRAINT "bean_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "coffee_variety" ADD CONSTRAINT "coffee_variety_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment" ADD CONSTRAINT "comment_recipe_id_recipe_id_fk" FOREIGN KEY ("recipe_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment" ADD CONSTRAINT "comment_author_id_user_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment" ADD CONSTRAINT "comment_parent_comment_id_comment_id_fk" FOREIGN KEY ("parent_comment_id") REFERENCES "public"."comment"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "email_verification_token" ADD CONSTRAINT "email_verification_token_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "equipment" ADD CONSTRAINT "equipment_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "equipment_delete_request" ADD CONSTRAINT "equipment_delete_request_equipment_id_equipment_id_fk" FOREIGN KEY ("equipment_id") REFERENCES "public"."equipment"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "equipment_delete_request" ADD CONSTRAINT "equipment_delete_request_requested_by_id_user_id_fk" FOREIGN KEY ("requested_by_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "equipment_delete_request" ADD CONSTRAINT "equipment_delete_request_reviewed_by_id_user_id_fk" FOREIGN KEY ("reviewed_by_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "password_reset" ADD CONSTRAINT "password_reset_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "photo" ADD CONSTRAINT "photo_recipe_id_recipe_id_fk" FOREIGN KEY ("recipe_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe_additional_preparation" ADD CONSTRAINT "recipe_addl_prep_recipe_version_id_fk" FOREIGN KEY ("recipe_version_id") REFERENCES "public"."recipe_version"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -317,6 +401,8 @@ ALTER TABLE "recipe_version_photo" ADD CONSTRAINT "recipe_version_photo_recipe_v
 ALTER TABLE "recipe_version_photo" ADD CONSTRAINT "recipe_version_photo_photo_id_photo_id_fk" FOREIGN KEY ("photo_id") REFERENCES "public"."photo"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe_version" ADD CONSTRAINT "recipe_version_recipe_id_recipe_id_fk" FOREIGN KEY ("recipe_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe_version" ADD CONSTRAINT "recipe_version_vendor_id_vendor_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendor"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recipe_version" ADD CONSTRAINT "recipe_version_bean_id_bean_id_fk" FOREIGN KEY ("bean_id") REFERENCES "public"."bean"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "recipe_version" ADD CONSTRAINT "recipe_version_coffee_variety_id_coffee_variety_id_fk" FOREIGN KEY ("coffee_variety_id") REFERENCES "public"."coffee_variety"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe" ADD CONSTRAINT "recipe_author_id_user_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe" ADD CONSTRAINT "recipe_current_version_id_recipe_version_id_fk" FOREIGN KEY ("current_version_id") REFERENCES "public"."recipe_version"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipe" ADD CONSTRAINT "recipe_forked_from_id_recipe_id_fk" FOREIGN KEY ("forked_from_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -337,6 +423,8 @@ ALTER TABLE "user_recipe_favourite" ADD CONSTRAINT "user_recipe_favourite_user_i
 ALTER TABLE "user_recipe_favourite" ADD CONSTRAINT "user_recipe_favourite_recipe_id_recipe_id_fk" FOREIGN KEY ("recipe_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_recipe_like" ADD CONSTRAINT "user_recipe_like_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_recipe_like" ADD CONSTRAINT "user_recipe_like_recipe_id_recipe_id_fk" FOREIGN KEY ("recipe_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_recipe_rating" ADD CONSTRAINT "user_recipe_rating_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_recipe_rating" ADD CONSTRAINT "user_recipe_rating_recipe_id_recipe_id_fk" FOREIGN KEY ("recipe_id") REFERENCES "public"."recipe"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "audit_log_admin_id_idx" ON "audit_log" USING btree ("admin_id");--> statement-breakpoint
 CREATE INDEX "audit_log_entity_idx" ON "audit_log" USING btree ("entity");--> statement-breakpoint
 CREATE INDEX "audit_log_created_at_idx" ON "audit_log" USING btree ("created_at");--> statement-breakpoint
@@ -345,14 +433,21 @@ CREATE INDEX "bean_user_id_idx" ON "bean" USING btree ("user_id");--> statement-
 CREATE INDEX "bean_deleted_at_idx" ON "bean" USING btree ("deleted_at");--> statement-breakpoint
 CREATE INDEX "brew_method_equipment_rule_brew_method_idx" ON "brew_method_equipment_rule" USING btree ("brew_method");--> statement-breakpoint
 CREATE INDEX "brew_method_equipment_rule_equipment_type_idx" ON "brew_method_equipment_rule" USING btree ("equipment_type");--> statement-breakpoint
+CREATE INDEX "coffee_variety_name_idx" ON "coffee_variety" USING btree ("name");--> statement-breakpoint
+CREATE INDEX "coffee_variety_category_idx" ON "coffee_variety" USING btree ("category");--> statement-breakpoint
+CREATE INDEX "coffee_variety_deleted_at_idx" ON "coffee_variety" USING btree ("deleted_at");--> statement-breakpoint
 CREATE INDEX "comment_recipe_id_idx" ON "comment" USING btree ("recipe_id");--> statement-breakpoint
 CREATE INDEX "comment_author_id_idx" ON "comment" USING btree ("author_id");--> statement-breakpoint
 CREATE INDEX "comment_parent_comment_id_idx" ON "comment" USING btree ("parent_comment_id");--> statement-breakpoint
 CREATE INDEX "comment_created_at_idx" ON "comment" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "comment_deleted_at_idx" ON "comment" USING btree ("deleted_at");--> statement-breakpoint
+CREATE INDEX "email_verification_token_user_id_idx" ON "email_verification_token" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "email_verification_token_expires_at_idx" ON "email_verification_token" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "equipment_type_idx" ON "equipment" USING btree ("type");--> statement-breakpoint
 CREATE INDEX "equipment_name_idx" ON "equipment" USING btree ("name");--> statement-breakpoint
 CREATE INDEX "equipment_deleted_at_idx" ON "equipment" USING btree ("deleted_at");--> statement-breakpoint
+CREATE INDEX "edr_equipment_id_idx" ON "equipment_delete_request" USING btree ("equipment_id");--> statement-breakpoint
+CREATE INDEX "edr_status_idx" ON "equipment_delete_request" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "password_reset_token_idx" ON "password_reset" USING btree ("token");--> statement-breakpoint
 CREATE INDEX "password_reset_user_id_idx" ON "password_reset" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "password_reset_expires_at_idx" ON "password_reset" USING btree ("expires_at");--> statement-breakpoint
@@ -396,6 +491,8 @@ CREATE INDEX "user_recipe_favourite_created_at_idx" ON "user_recipe_favourite" U
 CREATE INDEX "user_recipe_like_user_id_idx" ON "user_recipe_like" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "user_recipe_like_recipe_id_idx" ON "user_recipe_like" USING btree ("recipe_id");--> statement-breakpoint
 CREATE INDEX "user_recipe_like_created_at_idx" ON "user_recipe_like" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "user_recipe_rating_user_id_idx" ON "user_recipe_rating" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "user_recipe_rating_recipe_id_idx" ON "user_recipe_rating" USING btree ("recipe_id");--> statement-breakpoint
 CREATE INDEX "user_email_idx" ON "user" USING btree ("email");--> statement-breakpoint
 CREATE INDEX "user_username_idx" ON "user" USING btree ("username");--> statement-breakpoint
 CREATE INDEX "user_created_at_idx" ON "user" USING btree ("created_at");--> statement-breakpoint

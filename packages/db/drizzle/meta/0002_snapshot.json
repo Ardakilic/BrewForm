@@ -1,6 +1,6 @@
 {
-  "id": "31446b67-50d2-401f-b188-11dd003862b6",
-  "prevId": "64319fc6-7019-4f5d-ad23-41827bf84e28",
+  "id": "7c3bfc3c-967a-4da8-84d4-96def5485a60",
+  "prevId": "b79a7a6c-7355-4ae8-ae1a-34e4b851ec6c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -440,6 +440,281 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.coffee_variety": {
+      "name": "coffee_variety",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "coffee_variety_category",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "species": {
+          "name": "species",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origin": {
+          "name": "origin",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "spread": {
+          "name": "spread",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "altitude_range_m": {
+          "name": "altitude_range_m",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cup_profile": {
+          "name": "cup_profile",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "body": {
+          "name": "body",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "acidity": {
+          "name": "acidity",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "caffeine_pct": {
+          "name": "caffeine_pct",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processing_compatibility": {
+          "name": "processing_compatibility",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "disease_resistance": {
+          "name": "disease_resistance",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "yield": {
+          "name": "yield",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plant_size": {
+          "name": "plant_size",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sub_varieties": {
+          "name": "sub_varieties",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fermentation": {
+          "name": "fermentation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "drying_time_days": {
+          "name": "drying_time_days",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "drying_method": {
+          "name": "drying_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mucilage_retention_pct": {
+          "name": "mucilage_retention_pct",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_range": {
+          "name": "price_range",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processing": {
+          "name": "processing",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type_label": {
+          "name": "type_label",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notable_farms": {
+          "name": "notable_farms",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notable_regions": {
+          "name": "notable_regions",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "regional_variants": {
+          "name": "regional_variants",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "global_share_pct": {
+          "name": "global_share_pct",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_system": {
+          "name": "is_system",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "coffee_variety_name_idx": {
+          "name": "coffee_variety_name_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "coffee_variety_category_idx": {
+          "name": "coffee_variety_category_idx",
+          "columns": [
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "coffee_variety_deleted_at_idx": {
+          "name": "coffee_variety_deleted_at_idx",
+          "columns": [
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "coffee_variety_created_by_user_id_fk": {
+          "name": "coffee_variety_created_by_user_id_fk",
+          "tableFrom": "coffee_variety",
+          "tableTo": "user",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.comment": {
       "name": "comment",
       "schema": "",
@@ -619,6 +894,109 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.email_verification_token": {
+      "name": "email_verification_token",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "email_verification_token_user_id_idx": {
+          "name": "email_verification_token_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "email_verification_token_expires_at_idx": {
+          "name": "email_verification_token_expires_at_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "email_verification_token_user_id_user_id_fk": {
+          "name": "email_verification_token_user_id_user_id_fk",
+          "tableFrom": "email_verification_token",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "email_verification_token_token_unique": {
+          "name": "email_verification_token_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.equipment": {
       "name": "equipment",
       "schema": "",
@@ -665,6 +1043,13 @@
           "type": "varchar(36)",
           "primaryKey": false,
           "notNull": false
+        },
+        "is_system": {
+          "name": "is_system",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -741,6 +1126,162 @@
           "tableTo": "user",
           "columnsFrom": [
             "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.equipment_delete_request": {
+      "name": "equipment_delete_request",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "equipment_id": {
+          "name": "equipment_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_by_id": {
+          "name": "requested_by_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "equipment_delete_request_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "reviewed_by_id": {
+          "name": "reviewed_by_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "edr_equipment_id_idx": {
+          "name": "edr_equipment_id_idx",
+          "columns": [
+            {
+              "expression": "equipment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "edr_status_idx": {
+          "name": "edr_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "edr_deleted_at_idx": {
+          "name": "edr_deleted_at_idx",
+          "columns": [
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "equipment_delete_request_equipment_id_equipment_id_fk": {
+          "name": "equipment_delete_request_equipment_id_equipment_id_fk",
+          "tableFrom": "equipment_delete_request",
+          "tableTo": "equipment",
+          "columnsFrom": [
+            "equipment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "equipment_delete_request_requested_by_id_user_id_fk": {
+          "name": "equipment_delete_request_requested_by_id_user_id_fk",
+          "tableFrom": "equipment_delete_request",
+          "tableTo": "user",
+          "columnsFrom": [
+            "requested_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "equipment_delete_request_reviewed_by_id_user_id_fk": {
+          "name": "equipment_delete_request_reviewed_by_id_user_id_fk",
+          "tableFrom": "equipment_delete_request",
+          "tableTo": "user",
+          "columnsFrom": [
+            "reviewed_by_id"
           ],
           "columnsTo": [
             "id"
@@ -1268,7 +1809,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "recipe_taste_note_intensity_check": {
+          "name": "recipe_taste_note_intensity_check",
+          "value": "\"recipe_taste_note\".\"intensity\" BETWEEN 1 AND 3"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.recipe_version_photo": {
@@ -1503,6 +2049,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "tds": {
+          "name": "tds",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "brew_ratio": {
           "name": "brew_ratio",
           "type": "real",
@@ -1527,11 +2079,29 @@
           "primaryKey": false,
           "notNull": false
         },
+        "coffee_variety_id": {
+          "name": "coffee_variety_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "coffee_variety_name": {
+          "name": "coffee_variety_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "personal_notes": {
           "name": "personal_notes",
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "preparation_notes": {
+          "name": "preparation_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         },
         "is_favourite": {
           "name": "is_favourite",
@@ -1656,6 +2226,19 @@
           "tableTo": "bean",
           "columnsFrom": [
             "bean_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "recipe_version_coffee_variety_id_coffee_variety_id_fk": {
+          "name": "recipe_version_coffee_variety_id_coffee_variety_id_fk",
+          "tableFrom": "recipe_version",
+          "tableTo": "coffee_variety",
+          "columnsFrom": [
+            "coffee_variety_id"
           ],
           "columnsTo": [
             "id"
@@ -2352,6 +2935,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -3137,7 +3726,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "user_recipe_rating_rating_check": {
+          "name": "user_recipe_rating_rating_check",
+          "value": "\"user_recipe_rating\".\"rating\" BETWEEN 1 AND 10"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.user": {
@@ -3155,6 +3749,12 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
+        },
+        "email_verified_at": {
+          "name": "email_verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "username": {
           "name": "username",
@@ -3446,6 +4046,15 @@
         "siphon"
       ]
     },
+    "public.coffee_variety_category": {
+      "name": "coffee_variety_category",
+      "schema": "public",
+      "values": [
+        "variety",
+        "processing",
+        "market_name"
+      ]
+    },
     "public.date_format": {
       "name": "date_format",
       "schema": "public",
@@ -3469,7 +4078,11 @@
         "turkish_coffee",
         "pour_over",
         "cold_brew",
-        "french_press"
+        "french_press",
+        "aeropress",
+        "drip_coffee",
+        "moka_pot",
+        "siphon"
       ]
     },
     "public.emoji_tag": {
@@ -3484,19 +4097,34 @@
         "nauseated"
       ]
     },
+    "public.equipment_delete_request_status": {
+      "name": "equipment_delete_request_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "approved",
+        "rejected"
+      ]
+    },
     "public.equipment_type": {
       "name": "equipment_type",
       "schema": "public",
       "values": [
+        "espresso_machine",
+        "grinder",
+        "pour_over_brewer",
+        "immersion_brewer",
+        "kettle",
+        "milk_tool",
+        "scale_accessory",
+        "roaster",
         "portafilter",
         "basket",
         "puck_screen",
         "paper_filter",
         "tamper",
-        "gooseneck_kettle",
         "mesh_filter",
         "cezve",
-        "scale",
         "thermometer",
         "other"
       ]
