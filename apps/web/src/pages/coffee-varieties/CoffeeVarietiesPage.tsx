@@ -65,8 +65,10 @@ export function CoffeeVarietiesPage() {
     } else {
       params.delete(key);
     }
-    params.delete('page');
-    setSearchParams(params);
+    if (key !== 'page') {
+      params.delete('page');
+    }
+    setSearchParams(params, { preventScrollReset: true });
   }
 
   const hasActiveFilters = !!(category || search);

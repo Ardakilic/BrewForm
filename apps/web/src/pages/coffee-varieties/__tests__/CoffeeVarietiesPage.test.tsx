@@ -424,6 +424,66 @@ describe('CoffeeVarietiesPage', () => {
     );
   });
 
+  it('navigates to next page when Next is clicked', async () => {
+    const setSearchParams = vi.fn();
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ page: '1' }),
+      setSearchParams,
+    ]);
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
+      {
+        id: 'v1',
+        name: 'Bourbon',
+        species: 'Arabica',
+        category: 'variety',
+        origin: null,
+        cupProfile: null,
+        slug: 'bourbon',
+      },
+    ], 25));
+    render(<CoffeeVarietiesPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    // Use fireEvent since userEvent has type issues in this project setup
+    const { fireEvent } = await import('@testing-library/react');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(setSearchParams).toHaveBeenCalledTimes(1);
+    const [params, options] = setSearchParams.mock.calls[0];
+    expect(params.get('page')).toBe('2');
+    expect(options).toEqual({ preventScrollReset: true });
+  });
+
+  it('navigates to previous page when Previous is clicked', async () => {
+    const setSearchParams = vi.fn();
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ page: '3' }),
+      setSearchParams,
+    ]);
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
+      {
+        id: 'v1',
+        name: 'Bourbon',
+        species: 'Arabica',
+        category: 'variety',
+        origin: null,
+        cupProfile: null,
+        slug: 'bourbon',
+      },
+    ], 25));
+    render(<CoffeeVarietiesPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    const { fireEvent } = await import('@testing-library/react');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+
+    expect(setSearchParams).toHaveBeenCalledTimes(1);
+    const [params] = setSearchParams.mock.calls[0];
+    expect(params.get('page')).toBe('2');
+  });
+
   it('links coffee variety cards to detail page', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
       {

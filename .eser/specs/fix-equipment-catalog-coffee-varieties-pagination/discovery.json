@@ -1,0 +1,61 @@
+{
+  "status_quo": "These are confirmed production bugs causing real user pain: (1) Equipment catalog shows items but pagination is hidden because totalPages reads data.total (undefined) instead of data.meta.pagination.total, so totalPages always equals 1 when <=12 items returned. Users can only see the first page. (2) Coffee varieties pagination buttons exist but clicking Next/Previous calls updateFilter which unconditionally deletes the page param after setting it, so navigation silently resets to page 1. Browser also scrolls to top on each click. (3) URL /equipment/catalog is inconsistent with plural naming conventions used elsewhere (/recipes, /setups, /beans).",
+  "ambition": "1-star: Fix the three bugs with minimal changes — correct totalPages calculation, fix updateFilter to preserve page param, add preventScrollReset, rename route and links. 10-star: Extract a reusable Pagination component shared across all listing pages, add comprehensive pagination tests for all pages, add pagination URL param validation, and ensure scroll position persistence across all filter changes.",
+  "reversibility": "The URL change from /equipment/catalog to /equipments is a one-way door for bookmarked URLs. We should add a redirect from /equipment/catalog to /equipments to preserve existing bookmarks. Other changes (bug fixes) are fully reversible.",
+  "user_impact": "Yes — this is a breaking change for anyone with /equipment/catalog bookmarked. The pagination fixes are purely additive (enabling functionality that was broken). Existing users will now be able to navigate through equipment and coffee variety pages properly.",
+  "verification": "Unit tests with Vitest + @testing-library/react: (1) EquipmentCatalogPage — mock API with meta.pagination.total/totalPages, assert pagination shows correct totalPages and Next/Previous buttons appear; test clicking Next sets page param correctly. (2) CoffeeVarietiesPage — test clicking Next actually updates page param to 2 (not 1); test setSearchParams is called with preventScrollReset. (3) Navbar test — verify /equipments link is rendered. Run make check-web and make test-specific filter=path/to/test.tsx after changes.",
+  "scope_boundary": "This feature should NOT: (1) Extract a reusable Pagination component yet — that is a follow-up refactor. (2) Change backend API behavior — the API already returns correct pagination metadata. (3) Add redirects on the backend — frontend router redirect is sufficient. (4) Modify other pages' pagination (recipes, setups, beans) — they may have similar bugs but are out of scope unless identical patterns exist.",
+  "expansions": [
+    {
+      "id": "1",
+      "proposal": "Extract reusable Pagination component for all listing pages",
+      "effort": "S",
+      "risk": "Low",
+      "completeness_delta": "Reduces duplication, easier to test",
+      "verdict": "Defer"
+    },
+    {
+      "id": "2",
+      "proposal": "Add router redirect from /equipment/catalog to /equipments",
+      "effort": "XS",
+      "risk": "Low",
+      "completeness_delta": "Preserves bookmarks",
+      "verdict": "Add to scope"
+    },
+    {
+      "id": "3",
+      "proposal": "Audit all other listing pages for identical updateFilter/totalPages bugs",
+      "effort": "S",
+      "risk": "Low",
+      "completeness_delta": "Catches similar bugs early",
+      "verdict": "Defer"
+    }
+  ],
+  "architectural_decisions": [
+    {
+      "id": "1",
+      "question": "Should we add a frontend redirect for /equipment/catalog?",
+      "options": ["Yes — add route redirect in router.tsx", "No — just change the route and let old links 404"],
+      "recommendation": "Add redirect in router.tsx using a Navigate component",
+      "completeness_score": 10,
+      "resolved": true
+    }
+  ],
+  "error_map": [
+    {
+      "codepath": "EquipmentCatalogPage totalPages calculation",
+      "failure_mode": "data.total is undefined, totalPages defaults to items.length/12",
+      "handling": "Use data.meta.pagination.totalPages (backend already computes it)"
+    },
+    {
+      "codepath": "updateFilter for page navigation",
+      "failure_mode": "params.delete('page') removes the just-set page param",
+      "handling": "Only delete page when key !== 'page'"
+    },
+    {
+      "codepath": "setSearchParams on pagination click",
+      "failure_mode": "Browser scrolls to top on URL change",
+      "handling": "Pass { preventScrollReset: true } as second arg to setSearchParams"
+    }
+  ]
+}

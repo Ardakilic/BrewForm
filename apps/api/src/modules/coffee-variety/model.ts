@@ -1,6 +1,6 @@
 // deno-lint-ignore-file require-await
 import type { CoffeeVarietyCategory } from '@brewform/shared';
-import { and, asc, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
 
@@ -85,10 +85,12 @@ export async function getRecipesUsingVariety(
       where: and(
         eq(recipes.visibility, 'public'),
         isNull(recipes.deletedAt),
-        sql`${recipes.currentVersionId} IN (
-          SELECT ${recipeVersions.id} FROM ${recipeVersions}
-          WHERE ${eq(recipeVersions.coffeeVarietyId, varietyId)}
-        )`,
+        inArray(
+          recipes.currentVersionId,
+          db.select({ id: recipeVersions.id }).from(recipeVersions).where(
+            eq(recipeVersions.coffeeVarietyId, varietyId),
+          ),
+        ),
       ),
       orderBy: desc(recipes.createdAt),
       limit: perPage,

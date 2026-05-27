@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EquipmentCatalogPage } from './EquipmentCatalogPage.tsx';
 
 // ── External deps ──────────────────────────────────────────────────────────
@@ -105,20 +105,34 @@ function makeSearchParams(init: Record<string, string> = {}) {
   return [params, vi.fn()] as ReturnType<typeof useSearchParams>;
 }
 
+function makePaginatedResponse(items: unknown[], total: number) {
+  return {
+    data: items,
+    meta: {
+      pagination: {
+        page: 1,
+        perPage: 12,
+        total,
+        totalPages: Math.ceil(total / 12),
+      },
+    },
+  };
+}
+
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseSearchParams.mockReturnValue(makeSearchParams());
-  mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+  mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('EquipmentCatalogPage', () => {
   it('renders page title and subtitle — English', async () => {
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -129,7 +143,7 @@ describe('EquipmentCatalogPage', () => {
 
   it('renders page title and subtitle — Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -139,27 +153,24 @@ describe('EquipmentCatalogPage', () => {
   });
 
   it('renders equipment items from API', async () => {
-    mockApiGetWithMeta.mockResolvedValue({
-      data: [
-        {
-          id: 'eq-1',
-          name: 'Fellow Stagg',
-          brand: 'Fellow',
-          model: 'Stagg EKG',
-          type: 'kettle',
-          description: 'Electric pour-over kettle',
-        },
-        {
-          id: 'eq-2',
-          name: 'Acaia Lunar',
-          brand: 'Acaia',
-          model: 'Lunar',
-          type: 'scale_accessory',
-          description: 'Precision scale',
-        },
-      ],
-      total: 2,
-    });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
+      {
+        id: 'eq-1',
+        name: 'Fellow Stagg',
+        brand: 'Fellow',
+        model: 'Stagg EKG',
+        type: 'kettle',
+        description: 'Electric pour-over kettle',
+      },
+      {
+        id: 'eq-2',
+        name: 'Acaia Lunar',
+        brand: 'Acaia',
+        model: 'Lunar',
+        type: 'scale_accessory',
+        description: 'Precision scale',
+      },
+    ], 2));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -178,7 +189,7 @@ describe('EquipmentCatalogPage', () => {
   });
 
   it('shows empty state when no results', async () => {
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -188,7 +199,7 @@ describe('EquipmentCatalogPage', () => {
 
   it('shows empty state in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -218,7 +229,7 @@ describe('EquipmentCatalogPage', () => {
   });
 
   it('renders category filter buttons', async () => {
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -232,7 +243,7 @@ describe('EquipmentCatalogPage', () => {
 
   it('renders category filter buttons in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -243,7 +254,7 @@ describe('EquipmentCatalogPage', () => {
   });
 
   it('renders search input with placeholder', async () => {
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -253,7 +264,7 @@ describe('EquipmentCatalogPage', () => {
 
   it('renders search input with Turkish placeholder', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -263,7 +274,7 @@ describe('EquipmentCatalogPage', () => {
 
   it('shows active filters and clear all when filter is applied', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ type: 'kettle' }));
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -275,7 +286,7 @@ describe('EquipmentCatalogPage', () => {
   it('shows active filters in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
     mockUseSearchParams.mockReturnValue(makeSearchParams({ type: 'kettle' }));
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -286,7 +297,7 @@ describe('EquipmentCatalogPage', () => {
 
   it('calls API with type filter', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ type: 'espresso_machine' }));
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -298,7 +309,7 @@ describe('EquipmentCatalogPage', () => {
 
   it('calls API with search filter', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ search: 'Stagg' }));
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -310,7 +321,7 @@ describe('EquipmentCatalogPage', () => {
 
   it('calls API with both type and search filters', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ type: 'kettle', search: 'Fellow' }));
-    mockApiGetWithMeta.mockResolvedValue({ data: [], total: 0 });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -324,17 +335,14 @@ describe('EquipmentCatalogPage', () => {
   });
 
   it('shows pagination when multiple pages exist', async () => {
-    mockApiGetWithMeta.mockResolvedValue({
-      data: [{
-        id: 'eq-1',
-        name: 'Test',
-        brand: null,
-        model: null,
-        type: 'kettle',
-        description: null,
-      }],
-      total: 25,
-    });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([{
+      id: 'eq-1',
+      name: 'Test',
+      brand: null,
+      model: null,
+      type: 'kettle',
+      description: null,
+    }], 25));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -345,22 +353,72 @@ describe('EquipmentCatalogPage', () => {
 
   it('shows pagination in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue({
-      data: [{
-        id: 'eq-1',
-        name: 'Test',
-        brand: null,
-        model: null,
-        type: 'kettle',
-        description: null,
-      }],
-      total: 25,
-    });
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([{
+      id: 'eq-1',
+      name: 'Test',
+      brand: null,
+      model: null,
+      type: 'kettle',
+      description: null,
+    }], 25));
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByText(/Sayfa 1 \/ 3/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'İleri' })).toBeInTheDocument();
+  });
+
+  it('navigates to next page when Next is clicked', async () => {
+    const setSearchParams = vi.fn();
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ page: '1' }));
+    // Override the second element of the tuple to capture calls
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ page: '1' }),
+      setSearchParams,
+    ]);
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([{
+      id: 'eq-1',
+      name: 'Test',
+      brand: null,
+      model: null,
+      type: 'kettle',
+      description: null,
+    }], 25));
+    render(<EquipmentCatalogPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(setSearchParams).toHaveBeenCalledTimes(1);
+    const [params, options] = setSearchParams.mock.calls[0];
+    expect(params.get('page')).toBe('2');
+    expect(options).toEqual({ preventScrollReset: true });
+  });
+
+  it('navigates to previous page when Previous is clicked', async () => {
+    const setSearchParams = vi.fn();
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ page: '3' }),
+      setSearchParams,
+    ]);
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([{
+      id: 'eq-1',
+      name: 'Test',
+      brand: null,
+      model: null,
+      type: 'kettle',
+      description: null,
+    }], 25));
+    render(<EquipmentCatalogPage />);
+
+    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+
+    expect(setSearchParams).toHaveBeenCalledTimes(1);
+    const [params] = setSearchParams.mock.calls[0];
+    expect(params.get('page')).toBe('2');
   });
 });

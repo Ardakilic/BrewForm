@@ -49,13 +49,19 @@ export function EquipmentCatalogPage() {
     if (type) params.set('type', type);
     if (debouncedSearch) params.set('search', debouncedSearch);
 
-    api.getWithMeta<{ data: CatalogEquipmentItem[]; total?: number }>(
+    api.getWithMeta<{
+      data: CatalogEquipmentItem[];
+      meta?: { pagination?: { total?: number; totalPages?: number } };
+    }>(
       `/equipment?${params.toString()}`,
     )
       .then((data) => {
         const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
         setEquipment(items);
-        setTotalPages(Math.ceil((data?.total ?? items.length) / 12) || 1);
+        setTotalPages(
+          data?.meta?.pagination?.totalPages ||
+            Math.ceil((data?.meta?.pagination?.total ?? items.length) / 12) || 1,
+        );
       })
       .catch(() => setError(t('equipment.catalog.error.load')))
       .finally(() => setLoading(false));
@@ -68,8 +74,10 @@ export function EquipmentCatalogPage() {
     } else {
       params.delete(key);
     }
-    params.delete('page');
-    setSearchParams(params);
+    if (key !== 'page') {
+      params.delete('page');
+    }
+    setSearchParams(params, { preventScrollReset: true });
   }
 
   const hasActiveFilters = !!(type || search);

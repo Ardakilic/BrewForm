@@ -6,5 +6,9 @@
  * environment state and avoids cross-test pollution from Deno.env.set.
  */
 
-Deno.env.set('DATABASE_URL', 'postgresql://test:test@localhost:5432/test');
-Deno.env.set('JWT_SECRET', 'a-very-long-secret-key-for-testing-12345');
+if (!Deno.env.get('DATABASE_URL')) {
+  Deno.env.set('DATABASE_URL', 'postgresql://test:test@localhost:5432/test');
+}
+if (!Deno.env.get('JWT_SECRET')) {
+  Deno.env.set('JWT_SECRET', 'a-very-long-secret-key-for-testing-12345');
+}

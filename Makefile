@@ -143,12 +143,14 @@ flush-cache: ## Clear Deno KV cache
 
 flush-contents: flush-db flush-cache ## Truncate all database tables and clear Deno KV cache
 
-db-reset: ## Full reset: drop volumes, recreate DB, push schema, seed
-	docker compose down -v
+db-reset: ## Full reset: recreate DB, push schema, seed, flush cache
 	docker compose up -d postgres
-	@sleep 3
+	@until docker compose exec postgres pg_isready -U brewform > /dev/null 2>&1; do sleep 1; done
+	-docker compose exec -T postgres psql -U brewform -d postgres -c "DROP DATABASE IF EXISTS brewform WITH (FORCE);"
+	-docker compose exec -T postgres psql -U brewform -d postgres -c "CREATE DATABASE brewform;"
 	$(MAKE) db-push
 	$(MAKE) db-seed
+	$(MAKE) flush-cache
 
 # --- Admin Setup ---
 

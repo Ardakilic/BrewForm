@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { Layout } from './components/layout/Layout.tsx';
 import { RequireAuth } from './components/auth/RequireAuth.tsx';
 
@@ -130,13 +130,17 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'equipment/catalog',
+        path: 'equipments',
         lazy: async () => {
           const { EquipmentCatalogPage } = await import(
             './pages/equipment/EquipmentCatalogPage.tsx'
           );
           return { Component: EquipmentCatalogPage };
         },
+      },
+      {
+        path: 'equipment/catalog',
+        element: <Navigate to='/equipments' replace />,
       },
       {
         path: 'equipment/:id',

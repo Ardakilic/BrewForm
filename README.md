@@ -164,6 +164,12 @@ See [docs/serena-mcp.md](docs/serena-mcp.md) for detailed setup, architecture, a
 > are started on-demand via `make dev`. This prevents a "port already allocated" error that would
 > occur if the API container were already running when you run `make dev`.
 
+> **Docker Volume Strategy**
+> Dev containers use a named `node_modules` volume layered over the bind mount. This ensures
+> platform-specific native bindings (e.g. `rolldown`) use the Linux binaries inside the container
+> rather than the host's macOS binaries. See [`docs/docker.md`](docs/docker.md) for details and
+> troubleshooting.
+
 > **Why `deno task` instead of a task runner?**
 > Deno's built-in task runner with `--cwd` (run in a specific directory) and explicit per-workspace
 > sub-tasks covers all orchestration needs. Granular tasks like `check:api`, `build:web`, and
@@ -182,7 +188,7 @@ make db-studio       # Open Drizzle Studio (GUI)
 make flush-db        # Truncate all database tables
 make flush-cache     # Clear Deno KV cache
 make flush-contents  # Truncate all tables + clear Deno KV cache
-make db-reset        # Full reset: drop volumes, push schema, re-seed
+make db-reset        # Full reset: recreate DB, push schema, re-seed, flush cache
 ```
 
 ## Architecture
@@ -274,6 +280,7 @@ The API is versioned at `/api/v1/`. See [docs/api.md](docs/api.md) for the full 
 | [docs/architecture.md](docs/architecture.md)           | Monorepo structure, module pattern, conventions             |
 | [docs/request-lifecycle.md](docs/request-lifecycle.md) | End-to-end trace of an HTTP request through the API         |
 | [docs/decisions.md](docs/decisions.md)                 | Architectural decision records (the _why_ behind the stack) |
+| [docs/docker.md](docs/docker.md)                       | Docker development environment, volume strategy, troubleshooting |
 | [docs/serena-mcp.md](docs/serena-mcp.md)               | Serena MCP setup, architecture, and troubleshooting        |
 
 ## License

@@ -1,5 +1,10 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
+import '../../test-setup.ts';
+import { afterAll, afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
+import { eq } from 'drizzle-orm';
+import { db, client } from '@brewform/db';
+import { coffeeVarieties, recipes, recipeVersions, users } from '@brewform/db/schema';
+import * as model from './model.ts';
 
 describe('Coffee Variety Model', () => {
   describe('findMany pagination', () => {
@@ -104,6 +109,112 @@ describe('Coffee Variety Model', () => {
       conditions.push(`id = ${id}`);
       conditions.push('deletedAt IS NULL');
       expect(conditions).toHaveLength(2);
+    });
+  });
+
+  afterAll(async () => {
+    await client.end();
+  });
+
+  describe('getRecipesUsingVariety — integration', () => {
+    let userId: string;
+    let varietyId: string;
+    let recipeId: string;
+    let versionId: string;
+
+    beforeEach(async () => {
+      userId = crypto.randomUUID();
+      varietyId = crypto.randomUUID();
+      recipeId = crypto.randomUUID();
+      versionId = crypto.randomUUID();
+
+      await db.insert(users).values({
+        id: userId,
+        email: `test-${userId}@example.com`,
+        username: `testuser-${userId}`,
+        passwordHash: 'hash',
+      });
+
+      await db.insert(coffeeVarieties).values({
+        id: varietyId,
+        name: 'Test Variety',
+        category: 'variety',
+        isSystem: false,
+        createdBy: userId,
+      });
+
+      await db.insert(recipes).values({
+        id: recipeId,
+        slug: `test-recipe-${recipeId}`,
+        title: 'Test Recipe',
+        authorId: userId,
+        visibility: 'public',
+      });
+
+      await db.insert(recipeVersions).values({
+        id: versionId,
+        recipeId,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: '',
+        coffeeVarietyId: varietyId,
+      });
+
+      await db.update(recipes)
+        .set({ currentVersionId: versionId })
+        .where(eq(recipes.id, recipeId));
+    });
+
+    afterEach(async () => {
+      await db.delete(recipeVersions).where(eq(recipeVersions.recipeId, recipeId));
+      await db.delete(recipes).where(eq(recipes.id, recipeId));
+      await db.delete(coffeeVarieties).where(eq(coffeeVarieties.id, varietyId));
+      await db.delete(users).where(eq(users.id, userId));
+    });
+
+    it('should return recipes that use the given coffee variety', async () => {
+      const result = await model.getRecipesUsingVariety(varietyId, 1, 10);
+      expect(result.total).toBe(1);
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].id).toBe(recipeId);
+    });
+
+    it('should return empty result when no recipes use the variety', async () => {
+      const otherVarietyId = crypto.randomUUID();
+      await db.insert(coffeeVarieties).values({
+        id: otherVarietyId,
+        name: 'Other Variety',
+        category: 'variety',
+        isSystem: false,
+        createdBy: userId,
+      });
+
+      const result = await model.getRecipesUsingVariety(otherVarietyId, 1, 10);
+      expect(result.total).toBe(0);
+      expect(result.data.length).toBe(0);
+
+      await db.delete(coffeeVarieties).where(eq(coffeeVarieties.id, otherVarietyId));
+    });
+
+    it('should not include soft-deleted recipes', async () => {
+      await db.update(recipes)
+        .set({ deletedAt: new Date() })
+        .where(eq(recipes.id, recipeId));
+
+      const result = await model.getRecipesUsingVariety(varietyId, 1, 10);
+      expect(result.total).toBe(0);
+      expect(result.data.length).toBe(0);
+    });
+
+    it('should not include non-public recipes', async () => {
+      await db.update(recipes)
+        .set({ visibility: 'private' })
+        .where(eq(recipes.id, recipeId));
+
+      const result = await model.getRecipesUsingVariety(varietyId, 1, 10);
+      expect(result.total).toBe(0);
+      expect(result.data.length).toBe(0);
     });
   });
 });

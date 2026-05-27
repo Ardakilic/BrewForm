@@ -91,6 +91,7 @@ const mockUseTheme = vi.mocked(useTheme);
 const trTranslations: Record<string, string> = {
   'app.name': 'BrewForm',
   'nav.recipes': 'Tarifler',
+  'nav.equipment': 'Ekipmanlar',
   'nav.login': 'Giriş Yap',
   'nav.register': 'Kayıt Ol',
   'nav.logout': 'Çıkış Yap',
@@ -109,6 +110,7 @@ const trTranslations: Record<string, string> = {
 const enTranslations: Record<string, string> = {
   'app.name': 'BrewForm',
   'nav.recipes': 'Recipes',
+  'nav.equipment': 'Equipment',
   'nav.login': 'Log In',
   'nav.register': 'Sign Up',
   'nav.logout': 'Log Out',
@@ -898,6 +900,43 @@ describe('Navbar — active route indicator', () => {
 
     // Other items should be inactive
     const recipesLink = getNavLinkByHref('/recipes');
+    expect(recipesLink).toBeDefined();
+    expect(recipesLink!.className).toContain(INACTIVE_CLASS_FRAGMENT);
+    expect(recipesLink!.className).not.toContain(ACTIVE_CLASS_FRAGMENT);
+  });
+
+  it('renders equipment nav link with correct href', () => {
+    render(<Navbar />);
+
+    const equipmentLink = getNavLinkByHref('/equipments');
+    expect(equipmentLink).toBeDefined();
+    expect(equipmentLink!.textContent).toContain('Equipment');
+  });
+
+  it('renders equipment nav link in Turkish', () => {
+    mockUseTranslation.mockReturnValue({
+      ...defaultTranslation,
+      locale: 'tr',
+      t: (key: string) => trTranslations[key] ?? key,
+    });
+    render(<Navbar />);
+
+    const equipmentLink = getNavLinkByHref('/equipments');
+    expect(equipmentLink).toBeDefined();
+    expect(equipmentLink!.textContent).toContain('Ekipmanlar');
+  });
+
+  it('highlights Equipment link when current path is /equipments', () => {
+    mockNavState.activePath = '/equipments';
+    render(<Navbar />);
+
+    const equipmentLink = getNavLinkByHref('/equipments');
+    expect(equipmentLink).toBeDefined();
+    expect(equipmentLink!.className).toContain(ACTIVE_CLASS_FRAGMENT);
+
+    // Other items should be inactive
+    const recipesLink = getNavLinkByHref('/recipes');
+    expect(recipesLink).toBeDefined();
     expect(recipesLink!.className).toContain(INACTIVE_CLASS_FRAGMENT);
     expect(recipesLink!.className).not.toContain(ACTIVE_CLASS_FRAGMENT);
   });

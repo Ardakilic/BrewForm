@@ -73,7 +73,7 @@ export function EquipmentDetailPage() {
         <h1 className='text-2xl font-bold mb-4' style={{ color: 'var(--text-primary)' }}>
           {t('equipment.error.notFound')}
         </h1>
-        <Link to='/equipment/catalog' className='btn-primary'>
+        <Link to='/equipments' className='btn-primary'>
           {t('equipment.backToList')}
         </Link>
       </div>
@@ -96,7 +96,7 @@ export function EquipmentDetailPage() {
         >
           <li>
             <Link
-              to='/equipment/catalog'
+              to='/equipments'
               className='transition-colors'
               style={{ color: 'var(--text-secondary)' }}
             >

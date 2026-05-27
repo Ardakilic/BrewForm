@@ -240,7 +240,10 @@ describe('Seed Data Integrity', () => {
     });
 
     it('should reference existing equipment by name', () => {
-      const validEquipment = new Set(equipmentSeedData.map((e) => e.name));
+      const validEquipment = new Set([
+        ...equipmentSeedData.map((e) => e.name),
+        ...equipmentCatalogSeedData.map((e) => e.name),
+      ]);
       for (const recipe of recipeSeedData) {
         for (const equipName of recipe.equipmentNames) {
           expect(validEquipment.has(equipName)).toBe(true);

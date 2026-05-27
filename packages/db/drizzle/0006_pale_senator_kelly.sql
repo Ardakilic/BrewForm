@@ -1,1 +1,0 @@
-ALTER TABLE "recipe_version" ADD COLUMN "tds" numeric(4, 2);
