@@ -97,14 +97,14 @@ build-shared: ## Type-check shared package as build artifact
 check-tests: ## Type-check test files
 	docker compose run --rm --no-deps app deno check apps/api/src/ packages/shared/src/
 
-test: ## Run all tests (API + shared + web)
+test: up ## Run all tests (API + shared + web)
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/ && \
 	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
-test-coverage: ## Run all tests with coverage
+test-coverage: up ## Run all tests with coverage
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
 
-test-api: ## Run API tests only
+test-api: up ## Run API tests only
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/
 
 test-shared: ## Run shared package tests only
@@ -113,32 +113,32 @@ test-shared: ## Run shared package tests only
 test-web: ## Run web (Vitest) tests
 	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
-test-specific: ## Run specific test (use filter=)
+test-specific: up ## Run specific test (use filter=)
 	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
 
 # --- Database ---
 
 DRIZZLE_KIT := npm:drizzle-kit@0.31
 
-db-migrate: ## Run database migrations
+db-migrate: up ## Run database migrations
 	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
 
-db-generate: ## Generate database migrations
+db-generate: up ## Generate database migrations
 	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) generate"
 
-db-push: ## Push schema changes
+db-push: up ## Push schema changes
 	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) push"
 
-db-seed: ## Seed the database
+db-seed: up ## Seed the database
 	docker compose run --rm app deno run --allow-all packages/db/src/seed.ts
 
-db-studio: ## Open Drizzle Studio
+db-studio: up ## Open Drizzle Studio
 	docker compose run --rm -p 5555:5555 app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) studio --host=0.0.0.0 --port=5555"
 
-flush-db: ## Truncate all database tables
+flush-db: up ## Truncate all database tables
 	docker compose run --rm app deno run --allow-env --allow-net apps/api/scripts/flush-db.ts
 
-flush-cache: ## Clear Deno KV cache
+flush-cache: up ## Clear Deno KV cache
 	docker compose run --rm app deno run --allow-env --allow-read --allow-write apps/api/scripts/flush-cache.ts
 
 flush-contents: flush-db flush-cache ## Truncate all database tables and clear Deno KV cache
@@ -154,7 +154,7 @@ db-reset: ## Full reset: recreate DB, push schema, seed, flush cache
 
 # --- Admin Setup ---
 
-setup: ## Run admin setup
+setup: up ## Run admin setup
 	docker compose run --rm app deno run --allow-all apps/api/src/setup.ts
 
 # --- Development ---
