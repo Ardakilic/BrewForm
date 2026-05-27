@@ -2,82 +2,50 @@ import '../../test-setup.ts';
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import type { Context, Next } from 'hono';
 import type { AppEnv } from '../../types/hono.ts';
-import {
-  CoffeeVarietyCreateSchema,
-  CoffeeVarietyFilterSchema,
-  CoffeeVarietyUpdateSchema,
-} from '@brewform/shared/schemas';
+import coffeeVarietyRouter, { deps } from './index.ts';
+
+deps.authMiddleware = async (_c: Context, next: Next) => {
+  await next();
+};
+
+const mockService = {
+  listCoffeeVarieties: (params: { search?: string; page: number; perPage: number }) => {
+    if (params.search) {
+      return Promise.resolve({
+        data: [{ id: 'var-1', name: 'Arabica' }],
+        total: 1,
+      });
+    }
+    return Promise.resolve({ data: [], total: 0 });
+  },
+  getCoffeeVarietyById: (id: string) => {
+    if (id === 'nonexistent') return Promise.resolve(null);
+    return Promise.resolve({ id, name: 'Arabica', category: 'variety' });
+  },
+  createCoffeeVariety: (_data: Record<string, unknown>, _userId: string) => Promise.resolve({}),
+  updateCoffeeVariety: (_id: string, data: Record<string, unknown>, _userId: string) =>
+    Promise.resolve(data),
+  deleteCoffeeVariety: (_id: string, _userId: string) =>
+    Promise.resolve({ message: 'Variety deleted' }),
+  getRecipesForVariety: (_varietyId: string, _page: number, _perPage: number) =>
+    Promise.resolve({ data: [], total: 0 }),
+};
+
+deps.service = { ...deps.service, ...mockService } as typeof deps.service;
 
 function createTestApp() {
   const app = new Hono<AppEnv>();
 
   app.use('*', async (c, next) => {
+    c.set('requestId', crypto.randomUUID());
     c.set('userId', 'test-user-id');
     c.set('user', { id: 'test-user-id', isAdmin: false } as any);
     await next();
   });
 
-  app.get('/coffee-varieties', zValidator('query', CoffeeVarietyFilterSchema), (c) => {
-    const query = c.req.valid('query');
-    return c.json({
-      success: true,
-      data: [],
-      meta: {
-        page: query.page ?? 1,
-        perPage: query.perPage ?? 20,
-        total: 0,
-        totalPages: 0,
-      },
-    });
-  });
-
-  app.get('/coffee-varieties/search', (c) => {
-    const q = c.req.query('q');
-    if (!q || q.length < 2) {
-      return c.json({ success: true, data: [] });
-    }
-    return c.json({ success: true, data: [{ id: 'var-1', name: 'Arabica' }] });
-  });
-
-  app.post('/coffee-varieties', zValidator('json', CoffeeVarietyCreateSchema), (c) => {
-    return c.json({ success: true, data: {} }, 201);
-  });
-
-  app.get('/coffee-varieties/:id', (c) => {
-    const id = c.req.param('id');
-    if (id === 'nonexistent') {
-      return c.json(
-        { success: false, error: { code: 'NOT_FOUND', message: 'Coffee variety not found' } },
-        404,
-      );
-    }
-    return c.json({
-      success: true,
-      data: { id, name: 'Arabica', category: 'variety' },
-    });
-  });
-
-  app.patch('/coffee-varieties/:id', zValidator('json', CoffeeVarietyUpdateSchema), (c) => {
-    const body = c.req.valid('json');
-    return c.json({
-      success: true,
-      data: { id: c.req.param('id'), ...body },
-    });
-  });
-
-  app.delete('/coffee-varieties/:id', (c) => {
-    return c.json({ success: true, data: { message: 'Variety deleted' } });
-  });
-
-  app.get('/coffee-varieties/:id/recipes', (c) => {
-    return c.json({
-      success: true,
-      data: [],
-      meta: { page: 1, perPage: 12, total: 0, totalPages: 0 },
-    });
-  });
+  app.route('/coffee-varieties', coffeeVarietyRouter);
 
   return app;
 }
@@ -99,8 +67,8 @@ describe('Coffee Variety Routes — Integration', () => {
       const res = await app.request('/coffee-varieties?page=2&perPage=10');
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body.meta.page).toBe(2);
-      expect(body.meta.perPage).toBe(10);
+      expect(body.meta.pagination.page).toBe(2);
+      expect(body.meta.pagination.perPage).toBe(10);
     });
 
     it('should accept category filter', async () => {
@@ -230,6 +198,7 @@ describe('Coffee Variety Routes — Integration', () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.success).toBe(true);
+      expect(body.data.message).toBe('Variety deleted');
     });
   });
 
