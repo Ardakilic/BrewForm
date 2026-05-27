@@ -46,19 +46,19 @@ vi.mock('react-router', () => ({
   },
 }));
 
-vi.mock('../../contexts/I18nContext', () => ({
+vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: vi.fn(),
 }));
 
-vi.mock('../../contexts/AuthContext', () => ({
+vi.mock('../../contexts/AuthContext.tsx', () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock('../../contexts/ThemeContext', () => ({
+vi.mock('../../contexts/ThemeContext.tsx', () => ({
   useTheme: vi.fn(),
 }));
 
-vi.mock('../../api/index', () => ({
+vi.mock('../../api/index.ts', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
