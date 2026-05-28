@@ -6,7 +6,7 @@ import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { authApi } from '../../api/index.ts';
 
-vi.mock('../../api/index', () => ({
+vi.mock('../../api/index.ts', () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),

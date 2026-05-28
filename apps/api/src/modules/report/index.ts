@@ -1,17 +1,10 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { ReportFilterSchema } from '@brewform/shared/schemas';
-import { z } from 'zod';
+import { ReportCreateSchema, ReportFilterSchema } from '@brewform/shared/schemas';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
-
-const ReportCreateSchema = z.object({
-  entityType: z.enum(['recipe', 'comment', 'user']),
-  entityId: z.uuid(),
-  reason: z.string().min(1).max(2000),
-});
 
 const report = new Hono<AppEnv>();
 
@@ -22,7 +15,9 @@ report.post(
   async (c) => {
     const userId = c.get('userId') as string;
     const body = c.req.valid('json');
-    const result = await service.createReport(userId, body.entityType, body.entityId, body.reason);
+    const entityType = body.recipeId ? 'recipe' : 'comment';
+    const entityId = (body.recipeId ?? body.commentId)!;
+    const result = await service.createReport(userId, entityType, entityId, body.reason);
     return success(c, result, 201);
   },
 );

@@ -180,7 +180,7 @@ export const RecipeRateSchema = z.object({
  * Used by POST /api/v1/recipes/:id/notes.
  */
 export const RecipeNotesSchema = z.object({
-  notes: z.string().min(1).max(10000),
+  notes: z.string().trim().min(1).max(10000),
 });
 
 /**

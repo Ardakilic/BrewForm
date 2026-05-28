@@ -86,6 +86,35 @@ describe('ReportCreateSchema', () => {
       expect(result.error.issues.some((i) => i.path.includes('type'))).toBe(true);
     }
   });
+
+  it('should reject when both recipeId and commentId are missing', () => {
+    const result = ReportCreateSchema.safeParse({
+      reason: 'Test reason',
+      type: 'spam',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((i) =>
+          i.path.includes('recipeId') || i.path.includes('commentId')
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('should reject when both recipeId and commentId are present', () => {
+    const result = ReportCreateSchema.safeParse({
+      recipeId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      commentId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      reason: 'Test reason',
+      type: 'spam',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('recipeId'))).toBe(true);
+      expect(result.error.issues.some((i) => i.path.includes('commentId'))).toBe(true);
+    }
+  });
 });
 
 describe('ReportFilterSchema', () => {

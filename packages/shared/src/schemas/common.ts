@@ -25,5 +25,5 @@ export const QrCodeFilenameSchema = z.string().regex(
  * Used by GET /api/v1/equipment/search, GET /api/v1/vendors/search, and GET /api/v1/coffee-varieties/search.
  */
 export const SearchQuerySchema = z.object({
-  q: z.string().min(2).max(200),
+  q: z.string().trim().min(2).max(200),
 });

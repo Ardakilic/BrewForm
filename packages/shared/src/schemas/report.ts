@@ -12,6 +12,26 @@ export const ReportCreateSchema = z.object({
   commentId: z.uuid().optional(),
   reason: z.string().min(1).max(2000),
   type: z.enum(['spam', 'harassment', 'inappropriate', 'other']),
+}).superRefine((data, ctx) => {
+  if (!data.recipeId && !data.commentId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Either recipeId or commentId is required',
+      path: ['recipeId'],
+    });
+  }
+  if (data.recipeId && data.commentId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Only one of recipeId or commentId should be provided',
+      path: ['recipeId'],
+    });
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Only one of recipeId or commentId should be provided',
+      path: ['commentId'],
+    });
+  }
 });
 
 /**
