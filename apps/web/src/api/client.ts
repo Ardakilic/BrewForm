@@ -1,46 +1,62 @@
+import { sessionId } from '../utils/sessionId.ts';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('api-client');
+
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
 async function requestInternal(endpoint: string, options: RequestInit): Promise<unknown> {
-  const headers = new Headers(options.headers);
-  if (!(options.body instanceof FormData) && !headers.has('content-type')) {
-    headers.set('Content-Type', 'application/json');
-  }
+  log.debug({ endpoint, method: options.method }, 'API request started');
 
-  let response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
+  try {
+    const headers = new Headers(options.headers);
+    if (!headers.has('X-Request-ID')) {
+      headers.set('X-Request-ID', sessionId);
+    }
+    if (!(options.body instanceof FormData) && !headers.has('content-type')) {
+      headers.set('Content-Type', 'application/json');
+    }
 
-  if (response.status === 401 && !endpoint.startsWith('/auth/')) {
-    const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+    let response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
       credentials: 'include',
     });
 
-    if (refreshResponse.ok) {
-      response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
+    if (response.status === 401 && !endpoint.startsWith('/auth/')) {
+      const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
         credentials: 'include',
       });
+
+      if (refreshResponse.ok) {
+        response = await fetch(`${API_BASE}${endpoint}`, {
+          ...options,
+          headers,
+          credentials: 'include',
+        });
+      }
     }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new ApiError(
+        data.error?.code || 'UNKNOWN_ERROR',
+        data.error?.message || 'Request failed',
+        data.error?.details,
+        response.status,
+      );
+    }
+
+    log.debug({ endpoint, status: response.status }, 'API request completed');
+    return data;
+  } catch (err: unknown) {
+    log.error({ err, endpoint }, 'API request failed');
+    throw err;
   }
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new ApiError(
-      data.error?.code || 'UNKNOWN_ERROR',
-      data.error?.message || 'Request failed',
-      data.error?.details,
-      response.status,
-    );
-  }
-
-  return data;
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

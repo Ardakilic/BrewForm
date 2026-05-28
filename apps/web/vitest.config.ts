@@ -16,6 +16,7 @@ export default defineConfig({
       '@brewform/shared/constants': join(sharedSrc, 'constants/index.ts'),
       '@brewform/shared/utils': join(sharedSrc, 'utils/index.ts'),
       '@brewform/shared/i18n': join(sharedSrc, 'i18n/index.ts'),
+      '@brewform/shared/logger': join(sharedSrc, 'logger/index.ts'),
       '@brewform/shared': join(sharedSrc, 'index.ts'),
     },
   },

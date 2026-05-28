@@ -17,7 +17,8 @@
       "@brewform/shared/schemas": ["../../packages/shared/src/schemas/index.ts"],
       "@brewform/shared/constants": ["../../packages/shared/src/constants/index.ts"],
       "@brewform/shared/utils": ["../../packages/shared/src/utils/index.ts"],
-      "@brewform/shared/i18n": ["../../packages/shared/src/i18n/index.ts"]
+      "@brewform/shared/i18n": ["../../packages/shared/src/i18n/index.ts"],
+      "@brewform/shared/logger": ["../../packages/shared/src/logger/index.ts"]
     }
   },
   "include": ["src/**/*", "vite-env.d.ts"],

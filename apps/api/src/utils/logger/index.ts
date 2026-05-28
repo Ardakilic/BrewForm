@@ -1,7 +1,8 @@
+import type { ChildLogger, CreateLogger, Logger } from '@brewform/shared/logger';
 import pino from 'pino';
 import { config } from '../../config/index.ts';
 
-const logger = pino({
+const logger: Logger = pino({
   level: config.LOG_LEVEL || (config.APP_ENV === 'development' ? 'debug' : 'info'),
   redact: ['*.passwordHash', '*.password', '*.token', '*.secret', '*.apiKey', '*.authorization'],
   serializers: {
@@ -12,8 +13,8 @@ const logger = pino({
     : undefined,
 });
 
-export function createLogger(module: string) {
-  return logger.child({ module });
-}
+export const createLogger: CreateLogger = (module: string) => {
+  return logger.child({ module }) as ChildLogger;
+};
 
 export { logger };

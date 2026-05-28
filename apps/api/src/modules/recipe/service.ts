@@ -42,6 +42,7 @@ async function generateUniqueSlug(title: string): Promise<string> {
 
 /** Retrieve a recipe by slug or UUID. Throws `RECIPE_NOT_FOUND` if neither matches. */
 export async function getRecipe(slugOrId: string) {
+  logger.debug({}, 'getRecipe started');
   let recipe: any;
   if (slugOrId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
     recipe = await model.findById(slugOrId);
@@ -49,6 +50,7 @@ export async function getRecipe(slugOrId: string) {
     recipe = await model.findBySlug(slugOrId);
   }
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
+  logger.debug({}, 'getRecipe completed');
   return recipe;
 }
 
@@ -149,6 +151,7 @@ async function validateEquipmentCompatibility(
  * @returns The complete recipe object with version, relations, and author summary.
  */
 export async function createRecipe(authorId: string, data: any) {
+  logger.debug({ authorId }, 'createRecipe started');
   await validateEquipmentCompatibility(data.brewMethod, data.equipmentIds ?? []);
 
   const safeTitle = sanitizeText(data.title);
@@ -279,6 +282,7 @@ export async function createRecipe(authorId: string, data: any) {
 
   evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
+  logger.debug({ authorId }, 'createRecipe completed');
   return finalRecipe;
 }
 
@@ -297,6 +301,7 @@ export async function createRecipe(authorId: string, data: any) {
  * @throws `FORBIDDEN` if the requesting user is not the recipe author.
  */
 export async function updateRecipe(recipeId: string, authorId: string, data: any) {
+  logger.debug({ recipeId, authorId }, 'updateRecipe started');
   const recipe: any = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (recipe.authorId !== authorId) throw new Error('FORBIDDEN');
@@ -400,15 +405,18 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
     });
   }
 
+  logger.debug({ recipeId, authorId }, 'updateRecipe completed');
   return model.findById(recipeId);
 }
 
 /** Soft-delete a recipe. Throws `RECIPE_NOT_FOUND` or `FORBIDDEN` on failure. */
 export async function deleteRecipe(recipeId: string, authorId: string) {
+  logger.debug({ recipeId, authorId }, 'deleteRecipe started');
   const recipe: any = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (recipe.authorId !== authorId) throw new Error('FORBIDDEN');
   await model.softDelete(recipeId);
+  logger.debug({ recipeId, authorId }, 'deleteRecipe completed');
 }
 
 /**
@@ -425,6 +433,7 @@ export async function deleteRecipe(recipeId: string, authorId: string) {
  * @returns The newly created forked recipe.
  */
 export async function forkRecipe(sourceId: string, authorId: string, title?: string) {
+  logger.debug({ sourceId, authorId }, 'forkRecipe started');
   const source: any = await model.findById(sourceId);
   if (!source) throw new Error('RECIPE_NOT_FOUND');
   if (source.visibility === 'draft' || source.visibility === 'private') {
@@ -439,6 +448,7 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
 
   evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
+  logger.debug({ sourceId, authorId }, 'forkRecipe completed');
   return forked;
 }
 
@@ -464,6 +474,7 @@ export async function listRecipes(
   _requestingUserId: string | null = null,
   isAdmin: boolean = false,
 ) {
+  logger.debug({}, 'listRecipes started');
   const visibilityCondition = (isAdmin === true && filters.visibility)
     ? eq(recipes.visibility, filters.visibility)
     : eq(recipes.visibility, 'public');
@@ -571,7 +582,9 @@ export async function listRecipes(
   const where = conditions.length > 1 ? and(...conditions) : conditions[0];
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
-  return model.findMany(where, page, perPage, sortBy, sortOrder);
+  const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
+  logger.debug({}, 'listRecipes completed');
+  return result;
 }
 
 /**
@@ -581,6 +594,7 @@ export async function listRecipes(
  * different author, fires an asynchronous `notifyRecipeLiked` side effect.
  */
 export async function toggleLike(userId: string, recipeId: string) {
+  logger.debug({ userId, recipeId }, 'toggleLike started');
   const recipe: any = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   const result = await model.toggleLike(userId, recipeId);
@@ -599,30 +613,39 @@ export async function toggleLike(userId: string, recipeId: string) {
     })().catch((err) => logger.error({ err }, 'notifyRecipeLiked failed'));
   }
 
+  logger.debug({ userId, recipeId }, 'toggleLike completed');
   return result;
 }
 
 /** Toggle a recipe in the user's favourites. Returns the new favourited state. */
 export async function toggleFavourite(userId: string, recipeId: string) {
+  logger.debug({ userId, recipeId }, 'toggleFavourite started');
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
-  return model.toggleFavourite(userId, recipeId);
+  const result = await model.toggleFavourite(userId, recipeId);
+  logger.debug({ userId, recipeId }, 'toggleFavourite completed');
+  return result;
 }
 
 /** Toggle the featured flag on the requesting user's own recipe. Throws `FORBIDDEN` if not the author. */
 export async function toggleFeature(recipeId: string, authorId: string) {
+  logger.debug({ recipeId, authorId }, 'toggleFeature started');
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (recipe.authorId !== authorId) throw new Error('FORBIDDEN');
-  return model.toggleFeature(recipeId);
+  const result = await model.toggleFeature(recipeId);
+  logger.debug({ recipeId, authorId }, 'toggleFeature completed');
+  return result;
 }
 
 /** Save custom notes on the current version of a recipe. Throws `RECIPE_NOT_FOUND` if there is no current version. */
 export async function saveNotes(recipeId: string, notes: string) {
+  logger.debug({ recipeId }, 'saveNotes started');
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (!recipe.currentVersionId) throw new Error('RECIPE_NOT_FOUND');
   await model.updateVersionNotes(recipe.currentVersionId, notes);
+  logger.debug({ recipeId }, 'saveNotes completed');
 }
 
 /** List recipes starred (favourited) by the given user, with filtering and pagination. */
@@ -632,7 +655,10 @@ export async function listStarredRecipes(
   perPage: number,
   userId: string,
 ) {
-  return model.findStarred(userId, filters, page, perPage);
+  logger.debug({ userId }, 'listStarredRecipes started');
+  const result = await model.findStarred(userId, filters, page, perPage);
+  logger.debug({ userId }, 'listStarredRecipes completed');
+  return result;
 }
 
 /**
@@ -642,9 +668,11 @@ export async function listStarredRecipes(
  * Used for SEO / social sharing previews and link unfurling.
  */
 export async function getRecipeMeta(slug: string) {
+  logger.debug({ slug }, 'getRecipeMeta started');
   const recipe: any = await model.findBySlug(slug);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   const latestVersion = recipe.versions?.[0];
+  logger.debug({ slug }, 'getRecipeMeta completed');
   return {
     id: recipe.id,
     title: recipe.title,

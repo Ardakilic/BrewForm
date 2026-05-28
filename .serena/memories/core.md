@@ -12,6 +12,7 @@ apps/api  ─┬──→ @brewform/shared
 ```
 
 **FRONTEND NEVER IMPORTS FROM @brewform/db.** Only @brewform/shared.
+- Shared logger interface at @brewform/shared/logger. API uses pino, web uses console wrapper.
 
 ## Operations
 

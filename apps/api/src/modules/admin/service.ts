@@ -32,23 +32,28 @@ export async function getUserDetail(userId: string) {
 
 /** Ban a user and log the action. Throws if the user is not found. */
 export async function banUser(adminId: string, userId: string, reason?: string) {
+  logger.debug({ adminId, userId }, 'banUser started');
   const user = await model.banUser(userId);
   if (!user) throw new Error('USER_NOT_FOUND');
   const details = reason ? JSON.stringify({ reason }) : undefined;
   await model.createAuditLog(adminId, 'BAN_USER', 'User', userId, details);
+  logger.debug({ adminId, userId }, 'banUser completed');
   return user;
 }
 
 /** Unban a user and log the action. Throws if the user is not found. */
 export async function unbanUser(adminId: string, userId: string) {
+  logger.debug({ adminId, userId }, 'unbanUser started');
   const user = await model.unbanUser(userId);
   if (!user) throw new Error('USER_NOT_FOUND');
   await model.createAuditLog(adminId, 'UNBAN_USER', 'User', userId, 'Ban context cleared');
+  logger.debug({ adminId, userId }, 'unbanUser completed');
   return user;
 }
 
 /** Grant or revoke admin role for a user and log the action. */
 export async function setUserAdminRole(adminId: string, userId: string, isAdmin: boolean) {
+  logger.debug({ adminId, userId, isAdmin }, 'setUserAdminRole started');
   const user = await model.setUserAdminRole(userId, isAdmin);
   if (!user) throw new Error('USER_NOT_FOUND');
   await model.createAuditLog(
@@ -58,6 +63,7 @@ export async function setUserAdminRole(adminId: string, userId: string, isAdmin:
     userId,
     `isAdmin: ${isAdmin}`,
   );
+  logger.debug({ adminId, userId }, 'setUserAdminRole completed');
   return user;
 }
 
@@ -74,6 +80,7 @@ export async function adminCreateUser(adminId: string, data: {
   isAdmin?: boolean;
   isBanned?: boolean;
 }) {
+  logger.debug({ adminId }, 'adminCreateUser started');
   const user = await model.adminCreateUser(data);
   await model.createAuditLog(
     adminId,
@@ -89,6 +96,7 @@ export async function adminCreateUser(adminId: string, data: {
     logger.warn({ err }, 'Failed to send welcome email on admin create');
   }
 
+  logger.debug({ adminId }, 'adminCreateUser completed');
   return user;
 }
 
@@ -109,7 +117,7 @@ export async function adminUpdateUser(adminId: string, targetUserId: string, dat
   if (adminId === targetUserId) {
     throw new Error('SELF_EDIT_FORBIDDEN');
   }
-
+  logger.debug({ adminId, targetUserId }, 'adminUpdateUser started');
   const user = await model.adminUpdateUser(targetUserId, data);
   if (!user) throw new Error('USER_NOT_FOUND');
 
@@ -130,16 +138,19 @@ export async function adminUpdateUser(adminId: string, targetUserId: string, dat
     changeDetails.join(', '),
   );
 
+  logger.debug({ adminId, targetUserId }, 'adminUpdateUser completed');
   return user;
 }
 
 /** Soft-delete a user and log the action. Admin cannot delete themselves. */
 export async function softDeleteUser(adminId: string, userId: string) {
+  logger.debug({ adminId, userId }, 'softDeleteUser started');
   if (adminId === userId) {
     throw new Error('SELF_DELETE_FORBIDDEN');
   }
   await model.softDeleteUser(userId);
   await model.createAuditLog(adminId, 'SOFT_DELETE_USER', 'User', userId);
+  logger.debug({ adminId, userId }, 'softDeleteUser completed');
 }
 
 // --- Recipes ---
@@ -155,6 +166,7 @@ export async function updateRecipeVisibility(
   recipeId: string,
   visibility: string,
 ) {
+  logger.debug({ adminId, recipeId, visibility }, 'updateRecipeVisibility started');
   const recipe = await model.updateRecipeVisibility(recipeId, visibility);
   if (!recipe) return null;
   await model.createAuditLog(
@@ -164,13 +176,16 @@ export async function updateRecipeVisibility(
     recipeId,
     `visibility: ${visibility}`,
   );
+  logger.debug({ adminId, recipeId }, 'updateRecipeVisibility completed');
   return recipe;
 }
 
 /** Soft-delete a recipe and log the action. */
 export async function softDeleteRecipe(adminId: string, recipeId: string) {
+  logger.debug({ adminId, recipeId }, 'softDeleteRecipe started');
   await model.softDeleteRecipe(recipeId);
   await model.createAuditLog(adminId, 'SOFT_DELETE_RECIPE', 'Recipe', recipeId);
+  logger.debug({ adminId, recipeId }, 'softDeleteRecipe completed');
 }
 
 // --- Equipment ---
@@ -185,22 +200,28 @@ export async function createEquipment(
   adminId: string,
   data: { name: string; type: string; brand?: string; model?: string; description?: string },
 ) {
+  logger.debug({ adminId }, 'createEquipment started');
   const equipment = await model.createEquipment(data);
   await model.createAuditLog(adminId, 'CREATE_EQUIPMENT', 'Equipment', equipment.id);
+  logger.debug({ adminId }, 'createEquipment completed');
   return equipment;
 }
 
 /** Update an equipment record and log the action. */
 export async function updateEquipment(adminId: string, id: string, data: any) {
+  logger.debug({ adminId, id }, 'updateEquipment started');
   const equipment = await model.updateEquipment(id, data);
   await model.createAuditLog(adminId, 'UPDATE_EQUIPMENT', 'Equipment', id);
+  logger.debug({ adminId, id }, 'updateEquipment completed');
   return equipment;
 }
 
 /** Soft-delete an equipment record and log the action. */
 export async function deleteEquipment(adminId: string, id: string) {
+  logger.debug({ adminId, id }, 'deleteEquipment started');
   await model.deleteEquipment(id);
   await model.createAuditLog(adminId, 'DELETE_EQUIPMENT', 'Equipment', id);
+  logger.debug({ adminId, id }, 'deleteEquipment completed');
 }
 
 // --- Vendors ---
@@ -215,22 +236,28 @@ export async function createVendor(
   adminId: string,
   data: { name: string; website?: string; description?: string },
 ) {
+  logger.debug({ adminId }, 'createVendor started');
   const vendor = await model.createVendor(data);
   await model.createAuditLog(adminId, 'CREATE_VENDOR', 'Vendor', vendor.id);
+  logger.debug({ adminId }, 'createVendor completed');
   return vendor;
 }
 
 /** Update a vendor and log the action. */
 export async function updateVendor(adminId: string, id: string, data: any) {
+  logger.debug({ adminId, id }, 'updateVendor started');
   const vendor = await model.updateVendor(id, data);
   await model.createAuditLog(adminId, 'UPDATE_VENDOR', 'Vendor', id);
+  logger.debug({ adminId, id }, 'updateVendor completed');
   return vendor;
 }
 
 /** Soft-delete a vendor and log the action. */
 export async function deleteVendor(adminId: string, id: string) {
+  logger.debug({ adminId, id }, 'deleteVendor started');
   await model.deleteVendor(id);
   await model.createAuditLog(adminId, 'DELETE_VENDOR', 'Vendor', id);
+  logger.debug({ adminId, id }, 'deleteVendor completed');
 }
 
 // --- Taste Notes (admin) ---
@@ -247,6 +274,7 @@ export async function createTasteNote(
   data: { name: string; parentId?: string; color?: string; definition?: string; depth: number },
   cache: CacheProvider,
 ) {
+  logger.debug({ adminId }, 'createTasteNote started');
   const { createTasteNote } = await import('../taste/service.ts');
   const note = await createTasteNote(data, cache);
   await model.createAuditLog(
@@ -256,6 +284,7 @@ export async function createTasteNote(
     note.id,
     `name: ${data.name}`,
   );
+  logger.debug({ adminId }, 'createTasteNote completed');
   return note;
 }
 
@@ -266,17 +295,21 @@ export async function updateTasteNote(
   data: { name?: string; color?: string; definition?: string },
   cache: CacheProvider,
 ) {
+  logger.debug({ adminId, id }, 'updateTasteNote started');
   const { updateTasteNote } = await import('../taste/service.ts');
   const note = await updateTasteNote(id, data, cache);
   await model.createAuditLog(adminId, 'UPDATE_TASTE_NOTE', 'TasteNote', id);
+  logger.debug({ adminId, id }, 'updateTasteNote completed');
   return note;
 }
 
 /** Delegates to the taste module to delete a note and logs the action. */
 export async function deleteTasteNote(adminId: string, id: string, cache: CacheProvider) {
+  logger.debug({ adminId, id }, 'deleteTasteNote started');
   const { deleteTasteNote } = await import('../taste/service.ts');
   await deleteTasteNote(id, cache);
   await model.createAuditLog(adminId, 'DELETE_TASTE_NOTE', 'TasteNote', id);
+  logger.debug({ adminId, id }, 'deleteTasteNote completed');
 }
 
 // --- Brew Method Compatibility Matrix ---
@@ -293,6 +326,7 @@ export async function updateCompatibilityRule(
   compatible: boolean,
   cache: CacheProvider,
 ) {
+  logger.debug({ adminId, id, compatible }, 'updateCompatibilityRule started');
   const rule = await model.updateCompatibilityRule(id, compatible);
   await model.createAuditLog(
     adminId,
@@ -302,11 +336,13 @@ export async function updateCompatibilityRule(
     `compatible: ${compatible}`,
   );
   await cache.deleteByPrefix(['cache', 'compatibility']);
+  logger.debug({ adminId, id }, 'updateCompatibilityRule completed');
   return rule;
 }
 
 /** Create a compatibility rule, log the action, and invalidate the compatibility cache. */
 export async function createCompatibilityRule(adminId: string, data: any, cache: CacheProvider) {
+  logger.debug({ adminId }, 'createCompatibilityRule started');
   const rule = await model.createCompatibilityRule(data);
   await model.createAuditLog(
     adminId,
@@ -315,14 +351,17 @@ export async function createCompatibilityRule(adminId: string, data: any, cache:
     rule.id,
   );
   await cache.deleteByPrefix(['cache', 'compatibility']);
+  logger.debug({ adminId }, 'createCompatibilityRule completed');
   return rule;
 }
 
 /** Hard-delete a compatibility rule, log the action, and invalidate the compatibility cache. */
 export async function deleteCompatibilityRule(adminId: string, id: string, cache: CacheProvider) {
+  logger.debug({ adminId, id }, 'deleteCompatibilityRule started');
   await model.deleteCompatibilityRule(id);
   await model.createAuditLog(adminId, 'DELETE_COMPATIBILITY_RULE', 'BrewMethodEquipmentRule', id);
   await cache.deleteByPrefix(['cache', 'compatibility']);
+  logger.debug({ adminId, id }, 'deleteCompatibilityRule completed');
 }
 
 // --- Reports (admin) ---
@@ -339,15 +378,19 @@ export async function listReports(
 
 /** Resolve a report and log the action. */
 export async function resolveReport(adminId: string, id: string) {
+  logger.debug({ adminId, id }, 'resolveReport started');
   const report = await model.resolveReport(id, adminId);
   await model.createAuditLog(adminId, 'RESOLVE_REPORT', 'Report', id);
+  logger.debug({ adminId, id }, 'resolveReport completed');
   return report;
 }
 
 /** Dismiss a report and log the action. */
 export async function dismissReport(adminId: string, id: string) {
+  logger.debug({ adminId, id }, 'dismissReport started');
   const report = await model.dismissReport(id, adminId);
   await model.createAuditLog(adminId, 'DISMISS_REPORT', 'Report', id);
+  logger.debug({ adminId, id }, 'dismissReport completed');
   return report;
 }
 
@@ -365,6 +408,7 @@ export async function listAuditLogs(page: number, perPage: number, entity?: stri
  * Logs the action with key details (or 'ALL' if no keys specified).
  */
 export async function flushCache(cache: CacheProvider, keys: string[]) {
+  logger.debug({}, 'flushCache started');
   if (keys.length === 0) {
     await cache.deleteByPrefix(['cache']);
   } else {
@@ -379,6 +423,7 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
     undefined,
     keys.length > 0 ? keys.join(',') : 'ALL',
   );
+  logger.debug({}, 'flushCache completed');
 }
 
 // --- Analytics ---
@@ -425,6 +470,7 @@ export async function createCoffeeVariety(
   adminId: string,
   data: typeof coffeeVarieties.$inferInsert,
 ) {
+  logger.debug({ adminId }, 'createCoffeeVariety started');
   const variety = await model.createCoffeeVariety(data);
   await model.createAuditLog(
     adminId,
@@ -433,6 +479,7 @@ export async function createCoffeeVariety(
     variety.id,
     `name: ${data.name}`,
   );
+  logger.debug({ adminId }, 'createCoffeeVariety completed');
   return variety;
 }
 
@@ -442,17 +489,21 @@ export async function updateCoffeeVariety(
   id: string,
   data: Partial<typeof coffeeVarieties.$inferInsert>,
 ) {
+  logger.debug({ adminId, id }, 'updateCoffeeVariety started');
   const variety = await model.updateCoffeeVariety(id, data);
   if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
   await model.createAuditLog(adminId, 'UPDATE_COFFEE_VARIETY', 'CoffeeVariety', id);
+  logger.debug({ adminId, id }, 'updateCoffeeVariety completed');
   return variety;
 }
 
 /** Soft-delete a coffee variety and log the action. Throws if variety is not found. */
 export async function deleteCoffeeVariety(adminId: string, id: string) {
+  logger.debug({ adminId, id }, 'deleteCoffeeVariety started');
   const variety = await model.deleteCoffeeVariety(id);
   if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
   await model.createAuditLog(adminId, 'DELETE_COFFEE_VARIETY', 'CoffeeVariety', id);
+  logger.debug({ adminId, id }, 'deleteCoffeeVariety completed');
 }
 
 /** Pass-through: count recipes using a coffee variety. */
@@ -473,6 +524,7 @@ export async function listEquipmentDeleteRequests(
 
 /** Approve an equipment delete request, soft-delete the equipment, and log the action. */
 export async function approveEquipmentDeleteRequest(adminId: string, requestId: string) {
+  logger.debug({ adminId, requestId }, 'approveEquipmentDeleteRequest started');
   const request = await model.approveEquipmentDeleteRequest(requestId, adminId);
   if (!request) throw new Error('DELETE_REQUEST_NOT_FOUND');
   await model.createAuditLog(
@@ -482,11 +534,13 @@ export async function approveEquipmentDeleteRequest(adminId: string, requestId: 
     requestId,
     `equipmentId: ${request.equipmentId}`,
   );
+  logger.debug({ adminId, requestId }, 'approveEquipmentDeleteRequest completed');
   return request;
 }
 
 /** Reject an equipment delete request and log the action. */
 export async function rejectEquipmentDeleteRequest(adminId: string, requestId: string) {
+  logger.debug({ adminId, requestId }, 'rejectEquipmentDeleteRequest started');
   const request = await model.rejectEquipmentDeleteRequest(requestId, adminId);
   if (!request) throw new Error('DELETE_REQUEST_NOT_FOUND');
   await model.createAuditLog(
@@ -495,5 +549,6 @@ export async function rejectEquipmentDeleteRequest(adminId: string, requestId: s
     'EquipmentDeleteRequest',
     requestId,
   );
+  logger.debug({ adminId, requestId }, 'rejectEquipmentDeleteRequest completed');
   return request;
 }
