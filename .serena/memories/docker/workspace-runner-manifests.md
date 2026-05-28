@@ -3,7 +3,7 @@
 **Invariant:** The production `runner` stage must copy ALL workspace member manifests (`package.json` + `deno.json`), even for members not served at runtime.
 
 **Why:** Root `deno.json` workspace globs (`"members": ["apps/*", "packages/*"]`) cause `deno ci --prod` to resolve the full workspace graph. The lockfile contains entries for all members. Missing manifests cause:
-```
+```text
 error: The lockfile is out of date...
 ```
 

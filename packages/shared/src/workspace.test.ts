@@ -51,7 +51,7 @@ describe('Workspace Configuration', () => {
       const mod = await import(path, { with: { type: 'json' } });
       expect(mod.default.version).toBeDefined();
       expect(typeof mod.default.version).toBe('string');
-      expect(mod.default.version).toMatch(/^\d+\.\d+\.\d+/);
+      expect(mod.default.version).toMatch(/^\d+\.\d+\.\d+$/);
     }
   });
 

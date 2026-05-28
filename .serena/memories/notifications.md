@@ -1,6 +1,6 @@
 ## Delivery Model (Fire-and-Forget)
 
-```
+```js
 service action → DB write (awaited)
               → (async () => notifyXxx(...))().catch(log)   ← not awaited
 ```

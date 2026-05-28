@@ -1,6 +1,6 @@
 ## Middleware Stack Order (global, `app.use('*')`)
 
-```
+```text
 1. CORS              → reject disallowed origins early
 2. requestId         → c.set('requestId', uuid) + X-Request-ID header
 3. rateLimit         → CacheProvider-backed, 100/min/IP, 429 on overflow

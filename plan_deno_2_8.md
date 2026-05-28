@@ -328,7 +328,7 @@ just the version range, losing the registry prefix). Per the
 
 #### Duplicated npm dependencies:
 
-```
+```text
 apps/api/package.json:        drizzle-orm ^0.45.0   bcryptjs ^3.0.0   zod ^4.0.0
 packages/db/package.json:     drizzle-orm ^0.45.0   bcryptjs ^3.0.0   ——————
 packages/shared/package.json: ————————————————       ——————————————    zod ^4.0.0
@@ -638,8 +638,7 @@ Deno.test("leaks a timer", { sanitizeOps: false, sanitizeResources: false }, () 
 - `compose.yml` — Dockerfile targets by name, no changes needed
 
 ## Execution order
-
-```
+```text
   1. Capture baseline (Phase 0)
   2. Run pre-audit checks (Phase 0.2 — verify search results match expectations)
   3. Run deno task check inside Docker (catch TS 6.0.3 errors BEFORE touching Dockerfile)
