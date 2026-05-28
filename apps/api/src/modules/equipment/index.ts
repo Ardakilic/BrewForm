@@ -3,12 +3,15 @@ import type { Context, Next } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import {
   EquipmentCreateSchema,
+  EquipmentDeleteRequestSchema,
   EquipmentFilterSchema,
   EquipmentUpdateSchema,
+  PaginationSchema,
+  SearchQuerySchema,
 } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 export const deps = { authMiddleware, service };
@@ -31,9 +34,8 @@ equipment.get('/', zValidator('query', EquipmentFilterSchema), async (c) => {
   });
 });
 
-equipment.get('/search', async (c) => {
-  const q = c.req.query('q') || '';
-  if (q.length < 2) return success(c, []);
+equipment.get('/search', zValidator('query', SearchQuerySchema), async (c) => {
+  const { q } = c.req.valid('query');
   const results = await deps.service.searchEquipment(q);
   return success(c, results);
 });
@@ -45,36 +47,36 @@ equipment.post('/', authGuard, zValidator('json', EquipmentCreateSchema), async 
   return success(c, item, 201);
 });
 
-equipment.get('/:id/recipes', async (c) => {
+equipment.get('/:id/recipes', zValidator('query', PaginationSchema), async (c) => {
   const id = c.req.param('id')!;
-  const rawPage = Number(c.req.query('page') ?? '1');
-  const rawPerPage = Number(c.req.query('perPage') ?? '12');
-  const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
-  const perPage = Number.isFinite(rawPerPage) && rawPerPage > 0
-    ? Math.min(Math.floor(rawPerPage), 100)
-    : 12;
+  const { page, perPage } = c.req.valid('query');
   const result = await deps.service.getRecipesForEquipment(id, page, perPage);
   return c.json({ success: true, ...result });
 });
 
-equipment.post('/:id/delete-request', authGuard, async (c) => {
-  const userId = c.get('userId') as string;
-  const reason = c.req.query('reason');
-  try {
-    const result = await deps.service.requestEquipmentDeletion(
-      c.req.param('id')!,
-      userId,
-      reason ?? undefined,
-    );
-    return c.json({ success: true, data: result }, 201);
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    if (message === 'EQUIPMENT_NOT_FOUND') {
-      return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+equipment.post(
+  '/:id/delete-request',
+  authGuard,
+  zValidator('query', EquipmentDeleteRequestSchema, zodValidationHook),
+  async (c) => {
+    const userId = c.get('userId') as string;
+    const { reason } = c.req.valid('query');
+    try {
+      const result = await deps.service.requestEquipmentDeletion(
+        c.req.param('id')!,
+        userId,
+        reason ?? undefined,
+      );
+      return c.json({ success: true, data: result }, 201);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (message === 'EQUIPMENT_NOT_FOUND') {
+        return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+      }
+      throw e;
     }
-    throw e;
-  }
-});
+  },
+);
 
 equipment.get('/:id', async (c) => {
   const id = c.req.param('id')!;

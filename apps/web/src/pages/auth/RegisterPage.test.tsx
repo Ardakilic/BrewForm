@@ -16,10 +16,23 @@ vi.mock('../../api/index', () => ({
     upload: vi.fn(),
   },
   ApiError: class extends Error {
-    code = '';
-    status = 500;
+    code: string;
+    status: number;
+    details?: Array<{ field: string; message: string }>;
+    constructor(
+      code: string,
+      message: string,
+      details?: Array<{ field: string; message: string }>,
+      status: number = 500,
+    ) {
+      super(message);
+      this.code = code;
+      this.status = status;
+      this.details = details;
+    }
   },
   authApi: {
+    register: vi.fn(),
     registrationStatus: vi.fn(),
     logout: vi.fn().mockResolvedValue({}),
   },
@@ -82,6 +95,30 @@ describe('RegisterPage', () => {
     renderRegisterPage();
     await waitFor(() => {
       expect(screen.getByPlaceholderText('you@example.com')).toBeInTheDocument();
+    });
+  });
+
+  it('should display structured error message from ApiError on registration failure', async () => {
+    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: true });
+    const { ApiError: MockApiError } = await import('../../api/index.ts');
+    vi.mocked(authApi.register).mockRejectedValue(
+      new MockApiError('VALIDATION_ERROR', 'Validation failed', [
+        { field: 'email', message: 'Already taken' },
+      ], 400),
+    );
+    renderRegisterPage();
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('you@example.com')).toBeInTheDocument();
+    });
+    const userEvent = (await import('@testing-library/user-event')).default;
+    await userEvent.type(screen.getByPlaceholderText('you@example.com'), 'taken@test.com');
+    await userEvent.type(screen.getByPlaceholderText('coffee_lover'), 'testuser');
+    await userEvent.type(screen.getByPlaceholderText(/re-enter your password/i), 'Passw0rd!');
+    const passwordInputs = screen.getAllByPlaceholderText(/at least 8 characters/i);
+    await userEvent.type(passwordInputs[0], 'Passw0rd!');
+    await userEvent.click(screen.getByRole('button', { name: /sign up/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Validation failed')).toBeInTheDocument();
     });
   });
 });

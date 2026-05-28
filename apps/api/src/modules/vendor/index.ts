@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { PaginationSchema, VendorCreateSchema, VendorUpdateSchema } from '@brewform/shared/schemas';
+import {
+  PaginationSchema,
+  SearchQuerySchema,
+  VendorCreateSchema,
+  VendorUpdateSchema,
+} from '@brewform/shared/schemas';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import { error, paginated, success } from '../../utils/response/index.ts';
@@ -19,9 +24,8 @@ vendor.get('/', zValidator('query', PaginationSchema), async (c) => {
   });
 });
 
-vendor.get('/search', async (c) => {
-  const q = c.req.query('q') || '';
-  if (q.length < 2) return success(c, []);
+vendor.get('/search', zValidator('query', SearchQuerySchema), async (c) => {
+  const { q } = c.req.valid('query');
   const results = await service.searchVendors(q);
   return success(c, results);
 });

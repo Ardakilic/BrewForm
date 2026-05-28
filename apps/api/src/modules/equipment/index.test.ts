@@ -114,20 +114,16 @@ describe('Equipment Routes — Integration', () => {
       expect(body.data.length).toBeGreaterThan(0);
     });
 
-    it('should return empty for query shorter than 2 chars', async () => {
+    it('should reject query shorter than 2 chars', async () => {
       const app = createTestApp();
       const res = await app.request('/equipment/search?q=F');
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.data).toEqual([]);
+      expect(res.status).toBe(400);
     });
 
-    it('should return empty for missing query', async () => {
+    it('should reject missing query', async () => {
       const app = createTestApp();
       const res = await app.request('/equipment/search');
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.data).toEqual([]);
+      expect(res.status).toBe(400);
     });
   });
 

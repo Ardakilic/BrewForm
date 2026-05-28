@@ -36,3 +36,11 @@ export const EquipmentFilterSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   perPage: z.coerce.number().int().positive().max(100).default(20),
 });
+
+/**
+ * Validates equipment deletion request payloads.
+ * Used by POST /api/v1/equipment/:id/delete-request.
+ */
+export const EquipmentDeleteRequestSchema = z.object({
+  reason: z.string().max(500).optional(),
+});

@@ -5,6 +5,9 @@ import {
   RecipeCreateObjectSchema,
   RecipeCreateSchema,
   RecipeFilterSchema,
+  RecipeForkSchema,
+  RecipeNotesSchema,
+  RecipeRateSchema,
   RecipeUpdateSchema,
 } from './recipe.ts';
 
@@ -1185,5 +1188,122 @@ describe('Property 10: Intensity range validation', () => {
       ),
       { numRuns: 100 },
     );
+  });
+});
+
+describe('RecipeRateSchema', () => {
+  it('should validate rating 1 (minimum)', () => {
+    const result = RecipeRateSchema.safeParse({ rating: 1 });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate rating 5', () => {
+    const result = RecipeRateSchema.safeParse({ rating: 5 });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate rating 10 (maximum)', () => {
+    const result = RecipeRateSchema.safeParse({ rating: 10 });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject rating 0', () => {
+    const result = RecipeRateSchema.safeParse({ rating: 0 });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('rating'))).toBe(true);
+    }
+  });
+
+  it('should reject rating 11', () => {
+    const result = RecipeRateSchema.safeParse({ rating: 11 });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('rating'))).toBe(true);
+    }
+  });
+
+  it('should reject non-integer rating', () => {
+    const result = RecipeRateSchema.safeParse({ rating: 3.5 });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject negative rating', () => {
+    const result = RecipeRateSchema.safeParse({ rating: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject missing rating', () => {
+    const result = RecipeRateSchema.safeParse({});
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('rating'))).toBe(true);
+    }
+  });
+});
+
+describe('RecipeNotesSchema', () => {
+  it('should validate valid notes', () => {
+    const result = RecipeNotesSchema.safeParse({ notes: 'These are my recipe notes.' });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate notes up to 10000 chars', () => {
+    const result = RecipeNotesSchema.safeParse({ notes: 'a'.repeat(10000) });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject empty notes', () => {
+    const result = RecipeNotesSchema.safeParse({ notes: '' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('notes'))).toBe(true);
+    }
+  });
+
+  it('should reject missing notes', () => {
+    const result = RecipeNotesSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject notes over 10000 chars', () => {
+    const result = RecipeNotesSchema.safeParse({ notes: 'a'.repeat(10001) });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('notes'))).toBe(true);
+    }
+  });
+});
+
+describe('RecipeForkSchema', () => {
+  it('should validate with title', () => {
+    const result = RecipeForkSchema.safeParse({ title: 'My Forked Recipe' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.title).toBe('My Forked Recipe');
+    }
+  });
+
+  it('should validate without title (optional)', () => {
+    const result = RecipeForkSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate title up to 200 chars', () => {
+    const result = RecipeForkSchema.safeParse({ title: 'a'.repeat(200) });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject title over 200 chars', () => {
+    const result = RecipeForkSchema.safeParse({ title: 'a'.repeat(201) });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('title'))).toBe(true);
+    }
+  });
+
+  it('should reject non-string title', () => {
+    const result = RecipeForkSchema.safeParse({ title: 123 });
+    expect(result.success).toBe(false);
   });
 });

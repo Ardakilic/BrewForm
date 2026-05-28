@@ -4,6 +4,9 @@ import { describeRoute } from 'hono-openapi';
 import {
   RecipeCreateSchema,
   RecipeFilterSchema,
+  RecipeForkSchema,
+  RecipeNotesSchema,
+  RecipeRateSchema,
   RecipeUpdateSchema,
 } from '@brewform/shared/schemas';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
@@ -315,10 +318,11 @@ recipe.post(
     },
   }),
   authMiddleware,
+  zValidator('json', RecipeForkSchema, zodValidationHook),
   async (c) => {
     const sourceId = c.req.param('id')!;
     const authorId = c.get('userId') as string;
-    const body = await c.req.json().catch(() => ({}));
+    const body = c.req.valid('json');
     try {
       const forked = await service.forkRecipe(sourceId, authorId, body.title);
       return success(c, forked, 201);
@@ -370,14 +374,11 @@ recipe.post(
     },
   }),
   authMiddleware,
+  zValidator('json', RecipeRateSchema, zodValidationHook),
   async (c) => {
     const recipeId = c.req.param('id')!;
     const userId = c.get('userId') as string;
-    const body = await c.req.json().catch(() => ({}));
-    const rating = Number(body.rating);
-    if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
-      return error(c, 'VALIDATION_ERROR', 'Rating must be an integer between 1 and 10', 400);
-    }
+    const { rating } = c.req.valid('json');
     try {
       const result = await model.upsertUserRating(userId, recipeId, rating);
       const stats = await model.getRecipeRatingStats(recipeId);
@@ -404,10 +405,10 @@ recipe.post(
     },
   }),
   authMiddleware,
+  zValidator('json', RecipeNotesSchema, zodValidationHook),
   async (c) => {
     const recipeId = c.req.param('id')!;
-    const body = await c.req.json().catch(() => ({}));
-    const notes = typeof body.notes === 'string' ? body.notes : '';
+    const { notes } = c.req.valid('json');
     try {
       await service.saveNotes(recipeId, notes);
       return success(c, { message: 'Notes saved' });
