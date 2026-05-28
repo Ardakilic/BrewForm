@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { authApi } from '../../api/index.ts';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('RegisterPage');
 
 export function RegisterPage() {
   const { register } = useAuth();
@@ -20,11 +23,19 @@ export function RegisterPage() {
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
 
   useEffect(() => {
+    log.debug({}, 'RegisterPage mounted');
+    return () => {
+      log.debug({}, 'RegisterPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     async function checkStatus() {
       try {
         const { enabled } = await authApi.registrationStatus();
         setRegistrationEnabled(enabled);
-      } catch {
+      } catch (err: unknown) {
+        log.error({ err }, 'RegisterPage registration status check failed');
         setRegistrationEnabled(true);
       } finally {
         setStatusLoading(false);
@@ -52,6 +63,7 @@ export function RegisterPage() {
       await register({ email, username, password, displayName: displayName || undefined });
       navigate('/');
     } catch (err: unknown) {
+      log.error({ err }, 'RegisterPage registration failed');
       const message = err instanceof Error ? err.message : 'Registration failed';
       setError(message);
     } finally {

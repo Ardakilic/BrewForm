@@ -5,12 +5,22 @@ import type { RecipeListItem } from '../api/types.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { RecipeCardSkeletonGrid } from '../components/ui/Skeleton.tsx';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('HomePage');
 
 export function HomePage() {
   const [loading, setLoading] = useState(true);
   const [latestRecipes, setLatestRecipes] = useState<RecipeListItem[]>([]);
   const [popularRecipes, setPopularRecipes] = useState<RecipeListItem[]>([]);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'HomePage mounted');
+    return () => {
+      log.debug({}, 'HomePage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -70,7 +80,6 @@ export function HomePage() {
     </div>
   );
 }
-
 function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
   return (
     <Link to={`/recipes/${recipe.slug}`} className='card hover:shadow-lg transition-shadow'>

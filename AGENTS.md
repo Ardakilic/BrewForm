@@ -123,6 +123,63 @@ Every domain module follows 3-layer pattern: `model.ts` → `service.ts` → `in
 - All imports use explicit file extensions (`.ts`, `.tsx`, etc.) — no sloppy imports.
 - Cache: never call `Deno.openKv()` directly — use `CacheProvider` interface via DI.
 
+## Logging
+
+Every new feature or change that introduces a codepath must include structured logging.
+
+### Logger setup
+
+- **Shared interface**: `@brewform/shared/logger` defines `Logger`, `ChildLogger`, `CreateLogger`.
+- **API**: `import { createLogger } from './utils/logger/index.ts'` — pino-based, JSON structured.
+- **Web**: `import { createLogger } from '@/utils/logger.ts'` — console-based, level-filtered via `VITE_LOG_LEVEL`.
+
+### Usage
+
+```ts
+// API services
+const log = createLogger('module-name');
+log.debug({ userId, recipeId }, 'functionName started');
+log.debug({ userId }, 'functionName completed');
+log.error({ err, userId }, 'functionName failed');
+
+// Web pages
+const log = createLogger('PageName');
+useEffect(() => {
+  log.debug({}, 'PageName mounted');
+  return () => { log.debug({}, 'PageName unmounted'); };
+}, []);
+```
+
+### Log levels
+
+| Level | When to use |
+|-------|-------------|
+| `trace` | Very detailed debugging (only in development) |
+| `debug` | Function entry/exit, state transitions |
+| `info` | Significant events (startup, connections, cache hits) |
+| `warn` | Recoverable issues (rate limit hits, retries) |
+| `error` | Operation failures (DB errors, validation failures) |
+| `fatal` | Unrecoverable errors (server crash) |
+
+### Rules
+
+- **Never log** passwords, tokens, secrets, API keys, or PII (emails, IPs).
+- Create a module-scoped logger once at the top of the file.
+- Use `log.debug({ relevantIds }, 'message')` — include traceable IDs, exclude payloads.
+- Error logs must include the `err` object: `log.error({ err, ...context }, 'what failed')`.
+- API services: add entry/exit debug logs on every public function.
+- Web pages: add mount/unmount debug logs via `useEffect`.
+- Web API client errors are already logged — propagate errors properly to the caller.
+- See `TODO_logs.md` for modules still needing coverage.
+
+### Environment
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | API pino log level |
+| `LOG_FORMAT` | `json` | API format (`json`/`pretty`) |
+| `VITE_LOG_LEVEL` | `info` | Web console log level |
+
 ## Git Hooks
 
 Run `make setup-hooks` once after cloning to enable pre-commit format and lint checks.

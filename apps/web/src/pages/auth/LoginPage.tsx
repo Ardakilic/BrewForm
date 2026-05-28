@@ -1,4 +1,7 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('LoginPage');
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -13,6 +16,13 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    log.debug({}, 'LoginPage mounted');
+    return () => {
+      log.debug({}, 'LoginPage unmounted');
+    };
+  }, []);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -21,6 +31,7 @@ export function LoginPage() {
       await login(email, password, rememberMe);
       navigate('/');
     } catch (err: unknown) {
+      log.error({ err }, 'LoginPage login failed');
       const message = err instanceof Error ? err.message : t('auth.login.title');
       setError(message);
     } finally {

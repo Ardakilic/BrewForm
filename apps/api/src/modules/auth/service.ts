@@ -57,6 +57,7 @@ export async function register(data: {
   password: string;
   displayName?: string;
 }) {
+  logger.debug({}, 'register started');
   if (!config.ENABLE_REGISTRATION) {
     throw new Error('REGISTRATION_DISABLED');
   }
@@ -86,6 +87,7 @@ export async function register(data: {
     logger.warn({ err }, 'Failed to send verification email');
   }
 
+  logger.debug({}, 'register completed');
   return { user, accessToken, refreshToken };
 }
 
@@ -100,6 +102,7 @@ export async function register(data: {
  * @throws {Error} USER_BANNED if the user account is banned
  */
 export async function login(email: string, password: string, rememberMe = false) {
+  logger.debug({}, 'login started');
   const rawUser = await model.findUserByEmail(email);
   if (!rawUser) {
     throw new Error('INVALID_CREDENTIALS');
@@ -125,6 +128,7 @@ export async function login(email: string, password: string, rememberMe = false)
     ? await jwt.signRefreshToken(user.id, config.JWT_REMEMBER_ME_EXPIRY)
     : await jwt.signRefreshToken(user.id);
 
+  logger.debug({}, 'login completed');
   return { user, accessToken, refreshToken };
 }
 
@@ -138,6 +142,7 @@ export async function login(email: string, password: string, rememberMe = false)
  * @throws {Error} USER_NOT_FOUND if the user no longer exists or is banned
  */
 export async function refreshAccessToken(refreshToken: string) {
+  logger.debug({}, 'refreshAccessToken started');
   const payload = await jwt.verifyJwt(refreshToken);
   if (payload.type !== 'refresh') {
     throw new Error('INVALID_TOKEN_TYPE');
@@ -164,6 +169,7 @@ export async function refreshAccessToken(refreshToken: string) {
     ? await jwt.signRefreshToken(user.id, config.JWT_REMEMBER_ME_EXPIRY)
     : await jwt.signRefreshToken(user.id);
 
+  logger.debug({}, 'refreshAccessToken completed');
   return { user, accessToken: newAccessToken, refreshToken: newRefreshToken, wasRememberMe };
 }
 
@@ -175,9 +181,10 @@ export async function refreshAccessToken(refreshToken: string) {
  * @throws {Error} EMAIL_SEND_FAILED if the email provider rejects delivery
  */
 export async function requestPasswordReset(email: string) {
+  logger.debug({}, 'requestPasswordReset started');
   const rawUser = await model.findUserByEmail(email);
   if (!rawUser) {
-    logger.info({ email }, 'Password reset requested for non-existent email');
+    logger.info('Password reset requested for non-existent email');
     return;
   }
   const user = toAuthUser(rawUser);
@@ -193,6 +200,7 @@ export async function requestPasswordReset(email: string) {
     logger.error({ err }, 'Failed to send password reset email');
     throw new Error('EMAIL_SEND_FAILED');
   }
+  logger.debug({}, 'requestPasswordReset completed');
 }
 
 /**
@@ -205,6 +213,7 @@ export async function requestPasswordReset(email: string) {
  * @throws {Error} TOKEN_EXPIRED if the token has passed its expiry
  */
 export async function confirmPasswordReset(token: string, newPassword: string) {
+  logger.debug({}, 'confirmPasswordReset started');
   const reset = await model.findPasswordResetByToken(token);
   if (!reset) {
     throw new Error('INVALID_RESET_TOKEN');
@@ -218,14 +227,17 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
 
   await model.updateUserPassword(reset.userId, newPassword);
   await model.markPasswordResetUsed(reset.id);
+  logger.debug({}, 'confirmPasswordReset completed');
 }
 
 /** Fetch the currently authenticated user by ID. */
 export async function getAuthenticatedUser(userId: string) {
+  logger.debug({ userId }, 'getAuthenticatedUser started');
   const user = await model.findUserById(userId);
   if (!user) {
     throw new Error('USER_NOT_FOUND');
   }
+  logger.debug({ userId }, 'getAuthenticatedUser completed');
   return user;
 }
 
@@ -237,11 +249,13 @@ export async function getAuthenticatedUser(userId: string) {
  * @param username - Used for personalizing the verification email template
  */
 export async function sendVerificationToken(userId: string, email: string, username: string) {
+  logger.debug({ userId }, 'sendVerificationToken started');
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 24 * 3600 * 1000);
 
   await model.createEmailVerificationToken(userId, token, expiresAt);
   await sendVerificationEmail(email, token, username);
+  logger.debug({ userId }, 'sendVerificationToken completed');
 }
 
 /**
@@ -253,6 +267,7 @@ export async function sendVerificationToken(userId: string, email: string, usern
  * @throws {Error} TOKEN_EXPIRED if the token has passed its expiry
  */
 export async function verifyEmail(token: string) {
+  logger.debug({}, 'verifyEmail started');
   const record = await model.findEmailVerificationByToken(token);
   if (!record) {
     throw new Error('INVALID_VERIFICATION_TOKEN');
@@ -265,4 +280,5 @@ export async function verifyEmail(token: string) {
   }
 
   await model.markEmailVerified(record.userId, record.id);
+  logger.debug({}, 'verifyEmail completed');
 }

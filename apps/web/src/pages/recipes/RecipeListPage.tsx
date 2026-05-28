@@ -19,6 +19,9 @@ import {
 } from '@brewform/shared/constants';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('RecipeListPage');
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -106,6 +109,13 @@ export function RecipeListPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'RecipeListPage mounted');
+    return () => {
+      log.debug({}, 'RecipeListPage unmounted');
+    };
+  }, []);
 
   const page = Number(searchParams.get('page')) || 1;
   const brewMethod = searchParams.get('brewMethod') || '';
@@ -591,7 +601,6 @@ export function RecipeListPage() {
     </div>
   );
 }
-
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {

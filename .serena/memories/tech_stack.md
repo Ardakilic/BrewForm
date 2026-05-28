@@ -11,6 +11,7 @@
 | Storage    | Local filesystem or S3 (Garage) |
 | Email      | MJML (pre-compiled at build)    |
 | Validation | Zod (shared between fe/be)      |
+| Logging    | Shared Logger interface, pino (API), Console (Web) |
 | Testing    | Deno test + `@std/testing/bdd` + `@std/expect` |
 | CI/CD      | GitHub Actions → Deno Deploy    |
 

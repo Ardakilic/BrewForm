@@ -23,6 +23,9 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
 import { EMOJI_TAGS_LIST } from '@brewform/shared/constants';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('RecipeDetailPage');
 
 export function RecipeDetailPage() {
   const { slug } = useParams();
@@ -35,6 +38,13 @@ export function RecipeDetailPage() {
   const [recipe, setRecipe] = useState<RecipeDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteFlatItem[]>([]);
+
+  useEffect(() => {
+    log.debug({ slug }, 'RecipeDetailPage mounted');
+    return () => {
+      log.debug({ slug }, 'RecipeDetailPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -343,7 +353,8 @@ export function RecipeDetailPage() {
                             }
                             : prev
                         );
-                      } catch {
+                      } catch (err: unknown) {
+                        log.error({ err }, 'RecipeDetailPage rating failed');
                       }
                     }}
                   />

@@ -6,7 +6,8 @@
     "./schemas": "./src/schemas/index.ts",
     "./constants": "./src/constants/index.ts",
     "./utils": "./src/utils/index.ts",
-    "./i18n": "./src/i18n/index.ts"
+    "./i18n": "./src/i18n/index.ts",
+    "./logger": "./src/logger/index.ts"
   },
   "tasks": {
     "build": "deno check src/index.ts",
