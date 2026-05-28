@@ -13,6 +13,32 @@ const LEVELS: Record<string, number> = {
 
 const logLevel = (import.meta.env.VITE_LOG_LEVEL as string) || 'info';
 
+/** Safe serializer that preserves Error details and avoids circular reference crashes. */
+function safeSerialize(obj: Record<string, unknown>): string {
+  try {
+    const seen = new WeakSet<object>();
+    return JSON.stringify(obj, (_key: string, value: unknown) => {
+      if (value instanceof Error) {
+        return {
+          name: value.name,
+          message: value.message,
+          stack: value.stack,
+          ...Object.fromEntries(
+            Object.entries(value).filter(([k]) => k !== 'name' && k !== 'message' && k !== 'stack'),
+          ),
+        };
+      }
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) return '[Circular]';
+        seen.add(value);
+      }
+      return value;
+    });
+  } catch {
+    return '"[Unserializable object]"';
+  }
+}
+
 /** Browser console-based logger implementing the shared Logger interface. Filters output by configured log level. */
 class ConsoleLogger implements ChildLogger {
   #module: string;
@@ -30,7 +56,7 @@ class ConsoleLogger implements ChildLogger {
   #format(obj: Record<string, unknown> | undefined, msg: string): string {
     const prefix = `[${this.#module}]`;
     if (obj && Object.keys(obj).length > 0) {
-      return `${prefix} ${msg} ${JSON.stringify(obj)}`;
+      return `${prefix} ${msg} ${safeSerialize(obj)}`;
     }
     return `${prefix} ${msg}`;
   }

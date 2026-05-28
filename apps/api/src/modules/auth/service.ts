@@ -232,12 +232,12 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
 
 /** Fetch the currently authenticated user by ID. */
 export async function getAuthenticatedUser(userId: string) {
-  logger.debug({}, 'getAuthenticatedUser started');
+  logger.debug({ userId }, 'getAuthenticatedUser started');
   const user = await model.findUserById(userId);
   if (!user) {
     throw new Error('USER_NOT_FOUND');
   }
-  logger.debug({}, 'getAuthenticatedUser completed');
+  logger.debug({ userId }, 'getAuthenticatedUser completed');
   return user;
 }
 
@@ -249,13 +249,13 @@ export async function getAuthenticatedUser(userId: string) {
  * @param username - Used for personalizing the verification email template
  */
 export async function sendVerificationToken(userId: string, email: string, username: string) {
-  logger.debug({}, 'sendVerificationToken started');
+  logger.debug({ userId }, 'sendVerificationToken started');
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 24 * 3600 * 1000);
 
   await model.createEmailVerificationToken(userId, token, expiresAt);
   await sendVerificationEmail(email, token, username);
-  logger.debug({}, 'sendVerificationToken completed');
+  logger.debug({ userId }, 'sendVerificationToken completed');
 }
 
 /**

@@ -42,7 +42,7 @@ async function generateUniqueSlug(title: string): Promise<string> {
 
 /** Retrieve a recipe by slug or UUID. Throws `RECIPE_NOT_FOUND` if neither matches. */
 export async function getRecipe(slugOrId: string) {
-  logger.debug({}, 'getRecipe started');
+  logger.debug({ slugOrId }, 'getRecipe started');
   let recipe: any;
   if (slugOrId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
     recipe = await model.findById(slugOrId);
@@ -50,7 +50,7 @@ export async function getRecipe(slugOrId: string) {
     recipe = await model.findBySlug(slugOrId);
   }
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
-  logger.debug({}, 'getRecipe completed');
+  logger.debug({ slugOrId }, 'getRecipe completed');
   return recipe;
 }
 
