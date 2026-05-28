@@ -4,19 +4,26 @@ import { recipeApi } from '../api/index.ts';
 import type { RecipeListItem } from '../api/types.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
+import { RecipeCardSkeletonGrid } from '../components/ui/Skeleton.tsx';
 
 export function HomePage() {
+  const [loading, setLoading] = useState(true);
   const [latestRecipes, setLatestRecipes] = useState<RecipeListItem[]>([]);
   const [popularRecipes, setPopularRecipes] = useState<RecipeListItem[]>([]);
   const { t } = useTranslation();
 
   useEffect(() => {
-    recipeApi.list({ perPage: '6', sortBy: 'createdAt' }).then((response) => {
-      setLatestRecipes(response.data ?? []);
-    }).catch(() => {});
-    recipeApi.list({ perPage: '6', sortBy: 'likeCount' }).then((response) => {
-      setPopularRecipes(response.data ?? []);
-    }).catch(() => {});
+    setLoading(true);
+    Promise.all([
+      recipeApi.list({ perPage: '6', sortBy: 'createdAt' }).then((response) => {
+        setLatestRecipes(response.data ?? []);
+      }),
+      recipeApi.list({ perPage: '6', sortBy: 'likeCount' }).then((response) => {
+        setPopularRecipes(response.data ?? []);
+      }),
+    ]).catch(() => {}).finally(() => {
+      setLoading(false);
+    });
   }, []);
 
   return (
@@ -39,18 +46,26 @@ export function HomePage() {
         <h2 className='mb-4 text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
           {t('home.latestRecipes')}
         </h2>
-        <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
-          {latestRecipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
-        </div>
+        {loading
+          ? <RecipeCardSkeletonGrid count={6} />
+          : (
+            <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
+              {latestRecipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
+            </div>
+          )}
       </section>
 
       <section className='mx-auto max-w-6xl px-6 py-8'>
         <h2 className='mb-4 text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
           {t('home.popularRecipes')}
         </h2>
-        <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
-          {popularRecipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
-        </div>
+        {loading
+          ? <RecipeCardSkeletonGrid count={6} />
+          : (
+            <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
+              {popularRecipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
+            </div>
+          )}
       </section>
     </div>
   );

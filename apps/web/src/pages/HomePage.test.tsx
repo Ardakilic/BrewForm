@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { HomePage } from './HomePage.tsx';
 import type { RecipeListItem } from '../api/types.ts';
 
@@ -224,5 +224,40 @@ describe('HomePage — i18n', () => {
     expect(screen.getByText('Latest Recipes')).toBeInTheDocument();
     expect(screen.getByText('Popular Recipes')).toBeInTheDocument();
     expect(screen.queryByText(/❤️/)).not.toBeInTheDocument();
+  });
+
+  it('shows recipe card skeleton placeholders while loading', async () => {
+    const { recipeApi } = await import('../api/index.ts');
+    let resolvePromise!: (value: any) => void;
+    const deferred = new Promise<any>((resolve) => {
+      resolvePromise = resolve;
+    });
+    vi.mocked(recipeApi.list).mockReturnValue(deferred);
+
+    render(<HomePage />);
+
+    const skeletons = document.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
+
+    resolvePromise({
+      data: [
+        {
+          id: '1',
+          slug: 'test',
+          title: 'Loaded Recipe',
+          likeCount: 0,
+          commentCount: 0,
+          forkCount: 0,
+          author: null,
+        } as RecipeListItem,
+      ],
+      meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelectorAll('.animate-pulse').length).toBe(0);
+    });
+
+    expect(await screen.findAllByText('Loaded Recipe')).toHaveLength(2);
   });
 });
