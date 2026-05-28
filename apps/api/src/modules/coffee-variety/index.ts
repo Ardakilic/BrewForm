@@ -8,6 +8,7 @@ import {
   CoffeeVarietyCreateSchema,
   CoffeeVarietyFilterSchema,
   CoffeeVarietyUpdateSchema,
+  SearchQuerySchema,
 } from '@brewform/shared/schemas';
 import * as service from './service.ts';
 import { error, paginated, success } from '../../utils/response/index.ts';
@@ -37,11 +38,8 @@ router.get('/', zValidator('query', CoffeeVarietyFilterSchema), async (c) => {
   });
 });
 
-router.get('/search', async (c) => {
-  const q = c.req.query('q');
-  if (!q || q.length < 2) {
-    return success(c, []);
-  }
+router.get('/search', zValidator('query', SearchQuerySchema), async (c) => {
+  const { q } = c.req.valid('query');
   const result = await deps.service.listCoffeeVarieties({ search: q, page: 1, perPage: 20 });
   return success(c, result.data);
 });

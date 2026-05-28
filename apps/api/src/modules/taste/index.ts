@@ -1,9 +1,13 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { TasteNoteFilterSchema } from '@brewform/shared/schemas';
+import {
+  TasteNoteCreateSchema,
+  TasteNoteFilterSchema,
+  TasteNoteUpdateSchema,
+} from '@brewform/shared/schemas';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { error, success } from '../../utils/response/index.ts';
+import { error, success, zodValidationHook } from '../../utils/response/index.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
@@ -37,18 +41,30 @@ taste.get('/flat', async (c) => {
   return success(c, allNotes);
 });
 
-taste.post('/', authMiddleware, adminMiddleware, async (c) => {
-  const body = await c.req.json();
-  const note = await service.createTasteNote(body, cacheProvider!);
-  return success(c, note, 201);
-});
+taste.post(
+  '/',
+  authMiddleware,
+  adminMiddleware,
+  zValidator('json', TasteNoteCreateSchema, zodValidationHook),
+  async (c) => {
+    const body = c.req.valid('json');
+    const note = await service.createTasteNote(body, cacheProvider!);
+    return success(c, note, 201);
+  },
+);
 
-taste.patch('/:id', authMiddleware, adminMiddleware, async (c) => {
-  const id = c.req.param('id')!;
-  const body = await c.req.json();
-  const note = await service.updateTasteNote(id, body, cacheProvider!);
-  return success(c, note);
-});
+taste.patch(
+  '/:id',
+  authMiddleware,
+  adminMiddleware,
+  zValidator('json', TasteNoteUpdateSchema, zodValidationHook),
+  async (c) => {
+    const id = c.req.param('id')!;
+    const body = c.req.valid('json');
+    const note = await service.updateTasteNote(id, body, cacheProvider!);
+    return success(c, note);
+  },
+);
 
 taste.delete('/:id', authMiddleware, adminMiddleware, async (c) => {
   const id = c.req.param('id')!;

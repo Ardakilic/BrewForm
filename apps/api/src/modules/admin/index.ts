@@ -9,14 +9,22 @@ import {
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
   AdminUpdateUserSchema,
+  BrewMethodCompatibilityCreateSchema,
+  BrewMethodCompatibilityUpdateSchema,
   CoffeeVarietyCategoryEnum,
   CoffeeVarietyCreateSchema,
   CoffeeVarietyUpdateSchema,
+  EquipmentCreateSchema,
+  EquipmentUpdateSchema,
   PaginationSchema,
+  TasteNoteCreateSchema,
+  TasteNoteUpdateSchema,
+  VendorCreateSchema,
+  VendorUpdateSchema,
 } from '@brewform/shared/schemas';
 import * as service from './service.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
 const admin = new Hono<AppEnv>();
@@ -282,20 +290,28 @@ admin.get('/equipment', zValidator('query', PaginationSchema), async (c) => {
   });
 });
 
-admin.post('/equipment', async (c) => {
-  const adminId = c.get('userId') as string;
-  const body = await c.req.json();
-  const equipment = await service.createEquipment(adminId, body);
-  return success(c, equipment, 201);
-});
+admin.post(
+  '/equipment',
+  zValidator('json', EquipmentCreateSchema, zodValidationHook),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const body = c.req.valid('json');
+    const equipment = await service.createEquipment(adminId, body);
+    return success(c, equipment, 201);
+  },
+);
 
-admin.patch('/equipment/:id', async (c) => {
-  const adminId = c.get('userId') as string;
-  const id = c.req.param('id')!;
-  const body = await c.req.json();
-  const equipment = await service.updateEquipment(adminId, id, body);
-  return success(c, equipment);
-});
+admin.patch(
+  '/equipment/:id',
+  zValidator('json', EquipmentUpdateSchema, zodValidationHook),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const id = c.req.param('id')!;
+    const body = c.req.valid('json');
+    const equipment = await service.updateEquipment(adminId, id, body);
+    return success(c, equipment);
+  },
+);
 
 admin.delete('/equipment/:id', async (c) => {
   const adminId = c.get('userId') as string;
@@ -316,20 +332,24 @@ admin.get('/vendors', zValidator('query', PaginationSchema), async (c) => {
   });
 });
 
-admin.post('/vendors', async (c) => {
+admin.post('/vendors', zValidator('json', VendorCreateSchema, zodValidationHook), async (c) => {
   const adminId = c.get('userId') as string;
-  const body = await c.req.json();
+  const body = c.req.valid('json');
   const vendor = await service.createVendor(adminId, body);
   return success(c, vendor, 201);
 });
 
-admin.patch('/vendors/:id', async (c) => {
-  const adminId = c.get('userId') as string;
-  const id = c.req.param('id')!;
-  const body = await c.req.json();
-  const vendor = await service.updateVendor(adminId, id, body);
-  return success(c, vendor);
-});
+admin.patch(
+  '/vendors/:id',
+  zValidator('json', VendorUpdateSchema, zodValidationHook),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const id = c.req.param('id')!;
+    const body = c.req.valid('json');
+    const vendor = await service.updateVendor(adminId, id, body);
+    return success(c, vendor);
+  },
+);
 
 admin.delete('/vendors/:id', async (c) => {
   const adminId = c.get('userId') as string;
@@ -344,20 +364,28 @@ admin.get('/taste-notes', async (c) => {
   return success(c, hierarchy);
 });
 
-admin.post('/taste-notes', async (c) => {
-  const adminId = c.get('userId') as string;
-  const body = await c.req.json();
-  const note = await service.createTasteNote(adminId, body, cacheProvider!);
-  return success(c, note, 201);
-});
+admin.post(
+  '/taste-notes',
+  zValidator('json', TasteNoteCreateSchema, zodValidationHook),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const body = c.req.valid('json');
+    const note = await service.createTasteNote(adminId, body, cacheProvider!);
+    return success(c, note, 201);
+  },
+);
 
-admin.patch('/taste-notes/:id', async (c) => {
-  const adminId = c.get('userId') as string;
-  const id = c.req.param('id')!;
-  const body = await c.req.json();
-  const note = await service.updateTasteNote(adminId, id, body, cacheProvider!);
-  return success(c, note);
-});
+admin.patch(
+  '/taste-notes/:id',
+  zValidator('json', TasteNoteUpdateSchema, zodValidationHook),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const id = c.req.param('id')!;
+    const body = c.req.valid('json');
+    const note = await service.updateTasteNote(adminId, id, body, cacheProvider!);
+    return success(c, note);
+  },
+);
 
 admin.delete('/taste-notes/:id', async (c) => {
   const adminId = c.get('userId') as string;
@@ -420,20 +448,28 @@ admin.get('/compatibility', async (c) => {
   return success(c, rules);
 });
 
-admin.patch('/compatibility/:id', async (c) => {
-  const adminId = c.get('userId') as string;
-  const id = c.req.param('id')!;
-  const { compatible } = await c.req.json();
-  const rule = await service.updateCompatibilityRule(adminId, id, compatible, cacheProvider!);
-  return success(c, rule);
-});
+admin.patch(
+  '/compatibility/:id',
+  zValidator('json', BrewMethodCompatibilityUpdateSchema, zodValidationHook),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const id = c.req.param('id')!;
+    const { compatible } = c.req.valid('json');
+    const rule = await service.updateCompatibilityRule(adminId, id, compatible, cacheProvider!);
+    return success(c, rule);
+  },
+);
 
-admin.post('/compatibility', async (c) => {
-  const adminId = c.get('userId') as string;
-  const body = await c.req.json();
-  const rule = await service.createCompatibilityRule(adminId, body, cacheProvider!);
-  return success(c, rule, 201);
-});
+admin.post(
+  '/compatibility',
+  zValidator('json', BrewMethodCompatibilityCreateSchema, zodValidationHook),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const body = c.req.valid('json');
+    const rule = await service.createCompatibilityRule(adminId, body, cacheProvider!);
+    return success(c, rule, 201);
+  },
+);
 
 admin.delete('/compatibility/:id', async (c) => {
   const adminId = c.get('userId') as string;
@@ -489,7 +525,7 @@ admin.get(
 
 admin.post(
   '/coffee-varieties',
-  zValidator('json', CoffeeVarietyCreateSchema),
+  zValidator('json', CoffeeVarietyCreateSchema, zodValidationHook),
   async (c) => {
     const adminId = c.get('userId') as string;
     const data = c.req.valid('json');
@@ -500,7 +536,7 @@ admin.post(
 
 admin.patch(
   '/coffee-varieties/:id',
-  zValidator('json', CoffeeVarietyUpdateSchema),
+  zValidator('json', CoffeeVarietyUpdateSchema, zodValidationHook),
   async (c) => {
     const adminId = c.get('userId') as string;
     const id = c.req.param('id')!;

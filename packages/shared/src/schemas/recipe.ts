@@ -166,3 +166,27 @@ export const RecipeFilterSchema = z.object({
   sortBy: z.enum(['createdAt', 'likeCount', 'rating']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
+
+/**
+ * Validates recipe rating payloads (1–10).
+ * Used by POST /api/v1/recipes/:id/rate.
+ */
+export const RecipeRateSchema = z.object({
+  rating: z.number().int().min(1).max(10),
+});
+
+/**
+ * Validates personal recipe notes payloads.
+ * Used by POST /api/v1/recipes/:id/notes.
+ */
+export const RecipeNotesSchema = z.object({
+  notes: z.string().trim().min(1).max(10000),
+});
+
+/**
+ * Validates recipe fork payloads.
+ * Used by POST /api/v1/recipes/:id/fork.
+ */
+export const RecipeForkSchema = z.object({
+  title: z.string().max(200).optional(),
+});

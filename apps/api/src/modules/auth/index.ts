@@ -5,6 +5,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Context } from 'hono';
 import {
   AuthLoginSchema,
+  AuthRefreshSchema,
   AuthRegisterSchema,
   PasswordResetConfirmSchema,
   PasswordResetSchema,
@@ -23,10 +24,6 @@ const log = createLogger('auth');
 
 const auth = new Hono<AppEnv>();
 const authRateLimit = authRateLimitMiddleware({ windowMs: 15 * 60_000, maxAttempts: 5 });
-
-const CookieRefreshSchema = z.object({
-  refreshToken: z.string().optional(),
-});
 
 function setAuthCookies(
   c: Context,
@@ -168,7 +165,7 @@ auth.post(
     try {
       const contentType = c.req.header('content-type');
       if (contentType?.includes('application/json')) {
-        const parsed = CookieRefreshSchema.parse(await c.req.json());
+        const parsed = AuthRefreshSchema.parse(await c.req.json());
         bodyToken = parsed.refreshToken;
       }
     } catch {

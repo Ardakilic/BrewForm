@@ -1,35 +1,34 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { PaginationSchema } from '@brewform/shared/schemas';
-import { z } from 'zod';
+import { ReportCreateSchema, ReportFilterSchema } from '@brewform/shared/schemas';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
-
-const ReportCreateSchema = z.object({
-  entityType: z.enum(['recipe', 'comment', 'user']),
-  entityId: z.uuid(),
-  reason: z.string().min(1).max(2000),
-});
 
 const report = new Hono<AppEnv>();
 
-report.post('/', authMiddleware, zValidator('json', ReportCreateSchema), async (c) => {
-  const userId = c.get('userId') as string;
-  const body = c.req.valid('json');
-  const result = await service.createReport(userId, body.entityType, body.entityId, body.reason);
-  return success(c, result, 201);
-});
+report.post(
+  '/',
+  authMiddleware,
+  zValidator('json', ReportCreateSchema, zodValidationHook),
+  async (c) => {
+    const userId = c.get('userId') as string;
+    const body = c.req.valid('json');
+    const entityType = body.recipeId ? 'recipe' : 'comment';
+    const entityId = (body.recipeId ?? body.commentId)!;
+    const result = await service.createReport(userId, entityType, entityId, body.reason);
+    return success(c, result, 201);
+  },
+);
 
 report.get(
   '/',
   authMiddleware,
   adminMiddleware,
-  zValidator('query', PaginationSchema),
+  zValidator('query', ReportFilterSchema, zodValidationHook),
   async (c) => {
-    const { page, perPage } = c.req.valid('query');
-    const status = c.req.query('status');
+    const { page, perPage, status } = c.req.valid('query');
     const result = await service.listReports(status, page, perPage);
     return paginated(c, result.reports, {
       page,

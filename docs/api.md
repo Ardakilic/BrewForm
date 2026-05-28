@@ -214,6 +214,8 @@ Response `401` (invalid or expired refresh token):
 | POST   | `/recipes/:id/like`      | required | Toggle like on a recipe                               |
 | POST   | `/recipes/:id/favourite` | required | Toggle favourite on a recipe                          |
 | POST   | `/recipes/:id/feature`   | required | Toggle featured status (author only)                  |
+| POST   | `/recipes/:id/rate`     | required | Rate a recipe (1–10)                                  |
+| POST   | `/recipes/:id/notes`    | required | Save personal notes for a recipe                      |
 | GET    | `/recipes/:slug/versions` | optional | List all versions for a recipe |
 
 ### Query Parameters (GET /recipes)
@@ -263,6 +265,34 @@ Response `401` (invalid or expired refresh token):
 
 See [docs/recipes.md](recipes.md) for versioning, forking, and validation rules.
 
+### POST /recipes/:id/rate
+
+Rate a recipe on a 1–10 integer scale. Each user can rate a recipe once; subsequent requests update the previous rating.
+
+```json
+{ "rating": 8 }
+```
+
+| Field    | Type   | Required | Constraints |
+| -------- | ------ | -------- | ----------- |
+| `rating` | number | yes      | Integer, 1–10 |
+
+Response `200`: returns the updated rating and aggregate stats (average rating, rating count).
+
+### POST /recipes/:id/notes
+
+Save or update personal notes on the current version of a recipe.
+
+```json
+{ "notes": "Tried 19g dose — extracted faster, brighter acidity." }
+```
+
+| Field   | Type   | Required | Constraints      |
+| ------- | ------ | -------- | ----------------- |
+| `notes` | string | yes      | 1–10,000 chars    |
+
+Response `200`: `{ "message": "Notes saved" }`.
+
 ---
 
 ## Equipment
@@ -275,6 +305,8 @@ See [docs/recipes.md](recipes.md) for versioning, forking, and validation rules.
 | GET    | `/equipment/:id`    | none     | Get single equipment by ID                     |
 | PATCH  | `/equipment/:id`    | required | Update equipment (owner only)                  |
 | DELETE | `/equipment/:id`    | required | Delete equipment (owner only)                  |
+| GET    | `/equipment/:id/recipes` | none | List public recipes using this equipment (paginated) |
+| POST   | `/equipment/:id/delete-request` | required | Request deletion of equipment (provides reason) |
 
 ### Equipment Types
 

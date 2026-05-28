@@ -26,10 +26,17 @@ vi.mock('../../api/index', () => ({
   ApiError: class extends Error {
     code: string;
     status: number;
-    constructor(code: string, message: string, status: number) {
+    details?: Array<{ field: string; message: string }>;
+    constructor(
+      code: string,
+      message: string,
+      details?: Array<{ field: string; message: string }>,
+      status: number = 500,
+    ) {
       super(message);
       this.code = code;
       this.status = status;
+      this.details = details;
     }
   },
 }));
@@ -250,5 +257,21 @@ describe('LoginPage', () => {
   it('should require password field', async () => {
     await renderLoginPage();
     expect(screen.getByLabelText(/password/i)).toBeRequired();
+  });
+
+  it('should display structured error message from ApiError on login failure', async () => {
+    const { ApiError: MockApiError } = await import('../../api/index.ts');
+    vi.mocked(authApi.login).mockRejectedValue(
+      new MockApiError('VALIDATION_ERROR', 'Validation failed', [
+        { field: 'email', message: 'Invalid format' },
+      ], 400),
+    );
+    await renderLoginPage();
+    await userEvent.type(screen.getByLabelText(/email/i), 'bad@test');
+    await userEvent.type(screen.getByLabelText(/password/i), 'pass');
+    await userEvent.click(screen.getByRole('button', { name: /log in/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Validation failed')).toBeInTheDocument();
+    });
   });
 });

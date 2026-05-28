@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Hono } from 'hono';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
@@ -6,22 +7,38 @@ import type { AppEnv } from '../../types/hono.ts';
 
 const photo = new Hono<AppEnv>();
 
+const PhotoFormSchema = z.object({
+  recipeId: z.uuid(),
+  alt: z.string().max(200).optional(),
+  sortOrder: z.coerce.number().int().min(0).default(0),
+});
+
 photo.post('/', authMiddleware, async (c) => {
   const userId = c.get('userId') as string;
   const formData = await c.req.formData();
 
   const fileField = formData.get('file') ?? formData.get('photo');
   const thumbnailField = formData.get('thumbnail');
-  const recipeId = formData.get('recipeId') as string;
-  const alt = (formData.get('alt') as string) || undefined;
-  const sortOrder = formData.get('sortOrder') ? Number(formData.get('sortOrder')) : undefined;
 
   if (!fileField || !(fileField instanceof File)) {
     return error(c, 'VALIDATION_ERROR', 'File is required', 400);
   }
-  if (!recipeId) {
-    return error(c, 'VALIDATION_ERROR', 'Recipe ID is required', 400);
+
+  const parsed = PhotoFormSchema.safeParse({
+    recipeId: formData.get('recipeId'),
+    alt: formData.get('alt') || undefined,
+    sortOrder: formData.get('sortOrder') || undefined,
+  });
+
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
+    }));
+    return error(c, 'VALIDATION_ERROR', 'Validation failed', 400, details);
   }
+
+  const { recipeId, alt, sortOrder } = parsed.data;
 
   const data = new Uint8Array(await fileField.arrayBuffer());
   const thumbnail = thumbnailField instanceof File && thumbnailField.size > 0

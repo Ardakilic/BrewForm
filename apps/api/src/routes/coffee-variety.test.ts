@@ -62,11 +62,13 @@ describe('Coffee Variety Route Registration', () => {
     expect(body.success).toBe(true);
   });
 
-  it('GET /api/v1/coffee-varieties/search returns empty for short query', async () => {
+  it('GET /api/v1/coffee-varieties/search rejects short query', async () => {
     const res = await app.request('/api/v1/coffee-varieties/search?q=a');
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.data).toEqual([]);
+    expect(body.success).toBe(false);
+    expect(body.error.name).toBe('ZodError');
+    expect(body.error.message).toBeDefined();
   });
 
   it('GET /api/v1/coffee-varieties accepts pagination params', async () => {

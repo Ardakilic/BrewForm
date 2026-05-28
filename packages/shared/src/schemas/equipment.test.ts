@@ -1,6 +1,10 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { EquipmentCreateSchema, EquipmentUpdateSchema } from './equipment.ts';
+import {
+  EquipmentCreateSchema,
+  EquipmentDeleteRequestSchema,
+  EquipmentUpdateSchema,
+} from './equipment.ts';
 
 describe('EquipmentCreateSchema', () => {
   it('should validate a valid equipment creation', () => {
@@ -87,5 +91,36 @@ describe('EquipmentUpdateSchema', () => {
   it('should accept empty object', () => {
     const result = EquipmentUpdateSchema.safeParse({});
     expect(result.success).toBe(true);
+  });
+});
+
+describe('EquipmentDeleteRequestSchema', () => {
+  it('should validate with reason', () => {
+    const result = EquipmentDeleteRequestSchema.safeParse({
+      reason: 'No longer needed',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate without reason (optional)', () => {
+    const result = EquipmentDeleteRequestSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('should validate reason up to 500 chars', () => {
+    const result = EquipmentDeleteRequestSchema.safeParse({
+      reason: 'a'.repeat(500),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject reason over 500 chars', () => {
+    const result = EquipmentDeleteRequestSchema.safeParse({
+      reason: 'a'.repeat(501),
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('reason'))).toBe(true);
+    }
   });
 });
