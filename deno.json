@@ -3,6 +3,14 @@
   "workspace": {
     "members": ["apps/*", "packages/*"]
   },
+  // Centralized npm dependency versions using the Deno 2.8 catalog: protocol.
+  // Members reference these via "catalog:" in their package.json dependencies.
+  // See: https://docs.deno.com/runtime/fundamentals/workspaces/#centralized-dependency-versions-with-catalog%3A
+  "catalog": {
+    "drizzle-orm": "^0.45.0",
+    "bcryptjs": "^3.0.0",
+    "zod": "^4.0.0"
+  },
   "nodeModulesDir": "auto",
   "tasks": {
     "dev": "deno task dev:api & deno task dev:web",
@@ -38,7 +46,12 @@
     "db:seed": "deno run --allow-all packages/db/src/seed.ts",
 
     "email-build": "deno task --cwd apps/api email-build",
-    "ci": "deno task fmt-check && deno task lint && deno task check && deno task build && deno task test-coverage && deno task test:db && deno task --cwd apps/web test"
+    "ci": "deno task fmt-check && deno task lint && deno task check && deno task build && deno task test-coverage && deno task test:db && deno task --cwd apps/web test",
+    // Experimental Deno 2.8 bump-version tasks for workspace versioning.
+    // Requires conventional commits when using --base=main.
+    "bump:dry-run": "deno bump-version --base=main --dry-run",
+    "bump:patch": "deno bump-version patch",
+    "bump:minor": "deno bump-version minor"
   },
   "compilerOptions": {
     "strict": true,
@@ -74,6 +87,9 @@
     "exclude": ["**/node_modules/", "**/dist/", "**/generated/", "packages/db/drizzle/"]
   },
   "test": {
+    // Re-enable sanitizers explicitly (Deno 2.8 turns them off by default).
+    "sanitizeOps": true,
+    "sanitizeResources": true,
     "include": [
       "apps/api/src/",
       "packages/shared/src/",

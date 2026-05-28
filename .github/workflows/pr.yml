@@ -15,7 +15,7 @@ jobs:
           deno-version: v2.x
 
       - name: Install dependencies
-        run: deno install --frozen
+        run: deno ci
 
       - name: Generate Drizzle migration
         run: deno task db:generate
@@ -46,7 +46,7 @@ jobs:
           deno-version: v2.x
 
       - name: Install dependencies
-        run: deno install --frozen
+        run: deno ci
 
       - name: Run shared package tests
         run: >
@@ -96,7 +96,7 @@ jobs:
           deno-version: v2.x
 
       - name: Install dependencies
-        run: deno install --frozen
+        run: deno ci
 
       - name: Assert no uncommitted migrations
         run: |
@@ -144,7 +144,7 @@ jobs:
           deno-version: v2.x
 
       - name: Install dependencies
-        run: deno install --frozen
+        run: deno ci
 
       - name: Run web tests
         run: deno task --cwd apps/web test

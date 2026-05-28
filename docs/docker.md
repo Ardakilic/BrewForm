@@ -83,6 +83,43 @@ Profiles are used to prevent accidental service startup:
 - `make preview` — starts infrastructure + `app-preview` + `web`
 - `make serena-up` — starts `serena` only
 
+## Dockerfile Runner Stage — Workspace Manifest Requirement
+
+The production `runner` stage in `Dockerfile` copies **all** workspace member manifests (`package.json` + `deno.json`), even for members that are not served at runtime (e.g., `apps/web`).
+
+### Why?
+
+The root `deno.json` defines workspace members with globs:
+
+```json
+"workspace": {
+  "members": ["apps/*", "packages/*"]
+}
+```
+
+When `deno ci --prod` runs in the runner stage, Deno resolves the full workspace graph. The `deno.lock` contains entries for **all** discovered members. If a member's manifest is missing on disk, the workspace resolver errors:
+
+```text
+error: The lockfile is out of date. Run `deno install --frozen=false`...
+```
+
+### What is copied
+
+Only **manifests** (no source code):
+
+```dockerfile
+COPY apps/web/package.json apps/web/deno.json ./apps/web/
+```
+
+Application source is copied selectively:
+
+```dockerfile
+COPY --from=builder /app/apps/api/src ./apps/api/src
+COPY --from=builder /app/packages ./packages
+```
+
+This keeps the production image minimal while satisfying Deno's workspace resolution.
+
 ## Troubleshooting
 
 ### "Cannot find module '@rolldown/binding-linux-arm64-gnu'"

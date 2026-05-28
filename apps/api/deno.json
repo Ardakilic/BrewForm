@@ -1,5 +1,6 @@
 {
   "name": "@brewform/api",
+  "version": "0.1.0",
   "exports": {},
   "tasks": {
     "dev": "deno run --allow-all --unstable-cron --watch src/main.ts",
