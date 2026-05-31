@@ -32,7 +32,7 @@ Both files contain `renderTemplate()` and `sendEmail()` functions with divergent
 - **Inconsistent behavior:** `auth/email.ts` throws on send failure; `utils/notify/index.ts` swallows errors — intentional difference, but it must be preserved.
 - **Missing HTML escaping:** `auth/email.ts` does NOT call `escapeHtml()` on template values; `utils/notify/index.ts` does — active XSS risk in auth emails (welcome, password reset, verification).
 - **Hardcoded base URL:** `sendPasswordResetEmail` and `sendVerificationEmail` hardcode the app URL instead of using the exported `appBaseUrl()` from notify, which already respects `config.PUBLIC_APP_URL`.
-- **Dead export:** `sendWelcomeEmail` is exported but never imported or called anywhere in the codebase.
+- **Dead export (resolved):** `sendWelcomeEmail` was initially thought to be unused — see [appendix](#appendix-side-findings-out-of-scope-for-this-pr) which shows it is imported and invoked in the admin service (`apps/api/src/modules/admin/service.ts:94`).
 
 ## Root Cause
 

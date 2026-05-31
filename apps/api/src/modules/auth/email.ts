@@ -68,7 +68,7 @@ export async function sendWelcomeEmail(to: string, username: string) {
  * @param username - Display name for personalizing the message
  */
 export async function sendPasswordResetEmail(to: string, token: string, username: string) {
-  const resetUrl = `${appBaseUrl()}/reset-password?token=${token}`;
+  const resetUrl = `${appBaseUrl()}/reset-password?token=${encodeURIComponent(token)}`;
 
   const html = renderTemplate(resetPasswordTemplate, {
     username,
@@ -89,7 +89,7 @@ export async function sendPasswordResetEmail(to: string, token: string, username
  * @param username - Display name for personalizing the message
  */
 export async function sendVerificationEmail(to: string, token: string, username: string) {
-  const verifyUrl = `${appBaseUrl()}/verify-email?token=${token}`;
+  const verifyUrl = `${appBaseUrl()}/verify-email?token=${encodeURIComponent(token)}`;
 
   const html = renderTemplate(verifyEmailTemplate, {
     username,

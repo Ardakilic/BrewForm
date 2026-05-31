@@ -7,6 +7,11 @@ import {
   sendVerificationEmail,
   sendWelcomeEmail,
 } from './email.ts';
+import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
+import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
+import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
+import { appBaseUrl } from '../../utils/notify/index.ts';
+import { escapeHtml } from '@brewform/shared/utils';
 
 describe('renderTemplate', () => {
   it('should substitute placeholders with provided values', () => {
@@ -71,10 +76,13 @@ describe('Auth Email', () => {
       await expect(sendWelcomeEmail('test@example.com', 'testuser')).resolves.toBeUndefined();
     });
 
-    it('should handle XSS payloads in username without throwing', async () => {
-      await expect(
-        sendWelcomeEmail('test@example.com', '<script>alert(1)</script>'),
-      ).resolves.toBeUndefined();
+    it('should escape XSS payloads in username in rendered payload', () => {
+      const html = renderTemplate(welcomeTemplate, {
+        username: '<script>alert(1)</script>',
+        app_name: 'BrewForm',
+      });
+      expect(html).not.toContain('<script>');
+      expect(html).toContain('&lt;script&gt;');
     });
   });
 
@@ -85,10 +93,28 @@ describe('Auth Email', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('should handle XSS payloads in username without throwing', async () => {
-      await expect(
-        sendPasswordResetEmail('test@example.com', 'token123', '<img src=x onerror=alert(1)>'),
-      ).resolves.toBeUndefined();
+    it('should escape XSS payloads in username in rendered payload', () => {
+      const html = renderTemplate(resetPasswordTemplate, {
+        username: '<img src=x onerror=alert(1)>',
+        reset_url: `${appBaseUrl()}/reset-password?token=token123`,
+        app_name: 'BrewForm',
+      });
+      expect(html).not.toContain('<img');
+      expect(html).toContain('&lt;img');
+    });
+
+    it('should build reset link from appBaseUrl with URL-encoded token', () => {
+      const token = 'token+123/456?';
+      const resetUrl = `${appBaseUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+      const escapedResetUrl = escapeHtml(resetUrl);
+      const html = renderTemplate(resetPasswordTemplate, {
+        username: 'testuser',
+        reset_url: resetUrl,
+        app_name: 'BrewForm',
+      });
+      expect(html).toContain(appBaseUrl().replace(/\//g, '&#x2F;'));
+      expect(html).toContain('href="' + escapedResetUrl + '"');
+      expect(html).toContain(encodeURIComponent(token));
     });
   });
 
@@ -99,10 +125,28 @@ describe('Auth Email', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('should handle XSS payloads in username without throwing', async () => {
-      await expect(
-        sendVerificationEmail('test@example.com', 'token456', '<script>alert(1)</script>'),
-      ).resolves.toBeUndefined();
+    it('should escape XSS payloads in username in rendered payload', () => {
+      const html = renderTemplate(verifyEmailTemplate, {
+        username: '<script>alert(1)</script>',
+        verify_url: `${appBaseUrl()}/verify-email?token=token456`,
+        app_name: 'BrewForm',
+      });
+      expect(html).not.toContain('<script>');
+      expect(html).toContain('&lt;script&gt;');
+    });
+
+    it('should build verify link from appBaseUrl with URL-encoded token', () => {
+      const token = 'token+special/value?';
+      const verifyUrl = `${appBaseUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+      const escapedVerifyUrl = escapeHtml(verifyUrl);
+      const html = renderTemplate(verifyEmailTemplate, {
+        username: 'testuser',
+        verify_url: verifyUrl,
+        app_name: 'BrewForm',
+      });
+      expect(html).toContain(appBaseUrl().replace(/\//g, '&#x2F;'));
+      expect(html).toContain('href="' + escapedVerifyUrl + '"');
+      expect(html).toContain(encodeURIComponent(token));
     });
   });
 });
