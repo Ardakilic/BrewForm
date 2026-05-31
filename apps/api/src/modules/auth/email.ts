@@ -1,50 +1,54 @@
 import { config } from '../../config/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import { appBaseUrl, getTransporter } from '../../utils/notify/index.ts';
+import { escapeHtml } from '@brewform/shared/utils';
 import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
 import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
 import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
-import nodemailer from 'npm:nodemailer';
 
 const logger = createLogger('auth-email');
 
-function createTransporter() {
-  return nodemailer.createTransport({
-    host: config.SMTP_HOST,
-    port: config.SMTP_PORT,
-    secure: config.SMTP_SECURE,
-    auth: config.SMTP_USER ? { user: config.SMTP_USER, pass: config.SMTP_PASS } : undefined,
-  });
-}
-
-function renderTemplate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{\{(.*?)\}\}/g, (match, key) => {
-    return vars[key] !== undefined ? vars[key] : match;
+/**
+ * Substitute `{{key}}` placeholders with HTML-escaped values.
+ *
+ * Missing keys are left as-is (the placeholder is preserved). All values
+ * are passed through {@link escapeHtml} to prevent XSS.
+ */
+export function renderTemplate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+    const value = vars[key];
+    return value !== undefined ? escapeHtml(value) : _match;
   });
 }
 
 async function sendEmail(to: string, subject: string, html: string) {
-  logger.info({ delivery: 'pending', subject }, 'Sending email');
+  logger.info({ delivery: 'pending', subject }, 'Sending auth email');
 
   if (config.APP_ENV === 'test') {
-    logger.info({ delivery: 'skipped', subject }, 'Email skipped (test environment)');
+    logger.info({ delivery: 'skipped', subject }, 'Auth email skipped (test environment)');
     return;
   }
 
   try {
-    const transporter = createTransporter();
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: config.EMAIL_FROM,
       to,
       subject,
       html,
     });
-    logger.info({ delivery: 'sent', subject }, 'Email sent successfully');
+    logger.info({ delivery: 'sent', subject }, 'Auth email sent successfully');
   } catch (err) {
-    logger.error({ err, delivery: 'failed', subject }, 'Failed to send email');
+    logger.error({ err, delivery: 'failed', subject }, 'Failed to send auth email');
     throw err;
   }
 }
 
+/**
+ * Send a welcome email to a newly registered user.
+ *
+ * @param to - Recipient email address
+ * @param username - Display name for personalizing the welcome message
+ */
 export async function sendWelcomeEmail(to: string, username: string) {
   const html = renderTemplate(welcomeTemplate, {
     username,
@@ -53,9 +57,18 @@ export async function sendWelcomeEmail(to: string, username: string) {
   await sendEmail(to, 'Welcome to BrewForm!', html);
 }
 
+/**
+ * Send a password reset email with a single-use token link.
+ *
+ * The reset URL is built using {@link appBaseUrl} so it respects
+ * `config.PUBLIC_APP_URL` when set.
+ *
+ * @param to - Recipient email address
+ * @param token - Password reset token (embedded in the link)
+ * @param username - Display name for personalizing the message
+ */
 export async function sendPasswordResetEmail(to: string, token: string, username: string) {
-  const baseUrl = config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173';
-  const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+  const resetUrl = `${appBaseUrl()}/reset-password?token=${encodeURIComponent(token)}`;
 
   const html = renderTemplate(resetPasswordTemplate, {
     username,
@@ -65,9 +78,18 @@ export async function sendPasswordResetEmail(to: string, token: string, username
   await sendEmail(to, 'Reset your BrewForm password', html);
 }
 
+/**
+ * Send an email verification message with a single-use token link.
+ *
+ * The verification URL is built using {@link appBaseUrl} so it respects
+ * `config.PUBLIC_APP_URL` when set.
+ *
+ * @param to - Recipient email address
+ * @param token - Email verification token (embedded in the link)
+ * @param username - Display name for personalizing the message
+ */
 export async function sendVerificationEmail(to: string, token: string, username: string) {
-  const baseUrl = config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173';
-  const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
+  const verifyUrl = `${appBaseUrl()}/verify-email?token=${encodeURIComponent(token)}`;
 
   const html = renderTemplate(verifyEmailTemplate, {
     username,
