@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Navbar } from './Navbar.tsx';
@@ -147,6 +147,10 @@ const defaultTheme = {
   theme: 'light' as const,
   setTheme: vi.fn(),
 };
+
+beforeAll(() => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+});
 
 beforeEach(() => {
   vi.clearAllMocks();

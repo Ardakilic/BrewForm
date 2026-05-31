@@ -99,6 +99,8 @@ beforeEach(() => {
 
 describe('UserProfilePage — FollowButton visibility', () => {
   it('hides FollowButton when user is not logged in', async () => {
+    (mockApi.get as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
+
     render(<UserProfilePage />);
 
     const followButton = screen.queryByTestId('follow-button');

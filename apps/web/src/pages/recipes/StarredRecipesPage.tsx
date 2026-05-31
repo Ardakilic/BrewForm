@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -496,21 +496,40 @@ function ActiveFilterBadge(
   );
 }
 
+/**
+ * Render a clickable recipe card with an inner author button.
+ *
+ * Uses `<button>` for the author link instead of `<Link>` to avoid nested
+ * `<a>` elements (invalid HTML). The card itself is a `<Link>` for native
+ * link behavior (Ctrl+click/new tab), while the author button uses
+ * `useNavigate` with `e.stopPropagation()` to prevent card navigation.
+ */
 function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
+  const navigate = useNavigate();
   return (
     <Link to={`/recipes/${recipe.slug}`} className='card hover:shadow-lg transition-shadow'>
       <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>{recipe.title}</h3>
       <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
         by {recipe.author
           ? (
-            <Link
-              to={`/u/${recipe.author.username}`}
-              onClick={(e) => e.stopPropagation()}
+            <button
+              type='button'
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/u/${recipe.author!.username}`);
+              }}
               className='hover:underline'
-              style={{ color: 'var(--accent-primary)' }}
+              style={{
+                color: 'var(--accent-primary)',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                font: 'inherit',
+              }}
             >
               {recipe.author.displayName || recipe.author.username}
-            </Link>
+            </button>
           )
           : (
             'unknown'

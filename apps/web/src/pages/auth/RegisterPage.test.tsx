@@ -37,7 +37,7 @@ vi.mock('../../api/index.ts', () => ({
     logout: vi.fn().mockResolvedValue({}),
   },
   userApi: {
-    me: vi.fn().mockRejectedValue(new Error('Not authenticated')),
+    me: vi.fn().mockReturnValue(new Promise(() => {})),
   },
 }));
 

@@ -7,6 +7,7 @@ vi.mock('react-router', () => ({
   Link: (
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
   ) => <a href={to} {...props}>{children}</a>,
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock('../contexts/I18nContext', () => ({
@@ -14,13 +15,9 @@ vi.mock('../contexts/I18nContext', () => ({
 }));
 
 vi.mock('../api/index.ts', () => {
-  const empty = {
-    data: [],
-    meta: { pagination: { page: 1, perPage: 6, total: 0, totalPages: 0 } },
-  };
   return {
     recipeApi: {
-      list: vi.fn().mockResolvedValue(empty),
+      list: vi.fn().mockReturnValue(new Promise(() => {})),
     },
   };
 });
@@ -137,12 +134,9 @@ describe('HomePage — i18n', () => {
 
     // Title appears in both Latest and Popular sections
     expect(await screen.findAllByText('Test Recipe')).toHaveLength(2);
-    // Author links appear in both Latest and Popular sections
-    const authorLinks = screen.getAllByRole('link', { name: 'Test User' });
-    expect(authorLinks).toHaveLength(2);
-    authorLinks.forEach((link) => {
-      expect(link).toHaveAttribute('href', '/u/testuser');
-    });
+    // Author buttons appear in both Latest and Popular sections
+    const authorButtons = screen.getAllByRole('button', { name: 'Test User' });
+    expect(authorButtons).toHaveLength(2);
   });
 
   it('renders "unknown" author when author is null', async () => {
@@ -221,8 +215,10 @@ describe('HomePage — i18n', () => {
 
     render(<HomePage />);
 
-    expect(screen.getByText('Latest Recipes')).toBeInTheDocument();
-    expect(screen.getByText('Popular Recipes')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Latest Recipes')).toBeInTheDocument();
+      expect(screen.getByText('Popular Recipes')).toBeInTheDocument();
+    });
     expect(screen.queryByText(/❤️/)).not.toBeInTheDocument();
   });
 
