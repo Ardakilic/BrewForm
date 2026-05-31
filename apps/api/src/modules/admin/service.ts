@@ -237,7 +237,7 @@ export async function createVendor(
   data: { name: string; website?: string; description?: string },
 ) {
   logger.debug({ adminId }, 'createVendor started');
-  const vendor = await model.createVendor(data);
+  const vendor = await model.createVendor({ ...data, createdBy: adminId });
   await model.createAuditLog(adminId, 'CREATE_VENDOR', 'Vendor', vendor.id);
   logger.debug({ adminId }, 'createVendor completed');
   return vendor;

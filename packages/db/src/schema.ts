@@ -467,6 +467,7 @@ export const vendors = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     website: varchar('website', { length: 500 }),
     description: text('description'),
+    createdBy: varchar('created_by', { length: 36 }).references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -779,6 +780,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   setups: many(setups),
   equipment: many(equipment),
   beans: many(beans),
+  vendors: many(vendors),
   auditLogs: many(auditLogs),
   passwordResets: many(passwordResets),
   emailVerificationTokens: many(emailVerificationTokens),
@@ -909,7 +911,11 @@ export const beansRelations = relations(beans, ({ one, many }) => ({
   recipeVersions: many(recipeVersions),
 }));
 
-export const vendorsRelations = relations(vendors, ({ many }) => ({
+export const vendorsRelations = relations(vendors, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [vendors.createdBy],
+    references: [users.id],
+  }),
   beans: many(beans),
   recipeVersions: many(recipeVersions),
 }));

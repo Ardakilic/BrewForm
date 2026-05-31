@@ -88,7 +88,7 @@ describe('Coffee Variety Service', () => {
         findById: () => Promise.resolve(null),
       });
       await expect(updateCoffeeVariety('nonexistent', {}, 'user-1', { model: mockModel }))
-        .rejects.toThrow('Coffee variety not found');
+        .rejects.toThrow('COFFEE_VARIETY_NOT_FOUND');
     });
 
     it('should block system variety updates', async () => {
@@ -96,7 +96,48 @@ describe('Coffee Variety Service', () => {
         findById: () => Promise.resolve({ id: 'var-1', isSystem: true } as any),
       });
       await expect(updateCoffeeVariety('var-1', {}, 'user-1', { model: mockModel }))
-        .rejects.toThrow('Cannot modify system coffee varieties');
+        .rejects.toThrow('SYSTEM_VARIETY_IMMUTABLE');
+    });
+
+    it('should throw FORBIDDEN when non-owner tries to update a user-created variety', async () => {
+      const mockModel = createMockModel({
+        findById: () =>
+          Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
+      });
+      await expect(updateCoffeeVariety('var-1', {}, 'not-owner', { model: mockModel }))
+        .rejects.toThrow('FORBIDDEN');
+    });
+
+    it('should allow owner to update their own variety', async () => {
+      const mockModel = createMockModel({
+        findById: () =>
+          Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
+        update: () => Promise.resolve({ id: 'var-1', name: 'Updated' } as any),
+      });
+      const result = await updateCoffeeVariety('var-1', { name: 'Updated' }, 'owner-1', {
+        model: mockModel,
+      });
+      expect(result).toBeDefined();
+    });
+
+    it('should allow admin to update any user-created variety', async () => {
+      const mockModel = createMockModel({
+        findById: () =>
+          Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
+        update: () => Promise.resolve({ id: 'var-1', name: 'Updated' } as any),
+      });
+      const result = await updateCoffeeVariety('var-1', { name: 'Updated' }, 'admin-user', {
+        model: mockModel,
+      }, true);
+      expect(result).toBeDefined();
+    });
+
+    it('should still throw SYSTEM_VARIETY_IMMUTABLE for system varieties regardless of admin status', async () => {
+      const mockModel = createMockModel({
+        findById: () => Promise.resolve({ id: 'var-1', isSystem: true, createdBy: null } as any),
+      });
+      await expect(updateCoffeeVariety('var-1', {}, 'admin-user', { model: mockModel }, true))
+        .rejects.toThrow('SYSTEM_VARIETY_IMMUTABLE');
     });
   });
 
@@ -106,7 +147,7 @@ describe('Coffee Variety Service', () => {
         findById: () => Promise.resolve(null),
       });
       await expect(deleteCoffeeVariety('nonexistent', 'user-1', { model: mockModel }))
-        .rejects.toThrow('Coffee variety not found');
+        .rejects.toThrow('COFFEE_VARIETY_NOT_FOUND');
     });
 
     it('should block system variety deletion', async () => {
@@ -114,7 +155,26 @@ describe('Coffee Variety Service', () => {
         findById: () => Promise.resolve({ id: 'var-1', isSystem: true } as any),
       });
       await expect(deleteCoffeeVariety('var-1', 'user-1', { model: mockModel }))
-        .rejects.toThrow('Cannot delete system coffee varieties');
+        .rejects.toThrow('SYSTEM_VARIETY_IMMUTABLE');
+    });
+
+    it('should throw FORBIDDEN when non-owner tries to delete a user-created variety', async () => {
+      const mockModel = createMockModel({
+        findById: () =>
+          Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
+      });
+      await expect(deleteCoffeeVariety('var-1', 'not-owner', { model: mockModel }))
+        .rejects.toThrow('FORBIDDEN');
+    });
+
+    it('should allow admin to delete any user-created variety', async () => {
+      const mockModel = createMockModel({
+        findById: () =>
+          Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
+        softDelete: () => Promise.resolve({ id: 'var-1' } as any),
+      });
+      const result = await deleteCoffeeVariety('var-1', 'admin-user', { model: mockModel }, true);
+      expect(result).toBeDefined();
     });
   });
 

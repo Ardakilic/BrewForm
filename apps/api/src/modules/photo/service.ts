@@ -21,23 +21,32 @@ const logger = createLogger('photo-service');
 /**
  * Upload a photo for a recipe.
  *
- * Validates the image, generates a unique filename, persists the file and
- * optional thumbnail, then creates a photo record.
+ * Verifies that the recipe exists and the caller is the recipe author before
+ * saving the file. Validates the image, generates a unique filename, persists
+ * the file and optional thumbnail, then creates a photo record.
  *
- * @param file - Uploaded file metadata and binary data
+ * @param userId    - The ID of the user uploading the photo
+ * @param recipeId  - The recipe the photo belongs to
+ * @param file      - Uploaded file metadata and binary data
  * @param thumbnail - Optional thumbnail binary data
- * @param alt - Optional alt text
+ * @param alt       - Optional alt text
  * @param sortOrder - Optional display order (defaults to 0)
+ * @throws RECIPE_NOT_FOUND if the recipe doesn't exist
+ * @throws FORBIDDEN if the user is not the recipe author
  * @returns The created photo record
  */
 export async function uploadPhoto(
-  _userId: string,
+  userId: string,
   recipeId: string,
   file: { name: string; type: string; size: number; data: Uint8Array },
   thumbnail: Uint8Array | null,
   alt?: string,
   sortOrder?: number,
 ) {
+  const recipe = await recipeModel.findById(recipeId);
+  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
+  if (recipe.authorId !== userId) throw new Error('FORBIDDEN');
+
   const validationError = validateImageUpload(file);
   if (validationError) throw new Error(validationError);
 

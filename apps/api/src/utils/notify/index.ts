@@ -55,14 +55,14 @@ export function closeTransporter(): void {
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   if (config.APP_ENV === 'test') {
-    logger.info({ to, subject }, 'Notification skipped (test environment)');
+    logger.info({ delivery: 'skipped', subject }, 'Notification skipped (test environment)');
     return;
   }
   try {
     await getTransporter().sendMail({ from: config.EMAIL_FROM, to, subject, html });
-    logger.info({ to, subject }, 'Notification email sent');
+    logger.info({ delivery: 'sent', subject }, 'Notification email sent');
   } catch (err) {
-    logger.error({ err, to, subject }, 'Notification email failed');
+    logger.error({ err, delivery: 'failed', subject }, 'Notification email failed');
   }
 }
 

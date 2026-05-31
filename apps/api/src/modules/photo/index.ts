@@ -62,6 +62,8 @@ photo.post('/', authMiddleware, async (c) => {
     return success(c, result, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
+    if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your recipe', 403);
     return error(c, 'UPLOAD_ERROR', message, 400);
   }
 });
@@ -81,6 +83,7 @@ photo.delete('/:id', authMiddleware, async (c) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === 'PHOTO_NOT_FOUND') return error(c, 'NOT_FOUND', 'Photo not found', 404);
+    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Forbidden', 403);
     throw err;
   }
 });

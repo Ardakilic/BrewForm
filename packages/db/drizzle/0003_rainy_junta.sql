@@ -1,0 +1,2 @@
+ALTER TABLE "vendor" ADD COLUMN "created_by" varchar(36);--> statement-breakpoint
+ALTER TABLE "vendor" ADD CONSTRAINT "vendor_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;

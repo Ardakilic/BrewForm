@@ -66,21 +66,52 @@ router.get('/:id', async (c) => {
 router.patch('/:id', authGuard, zValidator('json', CoffeeVarietyUpdateSchema), async (c) => {
   const body = c.req.valid('json');
   const userId = c.get('userId')!;
+  const user = c.get('user') as { isAdmin: boolean } | null;
+  const isAdmin = user?.isAdmin ?? false;
   try {
-    const result = await deps.service.updateCoffeeVariety(c.req.param('id')!, body, userId);
+    const result = await deps.service.updateCoffeeVariety(
+      c.req.param('id')!,
+      body,
+      userId,
+      undefined,
+      isAdmin,
+    );
     return success(c, result);
   } catch (e: unknown) {
-    return error(c, 'BAD_REQUEST', e instanceof Error ? e.message : String(e), 400);
+    const message = e instanceof Error ? e.message : String(e);
+    if (message === 'COFFEE_VARIETY_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'Coffee variety not found', 404);
+    }
+    if (message === 'SYSTEM_VARIETY_IMMUTABLE') {
+      return error(c, 'FORBIDDEN', 'Cannot modify system varieties', 403);
+    }
+    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your coffee variety', 403);
+    return error(c, 'BAD_REQUEST', message, 400);
   }
 });
 
 router.delete('/:id', authGuard, async (c) => {
   const userId = c.get('userId')!;
+  const user = c.get('user') as { isAdmin: boolean } | null;
+  const isAdmin = user?.isAdmin ?? false;
   try {
-    const result = await deps.service.deleteCoffeeVariety(c.req.param('id')!, userId);
+    const result = await deps.service.deleteCoffeeVariety(
+      c.req.param('id')!,
+      userId,
+      undefined,
+      isAdmin,
+    );
     return success(c, result);
   } catch (e: unknown) {
-    return error(c, 'BAD_REQUEST', e instanceof Error ? e.message : String(e), 400);
+    const message = e instanceof Error ? e.message : String(e);
+    if (message === 'COFFEE_VARIETY_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'Coffee variety not found', 404);
+    }
+    if (message === 'SYSTEM_VARIETY_IMMUTABLE') {
+      return error(c, 'FORBIDDEN', 'Cannot delete system varieties', 403);
+    }
+    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your coffee variety', 403);
+    return error(c, 'BAD_REQUEST', message, 400);
   }
 });
 
