@@ -311,7 +311,9 @@ export async function listVendors(page: number, perPage: number) {
 }
 
 /** Create a new vendor. */
-export async function createVendor(data: { name: string; website?: string; description?: string }) {
+export async function createVendor(
+  data: { name: string; website?: string; description?: string; createdBy?: string | null },
+) {
   const [result] = await db.insert(vendors).values(data).returning();
   return result;
 }

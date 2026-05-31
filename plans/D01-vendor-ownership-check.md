@@ -1,67 +1,78 @@
-# D01: Vendor Update Missing Ownership Check
+# Ownership Check Audit — D01 / D02 / D03
 
-**Severity:** Critical — Security Vulnerability  
-**Date:** 2026-05-29  
+**Audit Date:** 2026-05-31  
 **Status:** Proposed  
-**Module:** `apps/api/src/modules/vendor`
+**Scope:** Full `apps/api/src/modules` scan for `_userId` ignored-parameter pattern
 
 ---
 
-## Issue Description
+## Summary Table
 
-The `updateVendor()` service function accepts a `_userId` parameter but never uses it to verify ownership. Any authenticated user can update any vendor's data by sending a PATCH request with an arbitrary vendor ID. The underscore prefix on `_userId` indicates the parameter was intentionally ignored during implementation.
+| ID | Module | File | Severity | Schema change? |
+|----|--------|------|----------|----------------|
+| D01 | `vendor` | `service.ts:36`, `service.ts:27`, `admin/service.ts:240`, `admin/model.ts:314` | Critical | ✅ Yes — add `createdBy` |
+| D02 | `coffee-variety` | `service.ts:52`, `service.ts:68` | High | ❌ No — column exists |
+| D03 | `photo` | `service.ts:34` | High | ❌ No — check via `recipe.authorId` |
 
-**Current code** (`apps/api/src/modules/vendor/service.ts:36`):
+> **Modules confirmed clean:** `auth`, `user` (`/me` routes are self-scoped by design), `admin` (fully behind `adminMiddleware`), `bean`, `setup`, `recipe`, `comment`, `preference`, `follow`, `badge`, `qrcode`, `taste`, `report`.
+
+---
+
+## D01: Vendor Update Missing Ownership Check
+
+**Severity:** Critical — Security Vulnerability  
+**Date:** 2026-05-29  
+**Module:** `apps/api/src/modules/vendor`, `apps/api/src/modules/admin`
+
+### Issue Description
+
+`updateVendor()` accepts `_userId` but never uses it. Any authenticated user can update any vendor's data via PATCH. In addition, neither the public `vendor/service.ts:createVendor` nor the admin `admin/service.ts:createVendor` persists the caller's ID into the new `createdBy` column, meaning every vendor created after the schema migration will have `createdBy = null`.
+
+**Broken functions:**
+
 ```ts
+// apps/api/src/modules/vendor/service.ts:36
 export async function updateVendor(_userId: string, id: string, data: any) {
   const vendor = await model.findById(id);
   if (!vendor) throw new Error('VENDOR_NOT_FOUND');
-  return model.update(id, data);
+  return model.update(id, data); // no ownership check
 }
-```
 
-Additionally, `createVendor()` does not accept or persist a `userId`, meaning the `createdBy` column introduced in this fix will always be `null` for new records unless that function is also updated.
-
-**Current code** (`apps/api/src/modules/vendor/service.ts:27`):
-```ts
+// apps/api/src/modules/vendor/service.ts:27
 export async function createVendor(data: any) {
-  return model.create(data);
+  return model.create(data); // userId never received or stored
+}
+
+// apps/api/src/modules/admin/service.ts:235
+export async function createVendor(adminId: string, data: {...}) {
+  const vendor = await model.createVendor(data); // createdBy: adminId never passed
+  ...
 }
 ```
 
-## Impact
+### Impact
 
-- **Data integrity:** Any user can modify vendor names, websites, and descriptions — damaging data created by others.
-- **Trust:** Users who contributed vendor data have no control over mutations.
-- **Regulatory:** If vendor data is user-generated content, unauthorised edits may violate content policies.
-- **Precedent:** The equipment module (`apps/api/src/modules/equipment/service.ts:78`) correctly enforces `if (eq.createdBy !== userId) throw new Error('FORBIDDEN')` — the vendor module is inconsistent.
+- Any authenticated user can overwrite vendor names, websites, and descriptions created by others.
+- Without fixing `createVendor`, all new vendors (public and admin-created) will have `createdBy = null`, making the ownership check immediately broken for every record added after migration.
+- `admin/service.ts:createVendor` has an explicit narrow type that excludes `createdBy`, so the admin path silently drops the field even after the schema is updated.
 
-## Root Cause
-
-The vendor schema (`packages/db/src/schema.ts:463`) has **no `createdBy` column**. Without an ownership field, the service has nothing to compare against. The `_userId` parameter was added to the signature but left unused because the check was impossible.
-
-Additionally, the vendor PATCH route (`apps/api/src/modules/vendor/index.ts:51`) does not extract `isAdmin` from the context, unlike the comment module pattern (`apps/api/src/modules/comment/index.ts:21-22`).
-
-## Affected Files
+### Affected Files
 
 | File | Change |
 |------|--------|
 | `packages/db/src/schema.ts:463` | Add `createdBy` column to `vendors` table |
-| `packages/db/src/schema.ts:912` | Add `createdByUser` relation to `vendorsRelations` |
-| `apps/api/src/modules/vendor/model.ts` | Ensure `findById` returns `createdBy` (already does via `db.select()`) |
-| `apps/api/src/modules/vendor/service.ts:27` | Update `createVendor` to accept and persist `userId` |
-| `apps/api/src/modules/vendor/service.ts:36` | Add ownership/admin check to `updateVendor` |
-| `apps/api/src/modules/vendor/index.ts:33` | Pass `userId` from context to `createVendor` |
-| `apps/api/src/modules/vendor/index.ts:51` | Extract `isAdmin` from context, pass to `updateVendor` |
+| `packages/db/src/schema.ts:912` | Add `createdByUser` to `vendorsRelations` |
+| `apps/api/src/modules/vendor/service.ts:27` | Accept and persist `userId` in `createVendor` |
+| `apps/api/src/modules/vendor/service.ts:36` | Add ownership/admin check in `updateVendor` |
+| `apps/api/src/modules/vendor/index.ts:33` | Pass `userId` to `createVendor` |
+| `apps/api/src/modules/vendor/index.ts:51` | Extract `isAdmin`, pass to `updateVendor` |
+| `apps/api/src/modules/admin/service.ts:235` | Pass `createdBy: adminId` to model |
+| `apps/api/src/modules/admin/model.ts:314` | Widen type to include `createdBy?` |
 | `packages/db/drizzle/` | Auto-generated by `make db-generate` |
 
-## Fix Approach
+### Fix
 
-### Step 1: Schema Migration — Add `createdBy` to Vendors
-
-Add a `createdBy` varchar column to the `vendors` table and add the corresponding `createdByUser` relation to `vendorsRelations`. This requires a Drizzle schema change and a generated migration.
-
-**Schema change** (`packages/db/src/schema.ts`):
+**Step 1 — Schema** (`packages/db/src/schema.ts`):
 
 ```ts
 export const vendors = pgTable(
@@ -71,7 +82,7 @@ export const vendors = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     website: varchar('website', { length: 500 }),
     description: text('description'),
-    createdBy: varchar('created_by', { length: 36 }).references(() => users.id),
+    createdBy: varchar('created_by', { length: 36 }).references(() => users.id), // ← add
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -83,9 +94,9 @@ export const vendors = pgTable(
 );
 ```
 
-> **Note on FK syntax:** Use `references(() => users.id)` — the plain arrow function form. `AnyPgColumn` is only required for self-referential tables (e.g. `tasteNotes.parentId`). Since `users` is declared before `vendors` in `schema.ts` (line 142 vs. 463), there is no forward-reference issue here, and the same pattern used by `equipment` and `coffeeVarieties` applies directly.
+> Use `references(() => users.id)` — not `(): AnyPgColumn =>`. `AnyPgColumn` is only for self-referential tables. `users` (line 142) is declared before `vendors` (line 463), matching the pattern used by `equipment` and `coffeeVarieties`.
 
-**Relation change** — update `vendorsRelations` at `packages/db/src/schema.ts:912` to add the `createdByUser` one-relation, following the `equipmentRelations` pattern:
+Update `vendorsRelations` at line 912 to add the `createdByUser` one-relation:
 
 ```ts
 export const vendorsRelations = relations(vendors, ({ one, many }) => ({
@@ -98,18 +109,13 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
 }));
 ```
 
-Run `make db-generate` to create the migration SQL in `packages/db/drizzle/` — **never write migration SQL manually**. Then run `make db-migrate` to apply it.
+Run `make db-generate` (output → `packages/db/drizzle/`) then `make db-migrate`.
 
-### Step 2: Update Service — Fix `createVendor` and Add Ownership Check to `updateVendor`
-
-Both functions need changes. `createVendor` must store the caller's ID; `updateVendor` must verify ownership before mutating.
-
-The ownership check pattern comes from the equipment module (`apps/api/src/modules/equipment/service.ts:70-80`); the `isAdmin` bypass pattern comes from the comment module (`apps/api/src/modules/comment/service.ts`).
+**Step 2 — Public vendor service** (`apps/api/src/modules/vendor/service.ts`):
 
 ```ts
 import { vendors } from '@brewform/db/schema';
 
-/** Create a new vendor, recording the creating user as owner. */
 export async function createVendor(
   userId: string,
   data: Partial<typeof vendors.$inferInsert>,
@@ -117,12 +123,6 @@ export async function createVendor(
   return model.create({ ...data, createdBy: userId });
 }
 
-/**
- * Update a vendor by ID.
- *
- * @throws VENDOR_NOT_FOUND if the vendor doesn't exist
- * @throws FORBIDDEN if the caller is not the owner and not an admin
- */
 export async function updateVendor(
   userId: string,
   id: string,
@@ -136,22 +136,18 @@ export async function updateVendor(
 }
 ```
 
-### Step 3: Update Route — Fix POST and PATCH Handlers
-
-**POST** (`apps/api/src/modules/vendor/index.ts:33`) — extract `userId` and pass it to `createVendor`:
+**Step 3 — Public vendor routes** (`apps/api/src/modules/vendor/index.ts`):
 
 ```ts
+// POST — extract userId and pass to createVendor
 vendor.post('/', authMiddleware, zValidator('json', VendorCreateSchema), async (c) => {
   const userId = c.get('userId') as string;
   const body = c.req.valid('json');
   const v = await service.createVendor(userId, body);
   return success(c, v, 201);
 });
-```
 
-**PATCH** (`apps/api/src/modules/vendor/index.ts:51`) — extract `isAdmin` and pass it to `updateVendor`. Follow the comment module pattern (`apps/api/src/modules/comment/index.ts:21-22`):
-
-```ts
+// PATCH — extract isAdmin and pass to updateVendor
 vendor.patch('/:id', authMiddleware, zValidator('json', VendorUpdateSchema), async (c) => {
   const id = c.req.param('id')!;
   const userId = c.get('userId') as string;
@@ -170,95 +166,341 @@ vendor.patch('/:id', authMiddleware, zValidator('json', VendorUpdateSchema), asy
 });
 ```
 
-> **Note on DELETE:** The vendor DELETE route already uses `adminMiddleware`, so only admins can delete vendors. No ownership change is needed there.
+> The vendor DELETE route already uses `authMiddleware + adminMiddleware` — no change needed there.
 
-### Step 4: Seed Backfill (Optional)
-
-Existing vendors have no `createdBy`. Two options:
-
-- **Option A (recommended):** Set all existing vendors' `createdBy` to the first admin user via a seed migration.
-- **Option B:** Make the check skip when `createdBy` is null (legacy data), and only enforce for new vendors. Change the guard to: `if (vendor.createdBy !== null && vendor.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');`
-
-## Testing Strategy
-
-### Unit Tests
-
-Add to `apps/api/src/modules/vendor/service.test.ts`:
+**Step 4 — Admin vendor service** (`apps/api/src/modules/admin/service.ts:235`):
 
 ```ts
-it('should throw FORBIDDEN when user is not the creator', async () => {
-  // Mock vendor with createdBy !== requesting userId
-  // Expect updateVendor to throw 'FORBIDDEN'
+export async function createVendor(
+  adminId: string,
+  data: { name: string; website?: string; description?: string },
+) {
+  logger.debug({ adminId }, 'createVendor started');
+  const vendor = await model.createVendor({ ...data, createdBy: adminId }); // ← add createdBy
+  await model.createAuditLog(adminId, 'CREATE_VENDOR', 'Vendor', vendor.id);
+  logger.debug({ adminId }, 'createVendor completed');
+  return vendor;
+}
+```
+
+**Step 5 — Admin vendor model type** (`apps/api/src/modules/admin/model.ts:314`):
+
+```ts
+export async function createVendor(
+  data: { name: string; website?: string; description?: string; createdBy?: string | null }, // ← widen
+) {
+  const [result] = await db.insert(vendors).values(data).returning();
+  return result;
+}
+```
+
+**Step 6 — Seed backfill (optional)**
+
+Existing vendors have no `createdBy`. Options:
+- **Option A (recommended):** Assign all existing vendors to the first admin user via a seed migration.
+- **Option B:** Skip the ownership check when `createdBy` is null: `if (vendor.createdBy !== null && vendor.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');`
+
+### Testing
+
+```ts
+// apps/api/src/modules/vendor/service.test.ts
+it('should store createdBy when creating a vendor');
+it('should throw FORBIDDEN when user is not the creator');
+it('should allow update when user is the creator');
+it('should allow admin to update any vendor');
+```
+
+Integration: POST → verify `createdBy` in response; PATCH as non-owner → 403; PATCH as owner → 200; PATCH as admin (non-owner) → 200.
+
+---
+
+## D02: Coffee Variety Update/Delete Missing Ownership Check
+
+**Severity:** High — Security Vulnerability  
+**Date:** 2026-05-31  
+**Module:** `apps/api/src/modules/coffee-variety`
+
+### Issue Description
+
+`updateCoffeeVariety()` and `deleteCoffeeVariety()` both accept `_userId` as their third parameter but never use it. The only guard is an `isSystem` check that blocks edits to built-in varieties. Any authenticated user can modify or delete any **user-created** coffee variety regardless of who created it.
+
+Unlike D01, **no schema migration is needed** — `coffeeVarieties` already has a `createdBy` column (line 453 of `schema.ts`) and `coffeeVarietiesRelations` already has the `createdByUser` one-relation.
+
+**Broken functions** (`apps/api/src/modules/coffee-variety/service.ts`):
+
+```ts
+export async function updateCoffeeVariety(
+  id: string,
+  data: Partial<CoffeeVarietyInsert>,
+  _userId: string,          // ← received but ignored
+  deps = { model, cache: cacheProvider },
+) {
+  const variety = await deps.model.findById(id);
+  if (!variety) throw new Error('Coffee variety not found');
+  if (variety.isSystem) throw new Error('Cannot modify system coffee varieties');
+  // no ownership check — any user may proceed
+  return deps.model.update(id, data);
+}
+
+export async function deleteCoffeeVariety(
+  id: string,
+  _userId: string,          // ← received but ignored
+  deps = { model, cache: cacheProvider },
+) {
+  const variety = await deps.model.findById(id);
+  if (!variety) throw new Error('Coffee variety not found');
+  if (variety.isSystem) throw new Error('Cannot delete system coffee varieties');
+  // no ownership check — any user may proceed
+  return deps.model.softDelete(id);
+}
+```
+
+The route (`coffee-variety/index.ts:66-84`) already extracts and passes `userId` to both functions — it just gets silently dropped on arrival.
+
+### Affected Files
+
+| File | Change |
+|------|--------|
+| `apps/api/src/modules/coffee-variety/service.ts:52` | Add ownership check in `updateCoffeeVariety` |
+| `apps/api/src/modules/coffee-variety/service.ts:68` | Add ownership check in `deleteCoffeeVariety` |
+| `apps/api/src/modules/coffee-variety/index.ts:66` | Extract `isAdmin` in PATCH route |
+| `apps/api/src/modules/coffee-variety/index.ts:77` | Extract `isAdmin` in DELETE route |
+
+### Fix
+
+**Service** (`apps/api/src/modules/coffee-variety/service.ts`):
+
+```ts
+export async function updateCoffeeVariety(
+  id: string,
+  data: Partial<CoffeeVarietyInsert>,
+  userId: string,           // ← rename: no longer ignored
+  deps = { model, cache: cacheProvider },
+  isAdmin: boolean = false,
+) {
+  const variety = await deps.model.findById(id);
+  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
+  if (variety.isSystem) throw new Error('SYSTEM_VARIETY_IMMUTABLE');
+  if (variety.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
+  const result = await deps.model.update(id, data);
+  await deps.cache?.delete(['coffee-variety', id]);
+  return result;
+}
+
+export async function deleteCoffeeVariety(
+  id: string,
+  userId: string,           // ← rename: no longer ignored
+  deps = { model, cache: cacheProvider },
+  isAdmin: boolean = false,
+) {
+  const variety = await deps.model.findById(id);
+  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
+  if (variety.isSystem) throw new Error('SYSTEM_VARIETY_IMMUTABLE');
+  if (variety.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
+  const result = await deps.model.softDelete(id);
+  await deps.cache?.delete(['coffee-variety', id]);
+  return result;
+}
+```
+
+> **Error string change:** The existing service throws bare strings like `'Coffee variety not found'` rather than the `'COFFEE_VARIETY_NOT_FOUND'` convention used by every other module. This fix aligns them. Update the route's catch block accordingly.
+
+**Routes** (`apps/api/src/modules/coffee-variety/index.ts`):
+
+```ts
+// PATCH /:id
+router.patch('/:id', authGuard, zValidator('json', CoffeeVarietyUpdateSchema), async (c) => {
+  const body = c.req.valid('json');
+  const userId = c.get('userId')!;
+  const user = c.get('user') as { isAdmin: boolean } | null;
+  const isAdmin = user?.isAdmin ?? false;
+  try {
+    const result = await deps.service.updateCoffeeVariety(c.req.param('id')!, body, userId, undefined, isAdmin);
+    return success(c, result);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message === 'COFFEE_VARIETY_NOT_FOUND') return error(c, 'NOT_FOUND', 'Coffee variety not found', 404);
+    if (message === 'SYSTEM_VARIETY_IMMUTABLE') return error(c, 'FORBIDDEN', 'Cannot modify system varieties', 403);
+    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your coffee variety', 403);
+    return error(c, 'BAD_REQUEST', message, 400);
+  }
 });
 
-it('should allow update when user is the creator', async () => {
-  // Mock vendor with createdBy === requesting userId
-  // Expect updateVendor to succeed
-});
-
-it('should allow admin to update any vendor', async () => {
-  // Mock vendor with createdBy !== userId, isAdmin=true
-  // Expect updateVendor to succeed
-});
-
-it('should store createdBy when creating a vendor', async () => {
-  // Call createVendor with a userId
-  // Expect model.create to be called with createdBy === userId
+// DELETE /:id
+router.delete('/:id', authGuard, async (c) => {
+  const userId = c.get('userId')!;
+  const user = c.get('user') as { isAdmin: boolean } | null;
+  const isAdmin = user?.isAdmin ?? false;
+  try {
+    const result = await deps.service.deleteCoffeeVariety(c.req.param('id')!, userId, undefined, isAdmin);
+    return success(c, result);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message === 'COFFEE_VARIETY_NOT_FOUND') return error(c, 'NOT_FOUND', 'Coffee variety not found', 404);
+    if (message === 'SYSTEM_VARIETY_IMMUTABLE') return error(c, 'FORBIDDEN', 'Cannot modify system varieties', 403);
+    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your coffee variety', 403);
+    return error(c, 'BAD_REQUEST', message, 400);
+  }
 });
 ```
 
-### Integration Tests
+> The admin module has its own separate `PATCH /admin/coffee-varieties/:id` and `DELETE /admin/coffee-varieties/:id` endpoints protected by `adminMiddleware`, which call `admin/service.ts` functions directly — those are unaffected.
 
-- POST `/api/v1/vendors` as authenticated user → expect vendor returned with correct `createdBy`
-- PATCH `/api/v1/vendors/:id` as non-owner → expect 403
-- PATCH `/api/v1/vendors/:id` as owner → expect 200
-- PATCH `/api/v1/vendors/:id` as admin (not owner) → expect 200
+### Testing
 
-### Verification
+```ts
+// apps/api/src/modules/coffee-variety/service.test.ts
+it('should throw FORBIDDEN when non-owner tries to update a user-created variety');
+it('should allow owner to update their own variety');
+it('should allow admin to update any user-created variety');
+it('should still throw SYSTEM_VARIETY_IMMUTABLE regardless of ownership or admin status');
+it('should throw FORBIDDEN when non-owner tries to delete a user-created variety');
+it('should allow admin to delete any user-created variety');
+```
+
+Integration: PATCH as non-owner → 403; PATCH as owner → 200; PATCH system variety as admin → 403; DELETE as non-owner → 403.
+
+---
+
+## D03: Photo Upload Missing Ownership Check
+
+**Severity:** High — Security Vulnerability  
+**Date:** 2026-05-31  
+**Module:** `apps/api/src/modules/photo`
+
+### Issue Description
+
+`uploadPhoto()` accepts `_userId` as its first parameter but never uses it. Any authenticated user can upload photos to any recipe, not just their own. This is inconsistent with `deletePhoto()` in the same file, which already correctly checks `recipe.authorId !== userId`.
+
+**No schema migration needed** — ownership is established via the existing `recipes.authorId` column, the same field `deletePhoto` already queries.
+
+**Broken function** (`apps/api/src/modules/photo/service.ts:33`):
+
+```ts
+export async function uploadPhoto(
+  _userId: string,          // ← received but never used
+  recipeId: string,
+  file: { name: string; type: string; size: number; data: Uint8Array },
+  thumbnail: Uint8Array | null,
+  alt?: string,
+  sortOrder?: number,
+) {
+  const validationError = validateImageUpload(file);
+  if (validationError) throw new Error(validationError);
+  // ... proceeds to save file and create photo record with no ownership check
+}
+```
+
+Compare with `deletePhoto` in the same file (line 67), which does it correctly:
+
+```ts
+export async function deletePhoto(userId: string, id: string) {
+  const photo = await model.findById(id);
+  if (!photo) throw new Error('PHOTO_NOT_FOUND');
+  const recipe = await recipeModel.findById(photo.recipeId);
+  if (!recipe || recipe.authorId !== userId) throw new Error('FORBIDDEN'); // ← correct
+  await model.softDelete(id);
+}
+```
+
+The route (`photo/index.ts:16`) extracts and passes `userId` correctly — it is silently dropped by the service.
+
+### Affected Files
+
+| File | Change |
+|------|--------|
+| `apps/api/src/modules/photo/service.ts:33` | Add recipe ownership check in `uploadPhoto` |
+| `apps/api/src/modules/photo/index.ts:63` | Handle `RECIPE_NOT_FOUND` (404) and `FORBIDDEN` (403) in POST route |
+
+### Fix
+
+**Service** (`apps/api/src/modules/photo/service.ts`):
+
+```ts
+export async function uploadPhoto(
+  userId: string,           // ← rename: no longer ignored
+  recipeId: string,
+  file: { name: string; type: string; size: number; data: Uint8Array },
+  thumbnail: Uint8Array | null,
+  alt?: string,
+  sortOrder?: number,
+) {
+  const recipe = await recipeModel.findById(recipeId);
+  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
+  if (recipe.authorId !== userId) throw new Error('FORBIDDEN');
+
+  const validationError = validateImageUpload(file);
+  if (validationError) throw new Error(validationError);
+
+  const filename = generateFilename(file.name);
+  const filepath = await saveUploadedFile(file.data, filename);
+  const url = getPublicUrl(filename);
+  const thumbnailUrl = await saveThumbnail(thumbnail, filename, url, 'medium');
+  logger.info({ filepath, filename, hasThumbnail: thumbnail !== null }, 'Photo saved');
+
+  return model.create({
+    recipeId,
+    url,
+    thumbnailUrl,
+    alt: alt || null,
+    sortOrder: sortOrder ?? 0,
+  } as any);
+}
+```
+
+**Route** (`apps/api/src/modules/photo/index.ts`):
+
+```ts
+photo.post('/', authMiddleware, async (c) => {
+  const userId = c.get('userId') as string;
+  // ... existing formData parsing ...
+  try {
+    const result = await service.uploadPhoto(userId, recipeId, { ... }, thumbnail, alt, sortOrder);
+    return success(c, result, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your recipe', 403);
+    return error(c, 'UPLOAD_ERROR', message, 400);
+  }
+});
+```
+
+### Testing
+
+```ts
+// apps/api/src/modules/photo/service.test.ts
+it('should throw RECIPE_NOT_FOUND when recipe does not exist');
+it('should throw FORBIDDEN when user is not the recipe author');
+it('should allow the recipe author to upload a photo');
+```
+
+Integration: POST photo as non-author → 403; POST photo for non-existent recipe → 404; POST photo as recipe author → 201.
+
+---
+
+## Shared Verification
 
 ```bash
-make check    # Type-check passes
+make check    # Type-check passes across all three modules
 make lint     # Lint passes
 make test     # All tests pass
 ```
 
-## Risk Assessment
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Existing vendors have null `createdBy` | High | Medium | Seed migration to assign ownership; OR skip check when null (Option B) |
-| New vendors would also have null `createdBy` without Step 2 service fix | High | High | **Both** `createVendor` and `updateVendor` must be updated together |
-| Frontend admin panel assumes anyone can edit | Low | Low | Admin panel already uses admin middleware; verify edit forms work |
-| Breaking change for API consumers | Low | Low | PATCH was already auth-gated; adding ownership is stricter but expected |
-
-## Dependencies
-
-- `make db-generate` + `make db-migrate` for schema change (output goes to `packages/db/drizzle/`)
-- No new npm packages required
-- Follows existing patterns from equipment and comment modules
-
 ---
 
-## Validation Notes (Changes from Original Plan)
+## Validation Notes (Changes from Original D01 Plan)
 
-The following corrections were made after validating the plan against the actual codebase:
+The following corrections and additions were made after full codebase scan:
 
-**1. `createVendor` must also be updated (Critical — was missing from original)**
+**D01 additions:**
+- `createVendor` (public and admin paths) must also be updated to persist `createdBy`. Original plan only fixed `updateVendor`.
+- `admin/service.ts:createVendor` has a narrow explicit type that excludes `createdBy` — both the service call and model type must be widened.
+- Wrong migration folder (`packages/db/src/migrations/` → `packages/db/drizzle/`).
+- Wrong FK reference type (`(): AnyPgColumn =>` → `() =>` — `AnyPgColumn` is self-referential only).
+- `vendorsRelations` needs `createdByUser: one(users, ...)` added.
+- Pattern attribution: ownership check follows `equipment`; `isAdmin` bypass follows `comment`.
 
-The original plan only fixed `updateVendor`. However, `createVendor` (`service.ts:27`) ignores `userId` entirely, so the new `createdBy` column would be `null` for every new vendor created after the migration. This renders the ownership check immediately broken. Both the service function and its POST route handler must be updated. Added to Affected Files and Step 2/3.
+**D02 (new):** `coffee-variety/service.ts` — both `updateCoffeeVariety` and `deleteCoffeeVariety` carry `_userId` as a dead parameter. The schema column already exists; only service + route changes required. Also aligns error strings to the `SCREAMING_SNAKE_CASE` convention used everywhere else.
 
-**2. Wrong migration folder path (Critical)**
-
-The original plan referenced `packages/db/src/migrations/` as the migration output directory. The actual output directory, as configured in `packages/db/drizzle.config.ts` (`out: './drizzle'`), is `packages/db/drizzle/`. Corrected throughout.
-
-**3. Incorrect FK reference type in schema (Schema correctness)**
-
-The original plan used `references((): AnyPgColumn => users.id)`. The `AnyPgColumn` type annotation is only required for self-referential foreign keys (e.g. `tasteNotes.parentId` referencing itself). Since `users` is declared at line 142 and `vendors` at line 463, no forward-reference problem exists. All existing non-self-referential `createdBy` columns in the codebase (`equipment`, `coffeeVarieties`) use the simpler `references(() => users.id)` form. Corrected to match. Confirmed against Drizzle ORM documentation.
-
-**4. Missing `vendorsRelations` update**
-
-After adding a `createdBy` FK, the `vendorsRelations` block at `schema.ts:912` needs a `createdByUser: one(users, ...)` entry to match the `equipmentRelations` and `coffeeVarietiesRelations` patterns. Without it, Drizzle relational queries on vendors cannot join to the owning user. Added to Step 1 and Affected Files.
-
-**5. Pattern attribution clarified**
-
-The original plan said "Follow the equipment module pattern" for both the ownership check and the `isAdmin` parameter. The actual equipment `updateEquipment` function has no `isAdmin` bypass — it only enforces strict owner-only access. The `isAdmin` bypass pattern comes exclusively from the comment module (`comment/service.ts`, `comment/index.ts:21-22`). The fix correctly combines both patterns; the description now attributes each piece accurately.
+**D03 (new):** `photo/service.ts` — `uploadPhoto` carries `_userId` as a dead parameter while `deletePhoto` in the same file correctly enforces `recipe.authorId`. This is an internal consistency failure as well as a security gap. No schema change required.

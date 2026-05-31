@@ -46,33 +46,57 @@ export async function createCoffeeVariety(
   return deps.model.create({ ...data, createdBy: userId, isSystem: false });
 }
 
+/**
+ * Update a coffee variety by ID.
+ *
+ * Only the creator (or an admin) may update. System varieties are immutable
+ * regardless of admin status.
+ *
+ * @throws COFFEE_VARIETY_NOT_FOUND if the variety doesn't exist
+ * @throws SYSTEM_VARIETY_IMMUTABLE if the variety is a built-in/system record
+ * @throws FORBIDDEN if the user is neither the creator nor an admin
+ */
 export async function updateCoffeeVariety(
   id: string,
   data: Partial<CoffeeVarietyInsert>,
-  _userId: string,
+  userId: string,
   deps: { model: typeof model; cache?: CacheProvider } = { model, cache: cacheProvider },
+  isAdmin: boolean = false,
 ) {
   const variety = await deps.model.findById(id);
-  if (!variety) throw new Error('Coffee variety not found');
+  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
   if (variety.isSystem) {
-    throw new Error('Cannot modify system coffee varieties');
+    throw new Error('SYSTEM_VARIETY_IMMUTABLE');
   }
+  if (variety.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
 
   const result = await deps.model.update(id, data);
   await deps.cache?.delete(['coffee-variety', id]);
   return result;
 }
 
+/**
+ * Soft-delete a coffee variety by ID.
+ *
+ * Only the creator (or an admin) may delete. System varieties are immutable
+ * regardless of admin status.
+ *
+ * @throws COFFEE_VARIETY_NOT_FOUND if the variety doesn't exist
+ * @throws SYSTEM_VARIETY_IMMUTABLE if the variety is a built-in/system record
+ * @throws FORBIDDEN if the user is neither the creator nor an admin
+ */
 export async function deleteCoffeeVariety(
   id: string,
-  _userId: string,
+  userId: string,
   deps: { model: typeof model; cache?: CacheProvider } = { model, cache: cacheProvider },
+  isAdmin: boolean = false,
 ) {
   const variety = await deps.model.findById(id);
-  if (!variety) throw new Error('Coffee variety not found');
+  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
   if (variety.isSystem) {
-    throw new Error('Cannot delete system coffee varieties');
+    throw new Error('SYSTEM_VARIETY_IMMUTABLE');
   }
+  if (variety.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
 
   const result = await deps.model.softDelete(id);
   await deps.cache?.delete(['coffee-variety', id]);

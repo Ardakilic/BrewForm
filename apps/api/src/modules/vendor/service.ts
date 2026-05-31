@@ -23,19 +23,35 @@ export async function getVendor(id: string) {
   return vendor;
 }
 
-/** Create a new vendor. */
-export async function createVendor(data: any) {
-  return model.create(data);
+/**
+ * Create a new vendor, recording the creating user.
+ *
+ * @param userId - The ID of the user creating the vendor
+ * @param data   - Vendor fields (name, website, description)
+ */
+export async function createVendor(userId: string, data: any) {
+  return model.create({ ...data, createdBy: userId });
 }
 
 /**
- * Update a vendor by ID.
+ * Update a vendor by ID. Only the creator (or an admin) may update.
  *
+ * @param userId  - The ID of the requesting user
+ * @param id      - Vendor ID to update
+ * @param data    - Fields to patch (name, website, description)
+ * @param isAdmin - Whether the requesting user is an admin
  * @throws VENDOR_NOT_FOUND if the vendor doesn't exist
+ * @throws FORBIDDEN if the user is neither the creator nor an admin
  */
-export async function updateVendor(_userId: string, id: string, data: any) {
+export async function updateVendor(
+  userId: string,
+  id: string,
+  data: any,
+  isAdmin: boolean = false,
+) {
   const vendor = await model.findById(id);
   if (!vendor) throw new Error('VENDOR_NOT_FOUND');
+  if (vendor.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
   return model.update(id, data);
 }
 

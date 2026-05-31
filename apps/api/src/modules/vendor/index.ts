@@ -31,8 +31,9 @@ vendor.get('/search', zValidator('query', SearchQuerySchema), async (c) => {
 });
 
 vendor.post('/', authMiddleware, zValidator('json', VendorCreateSchema), async (c) => {
+  const userId = c.get('userId') as string;
   const body = c.req.valid('json');
-  const v = await service.createVendor(body);
+  const v = await service.createVendor(userId, body);
   return success(c, v, 201);
 });
 
@@ -51,13 +52,16 @@ vendor.get('/:id', async (c) => {
 vendor.patch('/:id', authMiddleware, zValidator('json', VendorUpdateSchema), async (c) => {
   const id = c.req.param('id')!;
   const userId = c.get('userId') as string;
+  const user = c.get('user') as { isAdmin: boolean } | null;
+  const isAdmin = user?.isAdmin ?? false;
   const body = c.req.valid('json');
   try {
-    const v = await service.updateVendor(userId, id, body);
+    const v = await service.updateVendor(userId, id, body, isAdmin);
     return success(c, v);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (message === 'VENDOR_NOT_FOUND') return error(c, 'NOT_FOUND', 'Vendor not found', 404);
+    if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your vendor', 403);
     throw err;
   }
 });
