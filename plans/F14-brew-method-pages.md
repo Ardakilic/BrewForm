@@ -337,7 +337,7 @@ function formatMethodName(method: string): string {
 | `GET` | `/api/v1/recipes/brew-method/:method` | Brew method page data |
 
 **Request:**
-```
+```http
 GET /api/v1/recipes/brew-method/v60?limit=12
 ```
 

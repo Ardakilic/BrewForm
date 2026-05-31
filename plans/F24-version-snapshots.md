@@ -43,9 +43,10 @@ export async function guardVersionImmutability(
   const recipe = await recipeModel.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
 
-  // If this version is the current version, reject update
-  if (recipe.currentVersionId === versionId) {
-    throw new Error('VERSION_IS_CURRENT');
+  // Reject ANY attempt to modify an existing version — versions are immutable
+  const versionExists = recipe.versions?.some((v: any) => v.id === versionId);
+  if (versionExists || recipe.currentVersionId === versionId) {
+    throw new Error('VERSION_IS_IMMUTABLE');
   }
 }
 

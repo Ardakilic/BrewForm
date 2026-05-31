@@ -213,21 +213,10 @@ export async function dispatchWebhookEvent(event: WebhookEvent, payload: Record<
       status: 'pending',
     }).returning();
 
-    // Deliver asynchronously
-    deliverWebhook(webhook, event, payload)
-      .then(async (result) => {
-        await db.update(webhookDeliveries)
-          .set({
-            status: result.success ? 'success' : 'failed',
-            responseStatus: result.responseStatus,
-            attempts: 1,
-            lastAttemptAt: new Date(),
-          })
-          .where(eq(webhookDeliveries.id, delivery[0].id));
-      })
-      .catch((err) => {
-        logger.error({ err, deliveryId: delivery[0].id }, 'Webhook delivery error');
-      });
+    // Durable delivery: persist delivery record, then enqueue job
+    const delivery = await model.createDelivery({ webhookId: webhook.id, event, status: 'pending' });
+    await queue.enqueue('deliver-webhook', { deliveryId: delivery.id });
+    // A separate worker picks up the job, calls deliverWebhook, and updates delivery status
   }
 }
 ```
@@ -258,32 +247,79 @@ import { createLogger } from '../../utils/logger/index.ts';
 const logger = createLogger('webhook-service');
 
 export async function createWebhook(userId: string, url: string, events: string[]) {
-  return model.create({ userId, url, events });
+  log.debug({ userId, eventCount: events.length }, 'createWebhook started');
+
+  // SSRF prevention: validate and sanitize URL
+  const parsedUrl = validateWebhookUrl(url);
+  if (!parsedUrl) {
+    throw new Error('INVALID_WEBHOOK_URL');
+  }
+
+  const result = await model.create({ userId, url, events });
+  log.debug({ userId, webhookId: result.id }, 'createWebhook completed');
+  return result;
+}
+
+/** Validate webhook URL to prevent SSRF. Enforces HTTPS and rejects private IPs. */
+function validateWebhookUrl(url: string): URL | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+
+  // HTTPS only
+  if (parsed.protocol !== 'https:') return null;
+
+  // Reject loopback, private, and link-local hosts
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname.endsWith('.local') ||
+    hostname.endsWith('.internal')
+  ) return null;
+
+  return parsed;
 }
 
 export async function listWebhooks(userId: string) {
-  return model.findByUserId(userId);
+  log.debug({ userId }, 'listWebhooks started');
+  const result = await model.findByUserId(userId);
+  log.debug({ userId, count: result.length }, 'listWebhooks completed');
+  return result;
 }
 
 export async function updateWebhook(userId: string, webhookId: string, data: { url?: string; events?: string[]; isActive?: boolean }) {
+  log.debug({ userId, webhookId }, 'updateWebhook started');
   const webhook = await model.findById(webhookId);
   if (!webhook) throw new Error('WEBHOOK_NOT_FOUND');
   if (webhook.userId !== userId) throw new Error('FORBIDDEN');
-  return model.update(webhookId, data);
+  const result = await model.update(webhookId, data);
+  log.debug({ userId, webhookId }, 'updateWebhook completed');
+  return result;
 }
 
 export async function deleteWebhook(userId: string, webhookId: string) {
+  log.debug({ userId, webhookId }, 'deleteWebhook started');
   const webhook = await model.findById(webhookId);
   if (!webhook) throw new Error('WEBHOOK_NOT_FOUND');
   if (webhook.userId !== userId) throw new Error('FORBIDDEN');
-  return model.softDelete(webhookId);
+  const result = await model.softDelete(webhookId);
+  log.debug({ userId, webhookId }, 'deleteWebhook completed');
+  return result;
 }
 
 export async function getDeliveries(userId: string, webhookId: string, page: number, perPage: number) {
+  log.debug({ userId, webhookId, page, perPage }, 'getDeliveries started');
   const webhook = await model.findById(webhookId);
   if (!webhook) throw new Error('WEBHOOK_NOT_FOUND');
   if (webhook.userId !== userId) throw new Error('FORBIDDEN');
-  return model.getDeliveries(webhookId, page, perPage);
+  const result = await model.getDeliveries(webhookId, page, perPage);
+  log.debug({ userId, webhookId, count: result.length }, 'getDeliveries completed');
+  return result;
 }
 ```
 

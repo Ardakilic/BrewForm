@@ -522,7 +522,7 @@ export function ModerationCard({ report, onDismiss, onResolve, onEscalate }: Mod
 | `PATCH` | `/api/v1/admin/moderation/:id/escalate` | Escalate report |
 
 **Queue Request:**
-```
+```http
 GET /api/v1/admin/moderation/queue?status=pending&page=1&perPage=20
 ```
 

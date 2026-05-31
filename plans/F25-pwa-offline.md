@@ -91,6 +91,7 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/offline.html',
 ];
 
 // Install event — cache static assets
@@ -135,7 +136,7 @@ self.addEventListener('fetch', (event) => {
             return response;
           }).catch(() => {
             // Return offline page for recipes
-            return cache.match('/offline');
+            return cache.match('/offline.html');
           });
         });
       })
@@ -171,23 +172,42 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-async function syncBrewLogs() {
-  const db = await openDB();
-  const tx = db.transaction('pendingBrewLogs', 'readwrite');
-  const store = tx.objectStore('pendingBrewLogs');
-  const logs = await store.getAll();
+/** Open the offline IndexedDB database. */
+function openIndexedDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('brewform-offline', 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains('pendingBrewLogs')) {
+        db.createObjectStore('pendingBrewLogs', { keyPath: 'id' });
+      }
+    };
+  });
+}
 
-  for (const log of logs) {
-    try {
-      await fetch('/api/v1/brew-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(log.data),
-      });
-      await store.delete(log.id);
-    } catch (err) {
-      console.error('Sync failed for log:', log.id, err);
+async function syncBrewLogs() {
+  try {
+    const db = await openIndexedDB();
+    const tx = db.transaction('pendingBrewLogs', 'readwrite');
+    const store = tx.objectStore('pendingBrewLogs');
+    const logs = await store.getAll();
+
+    for (const log of logs) {
+      try {
+        await fetch('/api/v1/brew-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(log.data),
+        });
+        await store.delete(log.id);
+      } catch (err) {
+        console.error('Sync failed for log:', log.id, err);
+      }
     }
+  } catch (err) {
+    console.error('syncBrewLogs failed:', err);
   }
 }
 ```

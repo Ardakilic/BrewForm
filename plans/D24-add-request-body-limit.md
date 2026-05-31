@@ -77,7 +77,7 @@ The `bodyLimit` middleware returns a `413 Content Too Large` response when the b
 
 ## Middleware Stack (After Fix)
 
-```
+```text
 cors → requestId → secureHeaders → rateLimit → bodyLimit(1MB) → cache injection → crawler → routes
 ```
 

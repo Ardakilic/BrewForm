@@ -237,35 +237,12 @@ export async function softDelete(id: string) {
 Business-logic layer.
 
 ```ts
-import * as model from './model.ts';
-import { and, eq, ilike, isNull } from 'drizzle-orm';
-import { recipeTemplates } from '@brewform/db/schema';
-import { computeBrewRatio } from '@brewform/shared/utils';
+import \* as model from '\./model\.ts';
+import \{ computeBrewRatio \} from '@brewform/shared/utils';
 
 export async function listTemplates(filters: any, userId: string | null) {
-  const conditions: any[] = [];
-
-  // System templates are visible to everyone
-  // User templates are visible only to their owner
-  if (userId) {
-    conditions.push(
-      // isSystem OR belongs to user
-      // Drizzle doesn't have native OR on columns, so use SQL
-      // For simplicity, fetch system + user's own in service layer
-    );
-  } else {
-    conditions.push(eq(recipeTemplates.isSystem, true));
-  }
-
-  if (filters.brewMethod) {
-    conditions.push(eq(recipeTemplates.brewMethod, filters.brewMethod));
-  }
-  if (filters.search) {
-    conditions.push(ilike(recipeTemplates.name, `%${filters.search}%`));
-  }
-
-  const where = conditions.length > 1 ? and(...conditions) : conditions[0];
-  return model.findMany(where, filters.page, filters.perPage);
+  // Delegate to model layer — all ORM work stays in model.ts
+  return model.findManyWithFilters(filters, userId);
 }
 
 export async function getTemplate(id: string) {

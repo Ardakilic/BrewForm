@@ -24,9 +24,9 @@ Add WebP/AVIF conversion, responsive image sizes, and lazy loading with blur pla
 
 ## Technical Design
 
-### No New Tables
+### Schema Change: blurPlaceholder Column
 
-This feature enhances the existing `photo` module and upload utilities. No schema changes required.
+This feature adds a `blurPlaceholder` column to the existing `photos` table.
 
 ### Image Processing Utilities
 

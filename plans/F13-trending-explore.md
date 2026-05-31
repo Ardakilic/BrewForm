@@ -62,11 +62,7 @@ export async function getTrendingRecipes(
     )
     .groupBy(recipes.id)
     .orderBy(
-      desc(sql`(
-        ${sql.raw('coalesce(sum(case when ')} ${userRecipeLikes.createdAt} >= ${since} ${sql.raw(' then 1 else 0 end), 0)')} * 2
-        + ${sql.raw('coalesce(sum(case when ')} ${comments.createdAt} >= ${since} ${sql.raw(' then 1 else 0 end), 0)')}
-        + ${sql.raw('coalesce(avg(')} ${userRecipeRatings.rating} ${sql.raw('), 0)')}
-      )`),
+      desc(sql`recentLikes * 2 + recentComments + avgRating`),
     )
     .limit(limit);
 

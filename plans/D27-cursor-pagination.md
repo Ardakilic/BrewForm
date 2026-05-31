@@ -60,8 +60,8 @@ Offset pagination was the initial implementation — simpler to build and suffic
 
 **Database query:**
 ```sql
--- Cursor-based:
-WHERE (created_at, id) > ($cursorCreatedAt, $cursorId)
+-- Cursor-based (DESC order: < because we want rows older than the cursor):
+WHERE (created_at, id) < ($cursorCreatedAt, $cursorId)
   AND visibility = 'public'
 ORDER BY created_at DESC, id DESC
 LIMIT 21  -- fetch one extra to determine hasMore
@@ -74,17 +74,17 @@ LIMIT 21  -- fetch one extra to determine hasMore
 From Context7 (`/drizzle-team/drizzle-orm-docs`):
 
 ```typescript
-import { and, gt, asc } from 'drizzle-orm';
+import { and, lt, or, eq, desc } from 'drizzle-orm';
 
-// Cursor-based query
+// Cursor-based query (DESC order: lt because we want rows older than the cursor)
 const results = await db.select()
   .from(recipes)
   .where(
     and(
       eq(recipes.visibility, 'public'),
       or(
-        gt(recipes.createdAt, cursorCreatedAt),
-        and(eq(recipes.createdAt, cursorCreatedAt), gt(recipes.id, cursorId)),
+        lt(recipes.createdAt, cursorCreatedAt),
+        and(eq(recipes.createdAt, cursorCreatedAt), lt(recipes.id, cursorId)),
       ),
     ),
   )
@@ -127,7 +127,7 @@ const results = await db.select()
 
 5. **Read** `apps/api/src/modules/recipe/service.ts` — `listRecipes()`.
 6. **Add** cursor-based query path:
-   - If `cursor` is provided, decode it and use `(createdAt, id) > (cursorCreatedAt, cursorId)`.
+   - If `cursor` is provided, decode it and use `(createdAt, id) < (cursorCreatedAt, cursorId)` (DESC order: < to get older rows).
    - If not provided, use existing offset logic.
 7. **Fetch** `limit + 1` rows to determine `hasMore`.
 8. **Return** `{ data, meta: { nextCursor, hasMore, total? } }`.
@@ -158,7 +158,7 @@ const results = await db.select()
 {
   "data": [...],
   "meta": {
-    "nextCursor: "eyJjcmVhdGVkQXQiOiIyMDI2LTA1LTI5...", 
+    "nextCursor": "eyJjcmVhdGVkQXQiOiIyMDI2LTA1LTI5...",
     "hasMore": true,
     "total": 1234
   }

@@ -39,13 +39,8 @@ This feature derives all data from existing tables:
 Modify `apps/api/src/modules/follow/service.ts`:
 
 ```ts
-import { db } from '@brewform/db';
-import {
-  recipes, comments, userBadges, badges, brewLogs,
-  users, userFollows, recipeVersions
-} from '@brewform/db/schema';
-import { and, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { createLogger } from '../../utils/logger/index.ts';
+import { recipeModel, commentModel, userModel, badgeModel, brewLogModel } from '../../models/index.ts';
 
 const logger = createLogger('feed-service');
 
@@ -74,139 +69,46 @@ export async function getExpandedFeed(
   perPage: number
 ): Promise<{ items: FeedItem[]; total: number }> {
   // Get IDs of users this person follows
-  const followingRecords = await db.select({ followingId: userFollows.followingId })
-    .from(userFollows)
-    .where(eq(userFollows.followerId, userId));
-
-  const followingIds = followingRecords.map(r => r.followingId);
+  const followingIds = await userModel.getFollowedUserIds(userId);
   if (followingIds.length === 0) return { items: [], total: 0 };
 
-  // Fetch all feed items in parallel
+  // All DB queries moved to model layer
+  // See model.ts for: getFollowedRecipes, getFollowedComments, getFollowedBadges, getFollowedBrewLogs
   const [recipesData, commentsData, badgesData, brewLogsData] = await Promise.all([
-    // Recent recipes from followed users
-    db.select({
-      id: recipes.id,
-      type: sql<string>`'recipe'`,
-      createdAt: recipes.createdAt,
-      userId: recipes.authorId,
-      slug: recipes.slug,
-      title: recipes.title,
-      visibility: recipes.visibility,
-    })
-    .from(recipes)
-    .where(
-      and(
-        inArray(recipes.authorId, followingIds),
-        eq(recipes.visibility, 'public'),
-        isNull(recipes.deletedAt),
-      )
-    )
-    .orderBy(desc(recipes.createdAt))
-    .limit(100),
-
-    // Comments on recipes user follows (or authored)
-    db.select({
-      id: comments.id,
-      type: sql<string>`'comment'`,
-      createdAt: comments.createdAt,
-      userId: comments.authorId,
-      recipeId: comments.recipeId,
-      content: comments.content,
-    })
-    .from(comments)
-    .where(
-      and(
-        inArray(comments.authorId, followingIds),
-        isNull(comments.deletedAt),
-      )
-    )
-    .orderBy(desc(comments.createdAt))
-    .limit(100),
-
-    // Badges earned by followed users
-    db.select({
-      id: userBadges.id,
-      type: sql<string>`'badge'`,
-      createdAt: userBadges.awardedAt,
-      userId: userBadges.userId,
-      badgeId: userBadges.badgeId,
-      badgeName: badges.name,
-      badgeIcon: badges.icon,
-    })
-    .from(userBadges)
-    .innerJoin(badges, eq(userBadges.badgeId, badges.id))
-    .where(inArray(userBadges.userId, followingIds))
-    .orderBy(desc(userBadges.awardedAt))
-    .limit(100),
-
-    // Brew logs from followed users
-    db.select({
-      id: brewLogs.id,
-      type: sql<string>`'brew_log'`,
-      createdAt: brewLogs.createdAt,
-      userId: brewLogs.userId,
-      recipeId: brewLogs.recipeId,
-      notes: brewLogs.notes,
-      personalRating: brewLogs.personalRating,
-    })
-    .from(brewLogs)
-    .where(
-      and(
-        inArray(brewLogs.userId, followingIds),
-        isNull(brewLogs.deletedAt),
-      )
-    )
-    .orderBy(desc(brewLogs.createdAt))
-    .limit(100),
+    recipeModel.getFollowedRecipes(followingIds, 100),
+    commentModel.getFollowedComments(followingIds, 100),
+    badgeModel.getFollowedBadges(followingIds, 100),
+    brewLogModel.getFollowedBrewLogs(followingIds, 100),
   ]);
 
-  // Fetch user data for all unique user IDs
-  const allUserIds = new Set([
-    ...recipesData.map(r => r.userId),
-    ...commentsData.map(c => c.userId),
-    ...badgesData.map(b => b.userId),
-    ...brewLogsData.map(b => b.userId),
-  ]);
-
-  const userData = await db.select({
-    id: users.id,
-    username: users.username,
-    displayName: users.displayName,
-    avatarUrl: users.avatarUrl,
-  })
-  .from(users)
-  .where(inArray(users.id, [...allUserIds]));
-
-  const userMap = new Map(userData.map(u => [u.id, u]));
-
-  // Combine and sort all items
+  // Combine and sort all items (model methods return embedded user data)
   const allItems: FeedItem[] = [
     ...recipesData.map(r => ({
       id: r.id,
       type: 'recipe' as FeedItemType,
       createdAt: r.createdAt,
-      user: userMap.get(r.userId) || { id: r.userId, username: null, displayName: null, avatarUrl: null },
+      user: r.user,
       data: { slug: r.slug, title: r.title },
     })),
     ...commentsData.map(c => ({
       id: c.id,
       type: 'comment' as FeedItemType,
       createdAt: c.createdAt,
-      user: userMap.get(c.userId) || { id: c.userId, username: null, displayName: null, avatarUrl: null },
+      user: c.user,
       data: { recipeId: c.recipeId, content: c.content },
     })),
     ...badgesData.map(b => ({
       id: b.id,
       type: 'badge' as FeedItemType,
       createdAt: b.createdAt,
-      user: userMap.get(b.userId) || { id: b.userId, username: null, displayName: null, avatarUrl: null },
+      user: b.user,
       data: { badgeId: b.badgeId, badgeName: b.badgeName, badgeIcon: b.badgeIcon },
     })),
     ...brewLogsData.map(b => ({
       id: b.id,
       type: 'brew_log' as FeedItemType,
       createdAt: b.createdAt,
-      user: userMap.get(b.userId) || { id: b.userId, username: null, displayName: null, avatarUrl: null },
+      user: b.user,
       data: { recipeId: b.recipeId, notes: b.notes, personalRating: b.personalRating },
     })),
   ];
@@ -214,11 +116,12 @@ export async function getExpandedFeed(
   // Sort by recency and deduplicate
   allItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  // Deduplicate by id
+  // Deduplicate by composite key (type + id) to avoid collisions across entity types
   const seen = new Set<string>();
   const deduplicated = allItems.filter(item => {
-    if (seen.has(item.id)) return false;
-    seen.add(item.id);
+    const key = `${item.type}:${item.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 

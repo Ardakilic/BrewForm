@@ -1,4 +1,4 @@
-# D17 — Silent Error Swallowing (22+ Occurrences)
+# D17 — Silent Error Swallowing (15 Occurrences)
 
 ## Severity
 

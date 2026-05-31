@@ -3,6 +3,9 @@ import * as model from './model.ts';
 import { coffeeVarieties } from '@brewform/db/schema';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
 import type { CacheProvider } from '../../utils/cache/index.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+
+const log = createLogger('coffee-variety-service');
 
 type CoffeeVarietyInsert = typeof coffeeVarieties.$inferInsert;
 type CoffeeVarietySelect = typeof coffeeVarieties.$inferSelect;
@@ -63,15 +66,28 @@ export async function updateCoffeeVariety(
   deps: { model: typeof model; cache?: CacheProvider } = { model, cache: cacheProvider },
   isAdmin: boolean = false,
 ) {
+  log.debug({ id, userId, isAdmin }, 'updateCoffeeVariety started');
+
   const variety = await deps.model.findById(id);
-  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
+  if (!variety) {
+    log.error({ id, userId }, 'updateCoffeeVariety failed: coffee variety not found');
+    throw new Error('COFFEE_VARIETY_NOT_FOUND');
+  }
   if (variety.isSystem) {
+    log.warn({ id, userId, isAdmin }, 'updateCoffeeVariety failed: system variety immutable');
     throw new Error('SYSTEM_VARIETY_IMMUTABLE');
   }
-  if (variety.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
+  if (variety.createdBy !== userId && !isAdmin) {
+    log.warn(
+      { id, userId, isAdmin, createdBy: variety.createdBy },
+      'updateCoffeeVariety failed: forbidden',
+    );
+    throw new Error('FORBIDDEN');
+  }
 
   const result = await deps.model.update(id, data);
   await deps.cache?.delete(['coffee-variety', id]);
+  log.debug({ id, userId }, 'updateCoffeeVariety completed');
   return result;
 }
 
@@ -91,15 +107,28 @@ export async function deleteCoffeeVariety(
   deps: { model: typeof model; cache?: CacheProvider } = { model, cache: cacheProvider },
   isAdmin: boolean = false,
 ) {
+  log.debug({ id, userId, isAdmin }, 'deleteCoffeeVariety started');
+
   const variety = await deps.model.findById(id);
-  if (!variety) throw new Error('COFFEE_VARIETY_NOT_FOUND');
+  if (!variety) {
+    log.error({ id, userId }, 'deleteCoffeeVariety failed: coffee variety not found');
+    throw new Error('COFFEE_VARIETY_NOT_FOUND');
+  }
   if (variety.isSystem) {
+    log.warn({ id, userId, isAdmin }, 'deleteCoffeeVariety failed: system variety immutable');
     throw new Error('SYSTEM_VARIETY_IMMUTABLE');
   }
-  if (variety.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
+  if (variety.createdBy !== userId && !isAdmin) {
+    log.warn(
+      { id, userId, isAdmin, createdBy: variety.createdBy },
+      'deleteCoffeeVariety failed: forbidden',
+    );
+    throw new Error('FORBIDDEN');
+  }
 
   const result = await deps.model.softDelete(id);
   await deps.cache?.delete(['coffee-variety', id]);
+  log.debug({ id, userId }, 'deleteCoffeeVariety completed');
   return result;
 }
 

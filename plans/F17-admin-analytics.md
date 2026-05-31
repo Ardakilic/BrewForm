@@ -515,7 +515,7 @@ export interface RetentionMetrics {
 | `GET` | `/api/v1/admin/analytics/export` | CSV export |
 
 **Trends Request:**
-```
+```http
 GET /api/v1/admin/analytics/trends?period=30d
 ```
 

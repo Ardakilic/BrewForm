@@ -77,7 +77,7 @@ Extract shared components and hooks into a `recipe-list` module.
 
 ### Proposed Directory Structure
 
-```
+```text
 apps/web/src/components/recipe-list/
 ├── index.ts                 # re-exports
 ├── FilterField.tsx          # label + children wrapper

@@ -39,14 +39,7 @@ index('recipe_visibility_like_count_idx').on(table.visibility, table.likeCount),
 index('recipe_visibility_featured_idx').on(table.visibility, table.featured),
 ```
 
-**Why not tsvector/GIN?** The project convention is "No Postgres-specific operators." Using `pg_trgm` with `ilike` + trigram index is simpler and stays within Drizzle ORM constraints. Full-text search is approximated via weighted `ilike` across title + productName.
-
-**Trigram index approach** (requires enabling `pg_trgm` extension — must verify Postgres allows this):
-
-```ts
-// If pg_trgm is available, add a GIN trigram index on title for faster ilike
-// Otherwise, rely on existing btree indexes + ilike
-```
+**Why not tsvector/GIN?** The project convention is "No Postgres-specific operators" and "No raw SQL." The plan uses Drizzle ORM `ilike` predicates exclusively and performs ranking in application code for database-agnostic portability.
 
 ### New Shared Schemas
 
@@ -123,14 +116,13 @@ export const RecipeFilterSchema = z.object({
 In `apps/api/src/modules/recipe/service.ts` — `listRecipes()`:
 
 ```ts
-// Weighted search scoring
+// Drizzle-only ILIKE-based search (no raw SQL, no Postgres-specific operators)
 if (filters.search) {
   const sanitized = filters.search.replace(/[%_]/g, '');
   if (sanitized) {
     const searchTerm = `%${sanitized}%`;
 
-    // Score: title match = 3, productName match = 2, personalNotes match = 1
-    // Use CASE in select for ranking, then ORDER BY score DESC
+    // Apply ILIKE filters — ranking is done in application code
     conditions.push(
       or(
         ilike(recipes.title, searchTerm),
@@ -149,27 +141,25 @@ if (filters.search) {
 }
 ```
 
-**Ranking implementation:** Add a computed `rank` field in the select:
+**Ranking in application code:** After fetching results, compute simple weights in JS:
 
 ```ts
-const searchRank = filters.search
-  ? sql<number>`
-    CASE
-      WHEN ${recipes.title} ILIKE ${`%${sanitized}%`} THEN 3
-      WHEN EXISTS (
-        SELECT 1 FROM ${recipeVersions}
-        WHERE ${recipeVersions.recipeId} = ${recipes.id}
-        AND ${recipeVersions.productName} ILIKE ${`%${sanitized}%`}
-      ) THEN 2
-      WHEN EXISTS (
-        SELECT 1 FROM ${recipeVersions}
-        WHERE ${recipeVersions.recipeId} = ${recipes.id}
-        AND ${recipeVersions.personalNotes} ILIKE ${`%${sanitized}%`}
-      ) THEN 1
-      ELSE 0
-    END
-  `
-  : sql<number>`0`;
+// Application-level ranking (no raw SQL)
+if (filters.search && results.length > 0) {
+  const searchLower = filters.search.toLowerCase();
+  results.sort((a, b) => {
+    const scoreA = getSearchScore(a, searchLower);
+    const scoreB = getSearchScore(b, searchLower);
+    return scoreB - scoreA; // higher score first
+  });
+}
+
+function getSearchScore(recipe: any, searchLower: string): number {
+  let score = 0;
+  if (recipe.title?.toLowerCase().includes(searchLower)) score += 3;
+  if (recipe.currentVersion?.productName?.toLowerCase().includes(searchLower)) score += 2;
+  return score;
+}
 ```
 
 #### Rating Filter

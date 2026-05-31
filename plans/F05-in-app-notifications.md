@@ -319,7 +319,7 @@ Add translation keys:
   "notifications.comment": "{username} commented on {recipeTitle}",
   "notifications.badge": "You earned: {badgeName}",
   "notifications.system": "{message}",
-  "notificationspreferences.mention": "Mention notifications",
+  "notifications.preferences.mention": "Mention notifications",
   "notifications.preferences.follow": "Follow notifications",
   "notifications.preferences.like": "Like notifications",
   "notifications.preferences.comment": "Comment notifications",

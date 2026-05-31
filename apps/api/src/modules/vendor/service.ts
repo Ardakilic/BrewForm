@@ -5,21 +5,32 @@
  * verify the record exists before mutating.
  */
 import * as model from './model.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+
+const log = createLogger('vendor-service');
 
 /** List all non-deleted vendors with pagination. */
 export async function listVendors(page: number, perPage: number) {
-  return model.findMany(page, perPage);
+  log.debug({ page, perPage }, 'listVendors started');
+  const result = await model.findMany(page, perPage);
+  log.debug({ page, perPage }, 'listVendors completed');
+  return result;
 }
 
 /** Search non-deleted vendors by name (LIKE match), limited to 10 results. */
 export async function searchVendors(query: string) {
-  return model.search(query);
+  log.debug({ query }, 'searchVendors started');
+  const result = await model.search(query);
+  log.debug({ query }, 'searchVendors completed');
+  return result;
 }
 
 /** Get a vendor by ID. Throws VENDOR_NOT_FOUND if it doesn't exist. */
 export async function getVendor(id: string) {
+  log.debug({ vendorId: id }, 'getVendor started');
   const vendor = await model.findById(id);
   if (!vendor) throw new Error('VENDOR_NOT_FOUND');
+  log.debug({ vendorId: id }, 'getVendor completed');
   return vendor;
 }
 
@@ -30,7 +41,10 @@ export async function getVendor(id: string) {
  * @param data   - Vendor fields (name, website, description)
  */
 export async function createVendor(userId: string, data: any) {
-  return model.create({ ...data, createdBy: userId });
+  log.debug({ userId }, 'createVendor started');
+  const result = await model.create({ ...data, createdBy: userId });
+  log.debug({ userId, vendorId: result.id }, 'createVendor completed');
+  return result;
 }
 
 /**
@@ -49,10 +63,13 @@ export async function updateVendor(
   data: any,
   isAdmin: boolean = false,
 ) {
+  log.debug({ userId, vendorId: id, isAdmin }, 'updateVendor started');
   const vendor = await model.findById(id);
   if (!vendor) throw new Error('VENDOR_NOT_FOUND');
   if (vendor.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
-  return model.update(id, data);
+  const result = await model.update(id, data);
+  log.debug({ userId, vendorId: id }, 'updateVendor completed');
+  return result;
 }
 
 /**
@@ -61,7 +78,9 @@ export async function updateVendor(
  * @throws VENDOR_NOT_FOUND if the vendor doesn't exist
  */
 export async function deleteVendor(id: string) {
+  log.debug({ vendorId: id }, 'deleteVendor started');
   const vendor = await model.findById(id);
   if (!vendor) throw new Error('VENDOR_NOT_FOUND');
   await model.softDelete(id);
+  log.debug({ vendorId: id }, 'deleteVendor completed');
 }

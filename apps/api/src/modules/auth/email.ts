@@ -5,7 +5,7 @@ import { template as resetPasswordTemplate } from '../../templates/email/generat
 import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
 import nodemailer from 'npm:nodemailer';
 
-const logger = createLogger('email');
+const logger = createLogger('auth-email');
 
 function createTransporter() {
   return nodemailer.createTransport({
@@ -23,10 +23,10 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
 }
 
 async function sendEmail(to: string, subject: string, html: string) {
-  logger.info({ to, subject }, 'Sending email');
+  logger.info({ delivery: 'pending', subject }, 'Sending email');
 
   if (config.APP_ENV === 'test') {
-    logger.info({ to, subject }, 'Email skipped (test environment)');
+    logger.info({ delivery: 'skipped', subject }, 'Email skipped (test environment)');
     return;
   }
 
@@ -38,9 +38,9 @@ async function sendEmail(to: string, subject: string, html: string) {
       subject,
       html,
     });
-    logger.info({ to, subject }, 'Email sent successfully');
+    logger.info({ delivery: 'sent', subject }, 'Email sent successfully');
   } catch (err) {
-    logger.error({ err, to, subject }, 'Failed to send email');
+    logger.error({ err, delivery: 'failed', subject }, 'Failed to send email');
     throw err;
   }
 }

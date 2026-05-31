@@ -117,7 +117,7 @@ import { and, avg, count, desc, eq, isNull, sql } from 'drizzle-orm';
 /** Get brew method distribution for a user (from brew_logs). */
 export async function getBrewMethodDistribution(userId: string) {
   const results = await db.select({
-    method: brewLogs.recipeId, // will join through recipeVersions
+    method: recipeVersions\.brewMethod,
     count: count(),
   })
     .from(brewLogs)

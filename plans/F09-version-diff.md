@@ -99,30 +99,8 @@ export async function diffVersions(
 ): Promise<VersionDiff> {
   logger.debug({ recipeId, v1Id, v2Id }, 'diffVersions started');
 
-  const [version1, version2] = await Promise.all([
-    db.query.recipeVersions.findFirst({
-      where: and(
-        eq(recipeVersions.id, v1Id),
-        eq(recipeVersions.recipeId, recipeId),
-      ),
-      with: {
-        tasteNotes: { with: { tasteNote: { columns: { id: true, name: true } } } },
-        equipment: { with: { equipment: { columns: { id: true, name: true } } } },
-        additionalPreparations: true,
-      },
-    }),
-    db.query.recipeVersions.findFirst({
-      where: and(
-        eq(recipeVersions.id, v2Id),
-        eq(recipeVersions.recipeId, recipeId),
-      ),
-      with: {
-        tasteNotes: { with: { tasteNote: { columns: { id: true, name: true } } } },
-        equipment: { with: { equipment: { columns: { id: true, name: true } } } },
-        additionalPreparations: true,
-      },
-    }),
-  ]);
+  const versions = await model.getRecipeVersionsForDiff(recipeId, [v1Id, v2Id]);
+  const [version1, version2] = versions;
 
   if (!version1 || !version2) throw new Error('VERSION_NOT_FOUND');
 
@@ -208,6 +186,29 @@ export async function diffVersions(
     tasteNotes,
     equipment,
   };
+}
+```
+
+### Model: New Model Functions
+
+Add to `apps/api/src/modules/recipe/model.ts`:
+
+```ts
+/** Fetch specific recipe versions with full relations for diff comparison. */
+export async function getRecipeVersionsForDiff(recipeId: string, versionIds: string[]) {
+  const results = await Promise.all(
+    versionIds.map((id) =>
+      db.query.recipeVersions.findFirst({
+        where: and(eq(recipeVersions.id, id), eq(recipeVersions.recipeId, recipeId)),
+        with: {
+          tasteNotes: { with: { tasteNote: { columns: { id: true, name: true } } } },
+          equipment: { with: { equipment: { columns: { id: true, name: true } } } },
+          additionalPreparations: true,
+        },
+      })
+    ),
+  );
+  return results;
 }
 ```
 

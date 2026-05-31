@@ -100,26 +100,12 @@ export { RecipeMergeSchema } from './recipe.ts';
 Add to `apps/api/src/modules/recipe/service.ts`:
 
 ```ts
-export async function mergeRecipes(authorId: string, data: any) {
-  logger.debug({ authorId }, 'mergeRecipes started');
+export async function mergeRecipes\(authorId: string, data: any\) \{
+  logger\.debug\(\{ authorId \}, 'mergeRecipes started'\);
 
-  // Fetch both versions with full relations
-  const v1 = await db.query.recipeVersions.findFirst({
-    where: eq(recipeVersions.id, data.recipeVersionId1),
-    with: {
-      tasteNotes: { with: { tasteNote: true } },
-      equipment: { with: { equipment: true } },
-      additionalPreparations: true,
-    },
-  });
-  const v2 = await db.query.recipeVersions.findFirst({
-    where: eq(recipeVersions.id, data.recipeVersionId2),
-    with: {
-      tasteNotes: { with: { tasteNote: true } },
-      equipment: { with: { equipment: true } },
-      additionalPreparations: true,
-    },
-  });
+  // Use model-layer functions instead of direct DB access
+  const v1 = await model\.fetchRecipeVersionWithRelations\(data\.recipeVersionId1\);
+  const v2 = await model\.fetchRecipeVersionWithRelations\(data\.recipeVersionId2\);
 
   if (!v1 || !v2) throw new Error('RECIPE_NOT_FOUND');
 
@@ -183,6 +169,24 @@ function getMergedPreparations(v1: any, v2: any, choice?: string): any[] {
   if (choice === 'v1') return v1.additionalPreparations ?? [];
   if (choice === 'v2') return v2.additionalPreparations ?? [];
   return [...(v1.additionalPreparations ?? []), ...(v2.additionalPreparations ?? [])];
+}
+```
+
+### Model: New Model Functions
+
+Add to `apps/api/src/modules/recipe/model.ts`:
+
+```ts
+/** Fetch a single recipe version with full relations (taste notes, equipment, preparations). */
+export async function fetchRecipeVersionWithRelations(versionId: string) {
+  return db.query.recipeVersions.findFirst({
+    where: eq(recipeVersions.id, versionId),
+    with: {
+      tasteNotes: { with: { tasteNote: true } },
+      equipment: { with: { equipment: true } },
+      additionalPreparations: true,
+    },
+  });
 }
 ```
 
