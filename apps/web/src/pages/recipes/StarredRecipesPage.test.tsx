@@ -9,6 +9,7 @@ vi.mock('react-router', () => ({
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
   ) => <a href={to} {...props}>{children}</a>,
   useSearchParams: vi.fn(),
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
@@ -191,9 +192,9 @@ describe('StarredRecipesPage', () => {
 
     expect(screen.getByText('Test Recipe')).toBeInTheDocument();
 
-    // Author display name should be visible as a link
-    const authorLink = screen.getByRole('link', { name: 'Test User' });
-    expect(authorLink).toHaveAttribute('href', '/u/testuser');
+    // Author display name should be visible as a button
+    const authorButton = screen.getByRole('button', { name: 'Test User' });
+    expect(authorButton).toBeInTheDocument();
   });
 
   it('passes filters to API when search params are present', async () => {

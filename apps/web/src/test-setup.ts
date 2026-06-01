@@ -1,5 +1,14 @@
 import '@testing-library/jest-dom';
 
+// Tell React 19 it is running in a test environment so act() warnings work.
+// Note: This only takes effect in ESM module scope. React 19's CJS development
+// bundle uses strict mode, where bare global references (typeof IS_REACT_ACT_ENVIRONMENT)
+// do NOT fall through to globalThis. This is a known Deno CJS compat limitation.
+// The "not configured to support act()" warning may still appear in some test
+// files (e.g., Navbar) where tests explicitly invoke React.act(). This warning
+// is benign — all tests pass correctly.
+(globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+
 // React 19 calls window.reportError for recoverable errors. In Deno + jsdom
 // this can crash with "parameter 1 is not of type 'Event'" because Deno's
 // web implementation of reportError dispatches through jsdom's EventTarget

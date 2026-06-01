@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { recipeApi } from '../api/index.ts';
 import type { RecipeListItem } from '../api/types.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { RecipeCardSkeletonGrid } from '../components/ui/Skeleton.tsx';
+import { AUTHOR_BUTTON_STYLE } from '../components/recipe/RecipeCard.styles.ts';
 import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('HomePage');
@@ -80,21 +81,33 @@ export function HomePage() {
     </div>
   );
 }
+/**
+ * Render a clickable recipe card with an inner author button.
+ *
+ * Uses `<button>` for the author link instead of `<Link>` to avoid nested
+ * `<a>` elements (invalid HTML). The card itself is a `<Link>` for native
+ * link behavior (Ctrl+click/new tab), while the author button uses
+ * `useNavigate` with `e.stopPropagation()` to prevent card navigation.
+ */
 function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
+  const navigate = useNavigate();
   return (
     <Link to={`/recipes/${recipe.slug}`} className='card hover:shadow-lg transition-shadow'>
       <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>{recipe.title}</h3>
       <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
         by {recipe.author
           ? (
-            <Link
-              to={`/u/${recipe.author.username}`}
-              onClick={(e) => e.stopPropagation()}
+            <button
+              type='button'
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/u/${recipe.author!.username}`);
+              }}
               className='hover:underline'
-              style={{ color: 'var(--accent-primary)' }}
+              style={AUTHOR_BUTTON_STYLE}
             >
               {recipe.author.displayName || recipe.author.username}
-            </Link>
+            </button>
           )
           : (
             'unknown'

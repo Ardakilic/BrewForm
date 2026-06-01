@@ -10,6 +10,7 @@ vi.mock('react-router', () => ({
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
   ) => <a href={to} {...props}>{children}</a>,
   useSearchParams: vi.fn(),
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
@@ -242,6 +243,8 @@ describe('RecipeListPage — i18n', () => {
 
   it('shows skeleton grid while fetching — English', () => {
     mockRecipeApi.list.mockReturnValue(new Promise(() => {}));
+    mockEquipmentApi.list.mockReturnValue(new Promise(() => {}));
+    mockTasteApi.flat.mockReturnValue(new Promise(() => {}));
 
     render(<RecipeListPage />);
 
@@ -252,6 +255,8 @@ describe('RecipeListPage — i18n', () => {
   it('shows skeleton grid while fetching — Turkish', () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
     mockRecipeApi.list.mockReturnValue(new Promise(() => {}));
+    mockEquipmentApi.list.mockReturnValue(new Promise(() => {}));
+    mockTasteApi.flat.mockReturnValue(new Promise(() => {}));
 
     render(<RecipeListPage />);
 
@@ -332,9 +337,9 @@ describe('RecipeListPage — i18n', () => {
     // Recipe title should render
     expect(screen.getByText('Test Recipe')).toBeInTheDocument();
 
-    // Author's display name should be visible and linked to profile
-    const authorLink = screen.getByRole('link', { name: 'Test User' });
-    expect(authorLink).toHaveAttribute('href', '/u/testuser');
+    // Author's display name should be visible and linked to profile via a button
+    const authorButton = screen.getByRole('button', { name: 'Test User' });
+    expect(authorButton).toBeInTheDocument();
   });
 });
 

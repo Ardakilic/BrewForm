@@ -223,11 +223,7 @@ describe('LoginPage', () => {
   });
 
   it('should disable button and show loading text while logging in', async () => {
-    let resolveLogin: (value: unknown) => void;
-    const loginPromise = new Promise((resolve) => {
-      resolveLogin = resolve;
-    });
-    vi.mocked(authApi.login).mockReturnValue(loginPromise as Promise<unknown>);
+    vi.mocked(authApi.login).mockReturnValue(new Promise(() => {}));
 
     await renderLoginPage();
     await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
@@ -235,18 +231,6 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
 
     expect(screen.getByRole('button', { name: /logging in/i })).toBeDisabled();
-
-    resolveLogin!({
-      user: {
-        id: '1',
-        email: 'test@test.com',
-        username: 'testuser',
-        displayName: null,
-        avatarUrl: null,
-        isAdmin: false,
-        onboardingCompleted: false,
-      },
-    });
   });
 
   it('should require email field', async () => {

@@ -588,6 +588,7 @@ describe('CommentSection — comment form', () => {
     mockUseAuth.mockReturnValue(
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
+    mockApi.get.mockReturnValue(new Promise(() => {}));
 
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
@@ -595,6 +596,8 @@ describe('CommentSection — comment form', () => {
   });
 
   it('hides the form when not authenticated', () => {
+    mockApi.get.mockReturnValue(new Promise(() => {}));
+
     render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
     expect(screen.queryByPlaceholderText('Write a comment...')).not.toBeInTheDocument();

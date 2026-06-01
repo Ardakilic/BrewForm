@@ -61,12 +61,13 @@ vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({
 
 import { useParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { recipeApi } from '../../api/index.ts';
+import { recipeApi, tasteApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 
 const mockUseParams = vi.mocked(useParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockRecipeApi = vi.mocked(recipeApi);
+const mockTasteApi = vi.mocked(tasteApi);
 const mockSEOHead = vi.mocked(SEOHead);
 
 // ── Translation helpers ────────────────────────────────────────────────────
@@ -131,6 +132,7 @@ beforeEach(() => {
 describe('RecipeFocusModePage — loading state', () => {
   it('shows "Loading..." while fetching — English', () => {
     mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
+    mockTasteApi.flat.mockReturnValue(new Promise(() => {}));
     render(<RecipeFocusModePage />);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -138,6 +140,7 @@ describe('RecipeFocusModePage — loading state', () => {
   it('shows "Yükleniyor..." while fetching — Turkish', () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
     mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
+    mockTasteApi.flat.mockReturnValue(new Promise(() => {}));
     render(<RecipeFocusModePage />);
     expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
   });
