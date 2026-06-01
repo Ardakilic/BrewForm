@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router';
 import { RegisterPage } from './RegisterPage.tsx';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
-import { authApi } from '../../api/index.ts';
+import { authApi, userApi } from '../../api/index.ts';
 
 vi.mock('../../api/index.ts', () => ({
   api: {
@@ -37,7 +37,7 @@ vi.mock('../../api/index.ts', () => ({
     logout: vi.fn().mockResolvedValue({}),
   },
   userApi: {
-    me: vi.fn().mockReturnValue(new Promise(() => {})),
+    me: vi.fn().mockResolvedValue(null),
   },
 }));
 
@@ -60,6 +60,7 @@ describe('RegisterPage', () => {
 
   it('should show loading state while checking registration status', () => {
     vi.mocked(authApi.registrationStatus).mockReturnValue(new Promise(() => {}));
+    vi.mocked(userApi.me).mockReturnValue(new Promise(() => {}));
     renderRegisterPage();
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });

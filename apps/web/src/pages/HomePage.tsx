@@ -5,6 +5,7 @@ import type { RecipeListItem } from '../api/types.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { RecipeCardSkeletonGrid } from '../components/ui/Skeleton.tsx';
+import { AUTHOR_BUTTON_STYLE } from '../components/recipe/RecipeCard.styles.ts';
 import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('HomePage');
@@ -103,14 +104,7 @@ function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
                 navigate(`/u/${recipe.author!.username}`);
               }}
               className='hover:underline'
-              style={{
-                color: 'var(--accent-primary)',
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                font: 'inherit',
-              }}
+              style={AUTHOR_BUTTON_STYLE}
             >
               {recipe.author.displayName || recipe.author.username}
             </button>

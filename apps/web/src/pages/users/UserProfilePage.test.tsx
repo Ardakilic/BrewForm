@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { UserProfilePage } from './UserProfilePage.tsx';
 
 vi.mock('react-router', () => ({
@@ -99,9 +99,12 @@ beforeEach(() => {
 
 describe('UserProfilePage — FollowButton visibility', () => {
   it('hides FollowButton when user is not logged in', async () => {
-    (mockApi.get as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
-
-    render(<UserProfilePage />);
+    // Render inside act + setTimeout(0) so the API response microtask drains
+    // inside act scope, preventing orphaned state updates.
+    await act(async () => {
+      render(<UserProfilePage />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
     const followButton = screen.queryByTestId('follow-button');
     expect(followButton).not.toBeInTheDocument();
