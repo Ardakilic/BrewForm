@@ -454,3 +454,36 @@ describe('tasteNoteIds AND logic filtering', () => {
     );
   });
 });
+
+describe('Recipe Create/Update input types', () => {
+  it('RecipeCreateObjectSchema should accept a valid payload and produce typed output', () => {
+    const payload = {
+      title: 'Morning Espresso',
+      visibility: 'public' as const,
+      brewMethod: 'espresso_machine' as const,
+      drinkType: 'espresso' as const,
+      preparationNotes: 'Pull a 36g shot in 28s',
+    };
+    const parsed = RecipeCreateObjectSchema.parse(payload);
+    expect(parsed.title).toBe('Morning Espresso');
+    expect(parsed.preparationNotes).toBe('Pull a 36g shot in 28s');
+  });
+
+  it('RecipeCreateSchema should pass through the same fields with extra refinements', () => {
+    const payload = {
+      title: 'Quick',
+      visibility: 'draft' as const,
+      brewMethod: 'aeropress' as const,
+      drinkType: 'espresso' as const,
+      preparationNotes: 'Inverted, 1 minute steep',
+    };
+    const parsed = RecipeCreateSchema.parse(payload);
+    expect(parsed.title).toBe('Quick');
+    expect(parsed.brewMethod).toBe('aeropress');
+  });
+
+  it('RecipeFilterSchema should accept a valid visibility filter', () => {
+    const parsed = RecipeFilterSchema.parse({ visibility: 'public' });
+    expect(parsed.visibility).toBe('public');
+  });
+});

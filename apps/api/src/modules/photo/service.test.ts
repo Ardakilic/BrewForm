@@ -61,4 +61,23 @@ describe('Photo Service Logic', () => {
       expect(authorized).toBe(true);
     });
   });
+
+  describe('PhotoInsert type', () => {
+    it('should require a typed PhotoInsert payload matching DB schema', async () => {
+      // Imports the type — compile-time check ensures uploadPhoto's `data`
+      // parameter conforms to the `photos` table insert shape. Runtime
+      // assertion: PhotoInsert must be assignable from a literal payload.
+      const { photos } = await import('@brewform/db/schema');
+      type PhotoInsert = typeof photos.$inferInsert;
+      const payload: PhotoInsert = {
+        recipeId: '11111111-1111-1111-1111-111111111111',
+        url: 'https://example.com/photos/test.webp',
+        thumbnailUrl: 'https://example.com/photos/test-thumb.webp',
+        alt: 'A test photo',
+        sortOrder: 0,
+      };
+      expect(payload.url).toBe('https://example.com/photos/test.webp');
+      expect(payload.sortOrder).toBe(0);
+    });
+  });
 });

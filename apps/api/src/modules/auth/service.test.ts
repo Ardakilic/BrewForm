@@ -2,7 +2,7 @@ import '../../test-setup.ts';
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { config, reloadConfig } from '../../config/env.ts';
-import { register } from './service.ts';
+import { register, toAuthUser } from './service.ts';
 import { signAccessToken, signRefreshToken, verifyJwt } from './jwt.ts';
 
 describe('Auth Service Logic', () => {
@@ -368,6 +368,48 @@ describe('Auth Service Logic', () => {
       const expiresAt = new Date(now + 3600 * 1000);
       const diffMs = expiresAt.getTime() - now;
       expect(diffMs).toBe(3600000);
+    });
+  });
+
+  describe('toAuthUser type narrowing', () => {
+    it('should return a typed AuthUser with required User fields', () => {
+      const raw = {
+        id: 'user-1',
+        email: 'a@b.com',
+        username: 'u',
+        displayName: 'Test User',
+        avatarUrl: null,
+        bio: null,
+        isAdmin: false,
+        isBanned: false,
+        passwordHash: 'hash',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        emailVerifiedAt: null,
+        onboardingCompleted: false,
+        deletedAt: null,
+      };
+      const authUser = toAuthUser(raw);
+      expect(authUser.id).toBe('user-1');
+      expect(authUser.email).toBe('a@b.com');
+      expect(authUser.passwordHash).toBe('hash');
+      expect(authUser.isAdmin).toBe(false);
+      expect(authUser.preferences).toBeUndefined();
+    });
+
+    it('should accept arbitrary Record<string, unknown> shape from model layer', () => {
+      const raw: Record<string, unknown> = {
+        id: 'user-2',
+        email: 'b@b.com',
+        username: 'u2',
+        passwordHash: 'hash2',
+        isAdmin: true,
+        isBanned: false,
+        preferences: { theme: 'dark' },
+      };
+      const authUser = toAuthUser(raw);
+      expect(authUser.id).toBe('user-2');
+      expect(authUser.preferences).toEqual({ theme: 'dark' });
     });
   });
 });

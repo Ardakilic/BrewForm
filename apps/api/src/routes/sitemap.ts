@@ -4,6 +4,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { config } from '../config/index.ts';
 import type { AppEnv } from '../types/hono.ts';
 import { cacheProvider } from '../utils/cache/singleton.ts';
+import type { db as DbType } from '@brewform/db';
 
 const sitemap = new Hono<AppEnv>();
 
@@ -28,7 +29,7 @@ function toW3CDate(date: Date | null | undefined): string {
   return '';
 }
 
-let _db: any = null;
+let _db: typeof DbType | null = null;
 async function getDb() {
   if (!_db) {
     const mod = await import('@brewform/db');

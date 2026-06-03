@@ -9,12 +9,17 @@
  * This is the middle layer of the 3-layer admin module:
  * controllers -> service.ts (this file) -> model.ts
  */
-// deno-lint-ignore-file require-await
+import type { z } from 'zod';
 import * as model from './model.ts';
 import type { CacheProvider } from '../../utils/cache/index.ts';
 import { sendWelcomeEmail } from '../auth/email.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { coffeeVarieties } from '@brewform/db/schema';
+import {
+  BrewMethodCompatibilityCreateSchema,
+  EquipmentUpdateSchema,
+  VendorUpdateSchema,
+} from '@brewform/shared/schemas';
 
 const logger = createLogger('admin-service');
 
@@ -22,12 +27,12 @@ const logger = createLogger('admin-service');
 
 /** Pass-through: fetch a paginated list of non-deleted users with optional search. */
 export async function listUsers(page: number, perPage: number, query?: string) {
-  return model.listUsers(page, perPage, query);
+  return await model.listUsers(page, perPage, query);
 }
 
 /** Pass-through: fetch a single non-deleted user by ID. */
 export async function getUserDetail(userId: string) {
-  return model.getUserById(userId);
+  return await model.getUserById(userId);
 }
 
 /** Ban a user and log the action. Throws if the user is not found. */
@@ -157,7 +162,7 @@ export async function softDeleteUser(adminId: string, userId: string) {
 
 /** Pass-through: list all non-deleted recipes with optional visibility filter. */
 export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
-  return model.listAllRecipes(page, perPage, visibility);
+  return await model.listAllRecipes(page, perPage, visibility);
 }
 
 /** Update a recipe's visibility and log the action. Returns null if the visibility is invalid. */
@@ -192,7 +197,7 @@ export async function softDeleteRecipe(adminId: string, recipeId: string) {
 
 /** Pass-through: list all non-deleted equipment entries. */
 export async function listEquipment(page: number, perPage: number) {
-  return model.listEquipment(page, perPage);
+  return await model.listEquipment(page, perPage);
 }
 
 /** Create an equipment record and log the action. */
@@ -208,7 +213,11 @@ export async function createEquipment(
 }
 
 /** Update an equipment record and log the action. */
-export async function updateEquipment(adminId: string, id: string, data: any) {
+export async function updateEquipment(
+  adminId: string,
+  id: string,
+  data: z.infer<typeof EquipmentUpdateSchema>,
+) {
   logger.debug({ adminId, id }, 'updateEquipment started');
   const equipment = await model.updateEquipment(id, data);
   await model.createAuditLog(adminId, 'UPDATE_EQUIPMENT', 'Equipment', id);
@@ -228,7 +237,7 @@ export async function deleteEquipment(adminId: string, id: string) {
 
 /** Pass-through: list all non-deleted vendors. */
 export async function listVendors(page: number, perPage: number) {
-  return model.listVendors(page, perPage);
+  return await model.listVendors(page, perPage);
 }
 
 /** Create a vendor and log the action. */
@@ -244,7 +253,11 @@ export async function createVendor(
 }
 
 /** Update a vendor and log the action. */
-export async function updateVendor(adminId: string, id: string, data: any) {
+export async function updateVendor(
+  adminId: string,
+  id: string,
+  data: z.infer<typeof VendorUpdateSchema>,
+) {
   logger.debug({ adminId, id }, 'updateVendor started');
   const vendor = await model.updateVendor(id, data);
   await model.createAuditLog(adminId, 'UPDATE_VENDOR', 'Vendor', id);
@@ -316,7 +329,7 @@ export async function deleteTasteNote(adminId: string, id: string, cache: CacheP
 
 /** Pass-through: list all brew method compatibility rules. */
 export async function listCompatibilityRules() {
-  return model.listCompatibilityRules();
+  return await model.listCompatibilityRules();
 }
 
 /** Update a compatibility rule, log the action, and invalidate the compatibility cache. */
@@ -341,7 +354,11 @@ export async function updateCompatibilityRule(
 }
 
 /** Create a compatibility rule, log the action, and invalidate the compatibility cache. */
-export async function createCompatibilityRule(adminId: string, data: any, cache: CacheProvider) {
+export async function createCompatibilityRule(
+  adminId: string,
+  data: z.infer<typeof BrewMethodCompatibilityCreateSchema>,
+  cache: CacheProvider,
+) {
   logger.debug({ adminId }, 'createCompatibilityRule started');
   const rule = await model.createCompatibilityRule(data);
   await model.createAuditLog(
@@ -373,7 +390,7 @@ export async function listReports(
   status?: string,
   entityType?: string,
 ) {
-  return model.listReports(page, perPage, status, entityType);
+  return await model.listReports(page, perPage, status, entityType);
 }
 
 /** Resolve a report and log the action. */
@@ -398,7 +415,7 @@ export async function dismissReport(adminId: string, id: string) {
 
 /** Pass-through: list audit log entries with optional entity filter. */
 export async function listAuditLogs(page: number, perPage: number, entity?: string) {
-  return model.listAuditLogs(page, perPage, entity);
+  return await model.listAuditLogs(page, perPage, entity);
 }
 
 // --- Cache Flush ---
@@ -430,27 +447,27 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
 
 /** Pass-through: aggregate dashboard statistics (users, recipes, comments, reports, etc.). */
 export async function getDashboardStats() {
-  return model.getDashboardStats();
+  return await model.getDashboardStats();
 }
 
 /** Pass-through: fetch user creation dates over N days for growth charting. */
 export async function getUserGrowth(days: number) {
-  return model.getUserGrowth(days);
+  return await model.getUserGrowth(days);
 }
 
 /** Pass-through: fetch recipe creation dates over N days for growth charting. */
 export async function getRecipeGrowth(days: number) {
-  return model.getRecipeGrowth(days);
+  return await model.getRecipeGrowth(days);
 }
 
 /** Pass-through: fetch top public recipes by like count. */
 export async function getTopRecipes(limit: number) {
-  return model.getTopRecipes(limit);
+  return await model.getTopRecipes(limit);
 }
 
 /** Pass-through: fetch top users ranked by recipe count. */
 export async function getTopUsers(limit: number) {
-  return model.getTopUsers(limit);
+  return await model.getTopUsers(limit);
 }
 
 // --- Coffee Varieties (admin) ---
@@ -462,7 +479,7 @@ export async function listCoffeeVarieties(
   category?: string,
   search?: string,
 ) {
-  return model.listCoffeeVarieties(page, perPage, category, search);
+  return await model.listCoffeeVarieties(page, perPage, category, search);
 }
 
 /** Create a coffee variety and log the action. */
@@ -508,7 +525,7 @@ export async function deleteCoffeeVariety(adminId: string, id: string) {
 
 /** Pass-through: count recipes using a coffee variety. */
 export async function getVarietyRecipeCount(varietyId: string) {
-  return model.getVarietyRecipeCount(varietyId);
+  return await model.getVarietyRecipeCount(varietyId);
 }
 
 // --- Equipment Delete Requests (admin) ---
@@ -519,7 +536,7 @@ export async function listEquipmentDeleteRequests(
   perPage: number,
   status?: string,
 ) {
-  return model.listEquipmentDeleteRequests(page, perPage, status);
+  return await model.listEquipmentDeleteRequests(page, perPage, status);
 }
 
 /** Approve an equipment delete request, soft-delete the equipment, and log the action. */
