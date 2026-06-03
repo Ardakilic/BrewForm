@@ -41,7 +41,7 @@ admin.get(
     responses: { 200: { description: 'Aggregate counters for the admin home page' } },
   }),
   async (c) => {
-    const stats = await service.getDashboardStats();
+    const stats = await service.getDashboardStats(c.get('requestId'));
     return success(c, stats);
   },
 );
@@ -57,7 +57,7 @@ admin.get(
   zValidator('query', z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })),
   async (c) => {
     const { days } = c.req.valid('query');
-    const growth = await service.getUserGrowth(days);
+    const growth = await service.getUserGrowth(days, c.get('requestId'));
     return success(c, growth);
   },
 );
@@ -73,7 +73,7 @@ admin.get(
   zValidator('query', z.object({ days: z.coerce.number().int().min(1).max(365).default(30) })),
   async (c) => {
     const { days } = c.req.valid('query');
-    const growth = await service.getRecipeGrowth(days);
+    const growth = await service.getRecipeGrowth(days, c.get('requestId'));
     return success(c, growth);
   },
 );
@@ -89,7 +89,7 @@ admin.get(
   zValidator('query', z.object({ limit: z.coerce.number().int().min(1).max(100).default(10) })),
   async (c) => {
     const { limit } = c.req.valid('query');
-    const recipes = await service.getTopRecipes(limit);
+    const recipes = await service.getTopRecipes(limit, c.get('requestId'));
     return success(c, recipes);
   },
 );
@@ -105,7 +105,7 @@ admin.get(
   zValidator('query', z.object({ limit: z.coerce.number().int().min(1).max(100).default(10) })),
   async (c) => {
     const { limit } = c.req.valid('query');
-    const users = await service.getTopUsers(limit);
+    const users = await service.getTopUsers(limit, c.get('requestId'));
     return success(c, users);
   },
 );
@@ -116,7 +116,7 @@ admin.get(
   zValidator('query', PaginationSchema.extend({ q: z.string().optional() })),
   async (c) => {
     const { page, perPage, q } = c.req.valid('query');
-    const result = await service.listUsers(page, perPage, q);
+    const result = await service.listUsers(page, perPage, q, c.get('requestId'));
     return paginated(c, result.users, {
       page,
       perPage,
@@ -128,7 +128,7 @@ admin.get(
 
 admin.get('/users/:id', async (c) => {
   const id = c.req.param('id')!;
-  const user = await service.getUserDetail(id);
+  const user = await service.getUserDetail(id, c.get('requestId'));
   if (!user) return error(c, 'NOT_FOUND', 'User not found', 404);
   return success(c, user);
 });
@@ -249,7 +249,7 @@ admin.get(
   ),
   async (c) => {
     const { page, perPage, visibility } = c.req.valid('query');
-    const result = await service.listAllRecipes(page, perPage, visibility);
+    const result = await service.listAllRecipes(page, perPage, visibility, c.get('requestId'));
     return paginated(c, result.recipes, {
       page,
       perPage,
@@ -281,7 +281,7 @@ admin.delete('/recipes/:id', async (c) => {
 // --- Equipment ---
 admin.get('/equipment', zValidator('query', PaginationSchema), async (c) => {
   const { page, perPage } = c.req.valid('query');
-  const result = await service.listEquipment(page, perPage);
+  const result = await service.listEquipment(page, perPage, c.get('requestId'));
   return paginated(c, result.equipment, {
     page,
     perPage,
@@ -323,7 +323,7 @@ admin.delete('/equipment/:id', async (c) => {
 // --- Vendors ---
 admin.get('/vendors', zValidator('query', PaginationSchema), async (c) => {
   const { page, perPage } = c.req.valid('query');
-  const result = await service.listVendors(page, perPage);
+  const result = await service.listVendors(page, perPage, c.get('requestId'));
   return paginated(c, result.vendors, {
     page,
     perPage,
@@ -360,7 +360,7 @@ admin.delete('/vendors/:id', async (c) => {
 
 // --- Taste Notes (admin) ---
 admin.get('/taste-notes', async (c) => {
-  const hierarchy = await service.listTasteNotes(cacheProvider!);
+  const hierarchy = await service.listTasteNotes(cacheProvider!, c.get('requestId'));
   return success(c, hierarchy);
 });
 
@@ -403,7 +403,7 @@ admin.get(
   ),
   async (c) => {
     const { page, perPage, status, entityType } = c.req.valid('query');
-    const result = await service.listReports(page, perPage, status, entityType);
+    const result = await service.listReports(page, perPage, status, entityType, c.get('requestId'));
     return paginated(c, result.reports, {
       page,
       perPage,
@@ -444,7 +444,7 @@ admin.patch('/reports/:id/dismiss', async (c) => {
 
 // --- Brew Method Compatibility Matrix ---
 admin.get('/compatibility', async (c) => {
-  const rules = await service.listCompatibilityRules();
+  const rules = await service.listCompatibilityRules(c.get('requestId'));
   return success(c, rules);
 });
 
@@ -484,7 +484,7 @@ admin.get(
   zValidator('query', PaginationSchema.extend({ entity: z.string().optional() })),
   async (c) => {
     const { page, perPage, entity } = c.req.valid('query');
-    const result = await service.listAuditLogs(page, perPage, entity);
+    const result = await service.listAuditLogs(page, perPage, entity, c.get('requestId'));
     return paginated(c, result.logs, {
       page,
       perPage,
@@ -513,7 +513,13 @@ admin.get(
   ),
   async (c) => {
     const { page, perPage, category, search } = c.req.valid('query');
-    const result = await service.listCoffeeVarieties(page, perPage, category, search);
+    const result = await service.listCoffeeVarieties(
+      page,
+      perPage,
+      category,
+      search,
+      c.get('requestId'),
+    );
     return paginated(c, result.varieties, {
       page,
       perPage,
@@ -555,7 +561,7 @@ admin.delete('/coffee-varieties/:id', async (c) => {
 
 admin.get('/coffee-varieties/:id/recipe-count', async (c) => {
   const id = c.req.param('id')!;
-  const count = await service.getVarietyRecipeCount(id);
+  const count = await service.getVarietyRecipeCount(id, c.get('requestId'));
   return success(c, { count });
 });
 
@@ -568,7 +574,12 @@ admin.get(
   ),
   async (c) => {
     const { page, perPage, status } = c.req.valid('query');
-    const result = await service.listEquipmentDeleteRequests(page, perPage, status);
+    const result = await service.listEquipmentDeleteRequests(
+      page,
+      perPage,
+      status,
+      c.get('requestId'),
+    );
     return paginated(c, result.requests, {
       page,
       perPage,

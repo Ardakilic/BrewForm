@@ -26,18 +26,26 @@ const logger = createLogger('admin-service');
 // --- Users ---
 
 /** Pass-through: fetch a paginated list of non-deleted users with optional search. */
-export async function listUsers(page: number, perPage: number, query?: string) {
-  logger.debug({ page, perPage, query }, 'listUsers started');
+export async function listUsers(page: number, perPage: number, query?: string, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ page, perPage, query, requestId }, 'listUsers started');
   const result = await model.listUsers(page, perPage, query);
-  logger.debug({ page, perPage }, 'listUsers completed');
+  logger.debug(
+    { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
+    'listUsers completed',
+  );
   return result;
 }
 
 /** Pass-through: fetch a single non-deleted user by ID. */
-export async function getUserDetail(userId: string) {
-  logger.debug({ userId }, 'getUserDetail started');
+export async function getUserDetail(userId: string, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ userId, requestId }, 'getUserDetail started');
   const result = await model.getUserById(userId);
-  logger.debug({ userId }, 'getUserDetail completed');
+  logger.debug(
+    { userId, found: !!result, requestId, durationMs: Date.now() - start },
+    'getUserDetail completed',
+  );
   return result;
 }
 
@@ -167,10 +175,19 @@ export async function softDeleteUser(adminId: string, userId: string) {
 // --- Recipes ---
 
 /** Pass-through: list all non-deleted recipes with optional visibility filter. */
-export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
-  logger.debug({ page, perPage, visibility }, 'listAllRecipes started');
+export async function listAllRecipes(
+  page: number,
+  perPage: number,
+  visibility?: string,
+  requestId?: string,
+) {
+  const start = Date.now();
+  logger.debug({ page, perPage, visibility, requestId }, 'listAllRecipes started');
   const result = await model.listAllRecipes(page, perPage, visibility);
-  logger.debug({ page, perPage }, 'listAllRecipes completed');
+  logger.debug(
+    { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
+    'listAllRecipes completed',
+  );
   return result;
 }
 
@@ -205,10 +222,14 @@ export async function softDeleteRecipe(adminId: string, recipeId: string) {
 // --- Equipment ---
 
 /** Pass-through: list all non-deleted equipment entries. */
-export async function listEquipment(page: number, perPage: number) {
-  logger.debug({ page, perPage }, 'listEquipment started');
+export async function listEquipment(page: number, perPage: number, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ page, perPage, requestId }, 'listEquipment started');
   const result = await model.listEquipment(page, perPage);
-  logger.debug({ page, perPage }, 'listEquipment completed');
+  logger.debug(
+    { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
+    'listEquipment completed',
+  );
   return result;
 }
 
@@ -248,10 +269,14 @@ export async function deleteEquipment(adminId: string, id: string) {
 // --- Vendors ---
 
 /** Pass-through: list all non-deleted vendors. */
-export async function listVendors(page: number, perPage: number) {
-  logger.debug({ page, perPage }, 'listVendors started');
+export async function listVendors(page: number, perPage: number, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ page, perPage, requestId }, 'listVendors started');
   const result = await model.listVendors(page, perPage);
-  logger.debug({ page, perPage }, 'listVendors completed');
+  logger.debug(
+    { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
+    'listVendors completed',
+  );
   return result;
 }
 
@@ -291,11 +316,15 @@ export async function deleteVendor(adminId: string, id: string) {
 // --- Taste Notes (admin) ---
 
 /** Delegates to the taste module to return the full taste note hierarchy (cached). */
-export async function listTasteNotes(cache: CacheProvider) {
-  logger.debug({}, 'listTasteNotes started');
+export async function listTasteNotes(cache: CacheProvider, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ requestId }, 'listTasteNotes started');
   const { getHierarchy } = await import('../taste/service.ts');
   const result = await getHierarchy(cache);
-  logger.debug({}, 'listTasteNotes completed');
+  logger.debug(
+    { found: !!result, requestId, durationMs: Date.now() - start },
+    'listTasteNotes completed',
+  );
   return result;
 }
 
@@ -346,10 +375,14 @@ export async function deleteTasteNote(adminId: string, id: string, cache: CacheP
 // --- Brew Method Compatibility Matrix ---
 
 /** Pass-through: list all brew method compatibility rules. */
-export async function listCompatibilityRules() {
-  logger.debug({}, 'listCompatibilityRules started');
+export async function listCompatibilityRules(requestId?: string) {
+  const start = Date.now();
+  logger.debug({ requestId }, 'listCompatibilityRules started');
   const result = await model.listCompatibilityRules();
-  logger.debug({}, 'listCompatibilityRules completed');
+  logger.debug(
+    { count: result.length, requestId, durationMs: Date.now() - start },
+    'listCompatibilityRules completed',
+  );
   return result;
 }
 
@@ -410,10 +443,15 @@ export async function listReports(
   perPage: number,
   status?: string,
   entityType?: string,
+  requestId?: string,
 ) {
-  logger.debug({ page, perPage, status, entityType }, 'listReports started');
+  const start = Date.now();
+  logger.debug({ page, perPage, status, entityType, requestId }, 'listReports started');
   const result = await model.listReports(page, perPage, status, entityType);
-  logger.debug({ page, perPage }, 'listReports completed');
+  logger.debug(
+    { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
+    'listReports completed',
+  );
   return result;
 }
 
@@ -438,10 +476,19 @@ export async function dismissReport(adminId: string, id: string) {
 // --- Audit Logs ---
 
 /** Pass-through: list audit log entries with optional entity filter. */
-export async function listAuditLogs(page: number, perPage: number, entity?: string) {
-  logger.debug({ page, perPage, entity }, 'listAuditLogs started');
+export async function listAuditLogs(
+  page: number,
+  perPage: number,
+  entity?: string,
+  requestId?: string,
+) {
+  const start = Date.now();
+  logger.debug({ page, perPage, entity, requestId }, 'listAuditLogs started');
   const result = await model.listAuditLogs(page, perPage, entity);
-  logger.debug({ page, perPage }, 'listAuditLogs completed');
+  logger.debug(
+    { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
+    'listAuditLogs completed',
+  );
   return result;
 }
 
@@ -473,42 +520,62 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
 // --- Analytics ---
 
 /** Pass-through: aggregate dashboard statistics (users, recipes, comments, reports, etc.). */
-export async function getDashboardStats() {
-  logger.debug({}, 'getDashboardStats started');
+export async function getDashboardStats(requestId?: string) {
+  const start = Date.now();
+  logger.debug({ requestId }, 'getDashboardStats started');
   const result = await model.getDashboardStats();
-  logger.debug({}, 'getDashboardStats completed');
+  logger.debug(
+    { found: !!result, requestId, durationMs: Date.now() - start },
+    'getDashboardStats completed',
+  );
   return result;
 }
 
 /** Pass-through: fetch user creation dates over N days for growth charting. */
-export async function getUserGrowth(days: number) {
-  logger.debug({ days }, 'getUserGrowth started');
+export async function getUserGrowth(days: number, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ days, requestId }, 'getUserGrowth started');
   const result = await model.getUserGrowth(days);
-  logger.debug({ days }, 'getUserGrowth completed');
+  logger.debug(
+    { days, count: result.length, requestId, durationMs: Date.now() - start },
+    'getUserGrowth completed',
+  );
   return result;
 }
 
 /** Pass-through: fetch recipe creation dates over N days for growth charting. */
-export async function getRecipeGrowth(days: number) {
-  logger.debug({ days }, 'getRecipeGrowth started');
+export async function getRecipeGrowth(days: number, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ days, requestId }, 'getRecipeGrowth started');
   const result = await model.getRecipeGrowth(days);
-  logger.debug({ days }, 'getRecipeGrowth completed');
+  logger.debug(
+    { days, count: result.length, requestId, durationMs: Date.now() - start },
+    'getRecipeGrowth completed',
+  );
   return result;
 }
 
 /** Pass-through: fetch top public recipes by like count. */
-export async function getTopRecipes(limit: number) {
-  logger.debug({ limit }, 'getTopRecipes started');
+export async function getTopRecipes(limit: number, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ limit, requestId }, 'getTopRecipes started');
   const result = await model.getTopRecipes(limit);
-  logger.debug({ limit }, 'getTopRecipes completed');
+  logger.debug(
+    { limit, count: result.length, requestId, durationMs: Date.now() - start },
+    'getTopRecipes completed',
+  );
   return result;
 }
 
 /** Pass-through: fetch top users ranked by recipe count. */
-export async function getTopUsers(limit: number) {
-  logger.debug({ limit }, 'getTopUsers started');
+export async function getTopUsers(limit: number, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ limit, requestId }, 'getTopUsers started');
   const result = await model.getTopUsers(limit);
-  logger.debug({ limit }, 'getTopUsers completed');
+  logger.debug(
+    { limit, count: result.length, requestId, durationMs: Date.now() - start },
+    'getTopUsers completed',
+  );
   return result;
 }
 
@@ -520,10 +587,15 @@ export async function listCoffeeVarieties(
   perPage: number,
   category?: string,
   search?: string,
+  requestId?: string,
 ) {
-  logger.debug({ page, perPage, category, search }, 'listCoffeeVarieties started');
+  const start = Date.now();
+  logger.debug({ page, perPage, category, search, requestId }, 'listCoffeeVarieties started');
   const result = await model.listCoffeeVarieties(page, perPage, category, search);
-  logger.debug({ page, perPage }, 'listCoffeeVarieties completed');
+  logger.debug(
+    { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
+    'listCoffeeVarieties completed',
+  );
   return result;
 }
 
@@ -569,10 +641,14 @@ export async function deleteCoffeeVariety(adminId: string, id: string) {
 }
 
 /** Pass-through: count recipes using a coffee variety. */
-export async function getVarietyRecipeCount(varietyId: string) {
-  logger.debug({ varietyId }, 'getVarietyRecipeCount started');
+export async function getVarietyRecipeCount(varietyId: string, requestId?: string) {
+  const start = Date.now();
+  logger.debug({ varietyId, requestId }, 'getVarietyRecipeCount started');
   const result = await model.getVarietyRecipeCount(varietyId);
-  logger.debug({ varietyId }, 'getVarietyRecipeCount completed');
+  logger.debug(
+    { varietyId, count: result, requestId, durationMs: Date.now() - start },
+    'getVarietyRecipeCount completed',
+  );
   return result;
 }
 
@@ -583,10 +659,15 @@ export async function listEquipmentDeleteRequests(
   page: number,
   perPage: number,
   status?: string,
+  requestId?: string,
 ) {
-  logger.debug({ page, perPage, status }, 'listEquipmentDeleteRequests started');
+  const start = Date.now();
+  logger.debug({ page, perPage, status, requestId }, 'listEquipmentDeleteRequests started');
   const result = await model.listEquipmentDeleteRequests(page, perPage, status);
-  logger.debug({ page, perPage }, 'listEquipmentDeleteRequests completed');
+  logger.debug(
+    { page, perPage, total: result.total, requestId, durationMs: Date.now() - start },
+    'listEquipmentDeleteRequests completed',
+  );
   return result;
 }
 
