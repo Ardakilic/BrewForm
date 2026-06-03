@@ -594,7 +594,7 @@ make check-api
 
 ## Testing Strategy
 
-- **Type-check**: Run `make check` after each file edit — zero errors required.
+- **Type-check**: Run `make check-api` after each file edit — zero errors required.
 - **Lint**: Run `make lint` — no new warnings, and reduced suppression count.
 - **Unit tests**: Run `make test-api` to verify no behavioral regressions.
 - **Manual smoke test**: Start dev server (`make dev`), create/update/delete recipes, verify API
@@ -607,7 +607,7 @@ make check-api
 - **Low risk**: All changes are type-level only — no runtime behavior changes.
 - **Migration risk**: None. No database or API contract changes.
 - **Rollback**: Each file is an independent commit; revert any single file if issues arise.
-- **Verification**: `make check` and `make test` provide full safety net.
+- **Verification**: `make check-api` and `make test-api` provide full safety net.
 
 ---
 

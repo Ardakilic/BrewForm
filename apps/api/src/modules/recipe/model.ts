@@ -9,15 +9,19 @@
 
 import { db } from '@brewform/db';
 import {
+  brewMethodEquipmentRules,
+  equipment,
   recipeAdditionalPreparations,
   recipeEquipment,
   recipes,
   recipeTasteNotes,
   recipeVersionPhotos,
   recipeVersions,
+  setups,
   userRecipeFavourites,
   userRecipeLikes,
   userRecipeRatings,
+  users,
 } from '@brewform/db/schema';
 import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
 
@@ -673,4 +677,58 @@ export async function findStarred(
   ]);
 
   return { recipes: data, total: totalResult[0].count };
+}
+
+/** Fetch equipment by IDs, returning id + type for compatibility checks. */
+export async function getEquipmentByIds(ids: string[]) {
+  return db
+    .select({ id: equipment.id, type: equipment.type })
+    .from(equipment)
+    .where(inArray(equipment.id, ids));
+}
+
+/** Fetch brew method equipment rules for a given brew method. */
+export async function getBrewMethodEquipmentRules(brewMethod: string) {
+  return db
+    .select()
+    .from(brewMethodEquipmentRules)
+    .where(eq(brewMethodEquipmentRules.brewMethod, brewMethod as any));
+}
+
+/** Fetch a user's setup by ID, checking ownership and non-deleted status. */
+export async function getUserSetup(setupId: string, userId: string) {
+  const result = await db.select().from(setups)
+    .where(
+      and(eq(setups.id, setupId), eq(setups.userId, userId), isNull(setups.deletedAt)),
+    )
+    .limit(1);
+  return result[0] ?? null;
+}
+
+/** Fetch a user by ID. */
+export async function getUserById(userId: string) {
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return result[0] ?? null;
+}
+
+/** Batch-insert version-photo relations. */
+export async function insertVersionPhotos(
+  versionId: string,
+  photoIds: string[],
+) {
+  await db.insert(recipeVersionPhotos).values(
+    photoIds.map((photoId, i) => ({
+      recipeVersionId: versionId,
+      photoId,
+      sortOrder: i,
+    })),
+  );
+}
+
+/** Fetch all version-photo relations for a recipe version. */
+export async function getVersionPhotos(versionId: string) {
+  return db
+    .select()
+    .from(recipeVersionPhotos)
+    .where(eq(recipeVersionPhotos.recipeVersionId, versionId));
 }

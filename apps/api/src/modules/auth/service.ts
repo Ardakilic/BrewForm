@@ -32,12 +32,14 @@ export interface AuthUser extends Omit<User, 'preferences'> {
 }
 
 /**
- * Convert a raw user record returned by the model layer into the
- * typed `AuthUser` shape used by this module.
+ * Perform an unchecked cast from a raw user record to `AuthUser`.
  *
- * @param user - A user record (typically from a Drizzle query result).
- *   Typed as `Record<string, unknown>` so callers can't accidentally
- *   pass an arbitrary object and lose compile-time safety.
+ * NOTE: This function does NOT validate the shape of the input — it
+ * simply narrows `Record<string, unknown>` to `AuthUser` via
+ * `as unknown as`. The caller must guarantee the input matches the
+ * `AuthUser` interface before calling this helper.
+ *
+ * @param user - A raw user record (typically from a Drizzle query result).
  * @returns The same object, cast to the `AuthUser` interface.
  */
 export function toAuthUser(user: Record<string, unknown>): AuthUser {

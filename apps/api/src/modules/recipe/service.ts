@@ -14,19 +14,14 @@ import { sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import { db } from '@brewform/db';
 import {
-  brewMethodEnum,
-  brewMethodEquipmentRules,
-  equipment,
   recipeAdditionalPreparations,
   recipeEquipment,
   recipes,
   recipeTasteNotes,
   recipeVersionPhotos,
   recipeVersions,
-  setups,
-  users,
 } from '@brewform/db/schema';
-import { and, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm';
+import { and, eq, ilike, inArray, or, type SQL } from 'drizzle-orm';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import {
@@ -140,20 +135,8 @@ async function validateEquipmentCompatibility(
 ): Promise<void> {
   if (!brewMethod || !equipmentIds?.length) return;
 
-  const equipmentList = await db
-    .select({ id: equipment.id, type: equipment.type })
-    .from(equipment)
-    .where(inArray(equipment.id, equipmentIds));
-
-  const allRules = await db
-    .select()
-    .from(brewMethodEquipmentRules)
-    .where(
-      eq(
-        brewMethodEquipmentRules.brewMethod,
-        brewMethod as (typeof brewMethodEnum.enumValues)[number],
-      ),
-    );
+  const equipmentList = await model.getEquipmentByIds(equipmentIds);
+  const allRules = await model.getBrewMethodEquipmentRules(brewMethod);
 
   const incompatible = checkEquipmentCompatibility(
     equipmentList.map((e) => ({ id: e.id, type: e.type })),
@@ -201,12 +184,7 @@ export async function createRecipe(
   let grinder: string | null | undefined = data.grinder;
   let brewerDetails: string | null | undefined = data.brewerDetails;
   if (data.setupId) {
-    const setupResult = await db.select().from(setups)
-      .where(
-        and(eq(setups.id, data.setupId), eq(setups.userId, authorId), isNull(setups.deletedAt)),
-      )
-      .limit(1);
-    const setup = setupResult[0];
+    const setup = await model.getUserSetup(data.setupId, authorId);
     if (setup) {
       if (!grinder) grinder = setup.grinder;
       if (!brewerDetails) brewerDetails = setup.brewerDetails;
@@ -308,8 +286,7 @@ export async function createRecipe(
 
   if (finalRecipe?.visibility === 'public') {
     (async () => {
-      const authorResult = await db.select().from(users).where(eq(users.id, authorId)).limit(1);
-      const author = authorResult[0];
+      const author = await model.getUserById(authorId);
       if (!author?.username) return;
       await notifyFollowersOfNewRecipe({
         authorId,
@@ -413,26 +390,11 @@ export async function updateRecipe(
     if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
 
     if (data.photoIds?.length) {
-      await db.insert(recipeVersionPhotos).values(
-        data.photoIds.map((photoId, i) => ({
-          recipeVersionId: version.id,
-          photoId,
-          sortOrder: i,
-        })),
-      );
+      await model.insertVersionPhotos(version.id, data.photoIds);
     } else {
-      const previousPhotos = await db
-        .select()
-        .from(recipeVersionPhotos)
-        .where(eq(recipeVersionPhotos.recipeVersionId, latestVersion.id));
+      const previousPhotos = await model.getVersionPhotos(latestVersion.id);
       if (previousPhotos.length) {
-        await db.insert(recipeVersionPhotos).values(
-          previousPhotos.map((vp) => ({
-            recipeVersionId: version.id,
-            photoId: vp.photoId,
-            sortOrder: vp.sortOrder,
-          })),
-        );
+        await model.insertVersionPhotos(version.id, previousPhotos.map((vp) => vp.photoId));
       }
     }
 
@@ -519,7 +481,10 @@ export async function listRecipes(
   _requestingUserId: string | null = null,
   isAdmin: boolean = false,
 ) {
-  logger.debug({}, 'listRecipes started');
+  logger.debug(
+    { userId: _requestingUserId, page, perPage, filters: JSON.stringify(filters) },
+    'listRecipes started',
+  );
   const visibilityCondition = (isAdmin === true && filters.visibility)
     ? eq(recipes.visibility, filters.visibility)
     : eq(recipes.visibility, 'public');
@@ -627,7 +592,10 @@ export async function listRecipes(
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
   const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
-  logger.debug({}, 'listRecipes completed');
+  logger.debug(
+    { userId: _requestingUserId, page, perPage, resultCount: result.total },
+    'listRecipes completed',
+  );
   return result;
 }
 
@@ -645,8 +613,7 @@ export async function toggleLike(userId: string, recipeId: string) {
 
   if (result.liked && recipe.authorId !== userId) {
     (async () => {
-      const likerResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-      const liker = likerResult[0];
+      const liker = await model.getUserById(userId);
       if (!liker?.username) return;
       await notifyRecipeLiked({
         recipeAuthorId: recipe.authorId,

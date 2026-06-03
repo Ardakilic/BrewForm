@@ -27,12 +27,18 @@ const logger = createLogger('admin-service');
 
 /** Pass-through: fetch a paginated list of non-deleted users with optional search. */
 export async function listUsers(page: number, perPage: number, query?: string) {
-  return await model.listUsers(page, perPage, query);
+  logger.debug({ page, perPage, query }, 'listUsers started');
+  const result = await model.listUsers(page, perPage, query);
+  logger.debug({ page, perPage }, 'listUsers completed');
+  return result;
 }
 
 /** Pass-through: fetch a single non-deleted user by ID. */
 export async function getUserDetail(userId: string) {
-  return await model.getUserById(userId);
+  logger.debug({ userId }, 'getUserDetail started');
+  const result = await model.getUserById(userId);
+  logger.debug({ userId }, 'getUserDetail completed');
+  return result;
 }
 
 /** Ban a user and log the action. Throws if the user is not found. */
@@ -162,7 +168,10 @@ export async function softDeleteUser(adminId: string, userId: string) {
 
 /** Pass-through: list all non-deleted recipes with optional visibility filter. */
 export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
-  return await model.listAllRecipes(page, perPage, visibility);
+  logger.debug({ page, perPage, visibility }, 'listAllRecipes started');
+  const result = await model.listAllRecipes(page, perPage, visibility);
+  logger.debug({ page, perPage }, 'listAllRecipes completed');
+  return result;
 }
 
 /** Update a recipe's visibility and log the action. Returns null if the visibility is invalid. */
@@ -197,7 +206,10 @@ export async function softDeleteRecipe(adminId: string, recipeId: string) {
 
 /** Pass-through: list all non-deleted equipment entries. */
 export async function listEquipment(page: number, perPage: number) {
-  return await model.listEquipment(page, perPage);
+  logger.debug({ page, perPage }, 'listEquipment started');
+  const result = await model.listEquipment(page, perPage);
+  logger.debug({ page, perPage }, 'listEquipment completed');
+  return result;
 }
 
 /** Create an equipment record and log the action. */
@@ -237,7 +249,10 @@ export async function deleteEquipment(adminId: string, id: string) {
 
 /** Pass-through: list all non-deleted vendors. */
 export async function listVendors(page: number, perPage: number) {
-  return await model.listVendors(page, perPage);
+  logger.debug({ page, perPage }, 'listVendors started');
+  const result = await model.listVendors(page, perPage);
+  logger.debug({ page, perPage }, 'listVendors completed');
+  return result;
 }
 
 /** Create a vendor and log the action. */
@@ -277,8 +292,11 @@ export async function deleteVendor(adminId: string, id: string) {
 
 /** Delegates to the taste module to return the full taste note hierarchy (cached). */
 export async function listTasteNotes(cache: CacheProvider) {
+  logger.debug({}, 'listTasteNotes started');
   const { getHierarchy } = await import('../taste/service.ts');
-  return getHierarchy(cache);
+  const result = await getHierarchy(cache);
+  logger.debug({}, 'listTasteNotes completed');
+  return result;
 }
 
 /** Delegates to the taste module to create a note and logs the action. */
@@ -329,7 +347,10 @@ export async function deleteTasteNote(adminId: string, id: string, cache: CacheP
 
 /** Pass-through: list all brew method compatibility rules. */
 export async function listCompatibilityRules() {
-  return await model.listCompatibilityRules();
+  logger.debug({}, 'listCompatibilityRules started');
+  const result = await model.listCompatibilityRules();
+  logger.debug({}, 'listCompatibilityRules completed');
+  return result;
 }
 
 /** Update a compatibility rule, log the action, and invalidate the compatibility cache. */
@@ -390,7 +411,10 @@ export async function listReports(
   status?: string,
   entityType?: string,
 ) {
-  return await model.listReports(page, perPage, status, entityType);
+  logger.debug({ page, perPage, status, entityType }, 'listReports started');
+  const result = await model.listReports(page, perPage, status, entityType);
+  logger.debug({ page, perPage }, 'listReports completed');
+  return result;
 }
 
 /** Resolve a report and log the action. */
@@ -415,7 +439,10 @@ export async function dismissReport(adminId: string, id: string) {
 
 /** Pass-through: list audit log entries with optional entity filter. */
 export async function listAuditLogs(page: number, perPage: number, entity?: string) {
-  return await model.listAuditLogs(page, perPage, entity);
+  logger.debug({ page, perPage, entity }, 'listAuditLogs started');
+  const result = await model.listAuditLogs(page, perPage, entity);
+  logger.debug({ page, perPage }, 'listAuditLogs completed');
+  return result;
 }
 
 // --- Cache Flush ---
@@ -447,27 +474,42 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
 
 /** Pass-through: aggregate dashboard statistics (users, recipes, comments, reports, etc.). */
 export async function getDashboardStats() {
-  return await model.getDashboardStats();
+  logger.debug({}, 'getDashboardStats started');
+  const result = await model.getDashboardStats();
+  logger.debug({}, 'getDashboardStats completed');
+  return result;
 }
 
 /** Pass-through: fetch user creation dates over N days for growth charting. */
 export async function getUserGrowth(days: number) {
-  return await model.getUserGrowth(days);
+  logger.debug({ days }, 'getUserGrowth started');
+  const result = await model.getUserGrowth(days);
+  logger.debug({ days }, 'getUserGrowth completed');
+  return result;
 }
 
 /** Pass-through: fetch recipe creation dates over N days for growth charting. */
 export async function getRecipeGrowth(days: number) {
-  return await model.getRecipeGrowth(days);
+  logger.debug({ days }, 'getRecipeGrowth started');
+  const result = await model.getRecipeGrowth(days);
+  logger.debug({ days }, 'getRecipeGrowth completed');
+  return result;
 }
 
 /** Pass-through: fetch top public recipes by like count. */
 export async function getTopRecipes(limit: number) {
-  return await model.getTopRecipes(limit);
+  logger.debug({ limit }, 'getTopRecipes started');
+  const result = await model.getTopRecipes(limit);
+  logger.debug({ limit }, 'getTopRecipes completed');
+  return result;
 }
 
 /** Pass-through: fetch top users ranked by recipe count. */
 export async function getTopUsers(limit: number) {
-  return await model.getTopUsers(limit);
+  logger.debug({ limit }, 'getTopUsers started');
+  const result = await model.getTopUsers(limit);
+  logger.debug({ limit }, 'getTopUsers completed');
+  return result;
 }
 
 // --- Coffee Varieties (admin) ---
@@ -479,7 +521,10 @@ export async function listCoffeeVarieties(
   category?: string,
   search?: string,
 ) {
-  return await model.listCoffeeVarieties(page, perPage, category, search);
+  logger.debug({ page, perPage, category, search }, 'listCoffeeVarieties started');
+  const result = await model.listCoffeeVarieties(page, perPage, category, search);
+  logger.debug({ page, perPage }, 'listCoffeeVarieties completed');
+  return result;
 }
 
 /** Create a coffee variety and log the action. */
@@ -525,7 +570,10 @@ export async function deleteCoffeeVariety(adminId: string, id: string) {
 
 /** Pass-through: count recipes using a coffee variety. */
 export async function getVarietyRecipeCount(varietyId: string) {
-  return await model.getVarietyRecipeCount(varietyId);
+  logger.debug({ varietyId }, 'getVarietyRecipeCount started');
+  const result = await model.getVarietyRecipeCount(varietyId);
+  logger.debug({ varietyId }, 'getVarietyRecipeCount completed');
+  return result;
 }
 
 // --- Equipment Delete Requests (admin) ---
@@ -536,7 +584,10 @@ export async function listEquipmentDeleteRequests(
   perPage: number,
   status?: string,
 ) {
-  return await model.listEquipmentDeleteRequests(page, perPage, status);
+  logger.debug({ page, perPage, status }, 'listEquipmentDeleteRequests started');
+  const result = await model.listEquipmentDeleteRequests(page, perPage, status);
+  logger.debug({ page, perPage }, 'listEquipmentDeleteRequests completed');
+  return result;
 }
 
 /** Approve an equipment delete request, soft-delete the equipment, and log the action. */
