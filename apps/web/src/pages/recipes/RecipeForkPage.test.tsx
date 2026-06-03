@@ -38,6 +38,16 @@ const enT = (key: string) => {
     'recipe.forkDescription':
       'Forking creates your own personal copy of this recipe that you can freely modify and build upon.',
     'recipe.forkAriaLabel': 'Fork recipe',
+    'common.loading': 'Loading...',
+    'common.cancel': 'Cancel',
+    'recipe.fork.title': 'Fork Title',
+    'recipe.fork.ofTitle': 'Fork of {title}',
+    'recipe.fork.forking': 'Forking:',
+    'recipe.fork.create': 'Create Fork',
+    'recipe.fork.creating': 'Creating Fork...',
+    'recipe.fork.seoTitle': 'Fork: {title}',
+    'recipe.fork.loadError': 'Failed to load recipe',
+    'recipe.fork.forkError': 'Failed to fork recipe',
   };
   return map[key] ?? key;
 };
