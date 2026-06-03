@@ -119,7 +119,6 @@ The following are excluded from indexing:
 | `.cache` | Generic cache directory |
 | `node_modules` | Third-party dependencies — would pollute symbol search |
 | `coverage` | Test coverage reports — not source code |
-| `.eser` | noskills configuration — internal tooling |
 
 Root `.gitignore` also excludes `.serena/cache/` and `.serena/project.local.yml`.
 

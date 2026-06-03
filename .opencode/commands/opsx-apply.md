@@ -21,9 +21,11 @@ Implement tasks from an OpenSpec change.
    ```bash
    openspec status --change "<name>" --json
    ```
-   Parse the JSON to understand:
-   - `schemaName`: The workflow being used (e.g., "spec-driven")
-   - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
+    Parse the JSON to understand:
+    - `schemaName`: The workflow being used (e.g., "spec-driven")
+    - `planningHome`, `changeRoot`, and `actionContext`: planning scope and edit constraints
+    - `allowedEditRoots`: list of repository/workspace roots allowed for edits; when combined with `actionContext.mode: "workspace-planning"` and empty, the workspace guard below stops the apply
+    - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
 
 3. **Get apply instructions**
 
@@ -41,6 +43,8 @@ Implement tasks from an OpenSpec change.
    - If `state: "blocked"` (missing artifacts): show message, suggest using `/opsx-continue`
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
+
+   **Workspace guard:** If status JSON reports `actionContext.mode: "workspace-planning"` and `allowedEditRoots` is empty, explain that full workspace apply is not supported in this slice. Treat linked repos and folders as read-only context, ask the user to select an affected area through an explicit implementation workflow, and STOP before editing files.
 
 4. **Read context files**
 

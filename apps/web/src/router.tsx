@@ -89,6 +89,21 @@ export const router = createBrowserRouter([
           };
         },
       },
+      {
+        path: 'recipes/:id/fork',
+        lazy: async () => {
+          const { RecipeForkPage } = await import('./pages/recipes/RecipeForkPage.tsx');
+          return {
+            Component: function RecipeForkPageGuarded() {
+              return (
+                <RequireAuth>
+                  <RecipeForkPage />
+                </RequireAuth>
+              );
+            },
+          };
+        },
+      },
       { path: 'u/:username', element: <UserProfilePage /> },
       {
         path: 'settings',
