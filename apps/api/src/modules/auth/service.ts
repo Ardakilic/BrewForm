@@ -11,32 +11,39 @@ import * as model from './model.ts';
 import { sendPasswordResetEmail, sendVerificationEmail } from './email.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { config } from '../../config/env.ts';
+import type { User, UserPreferences } from '@brewform/shared/types';
 // Standard dedup approach for future OAuth/social login:
 // import { generateUniqueUsername } from '@brewform/shared';
 
 const logger = createLogger('auth-service');
 
-interface AuthUser {
-  id: string;
-  email: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  bio: string | null;
+/**
+ * Authenticated user shape with the stored `passwordHash` and a
+ * fully-typed `preferences` field. Extends the shared {@link User}
+ * type so this shape automatically picks up new public user fields.
+ *
+ * `preferences` is optional because the model's `leftJoin` returns
+ * `undefined` when the user has no row in `userPreferences` (e.g.
+ * for accounts created before preferences existed).
+ */
+export interface AuthUser extends Omit<User, 'preferences'> {
   passwordHash: string;
-  isAdmin: boolean;
-  isBanned: boolean;
-  onboardingCompleted: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt: Date | null;
-  // deno-lint-ignore no-explicit-any
-  preferences: any;
+  preferences?: UserPreferences;
 }
 
-// deno-lint-ignore no-explicit-any
-function toAuthUser(user: any): AuthUser {
-  return user as AuthUser;
+/**
+ * Perform an unchecked cast from a raw user record to `AuthUser`.
+ *
+ * NOTE: This function does NOT validate the shape of the input — it
+ * simply narrows `Record<string, unknown>` to `AuthUser` via
+ * `as unknown as`. The caller must guarantee the input matches the
+ * `AuthUser` interface before calling this helper.
+ *
+ * @param user - A raw user record (typically from a Drizzle query result).
+ * @returns The same object, cast to the `AuthUser` interface.
+ */
+export function toAuthUser(user: Record<string, unknown>): AuthUser {
+  return user as unknown as AuthUser;
 }
 
 /**

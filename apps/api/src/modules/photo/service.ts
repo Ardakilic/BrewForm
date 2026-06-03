@@ -4,9 +4,9 @@
  * Handles image validation, file persistence via the upload utility, thumbnail
  * generation, and soft-deletion of recipe photos.
  */
-// deno-lint-ignore-file no-explicit-any
 import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
+import { photos } from '@brewform/db/schema';
 import {
   generateFilename,
   getPublicUrl,
@@ -17,6 +17,9 @@ import {
 import { createLogger } from '../../utils/logger/index.ts';
 
 const logger = createLogger('photo-service');
+
+/** Inferred insert type for the `photos` table (current Drizzle idiom). */
+type PhotoInsert = typeof photos.$inferInsert;
 
 /**
  * Upload a photo for a recipe.
@@ -56,13 +59,15 @@ export async function uploadPhoto(
   const thumbnailUrl = await saveThumbnail(thumbnail, filename, url, 'medium');
   logger.info({ filepath, filename, hasThumbnail: thumbnail !== null }, 'Photo saved');
 
-  const photo = await model.create({
-    recipeId,
-    url,
-    thumbnailUrl,
-    alt: alt || null,
-    sortOrder: sortOrder ?? 0,
-  } as any);
+  const photo = await model.create(
+    {
+      recipeId,
+      url,
+      thumbnailUrl,
+      alt: alt || null,
+      sortOrder: sortOrder ?? 0,
+    } satisfies PhotoInsert,
+  );
 
   return photo;
 }

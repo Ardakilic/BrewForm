@@ -9,27 +9,54 @@
  * All DB access is delegated to `model.ts` — no Drizzle calls directly
  * from this module except for the compatibility validation helper.
  */
+import type { z } from 'zod';
 import { sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
 import { db } from '@brewform/db';
 import {
-  brewMethodEquipmentRules,
-  equipment,
   recipeAdditionalPreparations,
   recipeEquipment,
   recipes,
   recipeTasteNotes,
   recipeVersionPhotos,
   recipeVersions,
-  setups,
-  users,
 } from '@brewform/db/schema';
-import { and, eq, ilike, inArray, isNull, or } from 'drizzle-orm';
+import { and, eq, ilike, inArray, or, type SQL } from 'drizzle-orm';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
+import {
+  RecipeCreateSchema,
+  RecipeFilterSchema,
+  RecipeUpdateSchema,
+} from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyFollowersOfNewRecipe, notifyRecipeLiked } from '../../utils/notify/index.ts';
 import { evaluateBadges } from '../badge/service.ts';
+
+/** Inferred Drizzle select types for recipe-related rows. */
+type RecipeRow = typeof recipes.$inferSelect;
+type RecipeVersionRow = typeof recipeVersions.$inferSelect;
+
+/** Type alias for the result returned by model.findById / model.findBySlug (rich relational query). */
+type RecipeWithRelations = NonNullable<Awaited<ReturnType<typeof model.findById>>> | undefined;
+
+/**
+ * Augmented recipe-create input. Extends the Zod-inferred shape with
+ * `photoIds` which the controller layer may supply when linking existing
+ * uploads during creation.
+ */
+type RecipeCreateInput = z.infer<typeof RecipeCreateSchema> & {
+  photoIds?: string[];
+};
+
+/**
+ * Augmented recipe-update input. Extends the Zod-inferred `RecipeUpdateSchema`
+ * shape (which is partial + `bumpVersion`) with the same `photoIds` field
+ * the create path supports.
+ */
+type RecipeUpdateInput = z.infer<typeof RecipeUpdateSchema> & {
+  photoIds?: string[];
+};
 
 const logger = createLogger('recipe-service');
 
@@ -43,11 +70,11 @@ async function generateUniqueSlug(title: string): Promise<string> {
 /** Retrieve a recipe by slug or UUID. Throws `RECIPE_NOT_FOUND` if neither matches. */
 export async function getRecipe(slugOrId: string) {
   logger.debug({ slugOrId }, 'getRecipe started');
-  let recipe: any;
+  let recipe: RecipeWithRelations;
   if (slugOrId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-    recipe = await model.findById(slugOrId);
+    recipe = (await model.findById(slugOrId)) ?? undefined;
   } else {
-    recipe = await model.findBySlug(slugOrId);
+    recipe = (await model.findBySlug(slugOrId)) ?? undefined;
   }
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   logger.debug({ slugOrId }, 'getRecipe completed');
@@ -108,15 +135,8 @@ async function validateEquipmentCompatibility(
 ): Promise<void> {
   if (!brewMethod || !equipmentIds?.length) return;
 
-  const equipmentList = await db
-    .select({ id: equipment.id, type: equipment.type })
-    .from(equipment)
-    .where(inArray(equipment.id, equipmentIds));
-
-  const allRules = await db
-    .select()
-    .from(brewMethodEquipmentRules)
-    .where(eq(brewMethodEquipmentRules.brewMethod, brewMethod as any));
+  const equipmentList = await model.getEquipmentByIds(equipmentIds);
+  const allRules = await model.getBrewMethodEquipmentRules(brewMethod);
 
   const incompatible = checkEquipmentCompatibility(
     equipmentList.map((e) => ({ id: e.id, type: e.type })),
@@ -150,7 +170,10 @@ async function validateEquipmentCompatibility(
  * @param data     - Creation payload (validated Zod schema from `@brewform/shared`).
  * @returns The complete recipe object with version, relations, and author summary.
  */
-export async function createRecipe(authorId: string, data: any) {
+export async function createRecipe(
+  authorId: string,
+  data: RecipeCreateInput,
+) {
   logger.debug({ authorId }, 'createRecipe started');
   await validateEquipmentCompatibility(data.brewMethod, data.equipmentIds ?? []);
 
@@ -158,15 +181,10 @@ export async function createRecipe(authorId: string, data: any) {
   if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
   const slug = await generateUniqueSlug(safeTitle);
 
-  let grinder = data.grinder;
-  let brewerDetails = data.brewerDetails;
+  let grinder: string | null | undefined = data.grinder;
+  let brewerDetails: string | null | undefined = data.brewerDetails;
   if (data.setupId) {
-    const setupResult = await db.select().from(setups)
-      .where(
-        and(eq(setups.id, data.setupId), eq(setups.userId, authorId), isNull(setups.deletedAt)),
-      )
-      .limit(1);
-    const setup = setupResult[0];
+    const setup = await model.getUserSetup(data.setupId, authorId);
     if (setup) {
       if (!grinder) grinder = setup.grinder;
       if (!brewerDetails) brewerDetails = setup.brewerDetails;
@@ -180,7 +198,7 @@ export async function createRecipe(authorId: string, data: any) {
     ? computeFlowRate(data.extractionVolumeMl, data.extractionTimeSeconds)
     : null;
 
-  const recipe: any = await db.transaction(async (tx) => {
+  const recipe = await db.transaction(async (tx) => {
     const [r] = await tx.insert(recipes).values({
       slug,
       title: safeTitle,
@@ -222,7 +240,7 @@ export async function createRecipe(authorId: string, data: any) {
 
     if (data.tasteNoteIds?.length) {
       await tx.insert(recipeTasteNotes).values(
-        data.tasteNoteIds.map((id: string) => ({
+        data.tasteNoteIds.map((id) => ({
           recipeVersionId: version.id,
           tasteNoteId: id,
           intensity: data.tasteNoteIntensities?.[id] ?? 1,
@@ -232,13 +250,13 @@ export async function createRecipe(authorId: string, data: any) {
 
     if (data.equipmentIds?.length) {
       await tx.insert(recipeEquipment).values(
-        data.equipmentIds.map((id: string) => ({ recipeVersionId: version.id, equipmentId: id })),
+        data.equipmentIds.map((id) => ({ recipeVersionId: version.id, equipmentId: id })),
       );
     }
 
     if (data.additionalPreparations?.length) {
       await tx.insert(recipeAdditionalPreparations).values(
-        data.additionalPreparations.map((p: any, i: number) => ({
+        data.additionalPreparations.map((p, i) => ({
           recipeVersionId: version.id,
           name: p.name,
           type: p.type,
@@ -251,7 +269,7 @@ export async function createRecipe(authorId: string, data: any) {
 
     if (data.photoIds?.length) {
       await tx.insert(recipeVersionPhotos).values(
-        data.photoIds.map((photoId: string, i: number) => ({
+        data.photoIds.map((photoId, i) => ({
           recipeVersionId: version.id,
           photoId,
           sortOrder: i,
@@ -264,12 +282,11 @@ export async function createRecipe(authorId: string, data: any) {
     return { ...r, versions: [version] };
   });
 
-  const finalRecipe: any = await model.findById(recipe.id);
+  const finalRecipe = await model.findById(recipe.id);
 
   if (finalRecipe?.visibility === 'public') {
     (async () => {
-      const authorResult = await db.select().from(users).where(eq(users.id, authorId)).limit(1);
-      const author = authorResult[0];
+      const author = await model.getUserById(authorId);
       if (!author?.username) return;
       await notifyFollowersOfNewRecipe({
         authorId,
@@ -300,18 +317,23 @@ export async function createRecipe(authorId: string, data: any) {
  * @throws `RECIPE_NOT_FOUND` if the recipe does not exist.
  * @throws `FORBIDDEN` if the requesting user is not the recipe author.
  */
-export async function updateRecipe(recipeId: string, authorId: string, data: any) {
+export async function updateRecipe(
+  recipeId: string,
+  authorId: string,
+  data: RecipeUpdateInput,
+) {
   logger.debug({ recipeId, authorId }, 'updateRecipe started');
-  const recipe: any = await model.findById(recipeId);
+  const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (recipe.authorId !== authorId) throw new Error('FORBIDDEN');
 
   if (data.bumpVersion) {
-    const latestVersion: any = recipe.versions?.[0];
+    const latestVersion = recipe.versions?.[0];
+    if (!latestVersion) throw new Error('RECIPE_NO_VERSIONS');
     const newVersionNumber = latestVersion.versionNumber + 1;
 
     if (data.brewMethod || data.equipmentIds) {
-      const existingEquipmentIds = latestVersion.equipment?.map((e: any) => e.equipmentId) ?? [];
+      const existingEquipmentIds = latestVersion.equipment?.map((e) => e.equipmentId) ?? [];
       await validateEquipmentCompatibility(
         data.brewMethod ?? latestVersion.brewMethod,
         data.equipmentIds ?? existingEquipmentIds,
@@ -368,26 +390,11 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
     if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
 
     if (data.photoIds?.length) {
-      await db.insert(recipeVersionPhotos).values(
-        data.photoIds.map((photoId: string, i: number) => ({
-          recipeVersionId: version.id,
-          photoId,
-          sortOrder: i,
-        })),
-      );
+      await model.insertVersionPhotos(version.id, data.photoIds);
     } else {
-      const previousPhotos = await db
-        .select()
-        .from(recipeVersionPhotos)
-        .where(eq(recipeVersionPhotos.recipeVersionId, latestVersion.id));
+      const previousPhotos = await model.getVersionPhotos(latestVersion.id);
       if (previousPhotos.length) {
-        await db.insert(recipeVersionPhotos).values(
-          previousPhotos.map((vp) => ({
-            recipeVersionId: version.id,
-            photoId: vp.photoId,
-            sortOrder: vp.sortOrder,
-          })),
-        );
+        await model.insertVersionPhotos(version.id, previousPhotos.map((vp) => vp.photoId));
       }
     }
 
@@ -412,7 +419,7 @@ export async function updateRecipe(recipeId: string, authorId: string, data: any
 /** Soft-delete a recipe. Throws `RECIPE_NOT_FOUND` or `FORBIDDEN` on failure. */
 export async function deleteRecipe(recipeId: string, authorId: string) {
   logger.debug({ recipeId, authorId }, 'deleteRecipe started');
-  const recipe: any = await model.findById(recipeId);
+  const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   if (recipe.authorId !== authorId) throw new Error('FORBIDDEN');
   await model.softDelete(recipeId);
@@ -434,7 +441,7 @@ export async function deleteRecipe(recipeId: string, authorId: string) {
  */
 export async function forkRecipe(sourceId: string, authorId: string, title?: string) {
   logger.debug({ sourceId, authorId }, 'forkRecipe started');
-  const source: any = await model.findById(sourceId);
+  const source = await model.findById(sourceId);
   if (!source) throw new Error('RECIPE_NOT_FOUND');
   if (source.visibility === 'draft' || source.visibility === 'private') {
     if (source.authorId !== authorId) throw new Error('FORBIDDEN');
@@ -468,17 +475,20 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
  * @returns Paginated recipe list with total count.
  */
 export async function listRecipes(
-  filters: any,
+  filters: z.infer<typeof RecipeFilterSchema>,
   page: number,
   perPage: number,
   _requestingUserId: string | null = null,
   isAdmin: boolean = false,
 ) {
-  logger.debug({}, 'listRecipes started');
+  logger.debug(
+    { userId: _requestingUserId, page, perPage, filters: JSON.stringify(filters) },
+    'listRecipes started',
+  );
   const visibilityCondition = (isAdmin === true && filters.visibility)
     ? eq(recipes.visibility, filters.visibility)
     : eq(recipes.visibility, 'public');
-  const conditions: any[] = [visibilityCondition];
+  const conditions: SQL[] = [visibilityCondition];
 
   if (filters.authorId) {
     conditions.push(eq(recipes.authorId, filters.authorId));
@@ -546,17 +556,16 @@ export async function listRecipes(
     const sanitized = filters.search.replace(/[%_]/g, '');
     if (sanitized) {
       const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        or(
-          ilike(recipes.title, searchTerm),
-          inArray(
-            recipes.id,
-            db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-              ilike(recipeVersions.productName, searchTerm),
-            ),
+      const searchCondition = or(
+        ilike(recipes.title, searchTerm),
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+            ilike(recipeVersions.productName, searchTerm),
           ),
         ),
       );
+      if (searchCondition) conditions.push(searchCondition);
     }
   }
 
@@ -583,7 +592,10 @@ export async function listRecipes(
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
   const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
-  logger.debug({}, 'listRecipes completed');
+  logger.debug(
+    { userId: _requestingUserId, page, perPage, resultCount: result.total },
+    'listRecipes completed',
+  );
   return result;
 }
 
@@ -595,14 +607,13 @@ export async function listRecipes(
  */
 export async function toggleLike(userId: string, recipeId: string) {
   logger.debug({ userId, recipeId }, 'toggleLike started');
-  const recipe: any = await model.findById(recipeId);
+  const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   const result = await model.toggleLike(userId, recipeId);
 
   if (result.liked && recipe.authorId !== userId) {
     (async () => {
-      const likerResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-      const liker = likerResult[0];
+      const liker = await model.getUserById(userId);
       if (!liker?.username) return;
       await notifyRecipeLiked({
         recipeAuthorId: recipe.authorId,
@@ -650,7 +661,7 @@ export async function saveNotes(recipeId: string, notes: string) {
 
 /** List recipes starred (favourited) by the given user, with filtering and pagination. */
 export async function listStarredRecipes(
-  filters: any,
+  filters: z.infer<typeof RecipeFilterSchema>,
   page: number,
   perPage: number,
   userId: string,
@@ -669,7 +680,7 @@ export async function listStarredRecipes(
  */
 export async function getRecipeMeta(slug: string) {
   logger.debug({ slug }, 'getRecipeMeta started');
-  const recipe: any = await model.findBySlug(slug);
+  const recipe = await model.findBySlug(slug);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
   const latestVersion = recipe.versions?.[0];
   logger.debug({ slug }, 'getRecipeMeta completed');

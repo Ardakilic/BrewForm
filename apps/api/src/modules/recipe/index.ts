@@ -38,7 +38,7 @@ recipe.get(
   async (c) => {
     const filters = c.req.valid('query');
     const userId = c.get('userId') ?? null;
-    const isAdmin = (c.get('user') as any)?.isAdmin ?? false;
+    const isAdmin = c.get('user')?.isAdmin ?? false;
     const result = await service.listRecipes(
       filters,
       filters.page,
@@ -125,7 +125,7 @@ recipe.get(
   async (c) => {
     const { slug } = c.req.param();
     try {
-      const recipe: any = await service.getRecipe(slug);
+      const recipe = await service.getRecipe(slug);
       if (!recipe) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       if (recipe.visibility === 'draft' || recipe.visibility === 'private') {
         const userId = c.get('userId');
@@ -172,9 +172,9 @@ recipe.get(
       //   with resolved rootCategoryName for radar chart
       // - equipment: flattened from currentVersion.equipment[].equipment
       // - userLiked / userFavourited: actual status for the authenticated user
-      const currentVersion = (r as any).versions?.[0] ?? null;
+      const currentVersion = r.versions?.[0] ?? null;
       const userId = c.get('userId');
-      const recipeId = (r as any).id;
+      const recipeId = r.id;
       const [rootMap, likeStatus, favouriteCount, ratingStats, userRating] = await Promise.all([
         tasteService.getTasteNoteRootMap(cacheProvider!),
         userId
@@ -185,21 +185,21 @@ recipe.get(
         userId ? model.getUserRating(userId, recipeId) : Promise.resolve(null),
       ]);
       const payload = {
-        ...(r as any),
+        ...r,
         currentVersion,
-        tasteNotes: currentVersion?.tasteNotes?.map((t: any) => ({
+        tasteNotes: currentVersion?.tasteNotes?.map((t) => ({
           ...t.tasteNote,
           tasteNoteId: t.tasteNote?.id,
           rootCategoryName: rootMap[t.tasteNote?.id] ?? t.tasteNote?.name,
           intensity: t.intensity ?? 1,
         })) ?? [],
-        equipment: currentVersion?.equipment?.map((e: any) => ({
+        equipment: currentVersion?.equipment?.map((e) => ({
           ...e.equipment,
           equipmentId: e.equipmentId,
         })) ?? [],
         bean: currentVersion?.bean ?? null,
-        versionCount: (r as any).versions?.length ?? 1,
-        forkedFromSlug: (r as any).forkedFrom?.slug ?? null,
+        versionCount: r.versions?.length ?? 1,
+        forkedFromSlug: r.forkedFrom?.slug ?? null,
         userLiked: likeStatus.userLiked,
         userFavourited: likeStatus.userFavourited,
         favouriteCount,
