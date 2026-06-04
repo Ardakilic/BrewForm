@@ -33,11 +33,22 @@ describe('Validation', () => {
       expect(validateBrewMethodCompatibility('v60', 'latte')).toBe(false);
     });
 
+    // These two tests intentionally pass invalid strings to verify that the
+    // function still defends at runtime.  Although callers should normally
+    // provide typed BrewMethod / DrinkType values (enforced by TS at compile
+    // time), the function may receive unchecked data from API boundaries,
+    // manually crafted JSON, or future schema drift.  Keeping the runtime
+    // guard ensures the function fails safely rather than crashing or silently
+    // returning an incorrect result.
     it('should reject invalid brew method', () => {
+      // @ts-expect-error — deliberately passing an invalid string to test
+      // runtime defence even though the signature now accepts only BrewMethod.
       expect(validateBrewMethodCompatibility('invalid_method', 'espresso')).toBe(false);
     });
 
     it('should reject invalid drink type', () => {
+      // @ts-expect-error — deliberately passing an invalid string to test
+      // runtime defence even though the signature now accepts only DrinkType.
       expect(validateBrewMethodCompatibility('espresso_machine', 'invalid_drink')).toBe(false);
     });
   });

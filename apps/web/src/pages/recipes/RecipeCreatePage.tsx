@@ -102,7 +102,7 @@ export function RecipeCreatePage() {
 
   useEffect(() => {
     if (!compatibleDrinks.some((d) => d.value === drinkType)) {
-      setDrinkType(compatibleDrinks[0]?.value as DrinkType || 'espresso');
+      setDrinkType(compatibleDrinks[0]?.value || 'espresso');
     }
   }, [brewMethod]);
 
@@ -207,7 +207,7 @@ export function RecipeCreatePage() {
           <Field label='Visibility'>
             <select
               value={visibility}
-              onChange={(e) => setVisibility(e.target.value as Visibility)}
+              onChange={(e) => setVisibility(e.target.value)}
               className='input-field'
             >
               {VISIBILITY_STATES_LIST.map((v) => (
@@ -222,7 +222,7 @@ export function RecipeCreatePage() {
             <Field label='Brew Method' required>
               <select
                 value={brewMethod}
-                onChange={(e) => setBrewMethod(e.target.value as BrewMethod)}
+                onChange={(e) => setBrewMethod(e.target.value)}
                 className='input-field'
               >
                 {BREW_METHODS_LIST.map((m) => (
@@ -233,7 +233,7 @@ export function RecipeCreatePage() {
             <Field label='Drink Type' required>
               <select
                 value={drinkType}
-                onChange={(e) => setDrinkType(e.target.value as DrinkType)}
+                onChange={(e) => setDrinkType(e.target.value)}
                 className='input-field'
               >
                 {compatibleDrinks.map((d) => (

@@ -51,10 +51,15 @@ export function RecipeEditPage() {
   useEffect(() => {
     if (!id) return;
     recipeApi.get(id).then((r: RecipeDetailResponse) => {
+      if (!r.currentVersion) {
+        setError('Recipe has no versions');
+        setFetching(false);
+        return;
+      }
       setTitle(r.title);
-      setVisibility(r.visibility as Visibility);
-      setBrewMethod(r.currentVersion.brewMethod as BrewMethod);
-      setDrinkType(r.currentVersion.drinkType as DrinkType);
+      setVisibility(r.visibility);
+      setBrewMethod(r.currentVersion.brewMethod);
+      setDrinkType(r.currentVersion.drinkType);
       setProductName(r.currentVersion.productName || '');
       setCoffeeBrand(r.currentVersion.coffeeBrand || '');
       setCoffeeProcessing(r.currentVersion.coffeeProcessing || '');
@@ -195,7 +200,7 @@ export function RecipeEditPage() {
           <EditField label='Visibility'>
             <select
               value={visibility}
-              onChange={(e) => setVisibility(e.target.value as Visibility)}
+              onChange={(e) => setVisibility(e.target.value)}
               className='input-field'
             >
               {VISIBILITY_STATES_LIST.map((v) => (
@@ -210,7 +215,7 @@ export function RecipeEditPage() {
             <EditField label='Brew Method' required>
               <select
                 value={brewMethod}
-                onChange={(e) => setBrewMethod(e.target.value as BrewMethod)}
+                onChange={(e) => setBrewMethod(e.target.value)}
                 className='input-field'
               >
                 {BREW_METHODS_LIST.map((m) => (
@@ -221,7 +226,7 @@ export function RecipeEditPage() {
             <EditField label='Drink Type' required>
               <select
                 value={drinkType}
-                onChange={(e) => setDrinkType(e.target.value as DrinkType)}
+                onChange={(e) => setDrinkType(e.target.value)}
                 className='input-field'
               >
                 {compatibleDrinks.map((d) => (

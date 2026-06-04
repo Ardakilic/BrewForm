@@ -34,7 +34,11 @@ export type DrinkType =
   | 'turkish_coffee'
   | 'pour_over'
   | 'cold_brew'
-  | 'french_press';
+  | 'french_press'
+  | 'aeropress'
+  | 'drip_coffee'
+  | 'moka_pot'
+  | 'siphon';
 
 /** Quick-reaction emoji a user can attach to their own brew. */
 export type EmojiTag = 'fire' | 'rocket' | 'thumbsup' | 'neutral' | 'thumbsdown' | 'nauseated';

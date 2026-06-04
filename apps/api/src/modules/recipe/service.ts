@@ -32,6 +32,7 @@ import {
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyFollowersOfNewRecipe, notifyRecipeLiked } from '../../utils/notify/index.ts';
 import { evaluateBadges } from '../badge/service.ts';
+import type { BrewMethod } from '@brewform/shared/types';
 
 /** Inferred Drizzle select types for recipe-related rows. */
 type RecipeRow = typeof recipes.$inferSelect;
@@ -92,7 +93,7 @@ export interface CompatibilityCheckItem {
 /** Row shape from the `brewMethodEquipmentRules` DB table. */
 export interface CompatibilityRule {
   /** Brew method key (e.g. `'espresso'`, `'pour_over'`). */
-  brewMethod: string;
+  brewMethod: BrewMethod;
   /** Equipment type this rule applies to. */
   equipmentType: string;
   /** Whether the equipment type is compatible with the brew method. */
@@ -114,7 +115,7 @@ export interface CompatibilityRule {
  */
 export function checkEquipmentCompatibility(
   equipmentItems: CompatibilityCheckItem[],
-  brewMethod: string,
+  brewMethod: BrewMethod,
   rules: CompatibilityRule[],
 ): string[] {
   const incompatible: string[] = [];
@@ -130,7 +131,7 @@ export function checkEquipmentCompatibility(
 }
 
 async function validateEquipmentCompatibility(
-  brewMethod: string,
+  brewMethod: BrewMethod,
   equipmentIds: string[],
 ): Promise<void> {
   if (!brewMethod || !equipmentIds?.length) return;
@@ -141,7 +142,7 @@ async function validateEquipmentCompatibility(
   const incompatible = checkEquipmentCompatibility(
     equipmentList.map((e) => ({ id: e.id, type: e.type })),
     brewMethod,
-    allRules as CompatibilityRule[],
+    allRules,
   );
 
   if (incompatible.length) {

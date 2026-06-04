@@ -24,6 +24,7 @@ import {
   users,
 } from '@brewform/db/schema';
 import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
+import type { BrewMethod, DrinkType } from '@brewform/shared/types';
 
 /** Return a Drizzle condition that matches recipes whose versions reference the given coffee variety. */
 export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
@@ -538,8 +539,8 @@ export async function getFeed(authorIds: string[], page: number, perPage: number
 export async function findStarred(
   userId: string,
   filters: {
-    brewMethod?: string;
-    drinkType?: string;
+    brewMethod?: BrewMethod;
+    drinkType?: DrinkType;
     search?: string;
     equipmentId?: string;
     tasteNoteIds?: string;
@@ -560,7 +561,7 @@ export async function findStarred(
       inArray(
         recipes.id,
         db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.brewMethod, filters.brewMethod as any),
+          eq(recipeVersions.brewMethod, filters.brewMethod),
         ),
       ),
     );
@@ -571,7 +572,7 @@ export async function findStarred(
       inArray(
         recipes.id,
         db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.drinkType, filters.drinkType as any),
+          eq(recipeVersions.drinkType, filters.drinkType),
         ),
       ),
     );
@@ -688,11 +689,11 @@ export async function getEquipmentByIds(ids: string[]) {
 }
 
 /** Fetch brew method equipment rules for a given brew method. */
-export async function getBrewMethodEquipmentRules(brewMethod: string) {
+export async function getBrewMethodEquipmentRules(brewMethod: BrewMethod) {
   return db
     .select()
     .from(brewMethodEquipmentRules)
-    .where(eq(brewMethodEquipmentRules.brewMethod, brewMethod as any));
+    .where(eq(brewMethodEquipmentRules.brewMethod, brewMethod));
 }
 
 /** Fetch a user's setup by ID, checking ownership and non-deleted status. */

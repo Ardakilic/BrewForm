@@ -1,3 +1,5 @@
+import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
+
 // ── Recipe detail (what GET /recipes/:slug returns after client unwrap) ──
 
 export interface RecipeDetailResponse {
@@ -5,7 +7,7 @@ export interface RecipeDetailResponse {
   slug: string;
   title: string;
   authorId: string;
-  visibility: string;
+  visibility: Visibility;
   likeCount: number;
   commentCount: number;
   forkCount: number;
@@ -31,8 +33,8 @@ export interface RecipeDetailResponse {
 export interface RecipeVersionResponse {
   id: string;
   versionNumber: number;
-  brewMethod: string;
-  drinkType: string;
+  brewMethod: BrewMethod;
+  drinkType: DrinkType;
   productName: string | null;
   coffeeBrand: string | null;
   coffeeProcessing: string | null;
