@@ -1,12 +1,18 @@
 import { z } from 'zod';
+import {
+  DATE_FORMAT_VALUES,
+  TEMPERATURE_UNIT_VALUES,
+  THEME_VALUES,
+  UNIT_SYSTEM_VALUES,
+} from '../constants/index.ts';
 
 export const UserPreferencesSchema = z.object({
-  unitSystem: z.enum(['metric', 'imperial']).default('metric'),
-  temperatureUnit: z.enum(['celsius', 'fahrenheit']).default('celsius'),
-  theme: z.enum(['light', 'dark', 'coffee']).default('light'),
+  unitSystem: z.enum(UNIT_SYSTEM_VALUES).default('metric'),
+  temperatureUnit: z.enum(TEMPERATURE_UNIT_VALUES).default('celsius'),
+  theme: z.enum(THEME_VALUES).default('light'),
   locale: z.string().default('en'),
   timezone: z.string().default('UTC'),
-  dateFormat: z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']).default('YYYY-MM-DD'),
+  dateFormat: z.enum(DATE_FORMAT_VALUES).default('YYYY_MM_DD'),
   emailNotifications: z.object({
     newFollower: z.boolean().default(true),
     recipeLiked: z.boolean().default(true),

@@ -1,6 +1,8 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import fc from 'npm:fast-check';
+import { EMOJI_TAG_VALUES } from '../constants/emoji-tags.ts';
+import { VISIBILITY_VALUES } from '../constants/visibility.ts';
 import {
   RecipeCreateObjectSchema,
   RecipeCreateSchema,
@@ -49,7 +51,7 @@ describe('RecipeCreateSchema', () => {
   });
 
   it('should accept valid visibility values', () => {
-    for (const visibility of ['draft', 'private', 'unlisted', 'public'] as const) {
+    for (const visibility of VISIBILITY_VALUES) {
       const result = RecipeCreateSchema.safeParse({
         title: 'Test',
         brewMethod: 'espresso_machine',
@@ -140,6 +142,20 @@ describe('RecipeCreateSchema', () => {
       preparationNotes: 'Test notes',
     });
     expect(result.success).toBe(true);
+  });
+
+  it('should accept every emoji tag value from EMOJI_TAG_VALUES', () => {
+    for (const emojiTag of EMOJI_TAG_VALUES) {
+      const result = RecipeCreateSchema.safeParse({
+        title: 'Tagged',
+        brewMethod: 'espresso_machine',
+        drinkType: 'espresso',
+        emojiTag,
+        preparationNotes: 'Test notes',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.emojiTag).toBe(emojiTag);
+    }
   });
 
   it('should reject invalid emoji tags', () => {

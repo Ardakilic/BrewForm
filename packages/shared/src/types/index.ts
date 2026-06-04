@@ -6,9 +6,18 @@
  */
 
 export type { ApiError, ApiResponse, PaginationMeta, PaginationQuery } from './api.ts';
-export type { UnitSystem, User, UserPreferences, UserProfile } from './user.ts';
+export type {
+  DateFormat,
+  TemperatureUnit,
+  Theme,
+  UnitSystem,
+  User,
+  UserPreferences,
+  UserProfile,
+} from './user.ts';
 export type {
   AdditionalPreparation,
+  AdditionalPreparationCategory,
   BrewMethod,
   DrinkType,
   EmojiTag,
@@ -21,6 +30,7 @@ export type {
 export type {
   Basket,
   Equipment,
+  EquipmentType,
   PaperFilter,
   Portafilter,
   PuckScreen,

@@ -3,16 +3,34 @@
  *
  * Defines the authenticated user object, public profile shape,
  * and user-configurable preferences.
+ *
+ * Preference enum types are aliased to the corresponding constants in
+ * `@brewform/shared/constants` so the database enum, Zod schema, and
+ * TypeScript union share a single source of truth.
  */
+import type {
+  DateFormat as _DateFormat,
+  TemperatureUnit as _TemperatureUnit,
+  Theme as _Theme,
+  UnitSystem as _UnitSystem,
+} from '../constants/user-preferences.ts';
 
 /** UI colour theme. */
-export type Theme = 'light' | 'dark' | 'coffee';
+export type Theme = _Theme;
 
 /** Measurement system for weight and volume display. */
-export type UnitSystem = 'metric' | 'imperial';
+export type UnitSystem = _UnitSystem;
 
-/** Date display format. */
-export type DateFormat = 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD';
+/**
+ * Date display format.
+ * Stored values use underscore separators to match the PostgreSQL `date_format` enum.
+ * For human-readable display strings (e.g. `DD/MM/YYYY`) use the
+ * `DATE_FORMAT_DISPLAY` map from `@brewform/shared/constants`.
+ */
+export type DateFormat = _DateFormat;
+
+/** Temperature unit for display. */
+export type TemperatureUnit = _TemperatureUnit;
 
 /**
  * Serialisable user preferences stored in the `preferences` JSON column.
@@ -22,7 +40,7 @@ export type DateFormat = 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD';
  */
 export interface UserPreferences {
   unitSystem: UnitSystem;
-  temperatureUnit: 'celsius' | 'fahrenheit';
+  temperatureUnit: TemperatureUnit;
   theme: Theme;
   locale: string;
   timezone: string;

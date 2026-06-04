@@ -70,3 +70,21 @@ export const BADGE_RULES = [
     threshold: 25,
   },
 ] as const;
+
+/**
+ * Machine-readable identifier for a badge rule.
+ *
+ * Derived from the `rule` field of {@link BADGE_RULES} so the union cannot
+ * drift from the rule definitions. Consumed by Drizzle's `pgEnum()` and by
+ * Zod `z.enum()` to keep the database enum, runtime validation, and
+ * TypeScript union synchronised.
+ */
+export type BadgeRule = (typeof BADGE_RULES)[number]['rule'];
+
+/**
+ * Pure-values tuple of every {@link BadgeRule}.
+ *
+ * Derived from {@link BADGE_RULES} via `.map()` (the source field is `rule`,
+ * not `value`). Consumed by Drizzle's `pgEnum()` and by Zod `z.enum()`.
+ */
+export const BADGE_RULE_VALUES = BADGE_RULES.map((b) => b.rule) as [BadgeRule, ...BadgeRule[]];

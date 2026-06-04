@@ -3,20 +3,14 @@
  *
  * Badges are awarded to users automatically when they meet a rule's
  * threshold (e.g. brewing 100 recipes earns the "Centurion" badge).
+ *
+ * The {@link BadgeRule} type is aliased to the corresponding constants in
+ * `@brewform/shared/constants` for a single source of truth.
  */
+import type { BadgeRule as _BadgeRule } from '../constants/badges.ts';
 
 /** Machine-readable badge rule identifier. */
-export type BadgeRule =
-  | 'first_brew'
-  | 'decade_brewer'
-  | 'centurion'
-  | 'first_fork'
-  | 'fan_favourite'
-  | 'community_star'
-  | 'conversationalist'
-  | 'precision_brewer'
-  | 'explorer'
-  | 'influencer';
+export type BadgeRule = _BadgeRule;
 
 /** Badge definition (platform-wide, not per-user). */
 export interface Badge {

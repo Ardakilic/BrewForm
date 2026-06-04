@@ -1,17 +1,7 @@
 import { z } from 'zod';
+import { BADGE_RULE_VALUES } from '../constants/index.ts';
 
-const BadgeRuleEnum = z.enum([
-  'first_brew',
-  'decade_brewer',
-  'centurion',
-  'first_fork',
-  'fan_favourite',
-  'community_star',
-  'conversationalist',
-  'precision_brewer',
-  'explorer',
-  'influencer',
-]);
+const BadgeRuleEnum = z.enum(BADGE_RULE_VALUES);
 
 export const BadgeCreateSchema = z.object({
   name: z.string().min(1).max(100),

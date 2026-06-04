@@ -3,45 +3,29 @@
  *
  * Recipes are the core entity — each recipe has one or more versioned snapshots
  * (RecipeVersion) that capture the full brewing parameters at a point in time.
+ *
+ * Enum types in this file are aliased to the corresponding constants in
+ * `@brewform/shared/constants`. They preserve the original public names so
+ * every downstream consumer continues to compile unchanged while the source
+ * of truth lives in one place.
  */
+import type { BrewMethodValue } from '../constants/brew-methods.ts';
+import type { DrinkTypeValue } from '../constants/drink-types.ts';
+import type { EmojiTagKey } from '../constants/emoji-tags.ts';
+import type { VisibilityValue } from '../constants/visibility.ts';
+import type { AdditionalPreparationCategory as _AdditionalPreparationCategory } from '../constants/additional-preparation-types.ts';
 
 /** Visibility state for a recipe. Drafts are only visible to the author. */
-export type Visibility = 'draft' | 'private' | 'unlisted' | 'public';
+export type Visibility = VisibilityValue;
 
 /** Supported brewing devices and techniques. */
-export type BrewMethod =
-  | 'espresso_machine'
-  | 'v60'
-  | 'french_press'
-  | 'aeropress'
-  | 'turkish_coffee'
-  | 'drip_coffee'
-  | 'chemex'
-  | 'kalita_wave'
-  | 'moka_pot'
-  | 'cold_brew'
-  | 'siphon';
+export type BrewMethod = BrewMethodValue;
 
 /** Final drink served to the consumer (may differ from the brew method). */
-export type DrinkType =
-  | 'espresso'
-  | 'americano'
-  | 'flat_white'
-  | 'latte'
-  | 'cappuccino'
-  | 'cortado'
-  | 'macchiato'
-  | 'turkish_coffee'
-  | 'pour_over'
-  | 'cold_brew'
-  | 'french_press'
-  | 'aeropress'
-  | 'drip_coffee'
-  | 'moka_pot'
-  | 'siphon';
+export type DrinkType = DrinkTypeValue;
 
 /** Quick-reaction emoji a user can attach to their own brew. */
-export type EmojiTag = 'fire' | 'rocket' | 'thumbsup' | 'neutral' | 'thumbsdown' | 'nauseated';
+export type EmojiTag = EmojiTagKey;
 
 /**
  * Full recipe response returned by `GET /api/v1/recipes/:slugOrId`.
@@ -191,7 +175,7 @@ export interface RecipeCreateInput {
 }
 
 /** Category of an additional preparation step. */
-export type AdditionalPreparationCategory = 'milk' | 'water' | 'syrup' | 'spice' | 'other';
+export type AdditionalPreparationCategory = _AdditionalPreparationCategory;
 
 /**
  * An additional preparation step applied to a recipe version

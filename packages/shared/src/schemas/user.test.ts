@@ -11,7 +11,7 @@ describe('UserPreferencesSchema', () => {
       expect(result.data.temperatureUnit).toBe('celsius');
       expect(result.data.theme).toBe('light');
       expect(result.data.locale).toBe('en');
-      expect(result.data.dateFormat).toBe('YYYY-MM-DD');
+      expect(result.data.dateFormat).toBe('YYYY_MM_DD');
     }
   });
 
@@ -44,6 +44,40 @@ describe('UserPreferencesSchema', () => {
       },
     });
     expect(result.success).toBe(true);
+  });
+});
+
+/** DateFormat / TemperatureUnit regression coverage for the D07 storage-vs-display fix. */
+describe('UserPreferencesSchema: DateFormat fix (D07)', () => {
+  it('should accept every stored DateFormat value (DD_MM_YYYY / MM_DD_YYYY / YYYY_MM_DD)', () => {
+    for (const dateFormat of ['DD_MM_YYYY', 'MM_DD_YYYY', 'YYYY_MM_DD'] as const) {
+      const result = UserPreferencesSchema.safeParse({ dateFormat });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.dateFormat).toBe(dateFormat);
+    }
+  });
+
+  it('should reject the old slash/dash DateFormat values', () => {
+    for (const dateFormat of ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']) {
+      const result = UserPreferencesSchema.safeParse({ dateFormat });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((i) => i.path.includes('dateFormat'))).toBe(true);
+      }
+    }
+  });
+
+  it('should accept every TemperatureUnit value', () => {
+    for (const temperatureUnit of ['celsius', 'fahrenheit'] as const) {
+      const result = UserPreferencesSchema.safeParse({ temperatureUnit });
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.temperatureUnit).toBe(temperatureUnit);
+    }
+  });
+
+  it('should reject invalid TemperatureUnit', () => {
+    const result = UserPreferencesSchema.safeParse({ temperatureUnit: 'kelvin' });
+    expect(result.success).toBe(false);
   });
 });
 

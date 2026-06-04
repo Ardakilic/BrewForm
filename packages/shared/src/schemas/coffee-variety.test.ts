@@ -1,5 +1,6 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
+import { COFFEE_VARIETY_CATEGORY_VALUES } from '../constants/coffee-variety.ts';
 import {
   CoffeeVarietyCreateSchema,
   CoffeeVarietyFilterSchema,
@@ -32,8 +33,7 @@ describe('CoffeeVarietyCreateSchema', () => {
   });
 
   it('should accept all valid categories', () => {
-    const categories = ['variety', 'processing', 'market_name'];
-    for (const category of categories) {
+    for (const category of COFFEE_VARIETY_CATEGORY_VALUES) {
       const result = CoffeeVarietyCreateSchema.safeParse({
         name: `Test ${category}`,
         category,

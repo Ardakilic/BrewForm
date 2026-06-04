@@ -1,41 +1,17 @@
 import { z } from 'zod';
+import {
+  ADDITIONAL_PREPARATION_TYPE_VALUES,
+  BREW_METHOD_VALUES,
+  DRINK_TYPE_VALUES,
+  EMOJI_TAG_VALUES,
+  VISIBILITY_VALUES,
+} from '../constants/index.ts';
 
-const BrewMethodEnum = z.enum([
-  'espresso_machine',
-  'v60',
-  'french_press',
-  'aeropress',
-  'turkish_coffee',
-  'drip_coffee',
-  'chemex',
-  'kalita_wave',
-  'moka_pot',
-  'cold_brew',
-  'siphon',
-]);
-
-const DrinkTypeEnum = z.enum([
-  'espresso',
-  'americano',
-  'flat_white',
-  'latte',
-  'cappuccino',
-  'cortado',
-  'macchiato',
-  'turkish_coffee',
-  'pour_over',
-  'cold_brew',
-  'french_press',
-  'aeropress',
-  'drip_coffee',
-  'moka_pot',
-  'siphon',
-]);
-
-const VisibilityEnum = z.enum(['draft', 'private', 'unlisted', 'public']);
-const EmojiTagEnum = z.enum(['fire', 'rocket', 'thumbsup', 'neutral', 'thumbsdown', 'nauseated']);
-
-const AdditionalPreparationTypeEnum = z.enum(['milk', 'water', 'syrup', 'spice', 'other']);
+const BrewMethodEnum = z.enum(BREW_METHOD_VALUES);
+const DrinkTypeEnum = z.enum(DRINK_TYPE_VALUES);
+const VisibilityEnum = z.enum(VISIBILITY_VALUES);
+const EmojiTagEnum = z.enum(EMOJI_TAG_VALUES);
+const AdditionalPreparationTypeEnum = z.enum(ADDITIONAL_PREPARATION_TYPE_VALUES);
 
 const AdditionalPreparationSchema = z.object({
   name: z.string().min(1).max(100),

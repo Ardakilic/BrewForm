@@ -14,3 +14,16 @@ export type VisibilityOption = {
 };
 
 export const VISIBILITY_STATES_LIST: VisibilityOption[] = [...VISIBILITY_STATES];
+
+/**
+ * Pure-values tuple of every {@link VisibilityValue}.
+ *
+ * Derived from {@link VISIBILITY_STATES} via `.map()` so the two cannot drift
+ * apart. Consumed by Drizzle's `pgEnum()` and by Zod `z.enum()` so the runtime
+ * validation set, the database enum, and the TypeScript union share one source
+ * of truth.
+ */
+export const VISIBILITY_VALUES = VISIBILITY_STATES.map((s) => s.value) as [
+  VisibilityValue,
+  ...VisibilityValue[],
+];

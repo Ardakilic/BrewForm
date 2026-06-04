@@ -1,4 +1,13 @@
-export type CoffeeVarietyCategory = 'variety' | 'processing' | 'market_name';
+/**
+ * Coffee-variety-related types shared between API and frontend.
+ *
+ * The {@link CoffeeVarietyCategory} type is aliased to the corresponding
+ * constant in `@brewform/shared/constants` so the database enum, Zod schema,
+ * and TypeScript union share a single source of truth.
+ */
+import type { CoffeeVarietyCategory as _CoffeeVarietyCategory } from '../constants/coffee-variety.ts';
+
+export type CoffeeVarietyCategory = _CoffeeVarietyCategory;
 
 export interface CoffeeVariety {
   id: string;
