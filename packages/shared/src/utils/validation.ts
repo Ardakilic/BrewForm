@@ -9,6 +9,7 @@
 
 import { BREW_METHODS } from '../constants/brew-methods.ts';
 import { DRINK_TYPES } from '../constants/drink-types.ts';
+import type { BrewMethod, DrinkType } from '../types/recipe.ts';
 
 /**
  * Validates that the grind date is not earlier than the roast date.
@@ -28,7 +29,10 @@ export function validateGrindDateNotBeforeRoastDate(grindDate: string, roastDate
  * @returns `true` if the combination is compatible, `false` if either
  *          value is unrecognised or the combination is invalid.
  */
-export function validateBrewMethodCompatibility(brewMethod: string, drinkType: string): boolean {
+export function validateBrewMethodCompatibility(
+  brewMethod: BrewMethod,
+  drinkType: DrinkType,
+): boolean {
   const method = BREW_METHODS.find((m) => m.value === brewMethod);
   if (!method) return false;
   const drink = DRINK_TYPES.find((d) => d.value === drinkType);
@@ -64,12 +68,12 @@ export interface SoftWarning {
  * @returns An array of {@link SoftWarning} objects (empty if no issues found).
  */
 export function validateSoftWarnings(data: {
-  brewMethod?: string;
+  brewMethod?: BrewMethod;
   extractionTimeSeconds?: number;
   temperatureCelsius?: number;
   groundWeightGrams?: number;
   extractionVolumeMl?: number;
-  drinkType?: string;
+  drinkType?: DrinkType;
   additionalPreparations?: Array<{ name: string; type: string; preparationType?: string }>;
   grindSize?: string;
   productName?: string;
