@@ -142,7 +142,7 @@ async function validateEquipmentCompatibility(
   const incompatible = checkEquipmentCompatibility(
     equipmentList.map((e) => ({ id: e.id, type: e.type })),
     brewMethod,
-    allRules as CompatibilityRule[],
+    allRules,
   );
 
   if (incompatible.length) {
