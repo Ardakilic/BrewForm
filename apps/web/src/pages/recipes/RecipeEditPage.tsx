@@ -51,6 +51,11 @@ export function RecipeEditPage() {
   useEffect(() => {
     if (!id) return;
     recipeApi.get(id).then((r: RecipeDetailResponse) => {
+      if (!r.currentVersion) {
+        setError('Recipe has no versions');
+        setFetching(false);
+        return;
+      }
       setTitle(r.title);
       setVisibility(r.visibility);
       setBrewMethod(r.currentVersion.brewMethod);

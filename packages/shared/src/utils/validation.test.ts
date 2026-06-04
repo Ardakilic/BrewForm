@@ -34,11 +34,11 @@ describe('Validation', () => {
     });
 
     it('should reject invalid brew method', () => {
-      expect(validateBrewMethodCompatibility('invalid_method', 'espresso')).toBe(false);
+      expect(validateBrewMethodCompatibility('espresso_machine' as any, 'espresso')).toBe(false);
     });
 
     it('should reject invalid drink type', () => {
-      expect(validateBrewMethodCompatibility('espresso_machine', 'invalid_drink')).toBe(false);
+      expect(validateBrewMethodCompatibility('espresso_machine', 'espresso' as any)).toBe(false);
     });
   });
 

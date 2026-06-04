@@ -20,7 +20,8 @@
 
 ## 4. Verify tests and formatting
 
-- [x] 4.1 Run `make test` — all existing tests should pass (blocked by Docker network cert issue, but changes are type-safe).
+- [x] 4.1a Attempted `make test` — blocked by Docker network cert issue (pre-existing, affects all test runs).
+- [ ] 4.1b Tests pass on CI — pending verification (validation.test.ts type issue fixed in follow-up commit).
 - [x] 4.2 Run `make lint` — must pass.
 - [x] 4.3 Run `make fmt` — ensure all touched files are formatted.
 - [x] 4.4 Confirm `apps/api/src/modules/recipe/service.test.ts` already validates the four new drink types via Zod (lines 328–340).
