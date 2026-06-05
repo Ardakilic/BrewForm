@@ -18,8 +18,7 @@ import * as followModel from '../follow/model.ts';
 export async function getProfile(userId: string) {
   const user = await model.findById(userId);
   if (!user) throw new Error('USER_NOT_FOUND');
-  // deno-lint-ignore no-explicit-any
-  const { passwordHash: _passwordHash, ...safe } = user as any;
+  const { passwordHash: _passwordHash, ...safe } = user;
   const stats = await model.getUserStats(userId);
   return { ...safe, ...stats };
 }
@@ -34,8 +33,7 @@ export async function getProfile(userId: string) {
 export async function getPublicProfile(username: string, requesterId?: string) {
   const user = await model.findByUsername(username);
   if (!user) throw new Error('USER_NOT_FOUND');
-  // deno-lint-ignore no-explicit-any
-  const { passwordHash: _passwordHash, email: _email, ...safe } = user as any;
+  const { passwordHash: _passwordHash, email: _email, ...safe } = user;
   const [stats, recipes] = await Promise.all([
     model.getUserStats(user.id),
     model.getUserPublicRecipes(user.id),
@@ -63,8 +61,7 @@ export async function updateProfile(
   if (data.bio !== undefined) data.bio = sanitizeText(data.bio);
   const user = await model.updateProfile(userId, data);
   if (!user) throw new Error('USER_NOT_FOUND');
-  // deno-lint-ignore no-explicit-any
-  const { passwordHash: _passwordHash, ...safe } = user as any;
+  const { passwordHash: _passwordHash, ...safe } = user;
   return safe;
 }
 
