@@ -294,6 +294,7 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
     user: {
       id: 'other-user',
       email: 'bob@example.com',
+      emailVerifiedAt: null,
       username: 'bob',
       displayName: 'Bob',
       avatarUrl: null,
@@ -312,6 +313,7 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
     user: {
       id: 'author-1',
       email: 'alice@example.com',
+      emailVerifiedAt: null,
       username: 'alice',
       displayName: 'Alice',
       avatarUrl: null,
@@ -365,6 +367,7 @@ describe('RecipeDetailPage — owner actions', () => {
     user: {
       id: 'author-1',
       email: 'alice@example.com',
+      emailVerifiedAt: null,
       username: 'alice',
       displayName: 'Alice',
       avatarUrl: null,
@@ -441,6 +444,7 @@ const nonOwnerAuth = {
   user: {
     id: 'other-user',
     email: 'bob@example.com',
+    emailVerifiedAt: null,
     username: 'bob',
     displayName: 'Bob',
     avatarUrl: null,
@@ -515,6 +519,7 @@ describe('RecipeDetailPage — Fork_Card visibility', () => {
       user: {
         id: 'author-1',
         email: 'alice@example.com',
+        emailVerifiedAt: null,
         username: 'alice',
         displayName: 'Alice',
         avatarUrl: null,
@@ -624,6 +629,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     user: {
       id: 'other-user',
       email: 'bob@example.com',
+      emailVerifiedAt: null,
       username: 'bob',
       displayName: 'Bob',
       avatarUrl: null,
@@ -664,6 +670,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
       user: {
         id: 'author-1',
         email: 'alice@example.com',
+        emailVerifiedAt: null,
         username: 'alice',
         displayName: 'Alice',
         avatarUrl: null,

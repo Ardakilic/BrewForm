@@ -7,6 +7,7 @@
 
 export type { ApiError, ApiResponse, PaginationMeta, PaginationQuery } from './api.ts';
 export type {
+  AuthUser,
   DateFormat,
   TemperatureUnit,
   Theme,

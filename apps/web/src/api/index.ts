@@ -1,3 +1,4 @@
+import type { AuthUser } from '@brewform/shared/types';
 import { api, ApiError } from './client.ts';
 import type { RateResponse, RecipeDetailResponse, RecipeListItem } from './types.ts';
 
@@ -132,17 +133,6 @@ export const followApi = {
   followers: (userId: string) => api.get<Record<string, unknown>>(`/follow/${userId}/followers`),
   following: (userId: string) => api.get<Record<string, unknown>>(`/follow/${userId}/following`),
 };
-
-interface AuthUser {
-  id: string;
-  email: string;
-  emailVerifiedAt: string | null;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  isAdmin: boolean;
-  onboardingCompleted: boolean;
-}
 
 export interface AdminUser {
   id: string;

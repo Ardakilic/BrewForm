@@ -1,16 +1,6 @@
+import type { AuthUser } from '@brewform/shared/types';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { authApi, userApi } from '../api/index.ts';
-
-interface AuthUser {
-  id: string;
-  email: string;
-  emailVerifiedAt: string | null;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  isAdmin: boolean;
-  onboardingCompleted: boolean;
-}
 
 interface AuthContextType {
   user: AuthUser | null;

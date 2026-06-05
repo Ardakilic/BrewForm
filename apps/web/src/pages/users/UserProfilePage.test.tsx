@@ -116,6 +116,7 @@ describe('UserProfilePage — FollowButton visibility', () => {
       user: {
         id: 'current-user',
         email: 'alice@example.com',
+        emailVerifiedAt: null,
         username: 'alice',
         displayName: null,
         avatarUrl: null,
@@ -138,6 +139,7 @@ describe('UserProfilePage — FollowButton visibility', () => {
       user: {
         id: 'current-user',
         email: 'diana@example.com',
+        emailVerifiedAt: null,
         username: 'diana',
         displayName: null,
         avatarUrl: null,
