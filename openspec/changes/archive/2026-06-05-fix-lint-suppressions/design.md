@@ -35,10 +35,10 @@ Stakeholders: API service maintainers, anyone reading the user/profile code, fut
 
 ### Decision 2: Use the AGENTS.md-prescribed both-rules form for test file directives
 
-**Choice:** Test files get `// deno-lint-ignore-file no-explicit-any` on line 1 (not the both-rules form). The two test files that already use file-level suppressions (`crawler.test.ts`, `sitemap.test.ts`) use the single-rule form, and the test mocks legitimately need `any` for Drizzle query builder substitution but never need to suppress `require-await`. Matching the single-rule form keeps the change minimal and avoids over-suppression.
+**Choice:** Test files get the full module-file directive `// deno-lint-ignore-file no-explicit-any require-await` on line 1, matching the AGENTS.md §"Code style" convention for `**/*.{ts,tsx}` module files. The two test files that already use file-level suppressions (`crawler.test.ts`, `sitemap.test.ts`) currently use the single-rule form `no-explicit-any` only and should be updated to the both-rules form to align with the repository TS/TSX convention. Although test mocks legitimately need `any` for Drizzle query builder substitution and do not currently need to suppress `require-await`, adopting the both-rules form uniformly is preferred because it mirrors AGENTS.md verbatim, is self-documenting about which rules are excluded by `deno.json`, and avoids the historical drift where every suppression site invented its own subset of the excluded rules.
 
 **Alternatives considered:**
-- *Use the both-rules form `// deno-lint-ignore-file no-explicit-any require-await` to match AGENTS.md verbatim* — AGENTS.md says "module files use…", but the existing test-file convention (predating this change) is the single-rule form. Following the existing test-file pattern is more important than mirroring AGENTS.md exactly, since the lint policy actually excludes both rules. Rejected.
+- *Keep the single-rule form `// deno-lint-ignore-file no-explicit-any` to minimise the diff and preserve the historical test-file pattern* — the lint policy in `deno.json` excludes both `no-explicit-any` and `require-await` already, so the directive is purely cosmetic. Mirroring AGENTS.md verbatim is more important than minimising the diff, because the historical single-rule form is exactly the drift the convention is designed to prevent. Rejected.
 
 ### Decision 3: Placement — directive on line 1, blank line on line 2, content from line 3
 

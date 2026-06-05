@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any
+// deno-lint-ignore-file no-explicit-any require-await
 
 /**
  * Preservation Test 2.1 — Unauthenticated `GET /users/:username` returns `isFollowing: false`

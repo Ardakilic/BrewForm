@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD
+This spec defines linting conventions for the BrewForm API and shared packages to ensure style consistency and prevent unnecessary type escape hatches. It establishes that production TypeScript code under `apps/api/src/modules/` and `packages/shared/src/` shall not contain `as any` casts where TypeScript's own type inference (including rest-destructure typing on object literals and Drizzle-inferred row types) already produces an equivalent type, and that test files (`*.test.ts`) under `apps/api/src/` requiring `no-explicit-any` suppression shall use a single file-level `// deno-lint-ignore-file no-explicit-any` directive on line 1 rather than scattered inline suppressions. Together these rules promote readable, type-safe code, keep lint suppressions auditable in one predictable location per file, and reduce noise from defensive casts that add no type information.
 
 ## Requirements
 

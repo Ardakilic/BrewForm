@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any
+// deno-lint-ignore-file no-explicit-any require-await
 
 /**
  * Bug 1 Exploration Test — `isFollowing` always `false` from the API
