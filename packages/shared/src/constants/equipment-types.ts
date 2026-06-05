@@ -55,5 +55,5 @@ export const EQUIPMENT_TYPE_LABELS: Record<EquipmentType, string> = {
   other: 'Other',
 };
 
-/** Mutable copy of {@link EQUIPMENT_TYPE_VALUES} for use in `.map()`/`.filter()`. */
-export const EQUIPMENT_TYPES: EquipmentType[] = [...EQUIPMENT_TYPE_VALUES];
+/** Readonly copy of {@link EQUIPMENT_TYPE_VALUES} for use in `.map()`/`.filter()`. */
+export const EQUIPMENT_TYPES: readonly EquipmentType[] = [...EQUIPMENT_TYPE_VALUES];

@@ -75,7 +75,7 @@ describe('Standalone enum constants: types derived from values', () => {
     }
   });
 
-  it('EQUIPMENT_TYPES is a mutable copy of EQUIPMENT_TYPE_VALUES', () => {
+  it('EQUIPMENT_TYPES is a readonly copy of EQUIPMENT_TYPE_VALUES', () => {
     expect(EQUIPMENT_TYPES.length).toBe(EQUIPMENT_TYPE_VALUES.length);
     expect([...EQUIPMENT_TYPES].sort()).toEqual([...EQUIPMENT_TYPE_VALUES].sort());
   });
