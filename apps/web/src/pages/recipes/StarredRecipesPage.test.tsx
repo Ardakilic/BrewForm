@@ -95,6 +95,7 @@ const defaultAuth = {
   user: {
     id: 'user-1',
     email: 'a@a.com',
+    emailVerifiedAt: null,
     username: 'testuser',
     displayName: null,
     avatarUrl: null,

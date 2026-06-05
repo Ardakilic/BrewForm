@@ -88,6 +88,7 @@ function makeUser(overrides: Partial<{ id: string; isAdmin: boolean }> = {}) {
   return {
     id: overrides.id ?? 'user-99',
     email: 'u@example.com',
+    emailVerifiedAt: null,
     username: overrides.id ?? 'user99',
     displayName: null,
     avatarUrl: null,

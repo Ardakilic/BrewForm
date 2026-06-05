@@ -270,6 +270,7 @@ describe('RecipeListPage — i18n', () => {
       user: {
         id: 'a',
         email: 'a@a.com',
+        emailVerifiedAt: null,
         username: 'admin',
         displayName: null,
         avatarUrl: null,

@@ -227,6 +227,7 @@ describe('Navbar — authenticated state', () => {
   const authenticatedUser = {
     id: 'user-1',
     email: 'alice@example.com',
+    emailVerifiedAt: null,
     username: 'alice',
     displayName: 'Alice',
     avatarUrl: null,
@@ -796,6 +797,7 @@ describe('Navbar — active route indicator', () => {
   const authenticatedUser = {
     id: 'user-1',
     email: 'alice@example.com',
+    emailVerifiedAt: null,
     username: 'alice',
     displayName: 'Alice',
     avatarUrl: null,
@@ -991,6 +993,7 @@ describe('Navbar — registration toggle', () => {
       user: {
         id: 'user-1',
         email: 'alice@example.com',
+        emailVerifiedAt: null,
         username: 'alice',
         displayName: 'Alice',
         avatarUrl: null,

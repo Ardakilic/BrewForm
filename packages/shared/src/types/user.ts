@@ -61,6 +61,7 @@ export interface User {
   /** UUID primary key */
   id: string;
   email: string;
+  emailVerifiedAt: Date | null;
   /** Unique public handle */
   username: string;
   displayName: string | null;
@@ -74,6 +75,35 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
+}
+
+/**
+ * Authenticated user object as returned by the API.
+ *
+ * Derived from the canonical `User` type via `Pick` so that field renames in
+ * `User` surface as compile errors here rather than silent drift.
+ *
+ * `emailVerifiedAt` is intentionally typed as `string | null` (not `Date`)
+ * because the JSON response serialises the server-side `Date` to an ISO 8601
+ * string.
+ *
+ * Note: do not confuse with the server-side `AuthUser` in
+ * `apps/api/src/modules/auth/service.ts`, which extends `User` with
+ * `passwordHash` and uses `Date` for timestamps.
+ */
+export interface AuthUser extends
+  Pick<
+    User,
+    | 'id'
+    | 'email'
+    | 'username'
+    | 'displayName'
+    | 'avatarUrl'
+    | 'isAdmin'
+    | 'onboardingCompleted'
+  > {
+  /** ISO 8601 string or null — `Date | null` serialised to string by the API */
+  emailVerifiedAt: string | null;
 }
 
 /**

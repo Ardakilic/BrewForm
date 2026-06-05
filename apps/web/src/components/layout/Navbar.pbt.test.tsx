@@ -126,6 +126,7 @@ const enTranslations: Record<string, string> = {
 const authenticatedUser = {
   id: 'user-1',
   email: 'alice@example.com',
+  emailVerifiedAt: null,
   username: 'alice',
   displayName: 'Alice',
   avatarUrl: null,
