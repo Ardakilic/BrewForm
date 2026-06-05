@@ -1,3 +1,5 @@
+// deno-lint-ignore-file no-explicit-any
+
 /**
  * Preservation Property Tests — Non-Admin and Unauthenticated Requests Always Return Public Recipes
  *
@@ -77,10 +79,8 @@ const recipes = {
 };
 
 // Mock db.select() chain for subqueries
-// deno-lint-ignore no-explicit-any
 const db: any = {
   select: () => ({
-    // deno-lint-ignore no-explicit-any
     from: (_table: any) => ({
       where: (cond: unknown) => cond,
     }),
@@ -96,9 +96,7 @@ const db: any = {
 //   - Has no isAdmin parameter
 // ---------------------------------------------------------------------------
 
-// deno-lint-ignore no-explicit-any
 async function listRecipes_buggy(filters: any, page: number, perPage: number) {
-  // deno-lint-ignore no-explicit-any
   const conditions: any[] = [eq(recipes.visibility, 'public')]; // BUG: hardcoded, ignores filters.visibility
 
   if (filters.authorId) {
@@ -157,7 +155,7 @@ async function listRecipes_buggy(filters: any, page: number, perPage: number) {
 
 function extractVisibilityCondition(where: unknown): Condition | null {
   if (!where) return null;
-  const w = where as any; // deno-lint-ignore no-explicit-any
+  const w = where as any;
   // Single condition (no AND)
   if (w.type === 'eq' && w.column === recipes.visibility) {
     return w as Condition;
@@ -178,7 +176,7 @@ function extractVisibilityCondition(where: unknown): Condition | null {
 
 function extractAllConditions(where: unknown): Condition[] {
   if (!where) return [];
-  const w = where as any; // deno-lint-ignore no-explicit-any
+  const w = where as any;
   if (w.type === 'and' && Array.isArray(w.conditions)) {
     return w.conditions as Condition[];
   }

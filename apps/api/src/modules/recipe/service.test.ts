@@ -1,3 +1,5 @@
+// deno-lint-ignore-file no-explicit-any
+
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import fc from 'npm:fast-check';
@@ -390,7 +392,6 @@ describe('tasteNoteIds AND logic filtering', () => {
     tasteNoteId: 'recipeTasteNotes.tasteNoteId',
   };
 
-  // deno-lint-ignore no-explicit-any
   const db: any = {
     select: () => ({
       from: (_table: any) => ({
