@@ -18,122 +18,44 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
+import {
+  ADDITIONAL_PREPARATION_TYPE_VALUES,
+  BADGE_RULE_VALUES,
+  BREW_METHOD_VALUES,
+  COFFEE_VARIETY_CATEGORY_VALUES,
+  DATE_FORMAT_VALUES,
+  DRINK_TYPE_VALUES,
+  EMOJI_TAG_VALUES,
+  EQUIPMENT_DELETE_REQUEST_STATUS_VALUES,
+  EQUIPMENT_TYPE_VALUES,
+  TEMPERATURE_UNIT_VALUES,
+  THEME_VALUES,
+  UNIT_SYSTEM_VALUES,
+  VISIBILITY_VALUES,
+} from '@brewform/shared/constants';
+
 // ============================================================
-// Enums
+// Enums — values imported from @brewform/shared/constants
+// (single source of truth across DB, Zod, and TypeScript)
 // ============================================================
 
-export const visibilityEnum = pgEnum('visibility', [
-  'draft',
-  'private',
-  'unlisted',
-  'public',
-]);
+export const visibilityEnum = pgEnum('visibility', [...VISIBILITY_VALUES]);
 
 export type RecipeVisibility = typeof visibilityEnum.enumValues[number];
 
-export const brewMethodEnum = pgEnum('brew_method', [
-  'espresso_machine',
-  'v60',
-  'french_press',
-  'aeropress',
-  'turkish_coffee',
-  'drip_coffee',
-  'chemex',
-  'kalita_wave',
-  'moka_pot',
-  'cold_brew',
-  'siphon',
-]);
-
-export const drinkTypeEnum = pgEnum('drink_type', [
-  'espresso',
-  'americano',
-  'flat_white',
-  'latte',
-  'cappuccino',
-  'cortado',
-  'macchiato',
-  'turkish_coffee',
-  'pour_over',
-  'cold_brew',
-  'french_press',
-  'aeropress',
-  'drip_coffee',
-  'moka_pot',
-  'siphon',
-]);
-
-export const equipmentTypeEnum = pgEnum('equipment_type', [
-  'espresso_machine',
-  'grinder',
-  'pour_over_brewer',
-  'immersion_brewer',
-  'kettle',
-  'milk_tool',
-  'scale_accessory',
-  'roaster',
-  'portafilter',
-  'basket',
-  'puck_screen',
-  'paper_filter',
-  'tamper',
-  'mesh_filter',
-  'cezve',
-  'thermometer',
-  'other',
-]);
-
-export const emojiTagEnum = pgEnum('emoji_tag', [
-  'fire',
-  'rocket',
-  'thumbsup',
-  'neutral',
-  'thumbsdown',
-  'nauseated',
-]);
-
-export const badgeRuleEnum = pgEnum('badge_rule', [
-  'first_brew',
-  'decade_brewer',
-  'centurion',
-  'first_fork',
-  'fan_favourite',
-  'community_star',
-  'conversationalist',
-  'precision_brewer',
-  'explorer',
-  'influencer',
-]);
-
-export const unitSystemEnum = pgEnum('unit_system', [
-  'metric',
-  'imperial',
-]);
-
-export const temperatureUnitEnum = pgEnum('temperature_unit', [
-  'celsius',
-  'fahrenheit',
-]);
-
-export const themeEnum = pgEnum('theme', [
-  'light',
-  'dark',
-  'coffee',
-]);
-
-export const dateFormatEnum = pgEnum('date_format', [
-  'DD_MM_YYYY',
-  'MM_DD_YYYY',
-  'YYYY_MM_DD',
-]);
-
-export const additionalPreparationTypeEnum = pgEnum('additional_preparation_type', [
-  'milk',
-  'water',
-  'syrup',
-  'spice',
-  'other',
-]);
+export const brewMethodEnum = pgEnum('brew_method', [...BREW_METHOD_VALUES]);
+export const drinkTypeEnum = pgEnum('drink_type', [...DRINK_TYPE_VALUES]);
+export const equipmentTypeEnum = pgEnum('equipment_type', [...EQUIPMENT_TYPE_VALUES]);
+export const emojiTagEnum = pgEnum('emoji_tag', [...EMOJI_TAG_VALUES]);
+export const badgeRuleEnum = pgEnum('badge_rule', [...BADGE_RULE_VALUES]);
+export const unitSystemEnum = pgEnum('unit_system', [...UNIT_SYSTEM_VALUES]);
+export const temperatureUnitEnum = pgEnum('temperature_unit', [...TEMPERATURE_UNIT_VALUES]);
+export const themeEnum = pgEnum('theme', [...THEME_VALUES]);
+export const dateFormatEnum = pgEnum('date_format', [...DATE_FORMAT_VALUES]);
+export const additionalPreparationTypeEnum = pgEnum(
+  'additional_preparation_type',
+  [...ADDITIONAL_PREPARATION_TYPE_VALUES],
+);
 
 // ============================================================
 // Tables
@@ -414,11 +336,10 @@ export const beans = pgTable(
   ],
 );
 
-export const coffeeVarietyCategoryEnum = pgEnum('coffee_variety_category', [
-  'variety',
-  'processing',
-  'market_name',
-]);
+export const coffeeVarietyCategoryEnum = pgEnum(
+  'coffee_variety_category',
+  [...COFFEE_VARIETY_CATEGORY_VALUES],
+);
 
 export const coffeeVarieties = pgTable('coffee_variety', {
   id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -662,11 +583,10 @@ export const brewMethodEquipmentRules = pgTable(
   ],
 );
 
-export const equipmentDeleteRequestStatusEnum = pgEnum('equipment_delete_request_status', [
-  'pending',
-  'approved',
-  'rejected',
-]);
+export const equipmentDeleteRequestStatusEnum = pgEnum(
+  'equipment_delete_request_status',
+  [...EQUIPMENT_DELETE_REQUEST_STATUS_VALUES],
+);
 
 export const equipmentDeleteRequests = pgTable('equipment_delete_request', {
   id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),

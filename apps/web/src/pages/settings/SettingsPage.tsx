@@ -223,9 +223,9 @@ export function SettingsPage() {
                   onChange={(e) => setPrefs({ ...prefs, dateFormat: e.target.value })}
                   className='input-field w-auto'
                 >
-                  <option value='YYYY-MM-DD'>YYYY-MM-DD</option>
-                  <option value='DD/MM/YYYY'>DD/MM/YYYY</option>
-                  <option value='MM/DD/YYYY'>MM/DD/YYYY</option>
+                  <option value='YYYY_MM_DD'>YYYY-MM-DD</option>
+                  <option value='DD_MM_YYYY'>DD/MM/YYYY</option>
+                  <option value='MM_DD_YYYY'>MM/DD/YYYY</option>
                 </select>
               </div>
               <button

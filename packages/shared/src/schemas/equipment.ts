@@ -1,24 +1,7 @@
 import { z } from 'zod';
+import { EQUIPMENT_TYPE_VALUES } from '../constants/index.ts';
 
-const EquipmentTypeEnum = z.enum([
-  'espresso_machine',
-  'grinder',
-  'pour_over_brewer',
-  'immersion_brewer',
-  'kettle',
-  'milk_tool',
-  'scale_accessory',
-  'roaster',
-  'portafilter',
-  'basket',
-  'puck_screen',
-  'paper_filter',
-  'tamper',
-  'mesh_filter',
-  'cezve',
-  'thermometer',
-  'other',
-]);
+const EquipmentTypeEnum = z.enum(EQUIPMENT_TYPE_VALUES);
 
 export const EquipmentCreateSchema = z.object({
   name: z.string().min(1).max(200),

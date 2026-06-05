@@ -4,27 +4,14 @@
  * Equipment represents brewing tools users can associate with recipes
  * and saved setups. Specialized sub-types (Portafilter, Basket, etc.)
  * extend the base Equipment with type-specific detail fields.
+ *
+ * Enum types in this file are aliased to the corresponding constants in
+ * `@brewform/shared/constants` for a single source of truth.
  */
+import type { EquipmentType as _EquipmentType } from '../constants/equipment-types.ts';
 
 /** Category of brewing equipment. */
-export type EquipmentType =
-  | 'espresso_machine'
-  | 'grinder'
-  | 'pour_over_brewer'
-  | 'immersion_brewer'
-  | 'kettle'
-  | 'milk_tool'
-  | 'scale_accessory'
-  | 'roaster'
-  | 'portafilter'
-  | 'basket'
-  | 'puck_screen'
-  | 'paper_filter'
-  | 'tamper'
-  | 'mesh_filter'
-  | 'cezve'
-  | 'thermometer'
-  | 'other';
+export type EquipmentType = _EquipmentType;
 
 /**
  * Base equipment entity returned by equipment endpoints

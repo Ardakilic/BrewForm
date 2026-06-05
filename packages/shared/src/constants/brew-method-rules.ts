@@ -1,51 +1,18 @@
-import type { BrewMethod } from '../types/recipe.ts';
-import type { EquipmentType } from '../types/equipment.ts';
+/**
+ * Brew method × equipment compatibility matrix.
+ *
+ * Each rule records whether a given brew method can be performed with a given
+ * piece of equipment. The shape mirrors the database `brew_method_equipment`
+ * table (one row per method/equipment combination).
+ */
+import type { EquipmentType } from './equipment-types.ts';
+import type { BrewMethodValue } from './brew-methods.ts';
 
 export interface BrewMethodEquipmentRuleDef {
-  brewMethod: BrewMethod;
+  brewMethod: BrewMethodValue;
   equipmentType: EquipmentType;
   compatible: boolean;
 }
-
-export const EQUIPMENT_TYPES: EquipmentType[] = [
-  'espresso_machine',
-  'grinder',
-  'pour_over_brewer',
-  'immersion_brewer',
-  'kettle',
-  'milk_tool',
-  'scale_accessory',
-  'roaster',
-  'portafilter',
-  'basket',
-  'puck_screen',
-  'paper_filter',
-  'tamper',
-  'mesh_filter',
-  'cezve',
-  'thermometer',
-  'other',
-];
-
-export const EQUIPMENT_TYPE_LABELS: Record<EquipmentType, string> = {
-  espresso_machine: 'Espresso Machine',
-  grinder: 'Grinder',
-  pour_over_brewer: 'Pour-Over & Filter Brewer',
-  immersion_brewer: 'Immersion & Pressure Brewer',
-  kettle: 'Kettle',
-  milk_tool: 'Milk Tool',
-  scale_accessory: 'Scale & Accessory',
-  roaster: 'Roaster',
-  portafilter: 'Portafilter',
-  basket: 'Basket',
-  puck_screen: 'Puck Screen',
-  paper_filter: 'Paper Filter',
-  tamper: 'Tamper',
-  mesh_filter: 'Mesh Filter',
-  cezve: 'Cezve',
-  thermometer: 'Thermometer',
-  other: 'Other',
-};
 
 export const BREW_METHOD_EQUIPMENT_RULES: BrewMethodEquipmentRuleDef[] = [
   { brewMethod: 'espresso_machine', equipmentType: 'espresso_machine', compatible: true },

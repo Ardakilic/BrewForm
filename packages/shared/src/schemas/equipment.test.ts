@@ -1,5 +1,6 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
+import { EQUIPMENT_TYPE_VALUES } from '../constants/equipment-types.ts';
 import {
   EquipmentCreateSchema,
   EquipmentDeleteRequestSchema,
@@ -32,26 +33,7 @@ describe('EquipmentCreateSchema', () => {
   });
 
   it('should accept all valid equipment types', () => {
-    const types = [
-      'espresso_machine',
-      'grinder',
-      'pour_over_brewer',
-      'immersion_brewer',
-      'kettle',
-      'milk_tool',
-      'scale_accessory',
-      'roaster',
-      'portafilter',
-      'basket',
-      'puck_screen',
-      'paper_filter',
-      'tamper',
-      'mesh_filter',
-      'cezve',
-      'thermometer',
-      'other',
-    ];
-    for (const type of types) {
+    for (const type of EQUIPMENT_TYPE_VALUES) {
       const result = EquipmentCreateSchema.safeParse({
         name: `Test ${type}`,
         type,

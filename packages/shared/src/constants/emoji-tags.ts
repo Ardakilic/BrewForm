@@ -21,3 +21,12 @@ export const EMOJI_TAGS_LIST: EmojiTagOption[] = EMOJI_TAGS.map((t) => ({
   emoji: t.emoji,
   label: t.label,
 }));
+
+/**
+ * Pure-values tuple of every {@link EmojiTagKey}.
+ *
+ * Derived from {@link EMOJI_TAGS} via `.map()` (the source field is `key`,
+ * not `value`). Consumed by Drizzle's `pgEnum()` and by Zod `z.enum()` to keep
+ * the database enum, runtime validation, and TypeScript union synchronised.
+ */
+export const EMOJI_TAG_VALUES = EMOJI_TAGS.map((t) => t.key) as [EmojiTagKey, ...EmojiTagKey[]];

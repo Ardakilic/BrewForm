@@ -74,3 +74,16 @@ export type BrewMethodOption = {
 
 /** Mutable copy for use in .map()/.filter() in React components */
 export const BREW_METHODS_LIST: BrewMethodOption[] = [...BREW_METHODS];
+
+/**
+ * Pure-values tuple of every {@link BrewMethodValue}.
+ *
+ * Derived from {@link BREW_METHODS} via `.map()` so the tuple cannot drift
+ * from the rich-object source. Consumed by Drizzle's `pgEnum()` and by Zod
+ * `z.enum()` to keep the database enum, runtime validation, and TypeScript
+ * union synchronised.
+ */
+export const BREW_METHOD_VALUES = BREW_METHODS.map((m) => m.value) as [
+  BrewMethodValue,
+  ...BrewMethodValue[],
+];
