@@ -2,7 +2,7 @@
 
 The `AuthUser` interface exists in three places in the codebase:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    packages/shared/types/user.ts                │
 │  User (canonical, missing emailVerifiedAt)                      │

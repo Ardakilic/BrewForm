@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-### Requirement: Caninical User type includes emailVerifiedAt
+### Requirement: Canonical User type includes emailVerifiedAt
 The `User` interface in `@brewform/shared/types` SHALL include `emailVerifiedAt: Date | null`.
 
 #### Scenario: User type has emailVerifiedAt
