@@ -61,6 +61,25 @@ vi.mock('@brewform/shared/constants', () => ({
   BREW_METHODS_LIST: [{ value: 'ESPRESSO', label: 'Espresso' }],
   DRINK_TYPES_LIST: [{ value: 'ESPRESSO', label: 'Espresso' }],
   VISIBILITY_STATES_LIST: [{ value: 'public', label: 'Public' }],
+  EQUIPMENT_TYPE_LABELS: {
+    espresso_machine: 'Espresso Machine',
+    grinder: 'Grinder',
+    pour_over_brewer: 'Pour-Over & Filter Brewer',
+    immersion_brewer: 'Immersion & Pressure Brewer',
+    kettle: 'Kettle',
+    milk_tool: 'Milk Tool',
+    scale_accessory: 'Scale & Accessory',
+    roaster: 'Roaster',
+    portafilter: 'Portafilter',
+    basket: 'Basket',
+    puck_screen: 'Puck Screen',
+    paper_filter: 'Paper Filter',
+    tamper: 'Tamper',
+    mesh_filter: 'Mesh Filter',
+    cezve: 'Cezve',
+    thermometer: 'Thermometer',
+    other: 'Other',
+  },
 }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
@@ -71,12 +90,11 @@ import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
 import { api, coffeeVarietyApi, recipeApi } from '../../api/index.ts';
 import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
 import fc from 'fast-check';
+import { loader, RecipeListPage } from './RecipeListPage.tsx';
 import {
   EQUIPMENT_FILTER_TYPES,
   EQUIPMENT_TYPE_LABELS,
-  loader,
-  RecipeListPage,
-} from './RecipeListPage.tsx';
+} from '../../components/recipe-list/constants.ts';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);

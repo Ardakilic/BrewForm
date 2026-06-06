@@ -64,6 +64,25 @@ vi.mock('@brewform/shared/constants', () => ({
   BREW_METHODS_LIST: [{ value: 'ESPRESSO', label: 'Espresso' }],
   DRINK_TYPES_LIST: [{ value: 'ESPRESSO', label: 'Espresso' }],
   VISIBILITY_STATES_LIST: [{ value: 'public', label: 'Public' }],
+  EQUIPMENT_TYPE_LABELS: {
+    espresso_machine: 'Espresso Machine',
+    grinder: 'Grinder',
+    pour_over_brewer: 'Pour-Over & Filter Brewer',
+    immersion_brewer: 'Immersion & Pressure Brewer',
+    kettle: 'Kettle',
+    milk_tool: 'Milk Tool',
+    scale_accessory: 'Scale & Accessory',
+    roaster: 'Roaster',
+    portafilter: 'Portafilter',
+    basket: 'Basket',
+    puck_screen: 'Puck Screen',
+    paper_filter: 'Paper Filter',
+    tamper: 'Tamper',
+    mesh_filter: 'Mesh Filter',
+    cezve: 'Cezve',
+    thermometer: 'Thermometer',
+    other: 'Other',
+  },
 }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
