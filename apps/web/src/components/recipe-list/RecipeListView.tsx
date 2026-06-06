@@ -93,7 +93,7 @@ export function RecipeListView({
   useEffect(() => {
     log.debug({ source }, 'RecipeListView mounted');
     return () => {
-      log.debug({}, 'RecipeListView unmounted');
+      log.debug({ source }, 'RecipeListView unmounted');
     };
   }, [source]);
   const recipes = recipesResponse.data;
@@ -103,12 +103,16 @@ export function RecipeListView({
   const totalPages = Math.ceil(total / PER_PAGE);
   const loading = navigation.state === 'loading' &&
     navigation.location?.pathname === location.pathname;
-  const equipmentByType = EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentListItem[]>>(
-    (acc, type) => {
-      acc[type] = equipment.filter((e) => e.type === type);
-      return acc;
-    },
-    {} as Record<string, EquipmentListItem[]>,
+  const equipmentByType = useMemo(
+    () =>
+      EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentListItem[]>>(
+        (acc, type) => {
+          acc[type] = equipment.filter((e) => e.type === type);
+          return acc;
+        },
+        {} as Record<string, EquipmentListItem[]>,
+      ),
+    [equipment],
   );
   const activeEquipmentName = equipment.find((e) => e.id === equipmentId)?.name ?? null;
   const hasActiveFilters = !!(

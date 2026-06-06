@@ -13,22 +13,23 @@ import type { RecipeListItem } from '../../api/types.ts';
  */
 export function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
   const navigate = useNavigate();
+  const { author } = recipe;
   return (
     <Link to={`/recipes/${recipe.slug}`} className='card hover:shadow-lg transition-shadow'>
       <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>{recipe.title}</h3>
       <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
-        by {recipe.author
+        by {author
           ? (
             <button
               type='button'
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/u/${recipe.author!.username}`);
+                navigate(`/u/${author.username}`);
               }}
               className='hover:underline'
               style={AUTHOR_BUTTON_STYLE}
             >
-              {recipe.author.displayName || recipe.author.username}
+              {author.displayName || author.username}
             </button>
           )
           : (

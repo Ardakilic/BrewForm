@@ -3,8 +3,10 @@ import { useSearchParams } from 'react-router';
 import { api, coffeeVarietyApi, type CoffeeVarietySearchResult } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useDebounce } from '../../hooks/useDebounce.ts';
+import { createLogger } from '../../utils/logger.ts';
 import { FilterField } from '../../components/recipe-list/index.ts';
 
+const log = createLogger('useCoffeeVarietyFilter');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Result returned by {@link useCoffeeVarietyFilter}. */
@@ -38,11 +40,18 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
   useEffect(() => {
     if (debouncedVarietySearch.length >= 2) {
       let cancelled = false;
-      coffeeVarietyApi.search(debouncedVarietySearch).then((data) => {
-        if (cancelled) return;
-        setVarietyResults(data);
-        setVarietyDropdownOpen(true);
-      }).catch(() => {});
+      coffeeVarietyApi.search(debouncedVarietySearch)
+        .then((data) => {
+          if (cancelled) return;
+          setVarietyResults(data);
+          setVarietyDropdownOpen(true);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          log.error({ err, query: debouncedVarietySearch }, 'coffeeVarietyApi.search failed');
+          setVarietyResults([]);
+          setVarietyDropdownOpen(false);
+        });
       return () => {
         cancelled = true;
       };
@@ -62,11 +71,22 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const fetchedVarietyIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (coffeeVarietyId && UUID_RE.test(coffeeVarietyId) && !selectedVarietyName) {
+    if (
+      coffeeVarietyId &&
+      UUID_RE.test(coffeeVarietyId) &&
+      !selectedVarietyName &&
+      fetchedVarietyIdRef.current !== coffeeVarietyId
+    ) {
+      fetchedVarietyIdRef.current = coffeeVarietyId;
       api.get<CoffeeVarietySearchResult>(`/coffee-varieties/${coffeeVarietyId}`)
-        .then((v) => setSelectedVarietyName(v.name))
-        .catch(() => {});
+        .then((v) => {
+          setSelectedVarietyName(v.name);
+        })
+        .catch((err) => {
+          log.error({ err, coffeeVarietyId }, 'fetchVarietyById failed');
+        });
     }
   }, [coffeeVarietyId, selectedVarietyName]);
 
