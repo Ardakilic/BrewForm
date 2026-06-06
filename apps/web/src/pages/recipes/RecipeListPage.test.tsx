@@ -501,7 +501,7 @@ describe('RecipeListPage — taste note filter', () => {
     expect(screen.getByRole('option', { name: 'Rose' })).toBeInTheDocument();
   });
 
-  it('shows active taste note filter badge when tasteNoteId is in URL', async () => {
+  it('shows active taste note filter badge when tasteNoteIds is in URL', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ tasteNoteIds: VALID_UUID }));
     mockGetTasteNotesCached.mockResolvedValue(sampleTasteNotes);
 

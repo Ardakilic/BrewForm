@@ -21,7 +21,7 @@ import {
   recipeVersionPhotos,
   recipeVersions,
 } from '@brewform/db/schema';
-import { and, eq, ilike, inArray, or, type SQL } from 'drizzle-orm';
+import { and, eq, type SQL } from 'drizzle-orm';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import {
@@ -464,9 +464,12 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
  * List recipes with filtering, pagination, and sorting.
  *
  * Applies visibility rules (public-only for non-admins unless a specific
- * visibility filter is passed by an admin). Supports filtering by author,
- * brew method, drink type, equipment, taste notes (AND logic for multiple),
- * text search (title + product name), and main brewer name.
+ * visibility filter is passed by an admin). The shared filter branches
+ * (`brewMethod`, `drinkType`, `search`, `mainBrewer`, `equipmentId`,
+ * `tasteNoteIds` / `tasteNoteId`, `coffeeVarietyId`) are produced by
+ * {@link model.buildRecipeFilters}; this function prepends the admin-aware
+ * visibility condition and (when present) an `authorId` filter before
+ * composing the final `WHERE` clause with `and(...)`.
  *
  * @param filters           - Filter criteria (see controller for accepted keys).
  * @param page              - Page number (1-based).
@@ -489,106 +492,9 @@ export async function listRecipes(
   const visibilityCondition = (isAdmin === true && filters.visibility)
     ? eq(recipes.visibility, filters.visibility)
     : eq(recipes.visibility, 'public');
-  const conditions: SQL[] = [visibilityCondition];
-
-  if (filters.authorId) {
-    conditions.push(eq(recipes.authorId, filters.authorId));
-  }
-
-  if (filters.brewMethod) {
-    conditions.push(
-      inArray(
-        recipes.id,
-        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.brewMethod, filters.brewMethod),
-        ),
-      ),
-    );
-  }
-
-  if (filters.drinkType) {
-    conditions.push(
-      inArray(
-        recipes.id,
-        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.drinkType, filters.drinkType),
-        ),
-      ),
-    );
-  }
-
-  if (filters.equipmentId) {
-    conditions.push(
-      inArray(
-        recipes.currentVersionId,
-        db.select({ id: recipeEquipment.recipeVersionId }).from(recipeEquipment).where(
-          eq(recipeEquipment.equipmentId, filters.equipmentId),
-        ),
-      ),
-    );
-  }
-
-  if (filters.tasteNoteIds) {
-    const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
-    // AND logic: recipe's current version must have ALL specified taste notes
-    for (const noteId of ids) {
-      conditions.push(
-        inArray(
-          recipes.currentVersionId,
-          db.select({ id: recipeTasteNotes.recipeVersionId })
-            .from(recipeTasteNotes)
-            .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
-        ),
-      );
-    }
-  } else if (filters.tasteNoteId) {
-    // Backward compatibility: single taste note filter
-    conditions.push(
-      inArray(
-        recipes.currentVersionId,
-        db.select({ id: recipeTasteNotes.recipeVersionId }).from(recipeTasteNotes).where(
-          eq(recipeTasteNotes.tasteNoteId, filters.tasteNoteId),
-        ),
-      ),
-    );
-  }
-
-  if (filters.search) {
-    const sanitized = filters.search.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      const searchCondition = or(
-        ilike(recipes.title, searchTerm),
-        inArray(
-          recipes.id,
-          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-            ilike(recipeVersions.productName, searchTerm),
-          ),
-        ),
-      );
-      if (searchCondition) conditions.push(searchCondition);
-    }
-  }
-
-  if (filters.mainBrewer) {
-    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        inArray(
-          recipes.id,
-          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-            ilike(recipeVersions.brewerDetails, searchTerm),
-          ),
-        ),
-      );
-    }
-  }
-
-  if (filters.coffeeVarietyId) {
-    conditions.push(model.recipeCoffeeVarietyCondition(filters.coffeeVarietyId));
-  }
-
+  const filterConditions = model.buildRecipeFilters(filters);
+  const conditions: SQL[] = [visibilityCondition, ...filterConditions];
+  if (filters.authorId) conditions.push(eq(recipes.authorId, filters.authorId));
   const where = conditions.length > 1 ? and(...conditions) : conditions[0];
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
@@ -660,7 +566,13 @@ export async function saveNotes(recipeId: string, notes: string) {
   logger.debug({ recipeId }, 'saveNotes completed');
 }
 
-/** List recipes starred (favourited) by the given user, with filtering and pagination. */
+/**
+ * List recipes starred (favourited) by the given user, with filtering and pagination.
+ *
+ * Delegates the recipe filter construction to
+ * {@link model.findStarred}, which composes the favourites-scope subquery
+ * with the shared filter branches from {@link model.buildRecipeFilters}.
+ */
 export async function listStarredRecipes(
   filters: z.infer<typeof RecipeFilterSchema>,
   page: number,

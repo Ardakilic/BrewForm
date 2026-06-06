@@ -36,6 +36,129 @@ export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
   );
 }
 
+/**
+ * Filter criteria shared between recipe-listing endpoints.
+ *
+ * Passed to {@link buildRecipeFilters} to produce the shared Drizzle
+ * `WHERE` fragments for the public `/api/v1/recipes` endpoint and the
+ * `/api/v1/recipes/starred` endpoint. Visibility, favourites-scope, and
+ * `authorId` conditions are caller-specific and are not part of this
+ * surface.
+ */
+export interface RecipeFilterCriteria {
+  brewMethod?: BrewMethod;
+  drinkType?: DrinkType;
+  search?: string;
+  equipmentId?: string;
+  tasteNoteIds?: string;
+  /** @deprecated Use `tasteNoteIds` (comma-separated). Kept for backward compatibility. */
+  tasteNoteId?: string;
+  mainBrewer?: string;
+  coffeeVarietyId?: string;
+}
+
+/**
+ * Build an array of Drizzle SQL conditions from shared recipe filter criteria.
+ * Returns a `SQL[]` array; the caller combines these with its own base conditions via `and()`.
+ */
+export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
+  const conditions: SQL[] = [];
+
+  if (filters.brewMethod) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId })
+          .from(recipeVersions)
+          .where(eq(recipeVersions.brewMethod, filters.brewMethod)),
+      ),
+    );
+  }
+
+  if (filters.drinkType) {
+    conditions.push(
+      inArray(
+        recipes.id,
+        db.select({ id: recipeVersions.recipeId })
+          .from(recipeVersions)
+          .where(eq(recipeVersions.drinkType, filters.drinkType)),
+      ),
+    );
+  }
+
+  if (filters.search) {
+    const sanitized = filters.search.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      const searchCondition = or(
+        ilike(recipes.title, searchTerm),
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId })
+            .from(recipeVersions)
+            .where(ilike(recipeVersions.productName, searchTerm)),
+        ),
+      );
+      if (searchCondition) conditions.push(searchCondition);
+    }
+  }
+
+  if (filters.mainBrewer) {
+    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        inArray(
+          recipes.id,
+          db.select({ id: recipeVersions.recipeId })
+            .from(recipeVersions)
+            .where(ilike(recipeVersions.brewerDetails, searchTerm)),
+        ),
+      );
+    }
+  }
+
+  if (filters.coffeeVarietyId) {
+    conditions.push(recipeCoffeeVarietyCondition(filters.coffeeVarietyId));
+  }
+
+  if (filters.equipmentId) {
+    conditions.push(
+      inArray(
+        recipes.currentVersionId,
+        db.select({ id: recipeEquipment.recipeVersionId })
+          .from(recipeEquipment)
+          .where(eq(recipeEquipment.equipmentId, filters.equipmentId)),
+      ),
+    );
+  }
+
+  if (filters.tasteNoteIds) {
+    const ids = filters.tasteNoteIds.split(',').map((id) => id.trim());
+    for (const noteId of ids) {
+      conditions.push(
+        inArray(
+          recipes.currentVersionId,
+          db.select({ id: recipeTasteNotes.recipeVersionId })
+            .from(recipeTasteNotes)
+            .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
+        ),
+      );
+    }
+  } else if (filters.tasteNoteId) {
+    conditions.push(
+      inArray(
+        recipes.currentVersionId,
+        db.select({ id: recipeTasteNotes.recipeVersionId })
+          .from(recipeTasteNotes)
+          .where(eq(recipeTasteNotes.tasteNoteId, filters.tasteNoteId)),
+      ),
+    );
+  }
+
+  return conditions;
+}
+
 /** Insert a new recipe row and return it with all database-generated fields. */
 export async function create(data: typeof recipes.$inferInsert) {
   const [recipe] = await db.insert(recipes).values(data).returning();
@@ -526,12 +649,14 @@ export async function getFeed(authorIds: string[], page: number, perPage: number
 /**
  * Fetch a paginated, filtered list of recipes the given user has favourited.
  *
- * Supports filtering by brew method, drink type, text search (title + product name),
- * main brewer, equipment, and taste notes. All filters are combined with AND.
+ * The shared filter branches (`brewMethod`, `drinkType`, `search`, `mainBrewer`,
+ * `equipmentId`, `tasteNoteIds` / `tasteNoteId`, `coffeeVarietyId`) are built
+ * by {@link buildRecipeFilters}; this function prepends the
+ * `eq(recipes.visibility, 'public')` base condition and the favourites-scope
+ * subquery (`userRecipeFavourites` join) before composing with `and(...)`.
  *
  * @param userId  - UUID of the user whose favourites to query
- * @param filters - Optional filter criteria (brewMethod, drinkType, search, equipmentId,
- *                  tasteNoteIds, mainBrewer, sortBy, sortOrder)
+ * @param filters - Optional filter criteria (see {@link RecipeFilterCriteria})
  * @param page    - One-based page number
  * @param perPage - Number of recipes per page
  * @returns Paginated result with `recipes` array and `total` count
@@ -544,6 +669,7 @@ export async function findStarred(
     search?: string;
     equipmentId?: string;
     tasteNoteIds?: string;
+    tasteNoteId?: string;
     mainBrewer?: string;
     coffeeVarietyId?: string;
     sortBy?: string;
@@ -552,101 +678,8 @@ export async function findStarred(
   page: number,
   perPage: number,
 ) {
-  const conditions: any[] = [
-    eq(recipes.visibility, 'public'),
-  ];
-
-  if (filters.brewMethod) {
-    conditions.push(
-      inArray(
-        recipes.id,
-        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.brewMethod, filters.brewMethod),
-        ),
-      ),
-    );
-  }
-
-  if (filters.drinkType) {
-    conditions.push(
-      inArray(
-        recipes.id,
-        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.drinkType, filters.drinkType),
-        ),
-      ),
-    );
-  }
-
-  if (filters.search) {
-    const sanitized = filters.search.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        or(
-          ilike(recipes.title, searchTerm),
-          inArray(
-            recipes.id,
-            db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-              ilike(recipeVersions.productName, searchTerm),
-            ),
-          ),
-        ),
-      );
-    }
-  }
-
-  if (filters.mainBrewer) {
-    const sanitized = filters.mainBrewer.replace(/[%_]/g, '');
-    if (sanitized) {
-      const searchTerm = `%${sanitized}%`;
-      conditions.push(
-        inArray(
-          recipes.id,
-          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-            ilike(recipeVersions.brewerDetails, searchTerm),
-          ),
-        ),
-      );
-    }
-  }
-
-  if (filters.coffeeVarietyId) {
-    conditions.push(
-      inArray(
-        recipes.id,
-        db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-          eq(recipeVersions.coffeeVarietyId, filters.coffeeVarietyId),
-        ),
-      ),
-    );
-  }
-
-  if (filters.equipmentId) {
-    conditions.push(
-      inArray(
-        recipes.currentVersionId,
-        db.select({ id: recipeEquipment.recipeVersionId }).from(recipeEquipment).where(
-          eq(recipeEquipment.equipmentId, filters.equipmentId),
-        ),
-      ),
-    );
-  }
-
-  if (filters.tasteNoteIds) {
-    const ids = filters.tasteNoteIds.split(',').map((id: string) => id.trim());
-    for (const noteId of ids) {
-      conditions.push(
-        inArray(
-          recipes.currentVersionId,
-          db.select({ id: recipeTasteNotes.recipeVersionId }).from(recipeTasteNotes).where(
-            eq(recipeTasteNotes.tasteNoteId, noteId),
-          ),
-        ),
-      );
-    }
-  }
-
+  const filterConditions = buildRecipeFilters(filters);
+  const conditions: SQL[] = [eq(recipes.visibility, 'public'), ...filterConditions];
   const where = conditions.length > 1 ? and(...conditions) : conditions[0];
 
   const starredSubquery = db.select({ recipeId: userRecipeFavourites.recipeId })
