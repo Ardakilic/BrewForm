@@ -24,7 +24,7 @@ import {
   users,
 } from '@brewform/db/schema';
 import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
-import type { BrewMethod, DrinkType } from '@brewform/shared/types';
+import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 
 /** Return a Drizzle condition that matches recipes whose versions reference the given coffee variety. */
 export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
@@ -157,6 +157,44 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
   }
 
   return conditions;
+}
+
+/**
+ * Filter criteria for the public recipe-listing endpoint.
+ *
+ * Extends {@link RecipeFilterCriteria} with caller-specific keys
+ * (`visibility`, `authorId`) that the list WHERE composer needs but
+ * {@link buildRecipeFilters} is intentionally unaware of.
+ */
+export interface RecipeListFilters extends RecipeFilterCriteria {
+  visibility?: Visibility;
+  authorId?: string;
+}
+
+/**
+ * Build the Drizzle `WHERE` clause for the public recipe-listing endpoint.
+ *
+ * Composes the admin-aware visibility condition, the shared filter branches
+ * from {@link buildRecipeFilters}, and an optional `authorId` scope. Admins
+ * may filter by a specific `visibility`; non-admins are always restricted to
+ * `visibility = 'public'`.
+ *
+ * @param filters - Filter criteria (see {@link RecipeListFilters})
+ * @param isAdmin - Whether the requester is an admin (allows a `visibility`
+ *                  other than `'public'`)
+ * @returns A single Drizzle `SQL` expression, or `undefined` when no conditions apply
+ */
+export function buildListRecipesWhere(
+  filters: RecipeListFilters,
+  isAdmin: boolean,
+): SQL | undefined {
+  const visibilityCondition = isAdmin && filters.visibility
+    ? eq(recipes.visibility, filters.visibility)
+    : eq(recipes.visibility, 'public');
+  const filterConditions = buildRecipeFilters(filters);
+  const conditions: SQL[] = [visibilityCondition, ...filterConditions];
+  if (filters.authorId) conditions.push(eq(recipes.authorId, filters.authorId));
+  return conditions.length > 1 ? and(...conditions) : conditions[0];
 }
 
 /** Insert a new recipe row and return it with all database-generated fields. */

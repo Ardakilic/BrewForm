@@ -21,7 +21,7 @@ import {
   recipeVersionPhotos,
   recipeVersions,
 } from '@brewform/db/schema';
-import { and, eq, type SQL } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import {
@@ -463,13 +463,10 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
 /**
  * List recipes with filtering, pagination, and sorting.
  *
- * Applies visibility rules (public-only for non-admins unless a specific
- * visibility filter is passed by an admin). The shared filter branches
- * (`brewMethod`, `drinkType`, `search`, `mainBrewer`, `equipmentId`,
- * `tasteNoteIds` / `tasteNoteId`, `coffeeVarietyId`) are produced by
- * {@link model.buildRecipeFilters}; this function prepends the admin-aware
- * visibility condition and (when present) an `authorId` filter before
- * composing the final `WHERE` clause with `and(...)`.
+ * The full `WHERE` clause (admin-aware visibility, shared filter branches,
+ * and optional `authorId` scope) is composed by
+ * {@link model.buildListRecipesWhere} so the service layer does not
+ * construct Drizzle SQL expressions directly.
  *
  * @param filters           - Filter criteria (see controller for accepted keys).
  * @param page              - Page number (1-based).
@@ -489,13 +486,7 @@ export async function listRecipes(
     { userId: _requestingUserId, page, perPage, filters: JSON.stringify(filters) },
     'listRecipes started',
   );
-  const visibilityCondition = (isAdmin === true && filters.visibility)
-    ? eq(recipes.visibility, filters.visibility)
-    : eq(recipes.visibility, 'public');
-  const filterConditions = model.buildRecipeFilters(filters);
-  const conditions: SQL[] = [visibilityCondition, ...filterConditions];
-  if (filters.authorId) conditions.push(eq(recipes.authorId, filters.authorId));
-  const where = conditions.length > 1 ? and(...conditions) : conditions[0];
+  const where = model.buildListRecipesWhere(filters, isAdmin);
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
   const result = await model.findMany(where, page, perPage, sortBy, sortOrder);

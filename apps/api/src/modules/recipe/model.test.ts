@@ -13,6 +13,14 @@
  * faithful inline copy of `buildRecipeFilters` (and the delegated
  * `recipeCoffeeVarietyCondition`) wired against the local mock surface.
  * Mirror any change to the real implementation here.
+ *
+ * TODO(integration-testing): Evaluate lightweight integration options
+ * (in-memory PostgreSQL, testcontainers, or minimal adapter stubs) so the
+ * real `buildRecipeFilters` and `recipeCoffeeVarietyCondition` exported
+ * from `./model.ts` can be exercised here without a full DB fixture.
+ * Tracking this in the repo issue tracker is the recommended follow-up;
+ * once a path is chosen, the duplicated inline copy in this file should
+ * be removed in favour of importing the real implementations.
  */
 
 import { describe, it } from 'jsr:@std/testing/bdd';
