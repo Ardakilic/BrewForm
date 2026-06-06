@@ -166,6 +166,24 @@ export function RecipeListPage() {
   const recipes = recipesResponse.data;
   const total = recipesResponse.meta.pagination?.total ?? recipes.length;
 
+  // Map TasteNoteFlatItem -> TasteNoteFlat (TasteNotesFilter expects `depth`).
+  const allTasteNotesWithDepth: TasteNoteFlat[] = allTasteNotes.map((note) => {
+    let depth = 0;
+    let current: TasteNoteFlatItem | undefined = note;
+    const seen = new Set<string>();
+    while (current?.parentId && !seen.has(current.id)) {
+      seen.add(current.id);
+      depth++;
+      current = allTasteNotes.find((n) => n.id === current?.parentId);
+    }
+    return {
+      id: note.id,
+      name: note.name,
+      parentId: note.parentId,
+      depth,
+    };
+  });
+
   function updateFilter(key: string, value: string | string[]) {
     const params = new URLSearchParams(searchParams);
     if (Array.isArray(value)) {
@@ -380,7 +398,7 @@ export function RecipeListPage() {
             {allTasteNotes.length > 0 && (
               <FilterField label={t('recipe.list.tasteNotesFilter')}>
                 <TasteNotesFilter
-                  allTasteNotes={allTasteNotes as unknown as TasteNoteFlat[]}
+                  allTasteNotes={allTasteNotesWithDepth}
                   selectedIds={tasteNoteIds}
                   onChange={(ids) => updateFilter('tasteNoteIds', ids)}
                   placeholder={t('recipe.list.tasteNotesPlaceholder')}

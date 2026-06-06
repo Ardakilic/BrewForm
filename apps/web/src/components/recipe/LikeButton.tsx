@@ -1,10 +1,14 @@
+import { useEffect } from 'react';
 import { useFetcher } from 'react-router';
+import { createLogger } from '@/utils/logger.ts';
 
 interface Props {
   recipeId: string;
   initialLiked: boolean;
   initialCount: number;
 }
+
+const log = createLogger('LikeButton');
 
 export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
   const fetcher = useFetcher();
@@ -15,8 +19,16 @@ export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
   const pendingDelta = fetcher.formData ? (fetcher.formData.get('liked') === 'true' ? 1 : -1) : 0;
   const count = (initialCount ?? 0) + pendingDelta;
 
+  useEffect(() => {
+    log.debug({ recipeId, state: fetcher.state }, 'fetcher state change');
+  }, [fetcher.state, recipeId]);
+
   return (
-    <fetcher.Form method='post' action={`/recipes/${recipeId}/like`}>
+    <fetcher.Form
+      method='post'
+      action={`/recipes/${recipeId}/like`}
+      onSubmit={() => log.debug({ recipeId }, 'submit started')}
+    >
       <input type='hidden' name='liked' value={String(!liked)} />
       <button
         type='submit'

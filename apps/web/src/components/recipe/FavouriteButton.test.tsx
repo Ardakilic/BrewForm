@@ -1,8 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import React from 'react';
 import { FavouriteButton } from './FavouriteButton.tsx';
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
 
 function renderWithRouter(ui: React.ReactElement) {
   const router = createMemoryRouter(
@@ -11,7 +23,11 @@ function renderWithRouter(ui: React.ReactElement) {
         path: '/',
         element: ui,
         children: [
-          { path: 'recipes/:id/favourite', element: null },
+          {
+            path: 'recipes/:id/favourite',
+            action: () => new Promise(() => {}),
+            element: null,
+          },
         ],
       },
     ],
@@ -55,5 +71,23 @@ describe('FavouriteButton — Requirement 1.5 (count display)', () => {
     );
     const button = screen.getByRole('button');
     expect(button.textContent).toContain('4');
+  });
+});
+
+describe('FavouriteButton — click interaction', () => {
+  it('clicking the button triggers optimistic count update and disables while pending', async () => {
+    const user = userEvent.setup();
+    renderWithRouter(
+      <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />,
+    );
+    const button = screen.getByRole('button');
+    expect(button.textContent).toContain('5');
+    expect(button).not.toBeDisabled();
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).toBeDisabled();
+    });
   });
 });

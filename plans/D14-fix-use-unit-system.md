@@ -152,12 +152,7 @@ export function useUnitSystem() {
 6. Update `SettingsPage` to call `refreshPreferences()` after saving
 7. Run `make check-web`
 
-### Option C:
-
-1. Follow D10 implementation first
-2. Create `usePreferences()` query hook
-3. Update `useUnitSystem` to use the query
-4. Run `make check-web`
+### Option C: TanStack Query (N/A — D10 used React Router 7 instead)
 
 ## Testing Strategy
 
@@ -176,5 +171,4 @@ export function useUnitSystem() {
 
 ## Dependencies
 
-- **D10** (TanStack Query) — Option C depends on this
 - None for Options A or B

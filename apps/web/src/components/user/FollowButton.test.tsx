@@ -1,7 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { FollowButton } from './FollowButton.tsx';
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
 
 function renderWithRouter(ui: React.ReactElement) {
   const router = createMemoryRouter(
@@ -10,7 +22,11 @@ function renderWithRouter(ui: React.ReactElement) {
         path: '/',
         element: ui,
         children: [
-          { path: 'follow/:userId', element: null },
+          {
+            path: 'follow/:userId',
+            action: () => new Promise(() => {}),
+            element: null,
+          },
         ],
       },
     ],
@@ -60,5 +76,21 @@ describe('FollowButton — styling', () => {
     renderWithRouter(<FollowButton userId='user-1' initialFollowing={false} />);
     const button = screen.getByRole('button');
     expect(button.getAttribute('type')).toBe('button');
+  });
+});
+
+describe('FollowButton — click interaction', () => {
+  it('clicking the button shows optimistic state and disables while pending', async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<FollowButton userId='user-1' initialFollowing={false} />);
+    const button = screen.getByRole('button');
+    expect(button.textContent).toBe('Follow');
+    expect(button).not.toBeDisabled();
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).toBeDisabled();
+    });
   });
 });

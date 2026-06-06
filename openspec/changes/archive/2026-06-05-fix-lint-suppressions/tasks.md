@@ -9,11 +9,11 @@
 
 ## 2. Normalise test file suppressions to file-level
 
-- [x] 2.1 Update `apps/api/src/modules/recipe/service.test.ts`: remove the 1 inline `// deno-lint-ignore no-explicit-any` at line 393; add `// deno-lint-ignore-file no-explicit-any` on line 1, followed by a blank line on line 2, then the existing content from line 3 onward
-- [x] 2.2 Update `apps/api/src/modules/user/service.exploration.test.ts`: remove the 2 inline `// deno-lint-ignore no-explicit-any` at lines 87 and 117; add `// deno-lint-ignore-file no-explicit-any` on line 1, followed by a blank line on line 2, then the existing content from line 3 onward
-- [x] 2.3 Update `apps/api/src/modules/user/service.preservation.test.ts`: remove the 2 inline `// deno-lint-ignore no-explicit-any` at lines 79 and 109; add `// deno-lint-ignore-file no-explicit-any` on line 1, followed by a blank line on line 2, then the existing content from line 3 onward
-- [x] 2.4 Update `apps/api/src/modules/recipe/service.preservation.test.ts`: remove all 6 inline `// deno-lint-ignore no-explicit-any` directives at lines 80, 83, 99, 101, 160, 181 (including the 2 trailing-comment-style directives at lines 160 and 181 — remove only the trailing comment, keep the `as any` cast); add `// deno-lint-ignore-file no-explicit-any` on line 1, followed by a blank line on line 2, then the existing content from line 3 onward
-- [x] 2.5 Confirm `apps/api/src/middleware/crawler.test.ts` and `apps/api/src/routes/sitemap.test.ts` are NOT modified (they already use the file-level form on line 1)
+- [x] 2.1 Update `apps/api/src/modules/recipe/service.test.ts`: remove the 1 inline `// deno-lint-ignore no-explicit-any` at line 393; add `// deno-lint-ignore-file no-explicit-any require-await` on line 1, followed by a blank line on line 2, then the existing content from line 3 onward
+- [x] 2.2 Update `apps/api/src/modules/user/service.exploration.test.ts`: remove the 2 inline `// deno-lint-ignore no-explicit-any` at lines 87 and 117; add `// deno-lint-ignore-file no-explicit-any require-await` on line 1, followed by a blank line on line 2, then the existing content from line 3 onward
+- [x] 2.3 Update `apps/api/src/modules/user/service.preservation.test.ts`: remove the 2 inline `// deno-lint-ignore no-explicit-any` at lines 79 and 109; add `// deno-lint-ignore-file no-explicit-any require-await` on line 1, followed by a blank line on line 2, then the existing content from line 3 onward
+- [x] 2.4 Update `apps/api/src/modules/recipe/service.preservation.test.ts`: remove all 6 inline `// deno-lint-ignore no-explicit-any` directives at lines 80, 83, 99, 101, 160, 181 (including the 2 trailing-comment-style directives at lines 160 and 181 — remove only the trailing comment, keep the `as any` cast); add `// deno-lint-ignore-file no-explicit-any require-await` on line 1, followed by a blank line on line 2, then the existing content from line 3 onward
+- [x] 2.5 Update `apps/api/src/middleware/crawler.test.ts` and `apps/api/src/routes/sitemap.test.ts`: change the existing single-rule directive on line 1 from `// deno-lint-ignore-file no-explicit-any` to the canonical both-rules form `// deno-lint-ignore-file no-explicit-any require-await`
 
 ## 3. Verification
 
@@ -22,5 +22,5 @@
 - [x] 3.3 Run `make check` to confirm all four workspaces (api, web, db, shared) type-check with zero errors
 - [x] 3.4 Run `make lint` to confirm zero new warnings and that the file count is unchanged (395 files)
 - [x] 3.5 Run `make test` to confirm all tests pass
-- [x] 3.6 Verify directive count: run `grep -rn "deno-lint-ignore" --include="*.ts" apps/ packages/ | wc -l` and confirm the result is **12** (down from 22). 8 file-level on production files are unchanged; 4 new file-level on test files; 0 inline; total = 8 + 4 = 12
+- [x] 3.6 Verify directive count: run `grep -rn "deno-lint-ignore" --include="*.ts" apps/ packages/ | wc -l` and confirm the result is **14** (down from 22). 8 file-level on production files are unchanged; 6 file-level on test files (4 newly-converted replacing 11 inline directives + 2 already-file-level files updated to both-rules form); 0 inline; total = 8 + 6 = 14
 - [x] 3.7 Run `openspec list --json` to confirm the change `fix-lint-suppressions` shows all artifacts `done` and `applyRequires` is satisfied

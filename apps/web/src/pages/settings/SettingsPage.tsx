@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLoaderData } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { api } from '../../api/client.ts';
+import { createLogger } from '@/utils/logger.ts';
 
 interface Preferences {
   unitSystem: 'metric' | 'imperial';
@@ -20,12 +21,14 @@ interface Preferences {
   };
 }
 
+const log = createLogger('SettingsPage');
+
 export interface SettingsLoaderData {
-  preferences: Record<string, unknown>;
+  preferences: Preferences;
 }
 
 export const loader = async (): Promise<SettingsLoaderData> => {
-  const preferences = await api.get<Record<string, unknown>>('/preferences');
+  const preferences = await api.get<Preferences>('/preferences');
   return { preferences };
 };
 
@@ -34,7 +37,7 @@ export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, availableLocales, t } = useTranslation();
   const { preferences } = useLoaderData() as SettingsLoaderData;
-  const [prefs, setPrefs] = useState<Preferences>(preferences as Preferences);
+  const [prefs, setPrefs] = useState<Preferences>(preferences);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -69,40 +72,12 @@ export function SettingsPage() {
 
   if (!user) return null;
 
-  if (!prefs) {
-    return (
-      <div className='mx-auto max-w-2xl px-6 py-8 animate-pulse' aria-busy='true'>
-        <div className='h-8 w-48 rounded mb-6' style={{ backgroundColor: 'var(--border)' }} />
-        <div className='space-y-6'>
-          <div className='card'>
-            <div className='h-5 w-32 rounded mb-4' style={{ backgroundColor: 'var(--border)' }} />
-            <div className='space-y-3'>
-              <div className='h-4 w-full rounded' style={{ backgroundColor: 'var(--border)' }} />
-              <div className='h-4 w-3/4 rounded' style={{ backgroundColor: 'var(--border)' }} />
-              <div className='h-4 w-1/2 rounded' style={{ backgroundColor: 'var(--border)' }} />
-            </div>
-          </div>
-          <div className='card'>
-            <div className='h-5 w-32 rounded mb-4' style={{ backgroundColor: 'var(--border)' }} />
-            <div className='h-4 w-48 rounded' style={{ backgroundColor: 'var(--border)' }} />
-          </div>
-          <div className='card'>
-            <div className='h-5 w-40 rounded mb-4' style={{ backgroundColor: 'var(--border)' }} />
-            <div className='h-4 w-48 rounded' style={{ backgroundColor: 'var(--border)' }} />
-          </div>
-          <div className='card'>
-            <div className='h-5 w-40 rounded mb-4' style={{ backgroundColor: 'var(--border)' }} />
-            <div className='space-y-3'>
-              <div className='h-4 w-full rounded' style={{ backgroundColor: 'var(--border)' }} />
-              <div className='h-4 w-full rounded' style={{ backgroundColor: 'var(--border)' }} />
-              <div className='h-4 w-full rounded' style={{ backgroundColor: 'var(--border)' }} />
-              <div className='h-4 w-full rounded' style={{ backgroundColor: 'var(--border)' }} />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    log.debug({}, 'SettingsPage mounted');
+    return () => {
+      log.debug({}, 'SettingsPage unmounted');
+    };
+  }, []);
 
   return (
     <div className='mx-auto max-w-2xl px-6 py-8'>

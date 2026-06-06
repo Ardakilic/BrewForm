@@ -8,7 +8,7 @@ import {
   useNavigation,
   useParams,
 } from 'react-router';
-import { commentApi, recipeApi } from '../../api/index.ts';
+import { ApiError, commentApi, recipeApi } from '../../api/index.ts';
 import type { CommentData, RecipeDetailResponse, TasteNoteFlatItem } from '../../api/types.ts';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
@@ -52,8 +52,11 @@ export const loader = async (
   let recipe: RecipeDetailResponse;
   try {
     recipe = await recipeApi.get(params.slug);
-  } catch {
-    throw new Response('Not Found', { status: 404 });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      throw new Response('Not Found', { status: 404 });
+    }
+    throw err;
   }
   if (fromQr && recipe.visibility !== 'public') {
     throw redirect('/recipes/unavailable');

@@ -20,6 +20,17 @@ vi.mock('../../api/client.ts', () => ({
   api: { get: vi.fn(), post: vi.fn() },
 }));
 
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
+
 vi.mock('../../contexts/AuthContext.tsx', () => ({
   useAuth: vi.fn(),
 }));
@@ -37,6 +48,8 @@ const mockUseAuth = vi.mocked(useAuth);
 const mockUseTranslation = vi.mocked(useTranslation);
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
+
+let testCurrentUserId = 'user-99';
 
 const recipeId = 'recipe-1';
 const recipeAuthorId = 'author-1';
@@ -65,6 +78,7 @@ const enT = (key: string) => {
     'comment.replyLabel': 'Reply',
     'comment.posted': 'Comment posted',
     'comment.replyPosted': 'Reply posted',
+    'common.delete': 'Delete',
   };
   return map[key] ?? key;
 };
@@ -88,6 +102,7 @@ const trT = (key: string) => {
     'comment.replyLabel': 'Yanıt',
     'comment.posted': 'Yorum gönderildi',
     'comment.replyPosted': 'Yanıt gönderildi',
+    'common.delete': 'Sil',
   };
   return map[key] ?? key;
 };
@@ -182,7 +197,7 @@ function renderCommentSection(
               return {
                 id: `new-${Date.now()}`,
                 content,
-                authorId: recipeAuthorId,
+                authorId: testCurrentUserId,
                 createdAt: new Date().toISOString(),
               };
             },
@@ -205,6 +220,7 @@ function renderCommentSection(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  testCurrentUserId = 'user-99';
   mockApi.get.mockResolvedValue([]);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
   mockUseTranslation.mockReturnValue(defaultTranslation);

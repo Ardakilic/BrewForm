@@ -3,6 +3,9 @@ import { Link, useFetcher } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import type { CommentData } from '../../api/types.ts';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('CommentSection');
 
 interface Props {
   recipeId: string;
@@ -75,6 +78,33 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
   const loadMoreFetcher = useFetcher();
 
   const submitIntent = useRef<string | { type: 'reply'; parentCommentId: string } | null>(null);
+  const deleteSnapshotRef = useRef<{ comments: CommentData[]; total: number } | null>(null);
+
+  useEffect(() => {
+    setComments(initialComments.data);
+    setPage(initialComments.meta.pagination.page);
+    setTotal(initialComments.meta.pagination.total);
+    setNewComment('');
+  }, [initialComments]);
+
+  useEffect(() => {
+    if (deleteFetcher.state !== 'idle') return;
+    if (!deleteFetcher.data) return;
+    const snapshot = deleteSnapshotRef.current;
+    deleteSnapshotRef.current = null;
+    if (
+      deleteFetcher.data && typeof deleteFetcher.data === 'object' && 'error' in deleteFetcher.data
+    ) {
+      if (snapshot) {
+        log.debug({ recipeId }, 'handleDelete rolled back');
+        setComments(snapshot.comments);
+        setTotal(snapshot.total);
+      }
+      setStatusMessage(t('comment.deleteFailed') ?? 'Delete failed');
+    } else {
+      log.debug({ recipeId }, 'handleDelete settled successfully');
+    }
+  }, [deleteFetcher.state, deleteFetcher.data, recipeId, t]);
 
   useEffect(() => {
     if (!statusMessage) return;
@@ -196,6 +226,8 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
 
   function handleDelete(commentId: string) {
     if (deleteFetcher.state !== 'idle') return;
+    log.debug({ recipeId, commentId }, 'handleDelete started');
+    deleteSnapshotRef.current = { comments, total };
     deleteFetcher.submit(null, { method: 'delete', action: `/comments/${commentId}` });
     setComments((prev) => {
       const isTopLevel = prev.some((c) => c.id === commentId);
@@ -281,7 +313,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
             disabled={deleteFetcher.state !== 'idle'}
             className='mt-2 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0'
           >
-            Delete
+            {t('common.delete')}
           </button>
         )}
 
@@ -369,7 +401,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
                       disabled={deleteFetcher.state !== 'idle'}
                       className='mt-1 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0'
                     >
-                      Delete
+                      {t('common.delete')}
                     </button>
                   )}
                 </article>

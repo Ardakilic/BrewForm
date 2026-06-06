@@ -1,10 +1,14 @@
+import { useEffect } from 'react';
 import { useFetcher } from 'react-router';
+import { createLogger } from '@/utils/logger.ts';
 
 interface Props {
   recipeId: string;
   initialFavourited: boolean;
   initialCount: number;
 }
+
+const log = createLogger('FavouriteButton');
 
 export function FavouriteButton({ recipeId, initialFavourited, initialCount }: Props) {
   const fetcher = useFetcher();
@@ -17,8 +21,16 @@ export function FavouriteButton({ recipeId, initialFavourited, initialCount }: P
     : 0;
   const count = (initialCount ?? 0) + pendingDelta;
 
+  useEffect(() => {
+    log.debug({ recipeId, state: fetcher.state }, 'fetcher state change');
+  }, [fetcher.state, recipeId]);
+
   return (
-    <fetcher.Form method='post' action={`/recipes/${recipeId}/favourite`}>
+    <fetcher.Form
+      method='post'
+      action={`/recipes/${recipeId}/favourite`}
+      onSubmit={() => log.debug({ recipeId }, 'submit started')}
+    >
       <input type='hidden' name='favourited' value={String(!favourited)} />
       <button
         type='submit'

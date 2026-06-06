@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any
+// deno-lint-ignore-file no-explicit-any require-await
 
 /**
  * Preservation Property Tests — Non-Admin and Unauthenticated Requests Always Return Public Recipes

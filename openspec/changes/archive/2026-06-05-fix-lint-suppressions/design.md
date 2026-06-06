@@ -13,7 +13,7 @@ Stakeholders: API service maintainers, anyone reading the user/profile code, fut
 - Remove three unnecessary `as any` casts in `user/service.ts` and prove via `deno check` that the file is fully typed without them.
 - Remove the three corresponding inline `// deno-lint-ignore no-explicit-any` comments in `user/service.ts` — the file should end with **zero** lint suppressions.
 - Convert inline `// deno-lint-ignore no-explicit-any` directives in five test files to a single file-level `// deno-lint-ignore-file no-explicit-any` on line 1 of each file, matching AGENTS.md §"Code style" and the style of the two test files that already do this.
-- Net reduction in directive count: **10 fewer directives total** (3 inline removed from `user/service.ts`; 11 inline across 4 test files collapsed into 4 file-level directives — 1 per file). The 8 file-level directives on production files are unchanged.
+- Net reduction in directive count: **8 fewer directives total** (3 inline removed from `user/service.ts`; 11 inline across 4 test files collapsed into 4 file-level directives — 1 per file; 2 already-file-level test files updated from the single-rule form to the both-rules form, no count change for those two). The 8 file-level directives on production files are unchanged. Total: 8 production file-level + 6 test file-level (4 newly-converted + 2 already-file-level updated) = 14.
 - All four `make` verification commands (`fmt-check`, `check`, `lint`, `test`) must pass.
 
 **Non-Goals:**
@@ -48,9 +48,9 @@ Stakeholders: API service maintainers, anyone reading the user/profile code, fut
 
 **Choice:** `apps/api/src/modules/recipe/service.preservation.test.ts:160,181` use the non-standard trailing-comment form `const w = where as any; // deno-lint-ignore no-explicit-any`. When converting to file-level, the entire suppression surface in the file is covered by the line-1 directive, so these trailing comments (and the 4 other inline ones in the same file) are simply removed. The two `as any` casts at L160 and L181 are preserved — only the comment is removed.
 
-### Decision 5: Do not touch `apps/api/src/middleware/crawler.test.ts` or `apps/api/src/routes/sitemap.test.ts`
+### Decision 5: Update `crawler.test.ts` and `sitemap.test.ts` to the both-rules form
 
-**Choice:** These two test files already use the file-level form on line 1. They are out of scope for the conversion step.
+**Choice:** `apps/api/src/middleware/crawler.test.ts` and `apps/api/src/routes/sitemap.test.ts` were the two test files that already used the single-rule file-level form `// deno-lint-ignore-file no-explicit-any` on line 1. To align with Decision 2 (both-rules form for all test file directives) and the AGENTS.md §"Code style" convention, both files are also updated to `// deno-lint-ignore-file no-explicit-any require-await`. This adds 2 file-level directives, bringing the test-side total to 6 (4 newly-converted test files + these 2 already-file-level files) and the overall directive count to 14 (8 production file-level + 6 test file-level).
 
 ## Risks / Trade-offs
 
@@ -67,7 +67,7 @@ This is a single-PR refactor with no runtime or API change. Rollback is a `git r
 **Pre-merge:**
 1. Apply edits to the 5 files listed in `tasks.md` §"Implementation".
 2. Run `make fmt && make check && make lint && make test` and confirm all four pass.
-3. Verify directive count: **22 → 12** (-10). The 8 existing file-level directives on production files are unchanged. Three inline directives in `user/service.ts` are removed (no replacement). 11 inline directives across 4 test files are replaced by 4 file-level directives (one per file). Net: 22 - 3 - 11 + 4 = 12.
+3. Verify directive count: **22 → 14** (-8). The 8 existing file-level directives on production files are unchanged. Three inline directives in `user/service.ts` are removed (no replacement). 11 inline directives across 4 test files are replaced by 4 file-level directives (one per file). The 2 already-file-level test files (`crawler.test.ts`, `sitemap.test.ts`) are updated from the single-rule form to the both-rules form (no count change for those two). Net: 22 - 3 - 11 + 4 + 2 = 14 (i.e. 8 production file-level + 6 test file-level).
 4. Open PR with the diff and a one-line description: "Remove unnecessary `as any` casts in `user/service.ts`; normalise test file suppressions to file-level per AGENTS.md convention."
 
 **Post-merge:** none. No database migration, no deploy step, no config change.

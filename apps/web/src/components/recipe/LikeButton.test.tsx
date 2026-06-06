@@ -1,7 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { LikeButton } from './LikeButton.tsx';
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
 
 function renderWithRouter(ui: React.ReactElement) {
   const router = createMemoryRouter(
@@ -10,7 +22,11 @@ function renderWithRouter(ui: React.ReactElement) {
         path: '/',
         element: ui,
         children: [
-          { path: 'recipes/:id/like', element: null },
+          {
+            path: 'recipes/:id/like',
+            action: () => new Promise(() => {}),
+            element: null,
+          },
         ],
       },
     ],
@@ -56,5 +72,21 @@ describe('LikeButton — Requirement 1.6 (count display when favourite)', () => 
     renderWithRouter(<LikeButton recipeId='recipe-1' initialLiked={false} initialCount={5} />);
     const button = screen.getByRole('button');
     expect(button.textContent).toContain('5');
+  });
+});
+
+describe('LikeButton — click interaction', () => {
+  it('clicking the button triggers optimistic count update and disables while pending', async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<LikeButton recipeId='recipe-1' initialLiked={false} initialCount={3} />);
+    const button = screen.getByRole('button');
+    expect(button.textContent).toContain('3');
+    expect(button).not.toBeDisabled();
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).toBeDisabled();
+    });
   });
 });

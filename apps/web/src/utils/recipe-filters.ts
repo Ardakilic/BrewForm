@@ -15,8 +15,16 @@ export interface ListFilterParams {
 }
 
 export function extractListParams(sp: URLSearchParams): Record<string, string> {
+  const rawPage = sp.get('page');
+  let page = '1';
+  if (rawPage !== null) {
+    const parsed = Number.parseInt(rawPage, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      page = String(parsed);
+    }
+  }
   const params: Record<string, string> = {
-    page: sp.get('page') ?? '1',
+    page,
     perPage: '12',
     sortBy: sp.get('sortBy') ?? 'createdAt',
   };

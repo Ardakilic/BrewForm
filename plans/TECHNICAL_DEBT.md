@@ -124,6 +124,7 @@
 - **Fix**: Use the `meta.pagination.total` from the API response envelope.
 - **Severity**: Pagination is effectively broken.
 - **PRD**: [`plans/D15-fix-comment-pagination.md`](plans/D15-fix-comment-pagination.md)
+- **Status**: Resolved in pilot scope (D10 follow-up; remaining scope: ensure all callers use meta.pagination.total not data.length)
 
 ### 3.8 Settings Page — Account Deletion Doesn't Logout
 - **File**: `apps/web/src/pages/settings/SettingsPage.tsx:57-63`
@@ -161,6 +162,7 @@
 - **Fix**: Store previous state and restore on API failure.
 - **Severity**: UI shows incorrect state after failed mutations.
 - **PRD**: [`plans/D18-fix-optimistic-rollback.md`](plans/D18-fix-optimistic-rollback.md)
+- **Status**: Resolved in pilot scope (D18 follow-up; remaining scope: ensure error tracking for rolled-back mutations)
 
 ### 4.5 Hardcoded English Strings (Incomplete i18n)
 - **Files**: `RecipeCreatePage.tsx`, `RecipeEditPage.tsx`, `AdminLayout.tsx`, `AdminDashboard.tsx`, `RecipeComparePage.tsx`
@@ -265,14 +267,14 @@
 | **P1** | Add React Router 7 loaders for data fetching (D10) | Frontend | High |
 | **P1** | Fix `DrinkType` type missing 4 values | Shared | Trivial |
 | **P1** | Fix admin soft-delete inconsistency | Backend | Trivial |
-| **P1** | Fix comment pagination (resolved by D10) | Frontend | Low |
+| **P1** | Fix comment pagination (resolved in pilot scope) | Frontend | Low |
 | **P1** | Fix account deletion logout | Frontend | Trivial |
 | **P1** | Eliminate `any` types in API services | Backend | High |
 | **P2** | Extract shared RecipeList components | Frontend | Medium |
 | **P2** | Extract shared recipe filter logic | Backend | Medium |
 | **P2** | Create single source of truth for enums | Shared | Medium |
 | **P2** | Fix `useUnitSystem` reactivity | Frontend | Low |
-| **P2** | Add optimistic update rollback (resolved by D10) | Frontend | Low |
+| **P2** | Add optimistic update rollback (resolved in pilot scope) | Frontend | Low |
 | **P2** | Replace `Record<string, unknown>` with proper types | Frontend | Medium |
 | **P3** | Add composite indexes for common queries | DB | Low |
 | **P3** | Complete OpenAPI documentation | Backend | Medium |

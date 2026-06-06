@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
-import { Link, useLoaderData, useNavigation, useParams, useSearchParams } from 'react-router';
+import { Link, useLoaderData, useParams, useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '@/utils/logger.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { UserProfileSkeleton } from '../../components/ui/Skeleton.tsx';
 import { FollowButton } from '../../components/user/FollowButton.tsx';
 
 const log = createLogger('UserProfilePage');
@@ -34,28 +33,26 @@ interface UserProfile {
 
 type Tab = 'recipes' | 'badges' | 'followers' | 'following';
 
+type FollowRecord =
+  | { id: string; follower: { id: string; username: string; displayName: string | null } }
+  | { id: string; following: { id: string; username: string; displayName: string | null } };
+
 export interface ProfileLoaderData {
-  profile: Record<string, unknown>;
-  followData: Record<string, unknown> | null;
+  profile: UserProfile;
+  followData: FollowRecord[] | null;
 }
 
 export const loader = async (
   { params, request }: { params: { username: string }; request: Request },
 ): Promise<ProfileLoaderData> => {
-  const profile = await api.get<Record<string, unknown>>(`/users/${params.username}`);
+  const profile = await api.get<UserProfile>(`/users/${params.username}`);
   const tab = new URL(request.url).searchParams.get('tab') ?? 'recipes';
-  let followData: Record<string, unknown> | null = null;
+  let followData: FollowRecord[] | null = null;
   if (tab === 'followers' || tab === 'following') {
-    followData = await api.get<Record<string, unknown>>(
-      `/follow/${(profile as Record<string, unknown>).id}/${tab}`,
-    );
+    followData = await api.get<FollowRecord[]>(`/follow/${profile.id}/${tab}`);
   }
   return { profile, followData };
 };
-
-type FollowRecord =
-  | { id: string; follower: { id: string; username: string; displayName: string | null } }
-  | { id: string; following: { id: string; username: string; displayName: string | null } };
 
 function FollowList(
   { data, emptyMsg }: { data: FollowRecord[]; emptyMsg: string },
@@ -89,14 +86,15 @@ export function UserProfilePage() {
   const { username } = useParams();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const navigation = useNavigation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile, followData } = useLoaderData() as ProfileLoaderData;
 
-  const typedProfile = profile as unknown as UserProfile;
-  const tab = (searchParams.get('tab') ?? 'recipes') as Tab;
+  const ALLOWED_TABS: readonly Tab[] = ['recipes', 'badges', 'followers', 'following'];
+  const rawTab = searchParams.get('tab') ?? 'recipes';
+  const tab: Tab = (ALLOWED_TABS as readonly string[]).includes(rawTab)
+    ? (rawTab as Tab)
+    : 'recipes';
   const isSelf = user?.username === username;
-  const loading = navigation.state === 'loading';
 
   useEffect(() => {
     log.debug({}, 'UserProfilePage mounted');
@@ -105,9 +103,6 @@ export function UserProfilePage() {
     };
   }, []);
 
-  if (loading && !profile) {
-    return <UserProfileSkeleton />;
-  }
   if (!profile) {
     return (
       <div
@@ -129,8 +124,8 @@ export function UserProfilePage() {
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>
       <SEOHead
-        title={typedProfile.displayName || typedProfile.username}
-        description={typedProfile.bio || undefined}
+        title={profile.displayName || profile.username}
+        description={profile.bio || undefined}
       />
 
       <div className='card mb-6'>
@@ -139,13 +134,13 @@ export function UserProfilePage() {
             className='w-16 h-16 rounded-full flex items-center justify-center text-2xl'
             style={{ backgroundColor: 'var(--bg-tertiary)' }}
           >
-            {typedProfile.avatarUrl
+            {profile.avatarUrl
               ? (
                 <img
-                  src={typedProfile.avatarUrl}
+                  src={profile.avatarUrl}
                   alt={t('a11y.userAvatar').replace(
                     '{name}',
-                    typedProfile.displayName || typedProfile.username,
+                    profile.displayName || profile.username,
                   )}
                   className='w-16 h-16 rounded-full object-cover'
                   loading='lazy'
@@ -154,30 +149,30 @@ export function UserProfilePage() {
                 />
               )
               : (
-                (typedProfile.displayName || typedProfile.username).charAt(0).toUpperCase()
+                (profile.displayName || profile.username).charAt(0).toUpperCase()
               )}
           </div>
           <div className='flex-1'>
             <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-              {typedProfile.displayName || typedProfile.username}
+              {profile.displayName || profile.username}
             </h1>
             <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
-              @{typedProfile.username}
+              @{profile.username}
             </p>
-            {typedProfile.bio && (
+            {profile.bio && (
               <p className='mt-2 text-sm' style={{ color: 'var(--text-secondary)' }}>
-                {typedProfile.bio}
+                {profile.bio}
               </p>
             )}
             <div className='flex gap-4 mt-2 text-sm' style={{ color: 'var(--text-secondary)' }}>
               <span>
-                <strong>{typedProfile.recipeCount}</strong> {t('user.recipes').toLowerCase()}
+                <strong>{profile.recipeCount}</strong> {t('user.recipes').toLowerCase()}
               </span>
               <span>
-                <strong>{typedProfile.followerCount}</strong> {t('user.followers').toLowerCase()}
+                <strong>{profile.followerCount}</strong> {t('user.followers').toLowerCase()}
               </span>
               <span>
-                <strong>{typedProfile.followingCount}</strong> {t('user.following').toLowerCase()}
+                <strong>{profile.followingCount}</strong> {t('user.following').toLowerCase()}
               </span>
             </div>
           </div>
@@ -190,8 +185,8 @@ export function UserProfilePage() {
               )
               : user && (
                 <FollowButton
-                  userId={typedProfile.id}
-                  initialFollowing={typedProfile.isFollowing}
+                  userId={profile.id}
+                  initialFollowing={profile.isFollowing}
                 />
               )}
           </div>
@@ -217,10 +212,10 @@ export function UserProfilePage() {
 
       {tab === 'recipes' && (
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          {typedProfile.recipes.length === 0
+          {profile.recipes.length === 0
             ? <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noRecipes')}</p>
             : (
-              typedProfile.recipes.map((r) => (
+              profile.recipes.map((r) => (
                 <Link
                   key={r.id}
                   to={`/recipes/${r.slug}`}
@@ -244,10 +239,10 @@ export function UserProfilePage() {
 
       {tab === 'badges' && (
         <div className='flex flex-wrap gap-3'>
-          {typedProfile.badges.length === 0
+          {profile.badges.length === 0
             ? <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noBadges')}</p>
             : (
-              typedProfile.badges.map((b) => (
+              profile.badges.map((b) => (
                 <div key={b.id} className='card text-center'>
                   <div className='text-2xl'>{b.emoji}</div>
                   <div className='text-sm font-medium' style={{ color: 'var(--text-primary)' }}>
@@ -264,13 +259,13 @@ export function UserProfilePage() {
 
       {tab === 'followers' && (
         <FollowList
-          data={(Array.isArray(followData) ? followData : []) as FollowRecord[]}
+          data={Array.isArray(followData) ? followData : []}
           emptyMsg={t('user.noFollowers')}
         />
       )}
       {tab === 'following' && (
         <FollowList
-          data={(Array.isArray(followData) ? followData : []) as FollowRecord[]}
+          data={Array.isArray(followData) ? followData : []}
           emptyMsg={t('user.noFollowing')}
         />
       )}

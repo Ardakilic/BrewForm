@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Link,
   redirect,
   useLoaderData,
+  useLocation,
   useNavigate,
   useNavigation,
   useSearchParams,
@@ -17,6 +18,9 @@ import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS_LIST, DRINK_TYPES_LIST } from '@brewform/shared/constants';
 import { TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
 import { AUTHOR_BUTTON_STYLE } from '../../components/recipe/RecipeCard.styles.ts';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('StarredRecipesPage');
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -81,11 +85,20 @@ export const loader = async (
 export function StarredRecipesPage() {
   const { recipesResponse, equipment, tasteNotes } = useLoaderData<StarredRecipesLoaderData>();
   const navigation = useNavigation();
-  const loading = navigation.state === 'loading';
+  const location = useLocation();
+  const loading = navigation.state === 'loading' &&
+    navigation.location?.pathname === location.pathname;
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'StarredRecipesPage mounted');
+    return () => {
+      log.debug({}, 'StarredRecipesPage unmounted');
+    };
+  }, []);
 
   const recipes = recipesResponse.data;
   const total = recipesResponse.meta?.pagination?.total ?? 0;
@@ -106,8 +119,23 @@ export function StarredRecipesPage() {
     [tasteNoteIdsParam],
   );
 
-  // Cast for TasteNotesFilter compatibility (expects TasteNoteFlat with depth)
-  const allTasteNotes = tasteNotes as unknown as TasteNoteFlat[];
+  // Map TasteNoteFlatItem -> TasteNoteFlat (TasteNotesFilter expects `depth`).
+  const allTasteNotes: TasteNoteFlat[] = tasteNotes.map((note) => {
+    let depth = 0;
+    let current: TasteNoteFlatItem | undefined = note;
+    const seen = new Set<string>();
+    while (current?.parentId && !seen.has(current.id)) {
+      seen.add(current.id);
+      depth++;
+      current = tasteNotes.find((n) => n.id === current?.parentId);
+    }
+    return {
+      id: note.id,
+      name: note.name,
+      parentId: note.parentId,
+      depth,
+    };
+  });
 
   function updateFilter(key: string, value: string | string[]) {
     const params = new URLSearchParams(searchParams);
