@@ -1,50 +1,42 @@
-import { useState } from 'react';
-import { api } from '../../api/client.ts';
+import { useFetcher } from 'react-router';
 
 interface Props {
   userId: string;
   initialFollowing: boolean;
-  onToggle?: (following: boolean) => void;
+  onToggle?: (next: boolean) => void;
 }
 
 export function FollowButton({ userId, initialFollowing, onToggle }: Props) {
-  const [following, setFollowing] = useState(initialFollowing);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const fetcher = useFetcher();
+  const optimistic = fetcher.formData ? fetcher.formData.get('following') === 'true' : null;
+  const following = optimistic ?? initialFollowing;
 
-  async function toggle() {
-    if (loading) return;
-    setError(null);
-    setLoading(true);
-    try {
-      if (following) {
-        await api.delete(`/follow/${userId}`);
-      } else {
-        await api.post(`/follow/${userId}`, {});
-      }
-      setFollowing(!following);
-      onToggle?.(!following);
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
+  const handleClick = () => {
+    const next = !following;
+    fetcher.submit(
+      { following: String(next) },
+      {
+        method: next ? 'post' : 'delete',
+        action: `/follow/${userId}`,
+        encType: 'application/x-www-form-urlencoded',
+      },
+    );
+    onToggle?.(next);
+  };
+
+  const isLoading = fetcher.state !== 'idle';
 
   return (
-    <>
-      <button
-        type='button'
-        onClick={toggle}
-        disabled={loading}
-        className='btn-secondary text-sm'
-        style={following
-          ? { backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }
-          : {}}
-      >
-        {loading ? '...' : following ? 'Following' : 'Follow'}
-      </button>
-      {error && <p className='text-sm' style={{ color: 'var(--color-error, red)' }}>{error}</p>}
-    </>
+    <button
+      type='button'
+      onClick={handleClick}
+      disabled={isLoading}
+      className='btn-secondary text-sm'
+      style={following
+        ? { backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }
+        : {}}
+    >
+      {isLoading ? '...' : following ? 'Following' : 'Follow'}
+    </button>
   );
 }

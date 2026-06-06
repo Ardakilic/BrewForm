@@ -1,24 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
-import { api } from '../../api/client.ts';
+import { Link, useFetcher } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-
-interface Comment {
-  id: string;
-  content: string;
-  authorId: string;
-  author?: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
-  authorUsername?: string;
-  authorAvatarUrl?: string | null;
-  createdAt: string;
-  isOp?: boolean;
-  replies?: Comment[];
-}
+import type { CommentData } from '../../api/types.ts';
 
 interface Props {
   recipeId: string;
   recipeAuthorId: string;
+  initialComments: {
+    data: CommentData[];
+    meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -64,21 +56,25 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
 // ---------------------------------------------------------------------------
 // CommentSection
 // ---------------------------------------------------------------------------
-export function CommentSection({ recipeId, recipeAuthorId }: Props) {
+export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Props) {
   const { user, isAuthenticated } = useAuth();
   const { t } = useTranslation();
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<CommentData[]>(initialComments.data);
   const [newComment, setNewComment] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(initialComments.meta.pagination.page);
+  const [total, setTotal] = useState(initialComments.meta.pagination.total);
   // replyingToId = the TOP-LEVEL comment id the form is attached to
   // replyMention = the @username pre-filled when replying to a reply
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
-  const [replyLoading, setReplyLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const submitFetcher = useFetcher();
+  const deleteFetcher = useFetcher();
+  const loadMoreFetcher = useFetcher();
+
+  const submitIntent = useRef<string | { type: 'reply'; parentCommentId: string } | null>(null);
 
   useEffect(() => {
     if (!statusMessage) return;
@@ -92,40 +88,17 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
     }
   }, [replyingToId]);
 
-  // A user can reply if they are: the recipe owner, an admin, OR the author of the top-level comment
-  function canReplyToComment(topLevelComment: Comment): boolean {
-    if (!isAuthenticated || user == null) return false;
-    if (user.id === recipeAuthorId) return true;
-    if (user.isAdmin === true) return true;
-    if (user.id === topLevelComment.authorId) return true;
-    return false;
-  }
-
+  // Process submitFetcher completion
   useEffect(() => {
-    api.get<Comment[]>(`/comments/recipe/${recipeId}?page=${page}`)
-      .then((data: Comment[]) => {
-        setComments(Array.isArray(data) ? data : []);
-        setTotal(Array.isArray(data) ? data.length : 0);
-      })
-      .catch(() => {});
-  }, [recipeId, page]);
+    if (submitFetcher.state !== 'idle' || !submitFetcher.data || !submitIntent.current) return;
+    const intent = submitIntent.current;
+    submitIntent.current = null;
+    const data = submitFetcher.data as CommentData;
 
-  function openReplyForm(topLevelCommentId: string, mentionUsername?: string) {
-    setReplyingToId(topLevelCommentId);
-    setReplyContent(mentionUsername ? `@${mentionUsername} ` : '');
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newComment.trim() || loading) return;
-    setLoading(true);
-    setStatusMessage('');
-    try {
-      const data = await api.post<Record<string, unknown>>(`/comments/recipe/${recipeId}`, {
-        content: newComment.trim(),
-      });
-      const optimisticComment: Comment = {
-        ...(data as unknown as Comment),
+    if (typeof intent === 'string') {
+      // Top-level comment
+      const comment: CommentData = {
+        ...data,
         author: user
           ? {
             id: user.id,
@@ -136,29 +109,14 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
           : undefined,
         replies: [],
       };
-      setComments((prev) => [optimisticComment, ...prev]);
+      setComments((prev) => [comment, ...prev]);
       setTotal((n) => n + 1);
       setNewComment('');
       setStatusMessage(t('comment.posted'));
-    } catch {
-      setStatusMessage(t('comment.error'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleReplySubmit(e: React.FormEvent, parentCommentId: string) {
-    e.preventDefault();
-    if (!replyContent.trim() || replyLoading) return;
-    setReplyLoading(true);
-    setStatusMessage('');
-    try {
-      const data = await api.post<Record<string, unknown>>(`/comments/recipe/${recipeId}`, {
-        content: replyContent.trim(),
-        parentCommentId,
-      });
-      const optimisticReply: Comment = {
-        ...(data as unknown as Comment),
+    } else {
+      // Reply
+      const reply: CommentData = {
+        ...data,
         author: user
           ? {
             id: user.id,
@@ -170,33 +128,100 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
       };
       setComments((prev) =>
         prev.map((c) =>
-          c.id === parentCommentId ? { ...c, replies: [...(c.replies ?? []), optimisticReply] } : c
+          c.id === intent.parentCommentId ? { ...c, replies: [...(c.replies ?? []), reply] } : c
         )
       );
       setReplyContent('');
       setReplyingToId(null);
       setStatusMessage(t('comment.replyPosted'));
-    } catch {
-      setStatusMessage(t('comment.error'));
-    } finally {
-      setReplyLoading(false);
     }
+  }, [submitFetcher.state, submitFetcher.data]);
+
+  // Process loadMoreFetcher completion
+  useEffect(() => {
+    if (loadMoreFetcher.state !== 'idle' || !loadMoreFetcher.data) return;
+    const result = loadMoreFetcher.data as {
+      data: CommentData[];
+      meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
+    };
+    if (!Array.isArray(result.data)) return;
+    setComments((prev) => [...prev, ...result.data]);
+    setPage(result.meta.pagination.page);
+    setTotal(result.meta.pagination.total);
+  }, [loadMoreFetcher.state, loadMoreFetcher.data]);
+
+  // A user can reply if they are: the recipe owner, an admin, OR the author of the top-level comment
+  function canReplyToComment(topLevelComment: CommentData): boolean {
+    if (!isAuthenticated || user == null) return false;
+    if (user.id === recipeAuthorId) return true;
+    if (user.isAdmin === true) return true;
+    if (user.id === topLevelComment.authorId) return true;
+    return false;
   }
 
-  function isRecipeAuthor(comment: Comment) {
+  function openReplyForm(topLevelCommentId: string, mentionUsername?: string) {
+    setReplyingToId(topLevelCommentId);
+    setReplyContent(mentionUsername ? `@${mentionUsername} ` : '');
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newComment.trim() || submitFetcher.state !== 'idle') return;
+    setStatusMessage('');
+    submitIntent.current = 'comment';
+    submitFetcher.submit(
+      { content: newComment.trim() },
+      {
+        method: 'post',
+        action: `/comments/recipe/${recipeId}`,
+        encType: 'application/x-www-form-urlencoded',
+      },
+    );
+  }
+
+  function handleReplySubmit(e: React.FormEvent, parentCommentId: string) {
+    e.preventDefault();
+    if (!replyContent.trim() || submitFetcher.state !== 'idle') return;
+    setStatusMessage('');
+    submitIntent.current = { type: 'reply', parentCommentId };
+    submitFetcher.submit(
+      { content: replyContent.trim(), parentCommentId },
+      {
+        method: 'post',
+        action: `/comments/recipe/${recipeId}`,
+        encType: 'application/x-www-form-urlencoded',
+      },
+    );
+  }
+
+  function handleDelete(commentId: string) {
+    if (deleteFetcher.state !== 'idle') return;
+    deleteFetcher.submit(null, { method: 'delete', action: `/comments/${commentId}` });
+    setComments((prev) => {
+      const isTopLevel = prev.some((c) => c.id === commentId);
+      if (isTopLevel) setTotal((n) => Math.max(0, n - 1));
+      return prev
+        .filter((c) => c.id !== commentId)
+        .map((c) => ({
+          ...c,
+          replies: c.replies?.filter((r) => r.id !== commentId),
+        }));
+    });
+  }
+
+  function isRecipeAuthor(comment: CommentData) {
     return comment.authorId === recipeAuthorId;
   }
 
-  function getAuthorUsername(comment: Comment): string | null {
-    return comment.author?.username || comment.authorUsername || null;
+  function getAuthorUsername(comment: CommentData): string | null {
+    return comment.author?.username || null;
   }
 
-  function getAuthorName(comment: Comment): string {
-    return comment.author?.displayName || comment.author?.username ||
-      comment.authorUsername || 'Unknown';
+  function getAuthorName(comment: CommentData): string {
+    return comment.author?.displayName || comment.author?.username || 'Unknown';
   }
 
-  function AuthorLink({ comment, className }: { comment: Comment; className?: string }) {
+  function AuthorLink({ comment, className }: { comment: CommentData; className?: string }) {
     const username = getAuthorUsername(comment);
     const name = getAuthorName(comment);
     if (username) {
@@ -212,9 +237,10 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
     return <span className={`${className ?? ''} text-[color:var(--text-primary)]`}>{name}</span>;
   }
 
-  function renderComment(comment: Comment) {
+  function renderComment(comment: CommentData) {
     const isReplyOpen = replyingToId === comment.id;
     const userCanReply = canReplyToComment(comment);
+    const userIsCommentAuthor = isAuthenticated && user != null && user.id === comment.authorId;
 
     return (
       <article
@@ -247,6 +273,18 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
           </button>
         )}
 
+        {/* Delete button for own comments */}
+        {userIsCommentAuthor && (
+          <button
+            type='button'
+            onClick={() => handleDelete(comment.id)}
+            disabled={deleteFetcher.state !== 'idle'}
+            className='mt-2 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0'
+          >
+            Delete
+          </button>
+        )}
+
         {/* Inline reply form */}
         {isReplyOpen && (
           <form onSubmit={(e) => handleReplySubmit(e, comment.id)} className='mt-3 ml-4'>
@@ -268,9 +306,9 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
               <button
                 type='submit'
                 className='btn-primary text-xs py-1 px-3'
-                disabled={replyLoading || !replyContent.trim()}
+                disabled={submitFetcher.state !== 'idle' || !replyContent.trim()}
               >
-                {replyLoading ? t('comment.posting') : t('comment.postReply')}
+                {submitFetcher.state !== 'idle' ? t('comment.posting') : t('comment.postReply')}
               </button>
               <button
                 type='button'
@@ -289,37 +327,54 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
         {/* Replies */}
         {Array.isArray(comment.replies) && comment.replies.length > 0 && (
           <div className='mt-3 ml-4 flex flex-col gap-2'>
-            {comment.replies.map((reply) => (
-              <article
-                key={reply.id}
-                className='rounded p-3 bg-[color:var(--bg-tertiary)] border border-[color:var(--border-primary)]'
-                aria-label={t('comment.replyBy').replace('{name}', getAuthorName(reply))}
-              >
-                <div className='flex items-center gap-2 mb-1'>
-                  <AuthorLink comment={reply} className='font-medium text-xs' />
-                  {isRecipeAuthor(reply) && (
-                    <span className='badge text-xs'>{t('comment.op')}</span>
+            {comment.replies.map((reply) => {
+              const userIsReplyAuthor = isAuthenticated && user != null &&
+                user.id === reply.authorId;
+
+              return (
+                <article
+                  key={reply.id}
+                  className='rounded p-3 bg-[color:var(--bg-tertiary)] border border-[color:var(--border-primary)]'
+                  aria-label={t('comment.replyBy').replace('{name}', getAuthorName(reply))}
+                >
+                  <div className='flex items-center gap-2 mb-1'>
+                    <AuthorLink comment={reply} className='font-medium text-xs' />
+                    {isRecipeAuthor(reply) && (
+                      <span className='badge text-xs'>{t('comment.op')}</span>
+                    )}
+                    <span className='text-xs text-[color:var(--text-tertiary)]'>
+                      {new Date(reply.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {/* Reply body -- inline markdown */}
+                  <p className='text-xs text-[color:var(--text-secondary)]'>
+                    {renderInlineMarkdown(reply.content)}
+                  </p>
+                  {/* Reply button on a reply -- opens form on the parent, pre-fills @username */}
+                  {userCanReply && !isReplyOpen && (
+                    <button
+                      type='button'
+                      onClick={() =>
+                        openReplyForm(comment.id, getAuthorUsername(reply) ?? undefined)}
+                      className='mt-1 text-xs text-[color:var(--accent-primary)] bg-transparent border-none cursor-pointer p-0'
+                    >
+                      {t('comment.reply')}
+                    </button>
                   )}
-                  <span className='text-xs text-[color:var(--text-tertiary)]'>
-                    {new Date(reply.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                {/* Reply body -- inline markdown */}
-                <p className='text-xs text-[color:var(--text-secondary)]'>
-                  {renderInlineMarkdown(reply.content)}
-                </p>
-                {/* Reply button on a reply -- opens form on the parent, pre-fills @username */}
-                {userCanReply && !isReplyOpen && (
-                  <button
-                    type='button'
-                    onClick={() => openReplyForm(comment.id, getAuthorUsername(reply) ?? undefined)}
-                    className='mt-1 text-xs text-[color:var(--accent-primary)] bg-transparent border-none cursor-pointer p-0'
-                  >
-                    {t('comment.reply')}
-                  </button>
-                )}
-              </article>
-            ))}
+                  {/* Delete button for own replies */}
+                  {userIsReplyAuthor && (
+                    <button
+                      type='button'
+                      onClick={() => handleDelete(reply.id)}
+                      disabled={deleteFetcher.state !== 'idle'}
+                      className='mt-1 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0'
+                    >
+                      Delete
+                    </button>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
       </article>
@@ -350,8 +405,12 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
             rows={3}
             aria-required='true'
           />
-          <button type='submit' className='btn-primary' disabled={loading || !newComment.trim()}>
-            {loading ? t('comment.posting') : t('comment.postComment')}
+          <button
+            type='submit'
+            className='btn-primary'
+            disabled={submitFetcher.state !== 'idle' || !newComment.trim()}
+          >
+            {submitFetcher.state !== 'idle' ? t('comment.posting') : t('comment.postComment')}
           </button>
         </form>
       )}
@@ -362,7 +421,15 @@ export function CommentSection({ recipeId, recipeAuthorId }: Props) {
 
       {total > comments.length && (
         <div className='mt-4 text-center'>
-          <button type='button' onClick={() => setPage((p) => p + 1)} className='btn-secondary'>
+          <button
+            type='button'
+            onClick={() => {
+              if (loadMoreFetcher.state !== 'idle') return;
+              loadMoreFetcher.load(`/comments/recipe/${recipeId}?page=${page + 1}`);
+            }}
+            className='btn-secondary'
+            disabled={loadMoreFetcher.state !== 'idle'}
+          >
             {t('comment.loadMore')}
           </button>
         </div>

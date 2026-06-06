@@ -3,19 +3,23 @@ import { Layout } from './components/layout/Layout.tsx';
 import { RequireAuth } from './components/auth/RequireAuth.tsx';
 
 // Eagerly loaded: high-traffic public pages and lightweight auth pages
-import { HomePage } from './pages/HomePage.tsx';
+import { HomePage, loader as homeLoader } from './pages/HomePage.tsx';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
 import { LoginPage } from './pages/auth/LoginPage.tsx';
 import { RegisterPage } from './pages/auth/RegisterPage.tsx';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.tsx';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage.tsx';
-import { RecipeListPage } from './pages/recipes/RecipeListPage.tsx';
-import { StarredRecipesPage } from './pages/recipes/StarredRecipesPage.tsx';
-import { RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
+import { loader as recipeListLoader, RecipeListPage } from './pages/recipes/RecipeListPage.tsx';
+import {
+  loader as starredLoader,
+  StarredRecipesPage,
+} from './pages/recipes/StarredRecipesPage.tsx';
+import { loader as detailLoader, RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
 import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
-import { UserProfilePage } from './pages/users/UserProfilePage.tsx';
+import { loader as profileLoader, UserProfilePage } from './pages/users/UserProfilePage.tsx';
+import { loader as settingsLoader, SettingsPage } from './pages/settings/SettingsPage.tsx';
 import { SetupListPage } from './pages/setups/SetupListPage.tsx';
 import { BeanListPage } from './pages/beans/BeanListPage.tsx';
 import { EquipmentListPage } from './pages/equipment/EquipmentListPage.tsx';
@@ -27,19 +31,36 @@ import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.tsx';
 import { ContactPage } from './pages/ContactPage.tsx';
 
+// Resource route actions
+import { likeAction } from './routes/like.ts';
+import { favouriteAction } from './routes/favourite.ts';
+import { rateAction } from './routes/rate.ts';
+import { followAction } from './routes/follow.ts';
+import { createCommentAction, deleteCommentAction } from './routes/comments.ts';
+
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
     errorElement: <RootErrorBoundary />,
     children: [
-      { index: true, element: <HomePage /> },
+      {
+        index: true,
+        element: <HomePage />,
+        loader: homeLoader,
+        errorElement: <RootErrorBoundary />,
+      },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'verify-email', element: <VerifyEmailPage /> },
-      { path: 'recipes', element: <RecipeListPage /> },
+      {
+        path: 'recipes',
+        loader: recipeListLoader,
+        element: <RecipeListPage />,
+        errorElement: <RootErrorBoundary />,
+      },
       {
         path: 'recipes/starred',
         element: (
@@ -47,6 +68,8 @@ export const router = createBrowserRouter([
             <StarredRecipesPage />
           </RequireAuth>
         ),
+        loader: starredLoader,
+        errorElement: <RootErrorBoundary />,
       },
       { path: 'recipes/unavailable', element: <RecipeNotAvailablePage /> },
       {
@@ -72,7 +95,12 @@ export const router = createBrowserRouter([
         },
       },
       { path: 'recipes/:slug/versions', element: <RecipeVersionsPage /> },
-      { path: 'recipes/:slug', element: <RecipeDetailPage /> },
+      {
+        path: 'recipes/:slug',
+        element: <RecipeDetailPage />,
+        loader: detailLoader,
+        errorElement: <RootErrorBoundary />,
+      },
       { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },
       {
         path: 'recipes/:id/edit',
@@ -104,21 +132,21 @@ export const router = createBrowserRouter([
           };
         },
       },
-      { path: 'u/:username', element: <UserProfilePage /> },
+      {
+        path: 'u/:username',
+        element: <UserProfilePage />,
+        loader: profileLoader,
+        errorElement: <RootErrorBoundary />,
+      },
       {
         path: 'settings',
-        lazy: async () => {
-          const { SettingsPage } = await import('./pages/settings/SettingsPage.tsx');
-          return {
-            Component: function SettingsPageGuarded() {
-              return (
-                <RequireAuth>
-                  <SettingsPage />
-                </RequireAuth>
-              );
-            },
-          };
-        },
+        element: (
+          <RequireAuth>
+            <SettingsPage />
+          </RequireAuth>
+        ),
+        loader: settingsLoader,
+        errorElement: <RootErrorBoundary />,
       },
       {
         path: 'setups',
@@ -194,6 +222,15 @@ export const router = createBrowserRouter([
       { path: 'contact', element: <ContactPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
       { path: 'terms', element: <TermsPage /> },
+
+      // Resource routes (action-only, no element):
+      { path: 'recipes/:id/like', action: likeAction },
+      { path: 'recipes/:id/favourite', action: favouriteAction },
+      { path: 'recipes/:id/rate', action: rateAction },
+      { path: 'follow/:userId', action: followAction },
+      { path: 'comments/recipe/:recipeId', action: createCommentAction },
+      { path: 'comments/:id', action: deleteCommentAction },
+
       { path: '*', element: <NotFoundPage /> },
     ],
   },

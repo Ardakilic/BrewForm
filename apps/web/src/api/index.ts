@@ -1,6 +1,13 @@
 import type { AuthUser } from '@brewform/shared/types';
 import { api, ApiError } from './client.ts';
-import type { RateResponse, RecipeDetailResponse, RecipeListItem } from './types.ts';
+import type {
+  CommentData,
+  EquipmentListItem,
+  RateResponse,
+  RecipeDetailResponse,
+  RecipeListItem,
+  TasteNoteFlatItem,
+} from './types.ts';
 
 export { api, ApiError };
 
@@ -59,8 +66,8 @@ export const recipeApi = {
 export const tasteApi = {
   hierarchy: () => api.get<Record<string, unknown>>('/taste-notes/hierarchy'),
   search: (query: string) =>
-    api.get<Record<string, unknown>[]>(`/taste-notes/search?q=${encodeURIComponent(query)}`),
-  flat: () => api.get<Record<string, unknown>[]>('/taste-notes/flat'),
+    api.get<TasteNoteFlatItem[]>(`/taste-notes/search?q=${encodeURIComponent(query)}`),
+  flat: () => api.get<TasteNoteFlatItem[]>('/taste-notes/flat'),
 };
 
 export const setupApi = {
@@ -82,7 +89,7 @@ export const beanApi = {
 };
 
 export const equipmentApi = {
-  list: () => api.get<Record<string, unknown>[]>('/equipment'),
+  list: () => api.get<EquipmentListItem[]>('/equipment'),
   create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/equipment', data),
   update: (id: string, data: Record<string, unknown>) =>
     api.patch<Record<string, unknown>>(`/equipment/${id}`, data),
@@ -132,6 +139,21 @@ export const followApi = {
   unfollow: (userId: string) => api.delete(`/follow/${userId}`),
   followers: (userId: string) => api.get<Record<string, unknown>>(`/follow/${userId}/followers`),
   following: (userId: string) => api.get<Record<string, unknown>>(`/follow/${userId}/following`),
+};
+
+export const commentApi = {
+  list: (recipeId: string, page: number) =>
+    api.getWithMeta<
+      {
+        data: CommentData[];
+        meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
+      }
+    >(
+      `/comments/recipe/${recipeId}?page=${page}`,
+    ),
+  create: (recipeId: string, payload: { content: string; parentCommentId?: string }) =>
+    api.post<CommentData>(`/comments/recipe/${recipeId}`, payload),
+  delete: (id: string) => api.delete<{ message: string }>(`/comments/${id}`),
 };
 
 export interface AdminUser {

@@ -127,20 +127,9 @@ export function useUnitSystem() {
 }
 ```
 
-### Option C: TanStack Query (If D10 is done)
+### Option C: TanStack Query (N/A — D10 used React Router 7 instead)
 
-If D10 is implemented, preferences become a query:
-
-```ts
-export function useUnitSystem(): UnitSystem {
-  const { data: prefs } = useQuery({
-    queryKey: ['preferences'],
-    queryFn: () => api.get('/preferences'),
-    staleTime: Infinity, // Preferences don't change often
-  });
-  return prefs?.unitSystem ?? 'metric';
-}
-```
+> **D10 was implemented using React Router 7 data loaders, not TanStack Query. Option C is not applicable. Use Option A or B.**
 
 ## Implementation Steps
 

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useLoaderData, useNavigate, useNavigation, useSearchParams } from 'react-router';
 import {
   api,
   coffeeVarietyApi,
   type CoffeeVarietySearchResult,
-  equipmentApi,
   recipeApi,
-  tasteApi,
 } from '../../api/index.ts';
+import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
+import type { EquipmentListItem, RecipeListItem, TasteNoteFlatItem } from '../../api/types.ts';
+import { extractListParams } from '../../utils/recipe-filters.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
@@ -19,7 +20,8 @@ import {
   VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
 import { useDebounce } from '../../hooks/useDebounce.ts';
-import { TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
+import { TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
+import type { TasteNoteFlat } from '../../components/recipe/TasteNotesFilter.tsx';
 import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('RecipeListPage');
@@ -69,44 +71,28 @@ export const EQUIPMENT_FILTER_TYPES = [
   'other',
 ] as const;
 
-interface EquipmentItem {
-  id: string;
-  name: string;
-  type: string;
+export interface RecipeListLoaderData {
+  recipesResponse: { data: RecipeListItem[]; meta: { pagination?: { total?: number } } };
+  equipment: EquipmentListItem[];
+  tasteNotes: TasteNoteFlatItem[];
 }
 
-interface RecipeListItem {
-  id: string;
-  slug: string;
-  title: string;
-  visibility: string;
-  likeCount: number;
-  commentCount: number;
-  forkCount: number;
-  author?: { username: string; displayName: string | null };
-  currentVersion?: { brewMethod: string; drinkType: string; rating: number | null };
-  createdAt: string;
-}
-
-// ---------------------------------------------------------------------------
-// Module-level cache for static data (survives re-renders, cleared on page reload)
-// ---------------------------------------------------------------------------
-let cachedEquipment: EquipmentItem[] | null = null;
-let cachedTasteNotes: TasteNoteFlat[] | null = null;
-
-/** Reset the static data cache (used in tests) */
-export function _resetStaticCache() {
-  cachedEquipment = null;
-  cachedTasteNotes = null;
-}
+export const loader = async ({ request }: { request: Request }): Promise<RecipeListLoaderData> => {
+  const url = new URL(request.url);
+  const params = extractListParams(url.searchParams);
+  const [recipesResponse, equipment, tasteNotes] = await Promise.all([
+    recipeApi.list(params),
+    getEquipmentCached(),
+    getTasteNotesCached(),
+  ]);
+  return { recipesResponse, equipment, tasteNotes };
+};
 
 export function RecipeListPage() {
+  const { recipesResponse, equipment: allEquipment, tasteNotes: allTasteNotes } =
+    useLoaderData() as RecipeListLoaderData;
   const [searchParams, setSearchParams] = useSearchParams();
-  const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [allEquipment, setAllEquipment] = useState<EquipmentItem[]>(cachedEquipment ?? []);
-  const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteFlat[]>(cachedTasteNotes ?? []);
+  const navigation = useNavigation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -124,7 +110,6 @@ export function RecipeListPage() {
   const visibility = searchParams.get('visibility') || '';
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
-  const debouncedSearch = useDebounce(search, 300);
   const equipmentId = searchParams.get('equipmentId') || '';
   const mainBrewer = searchParams.get('mainBrewer') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
@@ -142,23 +127,6 @@ export function RecipeListPage() {
         : [],
     [tasteNoteIdsParam],
   );
-
-  // Fetch static data once (equipment + taste notes), use module-level cache
-  useEffect(() => {
-    if (!cachedEquipment) {
-      equipmentApi.list().then((data) => {
-        cachedEquipment = data as EquipmentItem[];
-        setAllEquipment(cachedEquipment);
-      }).catch(() => {});
-    }
-
-    if (!cachedTasteNotes) {
-      tasteApi.flat().then((data) => {
-        cachedTasteNotes = data as TasteNoteFlat[];
-        setAllTasteNotes(cachedTasteNotes);
-      }).catch(() => {});
-    }
-  }, []);
 
   useEffect(() => {
     if (debouncedVarietySearch.length >= 2) {
@@ -195,39 +163,8 @@ export function RecipeListPage() {
     }
   }, [coffeeVarietyId]);
 
-  // Fetch recipes when filters change
-  useEffect(() => {
-    setLoading(true);
-    const params: Record<string, string> = { page: String(page), perPage: '12', sortBy };
-    if (brewMethod) params.brewMethod = brewMethod;
-    if (drinkType) params.drinkType = drinkType;
-    if (visibility && user?.isAdmin === true) params.visibility = visibility;
-    if (debouncedSearch) params.search = debouncedSearch;
-    if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
-    if (mainBrewer) params.mainBrewer = mainBrewer;
-    if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
-    if (coffeeVarietyId && isValidUuid(coffeeVarietyId)) params.coffeeVarietyId = coffeeVarietyId;
-
-    recipeApi.list(params).then((response) => {
-      const items = Array.isArray(response.data) ? response.data : [];
-      setRecipes(items as RecipeListItem[]);
-      const serverTotal = response.meta?.pagination?.total ?? items.length;
-      setTotal(serverTotal);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
-  }, [
-    page,
-    brewMethod,
-    drinkType,
-    visibility,
-    sortBy,
-    debouncedSearch,
-    user,
-    equipmentId,
-    mainBrewer,
-    tasteNoteIds,
-    coffeeVarietyId,
-  ]);
+  const recipes = recipesResponse.data;
+  const total = recipesResponse.meta.pagination?.total ?? recipes.length;
 
   function updateFilter(key: string, value: string | string[]) {
     const params = new URLSearchParams(searchParams);
@@ -246,16 +183,14 @@ export function RecipeListPage() {
     setSearchParams(params);
   }
 
-  // Group equipment by type for the dropdowns
-  const equipmentByType = EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentItem[]>>(
+  const equipmentByType = EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentListItem[]>>(
     (acc, type) => {
       acc[type] = allEquipment.filter((e) => e.type === type);
       return acc;
     },
-    {} as Record<string, EquipmentItem[]>,
+    {} as Record<string, EquipmentListItem[]>,
   );
 
-  // Active filter labels
   const activeEquipmentName = allEquipment.find((e) => e.id === equipmentId)?.name ?? null;
 
   const hasActiveFilters = !!(
@@ -425,7 +360,6 @@ export function RecipeListPage() {
               const items = equipmentByType[type];
               if (!items || items.length === 0) return null;
               const label = EQUIPMENT_TYPE_LABELS[type] ?? type;
-              // Is any item of this type currently selected?
               const selectedItem = items.find((e) => e.id === equipmentId);
               return (
                 <FilterField key={type} label={label}>
@@ -446,7 +380,7 @@ export function RecipeListPage() {
             {allTasteNotes.length > 0 && (
               <FilterField label={t('recipe.list.tasteNotesFilter')}>
                 <TasteNotesFilter
-                  allTasteNotes={allTasteNotes}
+                  allTasteNotes={allTasteNotes as unknown as TasteNoteFlat[]}
                   selectedIds={tasteNoteIds}
                   onChange={(ids) => updateFilter('tasteNoteIds', ids)}
                   placeholder={t('recipe.list.tasteNotesPlaceholder')}
@@ -551,7 +485,7 @@ export function RecipeListPage() {
 
         {/* ── Recipe grid ── */}
         <main className='flex-1'>
-          {loading
+          {navigation.state === 'loading' && navigation.location?.pathname === '/recipes'
             ? <RecipeCardSkeletonGrid />
             : recipes.length === 0
             ? (
@@ -650,14 +584,6 @@ function ActiveFilterBadge(
   );
 }
 
-/**
- * Render a clickable recipe card with an inner author button.
- *
- * Uses `<button>` for the author link instead of `<Link>` to avoid nested
- * `<a>` elements (invalid HTML). The card itself is a `<Link>` for native
- * link behavior (Ctrl+click/new tab), while the author button uses
- * `useNavigate` with `e.stopPropagation()` to prevent card navigation.
- */
 function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
   const navigate = useNavigate();
   return (

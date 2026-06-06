@@ -1,5 +1,12 @@
 # D18 — No Optimistic Update Rollback
 
+> **Resolved by D10 (React Router 7 migration).**
+> Optimistic update rollback is now handled by React Router 7's `useFetcher` API.
+> The `fetcher.formData` pattern provides automatic rollback: the optimistic state
+> is derived from `fetcher.formData` which reverts when the action fails (the
+> fetcher clears its formData on completion). No manual snapshot/restore logic needed.
+> Applied to `LikeButton`, `FavouriteButton`, and `FollowButton`.
+
 ## Severity
 
 **Medium**

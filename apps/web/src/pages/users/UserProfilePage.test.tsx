@@ -1,59 +1,88 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
-import { UserProfilePage } from './UserProfilePage.tsx';
+import { render, screen, waitFor } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 
-vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
-  useParams: vi.fn(),
-}));
+// ── Module mocks (hoisted) ─────────────────────────────────────────────────
+
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...(actual as object),
+    useSearchParams: vi.fn(),
+  };
+});
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTranslation: vi.fn(),
 }));
 
 vi.mock('../../contexts/AuthContext.tsx', () => ({
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useAuth: vi.fn(),
 }));
 
 vi.mock('../../api/client.ts', () => ({
   api: { get: vi.fn() },
-}));
-
-vi.mock('../../components/user/FollowButton.tsx', () => ({
-  FollowButton: ({ userId }: { userId: string }) => (
-    <button type='button' data-testid='follow-button' data-userid={userId}>Follow</button>
-  ),
+  ApiError: class extends Error {
+    code: string;
+    status: number;
+    constructor(code: string, message: string) {
+      super(message);
+      this.code = code;
+      this.status = 500;
+    }
+  },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
   SEOHead: vi.fn(() => null),
 }));
 
-import { useParams } from 'react-router';
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+  default: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+// ── Imports after mocks ────────────────────────────────────────────────────
+
+import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { api } from '../../api/client.ts';
+import { loader, UserProfilePage } from './UserProfilePage.tsx';
 
-const mockUseParams = vi.mocked(useParams);
+const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
-const mockApi = vi.mocked(api);
+const mockApiGet = vi.mocked(api.get);
+
+// ── Translation helpers ────────────────────────────────────────────────────
 
 const enT = (key: string) => {
   const map: Record<string, string> = {
     'common.loading': 'Loading...',
-    'user.notFound': 'User not found',
+    'user.notFound': 'User not found.',
     'user.editProfile': 'Edit Profile',
     'user.recipes': 'Recipes',
     'user.badges': 'Badges',
     'user.followers': 'Followers',
     'user.following': 'Following',
-    'user.noRecipes': 'No recipes yet',
-    'user.noBadges': 'No badges yet',
-    'user.noFollowers': 'No followers yet',
-    'user.noFollowing': 'Not following anyone yet',
+    'user.noRecipes': 'No recipes yet.',
+    'user.noBadges': 'No badges yet.',
+    'user.noFollowers': 'No followers yet.',
+    'user.noFollowing': 'Not following anyone yet.',
+    'a11y.userAvatar': "{name}'s avatar",
   };
   return map[key] ?? key;
 };
@@ -64,6 +93,13 @@ const defaultTranslation = {
   t: enT,
   availableLocales: ['en', 'tr'],
 };
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function makeSearchParams(init: Record<string, string> = {}) {
+  const params = new URLSearchParams(init);
+  return [params, vi.fn()] as ReturnType<typeof useSearchParams>;
+}
 
 const mockProfile = {
   id: 'profile-user-id',
@@ -89,25 +125,37 @@ const defaultAuth = {
   refreshUser: vi.fn(),
 };
 
+const HydrateFallback = () => null;
+
+function renderProfilePage(username = 'diana', tab = 'recipes') {
+  const router = createMemoryRouter(
+    [{ path: '/u/:username', element: <UserProfilePage />, loader, HydrateFallback }],
+    { initialEntries: [`/u/${username}?tab=${tab}`] },
+  );
+  return render(<RouterProvider router={router} />);
+}
+
+// ── Setup ──────────────────────────────────────────────────────────────────
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockUseParams.mockReturnValue({ username: 'diana' });
+  mockUseSearchParams.mockReturnValue(makeSearchParams());
   mockUseTranslation.mockReturnValue(defaultTranslation);
-  mockUseAuth.mockReturnValue(defaultAuth);
-  (mockApi.get as ReturnType<typeof vi.fn>).mockResolvedValue(mockProfile);
+  mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
+  mockApiGet.mockResolvedValue(mockProfile);
 });
+
+// ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('UserProfilePage — FollowButton visibility', () => {
   it('hides FollowButton when user is not logged in', async () => {
-    // Render inside act + setTimeout(0) so the API response microtask drains
-    // inside act scope, preventing orphaned state updates.
-    await act(async () => {
-      render(<UserProfilePage />);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+    renderProfilePage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Diana')).toBeInTheDocument();
     });
 
-    const followButton = screen.queryByTestId('follow-button');
-    expect(followButton).not.toBeInTheDocument();
+    expect(screen.queryByText('Follow')).not.toBeInTheDocument();
   });
 
   it('shows FollowButton when logged in and viewing another user', async () => {
@@ -124,13 +172,12 @@ describe('UserProfilePage — FollowButton visibility', () => {
         onboardingCompleted: true,
       },
       isAuthenticated: true,
-    });
+    } as ReturnType<typeof useAuth>);
 
-    render(<UserProfilePage />);
+    renderProfilePage();
 
-    const followButton = await screen.findByTestId('follow-button');
+    const followButton = await screen.findByText('Follow');
     expect(followButton).toBeInTheDocument();
-    expect(followButton).toHaveAttribute('data-userid', 'profile-user-id');
   });
 
   it('shows Edit Profile link instead of FollowButton when viewing own profile', async () => {
@@ -147,15 +194,14 @@ describe('UserProfilePage — FollowButton visibility', () => {
         onboardingCompleted: true,
       },
       isAuthenticated: true,
-    });
+    } as ReturnType<typeof useAuth>);
 
-    render(<UserProfilePage />);
+    renderProfilePage();
 
     const editProfileLink = await screen.findByText('Edit Profile');
     expect(editProfileLink).toBeInTheDocument();
     expect(editProfileLink).toHaveAttribute('href', '/settings');
 
-    const followButton = screen.queryByTestId('follow-button');
-    expect(followButton).not.toBeInTheDocument();
+    expect(screen.queryByText('Follow')).not.toBeInTheDocument();
   });
 });

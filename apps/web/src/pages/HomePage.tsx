@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useEffect } from 'react';
+import { Link, useLoaderData, useNavigate, useNavigation } from 'react-router';
 import { recipeApi } from '../api/index.ts';
 import type { RecipeListItem } from '../api/types.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
@@ -10,10 +10,26 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('HomePage');
 
+export interface HomeLoaderData {
+  latestRecipes: RecipeListItem[];
+  popularRecipes: RecipeListItem[];
+}
+
+export const loader = async (): Promise<HomeLoaderData> => {
+  const [latestRes, popularRes] = await Promise.all([
+    recipeApi.list({ perPage: '6', sortBy: 'createdAt' }),
+    recipeApi.list({ perPage: '6', sortBy: 'likeCount' }),
+  ]);
+  return {
+    latestRecipes: latestRes.data ?? [],
+    popularRecipes: popularRes.data ?? [],
+  };
+};
+
 export function HomePage() {
-  const [loading, setLoading] = useState(true);
-  const [latestRecipes, setLatestRecipes] = useState<RecipeListItem[]>([]);
-  const [popularRecipes, setPopularRecipes] = useState<RecipeListItem[]>([]);
+  const { latestRecipes, popularRecipes } = useLoaderData() as HomeLoaderData;
+  const navigation = useNavigation();
+  const loading = navigation.state === 'loading' && navigation.location?.pathname === '/';
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -21,20 +37,6 @@ export function HomePage() {
     return () => {
       log.debug({}, 'HomePage unmounted');
     };
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      recipeApi.list({ perPage: '6', sortBy: 'createdAt' }).then((response) => {
-        setLatestRecipes(response.data ?? []);
-      }),
-      recipeApi.list({ perPage: '6', sortBy: 'likeCount' }).then((response) => {
-        setPopularRecipes(response.data ?? []);
-      }),
-    ]).catch(() => {}).finally(() => {
-      setLoading(false);
-    });
   }, []);
 
   return (
