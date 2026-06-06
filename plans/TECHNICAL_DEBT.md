@@ -77,11 +77,10 @@
 
 ## 3. Medium — Architecture & Patterns
 
-### 3.1 No Data Fetching Cache Layer (Frontend)
+### 3.1 No Data Fetching Cache Layer (Frontend) — RESOLVED
 - **Files**: All pages in `apps/web/src/pages/`
-- **Issue**: Every page uses raw `useEffect` + `useState` + `fetch`. No React Query/TanStack Query, no SWR. This means: no automatic cache invalidation, no background refetching, no deduplication of concurrent requests, manual loading/error state per page.
-- **Fix**: Adopt TanStack Query for server state management. This eliminates ~80% of `useEffect`+`useState` data-fetching patterns.
-- **Severity**: Major DX and UX issue — stale data, unnecessary refetching, no optimistic updates with rollback.
+- **Fix**: Adopted React Router 7 data loaders + `useFetcher` for server state management. This eliminates ~80% of `useEffect`+`useState` data-fetching patterns across the 6 highest-traffic pages and 4 mutation components. Remaining pages to be migrated in follow-up PRs.
+- **Severity**: Major DX and UX issue (now resolved for pilot scope).
 - **PRD**: [`plans/D10-tanstack-query-migration.md`](plans/D10-tanstack-query-migration.md)
 
 ### 3.2 Recipe List Code Duplication (~90%)
@@ -125,6 +124,7 @@
 - **Fix**: Use the `meta.pagination.total` from the API response envelope.
 - **Severity**: Pagination is effectively broken.
 - **PRD**: [`plans/D15-fix-comment-pagination.md`](plans/D15-fix-comment-pagination.md)
+- **Status**: Resolved in pilot scope (D10 follow-up; remaining scope: ensure all callers use meta.pagination.total not data.length)
 
 ### 3.8 Settings Page — Account Deletion Doesn't Logout
 - **File**: `apps/web/src/pages/settings/SettingsPage.tsx:57-63`
@@ -162,6 +162,7 @@
 - **Fix**: Store previous state and restore on API failure.
 - **Severity**: UI shows incorrect state after failed mutations.
 - **PRD**: [`plans/D18-fix-optimistic-rollback.md`](plans/D18-fix-optimistic-rollback.md)
+- **Status**: Resolved in pilot scope (D18 follow-up; remaining scope: ensure error tracking for rolled-back mutations)
 
 ### 4.5 Hardcoded English Strings (Incomplete i18n)
 - **Files**: `RecipeCreatePage.tsx`, `RecipeEditPage.tsx`, `AdminLayout.tsx`, `AdminDashboard.tsx`, `RecipeComparePage.tsx`
@@ -263,17 +264,17 @@
 | **P0** | Fix recipe fork broken navigation | Frontend | Trivial |
 | **P0** | Consolidate email transporters | Backend | Low |
 | **P0** | Replace raw SQL in equipment model | Backend | Low |
-| **P1** | Add TanStack Query for data fetching | Frontend | High |
+| **P1** | Add React Router 7 loaders for data fetching (D10) | Frontend | High |
 | **P1** | Fix `DrinkType` type missing 4 values | Shared | Trivial |
 | **P1** | Fix admin soft-delete inconsistency | Backend | Trivial |
-| **P1** | Fix comment pagination | Frontend | Low |
+| **P1** | Fix comment pagination (resolved in pilot scope) | Frontend | Low |
 | **P1** | Fix account deletion logout | Frontend | Trivial |
 | **P1** | Eliminate `any` types in API services | Backend | High |
 | **P2** | Extract shared RecipeList components | Frontend | Medium |
 | **P2** | Extract shared recipe filter logic | Backend | Medium |
 | **P2** | Create single source of truth for enums | Shared | Medium |
 | **P2** | Fix `useUnitSystem` reactivity | Frontend | Low |
-| **P2** | Add optimistic update rollback | Frontend | Low |
+| **P2** | Add optimistic update rollback (resolved in pilot scope) | Frontend | Low |
 | **P2** | Replace `Record<string, unknown>` with proper types | Frontend | Medium |
 | **P3** | Add composite indexes for common queries | DB | Low |
 | **P3** | Complete OpenAPI documentation | Backend | Medium |

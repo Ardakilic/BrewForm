@@ -1,33 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { _resetStaticCache, StarredRecipesPage } from './StarredRecipesPage.tsx';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 
-// ── External deps ──────────────────────────────────────────────────────────
+// ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
-vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
-  useSearchParams: vi.fn(),
-  useNavigate: () => vi.fn(),
-}));
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...(actual as object),
+    useSearchParams: vi.fn(),
+  };
+});
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTranslation: vi.fn(),
 }));
 
 vi.mock('../../contexts/AuthContext.tsx', () => ({
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useAuth: vi.fn(),
 }));
 
+vi.mock('../../api/static-cache.ts', () => ({
+  getEquipmentCached: vi.fn(),
+  getTasteNotesCached: vi.fn(),
+}));
+
+vi.mock('../../utils/recipe-filters.ts', async (importOriginal) => {
+  const actual = await importOriginal() as {
+    extractListParams: (sp: URLSearchParams) => Record<string, string>;
+  };
+  return {
+    extractListParams: vi.fn(actual.extractListParams),
+  };
+});
+
 vi.mock('../../api/index.ts', () => ({
-  recipeApi: { list: vi.fn(), starred: vi.fn() },
-  equipmentApi: { list: vi.fn() },
-  tasteApi: { flat: vi.fn() },
+  recipeApi: { starred: vi.fn() },
+  api: { get: vi.fn() },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
   SEOHead: () => null,
+}));
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+  default: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
 }));
 
 vi.mock('@brewform/shared/constants', () => ({
@@ -39,16 +69,43 @@ vi.mock('@brewform/shared/constants', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { useSearchParams } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useAuth } from '../../contexts/AuthContext.tsx';
-import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
+import { I18nProvider, useTranslation } from '../../contexts/I18nContext.tsx';
+import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
+import { recipeApi } from '../../api/index.ts';
+import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
+import { loader, StarredRecipesPage } from './StarredRecipesPage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
-const mockRecipeApi = vi.mocked(recipeApi);
-const mockEquipmentApi = vi.mocked(equipmentApi);
-const mockTasteApi = vi.mocked(tasteApi);
+const mockRecipeApiStarred = vi.mocked(recipeApi.starred);
+const mockGetEquipmentCached = vi.mocked(getEquipmentCached);
+const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
+
+// ── Render helper ──────────────────────────────────────────────────────────
+
+const HydrateFallback = () => null;
+
+function renderStarredPage(initialEntries = ['/recipes/starred']) {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/recipes/starred',
+        element: <StarredRecipesPage />,
+        loader,
+        HydrateFallback,
+      },
+    ],
+    { initialEntries },
+  );
+  return render(
+    <I18nProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </I18nProvider>,
+  );
+}
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -119,24 +176,24 @@ function makeSearchParams(init: Record<string, string> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  _resetStaticCache();
+  mockRecipeApiStarred.mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } });
+  mockGetEquipmentCached.mockResolvedValue([]);
+  mockGetTasteNotesCached.mockResolvedValue([]);
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
   mockUseSearchParams.mockReturnValue(makeSearchParams());
-  mockRecipeApi.starred.mockResolvedValue([]);
-  mockEquipmentApi.list.mockResolvedValue([]);
-  mockTasteApi.flat.mockResolvedValue([]);
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('StarredRecipesPage', () => {
   it('renders page title and filter labels', async () => {
-    render(<StarredRecipesPage />);
+    renderStarredPage();
 
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Starred Recipes' })).toBeInTheDocument();
+    });
 
-    expect(screen.getByRole('heading', { name: 'Starred Recipes' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Filters' })).toBeInTheDocument();
     expect(screen.getByText('Search')).toBeInTheDocument();
     expect(screen.getByText('Brew Method')).toBeInTheDocument();
@@ -151,25 +208,27 @@ describe('StarredRecipesPage', () => {
       user: null,
     } as ReturnType<typeof useAuth>);
 
-    render(<StarredRecipesPage />);
+    renderStarredPage();
 
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(screen.getByText('Please log in to view your starred recipes.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText('Please log in to view your starred recipes.'),
+      ).toBeInTheDocument();
+    });
   });
 
   it('shows empty state when no starred recipes', async () => {
-    mockRecipeApi.starred.mockResolvedValue([]);
-
-    render(<StarredRecipesPage />);
+    renderStarredPage();
 
     await waitFor(() => {
-      expect(screen.getByText("You haven't starred any recipes yet.")).toBeInTheDocument();
+      expect(
+        screen.getByText("You haven't starred any recipes yet."),
+      ).toBeInTheDocument();
     });
   });
 
   it('renders recipe cards with clickable author link when API returns data', async () => {
-    mockRecipeApi.starred.mockResolvedValue({
+    mockRecipeApiStarred.mockResolvedValue({
       data: [
         {
           id: 'recipe-1',
@@ -180,33 +239,64 @@ describe('StarredRecipesPage', () => {
           commentCount: 2,
           forkCount: 1,
           author: { username: 'testuser', displayName: 'Test User' },
-          currentVersion: { brewMethod: 'espresso_machine', drinkType: 'espresso', rating: null },
+          currentVersion: {
+            brewMethod: 'espresso_machine',
+            drinkType: 'espresso',
+            rating: null,
+          },
           createdAt: '2025-01-01T00:00:00Z',
         },
       ],
       meta: { pagination: { total: 1 } },
     });
 
-    render(<StarredRecipesPage />);
+    renderStarredPage();
 
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
+    await waitFor(() => {
+      expect(screen.getByText('Test Recipe')).toBeInTheDocument();
+    });
 
-    expect(screen.getByText('Test Recipe')).toBeInTheDocument();
-
-    // Author display name should be visible as a button
     const authorButton = screen.getByRole('button', { name: 'Test User' });
     expect(authorButton).toBeInTheDocument();
   });
 
   it('passes filters to API when search params are present', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({ brewMethod: 'espresso_machine' }));
+    renderStarredPage(['/recipes/starred?brewMethod=espresso_machine']);
 
-    render(<StarredRecipesPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Starred Recipes' })).toBeInTheDocument();
+    });
 
-    await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
-
-    expect(mockRecipeApi.starred).toHaveBeenCalledWith(
+    expect(mockRecipeApiStarred).toHaveBeenCalledWith(
       expect.objectContaining({ brewMethod: 'espresso_machine' }),
     );
+  });
+
+  it('transitions from loading to loaded state when loader resolves', async () => {
+    let resolveLoader: (
+      value: { data: never[]; meta: { pagination: { total: number } } },
+    ) => void;
+    const deferred = new Promise<{
+      data: never[];
+      meta: { pagination: { total: number } };
+    }>((resolve) => {
+      resolveLoader = resolve;
+    });
+    mockRecipeApiStarred.mockReturnValueOnce(deferred);
+
+    renderStarredPage();
+
+    // HydrateFallback renders null; component is not yet present
+    expect(
+      screen.queryByRole('heading', { name: 'Starred Recipes' }),
+    ).not.toBeInTheDocument();
+
+    resolveLoader!({ data: [], meta: { pagination: { total: 0 } } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { name: 'Starred Recipes' }),
+      ).toBeInTheDocument();
+    });
   });
 });

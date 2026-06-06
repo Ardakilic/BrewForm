@@ -1,44 +1,46 @@
-import { useState } from 'react';
-import { api } from '../../api/client.ts';
+import { useEffect } from 'react';
+import { useFetcher } from 'react-router';
+import { createLogger } from '@/utils/logger.ts';
 
 interface Props {
   recipeId: string;
   initialLiked: boolean;
-  initialCount?: number;
+  initialCount: number;
 }
 
-export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
-  const [liked, setLiked] = useState(initialLiked);
-  const [count, setCount] = useState<number | undefined>(initialCount);
-  const [loading, setLoading] = useState(false);
+const log = createLogger('LikeButton');
 
-  async function toggle() {
-    if (loading) return;
-    setLoading(true);
-    try {
-      // The API uses a toggle endpoint (POST) — one call to like, another to unlike.
-      const result = await api.post<{ liked: boolean }>(`/recipes/${recipeId}/like`, {});
-      const nowLiked = (result as { liked: boolean }).liked;
-      setLiked(nowLiked);
-      setCount((c) => nowLiked ? c + 1 : c - 1);
-    } catch {
-    } finally {
-      setLoading(false);
-    }
-  }
+export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
+  const fetcher = useFetcher();
+
+  const optimisticLiked = fetcher.formData ? fetcher.formData.get('liked') === 'true' : null;
+  const liked = optimisticLiked ?? initialLiked;
+
+  const pendingDelta = fetcher.formData ? (fetcher.formData.get('liked') === 'true' ? 1 : -1) : 0;
+  const count = (initialCount ?? 0) + pendingDelta;
+
+  useEffect(() => {
+    log.debug({ recipeId, state: fetcher.state }, 'fetcher state change');
+  }, [fetcher.state, recipeId]);
 
   return (
-    <button
-      type='button'
-      onClick={toggle}
-      disabled={loading}
-      className='flex items-center gap-1 rounded px-3 py-1 text-sm transition-opacity hover:opacity-80'
-      style={{
-        backgroundColor: liked ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-        color: liked ? 'var(--bg-primary)' : 'var(--text-primary)',
-      }}
+    <fetcher.Form
+      method='post'
+      action={`/recipes/${recipeId}/like`}
+      onSubmit={() => log.debug({ recipeId }, 'submit started')}
     >
-      ❤️ {count !== undefined && count}
-    </button>
+      <input type='hidden' name='liked' value={String(!liked)} />
+      <button
+        type='submit'
+        disabled={fetcher.state !== 'idle'}
+        className='flex items-center gap-1 rounded px-3 py-1 text-sm transition-opacity hover:opacity-80'
+        style={{
+          backgroundColor: liked ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+          color: liked ? 'var(--bg-primary)' : 'var(--text-primary)',
+        }}
+      >
+        ❤️ {count}
+      </button>
+    </fetcher.Form>
   );
 }

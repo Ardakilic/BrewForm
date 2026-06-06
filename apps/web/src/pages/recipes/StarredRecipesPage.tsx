@@ -1,13 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { equipmentApi, recipeApi, tasteApi } from '../../api/index.ts';
+import {
+  Link,
+  redirect,
+  useLoaderData,
+  useLocation,
+  useNavigate,
+  useNavigation,
+  useSearchParams,
+} from 'react-router';
+import { ApiError, recipeApi } from '../../api/index.ts';
+import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
+import { extractListParams } from '../../utils/recipe-filters.ts';
+import type { EquipmentListItem, RecipeListItem, TasteNoteFlatItem } from '../../api/types.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { BREW_METHODS_LIST, DRINK_TYPES_LIST } from '@brewform/shared/constants';
 import { TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
 import { AUTHOR_BUTTON_STYLE } from '../../components/recipe/RecipeCard.styles.ts';
-import { useDebounce } from '../../hooks/useDebounce.ts';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('StarredRecipesPage');
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -43,75 +56,58 @@ export const EQUIPMENT_FILTER_TYPES = [
   'other',
 ] as const;
 
-interface EquipmentItem {
-  id: string;
-  name: string;
-  type: string;
+export interface StarredRecipesLoaderData {
+  recipesResponse: { data: RecipeListItem[]; meta: { pagination?: { total?: number } } };
+  equipment: EquipmentListItem[];
+  tasteNotes: TasteNoteFlatItem[];
 }
 
-interface RecipeListItem {
-  id: string;
-  slug: string;
-  title: string;
-  visibility: string;
-  likeCount: number;
-  commentCount: number;
-  forkCount: number;
-  author?: { username: string; displayName: string | null };
-  currentVersion?: { brewMethod: string; drinkType: string; rating: number | null };
-  createdAt: string;
-}
-
-// ---------------------------------------------------------------------------
-// Module-level cache for static data (survives re-renders, cleared on page reload)
-// ---------------------------------------------------------------------------
-let cachedEquipment: EquipmentItem[] | null = null;
-let cachedTasteNotes: TasteNoteFlat[] | null = null;
-
-function isRecipeListItem(value: unknown): value is RecipeListItem {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  if (typeof v.id !== 'string' || typeof v.slug !== 'string' || typeof v.title !== 'string') {
-    return false;
+export const loader = async (
+  { request }: { request: Request },
+): Promise<StarredRecipesLoaderData> => {
+  const url = new URL(request.url);
+  const params = extractListParams(url.searchParams);
+  try {
+    const [recipesResponse, equipment, tasteNotes] = await Promise.all([
+      recipeApi.starred(params),
+      getEquipmentCached(),
+      getTasteNotesCached(),
+    ]);
+    return { recipesResponse, equipment, tasteNotes };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      throw redirect('/login');
+    }
+    throw err;
   }
-  if (
-    typeof v.likeCount !== 'number' || typeof v.commentCount !== 'number' ||
-    typeof v.forkCount !== 'number'
-  ) {
-    return false;
-  }
-  if (v.currentVersion !== null && v.currentVersion !== undefined) {
-    if (typeof v.currentVersion !== 'object') return false;
-    const cv = v.currentVersion as Record<string, unknown>;
-    if (typeof cv.brewMethod !== 'string' || typeof cv.drinkType !== 'string') return false;
-    if (cv.rating !== null && typeof cv.rating !== 'number') return false;
-  }
-  return true;
-}
-
-/** Reset the static data cache (used in tests) */
-export function _resetStaticCache() {
-  cachedEquipment = null;
-  cachedTasteNotes = null;
-}
+};
 
 export function StarredRecipesPage() {
+  const { recipesResponse, equipment, tasteNotes } = useLoaderData<StarredRecipesLoaderData>();
+  const navigation = useNavigation();
+  const location = useLocation();
+  const loading = navigation.state === 'loading' &&
+    navigation.location?.pathname === location.pathname;
   const [searchParams, setSearchParams] = useSearchParams();
-  const [recipes, setRecipes] = useState<RecipeListItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [allEquipment, setAllEquipment] = useState<EquipmentItem[]>(cachedEquipment ?? []);
-  const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteFlat[]>(cachedTasteNotes ?? []);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'StarredRecipesPage mounted');
+    return () => {
+      log.debug({}, 'StarredRecipesPage unmounted');
+    };
+  }, []);
+
+  const recipes = recipesResponse.data;
+  const total = recipesResponse.meta?.pagination?.total ?? 0;
 
   const page = Number(searchParams.get('page')) || 1;
   const brewMethod = searchParams.get('brewMethod') || '';
   const drinkType = searchParams.get('drinkType') || '';
   const sortBy = searchParams.get('sortBy') || 'createdAt';
   const search = searchParams.get('search') || '';
-  const debouncedSearch = useDebounce(search, 300);
   const equipmentId = searchParams.get('equipmentId') || '';
   const mainBrewer = searchParams.get('mainBrewer') || '';
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') || '';
@@ -123,57 +119,23 @@ export function StarredRecipesPage() {
     [tasteNoteIdsParam],
   );
 
-  // Fetch static data once (equipment + taste notes), use module-level cache
-  useEffect(() => {
-    if (!cachedEquipment) {
-      equipmentApi.list().then((data) => {
-        cachedEquipment = data as EquipmentItem[];
-        setAllEquipment(cachedEquipment);
-      }).catch(() => {});
+  // Map TasteNoteFlatItem -> TasteNoteFlat (TasteNotesFilter expects `depth`).
+  const allTasteNotes: TasteNoteFlat[] = tasteNotes.map((note) => {
+    let depth = 0;
+    let current: TasteNoteFlatItem | undefined = note;
+    const seen = new Set<string>();
+    while (current?.parentId && !seen.has(current.id)) {
+      seen.add(current.id);
+      depth++;
+      current = tasteNotes.find((n) => n.id === current?.parentId);
     }
-
-    if (!cachedTasteNotes) {
-      tasteApi.flat().then((data) => {
-        cachedTasteNotes = data as TasteNoteFlat[];
-        setAllTasteNotes(cachedTasteNotes);
-      }).catch(() => {});
-    }
-  }, []);
-
-  // Fetch starred recipes when filters change
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const params: Record<string, string> = { page: String(page), perPage: '12', sortBy };
-    if (brewMethod) params.brewMethod = brewMethod;
-    if (drinkType) params.drinkType = drinkType;
-    if (debouncedSearch) params.search = debouncedSearch;
-    if (equipmentId && isValidUuid(equipmentId)) params.equipmentId = equipmentId;
-    if (mainBrewer) params.mainBrewer = mainBrewer;
-    if (tasteNoteIds.length > 0) params.tasteNoteIds = tasteNoteIds.join(',');
-
-    recipeApi.starred(params).then((response) => {
-      const rawItems: unknown[] = Array.isArray(response.data) ? response.data : [];
-      const items = rawItems.filter(isRecipeListItem);
-      setRecipes(items);
-      const serverTotal = response.meta?.pagination?.total ?? items.length;
-      setTotal(serverTotal);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
-  }, [
-    page,
-    brewMethod,
-    drinkType,
-    sortBy,
-    debouncedSearch,
-    equipmentId,
-    mainBrewer,
-    tasteNoteIds,
-    isAuthenticated,
-  ]);
+    return {
+      id: note.id,
+      name: note.name,
+      parentId: note.parentId,
+      depth,
+    };
+  });
 
   function updateFilter(key: string, value: string | string[]) {
     const params = new URLSearchParams(searchParams);
@@ -193,16 +155,16 @@ export function StarredRecipesPage() {
   }
 
   // Group equipment by type for the dropdowns
-  const equipmentByType = EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentItem[]>>(
+  const equipmentByType = EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentListItem[]>>(
     (acc, type) => {
-      acc[type] = allEquipment.filter((e) => e.type === type);
+      acc[type] = equipment.filter((e) => e.type === type);
       return acc;
     },
-    {} as Record<string, EquipmentItem[]>,
+    {} as Record<string, EquipmentListItem[]>,
   );
 
   // Active filter labels
-  const activeEquipmentName = allEquipment.find((e) => e.id === equipmentId)?.name ?? null;
+  const activeEquipmentName = equipment.find((e) => e.id === equipmentId)?.name ?? null;
 
   const hasActiveFilters = !!(
     brewMethod ||

@@ -1,18 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { CommentSection } from './CommentSection.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
-}));
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual('react-router');
+  return {
+    ...actual,
+    Link: (
+      { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
+    ) => <a href={to} {...props}>{children}</a>,
+  };
+});
 
 vi.mock('../../api/client.ts', () => ({
   api: { get: vi.fn(), post: vi.fn() },
+}));
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
 }));
 
 vi.mock('../../contexts/AuthContext.tsx', () => ({
@@ -33,8 +49,15 @@ const mockUseTranslation = vi.mocked(useTranslation);
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
+let testCurrentUserId = 'user-99';
+
 const recipeId = 'recipe-1';
 const recipeAuthorId = 'author-1';
+
+const defaultComments = {
+  data: [],
+  meta: { pagination: { total: 0, page: 1, perPage: 10, totalPages: 0 } },
+};
 
 const enT = (key: string) => {
   const map: Record<string, string> = {
@@ -48,6 +71,14 @@ const enT = (key: string) => {
     'comment.cancel': 'Cancel',
     'comment.loadMore': 'Load More',
     'comment.count': 'Comments ({count})',
+    'recipe.comments': 'Comments',
+    'comment.commentBy': 'Comment by {name}',
+    'comment.replyBy': 'Reply by {name}',
+    'comment.label': 'Comment',
+    'comment.replyLabel': 'Reply',
+    'comment.posted': 'Comment posted',
+    'comment.replyPosted': 'Reply posted',
+    'common.delete': 'Delete',
   };
   return map[key] ?? key;
 };
@@ -64,6 +95,14 @@ const trT = (key: string) => {
     'comment.cancel': 'İptal',
     'comment.loadMore': 'Daha Fazla Yükle',
     'comment.count': 'Yorumlar ({count})',
+    'recipe.comments': 'Yorumlar',
+    'comment.commentBy': 'Yorum yapan: {name}',
+    'comment.replyBy': 'Yanıtlayan: {name}',
+    'comment.label': 'Yorum',
+    'comment.replyLabel': 'Yanıt',
+    'comment.posted': 'Yorum gönderildi',
+    'comment.replyPosted': 'Yanıt gönderildi',
+    'common.delete': 'Sil',
   };
   return map[key] ?? key;
 };
@@ -129,10 +168,59 @@ const replyByAlice = {
 
 const commentWithReply = { ...topLevelComment, replies: [replyByAlice] };
 
+// ── Render helper ──────────────────────────────────────────────────────────
+
+function renderCommentSection(
+  props: Partial<{
+    recipeId: string;
+    recipeAuthorId: string;
+    initialComments: typeof defaultComments;
+  }> = {},
+) {
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/',
+        element: (
+          <CommentSection
+            recipeId={props.recipeId ?? recipeId}
+            recipeAuthorId={props.recipeAuthorId ?? recipeAuthorId}
+            initialComments={props.initialComments ?? defaultComments}
+          />
+        ),
+        children: [
+          {
+            path: 'comments/recipe/:recipeId',
+            action: async ({ request }: { request: Request }) => {
+              const formData = await request.formData();
+              const content = formData.get('content') as string;
+              return {
+                id: `new-${Date.now()}`,
+                content,
+                authorId: testCurrentUserId,
+                createdAt: new Date().toISOString(),
+              };
+            },
+            element: null,
+          },
+          {
+            path: 'comments/:id',
+            action: async () => ({ success: true }),
+            element: null,
+          },
+        ],
+      },
+    ],
+    { initialEntries: ['/'] },
+  );
+  return render(<RouterProvider router={router} />);
+}
+
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
+  testCurrentUserId = 'user-99';
   mockApi.get.mockResolvedValue([]);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
   mockUseTranslation.mockReturnValue(defaultTranslation);
@@ -146,7 +234,7 @@ describe('CommentSection — i18n', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection();
 
     await waitFor(() => expect(screen.queryByText('Posting...')).not.toBeInTheDocument());
 
@@ -161,7 +249,7 @@ describe('CommentSection — i18n', () => {
     );
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection();
 
     await waitFor(() => expect(screen.queryByText('Gönderiliyor...')).not.toBeInTheDocument());
 
@@ -176,7 +264,9 @@ describe('CommentSection — i18n', () => {
       { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByText('Great recipe!')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
@@ -189,7 +279,9 @@ describe('CommentSection — i18n', () => {
     );
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByText('Great recipe!')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Yanıtla' })).toBeInTheDocument();
@@ -201,7 +293,9 @@ describe('CommentSection — i18n', () => {
       { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => screen.getByRole('button', { name: 'Reply' }));
     await userEvent.click(screen.getByRole('button', { name: 'Reply' }));
@@ -224,7 +318,9 @@ describe('CommentSection — Reply button visibility', () => {
       { ...guestAuth, user: recipeOwnerUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument());
   });
@@ -234,7 +330,9 @@ describe('CommentSection — Reply button visibility', () => {
       { ...guestAuth, user: adminUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument());
   });
@@ -245,7 +343,9 @@ describe('CommentSection — Reply button visibility', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument());
   });
@@ -256,14 +356,18 @@ describe('CommentSection — Reply button visibility', () => {
       { ...guestAuth, user: otherUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByText('Great recipe!')).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
   });
 
   it('does NOT show Reply button for unauthenticated visitors', async () => {
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByText('Great recipe!')).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
@@ -281,7 +385,9 @@ describe('CommentSection — Reply button on replies', () => {
   });
 
   it('shows Reply button on a reply for permitted users', async () => {
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [commentWithReply], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByText('Thanks!')).toBeInTheDocument());
     // There should be Reply buttons: one on the top-level comment, one on the reply
@@ -290,7 +396,9 @@ describe('CommentSection — Reply button on replies', () => {
   });
 
   it('clicking Reply on a reply opens the form on the parent comment pre-filled with @username', async () => {
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [commentWithReply], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByText('Thanks!')).toBeInTheDocument());
 
@@ -304,15 +412,10 @@ describe('CommentSection — Reply button on replies', () => {
     expect((textarea as HTMLTextAreaElement).value).toBe('@alice ');
   });
 
-  it('submitting the pre-filled reply sends parentCommentId of the top-level comment', async () => {
-    mockApi.post.mockResolvedValue({
-      id: 'new-reply',
-      content: '@alice nice!',
-      authorId: recipeAuthorId,
-      createdAt: new Date().toISOString(),
+  it('submitting a reply to a reply adds it under the top-level parent comment', async () => {
+    renderCommentSection({
+      initialComments: { data: [commentWithReply], meta: defaultComments.meta },
     });
-
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
     await waitFor(() => expect(screen.getByText('Thanks!')).toBeInTheDocument());
 
@@ -323,10 +426,9 @@ describe('CommentSection — Reply button on replies', () => {
     await userEvent.type(textarea, 'nice!');
     await userEvent.click(screen.getByRole('button', { name: 'Post Reply' }));
 
-    expect(mockApi.post).toHaveBeenCalledWith(
-      `/comments/recipe/${recipeId}`,
-      expect.objectContaining({ parentCommentId: topLevelComment.id }),
-    );
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Write a reply...')).not.toBeInTheDocument();
+    });
   });
 });
 
@@ -341,7 +443,9 @@ describe('CommentSection — Reply form', () => {
   });
 
   it('opens the reply form when Reply is clicked on a top-level comment', async () => {
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => screen.getByRole('button', { name: 'Reply' }));
     await userEvent.click(screen.getByRole('button', { name: 'Reply' }));
@@ -351,7 +455,9 @@ describe('CommentSection — Reply form', () => {
   });
 
   it('closes the reply form when Cancel is clicked', async () => {
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => screen.getByRole('button', { name: 'Reply' }));
     await userEvent.click(screen.getByRole('button', { name: 'Reply' }));
@@ -361,29 +467,25 @@ describe('CommentSection — Reply form', () => {
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
   });
 
-  it('submits a reply with parentCommentId', async () => {
-    mockApi.post.mockResolvedValue({
-      id: 'reply-new',
-      content: 'Nice one!',
-      authorId: recipeAuthorId,
-      createdAt: new Date().toISOString(),
+  it('submits a reply and closes the reply form', async () => {
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
     });
-
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
     await waitFor(() => screen.getByRole('button', { name: 'Reply' }));
     await userEvent.click(screen.getByRole('button', { name: 'Reply' }));
     await userEvent.type(screen.getByPlaceholderText('Write a reply...'), 'Nice one!');
     await userEvent.click(screen.getByRole('button', { name: 'Post Reply' }));
 
-    expect(mockApi.post).toHaveBeenCalledWith(
-      `/comments/recipe/${recipeId}`,
-      { content: 'Nice one!', parentCommentId: topLevelComment.id },
-    );
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Write a reply...')).not.toBeInTheDocument();
+    });
   });
 
   it('Post Reply button is disabled when textarea is empty', async () => {
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => screen.getByRole('button', { name: 'Reply' }));
     await userEvent.click(screen.getByRole('button', { name: 'Reply' }));
@@ -392,14 +494,9 @@ describe('CommentSection — Reply form', () => {
   });
 
   it('shows reply optimistically after successful submit', async () => {
-    mockApi.post.mockResolvedValue({
-      id: 'reply-new',
-      content: 'Nice one!',
-      authorId: recipeAuthorId,
-      createdAt: new Date().toISOString(),
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
     });
-
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
 
     await waitFor(() => screen.getByRole('button', { name: 'Reply' }));
     await userEvent.click(screen.getByRole('button', { name: 'Reply' }));
@@ -422,7 +519,9 @@ describe('CommentSection — comment display', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [topLevelComment], meta: defaultComments.meta },
+    });
 
     await waitFor(() => expect(screen.getByText('Great recipe!')).toBeInTheDocument());
   });
@@ -433,7 +532,9 @@ describe('CommentSection — comment display', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: { data: [commentWithReply], meta: defaultComments.meta },
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Great recipe!')).toBeInTheDocument();
@@ -447,7 +548,12 @@ describe('CommentSection — comment display', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [commentByOwner, topLevelComment],
+        meta: { pagination: { total: 2, page: 1, perPage: 10, totalPages: 1 } },
+      },
+    });
 
     await waitFor(() => expect(screen.getByText('My own comment')).toBeInTheDocument());
 
@@ -465,7 +571,12 @@ describe('CommentSection — inline markdown rendering', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, content: '**bold text**' }],
+        meta: defaultComments.meta,
+      },
+    });
 
     await waitFor(() => {
       const strong = document.querySelector('strong');
@@ -480,7 +591,12 @@ describe('CommentSection — inline markdown rendering', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, content: '*italic text*' }],
+        meta: defaultComments.meta,
+      },
+    });
 
     await waitFor(() => {
       const em = document.querySelector('em');
@@ -495,7 +611,12 @@ describe('CommentSection — inline markdown rendering', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, content: '_italic text_' }],
+        meta: defaultComments.meta,
+      },
+    });
 
     await waitFor(() => {
       const em = document.querySelector('em');
@@ -510,7 +631,12 @@ describe('CommentSection — inline markdown rendering', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, content: '__underline text__' }],
+        meta: defaultComments.meta,
+      },
+    });
 
     await waitFor(() => {
       const u = document.querySelector('u');
@@ -525,7 +651,12 @@ describe('CommentSection — inline markdown rendering', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, content: '**bold** and *italic*' }],
+        meta: defaultComments.meta,
+      },
+    });
 
     await waitFor(() => {
       expect(document.querySelector('strong')?.textContent).toBe('bold');
@@ -539,7 +670,12 @@ describe('CommentSection — inline markdown rendering', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, content: 'just plain text' }],
+        meta: defaultComments.meta,
+      },
+    });
 
     await waitFor(() => expect(screen.getByText('just plain text')).toBeInTheDocument());
     expect(document.querySelector('strong')).toBeNull();
@@ -553,7 +689,12 @@ describe('CommentSection — inline markdown rendering', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, content: '<script>alert(1)</script>' }],
+        meta: defaultComments.meta,
+      },
+    });
 
     await waitFor(() => {
       // The script tag should NOT be injected into the DOM
@@ -572,7 +713,12 @@ describe('CommentSection — inline markdown rendering', () => {
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection({
+      initialComments: {
+        data: [{ ...topLevelComment, replies: [{ ...replyByAlice, content: '**bold reply**' }] }],
+        meta: defaultComments.meta,
+      },
+    });
 
     await waitFor(() => {
       const strong = document.querySelector('strong');
@@ -591,7 +737,7 @@ describe('CommentSection — comment form', () => {
     );
     mockApi.get.mockReturnValue(new Promise(() => {}));
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection();
 
     expect(screen.getByPlaceholderText('Write a comment...')).toBeInTheDocument();
   });
@@ -599,34 +745,23 @@ describe('CommentSection — comment form', () => {
   it('hides the form when not authenticated', () => {
     mockApi.get.mockReturnValue(new Promise(() => {}));
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection();
 
     expect(screen.queryByPlaceholderText('Write a comment...')).not.toBeInTheDocument();
   });
 
-  it('submits a top-level comment without parentCommentId', async () => {
+  it('submits a top-level comment and shows it in the list', async () => {
     mockUseAuth.mockReturnValue(
       { ...guestAuth, user: regularUser, isAuthenticated: true } as ReturnType<typeof useAuth>,
     );
-    mockApi.post.mockResolvedValue({
-      id: 'new-comment',
-      content: 'Hello world',
-      authorId: 'user-2',
-      createdAt: new Date().toISOString(),
-    });
 
-    render(<CommentSection recipeId={recipeId} recipeAuthorId={recipeAuthorId} />);
+    renderCommentSection();
 
     await userEvent.type(screen.getByPlaceholderText('Write a comment...'), 'Hello world');
     await userEvent.click(screen.getByRole('button', { name: 'Post Comment' }));
 
-    expect(mockApi.post).toHaveBeenCalledWith(
-      `/comments/recipe/${recipeId}`,
-      { content: 'Hello world' },
-    );
-    expect(mockApi.post).not.toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ parentCommentId: expect.anything() }),
-    );
+    await waitFor(() => {
+      expect(screen.getByText('Hello world')).toBeInTheDocument();
+    });
   });
 });

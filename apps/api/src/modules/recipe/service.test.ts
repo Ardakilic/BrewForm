@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-explicit-any
+// deno-lint-ignore-file no-explicit-any require-await
 
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';

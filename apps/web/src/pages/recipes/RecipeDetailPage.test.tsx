@@ -1,34 +1,53 @@
+import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { RecipeDetailPage } from './RecipeDetailPage.tsx';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
+import { loader, RecipeDetailPage } from './RecipeDetailPage.tsx';
 
-// ── External deps ──────────────────────────────────────────────────────────
+// ── Partial mock of react-router: override only useNavigation ─────────────
 
-vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
-  useParams: vi.fn(),
-  useSearchParams: vi.fn(),
-  useNavigate: vi.fn(),
+const { useNavigationM } = vi.hoisted(() => ({
+  useNavigationM: vi.fn(() => ({
+    state: 'idle' as const,
+    location: undefined as { pathname: string } | undefined,
+  })),
 }));
+
+vi.mock('react-router', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('react-router')>();
+  return { ...mod, useNavigation: useNavigationM };
+});
+
+// ── Context mocks ─────────────────────────────────────────────────────────
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: vi.fn(),
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
 vi.mock('../../contexts/AuthContext.tsx', () => ({
   useAuth: vi.fn(),
+  AuthProvider: ({ children }: { children: ReactNode }) => children,
 }));
+
+// ── API mocks ─────────────────────────────────────────────────────────────
 
 vi.mock('../../api/index.ts', () => ({
-  recipeApi: { get: vi.fn(), rate: vi.fn() },
-  tasteApi: { flat: vi.fn().mockResolvedValue([]) },
+  recipeApi: { get: vi.fn() },
+  commentApi: { list: vi.fn() },
 }));
 
-vi.mock('../../components/seo/SEOHead.tsx', () => ({
-  SEOHead: vi.fn(() => null),
+vi.mock('../../api/static-cache.ts', () => ({
+  getTasteNotesCached: vi.fn(),
 }));
+
+vi.mock('../../hooks/useUnitSystem.ts', () => ({
+  useUnitSystem: vi.fn(() => 'metric'),
+}));
+
+// ── UI component mocks ────────────────────────────────────────────────────
+
+vi.mock('../../components/seo/SEOHead.tsx', () => ({ SEOHead: vi.fn(() => null) }));
 vi.mock('../../components/seo/JsonLd.tsx', () => ({ RecipeJsonLd: () => null }));
 vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => null }));
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
@@ -38,9 +57,17 @@ vi.mock(
   '../../components/recipe/ForkCard.tsx',
   () => ({ ForkCard: () => <div data-testid='fork-card'>ForkCard</div> }),
 );
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 vi.mock('@brewform/shared/constants', () => ({ EMOJI_TAGS_LIST: [] }));
 
-// New component mocks for redesigned page
 vi.mock(
   '../../components/recipe/BreadcrumbNav.tsx',
   () => ({ BreadcrumbNav: () => <div data-testid='breadcrumb-nav' /> }),
@@ -80,18 +107,17 @@ vi.mock(
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { recipeApi } from '../../api/index.ts';
+import { commentApi, recipeApi } from '../../api/index.ts';
+import { getTasteNotesCached } from '../../api/static-cache.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 
-const mockUseParams = vi.mocked(useParams);
-const mockUseSearchParams = vi.mocked(useSearchParams);
-const mockUseNavigate = vi.mocked(useNavigate);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
-const mockRecipeApi = vi.mocked(recipeApi);
+const mockRecipeApiGet = vi.mocked(recipeApi.get);
+const mockCommentApiList = vi.mocked(commentApi.list);
+const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
 const mockSEOHead = vi.mocked(SEOHead);
 
 // ── Translation helpers ────────────────────────────────────────────────────
@@ -189,57 +215,94 @@ const sampleRecipe = {
   },
 };
 
+const emptyComments = {
+  data: [],
+  meta: { pagination: { total: 0, page: 1, perPage: 20, totalPages: 0 } },
+};
+
+// ── Render helper ──────────────────────────────────────────────────────────
+
+interface RenderOpts {
+  errorElement?: ReactNode;
+}
+
+function renderDetailPage(slug = 'my-espresso', opts: RenderOpts = {}) {
+  const route: Record<string, unknown> = {
+    path: '/recipes/:slug',
+    element: <RecipeDetailPage />,
+    loader,
+  };
+  if (opts.errorElement) route.errorElement = opts.errorElement;
+
+  const router = createMemoryRouter([route], {
+    initialEntries: [`/recipes/${slug}`],
+  });
+  return render(<RouterProvider router={router} />);
+}
+
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
-  mockUseParams.mockReturnValue({ slug: 'my-espresso' });
-  mockUseSearchParams.mockReturnValue(
-    [new URLSearchParams(), vi.fn()] as ReturnType<typeof useSearchParams>,
-  );
-  mockUseNavigate.mockReturnValue(vi.fn());
-  mockRecipeApi.get.mockResolvedValue(sampleRecipe as unknown as Record<string, unknown>);
+  mockRecipeApiGet.mockResolvedValue(sampleRecipe as unknown as Record<string, unknown>);
+  mockCommentApiList.mockResolvedValue(emptyComments);
+  mockGetTasteNotesCached.mockResolvedValue([]);
+  useNavigationM.mockReturnValue({ state: 'idle', location: undefined });
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('RecipeDetailPage — loading and not-found states', () => {
-  it('shows skeleton while fetching — English', () => {
-    mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
+  it('shows skeleton while downloading — English', async () => {
+    useNavigationM.mockReturnValue({
+      state: 'loading',
+      location: { pathname: '/recipes/test-recipe' },
+    });
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
-    const skeletons = document.querySelectorAll('.animate-pulse');
-    expect(skeletons.length).toBeGreaterThan(0);
+    await waitFor(() => {
+      const skeletons = document.querySelectorAll('.animate-pulse');
+      expect(skeletons.length).toBeGreaterThan(0);
+    });
   });
 
-  it('shows skeleton while fetching — Turkish', () => {
+  it('shows skeleton while downloading — Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockRecipeApi.get.mockReturnValue(new Promise(() => {}));
+    useNavigationM.mockReturnValue({
+      state: 'loading',
+      location: { pathname: '/recipes/test-recipe' },
+    });
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
-    const skeletons = document.querySelectorAll('.animate-pulse');
-    expect(skeletons.length).toBeGreaterThan(0);
+    await waitFor(() => {
+      const skeletons = document.querySelectorAll('.animate-pulse');
+      expect(skeletons.length).toBeGreaterThan(0);
+    });
   });
 
-  it('shows "Recipe not found" when API returns null — English', async () => {
-    mockRecipeApi.get.mockResolvedValue(null as unknown as Record<string, unknown>);
+  it('shows "Recipe not found" when API rejects — English', async () => {
+    mockRecipeApiGet.mockRejectedValue(new Error('Not found'));
 
-    render(<RecipeDetailPage />);
+    renderDetailPage('my-espresso', {
+      errorElement: <div>{enT('recipe.notFound')}</div>,
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Recipe not found')).toBeInTheDocument();
     });
   });
 
-  it('shows "Tarif bulunamadı" when API returns null — Turkish', async () => {
+  it('shows "Tarif bulunamadı" when API rejects — Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockRecipeApi.get.mockResolvedValue(null as unknown as Record<string, unknown>);
+    mockRecipeApiGet.mockRejectedValue(new Error('Not found'));
 
-    render(<RecipeDetailPage />);
+    renderDetailPage('my-espresso', {
+      errorElement: <div>{trT('recipe.notFound')}</div>,
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Tarif bulunamadı')).toBeInTheDocument();
@@ -249,7 +312,7 @@ describe('RecipeDetailPage — loading and not-found states', () => {
 
 describe('RecipeDetailPage — new header components', () => {
   it('renders BreadcrumbNav', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('breadcrumb-nav')).toBeInTheDocument();
@@ -257,7 +320,7 @@ describe('RecipeDetailPage — new header components', () => {
   });
 
   it('renders StatCards', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
@@ -265,7 +328,7 @@ describe('RecipeDetailPage — new header components', () => {
   });
 
   it('renders ShareSection', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('share-section')).toBeInTheDocument();
@@ -273,7 +336,7 @@ describe('RecipeDetailPage — new header components', () => {
   });
 
   it('Print button is present', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Print recipe' })).toBeInTheDocument();
@@ -281,7 +344,7 @@ describe('RecipeDetailPage — new header components', () => {
   });
 
   it('Focus button is present', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Focus mode' })).toBeInTheDocument();
@@ -331,7 +394,7 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
   it('Fork Recipe button shown for authenticated non-owner', async () => {
     mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Fork recipe' })).toBeInTheDocument();
@@ -339,8 +402,7 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
   });
 
   it('Fork Recipe button hidden for guest', async () => {
-    // guestAuth is the default from beforeEach
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
@@ -352,7 +414,7 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
   it('Fork Recipe button hidden for owner', async () => {
     mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
@@ -385,7 +447,7 @@ describe('RecipeDetailPage — owner actions', () => {
   it('shows Edit button for the recipe owner — English', async () => {
     mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'Edit' })).toBeInTheDocument();
@@ -396,7 +458,7 @@ describe('RecipeDetailPage — owner actions', () => {
     mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: 'Düzenle' })).toBeInTheDocument();
@@ -404,7 +466,7 @@ describe('RecipeDetailPage — owner actions', () => {
   });
 
   it('does not show Edit button for non-owners', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByText('My Espresso')).toBeInTheDocument();
@@ -416,7 +478,7 @@ describe('RecipeDetailPage — owner actions', () => {
 
 describe('RecipeDetailPage — canonical SEO', () => {
   it('passes canonical pointing to /recipes/:slug', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
 
@@ -426,7 +488,7 @@ describe('RecipeDetailPage — canonical SEO', () => {
   });
 
   it('does NOT pass noIndex — recipe detail page should be indexed', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
 
@@ -436,9 +498,7 @@ describe('RecipeDetailPage — canonical SEO', () => {
   });
 });
 
-// ── New test groups for recipe-action-buttons-ui ───────────────────────────
-
-import { within } from '@testing-library/react';
+// ── Social_Actions_Card layout ─────────────────────────────────────────────
 
 const nonOwnerAuth = {
   user: {
@@ -461,8 +521,7 @@ const nonOwnerAuth = {
 
 describe('RecipeDetailPage — Social_Actions_Card layout', () => {
   it('guest: social-actions-card inner div has flex and flex-row classes', async () => {
-    // guestAuth is the default from beforeEach
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
@@ -478,7 +537,7 @@ describe('RecipeDetailPage — Social_Actions_Card layout', () => {
   it('authenticated non-owner: social-actions-card inner div has flex and flex-row classes', async () => {
     mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
@@ -496,7 +555,7 @@ describe('RecipeDetailPage — Fork_Card visibility', () => {
   it('authenticated non-owner: fork-card is rendered', async () => {
     mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('fork-card')).toBeInTheDocument();
@@ -504,8 +563,7 @@ describe('RecipeDetailPage — Fork_Card visibility', () => {
   });
 
   it('guest (isAuthenticated=false): fork-card is NOT rendered', async () => {
-    // guestAuth is the default from beforeEach
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
@@ -535,7 +593,7 @@ describe('RecipeDetailPage — Fork_Card visibility', () => {
     };
     mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
@@ -549,7 +607,7 @@ describe('RecipeDetailPage — Fork_Card is sibling, not child of Social_Actions
   it('authenticated non-owner: fork-card is NOT inside social-actions-card', async () => {
     mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('fork-card')).toBeInTheDocument();
@@ -561,23 +619,20 @@ describe('RecipeDetailPage — Fork_Card is sibling, not child of Social_Actions
   });
 });
 
-// ── Task 12.4: Responsive layout tests ────────────────────────────────────
-
 describe('RecipeDetailPage — Responsive layout', () => {
   it('main content grid has grid-cols-1 md:grid-cols-3 class', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
     });
 
-    // The main grid wrapping the main column and sidebar
     const grid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-3');
     expect(grid).not.toBeNull();
   });
 
   it('StatCards container is present', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
@@ -585,13 +640,12 @@ describe('RecipeDetailPage — Responsive layout', () => {
   });
 
   it('sidebar has space-y-4 class', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
     });
 
-    // The sidebar is the div containing social-actions-card with space-y-4
     const socialActionsCard = screen.getByTestId('social-actions-card');
     const sidebar = socialActionsCard.parentElement;
     expect(sidebar).not.toBeNull();
@@ -599,7 +653,7 @@ describe('RecipeDetailPage — Responsive layout', () => {
   });
 
   it('sidebar has no-print class for print hiding', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();
@@ -612,7 +666,7 @@ describe('RecipeDetailPage — Responsive layout', () => {
   });
 
   it('ShareSection is the first child of the sidebar', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('share-section')).toBeInTheDocument();
@@ -645,8 +699,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
   };
 
   it('guest (isAuthenticated=false): recipe notes section is NOT rendered', async () => {
-    // guestAuth is the default from beforeEach
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
@@ -658,7 +711,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
   it('authenticated user: recipe notes section IS rendered', async () => {
     mockUseAuth.mockReturnValue(authenticatedAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-notes-section')).toBeInTheDocument();
@@ -686,7 +739,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     };
     mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
 
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-notes-section')).toBeInTheDocument();
@@ -696,7 +749,7 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
 
 describe('RecipeDetailPage — Print layout hiding', () => {
   it('comment section wrapper has no-print class', async () => {
-    render(<RecipeDetailPage />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('social-actions-card')).toBeInTheDocument();

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This spec defines linting conventions for the BrewForm API and shared packages to ensure style consistency and prevent unnecessary type escape hatches. It establishes that production TypeScript code under `apps/api/src/modules/` and `packages/shared/src/` shall not contain `as any` casts where TypeScript's own type inference (including rest-destructure typing on object literals and Drizzle-inferred row types) already produces an equivalent type, and that test files (`*.test.ts`) under `apps/api/src/` requiring `no-explicit-any` suppression shall use a single file-level `// deno-lint-ignore-file no-explicit-any` directive on line 1 rather than scattered inline suppressions. Together these rules promote readable, type-safe code, keep lint suppressions auditable in one predictable location per file, and reduce noise from defensive casts that add no type information.
+This spec defines linting conventions for the BrewForm API and shared packages to ensure style consistency and prevent unnecessary type escape hatches. It establishes that production TypeScript code under `apps/api/src/modules/` and `packages/shared/src/` shall not contain `as any` casts where TypeScript's own type inference (including rest-destructure typing on object literals and Drizzle-inferred row types) already produces an equivalent type, and that test files (`*.test.ts`) under `apps/api/src/` requiring `no-explicit-any` suppression shall use a single file-level `// deno-lint-ignore-file no-explicit-any require-await` directive on line 1 rather than scattered inline suppressions. Together these rules promote readable, type-safe code, keep lint suppressions auditable in one predictable location per file, and reduce noise from defensive casts that add no type information.
 
 ## Requirements
 
@@ -22,11 +22,11 @@ Production TypeScript files under `apps/api/src/modules/` and `packages/shared/s
 
 ### Requirement: Test files shall use file-level `deno-lint-ignore-file` directives
 
-Test files (`*.test.ts`) under `apps/api/src/` that need to suppress `no-explicit-any` SHALL use a single `// deno-lint-ignore-file no-explicit-any` directive on line 1 of the file, followed by a blank line, followed by the file's content (imports, docblocks, test bodies). Inline `// deno-lint-ignore no-explicit-any` directives anywhere in the body of a test file are not permitted.
+Test files (`*.test.ts`) under `apps/api/src/` that need to suppress `no-explicit-any` SHALL use a single `// deno-lint-ignore-file no-explicit-any require-await` directive on line 1 of the file, followed by a blank line, followed by the file's content (imports, docblocks, test bodies). Inline `// deno-lint-ignore no-explicit-any` directives anywhere in the body of a test file are not permitted. When migrating from inline `// deno-lint-ignore no-explicit-any` directives to the file-level form, all inline `// deno-lint-ignore no-explicit-any` comments in the file body SHALL be removed.
 
 #### Scenario: Inline suppression converted to file-level
 - **WHEN** a test file is migrated from inline `// deno-lint-ignore no-explicit-any` directives to the file-level form
-- **THEN** the file SHALL begin with `// deno-lint-ignore-file no-explicit-any` on line 1
+- **THEN** the file SHALL begin with `// deno-lint-ignore-file no-explicit-any require-await` on line 1
 - **AND** all inline `// deno-lint-ignore no-explicit-any` comments within the file body SHALL be removed
 - **AND** any `as any` casts in the file body SHALL be preserved (only the comment is removed, not the cast)
 - **AND** the file SHALL continue to type-check under `deno check` and pass its tests under `deno test`

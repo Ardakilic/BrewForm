@@ -1,7 +1,16 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { recipeApi, tasteApi } from '../../api/index.ts';
-import type { RecipeDetailResponse, TasteNoteFlatItem } from '../../api/types.ts';
+import { useEffect, useRef } from 'react';
+import {
+  Link,
+  redirect,
+  useFetcher,
+  useLoaderData,
+  useNavigate,
+  useNavigation,
+  useParams,
+} from 'react-router';
+import { ApiError, commentApi, recipeApi } from '../../api/index.ts';
+import type { CommentData, RecipeDetailResponse, TasteNoteFlatItem } from '../../api/types.ts';
+import { getTasteNotesCached } from '../../api/static-cache.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { RecipeDetailSkeleton } from '../../components/ui/Skeleton.tsx';
 import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
@@ -27,17 +36,50 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('RecipeDetailPage');
 
+export interface DetailLoaderData {
+  recipe: RecipeDetailResponse;
+  tasteNotes: TasteNoteFlatItem[];
+  comments: {
+    data: CommentData[];
+    meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
+  };
+}
+
+export const loader = async (
+  { params, request }: { params: { slug: string }; request: Request },
+): Promise<DetailLoaderData> => {
+  const fromQr = new URL(request.url).searchParams.get('from') === 'qr';
+  let recipe: RecipeDetailResponse;
+  try {
+    recipe = await recipeApi.get(params.slug);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      throw new Response('Not Found', { status: 404 });
+    }
+    throw err;
+  }
+  if (fromQr && recipe.visibility !== 'public') {
+    throw redirect('/recipes/unavailable');
+  }
+  const [tasteNotes, comments] = await Promise.all([
+    getTasteNotesCached(),
+    commentApi.list(recipe.id, 1),
+  ]);
+  return { recipe, tasteNotes, comments };
+};
+
 export function RecipeDetailPage() {
+  const { recipe, tasteNotes: allTasteNotes, comments: initialComments } =
+    useLoaderData() as DetailLoaderData;
   const { slug } = useParams();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const fromQr = searchParams.get('from') === 'qr';
+  const navigation = useNavigation();
   const { user, isAuthenticated } = useAuth();
   const { t } = useTranslation();
   const unitSystem = useUnitSystem();
-  const [recipe, setRecipe] = useState<RecipeDetailResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteFlatItem[]>([]);
+
+  const ratingFetcher = useFetcher();
+  const ratingFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     log.debug({ slug }, 'RecipeDetailPage mounted');
@@ -46,59 +88,11 @@ export function RecipeDetailPage() {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    let retries = 0;
-    const maxRetries = 5;
-
-    const fetchFlat = () => {
-      tasteApi.flat().then((data) => {
-        if (cancelled) return;
-        const notes = Array.isArray(data) ? (data as TasteNoteFlatItem[]) : [];
-        if (notes.length > 0) {
-          setAllTasteNotes(notes);
-        } else if (retries < maxRetries) {
-          retries++;
-          setTimeout(fetchFlat, retries * 1000);
-        }
-      }).catch(() => {});
-    };
-
-    fetchFlat();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!slug) return;
-    setLoading(true);
-    recipeApi.get(slug).then((data: RecipeDetailResponse) => {
-      if (fromQr && data.visibility !== 'public') {
-        navigate('/recipes/unavailable', { replace: true });
-        return;
-      }
-      setRecipe(data);
-    }).catch(() => {
-      if (fromQr) {
-        navigate('/recipes/unavailable', { replace: true });
-      }
-    }).finally(() => setLoading(false));
-  }, [slug, fromQr, navigate]);
+  const loading = navigation.state === 'loading' &&
+    navigation.location?.pathname.includes('/recipes/');
 
   if (loading) {
     return <RecipeDetailSkeleton />;
-  }
-
-  if (!recipe) {
-    return (
-      <div
-        className='mx-auto max-w-4xl px-6 py-12 text-center'
-        style={{ color: 'var(--text-tertiary)' }}
-      >
-        {t('recipe.notFound')}
-      </div>
-    );
   }
 
   const isOwner = user?.id === recipe.authorId;
@@ -338,26 +332,30 @@ export function RecipeDetailPage() {
                   <p className='text-xs mb-2' style={{ color: 'var(--text-tertiary)' }}>
                     {recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
                   </p>
-                  <StarRating
-                    value={recipe.userRating ?? null}
-                    onRate={async (rating) => {
-                      try {
-                        const result = await recipeApi.rate(recipe.id, rating);
-                        setRecipe((prev) =>
-                          prev
-                            ? {
-                              ...prev,
-                              userRating: rating,
-                              avgRating: result.avgRating,
-                              ratingCount: result.ratingCount,
-                            }
-                            : prev
-                        );
-                      } catch (err: unknown) {
-                        log.error({ err }, 'RecipeDetailPage rating failed');
-                      }
-                    }}
-                  />
+                  <ratingFetcher.Form
+                    ref={ratingFormRef}
+                    method='post'
+                    action={`/recipes/${recipe.id}/rate`}
+                  >
+                    <input
+                      type='hidden'
+                      name='rating'
+                      value={recipe.userRating ?? ''}
+                    />
+                    <StarRating
+                      value={recipe.userRating ?? null}
+                      interactive={ratingFetcher.state === 'idle'}
+                      onRate={(rating) => {
+                        const input = ratingFormRef.current?.querySelector(
+                          'input[name="rating"]',
+                        ) as HTMLInputElement;
+                        if (input) {
+                          input.value = String(rating);
+                        }
+                        ratingFormRef.current?.requestSubmit();
+                      }}
+                    />
+                  </ratingFetcher.Form>
                 </div>
               )}
             </div>
@@ -387,7 +385,11 @@ export function RecipeDetailPage() {
 
         {/* Comment section (full width below grid) */}
         <div className='mt-6 no-print' data-testid='comment-section-wrapper'>
-          <CommentSection recipeId={recipe.id} recipeAuthorId={recipe.authorId} />
+          <CommentSection
+            recipeId={recipe.id}
+            recipeAuthorId={recipe.authorId}
+            initialComments={initialComments}
+          />
         </div>
       </div>
     </article>

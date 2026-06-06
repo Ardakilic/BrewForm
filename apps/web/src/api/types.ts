@@ -151,6 +151,25 @@ export interface TasteNoteFlatItem {
   parentId: string | null;
 }
 
+// ── Comment ──
+
+export interface CommentAuthor {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface CommentData {
+  id: string;
+  content: string;
+  authorId: string;
+  author?: CommentAuthor;
+  createdAt: string;
+  isOp?: boolean;
+  replies?: CommentData[];
+}
+
 // ── Paginated response (for when we need the meta wrapper) ──
 
 export interface PaginatedResponse<T> {

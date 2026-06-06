@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useLoaderData } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { api } from '../../api/client.ts';
+import { createLogger } from '@/utils/logger.ts';
 
 interface Preferences {
   unitSystem: 'metric' | 'imperial';
@@ -19,19 +21,21 @@ interface Preferences {
   };
 }
 
+const log = createLogger('SettingsPage');
+
+export const loader = async () => {
+  const preferences = await api.get<Preferences>('/preferences');
+  return { preferences };
+};
+
 export function SettingsPage() {
   const { user, refreshUser: _refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, availableLocales, t } = useTranslation();
-  const [prefs, setPrefs] = useState<Preferences | null>(null);
+  const { preferences } = useLoaderData<typeof loader>();
+  const [prefs, setPrefs] = useState<Preferences>(preferences);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    api.get<Preferences>('/preferences').then((data) => {
-      setPrefs(data as Preferences);
-    }).catch(() => {});
-  }, []);
 
   async function savePreferences() {
     if (!prefs) return;
@@ -63,6 +67,13 @@ export function SettingsPage() {
   }
 
   if (!user) return null;
+
+  useEffect(() => {
+    log.debug({}, 'SettingsPage mounted');
+    return () => {
+      log.debug({}, 'SettingsPage unmounted');
+    };
+  }, []);
 
   return (
     <div className='mx-auto max-w-2xl px-6 py-8'>

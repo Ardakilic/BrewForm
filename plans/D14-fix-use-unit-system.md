@@ -127,20 +127,9 @@ export function useUnitSystem() {
 }
 ```
 
-### Option C: TanStack Query (If D10 is done)
+### Option C: TanStack Query (N/A — D10 used React Router 7 instead)
 
-If D10 is implemented, preferences become a query:
-
-```ts
-export function useUnitSystem(): UnitSystem {
-  const { data: prefs } = useQuery({
-    queryKey: ['preferences'],
-    queryFn: () => api.get('/preferences'),
-    staleTime: Infinity, // Preferences don't change often
-  });
-  return prefs?.unitSystem ?? 'metric';
-}
-```
+> **D10 was implemented using React Router 7 data loaders, not TanStack Query. Option C is not applicable. Use Option A or B.**
 
 ## Implementation Steps
 
@@ -163,12 +152,7 @@ export function useUnitSystem(): UnitSystem {
 6. Update `SettingsPage` to call `refreshPreferences()` after saving
 7. Run `make check-web`
 
-### Option C:
-
-1. Follow D10 implementation first
-2. Create `usePreferences()` query hook
-3. Update `useUnitSystem` to use the query
-4. Run `make check-web`
+### Option C: TanStack Query (N/A — D10 used React Router 7 instead)
 
 ## Testing Strategy
 
@@ -187,5 +171,4 @@ export function useUnitSystem(): UnitSystem {
 
 ## Dependencies
 
-- **D10** (TanStack Query) — Option C depends on this
 - None for Options A or B

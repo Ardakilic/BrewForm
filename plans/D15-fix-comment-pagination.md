@@ -1,5 +1,13 @@
 # D15 — Comment Section Pagination Broken
 
+> **Resolved by D10 (React Router 7 migration).**
+> The comment pagination fix was implemented as part of the D10 React Router 7 migration.
+> Comments are now loaded via the recipe detail page's route loader, which properly
+> reads `meta.pagination.total` from the API response envelope. The "Load More"
+> button uses `useFetcher().load()` to append additional pages, accumulating them
+> in local state. Mutation results are also properly handled via `useFetcher`
+> resource routes.
+
 ## Severity
 
 **Medium**
