@@ -23,11 +23,7 @@ interface Preferences {
 
 const log = createLogger('SettingsPage');
 
-export interface SettingsLoaderData {
-  preferences: Preferences;
-}
-
-export const loader = async (): Promise<SettingsLoaderData> => {
+export const loader = async () => {
   const preferences = await api.get<Preferences>('/preferences');
   return { preferences };
 };
@@ -36,7 +32,7 @@ export function SettingsPage() {
   const { user, refreshUser: _refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, availableLocales, t } = useTranslation();
-  const { preferences } = useLoaderData() as SettingsLoaderData;
+  const { preferences } = useLoaderData<typeof loader>();
   const [prefs, setPrefs] = useState<Preferences>(preferences);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');

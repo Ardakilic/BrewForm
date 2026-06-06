@@ -1,5 +1,8 @@
 import type { ActionFunctionArgs } from 'react-router';
 import { commentApi } from '../api/index.ts';
+import { createLogger } from '@/utils/logger.ts';
+
+const logger = createLogger('comments');
 
 export const createCommentAction = async ({ params, request }: ActionFunctionArgs) => {
   const form = await request.formData();
@@ -16,10 +19,23 @@ export const createCommentAction = async ({ params, request }: ActionFunctionArg
   const parentCommentId = typeof rawParent === 'string' && rawParent.length > 0
     ? rawParent
     : undefined;
-  return commentApi.create(recipeId, {
-    content,
-    ...(parentCommentId ? { parentCommentId } : {}),
-  });
+
+  logger.debug(
+    { recipeId, hasParentCommentId: Boolean(parentCommentId) },
+    'createCommentAction started',
+  );
+
+  try {
+    const created = await commentApi.create(recipeId, {
+      content,
+      ...(parentCommentId ? { parentCommentId } : {}),
+    });
+    logger.debug({ recipeId, commentId: created.id }, 'createCommentAction completed');
+    return created;
+  } catch (err: unknown) {
+    logger.error({ err, recipeId }, 'createCommentAction failed');
+    throw err;
+  }
 };
 
 export const deleteCommentAction = async ({ params }: ActionFunctionArgs) => {
@@ -27,6 +43,15 @@ export const deleteCommentAction = async ({ params }: ActionFunctionArgs) => {
   if (typeof id !== 'string' || id.length === 0) {
     throw new Response('Missing or invalid comment id', { status: 400 });
   }
-  await commentApi.delete(id);
-  return null;
+
+  logger.debug({ id }, 'deleteCommentAction started');
+
+  try {
+    await commentApi.delete(id);
+    logger.debug({ id }, 'deleteCommentAction completed');
+    return null;
+  } catch (err: unknown) {
+    logger.error({ err, id }, 'deleteCommentAction failed');
+    throw err;
+  }
 };
