@@ -199,6 +199,12 @@ export async function createRecipe(
     ? computeFlowRate(data.extractionVolumeMl, data.extractionTimeSeconds)
     : null;
 
+  // TODO(D29): Move the createRecipe transaction (including this `db.transaction`
+  // block, the `import { eq } from 'drizzle-orm'` at the top of this file, and
+  // the direct `recipes` / `recipeVersions` / `recipeTasteNotes` / `recipeEquipment`
+  // / `recipeAdditionalPreparations` / `recipeVersionPhotos` schema imports) into
+  // a model helper so this service no longer imports from 'drizzle-orm' or
+  // touches schema tables directly. See plans/D29-recipe-service-drizzle-orm-import.md.
   const recipe = await db.transaction(async (tx) => {
     const [r] = await tx.insert(recipes).values({
       slug,

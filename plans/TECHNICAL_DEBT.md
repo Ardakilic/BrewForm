@@ -133,6 +133,13 @@
 - **Severity**: Broken user flow.
 - **PRD**: [`plans/D16-fix-account-deletion.md`](plans/D16-fix-account-deletion.md)
 
+### 3.9 Recipe Service Layer Imports `drizzle-orm` Directly
+- **File**: `apps/api/src/modules/recipe/service.ts:16-24, 202-284`
+- **Issue**: `service.ts:createRecipe` imports `eq` from `drizzle-orm` and runs an inline `db.transaction` over six schema tables (`recipes`, `recipeVersions`, `recipeTasteNotes`, `recipeEquipment`, `recipeAdditionalPreparations`, `recipeVersionPhotos`). This violates the project's layering rule (AGENTS.md) that services must not import from `drizzle-orm` directly. The file-level docstring's "except for the compatibility validation helper" exception is outdated — that helper is pure and does not touch Drizzle. Other recipe operations (`forkRecipe`, `createVersion`, `update`, `toggleLike`) already follow the correct pattern of delegating to model helpers.
+- **Fix**: Move the entire `createRecipe` transaction body into a new `model.createRecipeWithRelations(input)` helper in `model.ts` (alongside the analogous `forkRecipe` helper), then replace the inline transaction in the service with a single model call. Remove the now-unused `drizzle-orm`, schema table, and `db` imports from `service.ts`. Update the file-level docstring.
+- **Severity**: Layering violation; reduced encapsulation; no runtime bug.
+- **PRD**: [`plans/D29-recipe-service-drizzle-orm-import.md`](plans/D29-recipe-service-drizzle-orm-import.md)
+
 ---
 
 ## 4. Medium — Frontend Code Quality
@@ -274,6 +281,7 @@
 | **P2** | Extract shared recipe filter logic | Backend | Medium |
 | **P2** | Create single source of truth for enums | Shared | Medium |
 | **P2** | Fix `useUnitSystem` reactivity | Frontend | Low |
+| **P2** | Move recipe createRecipe transaction into model helper (D29) | Backend | Low |
 | **P2** | Add optimistic update rollback (resolved in pilot scope) | Frontend | Low |
 | **P2** | Replace `Record<string, unknown>` with proper types | Frontend | Medium |
 | **P3** | Add composite indexes for common queries | DB | Low |
