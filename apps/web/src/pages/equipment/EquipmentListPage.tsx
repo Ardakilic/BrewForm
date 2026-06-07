@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { api } from '../../api/client.ts';
+import { invalidateStaticCache } from '../../api/static-cache.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
 
 interface EquipmentItem {
   id: string;
@@ -12,6 +14,8 @@ interface EquipmentItem {
   createdAt: string;
 }
 
+const log = createLogger('EquipmentListPage');
+
 export function EquipmentListPage() {
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,16 +25,28 @@ export function EquipmentListPage() {
   const { t } = useTranslation();
 
   useEffect(() => {
+    log.debug({}, 'EquipmentListPage mounted');
+    return () => {
+      log.debug({}, 'EquipmentListPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     api.get<EquipmentItem[]>('/equipment').then((data) => {
       setEquipment(data as EquipmentItem[]);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
 
+  /**
+   * POST `/equipment`, append the created item to local state, and
+   * invalidate the static cache so the next loader run re-fetches.
+   */
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || !form.type.trim() || saving) return;
     setSaving(true);
+    log.debug({}, 'handleCreate started');
     try {
       const newEq = await api.post<EquipmentItem>('/equipment', {
         name: form.name.trim(),
@@ -39,19 +55,28 @@ export function EquipmentListPage() {
         model: form.model || undefined,
       } as Record<string, unknown>);
       setEquipment((prev) => [...prev, newEq as EquipmentItem]);
+      log.debug({ equipmentId: (newEq as EquipmentItem).id }, 'handleCreate completed');
       setForm({ name: '', type: '', brand: '', model: '' });
       setShowForm(false);
+      invalidateStaticCache();
     } catch {
     } finally {
       setSaving(false);
     }
   }
 
+  /**
+   * DELETE `/equipment/:id`, remove the item from local state, and
+   * invalidate the static cache so the next loader run re-fetches.
+   */
   async function handleDelete(id: string) {
     if (!globalThis.confirm(t('common.delete') + '?')) return;
+    log.debug({ equipmentId: id }, 'handleDelete started');
     try {
       await api.delete(`/equipment/${id}`);
       setEquipment((prev) => prev.filter((e) => e.id !== id));
+      log.debug({ equipmentId: id }, 'handleDelete completed');
+      invalidateStaticCache();
     } catch {
     }
   }
@@ -87,12 +112,14 @@ export function EquipmentListPage() {
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <div>
               <label
+                htmlFor='eq-name'
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {t('equipment.name')} *
               </label>
               <input
+                id='eq-name'
                 type='text'
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -102,12 +129,14 @@ export function EquipmentListPage() {
             </div>
             <div>
               <label
+                htmlFor='eq-type'
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {t('equipment.type')} *
               </label>
               <input
+                id='eq-type'
                 type='text'
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
@@ -118,12 +147,14 @@ export function EquipmentListPage() {
             </div>
             <div>
               <label
+                htmlFor='eq-brand'
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {t('equipment.brand')}
               </label>
               <input
+                id='eq-brand'
                 type='text'
                 value={form.brand}
                 onChange={(e) => setForm({ ...form, brand: e.target.value })}
@@ -132,12 +163,14 @@ export function EquipmentListPage() {
             </div>
             <div>
               <label
+                htmlFor='eq-model'
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {t('equipment.model')}
               </label>
               <input
+                id='eq-model'
                 type='text'
                 value={form.model}
                 onChange={(e) => setForm({ ...form, model: e.target.value })}

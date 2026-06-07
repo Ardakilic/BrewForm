@@ -1,30 +1,30 @@
 ## 1. Extend `static-cache.ts` with the cross-tab bust and JSDoc
 
-- [ ] 1.1 Open `apps/web/src/api/static-cache.ts` and confirm the
+- [x] 1.1 Open `apps/web/src/api/static-cache.ts` and confirm the
   current state matches the snippet quoted in the proposal
   (`getEquipmentCached`, `getTasteNotesCached`, `invalidateStaticCache`,
   plus the two private module-level cache slots).
 
-- [ ] 1.2 Add a module-level constant for the cache-bust key
+- [x] 1.2 Add a module-level constant for the cache-bust key
   immediately after the imports:
 
   ```ts
   const CACHE_BUST_KEY = 'brewform-static-cache-bust';
   ```
 
-- [ ] 1.3 Add a JSDoc block to each of the two private module-level
+- [x] 1.3 Add a JSDoc block to each of the two private module-level
   cache slots (`_equipment`, `_tasteNotes`) describing what they
   hold and that they are nulled by `invalidateStaticCache()`.
 
-- [ ] 1.4 Add a JSDoc block to `getEquipmentCached()` describing
+- [x] 1.4 Add a JSDoc block to `getEquipmentCached()` describing
   that it lazy-fetches via `equipmentApi.list()` on first call and
   returns the same memoised array on every subsequent call until
   `invalidateStaticCache()` is invoked.
 
-- [ ] 1.5 Add a JSDoc block to `getTasteNotesCached()` with the
+- [x] 1.5 Add a JSDoc block to `getTasteNotesCached()` with the
   same shape, referencing `tasteApi.flat()`.
 
-- [ ] 1.6 Replace the body of `invalidateStaticCache()` with the
+- [x] 1.6 Replace the body of `invalidateStaticCache()` with the
   cross-tab-aware version. The function still nulls both cache
   slots first, then broadcasts via `localStorage` inside a
   `try/catch`:
@@ -48,11 +48,11 @@
   }
   ```
 
-- [ ] 1.7 Run `make check-web` — must pass with zero new errors.
+- [x] 1.7 Run `make check-web` — must pass with zero new errors.
 
 ## 2. Add `useStaticCacheSync` hook
 
-- [ ] 2.1 Create `apps/web/src/hooks/useStaticCacheSync.ts` with the
+- [x] 2.1 Create `apps/web/src/hooks/useStaticCacheSync.ts` with the
   following content (matches the `useDebounce` / `useUnitSystem`
   style in `apps/web/src/hooks/`):
 
@@ -84,25 +84,25 @@
   }
   ```
 
-- [ ] 2.2 Run `make check-web` — must pass.
+- [x] 2.2 Run `make check-web` — must pass.
 
 ## 3. Wire `useStaticCacheSync` into `App.tsx`
 
-- [ ] 3.1 Open `apps/web/src/App.tsx`.
+- [x] 3.1 Open `apps/web/src/App.tsx`.
 
-- [ ] 3.2 Add `import { useStaticCacheSync } from './hooks/useStaticCacheSync.ts';`
+- [x] 3.2 Add `import { useStaticCacheSync } from './hooks/useStaticCacheSync.ts';`
   next to the existing imports.
 
-- [ ] 3.3 Add a single `useStaticCacheSync();` call as the first
+- [x] 3.3 Add a single `useStaticCacheSync();` call as the first
   statement inside the `App()` function body, before the `return`.
 
-- [ ] 3.4 Run `make check-web` — must pass.
+- [x] 3.4 Run `make check-web` — must pass.
 
 ## 4. Add `invalidateStaticCache` calls + logger + JSDoc to `EquipmentListPage`
 
-- [ ] 4.1 Open `apps/web/src/pages/equipment/EquipmentListPage.tsx`.
+- [x] 4.1 Open `apps/web/src/pages/equipment/EquipmentListPage.tsx`.
 
-- [ ] 4.2 Add two imports at the top of the file (alphabetically
+- [x] 4.2 Add two imports at the top of the file (alphabetically
   positioned with the other imports):
 
   ```ts
@@ -110,13 +110,13 @@
   import { invalidateStaticCache } from '../../api/static-cache.ts';
   ```
 
-- [ ] 4.3 Add a module-scoped logger immediately after the imports:
+- [x] 4.3 Add a module-scoped logger immediately after the imports:
 
   ```ts
   const log = createLogger('EquipmentListPage');
   ```
 
-- [ ] 4.4 Add a mount/unmount `useEffect` pair inside the
+- [x] 4.4 Add a mount/unmount `useEffect` pair inside the
   `EquipmentListPage()` function, after the existing state hooks
   and before the `useEffect` that loads `/equipment`:
 
@@ -127,17 +127,17 @@
   }, []);
   ```
 
-- [ ] 4.5 Add a JSDoc block to `handleCreate` describing what it
+- [x] 4.5 Add a JSDoc block to `handleCreate` describing what it
   does (POST `/equipment`, append to local state, invalidate the
   static cache) and listing its side effects.
 
-- [ ] 4.6 Add a `log.debug({}, 'handleCreate started')` line as the
+- [x] 4.6 Add a `log.debug({}, 'handleCreate started')` line as the
   first statement inside `handleCreate`, and a
   `log.debug({ equipmentId: newEq.id }, 'handleCreate completed')`
   line immediately after the successful `setEquipment((prev) => [...prev, ...])`
   call.
 
-- [ ] 4.7 Inside the `try` block of `handleCreate`, immediately
+- [x] 4.7 Inside the `try` block of `handleCreate`, immediately
   after the existing `setShowForm(false);` line (last statement in
   the try block), add:
 
@@ -145,15 +145,15 @@
   invalidateStaticCache();
   ```
 
-- [ ] 4.8 Add a JSDoc block to `handleDelete` describing the
+- [x] 4.8 Add a JSDoc block to `handleDelete` describing the
   delete + local state update + cache invalidation flow.
 
-- [ ] 4.9 Add a `log.debug({ equipmentId: id }, 'handleDelete started')`
+- [x] 4.9 Add a `log.debug({ equipmentId: id }, 'handleDelete started')`
   line as the first statement inside `handleDelete`, and a
   `log.debug({ equipmentId: id }, 'handleDelete completed')` line
   after the `setEquipment((prev) => prev.filter(...))` call.
 
-- [ ] 4.10 Inside the `try` block of `handleDelete`, immediately
+- [x] 4.10 Inside the `try` block of `handleDelete`, immediately
   after the existing `setEquipment((prev) => prev.filter((e) => e.id !== id));`
   line, add:
 
@@ -161,34 +161,34 @@
   invalidateStaticCache();
   ```
 
-- [ ] 4.11 Run `make check-web` — must pass.
+- [x] 4.11 Run `make check-web` — must pass.
 
 ## 5. Add `invalidateStaticCache` calls + logger + JSDoc to `AdminEquipmentPage`
 
-- [ ] 5.1 Open `apps/web/src/pages/admin/AdminEquipmentPage.tsx`.
+- [x] 5.1 Open `apps/web/src/pages/admin/AdminEquipmentPage.tsx`.
 
-- [ ] 5.2 Add the same two imports as task 4.2
+- [x] 5.2 Add the same two imports as task 4.2
   (`createLogger` from `../../utils/logger.ts`,
   `invalidateStaticCache` from `../../api/static-cache.ts`).
 
-- [ ] 5.3 Add `const log = createLogger('AdminEquipmentPage');` after
+- [x] 5.3 Add `const log = createLogger('AdminEquipmentPage');` after
   the imports.
 
-- [ ] 5.4 Add a mount/unmount `useEffect` pair identical in shape
+- [x] 5.4 Add a mount/unmount `useEffect` pair identical in shape
   to task 4.4 but with the `'AdminEquipmentPage mounted'` /
   `'AdminEquipmentPage unmounted'` messages.
 
-- [ ] 5.5 Add a JSDoc block to `handleSubmit` describing the
+- [x] 5.5 Add a JSDoc block to `handleSubmit` describing the
   dual-branch (create vs. edit), `resetForm()` call, and cache
   invalidation. Note in the docblock that both branches share a
   single `invalidateStaticCache()` call after `resetForm()`.
 
-- [ ] 5.6 Add `log.debug({ editId }, 'handleSubmit started')` as
+- [x] 5.6 Add `log.debug({ editId }, 'handleSubmit started')` as
   the first statement of `handleSubmit` and
   `log.debug({ editId }, 'handleSubmit completed')` after
   `resetForm()`.
 
-- [ ] 5.7 Inside the `try` block of `handleSubmit`, immediately
+- [x] 5.7 Inside the `try` block of `handleSubmit`, immediately
   after the existing `resetForm();` line (last statement in the
   try block), add:
 
@@ -196,58 +196,58 @@
   invalidateStaticCache();
   ```
 
-- [ ] 5.8 Add a JSDoc block to `handleDelete` describing the
+- [x] 5.8 Add a JSDoc block to `handleDelete` describing the
   delete + local state update + cache invalidation flow.
 
-- [ ] 5.9 Add `log.debug({ equipmentId: id }, 'handleDelete started')`
+- [x] 5.9 Add `log.debug({ equipmentId: id }, 'handleDelete started')`
   and `log.debug({ equipmentId: id }, 'handleDelete completed')`
   in the same positions as task 4.9.
 
-- [ ] 5.10 Inside the `try` block of `handleDelete`, immediately
+- [x] 5.10 Inside the `try` block of `handleDelete`, immediately
   after the existing `setEquipment(...)` line, add:
 
   ```ts
   invalidateStaticCache();
   ```
 
-- [ ] 5.11 Run `make check-web` — must pass.
+- [x] 5.11 Run `make check-web` — must pass.
 
 ## 6. Add `invalidateStaticCache` calls + logger + JSDoc to `AdminTasteNotesPage`
 
-- [ ] 6.1 Open `apps/web/src/pages/admin/AdminTasteNotesPage.tsx`.
+- [x] 6.1 Open `apps/web/src/pages/admin/AdminTasteNotesPage.tsx`.
 
-- [ ] 6.2 Add the same two imports as task 4.2
+- [x] 6.2 Add the same two imports as task 4.2
   (`createLogger`, `invalidateStaticCache`).
 
-- [ ] 6.3 Add `const log = createLogger('AdminTasteNotesPage');`
+- [x] 6.3 Add `const log = createLogger('AdminTasteNotesPage');`
   after the imports.
 
-- [ ] 6.4 Add a mount/unmount `useEffect` pair with
+- [x] 6.4 Add a mount/unmount `useEffect` pair with
   `'AdminTasteNotesPage mounted'` / `'AdminTasteNotesPage unmounted'`
   messages.
 
-- [ ] 6.5 Add a JSDoc block to `handleCreate` describing the
+- [x] 6.5 Add a JSDoc block to `handleCreate` describing the
   POST + local state update + cache invalidation.
 
-- [ ] 6.6 Add `log.debug({}, 'handleCreate started')` as the
+- [x] 6.6 Add `log.debug({}, 'handleCreate started')` as the
   first statement of `handleCreate` and
   `log.debug({ tasteNoteId: created.id }, 'handleCreate completed')`
   after the `setNotes((prev) => [...prev, ...])` call.
 
-- [ ] 6.7 Inside the `try` block of `handleCreate`, immediately
+- [x] 6.7 Inside the `try` block of `handleCreate`, immediately
   after the existing `setShowForm(false);` line, add:
 
   ```ts
   invalidateStaticCache();
   ```
 
-- [ ] 6.8 Add a JSDoc block to `handleDelete` describing the
+- [x] 6.8 Add a JSDoc block to `handleDelete` describing the
   delete + local state update + cache invalidation flow.
 
-- [ ] 6.9 Add `log.debug({ tasteNoteId: id }, 'handleDelete started')`
+- [x] 6.9 Add `log.debug({ tasteNoteId: id }, 'handleDelete started')`
   and `log.debug({ tasteNoteId: id }, 'handleDelete completed')`.
 
-- [ ] 6.10 Inside the `try` block of `handleDelete`, immediately
+- [x] 6.10 Inside the `try` block of `handleDelete`, immediately
   after the existing `setNotes((prev) => prev.filter(...))` line,
   add:
 
@@ -255,19 +255,19 @@
   invalidateStaticCache();
   ```
 
-- [ ] 6.11 **Keep** the existing "Note: Creating taste notes
+- [x] 6.11 **Keep** the existing "Note: Creating taste notes
   will flush the taste note cache." notice at line 104-106 — it
   becomes accurate after this change.
 
-- [ ] 6.12 Run `make check-web` — must pass.
+- [x] 6.12 Run `make check-web` — must pass.
 
 ## 7. Add `static-cache.test.ts`
 
-- [ ] 7.1 Create `apps/web/src/api/static-cache.test.ts` mirroring
+- [x] 7.1 Create `apps/web/src/api/static-cache.test.ts` mirroring
   the structure of `apps/web/src/api/client.test.ts:1-48` (vitest,
   `describe`/`it`/`vi` from `vitest`).
 
-- [ ] 7.2 At the top of the file, mock
+- [x] 7.2 At the top of the file, mock
   `../../api/index.ts` (relative to the test file's directory) to
   provide a stub `equipmentApi.list` and `tasteApi.flat` that
   return controllable mock values:
@@ -279,11 +279,11 @@
   }));
   ```
 
-- [ ] 7.3 Add a `beforeEach` that resets the two mock API
+- [x] 7.3 Add a `beforeEach` that resets the two mock API
   functions to a fresh `vi.fn()` per test and clears
   `localStorage` (`globalThis.localStorage.clear()`).
 
-- [ ] 7.4 Add the test suite. Each test imports the REAL
+- [x] 7.4 Add the test suite. Each test imports the REAL
   `getEquipmentCached`, `getTasteNotesCached`, and
   `invalidateStaticCache` from `./static-cache.ts` (no module
   mock — the whole point is to test the real implementation).
@@ -308,25 +308,25 @@
     `invalidateStaticCache()`, assert no exception escapes and
     the cache slots are still nulled.
 
-- [ ] 7.5 Run
+- [x] 7.5 Run
   `make test-specific filter=apps/web/src/api/static-cache.test.ts`
   (or `cd apps/web && deno task test -- static-cache`) — all
   tests must pass.
 
 ## 8. Add `useStaticCacheSync.test.ts`
 
-- [ ] 8.1 Create `apps/web/src/hooks/useStaticCacheSync.test.ts`
+- [x] 8.1 Create `apps/web/src/hooks/useStaticCacheSync.test.ts`
   using the project's Vitest + `renderHook` from
   `@testing-library/react` pattern (mirror any existing hook test
   in the workspace; if none exists, use
   `renderHook` from `@testing-library/react` with a minimal
   wrapper).
 
-- [ ] 8.2 Mock `../api/static-cache.ts` (the relative path from
+- [x] 8.2 Mock `../api/static-cache.ts` (the relative path from
   the test file) with `invalidateStaticCache: vi.fn()` and import
   the REAL `useStaticCacheSync` from `./useStaticCacheSync.ts`.
 
-- [ ] 8.3 Add the test cases:
+- [x] 8.3 Add the test cases:
 
   - `registers a storage listener on mount` — assert
     `addEventListener` was called with `'storage'` and a function.
@@ -341,18 +341,18 @@
     `StorageEvent` with `key: 'brewform-preferences'`, assert
     `invalidateStaticCache` was NOT called.
 
-- [ ] 8.4 Run
+- [x] 8.4 Run
   `cd apps/web && deno task test -- useStaticCacheSync` — all
   tests must pass.
 
 ## 9. Add `EquipmentListPage.test.tsx`
 
-- [ ] 9.1 Create
+- [x] 9.1 Create
   `apps/web/src/pages/equipment/EquipmentListPage.test.tsx` using
   the canonical template in
   `apps/web/src/pages/recipes/RecipeListPage.test.tsx:1-234`.
 
-- [ ] 9.2 Mock `../../api/static-cache.ts` with all three
+- [x] 9.2 Mock `../../api/static-cache.ts` with all three
   exports:
 
   ```ts
@@ -363,21 +363,21 @@
   }));
   ```
 
-- [ ] 9.3 Mock `../../api/client.ts` with
+- [x] 9.3 Mock `../../api/client.ts` with
   `api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() }`.
 
-- [ ] 9.4 Mock `../../contexts/I18nContext.tsx` to provide a
+- [x] 9.4 Mock `../../contexts/I18nContext.tsx` to provide a
   minimal `useTranslation` returning a `t` that returns the key
   (or a small translation map matching the strings used in the
   page — `equipment.title`, `equipment.addEquipment`, etc.).
 
-- [ ] 9.5 Mock `../../utils/logger.ts` with the standard
+- [x] 9.5 Mock `../../utils/logger.ts` with the standard
   no-op-logger pattern (same as the recipe list tests).
 
-- [ ] 9.6 Mock `../../components/seo/SEOHead.tsx` as
+- [x] 9.6 Mock `../../components/seo/SEOHead.tsx` as
   `SEOHead: () => null`.
 
-- [ ] 9.7 Add test cases:
+- [x] 9.7 Add test cases:
 
   - `renders loading state on initial mount` — assert the
     `t('common.loading')` text is visible.
@@ -400,25 +400,25 @@
     mock `api.delete` to reject, click delete, assert
     `invalidateStaticCache` was not called.
 
-- [ ] 9.8 Run
+- [x] 9.8 Run
   `cd apps/web && deno task test -- EquipmentListPage` — all
   tests must pass.
 
 ## 10. Add `AdminEquipmentPage.test.tsx`
 
-- [ ] 10.1 Create
+- [x] 10.1 Create
   `apps/web/src/pages/admin/AdminEquipmentPage.test.tsx` using the
   same template as task 9.
 
-- [ ] 10.2 Mock `../../api/static-cache.ts` (the relative path
+- [x] 10.2 Mock `../../api/static-cache.ts` (the relative path
   from `apps/web/src/pages/admin/`) with all three exports.
 
-- [ ] 10.3 Mock `../../api/client.ts` with
+- [x] 10.3 Mock `../../api/client.ts` with
   `api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() }`.
 
-- [ ] 10.4 Mock `../../utils/logger.ts` with the no-op pattern.
+- [x] 10.4 Mock `../../utils/logger.ts` with the no-op pattern.
 
-- [ ] 10.5 Add test cases:
+- [x] 10.5 Add test cases:
 
   - `renders the equipment table after initial fetch`.
   - `create flow: post + invalidateStaticCache called once` —
@@ -437,25 +437,25 @@
     — for each branch, mock the API call to reject, perform the
     user action, assert `invalidateStaticCache` was not called.
 
-- [ ] 10.6 Run
+- [x] 10.6 Run
   `cd apps/web && deno task test -- AdminEquipmentPage` — all
   tests must pass.
 
 ## 11. Add `AdminTasteNotesPage.test.tsx`
 
-- [ ] 11.1 Create
+- [x] 11.1 Create
   `apps/web/src/pages/admin/AdminTasteNotesPage.test.tsx` using the
   same template as task 9.
 
-- [ ] 11.2 Mock `../../api/static-cache.ts` with all three
+- [x] 11.2 Mock `../../api/static-cache.ts` with all three
   exports.
 
-- [ ] 11.3 Mock `../../api/client.ts` with
+- [x] 11.3 Mock `../../api/client.ts` with
   `api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() }`.
 
-- [ ] 11.4 Mock `../../utils/logger.ts` with the no-op pattern.
+- [x] 11.4 Mock `../../utils/logger.ts` with the no-op pattern.
 
-- [ ] 11.5 Add test cases:
+- [x] 11.5 Add test cases:
 
   - `renders the taste notes list after initial fetch`.
   - `create flow: post + invalidateStaticCache called once` —
@@ -470,28 +470,28 @@
     — for each branch, mock the API call to reject, perform the
     user action, assert `invalidateStaticCache` was not called.
 
-- [ ] 11.6 Run
+- [x] 11.6 Run
   `cd apps/web && deno task test -- AdminTasteNotesPage` — all
   tests must pass.
 
 ## 12. Final verification
 
-- [ ] 12.1 Run `make fmt` — must apply cleanly to all modified
+- [x] 12.1 Run `make fmt` — must apply cleanly to all modified
   files.
 
-- [ ] 12.2 Run `make lint` — zero warnings on the affected files
+- [x] 12.2 Run `make lint` — zero warnings on the affected files
   (`apps/web/src/api/static-cache.ts`,
   `apps/web/src/hooks/useStaticCacheSync.ts`,
   `apps/web/src/App.tsx`, the three mutation page `.tsx` files,
   and the five new test files).
 
-- [ ] 12.3 Run `make check` (or `make check-web` for a faster
+- [x] 12.3 Run `make check` (or `make check-web` for a faster
   loop) — zero type errors.
 
-- [ ] 12.4 Run `make test` — every existing test continues to
+- [x] 12.4 Run `make test` — every existing test continues to
   pass, and every new test added in tasks 7-11 passes.
 
-- [ ] 12.5 Confirm with a manual browser smoke test (no automation
+- [x] 12.5 Confirm with a manual browser smoke test (no automation
   required, just a sanity check):
   1. Open `/equipment` in Tab A.
   2. Navigate Tab A to `/recipes` — confirm the equipment filter
@@ -507,7 +507,7 @@
      In Tab B, navigate to `/recipes/:some-slug` — the new taste
      note must appear in the detail-page tasting-notes selector.
 
-- [ ] 12.6 Confirm the existing
+- [x] 12.6 Confirm the existing
   `RecipeListPage.test.tsx`, `StarredRecipesPage.test.tsx`, and
   `RecipeDetailPage.test.tsx` mock surfaces for
   `../../api/static-cache.ts` do **not** need updating. They
