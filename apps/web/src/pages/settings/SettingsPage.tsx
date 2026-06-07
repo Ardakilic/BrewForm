@@ -29,7 +29,7 @@ export const loader = async () => {
 };
 
 export function SettingsPage() {
-  const { user, refreshUser: _refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, availableLocales, t } = useTranslation();
   const { preferences } = useLoaderData<typeof loader>();
@@ -55,6 +55,14 @@ export function SettingsPage() {
       setMessage(t('settings.failedMsg'));
     } finally {
       setSaving(false);
+    }
+    // Refresh user state independently from save success/failure.
+    // Preferences are already persisted in the DB — a failed read-after-write
+    // refresh should not log the user out or affect the save UI message.
+    try {
+      await refreshUser();
+    } catch {
+      log.error({ err: 'refreshUser failed after preferences save' }, 'savePreferences refresh failed');
     }
   }
 

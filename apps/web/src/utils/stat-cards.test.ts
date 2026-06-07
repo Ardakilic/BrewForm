@@ -39,6 +39,24 @@ describe('buildStatCards — unit tests', () => {
     expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '93.0°C' });
   });
 
+  it('returns imperial units when unitSystem is imperial', () => {
+    const cards = buildStatCards(
+      {
+        groundWeightGrams: 18,
+        extractionVolumeMl: 36,
+        extractionTimeSeconds: 30,
+        brewRatio: 2,
+        temperatureCelsius: 93,
+      },
+      'imperial',
+    );
+    expect(cards[0]).toEqual({ label: 'recipe.stat.dose', value: '0.6 oz' });
+    expect(cards[1]).toEqual({ label: 'recipe.stat.yield', value: '1.2 fl oz' });
+    expect(cards[2]).toEqual({ label: 'recipe.stat.time', value: '30s' });
+    expect(cards[3]).toEqual({ label: 'recipe.stat.ratio', value: '1:2' });
+    expect(cards[4]).toEqual({ label: 'recipe.stat.temp', value: '199.4°F' });
+  });
+
   it('returns exactly 5 cards when all values are null', () => {
     const cards = buildStatCards({
       groundWeightGrams: null,

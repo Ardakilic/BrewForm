@@ -104,6 +104,8 @@ export interface AuthUser extends
   > {
   /** ISO 8601 string or null — `Date | null` serialised to string by the API */
   emailVerifiedAt: string | null;
+  /** User preferences — optional because LEFT JOIN may return null (new accounts, SSR) */
+  preferences?: UserPreferences;
 }
 
 /**
