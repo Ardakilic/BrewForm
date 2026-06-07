@@ -22,7 +22,26 @@ export async function findById(id: string) {
     .where(and(eq(users.id, id), isNull(users.deletedAt)))
     .limit(1);
   if (!result[0]) return null;
-  return { ...result[0].user, preferences: result[0].user_preferences };
+  const prefsRow = result[0].user_preferences;
+  return {
+    ...result[0].user,
+    preferences: prefsRow
+      ? {
+        unitSystem: prefsRow.unitSystem,
+        temperatureUnit: prefsRow.temperatureUnit,
+        theme: prefsRow.theme,
+        locale: prefsRow.locale,
+        timezone: prefsRow.timezone,
+        dateFormat: prefsRow.dateFormat,
+        emailNotifications: {
+          newFollower: prefsRow.newFollower,
+          recipeLiked: prefsRow.recipeLiked,
+          recipeCommented: prefsRow.recipeCommented,
+          followedUserPosted: prefsRow.followedUserPosted,
+        },
+      }
+      : null,
+  };
 }
 
 /** Find a user by username. Returns null if deleted or not found. */

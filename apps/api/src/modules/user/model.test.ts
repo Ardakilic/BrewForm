@@ -53,10 +53,10 @@ describe('User Model', { sanitizeOps: false, sanitizeResources: false }, () => {
         expect(result!.preferences!.locale).toBe('tr');
         expect(result!.preferences!.timezone).toBe('Europe/Istanbul');
         expect(result!.preferences!.dateFormat).toBe('DD_MM_YYYY');
-        expect(result!.preferences!.newFollower).toBe(false);
-        expect(result!.preferences!.recipeLiked).toBe(false);
-        expect(result!.preferences!.recipeCommented).toBe(false);
-        expect(result!.preferences!.followedUserPosted).toBe(false);
+        expect(result!.preferences!.emailNotifications.newFollower).toBe(false);
+        expect(result!.preferences!.emailNotifications.recipeLiked).toBe(false);
+        expect(result!.preferences!.emailNotifications.recipeCommented).toBe(false);
+        expect(result!.preferences!.emailNotifications.followedUserPosted).toBe(false);
       });
     });
 

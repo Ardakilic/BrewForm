@@ -31,6 +31,31 @@ describe('useUnitSystem', () => {
     expect(result.current).toBe('metric');
   });
 
+  it('returns "metric" when user exists but preferences is null', () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: 'user-1',
+        email: 'user@example.com',
+        emailVerifiedAt: null,
+        username: 'user',
+        displayName: 'User',
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: true,
+        preferences: null,
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+      refreshUser: vi.fn(),
+    } as ReturnType<typeof useAuth>);
+
+    const { result } = renderHook(() => useUnitSystem());
+    expect(result.current).toBe('metric');
+  });
+
   it('returns "metric" when user exists but preferences is undefined', () => {
     mockUseAuth.mockReturnValue({
       user: {

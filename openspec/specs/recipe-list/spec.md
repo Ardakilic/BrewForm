@@ -409,6 +409,6 @@ component has mount/unmount logs.
 
 - **WHEN** the user navigates away from the list page
 - **THEN** a single
-  `log.debug({}, 'RecipeListView unmounted')` is emitted before the
+  `log.debug({ source: 'all' | 'starred' }, 'RecipeListView unmounted')` is emitted before the
   component is destroyed
 

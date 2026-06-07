@@ -68,11 +68,8 @@ export function SettingsPage() {
     // refresh should not log the user out or affect the save UI message.
     try {
       await refreshUser();
-    } catch {
-      log.error(
-        { err: 'refreshUser failed after preferences save' },
-        'savePreferences refresh failed',
-      );
+    } catch (err) {
+      log.error({ err }, 'savePreferences refresh failed');
     }
   }
 

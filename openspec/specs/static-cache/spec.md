@@ -1,7 +1,7 @@
 # static-cache Specification
 
 ## Purpose
-TBD - created by archiving change d13-fix-module-cache. Update Purpose after archive.
+This spec governs the static lookup caches for equipment lists and taste-note trees used across the BrewForm recipe UI. It defines the caching contract (`getEquipmentCached`, `getTasteNotesCached`, `invalidateStaticCache`), specifies the invalidation points on mutation, and ensures that stale data does not appear in recipe filters or tasting-note selectors after a successful create, edit, or delete operation.
 ## Requirements
 ### Requirement: Equipment and taste-notes lookup caches are invalidated on mutation
 
@@ -117,7 +117,7 @@ underlying API mutation rejects.
 
 #### Scenario: Failed equipment deletion — no invalidation
 
-- **WHEN** a user confirms the delete on
+- **WHEN** an admin confirms the delete on
   `apps/web/src/pages/admin/AdminEquipmentPage.tsx`
 - **AND** the `DELETE /admin/equipment/:id` request rejects
 - **THEN** `invalidateStaticCache()` is **not** called
