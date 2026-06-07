@@ -6,14 +6,42 @@
  * with latest version metadata, and full-text username/displayName search.
  */
 import { db } from '@brewform/db';
-import { recipes, recipeVersions, userFollows, users } from '@brewform/db/schema';
+import { recipes, recipeVersions, userFollows, userPreferences, users } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, isNull, like, or } from 'drizzle-orm';
 
-/** Find a user by ID. Returns null if deleted or not found. */
+/**
+ * Find a user by ID, including preferences via LEFT JOIN.
+ *
+ * Returns null if the user is deleted or not found. When found, the
+ * returned object includes a `preferences` field from the joined
+ * `user_preferences` row (null if the user has no preferences record).
+ */
 export async function findById(id: string) {
-  const result = await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt)))
+  const result = await db.select().from(users)
+    .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
+    .where(and(eq(users.id, id), isNull(users.deletedAt)))
     .limit(1);
-  return result[0] ?? null;
+  if (!result[0]) return null;
+  const prefsRow = result[0].user_preferences;
+  return {
+    ...result[0].user,
+    preferences: prefsRow
+      ? {
+        unitSystem: prefsRow.unitSystem,
+        temperatureUnit: prefsRow.temperatureUnit,
+        theme: prefsRow.theme,
+        locale: prefsRow.locale,
+        timezone: prefsRow.timezone,
+        dateFormat: prefsRow.dateFormat,
+        emailNotifications: {
+          newFollower: prefsRow.newFollower,
+          recipeLiked: prefsRow.recipeLiked,
+          recipeCommented: prefsRow.recipeCommented,
+          followedUserPosted: prefsRow.followedUserPosted,
+        },
+      }
+      : null,
+  };
 }
 
 /** Find a user by username. Returns null if deleted or not found. */
