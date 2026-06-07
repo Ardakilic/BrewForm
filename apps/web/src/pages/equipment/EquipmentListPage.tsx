@@ -59,7 +59,8 @@ export function EquipmentListPage() {
       setForm({ name: '', type: '', brand: '', model: '' });
       setShowForm(false);
       invalidateStaticCache();
-    } catch {
+    } catch (err) {
+      log.error({ err, name: form.name, type: form.type }, 'handleCreate failed');
     } finally {
       setSaving(false);
     }
@@ -77,7 +78,8 @@ export function EquipmentListPage() {
       setEquipment((prev) => prev.filter((e) => e.id !== id));
       log.debug({ equipmentId: id }, 'handleDelete completed');
       invalidateStaticCache();
-    } catch {
+    } catch (err) {
+      log.error({ err, equipmentId: id }, 'handleDelete failed');
     }
   }
 

@@ -1,8 +1,5 @@
-// deno-lint-ignore-file require-await
 import { useEffect } from 'react';
-import { invalidateStaticCache } from '../api/static-cache.ts';
-
-const CACHE_BUST_KEY = 'brewform-static-cache-bust';
+import { CACHE_BUST_KEY, invalidateStaticCache } from '../api/static-cache.ts';
 
 /**
  * Subscribes to the browser `storage` event and calls

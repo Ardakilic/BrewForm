@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EquipmentListPage } from './EquipmentListPage.tsx';
@@ -74,6 +74,10 @@ const defaultTranslation = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseTranslation.mockReturnValue(defaultTranslation);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -183,7 +187,6 @@ describe('EquipmentListPage', () => {
     });
 
     expect(mockInvalidateStaticCache).toHaveBeenCalledTimes(1);
-    vi.unstubAllGlobals();
   });
 
   it('does NOT invalidate the cache when delete API rejects', async () => {
@@ -210,6 +213,5 @@ describe('EquipmentListPage', () => {
     });
 
     expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 });

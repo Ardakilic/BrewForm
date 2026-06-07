@@ -52,7 +52,8 @@ export function AdminTasteNotesPage() {
       setForm({ name: '', parentId: '' });
       setShowForm(false);
       invalidateStaticCache();
-    } catch {
+    } catch (err) {
+      log.error({ err, name: form.name, parentId: form.parentId }, 'handleCreate failed');
     } finally {
       setSaving(false);
     }
@@ -70,7 +71,8 @@ export function AdminTasteNotesPage() {
       setNotes((prev) => prev.filter((n) => n.id !== id));
       log.debug({ tasteNoteId: id }, 'handleDelete completed');
       invalidateStaticCache();
-    } catch {
+    } catch (err) {
+      log.error({ err, tasteNoteId: id }, 'handleDelete failed');
     }
   }
 

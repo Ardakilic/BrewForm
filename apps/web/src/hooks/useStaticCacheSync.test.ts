@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react';
 import { useStaticCacheSync } from './useStaticCacheSync.ts';
 
 vi.mock('../api/static-cache.ts', () => ({
+  CACHE_BUST_KEY: 'brewform-static-cache-bust',
   invalidateStaticCache: vi.fn(),
 }));
 

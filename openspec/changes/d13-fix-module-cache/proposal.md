@@ -101,7 +101,7 @@ when the mutation happens in another tab.
   `apps/web/src/pages/equipment/EquipmentListPage.tsx`,
   `apps/web/src/pages/admin/AdminEquipmentPage.tsx`,
   `apps/web/src/pages/admin/AdminTasteNotesPage.tsx`.
-- **Code (new, 5 files)**: `apps/web/src/hooks/useStaticCacheSync.ts`,
+- **Code (new, 6 files)**: `apps/web/src/hooks/useStaticCacheSync.ts`,
   `apps/web/src/api/static-cache.test.ts`,
   `apps/web/src/hooks/useStaticCacheSync.test.ts`,
   `apps/web/src/pages/equipment/EquipmentListPage.test.tsx`,

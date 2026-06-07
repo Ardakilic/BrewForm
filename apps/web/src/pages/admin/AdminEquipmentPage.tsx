@@ -65,7 +65,8 @@ export function AdminEquipmentPage() {
       resetForm();
       log.debug({ editId }, 'handleSubmit completed');
       invalidateStaticCache();
-    } catch {
+    } catch (err) {
+      log.error({ err, editId }, 'handleSubmit failed');
     } finally {
       setSaving(false);
     }
@@ -83,7 +84,8 @@ export function AdminEquipmentPage() {
       setEquipment((prev) => prev.filter((eq) => eq.id !== id));
       log.debug({ equipmentId: id }, 'handleDelete completed');
       invalidateStaticCache();
-    } catch {
+    } catch (err) {
+      log.error({ err, equipmentId: id }, 'handleDelete failed');
     }
   }
 

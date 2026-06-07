@@ -1,7 +1,7 @@
 import { equipmentApi, tasteApi } from './index.ts';
 import type { EquipmentListItem, TasteNoteFlatItem } from './types.ts';
 
-const CACHE_BUST_KEY = 'brewform-static-cache-bust';
+export const CACHE_BUST_KEY = 'brewform-static-cache-bust';
 
 /** Module-level cache slot for the authenticated user's equipment list. Nulled by {@link invalidateStaticCache}. */
 let _equipment: EquipmentListItem[] | null = null;

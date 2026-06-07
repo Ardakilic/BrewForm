@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminTasteNotesPage } from './AdminTasteNotesPage.tsx';
@@ -32,10 +32,17 @@ import { invalidateStaticCache } from '../../api/static-cache.ts';
 const mockApi = vi.mocked(api);
 const mockInvalidateStaticCache = vi.mocked(invalidateStaticCache);
 
+const realConfirm = globalThis.confirm;
+
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  globalThis.confirm = realConfirm;
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -93,7 +100,6 @@ describe('AdminTasteNotesPage', () => {
     });
 
     expect(mockInvalidateStaticCache).toHaveBeenCalledTimes(1);
-    vi.unstubAllGlobals();
   });
 
   it('failed create does NOT call invalidateStaticCache', async () => {
@@ -134,6 +140,5 @@ describe('AdminTasteNotesPage', () => {
     });
 
     expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 });

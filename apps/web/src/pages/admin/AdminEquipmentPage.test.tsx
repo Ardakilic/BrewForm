@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminEquipmentPage } from './AdminEquipmentPage.tsx';
@@ -36,6 +36,10 @@ const mockInvalidateStaticCache = vi.mocked(invalidateStaticCache);
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -133,7 +137,6 @@ describe('AdminEquipmentPage', () => {
     });
 
     expect(mockInvalidateStaticCache).toHaveBeenCalledTimes(1);
-    vi.unstubAllGlobals();
   });
 
   it('failed create does NOT call invalidateStaticCache', async () => {
@@ -200,6 +203,5 @@ describe('AdminEquipmentPage', () => {
     });
 
     expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 });
