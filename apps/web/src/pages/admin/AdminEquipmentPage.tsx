@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { invalidateStaticCache } from '../../api/static-cache.ts';
+import { createLogger } from '../../utils/logger.ts';
 
 interface EquipmentItem {
   id: string;
@@ -8,6 +10,8 @@ interface EquipmentItem {
   brand: string | null;
   model: string | null;
 }
+
+const log = createLogger('AdminEquipmentPage');
 
 export function AdminEquipmentPage() {
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
@@ -18,16 +22,28 @@ export function AdminEquipmentPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    log.debug({}, 'AdminEquipmentPage mounted');
+    return () => {
+      log.debug({}, 'AdminEquipmentPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     api.get<EquipmentItem[]>('/admin/equipment').then((data) => {
       setEquipment(data as EquipmentItem[]);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
 
+  /**
+   * Create or edit equipment. Both branches update local state and share
+   * a single `resetForm()` and `invalidateStaticCache()` call on success.
+   */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
     setSaving(true);
+    log.debug({ editId }, 'handleSubmit started');
     try {
       if (editId) {
         const updated = await api.patch<EquipmentItem>(`/admin/equipment/${editId}`, {
@@ -47,18 +63,29 @@ export function AdminEquipmentPage() {
         setEquipment((prev) => [...prev, created as EquipmentItem]);
       }
       resetForm();
-    } catch {
+      log.debug({ editId }, 'handleSubmit completed');
+      invalidateStaticCache();
+    } catch (err) {
+      log.error({ err, editId }, 'handleSubmit failed');
     } finally {
       setSaving(false);
     }
   }
 
+  /**
+   * DELETE `/admin/equipment/:id`, remove the item from local state, and
+   * invalidate the static cache so the next loader run re-fetches.
+   */
   async function handleDelete(id: string) {
     if (!globalThis.confirm('Delete this equipment?')) return;
+    log.debug({ equipmentId: id }, 'handleDelete started');
     try {
       await api.delete(`/admin/equipment/${id}`);
       setEquipment((prev) => prev.filter((eq) => eq.id !== id));
-    } catch {
+      log.debug({ equipmentId: id }, 'handleDelete completed');
+      invalidateStaticCache();
+    } catch (err) {
+      log.error({ err, equipmentId: id }, 'handleDelete failed');
     }
   }
 
@@ -93,12 +120,14 @@ export function AdminEquipmentPage() {
           <div className='grid grid-cols-2 gap-4'>
             <div>
               <label
+                htmlFor='admin-eq-name'
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
                 Name *
               </label>
               <input
+                id='admin-eq-name'
                 type='text'
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -108,12 +137,14 @@ export function AdminEquipmentPage() {
             </div>
             <div>
               <label
+                htmlFor='admin-eq-type'
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
                 Type *
               </label>
               <input
+                id='admin-eq-type'
                 type='text'
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
@@ -123,12 +154,14 @@ export function AdminEquipmentPage() {
             </div>
             <div>
               <label
+                htmlFor='admin-eq-brand'
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
                 Brand
               </label>
               <input
+                id='admin-eq-brand'
                 type='text'
                 value={form.brand}
                 onChange={(e) => setForm({ ...form, brand: e.target.value })}
@@ -137,12 +170,14 @@ export function AdminEquipmentPage() {
             </div>
             <div>
               <label
+                htmlFor='admin-eq-model'
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
                 Model
               </label>
               <input
+                id='admin-eq-model'
                 type='text'
                 value={form.model}
                 onChange={(e) => setForm({ ...form, model: e.target.value })}
