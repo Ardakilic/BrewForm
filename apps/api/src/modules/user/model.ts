@@ -9,7 +9,13 @@ import { db } from '@brewform/db';
 import { recipes, recipeVersions, userFollows, userPreferences, users } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, isNull, like, or } from 'drizzle-orm';
 
-/** Find a user by ID. Returns null if deleted or not found. */
+/**
+ * Find a user by ID, including preferences via LEFT JOIN.
+ *
+ * Returns null if the user is deleted or not found. When found, the
+ * returned object includes a `preferences` field from the joined
+ * `user_preferences` row (null if the user has no preferences record).
+ */
 export async function findById(id: string) {
   const result = await db.select().from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))

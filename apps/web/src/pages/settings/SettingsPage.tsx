@@ -37,6 +37,13 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
+  /**
+   * Persist preferences to the server and refresh the local user state.
+   *
+   * The PATCH save and the `refreshUser()` call are decoupled:
+   * - Preferences are committed to the DB regardless of refresh success
+   * - A failed refresh does not log the user out or affect the save UI
+   */
   async function savePreferences() {
     if (!prefs) return;
     setSaving(true);
@@ -62,7 +69,10 @@ export function SettingsPage() {
     try {
       await refreshUser();
     } catch {
-      log.error({ err: 'refreshUser failed after preferences save' }, 'savePreferences refresh failed');
+      log.error(
+        { err: 'refreshUser failed after preferences save' },
+        'savePreferences refresh failed',
+      );
     }
   }
 
