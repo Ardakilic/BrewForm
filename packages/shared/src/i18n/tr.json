@@ -311,6 +311,7 @@
   "settings.deleteConfirm": "Emin misiniz? Bu işlem geri alınamaz.",
   "settings.savedMsg": "Tercihler kaydedildi!",
   "settings.failedMsg": "Tercihler kaydedilemedi.",
+  "settings.deleteFailed": "Hesap silinemedi.",
   "setup.newSetup": "+ Yeni Kurulum",
   "setup.createSetup": "Kurulum Oluştur",
   "setup.noSetups": "Henüz kurulum yok. İlk demleme kurulumunuzu oluşturun!",
