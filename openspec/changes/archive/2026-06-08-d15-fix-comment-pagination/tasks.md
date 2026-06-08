@@ -2,7 +2,7 @@
 
 ## 1. Add `listCommentsLoader` to `apps/web/src/routes/comments.ts`
 
-- [ ] 1.1 **Update the type import** on line 1. Change:
+- [x] 1.1 **Update the type import** on line 1. Change:
   ```ts
   import type { ActionFunctionArgs } from 'react-router';
   ```
@@ -11,7 +11,7 @@
   import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
   ```
 
-- [ ] 1.2 **Add `listCommentsLoader` function** after the `const logger = createLogger('comments');` line (line 4) and before `export const createCommentAction` (line 6). Insert this code:
+- [x] 1.2 **Add `listCommentsLoader` function** after the `const logger = createLogger('comments');` line (line 4) and before `export const createCommentAction` (line 6). Insert this code:
   ```ts
   export const listCommentsLoader = async ({ params, request }: LoaderFunctionArgs) => {
     const recipeId = params.recipeId;
@@ -26,7 +26,7 @@
   };
   ```
 
-- [ ] 1.3 **Verify** by reading the file — the structure should be:
+- [x] 1.3 **Verify** by reading the file — the structure should be:
   ```ts
   import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
   import { commentApi } from '../api/index.ts';
@@ -42,7 +42,7 @@
 
 ## 2. Wire `listCommentsLoader` into `apps/web/src/router.tsx`
 
-- [ ] 2.1 **Update the import** on the line that imports from `'./routes/comments.ts'` (currently around line 39):
+- [x] 2.1 **Update the import** on the line that imports from `'./routes/comments.ts'` (currently around line 39):
   **Before:**
   ```ts
   import { createCommentAction, deleteCommentAction } from './routes/comments.ts';
@@ -52,7 +52,7 @@
   import { createCommentAction, deleteCommentAction, listCommentsLoader } from './routes/comments.ts';
   ```
 
-- [ ] 2.2 **Add `loader` to the route object** on the `comments/recipe/:recipeId` route (currently around line 231):
+- [x] 2.2 **Add `loader` to the route object** on the `comments/recipe/:recipeId` route (currently around line 231):
   **Before:**
   ```ts
   { path: 'comments/recipe/:recipeId', action: createCommentAction },
@@ -62,19 +62,19 @@
   { path: 'comments/recipe/:recipeId', loader: listCommentsLoader, action: createCommentAction },
   ```
 
-- [ ] 2.3 **Verify** the `comments/:id` route on the following line is unchanged:
+- [x] 2.3 **Verify** the `comments/:id` route on the following line is unchanged:
   ```ts
   { path: 'comments/:id', action: deleteCommentAction },
   ```
   (It should NOT have a `loader`.)
 
-- [ ] 2.4 Run `make check-web` to confirm TypeScript and lint pass for the entire web workspace.
+- [x] 2.4 Run `make check-web` to confirm TypeScript and lint pass for the entire web workspace.
 
 ## 3. Add "Load More" test coverage to `apps/web/src/components/recipe/CommentSection.test.tsx`
 
 ### 3.1 Update `renderCommentSection()` test helper
 
-- [ ] 3.1.1 **Locate** the `comments/recipe/:recipeId` route definition inside `renderCommentSection()` (currently around lines 191–203). It currently looks like:
+- [x] 3.1.1 **Locate** the `comments/recipe/:recipeId` route definition inside `renderCommentSection()` (currently around lines 191–203). It currently looks like:
   ```ts
   {
     path: 'comments/recipe/:recipeId',
@@ -160,7 +160,7 @@
 
 ### 3.2 Add a test helper to create multi-page initial data
 
-- [ ] 3.2.1 **Add a helper function** near the top of the test file (after the existing `defaultComments` constant, around line 91) to generate initial comments for pagination tests:
+- [x] 3.2.1 **Add a helper function** near the top of the test file (after the existing `defaultComments` constant, around line 91) to generate initial comments for pagination tests:
   ```ts
   function makePaginationInitialData(options: {
     total: number;
@@ -193,12 +193,12 @@
 
 Add these tests **after the existing `'CommentSection — comment form'` describe block** (after line 765), in a new `describe` block. Place it before the final closing of the file.
 
-- [ ] 3.3.1 **Create the test block** with:
+- [x] 3.3.1 **Create the test block** with:
   ```ts
   describe('CommentSection — Load More pagination', () => {
   ```
 
-- [ ] 3.3.2 **Test: "Load More" button appears when total exceeds visible comments**
+- [x] 3.3.2 **Test: "Load More" button appears when total exceeds visible comments**
   ```ts
   it('shows "Load More" button when total exceeds visible comments', async () => {
     mockUseAuth.mockReturnValue({
@@ -221,7 +221,7 @@ Add these tests **after the existing `'CommentSection — comment form'` describ
   });
   ```
 
-- [ ] 3.3.3 **Test: "Load More" button does not appear when all comments are visible**
+- [x] 3.3.3 **Test: "Load More" button does not appear when all comments are visible**
   ```ts
   it('does not show "Load More" button when all comments are visible', async () => {
     mockUseAuth.mockReturnValue({
@@ -245,7 +245,7 @@ Add these tests **after the existing `'CommentSection — comment form'` describ
   });
   ```
 
-- [ ] 3.3.4 **Test: "Load More" button does not appear with zero comments**
+- [x] 3.3.4 **Test: "Load More" button does not appear with zero comments**
   ```ts
   it('does not show "Load More" button when there are zero comments', async () => {
     mockUseAuth.mockReturnValue({
@@ -269,7 +269,7 @@ Add these tests **after the existing `'CommentSection — comment form'` describ
   });
   ```
 
-- [ ] 3.3.5 **Test: Clicking "Load More" appends second-page comments**
+- [x] 3.3.5 **Test: Clicking "Load More" appends second-page comments**
   ```ts
   it('appends second-page comments when "Load More" is clicked', async () => {
     mockUseAuth.mockReturnValue({
@@ -314,7 +314,7 @@ Add these tests **after the existing `'CommentSection — comment form'` describ
   });
   ```
 
-- [ ] 3.3.6 **Test: Count heading shows correct total after loading more**
+- [x] 3.3.6 **Test: Count heading shows correct total after loading more**
   ```ts
   it('shows correct total in count heading after loading more', async () => {
     mockUseAuth.mockReturnValue({
@@ -349,7 +349,7 @@ Add these tests **after the existing `'CommentSection — comment form'` describ
   });
   ```
 
-- [ ] 3.3.7 **Test: "Load More" disappears after loading all pages**
+- [x] 3.3.7 **Test: "Load More" disappears after loading all pages**
   ```ts
   it('hides "Load More" button after loading all pages', async () => {
     mockUseAuth.mockReturnValue({
@@ -395,7 +395,7 @@ Add these tests **after the existing `'CommentSection — comment form'` describ
   });
   ```
 
-- [ ] 3.3.8 **Test: Submitting a comment still works with loader present**
+- [x] 3.3.8 **Test: Submitting a comment still works with loader present**
   ```ts
   it('allows comment submission after loader is added to the route', async () => {
     mockUseAuth.mockReturnValue({
@@ -430,27 +430,27 @@ Add these tests **after the existing `'CommentSection — comment form'` describ
   });
   ```
 
-- [ ] 3.3.9 **Close the describe block:**
+- [x] 3.3.9 **Close the describe block:**
   ```ts
   });
   ```
 
 ## 4. Verification
 
-- [ ] 4.1 Run `make check-web` — must pass with zero TypeScript errors and zero lint warnings.
-- [ ] 4.2 Run `make test-specific filter=apps/web/src/components/recipe/CommentSection.test.tsx` — all existing tests AND new "Load More" tests must pass.
-- [ ] 4.3 Run `make test-web` (or `make test`) to confirm the full test suite is not broken.
+- [x] 4.1 Run `make check-web` — must pass with zero TypeScript errors and zero lint warnings.
+- [x] 4.2 Run `make test-specific filter=apps/web/src/components/recipe/CommentSection.test.tsx` — all existing tests AND new "Load More" tests must pass.
+- [x] 4.3 Run `make test-web` (or `make test`) to confirm the full test suite is not broken.
 
 ### Manual smoke test checklist
 
-- [ ] 4.4 Navigate to a recipe with **0 comments** — verify no "Load More" button, count heading shows "0 comments".
-- [ ] 4.5 Navigate to a recipe with **1–9 comments** — verify no "Load More" button (all on one page, `total <= perPage`).
-- [ ] 4.6 Navigate to a recipe with **10+ comments** — verify "Load More" button appears.
-- [ ] 4.7 Click "Load More" — verify:
+- [x] 4.4 Navigate to a recipe with **0 comments** — verify no "Load More" button, count heading shows "0 comments".
+- [x] 4.5 Navigate to a recipe with **1–9 comments** — verify no "Load More" button (all on one page, `total <= perPage`).
+- [x] 4.6 Navigate to a recipe with **10+ comments** — verify "Load More" button appears.
+- [x] 4.7 Click "Load More" — verify:
   - New comments are appended (not replacing existing ones).
   - Count heading remains accurate.
   - Button is disabled during loading (shows loading state text if any).
-- [ ] 4.8 Click "Load More" until exhausted — verify the button disappears when all comments are loaded.
-- [ ] 4.9 Submit a new top-level comment while pagination is active — verify it appears immediately and the count updates.
-- [ ] 4.10 Reply to a comment — verify reply submission still works.
-- [ ] 4.11 Delete a comment — verify deletion still works.
+- [x] 4.8 Click "Load More" until exhausted — verify the button disappears when all comments are loaded.
+- [x] 4.9 Submit a new top-level comment while pagination is active — verify it appears immediately and the count updates.
+- [x] 4.10 Reply to a comment — verify reply submission still works.
+- [x] 4.11 Delete a comment — verify deletion still works.
