@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { createMemoryRouter, LoaderFunctionArgs, RouterProvider } from 'react-router';
 import { CommentSection } from './CommentSection.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -59,6 +59,17 @@ const defaultComments = {
   meta: { pagination: { total: 0, page: 1, perPage: 10, totalPages: 0 } },
 };
 
+/**
+ * Generate a `PaginatedResponse<CommentData>` of the exact shape that
+ * `RecipeDetailPage.loader` passes to `CommentSection` as `initialComments`.
+ * Used by the "Load More" pagination tests so the same `initialComments`
+ * fixture pattern works across cases (no comments, one page, multiple pages).
+ *
+ * @param options.total     Total number of comments across all pages.
+ * @param options.page      Page number represented by `data` (1-indexed).
+ * @param options.perPage   Page size; `totalPages` is derived as `ceil(total / perPage)`.
+ * @param options.commentCount How many comments to emit in `data` (the visible count).
+ */
 function makePaginationInitialData(options: {
   total: number;
   page: number;
@@ -217,7 +228,21 @@ function renderCommentSection(
         children: [
           {
             path: 'comments/recipe/:recipeId',
-            loader: async ({ request }: { request: Request }) => {
+            /**
+             * Mock loader for the `comments/recipe/:recipeId` test route.
+             * Returns page-specific data so "Load More" tests can verify that
+             * the correct page is requested and that distinct data is appended:
+             *   - page 2 → 10 comments (continues from initial 10)
+             *   - page 3 → 5 comments (final page; total = 25)
+             *   - default → empty array, total = 25
+             * The mock mirrors a real backend with `total: 25, perPage: 10, totalPages: 3`
+             * so the "all pages loaded" assertion (`comments.length === total`)
+             * passes once the user clicks "Load More" twice.
+             */
+            loader: async ({ request, params }: LoaderFunctionArgs) => {
+              if (params.recipeId !== 'recipe-1') {
+                throw new Response('Wrong recipe id', { status: 400 });
+              }
               const url = new URL(request.url);
               const page = parseInt(url.searchParams.get('page') ?? '1', 10);
               if (page === 2) {

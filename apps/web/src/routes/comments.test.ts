@@ -22,10 +22,12 @@ vi.mock('../api/index.ts', () => ({
 
 import { listCommentsLoader } from './comments.ts';
 
+/** Build a minimal GET `Request` matching the shape `LoaderFunctionArgs.request` expects. */
 function makeRequest(url: string): Request {
   return new Request(url, { method: 'GET' });
 }
 
+/** Cast a `(recipeId, request)` pair into the `LoaderFunctionArgs` shape the loader destructures. */
 function makeArgs(recipeId: string | undefined, request: Request) {
   return { params: { recipeId }, request } as unknown as Parameters<typeof listCommentsLoader>[0];
 }

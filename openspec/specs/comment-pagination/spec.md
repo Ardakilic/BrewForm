@@ -1,9 +1,55 @@
 # comment-pagination Specification
 
 ## Purpose
-TBD - created by archiving change d15-fix-comment-pagination. Update Purpose after archive.
 
-Defines client-side pagination for recipe comments via React Router `useFetcher().load()`. Covers the `listCommentsLoader` route loader, route registration supporting both GET (loader) and POST (action), the "Load More" button lifecycle (visibility, append, count heading, disappearance, disabled-while-loading), and non-regression of the existing `createCommentAction` POST flow.
+Client-side pagination for recipe comments via React Router `useFetcher().load()`. This specification defines the behavior of:
+
+1. The `listCommentsLoader` route loader in `apps/web/src/routes/comments.ts` that handles GET requests for paginated comments.
+2. The route registration in `apps/web/src/router.tsx` that supports both GET (loader) and POST (action) on the `comments/recipe/:recipeId` path.
+3. The "Load More" button lifecycle in `apps/web/src/components/recipe/CommentSection.tsx` (already implemented, verified correct — no changes needed).
+4. Test coverage in `apps/web/src/components/recipe/CommentSection.test.tsx` for "Load More" pagination behavior.
+
+## Data Types
+
+The following types are referenced throughout this spec. They already exist in the codebase and are not changed by this work.
+
+### PaginatedResponse<T> (`apps/web/src/api/types.ts:174`)
+
+```ts
+interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    pagination: {
+      page: number;
+      perPage: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+}
+```
+
+### CommentData (`apps/web/src/api/types.ts:162`)
+
+```ts
+interface CommentData {
+  id: string;
+  content: string;
+  authorId: string;
+  author?: CommentAuthor;
+  createdAt: string;
+  isOp?: boolean;
+  replies?: CommentData[];
+}
+```
+
+### Loader return type
+
+The `listCommentsLoader` returns `Promise<PaginatedResponse<CommentData>>` — the same type returned by `commentApi.list()`.
+
+### Fetcher processing contract
+
+The `useEffect` at `CommentSection.tsx:171` expects `loadMoreFetcher.data` to be `PaginatedResponse<CommentData>`. It destructures `result.data` and `result.meta.pagination`. Any deviation from this shape (e.g., returning just `CommentData[]`) would break the component and is prohibited by this spec.
 
 ## Requirements
 ### Requirement: Route loader for listing comments
