@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { createMemoryRouter, LoaderFunctionArgs, RouterProvider } from 'react-router';
 import { CommentSection } from './CommentSection.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -58,6 +58,43 @@ const defaultComments = {
   data: [],
   meta: { pagination: { total: 0, page: 1, perPage: 10, totalPages: 0 } },
 };
+
+/**
+ * Generate a `PaginatedResponse<CommentData>` of the exact shape that
+ * `RecipeDetailPage.loader` passes to `CommentSection` as `initialComments`.
+ * Used by the "Load More" pagination tests so the same `initialComments`
+ * fixture pattern works across cases (no comments, one page, multiple pages).
+ *
+ * @param options.total     Total number of comments across all pages.
+ * @param options.page      Page number represented by `data` (1-indexed).
+ * @param options.perPage   Page size; `totalPages` is derived as `ceil(total / perPage)`.
+ * @param options.commentCount How many comments to emit in `data` (the visible count).
+ */
+function makePaginationInitialData(options: {
+  total: number;
+  page: number;
+  perPage: number;
+  commentCount: number;
+}) {
+  const comments = Array.from({ length: options.commentCount }, (_, i) => ({
+    id: `comment-init-${i + 1}`,
+    content: `Initial comment ${i + 1}`,
+    authorId: 'user-1',
+    createdAt: new Date(Date.now() - i * 60000).toISOString(),
+    replies: [],
+  }));
+  return {
+    data: comments,
+    meta: {
+      pagination: {
+        total: options.total,
+        page: options.page,
+        perPage: options.perPage,
+        totalPages: Math.ceil(options.total / options.perPage),
+      },
+    },
+  };
+}
 
 const enT = (key: string) => {
   const map: Record<string, string> = {
@@ -191,6 +228,58 @@ function renderCommentSection(
         children: [
           {
             path: 'comments/recipe/:recipeId',
+            /**
+             * Mock loader for the `comments/recipe/:recipeId` test route.
+             * Returns page-specific data so "Load More" tests can verify that
+             * the correct page is requested and that distinct data is appended:
+             *   - page 2 → 10 comments (continues from initial 10)
+             *   - page 3 → 5 comments (final page; total = 25)
+             *   - default → empty array, total = 25
+             * The mock mirrors a real backend with `total: 25, perPage: 10, totalPages: 3`
+             * so the "all pages loaded" assertion (`comments.length === total`)
+             * passes once the user clicks "Load More" twice.
+             */
+            loader: async ({ request, params }: LoaderFunctionArgs) => {
+              if (params.recipeId !== 'recipe-1') {
+                throw new Response('Wrong recipe id', { status: 400 });
+              }
+              const url = new URL(request.url);
+              const page = parseInt(url.searchParams.get('page') ?? '1', 10);
+              if (page === 2) {
+                return {
+                  data: Array.from({ length: 10 }, (_, i) => ({
+                    id: `comment-page2-${i + 1}`,
+                    content: `Second page comment ${i + 1}`,
+                    authorId: 'user-1',
+                    createdAt: '2024-02-01T10:00:00Z',
+                    replies: [],
+                  })),
+                  meta: {
+                    pagination: { total: 25, page: 2, perPage: 10, totalPages: 3 },
+                  },
+                };
+              }
+              if (page === 3) {
+                return {
+                  data: Array.from({ length: 5 }, (_, i) => ({
+                    id: `comment-page3-${i + 1}`,
+                    content: `Third page comment ${i + 1}`,
+                    authorId: 'user-3',
+                    createdAt: '2024-02-01T08:00:00Z',
+                    replies: [],
+                  })),
+                  meta: {
+                    pagination: { total: 25, page: 3, perPage: 10, totalPages: 3 },
+                  },
+                };
+              }
+              return {
+                data: [],
+                meta: {
+                  pagination: { total: 25, page: 1, perPage: 10, totalPages: 3 },
+                },
+              };
+            },
             action: async ({ request }: { request: Request }) => {
               const formData = await request.formData();
               const content = formData.get('content') as string;
@@ -763,5 +852,206 @@ describe('CommentSection — comment form', () => {
     await waitFor(() => {
       expect(screen.getByText('Hello world')).toBeInTheDocument();
     });
+  });
+});
+
+// ── Load More pagination ───────────────────────────────────────────────────
+
+describe('CommentSection — Load More pagination', () => {
+  it('shows "Load More" button when total exceeds visible comments', async () => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: regularUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+
+    const initialData = makePaginationInitialData({
+      total: 25,
+      page: 1,
+      perPage: 10,
+      commentCount: 10,
+    });
+    renderCommentSection({ initialComments: initialData });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument();
+    });
+  });
+
+  it('does not show "Load More" button when all comments are visible', async () => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: regularUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+
+    const initialData = makePaginationInitialData({
+      total: 5,
+      page: 1,
+      perPage: 10,
+      commentCount: 5,
+    });
+    renderCommentSection({ initialComments: initialData });
+
+    await waitFor(() => {
+      expect(screen.getByText(/comments/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
+  });
+
+  it('does not show "Load More" button when there are zero comments', async () => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: regularUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+
+    const initialData = makePaginationInitialData({
+      total: 0,
+      page: 1,
+      perPage: 10,
+      commentCount: 0,
+    });
+    renderCommentSection({ initialComments: initialData });
+
+    await waitFor(() => {
+      expect(screen.getByText(/0 comments|Comments \(0\)/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
+  });
+
+  it('appends second-page comments when "Load More" is clicked', async () => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: regularUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+
+    const initialData = makePaginationInitialData({
+      total: 25,
+      page: 1,
+      perPage: 10,
+      commentCount: 10,
+    });
+    renderCommentSection({ initialComments: initialData });
+
+    await waitFor(() => {
+      expect(screen.getByText('Initial comment 1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Initial comment 1')).toBeInTheDocument();
+    expect(screen.getByText('Initial comment 10')).toBeInTheDocument();
+
+    const loadMoreBtn = screen.getByRole('button', { name: /load more/i });
+    await userEvent.click(loadMoreBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Second page comment 1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Initial comment 1')).toBeInTheDocument();
+    expect(screen.getByText('Initial comment 10')).toBeInTheDocument();
+
+    expect(screen.getByText('Second page comment 1')).toBeInTheDocument();
+    expect(screen.getByText('Second page comment 2')).toBeInTheDocument();
+  });
+
+  it('shows correct total in count heading after loading more', async () => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: regularUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+
+    const initialData = makePaginationInitialData({
+      total: 25,
+      page: 1,
+      perPage: 10,
+      commentCount: 10,
+    });
+    renderCommentSection({ initialComments: initialData });
+
+    await waitFor(() => {
+      expect(screen.getByText(/25/)).toBeInTheDocument();
+    });
+
+    const loadMoreBtn = screen.getByRole('button', { name: /load more/i });
+    await userEvent.click(loadMoreBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Second page comment 1')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/25/)).toBeInTheDocument();
+  });
+
+  it('hides "Load More" button after loading all pages', async () => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: regularUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+
+    const initialData = makePaginationInitialData({
+      total: 25,
+      page: 1,
+      perPage: 10,
+      commentCount: 10,
+    });
+    renderCommentSection({ initialComments: initialData });
+
+    await waitFor(() => {
+      expect(screen.getByText('Initial comment 1')).toBeInTheDocument();
+    });
+
+    const loadMoreBtn = screen.getByRole('button', { name: /load more/i });
+    await userEvent.click(loadMoreBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Second page comment 1')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /load more/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Third page comment 1')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('allows comment submission after loader is added to the route', async () => {
+    mockUseAuth.mockReturnValue({
+      ...guestAuth,
+      user: regularUser,
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+
+    const initialData = makePaginationInitialData({
+      total: 25,
+      page: 1,
+      perPage: 10,
+      commentCount: 10,
+    });
+    renderCommentSection({ initialComments: initialData });
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/write a comment/i)).toBeInTheDocument();
+    });
+
+    await userEvent.type(
+      screen.getByPlaceholderText(/write a comment/i),
+      'New comment during pagination',
+    );
+    await userEvent.click(screen.getByRole('button', { name: /post comment/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('New comment during pagination')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument();
   });
 });

@@ -36,7 +36,7 @@ import { likeAction } from './routes/like.ts';
 import { favouriteAction } from './routes/favourite.ts';
 import { rateAction } from './routes/rate.ts';
 import { followAction } from './routes/follow.ts';
-import { createCommentAction, deleteCommentAction } from './routes/comments.ts';
+import { createCommentAction, deleteCommentAction, listCommentsLoader } from './routes/comments.ts';
 
 export const router = createBrowserRouter([
   {
@@ -228,7 +228,11 @@ export const router = createBrowserRouter([
       { path: 'recipes/:id/favourite', action: favouriteAction },
       { path: 'recipes/:id/rate', action: rateAction },
       { path: 'follow/:userId', action: followAction },
-      { path: 'comments/recipe/:recipeId', action: createCommentAction },
+      {
+        path: 'comments/recipe/:recipeId',
+        loader: listCommentsLoader,
+        action: createCommentAction,
+      },
       { path: 'comments/:id', action: deleteCommentAction },
 
       { path: '*', element: <NotFoundPage /> },
