@@ -39,6 +39,13 @@ export function SettingsPage() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
 
+  useEffect(() => {
+    log.debug({}, 'SettingsPage mounted');
+    return () => {
+      log.debug({}, 'SettingsPage unmounted');
+    };
+  }, []);
+
   /**
    * Persist preferences to the server and refresh the local user state.
    *
@@ -105,13 +112,6 @@ export function SettingsPage() {
   }
 
   if (!user) return null;
-
-  useEffect(() => {
-    log.debug({}, 'SettingsPage mounted');
-    return () => {
-      log.debug({}, 'SettingsPage unmounted');
-    };
-  }, []);
 
   return (
     <div className='mx-auto max-w-2xl px-6 py-8'>

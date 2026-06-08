@@ -1,7 +1,16 @@
 # account-deletion Specification
 
 ## Purpose
-TBD - created by archiving change d16-fix-account-deletion. Update Purpose after archive.
+
+Define the account-deletion capability for authenticated users. The Settings page exposes a
+"Delete Account" action in the Danger Zone that lets a user permanently remove their own
+account, their personal data, and any related sessions. After a successful deletion the
+frontend MUST clear local auth state and redirect to the public home page, leaving no
+half-authenticated UI. Failures (network errors, server errors) MUST be surfaced to the user
+through a translated banner so they can retry, and the user MUST stay authenticated until
+deletion actually succeeds. The capability exists so that "delete my account" reliably means
+"delete my account" — no stale session, no silent failures, no language-specific rendering
+bugs.
 ## Requirements
 ### Requirement: Post-deletion auth cleanup and redirect
 
