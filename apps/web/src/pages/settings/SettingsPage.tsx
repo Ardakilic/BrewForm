@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLoaderData } from 'react-router';
+import { useLoaderData, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -29,13 +29,15 @@ export const loader = async () => {
 };
 
 export function SettingsPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, availableLocales, t } = useTranslation();
+  const navigate = useNavigate();
   const { preferences } = useLoaderData<typeof loader>();
   const [prefs, setPrefs] = useState<Preferences>(preferences);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
 
   /**
    * Persist preferences to the server and refresh the local user state.
@@ -48,6 +50,7 @@ export function SettingsPage() {
     if (!prefs) return;
     setSaving(true);
     setMessage('');
+    setMessageType(null);
     try {
       await api.patch('/preferences', {
         unitSystem: prefs.unitSystem,
@@ -58,8 +61,10 @@ export function SettingsPage() {
         emailNotifications: prefs.emailNotifications,
       } as Record<string, unknown>);
       setMessage(t('settings.savedMsg'));
+      setMessageType('success');
     } catch {
       setMessage(t('settings.failedMsg'));
+      setMessageType('error');
     } finally {
       setSaving(false);
     }
@@ -73,11 +78,29 @@ export function SettingsPage() {
     }
   }
 
+  /**
+   * Delete the current user's account and clean up frontend state.
+   *
+   * Calls {@link logout} to clear {@link AuthContext} (sets user to {@code null}, then
+   * attempts the server-side logout endpoint — expected to fail since the account is
+   * already deleted, but the local state cleanup always runs). Then calls
+   * {@link navigate} to redirect to the public home page ({@code /}).
+   *
+   * On failure the error is logged and a user-facing error message is displayed via the
+   * shared banner. The auth state is preserved so the user can retry.
+   */
   async function handleDeleteAccount() {
     if (!globalThis.confirm(t('settings.deleteConfirm'))) return;
+    setMessage('');
+    setMessageType(null);
     try {
       await api.delete('/users/me');
-    } catch {
+      await logout();
+      navigate('/');
+    } catch (err) {
+      log.error({ err }, 'Account deletion failed');
+      setMessage(t('settings.deleteFailed'));
+      setMessageType('error');
     }
   }
 
@@ -102,9 +125,7 @@ export function SettingsPage() {
         <div
           className='mb-4 rounded p-3 text-sm'
           style={{
-            backgroundColor: message.includes('Failed') || message.includes('kaydedilemedi')
-              ? 'var(--error)'
-              : 'var(--success)',
+            backgroundColor: messageType === 'error' ? 'var(--error)' : 'var(--success)',
             color: 'white',
           }}
         >

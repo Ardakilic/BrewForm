@@ -311,6 +311,7 @@
   "settings.deleteConfirm": "Are you sure? This action cannot be undone.",
   "settings.savedMsg": "Preferences saved!",
   "settings.failedMsg": "Failed to save preferences.",
+  "settings.deleteFailed": "Account deletion failed.",
   "setup.newSetup": "+ New Setup",
   "setup.createSetup": "Create Setup",
   "setup.noSetups": "No setups yet. Create your first brewing setup!",
