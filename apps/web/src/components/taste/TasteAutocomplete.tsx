@@ -1,7 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/index.ts';
 import { IntensityDots } from '../recipe/IntensityDots.tsx';
+import { createLogger } from '../../utils/logger.ts';
 
+const log = createLogger('TasteAutocomplete');
+
+/** Represents a single taste note node in the SCAA flavor hierarchy. */
 interface TasteNote {
   id: string;
   name: string;
@@ -9,6 +13,7 @@ interface TasteNote {
   parentId: string | null;
 }
 
+/** Props for the TasteAutocomplete component. */
 interface Props {
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
@@ -17,6 +22,7 @@ interface Props {
   onIntensitiesChange?: (intensities: Record<string, number>) => void;
 }
 
+/** Searchable autocomplete for SCAA taste notes with hierarchical grouping, intensity controls, and keyboard navigation. */
 export function TasteAutocomplete({
   selectedIds,
   onSelectionChange,
@@ -33,7 +39,9 @@ export function TasteAutocomplete({
   useEffect(() => {
     api.get<TasteNote[]>('/taste-notes/flat').then((data) => {
       setAllNotes(data as TasteNote[]);
-    }).catch(() => {});
+    }).catch((err) => {
+      log.error({ err }, 'Failed to fetch taste notes list');
+    });
   }, []);
 
   useEffect(() => {
@@ -152,6 +160,7 @@ export function TasteAutocomplete({
     }
   }, [highlightedId]);
 
+  /** Adds or removes a taste note from the selection. When adding, defaults intensity to 2. */
   function toggleNote(id: string) {
     if (selectedIds.includes(id)) {
       onSelectionChange(selectedIds.filter((sid) => sid !== id));
@@ -169,6 +178,7 @@ export function TasteAutocomplete({
     setQuery('');
   }
 
+  /** Cycles a selected note's intensity through 1 → 2 → 3 → 1. */
   function cycleIntensity(id: string) {
     if (!onIntensitiesChange) return;
     const current = intensities[id] ?? 2;
@@ -176,6 +186,7 @@ export function TasteAutocomplete({
     onIntensitiesChange({ ...intensities, [id]: next });
   }
 
+  /** Handles keyboard navigation (ArrowUp/Down, Enter, Escape) in the autocomplete dropdown. */
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!isOpen) {
       if (e.key === 'ArrowDown' || e.key === 'Enter') {

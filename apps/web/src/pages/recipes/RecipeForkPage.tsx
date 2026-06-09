@@ -41,6 +41,7 @@ export function RecipeForkPage() {
     }).finally(() => setLoading(false));
   }, [id, t]);
 
+  /** Creates a fork of the source recipe with the current title. On success navigates to the new recipe's edit page; on failure displays the error. */
   async function handleFork() {
     if (!id) return;
     setForking(true);

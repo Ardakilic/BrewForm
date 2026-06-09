@@ -74,6 +74,7 @@
   "recipe.focusMode.ratio": "Oran",
   "recipe.focusMode.rating": "Puan",
   "recipe.focusMode.notes": "Notlar",
+  "recipe.focusMode.loadError": "Tarif yüklenemedi",
   "recipe.qrCode": "QR Kodu",
   "recipe.share": "Paylaş",
   "recipe.forkedFrom": "Şuradan çatallandı",

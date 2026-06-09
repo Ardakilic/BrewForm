@@ -5,6 +5,7 @@ import { ApiError } from '../../api/client.ts';
 import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
+import { createLogger } from '../../utils/logger.ts';
 import {
   BREW_METHODS_LIST,
   DRINK_TYPES_LIST,
@@ -14,6 +15,9 @@ import {
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 import type { EquipmentListItem, SetupListItem } from '../../api/types.ts';
 
+const log = createLogger('RecipeCreatePage');
+
+/** Multi-step form for creating a new brew recipe with bean info, brew parameters, equipment selection, taste notes, and preparation instructions. */
 export function RecipeCreatePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -84,7 +88,9 @@ export function RecipeCreatePage() {
         else if (bean.roaster) setCoffeeBrand(String(bean.roaster));
         if (bean.processing) setCoffeeProcessing(String(bean.processing));
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      log.error({ err, beanId }, 'Failed to pre-fill bean info from URL param');
+    });
   }, []);
 
   // Auto-fill grinder and brewerDetails when setup changes
@@ -106,12 +112,14 @@ export function RecipeCreatePage() {
     }
   }, [brewMethod]);
 
+  /** Toggles an equipment item in the selected equipment set. */
   function toggleEquipment(id: string) {
     setSelectedEquipmentIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
 
+  /** Applies brewer details from the selected setup to the form state. */
   function setBrewerDetailsFromSetup(value: string) {
     // brewerDetails is not a separate state field in the form —
     // it's part of the Brew Parameters section as a free-text input.
@@ -124,6 +132,7 @@ export function RecipeCreatePage() {
 
   const [brewerDetails, setBrewerDetails] = useState('');
 
+  /** Validates and submits the recipe creation form. On success navigates to the new recipe page; on failure displays validation or network errors. */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -515,6 +524,7 @@ export function RecipeCreatePage() {
   );
 }
 
+/** Card wrapper for form sections with a title header. */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className='card'>
@@ -524,6 +534,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/** Labeled form field container with optional required indicator. */
 function Field(
   { label, required, children }: { label: string; required?: boolean; children: React.ReactNode },
 ) {
