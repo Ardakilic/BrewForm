@@ -78,6 +78,18 @@ export function errorHandler(err: Error, c: Context) {
     }, 401);
   }
 
+  // Known not-found error messages from service layer
+  if (err instanceof Error && err.message === 'COFFEE_VARIETY_NOT_FOUND') {
+    return c.json({
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Coffee variety not found',
+        requestId,
+      },
+    }, 404);
+  }
+
   log.error({ err, requestId }, 'Unhandled error');
 
   return c.json({

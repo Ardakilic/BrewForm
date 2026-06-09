@@ -261,9 +261,11 @@ export async function updateEquipment(
 /** Soft-delete an equipment record and log the action. */
 export async function deleteEquipment(adminId: string, id: string) {
   logger.debug({ adminId, id }, 'deleteEquipment started');
-  await model.deleteEquipment(id);
-  await model.createAuditLog(adminId, 'DELETE_EQUIPMENT', 'Equipment', id);
-  logger.debug({ adminId, id }, 'deleteEquipment completed');
+  const result = await model.deleteEquipment(id);
+  if (result) {
+    await model.createAuditLog(adminId, 'DELETE_EQUIPMENT', 'Equipment', id);
+  }
+  logger.debug({ adminId, id, didDelete: !!result }, 'deleteEquipment completed');
 }
 
 // --- Vendors ---
@@ -308,9 +310,11 @@ export async function updateVendor(
 /** Soft-delete a vendor and log the action. */
 export async function deleteVendor(adminId: string, id: string) {
   logger.debug({ adminId, id }, 'deleteVendor started');
-  await model.deleteVendor(id);
-  await model.createAuditLog(adminId, 'DELETE_VENDOR', 'Vendor', id);
-  logger.debug({ adminId, id }, 'deleteVendor completed');
+  const result = await model.deleteVendor(id);
+  if (result) {
+    await model.createAuditLog(adminId, 'DELETE_VENDOR', 'Vendor', id);
+  }
+  logger.debug({ adminId, id, didDelete: !!result }, 'deleteVendor completed');
 }
 
 // --- Taste Notes (admin) ---

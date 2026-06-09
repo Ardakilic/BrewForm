@@ -1,6 +1,6 @@
 ## 1. Fix `deleteEquipment` in admin/model.ts
 
-- [ ] 1.1 Open `apps/api/src/modules/admin/model.ts` and locate the
+- [x] 1.1 Open `apps/api/src/modules/admin/model.ts` and locate the
   `deleteEquipment` function (lines 293-299). The current WHERE clause is:
 
   ```typescript
@@ -15,11 +15,11 @@
 
   `and` and `isNull` are already imported at line 30; no import changes needed.
 
-- [ ] 1.2 Run `make check-api` — must pass with zero new errors.
+- [x] 1.2 Run `make check-api` — must pass with zero new errors.
 
 ## 2. Fix `deleteVendor` in admin/model.ts
 
-- [ ] 2.1 Locate the `deleteVendor` function (lines 336-341). The current
+- [x] 2.1 Locate the `deleteVendor` function (lines 336-341). The current
   WHERE clause is:
 
   ```typescript
@@ -32,11 +32,11 @@
   .where(and(eq(vendors.id, id), isNull(vendors.deletedAt)))
   ```
 
-- [ ] 2.2 Run `make check-api` — must pass.
+- [x] 2.2 Run `make check-api` — must pass.
 
 ## 3. Fix `deleteCoffeeVariety` in admin/model.ts
 
-- [ ] 3.1 Locate the `deleteCoffeeVariety` function (lines 603-609). The
+- [x] 3.1 Locate the `deleteCoffeeVariety` function (lines 603-609). The
   current WHERE clause is:
 
   ```typescript
@@ -49,7 +49,7 @@
   .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
   ```
 
-- [ ] 3.2 Add a JSDoc block above the function for consistency with
+- [x] 3.2 Add a JSDoc block above the function for consistency with
   `deleteEquipment` and `deleteVendor`:
 
   ```typescript
@@ -57,11 +57,11 @@
   export async function deleteCoffeeVariety(id: string) {
   ```
 
-- [ ] 3.3 Run `make check-api` — must pass.
+- [x] 3.3 Run `make check-api` — must pass.
 
 ## 4. Fix `approveEquipmentDeleteRequest` inner update in admin/model.ts
 
-- [ ] 4.1 Locate the `approveEquipmentDeleteRequest` function (lines 659-673).
+- [x] 4.1 Locate the `approveEquipmentDeleteRequest` function (lines 659-673).
   The inner equipment update at lines 667-669 is:
 
   ```typescript
@@ -78,11 +78,11 @@
     .where(and(eq(equipment.id, request.equipmentId), isNull(equipment.deletedAt)));
   ```
 
-- [ ] 4.2 Run `make check-api` — must pass.
+- [x] 4.2 Run `make check-api` — must pass.
 
 ## 5. Guard audit log creation in admin/service.ts
 
-- [ ] 5.1 Locate the `deleteEquipment` service function (lines 260-266).
+- [x] 5.1 Locate the `deleteEquipment` service function (lines 260-266).
   The current implementation unconditionally calls `createAuditLog`:
 
   ```typescript
@@ -107,7 +107,7 @@
   }
   ```
 
-- [ ] 5.2 Locate the `deleteVendor` service function (lines 307-313). Apply
+- [x] 5.2 Locate the `deleteVendor` service function (lines 307-313). Apply
   the same pattern:
 
   ```typescript
@@ -121,11 +121,11 @@
   }
   ```
 
-- [ ] 5.3 Run `make check-api` — must pass.
+- [x] 5.3 Run `make check-api` — must pass.
 
 ## 6. Add COFFEE_VARIETY_NOT_FOUND → 404 mapping in errorHandler
 
-- [ ] 6.1 Open `apps/api/src/middleware/errorHandler.ts` and locate the
+- [x] 6.1 Open `apps/api/src/middleware/errorHandler.ts` and locate the
   fallback 500 handler at the bottom of the `errorHandler` function (before
   the final `return c.json({...}, 500)`).
 
@@ -146,11 +146,11 @@
   narrow and intentional — only this exact service-layer error string
   triggers the 404.
 
-- [ ] 6.2 Run `make check-api` and `make lint` — must pass.
+- [x] 6.2 Run `make check-api` and `make lint` — must pass.
 
 ## 7. Create integration test file: admin/model.test.ts
 
-- [ ] 7.1 Create `apps/api/src/modules/admin/model.test.ts` with the standard
+- [x] 7.1 Create `apps/api/src/modules/admin/model.test.ts` with the standard
   header matching the convention from `coffee-variety/model.test.ts`:
 
   ```typescript
@@ -194,7 +194,7 @@
   `await db.insert(table).values({...})` without `.returning()` since we
   don't need the inserted row in the test setup.
 
-- [ ] 7.2 **Add `describe('deleteEquipment', ...)` block** with full test implementations:
+- [x] 7.2 **Add `describe('deleteEquipment', ...)` block** with full test implementations:
 
   ```typescript
   describe('deleteEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
@@ -251,7 +251,7 @@
   });
   ```
 
-- [ ] 7.3 **Add `describe('deleteVendor', ...)` block** with full test implementations.
+- [x] 7.3 **Add `describe('deleteVendor', ...)` block** with full test implementations.
   Follow the identical pattern from 7.2 but with `vendors` table:
 
   ```typescript
@@ -304,7 +304,7 @@
   });
   ```
 
-- [ ] 7.4 **Add `describe('deleteCoffeeVariety', ...)` block** with full test implementations.
+- [x] 7.4 **Add `describe('deleteCoffeeVariety', ...)` block** with full test implementations.
   Note: `deleteCoffeeVariety` also sets `updatedAt` alongside `deletedAt`, so
   the timestamp preservation test asserts `updatedAt` is preserved.
 
@@ -376,7 +376,7 @@
   variety. This test guards against accidentally removing that existing guard
   during this change.
 
-- [ ] 7.5 **Add `describe('approveEquipmentDeleteRequest guard', ...)` block** with full
+- [x] 7.5 **Add `describe('approveEquipmentDeleteRequest guard', ...)` block** with full
   test implementations:
 
   ```typescript
@@ -457,7 +457,7 @@
   });
   ```
 
-- [ ] 7.6 Run `make test-specific filter=apps/api/src/modules/admin/model.test.ts` —
+- [x] 7.6 Run `make test-specific filter=apps/api/src/modules/admin/model.test.ts` —
   all tests must pass. If any test fails because of schema column mismatches
   (e.g., `equipment` requires fields not listed above), consult the Drizzle
   schema at `packages/db/src/schema.ts` to identify required NOT NULL columns
@@ -465,18 +465,18 @@
 
 ## 8. Final verification and PR description
 
-- [ ] 8.1 Run `make check-api` — zero type errors across all workspaces.
+- [x] 8.1 Run `make check-api` — zero type errors across all workspaces.
 
-- [ ] 8.2 Run `make lint` — zero warnings on all changed files:
+- [x] 8.2 Run `make lint` — zero warnings on all changed files:
   `apps/api/src/modules/admin/model.ts`,
   `apps/api/src/modules/admin/service.ts`,
   `apps/api/src/middleware/errorHandler.ts`,
   `apps/api/src/modules/admin/model.test.ts`.
 
-- [ ] 8.3 Run `make test` — all tests pass, including the new admin model
+- [x] 8.3 Run `make test` — all tests pass, including the new admin model
   tests and zero regressions in existing tests.
 
-- [ ] 8.4 Create `pr_description.md` at the project root
+- [x] 8.4 Create `pr_description.md` at the project root
   (`/pr_description.md`). The file should be created **from scratch** (the
   existing `pr_description.md` is from D18 and unrelated). Content should
   follow the established format from D18:
@@ -486,6 +486,6 @@
   - `## Testing` section listing test coverage
   - `## Risk` section
 
-- [ ] 8.5 Confirm the `user/model.ts:deleteUser` fix remains tracked as a
+- [x] 8.5 Confirm the `user/model.ts:deleteUser` fix remains tracked as a
   separate follow-up. Do NOT touch `apps/api/src/modules/user/model.ts`
   in this change.
