@@ -1,33 +1,29 @@
 # D18 — No Optimistic Update Rollback
 
-> **Status: OPEN — action layer incomplete.**
+> **Status: COMPLETE**
 >
-> D10 correctly migrated all three button components to `useFetcher` with the
-> `fetcher.formData` optimistic UI pattern — the component side is architecturally
-> correct. However, all three corresponding action files still **throw** on API
-> failure instead of returning an error object. In React Router 7, a thrown error
-> from a resource route accessed by a fetcher bubbles to the nearest
-> `errorElement` in the route tree. Since the resource routes carry no
-> `errorElement`, the error propagates to the root Layout's
-> `errorElement: <RootErrorBoundary />`, replacing the entire page with the
-> full-screen "Oops" / "Go Home / Reload" UI.
+> D10 correctly migrated all three button components to `useFetcher` with the `fetcher.formData`
+> optimistic UI pattern — the component side is architecturally correct. However, all three
+> corresponding action files still **throw** on API failure instead of returning an error object. In
+> React Router 7, a thrown error from a resource route accessed by a fetcher bubbles to the nearest
+> `errorElement` in the route tree. Since the resource routes carry no `errorElement`, the error
+> propagates to the root Layout's `errorElement: <RootErrorBoundary />`, replacing the entire page
+> with the full-screen "Oops" / "Go Home / Reload" UI.
 >
-> The rollback mechanism (`fetcher.formData → null → falls back to loaderData`)
-> only activates when the action **returns** (success or error). It never
-> activates when the action **throws**, because React Router processes the throw
-> as a navigation-level error before the fetcher can settle normally.
+> The rollback mechanism (`fetcher.formData → null → falls back to loaderData`) only activates when
+> the action **returns** (success or error). It never activates when the action **throws**, because
+> React Router processes the throw as a navigation-level error before the fetcher can settle
+> normally.
 >
-> **Fix scope is limited to three action files.** The component files need
-> no changes.
+> **Fix scope is limited to three action files.** The component files need no changes.
 
 ---
 
 ## Severity
 
-**High** — regression introduced by D10. The original bug (pre-D10) left the
-button in a wrong state but the page remained fully usable. The current bug
-crashes the page on any transient API failure (network error, 429, 500) during
-a Like, Favourite, or Follow toggle.
+**High** — regression introduced by D10. The original bug (pre-D10) left the button in a wrong state
+but the page remained fully usable. The current bug crashes the page on any transient API failure
+(network error, 429, 500) during a Like, Favourite, or Follow toggle.
 
 ---
 
@@ -35,14 +31,14 @@ a Like, Favourite, or Follow toggle.
 
 ### What D10 did implement correctly
 
-All three button components were migrated from `useState` + `useEffect` +
-manual `api.post()` calls to `useFetcher` with `fetcher.Form`/`fetcher.submit`.
-Optimistic state is correctly derived from `fetcher.formData`:
+All three button components were migrated from `useState` + `useEffect` + manual `api.post()` calls
+to `useFetcher` with `fetcher.Form`/`fetcher.submit`. Optimistic state is correctly derived from
+`fetcher.formData`:
 
 ```ts
 // LikeButton.tsx:16-20
 const optimisticLiked = fetcher.formData ? fetcher.formData.get('liked') === 'true' : null;
-const liked = optimisticLiked ?? initialLiked;          // falls back to loaderData on settle
+const liked = optimisticLiked ?? initialLiked; // falls back to loaderData on settle
 
 const pendingDelta = fetcher.formData ? (fetcher.formData.get('liked') === 'true' ? 1 : -1) : 0;
 const count = (initialCount ?? 0) + pendingDelta;
@@ -51,18 +47,17 @@ const count = (initialCount ?? 0) + pendingDelta;
 // FollowButton.tsx:16-17  — identical pattern with 'following'
 ```
 
-`initialLiked`, `initialFavourited`, and `initialFollowing` come from
-`useLoaderData()` in their respective parent pages (`RecipeDetailPage`,
-`UserProfilePage`). On a successful action React Router revalidates the loaders,
-the props update, and the button shows the confirmed server state. On a **failed
-action that returns normally**, `fetcher.formData` clears, the component falls
-back to the original loaderData value, and the loader revalidation restores the
-correct server state — a clean automatic rollback.
+`initialLiked`, `initialFavourited`, and `initialFollowing` come from `useLoaderData()` in their
+respective parent pages (`RecipeDetailPage`, `UserProfilePage`). On a successful action React Router
+revalidates the loaders, the props update, and the button shows the confirmed server state. On a
+**failed action that returns normally**, `fetcher.formData` clears, the component falls back to the
+original loaderData value, and the loader revalidation restores the correct server state — a clean
+automatic rollback.
 
 ### What is still broken — the action layer
 
-The rollback only fires when the action **returns**. All three action files
-**throw** on API failure:
+The rollback only fires when the action **returns**. All three action files **throw** on API
+failure:
 
 ```ts
 // like.ts:19-22 — explicit re-throw inside try/catch
@@ -82,9 +77,9 @@ if (request.method === 'DELETE') {
 }
 ```
 
-`recipeApi.like/favourite` and `followApi.follow/unfollow` all delegate to
-`api.post/delete` in `apps/web/src/api/client.ts`, which throws `ApiError`
-(extends `Error`) for any non-OK response and re-throws network errors.
+`recipeApi.like/favourite` and `followApi.follow/unfollow` all delegate to `api.post/delete` in
+`apps/web/src/api/client.ts`, which throws `ApiError` (extends `Error`) for any non-OK response and
+re-throws network errors.
 
 ### Error boundary routing
 
@@ -111,41 +106,40 @@ They are children of the root Layout route at `'/'`, which carries:
 
 React Router 7 confirms the behavior in its documentation for resource routes:
 
-> "If you `throw` from your resource route [accessed by a `fetcher`], it will
-> bubble to the nearest `ErrorBoundary` in the UI."
-> — `docs/how-to/resource-routes.md`
+> "If you `throw` from your resource route [accessed by a `fetcher`], it will bubble to the nearest
+> `ErrorBoundary` in the UI." — `docs/how-to/resource-routes.md`
 
-`RootErrorBoundary` (`apps/web/src/components/ErrorBoundary.tsx:9,40`) renders
-`min-h-screen` full-page content (heading, message, "Go Home" and "Reload Page"
-buttons). The entire page — including the Layout and navbar — is replaced.
+`RootErrorBoundary` (`apps/web/src/components/ErrorBoundary.tsx:9,40`) renders `min-h-screen`
+full-page content (heading, message, "Go Home" and "Reload Page" buttons). The entire page —
+including the Layout and navbar — is replaced.
 
 ### Before vs after D10
 
 | Scenario              | Pre-D10 (`useState`)          | Post-D10 current (broken)           |
-|-----------------------|-------------------------------|--------------------------------------|
-| API fails during Like | Button stuck in wrong state   | Full-screen error page — page crash  |
-| Page usable after?    | Yes (just wrong button state) | No — user must navigate or reload    |
-| Severity              | Medium                        | **High** (regression)                |
+| --------------------- | ----------------------------- | ----------------------------------- |
+| API fails during Like | Button stuck in wrong state   | Full-screen error page — page crash |
+| Page usable after?    | Yes (just wrong button state) | No — user must navigate or reload   |
+| Severity              | Medium                        | **High** (regression)               |
 
 ---
 
 ## Affected Files
 
-| File | Lines | Problem |
-|------|-------|---------|
-| `apps/web/src/routes/like.ts` | 10, 21 | Line 10: throws `Response` for invalid params; line 21: re-throws API error |
-| `apps/web/src/routes/favourite.ts` | 7, 9 | Line 7: throws `Response`; line 9: no try/catch on API call |
-| `apps/web/src/routes/follow.ts` | 7, 10–12 | Line 7: throws `Response`; lines 10–12: no try/catch on API calls |
+| File                               | Lines    | Problem                                                                     |
+| ---------------------------------- | -------- | --------------------------------------------------------------------------- |
+| `apps/web/src/routes/like.ts`      | 10, 21   | Line 10: throws `Response` for invalid params; line 21: re-throws API error |
+| `apps/web/src/routes/favourite.ts` | 7, 9     | Line 7: throws `Response`; line 9: no try/catch on API call                 |
+| `apps/web/src/routes/follow.ts`    | 7, 10–12 | Line 7: throws `Response`; lines 10–12: no try/catch on API calls           |
 
-**Components are not affected** — `LikeButton.tsx`, `FavouriteButton.tsx`, and
-`FollowButton.tsx` already implement the correct pattern.
+**Components are not affected** — `LikeButton.tsx`, `FavouriteButton.tsx`, and `FollowButton.tsx`
+already implement the correct pattern.
 
 ---
 
 ## Advisory: `FollowButton.onToggleRollback` is dead code
 
-`FollowButton` carries a callback-based rollback mechanism (lines 8–9, 19–20,
-42–55) that was intended for parent-managed state scenarios:
+`FollowButton` carries a callback-based rollback mechanism (lines 8–9, 19–20, 42–55) that was
+intended for parent-managed state scenarios:
 
 ```ts
 // FollowButton.tsx:46-49
@@ -158,28 +152,25 @@ if (fetcher.data && typeof fetcher.data === 'object' && 'error' in fetcher.data)
 
 This mechanism is currently dead for two independent reasons:
 
-1. `followAction` throws on failure (never returns `{ error: ... }`), so
-   `fetcher.data` is `undefined`, not an error object. The `'error' in
+1. `followAction` throws on failure (never returns `{ error: ... }`), so `fetcher.data` is
+   `undefined`, not an error object. The `'error' in
    fetcher.data` guard never fires.
 
-2. `UserProfilePage` (lines 187–190) passes only `userId` and
-   `initialFollowing` — neither `onToggle` nor `onToggleRollback` is wired
-   up at the call site.
+2. `UserProfilePage` (lines 187–190) passes only `userId` and `initialFollowing` — neither
+   `onToggle` nor `onToggleRollback` is wired up at the call site.
 
 After the action fix below, reason 1 is eliminated: `followAction` will return
-`{ ok: false, error: '...' }`, making the guard fire correctly. Reason 2
-(no-op callbacks) is a separate concern and can be addressed independently if
-parent-controlled follow state is ever needed. No changes to `FollowButton`
-or `UserProfilePage` are required for D18.
+`{ ok: false, error: '...' }`, making the guard fire correctly. Reason 2 (no-op callbacks) is a
+separate concern and can be addressed independently if parent-controlled follow state is ever
+needed. No changes to `FollowButton` or `UserProfilePage` are required for D18.
 
 ---
 
 ## Fix Approach
 
-Convert all three action files to **return** error data on failure instead
-of throwing. The `fetcher.formData → loaderData` rollback mechanism in the
-components already handles the visual rollback automatically once the action
-settles without throwing.
+Convert all three action files to **return** error data on failure instead of throwing. The
+`fetcher.formData → loaderData` rollback mechanism in the components already handles the visual
+rollback automatically once the action settles without throwing.
 
 ### `apps/web/src/routes/like.ts`
 
@@ -210,6 +201,7 @@ export const likeAction = async ({ params }: ActionFunctionArgs) => {
 ```
 
 **Changes from current:**
+
 - Line 10: `throw new Response(...)` → `return { ok: false, error: '...' }`
 - Line 18: `return null` → `return { ok: true }`
 - Line 21: `throw err` → `return { ok: false, error: ... }`
@@ -243,6 +235,7 @@ export const favouriteAction = async ({ params }: ActionFunctionArgs) => {
 ```
 
 **Changes from current:**
+
 - Line 7: `throw new Response(...)` → `return { ok: false, error: '...' }`
 - No logger existed — add `createLogger('favourite')` import and calls
 - Line 9: bare `await recipeApi.favourite(id)` with no try/catch → wrap in try/catch
@@ -282,6 +275,7 @@ export const followAction = async ({ params, request }: ActionFunctionArgs) => {
 ```
 
 **Changes from current:**
+
 - Line 7: `throw new Response(...)` → `return { ok: false, error: '...' }`
 - No logger existed — add `createLogger('follow')` import and calls
 - Lines 9–14: bare `await followApi.unfollow/follow()` with no try/catch → wrap in try/catch
@@ -297,35 +291,44 @@ export const followAction = async ({ params, request }: ActionFunctionArgs) => {
 1. `fetcher.state` → `'loading'` (revalidating) → `'idle'`
 2. `fetcher.formData` → `null` — optimistic state evicted
 3. `fetcher.data` = `{ ok: false, error: '...' }`
-4. Components fall back: `optimisticLiked ?? initialLiked` → `null ?? initialLiked` → shows server-confirmed state
-5. React Router revalidates loaders (action returned normally, not threw) → loader fetches fresh data, `initialLiked` prop updates to confirmed server value
+4. Components fall back: `optimisticLiked ?? initialLiked` → `null ?? initialLiked` → shows
+   server-confirmed state
+5. React Router revalidates loaders (action returned normally, not threw) → loader fetches fresh
+   data, `initialLiked` prop updates to confirmed server value
 6. `RootErrorBoundary` is **not** triggered ✓
 7. Page remains fully usable ✓
 
 **On success (action returns `{ ok: true }`):**
 
 1. Same revalidation flow — loaders update `initialLiked` to new confirmed value
-2. `fetcher.formData` cleared → brief fallback to old `initialLiked` during revalidation — invisible in practice since loaders complete within the same render cycle on fast connections
+2. `fetcher.formData` cleared → brief fallback to old `initialLiked` during revalidation — invisible
+   in practice since loaders complete within the same render cycle on fast connections
 
-**Note on `fetcher.data` consumer readiness:**
-`LikeButton` and `FavouriteButton` do not currently read `fetcher.data`, so the
-`{ ok: false }` return is only consumed by `FollowButton`'s `'error' in
-fetcher.data` guard (which will now fire correctly, though the callback is a
-no-op at the current call site). If inline error feedback is desired in
-`LikeButton`/`FavouriteButton` in the future, it can be added by checking
-`fetcher.data?.ok === false`.
+**Note on `fetcher.data` consumer readiness:** `LikeButton` and `FavouriteButton` do not currently
+read `fetcher.data`, so the `{ ok: false }` return is only consumed by `FollowButton`'s
+`'error' in
+fetcher.data` guard (which will now fire correctly, though the callback is a no-op at
+the current call site). If inline error feedback is desired in `LikeButton`/`FavouriteButton` in the
+future, it can be added by checking `fetcher.data?.ok === false`.
 
 ---
 
 ## Implementation Steps
 
 1. **Read** `apps/web/src/routes/like.ts` — confirm current state matches analysis above
-2. **Edit** `like.ts`: replace `throw new Response(...)` with `return { ok: false, ... }` (line 10); replace `return null` with `return { ok: true }` (line 18); replace `throw err` with `return { ok: false, ... }` (line 21)
+2. **Edit** `like.ts`: replace `throw new Response(...)` with `return { ok: false, ... }` (line 10);
+   replace `return null` with `return { ok: true }` (line 18); replace `throw err` with
+   `return { ok: false, ... }` (line 21)
 3. **Read** `apps/web/src/routes/favourite.ts` — confirm current state
-4. **Edit** `favourite.ts`: add `createLogger` import; replace validation throw (line 7) with `return`; wrap lines 9–10 in try/catch; change `return null` to `return { ok: true }`; add catch returning `{ ok: false, ... }`
+4. **Edit** `favourite.ts`: add `createLogger` import; replace validation throw (line 7) with
+   `return`; wrap lines 9–10 in try/catch; change `return null` to `return { ok: true }`; add catch
+   returning `{ ok: false, ... }`
 5. **Read** `apps/web/src/routes/follow.ts` — confirm current state
-6. **Edit** `follow.ts`: add `createLogger` import; replace validation throw (line 7) with `return`; wrap lines 9–13 in try/catch; change `return null` to `return { ok: true }`; add catch returning `{ ok: false, ... }`
-7. **Update tests** in `LikeButton.test.tsx`, `FavouriteButton.test.tsx`, `FollowButton.test.tsx` — add error scenario (see Testing Strategy)
+6. **Edit** `follow.ts`: add `createLogger` import; replace validation throw (line 7) with `return`;
+   wrap lines 9–13 in try/catch; change `return null` to `return { ok: true }`; add catch returning
+   `{ ok: false, ... }`
+7. **Update tests** in `LikeButton.test.tsx`, `FavouriteButton.test.tsx`, `FollowButton.test.tsx` —
+   add error scenario (see Testing Strategy)
 8. Run `make check-web`
 
 ---
@@ -336,7 +339,8 @@ no-op at the current call site). If inline error feedback is desired in
 
 1. Open a recipe → click Like → heart fills immediately (optimistic)
 2. DevTools → Network → set Offline
-3. Click Like again → verify the button **reverts** to previous state after the request fails (button not stuck, page not replaced by error screen)
+3. Click Like again → verify the button **reverts** to previous state after the request fails
+   (button not stuck, page not replaced by error screen)
 4. Verify the full navbar and page are still visible (no `RootErrorBoundary` takeover)
 5. Set Network back to Online → click Like → verify normal flow still works
 6. Repeat steps 1–5 for Favourite on the same recipe
@@ -344,8 +348,8 @@ no-op at the current call site). If inline error feedback is desired in
 
 ### Automated tests to add
 
-Add a new `describe` block in each component test file to cover the error path.
-Each test router should provide an action that **returns** `{ ok: false, error: 'server error' }`.
+Add a new `describe` block in each component test file to cover the error path. Each test router
+should provide an action that **returns** `{ ok: false, error: 'server error' }`.
 
 **`LikeButton.test.tsx` — add:**
 
@@ -383,22 +387,29 @@ describe('LikeButton — action failure rollback', () => {
 });
 ```
 
-Apply the same pattern for `FavouriteButton.test.tsx` and `FollowButton.test.tsx`,
-adjusting field names (`favourited`, `following`) and expected initial values.
+Apply the same pattern for `FavouriteButton.test.tsx` and `FollowButton.test.tsx`, adjusting field
+names (`favourited`, `following`) and expected initial values.
 
 ---
 
 ## Risk Assessment
 
-**Low** — the fix is entirely within the action layer. The component files, router
-configuration, and loaderData wiring are unchanged. The `{ ok: false }` return
-is a plain JS object (not a thrown `Response`), so React Router treats it as a
-normal action completion and proceeds with loader revalidation — exactly the
-behavior required for the rollback to work.
+**Low** — the fix is entirely within the action layer. The component files, router configuration,
+and loaderData wiring are unchanged. The `{ ok: false }` return is a plain JS object (not a thrown
+`Response`), so React Router treats it as a normal action completion and proceeds with loader
+revalidation — exactly the behavior required for the rollback to work.
 
 ---
 
+## Related specifications
+
+The action-layer return-object pattern implemented here (returning `{ ok: false, error }` instead of
+throwing) aligns with the general error-handling conventions defined in
+[`openspec/specs/error-handling/spec.md`](../openspec/specs/error-handling/spec.md). That spec
+describes the broader approach: critical failures show user-facing errors, non-critical failures log
+silently, and all error paths use structured logging with sanitized metadata.
+
 ## Dependencies
 
-None. This plan is self-contained. D10 (React Router 7 migration) is a
-prerequisite and is already complete.
+None. This plan is self-contained. D10 (React Router 7 migration) is a prerequisite and is already
+complete.

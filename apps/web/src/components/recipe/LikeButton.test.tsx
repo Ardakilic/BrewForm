@@ -94,6 +94,7 @@ describe('LikeButton — click interaction', () => {
 describe('LikeButton — action failure rollback', () => {
   it('reverts to initial state when action returns an error', async () => {
     const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({ ok: false, error: 'server error' });
     const router = createMemoryRouter(
       [
         {
@@ -102,7 +103,7 @@ describe('LikeButton — action failure rollback', () => {
           children: [
             {
               path: 'recipes/:id/like',
-              action: () => ({ ok: false, error: 'server error' }),
+              action,
               element: null,
             },
           ],
@@ -119,10 +120,12 @@ describe('LikeButton — action failure rollback', () => {
       expect(button).not.toBeDisabled();
       expect(button.textContent).toContain('3');
     });
+    expect(action).toHaveBeenCalled();
   });
 
   it('completes normally when action returns ok', async () => {
     const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({ ok: true });
     const router = createMemoryRouter(
       [
         {
@@ -131,7 +134,7 @@ describe('LikeButton — action failure rollback', () => {
           children: [
             {
               path: 'recipes/:id/like',
-              action: () => ({ ok: true }),
+              action,
               element: null,
             },
           ],
@@ -148,5 +151,6 @@ describe('LikeButton — action failure rollback', () => {
       expect(button).not.toBeDisabled();
       expect(button.textContent).toContain('3');
     });
+    expect(action).toHaveBeenCalled();
   });
 });

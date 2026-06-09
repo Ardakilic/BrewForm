@@ -7,6 +7,10 @@ const logger = createLogger('like');
 export const likeAction = async ({ params }: ActionFunctionArgs) => {
   const id = params.id;
   if (typeof id !== 'string' || id.length === 0) {
+    logger.debug(
+      { route: 'like', id: null, error: 'Missing or invalid route parameter' },
+      'route.like.exit.invalid_id',
+    );
     return { ok: false, error: 'Missing or invalid route parameter: id' };
   }
 
@@ -17,7 +21,9 @@ export const likeAction = async ({ params }: ActionFunctionArgs) => {
     logger.debug({ id }, 'likeAction completed');
     return { ok: true };
   } catch (err: unknown) {
-    logger.error({ err, id }, 'likeAction failed');
-    return { ok: false, error: err instanceof Error ? err.message : 'Like failed' };
+    const errorType = err instanceof Error ? err.name : typeof err;
+    const errorMessage = err instanceof Error ? err.message : undefined;
+    logger.error({ errorType, errorMessage, id }, 'likeAction failed');
+    return { ok: false, error: errorMessage ?? 'Like failed' };
   }
 };

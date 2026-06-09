@@ -13,10 +13,13 @@ export const followAction = async ({ params, request }: ActionFunctionArgs) => {
   logger.debug({ userId, method: request.method }, 'followAction started');
 
   try {
-    if (request.method === 'DELETE') {
+    if (request.method === 'POST') {
+      await followApi.follow(userId);
+    } else if (request.method === 'DELETE') {
       await followApi.unfollow(userId);
     } else {
-      await followApi.follow(userId);
+      logger.debug({ userId, method: request.method }, 'followAction.unsupported_method');
+      return { ok: false, error: 'Unsupported method' };
     }
     logger.debug({ userId }, 'followAction completed');
     return { ok: true };

@@ -99,7 +99,9 @@ describe('FavouriteButton — action failure rollback', () => {
       [
         {
           path: '/',
-          element: <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />,
+          element: (
+            <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />
+          ),
           children: [
             {
               path: 'recipes/:id/favourite',
@@ -128,7 +130,9 @@ describe('FavouriteButton — action failure rollback', () => {
       [
         {
           path: '/',
-          element: <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />,
+          element: (
+            <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />
+          ),
           children: [
             {
               path: 'recipes/:id/favourite',

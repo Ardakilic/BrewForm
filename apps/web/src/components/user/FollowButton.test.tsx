@@ -276,6 +276,11 @@ describe('FollowButton — callback contracts', () => {
 
   it('ignores duplicate clicks while loading and settles to initial state', async () => {
     const user = userEvent.setup();
+    let resolveAction!: (value: { ok: boolean }) => void;
+    const actionPromise = new Promise<{ ok: boolean }>((resolve) => {
+      resolveAction = resolve;
+    });
+    const action = vi.fn().mockReturnValue(actionPromise);
     const router = createMemoryRouter(
       [
         {
@@ -284,7 +289,7 @@ describe('FollowButton — callback contracts', () => {
           children: [
             {
               path: 'follow/:userId',
-              action: () => ({ ok: true }),
+              action,
               element: null,
             },
           ],
@@ -297,6 +302,10 @@ describe('FollowButton — callback contracts', () => {
 
     await user.click(button);
     await user.click(button);
+
+    expect(action).toHaveBeenCalledTimes(1);
+
+    resolveAction!({ ok: true });
 
     await waitFor(() => {
       expect(button).not.toBeDisabled();
