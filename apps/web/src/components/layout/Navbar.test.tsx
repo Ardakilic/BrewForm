@@ -519,40 +519,39 @@ describe('Navbar — mobile menu', () => {
   // ── Focus management ───────────────────────────────────────────────────────
 
   it('focus moves to the first focusable element (close button) when menu opens', async () => {
+    const user = userEvent.setup();
     render(<Navbar />);
-    await act(async () => {
-      await userEvent.click(getHamburger());
-    });
+    await user.click(getHamburger());
 
     const closeButton = screen.getByRole('button', { name: 'Close menu' });
-    expect(document.activeElement).toBe(closeButton);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(closeButton);
+    });
   });
 
   it('focus returns to the hamburger button when menu closes via Escape', async () => {
+    const user = userEvent.setup();
     render(<Navbar />);
-    await act(async () => {
-      await userEvent.click(getHamburger());
-    });
+    await user.click(getHamburger());
 
-    await act(async () => {
-      await userEvent.keyboard('{Escape}');
-    });
+    await user.keyboard('{Escape}');
 
-    expect(document.activeElement).toBe(getHamburger());
+    await waitFor(() => {
+      expect(document.activeElement).toBe(getHamburger());
+    });
   });
 
   it('focus returns to the hamburger button when menu closes via close button', async () => {
+    const user = userEvent.setup();
     render(<Navbar />);
-    await act(async () => {
-      await userEvent.click(getHamburger());
-    });
+    await user.click(getHamburger());
 
     const closeButton = screen.getByRole('button', { name: 'Close menu' });
-    await act(async () => {
-      await userEvent.click(closeButton);
-    });
+    await user.click(closeButton);
 
-    expect(document.activeElement).toBe(getHamburger());
+    await waitFor(() => {
+      expect(document.activeElement).toBe(getHamburger());
+    });
   });
 
   // ── ARIA attributes ────────────────────────────────────────────────────────

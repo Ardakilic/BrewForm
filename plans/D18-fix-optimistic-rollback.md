@@ -1,214 +1,415 @@
 # D18 — No Optimistic Update Rollback
 
-> **Resolved by D10 (React Router 7 migration).**
-> Optimistic update rollback is now handled by React Router 7's `useFetcher` API.
-> The `fetcher.formData` pattern provides automatic rollback: the optimistic state
-> is derived from `fetcher.formData` which reverts when the action fails (the
-> fetcher clears its formData on completion). No manual snapshot/restore logic needed.
-> Applied to `LikeButton`, `FavouriteButton`, and `FollowButton`.
+> **Status: COMPLETE**
+>
+> D10 correctly migrated all three button components to `useFetcher` with the `fetcher.formData`
+> optimistic UI pattern — the component side is architecturally correct. However, all three
+> corresponding action files still **throw** on API failure instead of returning an error object. In
+> React Router 7, a thrown error from a resource route accessed by a fetcher bubbles to the nearest
+> `errorElement` in the route tree. Since the resource routes carry no `errorElement`, the error
+> propagates to the root Layout's `errorElement: <RootErrorBoundary />`, replacing the entire page
+> with the full-screen "Oops" / "Go Home / Reload" UI.
+>
+> The rollback mechanism (`fetcher.formData → null → falls back to loaderData`) only activates when
+> the action **returns** (success or error). It never activates when the action **throws**, because
+> React Router processes the throw as a navigation-level error before the fetcher can settle
+> normally.
+>
+> **Fix scope is limited to three action files.** The component files need no changes.
+
+---
 
 ## Severity
 
-**Medium**
+**High** — regression introduced by D10. The original bug (pre-D10) left the button in a wrong state
+but the page remained fully usable. The current bug crashes the page on any transient API failure
+(network error, 429, 500) during a Like, Favourite, or Follow toggle.
+
+---
 
 ## Issue Description
 
-Three button components perform optimistic UI updates without storing or restoring previous state on API failure:
+### What D10 did implement correctly
 
-- `LikeButton.tsx` — toggles like state and count immediately
-- `FavouriteButton.tsx` — toggles favourite state and count immediately
-- `FollowButton.tsx` — toggles follow state immediately
+All three button components were migrated from `useState` + `useEffect` + manual `api.post()` calls
+to `useFetcher` with `fetcher.Form`/`fetcher.submit`. Optimistic state is correctly derived from
+`fetcher.formData`:
 
 ```ts
-// LikeButton.tsx:15-28
-async function toggle() {
-  if (loading) return;
-  setLoading(true);
-  try {
-    const result = await api.post<{ liked: boolean }>(`/recipes/${recipeId}/like`, {});
-    const nowLiked = (result as { liked: boolean }).liked;
-    setLiked(nowLiked);
-    setCount((c) => nowLiked ? c + 1 : c - 1);
-  } catch {
-    // BUG: no rollback — UI shows incorrect state
-  } finally {
-    setLoading(false);
-  }
+// LikeButton.tsx:16-20
+const optimisticLiked = fetcher.formData ? fetcher.formData.get('liked') === 'true' : null;
+const liked = optimisticLiked ?? initialLiked; // falls back to loaderData on settle
+
+const pendingDelta = fetcher.formData ? (fetcher.formData.get('liked') === 'true' ? 1 : -1) : 0;
+const count = (initialCount ?? 0) + pendingDelta;
+
+// FavouriteButton.tsx:15-22 — identical pattern with 'favourited'
+// FollowButton.tsx:16-17  — identical pattern with 'following'
+```
+
+`initialLiked`, `initialFavourited`, and `initialFollowing` come from `useLoaderData()` in their
+respective parent pages (`RecipeDetailPage`, `UserProfilePage`). On a successful action React Router
+revalidates the loaders, the props update, and the button shows the confirmed server state. On a
+**failed action that returns normally**, `fetcher.formData` clears, the component falls back to the
+original loaderData value, and the loader revalidation restores the correct server state — a clean
+automatic rollback.
+
+### What is still broken — the action layer
+
+The rollback only fires when the action **returns**. All three action files **throw** on API
+failure:
+
+```ts
+// like.ts:19-22 — explicit re-throw inside try/catch
+} catch (err: unknown) {
+  logger.error({ err, id }, 'likeAction failed');
+  throw err;   // ← triggers error boundary
+}
+
+// favourite.ts:9 — no try/catch; API error propagates unchecked
+await recipeApi.favourite(id);   // ← throws ApiError on non-OK response
+
+// follow.ts:10-12 — no try/catch; API errors propagate unchecked
+if (request.method === 'DELETE') {
+  await followApi.unfollow(userId);   // ← throws
+} else {
+  await followApi.follow(userId);     // ← throws
 }
 ```
 
-## Impact
+`recipeApi.like/favourite` and `followApi.follow/unfollow` all delegate to `api.post/delete` in
+`apps/web/src/api/client.ts`, which throws `ApiError` (extends `Error`) for any non-OK response and
+re-throws network errors.
 
-- **Incorrect UI state**: If the API call fails (network error, 429 rate limit, 500 server error), the UI shows the wrong like/favourite/follow state
-- **Desync**: The button state no longer matches the server state. The user must reload to see the correct state.
-- **User confusion**: Users may think their action succeeded when it didn't
+### Error boundary routing
 
-## Root Cause
+The three resource routes have no `errorElement`:
 
-The optimistic update pattern was implemented without a rollback mechanism. The `catch` block is empty — it doesn't restore the previous state.
+```ts
+// router.tsx:227-230
+{ path: 'recipes/:id/like',      action: likeAction },      // no errorElement
+{ path: 'recipes/:id/favourite', action: favouriteAction }, // no errorElement
+{ path: 'follow/:userId',        action: followAction },    // no errorElement
+```
+
+They are children of the root Layout route at `'/'`, which carries:
+
+```ts
+// router.tsx:44-45
+{
+  path: '/',
+  element: <Layout />,
+  errorElement: <RootErrorBoundary />,   // ← catches all unhandled throws
+  children: [ ... ]
+}
+```
+
+React Router 7 confirms the behavior in its documentation for resource routes:
+
+> "If you `throw` from your resource route [accessed by a `fetcher`], it will bubble to the nearest
+> `ErrorBoundary` in the UI." — `docs/how-to/resource-routes.md`
+
+`RootErrorBoundary` (`apps/web/src/components/ErrorBoundary.tsx:9,40`) renders `min-h-screen`
+full-page content (heading, message, "Go Home" and "Reload Page" buttons). The entire page —
+including the Layout and navbar — is replaced.
+
+### Before vs after D10
+
+| Scenario              | Pre-D10 (`useState`)          | Post-D10 current (broken)           |
+| --------------------- | ----------------------------- | ----------------------------------- |
+| API fails during Like | Button stuck in wrong state   | Full-screen error page — page crash |
+| Page usable after?    | Yes (just wrong button state) | No — user must navigate or reload   |
+| Severity              | Medium                        | **High** (regression)               |
+
+---
 
 ## Affected Files
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `apps/web/src/components/recipe/LikeButton.tsx` | 15-28 | Like toggle without rollback |
-| `apps/web/src/components/recipe/FavouriteButton.tsx` | 15-28 | Favourite toggle without rollback |
-| `apps/web/src/components/user/FollowButton.tsx` | 15-31 | Follow toggle without rollback |
+| File                               | Lines    | Problem                                                                     |
+| ---------------------------------- | -------- | --------------------------------------------------------------------------- |
+| `apps/web/src/routes/like.ts`      | 10, 21   | Line 10: throws `Response` for invalid params; line 21: re-throws API error |
+| `apps/web/src/routes/favourite.ts` | 7, 9     | Line 7: throws `Response`; line 9: no try/catch on API call                 |
+| `apps/web/src/routes/follow.ts`    | 7, 10–12 | Line 7: throws `Response`; lines 10–12: no try/catch on API calls           |
+
+**Components are not affected** — `LikeButton.tsx`, `FavouriteButton.tsx`, and `FollowButton.tsx`
+already implement the correct pattern.
+
+---
+
+## Advisory: `FollowButton.onToggleRollback` is dead code
+
+`FollowButton` carries a callback-based rollback mechanism (lines 8–9, 19–20, 42–55) that was
+intended for parent-managed state scenarios:
+
+```ts
+// FollowButton.tsx:46-49
+if (fetcher.data && typeof fetcher.data === 'object' && 'error' in fetcher.data) {
+  log.debug({ userId }, 'fetcher settled with error');
+  onToggleRollback?.(initialFollowing);
+  return;
+}
+```
+
+This mechanism is currently dead for two independent reasons:
+
+1. `followAction` throws on failure (never returns `{ error: ... }`), so `fetcher.data` is
+   `undefined`, not an error object. The `'error' in
+   fetcher.data` guard never fires.
+
+2. `UserProfilePage` (lines 187–190) passes only `userId` and `initialFollowing` — neither
+   `onToggle` nor `onToggleRollback` is wired up at the call site.
+
+After the action fix below, reason 1 is eliminated: `followAction` will return
+`{ ok: false, error: '...' }`, making the guard fire correctly. Reason 2 (no-op callbacks) is a
+separate concern and can be addressed independently if parent-controlled follow state is ever
+needed. No changes to `FollowButton` or `UserProfilePage` are required for D18.
+
+---
 
 ## Fix Approach
 
-### Option A: TanStack Query (Recommended — depends on D10)
+Convert all three action files to **return** error data on failure instead of throwing. The
+`fetcher.formData → loaderData` rollback mechanism in the components already handles the visual
+rollback automatically once the action settles without throwing.
 
-If D10 is done, TanStack Query handles optimistic updates with automatic rollback via `onMutate`/`onError`:
-
-```ts
-const likeMutation = useMutation({
-  mutationFn: () => api.post(`/recipes/${recipeId}/like`, {}),
-  onMutate: async () => {
-    // Cancel outgoing refetches
-    await queryClient.cancelQueries({ queryKey: ['recipe', slug] });
-
-    // Snapshot previous value
-    const previous = queryClient.getQueryData(['recipe', slug]);
-
-    // Optimistically update
-    queryClient.setQueryData(['recipe', slug], (old: any) => ({
-      ...old,
-      userLiked: !old.userLiked,
-      likeCount: old.userLiked ? old.likeCount - 1 : old.likeCount + 1,
-    }));
-
-    return { previous };
-  },
-  onError: (err, variables, context) => {
-    // Rollback on error
-    queryClient.setQueryData(['recipe', slug], context?.previous);
-  },
-  onSettled: () => {
-    // Always refetch to ensure consistency
-    queryClient.invalidateQueries({ queryKey: ['recipe', slug] });
-  },
-});
-```
-
-### Option B: Manual Snapshot and Rollback (If D10 not done)
-
-Store the previous state before the optimistic update and restore it on failure:
+### `apps/web/src/routes/like.ts`
 
 ```ts
-async function toggle() {
-  if (loading) return;
-  setLoading(true);
+import type { ActionFunctionArgs } from 'react-router';
+import { recipeApi } from '../api/index.ts';
+import { createLogger } from '@/utils/logger.ts';
 
-  const previousLiked = liked;
-  const previousCount = count;
+const logger = createLogger('like');
+
+export const likeAction = async ({ params }: ActionFunctionArgs) => {
+  const id = params.id;
+  if (typeof id !== 'string' || id.length === 0) {
+    return { ok: false, error: 'Missing or invalid route parameter: id' };
+  }
+
+  logger.debug({ id }, 'likeAction started');
 
   try {
-    setLiked(!liked);
-    setCount((c) => !liked ? c + 1 : (c ?? 0) - 1);
-
-    const result = await api.post<{ liked: boolean }>(`/recipes/${recipeId}/like`, {});
-    const nowLiked = (result as { liked: boolean }).liked;
-    setLiked(nowLiked);
-    setCount((c) => nowLiked ? (previousLiked ? (c ?? 0) + 1 : c) : (previousLiked ? (c ?? 0) - 1 : c));
-  } catch (err) {
-    log.error({ err }, 'Like toggle failed');
-    // Rollback
-    setLiked(previousLiked);
-    setCount(previousCount);
-  } finally {
-    setLoading(false);
+    await recipeApi.like(id);
+    logger.debug({ id }, 'likeAction completed');
+    return { ok: true };
+  } catch (err: unknown) {
+    logger.error({ err, id }, 'likeAction failed');
+    return { ok: false, error: err instanceof Error ? err.message : 'Like failed' };
   }
-}
+};
 ```
 
-Simplified for the toggle pattern:
+**Changes from current:**
+
+- Line 10: `throw new Response(...)` → `return { ok: false, error: '...' }`
+- Line 18: `return null` → `return { ok: true }`
+- Line 21: `throw err` → `return { ok: false, error: ... }`
+
+### `apps/web/src/routes/favourite.ts`
 
 ```ts
-async function toggle() {
-  if (loading) return;
-  setLoading(true);
+import type { ActionFunctionArgs } from 'react-router';
+import { recipeApi } from '../api/index.ts';
+import { createLogger } from '@/utils/logger.ts';
 
-  // Snapshot current state
-  const prevLiked = liked;
-  const prevCount = count;
+const logger = createLogger('favourite');
 
-  // Optimistically update
-  setLiked(!prevLiked);
-  setCount((c) => (c ?? 0) + (prevLiked ? -1 : 1));
+export const favouriteAction = async ({ params }: ActionFunctionArgs) => {
+  const id = params.id;
+  if (typeof id !== 'string' || id.length === 0) {
+    return { ok: false, error: 'Missing route parameter: id' };
+  }
+
+  logger.debug({ id }, 'favouriteAction started');
 
   try {
-    const result = await api.post<{ liked: boolean }>(`/recipes/${recipeId}/like`, {});
-    // Server confirmed — set the actual value (may differ from optimistic)
-    setLiked(result.liked);
-    setCount((c) => result.liked ? (prevCount ?? 0) + 1 : (prevCount ?? 0) - 1);
-  } catch (err) {
-    // Rollback on failure
-    setLiked(prevLiked);
-    setCount(prevCount);
-  } finally {
-    setLoading(false);
+    await recipeApi.favourite(id);
+    logger.debug({ id }, 'favouriteAction completed');
+    return { ok: true };
+  } catch (err: unknown) {
+    logger.error({ err, id }, 'favouriteAction failed');
+    return { ok: false, error: err instanceof Error ? err.message : 'Favourite failed' };
   }
-}
+};
 ```
 
-### Option C: Remove Optimistic Updates (Simplest)
+**Changes from current:**
 
-Just wait for the server response before updating the UI:
+- Line 7: `throw new Response(...)` → `return { ok: false, error: '...' }`
+- No logger existed — add `createLogger('favourite')` import and calls
+- Line 9: bare `await recipeApi.favourite(id)` with no try/catch → wrap in try/catch
+- Line 10: `return null` → `return { ok: true }`
+- Add catch block returning `{ ok: false, error: ... }`
+
+### `apps/web/src/routes/follow.ts`
 
 ```ts
-async function toggle() {
-  if (loading) return;
-  setLoading(true);
-  try {
-    const result = await api.post<{ liked: boolean }>(`/recipes/${recipeId}/like`, {});
-    setLiked(result.liked);
-    setCount((c) => result.liked ? c + 1 : c - 1);
-  } catch (err) {
-    log.error({ err }, 'Like toggle failed');
-  } finally {
-    setLoading(false);
+import type { ActionFunctionArgs } from 'react-router';
+import { followApi } from '../api/index.ts';
+import { createLogger } from '@/utils/logger.ts';
+
+const logger = createLogger('follow');
+
+export const followAction = async ({ params, request }: ActionFunctionArgs) => {
+  const userId = params.userId;
+  if (typeof userId !== 'string' || userId.length === 0) {
+    return { ok: false, error: 'Missing or invalid userId' };
   }
-}
+
+  logger.debug({ userId, method: request.method }, 'followAction started');
+
+  try {
+    if (request.method === 'DELETE') {
+      await followApi.unfollow(userId);
+    } else {
+      await followApi.follow(userId);
+    }
+    logger.debug({ userId }, 'followAction completed');
+    return { ok: true };
+  } catch (err: unknown) {
+    logger.error({ err, userId }, 'followAction failed');
+    return { ok: false, error: err instanceof Error ? err.message : 'Follow action failed' };
+  }
+};
 ```
 
-Trade-off: Slightly slower UI response (waits for round-trip), but always correct.
+**Changes from current:**
+
+- Line 7: `throw new Response(...)` → `return { ok: false, error: '...' }`
+- No logger existed — add `createLogger('follow')` import and calls
+- Lines 9–14: bare `await followApi.unfollow/follow()` with no try/catch → wrap in try/catch
+- Line 14: `return null` → `return { ok: true }`
+- Add catch block returning `{ ok: false, error: ... }`
+
+---
+
+## Why returning `{ ok: false }` is correct and sufficient
+
+**On failure (action returns `{ ok: false, error: '...' }`):**
+
+1. `fetcher.state` → `'loading'` (revalidating) → `'idle'`
+2. `fetcher.formData` → `null` — optimistic state evicted
+3. `fetcher.data` = `{ ok: false, error: '...' }`
+4. Components fall back: `optimisticLiked ?? initialLiked` → `null ?? initialLiked` → shows
+   server-confirmed state
+5. React Router revalidates loaders (action returned normally, not threw) → loader fetches fresh
+   data, `initialLiked` prop updates to confirmed server value
+6. `RootErrorBoundary` is **not** triggered ✓
+7. Page remains fully usable ✓
+
+**On success (action returns `{ ok: true }`):**
+
+1. Same revalidation flow — loaders update `initialLiked` to new confirmed value
+2. `fetcher.formData` cleared → brief fallback to old `initialLiked` during revalidation — invisible
+   in practice since loaders complete within the same render cycle on fast connections
+
+**Note on `fetcher.data` consumer readiness:** `LikeButton` and `FavouriteButton` do not currently
+read `fetcher.data`, so the `{ ok: false }` return is only consumed by `FollowButton`'s
+`'error' in
+fetcher.data` guard (which will now fire correctly, though the callback is a no-op at
+the current call site). If inline error feedback is desired in `LikeButton`/`FavouriteButton` in the
+future, it can be added by checking `fetcher.data?.ok === false`.
+
+---
 
 ## Implementation Steps
 
-### If D10 is done:
+1. **Read** `apps/web/src/routes/like.ts` — confirm current state matches analysis above
+2. **Edit** `like.ts`: replace `throw new Response(...)` with `return { ok: false, ... }` (line 10);
+   replace `return null` with `return { ok: true }` (line 18); replace `throw err` with
+   `return { ok: false, ... }` (line 21)
+3. **Read** `apps/web/src/routes/favourite.ts` — confirm current state
+4. **Edit** `favourite.ts`: add `createLogger` import; replace validation throw (line 7) with
+   `return`; wrap lines 9–10 in try/catch; change `return null` to `return { ok: true }`; add catch
+   returning `{ ok: false, ... }`
+5. **Read** `apps/web/src/routes/follow.ts` — confirm current state
+6. **Edit** `follow.ts`: add `createLogger` import; replace validation throw (line 7) with `return`;
+   wrap lines 9–13 in try/catch; change `return null` to `return { ok: true }`; add catch returning
+   `{ ok: false, ... }`
+7. **Update tests** in `LikeButton.test.tsx`, `FavouriteButton.test.tsx`, `FollowButton.test.tsx` —
+   add error scenario (see Testing Strategy)
+8. Run `make check-web`
 
-1. Verify TanStack Query mutations are set up for like/favourite/follow
-2. Verify `onMutate` stores previous state and `onError` rolls back
-3. Verify `onSettled` invalidates relevant queries
-4. Test with DevTools offline mode
-
-### If D10 is not done:
-
-1. Read `LikeButton.tsx`, `FavouriteButton.tsx`, `FollowButton.tsx`
-2. For each component, add previous state snapshot before optimistic update
-3. In the `catch` block, restore previous state
-4. Add `log.error()` in the catch block for debugging
-5. Test with DevTools offline mode — toggle like/favourite/follow, verify rollback
-6. Run `make check-web`
+---
 
 ## Testing Strategy
 
-- Open a recipe → click Like → verify heart fills immediately
-- Toggle DevTools Network → Offline
-- Click Like again → verify UI rolls back to previous state
-- Go back Online → verify state matches server
-- Repeat for Favourite and Follow buttons
-- Verify count numbers are correct after rollback
-- Verify no stale state remains after failed mutation
+### Manual test (DevTools)
+
+1. Open a recipe → click Like → heart fills immediately (optimistic)
+2. DevTools → Network → set Offline
+3. Click Like again → verify the button **reverts** to previous state after the request fails
+   (button not stuck, page not replaced by error screen)
+4. Verify the full navbar and page are still visible (no `RootErrorBoundary` takeover)
+5. Set Network back to Online → click Like → verify normal flow still works
+6. Repeat steps 1–5 for Favourite on the same recipe
+7. Navigate to a user profile → repeat steps 1–5 for Follow
+
+### Automated tests to add
+
+Add a new `describe` block in each component test file to cover the error path. Each test router
+should provide an action that **returns** `{ ok: false, error: 'server error' }`.
+
+**`LikeButton.test.tsx` — add:**
+
+```tsx
+describe('LikeButton — action failure rollback', () => {
+  it('reverts to initial state when action returns an error', async () => {
+    const user = userEvent.setup();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <LikeButton recipeId='recipe-1' initialLiked={false} initialCount={3} />,
+          children: [
+            {
+              path: 'recipes/:id/like',
+              action: () => ({ ok: false, error: 'server error' }),
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    // After action settles (ok: false), formData clears, button reverts
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+      expect(button.textContent).toContain('3'); // count unchanged
+    });
+  });
+});
+```
+
+Apply the same pattern for `FavouriteButton.test.tsx` and `FollowButton.test.tsx`, adjusting field
+names (`favourited`, `following`) and expected initial values.
+
+---
 
 ## Risk Assessment
 
-- **Low**: Option A (TanStack Query) handles everything automatically
-- **Low**: Option B (manual rollback) is straightforward but must handle edge cases
-- **Low**: Option C (no optimistic update) is simplest but less responsive
+**Low** — the fix is entirely within the action layer. The component files, router configuration,
+and loaderData wiring are unchanged. The `{ ok: false }` return is a plain JS object (not a thrown
+`Response`), so React Router treats it as a normal action completion and proceeds with loader
+revalidation — exactly the behavior required for the rollback to work.
+
+---
+
+## Related specifications
+
+The action-layer return-object pattern implemented here (returning `{ ok: false, error }` instead of
+throwing) aligns with the general error-handling conventions defined in
+[`openspec/specs/error-handling/spec.md`](../openspec/specs/error-handling/spec.md). That spec
+describes the broader approach: critical failures show user-facing errors, non-critical failures log
+silently, and all error paths use structured logging with sanitized metadata.
 
 ## Dependencies
 
-- **D10** (TanStack Query) — Option A depends on this
-- None for Options B or C
+None. This plan is self-contained. D10 (React Router 7 migration) is a prerequisite and is already
+complete.

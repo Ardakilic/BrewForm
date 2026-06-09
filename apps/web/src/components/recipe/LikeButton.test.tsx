@@ -90,3 +90,67 @@ describe('LikeButton — click interaction', () => {
     });
   });
 });
+
+describe('LikeButton — action failure rollback', () => {
+  it('reverts to initial state when action returns an error', async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({ ok: false, error: 'server error' });
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <LikeButton recipeId='recipe-1' initialLiked={false} initialCount={3} />,
+          children: [
+            {
+              path: 'recipes/:id/like',
+              action,
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+      expect(button.textContent).toContain('3');
+    });
+    expect(action).toHaveBeenCalled();
+  });
+
+  it('completes normally when action returns ok', async () => {
+    const user = userEvent.setup();
+    const action = vi.fn().mockResolvedValue({ ok: true });
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <LikeButton recipeId='recipe-1' initialLiked={false} initialCount={3} />,
+          children: [
+            {
+              path: 'recipes/:id/like',
+              action,
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+      expect(button.textContent).toContain('3');
+    });
+    expect(action).toHaveBeenCalled();
+  });
+});

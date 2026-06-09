@@ -94,3 +94,222 @@ describe('FollowButton — click interaction', () => {
     });
   });
 });
+
+describe('FollowButton — action failure rollback', () => {
+  it('reverts to initial state when action returns an error', async () => {
+    const user = userEvent.setup();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <FollowButton userId='user-1' initialFollowing={false} />,
+          children: [
+            {
+              path: 'follow/:userId',
+              action: () => ({ ok: false, error: 'server error' }),
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+      expect(button.textContent).toBe('Follow');
+    });
+  });
+
+  it('completes normally when action returns ok', async () => {
+    const user = userEvent.setup();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <FollowButton userId='user-1' initialFollowing={false} />,
+          children: [
+            {
+              path: 'follow/:userId',
+              action: () => ({ ok: true }),
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+      expect(button.textContent).toBe('Follow');
+    });
+  });
+});
+
+describe('FollowButton — callback contracts', () => {
+  it('calls onToggle with true on successful follow', async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    const onToggleRollback = vi.fn();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: (
+            <FollowButton
+              userId='user-1'
+              initialFollowing={false}
+              onToggle={onToggle}
+              onToggleRollback={onToggleRollback}
+            />
+          ),
+          children: [
+            {
+              path: 'follow/:userId',
+              action: () => ({ ok: true }),
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(onToggle).toHaveBeenCalledTimes(1);
+      expect(onToggle).toHaveBeenCalledWith(true);
+      expect(onToggleRollback).not.toHaveBeenCalled();
+    });
+  });
+
+  it('calls onToggle with false on successful unfollow', async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    const onToggleRollback = vi.fn();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: (
+            <FollowButton
+              userId='user-1'
+              initialFollowing
+              onToggle={onToggle}
+              onToggleRollback={onToggleRollback}
+            />
+          ),
+          children: [
+            {
+              path: 'follow/:userId',
+              action: () => ({ ok: true }),
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(onToggle).toHaveBeenCalledTimes(1);
+      expect(onToggle).toHaveBeenCalledWith(false);
+      expect(onToggleRollback).not.toHaveBeenCalled();
+      expect(button.textContent).toBe('Following');
+    });
+  });
+
+  it('calls onToggleRollback with initialFollowing on error, does not call onToggle', async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    const onToggleRollback = vi.fn();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: (
+            <FollowButton
+              userId='user-1'
+              initialFollowing={false}
+              onToggle={onToggle}
+              onToggleRollback={onToggleRollback}
+            />
+          ),
+          children: [
+            {
+              path: 'follow/:userId',
+              action: () => ({ ok: false, error: 'server error' }),
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(onToggleRollback).toHaveBeenCalledTimes(1);
+      expect(onToggleRollback).toHaveBeenCalledWith(false);
+      expect(onToggle).not.toHaveBeenCalled();
+    });
+  });
+
+  it('ignores duplicate clicks while loading and settles to initial state', async () => {
+    const user = userEvent.setup();
+    let resolveAction!: (value: { ok: boolean }) => void;
+    const actionPromise = new Promise<{ ok: boolean }>((resolve) => {
+      resolveAction = resolve;
+    });
+    const action = vi.fn().mockReturnValue(actionPromise);
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <FollowButton userId='user-1' initialFollowing={false} />,
+          children: [
+            {
+              path: 'follow/:userId',
+              action,
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+    await user.click(button);
+
+    expect(action).toHaveBeenCalledTimes(1);
+
+    resolveAction!({ ok: true });
+
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+      expect(button.textContent).toBe('Follow');
+    });
+  });
+});
