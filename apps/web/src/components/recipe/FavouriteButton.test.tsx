@@ -91,3 +91,63 @@ describe('FavouriteButton — click interaction', () => {
     });
   });
 });
+
+describe('FavouriteButton — action failure rollback', () => {
+  it('reverts to initial state when action returns an error', async () => {
+    const user = userEvent.setup();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />,
+          children: [
+            {
+              path: 'recipes/:id/favourite',
+              action: () => ({ ok: false, error: 'server error' }),
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+      expect(button.textContent).toContain('5');
+    });
+  });
+
+  it('completes normally when action returns ok', async () => {
+    const user = userEvent.setup();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />,
+          children: [
+            {
+              path: 'recipes/:id/favourite',
+              action: () => ({ ok: true }),
+              element: null,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+    const button = screen.getByRole('button');
+
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(button).not.toBeDisabled();
+      expect(button.textContent).toContain('5');
+    });
+  });
+});
