@@ -144,3 +144,13 @@ The existing tests use a hanging action (`() => new Promise(() => {})`) that nev
 ## Open Questions
 
 None. All design decisions have been resolved based on codebase analysis, React Router 7 documentation, and the existing component patterns.
+
+## Alignment with Error-Handling Spec
+
+The action-layer pattern in this change (return `{ ok: false }` instead of throwing) aligns with the
+general error-handling conventions defined in `openspec/specs/error-handling/spec.md` — all errors
+are logged with structured context via `createLogger`, and the `{ ok: false }` return shape provides
+actionable error data to callers without triggering error boundaries. The general spec covers
+client-side fetch error handling (critical vs non-critical fetches in components), while this change
+extends the same principles — never swallow errors silently, always log with context — to React
+Router resource route actions.

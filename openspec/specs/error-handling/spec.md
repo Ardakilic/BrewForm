@@ -2,11 +2,16 @@
 
 ## Purpose
 
-This document specifies the error-handling patterns and conventions introduced by the
-"fix-error-swallowing" change, describing how critical and non-critical fetch failures are surfaced
-(or silently logged) in the frontend, and serving as a guideline for maintainers and integrators to
-ensure deterministic error propagation, structured logging, and prevention of silent error
-swallowing across the application.
+This document specifies the cross-project error-handling patterns and conventions for client-side
+data fetching in the frontend, describing how critical and non-critical fetch failures are surfaced
+(or silently logged). It serves as a guideline for maintainers and integrators to ensure
+deterministic error propagation, structured logging, and prevention of silent error swallowing
+across the application.
+
+The scenarios in this spec use concrete examples from existing changes (D17 — fix-error-swallowing)
+to illustrate the patterns. For change-specific requirements — such as the action-layer
+`{ ok: false }` return pattern used in optimistic UI rollback (D18 — fix-optimistic-rollback) —
+see the respective change documentation and the `optimistic-rollback` spec.
 
 ## Requirements
 
