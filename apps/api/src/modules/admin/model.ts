@@ -293,7 +293,7 @@ export async function updateEquipment(
 /** Soft-delete an equipment record by setting `deletedAt`. Returns the updated record or null. */
 export async function deleteEquipment(id: string) {
   const [result] = await db.update(equipment).set({ deletedAt: new Date() }).where(
-    eq(equipment.id, id),
+    and(eq(equipment.id, id), isNull(equipment.deletedAt)),
   ).returning();
   return result ?? null;
 }
@@ -335,8 +335,9 @@ export async function updateVendor(
 
 /** Soft-delete a vendor by setting `deletedAt`. Returns the updated vendor or null. */
 export async function deleteVendor(id: string) {
-  const [result] = await db.update(vendors).set({ deletedAt: new Date() }).where(eq(vendors.id, id))
-    .returning();
+  const [result] = await db.update(vendors).set({ deletedAt: new Date() }).where(
+    and(eq(vendors.id, id), isNull(vendors.deletedAt)),
+  ).returning();
   return result ?? null;
 }
 
@@ -600,10 +601,11 @@ export async function updateCoffeeVariety(
   return result ?? null;
 }
 
+/** Soft-delete a coffee variety by setting `deletedAt`. Returns the updated variety or null. */
 export async function deleteCoffeeVariety(id: string) {
   const [result] = await db.update(coffeeVarieties)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(eq(coffeeVarieties.id, id))
+    .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
     .returning();
   return result ?? null;
 }
@@ -666,7 +668,7 @@ export async function approveEquipmentDeleteRequest(id: string, adminId: string)
 
     await tx.update(equipment)
       .set({ deletedAt: new Date() })
-      .where(eq(equipment.id, request.equipmentId));
+      .where(and(eq(equipment.id, request.equipmentId), isNull(equipment.deletedAt)));
 
     return request;
   });
