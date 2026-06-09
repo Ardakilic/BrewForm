@@ -44,8 +44,8 @@ describe('deleteEquipment', { sanitizeOps: false, sanitizeResources: false }, ()
 
   it('should soft-delete an active equipment record', async () => {
     const result = await model.deleteEquipment(equipmentId);
-    expect(result).toBeDefined();
-    expect(result!.deletedAt).not.toBeNull();
+    expect(result).not.toBeNull();
+    expect(result.deletedAt).not.toBeNull();
   });
 
   it('should return null when deleting an already-deleted equipment', async () => {
@@ -94,8 +94,8 @@ describe('deleteVendor', { sanitizeOps: false, sanitizeResources: false }, () =>
 
   it('should soft-delete an active vendor', async () => {
     const result = await model.deleteVendor(vendorId);
-    expect(result).toBeDefined();
-    expect(result!.deletedAt).not.toBeNull();
+    expect(result).not.toBeNull();
+    expect(result.deletedAt).not.toBeNull();
   });
 
   it('should return null when deleting an already-deleted vendor', async () => {
@@ -144,9 +144,9 @@ describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
 
   it('should soft-delete an active variety', async () => {
     const result = await model.deleteCoffeeVariety(varietyId);
-    expect(result).toBeDefined();
-    expect(result!.deletedAt).not.toBeNull();
-    expect(result!.updatedAt).not.toBeNull();
+    expect(result).not.toBeNull();
+    expect(result.deletedAt).not.toBeNull();
+    expect(result.updatedAt).not.toBeNull();
   });
 
   it('should return null when deleting an already-deleted variety', async () => {
@@ -177,78 +177,82 @@ describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('approveEquipmentDeleteRequest guard', { sanitizeOps: false, sanitizeResources: false }, () => {
-  let adminUserId: string;
-  let requesterUserId: string;
-  let equipmentId: string;
-  let requestId: string;
+describe(
+  'approveEquipmentDeleteRequest guard',
+  { sanitizeOps: false, sanitizeResources: false },
+  () => {
+    let adminUserId: string;
+    let requesterUserId: string;
+    let equipmentId: string;
+    let requestId: string;
 
-  beforeEach(async () => {
-    adminUserId = crypto.randomUUID();
-    requesterUserId = crypto.randomUUID();
-    equipmentId = crypto.randomUUID();
-    requestId = crypto.randomUUID();
+    beforeEach(async () => {
+      adminUserId = crypto.randomUUID();
+      requesterUserId = crypto.randomUUID();
+      equipmentId = crypto.randomUUID();
+      requestId = crypto.randomUUID();
 
-    // Create admin user
-    await db.insert(users).values({
-      id: adminUserId,
-      email: `admin-${adminUserId}@example.com`,
-      username: `admin-${adminUserId}`,
-      passwordHash: 'hash',
+      // Create admin user
+      await db.insert(users).values({
+        id: adminUserId,
+        email: `admin-${adminUserId}@example.com`,
+        username: `admin-${adminUserId}`,
+        passwordHash: 'hash',
+      });
+      // Create requester user
+      await db.insert(users).values({
+        id: requesterUserId,
+        email: `requester-${requesterUserId}@example.com`,
+        username: `requester-${requesterUserId}`,
+        passwordHash: 'hash',
+      });
+
+      await db.insert(equipment).values({
+        id: equipmentId,
+        name: 'Test Equipment',
+        type: 'grinder',
+        isSystem: false,
+        createdBy: requesterUserId,
+      });
+
+      await db.insert(equipmentDeleteRequests).values({
+        id: requestId,
+        equipmentId,
+        requestedById: requesterUserId,
+        status: 'pending',
+        reason: 'Test deletion request',
+      });
     });
-    // Create requester user
-    await db.insert(users).values({
-      id: requesterUserId,
-      email: `requester-${requesterUserId}@example.com`,
-      username: `requester-${requesterUserId}`,
-      passwordHash: 'hash',
+
+    afterEach(async () => {
+      // Cleanup order: child tables first, then parents
+      await db.delete(equipmentDeleteRequests).where(eq(equipmentDeleteRequests.id, requestId));
+      await db.delete(equipment).where(eq(equipment.id, equipmentId));
+      await db.delete(users).where(eq(users.id, adminUserId));
+      await db.delete(users).where(eq(users.id, requesterUserId));
     });
 
-    await db.insert(equipment).values({
-      id: equipmentId,
-      name: 'Test Equipment',
-      type: 'grinder',
-      isSystem: false,
-      createdBy: requesterUserId,
+    it('should soft-delete equipment on approval', async () => {
+      const result = await model.approveEquipmentDeleteRequest(requestId, adminUserId);
+      expect(result).toBeDefined();
+      // The transaction updates the request status AND soft-deletes the equipment
+      const [eqRow] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
+      expect(eqRow.deletedAt).not.toBeNull();
     });
 
-    await db.insert(equipmentDeleteRequests).values({
-      id: requestId,
-      equipmentId,
-      requestedById: requesterUserId,
-      status: 'pending',
-      reason: 'Test deletion request',
+    it('should not overwrite deletedAt when equipment was already soft-deleted', async () => {
+      // Pre-delete the equipment independently (simulating it was deleted via deleteEquipment)
+      const preDeleteTime = new Date();
+      await db.update(equipment)
+        .set({ deletedAt: preDeleteTime })
+        .where(eq(equipment.id, equipmentId));
+
+      // Now approve the delete request — guard should prevent overwrite
+      await model.approveEquipmentDeleteRequest(requestId, adminUserId);
+
+      const [eqRow] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
+      // deletedAt should match the pre-set timestamp, not a newer one
+      expect(eqRow.deletedAt!.getTime()).toBe(preDeleteTime.getTime());
     });
-  });
-
-  afterEach(async () => {
-    // Cleanup order: child tables first, then parents
-    await db.delete(equipmentDeleteRequests).where(eq(equipmentDeleteRequests.id, requestId));
-    await db.delete(equipment).where(eq(equipment.id, equipmentId));
-    await db.delete(users).where(eq(users.id, adminUserId));
-    await db.delete(users).where(eq(users.id, requesterUserId));
-  });
-
-  it('should soft-delete equipment on approval', async () => {
-    const result = await model.approveEquipmentDeleteRequest(requestId, adminUserId);
-    expect(result).toBeDefined();
-    // The transaction updates the request status AND soft-deletes the equipment
-    const [eqRow] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
-    expect(eqRow.deletedAt).not.toBeNull();
-  });
-
-  it('should not overwrite deletedAt when equipment was already soft-deleted', async () => {
-    // Pre-delete the equipment independently (simulating it was deleted via deleteEquipment)
-    const preDeleteTime = new Date();
-    await db.update(equipment)
-      .set({ deletedAt: preDeleteTime })
-      .where(eq(equipment.id, equipmentId));
-
-    // Now approve the delete request — guard should prevent overwrite
-    await model.approveEquipmentDeleteRequest(requestId, adminUserId);
-
-    const [eqRow] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
-    // deletedAt should match the pre-set timestamp, not a newer one
-    expect(eqRow.deletedAt!.getTime()).toBe(preDeleteTime.getTime());
-  });
-});
+  },
+);

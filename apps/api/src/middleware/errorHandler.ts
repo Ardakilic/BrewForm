@@ -78,7 +78,7 @@ export function errorHandler(err: Error, c: Context) {
     }, 401);
   }
 
-  // Known not-found error messages from service layer
+  // Known not-found error message from service layer
   if (err instanceof Error && err.message === 'COFFEE_VARIETY_NOT_FOUND') {
     return c.json({
       success: false,

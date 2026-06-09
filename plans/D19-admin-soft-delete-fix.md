@@ -23,16 +23,17 @@
 
 ## Issue Description
 
-Three soft-delete functions in `apps/api/src/modules/admin/model.ts` perform a soft-delete by
-setting `deletedAt` but do **not** include `isNull(deletedAt)` in the WHERE clause. This means
-each function can "re-delete" an already-deleted record, silently overwriting `updatedAt` (and
+Four soft-delete operations in `apps/api/src/modules/admin/model.ts` perform a soft-delete by
+setting `deletedAt` but did **not** include `isNull(deletedAt)` in the WHERE clause. This means
+each operation could "re-delete" an already-deleted record, silently overwriting `updatedAt` (and
 `deletedAt` for `deleteCoffeeVariety`) on a row that was already soft-deleted:
 
-| Function | Lines | Table |
+| Function / Operation | Lines | Table |
 |---|---|---|
 | `deleteEquipment` | 294-299 | `equipment` |
 | `deleteVendor` | 337-341 | `vendors` |
 | `deleteCoffeeVariety` | 603-609 | `coffeeVarieties` |
+| Inner equipment update in `approveEquipmentDeleteRequest` | 669-672 | `equipment` |
 
 This is inconsistent with every soft-delete in the non-admin modules and with the two admin
 soft-deletes that do have the guard (`softDeleteUser` at line 199, `softDeleteRecipe` at
@@ -60,6 +61,8 @@ line 239).
 - **Transparent for `deleteEquipment` and `deleteVendor`:** The service layer calls both
   without inspecting the return value (`await model.deleteEquipment(id)`), so fixing the model
   is transparent at the HTTP level — the service just logs and continues.
+- **`approveEquipmentDeleteRequest`:** The inner equipment soft-delete is idempotent — an
+  already-deleted equipment record's `deletedAt` is no longer overwritten by the transaction.
 - **Low user impact overall:** Only affects admin users, but violates the contract that
   soft-delete is idempotent.
 
@@ -79,6 +82,7 @@ non-admin module soft-deletes. Likely copy-paste omissions during initial implem
 | `apps/api/src/modules/admin/model.ts` | 294-299 | `deleteEquipment()` — missing `isNull` guard |
 | `apps/api/src/modules/admin/model.ts` | 337-341 | `deleteVendor()` — missing `isNull` guard |
 | `apps/api/src/modules/admin/model.ts` | 603-609 | `deleteCoffeeVariety()` — missing `isNull` guard |
+| `apps/api/src/modules/admin/model.ts` | 669-672 | Inner `equipment` update in `approveEquipmentDeleteRequest()` — missing `isNull` guard |
 
 **New file (test):**
 
@@ -92,9 +96,7 @@ non-admin module soft-deletes. Likely copy-paste omissions during initial implem
 
 - **`user/model.ts:deleteUser` (line 68):** Also lacks the `isNull` guard (`eq(users.id, id)`
   only). Same bug class, different module context (user self-deletion), own follow-up plan.
-- **`approveEquipmentDeleteRequest` transaction (admin/model.ts line 668):** Equipment is
-  soft-deleted inside a transaction as part of a one-way workflow; idempotency semantics
-  differ from the standalone delete functions.
+
 
 ---
 
@@ -121,7 +123,7 @@ export async function updateCoffeeVariety(id: string, data: Partial<...>) {
 }
 ```
 
-Current broken implementations — all three lack the guard:
+Current broken implementations — all four lack the guard:
 
 ```typescript
 // ❌ deleteEquipment (admin/model.ts, lines 294-299)
@@ -178,10 +180,11 @@ No import changes are needed.
 
 ## Implementation Steps
 
-1. **Read** `apps/api/src/modules/admin/model.ts` — confirm the three functions:
+1. **Read** `apps/api/src/modules/admin/model.ts` — confirm the four operations:
    - `deleteEquipment` at lines 294-299
    - `deleteVendor` at lines 337-341
    - `deleteCoffeeVariety` at lines 603-609
+   - Inner `equipment` update in `approveEquipmentDeleteRequest` at lines 669-672
 
 2. **Compare** with `softDeleteUser` (lines 197-204) and `updateCoffeeVariety` (lines 592-601)
    to confirm the guard pattern and that `and`/`isNull` are already imported.
@@ -213,7 +216,17 @@ No import changes are needed.
    .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
    ```
 
-6. **Create** `apps/api/src/modules/admin/model.test.ts` — there is no existing model test
+6. **Edit `approveEquipmentDeleteRequest`** — the inner `equipment` update (previously
+   `tx.update(equipment).set({ deletedAt: new Date() }).where(eq(equipment.id, ...))`):
+   add the `isNull` guard. The guard was already present after implementation, as confirmed
+   in the codebase: the inner transaction now reads:
+   ```typescript
+   await tx.update(equipment)
+     .set({ deletedAt: new Date() })
+     .where(and(eq(equipment.id, request.equipmentId), isNull(equipment.deletedAt)));
+   ```
+
+7. **Create** `apps/api/src/modules/admin/model.test.ts` — there is no existing model test
    file for the admin module. Follow the same structure as
    `apps/api/src/modules/coffee-variety/model.test.ts`:
 
@@ -328,10 +341,14 @@ describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
 
 **Risk: Low**
 
-- Three identical one-line WHERE clause changes within the same file.
+- Four identical one-line WHERE clause changes within the same file:
+  1. `deleteEquipment` (line 296)
+  2. `deleteVendor` (line 339)
+  3. `deleteCoffeeVariety` (line 608)
+  4. Inner `equipment` update in `approveEquipmentDeleteRequest` (line 671)
 - No schema changes required.
 - `and` and `isNull` are already imported.
-- All three changes are pattern-identical to the existing correct soft-deletes in the file.
+- All four changes are pattern-identical to the existing correct soft-deletes in the file.
 - Only affects the admin module.
 - The one behavioral change at the HTTP level (`deleteCoffeeVariety` → 500 instead of 200 on
   double-delete) is an improvement; a follow-up plan can add a 404 handler in the admin

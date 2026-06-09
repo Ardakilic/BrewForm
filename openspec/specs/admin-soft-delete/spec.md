@@ -1,7 +1,7 @@
 # admin-soft-delete Specification
 
 ## Purpose
-TBD - created by archiving change d19-admin-soft-delete-fix. Update Purpose after archive.
+The admin module's soft-delete functions (`deleteEquipment`, `deleteVendor`, `deleteCoffeeVariety`, and the inner equipment update in `approveEquipmentDeleteRequest`) in `apps/api/src/modules/admin/model.ts` were missing `isNull(deletedAt)` WHERE-clause guards, allowing repeated soft-deletes to silently overwrite `deletedAt` and `updatedAt` timestamps on already-deleted rows. This spec ensures every admin soft-delete is idempotent — a second call returns `null` and preserves the original timestamps — by requiring the same `and(eq(table.id, id), isNull(table.deletedAt))` guard pattern already established in the two correct admin soft-deletes (`softDeleteUser`, `softDeleteRecipe`) and all eight non-admin module soft-deletes. The scope is limited to the model layer; the service layer audit-log guard and the global 404 handler for `COFFEE_VARIETY_NOT_FOUND` are included as related requirements.
 ## Requirements
 ### Requirement: Admin soft-delete is idempotent
 
