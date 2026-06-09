@@ -16,12 +16,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 
-vi.mock(
-  '@/utils/logger.ts',
-  () => ({
-    createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
-  }),
-);
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => mockLogger,
+}));
 
 import { RecipeFocusModePage } from './RecipeFocusModePage.tsx';
 
@@ -391,5 +392,23 @@ describe('RecipeFocusModePage — error state', () => {
 
     const errorDiv = screen.getByText('Failed to load recipe').closest('div');
     expect(errorDiv).toHaveStyle({ color: 'var(--error)' });
+  });
+});
+
+describe('RecipeFocusModePage — mount/unmount logging', () => {
+  beforeEach(() => {
+    mockLogger.debug.mockClear();
+  });
+
+  it('logs mount message on render', () => {
+    render(<RecipeFocusModePage />);
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeFocusModePage mounted');
+  });
+
+  it('logs unmount message on cleanup', () => {
+    const { unmount } = render(<RecipeFocusModePage />);
+    mockLogger.debug.mockClear();
+    unmount();
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeFocusModePage unmounted');
   });
 });

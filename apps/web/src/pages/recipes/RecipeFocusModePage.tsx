@@ -23,6 +23,13 @@ export function RecipeFocusModePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    log.debug({}, 'RecipeFocusModePage mounted');
+    return () => {
+      log.debug({}, 'RecipeFocusModePage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     tasteApi.flat().then((data) => {
       setAllTasteNotes(Array.isArray(data) ? data as any[] : []);
     }).catch((err) => {

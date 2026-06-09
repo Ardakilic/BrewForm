@@ -58,6 +58,13 @@ export function RecipeCreatePage() {
   const [equipError, setEquipError] = useState('');
 
   useEffect(() => {
+    log.debug({}, 'RecipeCreatePage mounted');
+    return () => {
+      log.debug({}, 'RecipeCreatePage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     Promise.all([
       equipmentApi.list().then((data) => {
         if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
