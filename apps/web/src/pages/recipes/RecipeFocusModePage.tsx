@@ -8,7 +8,11 @@ import { BeanSection } from '../../components/recipe/BeanSection.tsx';
 import { BrewTimeline } from '../../components/recipe/BrewTimeline.tsx';
 import { EquipmentSection } from '../../components/recipe/EquipmentSection.tsx';
 import { TastingNotesSection } from '../../components/recipe/TastingNotesSection.tsx';
+import { createLogger } from '../../utils/logger.ts';
 
+const log = createLogger('RecipeFocusModePage');
+
+/** Renders a focused, distraction-free view of a single brew recipe with stats, bean info, brew timeline, equipment, and tasting notes. */
 export function RecipeFocusModePage() {
   const { slug } = useParams();
   const { t } = useTranslation();
@@ -16,19 +20,43 @@ export function RecipeFocusModePage() {
   const [recipe, setRecipe] = useState<any>(null);
   // deno-lint-ignore no-explicit-any
   const [allTasteNotes, setAllTasteNotes] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    log.debug({}, 'RecipeFocusModePage mounted');
+    return () => {
+      log.debug({}, 'RecipeFocusModePage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     tasteApi.flat().then((data) => {
       setAllTasteNotes(Array.isArray(data) ? data as any[] : []);
-    }).catch(() => {});
+    }).catch((err) => {
+      log.error({ err }, 'Failed to fetch taste notes for focus mode');
+    });
   }, []);
 
   useEffect(() => {
     if (!slug) return;
     recipeApi.get(slug).then((data: Record<string, unknown>) => {
       setRecipe(data);
-    }).catch(() => {});
-  }, [slug]);
+    }).catch((err) => {
+      log.error({ err, slug }, 'Failed to fetch recipe for focus mode');
+      setError(t('recipe.focusMode.loadError'));
+    });
+  }, [slug, t]);
+
+  if (error) {
+    return (
+      <div
+        className='mx-auto max-w-3xl px-4 sm:px-6 py-12 text-center'
+        style={{ color: 'var(--error)' }}
+      >
+        {error}
+      </div>
+    );
+  }
 
   if (!recipe) {
     return (

@@ -74,6 +74,7 @@
   "recipe.focusMode.ratio": "Ratio",
   "recipe.focusMode.rating": "Rating",
   "recipe.focusMode.notes": "Notes",
+  "recipe.focusMode.loadError": "Failed to load recipe",
   "recipe.qrCode": "QR Code",
   "recipe.share": "Share",
   "recipe.forkedFrom": "Forked from",

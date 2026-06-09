@@ -15,6 +15,15 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => mockLogger,
+}));
+
 import { RecipeFocusModePage } from './RecipeFocusModePage.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -77,6 +86,7 @@ const enT = (key: string) => {
     'common.loading': 'Loading...',
     'recipe.focusMode.backToRecipe': 'Back to Recipe',
     'recipe.focusMode.by': 'By',
+    'recipe.focusMode.loadError': 'Failed to load recipe',
   };
   return map[key] ?? key;
 };
@@ -86,6 +96,7 @@ const trT = (key: string) => {
     'common.loading': 'Yükleniyor...',
     'recipe.focusMode.backToRecipe': 'Tarife Dön',
     'recipe.focusMode.by': 'Yazan',
+    'recipe.focusMode.loadError': 'Tarif yüklenemedi',
   };
   return map[key] ?? key;
 };
@@ -344,5 +355,60 @@ describe('RecipeFocusModePage — canonical + noIndex SEO', () => {
     const calls = mockSEOHead.mock.calls;
     const lastProps = calls[calls.length - 1][0] as { canonical?: string };
     expect(lastProps.canonical).not.toContain('/focus');
+  });
+});
+
+describe('RecipeFocusModePage — error state', () => {
+  it('shows error message when recipeApi.get fails', async () => {
+    mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('Failed to load recipe')).toBeInTheDocument());
+
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+  });
+
+  it('shows Turkish error message when recipeApi.get fails and locale is tr', async () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
+    mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('Tarif yüklenemedi')).toBeInTheDocument());
+  });
+
+  it('error state does not appear when recipe fetch succeeds', async () => {
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    expect(screen.queryByText('Failed to load recipe')).not.toBeInTheDocument();
+  });
+
+  it('error div uses error color variable', async () => {
+    mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
+    render(<RecipeFocusModePage />);
+
+    await waitFor(() => expect(screen.getByText('Failed to load recipe')).toBeInTheDocument());
+
+    const errorDiv = screen.getByText('Failed to load recipe').closest('div');
+    expect(errorDiv).toHaveStyle({ color: 'var(--error)' });
+  });
+});
+
+describe('RecipeFocusModePage — mount/unmount logging', () => {
+  beforeEach(() => {
+    mockLogger.debug.mockClear();
+  });
+
+  it('logs mount message on render', () => {
+    render(<RecipeFocusModePage />);
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeFocusModePage mounted');
+  });
+
+  it('logs unmount message on cleanup', () => {
+    const { unmount } = render(<RecipeFocusModePage />);
+    mockLogger.debug.mockClear();
+    unmount();
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeFocusModePage unmounted');
   });
 });
