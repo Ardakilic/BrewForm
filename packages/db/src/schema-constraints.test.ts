@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from './index.ts';
 import {
   recipes,
   recipeTasteNotes,
   recipeVersions,
+  reports,
   tasteNotes,
   userRecipeRatings,
   users,
@@ -148,6 +149,67 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
           rating: 10,
         }),
       ).resolves.toBeDefined();
+    });
+  });
+});
+
+describe('Schema enum constraints', { sanitizeOps: false, sanitizeResources: false }, () => {
+  const reporterIds: string[] = [];
+
+  afterEach(async () => {
+    if (reporterIds.length > 0) {
+      // Reports reference users, so delete reports first, then the reporter users.
+      const reporterIdArray = `ARRAY[${reporterIds.map((id) => `'${id}'`).join(',')}]::varchar[]`;
+      await db.delete(reports).where(
+        sql`reporter_id = ANY(${sql.raw(reporterIdArray)})`,
+      );
+      await db.delete(users).where(
+        sql`id = ANY(${sql.raw(reporterIdArray)})`,
+      );
+      reporterIds.length = 0;
+    }
+  });
+
+  describe('report.status enum constraint', () => {
+    for (const status of ['pending', 'reviewed', 'resolved', 'dismissed'] as const) {
+      it(`should accept status = '${status}'`, async () => {
+        const reporterId = crypto.randomUUID();
+        reporterIds.push(reporterId);
+        await db.insert(users).values({
+          id: reporterId,
+          email: `enum-${status}-${reporterId}@example.com`,
+          username: `enum-${status}-${reporterId}`,
+          passwordHash: 'hash',
+        });
+
+        await expect(
+          db.insert(reports).values({
+            reporterId,
+            entityType: 'recipe',
+            entityId: crypto.randomUUID(),
+            reason: `Test report with status=${status}`,
+            status,
+          }),
+        ).resolves.toBeDefined();
+      });
+    }
+
+    it("should reject status = 'invalid' at the database level", async () => {
+      const reporterId = crypto.randomUUID();
+      reporterIds.push(reporterId);
+      await db.insert(users).values({
+        id: reporterId,
+        email: `enum-invalid-${reporterId}@example.com`,
+        username: `enum-invalid-${reporterId}`,
+        passwordHash: 'hash',
+      });
+
+      await expect(
+        db.execute(
+          sql`INSERT INTO "report" ("id", "reporter_id", "entity_type", "entity_id", "reason", "status", "created_at", "updated_at")
+            VALUES (${crypto.randomUUID()}, ${reporterId}, 'recipe', ${crypto.randomUUID()}, 'bypass', 'invalid', NOW(), NOW())`,
+        ),
+      ).rejects.toThrow();
     });
   });
 });

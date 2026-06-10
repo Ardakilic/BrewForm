@@ -46,3 +46,4 @@ export {
 } from './user-preferences.ts';
 export { COFFEE_VARIETY_CATEGORY_VALUES } from './coffee-variety.ts';
 export { EQUIPMENT_DELETE_REQUEST_STATUS_VALUES } from './equipment-delete-request.ts';
+export { REPORT_STATUS_VALUES } from './report-status.ts';

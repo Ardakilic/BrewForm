@@ -28,6 +28,7 @@ import {
   EMOJI_TAG_VALUES,
   EQUIPMENT_DELETE_REQUEST_STATUS_VALUES,
   EQUIPMENT_TYPE_VALUES,
+  REPORT_STATUS_VALUES,
   TEMPERATURE_UNIT_VALUES,
   THEME_VALUES,
   UNIT_SYSTEM_VALUES,
@@ -56,6 +57,7 @@ export const additionalPreparationTypeEnum = pgEnum(
   'additional_preparation_type',
   [...ADDITIONAL_PREPARATION_TYPE_VALUES],
 );
+export const reportStatusEnum = pgEnum('report_status', [...REPORT_STATUS_VALUES]);
 
 // ============================================================
 // Tables
@@ -667,7 +669,7 @@ export const reports = pgTable(
     entityType: varchar('entity_type', { length: 100 }).notNull(),
     entityId: varchar('entity_id', { length: 36 }).notNull(),
     reason: text('reason').notNull(),
-    status: varchar('status', { length: 50 }).notNull().default('pending'),
+    status: reportStatusEnum('status').notNull().default('pending'),
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     resolvedBy: varchar('resolved_by', { length: 36 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

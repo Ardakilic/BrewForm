@@ -11,6 +11,7 @@ import {
   CoffeeVarietyCreateSchema,
   CoffeeVarietyUpdateSchema,
   PaginationSchema,
+  ReportFilterSchema,
 } from '@brewform/shared/schemas';
 import { z } from 'zod';
 
@@ -545,6 +546,88 @@ describe('Admin Equipment Delete Request Routes', () => {
         method: 'POST',
       });
       expect(res.status).toBe(404);
+    });
+  });
+});
+
+function createReportsApp() {
+  const app = new Hono<AppEnv>();
+
+  app.use('*', async (c, next) => {
+    c.set('userId', 'test-admin-id');
+    c.set('user', { id: 'test-admin-id', isAdmin: true });
+    await next();
+  });
+
+  app.get(
+    '/reports',
+    zValidator('query', ReportFilterSchema.extend({ entityType: z.string().optional() })),
+    (c) => {
+      const { page, perPage } = c.req.valid('query');
+      return c.json({
+        success: true,
+        data: [],
+        meta: { pagination: { page, perPage, total: 0, totalPages: 0 } },
+      });
+    },
+  );
+
+  return app;
+}
+
+describe('Admin Reports Routes — Validation', () => {
+  describe('GET /admin/reports', () => {
+    it('should return paginated list with default pagination when no query params', async () => {
+      const app = createReportsApp();
+      const res = await app.request('/reports');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(body.meta.pagination).toBeDefined();
+    });
+
+    it('should accept entityType query param', async () => {
+      const app = createReportsApp();
+      const res = await app.request('/reports?entityType=recipe');
+      expect(res.status).toBe(200);
+    });
+
+    it('should accept each valid ReportStatus value', async () => {
+      const app = createReportsApp();
+      for (const status of ['pending', 'reviewed', 'resolved', 'dismissed']) {
+        const res = await app.request(`/reports?status=${status}`);
+        expect(res.status).toBe(200);
+      }
+    });
+
+    it('should reject status outside ReportStatusEnum', async () => {
+      const app = createReportsApp();
+      const res = await app.request('/reports?status=invalid');
+      expect(res.status).toBe(400);
+    });
+
+    it('should reject empty-string status', async () => {
+      const app = createReportsApp();
+      const res = await app.request('/reports?status=');
+      expect(res.status).toBe(400);
+    });
+
+    it('should accept combined status and entityType query params', async () => {
+      const app = createReportsApp();
+      const res = await app.request('/reports?status=pending&entityType=comment');
+      expect(res.status).toBe(200);
+    });
+
+    it('should reject non-positive page', async () => {
+      const app = createReportsApp();
+      const res = await app.request('/reports?page=0');
+      expect(res.status).toBe(400);
+    });
+
+    it('should reject perPage above 100', async () => {
+      const app = createReportsApp();
+      const res = await app.request('/reports?perPage=101');
+      expect(res.status).toBe(400);
     });
   });
 });

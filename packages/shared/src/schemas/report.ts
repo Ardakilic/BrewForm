@@ -1,7 +1,8 @@
 // deno-lint-ignore-file no-explicit-any require-await
 import { z } from 'zod';
+import { REPORT_STATUS_VALUES } from '../constants/index.ts';
 
-const ReportStatusEnum = z.enum(['pending', 'reviewed', 'resolved', 'dismissed']);
+const ReportStatusEnum = z.enum(REPORT_STATUS_VALUES);
 
 /**
  * Validates report creation payloads.

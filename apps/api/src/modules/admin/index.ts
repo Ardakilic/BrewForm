@@ -17,6 +17,7 @@ import {
   EquipmentCreateSchema,
   EquipmentUpdateSchema,
   PaginationSchema,
+  ReportFilterSchema,
   TasteNoteCreateSchema,
   TasteNoteUpdateSchema,
   VendorCreateSchema,
@@ -399,7 +400,7 @@ admin.get(
   '/reports',
   zValidator(
     'query',
-    PaginationSchema.extend({ status: z.string().optional(), entityType: z.string().optional() }),
+    ReportFilterSchema.extend({ entityType: z.string().optional() }),
   ),
   async (c) => {
     const { page, perPage, status, entityType } = c.req.valid('query');
