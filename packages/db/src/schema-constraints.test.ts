@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { db } from './index.ts';
 import {
   recipes,
@@ -12,6 +12,12 @@ import {
   users,
 } from './schema.ts';
 
+/**
+ * Tests for database-level CHECK constraints on core entity tables.
+ * Ensures that CHECK constraints defined in the schema (e.g., intensity ranges,
+ * rating ranges) are enforced at the database level, rejecting invalid values
+ * and accepting valid ones.
+ */
 describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: false }, () => {
   let userId: string;
   let recipeId: string;
@@ -59,6 +65,10 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
     });
   });
 
+  /**
+   * Cleans up all entities created during CHECK constraint tests.
+   * Deletes in dependency order (child tables first) to avoid FK violations.
+   */
   afterEach(async () => {
     await db.delete(recipeTasteNotes).where(eq(recipeTasteNotes.recipeVersionId, recipeVersionId));
     await db.delete(userRecipeRatings).where(eq(userRecipeRatings.recipeId, recipeId));
@@ -153,19 +163,22 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
   });
 });
 
+/**
+ * Tests for Postgres enum constraints on the `report.status` column.
+ * Verifies that only valid enum values are accepted at the database level,
+ * and that invalid values are rejected even when bypassing the application layer.
+ */
 describe('Schema enum constraints', { sanitizeOps: false, sanitizeResources: false }, () => {
   const reporterIds: string[] = [];
 
+  /**
+   * Cleans up reporter users and their reports after each test.
+   * Uses the accumulated reporterIds array and deletes reports first (FK dependency).
+   */
   afterEach(async () => {
     if (reporterIds.length > 0) {
-      // Reports reference users, so delete reports first, then the reporter users.
-      const reporterIdArray = `ARRAY[${reporterIds.map((id) => `'${id}'`).join(',')}]::varchar[]`;
-      await db.delete(reports).where(
-        sql`reporter_id = ANY(${sql.raw(reporterIdArray)})`,
-      );
-      await db.delete(users).where(
-        sql`id = ANY(${sql.raw(reporterIdArray)})`,
-      );
+      await db.delete(reports).where(inArray(reports.reporterId, reporterIds));
+      await db.delete(users).where(inArray(users.id, reporterIds));
       reporterIds.length = 0;
     }
   });
