@@ -24,6 +24,7 @@ import {
   EQUIPMENT_DELETE_REQUEST_STATUS_VALUES,
   type EquipmentDeleteRequestStatus,
 } from './equipment-delete-request.ts';
+import { REPORT_STATUS_VALUES, type ReportStatus } from './report-status.ts';
 import {
   EQUIPMENT_TYPE_LABELS,
   EQUIPMENT_TYPE_VALUES,
@@ -106,6 +107,14 @@ describe('Standalone enum constants: types derived from values', () => {
       EQUIPMENT_DELETE_REQUEST_STATUS_VALUES,
     );
     expect(set.size).toBe(EQUIPMENT_DELETE_REQUEST_STATUS_VALUES.length);
+  });
+
+  it('ReportStatus covers every REPORT_STATUS_VALUES entry', () => {
+    const set: Set<ReportStatus> = new Set(REPORT_STATUS_VALUES);
+    expect(set.size).toBe(REPORT_STATUS_VALUES.length);
+    for (const value of REPORT_STATUS_VALUES) {
+      expect(set.has(value)).toBe(true);
+    }
   });
 });
 

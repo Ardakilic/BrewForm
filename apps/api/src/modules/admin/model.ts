@@ -392,7 +392,7 @@ export async function listReports(
   entityType?: string,
 ) {
   let where = undefined;
-  if (status) where = eq(reports.status, status);
+  if (status) where = eq(reports.status, status as typeof reports.status._.data);
   if (entityType) {
     where = where
       ? and(where, eq(reports.entityType, entityType))

@@ -38,7 +38,7 @@ export async function findById(id: string) {
 export async function findMany(status: string | undefined, page: number, perPage: number) {
   let where = undefined;
   if (status) {
-    where = eq(reports.status, status);
+    where = eq(reports.status, status as typeof reports.status._.data);
   }
   const [data, totalResult] = await Promise.all([
     db.select().from(reports).where(where).orderBy(desc(reports.createdAt)).limit(perPage).offset(
