@@ -13,7 +13,7 @@
  * `drizzle-orm/pg-core` to introspect index configurations.
  *
  * Coverage:
- *  - All 18 new indexes across 11 tables: 16 composite indexes + 1
+ *  - All 17 new indexes across 11 tables: 16 composite indexes + 1
  *    single-column parity index on tasteNotes.deletedAt
  */
 
