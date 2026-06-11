@@ -1,3 +1,10 @@
+/**
+ * Type-consistency test for the {@link CoffeeVariety} interface.
+ *
+ * Verifies that timestamp fields accept `Date` objects at compile time and
+ * runtime, serving as a regression guard against accidental reversion to
+ * `string`.
+ */
 // deno-lint-ignore-file no-explicit-any require-await
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
@@ -9,7 +16,7 @@ describe('CoffeeVariety type consistency', () => {
     const variety: CoffeeVariety = {
       id: 'test-variety-id',
       name: 'Test Variety',
-      category: 'arabica',
+      category: 'variety',
       species: null,
       origin: null,
       spread: null,
@@ -52,7 +59,7 @@ describe('CoffeeVariety type consistency', () => {
     const variety: CoffeeVariety = {
       id: 'test-variety-id',
       name: 'Test Variety',
-      category: 'arabica',
+      category: 'variety',
       species: null,
       origin: null,
       spread: null,
