@@ -1,0 +1,1 @@
+ALTER TABLE "recipe_version" ADD CONSTRAINT "recipe_version_rating_check" CHECK ("recipe_version"."rating" BETWEEN 1 AND 10);

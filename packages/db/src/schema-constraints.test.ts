@@ -161,6 +161,66 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
       ).resolves.toBeDefined();
     });
   });
+
+  describe('recipe_version rating check', () => {
+    it('should reject rating = 0', async () => {
+      await expect(
+        db.update(recipeVersions)
+          .set({ rating: 0 })
+          .where(eq(recipeVersions.id, recipeVersionId)),
+      ).rejects.toThrow();
+    });
+
+    it('should reject rating = 11', async () => {
+      await expect(
+        db.update(recipeVersions)
+          .set({ rating: 11 })
+          .where(eq(recipeVersions.id, recipeVersionId)),
+      ).rejects.toThrow();
+    });
+
+    it('should reject rating = -1', async () => {
+      await expect(
+        db.update(recipeVersions)
+          .set({ rating: -1 })
+          .where(eq(recipeVersions.id, recipeVersionId)),
+      ).rejects.toThrow();
+    });
+
+    it('should accept rating = 1', async () => {
+      await expect(
+        db.update(recipeVersions)
+          .set({ rating: 1 })
+          .where(eq(recipeVersions.id, recipeVersionId)),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept rating = 5', async () => {
+      await expect(
+        db.update(recipeVersions)
+          .set({ rating: 5 })
+          .where(eq(recipeVersions.id, recipeVersionId)),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept rating = 10', async () => {
+      await expect(
+        db.update(recipeVersions)
+          .set({ rating: 10 })
+          .where(eq(recipeVersions.id, recipeVersionId)),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept rating = NULL', async () => {
+      // Previous accept test may have set rating to a non-null value.
+      // Update back to null; this must succeed since column is nullable.
+      await expect(
+        db.update(recipeVersions)
+          .set({ rating: null })
+          .where(eq(recipeVersions.id, recipeVersionId)),
+      ).resolves.toBeDefined();
+    });
+  });
 });
 
 /**

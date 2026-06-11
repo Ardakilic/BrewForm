@@ -50,8 +50,8 @@ No import changes needed — `check` (line 6) and `sql` (line 2) are already imp
 
 **Verification**: `make check` passes (type-check confirms `check()` is available and `table.rating` is the correct column reference).
 
-- [ ] 1.1 Add `// 1–10` inline comment on `recipeVersions.rating` at `schema.ts:179`
-- [ ] 1.2 Add `check('recipe_version_rating_check', sql\`${table.rating} BETWEEN 1 AND 10\`)` to `recipeVersions` constraints array at `schema.ts:191`
+- [x] 1.1 Add `// 1–10` inline comment on `recipeVersions.rating` at `schema.ts:179`
+- [x] 1.2 Add `check('recipe_version_rating_check', sql\`${table.rating} BETWEEN 1 AND 10\`)` to `recipeVersions` constraints array at `schema.ts:191`
 
 ---
 
@@ -72,7 +72,7 @@ With:
 
 **Verification**: Grep for `1-5 star rating` returns zero results outside of plans/ files.
 
-- [ ] 1.3 Update JSDoc comment at `types/recipe.ts:123`
+- [x] 1.3 Update JSDoc comment at `types/recipe.ts:123`
 
 ---
 
@@ -150,7 +150,7 @@ Insert the following code at line 164 (after `});` of user_recipe_rating block, 
 
 **Verification**: After migration is applied (section 3), running `make test` includes these 7 new tests and they all pass.
 
-- [ ] 2.1 Insert the `recipe_version rating check` describe block with 7 tests at `schema-constraints.test.ts:164`
+- [x] 2.1 Insert the `recipe_version rating check` describe block with 7 tests at `schema-constraints.test.ts:164`
 
 ---
 
@@ -170,7 +170,7 @@ WHERE rating IS NOT NULL
 **Expected**: Zero rows returned. All seed data uses ratings 8, 9, or 10.
 **If rows returned**: Correct the out-of-range values before proceeding. Run `make db-seed` to re-seed if needed.
 
-- [ ] 3.1 Run pre-migration safety query — confirm zero out-of-range rows
+- [x] 3.1 Run pre-migration safety query — confirm zero out-of-range rows
 
 ### 3.2 Generate migration
 
@@ -182,7 +182,7 @@ This creates a new migration file at `packages/db/drizzle/0005_*.sql`. Drizzle K
 
 **Note**: Do NOT use `make db-push` for this change. Per Drizzle Kit 0.26.0 changelog, `push` does not detect new CHECK constraint additions — only `generate` + `migrate` works correctly for this.
 
-- [ ] 3.2 Run `make db-generate` to create migration
+- [x] 3.2 Run `make db-generate` to create migration
 
 ### 3.3 Inspect generated migration
 
@@ -196,7 +196,7 @@ ALTER TABLE "recipe_version"
 
 The constraint name and CHECK expression must match exactly. Table/column name casing may vary (Drizzle sometimes uses quoted identifiers).
 
-- [ ] 3.3 Inspect generated SQL — confirm it matches expected ALTER TABLE pattern
+- [x] 3.3 Inspect generated SQL — confirm it matches expected ALTER TABLE pattern
 
 ### 3.4 Apply migration
 
@@ -206,7 +206,7 @@ make db-migrate
 
 This applies the pending migration to the database. The constraint takes effect immediately.
 
-- [ ] 3.4 Run `make db-migrate` to apply the constraint
+- [x] 3.4 Run `make db-migrate` to apply the constraint
 
 ---
 
@@ -231,7 +231,7 @@ After removal, section 5.1 should flow directly into section 5.3 with no gap or 
 
 **Verification**: Grep for `5.2 Recipe Rating Scale` returns zero results.
 
-- [ ] 4.1 Remove "5.2 Recipe Rating Scale Mismatch" entry (5 lines) from `plans/TECHNICAL_DEBT.md`
+- [x] 4.1 Remove "5.2 Recipe Rating Scale Mismatch" entry (5 lines) from `plans/TECHNICAL_DEBT.md`
 
 ### 4.2 Create PR description
 
@@ -308,7 +308,7 @@ they would remain but future writes to those rows' `rating` column would
 require values within 1–10.
 ```
 
-- [ ] 4.2 Create `pr_description.md` at project root
+- [x] 4.2 Create `pr_description.md` at project root
 
 ---
 
@@ -322,7 +322,7 @@ make check
 
 **Expected**: Zero TypeScript errors across all workspaces (api, web, shared, db).
 
-- [ ] 5.1 Run `make check` — zero errors
+- [x] 5.1 Run `make check` — zero errors
 
 ### 5.2 Run all tests
 
@@ -334,7 +334,7 @@ make test
 
 If tests fail with CHECK constraint violations before the migration is applied: run `make db-migrate` first (task 3.4), then re-run tests.
 
-- [ ] 5.2 Run `make test` — all tests pass
+- [x] 5.2 Run `make test` — all tests pass
 
 ### 5.3 Lint
 
@@ -344,7 +344,7 @@ make lint
 
 **Expected**: Zero lint errors across all files.
 
-- [ ] 5.3 Run `make lint` — zero errors
+- [x] 5.3 Run `make lint` — zero errors
 
 ---
 

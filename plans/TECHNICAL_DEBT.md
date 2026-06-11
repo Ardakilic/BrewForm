@@ -194,13 +194,6 @@
 - **Severity**: DB allows invalid status values.
 - **PRD**: [`plans/D20-fix-report-status-enum.md`](plans/D20-fix-report-status-enum.md)
 
-### 5.2 Recipe Rating Scale Mismatch
-- **Files**: `packages/db/src/schema.ts:255`, `packages/shared/src/types/recipe.ts:136`
-- **Issue**: `RecipeVersion.rating` has no CHECK constraint and the type comment says "1-5 star rating", but Zod schemas allow 1-10 and `userRecipeRatings.rating` CHECK enforces 1-10. The type comment is misleading.
-- **Fix**: Add CHECK constraint for consistency; update type comment.
-- **Severity**: Misleading documentation; potential data inconsistency.
-- **PRD**: [`plans/D21-fix-rating-scale.md`](plans/D21-fix-rating-scale.md)
-
 ### 5.3 `CoffeeVariety` Type Uses `string` for Dates
 - **File**: `packages/shared/src/types/coffee-variety.ts:34-36`
 - **Issue**: `createdAt`, `updatedAt`, `deletedAt` are typed as `string` while all other entity types use `Date`.
