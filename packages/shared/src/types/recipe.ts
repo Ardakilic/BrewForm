@@ -120,7 +120,7 @@ export interface RecipeVersion {
   personalNotes: string | null;
   /** Whether the user marked this brew as a favourite */
   isFavourite: boolean;
-  /** 1-5 star rating */
+  /** 1–10 rating (displayed as 5 stars with half-star granularity) */
   rating: number | null;
   /** Quick-reaction emoji tag */
   emojiTag: EmojiTag | null;

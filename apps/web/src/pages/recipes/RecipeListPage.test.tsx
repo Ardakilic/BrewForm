@@ -693,7 +693,7 @@ describe('RecipeListPage — coffee variety filter', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument()
     );
-    expect(screen.getAllByText('Bourbon').length).toBeGreaterThanOrEqual(1);
+    await waitFor(() => expect(screen.getAllByText('Bourbon').length).toBeGreaterThanOrEqual(1));
   });
 
   it('shows fallback text in badge when variety name is not resolved', async () => {

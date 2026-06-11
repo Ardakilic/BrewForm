@@ -176,7 +176,7 @@ export const recipeVersions = pgTable(
     personalNotes: text('personal_notes'),
     preparationNotes: text('preparation_notes').notNull(),
     isFavourite: boolean('is_favourite').notNull().default(false),
-    rating: integer('rating'),
+    rating: integer('rating'), // 1–10
     emojiTag: emojiTagEnum('emoji_tag'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -189,6 +189,7 @@ export const recipeVersions = pgTable(
     index('recipe_version_brew_method_idx').on(table.brewMethod),
     index('recipe_version_drink_type_idx').on(table.drinkType),
     index('recipe_version_created_at_idx').on(table.createdAt),
+    check('recipe_version_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
   ],
 );
 
