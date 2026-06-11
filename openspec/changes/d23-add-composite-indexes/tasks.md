@@ -1,6 +1,6 @@
 ## 1. Add composite indexes to `recipes` table with docblocks
 
-- [ ] 1.1 Open `packages/db/src/schema.ts` and locate the `recipes` table's extra configurator array at lines 134-142 (the `(table) => [...]` callback). Append three composite index entries **with JSDoc docblocks** after the existing `recipe_deleted_at_idx` line:
+- [x] 1.1 Open `packages/db/src/schema.ts` and locate the `recipes` table's extra configurator array at lines 134-142 (the `(table) => [...]` callback). Append three composite index entries **with JSDoc docblocks** after the existing `recipe_deleted_at_idx` line:
 
   ```typescript
   (table) => [
@@ -45,11 +45,11 @@
   - No existing indexes are modified.
   - Only `authorId` is nullable in the first composite; PostgreSQL B-tree handles this correctly.
 
-- [ ] 1.2 Run `make check` — must pass with zero new type errors.
+- [x] 1.2 Run `make check` — must pass with zero new type errors.
 
 ## 2. Add composite index to `recipeVersions` table (CRITICAL) with docblock
 
-- [ ] 2.1 Locate the `recipeVersions` table extra configurator array (around lines 183-193). Append the composite index **with a JSDoc docblock** after the existing `recipe_version_created_at_idx` entry:
+- [x] 2.1 Locate the `recipeVersions` table extra configurator array (around lines 183-193). Append the composite index **with a JSDoc docblock** after the existing `recipe_version_created_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -79,11 +79,11 @@
   - `coffeeVarietyId` is a nullable `varchar(36)` column — the index works correctly.
   - Do NOT modify the existing `uniqueIndex` or other indexes.
 
-- [ ] 2.2 Run `make check` — must pass.
+- [x] 2.2 Run `make check` — must pass.
 
 ## 3. Add composite indexes to `comments` table with docblocks
 
-- [ ] 3.1 Locate the `comments` table extra configurator array (around lines 462-468). Append two composite indexes **with JSDoc docblocks** after the existing `comment_deleted_at_idx` entry:
+- [x] 3.1 Locate the `comments` table extra configurator array (around lines 462-468). Append two composite indexes **with JSDoc docblocks** after the existing `comment_deleted_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -110,11 +110,11 @@
   ],
   ```
 
-- [ ] 3.2 Run `make check` — must pass.
+- [x] 3.2 Run `make check` — must pass.
 
 ## 4. Add composite indexes to `userFollows` table with docblocks
 
-- [ ] 4.1 Locate the `userFollows` table extra configurator array (around lines 479-484). Append two composite indexes **with JSDoc docblocks** after the existing `user_follow_created_at_idx` entry:
+- [x] 4.1 Locate the `userFollows` table extra configurator array (around lines 479-484). Append two composite indexes **with JSDoc docblocks** after the existing `user_follow_created_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -139,11 +139,11 @@
   ],
   ```
 
-- [ ] 4.2 Run `make check` — must pass.
+- [x] 4.2 Run `make check` — must pass.
 
 ## 5. Add composite index to `setups` table with docblock
 
-- [ ] 5.1 Locate the `setups` table extra configurator array (around lines 442-445). Append a composite index **with a JSDoc docblock** after the existing `setup_deleted_at_idx` entry:
+- [x] 5.1 Locate the `setups` table extra configurator array (around lines 442-445). Append a composite index **with a JSDoc docblock** after the existing `setup_deleted_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -160,11 +160,11 @@
   ],
   ```
 
-- [ ] 5.2 Run `make check` — must pass.
+- [x] 5.2 Run `make check` — must pass.
 
 ## 6. Add composite index to `beans` table with docblock
 
-- [ ] 6.1 Locate the `beans` table extra configurator array (around lines 336-339). Append a composite index **with a JSDoc docblock** after the existing `bean_deleted_at_idx` entry:
+- [x] 6.1 Locate the `beans` table extra configurator array (around lines 336-339). Append a composite index **with a JSDoc docblock** after the existing `bean_deleted_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -181,11 +181,11 @@
   ],
   ```
 
-- [ ] 6.2 Run `make check` — must pass.
+- [x] 6.2 Run `make check` — must pass.
 
 ## 7. Add composite index to `photos` table with docblock
 
-- [ ] 7.1 Locate the `photos` table extra configurator array (around lines 271-274). Append a composite index **with a JSDoc docblock** after the existing `photo_deleted_at_idx` entry:
+- [x] 7.1 Locate the `photos` table extra configurator array (around lines 271-274). Append a composite index **with a JSDoc docblock** after the existing `photo_deleted_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -202,11 +202,11 @@
   ],
   ```
 
-- [ ] 7.2 Run `make check` — must pass.
+- [x] 7.2 Run `make check` — must pass.
 
 ## 8. Add parity + composite indexes to `tasteNotes` table with docblocks
 
-- [ ] 8.1 Locate the `tasteNotes` table extra configurator array (around lines 417-421). Add a `deletedAt` single-column index (parity fix) and two composite indexes, all **with JSDoc docblocks**:
+- [x] 8.1 Locate the `tasteNotes` table extra configurator array (around lines 417-421). Add a `deletedAt` single-column index (parity fix) and two composite indexes, all **with JSDoc docblocks**:
 
   ```typescript
   (table) => [
@@ -236,11 +236,11 @@
   ],
   ```
 
-- [ ] 8.2 Run `make check` — must pass.
+- [x] 8.2 Run `make check` — must pass.
 
 ## 9. Add composite index to `reports` table with docblock
 
-- [ ] 9.1 Locate the `reports` table extra configurator array (around lines 679-684). Append a composite index **with a JSDoc docblock** after the existing `report_created_at_idx` entry:
+- [x] 9.1 Locate the `reports` table extra configurator array (around lines 679-684). Append a composite index **with a JSDoc docblock** after the existing `report_created_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -259,11 +259,11 @@
   ],
   ```
 
-- [ ] 9.2 Run `make check` — must pass.
+- [x] 9.2 Run `make check` — must pass.
 
 ## 10. Add composite index to `equipment` table with docblock
 
-- [ ] 10.1 Locate the `equipment` table extra configurator array (around lines 313-317). Append a composite index **with a JSDoc docblock** after the existing `equipment_deleted_at_idx` entry:
+- [x] 10.1 Locate the `equipment` table extra configurator array (around lines 313-317). Append a composite index **with a JSDoc docblock** after the existing `equipment_deleted_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -280,11 +280,11 @@
   ],
   ```
 
-- [ ] 10.2 Run `make check` — must pass.
+- [x] 10.2 Run `make check` — must pass.
 
 ## 11. Add composite index to `coffeeVarieties` table with docblock
 
-- [ ] 11.1 Locate the `coffeeVarieties` table extra configurator array (around lines 381-384). Append a composite index **with a JSDoc docblock** after the existing `coffee_variety_deleted_at_idx` entry:
+- [x] 11.1 Locate the `coffeeVarieties` table extra configurator array (around lines 381-384). Append a composite index **with a JSDoc docblock** after the existing `coffee_variety_deleted_at_idx` entry:
 
   ```typescript
   (table) => [
@@ -302,23 +302,23 @@
   ],
   ```
 
-- [ ] 11.2 Run `make check` — must pass.
+- [x] 11.2 Run `make check` — must pass.
 
 ## 12. Generate and apply database migration
 
-- [ ] 12.1 Run `make db-generate`. Drizzle Kit reads the updated schema and produces a new migration SQL file (e.g., `0006_<codename>.sql`) in `packages/db/drizzle/`. Verify the generated file contains plain `CREATE INDEX` statements (not `CREATE INDEX IF NOT EXISTS` — that's the Drizzle default for fresh migrations) for each of the 18 indexes, with correct column lists. Running `make db-generate` twice should produce zero new files (idempotent diffs).
+- [x] 12.1 Run `make db-generate`. Drizzle Kit reads the updated schema and produces a new migration SQL file (e.g., `0006_<codename>.sql`) in `packages/db/drizzle/`. Verify the generated file contains plain `CREATE INDEX` statements (not `CREATE INDEX IF NOT EXISTS` — that's the Drizzle default for fresh migrations) for each of the 18 indexes, with correct column lists. Running `make db-generate` twice should produce zero new files (idempotent diffs).
 
   ```
   make db-generate
   ```
 
-- [ ] 12.2 Run `make db-migrate` to apply the migration to the local development database.
+- [x] 12.2 Run `make db-migrate` to apply the migration to the local development database.
 
   ```
   make db-migrate
   ```
 
-- [ ] 12.3 Verify locally (optional but recommended):
+- [x] 12.3 Verify locally (optional but recommended):
 
   ```sql
   SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'recipe' AND indexname LIKE 'recipe_%';
@@ -328,7 +328,7 @@
 
 ## 13. Write schema-level index verification tests
 
-- [ ] 13.1 Create `packages/db/src/schema-indexes.test.ts` with the standard header matching the project convention:
+- [x] 13.1 Create `packages/db/src/schema-indexes.test.ts` with the standard header matching the project convention:
 
   ```typescript
   // deno-lint-ignore-file no-explicit-any require-await
@@ -369,7 +369,7 @@
   } from './schema.ts';
   ```
 
-- [ ] 13.2 Implement a helper to introspect index definitions from a Drizzle table using the **public `getTableConfig` API** (NOT internal `(config as any).extraConfig` hacks):
+- [x] 13.2 Implement a helper to introspect index definitions from a Drizzle table using the **public `getTableConfig` API** (NOT internal `(config as any).extraConfig` hacks):
 
   ```typescript
   /**
@@ -405,7 +405,7 @@
   - The helper handles expression-based indexes (raw SQL) by returning `null` for those entries — none of our new indexes use raw SQL.
   - `IndexedColumn` import from `drizzle-orm/pg-core` provides the `name` property type.
 
-- [ ] 13.3 Write test cases for each table. Each `describe` block covers one table:
+- [x] 13.3 Write test cases for each table. Each `describe` block covers one table:
 
   ```typescript
   describe('Recipe table composite indexes', () => {
@@ -435,7 +435,7 @@
   });
   ```
 
-- [ ] 13.4 Repeat the pattern for all remaining tables. One `describe` per table, one `it` per new index, asserting `name`, `columns` (exact order), and `isUnique`. Cover:
+- [x] 13.4 Repeat the pattern for all remaining tables. One `describe` per table, one `it` per new index, asserting `name`, `columns` (exact order), and `isUnique`. Cover:
 
   - `recipeVersions`: `recipe_version_coffee_variety_idx` on `['coffeeVarietyId', 'recipeId']`
   - `comments`: `comment_recipe_parent_created_idx` on `['recipeId', 'parentCommentId', 'createdAt']`, `comment_parent_created_idx` on `['parentCommentId', 'createdAt']`
@@ -450,7 +450,7 @@
 
   Each test block should also include a `describe` for the table with a docblock explaining what queries the table's indexes serve.
 
-- [ ] 13.5 Run the schema index tests:
+- [x] 13.5 Run the schema index tests:
 
   ```
   make test-specific filter=packages/db/src/schema-indexes.test.ts
@@ -460,7 +460,7 @@
 
 ## 14. Create PR description file (from scratch)
 
-- [ ] 14.1 Create `pr_description.md` at the project root (overwriting the existing unrelated file). The file SHALL be written from scratch with this structure:
+- [x] 14.1 Create `pr_description.md` at the project root (overwriting the existing unrelated file). The file SHALL be written from scratch with this structure:
 
   ```markdown
   # Add Composite Indexes for Common Query Patterns
@@ -578,11 +578,11 @@
   - The colons in the first column of each table should have a space after them for proper rendering.
   - The file should be ~100 lines, self-contained, and readable as a standalone PR description.
 
-- [ ] 14.2 Verify the file exists: `ls -la pr_description.md`.
+- [x] 14.2 Verify the file exists: `ls -la pr_description.md`.
 
 ## 15. Final verification
 
-- [ ] 15.1 Run `make ci` — full pipeline must pass clean:
+- [x] 15.1 Run `make ci` — full pipeline must pass clean:
   - `fmt-check` — formatting
   - `lint` — zero warnings
   - `check` — type-check all workspaces
@@ -591,12 +591,12 @@
   - `test-coverage` — all tests pass with coverage
   - `test-web` — web tests pass
 
-- [ ] 15.2 Run the index test specifically one more time to confirm:
+- [x] 15.2 Run the index test specifically one more time to confirm:
   ```
   make test-specific filter=packages/db/src/schema-indexes.test.ts
   ```
 
-- [ ] 15.3 Manual verification (optional): With the API running, execute:
+- [x] 15.3 Manual verification (optional): With the API running, execute:
   ```sql
   EXPLAIN ANALYZE SELECT * FROM recipe WHERE visibility = 'public' ORDER BY created_at DESC LIMIT 20;
   EXPLAIN ANALYZE SELECT * FROM recipe WHERE visibility = 'public' ORDER BY like_count DESC LIMIT 20;
@@ -604,4 +604,4 @@
   ```
   Confirm the query plans use the new composite indexes.
 
-- [ ] 15.4 Confirm `pr_description.md` exists at the project root and is correct.
+- [x] 15.4 Confirm `pr_description.md` exists at the project root and is correct.
