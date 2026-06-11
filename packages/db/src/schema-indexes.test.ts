@@ -13,11 +13,11 @@
  * `drizzle-orm/pg-core` to introspect index configurations.
  *
  * Coverage:
- *  - All 17 new composite indexes across 11 tables
- *  - The 1 new single-column parity index on tasteNotes.deletedAt
+ *  - All 18 new indexes across 11 tables: 16 composite indexes + 1
+ *    single-column parity index on tasteNotes.deletedAt
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
+import { beforeAll, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import type { IndexedColumn, PgTableWithColumns } from 'drizzle-orm/pg-core';
@@ -63,8 +63,13 @@ function getTableIndexes(table: PgTableWithColumns<any>): {
 }
 
 describe('Recipe table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(recipes);
+  });
+
   it('has recipe_author_visibility_idx on (authorId, visibility)', () => {
-    const indexes = getTableIndexes(recipes);
     const idx = indexes.find((i) => i.name === 'recipe_author_visibility_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['author_id', 'visibility']);
@@ -72,7 +77,6 @@ describe('Recipe table composite indexes', () => {
   });
 
   it('has recipe_visibility_created_idx on (visibility, createdAt)', () => {
-    const indexes = getTableIndexes(recipes);
     const idx = indexes.find((i) => i.name === 'recipe_visibility_created_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['visibility', 'created_at']);
@@ -80,7 +84,6 @@ describe('Recipe table composite indexes', () => {
   });
 
   it('has recipe_visibility_like_count_idx on (visibility, likeCount)', () => {
-    const indexes = getTableIndexes(recipes);
     const idx = indexes.find((i) => i.name === 'recipe_visibility_like_count_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['visibility', 'like_count']);
@@ -89,8 +92,13 @@ describe('Recipe table composite indexes', () => {
 });
 
 describe('Recipe versions table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(recipeVersions);
+  });
+
   it('has recipe_version_coffee_variety_idx on (coffeeVarietyId, recipeId)', () => {
-    const indexes = getTableIndexes(recipeVersions);
     const idx = indexes.find((i) => i.name === 'recipe_version_coffee_variety_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['coffee_variety_id', 'recipe_id']);
@@ -99,8 +107,13 @@ describe('Recipe versions table composite indexes', () => {
 });
 
 describe('Comments table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(comments);
+  });
+
   it('has comment_recipe_parent_created_idx on (recipeId, parentCommentId, createdAt)', () => {
-    const indexes = getTableIndexes(comments);
     const idx = indexes.find((i) => i.name === 'comment_recipe_parent_created_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['recipe_id', 'parent_comment_id', 'created_at']);
@@ -108,7 +121,6 @@ describe('Comments table composite indexes', () => {
   });
 
   it('has comment_parent_created_idx on (parentCommentId, createdAt)', () => {
-    const indexes = getTableIndexes(comments);
     const idx = indexes.find((i) => i.name === 'comment_parent_created_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['parent_comment_id', 'created_at']);
@@ -117,8 +129,13 @@ describe('Comments table composite indexes', () => {
 });
 
 describe('User follows table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(userFollows);
+  });
+
   it('has user_follow_following_created_idx on (followingId, createdAt)', () => {
-    const indexes = getTableIndexes(userFollows);
     const idx = indexes.find((i) => i.name === 'user_follow_following_created_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['following_id', 'created_at']);
@@ -126,7 +143,6 @@ describe('User follows table composite indexes', () => {
   });
 
   it('has user_follow_follower_created_idx on (followerId, createdAt)', () => {
-    const indexes = getTableIndexes(userFollows);
     const idx = indexes.find((i) => i.name === 'user_follow_follower_created_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['follower_id', 'created_at']);
@@ -135,8 +151,13 @@ describe('User follows table composite indexes', () => {
 });
 
 describe('Setups table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(setups);
+  });
+
   it('has setup_user_created_idx on (userId, createdAt)', () => {
-    const indexes = getTableIndexes(setups);
     const idx = indexes.find((i) => i.name === 'setup_user_created_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['user_id', 'created_at']);
@@ -145,8 +166,13 @@ describe('Setups table composite indexes', () => {
 });
 
 describe('Beans table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(beans);
+  });
+
   it('has bean_user_created_idx on (userId, createdAt)', () => {
-    const indexes = getTableIndexes(beans);
     const idx = indexes.find((i) => i.name === 'bean_user_created_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['user_id', 'created_at']);
@@ -155,8 +181,13 @@ describe('Beans table composite indexes', () => {
 });
 
 describe('Photos table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(photos);
+  });
+
   it('has photo_recipe_sort_order_idx on (recipeId, sortOrder)', () => {
-    const indexes = getTableIndexes(photos);
     const idx = indexes.find((i) => i.name === 'photo_recipe_sort_order_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['recipe_id', 'sort_order']);
@@ -165,8 +196,13 @@ describe('Photos table composite indexes', () => {
 });
 
 describe('Taste notes table indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(tasteNotes);
+  });
+
   it('has taste_note_deleted_at_idx on (deletedAt)', () => {
-    const indexes = getTableIndexes(tasteNotes);
     const idx = indexes.find((i) => i.name === 'taste_note_deleted_at_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['deleted_at']);
@@ -174,7 +210,6 @@ describe('Taste notes table indexes', () => {
   });
 
   it('has taste_note_parent_name_idx on (parentId, name)', () => {
-    const indexes = getTableIndexes(tasteNotes);
     const idx = indexes.find((i) => i.name === 'taste_note_parent_name_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['parent_id', 'name']);
@@ -182,7 +217,6 @@ describe('Taste notes table indexes', () => {
   });
 
   it('has taste_note_depth_name_idx on (depth, name)', () => {
-    const indexes = getTableIndexes(tasteNotes);
     const idx = indexes.find((i) => i.name === 'taste_note_depth_name_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['depth', 'name']);
@@ -191,8 +225,13 @@ describe('Taste notes table indexes', () => {
 });
 
 describe('Reports table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(reports);
+  });
+
   it('has report_status_created_idx on (status, createdAt)', () => {
-    const indexes = getTableIndexes(reports);
     const idx = indexes.find((i) => i.name === 'report_status_created_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['status', 'created_at']);
@@ -201,8 +240,13 @@ describe('Reports table composite indexes', () => {
 });
 
 describe('Equipment table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(equipment);
+  });
+
   it('has equipment_type_name_idx on (type, name)', () => {
-    const indexes = getTableIndexes(equipment);
     const idx = indexes.find((i) => i.name === 'equipment_type_name_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['type', 'name']);
@@ -211,8 +255,13 @@ describe('Equipment table composite indexes', () => {
 });
 
 describe('Coffee varieties table composite indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(coffeeVarieties);
+  });
+
   it('has coffee_variety_category_name_idx on (category, name)', () => {
-    const indexes = getTableIndexes(coffeeVarieties);
     const idx = indexes.find((i) => i.name === 'coffee_variety_category_name_idx');
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['category', 'name']);

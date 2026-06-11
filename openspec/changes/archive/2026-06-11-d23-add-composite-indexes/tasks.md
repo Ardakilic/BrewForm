@@ -413,7 +413,7 @@
       const indexes = getTableIndexes(recipes);
       const idx = indexes.find((i) => i.name === 'recipe_author_visibility_idx');
       expect(idx).toBeDefined();
-      expect(idx!.columns).toEqual(['authorId', 'visibility']);
+      expect(idx!.columns).toEqual(['author_id', 'visibility']);
       expect(idx!.isUnique).toBe(false);
     });
 
@@ -421,7 +421,7 @@
       const indexes = getTableIndexes(recipes);
       const idx = indexes.find((i) => i.name === 'recipe_visibility_created_idx');
       expect(idx).toBeDefined();
-      expect(idx!.columns).toEqual(['visibility', 'createdAt']);
+      expect(idx!.columns).toEqual(['visibility', 'created_at']);
       expect(idx!.isUnique).toBe(false);
     });
 
@@ -429,7 +429,7 @@
       const indexes = getTableIndexes(recipes);
       const idx = indexes.find((i) => i.name === 'recipe_visibility_like_count_idx');
       expect(idx).toBeDefined();
-      expect(idx!.columns).toEqual(['visibility', 'likeCount']);
+      expect(idx!.columns).toEqual(['visibility', 'like_count']);
       expect(idx!.isUnique).toBe(false);
     });
   });
@@ -437,14 +437,14 @@
 
 - [x] 13.4 Repeat the pattern for all remaining tables. One `describe` per table, one `it` per new index, asserting `name`, `columns` (exact order), and `isUnique`. Cover:
 
-  - `recipeVersions`: `recipe_version_coffee_variety_idx` on `['coffeeVarietyId', 'recipeId']`
-  - `comments`: `comment_recipe_parent_created_idx` on `['recipeId', 'parentCommentId', 'createdAt']`, `comment_parent_created_idx` on `['parentCommentId', 'createdAt']`
-  - `userFollows`: `user_follow_following_created_idx` on `['followingId', 'createdAt']`, `user_follow_follower_created_idx` on `['followerId', 'createdAt']`
-  - `setups`: `setup_user_created_idx` on `['userId', 'createdAt']`
-  - `beans`: `bean_user_created_idx` on `['userId', 'createdAt']`
-  - `photos`: `photo_recipe_sort_order_idx` on `['recipeId', 'sortOrder']`
-  - `tasteNotes`: `taste_note_deleted_at_idx` on `['deletedAt']` (single column), `taste_note_parent_name_idx` on `['parentId', 'name']`, `taste_note_depth_name_idx` on `['depth', 'name']`
-  - `reports`: `report_status_created_idx` on `['status', 'createdAt']`
+  - `recipeVersions`: `recipe_version_coffee_variety_idx` on `['coffee_variety_id', 'recipe_id']`
+  - `comments`: `comment_recipe_parent_created_idx` on `['recipe_id', 'parent_comment_id', 'created_at']`, `comment_parent_created_idx` on `['parent_comment_id', 'created_at']`
+  - `userFollows`: `user_follow_following_created_idx` on `['following_id', 'created_at']`, `user_follow_follower_created_idx` on `['follower_id', 'created_at']`
+  - `setups`: `setup_user_created_idx` on `['user_id', 'created_at']`
+  - `beans`: `bean_user_created_idx` on `['user_id', 'created_at']`
+  - `photos`: `photo_recipe_sort_order_idx` on `['recipe_id', 'sort_order']`
+  - `tasteNotes`: `taste_note_deleted_at_idx` on `['deleted_at']` (single column), `taste_note_parent_name_idx` on `['parent_id', 'name']`, `taste_note_depth_name_idx` on `['depth', 'name']`
+  - `reports`: `report_status_created_idx` on `['status', 'created_at']`
   - `equipment`: `equipment_type_name_idx` on `['type', 'name']`
   - `coffeeVarieties`: `coffee_variety_category_name_idx` on `['category', 'name']`
 

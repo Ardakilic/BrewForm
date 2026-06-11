@@ -1,7 +1,8 @@
 # db-indexes Specification
 
 ## Purpose
-TBD - created by archiving change d23-add-composite-indexes. Update Purpose after archive.
+
+Ensure database schemas define composite and single-column indexes for common query patterns (WHERE + ORDER BY) to optimize read performance, avoid bitmap index merges, and prevent sequential scans. Covers B-tree index strategy, column ordering for seek + sort, JSDoc documentation on every index definition, automated migration generation, and schema-level verification tests.
 ## Requirements
 ### Requirement: Recipe table composite indexes
 
