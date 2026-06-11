@@ -218,7 +218,7 @@ This applies the pending migration to the database. The constraint takes effect 
 
 Remove the following 5 lines (lines 197-201):
 
-```
+```markdown
 ### 5.2 Recipe Rating Scale Mismatch
 - **Files**: `packages/db/src/schema.ts:255`, `packages/shared/src/types/recipe.ts:136`
 - **Issue**: `RecipeVersion.rating` has no CHECK constraint and the type comment says "1-5 star rating", but Zod schemas allow 1-10 and `userRecipeRatings.rating` CHECK enforces 1-10. The type comment is misleading.
@@ -237,7 +237,7 @@ After removal, section 5.1 should flow directly into section 5.3 with no gap or 
 
 **File**: `pr_description.md` (project root — create from scratch, overwriting the existing unrelated PR description)
 
-```markdown
+````markdown
 # Add CHECK constraint to `recipe_version.rating`
 
 ## Summary
@@ -306,7 +306,7 @@ The identical `BETWEEN 1 AND 10` pattern was already applied to
 existing `recipe_version` rows have out-of-range ratings (verified: none do),
 they would remain but future writes to those rows' `rating` column would
 require values within 1–10.
-```
+````
 
 - [x] 4.2 Create `pr_description.md` at project root
 
