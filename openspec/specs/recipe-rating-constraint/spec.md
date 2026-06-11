@@ -1,7 +1,7 @@
 # recipe-rating-constraint Specification
 
 ## Purpose
-TBD - created by archiving change d21-fix-rating-scale. Update Purpose after archive.
+Define a database-level CHECK constraint on `recipeVersions.rating` to enforce a 1–10 scale, normalizing the rating range across the system (matching the existing `userRecipeRatings.rating` constraint). The change also ensures TypeScript type documentation and schema column comments accurately reflect the 1–10 range, and removes the resolved technical debt entry for the rating scale mismatch.
 ## Requirements
 ### Requirement: Database enforces rating bounds on recipe versions
 The system SHALL enforce that `recipeVersions.rating` values are within the inclusive range 1 to 10 at the database level via a CHECK constraint named `recipe_version_rating_check`. The constraint MUST apply to both INSERT and UPDATE operations. The column SHALL remain nullable (NULL values pass the constraint).

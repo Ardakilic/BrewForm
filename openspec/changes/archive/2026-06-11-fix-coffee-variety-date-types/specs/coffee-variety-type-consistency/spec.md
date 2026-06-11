@@ -27,7 +27,7 @@ Every field on the `CoffeeVariety` interface SHALL carry a concise JSDoc comment
 - **THEN** the style (single-line vs multi-line, wording clarity) SHALL be consistent
 
 ### Requirement: Type-consistency test verifies Date fields
-A test file SHALL exist that verifies at compile time (and optionally at runtime) that `CoffeeVariety.dateTimestamps` fields are of type `Date`, not `string`.
+A test file SHALL exist that verifies at compile time (and optionally at runtime) that `CoffeeVariety.createdAt`, `CoffeeVariety.updatedAt`, and `CoffeeVariety.deletedAt` fields are of type `Date` (or `Date | null`), not `string`.
 
 #### Scenario: Test file compiles and passes
 - **WHEN** `make test` is run
