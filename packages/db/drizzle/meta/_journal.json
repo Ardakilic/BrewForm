@@ -43,6 +43,13 @@
       "when": 1781138771054,
       "tag": "0005_complex_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781197774839,
+      "tag": "0006_striped_zodiak",
+      "breakpoints": true
     }
   ]
 }

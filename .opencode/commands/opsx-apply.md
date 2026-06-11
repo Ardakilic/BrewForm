@@ -21,11 +21,10 @@ Implement tasks from an OpenSpec change.
    ```bash
    openspec status --change "<name>" --json
    ```
-    Parse the JSON to understand:
-    - `schemaName`: The workflow being used (e.g., "spec-driven")
-    - `planningHome`, `changeRoot`, and `actionContext`: planning scope and edit constraints
-    - `allowedEditRoots`: list of repository/workspace roots allowed for edits; when combined with `actionContext.mode: "workspace-planning"` and empty, the workspace guard below stops the apply
-    - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
+   Parse the JSON to understand:
+   - `schemaName`: The workflow being used (e.g., "spec-driven")
+   - `planningHome`, `changeRoot`, and `actionContext`: planning scope and edit constraints
+   - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
 
 3. **Get apply instructions**
 

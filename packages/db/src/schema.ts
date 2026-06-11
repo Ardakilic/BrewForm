@@ -139,6 +139,31 @@ export const recipes = pgTable(
     index('recipe_forked_from_id_idx').on(table.forkedFromId),
     index('recipe_slug_idx').on(table.slug),
     index('recipe_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for user profile recipe listings.
+     *
+     * Serves `buildListRecipesWhere` (model.ts:187) when `authorId` filter
+     * is combined with `visibility`. Equality columns first (authorId,
+     * visibility) for direct B-tree seek.
+     */
+    index('recipe_author_visibility_idx').on(table.authorId, table.visibility),
+    /**
+     * Composite index for homepage feed and explore page queries.
+     *
+     * Serves `findMany` (model.ts:270) with default sortBy 'createdAt',
+     * `getFeed` (model.ts:679), and `findStarred` (model.ts:700).
+     * Visibility is equality; createdAt supports ORDER BY DESC without a
+     * separate sort step.
+     */
+    index('recipe_visibility_created_idx').on(table.visibility, table.createdAt),
+    /**
+     * Composite index for trending / popular recipes queries.
+     *
+     * Serves `findMany` (model.ts:270) with `sortBy: 'likeCount'`.
+     * Visibility is equality; likeCount supports ORDER BY DESC without a
+     * separate sort step.
+     */
+    index('recipe_visibility_like_count_idx').on(table.visibility, table.likeCount),
   ],
 );
 
@@ -189,6 +214,20 @@ export const recipeVersions = pgTable(
     index('recipe_version_brew_method_idx').on(table.brewMethod),
     index('recipe_version_drink_type_idx').on(table.drinkType),
     index('recipe_version_created_at_idx').on(table.createdAt),
+    /**
+     * Composite index for coffee variety filtering subqueries. CRITICAL —
+     * `coffeeVarietyId` had no index before, causing sequential scans on
+     * every variety filter.
+     *
+     * Serves `recipeCoffeeVarietyCondition` (recipe/model.ts:30),
+     * `getRecipesUsingVariety` (coffee-variety/model.ts:85),
+     * `getVarietyRecipeCount` (admin/model.ts:613).
+     *
+     * `coffeeVarietyId` is nullable; PostgreSQL B-tree handles NULLs
+     * correctly. Includes `recipeId` for index-only scans — the dominant
+     * subquery selects only `recipeId`.
+     */
+    index('recipe_version_coffee_variety_idx').on(table.coffeeVarietyId, table.recipeId),
     check('recipe_version_rating_check', sql`${table.rating} BETWEEN 1 AND 10`),
   ],
 );
@@ -271,6 +310,14 @@ export const photos = pgTable(
   (table) => [
     index('photo_recipe_id_idx').on(table.recipeId),
     index('photo_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for recipe photo listings. No `sortOrder` index
+     * existed before — this eliminates the in-memory sort.
+     *
+     * Serves `findByRecipe` (photo/model.ts:19) — filters by recipeId
+     * and sorts by sortOrder ASC.
+     */
+    index('photo_recipe_sort_order_idx').on(table.recipeId, table.sortOrder),
   ],
 );
 
@@ -314,6 +361,13 @@ export const equipment = pgTable(
     index('equipment_type_idx').on(table.type),
     index('equipment_name_idx').on(table.name),
     index('equipment_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for equipment filtered by type.
+     *
+     * Serves `findManyWithFilters` (equipment/model.ts:59) — filters by
+     * type equality and sorts by name ASC.
+     */
+    index('equipment_type_name_idx').on(table.type, table.name),
   ],
 );
 
@@ -336,6 +390,14 @@ export const beans = pgTable(
   (table) => [
     index('bean_user_id_idx').on(table.userId),
     index('bean_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for user bean listings. No `createdAt` index existed
+     * before — this eliminates the in-memory sort.
+     *
+     * Serves `findByUser` (bean/model.ts:23) — filters by userId and
+     * sorts by createdAt DESC.
+     */
+    index('bean_user_created_idx').on(table.userId, table.createdAt),
   ],
 );
 
@@ -382,6 +444,14 @@ export const coffeeVarieties = pgTable('coffee_variety', {
   index('coffee_variety_name_idx').on(table.name),
   index('coffee_variety_category_idx').on(table.category),
   index('coffee_variety_deleted_at_idx').on(table.deletedAt),
+  /**
+   * Composite index for coffee varieties filtered by category.
+   *
+   * Serves `findMany` (coffee-variety/model.ts:13) and
+   * `listCoffeeVarieties` (admin/model.ts:551) — filters by category
+   * equality and sorts by name ASC.
+   */
+  index('coffee_variety_category_name_idx').on(table.category, table.name),
 ]);
 
 export const vendors = pgTable(
@@ -418,6 +488,26 @@ export const tasteNotes = pgTable(
     index('taste_note_parent_id_idx').on(table.parentId),
     index('taste_note_name_idx').on(table.name),
     index('taste_note_depth_idx').on(table.depth),
+    /**
+     * Single-column index on `deletedAt` for parity. Every other
+     * soft-delete table in the schema has this index; `tasteNotes` was
+     * the lone exception.
+     */
+    index('taste_note_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for fetching child taste notes of a parent.
+     *
+     * Serves `findChildren` (taste/model.ts:19) — filters by parentId
+     * and sorts by name ASC.
+     */
+    index('taste_note_parent_name_idx').on(table.parentId, table.name),
+    /**
+     * Composite index for full taste-note hierarchy loading.
+     *
+     * Serves `findAll` and `getHierarchy` (taste/model.ts:13,40) —
+     * orders by depth ASC, name ASC for tree rendering.
+     */
+    index('taste_note_depth_name_idx').on(table.depth, table.name),
   ],
 );
 
@@ -442,6 +532,14 @@ export const setups = pgTable(
   (table) => [
     index('setup_user_id_idx').on(table.userId),
     index('setup_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for user setup listings. No `createdAt` index existed
+     * before — this eliminates the in-memory sort.
+     *
+     * Serves `findByUser` (setup/model.ts:25) — filters by userId and
+     * sorts by createdAt DESC.
+     */
+    index('setup_user_created_idx').on(table.userId, table.createdAt),
   ],
 );
 
@@ -465,6 +563,25 @@ export const comments = pgTable(
     index('comment_parent_comment_id_idx').on(table.parentCommentId),
     index('comment_created_at_idx').on(table.createdAt),
     index('comment_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for top-level comment listing on a recipe detail page.
+     *
+     * Serves `findByRecipe` (comment/model.ts:45) — filters by recipeId
+     * equality, parentCommentId IS NULL, and sorts by createdAt DESC.
+     * Columns ordered: equality (recipeId, parentCommentId), then sort (createdAt).
+     */
+    index('comment_recipe_parent_created_idx').on(
+      table.recipeId,
+      table.parentCommentId,
+      table.createdAt,
+    ),
+    /**
+     * Composite index for fetching replies to comments.
+     *
+     * Serves `findReplies` (comment/model.ts:82) — filters by
+     * parentCommentId IN (...) and sorts by createdAt ASC.
+     */
+    index('comment_parent_created_idx').on(table.parentCommentId, table.createdAt),
   ],
 );
 
@@ -481,6 +598,20 @@ export const userFollows = pgTable(
     index('user_follow_follower_id_idx').on(table.followerId),
     index('user_follow_following_id_idx').on(table.followingId),
     index('user_follow_created_at_idx').on(table.createdAt),
+    /**
+     * Composite index for paginated follower listings.
+     *
+     * Serves `getFollowers` (follow/model.ts:41) — filters by followingId
+     * and sorts by createdAt DESC with an INNER JOIN on users.
+     */
+    index('user_follow_following_created_idx').on(table.followingId, table.createdAt),
+    /**
+     * Composite index for paginated following listings.
+     *
+     * Serves `getFollowing` (follow/model.ts:78) — filters by followerId
+     * and sorts by createdAt DESC with an INNER JOIN on users.
+     */
+    index('user_follow_follower_created_idx').on(table.followerId, table.createdAt),
   ],
 );
 
@@ -681,6 +812,14 @@ export const reports = pgTable(
     index('report_status_idx').on(table.status),
     index('report_reporter_id_idx').on(table.reporterId),
     index('report_created_at_idx').on(table.createdAt),
+    /**
+     * Composite index for report listing filtered by status.
+     *
+     * Serves `findMany` (report/model.ts:38) and `listReports`
+     * (admin/model.ts:388) — filters by status (most commonly 'pending')
+     * and sorts by createdAt DESC.
+     */
+    index('report_status_created_idx').on(table.status, table.createdAt),
   ],
 );
 
