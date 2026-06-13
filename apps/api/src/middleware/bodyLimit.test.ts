@@ -5,7 +5,18 @@ import { Hono } from 'hono';
 import { bodyLimitMiddleware } from './bodyLimit.ts';
 import { app as realApp } from '../main.ts';
 
-/** Build a fresh Hono app with the production bodyLimit middleware applied. */
+/**
+ * Build a fresh Hono app with the production bodyLimit middleware applied.
+ *
+ * Mounts three routes used by the test suite:
+ *  - `POST /api/v1/test` — exercises the 1 MB JSON body limit
+ *  - `GET  /api/v1/test` — sanity check that GETs pass through
+ *  - `POST /api/v1/photos` — must bypass the body limit
+ *  - `POST /api/v1/photoshop` — lookalike route that must NOT bypass the limit
+ *  - `POST /api/v1/photos/sub` — subpath of /api/v1/photos that must bypass it
+ *
+ * @returns A configured Hono app ready to be queried via `app.request()`.
+ */
 function createApp() {
   const app = new Hono();
 
@@ -24,6 +35,15 @@ function createApp() {
   app.post('/api/v1/photos', async (c) => {
     // Simulate photo handler — return 401 because we don't send auth
     return c.json({ error: 'Authentication required' }, 401);
+  });
+
+  app.post('/api/v1/photos/sub', async (c) => {
+    return c.json({ error: 'Authentication required' }, 401);
+  });
+
+  app.post('/api/v1/photoshop', async (c) => {
+    // Handler for the lookalike route — bodyLimit must apply here
+    return c.json({ ok: true }, 201);
   });
 
   app.get('/api/v1/test', (c) => c.json({ ok: true }));
@@ -93,7 +113,7 @@ describe('bodyLimit middleware', () => {
 
   describe('photo route exclusion', () => {
     it('does not apply bodyLimit to POST /api/v1/photos', async () => {
-      const app = createApp({ excludePhotos: true });
+      const app = createApp();
       const res = await app.request('/api/v1/photos', {
         method: 'POST',
         headers: { 'content-length': '2097152' }, // 2 MB would trigger 413 normally
@@ -102,6 +122,33 @@ describe('bodyLimit middleware', () => {
       expect(res.status).not.toBe(413);
       // Photo route handler runs (returns 401 because no auth token)
       expect(res.status).toBe(401);
+    });
+
+    it('does not apply bodyLimit to subpaths of /api/v1/photos', async () => {
+      const app = createApp();
+      const res = await app.request('/api/v1/photos/sub', {
+        method: 'POST',
+        headers: { 'content-length': '2097152' },
+        body: '{}',
+      });
+      expect(res.status).not.toBe(413);
+      // Subpath handler runs (returns 401 because no auth token)
+      expect(res.status).toBe(401);
+    });
+
+    it('applies bodyLimit to lookalike routes like /api/v1/photoshop', async () => {
+      const app = createApp();
+      const res = await app.request('/api/v1/photoshop', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'content-length': '2097152', // 2 MB
+        },
+        body: '{}',
+      });
+      expect(res.status).toBe(413);
+      const result = await res.json();
+      expect(result.error.code).toBe('PAYLOAD_TOO_LARGE');
     });
   });
 
