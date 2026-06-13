@@ -26,6 +26,17 @@ const THUMBNAIL_SIZES: Record<string, ThumbnailOptions> = {
   large: { width: 1200, height: 1200, quality: 90 },
 };
 
+/**
+ * Validates that an uploaded image file's type and size are within allowed limits.
+ *
+ * Returns `null` if the file passes validation, or an error message string
+ * describing why validation failed (unsupported type or file too large).
+ *
+ * `ALLOWED_TYPES` and `MAX_SIZE` are read from config at module load time.
+ *
+ * @param file - An object with `type` (MIME type string) and `size` (bytes).
+ * @returns A human-readable error string on failure, or `null` on success.
+ */
 export function validateImageUpload(file: { type: string; size: number }): string | null {
   if (!ALLOWED_TYPES.includes(file.type)) {
     return `Unsupported file type: ${file.type}. Allowed: ${ALLOWED_TYPES.join(', ')}`;

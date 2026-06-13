@@ -15,7 +15,7 @@
  *   5. Exit cleanly
  *
  * Middleware stack (applied in order):
- *   cors → requestId → secureHeaders → rateLimit(100/min) → cache injection → crawler → routes
+ *   cors → requestId → secureHeaders → rateLimit(100/min) → bodyLimit(1MB, excl. /api/v1/photos) → cache injection → crawler → routes
  */
 import { Hono } from 'hono';
 import * as path from 'jsr:@std/path';
@@ -31,6 +31,7 @@ import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import routes from './routes/index.ts';
 import { createLogger } from './utils/logger/index.ts';
 import { crawlerMiddleware } from './middleware/crawler.ts';
+import { bodyLimitMiddleware } from './middleware/bodyLimit.ts';
 import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
@@ -66,6 +67,7 @@ app.use(
   }),
 );
 app.use('*', rateLimitMiddleware({ windowMs: 60_000, maxRequests: 100 }));
+app.use('*', bodyLimitMiddleware);
 app.use('*', async (c, next) => {
   c.set('cache', cacheProvider);
   await next();
@@ -169,9 +171,11 @@ async function startup() {
   }
 }
 
-startup().catch((err) => {
-  logger.error({ err }, 'Failed to start server');
-  Deno.exit(1);
-});
+if (import.meta.main) {
+  startup().catch((err) => {
+    logger.error({ err }, 'Failed to start server');
+    Deno.exit(1);
+  });
+}
 
 export { app };
