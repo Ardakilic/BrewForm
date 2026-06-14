@@ -62,9 +62,33 @@ export function registerOpenApi(app: Hono<AppEnv>): void {
         { name: 'Users', description: 'Public user profiles and the authenticated user' },
         { name: 'Admin', description: 'Privileged admin operations (requires admin role)' },
         { name: 'Health', description: 'Liveness and readiness probes' },
+        { name: 'Beans', description: 'Coffee bean inventory owned by users' },
+        { name: 'Badges', description: 'Achievement badges and per-user awards' },
+        {
+          name: 'Coffee Varieties',
+          description: 'Coffee cultivar reference data and recipes using a variety',
+        },
+        { name: 'Comments', description: 'Recipe comment threads and replies' },
+        { name: 'Contact', description: 'Contact-form message submission' },
+        { name: 'Equipment', description: 'Brewing equipment catalogue and deletion requests' },
+        { name: 'Follow', description: 'Follow/unfollow, follower/following lists, and feed' },
+        { name: 'Photos', description: 'Recipe photo upload and listing' },
+        { name: 'Preferences', description: 'Per-user application and notification preferences' },
+        { name: 'QR Codes', description: 'Recipe QR-code image generation' },
+        { name: 'Reports', description: 'Content moderation reports' },
+        { name: 'Setups', description: 'Saved brewing-equipment setups' },
+        { name: 'Taste Notes', description: 'Taste-note hierarchy, search, and admin management' },
+        { name: 'Vendors', description: 'Coffee vendor/roaster directory' },
+        { name: 'Share', description: 'Server-rendered share/OG preview pages' },
+        { name: 'Sitemap', description: 'XML sitemap for crawlers' },
       ],
     },
-    excludeStaticFile: true,
+    // The sitemap route is mounted at `/api/v1/sitemap.xml`; its path ends in a
+    // file extension, so static-file exclusion would drop it from the spec.
+    // hono-openapi only documents routes carrying `describeRoute()` metadata, so
+    // disabling this does NOT surface the un-annotated `/api/v1/openapi.json` or
+    // `/api/v1/docs` meta endpoints. (Requirement 9.2)
+    excludeStaticFile: false,
     excludeMethods: ['OPTIONS', 'HEAD'],
   });
 

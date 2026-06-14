@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { describeRoute } from 'hono-openapi';
 import { escapeHtml, escapeHtmlAttr } from '@brewform/shared/utils';
 import { getRecipeMeta } from '../modules/recipe/service.ts';
 import { config } from '../config/index.ts';
@@ -46,38 +47,61 @@ export const OG_TEMPLATE = (meta: {
 </html>`;
 };
 
-share.get('/:slug', async (c) => {
-  const slug = c.req.param('slug')!;
-  try {
-    const meta = await deps.getRecipeMeta(slug);
-    if (meta.visibility !== 'public') {
-      return c.html(RECIPE_NOT_FOUND_HTML, 404);
+share.get(
+  '/:slug',
+  describeRoute({
+    tags: ['Share'],
+    summary: 'Get a recipe share/OG preview page',
+    description:
+      'Returns a server-rendered HTML page with Open Graph/Twitter meta tags for a public recipe, ' +
+      'redirecting browsers to the recipe page. Responds with HTML, not a JSON envelope.',
+    parameters: [
+      { name: 'slug', in: 'path', required: true, schema: { type: 'string' } },
+    ],
+    responses: {
+      200: {
+        description: 'Share preview HTML page',
+        content: { 'text/html': {} },
+      },
+      404: {
+        description: 'Recipe not found or not public',
+        content: { 'text/html': {} },
+      },
+    },
+  }),
+  async (c) => {
+    const slug = c.req.param('slug')!;
+    try {
+      const meta = await deps.getRecipeMeta(slug);
+      if (meta.visibility !== 'public') {
+        return c.html(RECIPE_NOT_FOUND_HTML, 404);
+      }
+
+      const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
+      const description = meta.productName
+        ? `${meta.brewMethod || 'Coffee'} recipe using ${meta.productName}`
+        : `${meta.brewMethod || 'Coffee'} recipe by ${
+          meta.author?.displayName || meta.author?.username || 'BrewForm user'
+        }`;
+
+      const html = OG_TEMPLATE({
+        title: meta.title,
+        description,
+        image: meta.photoUrl,
+        url: `${baseUrl}/share/${slug}`,
+        siteName: 'BrewForm',
+        slug,
+      });
+
+      return c.html(html);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') {
+        return c.html(RECIPE_NOT_FOUND_HTML, 404);
+      }
+      throw err;
     }
-
-    const baseUrl = config.PUBLIC_APP_URL || config.APP_URL;
-    const description = meta.productName
-      ? `${meta.brewMethod || 'Coffee'} recipe using ${meta.productName}`
-      : `${meta.brewMethod || 'Coffee'} recipe by ${
-        meta.author?.displayName || meta.author?.username || 'BrewForm user'
-      }`;
-
-    const html = OG_TEMPLATE({
-      title: meta.title,
-      description,
-      image: meta.photoUrl,
-      url: `${baseUrl}/share/${slug}`,
-      siteName: 'BrewForm',
-      slug,
-    });
-
-    return c.html(html);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message === 'RECIPE_NOT_FOUND') {
-      return c.html(RECIPE_NOT_FOUND_HTML, 404);
-    }
-    throw err;
-  }
-});
+  },
+);
 
 export default share;

@@ -31,7 +31,7 @@
     "npm:drizzle-orm@0.45": "0.45.2_postgres@3.4.9",
     "npm:fast-check@*": "4.8.0",
     "npm:fast-check@4": "4.8.0",
-    "npm:hono-openapi@1": "1.3.0_@hono+standard-validator@0.2.2__@standard-schema+spec@1.1.0__hono@4.12.19_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_@standard-community+standard-openapi@0.2.9__@standard-community+standard-json@0.3.5___@standard-schema+spec@1.1.0___@types+json-schema@7.0.15___quansync@0.2.11___zod@4.4.3__@standard-schema+spec@1.1.0__openapi-types@12.1.3__zod@4.4.3__@types+json-schema@7.0.15__quansync@0.2.11_@types+json-schema@7.0.15_hono@4.12.19_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@4.4.3",
+    "npm:hono-openapi@1": "1.3.0_@hono+standard-validator@0.2.2__@standard-schema+spec@1.1.0__hono@4.12.19_hono@4.12.19_zod-openapi@5.4.6__zod@4.4.3",
     "npm:hono@^4.7.0": "4.12.19",
     "npm:jsdom@29": "29.1.1",
     "npm:mjml@*": "5.2.1_typescript@6.0.3",
@@ -51,6 +51,7 @@
     "npm:vite@8": "8.0.13",
     "npm:vitest@*": "4.1.6_@vitest+coverage-v8@4.1.6_jsdom@29.1.1_vite@8.0.13",
     "npm:vitest@4": "4.1.6_@vitest+coverage-v8@4.1.6_jsdom@29.1.1_vite@8.0.13",
+    "npm:zod-openapi@5": "5.4.6_zod@4.4.3",
     "npm:zod@*": "4.4.3",
     "npm:zod@4": "4.4.3"
   },
@@ -1013,16 +1014,18 @@
         "zod"
       ]
     },
-    "@standard-community/standard-openapi@0.2.9_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_@standard-schema+spec@1.1.0_openapi-types@12.1.3_zod@4.4.3_@types+json-schema@7.0.15_quansync@0.2.11": {
+    "@standard-community/standard-openapi@0.2.9_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_openapi-types@12.1.3_zod@4.4.3_zod-openapi@5.4.6__zod@4.4.3": {
       "integrity": "sha512-htj+yldvN1XncyZi4rehbf9kLbu8os2Ke/rfqoZHCMHuw34kiF3LP/yQPdA0tQ940y8nDq3Iou8R3wG+AGGyvg==",
       "dependencies": [
         "@standard-community/standard-json",
         "@standard-schema/spec",
         "openapi-types",
-        "zod"
+        "zod",
+        "zod-openapi"
       ],
       "optionalPeers": [
-        "zod"
+        "zod",
+        "zod-openapi"
       ]
     },
     "@standard-schema/spec@1.1.0": {
@@ -2024,7 +2027,7 @@
     "help-me@5.0.0": {
       "integrity": "sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg=="
     },
-    "hono-openapi@1.3.0_@hono+standard-validator@0.2.2__@standard-schema+spec@1.1.0__hono@4.12.19_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_@standard-community+standard-openapi@0.2.9__@standard-community+standard-json@0.3.5___@standard-schema+spec@1.1.0___@types+json-schema@7.0.15___quansync@0.2.11___zod@4.4.3__@standard-schema+spec@1.1.0__openapi-types@12.1.3__zod@4.4.3__@types+json-schema@7.0.15__quansync@0.2.11_@types+json-schema@7.0.15_hono@4.12.19_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@4.4.3": {
+    "hono-openapi@1.3.0_@hono+standard-validator@0.2.2__@standard-schema+spec@1.1.0__hono@4.12.19_hono@4.12.19_zod-openapi@5.4.6__zod@4.4.3": {
       "integrity": "sha512-xDvCWpWEIv0weEmnl3EjRQzqbHIO8LnfzMuYOCmbuyE5aes6aXxLg4vM3ybnoZD5TiTUkA6PuRQPJs3R7WRBig==",
       "dependencies": [
         "@hono/standard-validator",
@@ -3657,6 +3660,12 @@
         "yargs-parser@21.1.1"
       ]
     },
+    "zod-openapi@5.4.6_zod@4.4.3": {
+      "integrity": "sha512-P2jsOOBAq/6hCwUsMCjUATZ8szkMsV5VAwZENfyxp2Hc/XPJQpVwAgevWZc65xZauCwWB9LAn7zYeiCJFAEL+A==",
+      "dependencies": [
+        "zod"
+      ]
+    },
     "zod@4.4.3": {
       "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="
     }
@@ -3730,6 +3739,7 @@
       "packages/shared": {
         "packageJson": {
           "dependencies": [
+            "npm:zod-openapi@5",
             "npm:zod@4"
           ]
         }

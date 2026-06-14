@@ -1,11 +1,14 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
+import { ErrorEnvelopeSchema, MessageResponseSchema, successEnvelope } from '@brewform/shared/schemas';
 import type { AppEnv } from '../../types/hono.ts';
 import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
 import { config } from '../../config/index.ts';
 import { getTransporter } from '../../utils/notify/index.ts';
 import { error, success } from '../../utils/response/index.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
 const logger = createLogger('contact');
@@ -28,7 +31,28 @@ contact.use(
   }),
 );
 
-contact.post('/', zValidator('json', contactSchema), async (c) => {
+contact.post(
+  '/',
+  describeRoute({
+    tags: ['Contact'],
+    summary: 'Submit a contact message',
+    description: 'Submits a contact-form message. Rate-limited to 3 requests per 15 minutes.',
+    requestBody: jsonRequestBody(contactSchema),
+    responses: {
+      200: {
+        description: 'Message accepted',
+        content: {
+          'application/json': { schema: resolver(successEnvelope(MessageResponseSchema)) },
+        },
+      },
+      500: {
+        description: 'Failed to send the message',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
+  zValidator('json', contactSchema),
+  async (c) => {
   const data = c.req.valid('json');
 
   logger.info(

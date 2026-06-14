@@ -323,7 +323,14 @@ first-brew creation with tooltips. (Minor)
 
 ### §6.9 OpenAPI — ✅ Implemented
 
-- `hono-openapi` with `describeRoute` decorators on all endpoints.
+- `hono-openapi` with `describeRoute()` metadata covering all mounted route groups: `auth`,
+  `recipe`, `admin`, `health`, `beans`, `badges`, `coffee-varieties`, `comments`, `contact`,
+  `equipment`, `follow`, `photos`, `preferences`, `qrcode`, `reports`, `setups`, `taste-notes`,
+  `users`, `vendors`, `share`, and `sitemap`.
+- Typed request/response schemas: responses are described with `resolver()`; request bodies are
+  described by converting the same Zod input schema to JSON Schema (Zod v4 `z.toJSONSchema` via the
+  `jsonRequestBody` helper), since `hono-openapi` v1.3.0's `resolver()` only processes response
+  schemas.
 - Toggleable via `OPENAPI_ENABLED` env var.
 
 ### §6.10 Environment & Configuration — ✅ Implemented

@@ -50,3 +50,26 @@ Never call `Deno.openKv()` directly. Use `CacheProvider` interface injected via 
 - Error logs must include the `err` object for stack trace correlation
 - Env vars: LOG_LEVEL=info, LOG_FORMAT=json (API); VITE_LOG_LEVEL=info (web)
 - See TODO_logs.md for modules still needing coverage
+
+## OpenAPI Documentation
+
+- **Every new route (or request/response shape change) must add OpenAPI metadata** so the spec at
+  `/api/v1/openapi.json` and the Scalar UI at `/api/v1/docs` stay complete — mandatory, like logging.
+- Prepend `describeRoute({ tags, summary, description, security, parameters, requestBody, responses })`
+  (from `hono-openapi`) to every route in `index.ts`.
+- **Keep `zValidator(...)` as the request validator (ADR-012); never import `hono-openapi`'s `validator`.**
+  Metadata is additive — no runtime/status/body changes.
+- Responses: `resolver(successEnvelope(XOutputSchema))` / `resolver(paginatedEnvelope(XOutputSchema))`,
+  and `resolver(ErrorEnvelopeSchema)` for each documented error (always `401` on auth-guarded routes).
+- Request bodies: `jsonRequestBody(InputSchema)` from `apps/api/src/utils/openapi/index.ts`
+  (`z.toJSONSchema` on the same schema `zValidator` uses) — NOT `resolver()` (v1.3.0 resolver only
+  handles responses).
+- **Never `import 'zod-openapi/extend'`** — the subpath does not exist in `zod-openapi` v5 and breaks
+  the build; `resolver()` reads Zod v4 metadata natively.
+- Envelope helpers: `packages/shared/src/schemas/response.ts` (`ErrorEnvelopeSchema`, `PaginationMetaSchema`,
+  `successEnvelope`, `paginatedEnvelope`). Entity output schemas: `packages/shared/src/schemas/responses/`
+  (`<Entity>OutputSchema`), derived from the ACTUAL `service.ts` return shape, each additive + co-located test.
+- Register any new tag in the `tags` array in `apps/api/src/routes/openapi.ts`. Non-JSON routes document
+  their real content type (text/html, application/xml, image/*), not a JSON envelope.
+- The coverage test `apps/api/src/routes/openapi.coverage.test.ts` enforces full documentation, tagging,
+  and zero orphan tags.

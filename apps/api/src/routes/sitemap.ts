@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { describeRoute } from 'hono-openapi';
 import { recipes, users } from '@brewform/db/schema';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { config } from '../config/index.ts';
@@ -128,7 +129,22 @@ export function buildXml(
   return xml;
 }
 
-sitemap.get('/', async (_c) => {
+sitemap.get(
+  '/',
+  describeRoute({
+    tags: ['Sitemap'],
+    summary: 'Get the XML sitemap',
+    description:
+      'Returns the XML sitemap listing static pages, public recipes, and active user profiles for ' +
+      'crawlers. Responds with XML, not a JSON envelope.',
+    responses: {
+      200: {
+        description: 'XML sitemap',
+        content: { 'application/xml': {} },
+      },
+    },
+  }),
+  async (_c) => {
   const baseUrl = (config.PUBLIC_APP_URL || config.APP_URL).replace(/\/+$/, '');
 
   const cached = await cacheProvider.get<string>(SITEMAP_CACHE_KEY);
@@ -176,6 +192,7 @@ sitemap.get('/', async (_c) => {
       'Cache-Control': 'public, max-age=3600, s-maxage=3600',
     },
   });
-});
+  },
+);
 
 export default sitemap;
