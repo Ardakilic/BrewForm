@@ -11,11 +11,7 @@ import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { z } from 'zod';
 import fc from 'npm:fast-check';
-import {
-  ErrorEnvelopeSchema,
-  paginatedEnvelope,
-  successEnvelope,
-} from './response.ts';
+import { ErrorEnvelopeSchema, paginatedEnvelope, successEnvelope } from './response.ts';
 
 // ---------------------------------------------------------------------------
 // Generators that mirror the runtime helpers in

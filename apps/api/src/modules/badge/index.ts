@@ -42,7 +42,7 @@ badge.get(
   '/user/:userId',
   describeRoute({
     tags: ['Badges'],
-    summary: 'List a user\'s badges',
+    summary: "List a user's badges",
     description: 'Returns the badges awarded to the given user.',
     parameters: [
       { name: 'userId', in: 'path', required: true, schema: { type: 'string' } },
@@ -69,7 +69,7 @@ badge.post(
   '/evaluate/:userId',
   describeRoute({
     tags: ['Badges'],
-    summary: 'Evaluate a user\'s badges',
+    summary: "Evaluate a user's badges",
     description: 'Admin-only: re-evaluates and awards badges for the given user.',
     security: [{ bearerAuth: [] }],
     parameters: [

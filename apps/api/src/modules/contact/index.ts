@@ -2,7 +2,11 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
-import { ErrorEnvelopeSchema, MessageResponseSchema, successEnvelope } from '@brewform/shared/schemas';
+import {
+  ErrorEnvelopeSchema,
+  MessageResponseSchema,
+  successEnvelope,
+} from '@brewform/shared/schemas';
 import type { AppEnv } from '../../types/hono.ts';
 import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
 import { config } from '../../config/index.ts';
@@ -53,31 +57,32 @@ contact.post(
   }),
   zValidator('json', contactSchema),
   async (c) => {
-  const data = c.req.valid('json');
+    const data = c.req.valid('json');
 
-  logger.info(
-    { subject: data.subject },
-    'Contact form submission',
-  );
+    logger.info(
+      { subject: data.subject },
+      'Contact form submission',
+    );
 
-  if (config.APP_ENV === 'test') {
-    logger.info('Email skipped (test environment)');
-    return success(c, { message: 'Thank you for your message. We will get back to you soon.' });
-  }
+    if (config.APP_ENV === 'test') {
+      logger.info('Email skipped (test environment)');
+      return success(c, { message: 'Thank you for your message. We will get back to you soon.' });
+    }
 
-  try {
-    await getTransporter().sendMail({
-      from: config.EMAIL_FROM,
-      to: config.ADMIN_EMAIL,
-      subject: `[BrewForm Contact] ${data.subject}`,
-      text: `From: ${data.name} <${data.email}>\n\n${data.message}`,
-    });
+    try {
+      await getTransporter().sendMail({
+        from: config.EMAIL_FROM,
+        to: config.ADMIN_EMAIL,
+        subject: `[BrewForm Contact] ${data.subject}`,
+        text: `From: ${data.name} <${data.email}>\n\n${data.message}`,
+      });
 
-    return success(c, { message: 'Thank you for your message. We will get back to you soon.' });
-  } catch (err) {
-    logger.error({ err }, 'Failed to send contact email');
-    return error(c, 'INTERNAL_ERROR', 'Failed to send message. Please try again later.', 500);
-  }
-});
+      return success(c, { message: 'Thank you for your message. We will get back to you soon.' });
+    } catch (err) {
+      logger.error({ err }, 'Failed to send contact email');
+      return error(c, 'INTERNAL_ERROR', 'Failed to send message. Please try again later.', 500);
+    }
+  },
+);
 
 export default contact;

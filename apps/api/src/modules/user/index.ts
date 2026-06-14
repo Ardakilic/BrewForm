@@ -23,7 +23,8 @@ user.get(
   describeRoute({
     tags: ['Users'],
     summary: 'Get the authenticated user profile',
-    description: 'Returns the full profile of the authenticated user, including preferences and stats.',
+    description:
+      'Returns the full profile of the authenticated user, including preferences and stats.',
     security: [{ bearerAuth: [] }],
     responses: {
       200: {
@@ -61,7 +62,7 @@ user.patch(
   describeRoute({
     tags: ['Users'],
     summary: 'Update the authenticated user profile',
-    description: 'Updates the authenticated user\'s profile fields.',
+    description: "Updates the authenticated user's profile fields.",
     security: [{ bearerAuth: [] }],
     requestBody: jsonRequestBody(UserProfileUpdateSchema),
     responses: {
@@ -92,7 +93,7 @@ user.delete(
   describeRoute({
     tags: ['Users'],
     summary: 'Delete the authenticated user account',
-    description: 'Soft-deletes the authenticated user\'s account.',
+    description: "Soft-deletes the authenticated user's account.",
     security: [{ bearerAuth: [] }],
     responses: {
       200: {

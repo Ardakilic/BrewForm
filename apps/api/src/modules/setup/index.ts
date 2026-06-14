@@ -224,7 +224,7 @@ setup.post(
   describeRoute({
     tags: ['Setups'],
     summary: 'Set a setup as default',
-    description: 'Marks the given setup as the authenticated user\'s default setup.',
+    description: "Marks the given setup as the authenticated user's default setup.",
     security: [{ bearerAuth: [] }],
     parameters: [
       { name: 'id', in: 'path', required: true, schema: { type: 'string' } },

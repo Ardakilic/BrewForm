@@ -145,53 +145,53 @@ sitemap.get(
     },
   }),
   async (_c) => {
-  const baseUrl = (config.PUBLIC_APP_URL || config.APP_URL).replace(/\/+$/, '');
+    const baseUrl = (config.PUBLIC_APP_URL || config.APP_URL).replace(/\/+$/, '');
 
-  const cached = await cacheProvider.get<string>(SITEMAP_CACHE_KEY);
-  if (cached) {
-    return new Response(cached, {
+    const cached = await cacheProvider.get<string>(SITEMAP_CACHE_KEY);
+    if (cached) {
+      return new Response(cached, {
+        headers: {
+          'Content-Type': 'application/xml; charset=utf-8',
+          'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+        },
+      });
+    }
+
+    if (inFlightSitemapBuildPromise) {
+      return inFlightSitemapBuildPromise.then((xml) =>
+        new Response(xml, {
+          headers: {
+            'Content-Type': 'application/xml; charset=utf-8',
+            'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+          },
+        })
+      );
+    }
+
+    inFlightSitemapBuildPromise = (async () => {
+      try {
+        const [publicRecipes, activeUsers] = await Promise.all([
+          deps.getPublicRecipes(),
+          deps.getActiveUsers(),
+        ]);
+
+        const xml = buildXml(baseUrl, publicRecipes, activeUsers);
+
+        await cacheProvider.set(SITEMAP_CACHE_KEY, xml, { ttlMs: SITEMAP_CACHE_TTL });
+
+        return xml;
+      } finally {
+        inFlightSitemapBuildPromise = null;
+      }
+    })();
+
+    const xml = await inFlightSitemapBuildPromise;
+    return new Response(xml, {
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
         'Cache-Control': 'public, max-age=3600, s-maxage=3600',
       },
     });
-  }
-
-  if (inFlightSitemapBuildPromise) {
-    return inFlightSitemapBuildPromise.then((xml) =>
-      new Response(xml, {
-        headers: {
-          'Content-Type': 'application/xml; charset=utf-8',
-          'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-        },
-      })
-    );
-  }
-
-  inFlightSitemapBuildPromise = (async () => {
-    try {
-      const [publicRecipes, activeUsers] = await Promise.all([
-        deps.getPublicRecipes(),
-        deps.getActiveUsers(),
-      ]);
-
-      const xml = buildXml(baseUrl, publicRecipes, activeUsers);
-
-      await cacheProvider.set(SITEMAP_CACHE_KEY, xml, { ttlMs: SITEMAP_CACHE_TTL });
-
-      return xml;
-    } finally {
-      inFlightSitemapBuildPromise = null;
-    }
-  })();
-
-  const xml = await inFlightSitemapBuildPromise;
-  return new Response(xml, {
-    headers: {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-    },
-  });
   },
 );
 

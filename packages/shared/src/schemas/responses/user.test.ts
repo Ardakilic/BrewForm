@@ -1,10 +1,6 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import {
-  PublicUserOutputSchema,
-  SelfUserOutputSchema,
-  UserRowOutputSchema,
-} from './user.ts';
+import { PublicUserOutputSchema, SelfUserOutputSchema, UserRowOutputSchema } from './user.ts';
 
 function wire<T>(payload: T): unknown {
   return JSON.parse(JSON.stringify(payload));

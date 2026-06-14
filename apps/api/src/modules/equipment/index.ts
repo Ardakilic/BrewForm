@@ -230,7 +230,9 @@ equipment.get(
       return success(c, item);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      if (message === 'EQUIPMENT_NOT_FOUND') return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+      if (message === 'EQUIPMENT_NOT_FOUND') {
+        return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+      }
       throw err;
     }
   },
@@ -279,7 +281,9 @@ equipment.patch(
       return success(c, item);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      if (message === 'EQUIPMENT_NOT_FOUND') return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+      if (message === 'EQUIPMENT_NOT_FOUND') {
+        return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+      }
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your equipment', 403);
       throw err;
     }
@@ -326,7 +330,9 @@ equipment.delete(
       return success(c, { message: 'Equipment deleted' });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      if (message === 'EQUIPMENT_NOT_FOUND') return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+      if (message === 'EQUIPMENT_NOT_FOUND') {
+        return error(c, 'NOT_FOUND', 'Equipment not found', 404);
+      }
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your equipment', 403);
       throw err;
     }

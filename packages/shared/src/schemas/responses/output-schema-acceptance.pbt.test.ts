@@ -47,11 +47,7 @@ import {
   CommentWithRepliesOutputSchema,
 } from './comment.ts';
 import { TasteNoteNodeOutputSchema, TasteNoteOutputSchema } from './taste.ts';
-import {
-  PublicUserOutputSchema,
-  SelfUserOutputSchema,
-  UserRowOutputSchema,
-} from './user.ts';
+import { PublicUserOutputSchema, SelfUserOutputSchema, UserRowOutputSchema } from './user.ts';
 
 // ---------------------------------------------------------------------------
 // Reusable building-block arbitraries — JSON-serializable values matching the

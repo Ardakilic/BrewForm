@@ -20,7 +20,7 @@ preference.get(
   describeRoute({
     tags: ['Preferences'],
     summary: 'Get preferences',
-    description: 'Returns the authenticated user\'s preferences.',
+    description: "Returns the authenticated user's preferences.",
     security: [{ bearerAuth: [] }],
     responses: {
       200: {
@@ -60,7 +60,7 @@ preference.patch(
   describeRoute({
     tags: ['Preferences'],
     summary: 'Update preferences',
-    description: 'Updates the authenticated user\'s preferences.',
+    description: "Updates the authenticated user's preferences.",
     security: [{ bearerAuth: [] }],
     requestBody: jsonRequestBody(UserPreferencesSchema),
     responses: {
