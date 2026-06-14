@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
 import { config } from '../../config/index.ts';
 import * as service from './service.ts';
-import { QrCodeFilenameSchema } from '@brewform/shared/schemas';
+import { ErrorEnvelopeSchema, QrCodeFilenameSchema } from '@brewform/shared/schemas';
 import { error, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
@@ -15,6 +16,39 @@ const FilenameParamSchema = z.object({
 
 qrcode.get(
   '/recipe/:filename',
+  describeRoute({
+    tags: ['QR Codes'],
+    summary: 'Get a recipe QR code image',
+    description:
+      'Generates a QR code image for a public recipe. The filename encodes the recipe slug and ' +
+      'desired format (`<slug>.png` or `<slug>.svg`); the response is the raw image, not a JSON envelope.',
+    parameters: [
+      {
+        name: 'filename',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+        description: 'Recipe slug plus extension, e.g. `my-recipe.png` or `my-recipe.svg`.',
+      },
+    ],
+    responses: {
+      200: {
+        description: 'QR code image (PNG or SVG, depending on the requested extension)',
+        content: {
+          'image/png': { schema: { type: 'string', format: 'binary' } },
+          'image/svg+xml': { schema: { type: 'string', format: 'binary' } },
+        },
+      },
+      403: {
+        description: 'Recipe is not publicly available',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      404: {
+        description: 'Recipe not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
   zValidator('param', FilenameParamSchema, zodValidationHook),
   async (c) => {
     const { filename } = c.req.valid('param');

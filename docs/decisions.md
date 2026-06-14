@@ -197,19 +197,30 @@ we ever observe meaningful drop rates in production.
 
 ## ADR-012 — `describeRoute` for OpenAPI without replacing `zValidator`
 
-**Decision.** Use `hono-openapi`'s `describeRoute` for tags / summary / responses. Keep the existing
-`@hono/zod-validator`-based `zValidator(...)` for request validation. Spec served at
-`/api/v1/openapi.json`, viewer at `/api/v1/docs`.
+**Decision.** Use `hono-openapi`'s `describeRoute` for tags / summary / request bodies / responses.
+Keep the existing `@hono/zod-validator`-based `zValidator(...)` as the request validation middleware
+on every route — `hono-openapi`'s own `validator` is **not** used anywhere in `apps/api`. Spec
+served at `/api/v1/openapi.json`, viewer at `/api/v1/docs`.
 
-**Why.** `describeRoute` is independent of validator choice — it gives us a non-empty `paths` object
-derived from the routes we care about (auth, recipe, admin, health) without rewriting every
-endpoint's validation. `hono-openapi`'s own `validator` would also work but would change the shape
-of `c.req.valid('json')` and the lint footprint across 17 modules.
+**Why.** `describeRoute` is independent of validator choice — it gives us a populated `paths` object
+without rewriting every endpoint's validation. `describeRoute()` metadata now covers **every mounted
+route group** (`auth`, `recipe`, `admin`, `health`, `beans`, `badges`, `coffee-varieties`,
+`comments`, `contact`, `equipment`, `follow`, `photos`, `preferences`, `qrcode`, `reports`, `setups`,
+`taste-notes`, `users`, `vendors`, `share`, `sitemap`). `hono-openapi`'s own `validator` would also
+work but would change the shape of `c.req.valid('json')` and the lint footprint across every module,
+so we keep `zValidator` as the single request validator.
 
-**Trade-off.** Request bodies and query params are not auto-described in the spec — only responses
-are, plus whatever `zValidator` exposes via Hono's introspection. Acceptable for now: the spec is
-useful for endpoint discovery and client generation; if downstream needs full I/O typing, swap
-`zValidator` for `hono-openapi`'s `validator` module-by-module.
+**Request-body documentation mechanism.** Responses are described with `resolver(zodSchema)`. Request
+bodies cannot use `resolver()` because `hono-openapi` v1.3.0's `resolver()` only processes response
+schemas; instead, request bodies are documented by converting the **same Zod input schema** that
+`zValidator` validates against to JSON Schema using Zod v4's `z.toJSONSchema`, wrapped in a small
+`jsonRequestBody` helper (`apps/api/src/utils/openapi/index.ts`). No schema is duplicated — the
+validator and the documentation share one source.
+
+**Trade-off.** Both request bodies (via `jsonRequestBody`/`z.toJSONSchema`) and responses (via
+`resolver`) are now fully described in the spec, alongside query/path parameters declared in
+`describeRoute().parameters`. The spec is therefore complete enough for client generation and
+full I/O typing while leaving the runtime validation path (`zValidator`) untouched.
 
 ---
 

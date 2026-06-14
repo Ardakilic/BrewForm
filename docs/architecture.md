@@ -179,8 +179,10 @@ Route-level middleware:
 ## OpenAPI
 
 The API exposes an auto-generated OpenAPI 3.x specification derived from `describeRoute(...)`
-decorations on the auth, recipe, admin, and health routes. Two endpoints, both gated by the
-`OPENAPI_ENABLED` env flag:
+metadata that now covers **all mounted route groups** (`auth`, `recipe`, `admin`, `health`, `beans`,
+`badges`, `coffee-varieties`, `comments`, `contact`, `equipment`, `follow`, `photos`, `preferences`,
+`qrcode`, `reports`, `setups`, `taste-notes`, `users`, `vendors`, `share`, `sitemap`). Two endpoints,
+both gated by the `OPENAPI_ENABLED` env flag:
 
 - `GET /api/v1/openapi.json` — machine-readable spec for client generation or Postman import
 - `GET /api/v1/docs` — a Scalar-based HTML viewer (loaded from a CDN)
@@ -188,6 +190,25 @@ decorations on the auth, recipe, admin, and health routes. Two endpoints, both g
 The spec is built at request time via `hono-openapi`'s `openAPIRouteHandler`, so any new route gets
 picked up automatically. See `decisions.md` ADR-012 for why we kept `zValidator` instead of swapping
 to `hono-openapi`'s validator.
+
+### Adding a new route (required)
+
+Every new route — or any change to a route's request/response shape — MUST carry OpenAPI metadata.
+A route without `describeRoute()` is considered incomplete (the coverage test will fail).
+
+1. Prepend `describeRoute({ tags, summary, description, security, parameters, requestBody, responses })`
+   from `hono-openapi`. Keep `zValidator(...)` as the validator (ADR-012); never import
+   `hono-openapi`'s `validator`. Metadata must not change runtime behavior.
+2. Document responses with `resolver(successEnvelope(XOutputSchema))` /
+   `resolver(paginatedEnvelope(XOutputSchema))` and `resolver(ErrorEnvelopeSchema)` for each error
+   (always `401` on auth-guarded routes; `404`/`403`/`400`/`409` where mapped).
+3. Document JSON request bodies with `jsonRequestBody(InputSchema)`
+   (`apps/api/src/utils/openapi/index.ts`) — `resolver()` only converts responses in hono-openapi
+   v1.3.0. Never `import 'zod-openapi/extend'` (removed in `zod-openapi` v5; it breaks the build).
+4. Add the entity Output Schema under `packages/shared/src/schemas/responses/` (derived from the real
+   `service.ts` return shape, additive, with a co-located unit test) and register any new tag in the
+   `tags` array of `routes/openapi.ts`. Non-JSON routes document their true content type, not a JSON envelope.
+5. Run `make test-api` — `routes/openapi.coverage.test.ts` enforces coverage, tagging, and zero orphan tags.
 
 ## Notifications
 

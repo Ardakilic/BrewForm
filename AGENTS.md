@@ -49,6 +49,37 @@ Every domain module follows 3-layer pattern: `model.ts` → `service.ts` → `in
 - All Hono routes use typed `<AppEnv>` context (userId, user, cache, requestId).
 - Middleware stack order: cors → requestId → rateLimit(100/min) → cache injection → error handler → routes.
 
+## OpenAPI documentation
+
+Every new route (or change to a route's request/response shape) MUST include OpenAPI
+metadata so the generated spec at `/api/v1/openapi.json` and the Scalar UI at `/api/v1/docs`
+stay complete. This is mandatory, like logging — a route without `describeRoute()` is incomplete.
+
+- Prepend `describeRoute({ ... })` (from `hono-openapi`) to every route with: `tags`, `summary`,
+  `description`, `security: [{ bearerAuth: [] }]` on auth-guarded routes, path/query `parameters`,
+  a `requestBody`, and typed `responses`.
+- **Keep `@hono/zod-validator`'s `zValidator(...)` as the request validator (ADR-012).** Never
+  import `hono-openapi`'s `validator`. OpenAPI metadata is additive and must not change runtime
+  behavior, status codes, or response bodies.
+- **Responses:** wrap the entity's Output Schema in an envelope and pass it through `resolver()`:
+  `resolver(successEnvelope(XOutputSchema))`, `resolver(paginatedEnvelope(XOutputSchema))`, and
+  `resolver(ErrorEnvelopeSchema)` for every documented error (always `401` on auth-guarded routes,
+  plus `404`/`403`/`400`/`409` where the handler maps them).
+- **Request bodies:** use `jsonRequestBody(InputSchema)` from `apps/api/src/utils/openapi/index.ts`
+  (it runs Zod v4 `z.toJSONSchema` on the SAME schema `zValidator` uses). Do NOT use `resolver()`
+  for request bodies — in `hono-openapi` v1.3.0 `resolver()` only converts response schemas.
+- **Do NOT** `import 'zod-openapi/extend'` — that subpath does not exist in `zod-openapi` v5 and
+  breaks the build; `resolver()` reads metadata natively from Zod v4 schemas.
+- **Response/entity schemas** live in `packages/shared/src/schemas/responses/` (`<Entity>OutputSchema`),
+  the envelope helpers in `packages/shared/src/schemas/response.ts`. Derive output schemas from the
+  ACTUAL `service.ts` return shape (joined objects, computed/count fields, flags), add each as an
+  additive export with a co-located unit test, and register any new tag in the `tags` array in
+  `apps/api/src/routes/openapi.ts`.
+- Non-JSON routes document their true content type (e.g. `text/html`, `application/xml`, `image/*`)
+  and are NOT wrapped in a JSON success envelope.
+- The introspection coverage test `apps/api/src/routes/openapi.coverage.test.ts` enforces that every
+  in-scope route is documented, tagged, and free of orphan tags — run `make test-api` after adding routes.
+
 ## Database rules
 
 - **No raw SQL** — Drizzle ORM only. No JSONB/UUID columns. No Postgres-specific operators.
