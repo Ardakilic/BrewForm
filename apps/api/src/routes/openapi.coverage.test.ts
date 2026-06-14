@@ -102,7 +102,7 @@ function isResolvedSchema(value: unknown): boolean {
 /** True when an operation path belongs to one of the 17 in-scope groups. */
 function isInScope(path: string): boolean {
   return IN_SCOPE_BASE_PATHS.some(
-    (base) => path === base || path.startsWith(base + '/') || path.startsWith(base),
+    (base) => path === base || path.startsWith(base + '/'),
   );
 }
 
@@ -136,7 +136,7 @@ describe('OpenAPI coverage — generated spec is well-formed', () => {
   it('documents all 17 in-scope base paths (P1)', () => {
     const pathKeys = Object.keys(spec.paths ?? {});
     const missing = IN_SCOPE_BASE_PATHS.filter(
-      (base) => !pathKeys.some((p) => p === base || p.startsWith(base + '/') || p.startsWith(base)),
+      (base) => !pathKeys.some((p) => p === base || p.startsWith(base + '/')),
     );
     expect(missing).toEqual([]);
   });

@@ -75,7 +75,7 @@ describe('Property 10: malformed payloads are rejected', () => {
     );
   });
 
-  it('rejects PaginationMeta with out-of-bounds values (page < 1 or total < 0)', () => {
+  it('rejects PaginationMeta with out-of-bounds values (page < 1, total < 0, or perPage < 1)', () => {
     const invalidMetaArb = fc.oneof(
       // page < 1
       fc.record({

@@ -73,25 +73,29 @@ development (ADR-012). Remaining modules were added later without `describeRoute
    OpenAPI metadata is added purely through `describeRoute()` + `resolver()`.
    This preserves the shape of `c.req.valid(...)` and the lint footprint.
 2. **`hono-openapi` v1.3.0, Zod v4.** `resolver(zodSchema)` converts a Zod schema
-   to an OpenAPI schema object. Confirmed API (Context7 `/rhinobase/hono-openapi`):
+   to an OpenAPI schema object for **responses**. `jsonRequestBody(zodSchema)` (from
+   `apps/api/src/utils/openapi/index.ts`) converts a Zod schema to a JSON Schema object
+   for **request bodies** via `z.toJSONSchema` — because `hono-openapi` v1.3.0's `resolver()`
+   only processes response schemas. Confirmed pattern:
    ```ts
    import { describeRoute, resolver } from 'hono-openapi';
+   import { jsonRequestBody } from '../../utils/openapi/index.ts';
    route.post(
      '/',
      describeRoute({
        tags: ['Beans'],
        summary: '...',
        security: [{ bearerAuth: [] }],
-       requestBody: {
-         content: { 'application/json': { schema: resolver(BeanCreateSchema) } },
-       },
+       requestBody: jsonRequestBody(BeanCreateSchema),
        responses: {
          201: {
            description: 'Bean created',
-           content: { 'application/json': { schema: resolver(BeanResponseSchema) } },
+           content: { 'application/json': { schema: resolver(successEnvelope(BeanOutputSchema)) } },
          },
-         401: { description: 'Unauthorized',
-           content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } } },
+         401: {
+           description: 'Unauthorized',
+           content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+         },
        },
      }),
      authMiddleware,
@@ -180,7 +184,8 @@ service payload parses successfully.
   HTML page. Document with `responses: { 200: { content: { 'text/html': {} } }, 404: { content: { 'text/html': {} } } }` and a `slug` path param. Tag: `Share`.
 - **`sitemap` (`GET /api/v1/sitemap.xml`)** returns `application/xml`. Document with
   `responses: { 200: { content: { 'application/xml': {} } } }`. Tag: `Sitemap`.
-- `qrcode` returns an image/data-URL — document its actual content type, not a JSON envelope.
+- **`qrcode` (`GET /api/v1/qrcode/recipe/:filename`)** returns a binary image. Document with
+  `responses: { 200: { content: { 'image/png': { schema: { type: 'string', format: 'binary' } }, 'image/svg+xml': { schema: { type: 'string', format: 'binary' } } } } }` and a `filename` path param. The 403/404 error responses remain JSON envelopes (returned by the `error()` helper). Do not wrap the 200 success response in a JSON envelope. Tag: `QR Codes`.
 
 ---
 

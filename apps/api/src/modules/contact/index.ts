@@ -53,6 +53,10 @@ contact.post(
         description: 'Failed to send the message',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
+      429: {
+        description: 'Rate limit exceeded (3 requests per 15 minutes)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   zValidator('json', contactSchema),
