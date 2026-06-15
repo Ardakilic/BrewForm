@@ -31,12 +31,10 @@ export function RecipeComparePage() {
     if (!slug1 || !slug2) return;
     setLoading(true);
     Promise.all([
-      recipeApi.get(slug1).catch((err) => {
-        log.error({ err }, 'RecipeComparePage loadData failed');
+      recipeApi.get(slug1).catch(() => {
         return null;
       }),
-      recipeApi.get(slug2).catch((err) => {
-        log.error({ err }, 'RecipeComparePage loadData failed');
+      recipeApi.get(slug2).catch(() => {
         return null;
       }),
     ]).then(([r1, r2]) => {

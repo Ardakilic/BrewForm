@@ -21,7 +21,8 @@ export function AdminCachePage() {
     try {
       await api.post('/admin/cache/flush', {});
       setMessage('Cache flushed successfully!');
-    } catch {
+    } catch (err) {
+      log.error({ err }, 'AdminCachePage flushAll failed');
       setMessage('Failed to flush cache.');
     } finally {
       setFlushing(false);

@@ -63,7 +63,7 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
         expect(body.success).toBe(false);
         assertSpyCalls(spies.warn, 1);
         assertSpyCallArgs(spies.warn, 0, [
-          { ip, limit: 2 },
+          { limit: 2 },
           'rateLimitMiddleware rate limit exceeded',
         ]);
       } finally {
@@ -113,7 +113,7 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
         expect(body.success).toBe(false);
         assertSpyCalls(spies.warn, 1);
         assertSpyCallArgs(spies.warn, 0, [
-          { userId: 'user-123', ip, limit: 2 },
+          { userId: 'user-123', limit: 2 },
           'authRateLimitMiddleware rate limit exceeded',
         ]);
       } finally {

@@ -27,8 +27,9 @@ export async function getRecipeQRCode(slug: string, format: 'png' | 'svg', baseU
   log.debug({ slug, format }, 'getRecipeQRCode started');
   const recipe = await model.findBySlug(slug);
   if (!recipe) {
-    log.error({ slug }, 'getRecipeQRCode failed: recipe not found');
-    throw new Error('RECIPE_NOT_FOUND');
+    const err = new Error('RECIPE_NOT_FOUND');
+    log.error({ err, slug }, 'getRecipeQRCode failed: recipe not found');
+    throw err;
   }
   if (recipe.visibility === 'draft' || recipe.visibility === 'private') {
     log.warn(

@@ -58,7 +58,11 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
       await expect(getProfile(missingId)).rejects.toThrow('USER_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [{ userId: missingId }, 'getProfile failed: user not found']);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('USER_NOT_FOUND');
+      expect(errArg.userId).toBe(missingId);
+      expect(errorSpy.calls[0].args[1]).toBe('getProfile failed: user not found');
       assertSpyCalls(debugSpy, 1);
       assertSpyCallArgs(debugSpy, 0, [{ userId: missingId }, 'getProfile started']);
     });
@@ -101,10 +105,11 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
       await expect(getPublicProfile(missingUsername)).rejects.toThrow('USER_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { username: missingUsername },
-        'getPublicProfile failed: user not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; username: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('USER_NOT_FOUND');
+      expect(errArg.username).toBe(missingUsername);
+      expect(errorSpy.calls[0].args[1]).toBe('getPublicProfile failed: user not found');
       assertSpyCalls(debugSpy, 1);
       assertSpyCallArgs(debugSpy, 0, [
         { username: missingUsername, requesterId: undefined },
@@ -131,10 +136,11 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
       );
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { userId: missingId },
-        'updateProfile failed: user not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('USER_NOT_FOUND');
+      expect(errArg.userId).toBe(missingId);
+      expect(errorSpy.calls[0].args[1]).toBe('updateProfile failed: user not found');
       assertSpyCalls(debugSpy, 1);
       assertSpyCallArgs(debugSpy, 0, [{ userId: missingId }, 'updateProfile started']);
     });

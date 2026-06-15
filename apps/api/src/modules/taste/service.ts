@@ -46,9 +46,9 @@ export async function getHierarchy(cache: CacheProvider) {
  * @throws QUERY_TOO_SHORT if query is less than 3 characters
  */
 export async function searchTasteNotes(query: string, _cache: CacheProvider) {
-  log.debug({ query }, 'searchTasteNotes started');
+  log.debug({ queryLength: query.length }, 'searchTasteNotes started');
   if (query.length < 3) {
-    log.warn({ query }, 'searchTasteNotes failed: query too short');
+    log.warn({ queryLength: query.length }, 'searchTasteNotes failed: query too short');
     throw new Error('QUERY_TOO_SHORT');
   }
 
@@ -77,7 +77,10 @@ export async function searchTasteNotes(query: string, _cache: CacheProvider) {
   );
   uniqueNotes.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
 
-  log.debug({ query, count: uniqueNotes.length }, 'searchTasteNotes completed');
+  log.debug(
+    { queryLength: query.length, count: uniqueNotes.length },
+    'searchTasteNotes completed',
+  );
   return uniqueNotes;
 }
 

@@ -113,10 +113,12 @@ describe('Vendor Service Logic', { sanitizeOps: false, sanitizeResources: false 
       ).rejects.toThrow('VENDOR_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { id: missingId, userId: userId1 },
-        'updateVendor failed: vendor not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('VENDOR_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errArg.userId).toBe(userId1);
+      expect(errorSpy.calls[0].args[1]).toBe('updateVendor failed: vendor not found');
     });
   });
 
@@ -127,10 +129,11 @@ describe('Vendor Service Logic', { sanitizeOps: false, sanitizeResources: false 
       await expect(getVendor(missingId)).rejects.toThrow('VENDOR_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { id: missingId },
-        'getVendor failed: vendor not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('VENDOR_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errorSpy.calls[0].args[1]).toBe('getVendor failed: vendor not found');
     });
   });
 
@@ -141,10 +144,11 @@ describe('Vendor Service Logic', { sanitizeOps: false, sanitizeResources: false 
       await expect(deleteVendor(missingId)).rejects.toThrow('VENDOR_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { id: missingId },
-        'deleteVendor failed: vendor not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('VENDOR_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errorSpy.calls[0].args[1]).toBe('deleteVendor failed: vendor not found');
     });
   });
 });

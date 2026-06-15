@@ -35,8 +35,7 @@ export function SetupListPage() {
   useEffect(() => {
     api.get<Setup[]>('/setups').then((data) => {
       setSetups(data as Setup[]);
-    }).catch((err) => {
-      log.error({ err }, 'SetupListPage loadData failed');
+    }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
 

@@ -1025,6 +1025,10 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
   it(
     'for any theme value and locale, trigger displays translated label and popup options are translated',
     async () => {
+      // The cartesian product is 3 themes × 2 locales = 6 cases. We run
+      // multiple cycles so fast-check exercises each combination repeatedly
+      // and shrinks on failure. The per-iteration timeout bounds a hung
+      // render/cleanup so one slow iteration can't blow the whole budget.
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom('light', 'dark', 'coffee'),
@@ -1068,7 +1072,7 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
     15000,

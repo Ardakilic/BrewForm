@@ -22,8 +22,9 @@ export async function getBean(id: string) {
   log.debug({ id }, 'getBean started');
   const bean = await model.findById(id);
   if (!bean) {
-    log.error({ id }, 'getBean failed: bean not found');
-    throw new Error('BEAN_NOT_FOUND');
+    const err = new Error('BEAN_NOT_FOUND');
+    log.error({ err, id }, 'getBean failed: bean not found');
+    throw err;
   }
   log.debug({ id }, 'getBean completed');
   return bean;
@@ -47,8 +48,9 @@ export async function updateBean(userId: string, id: string, data: any) {
   log.debug({ userId, id }, 'updateBean started');
   const bean = await model.findById(id);
   if (!bean) {
-    log.error({ id, userId }, 'updateBean failed: bean not found');
-    throw new Error('BEAN_NOT_FOUND');
+    const err = new Error('BEAN_NOT_FOUND');
+    log.error({ err, id, userId }, 'updateBean failed: bean not found');
+    throw err;
   }
   if (bean.userId !== userId) {
     log.warn({ id, userId, ownerId: bean.userId }, 'updateBean failed: forbidden');
@@ -56,8 +58,9 @@ export async function updateBean(userId: string, id: string, data: any) {
   }
   const updated = await model.update(id, data);
   if (!updated) {
-    log.error({ id, userId }, 'updateBean failed: bean not found');
-    throw new Error('BEAN_NOT_FOUND');
+    const err = new Error('BEAN_NOT_FOUND');
+    log.error({ err, id, userId }, 'updateBean failed: bean not found');
+    throw err;
   }
   log.debug({ userId, id }, 'updateBean completed');
   return updated;
@@ -73,8 +76,9 @@ export async function deleteBean(userId: string, id: string) {
   log.debug({ userId, id }, 'deleteBean started');
   const bean = await model.findById(id);
   if (!bean) {
-    log.error({ id, userId }, 'deleteBean failed: bean not found');
-    throw new Error('BEAN_NOT_FOUND');
+    const err = new Error('BEAN_NOT_FOUND');
+    log.error({ err, id, userId }, 'deleteBean failed: bean not found');
+    throw err;
   }
   if (bean.userId !== userId) {
     log.warn({ id, userId, ownerId: bean.userId }, 'deleteBean failed: forbidden');
@@ -82,8 +86,9 @@ export async function deleteBean(userId: string, id: string) {
   }
   const deleted = await model.softDelete(id);
   if (!deleted) {
-    log.error({ id, userId }, 'deleteBean failed: bean not found');
-    throw new Error('BEAN_NOT_FOUND');
+    const err = new Error('BEAN_NOT_FOUND');
+    log.error({ err, id, userId }, 'deleteBean failed: bean not found');
+    throw err;
   }
   log.debug({ userId, id }, 'deleteBean completed');
 }

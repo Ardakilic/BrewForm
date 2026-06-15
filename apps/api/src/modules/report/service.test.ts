@@ -55,7 +55,7 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
   });
 
   describe('createReport', () => {
-    it('logs info entry and exit', async () => {
+    it('logs debug entry and exit', async () => {
       const spies = setupSpies();
       try {
         const result = await createReport(reporterId, 'recipe', entityId, 'Spam content');
@@ -63,15 +63,16 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
         expect(result.reporterId).toBe(reporterId);
         expect(result.entityType).toBe('recipe');
 
-        assertSpyCalls(spies.info, 2);
-        assertSpyCallArgs(spies.info, 0, [
+        assertSpyCalls(spies.debug, 2);
+        assertSpyCallArgs(spies.debug, 0, [
           { reporterId, entityType: 'recipe', entityId },
           'createReport started',
         ]);
-        assertSpyCallArgs(spies.info, 1, [
+        assertSpyCallArgs(spies.debug, 1, [
           { reporterId, entityType: 'recipe', entityId, reportId: result.id },
           'createReport completed',
         ]);
+        assertSpyCalls(spies.info, 0);
       } finally {
         restoreSpies(spies);
       }
@@ -103,7 +104,7 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
   });
 
   describe('resolveReport', () => {
-    it('logs info entry and exit on success', async () => {
+    it('logs debug entry and exit on success', async () => {
       const report = await createReport(reporterId, 'recipe', entityId, 'Spam content');
 
       const spies = setupSpies();
@@ -111,15 +112,16 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
         const result = await resolveReport(report.id, resolverId);
 
         expect(result.status).toBe('resolved');
-        assertSpyCalls(spies.info, 2);
-        assertSpyCallArgs(spies.info, 0, [
+        assertSpyCalls(spies.debug, 2);
+        assertSpyCallArgs(spies.debug, 0, [
           { id: report.id, resolvedBy: resolverId },
           'resolveReport started',
         ]);
-        assertSpyCallArgs(spies.info, 1, [
+        assertSpyCallArgs(spies.debug, 1, [
           { id: report.id, resolvedBy: resolverId },
           'resolveReport completed',
         ]);
+        assertSpyCalls(spies.info, 0);
       } finally {
         restoreSpies(spies);
       }
@@ -132,10 +134,16 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
         await expect(resolveReport(missingId, resolverId)).rejects.toThrow('REPORT_NOT_FOUND');
 
         assertSpyCalls(spies.error, 1);
-        assertSpyCallArgs(spies.error, 0, [
-          { id: missingId, resolvedBy: resolverId },
-          'resolveReport failed: report not found',
-        ]);
+        const errArg = spies.error.calls[0].args[0] as {
+          err: Error;
+          id: string;
+          resolvedBy: string;
+        };
+        expect(errArg.err).toBeInstanceOf(Error);
+        expect(errArg.err.message).toBe('REPORT_NOT_FOUND');
+        expect(errArg.id).toBe(missingId);
+        expect(errArg.resolvedBy).toBe(resolverId);
+        expect(spies.error.calls[0].args[1]).toBe('resolveReport failed: report not found');
       } finally {
         restoreSpies(spies);
       }

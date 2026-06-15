@@ -40,8 +40,7 @@ export function BeanListPage() {
   useEffect(() => {
     api.get<Bean[]>('/beans').then((data) => {
       setBeans(data as Bean[]);
-    }).catch((err) => {
-      log.error({ err }, 'BeanListPage loadData failed');
+    }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
 

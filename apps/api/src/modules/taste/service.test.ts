@@ -228,9 +228,15 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
       await expect(searchTasteNotes('ab', cache)).rejects.toThrow('QUERY_TOO_SHORT');
 
       assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [{ query: 'ab' }, 'searchTasteNotes failed: query too short']);
+      assertSpyCallArgs(warnSpy, 0, [
+        { queryLength: 2 },
+        'searchTasteNotes failed: query too short',
+      ]);
       assertSpyCalls(debugSpy, 1);
-      assertSpyCallArgs(debugSpy, 0, [{ query: 'ab' }, 'searchTasteNotes started']);
+      assertSpyCallArgs(debugSpy, 0, [
+        { queryLength: 2 },
+        'searchTasteNotes started',
+      ]);
     });
 
     it('should log entry/exit and return matching notes', async () => {
@@ -241,9 +247,12 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
 
       expect(result.map((n: any) => n.id)).toContain(note.id);
       assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ query: 'Zes' }, 'searchTasteNotes started']);
+      assertSpyCallArgs(debugSpy, 0, [
+        { queryLength: 3 },
+        'searchTasteNotes started',
+      ]);
       assertSpyCallArgs(debugSpy, 1, [
-        { query: 'Zes', count: 1 },
+        { queryLength: 3, count: 1 },
         'searchTasteNotes completed',
       ]);
     });

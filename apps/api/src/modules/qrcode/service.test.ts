@@ -98,7 +98,11 @@ describe('QR Code Service Logic', { sanitizeOps: false, sanitizeResources: false
       );
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [{ slug }, 'getRecipeQRCode failed: recipe not found']);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; slug: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('RECIPE_NOT_FOUND');
+      expect(errArg.slug).toBe(slug);
+      expect(errorSpy.calls[0].args[1]).toBe('getRecipeQRCode failed: recipe not found');
       assertSpyCalls(debugSpy, 1);
       assertSpyCallArgs(debugSpy, 0, [{ slug, format: 'png' }, 'getRecipeQRCode started']);
     });

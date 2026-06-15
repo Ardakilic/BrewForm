@@ -32,8 +32,9 @@ export async function getVendor(id: string) {
   log.debug({ vendorId: id }, 'getVendor started');
   const vendor = await model.findById(id);
   if (!vendor) {
-    log.error({ id }, 'getVendor failed: vendor not found');
-    throw new Error('VENDOR_NOT_FOUND');
+    const err = new Error('VENDOR_NOT_FOUND');
+    log.error({ err, id }, 'getVendor failed: vendor not found');
+    throw err;
   }
   log.debug({ vendorId: id }, 'getVendor completed');
   return vendor;
@@ -74,8 +75,9 @@ export async function updateVendor(
   log.debug({ userId, vendorId: id, isAdmin }, 'updateVendor started');
   const vendor = await model.findById(id);
   if (!vendor) {
-    log.error({ id, userId }, 'updateVendor failed: vendor not found');
-    throw new Error('VENDOR_NOT_FOUND');
+    const err = new Error('VENDOR_NOT_FOUND');
+    log.error({ err, id, userId }, 'updateVendor failed: vendor not found');
+    throw err;
   }
   if (vendor.createdBy !== userId && !isAdmin) {
     log.warn({ id, userId }, 'updateVendor failed: forbidden (not creator and not admin)');
@@ -95,8 +97,9 @@ export async function deleteVendor(id: string) {
   log.debug({ vendorId: id }, 'deleteVendor started');
   const vendor = await model.findById(id);
   if (!vendor) {
-    log.error({ id }, 'deleteVendor failed: vendor not found');
-    throw new Error('VENDOR_NOT_FOUND');
+    const err = new Error('VENDOR_NOT_FOUND');
+    log.error({ err, id }, 'deleteVendor failed: vendor not found');
+    throw err;
   }
   await model.softDelete(id);
   log.debug({ vendorId: id }, 'deleteVendor completed');

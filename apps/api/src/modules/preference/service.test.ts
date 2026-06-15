@@ -53,10 +53,11 @@ describe('Preference Service Logic', { sanitizeOps: false, sanitizeResources: fa
       await expect(getPreferences(userId)).rejects.toThrow('PREFERENCES_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { userId },
-        'getPreferences failed: preferences not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('PREFERENCES_NOT_FOUND');
+      expect(errArg.userId).toBe(userId);
+      expect(errorSpy.calls[0].args[1]).toBe('getPreferences failed: preferences not found');
       assertSpyCalls(debugSpy, 1);
       assertSpyCallArgs(debugSpy, 0, [{ userId }, 'getPreferences started']);
     });

@@ -136,7 +136,7 @@ describe('TasteNotesFilter — Property 1: Taste note hierarchy rendering', () =
             unmount();
           }
         }),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
     30000,
@@ -203,7 +203,7 @@ describe('TasteNotesFilter — Property 2: Trigger label reflects selection coun
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
   );

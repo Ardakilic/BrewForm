@@ -76,7 +76,7 @@ Each context provider and hook SHALL use its PascalCase name as the logger name.
 
 ### Requirement: useStaticCacheSync coverage includes all lifecycle and event paths
 
-The `useStaticCacheSync` hook was NOT listed in `TODO_logs.md` but was discovered during the implementation audit. It manages cross-tab cache synchronization via the browser `storage` event and has more side effects than other hooks. The hook's logging coverage SHALL be as complete as a web page component: mount, unmount, and all event-driven actions.
+The `useStaticCacheSync` hook manages cross-tab cache synchronization via the browser `storage` event. The hook's logging coverage SHALL be as complete as a web page component: mount, unmount, and all event-driven actions.
 
 #### Scenario: useStaticCacheSync has module-scoped logger
 

@@ -65,6 +65,10 @@ export async function authMiddleware(c: Context, next: Next) {
   try {
     const payload = await verifyJwt(token);
     if (!payload.sub || payload.type !== 'access') {
+      log.warn(
+        { hasSub: !!payload.sub, type: payload.type },
+        'authMiddleware invalid token payload',
+      );
       return unauthorized(c, 'Invalid token payload');
     }
 

@@ -97,8 +97,7 @@ export function RecipeEditPage() {
         r.currentVersion.packageOpenDate ? r.currentVersion.packageOpenDate.slice(0, 10) : '',
       );
       setGrindDate(r.currentVersion.grindDate ? r.currentVersion.grindDate.slice(0, 10) : '');
-    }).catch((err) => {
-      log.error({ err }, 'RecipeEditPage loadRecipe failed');
+    }).catch(() => {
       setError('Failed to load recipe');
     }).finally(() => setFetching(false));
   }, [id]);
@@ -140,7 +139,6 @@ export function RecipeEditPage() {
       const result = await recipeApi.update(id, data) as Record<string, unknown>;
       navigate(`/recipes/${result.slug}`);
     } catch (err) {
-      log.error({ err }, 'RecipeEditPage saveRecipe failed');
       if (err instanceof ApiError && err.details) {
         const messages = err.details.map((d) => `${d.field}: ${d.message}`);
         setError(messages.map((m) => `• ${m}`).join('\n'));

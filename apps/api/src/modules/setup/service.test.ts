@@ -90,7 +90,11 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       await expect(getSetup(missingId)).rejects.toThrow('SETUP_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [{ id: missingId }, 'getSetup failed: setup not found']);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('SETUP_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errorSpy.calls[0].args[1]).toBe('getSetup failed: setup not found');
       assertSpyCalls(debugSpy, 1);
       assertSpyCallArgs(debugSpy, 0, [{ id: missingId }, 'getSetup started']);
     });
@@ -154,10 +158,12 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       );
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { id: missingId, userId },
-        'updateSetup failed: setup not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('SETUP_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errArg.userId).toBe(userId);
+      expect(errorSpy.calls[0].args[1]).toBe('updateSetup failed: setup not found');
       assertSpyCalls(debugSpy, 1);
     });
 
@@ -197,10 +203,12 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       await expect(deleteSetup(userId, missingId)).rejects.toThrow('SETUP_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { id: missingId, userId },
-        'deleteSetup failed: setup not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('SETUP_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errArg.userId).toBe(userId);
+      expect(errorSpy.calls[0].args[1]).toBe('deleteSetup failed: setup not found');
       assertSpyCalls(debugSpy, 1);
     });
 
@@ -236,10 +244,12 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       await expect(setDefault(userId, missingId)).rejects.toThrow('SETUP_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { id: missingId, userId },
-        'setDefault failed: setup not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('SETUP_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errArg.userId).toBe(userId);
+      expect(errorSpy.calls[0].args[1]).toBe('setDefault failed: setup not found');
       assertSpyCalls(debugSpy, 1);
     });
 

@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
-import { signAccessToken } from '../modules/auth/jwt.ts';
+import { signAccessToken, signRefreshToken } from '../modules/auth/jwt.ts';
 import { adminMiddleware, authMiddleware, log, optionalAuthMiddleware } from './auth.ts';
 
 describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, () => {
@@ -98,6 +98,26 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
         assertSpyCalls(spies.error, 1);
         expect(spies.error.calls[0].args[0].err).toBeInstanceOf(Error);
         expect(spies.error.calls[0].args[1]).toContain('token verification failed');
+      } finally {
+        restoreSpies(spies);
+      }
+    });
+
+    it('refresh token used as access token logs warn and returns 401', async () => {
+      const userId = crypto.randomUUID();
+      const refreshToken = await signRefreshToken(userId);
+      const spies = setupSpies();
+      try {
+        const res = await buildApp().request('/auth', {
+          headers: { Authorization: `Bearer ${refreshToken}` },
+        });
+
+        expect(res.status).toBe(401);
+        assertSpyCalls(spies.warn, 1);
+        const warnArg = spies.warn.calls[0].args[0] as { hasSub: boolean; type: string };
+        expect(warnArg.hasSub).toBe(true);
+        expect(warnArg.type).toBe('refresh');
+        expect(spies.warn.calls[0].args[1]).toBe('authMiddleware invalid token payload');
       } finally {
         restoreSpies(spies);
       }

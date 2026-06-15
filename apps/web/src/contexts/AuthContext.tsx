@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) {
     try {
       const response = await authApi.register(data);
-      log.info({ userId: response.user.id }, 'AuthContext user logged in');
+      log.info({ userId: response.user.id }, 'AuthContext user registered');
       setUser(response.user);
     } catch (err) {
       log.error({ err }, 'AuthContext registration failed');

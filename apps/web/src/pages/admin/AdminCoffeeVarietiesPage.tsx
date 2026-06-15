@@ -155,7 +155,8 @@ export function AdminCoffeeVarietiesPage() {
       );
       setItems(res.data);
       setTotal(res.total);
-    } catch {
+    } catch (err) {
+      log.error({ err }, 'AdminCoffeeVarietiesPage fetchData failed');
     } finally {
       setLoading(false);
     }

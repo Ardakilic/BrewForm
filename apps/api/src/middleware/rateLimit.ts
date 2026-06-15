@@ -57,7 +57,7 @@ export function rateLimitMiddleware(options: {
     c.header('X-RateLimit-Reset', String(Math.ceil(current.resetAt / 1000)));
 
     if (current.count > maxRequests) {
-      log.warn({ ip, limit: maxRequests }, 'rateLimitMiddleware rate limit exceeded');
+      log.warn({ limit: maxRequests }, 'rateLimitMiddleware rate limit exceeded');
       return c.json({
         success: false,
         error: {
@@ -109,7 +109,7 @@ export function authRateLimitMiddleware(options: {
 
     if (current.count > maxAttempts) {
       const userId = c.get('userId');
-      log.warn({ userId, ip, limit: maxAttempts }, 'authRateLimitMiddleware rate limit exceeded');
+      log.warn({ userId, limit: maxAttempts }, 'authRateLimitMiddleware rate limit exceeded');
       return c.json({
         success: false,
         error: {

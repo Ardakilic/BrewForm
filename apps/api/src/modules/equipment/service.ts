@@ -105,8 +105,10 @@ export async function updateEquipment(
   const eq = await model.findById(id);
   if (!eq) throw new Error('EQUIPMENT_NOT_FOUND');
   if (eq.createdBy !== userId) throw new Error('FORBIDDEN');
+  await cacheProvider?.delete(['equipment-detail', id]);
+  const result = await model.update(id, data);
   log.debug({ userId, id }, 'updateEquipment completed');
-  return model.update(id, data);
+  return result;
 }
 
 /**
@@ -122,6 +124,7 @@ export async function deleteEquipment(userId: string, id: string) {
   const eq = await model.findById(id);
   if (!eq) throw new Error('EQUIPMENT_NOT_FOUND');
   if (eq.createdBy !== userId) throw new Error('FORBIDDEN');
+  await cacheProvider?.delete(['equipment-detail', id]);
   await model.softDelete(id);
   log.debug({ userId, id }, 'deleteEquipment completed');
 }

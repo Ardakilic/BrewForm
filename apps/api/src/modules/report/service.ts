@@ -16,9 +16,12 @@ export async function createReport(
   entityId: string,
   reason: string,
 ) {
-  log.info({ reporterId, entityType, entityId }, 'createReport started');
+  log.debug({ reporterId, entityType, entityId }, 'createReport started');
   const result = await model.create(reporterId, entityType, entityId, reason);
-  log.info({ reporterId, entityType, entityId, reportId: result.id }, 'createReport completed');
+  log.debug(
+    { reporterId, entityType, entityId, reportId: result.id },
+    'createReport completed',
+  );
   return result;
 }
 
@@ -38,17 +41,18 @@ export async function listReports(status: string | undefined, page: number, perP
  * @throws REPORT_ALREADY_RESOLVED if the report was already resolved
  */
 export async function resolveReport(id: string, resolvedBy: string) {
-  log.info({ id, resolvedBy }, 'resolveReport started');
+  log.debug({ id, resolvedBy }, 'resolveReport started');
   const report = await model.findById(id);
   if (!report) {
-    log.error({ id, resolvedBy }, 'resolveReport failed: report not found');
-    throw new Error('REPORT_NOT_FOUND');
+    const err = new Error('REPORT_NOT_FOUND');
+    log.error({ err, id, resolvedBy }, 'resolveReport failed: report not found');
+    throw err;
   }
   if (report.status === 'resolved') {
     log.warn({ id, resolvedBy }, 'resolveReport failed: report already resolved');
     throw new Error('REPORT_ALREADY_RESOLVED');
   }
   const result = await model.resolve(id, resolvedBy);
-  log.info({ id, resolvedBy }, 'resolveReport completed');
+  log.debug({ id, resolvedBy }, 'resolveReport completed');
   return result;
 }

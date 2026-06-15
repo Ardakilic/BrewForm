@@ -26,7 +26,8 @@ export function AdminBadgesPage() {
   useEffect(() => {
     api.get<Badge[]>('/badges').then((data) => {
       setBadges(data as Badge[]);
-    }).catch(() => {
+    }).catch((err) => {
+      log.error({ err }, 'AdminBadgesPage loadBadges failed');
     }).finally(() => setLoading(false));
   }, []);
 

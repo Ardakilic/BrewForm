@@ -12,7 +12,10 @@ export function useDebounce<T>(value: T, delay: number = 300): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
-    log.trace?.({ value }, 'useDebounce timer set');
+    log.trace?.(
+      { valueType: typeof value, hasValue: !!value },
+      'useDebounce timer set',
+    );
     const timer = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);

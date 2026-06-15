@@ -22,8 +22,9 @@ export async function getSetup(id: string) {
   log.debug({ id }, 'getSetup started');
   const setup = await model.findById(id);
   if (!setup) {
-    log.error({ id }, 'getSetup failed: setup not found');
-    throw new Error('SETUP_NOT_FOUND');
+    const err = new Error('SETUP_NOT_FOUND');
+    log.error({ err, id }, 'getSetup failed: setup not found');
+    throw err;
   }
   log.debug({ id }, 'getSetup completed');
   return setup;
@@ -69,8 +70,9 @@ export async function updateSetup(userId: string, id: string, data: UpdateSetupP
   log.debug({ userId, id }, 'updateSetup started');
   const setup = await model.findById(id);
   if (!setup) {
-    log.error({ id, userId }, 'updateSetup failed: setup not found');
-    throw new Error('SETUP_NOT_FOUND');
+    const err = new Error('SETUP_NOT_FOUND');
+    log.error({ err, id, userId }, 'updateSetup failed: setup not found');
+    throw err;
   }
   if (setup.userId !== userId) {
     log.warn({ id, userId, ownerId: setup.userId }, 'updateSetup failed: forbidden');
@@ -83,8 +85,9 @@ export async function updateSetup(userId: string, id: string, data: UpdateSetupP
   }
   const updated = await model.update(id, data);
   if (!updated) {
-    log.error({ id, userId }, 'updateSetup failed: setup not found');
-    throw new Error('SETUP_NOT_FOUND');
+    const err = new Error('SETUP_NOT_FOUND');
+    log.error({ err, id, userId }, 'updateSetup failed: setup not found');
+    throw err;
   }
   log.debug({ userId, id }, 'updateSetup completed');
   return updated;
@@ -100,8 +103,9 @@ export async function deleteSetup(userId: string, id: string) {
   log.debug({ userId, id }, 'deleteSetup started');
   const setup = await model.findById(id);
   if (!setup) {
-    log.error({ id, userId }, 'deleteSetup failed: setup not found');
-    throw new Error('SETUP_NOT_FOUND');
+    const err = new Error('SETUP_NOT_FOUND');
+    log.error({ err, id, userId }, 'deleteSetup failed: setup not found');
+    throw err;
   }
   if (setup.userId !== userId) {
     log.warn({ id, userId, ownerId: setup.userId }, 'deleteSetup failed: forbidden');
@@ -109,8 +113,9 @@ export async function deleteSetup(userId: string, id: string) {
   }
   const deleted = await model.softDelete(id);
   if (!deleted) {
-    log.error({ id, userId }, 'deleteSetup failed: setup not found');
-    throw new Error('SETUP_NOT_FOUND');
+    const err = new Error('SETUP_NOT_FOUND');
+    log.error({ err, id, userId }, 'deleteSetup failed: setup not found');
+    throw err;
   }
   log.debug({ userId, id }, 'deleteSetup completed');
 }
@@ -126,8 +131,9 @@ export async function setDefault(userId: string, id: string) {
   log.debug({ userId, id }, 'setDefault started');
   const setup = await model.findById(id);
   if (!setup) {
-    log.error({ id, userId }, 'setDefault failed: setup not found');
-    throw new Error('SETUP_NOT_FOUND');
+    const err = new Error('SETUP_NOT_FOUND');
+    log.error({ err, id, userId }, 'setDefault failed: setup not found');
+    throw err;
   }
   if (setup.userId !== userId) {
     log.warn({ id, userId, ownerId: setup.userId }, 'setDefault failed: forbidden');

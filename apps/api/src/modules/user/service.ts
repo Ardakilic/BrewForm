@@ -22,8 +22,9 @@ export async function getProfile(userId: string) {
   log.debug({ userId }, 'getProfile started');
   const user = await model.findById(userId);
   if (!user) {
-    log.error({ userId }, 'getProfile failed: user not found');
-    throw new Error('USER_NOT_FOUND');
+    const err = new Error('USER_NOT_FOUND');
+    log.error({ err, userId }, 'getProfile failed: user not found');
+    throw err;
   }
   const { passwordHash: _passwordHash, ...safe } = user;
   const stats = await model.getUserStats(userId);
@@ -42,21 +43,23 @@ export async function getPublicProfile(username: string, requesterId?: string) {
   log.debug({ username, requesterId }, 'getPublicProfile started');
   const user = await model.findByUsername(username);
   if (!user) {
-    log.error({ username }, 'getPublicProfile failed: user not found');
-    throw new Error('USER_NOT_FOUND');
+    const err = new Error('USER_NOT_FOUND');
+    log.error({ err, username }, 'getPublicProfile failed: user not found');
+    throw err;
   }
   const { passwordHash: _passwordHash, email: _email, ...safe } = user;
   const [stats, recipes] = await Promise.all([
     model.getUserStats(user.id),
     model.getUserPublicRecipes(user.id),
   ]);
+  const isFollowing = requesterId ? await followModel.isFollowing(requesterId, user.id) : false;
   log.debug({ username, requesterId }, 'getPublicProfile completed');
   return {
     ...safe,
     ...stats,
     recipes,
     badges: [], // badges are not yet fetched for public profiles
-    isFollowing: requesterId ? await followModel.isFollowing(requesterId, user.id) : false,
+    isFollowing,
   };
 }
 
@@ -75,8 +78,9 @@ export async function updateProfile(
   if (data.bio !== undefined) data.bio = sanitizeText(data.bio);
   const user = await model.updateProfile(userId, data);
   if (!user) {
-    log.error({ userId }, 'updateProfile failed: user not found');
-    throw new Error('USER_NOT_FOUND');
+    const err = new Error('USER_NOT_FOUND');
+    log.error({ err, userId }, 'updateProfile failed: user not found');
+    throw err;
   }
   const { passwordHash: _passwordHash, ...safe } = user;
   log.debug({ userId }, 'updateProfile completed');

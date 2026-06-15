@@ -85,7 +85,11 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
       await expect(getBean(missingId)).rejects.toThrow('BEAN_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [{ id: missingId }, 'getBean failed: bean not found']);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('BEAN_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errorSpy.calls[0].args[1]).toBe('getBean failed: bean not found');
       assertSpyCalls(debugSpy, 1);
       assertSpyCallArgs(debugSpy, 0, [{ id: missingId }, 'getBean started']);
     });
@@ -124,10 +128,12 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
       await expect(updateBean(userId, missingId, { name: 'X' })).rejects.toThrow('BEAN_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { id: missingId, userId },
-        'updateBean failed: bean not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('BEAN_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errArg.userId).toBe(userId);
+      expect(errorSpy.calls[0].args[1]).toBe('updateBean failed: bean not found');
       assertSpyCalls(debugSpy, 1);
     });
 
@@ -167,10 +173,12 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
       await expect(deleteBean(userId, missingId)).rejects.toThrow('BEAN_NOT_FOUND');
 
       assertSpyCalls(errorSpy, 1);
-      assertSpyCallArgs(errorSpy, 0, [
-        { id: missingId, userId },
-        'deleteBean failed: bean not found',
-      ]);
+      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errArg.err).toBeInstanceOf(Error);
+      expect(errArg.err.message).toBe('BEAN_NOT_FOUND');
+      expect(errArg.id).toBe(missingId);
+      expect(errArg.userId).toBe(userId);
+      expect(errorSpy.calls[0].args[1]).toBe('deleteBean failed: bean not found');
       assertSpyCalls(debugSpy, 1);
     });
 
