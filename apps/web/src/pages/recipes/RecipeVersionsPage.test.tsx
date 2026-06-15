@@ -3,6 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { RecipeVersionsPage } from './RecipeVersionsPage.tsx';
 import { MemoryRouter } from 'react-router';
 
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
 vi.mock('react-router', async () => {
   const actual = await vi.importActual('react-router');
   return { ...actual, useParams: vi.fn() };
@@ -35,6 +40,10 @@ const enT = (key: string) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogger.debug.mockClear();
+  mockLogger.info.mockClear();
+  mockLogger.warn.mockClear();
+  mockLogger.error.mockClear();
   mockUseParams.mockReturnValue({ slug: 'test-recipe' });
   mockUseTranslation.mockReturnValue({
     locale: 'en' as const,
@@ -45,6 +54,26 @@ beforeEach(() => {
 });
 
 describe('RecipeVersionsPage', () => {
+  it('logs mount and unmount', async () => {
+    mockApi.get.mockResolvedValue({
+      title: 'My Recipe',
+      slug: 'test-recipe',
+      versions: [],
+    });
+    const { unmount } = render(
+      <MemoryRouter>
+        <RecipeVersionsPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeVersionsPage mounted')
+    );
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeVersionsPage unmounted')
+    );
+  });
+
   it('renders version list on successful load', async () => {
     mockApi.get.mockResolvedValue({
       title: 'My Recipe',
@@ -86,5 +115,9 @@ describe('RecipeVersionsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('No results found')).toBeInTheDocument();
     });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'RecipeVersionsPage loadData failed',
+    );
   });
 });

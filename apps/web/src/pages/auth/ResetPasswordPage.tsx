@@ -1,7 +1,10 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { authApi } from '../../api/index.ts';
+import { createLogger } from '@/utils/logger.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+
+const log = createLogger('ResetPasswordPage');
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -12,6 +15,13 @@ export function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    log.debug({}, 'ResetPasswordPage mounted');
+    return () => {
+      log.debug({}, 'ResetPasswordPage unmounted');
+    };
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -32,6 +42,7 @@ export function ResetPasswordPage() {
       await authApi.resetPassword({ token, newPassword });
       setSuccess(true);
     } catch (err: unknown) {
+      log.error({ err }, 'ResetPasswordPage resetPassword failed');
       const message = err instanceof Error ? err.message : 'Failed to reset password';
       setError(message);
     } finally {

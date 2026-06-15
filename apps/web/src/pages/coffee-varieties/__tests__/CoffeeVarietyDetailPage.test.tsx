@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { CoffeeVarietyDetailPage } from '../CoffeeVarietyDetailPage.tsx';
 
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
 vi.mock('react-router', () => ({
   Link: (
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
@@ -148,6 +153,10 @@ const mockRecipes = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogger.debug.mockClear();
+  mockLogger.info.mockClear();
+  mockLogger.warn.mockClear();
+  mockLogger.error.mockClear();
   mockUseParams.mockReturnValue({ id: 'var-1' });
   mockUseTranslation.mockReturnValue(defaultTranslation);
   (mockApiGet as ReturnType<typeof vi.fn>)
@@ -157,6 +166,17 @@ beforeEach(() => {
 
 /** Tests for CoffeeVarietyDetailPage — loading, error, detail fields, recipes, breadcrumb, SEO props, and i18n. */
 describe('CoffeeVarietyDetailPage', () => {
+  it('logs mount and unmount', async () => {
+    const { unmount } = render(<CoffeeVarietyDetailPage />);
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietyDetailPage mounted')
+    );
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietyDetailPage unmounted')
+    );
+  });
+
   it('shows loading skeleton while fetching', () => {
     (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
     (mockApiGet as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
@@ -208,6 +228,10 @@ describe('CoffeeVarietyDetailPage', () => {
 
     await waitFor(() => expect(screen.getByText('Variety not found')).toBeInTheDocument());
     expect(screen.getByRole('link', { name: 'Back to varieties' })).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'CoffeeVarietyDetailPage loadData failed',
+    );
   });
 
   it('shows error state in Turkish', async () => {
@@ -218,6 +242,10 @@ describe('CoffeeVarietyDetailPage', () => {
 
     await waitFor(() => expect(screen.getByText('Çeşit bulunamadı')).toBeInTheDocument());
     expect(screen.getByRole('link', { name: 'Çeşitlere dön' })).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'CoffeeVarietyDetailPage loadData failed',
+    );
   });
 
   it('renders recipes section', async () => {

@@ -11,9 +11,14 @@
  * - `unitSystem` is undefined
  */
 import { useAuth } from '../contexts/AuthContext.tsx';
+import { createLogger } from '@/utils/logger.ts';
 import type { UnitSystem } from '@brewform/shared/types';
+
+const log = createLogger('useUnitSystem');
 
 export function useUnitSystem(): UnitSystem {
   const { user } = useAuth();
-  return user?.preferences?.unitSystem ?? 'metric';
+  const unitSystem = user?.preferences?.unitSystem ?? 'metric';
+  log.trace?.({ unitSystem }, 'useUnitSystem unit system read');
+  return unitSystem;
 }

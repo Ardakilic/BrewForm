@@ -5,7 +5,10 @@ import { api } from '../../api/client.ts';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+
+const log = createLogger('EquipmentCatalogPage');
 
 interface CatalogEquipmentItem {
   id: string;
@@ -30,6 +33,13 @@ export function EquipmentCatalogPage() {
   const type = searchParams.get('type') || '';
   const search = searchParams.get('search') || '';
   const debouncedSearch = useDebounce(search, 300);
+
+  useEffect(() => {
+    log.debug({}, 'EquipmentCatalogPage mounted');
+    return () => {
+      log.debug({}, 'EquipmentCatalogPage unmounted');
+    };
+  }, []);
 
   const categoryButtons = [
     { value: 'espresso_machine', label: t('equipment.category.espresso_machine') },
@@ -65,7 +75,10 @@ export function EquipmentCatalogPage() {
             Math.ceil((data?.meta?.pagination?.total ?? items.length) / 12) || 1,
         );
       })
-      .catch(() => setError(t('equipment.catalog.error.load')))
+      .catch((err) => {
+        log.error({ err }, 'EquipmentCatalogPage loadData failed');
+        setError(t('equipment.catalog.error.load'));
+      })
       .finally(() => setLoading(false));
   }, [page, type, debouncedSearch, retryCounter]);
 

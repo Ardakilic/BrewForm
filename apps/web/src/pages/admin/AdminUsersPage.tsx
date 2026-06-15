@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { adminApi, type AdminUser } from '../../api/index.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminUsersPage');
 
 interface PaginationState {
   page: number;
@@ -28,6 +31,13 @@ export function AdminUsersPage() {
     } | null
   >(null);
 
+  useEffect(() => {
+    log.debug({}, 'AdminUsersPage mounted');
+    return () => {
+      log.debug({}, 'AdminUsersPage unmounted');
+    };
+  }, []);
+
   function fetchUsers(page: number, q: string) {
     setLoading(true);
     setError('');
@@ -42,6 +52,7 @@ export function AdminUsersPage() {
         totalPages: Math.ceil(data.total / prev.perPage),
       }));
     }).catch((err) => {
+      log.error({ err }, 'AdminUsersPage fetchUsers failed');
       setError((err as { message?: string })?.message || 'Failed to load users.');
       setUsers([]);
       setPagination((prev) => ({ ...prev, page: 1, total: 0, totalPages: 0 }));

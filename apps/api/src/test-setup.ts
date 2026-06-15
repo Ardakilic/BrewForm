@@ -12,3 +12,4 @@ if (!Deno.env.get('DATABASE_URL')) {
 if (!Deno.env.get('JWT_SECRET')) {
   Deno.env.set('JWT_SECRET', 'a-very-long-secret-key-for-testing-12345');
 }
+Deno.env.set('LOG_LEVEL', 'silent');

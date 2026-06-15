@@ -1,7 +1,10 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { authApi } from '../../api/index.ts';
+import { createLogger } from '@/utils/logger.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+
+const log = createLogger('ForgotPasswordPage');
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -9,6 +12,13 @@ export function ForgotPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'ForgotPasswordPage mounted');
+    return () => {
+      log.debug({}, 'ForgotPasswordPage unmounted');
+    };
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -18,6 +28,7 @@ export function ForgotPasswordPage() {
       await authApi.forgotPassword({ email });
       setSuccess(true);
     } catch (err: unknown) {
+      log.error({ err }, 'ForgotPasswordPage sendResetEmail failed');
       const message = err instanceof Error ? err.message : 'Failed to send reset email';
       setError(message);
     } finally {

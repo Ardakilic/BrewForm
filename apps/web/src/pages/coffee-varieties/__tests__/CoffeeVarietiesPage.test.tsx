@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { CoffeeVarietiesPage } from '../CoffeeVarietiesPage.tsx';
 
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
 vi.mock('react-router', () => ({
   Link: (
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
@@ -115,6 +120,10 @@ function makePaginatedResponse(items: unknown[], total: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogger.debug.mockClear();
+  mockLogger.info.mockClear();
+  mockLogger.warn.mockClear();
+  mockLogger.error.mockClear();
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseSearchParams.mockReturnValue(makeSearchParams());
   mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
@@ -122,6 +131,18 @@ beforeEach(() => {
 
 /** Tests for CoffeeVarietiesPage — rendering, category tabs, search, pagination, SEO, and i18n. */
 describe('CoffeeVarietiesPage', () => {
+  it('logs mount and unmount', async () => {
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+    const { unmount } = render(<CoffeeVarietiesPage />);
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage mounted')
+    );
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage unmounted')
+    );
+  });
+
   it('renders page title and subtitle — English', async () => {
     render(<CoffeeVarietiesPage />);
 
@@ -210,6 +231,10 @@ describe('CoffeeVarietiesPage', () => {
 
     expect(screen.getByText('Failed to load varieties')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'CoffeeVarietiesPage loadData failed',
+    );
   });
 
   it('shows error state with retry button in Turkish', async () => {
@@ -221,6 +246,10 @@ describe('CoffeeVarietiesPage', () => {
 
     expect(screen.getByText('Çeşitler yüklenemedi')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tekrar dene' })).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'CoffeeVarietiesPage loadData failed',
+    );
   });
 
   it('renders category filter buttons — English', async () => {

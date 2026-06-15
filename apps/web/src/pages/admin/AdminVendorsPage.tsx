@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminVendorsPage');
 
 interface Vendor {
   id: string;
@@ -15,6 +18,13 @@ export function AdminVendorsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', website: '', description: '' });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    log.debug({}, 'AdminVendorsPage mounted');
+    return () => {
+      log.debug({}, 'AdminVendorsPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     api.get<Vendor[]>('/admin/vendors').then((data) => {

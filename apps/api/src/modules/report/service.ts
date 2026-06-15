@@ -5,6 +5,9 @@
  * and resolution with guard against double-resolving.
  */
 import * as model from './model.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+
+export const log = createLogger('report-service');
 
 /** Create a new content report submitted by a user. */
 export async function createReport(
@@ -13,12 +16,18 @@ export async function createReport(
   entityId: string,
   reason: string,
 ) {
-  return model.create(reporterId, entityType, entityId, reason);
+  log.info({ reporterId, entityType, entityId }, 'createReport started');
+  const result = await model.create(reporterId, entityType, entityId, reason);
+  log.info({ reporterId, entityType, entityId, reportId: result.id }, 'createReport completed');
+  return result;
 }
 
 /** List reports with optional status filter and pagination. */
 export async function listReports(status: string | undefined, page: number, perPage: number) {
-  return model.findMany(status, page, perPage);
+  log.debug({ status, page, perPage }, 'listReports started');
+  const result = await model.findMany(status, page, perPage);
+  log.debug({ status, page, perPage, total: result.total }, 'listReports completed');
+  return result;
 }
 
 /**
@@ -29,8 +38,17 @@ export async function listReports(status: string | undefined, page: number, perP
  * @throws REPORT_ALREADY_RESOLVED if the report was already resolved
  */
 export async function resolveReport(id: string, resolvedBy: string) {
+  log.info({ id, resolvedBy }, 'resolveReport started');
   const report = await model.findById(id);
-  if (!report) throw new Error('REPORT_NOT_FOUND');
-  if (report.status === 'resolved') throw new Error('REPORT_ALREADY_RESOLVED');
-  return model.resolve(id, resolvedBy);
+  if (!report) {
+    log.error({ id, resolvedBy }, 'resolveReport failed: report not found');
+    throw new Error('REPORT_NOT_FOUND');
+  }
+  if (report.status === 'resolved') {
+    log.warn({ id, resolvedBy }, 'resolveReport failed: report already resolved');
+    throw new Error('REPORT_ALREADY_RESOLVED');
+  }
+  const result = await model.resolve(id, resolvedBy);
+  log.info({ id, resolvedBy }, 'resolveReport completed');
+  return result;
 }

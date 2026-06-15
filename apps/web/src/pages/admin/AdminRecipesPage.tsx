@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminRecipesPage');
 
 interface Recipe {
   id: string;
@@ -17,11 +20,19 @@ export function AdminRecipesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    log.debug({}, 'AdminRecipesPage mounted');
+    return () => {
+      log.debug({}, 'AdminRecipesPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     // The API uses paginated() which puts the array directly in data.data.
     // The client unwraps data.data, so the resolved value is the array itself.
     api.get<Recipe[]>('/admin/recipes?perPage=50').then((data: Recipe[]) => {
       setRecipes(Array.isArray(data) ? data : []);
-    }).catch(() => {
+    }).catch((err) => {
+      log.error({ err }, 'AdminRecipesPage loadData failed');
     }).finally(() => setLoading(false));
   }, []);
 

@@ -4,7 +4,10 @@ import { Link, useParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+
+const log = createLogger('CoffeeVarietyDetailPage');
 
 interface VarietyDetail {
   id: string;
@@ -49,6 +52,13 @@ export function CoffeeVarietyDetailPage() {
   const { t } = useTranslation();
 
   useEffect(() => {
+    log.debug({}, 'CoffeeVarietyDetailPage mounted');
+    return () => {
+      log.debug({}, 'CoffeeVarietyDetailPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     if (!id) {
       setLoading(false);
       return;
@@ -67,7 +77,10 @@ export function CoffeeVarietyDetailPage() {
           : (Array.isArray(recipesData) ? recipesData : []);
         setRecipes(items);
       })
-      .catch(() => setError(true))
+      .catch((err) => {
+        log.error({ err }, 'CoffeeVarietyDetailPage loadData failed');
+        setError(true);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 

@@ -4,6 +4,9 @@ import { Popover } from '@base-ui/react/popover';
 import { api } from '../api/index.ts';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
+import { createLogger } from '../utils/logger.ts';
+
+const log = createLogger('TasteNotesPage');
 
 interface TasteCategory {
   id: string;
@@ -215,9 +218,17 @@ export function TasteNotesPage() {
   const { t } = useTranslation();
 
   useEffect(() => {
+    log.debug({}, 'TasteNotesPage mounted');
+    return () => {
+      log.debug({}, 'TasteNotesPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     api.get<TasteCategory[]>('/taste-notes/hierarchy').then((data: TasteCategory[] | null) => {
       setHierarchy((data ?? []) as TasteCategory[]);
-    }).catch(() => {
+    }).catch((err) => {
+      log.error({ err }, 'TasteNotesPage loadData failed');
     }).finally(() => setLoading(false));
   }, []);
 

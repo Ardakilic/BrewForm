@@ -6,6 +6,11 @@ import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { authApi, userApi } from '../../api/index.ts';
 
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
 vi.mock('../../api/index.ts', () => ({
   api: {
     get: vi.fn(),
@@ -56,6 +61,20 @@ function renderRegisterPage() {
 describe('RegisterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogger.debug.mockClear();
+    mockLogger.info.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.error.mockClear();
+  });
+
+  it('logs mount and unmount', async () => {
+    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: true });
+    const { unmount } = renderRegisterPage();
+    await waitFor(() => expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RegisterPage mounted'));
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RegisterPage unmounted')
+    );
   });
 
   it('should show loading state while checking registration status', () => {
@@ -97,6 +116,10 @@ describe('RegisterPage', () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText('you@example.com')).toBeInTheDocument();
     });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'RegisterPage registration status check failed',
+    );
   });
 
   it('should display structured error message from ApiError on registration failure', async () => {
@@ -121,5 +144,9 @@ describe('RegisterPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Validation failed')).toBeInTheDocument();
     });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'RegisterPage registration failed',
+    );
   });
 });

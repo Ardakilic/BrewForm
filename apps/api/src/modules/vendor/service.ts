@@ -9,7 +9,7 @@ import * as model from './model.ts';
 import { VendorCreateSchema, VendorUpdateSchema } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger/index.ts';
 
-const log = createLogger('vendor-service');
+export const log = createLogger('vendor-service');
 
 /** List all non-deleted vendors with pagination. */
 export async function listVendors(page: number, perPage: number) {
@@ -31,7 +31,10 @@ export async function searchVendors(query: string) {
 export async function getVendor(id: string) {
   log.debug({ vendorId: id }, 'getVendor started');
   const vendor = await model.findById(id);
-  if (!vendor) throw new Error('VENDOR_NOT_FOUND');
+  if (!vendor) {
+    log.error({ id }, 'getVendor failed: vendor not found');
+    throw new Error('VENDOR_NOT_FOUND');
+  }
   log.debug({ vendorId: id }, 'getVendor completed');
   return vendor;
 }
@@ -70,8 +73,14 @@ export async function updateVendor(
 ) {
   log.debug({ userId, vendorId: id, isAdmin }, 'updateVendor started');
   const vendor = await model.findById(id);
-  if (!vendor) throw new Error('VENDOR_NOT_FOUND');
-  if (vendor.createdBy !== userId && !isAdmin) throw new Error('FORBIDDEN');
+  if (!vendor) {
+    log.error({ id, userId }, 'updateVendor failed: vendor not found');
+    throw new Error('VENDOR_NOT_FOUND');
+  }
+  if (vendor.createdBy !== userId && !isAdmin) {
+    log.warn({ id, userId }, 'updateVendor failed: forbidden (not creator and not admin)');
+    throw new Error('FORBIDDEN');
+  }
   const result = await model.update(id, data);
   log.debug({ userId, vendorId: id }, 'updateVendor completed');
   return result;
@@ -85,7 +94,10 @@ export async function updateVendor(
 export async function deleteVendor(id: string) {
   log.debug({ vendorId: id }, 'deleteVendor started');
   const vendor = await model.findById(id);
-  if (!vendor) throw new Error('VENDOR_NOT_FOUND');
+  if (!vendor) {
+    log.error({ id }, 'deleteVendor failed: vendor not found');
+    throw new Error('VENDOR_NOT_FOUND');
+  }
   await model.softDelete(id);
   log.debug({ vendorId: id }, 'deleteVendor completed');
 }

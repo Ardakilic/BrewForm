@@ -5,7 +5,10 @@ import { api } from '../../api/client.ts';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+
+const log = createLogger('CoffeeVarietiesPage');
 
 interface CoffeeVarietyItem {
   id: string;
@@ -32,6 +35,13 @@ export function CoffeeVarietiesPage() {
   const search = searchParams.get('search') || '';
   const debouncedSearch = useDebounce(search, 300);
 
+  useEffect(() => {
+    log.debug({}, 'CoffeeVarietiesPage mounted');
+    return () => {
+      log.debug({}, 'CoffeeVarietiesPage unmounted');
+    };
+  }, []);
+
   const categoryButtons = [
     { value: '', label: t('common.all') },
     { value: 'variety', label: t('coffeeVarieties.category.variety') },
@@ -56,7 +66,10 @@ export function CoffeeVarietiesPage() {
         setVarieties(items);
         setTotalPages(Math.ceil((data?.meta?.pagination?.total ?? items.length) / 12) || 1);
       })
-      .catch(() => setError(t('coffeeVarieties.error.load')))
+      .catch((err) => {
+        log.error({ err }, 'CoffeeVarietiesPage loadData failed');
+        setError(t('coffeeVarieties.error.load'));
+      })
       .finally(() => setLoading(false));
   }, [page, category, debouncedSearch, retryNonce]);
 

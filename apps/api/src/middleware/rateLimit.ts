@@ -1,11 +1,31 @@
 import type { Context, Next } from 'hono';
 import { cacheProvider } from '../utils/cache/singleton.ts';
+import { createLogger } from '../utils/logger/index.ts';
 
+/**
+ * Rate limiting middleware.
+ *
+ * Provides IP-based and authentication-based rate limiters backed by the
+ * shared cache provider. Tracks request counts per sliding window and returns
+ * 429 responses when limits are exceeded.
+ */
+
+export const log = createLogger('rate-limit-middleware');
+
+/** In-memory rate limit tracking entry. */
 interface RateLimitEntry {
   count: number;
   resetAt: number;
 }
 
+/**
+ * IP-based rate limiter.
+ *
+ * @param options.maxRequests - Maximum allowed requests per window (defaults to 100).
+ * @param options.windowMs - Sliding window duration in milliseconds (defaults to 60_000).
+ * @param options.keyPrefix - Optional prefix for the cache key.
+ * @returns Hono middleware that returns 429 when the limit is exceeded.
+ */
 export function rateLimitMiddleware(options: {
   windowMs?: number;
   maxRequests?: number;
@@ -37,6 +57,7 @@ export function rateLimitMiddleware(options: {
     c.header('X-RateLimit-Reset', String(Math.ceil(current.resetAt / 1000)));
 
     if (current.count > maxRequests) {
+      log.warn({ ip, limit: maxRequests }, 'rateLimitMiddleware rate limit exceeded');
       return c.json({
         success: false,
         error: {
@@ -50,6 +71,14 @@ export function rateLimitMiddleware(options: {
   };
 }
 
+/**
+ * Authentication endpoint rate limiter.
+ *
+ * @param options.maxAttempts - Maximum allowed attempts per window (defaults to 5).
+ * @param options.windowMs - Sliding window duration in milliseconds (defaults to 15 * 60_000).
+ * @param options.keyPrefix - Optional prefix for the cache key.
+ * @returns Hono middleware that returns 429 when the attempt limit is exceeded.
+ */
 export function authRateLimitMiddleware(options: {
   windowMs?: number;
   maxAttempts?: number;
@@ -79,6 +108,8 @@ export function authRateLimitMiddleware(options: {
     c.header('X-RateLimit-Reset', String(Math.ceil(current.resetAt / 1000)));
 
     if (current.count > maxAttempts) {
+      const userId = c.get('userId');
+      log.warn({ userId, ip, limit: maxAttempts }, 'authRateLimitMiddleware rate limit exceeded');
       return c.json({
         success: false,
         error: {

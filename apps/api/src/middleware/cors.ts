@@ -1,5 +1,9 @@
 import { cors } from 'hono/cors';
 import { config } from '../config/index.ts';
+import { createLogger } from '../utils/logger/index.ts';
+
+// deno-lint-ignore no-unused-vars
+const log = createLogger('cors-middleware');
 
 /**
  * CORS Configuration

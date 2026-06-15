@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminCompatibilityPage');
 
 interface CompatibilityRule {
   id: string;
@@ -12,6 +15,13 @@ export function AdminCompatibilityPage() {
   const [rules, setRules] = useState<CompatibilityRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [flushing, setFlushing] = useState(false);
+
+  useEffect(() => {
+    log.debug({}, 'AdminCompatibilityPage mounted');
+    return () => {
+      log.debug({}, 'AdminCompatibilityPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     api.get<CompatibilityRule[]>('/admin/compatibility').then((data) => {

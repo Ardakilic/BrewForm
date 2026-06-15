@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminBadgesPage');
 
 interface Badge {
   id: string;
@@ -12,6 +15,13 @@ interface Badge {
 export function AdminBadgesPage() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    log.debug({}, 'AdminBadgesPage mounted');
+    return () => {
+      log.debug({}, 'AdminBadgesPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     api.get<Badge[]>('/badges').then((data) => {
