@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminCachePage');
 
 export function AdminCachePage() {
   const [flushing, setFlushing] = useState(false);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    log.debug({}, 'AdminCachePage mounted');
+    return () => {
+      log.debug({}, 'AdminCachePage unmounted');
+    };
+  }, []);
 
   async function flushAll() {
     setFlushing(true);
@@ -11,7 +21,8 @@ export function AdminCachePage() {
     try {
       await api.post('/admin/cache/flush', {});
       setMessage('Cache flushed successfully!');
-    } catch {
+    } catch (err) {
+      log.error({ err }, 'AdminCachePage flushAll failed');
       setMessage('Failed to flush cache.');
     } finally {
       setFlushing(false);

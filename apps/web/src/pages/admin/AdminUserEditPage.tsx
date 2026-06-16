@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { adminApi, type AdminUserDetail } from '../../api/index.ts';
+import { createLogger } from '../../utils/logger.ts';
 import { AdminUpdateUserSchema } from '@brewform/shared/schemas';
+
+const log = createLogger('AdminUserEditPage');
 
 export function AdminUserEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +31,13 @@ export function AdminUserEditPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    log.debug({}, 'AdminUserEditPage mounted');
+    return () => {
+      log.debug({}, 'AdminUserEditPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
     if (currentUser && id === currentUser.id) {
       navigate('/admin/users', {
@@ -50,6 +60,7 @@ export function AdminUserEditPage() {
         isBanned: data.isBanned,
       });
     }).catch((err) => {
+      log.error({ err }, 'AdminUserEditPage loadData failed');
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
         setNotFound(true);

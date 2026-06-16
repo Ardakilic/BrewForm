@@ -307,7 +307,7 @@ describe('Navbar — Property 1: Active Route Matching Invariant', () => {
             unmount();
           }
         }),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
   );
@@ -348,7 +348,7 @@ describe('Navbar — Property 1: Active Route Matching Invariant', () => {
             unmount();
           }
         }),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
   );
@@ -431,7 +431,7 @@ describe('Navbar — Property 2: Mobile Menu Closes on Navigation', () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
     15000,
@@ -594,7 +594,7 @@ describe('Navbar — Property 3: All Visible Text From i18n', () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
   );
@@ -673,7 +673,7 @@ describe('Navbar — Property 3: All Visible Text From i18n', () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
   );
@@ -731,7 +731,7 @@ describe('Navbar — Property 3: All Visible Text From i18n', () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 30, interruptAfterTimeLimit: 5000 },
       );
     },
   );

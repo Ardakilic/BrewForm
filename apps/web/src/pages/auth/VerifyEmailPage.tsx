@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { authApi } from '../../api/index.ts';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('VerifyEmailPage');
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
@@ -9,6 +12,13 @@ export function VerifyEmailPage() {
   const token = searchParams.get('token');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    log.debug({}, 'VerifyEmailPage mounted');
+    return () => {
+      log.debug({}, 'VerifyEmailPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -24,6 +34,7 @@ export function VerifyEmailPage() {
         setStatus('success');
       })
       .catch((err) => {
+        log.error({ err }, 'VerifyEmailPage token verification failed');
         setStatus('error');
         setErrorMessage(err.message || 'Verification failed.');
       });

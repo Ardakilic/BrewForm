@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminDashboard');
 
 interface DashboardStats {
   totalUsers: number;
@@ -14,6 +17,13 @@ interface DashboardStats {
 export function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    log.debug({}, 'AdminDashboard mounted');
+    return () => {
+      log.debug({}, 'AdminDashboard unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     api.get<DashboardStats>('/admin/stats').then((data) => {

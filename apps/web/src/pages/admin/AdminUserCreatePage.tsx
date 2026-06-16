@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { adminApi } from '../../api/index.ts';
+import { createLogger } from '../../utils/logger.ts';
 import { AdminCreateUserSchema } from '@brewform/shared/schemas';
+
+const log = createLogger('AdminUserCreatePage');
 
 export function AdminUserCreatePage() {
   const navigate = useNavigate();
@@ -17,6 +20,13 @@ export function AdminUserCreatePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [serverError, setServerError] = useState('');
+
+  useEffect(() => {
+    log.debug({}, 'AdminUserCreatePage mounted');
+    return () => {
+      log.debug({}, 'AdminUserCreatePage unmounted');
+    };
+  }, []);
 
   function validate() {
     const result = AdminCreateUserSchema.safeParse(form);

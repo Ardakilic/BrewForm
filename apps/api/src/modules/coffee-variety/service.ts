@@ -5,30 +5,49 @@ import { cacheProvider } from '../../utils/cache/singleton.ts';
 import type { CacheProvider } from '../../utils/cache/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
-const log = createLogger('coffee-variety-service');
+/**
+ * Coffee variety service.
+ *
+ * Provides lookup, listing, creation, updates, deletion, and recipe lookups for coffee varieties.
+ */
+export const log = createLogger('coffee-variety-service');
 
 type CoffeeVarietyInsert = typeof coffeeVarieties.$inferInsert;
 type CoffeeVarietySelect = typeof coffeeVarieties.$inferSelect;
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Get a coffee variety by ID, using the cache when available.
+ */
 export async function getCoffeeVarietyById(
   id: string,
   deps: { model: typeof model; cache?: CacheProvider } = { model, cache: cacheProvider },
 ) {
+  log.debug({ id }, 'getCoffeeVarietyById started');
   const cacheKey = ['coffee-variety', id];
   const cached = await deps.cache?.get<CoffeeVarietySelect>(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    log.debug({ id, cached: true }, 'getCoffeeVarietyById completed');
+    return cached;
+  }
 
   const variety = await deps.model.findById(id);
-  if (!variety) return null;
+  if (!variety) {
+    log.debug({ id, cached: false }, 'getCoffeeVarietyById completed');
+    return null;
+  }
 
   await deps.cache?.set(cacheKey, variety, {
     ttlMs: CACHE_TTL_MS,
   });
+  log.debug({ id, cached: false }, 'getCoffeeVarietyById completed');
   return variety;
 }
 
+/**
+ * List coffee varieties with optional filters and pagination.
+ */
 export async function listCoffeeVarieties(
   params: {
     category?: string;
@@ -38,15 +57,41 @@ export async function listCoffeeVarieties(
   },
   deps: { model: typeof model } = { model },
 ) {
-  return deps.model.findMany(params);
+  log.debug(
+    {
+      category: params.category,
+      search: params.search,
+      page: params.page,
+      perPage: params.perPage,
+    },
+    'listCoffeeVarieties started',
+  );
+  const result = await deps.model.findMany(params);
+  log.debug(
+    {
+      category: params.category,
+      search: params.search,
+      page: params.page,
+      perPage: params.perPage,
+      total: result.total,
+    },
+    'listCoffeeVarieties completed',
+  );
+  return result;
 }
 
+/**
+ * Create a new coffee variety owned by the given user.
+ */
 export async function createCoffeeVariety(
   data: CoffeeVarietyInsert,
   userId: string,
   deps: { model: typeof model } = { model },
 ) {
-  return deps.model.create({ ...data, createdBy: userId, isSystem: false });
+  log.debug({ userId, name: data.name }, 'createCoffeeVariety started');
+  const result = await deps.model.create({ ...data, createdBy: userId, isSystem: false });
+  log.debug({ userId, name: data.name, varietyId: result.id }, 'createCoffeeVariety completed');
+  return result;
 }
 
 /**
@@ -74,7 +119,7 @@ export async function updateCoffeeVariety(
     throw new Error('COFFEE_VARIETY_NOT_FOUND');
   }
   if (variety.isSystem) {
-    log.warn({ id, userId, isAdmin }, 'updateCoffeeVariety failed: system variety immutable');
+    log.warn({ id, userId }, 'updateCoffeeVariety failed: system variety immutable');
     throw new Error('SYSTEM_VARIETY_IMMUTABLE');
   }
   if (variety.createdBy !== userId && !isAdmin) {
@@ -115,7 +160,7 @@ export async function deleteCoffeeVariety(
     throw new Error('COFFEE_VARIETY_NOT_FOUND');
   }
   if (variety.isSystem) {
-    log.warn({ id, userId, isAdmin }, 'deleteCoffeeVariety failed: system variety immutable');
+    log.warn({ id, userId }, 'deleteCoffeeVariety failed: system variety immutable');
     throw new Error('SYSTEM_VARIETY_IMMUTABLE');
   }
   if (variety.createdBy !== userId && !isAdmin) {
@@ -132,11 +177,17 @@ export async function deleteCoffeeVariety(
   return result;
 }
 
+/**
+ * Get recipes that use the given coffee variety, paginated.
+ */
 export async function getRecipesForVariety(
   varietyId: string,
   page: number,
   perPage: number,
   deps: { model: typeof model } = { model },
 ) {
-  return deps.model.getRecipesUsingVariety(varietyId, page, perPage);
+  log.debug({ varietyId, page, perPage }, 'getRecipesForVariety started');
+  const result = await deps.model.getRecipesUsingVariety(varietyId, page, perPage);
+  log.debug({ varietyId, page, perPage, total: result.total }, 'getRecipesForVariety completed');
+  return result;
 }

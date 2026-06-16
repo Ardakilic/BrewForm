@@ -1,6 +1,9 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { createLogger } from '@/utils/logger.ts';
 
 type Theme = 'light' | 'dark' | 'coffee';
+
+const log = createLogger('ThemeContext');
 
 interface ThemeContextType {
   theme: Theme;
@@ -23,6 +26,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
+    log.debug({ theme: newTheme }, 'ThemeContext theme changed');
   }, []);
 
   return (

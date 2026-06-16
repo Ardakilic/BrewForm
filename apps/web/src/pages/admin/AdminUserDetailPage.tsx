@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { adminApi, type AdminUserDetail } from '../../api/index.ts';
+import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+
+const log = createLogger('AdminUserDetailPage');
 
 export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,10 +24,18 @@ export function AdminUserDetailPage() {
   >(null);
 
   useEffect(() => {
+    log.debug({}, 'AdminUserDetailPage mounted');
+    return () => {
+      log.debug({}, 'AdminUserDetailPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
     adminApi.getUserDetail(id).then((data) => {
       setUser(data);
     }).catch((err) => {
+      log.error({ err }, 'AdminUserDetailPage loadData failed');
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
         setNotFound(true);

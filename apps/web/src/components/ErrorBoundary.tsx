@@ -1,7 +1,20 @@
 import { isRouteErrorResponse, Link, useRouteError } from 'react-router';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('ErrorBoundary');
 
 export function RootErrorBoundary() {
   const error = useRouteError();
+
+  log.error(
+    { err: error, componentStack: error instanceof Error ? error.stack : undefined },
+    'ErrorBoundary caught render error',
+  );
+
+  function handleReset() {
+    log.info({}, 'ErrorBoundary reset triggered');
+    globalThis.location.reload();
+  }
 
   if (isRouteErrorResponse(error)) {
     return (
@@ -24,7 +37,7 @@ export function RootErrorBoundary() {
           <button
             type='button'
             className='btn-primary'
-            onClick={() => globalThis.location.reload()}
+            onClick={handleReset}
           >
             Reload Page
           </button>
@@ -61,7 +74,7 @@ export function RootErrorBoundary() {
         <button
           type='button'
           className='btn-primary'
-          onClick={() => globalThis.location.reload()}
+          onClick={handleReset}
         >
           Reload Page
         </button>

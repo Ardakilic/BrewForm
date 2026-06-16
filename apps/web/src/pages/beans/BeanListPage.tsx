@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('BeanListPage');
 
 interface Bean {
   id: string;
@@ -26,6 +29,13 @@ export function BeanListPage() {
   });
   const [saving, setSaving] = useState(false);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'BeanListPage mounted');
+    return () => {
+      log.debug({}, 'BeanListPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     api.get<Bean[]>('/beans').then((data) => {

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminCoffeeVarietiesPage');
 
 type Category = 'variety' | 'processing' | 'market_name';
 
@@ -129,6 +132,13 @@ export function AdminCoffeeVarietiesPage() {
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  useEffect(() => {
+    log.debug({}, 'AdminCoffeeVarietiesPage mounted');
+    return () => {
+      log.debug({}, 'AdminCoffeeVarietiesPage unmounted');
+    };
+  }, []);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -145,7 +155,8 @@ export function AdminCoffeeVarietiesPage() {
       );
       setItems(res.data);
       setTotal(res.total);
-    } catch {
+    } catch (err) {
+      log.error({ err }, 'AdminCoffeeVarietiesPage fetchData failed');
     } finally {
       setLoading(false);
     }

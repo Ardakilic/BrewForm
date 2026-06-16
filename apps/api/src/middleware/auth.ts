@@ -20,6 +20,9 @@ import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 import { forbidden, unauthorized } from '../utils/response/index.ts';
+import { createLogger } from '../utils/logger/index.ts';
+
+export const log = createLogger('auth-middleware');
 
 /** Extract a JWT from the `brewform_access_token` cookie, falling back to
  *  the `Authorization: Bearer <token>` header. Returns null if neither is present. */
@@ -55,12 +58,17 @@ export async function authMiddleware(c: Context, next: Next) {
   const token = extractToken(c);
 
   if (!token) {
+    log.debug({}, 'authMiddleware no token found in Authorization header');
     return unauthorized(c, 'Missing or invalid authentication');
   }
 
   try {
     const payload = await verifyJwt(token);
     if (!payload.sub || payload.type !== 'access') {
+      log.warn(
+        { hasSub: !!payload.sub, type: payload.type },
+        'authMiddleware invalid token payload',
+      );
       return unauthorized(c, 'Invalid token payload');
     }
 
@@ -70,16 +78,22 @@ export async function authMiddleware(c: Context, next: Next) {
     const user = result[0];
 
     if (!user) {
+      log.warn({ userId: payload.sub }, 'authMiddleware user not found for valid token');
       return unauthorized(c, 'User not found');
     }
     if (user.isBanned) {
+      const userId = user.id;
+      log.warn({ userId }, 'authMiddleware access denied: user is banned');
       return unauthorized(c, 'User account is banned');
     }
 
-    c.set('userId', user.id);
+    const userId = user.id;
+    c.set('userId', userId);
     c.set('user', user);
+    log.debug({ userId }, 'authMiddleware authentication successful');
     await next();
-  } catch {
+  } catch (err) {
+    log.error({ err }, 'authMiddleware token verification failed');
     return unauthorized(c, 'Invalid or expired token');
   }
 }
@@ -103,6 +117,7 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
   const token = extractToken(c);
 
   if (!token) {
+    log.debug({}, 'optionalAuthMiddleware no auth token supplied (proceeding unauthenticated)');
     c.set('userId', null);
     c.set('user', null);
     await next();
@@ -112,6 +127,7 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
   try {
     const payload = await verifyJwt(token);
     if (payload.sub && payload.type === 'access') {
+      log.debug({ userId: payload.sub }, 'optionalAuthMiddleware authenticated user');
       const result = await db.select().from(users)
         .where(and(eq(users.id, payload.sub), isNull(users.deletedAt)))
         .limit(1);
@@ -124,10 +140,12 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
         c.set('user', null);
       }
     } else {
+      log.debug({}, 'optionalAuthMiddleware invalid token payload (proceeding unauthenticated)');
       c.set('userId', null);
       c.set('user', null);
     }
   } catch {
+    log.debug({}, 'optionalAuthMiddleware token verification failed (proceeding unauthenticated)');
     c.set('userId', null);
     c.set('user', null);
   }
@@ -143,8 +161,14 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
  */
 export async function adminMiddleware(c: Context, next: Next) {
   const user = c.get('user') as { isAdmin: boolean } | null;
+  const userId = c.get('userId') as string | null;
+  const role = user?.isAdmin ? 'admin' : 'user';
+
   if (!user || !user.isAdmin) {
+    log.warn({ userId, role }, 'adminMiddleware access denied: non-admin user');
     return forbidden(c, 'Admin access required');
   }
+
+  log.debug({ userId }, 'adminMiddleware admin access granted');
   await next();
 }

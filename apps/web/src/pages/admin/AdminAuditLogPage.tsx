@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('AdminAuditLogPage');
 
 interface AuditLogEntry {
   id: string;
@@ -17,6 +20,13 @@ export function AdminAuditLogPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [entityFilter, setEntityFilter] = useState('');
+
+  useEffect(() => {
+    log.debug({}, 'AdminAuditLogPage mounted');
+    return () => {
+      log.debug({}, 'AdminAuditLogPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams({ page: String(page), perPage: '50' });

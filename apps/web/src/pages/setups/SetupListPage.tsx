@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { api } from '../../api/client.ts';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('SetupListPage');
 
 interface Setup {
   id: string;
@@ -21,6 +24,13 @@ export function SetupListPage() {
   const [grinder, setGrinder] = useState('');
   const [saving, setSaving] = useState(false);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'SetupListPage mounted');
+    return () => {
+      log.debug({}, 'SetupListPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     api.get<Setup[]>('/setups').then((data) => {

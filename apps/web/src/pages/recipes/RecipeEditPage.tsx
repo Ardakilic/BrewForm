@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { createLogger } from '@/utils/logger.ts';
 import { ApiError } from '../../api/client.ts';
 import { recipeApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
@@ -13,6 +14,8 @@ import {
 } from '@brewform/shared/constants';
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 import type { RecipeDetailResponse } from '../../api/types.ts';
+
+const log = createLogger('RecipeEditPage');
 
 export function RecipeEditPage() {
   const { id } = useParams();
@@ -47,6 +50,13 @@ export function RecipeEditPage() {
   const [packageOpenDate, setPackageOpenDate] = useState('');
   const [grindDate, setGrindDate] = useState('');
   const [brewerDetails, setBrewerDetails] = useState('');
+
+  useEffect(() => {
+    log.debug({}, 'RecipeEditPage mounted');
+    return () => {
+      log.debug({}, 'RecipeEditPage unmounted');
+    };
+  }, []);
 
   useEffect(() => {
     if (!id) return;

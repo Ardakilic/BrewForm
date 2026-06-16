@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EquipmentCatalogPage } from './EquipmentCatalogPage.tsx';
 
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
 // ── External deps ──────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
@@ -125,6 +130,10 @@ function makePaginatedResponse(items: unknown[], total: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogger.debug.mockClear();
+  mockLogger.info.mockClear();
+  mockLogger.warn.mockClear();
+  mockLogger.error.mockClear();
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseSearchParams.mockReturnValue(makeSearchParams());
   mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
@@ -134,6 +143,18 @@ beforeEach(() => {
 
 /** Tests for EquipmentCatalogPage — rendering, category filters, search, pagination, SEO, and i18n. */
 describe('EquipmentCatalogPage', () => {
+  it('logs mount and unmount', async () => {
+    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
+    const { unmount } = render(<EquipmentCatalogPage />);
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage mounted')
+    );
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage unmounted')
+    );
+  });
+
   it('renders page title and subtitle — English', async () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     render(<EquipmentCatalogPage />);
@@ -218,6 +239,10 @@ describe('EquipmentCatalogPage', () => {
 
     expect(screen.getByText('Failed to load equipment')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'EquipmentCatalogPage loadData failed',
+    );
   });
 
   it('shows error state with retry in Turkish', async () => {
@@ -229,6 +254,10 @@ describe('EquipmentCatalogPage', () => {
 
     expect(screen.getByText('Ekipmanlar yüklenemedi')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tekrar dene' })).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'EquipmentCatalogPage loadData failed',
+    );
   });
 
   it('renders category filter buttons', async () => {

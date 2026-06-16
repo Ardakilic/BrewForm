@@ -7,6 +7,9 @@
  */
 import * as model from './model.ts';
 import { generateQRCodePng, generateQRCodeSvg } from '../../utils/qrcode/index.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+
+export const log = createLogger('qrcode-service');
 
 /**
  * Generate a QR code (PNG or SVG) for a public recipe URL.
@@ -21,9 +24,18 @@ import { generateQRCodePng, generateQRCodeSvg } from '../../utils/qrcode/index.t
  * @throws RECIPE_NOT_AVAILABLE if the recipe is draft or private
  */
 export async function getRecipeQRCode(slug: string, format: 'png' | 'svg', baseUrl: string) {
+  log.debug({ slug, format }, 'getRecipeQRCode started');
   const recipe = await model.findBySlug(slug);
-  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
+  if (!recipe) {
+    const err = new Error('RECIPE_NOT_FOUND');
+    log.error({ err, slug }, 'getRecipeQRCode failed: recipe not found');
+    throw err;
+  }
   if (recipe.visibility === 'draft' || recipe.visibility === 'private') {
+    log.warn(
+      { slug, visibility: recipe.visibility },
+      'getRecipeQRCode failed: recipe not available',
+    );
     throw new Error('RECIPE_NOT_AVAILABLE');
   }
 
@@ -31,10 +43,16 @@ export async function getRecipeQRCode(slug: string, format: 'png' | 'svg', baseU
   // that have since been delisted to a dedicated "no longer available" page,
   // instead of falling through to the generic 404 (gap M3).
   const url = `${baseUrl}/recipes/${slug}?from=qr`;
+  let data: ArrayBuffer | string;
+  let contentType: string;
   if (format === 'png') {
-    const data = await generateQRCodePng(url);
-    return { data: data.buffer as ArrayBuffer, contentType: 'image/png' };
+    const png = await generateQRCodePng(url);
+    data = png.buffer as ArrayBuffer;
+    contentType = 'image/png';
+  } else {
+    data = await generateQRCodeSvg(url);
+    contentType = 'image/svg+xml';
   }
-  const data = await generateQRCodeSvg(url);
-  return { data, contentType: 'image/svg+xml' };
+  log.debug({ slug, format }, 'getRecipeQRCode completed');
+  return { data, contentType };
 }

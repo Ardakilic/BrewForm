@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { EquipmentDetailPage } from './EquipmentDetailPage.tsx';
 
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
 vi.mock('react-router', () => ({
   Link: (
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
@@ -87,6 +92,10 @@ const mockRecipes = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogger.debug.mockClear();
+  mockLogger.info.mockClear();
+  mockLogger.warn.mockClear();
+  mockLogger.error.mockClear();
   mockUseParams.mockReturnValue({ id: 'eq-1' });
   mockUseTranslation.mockReturnValue(defaultTranslation);
   (mockApiGet as ReturnType<typeof vi.fn>)
@@ -96,6 +105,17 @@ beforeEach(() => {
 
 /** Tests for EquipmentDetailPage — loading, error, brand/model, description, recipes, breadcrumb, SEO props, and i18n. */
 describe('EquipmentDetailPage', () => {
+  it('logs mount and unmount', async () => {
+    const { unmount } = render(<EquipmentDetailPage />);
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage mounted')
+    );
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage unmounted')
+    );
+  });
+
   it('shows loading skeleton while fetching', () => {
     (mockApiGet as ReturnType<typeof vi.fn>).mockReset();
     (mockApiGet as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
@@ -163,6 +183,10 @@ describe('EquipmentDetailPage', () => {
 
     await waitFor(() => expect(screen.getByText('Equipment not found')).toBeInTheDocument());
     expect(screen.getByRole('link', { name: 'Back to equipment list' })).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'EquipmentDetailPage loadData failed',
+    );
   });
 
   it('shows error state in Turkish', async () => {
@@ -173,6 +197,10 @@ describe('EquipmentDetailPage', () => {
 
     await waitFor(() => expect(screen.getByText('Ekipman bulunamadı')).toBeInTheDocument());
     expect(screen.getByRole('link', { name: 'Ekipman listesine dön' })).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'EquipmentDetailPage loadData failed',
+    );
   });
 
   it('renders recipes section', async () => {

@@ -6,6 +6,11 @@ import { LoginPage } from './LoginPage.tsx';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
 vi.mock('../../api/index', () => ({
   authApi: {
     login: vi.fn(),
@@ -62,6 +67,17 @@ async function renderLoginPage() {
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogger.debug.mockClear();
+    mockLogger.info.mockClear();
+    mockLogger.warn.mockClear();
+    mockLogger.error.mockClear();
+  });
+
+  it('logs mount and unmount', async () => {
+    const { unmount } = await renderLoginPage();
+    await waitFor(() => expect(mockLogger.debug).toHaveBeenCalledWith({}, 'LoginPage mounted'));
+    unmount();
+    await waitFor(() => expect(mockLogger.debug).toHaveBeenCalledWith({}, 'LoginPage unmounted'));
   });
 
   it('should render the login form with email, password, and submit button', async () => {
@@ -220,6 +236,10 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Invalid email or password')).toBeInTheDocument();
     });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'LoginPage login failed',
+    );
   });
 
   it('should disable button and show loading text while logging in', async () => {
@@ -257,5 +277,9 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Validation failed')).toBeInTheDocument();
     });
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'LoginPage login failed',
+    );
   });
 });

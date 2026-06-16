@@ -1,7 +1,10 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getAvailableLocales, t as translate } from '@brewform/shared/i18n';
+import { createLogger } from '@/utils/logger.ts';
 
 type Locale = 'en' | 'tr';
+
+const log = createLogger('I18nContext');
 
 interface I18nContextType {
   locale: Locale;
@@ -32,6 +35,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
     localStorage.setItem('brewform_locale', newLocale);
+    log.debug({ locale: newLocale }, 'I18nContext locale changed');
   }, []);
 
   const t = useCallback((key: string) => translate(key, locale), [locale]);

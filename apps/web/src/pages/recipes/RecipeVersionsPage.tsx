@@ -4,7 +4,10 @@ import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
+import { createLogger } from '../../utils/logger.ts';
 import { formatTemperature, formatVolume, formatWeight } from '@brewform/shared/utils';
+
+const log = createLogger('RecipeVersionsPage');
 
 interface VersionSummary {
   id: string;
@@ -27,6 +30,13 @@ export function RecipeVersionsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    log.debug({}, 'RecipeVersionsPage mounted');
+    return () => {
+      log.debug({}, 'RecipeVersionsPage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     if (!slug) return;
     setLoading(true);
     setData(null);
@@ -34,7 +44,10 @@ export function RecipeVersionsPage() {
       `/recipes/${slug}/versions`,
     )
       .then(setData)
-      .catch(() => setData(null))
+      .catch((err) => {
+        log.error({ err }, 'RecipeVersionsPage loadData failed');
+        setData(null);
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 

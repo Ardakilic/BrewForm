@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { recipeApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { createLogger } from '../../utils/logger.ts';
 import { BREW_METHODS, DRINK_TYPES } from '@brewform/shared/constants';
+
+const log = createLogger('RecipeComparePage');
 
 // deno-lint-ignore no-explicit-any
 function labelFor(value: string, constants: any) {
@@ -18,11 +21,22 @@ export function RecipeComparePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    log.debug({}, 'RecipeComparePage mounted');
+    return () => {
+      log.debug({}, 'RecipeComparePage unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
     if (!slug1 || !slug2) return;
     setLoading(true);
     Promise.all([
-      recipeApi.get(slug1).catch(() => null),
-      recipeApi.get(slug2).catch(() => null),
+      recipeApi.get(slug1).catch(() => {
+        return null;
+      }),
+      recipeApi.get(slug2).catch(() => {
+        return null;
+      }),
     ]).then(([r1, r2]) => {
       setRecipe1(r1);
       setRecipe2(r2);

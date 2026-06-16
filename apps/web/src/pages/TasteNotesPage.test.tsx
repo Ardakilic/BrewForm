@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TasteNotesPage } from './TasteNotesPage.tsx';
 
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
 vi.mock('react-router', () => ({
   Link: (
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
@@ -197,8 +202,26 @@ const defaultTranslation = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLogger.debug.mockClear();
+  mockLogger.info.mockClear();
+  mockLogger.warn.mockClear();
+  mockLogger.error.mockClear();
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockApiGet.mockResolvedValue(mockHierarchy);
+});
+
+describe('TasteNotesPage — logging', () => {
+  it('logs mount and unmount', async () => {
+    mockApiGet.mockResolvedValue(mockHierarchy);
+    const { unmount } = render(<TasteNotesPage />);
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'TasteNotesPage mounted')
+    );
+    unmount();
+    await waitFor(() =>
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'TasteNotesPage unmounted')
+    );
+  });
 });
 
 describe('TasteNotesPage — loading state', () => {
@@ -411,6 +434,10 @@ describe('TasteNotesPage — empty/error state', () => {
     });
 
     expect(screen.getByText('Taste Notes')).toBeInTheDocument();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { err: expect.any(Error) },
+      'TasteNotesPage loadData failed',
+    );
   });
 });
 
