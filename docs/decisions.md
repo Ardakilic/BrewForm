@@ -83,6 +83,11 @@ All IDs are UUID strings generated in code or by `gen_random_uuid()`, all struct
 Models use Drizzle's typed query API; `as any` is used sparingly for complex subqueries. Encapsulating Drizzle in
 `model.ts` keeps the noise out of services.
 
+**Rule — never edit generated SQL migration files.** All schema changes (tables, columns, indexes, enums,
+constraints) are authored in `packages/db/src/schema.ts`. Run `make db-generate && make db-migrate` to auto-generate
+and apply migrations. The generated SQL files in `packages/db/drizzle/` must never be manually edited — Drizzle's
+hash-based migration tracking depends on their integrity, and manual edits cause silent migration failures.
+
 ---
 
 ## ADR-005 — Module pattern: model → service → controller (instead of fat controllers)

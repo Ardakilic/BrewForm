@@ -86,7 +86,7 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 - **Soft deletes** on all main entities (`deletedAt`). Queries use `findFirst({ where: eq(t.deletedAt, null) })`, never `findUnique`.
 - Connection pool: `max: 10` via `postgres-js` driver in `packages/db/src/index.ts`.
 - Migrations: `deno task db:generate` (creates SQL) then `deno task db:migrate` (applies); seed is `deno run -A packages/db/src/seed.ts`.
-- **Schema sync:** Use `make db-push` to sync schema changes for renames and enum additions — never edit Drizzle migration SQL files manually. Manual SQL edits break Drizzle's hash-based migration tracking and cause silent migration failures. **Note:** `make db-push` does NOT detect new CHECK constraint additions (per Drizzle Kit 0.26.0). For schema changes involving new CHECK constraints, use `make db-generate` followed by `make db-migrate` (e.g., `make db-generate && make db-migrate`).
+- **Schema changes:** All schema changes (tables, columns, indexes, enums, constraints) MUST be made in `packages/db/src/schema.ts` (the Drizzle TypeScript schema). Then run `make db-generate && make db-migrate` to auto-generate and apply the migration. **Never manually edit the generated SQL migration files** — Drizzle's hash-based migration tracking depends on them being unmodified, and manual edits cause silent migration failures. The only exception is `make db-push` for lightweight rename/enum-addition syncs (but it does NOT detect new CHECK constraints or indexes).
 - **Full DB reset:** `make db-reset` drops and recreates the database, pushes the schema fresh, re-seeds, and flushes the Deno KV cache.
 
 ## Testing
