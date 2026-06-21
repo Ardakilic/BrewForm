@@ -30,6 +30,7 @@ import {
   RecipeUpdateSchema,
 } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger/index.ts';
+import { decodeCursor } from '@brewform/shared/utils';
 import { notifyFollowersOfNewRecipe, notifyRecipeLiked } from '../../utils/notify/index.ts';
 import { evaluateBadges } from '../badge/service.ts';
 import type { BrewMethod } from '@brewform/shared/types';
@@ -467,19 +468,26 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
 }
 
 /**
- * List recipes with filtering, pagination, and sorting.
+ * Cursor-aware recipe listing.
  *
- * The full `WHERE` clause (admin-aware visibility, shared filter branches,
- * and optional `authorId` scope) is composed by
- * {@link model.buildListRecipesWhere} so the service layer does not
- * construct Drizzle SQL expressions directly.
+ * When `filters.cursor` is present and `filters.sortBy === 'createdAt'`, the
+ * service validates and decodes the cursor, then delegates to
+ * {@link model.findCursor}. If the cursor is malformed, throws
+ * `VALIDATION_ERROR: INVALID_CURSOR` so the route returns 400.
+ *
+ * When `filters.cursor` is present with an incompatible sort (e.g. `likeCount`
+ * or `rating`), logs a warning and falls back to offset pagination.
+ *
+ * When both `page` and `cursor` are provided, cursor wins and `page` is
+ * silently ignored.
  *
  * @param filters           - Filter criteria (see controller for accepted keys).
- * @param page              - Page number (1-based).
+ * @param page              - Page number (1-based) for offset mode.
  * @param perPage           - Items per page.
  * @param _requestingUserId - Unused; reserved for future scoped queries.
  * @param isAdmin           - Whether the requester is an admin (bypasses visibility restrictions).
- * @returns Paginated recipe list with total count.
+ * @returns Either `{ recipes, total }` for offset mode or
+ *          `{ recipes, hasMore, nextCursor, total? }` for cursor mode.
  */
 export async function listRecipes(
   filters: z.infer<typeof RecipeFilterSchema>,
@@ -492,14 +500,73 @@ export async function listRecipes(
     { userId: _requestingUserId, page, perPage, filters: JSON.stringify(filters) },
     'listRecipes started',
   );
+
   const where = model.buildListRecipesWhere(filters, isAdmin);
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
+
+  if (filters.cursor) {
+    logger.debug('Cursor provided, using cursor pagination');
+
+    if (sortBy !== 'createdAt') {
+      logger.warn({ sortBy }, 'Cursor pagination incompatible with sortBy, falling back to offset');
+      const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
+      logger.debug(
+        { userId: _requestingUserId, page, perPage, resultCount: result.total },
+        'listRecipes completed',
+      );
+      return result;
+    }
+
+    let cursor: { createdAt: string; id: string };
+    try {
+      cursor = decodeCursor(filters.cursor);
+    } catch (err) {
+      logger.error({ err }, 'Invalid cursor provided');
+      throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
+    }
+
+    const result = await model.findCursor(where, cursor, perPage, sortOrder, filters.includeTotal);
+    logger.debug(
+      { userId: _requestingUserId, perPage, hasMore: result.hasMore },
+      'listRecipes completed',
+    );
+    return result;
+  }
+
   const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
   logger.debug(
     { userId: _requestingUserId, page, perPage, resultCount: result.total },
     'listRecipes completed',
   );
+  return result;
+}
+
+/**
+ * List starred recipes, always using offset pagination.
+ *
+ * Starred queries (`/recipes/starred`) involve a favourites subquery JOIN that
+ * is not yet compatible with cursor pagination; a cursor parameter is silently
+ * ignored with a debug log.
+ *
+ * @param filters - Filter criteria, including ignored `cursor`.
+ * @param page    - Page number (1-based).
+ * @param perPage - Items per page.
+ * @param userId  - UUID of the authenticated user whose favourites to query.
+ * @returns Paginated recipe list with total count.
+ */
+export async function listStarredRecipes(
+  filters: z.infer<typeof RecipeFilterSchema>,
+  page: number,
+  perPage: number,
+  userId: string,
+) {
+  logger.debug({ userId }, 'listStarredRecipes started');
+  if (filters.cursor) {
+    logger.debug('Cursor provided but starred recipes use offset pagination, using offset');
+  }
+  const result = await model.findStarred(userId, filters, page, perPage);
+  logger.debug({ userId }, 'listStarredRecipes completed');
   return result;
 }
 
@@ -561,25 +628,6 @@ export async function saveNotes(recipeId: string, notes: string) {
   if (!recipe.currentVersionId) throw new Error('RECIPE_NOT_FOUND');
   await model.updateVersionNotes(recipe.currentVersionId, notes);
   logger.debug({ recipeId }, 'saveNotes completed');
-}
-
-/**
- * List recipes starred (favourited) by the given user, with filtering and pagination.
- *
- * Delegates the recipe filter construction to
- * {@link model.findStarred}, which composes the favourites-scope subquery
- * with the shared filter branches from {@link model.buildRecipeFilters}.
- */
-export async function listStarredRecipes(
-  filters: z.infer<typeof RecipeFilterSchema>,
-  page: number,
-  perPage: number,
-  userId: string,
-) {
-  logger.debug({ userId }, 'listStarredRecipes started');
-  const result = await model.findStarred(userId, filters, page, perPage);
-  logger.debug({ userId }, 'listStarredRecipes completed');
-  return result;
 }
 
 /**

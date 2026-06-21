@@ -23,8 +23,27 @@ import {
   userRecipeRatings,
   users,
 } from '@brewform/db/schema';
-import { and, asc, avg, count, desc, eq, ilike, inArray, isNull, or, SQL, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  avg,
+  count,
+  desc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  or,
+  SQL,
+  sql,
+} from 'drizzle-orm';
+import { encodeCursor } from '@brewform/shared/utils';
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
+import { createLogger } from '../../utils/logger/index.ts';
+
+const modelLog = createLogger('recipe-model');
 
 /** Return a Drizzle condition that matches recipes whose versions reference the given coffee variety. */
 export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
@@ -273,7 +292,7 @@ export async function findMany(
   perPage: number,
   sortBy: string = 'createdAt',
   sortOrder: string = 'desc',
-) {
+): Promise<{ recipes: Record<string, unknown>[]; total: number }> {
   const orderByColumn = sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt;
   const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
   const finalWhere = where ? and(isNull(recipes.deletedAt), where) : isNull(recipes.deletedAt);
@@ -675,12 +694,128 @@ export async function updateVersionNotes(versionId: string, notes: string) {
     .where(eq(recipeVersions.id, versionId));
 }
 
+/** Cursor-enabled cursor pagination result. */
+export interface CursorResult<T> {
+  /** Recipes on the current page. */
+  recipes: T[];
+  /** True when at least one more page of results exists. */
+  hasMore: boolean;
+  /** Base64-encoded cursor for the next page, or null when no more results. */
+  nextCursor: string | null;
+  /** Total matching recipes, only populated when explicitly requested. */
+  total?: number;
+}
+
+/**
+ * Build the composite ROW-VALUE WHERE clause used by cursor-based queries.
+ *
+ * Generates `(createdAt, id) < cursor` for DESC and `(createdAt, id) > cursor`
+ * for ASC. The soft-delete filter is applied separately by the caller.
+ *
+ * @returns A Drizzle SQL expression or `undefined` when no cursor is supplied.
+ */
+function buildCursorWhere(cursor: { createdAt: string; id: string }, sortOrder: string): SQL {
+  const { createdAt, id } = cursor;
+  const createdAtValue = new Date(createdAt);
+  if (isNaN(createdAtValue.getTime())) {
+    throw new Error('INVALID_CURSOR');
+  }
+  if (sortOrder === 'asc') {
+    return or(
+      gt(recipes.createdAt, createdAtValue),
+      and(eq(recipes.createdAt, createdAtValue), gt(recipes.id, id)),
+    ) as SQL;
+  }
+  return or(
+    lt(recipes.createdAt, createdAtValue),
+    and(eq(recipes.createdAt, createdAtValue), lt(recipes.id, id)),
+  ) as SQL;
+}
+
+/**
+ * Execute a cursor-based query against the recipes table.
+ *
+ * Fetches `perPage + 1` rows so we can detect whether more pages exist without
+ * an additional round-trip. The cursor filter is combined with the caller's
+ * existing `where` conditions via `and()`.
+ *
+ * @param where       - Existing list WHERE conditions (visibility, filters, etc.)
+ * @param cursor      - Decoded `{ createdAt, id }` cursor.
+ * @param perPage     - Number of recipes per page.
+ * @param sortOrder   - Sort direction: `'desc'` (default) or `'asc'`.
+ * @param includeTotal - Whether to run an additional `SELECT count(*)` query.
+ * @returns Cursor result with `recipes`, `hasMore`, `nextCursor`, and optional
+ *          `total`.
+ */
+export async function findCursor(
+  where: SQL | undefined,
+  cursor: { createdAt: string; id: string },
+  perPage: number,
+  sortOrder: string = 'desc',
+  includeTotal: boolean = false,
+): Promise<CursorResult<Record<string, unknown>>> {
+  modelLog.debug({ recipeId: cursor.id }, 'findCursor started');
+
+  const finalWhere = where
+    ? and(where, isNull(recipes.deletedAt), buildCursorWhere(cursor, sortOrder))
+    : and(isNull(recipes.deletedAt), buildCursorWhere(cursor, sortOrder));
+
+  const orderBy = sortOrder === 'asc'
+    ? [asc(recipes.createdAt), asc(recipes.id)]
+    : [desc(recipes.createdAt), desc(recipes.id)];
+
+  const [rows, totalResult] = await Promise.all([
+    db.query.recipes.findMany({
+      where: finalWhere,
+      orderBy,
+      limit: perPage + 1,
+      with: {
+        author: { columns: { id: true, username: true, displayName: true } },
+      },
+    }),
+    includeTotal
+      ? db.select({ count: count() }).from(recipes).where(
+        where ? and(where, isNull(recipes.deletedAt)) : isNull(recipes.deletedAt),
+      )
+      : Promise.resolve([{ count: 0 }]),
+  ]);
+
+  const hasMore = rows.length > perPage;
+  const recipesPage = rows.slice(0, perPage);
+  const nextCursor = hasMore
+    ? encodeCursor({
+      createdAt: (recipesPage[recipesPage.length - 1].createdAt as Date).toISOString(),
+      id: recipesPage[recipesPage.length - 1].id as string,
+    })
+    : null;
+
+  const result: CursorResult<Record<string, unknown>> = {
+    recipes: recipesPage,
+    hasMore,
+    nextCursor,
+  };
+  if (includeTotal) result.total = totalResult[0].count;
+
+  modelLog.debug({}, 'findCursor completed');
+  return result;
+}
+
 /** Fetch a paginated feed of public recipes from a set of followed author IDs. */
-export async function getFeed(authorIds: string[], page: number, perPage: number) {
+export async function getFeed(
+  authorIds: string[],
+  page: number,
+  perPage: number,
+  cursor?: { createdAt: string; id: string },
+): Promise<
+  { recipes: Record<string, unknown>[]; total: number } | CursorResult<Record<string, unknown>>
+> {
   const where = and(
     inArray(recipes.authorId, authorIds),
     eq(recipes.visibility, 'public'),
   );
+  if (cursor) {
+    return findCursor(where, cursor, perPage, 'desc');
+  }
   return findMany(where, page, perPage, 'createdAt', 'desc');
 }
 

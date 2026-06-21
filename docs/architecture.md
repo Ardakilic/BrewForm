@@ -118,6 +118,11 @@ BrewForm maintains database portability:
 - **All filterable fields reference normalized entities or enums**
 - **Services import from model files**, never from `drizzle-orm` directly
 - **Postgres-specific features** are isolated with `// POSTGRES-SPECIFIC` comments if unavoidable
+- **All schema changes** (tables, columns, indexes, enums, constraints) are made in
+  `packages/db/src/schema.ts` (the Drizzle TypeScript schema) first. Run
+  `make db-generate && make db-migrate` to auto-generate and apply the migration.
+  **Never edit the generated SQL migration files manually** — manual edits break Drizzle's
+  hash-based migration tracking and cause silent failures.
 
 ## Database
 

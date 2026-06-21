@@ -1,7 +1,12 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { describeRoute } from 'hono-openapi';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import {
+  cursorEnvelope,
+  ErrorEnvelopeSchema,
+  FeedRecipeOutputSchema,
+  paginatedEnvelope,
   RecipeCreateSchema,
   RecipeFilterSchema,
   RecipeForkSchema,
@@ -15,7 +20,9 @@ import * as model from './model.ts';
 import * as tasteService from '../taste/service.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
 import {
+  cursorPaginated,
   error,
+  invalidCursor,
   isEmailVerified,
   paginated,
   success,
@@ -30,8 +37,36 @@ recipe.get(
   describeRoute({
     tags: ['Recipes'],
     summary: 'List recipes',
-    description: 'Paginated, filterable list of recipes.',
-    responses: { 200: { description: 'Paginated list of recipes' } },
+    description:
+      'Paginated, filterable list of recipes. Supports cursor-based pagination when `cursor` is provided with `sortBy=createdAt`. When offset pagination is active, `meta.pagination` replaces `meta.cursor`.',
+    parameters: [
+      { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
+      { name: 'perPage', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
+      { name: 'sortBy', in: 'query', required: false, schema: { type: 'string' } },
+      { name: 'sortOrder', in: 'query', required: false, schema: { type: 'string' } },
+      { name: 'cursor', in: 'query', required: false, schema: { type: 'string' } },
+      { name: 'includeTotal', in: 'query', required: false, schema: { type: 'boolean' } },
+    ],
+    responses: {
+      200: {
+        description:
+          'Paginated list of recipes. Returns `meta.cursor` when cursor pagination is active, or `meta.pagination` when offset pagination is active.',
+        content: {
+          'application/json': {
+            schema: resolver(
+              z.union([
+                cursorEnvelope(FeedRecipeOutputSchema),
+                paginatedEnvelope(FeedRecipeOutputSchema),
+              ]),
+            ),
+          },
+        },
+      },
+      400: {
+        description: 'Invalid cursor',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
   }),
   optionalAuthMiddleware,
   zValidator('query', RecipeFilterSchema),
@@ -39,19 +74,36 @@ recipe.get(
     const filters = c.req.valid('query');
     const userId = c.get('userId') ?? null;
     const isAdmin = c.get('user')?.isAdmin ?? false;
-    const result = await service.listRecipes(
-      filters,
-      filters.page,
-      filters.perPage,
-      userId,
-      isAdmin,
-    );
-    return paginated(c, result.recipes, {
-      page: filters.page,
-      perPage: filters.perPage,
-      total: result.total,
-      totalPages: Math.ceil(result.total / filters.perPage),
-    });
+    try {
+      const result = await service.listRecipes(
+        filters,
+        filters.page,
+        filters.perPage,
+        userId,
+        isAdmin,
+      );
+
+      if ('hasMore' in result) {
+        return cursorPaginated(c, result.recipes, {
+          nextCursor: result.nextCursor,
+          hasMore: result.hasMore,
+          total: result.total,
+        });
+      }
+
+      return paginated(c, result.recipes, {
+        page: filters.page,
+        perPage: filters.perPage,
+        total: result.total,
+        totalPages: Math.ceil(result.total / filters.perPage),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'VALIDATION_ERROR: INVALID_CURSOR') {
+        return invalidCursor(c);
+      }
+      throw err;
+    }
   },
 );
 

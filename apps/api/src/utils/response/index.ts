@@ -8,7 +8,7 @@
  */
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { PaginationMeta } from '@brewform/shared/types';
+import type { CursorPaginationMeta, PaginationMeta } from '@brewform/shared/types';
 
 /** Return a success envelope with optional pagination metadata. */
 export function success<T>(
@@ -37,6 +37,36 @@ export function paginated<T>(c: Context, data: T[], pagination: PaginationMeta) 
       pagination,
     },
   }, 200);
+}
+
+/**
+ * Return a success envelope with cursor-pagination metadata.
+ *
+ * Use this for cursor-based list endpoints. The response shape is
+ * `{ success: true, data, meta: { requestId, cursor: { nextCursor, hasMore, total? } } }`.
+ *
+ * @param c - Hono request context.
+ * @param data - Items on the current page.
+ * @param cursorMeta - Cursor pagination metadata.
+ */
+export function cursorPaginated<T>(c: Context, data: T[], cursorMeta: CursorPaginationMeta) {
+  return c.json({
+    success: true as const,
+    data,
+    meta: {
+      requestId: c.get('requestId'),
+      cursor: cursorMeta,
+    },
+  }, 200);
+}
+
+/**
+ * Return a 400 `INVALID_CURSOR` error envelope.
+ *
+ * Used when a cursor query parameter cannot be decoded or validated.
+ */
+export function invalidCursor(c: Context, message: string = 'Invalid cursor') {
+  return error(c, 'INVALID_CURSOR', message, 400);
 }
 
 /** Return an error envelope with code, message, and optional field-level details. */

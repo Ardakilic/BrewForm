@@ -31,3 +31,5 @@ export { formatDate, isDateBefore } from './date.ts';
 export { ensureUniqueSlug, generateSlug } from './slug.ts';
 export { escapeHtml, escapeHtmlAttr } from './html.ts';
 export { generateUniqueUsername } from './username.ts';
+export { decodeCursor, encodeCursor } from './cursor.ts';
+export type { PaginationCursor } from './cursor.ts';

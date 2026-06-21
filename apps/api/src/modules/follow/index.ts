@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { PaginationSchema } from '@brewform/shared/schemas';
 import {
+  cursorEnvelope,
   ErrorEnvelopeSchema,
   FeedRecipeOutputSchema,
   FollowerListItemOutputSchema,
@@ -14,7 +16,14 @@ import {
 } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import {
+  cursorPaginated,
+  error,
+  invalidCursor,
+  paginated,
+  success,
+} from '../../utils/response/index.ts';
+import { decodeCursor } from '@brewform/shared/utils';
 import type { AppEnv } from '../../types/hono.ts';
 
 const follow = new Hono<AppEnv>();
@@ -191,18 +200,26 @@ follow.get(
   describeRoute({
     tags: ['Follow'],
     summary: 'Get the followed-users feed',
-    description: 'Paginated feed of recipes from users the authenticated user follows.',
+    description:
+      'Paginated feed of recipes from users the authenticated user follows. Supports cursor-based pagination when `cursor` is provided. When offset pagination is active, `meta.pagination` replaces `meta.cursor`.',
     security: [{ bearerAuth: [] }],
     parameters: [
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
       { name: 'perPage', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
+      { name: 'cursor', in: 'query', required: false, schema: { type: 'string' } },
     ],
     responses: {
       200: {
-        description: 'Paginated feed of recipes',
+        description: 'Paginated feed of recipes (cursor or offset meta)',
         content: {
-          'application/json': { schema: resolver(paginatedEnvelope(FeedRecipeOutputSchema)) },
+          'application/json': {
+            schema: resolver(cursorEnvelope(FeedRecipeOutputSchema)),
+          },
         },
+      },
+      400: {
+        description: 'Invalid cursor',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       401: {
         description: 'Unauthorized',
@@ -211,16 +228,53 @@ follow.get(
     },
   }),
   authMiddleware,
-  zValidator('query', PaginationSchema),
+  zValidator(
+    'query',
+    z.object({
+      page: z.coerce.number().int().positive().default(1).optional(),
+      perPage: z.coerce.number().int().positive().max(100).default(20).optional(),
+      cursor: z.string().optional(),
+    }),
+  ),
   async (c) => {
     const userId = c.get('userId') as string;
-    const { page, perPage } = c.req.valid('query');
-    const result = await service.getFeed(userId, page, perPage);
-    return paginated(c, result.recipes, {
-      page,
-      perPage,
-      total: result.total,
-      totalPages: Math.ceil(result.total / perPage),
+    const { page, perPage, cursor } = c.req.valid('query');
+    const effectivePage = page ?? 1;
+    const effectivePerPage = perPage ?? 20;
+
+    if (cursor) {
+      let decoded: { createdAt: string; id: string };
+      try {
+        decoded = decodeCursor(cursor);
+      } catch {
+        return invalidCursor(c);
+      }
+      const result = await service.getFeed(userId, effectivePage, effectivePerPage, decoded);
+      if (service.isFeedOffsetResult(result)) {
+        return paginated(c, result.recipes, {
+          page: effectivePage,
+          perPage: effectivePerPage,
+          total: result.total,
+          totalPages: Math.ceil(result.total / effectivePerPage),
+        });
+      }
+      return cursorPaginated(c, result.recipes, {
+        nextCursor: result.nextCursor,
+        hasMore: result.hasMore,
+        total: result.total,
+      });
+    }
+
+    const offsetResult = await service.getFeed(userId, effectivePage, effectivePerPage);
+    if (!service.isFeedOffsetResult(offsetResult)) {
+      // A cursor was not provided, so the service should never return cursor meta here.
+      throw new Error('Unexpected cursor result without cursor parameter');
+    }
+    return paginated(c, offsetResult.recipes, {
+      page: effectivePage,
+      perPage: effectivePerPage,
+      total: offsetResult.total,
+      totalPages: Math.ceil(offsetResult.total / effectivePerPage),
     });
   },
 );

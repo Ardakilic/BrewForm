@@ -2,6 +2,8 @@ import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { z } from 'zod';
 import {
+  cursorEnvelope,
+  CursorPaginationMetaSchema,
   ErrorEnvelopeSchema,
   paginatedEnvelope,
   PaginationMetaSchema,
@@ -148,6 +150,34 @@ describe('successEnvelope(dataSchema)', () => {
   });
 });
 
+describe('CursorPaginationMetaSchema', () => {
+  it('parses a representative cursor meta without total', () => {
+    const result = CursorPaginationMetaSchema.safeParse({
+      nextCursor: 'eyJjcmVhdGVkQXQiOiIyMDI2LTA1LTI5VDEwOjMwOjAwLjAwMFoiLCJpZCI6ImFiYy0xMjMifQ==',
+      hasMore: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('parses a representative cursor meta with total', () => {
+    const result = CursorPaginationMetaSchema.safeParse({
+      nextCursor: null,
+      hasMore: false,
+      total: 42,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid total', () => {
+    const result = CursorPaginationMetaSchema.safeParse({
+      nextCursor: null,
+      hasMore: false,
+      total: -1,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
 describe('paginatedEnvelope(itemSchema)', () => {
   const schema = paginatedEnvelope(z.object({ id: z.string() }));
 
@@ -196,6 +226,47 @@ describe('paginatedEnvelope(itemSchema)', () => {
     const result = schema.safeParse({
       success: true,
       data: [],
+      meta: { requestId: 'req-abc' },
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('cursorEnvelope(itemSchema)', () => {
+  const schema = cursorEnvelope(z.object({ id: z.string() }));
+
+  it('parses a representative cursorPaginated() output', () => {
+    const payload = {
+      success: true as const,
+      data: [{ id: 'a' }, { id: 'b' }],
+      meta: {
+        requestId: 'req-abc',
+        cursor: { nextCursor: 'abc', hasMore: true },
+      },
+    };
+    const result = schema.safeParse(payload);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toEqual(payload);
+    }
+  });
+
+  it('accepts a null nextCursor', () => {
+    const result = schema.safeParse({
+      success: true,
+      data: [{ id: 'a' }],
+      meta: {
+        requestId: 'req-abc',
+        cursor: { nextCursor: null, hasMore: false },
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects when cursor meta is missing', () => {
+    const result = schema.safeParse({
+      success: true,
+      data: [{ id: 'a' }],
       meta: { requestId: 'req-abc' },
     });
     expect(result.success).toBe(false);

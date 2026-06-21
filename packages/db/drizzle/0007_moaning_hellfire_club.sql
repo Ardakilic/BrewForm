@@ -1,0 +1,1 @@
+CREATE INDEX "recipe_created_at_id_idx" ON "recipe" USING btree ("created_at" DESC NULLS LAST,"id" DESC NULLS LAST);
