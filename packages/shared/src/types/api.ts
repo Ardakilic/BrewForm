@@ -52,6 +52,22 @@ export interface PaginationMeta {
   totalPages: number;
 }
 
+/**
+ * Cursor-pagination metadata included in cursor-based list responses.
+ *
+ * `total` is optional and only present when `includeTotal=true` is requested,
+ * because computing a full count defeats the performance benefit of cursor
+ * pagination.
+ */
+export interface CursorPaginationMeta {
+  /** Base64-encoded cursor for the next page, or null when no more pages. */
+  nextCursor: string | null;
+  /** True when at least one more page of results exists. */
+  hasMore: boolean;
+  /** Total number of items, only computed when explicitly requested. */
+  total?: number;
+}
+
 /** Pagination query parameters accepted by list endpoints. */
 export interface PaginationQuery {
   /** Page number (1-based, defaults to 1) */

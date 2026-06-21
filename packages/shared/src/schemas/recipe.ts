@@ -141,6 +141,8 @@ export const RecipeFilterSchema = z.object({
   perPage: z.coerce.number().int().positive().max(100).default(20),
   sortBy: z.enum(['createdAt', 'likeCount', 'rating']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  cursor: z.string().optional(),
+  includeTotal: z.coerce.boolean().optional().default(false),
 });
 
 /**

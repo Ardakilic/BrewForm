@@ -164,6 +164,12 @@ export const recipes = pgTable(
      * separate sort step.
      */
     index('recipe_visibility_like_count_idx').on(table.visibility, table.likeCount),
+    /**
+     * Cursor-based pagination: supports (createdAt DESC, id) < (cursor) queries.
+     * Both columns are DESC because the most common query is "newest first" feed.
+     * Postgres can scan this index backward for ASC queries.
+     */
+    index('recipe_created_at_id_idx').on(table.createdAt.desc(), table.id.desc()),
   ],
 );
 

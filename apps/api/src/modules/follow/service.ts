@@ -6,6 +6,7 @@
  * followed users' public recipes.
  */
 import * as model from './model.ts';
+import type { CursorResult } from '../recipe/model.ts';
 import * as recipeModel from '../recipe/model.ts';
 import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
@@ -63,14 +64,43 @@ export async function getFollowing(userId: string, page: number, perPage: number
 }
 
 /**
+ * Type guard that narrows a feed result to the offset-pagination shape.
+ *
+ * @param result - The union returned by {@link getFeed}.
+ * @returns True when the result carries offset pagination metadata (`total`).
+ */
+export function isFeedOffsetResult(
+  result:
+    | { recipes: Record<string, unknown>[]; total: number }
+    | CursorResult<Record<string, unknown>>,
+): result is { recipes: Record<string, unknown>[]; total: number } {
+  return 'total' in result && typeof (result as { total?: unknown }).total === 'number';
+}
+
+/**
  * Get the feed (public recipes) from users that the given user follows.
  *
- * Returns empty result if the user follows no one.
+ * Returns empty result if the user follows no one. When a cursor is provided,
+ * delegates to the recipe model's cursor-based feed query.
+ *
+ * @param userId   - UUID of the authenticated user.
+ * @param page     - Page number for offset mode.
+ * @param perPage  - Items per page.
+ * @param cursor   - Optional decoded cursor `{ createdAt, id }`.
+ * @returns Either `{ recipes, total }` for offset mode or
+ *          `{ recipes, hasMore, nextCursor, total? }` for cursor mode.
  */
-export async function getFeed(userId: string, page: number, perPage: number) {
+export async function getFeed(
+  userId: string,
+  page: number,
+  perPage: number,
+  cursor?: { createdAt: string; id: string },
+): Promise<
+  { recipes: Record<string, unknown>[]; total: number } | CursorResult<Record<string, unknown>>
+> {
   const followingIds = await model.getFollowingIds(userId);
   if (followingIds.length === 0) {
     return { recipes: [], total: 0 };
   }
-  return recipeModel.getFeed(followingIds, page, perPage);
+  return recipeModel.getFeed(followingIds, page, perPage, cursor);
 }

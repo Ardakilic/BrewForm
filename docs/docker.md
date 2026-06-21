@@ -123,3 +123,24 @@ make dev
 make down
 make dev
 ```
+
+## Database Seeding
+
+The seed script (`packages/db/src/seed.ts`) is idempotent: it can be run multiple times against the same database without raising unique-constraint errors. This is important because Docker Compose named volumes (especially the Postgres volume) can outlive a `docker compose down` or container recreation, leaving previous seed data behind.
+
+When re-running the full setup:
+
+```bash
+make db-generate && make db-migrate && make db-seed
+```
+
+The seed helpers will:
+
+- Skip rows that already exist using `onConflictDoNothing({ target: [...] })` on the table's real unique constraints.
+- Reuse existing rows by natural key lookup for tables that lack a usable unique constraint.
+
+If you need a completely empty database, use `make db-reset` instead of manually deleting containers, because `db-reset` drops and recreates the database before re-seeding.
+
+### Re-seeding After Container Wipes
+
+If you wipe containers but the Postgres volume persists, `make db-seed` will simply reconcile the existing data rather than crashing. This is covered by the integration test in `packages/db/src/seed.idempotent.test.ts`.

@@ -89,6 +89,13 @@ describe('Recipe table composite indexes', () => {
     expect(idx!.columns).toEqual(['visibility', 'like_count']);
     expect(idx!.isUnique).toBe(false);
   });
+
+  it('has recipe_created_at_id_idx on (createdAt, id)', () => {
+    const idx = indexes.find((i) => i.name === 'recipe_created_at_id_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['created_at', 'id']);
+    expect(idx!.isUnique).toBe(false);
+  });
 });
 
 describe('Recipe versions table composite indexes', () => {

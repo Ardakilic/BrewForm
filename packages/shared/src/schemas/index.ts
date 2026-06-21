@@ -56,6 +56,8 @@ export {
   BrewMethodCompatibilityUpdateSchema,
 } from './compatibility.ts';
 export {
+  cursorEnvelope,
+  CursorPaginationMetaSchema,
   ErrorEnvelopeSchema,
   paginatedEnvelope,
   PaginationMetaSchema,

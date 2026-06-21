@@ -5,7 +5,13 @@
  * rather than individual type files.
  */
 
-export type { ApiError, ApiResponse, PaginationMeta, PaginationQuery } from './api.ts';
+export type {
+  ApiError,
+  ApiResponse,
+  CursorPaginationMeta,
+  PaginationMeta,
+  PaginationQuery,
+} from './api.ts';
 export type {
   AuthUser,
   DateFormat,

@@ -32,6 +32,13 @@ export const PaginationMetaSchema = z.object({
   totalPages: z.number().int().min(0),
 });
 
+/** Mirrors CursorPaginationMeta in `@brewform/shared/types`. */
+export const CursorPaginationMetaSchema = z.object({
+  nextCursor: z.string().nullable(),
+  hasMore: z.boolean(),
+  total: z.number().int().min(0).optional(),
+});
+
 /** Mirrors success(c, data) — { success:true, data, meta:{ requestId } }. */
 export function successEnvelope<T extends z.ZodTypeAny>(dataSchema: T) {
   return z.object({
@@ -49,6 +56,22 @@ export function paginatedEnvelope<T extends z.ZodTypeAny>(itemSchema: T) {
     meta: z.object({
       requestId: z.string(),
       pagination: PaginationMetaSchema,
+    }),
+  });
+}
+
+/**
+ * Mirrors cursorPaginated(c, items, meta) — data is an array + meta.cursor.
+ *
+ * Use this for endpoints that support cursor-based pagination.
+ */
+export function cursorEnvelope<T extends z.ZodTypeAny>(itemSchema: T) {
+  return z.object({
+    success: z.literal(true),
+    data: z.array(itemSchema),
+    meta: z.object({
+      requestId: z.string(),
+      cursor: CursorPaginationMetaSchema,
     }),
   });
 }
