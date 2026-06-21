@@ -187,6 +187,28 @@ describe(
       expect(result.recipes.length).toBe(1);
       expect(result.recipes[0].id).toBe(r1.id);
     });
+
+    it('rejects cursor with date-only createdAt (not full ISO 8601)', async () => {
+      await expect(
+        model.findCursor(
+          eq(recipes.authorId, author.id),
+          { createdAt: '2026-01-15', id: '00000000-0000-0000-0000-000000000000' },
+          10,
+          'desc',
+        ),
+      ).rejects.toThrow('VALIDATION_ERROR: INVALID_CURSOR');
+    });
+
+    it('rejects cursor with non-ISO-8601 date string that JS Date would parse', async () => {
+      await expect(
+        model.findCursor(
+          eq(recipes.authorId, author.id),
+          { createdAt: 'January 1, 2025', id: '00000000-0000-0000-0000-000000000000' },
+          10,
+          'desc',
+        ),
+      ).rejects.toThrow('VALIDATION_ERROR: INVALID_CURSOR');
+    });
   },
 );
 

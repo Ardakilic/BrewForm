@@ -506,7 +506,17 @@ export async function listRecipes(
   const sortOrder = filters.sortOrder || 'desc';
 
   if (filters.cursor) {
-    logger.debug('Cursor provided, using cursor pagination');
+    if (page > 1) {
+      logger.debug(
+        { userId: _requestingUserId, page, perPage },
+        'Both cursor and page provided, using cursor pagination',
+      );
+    } else {
+      logger.debug(
+        { userId: _requestingUserId, page, perPage },
+        'Cursor provided, using cursor pagination',
+      );
+    }
 
     if (sortBy !== 'createdAt') {
       logger.warn({ sortBy }, 'Cursor pagination incompatible with sortBy, falling back to offset');
@@ -526,7 +536,22 @@ export async function listRecipes(
       throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
     }
 
-    const result = await model.findCursor(where, cursor, perPage, sortOrder, filters.includeTotal);
+    let result;
+    try {
+      result = await model.findCursor(where, cursor, perPage, sortOrder, filters.includeTotal);
+    } catch (err) {
+      // findCursor throws VALIDATION_ERROR: INVALID_CURSOR when the decoded
+      // cursor's createdAt is not a valid date — surface it as a 400, not 500.
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'VALIDATION_ERROR: INVALID_CURSOR') {
+        logger.error(
+          { err, userId: _requestingUserId, page, perPage },
+          'Invalid cursor payload provided',
+        );
+        throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
+      }
+      throw err;
+    }
     logger.debug(
       { userId: _requestingUserId, perPage, hasMore: result.hasMore },
       'listRecipes completed',

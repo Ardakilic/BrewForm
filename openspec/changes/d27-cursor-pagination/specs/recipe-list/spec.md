@@ -7,9 +7,10 @@ pagination metadata, discriminated by the presence of `meta.cursor` vs `meta.pag
 
 ### Requirement: Feed route accepts cursor without polluting PaginationSchema
 
-The `GET /feed/following` route currently validates with `PaginationSchema` (only `page`/`perPage`).
-To accept `cursor` without affecting the 10 other endpoints that use `PaginationSchema`, the feed
-route SHALL switch to a local inline schema or a new `FeedPaginationSchema` that includes `cursor`:
+The `GET /api/v1/follow/feed` route SHALL switch from `PaginationSchema` (only `page`/`perPage`) to a
+local inline schema that includes `cursor`, so that the shared `PaginationSchema` in
+`packages/shared/src/schemas/common.ts` remains unchanged and the 10 other endpoints that use it
+are unaffected:
 
 ```typescript
 zValidator('query', z.object({
@@ -24,13 +25,13 @@ The `PaginationSchema` in `packages/shared/src/schemas/common.ts` SHALL remain u
 
 #### Scenario: Feed route accepts cursor parameter
 
-- **WHEN** `GET /api/v1/feed/following?cursor=eyJ...&perPage=10` is called
+- **WHEN** `GET /api/v1/follow/feed?cursor=eyJ...&perPage=10` is called
 - **THEN** the query passes Zod validation and reaches the route handler
 - **AND** cursor-based pagination is used
 
 #### Scenario: Feed route still works with page/perPage only (backward compatible)
 
-- **WHEN** `GET /api/v1/feed/following?page=1&perPage=10` is called
+- **WHEN** `GET /api/v1/follow/feed?page=1&perPage=10` is called
 - **THEN** offset-based pagination is used (unchanged behavior)
 
 ---
@@ -105,7 +106,7 @@ The `data` array shape (array of recipe list items) SHALL be identical in both m
 
 #### Scenario: Feed endpoint returns cursor meta when cursor is provided
 
-- **WHEN** `GET /api/v1/feed/following?cursor=eyJ...&perPage=10` is called
+- **WHEN** `GET /api/v1/follow/feed?cursor=eyJ...&perPage=10` is called
 - **THEN** `meta.cursor` is present with `nextCursor, hasMore`
 
 ---

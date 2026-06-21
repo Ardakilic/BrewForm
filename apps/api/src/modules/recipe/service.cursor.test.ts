@@ -154,6 +154,66 @@ describe({
     expect((ascResult as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(false);
   });
 
+  it('allows an ASC cursor to be reused with DESC sortOrder', async () => {
+    const r1 = await createTestRecipe(author.id, 'Reuse ASC->DESC A', {
+      createdAt: new Date('2026-06-10T00:00:00.000Z'),
+    });
+    const r2 = await createTestRecipe(author.id, 'Reuse ASC->DESC B', {
+      createdAt: new Date('2026-06-11T00:00:00.000Z'),
+    });
+    recipesToClean.push(r1.id, r2.id);
+
+    // Cursor obtained from an ASC first-page boundary (r2 is the upper end of ASC page 1).
+    // Using it with DESC should return recipes OLDER than r2 (i.e. r1).
+    const ascCursor = encodeCursor({ createdAt: r2.createdAt.toISOString(), id: r2.id });
+    const descResult = await service.listRecipes(
+      { sortBy: 'createdAt', sortOrder: 'desc', cursor: ascCursor } as any,
+      1,
+      10,
+    );
+
+    expect('hasMore' in descResult).toBe(true);
+    expect((descResult as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(true);
+    expect((descResult as any).recipes.some((recipe: any) => recipe.id === r2.id)).toBe(false);
+  });
+
+  it('uses cursor pagination when both cursor and page are provided', async () => {
+    const r1 = await createTestRecipe(author.id, 'MutExcl A', {
+      createdAt: new Date('2026-07-01T00:00:00.000Z'),
+    });
+    const r2 = await createTestRecipe(author.id, 'MutExcl B', {
+      createdAt: new Date('2026-07-02T00:00:00.000Z'),
+    });
+    recipesToClean.push(r1.id, r2.id);
+
+    // Pass both cursor and page=5 — cursor must win, page is ignored.
+    const cursor = encodeCursor({ createdAt: r2.createdAt.toISOString(), id: r2.id });
+    const result = await service.listRecipes(
+      { sortBy: 'createdAt', sortOrder: 'desc', cursor } as any,
+      5,
+      10,
+    );
+
+    expect('hasMore' in result).toBe(true);
+    expect((result as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(true);
+  });
+
+  it('throws INVALID_CURSOR when decoded cursor has an invalid createdAt date', async () => {
+    // Valid base64 + valid JSON + has string `createdAt` and `id`, but `createdAt`
+    // is not a parseable date — buildCursorWhere must surface this as 400, not 500.
+    const payload = JSON.stringify({
+      createdAt: 'not-a-date',
+      id: '550e8400-e29b-41d4-a716-446655440000',
+    });
+    const badCursor = btoa(payload)
+      .replaceAll('+', '-')
+      .replaceAll('/', '_')
+      .replaceAll('=', '');
+    await expect(
+      service.listRecipes({ sortBy: 'createdAt', cursor: badCursor } as any, 1, 10),
+    ).rejects.toThrow('VALIDATION_ERROR: INVALID_CURSOR');
+  });
+
   it('includes total when includeTotal=true in cursor mode', async () => {
     const r = await createTestRecipe(author.id, 'Include Total');
     recipesToClean.push(r.id);

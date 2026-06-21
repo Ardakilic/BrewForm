@@ -694,7 +694,7 @@ export async function updateVersionNotes(versionId: string, notes: string) {
     .where(eq(recipeVersions.id, versionId));
 }
 
-/** Cursor-enabled cursor pagination result. */
+/** Result shape returned by cursor-based pagination queries. */
 export interface CursorResult<T> {
   /** Recipes on the current page. */
   recipes: T[];
@@ -716,9 +716,12 @@ export interface CursorResult<T> {
  */
 function buildCursorWhere(cursor: { createdAt: string; id: string }, sortOrder: string): SQL {
   const { createdAt, id } = cursor;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(createdAt)) {
+    throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
+  }
   const createdAtValue = new Date(createdAt);
   if (isNaN(createdAtValue.getTime())) {
-    throw new Error('INVALID_CURSOR');
+    throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
   }
   if (sortOrder === 'asc') {
     return or(
@@ -800,7 +803,20 @@ export async function findCursor(
   return result;
 }
 
-/** Fetch a paginated feed of public recipes from a set of followed author IDs. */
+/**
+ * Fetch a paginated feed of public recipes from a set of followed author IDs.
+ *
+ * When `cursor` is provided, delegates to {@link findCursor} for cursor-based
+ * pagination (DESC by `createdAt`); otherwise falls back to {@link findMany}
+ * offset-based pagination.
+ *
+ * @param authorIds - UUIDs of followed authors whose public recipes to include.
+ * @param page      - 1-based page number (offset mode only).
+ * @param perPage   - Number of recipes per page.
+ * @param cursor    - Optional decoded `{ createdAt, id }` bookmark for cursor mode.
+ * @returns Either `{ recipes, total }` for offset mode or
+ *          `{ recipes, hasMore, nextCursor, total? }` for cursor mode.
+ */
 export async function getFeed(
   authorIds: string[],
   page: number,

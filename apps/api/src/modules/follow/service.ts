@@ -99,6 +99,12 @@ export async function getFeed(
   { recipes: Record<string, unknown>[]; total: number } | CursorResult<Record<string, unknown>>
 > {
   logger.debug({ userId }, 'getFeed started');
+  if (cursor && page > 1) {
+    logger.debug(
+      { userId, page, perPage },
+      'Both cursor and page provided, using cursor pagination',
+    );
+  }
   const followingIds = await model.getFollowingIds(userId);
   if (followingIds.length === 0) {
     logger.debug({ userId }, 'getFeed completed');
