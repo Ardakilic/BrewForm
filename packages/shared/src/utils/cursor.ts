@@ -17,14 +17,21 @@ export interface PaginationCursor {
 }
 
 /**
- * Encode a pagination cursor to an opaque base64 string.
+ * Encode a pagination cursor to an opaque base64url string.
+ *
+ * Cursor-based pagination uses base64url encoding (RFC 4648 §5) so the
+ * resulting string is safe to use in URL query parameters without extra
+ * escaping — no `+`, `/`, or `=` characters.
  *
  * @param cursor - The cursor payload `{ createdAt, id }`.
- * @returns A base64-encoded JSON string safe to expose in API responses and
+ * @returns A base64url-encoded JSON string safe to expose in API responses and
  *          accept back as a query parameter.
  */
 export function encodeCursor(cursor: PaginationCursor): string {
-  return btoa(JSON.stringify(cursor));
+  return btoa(JSON.stringify(cursor))
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replaceAll('=', '');
 }
 
 /**
@@ -42,7 +49,11 @@ export function decodeCursor(cursor: string): PaginationCursor {
 
   let decoded: string;
   try {
-    decoded = atob(cursor);
+    const base64 = cursor
+      .replaceAll('-', '+')
+      .replaceAll('_', '/')
+      .padEnd(Math.ceil(cursor.length / 4) * 4, '=');
+    decoded = atob(base64);
   } catch {
     throw new Error('Invalid cursor format');
   }

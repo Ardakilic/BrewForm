@@ -506,7 +506,7 @@ export async function listRecipes(
   const sortOrder = filters.sortOrder || 'desc';
 
   if (filters.cursor) {
-    logger.debug('Both cursor and page provided, using cursor pagination');
+    logger.debug('Cursor provided, using cursor pagination');
 
     if (sortBy !== 'createdAt') {
       logger.warn({ sortBy }, 'Cursor pagination incompatible with sortBy, falling back to offset');

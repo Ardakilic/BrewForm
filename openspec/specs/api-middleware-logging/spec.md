@@ -7,10 +7,10 @@ TBD - created by archiving change d26-expand-logging. Update Purpose after archi
 
 The auth middleware SHALL emit log messages at warn or error level for every authentication failure path: missing token, invalid/expired token, user not found for valid token, and banned user.
 
-#### Scenario: Missing token is logged at debug level
+#### Scenario: Missing token is logged at warn level
 
 - **WHEN** a request arrives without an Authorization header
-- **THEN** the system SHALL emit `log.debug({}, 'authMiddleware no token found in Authorization header')`
+- **THEN** the system SHALL emit `log.warn({}, 'authMiddleware no token found in Authorization header')`
 - **AND** return a 401 response unchanged
 
 #### Scenario: Token verification failure is logged at error level
@@ -115,7 +115,7 @@ The `optionalAuthMiddleware` function SHALL emit only `log.debug` calls and SHAL
 - **WHEN** a request arrives without an Authorization header to an optionally-authenticated route
 - **THEN** the system SHALL emit `log.debug({}, 'optionalAuthMiddleware no auth token supplied (proceeding unauthenticated)')`
 - **AND** SHALL NOT emit any `log.error` or `log.warn` calls
-- **AND** SHALL proceed to the next middleware without setting `userId` or `user` on the context
+- **AND** SHALL explicitly set `userId` and `user` to `null` on the context before proceeding to the next middleware
 
 #### Scenario: optionalAuthMiddleware logs successful optional authentication at debug level
 
@@ -127,7 +127,7 @@ The `optionalAuthMiddleware` function SHALL emit only `log.debug` calls and SHAL
 
 - **WHEN** a request arrives with an invalid/expired token to an optionally-authenticated route
 - **THEN** the system SHALL emit a `log.debug` call (not `log.error`) indicating token verification failed
-- **AND** SHALL proceed to the next middleware without setting auth context
+- **AND** SHALL explicitly set `userId` and `user` to `null` on the context before proceeding to the next middleware
 - **AND** SHALL NOT return a 401 response (optional auth allows unauthenticated access)
 
 ### Requirement: Middleware logging must not alter the HTTP response status code or body

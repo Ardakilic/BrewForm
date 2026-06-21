@@ -3,19 +3,19 @@
 ## Purpose
 TBD - created by archiving change d26-expand-logging. Update Purpose after archive.
 ## Requirements
-### Requirement: API service tests assert entry and exit debug logging
+### Requirement: API service tests assert entry and exit logging at the expected level
 
-Every API service test that exercises a logged function SHALL assert that `log.debug` was called with the expected entry message and relevant identifiers, and that `log.debug` was called with the expected completion message on success.
+Every API service test that exercises a logged function SHALL assert that the logger was called at the expected level (e.g., `log.debug`, `log.info`) with the expected entry message and relevant identifiers, and that the logger was called at the expected level with the expected completion message on success.
 
 #### Scenario: Test verifies function entry log
 
 - **WHEN** a test calls `getBean("bean-1")` which successfully returns a bean
-- **THEN** the test SHALL assert that the logger spy received a call matching `log.debug({ id: "bean-1" }, 'getBean started')`
+- **THEN** the test SHALL assert that the logger spy received a call matching the expected log level (e.g., `log.debug({ id: "bean-1" }, 'getBean started')`)
 
 #### Scenario: Test verifies function exit log
 
 - **WHEN** a test calls `getBean("bean-1")` which successfully returns a bean
-- **THEN** the test SHALL assert that the logger spy received a call matching `log.debug({ id: "bean-1" }, 'getBean completed')`
+- **THEN** the test SHALL assert that the logger spy received a call matching the expected log level (e.g., `log.debug({ id: "bean-1" }, 'getBean completed')`)
 
 ### Requirement: API service tests assert error logging on failure paths
 
@@ -78,7 +78,7 @@ Web tests that assert on logging SHALL use Vitest's `vi.hoisted` pattern to crea
 
 - **WHEN** a web test file requires logger assertions
 - **THEN** the file SHALL contain:
-  ```
+  ```typescript
   const { mockLogger } = vi.hoisted(() => ({
     mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   }));

@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import {
   cursorEnvelope,
   ErrorEnvelopeSchema,
   FeedRecipeOutputSchema,
+  paginatedEnvelope,
   RecipeCreateSchema,
   RecipeFilterSchema,
   RecipeForkSchema,
@@ -47,10 +49,16 @@ recipe.get(
     ],
     responses: {
       200: {
-        description: 'Paginated list of recipes (cursor or offset meta)',
+        description:
+          'Paginated list of recipes. Returns `meta.cursor` when cursor pagination is active, or `meta.pagination` when offset pagination is active.',
         content: {
           'application/json': {
-            schema: resolver(cursorEnvelope(FeedRecipeOutputSchema)),
+            schema: resolver(
+              z.union([
+                cursorEnvelope(FeedRecipeOutputSchema),
+                paginatedEnvelope(FeedRecipeOutputSchema),
+              ]),
+            ),
           },
         },
       },

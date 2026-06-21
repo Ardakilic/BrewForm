@@ -6,11 +6,14 @@ describe('encodeCursor / decodeCursor', () => {
   it('round-trips a valid cursor', () => {
     const cursor = {
       createdAt: '2026-05-29T10:30:00.000Z',
-      id: 'abc-123',
+      id: '550e8400-e29b-41d4-a716-446655440000',
     };
     const encoded = encodeCursor(cursor);
     expect(typeof encoded).toBe('string');
     expect(encoded).not.toContain('{');
+    expect(encoded).not.toContain('+');
+    expect(encoded).not.toContain('/');
+    expect(encoded).not.toContain('=');
     expect(decodeCursor(encoded)).toEqual(cursor);
   });
 

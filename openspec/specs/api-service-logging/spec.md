@@ -3,9 +3,9 @@
 ## Purpose
 TBD - created by archiving change d26-expand-logging. Update Purpose after archive.
 ## Requirements
-### Requirement: Service functions log entry and exit at debug level
+### Requirement: Standard service functions log entry and exit at debug level
 
-Every public API service function SHALL emit a `log.debug` call on entry (with relevant identifiers) and a `log.debug` call on successful completion.
+Every public API service function (excluding content moderation service functions, which use `log.info`) SHALL emit a `log.debug` call on entry (with relevant identifiers) and a `log.debug` call on successful completion.
 
 #### Scenario: Read function logs entry and exit
 
@@ -92,7 +92,7 @@ Each service file SHALL import `createLogger` from the API logger utility and in
 #### Scenario: Logger variable name is consistent
 
 - **WHEN** any API service file defines its logger
-- **THEN** the variable name SHALL be `log` (matching existing convention in vendor and coffee-variety services)
+- **THEN** the variable name SHALL be `log` (or `logger` in existing services, following the file's existing convention)
 
 ### Requirement: DI-pattern services support logging without affecting the deps parameter contract
 

@@ -19,7 +19,7 @@ Encoding SHALL use `JSON.stringify` then `btoa`. Decoding SHALL use `atob` then 
 
 #### Scenario: Encode a valid cursor
 
-- **WHEN** `encodeCursor({ createdAt: '2026-05-29T10:30:00.000Z', id: 'abc-123' })` is called
+- **WHEN** `encodeCursor({ createdAt: '2026-05-29T10:30:00.000Z', id: '550e8400-e29b-41d4-a716-446655440000' })` is called
 - **THEN** the result is a base64 string that decodes back to the same object
 
 #### Scenario: Decode an empty string
@@ -61,8 +61,8 @@ behavior.
 #### Scenario: First page with no cursor
 
 - **WHEN** `GET /api/v1/recipes?perPage=5` is called (no cursor, default `sortBy=createdAt`, `sortOrder=desc`)
-- **THEN** the response returns the 5 newest public recipes with `meta.cursor.nextCursor` set
-- **AND** `meta.cursor.hasMore` is `true` if more recipes exist
+- **THEN** the response returns the first 5 public recipes (newest first) using offset pagination with `meta.pagination`
+- **AND** `meta.cursor` is absent (offset mode is used when no cursor is provided)
 
 #### Scenario: Second page using cursor from first page
 

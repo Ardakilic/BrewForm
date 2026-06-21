@@ -83,10 +83,10 @@ Each web page component SHALL use the component's PascalCase name as the logger 
 - **WHEN** `RecipeEditPage` instantiates its logger
 - **THEN** the logger SHALL be created with `createLogger('RecipeEditPage')`
 
-#### Scenario: Logger import uses @ alias or relative path
+#### Scenario: Logger import uses @ alias
 
 - **WHEN** a web page imports `createLogger`
-- **THEN** the import path SHALL be either `@/utils/logger.ts` or a valid relative path to `apps/web/src/utils/logger.ts`
+- **THEN** the import path SHALL be `@/utils/logger.ts`
 
 ### Requirement: Pages with useEffect for data fetching must add log.error in existing catch blocks
 

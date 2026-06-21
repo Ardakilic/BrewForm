@@ -63,9 +63,9 @@ The useStaticCacheSync hook SHALL log its mount/unmount lifecycle and SHALL log 
 - **WHEN** a `storage` event with key `'brewform-static-cache-bust'` is received from another browser tab
 - **THEN** the system SHALL emit `log.debug({ key: 'brewform-static-cache-bust' }, 'useStaticCacheSync cross-tab cache bust detected')` before calling `invalidateStaticCache()`
 
-### Requirement: Context and hook loggers follow PascalCase naming
+### Requirement: Context and hook loggers use their exported symbol names
 
-Each context provider and hook SHALL use its PascalCase name as the logger name.
+Each context provider and hook SHALL use its exact exported symbol name as the logger name.
 
 #### Scenario: ThemeContext logger naming
 
@@ -110,7 +110,7 @@ The `useStaticCacheSync` hook manages cross-tab cache synchronization via the br
 
 ### Requirement: useDebounce must use log.trace to avoid noise at debug level
 
-The `useDebounce` hook is a high-frequency hook — it creates and clears timers on every keystroke or rapid value change. Using `log.debug` for these events would flood the debug log and make it unusable for troubleshooting other components. The hook SHALL use `log.trace` exclusively so that its output is only visible when `LOG_LEVEL=trace` is explicitly set.
+The `useDebounce` hook is a high-frequency hook — it creates and clears timers on every keystroke or rapid value change. Using `log.debug` for these events would flood the debug log and make it unusable for troubleshooting other components. The hook SHALL use `log.trace` exclusively so that its output is only visible when `VITE_LOG_LEVEL=trace` is explicitly set.
 
 #### Scenario: useDebounce timer set uses log.trace, not log.debug
 
@@ -122,13 +122,13 @@ The `useDebounce` hook is a high-frequency hook — it creates and clears timers
 - **WHEN** the debounced value changes and the previous `setTimeout` is cleared via `clearTimeout`
 - **THEN** the system SHALL emit `log.trace({}, 'useDebounce timer cleared')` — using `trace`, NOT `debug`
 
-#### Scenario: useDebounce at LOG_LEVEL=debug produces zero log output from the hook
+#### Scenario: useDebounce at VITE_LOG_LEVEL=debug produces zero log output from the hook
 
 - **WHEN** the application is running with `VITE_LOG_LEVEL=debug`
 - **THEN** the `useDebounce` hook SHALL produce zero log output (all calls are `trace` level and filtered)
 - **AND** debug-level logs from other components (pages, contexts) SHALL still be visible
 
-#### Scenario: useDebounce at LOG_LEVEL=trace produces timer lifecycle output
+#### Scenario: useDebounce at VITE_LOG_LEVEL=trace produces timer lifecycle output
 
 - **WHEN** the application is running with `VITE_LOG_LEVEL=trace`
 - **THEN** `useDebounce` SHALL emit `log.trace` calls for timer set and clear events

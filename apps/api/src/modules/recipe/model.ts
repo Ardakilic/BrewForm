@@ -717,6 +717,9 @@ export interface CursorResult<T> {
 function buildCursorWhere(cursor: { createdAt: string; id: string }, sortOrder: string): SQL {
   const { createdAt, id } = cursor;
   const createdAtValue = new Date(createdAt);
+  if (isNaN(createdAtValue.getTime())) {
+    throw new Error('INVALID_CURSOR');
+  }
   if (sortOrder === 'asc') {
     return or(
       gt(recipes.createdAt, createdAtValue),

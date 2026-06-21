@@ -82,7 +82,7 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 
 ## Database rules
 
-- **No raw SQL** — Drizzle ORM only. No JSONB/UUID columns. No Postgres-specific operators.
+- **No raw SQL** — Drizzle ORM only. No JSONB/UUID columns. No Postgres-specific operators in application query code (schema-level Postgres features like index ordering and CHECK constraints are permitted).
 - **Soft deletes** on all main entities (`deletedAt`). Queries use `findFirst({ where: eq(t.deletedAt, null) })`, never `findUnique`.
 - Connection pool: `max: 10` via `postgres-js` driver in `packages/db/src/index.ts`.
 - Migrations: `deno task db:generate` (creates SQL) then `deno task db:migrate` (applies); seed is `deno run -A packages/db/src/seed.ts`.

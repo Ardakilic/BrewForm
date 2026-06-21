@@ -51,7 +51,7 @@ This design is scoped to **recipe list endpoints only** (`GET /recipes`, `GET /r
 When both are present, cursor takes precedence and `page` is silently ignored with a debug log.
 
 **Routing logic in `listRecipes()`:**
-```
+```typescript
 if cursor is present:
   → validate cursor format
   → if sortBy !== 'createdAt' → fall back to offset (cursor incompatible with mutable sorts)

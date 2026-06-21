@@ -13,8 +13,8 @@ route SHALL switch to a local inline schema or a new `FeedPaginationSchema` that
 
 ```typescript
 zValidator('query', z.object({
-  page: z.coerce.number().int().positive().default(1).optional(),
-  perPage: z.coerce.number().int().positive().max(100).default(20).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  perPage: z.coerce.number().int().positive().max(100).default(20),
   cursor: z.string().optional(),
 })),
 ```
@@ -81,7 +81,7 @@ shapes:
 
 1. **Cursor mode** (when `cursor` query param is present and `sortBy=createdAt`):
    ```json
-   { "meta": { "requestId": "...", "cursor": { "nextCursor": "string|null", "hasMore": true, "total": 1234 } } }
+   { "meta": { "requestId": "...", "cursor": { "nextCursor": "string|null", "hasMore": true } } }
    ```
 
 2. **Offset mode** (when `cursor` is absent or `sortBy` is incompatible):

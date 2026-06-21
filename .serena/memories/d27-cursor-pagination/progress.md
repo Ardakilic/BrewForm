@@ -1,5 +1,5 @@
 Cursor pagination implementation (change `d27-cursor-pagination`) is essentially complete. The remaining work is bookkeeping:
-- Create `/Users/arda/projects/BrewForm/pr_description.md` summarizing the change.
+- Create `pr_description.md` summarizing the change.
 - Update `openspec/changes/d27-cursor-pagination/tasks.md` checkboxes to reflect completed tasks.
 - Optionally run the full `make test` once the `brewform-garage-1` dependency is healthy; the equivalent per-workspace tests already pass.
 - Optionally add route-level tests for `GET /` cursor mode and `GET /feed/following` cursor mode if required by tasks.md.

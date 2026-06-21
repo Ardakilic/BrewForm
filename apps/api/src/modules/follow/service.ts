@@ -74,7 +74,7 @@ export function isFeedOffsetResult(
     | { recipes: Record<string, unknown>[]; total: number }
     | CursorResult<Record<string, unknown>>,
 ): result is { recipes: Record<string, unknown>[]; total: number } {
-  return 'total' in result && typeof (result as { total?: unknown }).total === 'number';
+  return !('hasMore' in result);
 }
 
 /**
@@ -98,9 +98,13 @@ export async function getFeed(
 ): Promise<
   { recipes: Record<string, unknown>[]; total: number } | CursorResult<Record<string, unknown>>
 > {
+  logger.debug({ userId }, 'getFeed started');
   const followingIds = await model.getFollowingIds(userId);
   if (followingIds.length === 0) {
+    logger.debug({ userId }, 'getFeed completed');
     return { recipes: [], total: 0 };
   }
-  return recipeModel.getFeed(followingIds, page, perPage, cursor);
+  const result = await recipeModel.getFeed(followingIds, page, perPage, cursor);
+  logger.debug({ userId }, 'getFeed completed');
+  return result;
 }
