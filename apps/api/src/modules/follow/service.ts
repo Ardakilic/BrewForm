@@ -100,7 +100,10 @@ export async function getFeed(
 > {
   logger.debug({ userId }, 'getFeed started');
   if (cursor && page > 1) {
-    logger.debug('Both cursor and page provided, using cursor pagination');
+    logger.debug(
+      { userId, page, perPage },
+      'Both cursor and page provided, using cursor pagination',
+    );
   }
   const followingIds = await model.getFollowingIds(userId);
   if (followingIds.length === 0) {

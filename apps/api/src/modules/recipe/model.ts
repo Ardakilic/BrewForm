@@ -716,6 +716,9 @@ export interface CursorResult<T> {
  */
 function buildCursorWhere(cursor: { createdAt: string; id: string }, sortOrder: string): SQL {
   const { createdAt, id } = cursor;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(createdAt)) {
+    throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
+  }
   const createdAtValue = new Date(createdAt);
   if (isNaN(createdAtValue.getTime())) {
     throw new Error('VALIDATION_ERROR: INVALID_CURSOR');

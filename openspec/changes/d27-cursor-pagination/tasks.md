@@ -47,7 +47,7 @@
 - [x] 6.5 Return discriminated result `{ data, meta: { cursor: ... } | { pagination: ... } }`
 - [x] 6.6 Update `follow/service.getFeed()` to accept cursor param and pass through to `recipeModel.getFeed()`
 - [x] 6.7 Handle starred route cursor: silently log debug and fall back to offset when cursor provided to `/starred`
-- [x] 6.8 Add service-level tests in `apps/api/src/modules/recipe/service_test.ts` covering: cursor/offset routing, invalid cursor, sort fallback, cursor+page both provided (cursor wins), ASC cursor from DESC response, DESC cursor from ASC response
+- [x] 6.8 Add service-level tests in `apps/api/src/modules/recipe/service.cursor.test.ts` covering: cursor/offset routing, invalid cursor, sort fallback, cursor+page both provided (cursor wins), ASC cursor from DESC response, DESC cursor from ASC response
 
 ## 7. API: Recipe Routes
 

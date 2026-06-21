@@ -507,9 +507,15 @@ export async function listRecipes(
 
   if (filters.cursor) {
     if (page > 1) {
-      logger.debug('Both cursor and page provided, using cursor pagination');
+      logger.debug(
+        { userId: _requestingUserId, page, perPage },
+        'Both cursor and page provided, using cursor pagination',
+      );
     } else {
-      logger.debug('Cursor provided, using cursor pagination');
+      logger.debug(
+        { userId: _requestingUserId, page, perPage },
+        'Cursor provided, using cursor pagination',
+      );
     }
 
     if (sortBy !== 'createdAt') {
@@ -538,7 +544,10 @@ export async function listRecipes(
       // cursor's createdAt is not a valid date — surface it as a 400, not 500.
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'VALIDATION_ERROR: INVALID_CURSOR') {
-        logger.error({ err }, 'Invalid cursor payload provided');
+        logger.error(
+          { err, userId: _requestingUserId, page, perPage },
+          'Invalid cursor payload provided',
+        );
         throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
       }
       throw err;
