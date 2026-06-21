@@ -244,9 +244,9 @@ and in cursor mode, the system SHALL compute `SELECT count(*)` and include `tota
 
 ### Requirement: Invalid cursor returns 400 error
 
-When a `cursor` query parameter is present but cannot be decoded (malformed base64, invalid JSON,
-missing required fields), the system SHALL return a standard error envelope with
-`code: 'INVALID_CURSOR'` and status `400`.
+The system SHALL return a standard error envelope with `code: 'INVALID_CURSOR'` and status `400`
+when a `cursor` query parameter is present but cannot be decoded (malformed base64, invalid JSON,
+missing required fields, or a `createdAt` value that is not a valid ISO 8601 date-time).
 
 #### Scenario: Malformed cursor base64
 

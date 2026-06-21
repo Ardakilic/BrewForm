@@ -7,9 +7,10 @@ pagination metadata, discriminated by the presence of `meta.cursor` vs `meta.pag
 
 ### Requirement: Feed route accepts cursor without polluting PaginationSchema
 
-The `GET /feed/following` route currently validates with `PaginationSchema` (only `page`/`perPage`).
-To accept `cursor` without affecting the 10 other endpoints that use `PaginationSchema`, the feed
-route SHALL switch to a local inline schema or a new `FeedPaginationSchema` that includes `cursor`:
+The `GET /feed/following` route SHALL switch from `PaginationSchema` (only `page`/`perPage`) to a
+local inline schema that includes `cursor`, so that the shared `PaginationSchema` in
+`packages/shared/src/schemas/common.ts` remains unchanged and the 10 other endpoints that use it
+are unaffected:
 
 ```typescript
 zValidator('query', z.object({

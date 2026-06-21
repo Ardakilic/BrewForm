@@ -35,8 +35,8 @@
 - [x] 5.6 Add optional `includeTotal` parameter that conditionally runs `SELECT count(*)`
 - [x] 5.7 Include author relation in cursor query (same `with: { author: ... }` as `findMany`)
 - [x] 5.8 Update `getFeed(authorIds, page, perPage)` to accept optional `cursor` param and dispatch to `findCursor()` when cursor is present
-- [ ] 5.9 Add unit tests for `findCursor` in `apps/api/src/modules/recipe/model_test.ts` covering DESC, ASC, empty result, hasMore detection, includeTotal, includeTotal with empty result
-- [ ] 5.10 Add unit tests for `getFeed` with cursor in `apps/api/src/modules/recipe/model_test.ts`
+- [x] 5.9 Add unit tests for `findCursor` in `apps/api/src/modules/recipe/model_test.ts` covering DESC, ASC, empty result, hasMore detection, includeTotal, includeTotal with empty result
+- [x] 5.10 Add unit tests for `getFeed` with cursor in `apps/api/src/modules/recipe/model_test.ts`
 
 ## 6. API: Recipe Service — Routing Logic
 
@@ -47,7 +47,7 @@
 - [x] 6.5 Return discriminated result `{ data, meta: { cursor: ... } | { pagination: ... } }`
 - [x] 6.6 Update `follow/service.getFeed()` to accept cursor param and pass through to `recipeModel.getFeed()`
 - [x] 6.7 Handle starred route cursor: silently log debug and fall back to offset when cursor provided to `/starred`
-- [ ] 6.8 Add service-level tests in `apps/api/src/modules/recipe/service_test.ts` covering: cursor/offset routing, invalid cursor, sort fallback, cursor+page both provided (cursor wins), ASC cursor from DESC response, DESC cursor from ASC response
+- [x] 6.8 Add service-level tests in `apps/api/src/modules/recipe/service_test.ts` covering: cursor/offset routing, invalid cursor, sort fallback, cursor+page both provided (cursor wins), ASC cursor from DESC response, DESC cursor from ASC response
 
 ## 7. API: Recipe Routes
 
@@ -55,8 +55,8 @@
 - [x] 7.2 Update `GET /starred` route: keep offset-only, silently ignore cursor param with debug log (defer cursor support for starred to follow-up change)
 - [x] 7.3 Replace `zValidator('query', PaginationSchema)` on `GET /feed/following` in `apps/api/src/modules/follow/index.ts` with a local inline schema that includes `cursor: z.string().optional()`
 - [x] 7.4 Update `GET /feed/following` route handler to pass cursor to service and use `cursorPaginated()` when cursor mode is active
-- [ ] 7.5 Add route-level tests in `apps/api/src/modules/recipe/index_test.ts` for cursor mode responses (valid cursor, invalid cursor, cursor+page both, empty cursor result)
-- [ ] 7.6 Add route-level tests in `apps/api/src/modules/follow/index_test.ts` for feed cursor mode
+- [x] 7.5 Add route-level tests in `apps/api/src/modules/recipe/index_test.ts` for cursor mode responses (valid cursor, invalid cursor, cursor+page both, empty cursor result)
+- [x] 7.6 Add route-level tests in `apps/api/src/modules/follow/index_test.ts` for feed cursor mode
 
 ## 8. OpenAPI Documentation
 
@@ -71,7 +71,7 @@
 - [x] 9.2 Run `make lint` — fix any lint errors
 - [x] 9.3 Run `make check` — fix any TypeScript errors
 - [x] 9.4 Run `make test` — ensure all tests pass (new + existing) — equivalent per-suite runs pass; `make test` itself is blocked by an unhealthy `garage` dependency in `make up`
-- [ ] 9.5 Verify test coverage ≥80% for all new code paths
+- [x] 9.5 Verify test coverage ≥80% for all new code paths
 
 ## 10. Logging
 

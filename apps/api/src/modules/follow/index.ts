@@ -210,10 +210,16 @@ follow.get(
     ],
     responses: {
       200: {
-        description: 'Paginated feed of recipes (cursor or offset meta)',
+        description:
+          'Paginated feed of recipes. Returns `meta.cursor` when cursor pagination is active, or `meta.pagination` when offset pagination is active.',
         content: {
           'application/json': {
-            schema: resolver(cursorEnvelope(FeedRecipeOutputSchema)),
+            schema: resolver(
+              z.union([
+                cursorEnvelope(FeedRecipeOutputSchema),
+                paginatedEnvelope(FeedRecipeOutputSchema),
+              ]),
+            ),
           },
         },
       },
