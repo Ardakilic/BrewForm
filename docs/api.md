@@ -231,7 +231,7 @@ Response `401` (invalid or expired refresh token):
 | `search`       | —             | Search by title                                        |
 | `equipmentId`  | —             | Filter by linked equipment UUID                        |
 | `tasteNoteIds` | —             | Comma-separated taste note UUIDs (AND logic, max 10)   |
-| `tasteNoteId`  | —             | Single taste note UUID (deprecated, use tasteNoteIds)  |
+| `tasteNoteId`  | —             | Single taste note UUID (**deprecated**, use `tasteNoteIds`). Responses include a `Deprecation: true` header (RFC 8594). Will be removed in a future release — see [`openspec/changes/d28-remove-deprecated-taste-note-id/`](../openspec/changes/d28-remove-deprecated-taste-note-id/proposal.md). |
 | `grinder`      | —             | Filter by grinder name                                 |
 | `mainBrewer`   | —             | Filter by main brewer name (partial, case-insensitive) |
 | `sortBy`       | `createdAt`   | Sort field: `createdAt`, `likeCount`, `rating`         |
