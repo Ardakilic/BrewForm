@@ -1,6 +1,8 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
+import { Hono } from 'hono';
 import {
+  cursorPaginated,
   error,
   forbidden,
   notFound,
@@ -129,5 +131,51 @@ describe('Response Helpers', () => {
       expect((result as any).body.error.code).toBe('VALIDATION_ERROR');
       expect((result as any).body.error.details).toEqual(details);
     });
+  });
+});
+
+describe('paginated with headers option (D28)', () => {
+  it('sets response headers when options.headers is provided', async () => {
+    const app = new Hono();
+    app.get('/test', (c) =>
+      paginated(c, [], { page: 1, perPage: 20, total: 0, totalPages: 0 }, {
+        headers: { Deprecation: 'true' },
+      }));
+    const res = await app.request('/test');
+    expect(res.headers.get('Deprecation')).toBe('true');
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([]);
+    expect(body.meta.pagination).toEqual({ page: 1, perPage: 20, total: 0, totalPages: 0 });
+  });
+
+  it('does not set headers when options is not provided', async () => {
+    const app = new Hono();
+    app.get('/test', (c) => paginated(c, [], { page: 1, perPage: 20, total: 0, totalPages: 0 }));
+    const res = await app.request('/test');
+    expect(res.headers.get('Deprecation')).toBeNull();
+  });
+});
+
+describe('cursorPaginated with headers option (D28)', () => {
+  it('sets response headers when options.headers is provided', async () => {
+    const app = new Hono();
+    app.get('/test', (c) =>
+      cursorPaginated(c, [], { nextCursor: null, hasMore: false }, {
+        headers: { Deprecation: 'true' },
+      }));
+    const res = await app.request('/test');
+    expect(res.headers.get('Deprecation')).toBe('true');
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([]);
+    expect(body.meta.cursor).toEqual({ nextCursor: null, hasMore: false });
+  });
+
+  it('does not set headers when options is not provided', async () => {
+    const app = new Hono();
+    app.get('/test', (c) => cursorPaginated(c, [], { nextCursor: null, hasMore: false }));
+    const res = await app.request('/test');
+    expect(res.headers.get('Deprecation')).toBeNull();
   });
 });

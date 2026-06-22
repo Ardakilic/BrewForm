@@ -495,6 +495,7 @@ export async function listRecipes(
   perPage: number,
   _requestingUserId: string | null = null,
   isAdmin: boolean = false,
+  requestId?: string,
 ) {
   logger.debug(
     { userId: _requestingUserId, page, perPage, filters: JSON.stringify(filters) },
@@ -504,6 +505,20 @@ export async function listRecipes(
   const where = model.buildListRecipesWhere(filters, isAdmin);
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
+
+  const deprecations: { tasteNoteId?: boolean } = {};
+  if (!filters.tasteNoteIds && filters.tasteNoteId) {
+    deprecations.tasteNoteId = true;
+    logger.warn(
+      { filter: 'tasteNoteId', userId: _requestingUserId, requestId },
+      'Deprecated query parameter used',
+    );
+  }
+
+  const withDeprecations = <T>(result: T): T & { deprecations?: { tasteNoteId?: boolean } } =>
+    deprecations.tasteNoteId
+      ? { ...result, deprecations }
+      : (result as T & { deprecations?: { tasteNoteId?: boolean } });
 
   if (filters.cursor) {
     if (page > 1) {
@@ -525,7 +540,7 @@ export async function listRecipes(
         { userId: _requestingUserId, page, perPage, resultCount: result.total },
         'listRecipes completed',
       );
-      return result;
+      return withDeprecations(result);
     }
 
     let cursor: { createdAt: string; id: string };
@@ -556,7 +571,7 @@ export async function listRecipes(
       { userId: _requestingUserId, perPage, hasMore: result.hasMore },
       'listRecipes completed',
     );
-    return result;
+    return withDeprecations(result);
   }
 
   const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
@@ -564,7 +579,7 @@ export async function listRecipes(
     { userId: _requestingUserId, page, perPage, resultCount: result.total },
     'listRecipes completed',
   );
-  return result;
+  return withDeprecations(result);
 }
 
 /**
@@ -585,14 +600,28 @@ export async function listStarredRecipes(
   page: number,
   perPage: number,
   userId: string,
+  requestId?: string,
 ) {
   logger.debug({ userId }, 'listStarredRecipes started');
   if (filters.cursor) {
     logger.debug('Cursor provided but starred recipes use offset pagination, using offset');
   }
+
+  const deprecations: { tasteNoteId?: boolean } = {};
+  if (!filters.tasteNoteIds && filters.tasteNoteId) {
+    deprecations.tasteNoteId = true;
+    logger.warn(
+      { filter: 'tasteNoteId', userId, requestId },
+      'Deprecated query parameter used',
+    );
+  }
+
   const result = await model.findStarred(userId, filters, page, perPage);
   logger.debug({ userId }, 'listStarredRecipes completed');
-  return result;
+  return {
+    ...result,
+    ...(deprecations.tasteNoteId ? { deprecations } : {}),
+  };
 }
 
 /**

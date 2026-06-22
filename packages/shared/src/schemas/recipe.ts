@@ -131,8 +131,18 @@ export const RecipeFilterSchema = z.object({
     },
     { message: 'tasteNoteIds must be at most 10 comma-separated UUIDs' },
   ),
-  // Keep tasteNoteId for backward compatibility (deprecated)
-  tasteNoteId: z.uuid().optional(),
+  /**
+   * Deprecated single-taste-note UUID filter. Use the plural `tasteNoteIds`
+   * (comma-separated, AND logic, max 10) instead. The API still applies this
+   * filter when set, but every response emits an RFC 8594 `Deprecation: true`
+   * header and a `warn` log line. Tracked by OpenSpec change
+   * `d28-remove-deprecated-taste-note-id`; the field itself will be removed
+   * in a follow-up change (D29 or later) once production telemetry confirms
+   * no significant callers remain.
+   *
+   * @deprecated Use `tasteNoteIds` instead. See D28.
+   */
+  tasteNoteId: z.uuid().optional().meta({ deprecated: true }),
   grinder: z.string().optional(),
   mainBrewer: z.string().max(200).optional(),
   coffeeVarietyId: z.uuid().optional(),

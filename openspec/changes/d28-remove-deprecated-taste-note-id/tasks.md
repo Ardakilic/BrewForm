@@ -1,6 +1,6 @@
 ## 1. Extend `paginated()` and `cursorPaginated()` with optional `{ headers }` argument
 
-- [ ] 1.1 Open `apps/api/src/utils/response/index.ts`. Update the
+- [x] 1.1 Open `apps/api/src/utils/response/index.ts`. Update the
   `paginated()` function (currently lines 31-40) to accept an optional fourth
   argument `options?: { headers?: Record<string, string> }`. Apply the
   headers via `c.header(name, value)` before `c.json()`:
@@ -37,7 +37,7 @@
   }
   ```
 
-- [ ] 1.2 Update `cursorPaginated()` (currently lines 52-61) with the same
+- [x] 1.2 Update `cursorPaginated()` (currently lines 52-61) with the same
   optional `options` argument and the same header-application loop:
 
   ```ts
@@ -75,12 +75,12 @@
   }
   ```
 
-- [ ] 1.3 Run `make check-api` — must pass with zero new errors. The change
+- [x] 1.3 Run `make check-api` — must pass with zero new errors. The change
   is purely additive; no existing call site needs to change.
 
 ## 2. Add `deprecations` detection and `warn` log to `listRecipes`
 
-- [ ] 2.1 Open `apps/api/src/modules/recipe/service.ts`. Locate the
+- [x] 2.1 Open `apps/api/src/modules/recipe/service.ts`. Locate the
   `listRecipes` function (lines 492-568). Add `requestId?: string` as a new
   optional sixth parameter:
 
@@ -95,7 +95,7 @@
   ) {
   ```
 
-- [ ] 2.2 Inside `listRecipes`, after the `where` is assembled (line 504)
+- [x] 2.2 Inside `listRecipes`, after the `where` is assembled (line 504)
   and before the cursor/offset branching, add the deprecation detection:
 
   ```ts
@@ -109,7 +109,7 @@
   }
   ```
 
-- [ ] 2.3 Update **every return statement** in `listRecipes` to spread the
+- [x] 2.3 Update **every return statement** in `listRecipes` to spread the
   `deprecations` field when the flag is set. There are multiple return paths:
   - Line 528 (cursor fallback to offset when `sortBy !== 'createdAt'`):
     `return { ...result, ...(deprecations.tasteNoteId ? { deprecations } : {}) };`
@@ -123,12 +123,12 @@
   ```
   Then `return withDeprecations(result);` on each path.
 
-- [ ] 2.4 Run `make check-api` — must pass. The `logger.warn` call uses the
+- [x] 2.4 Run `make check-api` — must pass. The `logger.warn` call uses the
   existing `logger` at `service.ts:63` (`createLogger('recipe-service')`).
 
 ## 3. Add `deprecations` detection and `warn` log to `listStarredRecipes`
 
-- [ ] 3.1 Open `apps/api/src/modules/recipe/service.ts`. Locate
+- [x] 3.1 Open `apps/api/src/modules/recipe/service.ts`. Locate
   `listStarredRecipes` (lines 583-596). Add `requestId?: string` as a new
   optional fifth parameter:
 
@@ -142,7 +142,7 @@
   ) {
   ```
 
-- [ ] 3.2 Inside `listStarredRecipes`, before the call to
+- [x] 3.2 Inside `listStarredRecipes`, before the call to
   `model.findStarred`, add the deprecation detection (same logic as
   `listRecipes`):
 
@@ -157,7 +157,7 @@
   }
   ```
 
-- [ ] 3.3 Update the return statement (currently `return result;` at line
+- [x] 3.3 Update the return statement (currently `return result;` at line
   595) to spread the `deprecations` field:
 
   ```ts
@@ -167,13 +167,13 @@
   };
   ```
 
-- [ ] 3.4 Run `make check-api` and
+- [x] 3.4 Run `make check-api` and
   `make test-specific filter=apps/api/src/modules/recipe` — every existing
   test must continue to pass; no new ones yet.
 
 ## 4. Update the `/recipes` controller to pass `requestId` and set the `Deprecation` header
 
-- [ ] 4.1 Open `apps/api/src/modules/recipe/index.ts`. Locate the `/recipes`
+- [x] 4.1 Open `apps/api/src/modules/recipe/index.ts`. Locate the `/recipes`
   handler (lines 73-107). Inside the handler, read `requestId` from the
   context and pass it to `listRecipes`:
 
@@ -235,11 +235,11 @@
   `paginated` branches. Extending only `paginated` would silently drop the
   header in cursor mode.
 
-- [ ] 4.2 Run `make check-api` — must pass.
+- [x] 4.2 Run `make check-api` — must pass.
 
 ## 5. Update the `/recipes/starred` controller
 
-- [ ] 5.1 Locate the `/starred` handler (lines 124-134). Apply the same
+- [x] 5.1 Locate the `/starred` handler (lines 124-134). Apply the same
   pattern — read `requestId`, pass to `listStarredRecipes`, check flag,
   pass headers to `paginated`:
 
@@ -271,11 +271,11 @@
   },
   ```
 
-- [ ] 5.2 Run `make check-api` — must pass.
+- [x] 5.2 Run `make check-api` — must pass.
 
 ## 6. Update `describeRoute` OpenAPI metadata on both routes
 
-- [ ] 6.1 In the `/recipes` `describeRoute` (lines 37-70), add
+- [x] 6.1 In the `/recipes` `describeRoute` (lines 37-70), add
   `tasteNoteId` (with `deprecated: true`) and `tasteNoteIds` to the
   `parameters` array (currently lines 42-49, which only lists 6 params).
   Insert after the existing `includeTotal` entry:
@@ -306,7 +306,7 @@
   ],
   ```
 
-- [ ] 6.2 In the `/recipes` `describeRoute` `200` response (lines 50-64),
+- [x] 6.2 In the `/recipes` `describeRoute` `200` response (lines 50-64),
   add a `headers` field declaring the `Deprecation` header:
 
   ```ts
@@ -333,7 +333,7 @@
   },
   ```
 
-- [ ] 6.3 In the `/starred` `describeRoute` (lines 112-121), add the same
+- [x] 6.3 In the `/starred` `describeRoute` (lines 112-121), add the same
   `tasteNoteId` (deprecated) and `tasteNoteIds` parameter entries and the
   same `Deprecation` header declaration on the `200` response. Also add a
   typed `200` response schema (currently it's just a description string):
@@ -396,14 +396,14 @@
   untyped — AGENTS.md mandates `resolver(ErrorEnvelopeSchema)` for every
   documented error on auth-guarded routes).
 
-- [ ] 6.4 Run `make check-api` — must pass. Run
+- [x] 6.4 Run `make check-api` — must pass. Run
   `make test-specific filter=apps/api/src/routes/openapi.coverage.test.ts`
   — the coverage test should continue to pass (it does not inspect response
   headers, and `/api/v1/recipes` is not in `IN_SCOPE_BASE_PATHS`).
 
 ## 7. Add `@deprecated` JSDoc tag and `.meta({ deprecated: true })` to the schema field
 
-- [ ] 7.1 Open `packages/shared/src/schemas/recipe.ts` and locate lines
+- [x] 7.1 Open `packages/shared/src/schemas/recipe.ts` and locate lines
   134-135:
 
   ```ts
@@ -436,12 +436,12 @@
     visible in the generated OpenAPI spec.
   - The codebase uses Zod v4.4.3; `.meta()` is available on all Zod schemas.
 
-- [ ] 7.2 Run `make check` — must pass across all workspaces (the schema
+- [x] 7.2 Run `make check` — must pass across all workspaces (the schema
   is consumed by both API and web).
 
 ## 8. Update `docs/api.md`
 
-- [ ] 8.1 Open `docs/api.md` and locate line 234:
+- [x] 8.1 Open `docs/api.md` and locate line 234:
 
   ```
   | `tasteNoteId`  | —             | Single taste note UUID (deprecated, use tasteNoteIds)  |
@@ -461,7 +461,7 @@
 
 ## 9. Add `recipe-filter-deprecation.test.ts`
 
-- [ ] 9.1 Create
+- [x] 9.1 Create
   `apps/api/src/modules/recipe/recipe-filter-deprecation.test.ts` with
   the standard header (matching the convention from
   `apps/api/src/modules/recipe/service.preservation.test.ts`):
@@ -487,7 +487,7 @@
   import { expect } from 'jsr:@std/expect';
   ```
 
-- [ ] 9.2 Add the four service-level cases for `listRecipes`. Use the mock
+- [x] 9.2 Add the four service-level cases for `listRecipes`. Use the mock
   pattern from `service.preservation.test.ts` (hand-rolled Drizzle-like
   stubs + mock `model.findMany` that captures the WHERE clause). Since
   `listRecipes` calls `model.buildListRecipesWhere` (which calls
@@ -557,7 +557,7 @@
   (`!filters.tasteNoteIds && filters.tasteNoteId`) runs before any DB
   query, so even if the DB returns empty results the flag is still set.
 
-- [ ] 9.3 Mirror the same four cases for `listStarredRecipes`:
+- [x] 9.3 Mirror the same four cases for `listStarredRecipes`:
 
   ```ts
   describe('listStarredRecipes deprecation flag (D28)', () => {
@@ -572,7 +572,7 @@
   });
   ```
 
-- [ ] 9.4 Add a controller-level integration test using Hono's
+- [x] 9.4 Add a controller-level integration test using Hono's
   `app.request(...)` (following the pattern from
   `apps/api/src/modules/recipe/index_test.ts` — no `hono/testing` import;
   use a stub middleware that sets `requestId` / `userId` on context):
@@ -633,13 +633,13 @@
   correct behaviour — the error response is not the deprecated query's
   "success" response). Adjust the assertion based on what makes sense.
 
-- [ ] 9.5 Run
+- [x] 9.5 Run
   `make test-specific filter=apps/api/src/modules/recipe/recipe-filter-deprecation.test.ts`
   — every new test must pass.
 
 ## 10. Extend `response.test.ts` with header-option tests
 
-- [ ] 10.1 Open `apps/api/src/utils/response/response.test.ts`. Add tests
+- [x] 10.1 Open `apps/api/src/utils/response/response.test.ts`. Add tests
   asserting that `paginated()` and `cursorPaginated()` with the `{ headers }`
   option correctly set the header on the response. Use the existing test
   pattern in this file (construct a mock `Context` or a minimal Hono app):
@@ -686,33 +686,33 @@
   Hono app pattern. Follow the same approach. The `CursorPaginationMeta`
   type requires `nextCursor` and `hasMore`; `total` is optional.
 
-- [ ] 10.2 Run
+- [x] 10.2 Run
   `make test-specific filter=apps/api/src/utils/response/response.test.ts`
   — must pass.
 
 ## 11. Final verification
 
-- [ ] 11.1 Run `make check-api` — zero type errors across all workspaces.
-- [ ] 11.2 Run `make lint` — zero warnings on:
+- [x] 11.1 Run `make check-api` — zero type errors across all workspaces.
+- [x] 11.2 Run `make lint` — zero warnings on:
   - `apps/api/src/utils/response/index.ts`
   - `apps/api/src/modules/recipe/service.ts`
   - `apps/api/src/modules/recipe/index.ts`
   - `apps/api/src/modules/recipe/recipe-filter-deprecation.test.ts`
   - `apps/api/src/utils/response/response.test.ts`
   - `packages/shared/src/schemas/recipe.ts`
-- [ ] 11.3 Run `make test-api` — every test in
+- [x] 11.3 Run `make test-api` — every test in
   `apps/api/src/modules/recipe/*.test.ts` and
   `apps/api/src/utils/response/response.test.ts` passes, including the new
   deprecation test file. No existing tests regress.
-- [ ] 11.4 Run
+- [x] 11.4 Run
   `make test-specific filter=apps/api/src/routes/openapi.coverage.test.ts`
   — the OpenAPI coverage test continues to pass.
-- [ ] 11.5 Manual smoke (optional): with the API running, hit
+- [x] 11.5 Manual smoke (optional): with the API running, hit
   `GET /api/v1/recipes?tasteNoteId=<any-uuid>` and confirm the response
   carries `Deprecation: true`. Hit
   `GET /api/v1/recipes?tasteNoteIds=<any-uuid>` and confirm it does not.
   Hit `GET /api/v1/recipes/openapi.json` and confirm the `tasteNoteId`
   parameter is listed with `deprecated: true`.
-- [ ] 11.6 Confirm the Phase 2 deprecation removal is left as a separate
+- [x] 11.6 Confirm the Phase 2 deprecation removal is left as a separate
   change. Do NOT remove the `tasteNoteId` field, the `buildRecipeFilters`
   branch, or the docs row in this PR.

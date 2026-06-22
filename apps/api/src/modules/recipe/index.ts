@@ -46,11 +46,33 @@ recipe.get(
       { name: 'sortOrder', in: 'query', required: false, schema: { type: 'string' } },
       { name: 'cursor', in: 'query', required: false, schema: { type: 'string' } },
       { name: 'includeTotal', in: 'query', required: false, schema: { type: 'boolean' } },
+      {
+        name: 'tasteNoteId',
+        in: 'query',
+        required: false,
+        deprecated: true,
+        description: 'Deprecated. Use tasteNoteIds instead. See D28.',
+        schema: { type: 'string', format: 'uuid' },
+      },
+      {
+        name: 'tasteNoteIds',
+        in: 'query',
+        required: false,
+        description: 'Comma-separated taste note UUIDs (AND logic, max 10)',
+        schema: { type: 'string' },
+      },
     ],
     responses: {
       200: {
         description:
           'Paginated list of recipes. Returns `meta.cursor` when cursor pagination is active, or `meta.pagination` when offset pagination is active.',
+        headers: {
+          Deprecation: {
+            schema: { type: 'string' },
+            description:
+              'Present (value "true") when the deprecated tasteNoteId parameter is used. See RFC 8594.',
+          },
+        },
         content: {
           'application/json': {
             schema: resolver(
@@ -74,6 +96,7 @@ recipe.get(
     const filters = c.req.valid('query');
     const userId = c.get('userId') ?? null;
     const isAdmin = c.get('user')?.isAdmin ?? false;
+    const requestId = c.get('requestId');
     try {
       const result = await service.listRecipes(
         filters,
@@ -81,22 +104,37 @@ recipe.get(
         filters.perPage,
         userId,
         isAdmin,
+        requestId,
       );
 
+      const depHeaders = result.deprecations?.tasteNoteId === true
+        ? { headers: { Deprecation: 'true' } }
+        : undefined;
+
       if ('hasMore' in result) {
-        return cursorPaginated(c, result.recipes, {
-          nextCursor: result.nextCursor,
-          hasMore: result.hasMore,
-          total: result.total,
-        });
+        return cursorPaginated(
+          c,
+          result.recipes,
+          {
+            nextCursor: result.nextCursor,
+            hasMore: result.hasMore,
+            total: result.total,
+          },
+          depHeaders,
+        );
       }
 
-      return paginated(c, result.recipes, {
-        page: filters.page,
-        perPage: filters.perPage,
-        total: result.total,
-        totalPages: Math.ceil(result.total / filters.perPage),
-      });
+      return paginated(
+        c,
+        result.recipes,
+        {
+          page: filters.page,
+          perPage: filters.perPage,
+          total: result.total,
+          totalPages: Math.ceil(result.total / filters.perPage),
+        },
+        depHeaders,
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'VALIDATION_ERROR: INVALID_CURSOR') {
@@ -114,9 +152,47 @@ recipe.get(
     summary: 'List starred (favourited) recipes',
     description: 'Paginated, filterable list of recipes the current user has starred.',
     security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
+      { name: 'perPage', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
+      { name: 'sortBy', in: 'query', required: false, schema: { type: 'string' } },
+      { name: 'sortOrder', in: 'query', required: false, schema: { type: 'string' } },
+      {
+        name: 'tasteNoteId',
+        in: 'query',
+        required: false,
+        deprecated: true,
+        description: 'Deprecated. Use tasteNoteIds instead. See D28.',
+        schema: { type: 'string', format: 'uuid' },
+      },
+      {
+        name: 'tasteNoteIds',
+        in: 'query',
+        required: false,
+        description: 'Comma-separated taste note UUIDs (AND logic, max 10)',
+        schema: { type: 'string' },
+      },
+    ],
     responses: {
-      200: { description: 'Paginated list of starred recipes' },
-      401: { description: 'Unauthorized' },
+      200: {
+        description: 'Paginated list of starred recipes',
+        headers: {
+          Deprecation: {
+            schema: { type: 'string' },
+            description:
+              'Present (value "true") when the deprecated tasteNoteId parameter is used. See RFC 8594.',
+          },
+        },
+        content: {
+          'application/json': {
+            schema: resolver(paginatedEnvelope(FeedRecipeOutputSchema)),
+          },
+        },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   authMiddleware,
@@ -124,13 +200,25 @@ recipe.get(
   async (c) => {
     const userId = c.get('userId') as string;
     const filters = c.req.valid('query');
-    const result = await service.listStarredRecipes(filters, filters.page, filters.perPage, userId);
-    return paginated(c, result.recipes, {
-      page: filters.page,
-      perPage: filters.perPage,
-      total: result.total,
-      totalPages: Math.ceil(result.total / filters.perPage),
-    });
+    const requestId = c.get('requestId');
+    const result = await service.listStarredRecipes(
+      filters,
+      filters.page,
+      filters.perPage,
+      userId,
+      requestId,
+    );
+    return paginated(
+      c,
+      result.recipes,
+      {
+        page: filters.page,
+        perPage: filters.perPage,
+        total: result.total,
+        totalPages: Math.ceil(result.total / filters.perPage),
+      },
+      result.deprecations?.tasteNoteId === true ? { headers: { Deprecation: 'true' } } : undefined,
+    );
   },
 );
 
