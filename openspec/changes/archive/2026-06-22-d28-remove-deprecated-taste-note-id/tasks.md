@@ -1,6 +1,6 @@
 ## 1. Add `deprecations` field to `listRecipes` and `findStarred` return shapes
 
-- [ ] 1.1 Open `apps/api/src/modules/recipe/service.ts` and locate the
+- [x] 1.1 Open `apps/api/src/modules/recipe/service.ts` and locate the
   `listRecipes` function (lines 478-601). Add (or update) the explicit
   return type to include the new optional `deprecations` discriminator:
 
@@ -34,7 +34,7 @@
   }
   ```
 
-- [ ] 1.2 Open `apps/api/src/modules/recipe/model.ts` and locate
+- [x] 1.2 Open `apps/api/src/modules/recipe/model.ts` and locate
   `findStarred` (after D12 lands, around lines 539-735). Add the same
   optional `deprecations` field to its return shape. Either reuse the
   `ListRecipesResult`-style interface from service (export and import) or
@@ -42,11 +42,11 @@
   final structure. Note: D28 depends on D12; if D12 is still in flight,
   rebase D28 on top of it before this task.
 
-- [ ] 1.3 Run `make check-api` — must pass with zero new errors.
+- [x] 1.3 Run `make check-api` — must pass with zero new errors.
 
 ## 2. Detect the deprecated parameter and emit the `warn` log
 
-- [ ] 2.1 In `apps/api/src/modules/recipe/service.ts:listRecipes`, locate
+- [x] 2.1 In `apps/api/src/modules/recipe/service.ts:listRecipes`, locate
   the existing `else if (filters.tasteNoteId)` branch at lines 544-551.
   Immediately after the branch's `conditions.push(...)` block (still
   inside the branch), add:
@@ -80,7 +80,7 @@
   optional argument or read it from the existing log context already on
   `log`.
 
-- [ ] 2.2 In the same function, change the return statement to include the
+- [x] 2.2 In the same function, change the return statement to include the
   `deprecations` field only when at least one flag is set:
 
   ```ts
@@ -91,19 +91,19 @@
   };
   ```
 
-- [ ] 2.3 Mirror tasks 2.1 and 2.2 inside
+- [x] 2.3 Mirror tasks 2.1 and 2.2 inside
   `apps/api/src/modules/recipe/model.ts:findStarred` (after D12 has landed
   and the `else if (filters.tasteNoteId)` branch exists there). The
   detection logic, the log shape, and the return-shape augmentation are
   identical.
 
-- [ ] 2.4 Run `make check-api` and
+- [x] 2.4 Run `make check-api` and
   `make test-specific filter=apps/api/src/modules/recipe` — every existing
   test must continue to pass; no new ones yet.
 
 ## 3. Extend `paginated()` to accept optional response headers
 
-- [ ] 3.1 Open `apps/api/src/utils/response/index.ts` and update the
+- [x] 3.1 Open `apps/api/src/utils/response/index.ts` and update the
   `paginated()` signature to accept an optional `{ headers }` argument.
   Replace the existing definition (lines 30-40) with:
 
@@ -138,11 +138,11 @@
   - `c.header(name, value)` is the Hono idiom for setting a single response
     header before `c.json()` is called.
 
-- [ ] 3.2 Run `make check-api` — must pass; no other files change yet.
+- [x] 3.2 Run `make check-api` — must pass; no other files change yet.
 
 ## 4. Update both recipe controllers to set the `Deprecation` header
 
-- [ ] 4.1 Open `apps/api/src/modules/recipe/index.ts` and locate the
+- [x] 4.1 Open `apps/api/src/modules/recipe/index.ts` and locate the
   `/recipes` handler at lines 42-55. Update the `return paginated(...)`
   call to pass the optional `{ headers }` argument when the service
   reports the flag:
@@ -170,7 +170,7 @@
   );
   ```
 
-- [ ] 4.2 Locate the `/recipes/starred` handler at lines 72-82. Apply the
+- [x] 4.2 Locate the `/recipes/starred` handler at lines 72-82. Apply the
   same change:
 
   ```ts
@@ -190,15 +190,15 @@
   );
   ```
 
-- [ ] 4.3 If `service.listStarredRecipes` does not currently surface the
+- [x] 4.3 If `service.listStarredRecipes` does not currently surface the
   `deprecations` field (because D12 left it implicit), update its return
   shape to propagate the field straight through from `model.findStarred`.
 
-- [ ] 4.4 Run `make check-api` and `make test-api` — must pass.
+- [x] 4.4 Run `make check-api` and `make test-api` — must pass.
 
 ## 5. Add `@deprecated` JSDoc tag to the schema field
 
-- [ ] 5.1 Open `packages/shared/src/schemas/recipe.ts` and locate lines
+- [x] 5.1 Open `packages/shared/src/schemas/recipe.ts` and locate lines
   134-135:
 
   ```ts
@@ -229,12 +229,12 @@
   - The surrounding prose stays in place so anyone reading the schema file
     has the full context without leaving the source.
 
-- [ ] 5.2 Run `make check` — must pass across all workspaces (the schema
+- [x] 5.2 Run `make check` — must pass across all workspaces (the schema
   is consumed by both API and web).
 
 ## 6. Update `docs/api.md`
 
-- [ ] 6.1 Open `docs/api.md` and locate line 234:
+- [x] 6.1 Open `docs/api.md` and locate line 234:
 
   ```
   | `tasteNoteId`  | —             | Single taste note UUID (deprecated, use tasteNoteIds)  |
@@ -254,7 +254,7 @@
 
 ## 7. Add `recipe-filter-deprecation.test.ts`
 
-- [ ] 7.1 Create
+- [x] 7.1 Create
   `apps/api/src/modules/recipe/recipe-filter-deprecation.test.ts` with
   the standard header (matching the convention from
   `apps/api/src/modules/recipe/service.preservation.test.ts`):
@@ -279,7 +279,7 @@
   import { expect } from 'jsr:@std/expect';
   ```
 
-- [ ] 7.2 Add the four service-level cases. Each constructs the filter,
+- [x] 7.2 Add the four service-level cases. Each constructs the filter,
   invokes `listRecipes` (with a stubbed `model.findMany` returning an
   empty page so the test runs without DB), and asserts the
   `deprecations.tasteNoteId` field on the result. Use the existing mock
@@ -314,7 +314,7 @@
   that fills in the schema's defaults (`page: 1`, `perPage: 20`, etc.) and
   invokes `service.listRecipes` with a stubbed model.
 
-- [ ] 7.3 Mirror the same four cases for the starred endpoint via
+- [x] 7.3 Mirror the same four cases for the starred endpoint via
   `service.listStarredRecipes` (or directly against `model.findStarred`,
   whichever D12 made the public surface). Group into a second `describe`
   block:
@@ -328,7 +328,7 @@
   });
   ```
 
-- [ ] 7.4 (Optional) Add a controller-level smoke test using Hono's test
+- [x] 7.4 (Optional) Add a controller-level smoke test using Hono's test
   client:
 
   ```ts
@@ -349,27 +349,27 @@
   duplicate too much existing test infrastructure — the four service-level
   cases above are the contract.
 
-- [ ] 7.5 Run
+- [x] 7.5 Run
   `make test-specific filter=apps/api/src/modules/recipe/recipe-filter-deprecation.test.ts`
   — every new test must pass.
 
 ## 8. Final verification
 
-- [ ] 8.1 Run `make check-api` — zero type errors across all workspaces.
-- [ ] 8.2 Run `make lint` — zero warnings on
+- [x] 8.1 Run `make check-api` — zero type errors across all workspaces.
+- [x] 8.2 Run `make lint` — zero warnings on
   `apps/api/src/modules/recipe/service.ts`,
   `apps/api/src/modules/recipe/model.ts`,
   `apps/api/src/modules/recipe/index.ts`,
   `apps/api/src/utils/response/index.ts`,
   `apps/api/src/modules/recipe/recipe-filter-deprecation.test.ts`,
   `packages/shared/src/schemas/recipe.ts`.
-- [ ] 8.3 Run `make test-api` — every test in
+- [x] 8.3 Run `make test-api` — every test in
   `apps/api/src/modules/recipe/*.test.ts` passes, including the new
   deprecation test file. No existing tests regress.
-- [ ] 8.4 Manual smoke (optional): with the API running, hit
+- [x] 8.4 Manual smoke (optional): with the API running, hit
   `GET /api/v1/recipes?tasteNoteId=<any-uuid>` and confirm the response
   carries `Deprecation: true`. Hit
   `GET /api/v1/recipes?tasteNoteIds=<any-uuid>` and confirm it does not.
-- [ ] 8.5 Confirm the phase-2 deprecation removal is left as a separate
+- [x] 8.5 Confirm the phase-2 deprecation removal is left as a separate
   change. Do NOT remove the `tasteNoteId` field, the service / model
   branch, or the docs row in this PR.

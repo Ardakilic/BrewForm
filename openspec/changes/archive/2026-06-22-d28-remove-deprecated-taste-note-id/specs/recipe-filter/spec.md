@@ -2,12 +2,12 @@
 
 ### Requirement: Deprecation signal for singular `tasteNoteId`
 
-When a request to `GET /api/v1/recipes` or `GET /api/v1/recipes/starred`
-supplies the deprecated singular `tasteNoteId` query parameter **and** does
-not supply the canonical plural `tasteNoteIds`, the API response SHALL
-include an [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594) `Deprecation:
-true` HTTP response header. The API SHALL also emit exactly one structured
-`warn` log entry per such request, shaped as
+The API SHALL emit an [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)
+`Deprecation: true` HTTP response header and exactly one structured `warn`
+log entry when a request to `GET /api/v1/recipes` or
+`GET /api/v1/recipes/starred` supplies the deprecated singular `tasteNoteId`
+query parameter **and** does not supply the canonical plural `tasteNoteIds`.
+The log entry SHALL be shaped as
 `{ filter: 'tasteNoteId', userId, requestId }`. No additional fields (and
 specifically no payload or PII) SHALL be logged.
 
@@ -77,10 +77,11 @@ precedence check; it SHALL set the header only when
 
 ### Requirement: Schema annotation for `tasteNoteId`
 
-The `RecipeFilterSchema.tasteNoteId` field in
-`packages/shared/src/schemas/recipe.ts` SHALL carry a JSDoc `@deprecated` tag
-that names the canonical replacement (`tasteNoteIds`) and references the D28
-change folder. The annotation SHALL be visible to TypeScript and OpenAPI
+The `RecipeFilterSchema.tasteNoteId` field SHALL carry a JSDoc `@deprecated`
+tag and a Zod `.meta({ deprecated: true })` call in
+`packages/shared/src/schemas/recipe.ts`. The JSDoc tag SHALL name the
+canonical replacement (`tasteNoteIds`) and reference the D28 change folder.
+The annotation SHALL be visible to TypeScript and OpenAPI
 consumers via the existing toolchain (i.e., it SHALL be a real `@deprecated`
 JSDoc tag, not only an inline comment).
 
@@ -142,14 +143,13 @@ encouraged.
 
 ## MODIFIED Requirements
 
-### Requirement: Deprecated `tasteNoteId` (singular) is honoured
+### Requirement: Deprecated tasteNoteId (singular) is honoured
 
-When `tasteNoteId` (singular) is provided AND `tasteNoteIds` (plural) is
-NOT, `buildRecipeFilters` SHALL generate a single taste-note condition
-equivalent to the legacy behaviour of `service.ts:listRecipes()`. When both
-`tasteNoteIds` and `tasteNoteId` are provided, the plural `tasteNoteIds`
-SHALL take precedence and `tasteNoteId` SHALL be ignored (matching the
-existing `else if` branch in `listRecipes`).
+`buildRecipeFilters` SHALL generate a single taste-note condition when
+`tasteNoteId` (singular) is provided AND `tasteNoteIds` (plural) is NOT.
+When both `tasteNoteIds` and `tasteNoteId` are provided, the plural
+`tasteNoteIds` SHALL take precedence and `tasteNoteId` SHALL be ignored
+(matching the existing `else if` branch in `listRecipes`).
 
 This means `model.ts:findStarred()` — which previously dropped `tasteNoteId`
 silently — SHALL pick up the deprecated singular filter for free after the
