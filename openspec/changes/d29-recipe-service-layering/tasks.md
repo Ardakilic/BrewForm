@@ -1,6 +1,6 @@
 ## 1. Add `createRecipeWithRelations` to the recipe model layer
 
-- [ ] 1.1 Open `apps/api/src/modules/recipe/model.ts`. Immediately after the
+- [x] 1.1 Open `apps/api/src/modules/recipe/model.ts`. Immediately after the
   `forkRecipe` function (which ends around line 475), add an exported
   `CreateRecipeWithRelationsInput` interface. It must accept every field the
   transaction body at `service.ts:209-291` consumes, pre-resolved by the
@@ -64,7 +64,7 @@
   write it (pre-existing bug; track separately). `coffeeVarietyId`/
   `coffeeVarietyName` are intentionally absent (not on the wire schema).
 
-- [ ] 1.2 Immediately below the interface, add the
+- [x] 1.2 Immediately below the interface, add the
   `createRecipeWithRelations` function with a full JSDoc matching the
   `forkRecipe` house style. Move the transaction body verbatim from
   `service.ts:209-291`. After the transaction returns `r`, call
@@ -186,11 +186,11 @@
   imports are needed — `model.ts` already imports `db`, all six schema
   tables, `eq`, and `sql`.
 
-- [ ] 1.3 Run `make check-api` — must pass with zero new type errors.
+- [x] 1.3 Run `make check-api` — must pass with zero new type errors.
 
 ## 2. Rewire `service.ts:createRecipe` to call the helper
 
-- [ ] 2.1 Open `apps/api/src/modules/recipe/service.ts`. Locate
+- [x] 2.1 Open `apps/api/src/modules/recipe/service.ts`. Locate
   `createRecipe` (signature at line 175). Delete the `TODO(D29)` comment
   (lines 203-208) and the entire `db.transaction(...)` block (lines 209-291).
   Replace with a single call:
@@ -240,18 +240,18 @@
   `flowRate` are the service-computed values. `brewerDetails`/`grinder` are
   the post-setup-inheritance values.
 
-- [ ] 2.2 Delete the now-redundant
+- [x] 2.2 Delete the now-redundant
   `const finalRecipe = await model.findById(recipe.id);` (line 293). The
   helper returns the rich shape directly.
-- [ ] 2.3 Confirm the post-transaction side effects (lines 295-308:
+- [x] 2.3 Confirm the post-transaction side effects (lines 295-308:
   `notifyFollowersOfNewRecipe` IIFE when `finalRecipe?.visibility === 'public'`,
   `evaluateBadges` fire-and-forget, `logger.debug({ authorId }, 'createRecipe completed')`)
   are unchanged and still reference `finalRecipe`.
-- [ ] 2.4 Run `make check-api` — must pass.
+- [x] 2.4 Run `make check-api` — must pass.
 
 ## 3. Delete the offending imports from `service.ts`
 
-- [ ] 3.1 Delete these three lines from `service.ts`:
+- [x] 3.1 Delete these three lines from `service.ts`:
   - line 15: `import { db } from '@brewform/db';`
   - lines 16-23: the `import { recipeAdditionalPreparations, recipeEquipment, recipes, recipeTasteNotes, recipeVersionPhotos, recipeVersions } from '@brewform/db/schema';` block
   - line 24: `import { eq } from 'drizzle-orm';`
@@ -262,16 +262,16 @@
   `notifyFollowersOfNewRecipe`, `notifyRecipeLiked`, `evaluateBadges`,
   `createLogger`, the shared schemas, `BrewMethod` type).
 
-- [ ] 3.2 Run `grep -n 'drizzle-orm\|@brewform/db' apps/api/src/modules/recipe/service.ts`
+- [x] 3.2 Run `grep -n 'drizzle-orm\|@brewform/db' apps/api/src/modules/recipe/service.ts`
   — must return **zero** hits (the `@brewform/shared/*` imports are fine; only
   `@brewform/db` and `@brewform/db/schema` must be gone).
-- [ ] 3.3 Run `make check-api` — must pass with zero type errors. If a type
+- [x] 3.3 Run `make check-api` — must pass with zero type errors. If a type
   error appears, a reference to `db`/`eq`/a schema table was missed somewhere
   in `service.ts` (search for `db.`, `eq(`, or the six table names).
 
 ## 4. Fix the file-level docstring
 
-- [ ] 4.1 Update the JSDoc at `service.ts:1-11`. Remove the "except for the
+- [x] 4.1 Update the JSDoc at `service.ts:1-11`. Remove the "except for the
   compatibility validation helper" sentence (line 10). The corrected docstring:
 
   ```ts
@@ -287,13 +287,13 @@
    */
   ```
 
-- [ ] 4.2 (Optional) Add docblocks to the two non-exported helpers that lack
+- [x] 4.2 (Optional) Add docblocks to the two non-exported helpers that lack
   them: `generateUniqueSlug` (line 65) and `validateEquipmentCompatibility`
   (line 134). Single-line `/** ... */` is sufficient.
 
 ## 5. Add `RecipeDetailOutputSchema` to the shared package
 
-- [ ] 5.1 Open `packages/shared/src/schemas/responses/recipe.ts`. After the
+- [x] 5.1 Open `packages/shared/src/schemas/responses/recipe.ts`. After the
   existing `FeedRecipeOutputSchema` (around line 120), add the schemas needed
   to describe the `findById` rich shape. The exact composition (verify
   against `model.ts:231-250`):
@@ -383,10 +383,10 @@
   `TasteNoteOutputSchema` (taste.ts) and `EquipmentOutputSchema` (equipment.ts)
   match the nested `photo`/`tasteNote`/`equipment` rows `findById` loads.
 
-- [ ] 5.2 Add `RecipeDetailOutputSchema` (and any promoted sub-schemas) to
+- [x] 5.2 Add `RecipeDetailOutputSchema` (and any promoted sub-schemas) to
   the barrel at `packages/shared/src/schemas/responses/index.ts` (the
   `recipe.ts` re-export block, around line 28-34).
-- [ ] 5.3 Add a co-located round-trip unit test in
+- [x] 5.3 Add a co-located round-trip unit test in
   `packages/shared/src/schemas/responses/recipe.test.ts` following the
   existing `wire()` convention: one `describe('RecipeDetailOutputSchema')`
   with one `it` that `safeParse`s a representative full payload (recipe row +
@@ -396,17 +396,17 @@
   tests; add a full detail version with nested `tasteNotes[].tasteNote`,
   `equipment[].equipment`, `additionalPreparations`, `versionPhotos[].photo`,
   `bean`.
-- [ ] 5.4 Register `RecipeDetailOutputSchema` in
+- [x] 5.4 Register `RecipeDetailOutputSchema` in
   `packages/shared/src/schemas/responses/output-schema-acceptance.pbt.test.ts`
   `cases` array (around line 507-580). Compose a `recipeDetailArb` from the
   existing `recipeRowArb` + a detail-author arb + a detail-version arb
   (extend `recipeVersionArb` with the nested relation arbs) + photos arb +
   forkedFrom arb. Use `numRuns: 100` (the existing default).
-- [ ] 5.5 Run `make check` and `make test-shared` — both must pass.
+- [x] 5.5 Run `make check` and `make test-shared` — both must pass.
 
 ## 6. Wire the `createRecipe` route's `describeRoute`
 
-- [ ] 6.1 Open `apps/api/src/modules/recipe/index.ts`. Update the imports at
+- [x] 6.1 Open `apps/api/src/modules/recipe/index.ts`. Update the imports at
   the top of the file to add (if not already present):
 
   ```ts
@@ -421,7 +421,7 @@
   `describeRoute` and `resolver` are already imported from `hono-openapi`
   (line 3). `RecipeCreateSchema` is already imported (line 7-10).
 
-- [ ] 6.2 Replace the `createRecipe` route's `describeRoute` (lines 273-281)
+- [x] 6.2 Replace the `createRecipe` route's `describeRoute` (lines 273-281)
   with a complete one modeled on the coffee-variety `POST /` template
   (`apps/api/src/modules/coffee-variety/index.ts:97-134`):
 
@@ -457,14 +457,14 @@
   }),
   ```
 
-- [ ] 6.3 Run `make check-api` and
+- [x] 6.3 Run `make check-api` and
   `make test-specific filter=apps/api/src/routes/openapi.coverage.test.ts` —
   both must pass. (The coverage test already passes for this route; the new
   metadata is additive.)
 
 ## 7. Add tests for `createRecipeWithRelations` (model-level)
 
-- [ ] 7.1 Create `apps/api/src/modules/recipe/model.create.test.ts`. Start
+- [x] 7.1 Create `apps/api/src/modules/recipe/model.create.test.ts`. Start
   with:
 
   ```ts
@@ -485,10 +485,10 @@
   import * as model from './model.ts';
   ```
 
-- [ ] 7.2 Add a local `createUser(prefix)` fixture (inline the pattern from
+- [x] 7.2 Add a local `createUser(prefix)` fixture (inline the pattern from
   `coffee-variety/model.test.ts` / `model.cursor.test.ts` — no shared helper
   exists). Use `crypto.randomUUID()` for the user id.
-- [ ] 7.3 Add `describe('createRecipeWithRelations', { sanitizeOps: false,
+- [x] 7.3 Add `describe('createRecipeWithRelations', { sanitizeOps: false,
   sanitizeResources: false }, () => { ... })` with `beforeEach` that creates
   a user and `afterEach` that hard-deletes child-first:
   `recipeTasteNotes` → `recipeEquipment` → `recipeAdditionalPreparations` →
@@ -496,7 +496,7 @@
   `inArray` on the created IDs, or `eq` on the single user ID). The child
   tables cascade on `recipeVersions.id` deletion, but explicit cleanup is the
   house pattern.
-- [ ] 7.4 Add `it` blocks covering:
+- [x] 7.4 Add `it` blocks covering:
   - **recipe row insert**: `slug`, `title`, `authorId`, `visibility` match
     the input; `currentVersionId` is non-null and equals `versions[0].id`;
     `likeCount`/`commentCount`/`forkCount` are `0`; `featured` is `false`.
@@ -523,18 +523,18 @@
     `equipment`), `versions[0].additionalPreparations`,
     `versions[0].versionPhotos` (with nested `photo`), `versions[0].bean`,
     `photos`, `forkedFrom` — i.e. matches `model.findById`'s shape.
-- [ ] 7.5 Run `make check-tests` and
+- [x] 7.5 Run `make check-tests` and
   `make test-specific filter=apps/api/src/modules/recipe/model.create.test.ts`
   — both must pass.
 
 ## 8. Add a service-level integration test for `createRecipe`
 
-- [ ] 8.1 Either extend `apps/api/src/modules/recipe/service.test.ts` (which
+- [x] 8.1 Either extend `apps/api/src/modules/recipe/service.test.ts` (which
   is currently pure-logic only) or create a new
   `service.create.test.ts`. Use the same `test-setup.ts` + `createUser`
   fixture pattern. Add `describe('createRecipe (integration)', { sanitizeOps:
   false, sanitizeResources: false }, () => { ... })`.
-- [ ] 8.2 Add an `it` that calls `service.createRecipe(authorId, data)` with
+- [x] 8.2 Add an `it` that calls `service.createRecipe(authorId, data)` with
   a minimal valid `RecipeCreateSchema` payload (use `RecipeCreateSchema.parse`
   to build `data`) and asserts the returned object has the rich `findById`
   shape: `author.id === authorId`, `versions.length === 1`,
@@ -542,20 +542,20 @@
   `versions[0].equipment` is an array, `currentVersionId ===
   versions[0].id`. This is the regression guard — it locks the shape before
   and after the move.
-- [ ] 8.3 Add cleanup in `afterEach` (delete the created recipe's child rows
+- [x] 8.3 Add cleanup in `afterEach` (delete the created recipe's child rows
   first, then `recipes`, then the user).
-- [ ] 8.4 Run `make check-tests` and
+- [x] 8.4 Run `make check-tests` and
   `make test-specific filter=apps/api/src/modules/recipe/service.create.test.ts`
   (or `service.test.ts` if extended) — must pass.
 
 ## 9. Add an HTTP integration test for `POST /api/v1/recipes`
 
-- [ ] 9.1 Extend `apps/api/src/modules/recipe/index_test.ts` (which already
+- [x] 9.1 Extend `apps/api/src/modules/recipe/index_test.ts` (which already
   mounts `recipeRouter` on a stub Hono app via `createTestApp(userId)`). Add
   a new `describe('POST /api/v1/recipes — create', { sanitizeOps: false,
   sanitizeResources: false }, () => { ... })` with `beforeEach`/`afterEach`
   cleanup.
-- [ ] 9.2 Add an `it` that:
+- [x] 9.2 Add an `it` that:
   - creates a user with `isEmailVerified: true` (the route guards on
     `isEmailVerified`),
   - sends `POST /api/v1/recipes` with a valid `RecipeCreateSchema` JSON body
@@ -569,15 +569,15 @@
   - asserts `body.data.versions[0].equipment` is a non-empty array with
     nested `equipment`,
   - asserts `body.data.currentVersionId === body.data.versions[0].id`.
-- [ ] 9.3 Add cleanup (`afterEach` deletes the created recipe + child rows +
+- [x] 9.3 Add cleanup (`afterEach` deletes the created recipe + child rows +
   any seed rows created in `beforeEach`).
-- [ ] 9.4 Run `make check-tests` and
+- [x] 9.4 Run `make check-tests` and
   `make test-specific filter=apps/api/src/modules/recipe/index_test.ts` —
   must pass.
 
 ## 10. Logging
 
-- [ ] 10.1 Add entry/exit debug logs to `createRecipeWithRelations` in
+- [x] 10.1 Add entry/exit debug logs to `createRecipeWithRelations` in
   `model.ts`, matching the `forkRecipe` / `createUser` pattern. The module
   already has a `const log = createLogger('recipe.model')` (or equivalent —
   verify; if not present, add one). Add at the top of the function:
@@ -586,48 +586,48 @@
   `log.debug({ authorId: input.authorId, recipeId: id }, 'createRecipeWithRelations completed');`
   Never log the input payload (may contain `personalNotes`); log only
   traceable IDs.
-- [ ] 10.2 Verify the existing `createRecipe` logs in `service.ts` (lines
+- [x] 10.2 Verify the existing `createRecipe` logs in `service.ts` (lines
   179, 310: `logger.debug({ authorId }, 'createRecipe started'/'completed')`)
   are unchanged.
-- [ ] 10.3 Run `make lint` — must pass with zero warnings on the modified
+- [x] 10.3 Run `make lint` — must pass with zero warnings on the modified
   files.
 
 ## 11. Format, Lint, Type-Check, Tests
 
-- [ ] 11.1 Run `make fmt` — formats all modified files.
-- [ ] 11.2 Run `make check` — type-checks the import graph (`src/main.ts`).
+- [x] 11.1 Run `make fmt` — formats all modified files.
+- [x] 11.2 Run `make check` — type-checks the import graph (`src/main.ts`).
   Must pass with zero errors.
-- [ ] 11.3 Run `make check-tests` — type-checks the test files (separate
+- [x] 11.3 Run `make check-tests` — type-checks the test files (separate
   target; `make check` does **not** type-check `_test.ts`/`.test.ts` files).
   Must pass with zero errors.
-- [ ] 11.4 Run `make lint` — zero warnings on `apps/api/src/modules/recipe/`
+- [x] 11.4 Run `make lint` — zero warnings on `apps/api/src/modules/recipe/`
   and `packages/shared/src/schemas/responses/`.
-- [ ] 11.5 Run `make test-api` — every test in `apps/api/src/` passes,
+- [x] 11.5 Run `make test-api` — every test in `apps/api/src/` passes,
   including the new `model.create.test.ts`, the service-level test, the HTTP
   test, the existing recipe tests, and `openapi.coverage.test.ts`.
-- [ ] 11.6 Run `make test-shared` — the new `RecipeDetailOutputSchema` test
+- [x] 11.6 Run `make test-shared` — the new `RecipeDetailOutputSchema` test
   and the `output-schema-acceptance.pbt.test.ts` pass.
-- [ ] 11.7 (Optional) `make test-specific filter=apps/api/src/modules/recipe/`
+- [x] 11.7 (Optional) `make test-specific filter=apps/api/src/modules/recipe/`
   for a fast recipe-module-only run before the full `make test-api`.
 
 ## 12. Final verification
 
-- [ ] 12.1 Run `make fmt && make check && make check-tests && make lint && make test-api`
+- [x] 12.1 Run `make fmt && make check && make check-tests && make lint && make test-api`
   — all green, zero errors, zero warnings, zero test failures.
-- [ ] 12.2 Confirm `service.ts` has zero references to `drizzle-orm`,
+- [x] 12.2 Confirm `service.ts` has zero references to `drizzle-orm`,
   `@brewform/db`, or any schema table:
   `grep -n 'drizzle-orm\|@brewform/db' apps/api/src/modules/recipe/service.ts`
   → no output.
-- [ ] 12.3 Confirm the `TODO(D29)` comment is gone from `service.ts`:
+- [x] 12.3 Confirm the `TODO(D29)` comment is gone from `service.ts`:
   `grep -n 'TODO(D29)' apps/api/src/modules/recipe/service.ts` → no output.
-- [ ] 12.4 Confirm `createRecipeWithRelations` is exported from `model.ts`
+- [x] 12.4 Confirm `createRecipeWithRelations` is exported from `model.ts`
   and called from `service.ts`:
   `grep -n 'createRecipeWithRelations' apps/api/src/modules/recipe/` →
   matches in `model.ts` (definition) and `service.ts` (call site).
-- [ ] 12.5 Confirm the `createRecipe` route's `describeRoute` has a
+- [x] 12.5 Confirm the `createRecipe` route's `describeRoute` has a
   `requestBody` and `resolver(successEnvelope(RecipeDetailOutputSchema))`:
   read `index.ts` around the `POST /` route and verify.
-- [ ] 12.6 Confirm the file-level docstring no longer mentions "compatibility
+- [x] 12.6 Confirm the file-level docstring no longer mentions "compatibility
   validation helper": read `service.ts:1-11`.
 - [ ] 12.7 (Optional) Manual smoke: start `make dev`, `POST /api/v1/recipes`
   with a valid body, confirm the response shape is unchanged from before

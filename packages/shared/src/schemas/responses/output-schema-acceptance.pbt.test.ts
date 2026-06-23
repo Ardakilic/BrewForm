@@ -36,6 +36,7 @@ import {
 } from './equipment.ts';
 import {
   FeedRecipeOutputSchema,
+  RecipeDetailOutputSchema,
   RecipeRowSchema,
   RecipeVersionRowSchema,
   RecipeWithAuthorOutputSchema,
@@ -430,6 +431,70 @@ const { tasteNoteNode } = fc.letrec<{ tasteNoteNode: unknown }>((tie) => ({
   }),
 }));
 
+const detailAuthorArb = fc.record({
+  id: str,
+  username: str,
+  displayName: nstr,
+  avatarUrl: nstr,
+});
+
+const detailTasteNoteArb = fc.record({
+  id: str,
+  recipeVersionId: str,
+  tasteNoteId: str,
+  intensity: int,
+  tasteNote: tasteNoteArb,
+});
+
+const detailEquipmentArb = fc.record({
+  id: str,
+  recipeVersionId: str,
+  equipmentId: str,
+  equipment: equipmentArb,
+});
+
+const detailAdditionalPreparationArb = fc.record({
+  id: str,
+  recipeVersionId: str,
+  name: str,
+  type: str,
+  inputAmount: str,
+  preparationType: str,
+  sortOrder: int,
+});
+
+const detailBeanArb = fc.option(
+  fc.record({ origin: nstr, roaster: nstr, roastLevel: nstr }),
+  { nil: null },
+);
+
+const detailVersionArb = recipeVersionArb.chain((base) =>
+  fc
+    .record({
+      tasteNotes: fc.array(detailTasteNoteArb),
+      equipment: fc.array(detailEquipmentArb),
+      additionalPreparations: fc.array(detailAdditionalPreparationArb),
+      bean: detailBeanArb,
+    })
+    .map((extra) => ({ ...base, ...extra }))
+);
+
+const forkedFromArb = fc.option(
+  fc.record({ id: str, slug: str, title: str }),
+  { nil: null },
+);
+
+const recipeDetailArb = recipeRowArb.chain((base) =>
+  fc
+    .record({
+      author: detailAuthorArb,
+      versions: fc.array(detailVersionArb),
+      photos: fc.array(photoArb),
+      forkedFrom: forkedFromArb,
+    })
+    .map((extra) => ({ ...base, ...extra }))
+);
+
 const userBaseArb = {
   id: str,
   email: str,
@@ -552,6 +617,7 @@ const cases: Array<{ name: string; schema: z.ZodType<any>; arb: fc.Arbitrary<unk
     arb: recipeWithVersionsArb,
   },
   { name: 'FeedRecipeOutputSchema', schema: FeedRecipeOutputSchema, arb: feedRecipeArb },
+  { name: 'RecipeDetailOutputSchema', schema: RecipeDetailOutputSchema, arb: recipeDetailArb },
   {
     name: 'EquipmentRecipesResponseSchema',
     schema: EquipmentRecipesResponseSchema,

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context, Next } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
@@ -8,12 +9,15 @@ import {
   FeedRecipeOutputSchema,
   paginatedEnvelope,
   RecipeCreateSchema,
+  RecipeDetailOutputSchema,
   RecipeFilterSchema,
   RecipeForkSchema,
   RecipeNotesSchema,
   RecipeRateSchema,
   RecipeUpdateSchema,
+  successEnvelope,
 } from '@brewform/shared/schemas';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import * as model from './model.ts';
@@ -29,6 +33,13 @@ import {
   zodValidationHook,
 } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+
+export const deps = { authMiddleware };
+
+/** Proxy that resolves authMiddleware at request time (supports test mocking via deps). */
+async function authGuard(c: Context, next: Next) {
+  return deps.authMiddleware(c, next);
+}
 
 const recipe = new Hono<AppEnv>();
 
@@ -119,7 +130,7 @@ recipe.get(
       401: { description: 'Unauthorized' },
     },
   }),
-  authMiddleware,
+  authGuard,
   zValidator('query', RecipeFilterSchema),
   async (c) => {
     const userId = c.get('userId') as string;
@@ -273,13 +284,33 @@ recipe.post(
   describeRoute({
     tags: ['Recipes'],
     summary: 'Create a recipe',
+    description: 'Creates a recipe with its first version and all child relations.',
     security: [{ bearerAuth: [] }],
+    requestBody: jsonRequestBody(RecipeCreateSchema),
     responses: {
-      201: { description: 'Recipe created' },
-      403: { description: 'Forbidden' },
+      201: {
+        description: 'Recipe created',
+        content: {
+          'application/json': {
+            schema: resolver(successEnvelope(RecipeDetailOutputSchema)),
+          },
+        },
+      },
+      400: {
+        description: 'Validation error',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      403: {
+        description: 'Forbidden (email not verified or not authorized)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
-  authMiddleware,
+  authGuard,
   zValidator('json', RecipeCreateSchema, zodValidationHook),
   async (c) => {
     if (!isEmailVerified(c)) {
@@ -310,7 +341,7 @@ recipe.patch(
       403: { description: 'Not the recipe owner' },
     },
   }),
-  authMiddleware,
+  authGuard,
   zValidator('json', RecipeUpdateSchema, zodValidationHook),
   async (c) => {
     const recipeId = c.req.param('id')!;
@@ -340,7 +371,7 @@ recipe.delete(
       403: { description: 'Not the recipe owner' },
     },
   }),
-  authMiddleware,
+  authGuard,
   async (c) => {
     const recipeId = c.req.param('id')!;
     const authorId = c.get('userId') as string;
@@ -369,7 +400,7 @@ recipe.post(
       404: { description: 'Source recipe not found' },
     },
   }),
-  authMiddleware,
+  authGuard,
   zValidator('json', RecipeForkSchema, zodValidationHook),
   async (c) => {
     const sourceId = c.req.param('id')!;
@@ -398,7 +429,7 @@ recipe.post(
       404: { description: 'Recipe not found' },
     },
   }),
-  authMiddleware,
+  authGuard,
   async (c) => {
     const recipeId = c.req.param('id')!;
     const userId = c.get('userId') as string;
@@ -425,7 +456,7 @@ recipe.post(
       404: { description: 'Recipe not found' },
     },
   }),
-  authMiddleware,
+  authGuard,
   zValidator('json', RecipeRateSchema, zodValidationHook),
   async (c) => {
     const recipeId = c.req.param('id')!;
@@ -456,7 +487,7 @@ recipe.post(
       404: { description: 'Recipe not found' },
     },
   }),
-  authMiddleware,
+  authGuard,
   zValidator('json', RecipeNotesSchema, zodValidationHook),
   async (c) => {
     const recipeId = c.req.param('id')!;
@@ -483,7 +514,7 @@ recipe.post(
       404: { description: 'Recipe not found' },
     },
   }),
-  authMiddleware,
+  authGuard,
   async (c) => {
     const recipeId = c.req.param('id')!;
     const userId = c.get('userId') as string;
@@ -511,7 +542,7 @@ recipe.post(
       403: { description: 'Not the recipe owner' },
     },
   }),
-  authMiddleware,
+  authGuard,
   async (c) => {
     const recipeId = c.req.param('id')!;
     const userId = c.get('userId') as string;

@@ -10,14 +10,22 @@
  */
 
 import '../../test-setup.ts';
-import { afterAll, afterEach, beforeAll, describe, it } from 'jsr:@std/testing/bdd';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
+import type { Context, Next } from 'hono';
 import type { AppEnv } from '../../types/hono.ts';
 import { db } from '@brewform/db';
-import { recipes, users } from '@brewform/db/schema';
+import {
+  equipment,
+  recipes,
+  recipeVersions,
+  tasteNotes,
+  userBadges,
+  users,
+} from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import recipeRouter from './index.ts';
+import recipeRouter, { deps } from './index.ts';
 import { encodeCursor } from '@brewform/shared/utils';
 
 async function createUser(prefix: string) {
@@ -44,13 +52,23 @@ async function createRecipe(authorId: string, title: string, createdAt: Date) {
   return recipe;
 }
 
-function createTestApp(userId: string | null) {
+const stubAuth = async (_c: Context, next: Next) => {
+  await next();
+};
+const originalAuthMiddleware = deps.authMiddleware;
+
+function createTestApp(userId: string | null, emailVerified = true) {
+  deps.authMiddleware = stubAuth;
   const app = new Hono<AppEnv>();
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID());
     if (userId) {
       c.set('userId', userId);
-      c.set('user', { id: userId, isAdmin: false } as any);
+      c.set('user', {
+        id: userId,
+        isAdmin: false,
+        emailVerifiedAt: emailVerified ? new Date() : null,
+      } as any);
     }
     await next();
   });
@@ -170,6 +188,111 @@ describe(
       expect(body.meta).toBeDefined();
       expect(body.meta.pagination).toBeDefined();
       expect(body.meta.cursor).toBeUndefined();
+    });
+  },
+);
+
+describe(
+  { name: 'POST /api/v1/recipes — create', sanitizeResources: false, sanitizeOps: false },
+  () => {
+    let user: typeof users.$inferSelect;
+    let tasteNoteId: string;
+    let equipmentId: string;
+    const createdRecipeIds: string[] = [];
+
+    beforeEach(async () => {
+      user = await createUser('create-route');
+      tasteNoteId = crypto.randomUUID();
+      await db.insert(tasteNotes).values({ id: tasteNoteId, name: 'Chocolate' });
+      equipmentId = crypto.randomUUID();
+      await db.insert(equipment).values({ id: equipmentId, name: 'V60 Grinder', type: 'grinder' });
+    });
+
+    afterEach(async () => {
+      deps.authMiddleware = originalAuthMiddleware;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      if (createdRecipeIds.length) {
+        await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipeIds));
+        await db.delete(recipes).where(inArray(recipes.id, createdRecipeIds));
+        createdRecipeIds.length = 0;
+      }
+      await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNoteId));
+      await db.delete(equipment).where(eq(equipment.id, equipmentId));
+      await db.delete(userBadges).where(eq(userBadges.userId, user.id));
+      await db.delete(users).where(eq(users.id, user.id));
+    });
+
+    it('creates a recipe and returns 201 with the rich shape', async () => {
+      const app = createTestApp(user.id);
+      const res = await app.request('/api/v1/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'HTTP Integration Test Recipe',
+          visibility: 'draft',
+          brewMethod: 'v60',
+          drinkType: 'pour_over',
+          preparationNotes: 'Bloom 45s, then pour in stages',
+          personalNotes: 'Tasted great',
+          tasteNoteIds: [tasteNoteId],
+          equipmentIds: [equipmentId],
+        }),
+      });
+      const body = await res.json() as any;
+
+      expect(res.status).toBe(201);
+      expect(body.success).toBe(true);
+      expect(body.data.author.id).toBe(user.id);
+      expect(Array.isArray(body.data.versions[0].tasteNotes)).toBe(true);
+      expect(body.data.versions[0].tasteNotes.length).toBeGreaterThan(0);
+      expect(body.data.versions[0].tasteNotes[0].tasteNote).toBeDefined();
+      expect(Array.isArray(body.data.versions[0].equipment)).toBe(true);
+      expect(body.data.versions[0].equipment.length).toBeGreaterThan(0);
+      expect(body.data.versions[0].equipment[0].equipment).toBeDefined();
+      expect(body.data.currentVersionId).toBe(body.data.versions[0].id);
+
+      createdRecipeIds.push(body.data.id);
+    });
+
+    it('returns 403 when email is not verified', async () => {
+      const app = createTestApp(user.id, false);
+      const res = await app.request('/api/v1/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'HTTP Integration Test Recipe',
+          visibility: 'draft',
+          brewMethod: 'v60',
+          drinkType: 'pour_over',
+          preparationNotes: 'Bloom 45s, then pour in stages',
+          personalNotes: 'Tasted great',
+          tasteNoteIds: [tasteNoteId],
+          equipmentIds: [equipmentId],
+        }),
+      });
+      const body = await res.json() as any;
+
+      expect(res.status).toBe(403);
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('EMAIL_NOT_VERIFIED');
+    });
+
+    it('returns 400 when the body fails validation', async () => {
+      const app = createTestApp(user.id);
+      const res = await app.request('/api/v1/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'HTTP Integration Test Recipe',
+          visibility: 'draft',
+          drinkType: 'pour_over',
+          preparationNotes: 'Bloom 45s, then pour in stages',
+        }),
+      });
+      const body = await res.json() as any;
+
+      expect(res.status).toBe(400);
+      expect(body.success).toBe(false);
     });
   },
 );

@@ -13,6 +13,10 @@ import { RecipeWithAuthorOutputSchema } from './recipe.ts';
  *   - `GET /:id/recipes` → `c.json({ success: true, ...{ data, total } })`
  *   - `POST /:id/delete-request` → `c.json({ success: true, data }, 201)`
  *
+ * `RecipeWithAuthorOutputSchema` is referenced lazily via `z.lazy` in
+ * `EquipmentRecipesResponseSchema` to avoid the `recipe.ts` ↔ `equipment.ts`
+ * import cycle (recipe detail now imports `EquipmentOutputSchema`).
+ *
  * Verified against `packages/db/src/schema.ts` (`equipment`,
  * `equipmentDeleteRequests`) and `apps/api/src/modules/equipment/*`.
  */
@@ -57,7 +61,7 @@ export type EquipmentDeleteRequestResponse = z.infer<typeof EquipmentDeleteReque
 /** Bespoke envelope for `GET /:id/recipes` (200, `total` instead of `meta`). */
 export const EquipmentRecipesResponseSchema = z.object({
   success: z.literal(true),
-  data: z.array(RecipeWithAuthorOutputSchema),
+  data: z.array(z.lazy(() => RecipeWithAuthorOutputSchema)),
   total: z.number().int(),
 });
 

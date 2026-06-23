@@ -6,22 +6,11 @@
  * enforces business rules (equipment compatibility, visibility checks),
  * and triggers side effects (badge evaluation, follower notifications).
  *
- * All DB access is delegated to `model.ts` — no Drizzle calls directly
- * from this module except for the compatibility validation helper.
+ * All DB access is delegated to `model.ts` — no Drizzle calls from this module.
  */
 import type { z } from 'zod';
 import { sanitizeText } from '../../utils/sanitize.ts';
 import * as model from './model.ts';
-import { db } from '@brewform/db';
-import {
-  recipeAdditionalPreparations,
-  recipeEquipment,
-  recipes,
-  recipeTasteNotes,
-  recipeVersionPhotos,
-  recipeVersions,
-} from '@brewform/db/schema';
-import { eq } from 'drizzle-orm';
 import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import {
@@ -34,10 +23,6 @@ import { decodeCursor } from '@brewform/shared/utils';
 import { notifyFollowersOfNewRecipe, notifyRecipeLiked } from '../../utils/notify/index.ts';
 import { evaluateBadges } from '../badge/service.ts';
 import type { BrewMethod } from '@brewform/shared/types';
-
-/** Inferred Drizzle select types for recipe-related rows. */
-type RecipeRow = typeof recipes.$inferSelect;
-type RecipeVersionRow = typeof recipeVersions.$inferSelect;
 
 /** Type alias for the result returned by model.findById / model.findBySlug (rich relational query). */
 type RecipeWithRelations = NonNullable<Awaited<ReturnType<typeof model.findById>>> | undefined;
@@ -62,6 +47,7 @@ type RecipeUpdateInput = z.infer<typeof RecipeUpdateSchema> & {
 
 const logger = createLogger('recipe-service');
 
+/** Generate a URL-safe slug from the title, ensuring uniqueness against existing recipes. */
 async function generateUniqueSlug(title: string): Promise<string> {
   const slug = generateSlug(title);
   const existing = await model.findBySlug(slug);
@@ -131,6 +117,7 @@ export function checkEquipmentCompatibility(
   return incompatible;
 }
 
+/** Validate equipment compatibility against the brew method's rules, throwing `EQUIPMENT_INCOMPATIBLE` on violation. */
 async function validateEquipmentCompatibility(
   brewMethod: BrewMethod,
   equipmentIds: string[],
@@ -200,97 +187,43 @@ export async function createRecipe(
     ? computeFlowRate(data.extractionVolumeMl, data.extractionTimeSeconds)
     : null;
 
-  // TODO(D29): Move the createRecipe transaction (including this `db.transaction`
-  // block, the `import { eq } from 'drizzle-orm'` at the top of this file, and
-  // the direct `recipes` / `recipeVersions` / `recipeTasteNotes` / `recipeEquipment`
-  // / `recipeAdditionalPreparations` / `recipeVersionPhotos` schema imports) into
-  // a model helper so this service no longer imports from 'drizzle-orm' or
-  // touches schema tables directly. See plans/D29-recipe-service-drizzle-orm-import.md.
-  const recipe = await db.transaction(async (tx) => {
-    const [r] = await tx.insert(recipes).values({
-      slug,
-      title: safeTitle,
-      authorId,
-      visibility: data.visibility || 'draft',
-      currentVersionId: null,
-    }).returning();
-
-    const [version] = await tx.insert(recipeVersions).values({
-      recipeId: r.id,
-      versionNumber: 1,
-      productName: data.productName,
-      coffeeBrand: data.coffeeBrand,
-      coffeeProcessing: data.coffeeProcessing,
-      vendorId: data.vendorId,
-      roastDate: data.roastDate ? new Date(data.roastDate) : null,
-      packageOpenDate: data.packageOpenDate ? new Date(data.packageOpenDate) : null,
-      grindDate: data.grindDate ? new Date(data.grindDate) : null,
-      brewDate: data.brewDate ? new Date(data.brewDate) : new Date(),
-      brewMethod: data.brewMethod,
-      drinkType: data.drinkType,
-      brewerDetails,
-      grinder,
-      grindSize: data.grindSize,
-      groundWeightGrams: data.groundWeightGrams,
-      extractionTimeSeconds: data.extractionTimeSeconds,
-      extractionVolumeMl: data.extractionVolumeMl,
-      temperatureCelsius: data.temperatureCelsius,
-      brewRatio,
-      flowRate,
-      personalNotes: sanitizeText(data.personalNotes),
-      preparationNotes: sanitizeText(data.preparationNotes),
-      isFavourite: data.isFavourite || false,
-      rating: data.rating,
-      emojiTag: data.emojiTag,
-      preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? null,
-      beanId: data.beanId ?? null,
-    }).returning();
-
-    if (data.tasteNoteIds?.length) {
-      await tx.insert(recipeTasteNotes).values(
-        data.tasteNoteIds.map((id) => ({
-          recipeVersionId: version.id,
-          tasteNoteId: id,
-          intensity: data.tasteNoteIntensities?.[id] ?? 1,
-        })),
-      );
-    }
-
-    if (data.equipmentIds?.length) {
-      await tx.insert(recipeEquipment).values(
-        data.equipmentIds.map((id) => ({ recipeVersionId: version.id, equipmentId: id })),
-      );
-    }
-
-    if (data.additionalPreparations?.length) {
-      await tx.insert(recipeAdditionalPreparations).values(
-        data.additionalPreparations.map((p, i) => ({
-          recipeVersionId: version.id,
-          name: p.name,
-          type: p.type,
-          inputAmount: p.inputAmount,
-          preparationType: p.preparationType,
-          sortOrder: i,
-        })),
-      );
-    }
-
-    if (data.photoIds?.length) {
-      await tx.insert(recipeVersionPhotos).values(
-        data.photoIds.map((photoId, i) => ({
-          recipeVersionId: version.id,
-          photoId,
-          sortOrder: i,
-        })),
-      );
-    }
-
-    await tx.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, r.id));
-
-    return { ...r, versions: [version] };
+  const finalRecipe = await model.createRecipeWithRelations({
+    authorId,
+    slug,
+    title: safeTitle,
+    visibility: data.visibility || 'draft',
+    productName: data.productName,
+    coffeeBrand: data.coffeeBrand,
+    coffeeProcessing: data.coffeeProcessing,
+    vendorId: data.vendorId,
+    roastDate: data.roastDate ? new Date(data.roastDate) : null,
+    packageOpenDate: data.packageOpenDate ? new Date(data.packageOpenDate) : null,
+    grindDate: data.grindDate ? new Date(data.grindDate) : null,
+    brewDate: data.brewDate ? new Date(data.brewDate) : new Date(),
+    brewMethod: data.brewMethod,
+    drinkType: data.drinkType,
+    brewerDetails,
+    grinder,
+    grindSize: data.grindSize,
+    groundWeightGrams: data.groundWeightGrams,
+    extractionTimeSeconds: data.extractionTimeSeconds,
+    extractionVolumeMl: data.extractionVolumeMl,
+    temperatureCelsius: data.temperatureCelsius,
+    brewRatio,
+    flowRate,
+    personalNotes: sanitizeText(data.personalNotes),
+    preparationNotes: sanitizeText(data.preparationNotes),
+    isFavourite: data.isFavourite || false,
+    rating: data.rating,
+    emojiTag: data.emojiTag,
+    preInfusionTimeSeconds: data.preInfusionTimeSeconds ?? null,
+    beanId: data.beanId ?? null,
+    tasteNoteIds: data.tasteNoteIds,
+    tasteNoteIntensities: data.tasteNoteIntensities,
+    equipmentIds: data.equipmentIds,
+    additionalPreparations: data.additionalPreparations,
+    photoIds: data.photoIds,
   });
-
-  const finalRecipe = await model.findById(recipe.id);
 
   if (finalRecipe?.visibility === 'public') {
     (async () => {

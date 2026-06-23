@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { EquipmentOutputSchema } from './equipment.ts';
 import { PhotoOutputSchema } from './photo.ts';
+import { TasteNoteOutputSchema } from './taste.ts';
 import { RecipeAuthorMiniSchema } from './_shared.ts';
 
 /**
@@ -120,3 +122,86 @@ export const FeedRecipeOutputSchema = RecipeRowSchema.extend({
 });
 
 export type FeedRecipeOutput = z.infer<typeof FeedRecipeOutputSchema>;
+
+/**
+ * Author projection for the recipe detail payload (`recipe/model.ts findById`).
+ * Unlike `RecipeAuthorMiniSchema`, this includes `id`.
+ */
+export const RecipeDetailAuthorSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  displayName: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+});
+
+/** A `recipeTasteNotes` join row carrying the full joined `tasteNotes` row. */
+const RecipeDetailTasteNoteSchema = z.object({
+  id: z.string(),
+  recipeVersionId: z.string(),
+  tasteNoteId: z.string(),
+  intensity: z.number().int(),
+  tasteNote: TasteNoteOutputSchema,
+});
+
+/** A `recipeEquipment` join row carrying the full joined `equipment` row. */
+const RecipeDetailEquipmentSchema = z.object({
+  id: z.string(),
+  recipeVersionId: z.string(),
+  equipmentId: z.string(),
+  equipment: z.lazy(() => EquipmentOutputSchema),
+});
+
+/** A `recipeAdditionalPreparations` row. */
+const RecipeDetailAdditionalPreparationSchema = z.object({
+  id: z.string(),
+  recipeVersionId: z.string(),
+  name: z.string(),
+  type: z.string(),
+  inputAmount: z.string(),
+  preparationType: z.string(),
+  sortOrder: z.number().int(),
+});
+
+/** Partial bean projection returned on a recipe version (`origin`, `roaster`, `roastLevel`). */
+const RecipeDetailBeanMiniSchema = z.object({
+  origin: z.string().nullable(),
+  roaster: z.string().nullable(),
+  roastLevel: z.string().nullable(),
+});
+
+/**
+ * Recipe version enriched with nested relations (taste notes, equipment,
+ * additional preparations, version photos, and bean), as returned by
+ * `recipe/model.ts findById`.
+ */
+export const RecipeDetailVersionSchema = RecipeVersionRowSchema.omit({ versionPhotos: true })
+  .extend(
+    {
+      tasteNotes: z.array(RecipeDetailTasteNoteSchema),
+      equipment: z.array(RecipeDetailEquipmentSchema),
+      additionalPreparations: z.array(RecipeDetailAdditionalPreparationSchema),
+      versionPhotos: z.array(RecipeVersionPhotoSchema),
+      bean: RecipeDetailBeanMiniSchema.nullable(),
+    },
+  );
+
+/** Forked-from recipe projection (`{ id, slug, title }`) — `null` when not a fork. */
+const RecipeForkedFromMiniSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  title: z.string(),
+}).nullable();
+
+/**
+ * Recipe detail payload (`recipe/model.ts findById`): full recipe row plus
+ * author (with `id`), versions (each with nested taste notes, equipment,
+ * additional preparations, version photos, and bean), photos, and forked-from.
+ */
+export const RecipeDetailOutputSchema = RecipeRowSchema.extend({
+  author: RecipeDetailAuthorSchema,
+  versions: z.array(RecipeDetailVersionSchema),
+  photos: z.array(PhotoOutputSchema),
+  forkedFrom: RecipeForkedFromMiniSchema,
+});
+
+export type RecipeDetailOutput = z.infer<typeof RecipeDetailOutputSchema>;

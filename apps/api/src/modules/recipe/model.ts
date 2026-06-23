@@ -40,7 +40,13 @@ import {
   sql,
 } from 'drizzle-orm';
 import { encodeCursor } from '@brewform/shared/utils';
-import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
+import type {
+  AdditionalPreparationCategory,
+  BrewMethod,
+  DrinkType,
+  EmojiTag,
+  Visibility,
+} from '@brewform/shared/types';
 import { createLogger } from '../../utils/logger/index.ts';
 
 const modelLog = createLogger('recipe-model');
@@ -472,6 +478,170 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
       }],
     };
   });
+}
+
+/**
+ * Input for {@link createRecipeWithRelations}. Carries the pre-resolved
+ * recipe + first-version fields and the child-relation arrays. The
+ * service is responsible for slug generation, sanitization, setup
+ * inheritance, and derived-metric computation before calling the helper.
+ */
+export interface CreateRecipeWithRelationsInput {
+  // recipe-level
+  authorId: string;
+  slug: string;
+  title: string;
+  visibility: Visibility;
+  // version-level (exhaustive — mirrors service.ts:218-247)
+  productName?: string;
+  coffeeBrand?: string;
+  coffeeProcessing?: string;
+  vendorId?: string;
+  roastDate: Date | null;
+  packageOpenDate: Date | null;
+  grindDate: Date | null;
+  brewDate: Date;
+  brewMethod: BrewMethod;
+  drinkType: DrinkType;
+  brewerDetails: string | null | undefined;
+  grinder: string | null | undefined;
+  grindSize?: string;
+  groundWeightGrams?: number;
+  extractionTimeSeconds?: number;
+  extractionVolumeMl?: number;
+  temperatureCelsius?: number;
+  brewRatio: number | null;
+  flowRate: number | null;
+  personalNotes: string;
+  preparationNotes: string;
+  isFavourite: boolean;
+  rating?: number;
+  emojiTag?: EmojiTag;
+  preInfusionTimeSeconds: number | null;
+  beanId: string | null;
+  // child relations
+  tasteNoteIds?: string[];
+  tasteNoteIntensities?: Record<string, number>;
+  equipmentIds?: string[];
+  additionalPreparations?: Array<{
+    name: string;
+    type: AdditionalPreparationCategory;
+    inputAmount: string;
+    preparationType: string;
+  }>;
+  photoIds?: string[];
+}
+
+/**
+ * Create a recipe with its first version and all child relations in a
+ * single transaction, then return the full relational row.
+ *
+ * Inserts the recipe row (with `currentVersionId = null`), the first
+ * version row (versionNumber 1), and optionally taste notes, equipment,
+ * additional preparations, and version photos. Finally updates
+ * `recipes.currentVersionId` and reloads via {@link findById} so the
+ * returned shape matches every other read path.
+ *
+ * @param input - Pre-resolved recipe + version + relation fields.
+ * @returns The inserted recipe with author, versions (with nested
+ *          relations), photos, and forkedFrom — identical to
+ *          {@link findById}'s shape.
+ */
+export async function createRecipeWithRelations(
+  input: CreateRecipeWithRelationsInput,
+) {
+  modelLog.debug({ authorId: input.authorId }, 'createRecipeWithRelations started');
+
+  const { id } = await db.transaction(async (tx) => {
+    const [r] = await tx.insert(recipes).values({
+      slug: input.slug,
+      title: input.title,
+      authorId: input.authorId,
+      visibility: input.visibility,
+      currentVersionId: null,
+    }).returning();
+
+    const [version] = await tx.insert(recipeVersions).values({
+      recipeId: r.id,
+      versionNumber: 1,
+      productName: input.productName,
+      coffeeBrand: input.coffeeBrand,
+      coffeeProcessing: input.coffeeProcessing,
+      vendorId: input.vendorId,
+      roastDate: input.roastDate,
+      packageOpenDate: input.packageOpenDate,
+      grindDate: input.grindDate,
+      brewDate: input.brewDate,
+      brewMethod: input.brewMethod,
+      drinkType: input.drinkType,
+      brewerDetails: input.brewerDetails,
+      grinder: input.grinder,
+      grindSize: input.grindSize,
+      groundWeightGrams: input.groundWeightGrams,
+      extractionTimeSeconds: input.extractionTimeSeconds,
+      extractionVolumeMl: input.extractionVolumeMl,
+      temperatureCelsius: input.temperatureCelsius,
+      brewRatio: input.brewRatio,
+      flowRate: input.flowRate,
+      personalNotes: input.personalNotes,
+      preparationNotes: input.preparationNotes,
+      isFavourite: input.isFavourite,
+      rating: input.rating,
+      emojiTag: input.emojiTag,
+      preInfusionTimeSeconds: input.preInfusionTimeSeconds,
+      beanId: input.beanId,
+    }).returning();
+
+    if (input.tasteNoteIds?.length) {
+      await tx.insert(recipeTasteNotes).values(
+        input.tasteNoteIds.map((id) => ({
+          recipeVersionId: version.id,
+          tasteNoteId: id,
+          intensity: input.tasteNoteIntensities?.[id] ?? 1,
+        })),
+      );
+    }
+
+    if (input.equipmentIds?.length) {
+      await tx.insert(recipeEquipment).values(
+        input.equipmentIds.map((id) => ({
+          recipeVersionId: version.id,
+          equipmentId: id,
+        })),
+      );
+    }
+
+    if (input.additionalPreparations?.length) {
+      await tx.insert(recipeAdditionalPreparations).values(
+        input.additionalPreparations.map((p, i) => ({
+          recipeVersionId: version.id,
+          name: p.name,
+          type: p.type,
+          inputAmount: p.inputAmount,
+          preparationType: p.preparationType,
+          sortOrder: i,
+        })),
+      );
+    }
+
+    if (input.photoIds?.length) {
+      await tx.insert(recipeVersionPhotos).values(
+        input.photoIds.map((photoId, i) => ({
+          recipeVersionId: version.id,
+          photoId,
+          sortOrder: i,
+        })),
+      );
+    }
+
+    await tx.update(recipes).set({ currentVersionId: version.id })
+      .where(eq(recipes.id, r.id));
+
+    return r;
+  });
+
+  modelLog.debug({ authorId: input.authorId, recipeId: id }, 'createRecipeWithRelations completed');
+  return findById(id);
 }
 
 /** Atomically increment a recipe's `likeCount` by 1. Returns the updated row or null. */
