@@ -28,7 +28,26 @@ export function success<T>(
 }
 
 /** Return a success envelope with pagination metadata. Shorthand for success() with pagination. */
-export function paginated<T>(c: Context, data: T[], pagination: PaginationMeta) {
+/**
+ * Return a success envelope with pagination metadata and optional response
+ * headers. Shorthand for success() with pagination.
+ *
+ * @param c - Hono request context.
+ * @param data - Items on the current page.
+ * @param pagination - Offset pagination metadata.
+ * @param options - Optional response headers (e.g., `Deprecation`).
+ */
+export function paginated<T>(
+  c: Context,
+  data: T[],
+  pagination: PaginationMeta,
+  options?: { headers?: Record<string, string> },
+) {
+  if (options?.headers) {
+    for (const [name, value] of Object.entries(options.headers)) {
+      c.header(name, value);
+    }
+  }
   return c.json({
     success: true as const,
     data,
@@ -49,7 +68,29 @@ export function paginated<T>(c: Context, data: T[], pagination: PaginationMeta) 
  * @param data - Items on the current page.
  * @param cursorMeta - Cursor pagination metadata.
  */
-export function cursorPaginated<T>(c: Context, data: T[], cursorMeta: CursorPaginationMeta) {
+/**
+ * Return a success envelope with cursor-pagination metadata and optional
+ * response headers.
+ *
+ * Use this for cursor-based list endpoints. The response shape is
+ * `{ success: true, data, meta: { requestId, cursor: { nextCursor, hasMore, total? } } }`.
+ *
+ * @param c - Hono request context.
+ * @param data - Items on the current page.
+ * @param cursorMeta - Cursor pagination metadata.
+ * @param options - Optional response headers (e.g., `Deprecation`).
+ */
+export function cursorPaginated<T>(
+  c: Context,
+  data: T[],
+  cursorMeta: CursorPaginationMeta,
+  options?: { headers?: Record<string, string> },
+) {
+  if (options?.headers) {
+    for (const [name, value] of Object.entries(options.headers)) {
+      c.header(name, value);
+    }
+  }
   return c.json({
     success: true as const,
     data,
