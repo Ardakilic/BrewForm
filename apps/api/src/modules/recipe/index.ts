@@ -37,7 +37,7 @@ import type { AppEnv } from '../../types/hono.ts';
 export const deps = { authMiddleware };
 
 /** Proxy that resolves authMiddleware at request time (supports test mocking via deps). */
-async function authGuard(c: Context, next: Next) {
+async function authGuard(c: Context<AppEnv>, next: Next) {
   return deps.authMiddleware(c, next);
 }
 
