@@ -271,7 +271,7 @@ correctly call `c.header(name, value)` before responding.
 
 ## MODIFIED Requirements
 
-### Requirement: Deprecated `tasteNoteId` (singular) is honoured
+### Requirement: Deprecated tasteNoteId (singular) is honoured
 
 `buildRecipeFilters` SHALL generate a single taste-note condition when
 `tasteNoteId` (singular) is provided AND `tasteNoteIds` (plural) is NOT.

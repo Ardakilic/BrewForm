@@ -2,6 +2,7 @@ import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import {
   FeedRecipeOutputSchema,
+  RecipeDetailOutputSchema,
   RecipeRowSchema,
   RecipeVersionRowSchema,
   RecipeWithAuthorOutputSchema,
@@ -85,6 +86,85 @@ const versionRow = {
 
 const miniAuthor = { username: 'barista', displayName: 'Barista', avatarUrl: null };
 
+const detailAuthor = { id: 'user-1', username: 'barista', displayName: 'Barista', avatarUrl: null };
+
+const detailTasteNote = {
+  id: 'rtn-1',
+  recipeVersionId: 'rv-1',
+  tasteNoteId: 'tn-1',
+  intensity: 2,
+  tasteNote: {
+    id: 'tn-1',
+    name: 'Floral',
+    parentId: null,
+    color: '#ff0000',
+    definition: 'Flower-like aroma',
+    depth: 1,
+    createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    deletedAt: null,
+  },
+};
+
+const detailEquipment = {
+  id: 're-1',
+  recipeVersionId: 'rv-1',
+  equipmentId: 'eq-1',
+  equipment: {
+    id: 'eq-1',
+    name: 'V60 Dripper',
+    type: 'brewer',
+    brand: 'Hario',
+    model: 'V60-02',
+    description: null,
+    createdBy: null,
+    isSystem: true,
+    createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+    deletedAt: null,
+  },
+};
+
+const detailAdditionalPreparation = {
+  id: 'rap-1',
+  recipeVersionId: 'rv-1',
+  name: 'Wet Filter',
+  type: 'water',
+  inputAmount: '50ml',
+  preparationType: 'rinse',
+  sortOrder: 0,
+};
+
+const detailBean = { origin: 'Ethiopia', roaster: 'Acme Roasters', roastLevel: 'light' };
+
+const detailVersion = {
+  ...versionRow,
+  tasteNotes: [detailTasteNote],
+  equipment: [detailEquipment],
+  additionalPreparations: [detailAdditionalPreparation],
+  bean: detailBean,
+};
+
+const forkedFrom = { id: 'recipe-0', slug: 'original-pour-over', title: 'Original Pour Over' };
+
+const detailPayload = {
+  ...recipeRow,
+  author: detailAuthor,
+  versions: [detailVersion],
+  photos: [
+    {
+      id: 'photo-1',
+      recipeId: 'recipe-1',
+      url: 'https://cdn/p.jpg',
+      thumbnailUrl: null,
+      alt: null,
+      sortOrder: 0,
+      createdAt: new Date('2024-01-01T08:06:00.000Z'),
+      deletedAt: null,
+    },
+  ],
+  forkedFrom,
+};
+
 describe('RecipeRowSchema', () => {
   it('parses a full recipe row with count fields and round-trips', () => {
     const result = RecipeRowSchema.safeParse(wire(recipeRow));
@@ -128,5 +208,13 @@ describe('FeedRecipeOutputSchema', () => {
     const result = FeedRecipeOutputSchema.safeParse(wire(payload));
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual(wire(payload));
+  });
+});
+
+describe('RecipeDetailOutputSchema', () => {
+  it('parses a full recipe detail payload with nested relations and round-trips', () => {
+    const result = RecipeDetailOutputSchema.safeParse(wire(detailPayload));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual(wire(detailPayload));
   });
 });
