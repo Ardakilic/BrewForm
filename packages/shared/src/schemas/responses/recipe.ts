@@ -127,7 +127,7 @@ export type FeedRecipeOutput = z.infer<typeof FeedRecipeOutputSchema>;
  * Author projection for the recipe detail payload (`recipe/model.ts findById`).
  * Unlike `RecipeAuthorMiniSchema`, this includes `id`.
  */
-export const RecipeDetailAuthorSchema = z.object({
+export const RecipeDetailAuthorOutputSchema = z.object({
   id: z.string(),
   username: z.string(),
   displayName: z.string().nullable(),
@@ -174,7 +174,7 @@ const RecipeDetailBeanMiniSchema = z.object({
  * additional preparations, version photos, and bean), as returned by
  * `recipe/model.ts findById`.
  */
-export const RecipeDetailVersionSchema = RecipeVersionRowSchema.omit({ versionPhotos: true })
+export const RecipeDetailVersionOutputSchema = RecipeVersionRowSchema.omit({ versionPhotos: true })
   .extend(
     {
       tasteNotes: z.array(RecipeDetailTasteNoteSchema),
@@ -198,8 +198,8 @@ const RecipeForkedFromMiniSchema = z.object({
  * additional preparations, version photos, and bean), photos, and forked-from.
  */
 export const RecipeDetailOutputSchema = RecipeRowSchema.extend({
-  author: RecipeDetailAuthorSchema,
-  versions: z.array(RecipeDetailVersionSchema),
+  author: RecipeDetailAuthorOutputSchema,
+  versions: z.array(RecipeDetailVersionOutputSchema),
   photos: z.array(PhotoOutputSchema),
   forkedFrom: RecipeForkedFromMiniSchema,
 });

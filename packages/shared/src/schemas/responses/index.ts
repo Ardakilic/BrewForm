@@ -27,9 +27,9 @@ export {
 } from './equipment.ts';
 export {
   FeedRecipeOutputSchema,
-  RecipeDetailAuthorSchema,
+  RecipeDetailAuthorOutputSchema,
   RecipeDetailOutputSchema,
-  RecipeDetailVersionSchema,
+  RecipeDetailVersionOutputSchema,
   RecipeRowSchema,
   RecipeVersionRowSchema,
   RecipeWithAuthorOutputSchema,

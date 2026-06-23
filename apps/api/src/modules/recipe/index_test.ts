@@ -210,7 +210,6 @@ describe(
 
     afterEach(async () => {
       deps.authMiddleware = originalAuthMiddleware;
-      await new Promise((resolve) => setTimeout(resolve, 150));
       if (createdRecipeIds.length) {
         await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipeIds));
         await db.delete(recipes).where(inArray(recipes.id, createdRecipeIds));
