@@ -80,8 +80,12 @@ jobs:
       - id: gate
         env:
           COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          if [ -n "$COOLIFY_API_WEBHOOK" ]; then
+          # Require the API webhook URL and its bearer token — both are needed for an
+          # authenticated deploy call. COOLIFY_WEB_WEBHOOK is optional (called only when
+          # set in the deploy job), so it is intentionally not gated here.
+          if [ -n "$COOLIFY_API_WEBHOOK" ] && [ -n "$COOLIFY_API_TOKEN" ]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=false" >> "$GITHUB_OUTPUT"
@@ -98,7 +102,11 @@ jobs:
           COOLIFY_WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_WEBHOOK }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          curl --request GET "$COOLIFY_API_WEBHOOK" \
-               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
-          curl --request GET "$COOLIFY_WEB_WEBHOOK" \
-               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
+          curl --fail --show-error --silent --retry 3 --retry-connrefused \
+               --request GET "$COOLIFY_API_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN"
+          if [ -n "$COOLIFY_WEB_WEBHOOK" ]; then
+            curl --fail --show-error --silent --retry 3 --retry-connrefused \
+                 --request GET "$COOLIFY_WEB_WEBHOOK" \
+                 --header "Authorization: Bearer $COOLIFY_API_TOKEN"
+          fi

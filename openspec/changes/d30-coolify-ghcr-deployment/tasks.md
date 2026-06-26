@@ -49,7 +49,7 @@
 - [x] 6.1 Create `.github/workflows/release.yml` with the workflow from `design.md` §7 / `ci-image-publishing` spec. Triggers: `push: branches: [main]` and `push: tags: ['v*']`. Permissions: `contents: read, packages: write`. Three jobs: `api` (builds Dockerfile, pushes to ghcr.io/ardakilic/brewform-api), `web` (builds Dockerfile.web with build-args from secrets, pushes to ghcr.io/ardakilic/brewform-web), `deploy` (optional, curls Coolify webhooks).
 - [x] 6.2 Use `docker/build-push-action@v7` with `cache-from: type=gha` and `cache-to: type=gha,mode=max` for both jobs.
 - [x] 6.3 For the `web` job, use `build-args: | VITE_API_URL=${{ secrets.VITE_API_URL || '/api/v1' }} VITE_PUBLIC_APP_URL=${{ secrets.VITE_PUBLIC_APP_URL || 'http://localhost:8080' }}` (fallback to dev defaults if secrets are unset).
-- [x] 6.4 For the `deploy` job, use `if: ${{ secrets.COOLIFY_API_WEBHOOK != '' }}` and `needs: [api, web]`, with `curl ... || true` for both webhooks.
+- [x] 6.4 For the `deploy` job, gate via a separate `check` job output (`needs: [api, web, check]`, `if: ${{ needs.check.outputs.deploy == 'true' }}` — GitHub does not expose `secrets` in a job-level `if:`). Use `curl --fail --retry 3` for the webhooks (no `|| true`), calling the optional `COOLIFY_WEB_WEBHOOK` only when set, so a failed redeploy trigger fails the job (the images are already pushed by `api`/`web`).
 - [x] 6.5 Do NOT modify `ci.yml` — it stays as the quality + tests workflow, independent of `release.yml`.
 
 ## 7. Makefile — New targets

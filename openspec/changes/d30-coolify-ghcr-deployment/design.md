@@ -356,8 +356,12 @@ jobs:
       - id: gate
         env:
           COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          if [ -n "$COOLIFY_API_WEBHOOK" ]; then
+          # Require the API webhook URL and its bearer token — both are needed for an
+          # authenticated deploy call. COOLIFY_WEB_WEBHOOK is optional (called only when
+          # set in the deploy job), so it is intentionally not gated here.
+          if [ -n "$COOLIFY_API_WEBHOOK" ] && [ -n "$COOLIFY_API_TOKEN" ]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=false" >> "$GITHUB_OUTPUT"
@@ -374,12 +378,16 @@ jobs:
           COOLIFY_WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_WEBHOOK }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          curl --request GET "$COOLIFY_API_WEBHOOK" \
-               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
-          curl --request GET "$COOLIFY_WEB_WEBHOOK" \
-               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
+          curl --fail --show-error --silent --retry 3 --retry-connrefused \
+               --request GET "$COOLIFY_API_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN"
+          if [ -n "$COOLIFY_WEB_WEBHOOK" ]; then
+            curl --fail --show-error --silent --retry 3 --retry-connrefused \
+                 --request GET "$COOLIFY_WEB_WEBHOOK" \
+                 --header "Authorization: Bearer $COOLIFY_API_TOKEN"
+          fi
 ```
-> **Note:** GitHub does **not** expose the `secrets` context in a job-level `if:`, so the deploy guard is computed in a separate `check` job that writes a `deploy` output; `deploy` then gates on `needs.check.outputs.deploy == 'true'`. `packages: write` is granted per-pushing-job (`api`/`web`) rather than workflow-wide, and checkout uses `persist-credentials: false`. The `|| true` on the curls prevents a transient webhook failure from failing the whole release. The `cache-from/cache-to: type=gha` uses GitHub Actions cache for layer caching.
+> **Note:** GitHub does **not** expose the `secrets` context in a job-level `if:`, so the deploy guard is computed in a separate `check` job (requiring both `COOLIFY_API_WEBHOOK` and `COOLIFY_API_TOKEN`) that writes a `deploy` output; `deploy` then gates on `needs.check.outputs.deploy == 'true'`. `packages: write` is granted per-pushing-job (`api`/`web`) rather than workflow-wide, and checkout uses `persist-credentials: false`. The webhook curls use `--fail --retry 3` (no `|| true`), so the `deploy` job fails visibly if a redeploy trigger returns a non-2xx or errors after retries; the optional `COOLIFY_WEB_WEBHOOK` is called only when set. Since the images are already pushed by the `api`/`web` jobs, a failed `deploy` surfaces the trigger problem without affecting the published images. The `cache-from/cache-to: type=gha` uses GitHub Actions cache for layer caching.
 
 ### 8. Compose `prod` profile mirrors Coolify
 

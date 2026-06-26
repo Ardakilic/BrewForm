@@ -115,8 +115,12 @@ jobs:
       - id: gate
         env:
           COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          if [ -n "$COOLIFY_API_WEBHOOK" ]; then
+          # Require the API webhook URL and its bearer token — both are needed for an
+          # authenticated deploy call. COOLIFY_WEB_WEBHOOK is optional (called only when
+          # set in the deploy job), so it is intentionally not gated here.
+          if [ -n "$COOLIFY_API_WEBHOOK" ] && [ -n "$COOLIFY_API_TOKEN" ]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=false" >> "$GITHUB_OUTPUT"
@@ -132,10 +136,14 @@ jobs:
           COOLIFY_WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_WEBHOOK }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          curl --request GET "$COOLIFY_API_WEBHOOK" \
-               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
-          curl --request GET "$COOLIFY_WEB_WEBHOOK" \
-               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
+          curl --fail --show-error --silent --retry 3 --retry-connrefused \
+               --request GET "$COOLIFY_API_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN"
+          if [ -n "$COOLIFY_WEB_WEBHOOK" ]; then
+            curl --fail --show-error --silent --retry 3 --retry-connrefused \
+                 --request GET "$COOLIFY_WEB_WEBHOOK" \
+                 --header "Authorization: Bearer $COOLIFY_API_TOKEN"
+          fi
 ```
 
 > Note: the canonical full workflow lives in `design.md §7`; this reference copy is illustrative —
@@ -261,21 +269,25 @@ Coolify (or any host) can `docker pull` without authentication.
 The `release.yml` workflow MAY include a final `deploy` job that, when present, SHALL run only
 after `api` and `web` succeed and send a `GET` request to the Coolify deploy webhook URLs if the
 `COOLIFY_API_WEBHOOK` secret is set. Because GitHub does not expose the `secrets` context in a
-job-level `if:`, the guard SHALL be computed in a separate `check` job that reads the secret and
+job-level `if:`, the guard SHALL be computed in a separate `check` job that reads
+`COOLIFY_API_WEBHOOK` and `COOLIFY_API_TOKEN` (both required for an authenticated deploy call) and
 emits a `deploy` output; the `deploy` job SHALL be skipped (via
-`if: ${{ needs.check.outputs.deploy == 'true' }}`) when the secret is absent, so the workflow does
+`if: ${{ needs.check.outputs.deploy == 'true' }}`) when either is absent, so the workflow does
 not fail for users who haven't configured Coolify webhooks.
 
 The `deploy` job SHALL `needs: [api, web, check]` (runs only after both image pushes succeed and the gate is evaluated) and
 shall send webhooks to both `COOLIFY_API_WEBHOOK` and `COOLIFY_WEB_WEBHOOK` (if set), each with
 the `Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}` header. The `curl` commands SHALL
-use `|| true` so a transient webhook failure does not fail the release (the images are already
-pushed; the webhook is just a convenience to trigger an immediate redeploy).
+use `--fail --retry 3` (no `|| true`) so the `deploy` job fails when a webhook returns a non-2xx
+response or errors after retries; the optional `COOLIFY_WEB_WEBHOOK` SHALL be called only when set.
+The images are already pushed by the `api`/`web` jobs, so a failed `deploy` surfaces the trigger
+problem without affecting the published images.
 
 The webhook call format (secrets passed via `env:`, not interpolated into the command):
 ```
-curl --request GET "$COOLIFY_API_WEBHOOK" \
-     --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
+curl --fail --show-error --silent --retry 3 --retry-connrefused \
+     --request GET "$COOLIFY_API_WEBHOOK" \
+     --header "Authorization: Bearer $COOLIFY_API_TOKEN"
 ```
 
 This triggers Coolify to re-pull the latest image and restart the container.
@@ -295,12 +307,13 @@ This triggers Coolify to re-pull the latest image and restart the container.
 - **AND** the workflow succeeds without error
 - **AND** the images are already pushed (the `api` and `web` jobs succeeded)
 
-#### Scenario: Deploy webhook failure does not fail the release
+#### Scenario: Deploy webhook failure fails the deploy job (images already published)
 
-- **WHEN** the `deploy` job runs and a `curl` command fails (e.g., Coolify is unreachable)
-- **THEN** the `|| true` prevents the step from failing
-- **AND** the workflow succeeds (the images are already pushed)
-- **AND** the operator can manually click "Redeploy" in Coolify
+- **WHEN** the `deploy` job runs and a webhook returns a non-2xx response or errors after retries
+- **THEN** `curl --fail` exits non-zero and the `deploy` job fails, surfacing the trigger problem
+- **AND** the `api` and `web` images are already pushed to GHCR (those jobs ran first), so the
+  published artifacts are unaffected
+- **AND** the operator can re-run the `deploy` job or click "Redeploy" in Coolify
 
 ---
 
