@@ -9,7 +9,7 @@
     "jsr:@std/path@*": "1.1.4",
     "jsr:@std/path@^1.1.4": "1.1.4",
     "jsr:@std/testing@*": "1.0.18",
-    "npm:@base-ui/react@1": "1.4.1_@types+react@19.2.14_react@19.2.7_react-dom@19.2.6__react@19.2.7",
+    "npm:@base-ui/react@1": "1.4.1_@types+react@19.2.14_react@19.2.7_react-dom@19.2.7__react@19.2.7",
     "npm:@deno/vite-plugin@2": "2.0.2_vite@8.0.13",
     "npm:@hono/standard-validator@0.2": "0.2.2_@standard-schema+spec@1.1.0_hono@4.12.19",
     "npm:@hono/zod-validator@0.8": "0.8.0_hono@4.12.19_zod@4.4.3",
@@ -18,7 +18,7 @@
     "npm:@resvg/resvg-js@^2.6.2": "2.6.2",
     "npm:@tailwindcss/vite@^4.1.0": "4.3.0_vite@8.0.13",
     "npm:@testing-library/jest-dom@^6.6.3": "6.9.1",
-    "npm:@testing-library/react@^16.3.0": "16.3.2_@types+react@19.2.14_@types+react-dom@19.2.3__@types+react@19.2.14_react@19.2.7_react-dom@19.2.6__react@19.2.7",
+    "npm:@testing-library/react@^16.3.0": "16.3.2_@types+react@19.2.14_@types+react-dom@19.2.3__@types+react@19.2.14_react@19.2.7_react-dom@19.2.7__react@19.2.7",
     "npm:@testing-library/user-event@^14.6.1": "14.6.1_@testing-library+dom@10.4.1",
     "npm:@types/nodemailer@8": "8.0.0",
     "npm:@types/qrcode@^1.5.5": "1.5.6",
@@ -42,8 +42,8 @@
     "npm:pino@10": "10.3.1",
     "npm:postgres@^3.4.5": "3.4.9",
     "npm:qrcode@^1.5.4": "1.5.4",
-    "npm:react-dom@^19.1.0": "19.2.6_react@19.2.7",
-    "npm:react-router@8": "8.0.1_react@19.2.7_react-dom@19.2.6__react@19.2.7",
+    "npm:react-dom@^19.1.0": "19.2.7_react@19.2.7",
+    "npm:react-router@8": "8.0.1_react@19.2.7_react-dom@19.2.7__react@19.2.7",
     "npm:react@^19.1.0": "19.2.7",
     "npm:tailwindcss@^4.1.0": "4.3.0",
     "npm:typescript@6": "6.0.3",
@@ -155,7 +155,7 @@
         "@babel/helper-validator-identifier"
       ]
     },
-    "@base-ui/react@1.4.1_@types+react@19.2.14_react@19.2.7_react-dom@19.2.6__react@19.2.7": {
+    "@base-ui/react@1.4.1_@types+react@19.2.14_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
       "integrity": "sha512-Ab5/LIhcmL8BQcsBUYiOfkSDRdLpvgUBzMK30cu684JPcLclYlztharvCZyNNgzJtbAiREzI9q0pI5erHCMgCw==",
       "dependencies": [
         "@babel/runtime",
@@ -173,7 +173,7 @@
         "date-fns"
       ]
     },
-    "@base-ui/utils@0.2.8_@types+react@19.2.14_react@19.2.7_react-dom@19.2.6__react@19.2.7": {
+    "@base-ui/utils@0.2.8_@types+react@19.2.14_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
       "integrity": "sha512-jvOi+c+ftGlGotNcKnzPVg2IhCaDTB6/6R3JeqdjdXktuAJi3wKH9T7+svuaKh1mmfVU11UWzUZVH74JDfi/wQ==",
       "dependencies": [
         "@babel/runtime",
@@ -670,7 +670,7 @@
         "@floating-ui/utils"
       ]
     },
-    "@floating-ui/react-dom@2.1.8_react@19.2.7_react-dom@19.2.6__react@19.2.7": {
+    "@floating-ui/react-dom@2.1.8_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
       "integrity": "sha512-cC52bHwM/n/CxS87FH0yWdngEZrjdtLW/qVruo68qg+prK7ZQ4YGdut2GyDVpoGeAYe/h899rVeOVm6Oi40k2A==",
       "dependencies": [
         "@floating-ui/dom",
@@ -1152,7 +1152,7 @@
         "redent"
       ]
     },
-    "@testing-library/react@16.3.2_@types+react@19.2.14_@types+react-dom@19.2.3__@types+react@19.2.14_react@19.2.7_react-dom@19.2.6__react@19.2.7": {
+    "@testing-library/react@16.3.2_@types+react@19.2.14_@types+react-dom@19.2.3__@types+react@19.2.14_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
       "integrity": "sha512-XU5/SytQM+ykqMnAnvB2umaJNIOsLF3PVv//1Ew4CTcpz0/BRyy/af40qqrt7SjKpDdT1saBMc42CUok5gaw+g==",
       "dependencies": [
         "@babel/runtime",
@@ -3145,8 +3145,8 @@
     "quick-format-unescaped@4.0.4": {
       "integrity": "sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg=="
     },
-    "react-dom@19.2.6_react@19.2.7": {
-      "integrity": "sha512-0prMI+hvBbPjsWnxDLxlCGyM8PN6UuWjEUCYmZhO67xIV9Xasa/r/vDnq+Xyq4Lo27g8QSbO5YzARu0D1Sps3g==",
+    "react-dom@19.2.7_react@19.2.7": {
+      "integrity": "sha512-t0BRVXvbiE/o20Hfw669rLbMCDWtYZLvmJigy2f0MxsXF+71pxhR3xOkspmsO8h3ZlNzyibAmtCa3l4lYKk6gQ==",
       "dependencies": [
         "react",
         "scheduler"
@@ -3155,7 +3155,7 @@
     "react-is@17.0.2": {
       "integrity": "sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w=="
     },
-    "react-router@8.0.1_react@19.2.7_react-dom@19.2.6__react@19.2.7": {
+    "react-router@8.0.1_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
       "integrity": "sha512-5EL/fANovVUhRK50NLS8RYfX0BxrimoKsHWUPPy8v5UEl8i6vzF7e4POo3u+AhPItDwccUAJjMfIOmydxBJmQw==",
       "dependencies": [
         "cookie-es",
