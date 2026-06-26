@@ -5,15 +5,20 @@ on:
     branches: [main]
     tags: ['v*']
 
+# Least privilege at the top level; the image-pushing jobs opt into packages:write.
 permissions:
   contents: read
-  packages: write
 
 jobs:
   api:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -35,8 +40,13 @@ jobs:
 
   web:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -59,14 +69,36 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # Gate job: GitHub does NOT expose the `secrets` context in a job-level `if:`,
+  # so the deploy guard is computed here and surfaced as an output the deploy
+  # job can legitimately gate on via `needs.check.outputs.deploy`.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.gate.outputs.deploy }}
+    steps:
+      - id: gate
+        env:
+          COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+        run: |
+          if [ -n "$COOLIFY_API_WEBHOOK" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
     runs-on: ubuntu-latest
-    needs: [api, web]
-    if: ${{ secrets.COOLIFY_API_WEBHOOK != '' }}
+    needs: [api, web, check]
+    if: ${{ needs.check.outputs.deploy == 'true' }}
     steps:
       - name: Trigger Coolify deploy webhooks
+        env:
+          COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+          COOLIFY_WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          curl --request GET '${{ secrets.COOLIFY_API_WEBHOOK }}' \
-               --header 'Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}' || true
-          curl --request GET '${{ secrets.COOLIFY_WEB_WEBHOOK }}' \
-               --header 'Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}' || true
+          curl --request GET "$COOLIFY_API_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
+          curl --request GET "$COOLIFY_WEB_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true

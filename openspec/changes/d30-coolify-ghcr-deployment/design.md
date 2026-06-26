@@ -133,7 +133,7 @@ The inline `printf` in the Dockerfile is preferred (one less file to manage), bu
 ### 3. API entrypoint: migrate-always, seed-once
 
 **Choice:** A `docker-entrypoint.sh` in the API image that:
-1. Always runs `cd /app/packages/db && deno run -A npm:drizzle-kit@0.31.10 migrate` (idempotent — Drizzle tracks applied migrations in `__drizzle_migrations`). `DATABASE_URL` must be set in the container env.
+1. Always runs `cd /app/packages/db && deno run -A npm:drizzle-kit@0.31 migrate` (idempotent — Drizzle tracks applied migrations in `__drizzle_migrations`). `DATABASE_URL` must be set in the container env.
 2. Runs `deno run --allow-all /app/packages/db/src/seed.ts` **only if** the `users` table is empty. The first-boot check is done by querying `SELECT count(*) FROM users` via a tiny inline Deno script (so we don't need `psql` in the image). If count > 0, seed is skipped.
 3. `exec deno run --allow-read --allow-write --allow-net --allow-env --allow-sys --unstable-cron --unstable-kv /app/apps/api/src/main.ts`
 
@@ -149,7 +149,7 @@ The inline `printf` in the Dockerfile is preferred (one less file to manage), bu
 set -e
 
 echo "Running database migrations..."
-cd /app/packages/db && deno run -A npm:drizzle-kit@0.31.10 migrate
+cd /app/packages/db && deno run -A npm:drizzle-kit@0.31 migrate
 echo "Migrations complete."
 
 # Check if the users table is empty (first-boot sentinel).
@@ -174,7 +174,7 @@ exec deno run --allow-read --allow-write --allow-net --allow-env --allow-sys --u
 
 > **Note on the count-check approach:** The recommended (primary) path is a standalone script file `scripts/check-users-empty.ts` that imports from `@brewform/db`, queries `SELECT count(*) FROM users`, and prints the count to stdout. The entrypoint runs it with **explicit permissions**: `deno run --allow-env --allow-net --allow-read /app/scripts/check-users-empty.ts`. Those flags are mandatory because the check must reach Postgres (`--allow-net`/`--allow-env` for `DATABASE_URL`). **Do not use an unflagged `deno eval` and do not mask its failure to `"0"`** (e.g. `... 2>/dev/null || echo "0"`): a bare `deno eval` runs with **no permissions**, so it cannot connect to Postgres and always errors; masking that error to `0` makes the entrypoint re-run the seed on **every** boot, violating "seed once." With `set -e`, a genuine check failure should abort the boot rather than silently re-seed. An inline `deno eval` is acceptable only as a documented alternative and **only if it carries the same `--allow-env --allow-net --allow-read` flags** and does not swallow errors. The key invariant is: **no `psql` dependency, the check uses Deno + the existing `@brewform/db` client with full DB-access permissions, and failures are not masked.**
 
-> **Note on the `drizzle-kit` pin:** this entrypoint pins `npm:drizzle-kit@0.31.10`, but the rest of the repo pins `npm:drizzle-kit@0.31` (`packages/db/deno.json` `migrate` task and the `Makefile`). Align the pin across all call sites (pick one of `0.31` or `0.31.10` and use it everywhere) so the entrypoint migration and the workspace tasks resolve the same version.
+> **Note on the `drizzle-kit` pin:** the entrypoint `migrate`, the `Dockerfile` builder `generate` step, the `packages/db/deno.json` tasks, and the `Makefile` all pin `npm:drizzle-kit@0.31`, so the image build, the entrypoint migration, and the workspace tasks resolve the same version.
 
 **Reference `Dockerfile` (API, modified runner stage)** — the implementer changes only the `runner` stage and adds the entrypoint:
 ```dockerfile
@@ -190,7 +190,7 @@ EXPOSE 8000
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 # No CMD — the entrypoint execs the API server directly
 ```
-The `deps` and `builder` stages stay as-is, except the `builder` stage MUST run `deno task email-build` (currently only in CI) and `cd packages/db && deno run -A npm:drizzle-kit@0.31.10 generate` (already present) so the runner has compiled email templates and migration SQL files.
+The `deps` and `builder` stages stay as-is, except the `builder` stage MUST run `deno task email-build` (currently only in CI) and `cd packages/db && deno run -A npm:drizzle-kit@0.31 generate` (already present) so the runner has compiled email templates and migration SQL files.
 
 **Alternative considered:** Coolify's "post-deployment command" field. Rejected — it's documented for the Dockerfile build pack, not reliably for the Docker Image resource. The entrypoint is self-contained and works on any platform.
 
@@ -285,13 +285,17 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   api:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -313,8 +317,13 @@ jobs:
 
   web:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -337,19 +346,40 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # Gate job: GitHub does NOT expose the `secrets` context in a job-level `if:`,
+  # so the deploy guard is computed here and surfaced as an output.
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.gate.outputs.deploy }}
+    steps:
+      - id: gate
+        env:
+          COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+        run: |
+          if [ -n "$COOLIFY_API_WEBHOOK" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
     runs-on: ubuntu-latest
-    needs: [api, web]
-    if: ${{ secrets.COOLIFY_API_WEBHOOK != '' }}
+    needs: [api, web, check]
+    if: ${{ needs.check.outputs.deploy == 'true' }}
     steps:
       - name: Trigger Coolify deploy webhooks
+        env:
+          COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+          COOLIFY_WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          curl --request GET '${{ secrets.COOLIFY_API_WEBHOOK }}' \
-               --header 'Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}' || true
-          curl --request GET '${{ secrets.COOLIFY_WEB_WEBHOOK }}' \
-               --header 'Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}' || true
+          curl --request GET "$COOLIFY_API_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
+          curl --request GET "$COOLIFY_WEB_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
 ```
-> **Note:** The `if: ${{ secrets.COOLIFY_API_WEBHOOK != '' }}` pattern is how GitHub Actions skips a job when a secret is unset. The `|| true` on the curls prevents a transient webhook failure from failing the whole release. The `cache-from/cache-to: type=gha` uses GitHub Actions cache for layer caching (speeds up rebuilds).
+> **Note:** GitHub does **not** expose the `secrets` context in a job-level `if:`, so the deploy guard is computed in a separate `check` job that writes a `deploy` output; `deploy` then gates on `needs.check.outputs.deploy == 'true'`. `packages: write` is granted per-pushing-job (`api`/`web`) rather than workflow-wide, and checkout uses `persist-credentials: false`. The `|| true` on the curls prevents a transient webhook failure from failing the whole release. The `cache-from/cache-to: type=gha` uses GitHub Actions cache for layer caching.
 
 ### 8. Compose `prod` profile mirrors Coolify
 
@@ -476,5 +506,5 @@ Update `.PHONY` to include: `images images-push prod-up prod-up-build prod-down 
 
 - Should the `release.yml` workflow also build on PRs (for a smoke test) or only on `main`/tags? **Decision: only on `main` and tags** — PR builds would publish `latest`-bound images prematurely. PRs run `ci.yml` (quality + tests) only.
 - Should the `prod` compose profile include `mailpit` for local prod-smoke-testing? **Decision: No** — `prod` is a mirror of Coolify; email goes to a real SMTP provider. `mailpit` stays in `dev` only.
-- Should the API image include `drizzle-kit` in the final runner stage (for the entrypoint migration)? **Decision: Yes** — the runner copies the full `/app` from the builder (including `node_modules` with `drizzle-kit` via `npm:drizzle-kit@0.31.10`). No extra layer needed.
+- Should the API image include `drizzle-kit` in the final runner stage (for the entrypoint migration)? **Decision: Yes** — the runner copies the full `/app` from the builder (including `node_modules` with `drizzle-kit` via `npm:drizzle-kit@0.31`). No extra layer needed.
 - Should the denokv compose healthcheck use `deno eval`, `nc`, or be omitted? **Decision: omit it.** denokv serves only `POST /` + `POST /v2/*`, so a `GET /` returns 404 and an HTTP healthcheck flaps; there is no `ping`/health subcommand (only `serve`). Use `depends_on: condition: service_started` and rely on the API's fail-fast (`Deno.openKv()` throws if denokv is unreachable → container restarts). If a TCP check is ever wanted, the `:debug` base image ships busybox `nc`, so `["CMD","/busybox/nc","-z","localhost","4512"]` is available.

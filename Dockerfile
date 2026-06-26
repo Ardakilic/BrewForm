@@ -26,7 +26,7 @@ WORKDIR /app
 COPY --from=deps /deno-dir /deno-dir
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN cd packages/db && deno run -A npm:drizzle-kit@0.31.10 generate
+RUN cd packages/db && deno run -A npm:drizzle-kit@0.31 generate
 RUN deno task email-build
 RUN deno check apps/api/src/main.ts
 

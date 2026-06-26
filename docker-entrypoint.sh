@@ -2,7 +2,7 @@
 set -e
 
 echo "Running database migrations..."
-cd /app/packages/db && deno run -A npm:drizzle-kit@0.31.10 migrate
+cd /app/packages/db && deno run -A npm:drizzle-kit@0.31 migrate
 echo "Migrations complete."
 
 # Return to the workspace root so Deno discovers the root deno.json (the

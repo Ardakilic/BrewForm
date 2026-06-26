@@ -20,7 +20,7 @@ The system SHALL provide a multi-stage `Dockerfile` producing a `runner` stage t
 - Contains the compiled API source (`apps/api/src/main.ts` and all imported modules), generated
   Drizzle migrations (`packages/db/drizzle/`), `packages/db/drizzle.config.ts`, compiled email
   templates (in `apps/api/src/` or wherever `deno task email-build` outputs them), and
-  `node_modules` (which includes `drizzle-kit` via the `npm:drizzle-kit@0.31.10` dependency, used
+  `node_modules` (which includes `drizzle-kit` via the `npm:drizzle-kit@0.31` dependency, used
   by the entrypoint for migrations)
 - Exposes port `8000`
 - Uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]` (no `CMD` — the entrypoint `exec`s the API)
@@ -29,7 +29,7 @@ The system SHALL provide a multi-stage `Dockerfile` producing a `runner` stage t
 
 The `builder` stage SHALL run `deno task email-build` (compiles MJML templates to TypeScript —
 currently only run in CI, not in the Dockerfile) AND
-`cd packages/db && deno run -A npm:drizzle-kit@0.31.10 generate` (generates migration SQL files —
+`cd packages/db && deno run -A npm:drizzle-kit@0.31 generate` (generates migration SQL files —
 already present in the current Dockerfile) so the runner stage has both the compiled email
 templates and the migration SQL files for the entrypoint.
 
@@ -58,7 +58,7 @@ The `runner` stage SHALL `COPY docker-entrypoint.sh /app/docker-entrypoint.sh` a
 ### Requirement: Entrypoint runs migrations on every boot
 
 The `docker-entrypoint.sh` script SHALL run
-`cd /app/packages/db && deno run -A npm:drizzle-kit@0.31.10 migrate` before starting the API
+`cd /app/packages/db && deno run -A npm:drizzle-kit@0.31 migrate` before starting the API
 server, on every container start. `DATABASE_URL` MUST be set in the container environment (the
 `drizzle.config.ts` reads it via `Deno.env.get('DATABASE_URL')`). Migrations are idempotent via
 Drizzle's `__drizzle_migrations` tracking table.
@@ -73,7 +73,7 @@ and `"Migrations complete."` after it succeeds.
 #### Scenario: Migrations run on first boot
 
 - **WHEN** the API container starts against an empty database (no tables)
-- **THEN** `deno run -A npm:drizzle-kit@0.31.10 migrate` applies all pending migrations from
+- **THEN** `deno run -A npm:drizzle-kit@0.31 migrate` applies all pending migrations from
   `packages/db/drizzle/`
 - **AND** stdout contains "Running database migrations..." and "Migrations complete."
 - **AND** the API server starts after migrations complete
@@ -81,13 +81,13 @@ and `"Migrations complete."` after it succeeds.
 #### Scenario: Migrations run on subsequent boots
 
 - **WHEN** the API container starts against a database with all migrations already applied
-- **THEN** `deno run -A npm:drizzle-kit@0.31.10 migrate` is a no-op (Drizzle detects no pending
+- **THEN** `deno run -A npm:drizzle-kit@0.31 migrate` is a no-op (Drizzle detects no pending
   migrations via the `__drizzle_migrations` table)
 - **AND** the API server starts
 
 #### Scenario: Migration failure prevents API start
 
-- **WHEN** `deno run -A npm:drizzle-kit@0.31.10 migrate` exits with a non-zero code (e.g.,
+- **WHEN** `deno run -A npm:drizzle-kit@0.31 migrate` exits with a non-zero code (e.g.,
   `DATABASE_URL` is wrong, the DB is unreachable, or a migration SQL file is malformed)
 - **THEN** the entrypoint exits with a non-zero code (due to `set -e`)
 - **AND** the API server does NOT start

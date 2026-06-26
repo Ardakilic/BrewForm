@@ -125,7 +125,7 @@ async function startup() {
   logger.info('Starting BrewForm API...');
 
   if (config.CACHE_DRIVER === 'deno-kv') {
-    const kvUrl = Deno.env.get('DENO_KV_URL') ?? 'http://denokv:4512';
+    const kvUrl = config.DENO_KV_URL ?? 'http://denokv:4512';
     logger.info({ url: kvUrl }, 'Deno KV cache connecting to remote server');
     kv = await Deno.openKv(kvUrl);
     setCacheProvider(createCacheProvider('deno-kv', kv));

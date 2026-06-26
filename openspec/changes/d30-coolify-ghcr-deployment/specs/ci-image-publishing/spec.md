@@ -14,8 +14,9 @@ The system SHALL provide `.github/workflows/release.yml` that triggers on:
 - `push` to the `main` branch
 - `push` of tags matching `v*` (e.g., `v1.0.0`, `v1.2.3-beta`)
 
-The workflow SHALL set `permissions: { contents: read, packages: write }` at the workflow level
-so `GITHUB_TOKEN` can push to GHCR.
+The workflow SHALL set `permissions: { contents: read }` at the workflow level, and the
+image-pushing jobs (`api`, `web`) SHALL each declare `permissions: { contents: read, packages: write }`
+so `GITHUB_TOKEN` can push to GHCR (the `deploy` job needs no `packages` scope).
 
 The workflow SHALL define two parallel jobs, `api` and `web`, each using:
 - `actions/checkout@v7`
@@ -54,10 +55,12 @@ on:
     tags: ['v*']
 permissions:
   contents: read
-  packages: write
 jobs:
   api:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
@@ -79,6 +82,9 @@ jobs:
           cache-to: type=gha,mode=max
   web:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
@@ -101,17 +107,35 @@ jobs:
             ${{ startsWith(github.ref, 'refs/tags/v') && format('ghcr.io/ardakilic/brewform-web:{0}', github.ref_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.gate.outputs.deploy }}
+    steps:
+      - id: gate
+        env:
+          COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+        run: |
+          if [ -n "$COOLIFY_API_WEBHOOK" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
   deploy:
     runs-on: ubuntu-latest
-    needs: [api, web]
-    if: ${{ secrets.COOLIFY_API_WEBHOOK != '' }}
+    needs: [api, web, check]
+    if: ${{ needs.check.outputs.deploy == 'true' }}
     steps:
       - name: Trigger Coolify deploy webhooks
+        env:
+          COOLIFY_API_WEBHOOK: ${{ secrets.COOLIFY_API_WEBHOOK }}
+          COOLIFY_WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_WEBHOOK }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
-          curl --request GET '${{ secrets.COOLIFY_API_WEBHOOK }}' \
-               --header 'Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}' || true
-          curl --request GET '${{ secrets.COOLIFY_WEB_WEBHOOK }}' \
-               --header 'Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}' || true
+          curl --request GET "$COOLIFY_API_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
+          curl --request GET "$COOLIFY_WEB_WEBHOOK" \
+               --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
 ```
 
 > Note: the canonical full workflow lives in `design.md §7`; this reference copy is illustrative —
@@ -236,20 +260,22 @@ Coolify (or any host) can `docker pull` without authentication.
 
 The `release.yml` workflow MAY include a final `deploy` job that, when present, SHALL run only
 after `api` and `web` succeed and send a `GET` request to the Coolify deploy webhook URLs if the
-`COOLIFY_API_WEBHOOK` secret is set. This job SHALL be skipped (via
-`if: ${{ secrets.COOLIFY_API_WEBHOOK != '' }}`) if the secret is absent, so the workflow does not
-fail for users who haven't configured Coolify webhooks.
+`COOLIFY_API_WEBHOOK` secret is set. Because GitHub does not expose the `secrets` context in a
+job-level `if:`, the guard SHALL be computed in a separate `check` job that reads the secret and
+emits a `deploy` output; the `deploy` job SHALL be skipped (via
+`if: ${{ needs.check.outputs.deploy == 'true' }}`) when the secret is absent, so the workflow does
+not fail for users who haven't configured Coolify webhooks.
 
-The `deploy` job SHALL `needs: [api, web]` (runs only after both image pushes succeed) and
+The `deploy` job SHALL `needs: [api, web, check]` (runs only after both image pushes succeed and the gate is evaluated) and
 shall send webhooks to both `COOLIFY_API_WEBHOOK` and `COOLIFY_WEB_WEBHOOK` (if set), each with
 the `Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}` header. The `curl` commands SHALL
 use `|| true` so a transient webhook failure does not fail the release (the images are already
 pushed; the webhook is just a convenience to trigger an immediate redeploy).
 
-The webhook call format:
+The webhook call format (secrets passed via `env:`, not interpolated into the command):
 ```
-curl --request GET '${{ secrets.COOLIFY_API_WEBHOOK }}' \
-     --header 'Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}' || true
+curl --request GET "$COOLIFY_API_WEBHOOK" \
+     --header "Authorization: Bearer $COOLIFY_API_TOKEN" || true
 ```
 
 This triggers Coolify to re-pull the latest image and restart the container.
@@ -265,7 +291,7 @@ This triggers Coolify to re-pull the latest image and restart the container.
 #### Scenario: Deploy webhook is skipped without secrets
 
 - **WHEN** `release.yml` completes and `COOLIFY_API_WEBHOOK` is not set
-- **THEN** the `deploy` job is skipped (via the `if:` condition)
+- **THEN** the `check` job emits `deploy=false` and the `deploy` job is skipped (via `needs.check.outputs.deploy`)
 - **AND** the workflow succeeds without error
 - **AND** the images are already pushed (the `api` and `web` jobs succeeded)
 
