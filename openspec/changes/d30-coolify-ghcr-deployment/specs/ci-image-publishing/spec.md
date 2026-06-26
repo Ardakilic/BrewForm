@@ -21,7 +21,7 @@ The workflow SHALL define two parallel jobs, `api` and `web`, each using:
 - `actions/checkout@v7`
 - `docker/setup-buildx-action@v3`
 - `docker/login-action@v3` with `{ registry: ghcr.io, username: ${{ github.actor }}, password: ${{ secrets.GITHUB_TOKEN }} }`
-- `docker/build-push-action@v6`
+- `docker/build-push-action@v7`
 
 The `api` job SHALL build from `./Dockerfile` (context `.`) and tag:
 - `ghcr.io/ardakilic/brewform-api:latest`
@@ -66,7 +66,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
@@ -87,7 +87,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.web
@@ -113,6 +113,9 @@ jobs:
           curl --request GET '${{ secrets.COOLIFY_WEB_WEBHOOK }}' \
                --header 'Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}' || true
 ```
+
+> Note: the canonical full workflow lives in `design.md §7`; this reference copy is illustrative —
+> keep the two in sync (update `design.md §7` as the source of truth to avoid drift).
 
 #### Scenario: Push to main publishes latest images
 
@@ -187,8 +190,8 @@ declares `ARG VITE_API_URL` and `ARG VITE_PUBLIC_APP_URL` and sets them as `ENV`
 
 ### Requirement: Images are public and pullable without authentication
 
-Because the repository is public and `GITHUB_TOKEN` is used for push, the published GHCR images
-SHALL be public by default. Any host (including the Coolify server) SHALL be able to
+The published GHCR images SHALL be public by default — the repository is public and
+`GITHUB_TOKEN` is used for push. Any host (including the Coolify server) SHALL be able to
 `docker pull ghcr.io/ardakilic/brewform-api:latest` without `docker login`.
 
 **GHCR first-push behavior:** When a package is first pushed to GHCR via `GITHUB_TOKEN`, it
@@ -231,11 +234,11 @@ Coolify (or any host) can `docker pull` without authentication.
 
 ### Requirement: Optional Coolify deploy webhook trigger
 
-The `release.yml` workflow MAY include a final `deploy` job (after `api` and `web` succeed)
-that sends a `GET` request to the Coolify deploy webhook URLs if the `COOLIFY_API_WEBHOOK`
-secret is set. This job SHALL be skipped (via `if: ${{ secrets.COOLIFY_API_WEBHOOK != '' }}`)
-if the secret is absent, so the workflow does not fail for users who haven't configured Coolify
-webhooks.
+The `release.yml` workflow MAY include a final `deploy` job that, when present, SHALL run only
+after `api` and `web` succeed and send a `GET` request to the Coolify deploy webhook URLs if the
+`COOLIFY_API_WEBHOOK` secret is set. This job SHALL be skipped (via
+`if: ${{ secrets.COOLIFY_API_WEBHOOK != '' }}`) if the secret is absent, so the workflow does not
+fail for users who haven't configured Coolify webhooks.
 
 The `deploy` job SHALL `needs: [api, web]` (runs only after both image pushes succeed) and
 shall send webhooks to both `COOLIFY_API_WEBHOOK` and `COOLIFY_WEB_WEBHOOK` (if set), each with
@@ -277,9 +280,9 @@ This triggers Coolify to re-pull the latest image and restart the container.
 
 ### Requirement: Required GitHub repository secrets for full automation
 
-To enable the full automation pipeline (build → push → trigger Coolify redeploy with
-production-configured web image), the following GitHub repository secrets SHALL be configured
-(repo → Settings → Secrets and variables → Actions):
+The following GitHub repository secrets SHALL be configured (repo → Settings → Secrets and
+variables → Actions) to enable the full automation pipeline (build → push → trigger Coolify
+redeploy with a production-configured web image):
 
 | Secret | Required? | Purpose |
 |--------|-----------|---------|

@@ -23,17 +23,23 @@ RUN deno install --frozen
 # Full source copy + type check. Used by CI and as the base for the runner.
 FROM denoland/deno:debian-2.7.14 AS builder
 WORKDIR /app
-COPY --from=deps /root/.cache/deno /root/.cache/deno
+COPY --from=deps /deno-dir /deno-dir
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN cd packages/db && deno run -A npm:drizzle-kit@0.31.10 generate
+RUN deno task email-build
 RUN deno check apps/api/src/main.ts
 
-# --- Stage 3: Runtime (API only) ---
-# Minimal production image — runs the Hono API server.
+# --- Stage 3: Runtime (API only, with entrypoint) ---
+# Minimal production image — the entrypoint runs migrations + first-boot seed,
+# then execs the Hono API server. The full app tree copied from the builder
+# already includes repo-root scripts/ (e.g. scripts/check-users-empty.ts).
 FROM denoland/deno:debian-2.7.14 AS runner
 WORKDIR /app
-COPY --from=builder /root/.cache/deno /root/.cache/deno
+COPY --from=builder /deno-dir /deno-dir
 COPY --from=builder /app .
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 EXPOSE 8000
-CMD ["deno", "run", "--allow-read", "--allow-write", "--allow-net", "--allow-env", "--allow-sys", "--unstable-cron", "apps/api/src/main.ts"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# No CMD — the entrypoint execs the API server directly

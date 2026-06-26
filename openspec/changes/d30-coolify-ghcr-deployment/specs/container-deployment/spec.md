@@ -103,11 +103,15 @@ detects "first boot" because the admin user is the first row inserted by the see
 (`packages/db/src/seed.ts` inserts the admin user first, then seed users, then equipment,
 coffee varieties, vendors, beans, recipes, and social data — all with `onConflictDoNothing`).
 
-The first-boot check SHALL be performed by a Deno script (either an inline `deno eval` or a
-standalone `scripts/check-users-empty.ts` file) that queries `SELECT count(*) FROM users` using
-the existing `@brewform/db` client (which is already in `/app/node_modules` and
-`/app/packages/db`). The script SHALL print the count to stdout, which the entrypoint captures.
-The check SHALL NOT use `psql` (the Deno image does not include `postgresql-client`).
+The first-boot check SHALL be performed by a Deno script that queries `SELECT count(*) FROM users`
+using the existing `@brewform/db` client (which is already in `/app/node_modules` and
+`/app/packages/db`). The RECOMMENDED form is a standalone `scripts/check-users-empty.ts` file run
+with the minimal permissions `--allow-env --allow-net --allow-read`. If an inline `deno eval` is
+used instead, it MUST carry those same `--allow-env --allow-net --allow-read` permissions, and it
+MUST NOT mask a query failure to `0`: a failed/errored check MUST fail-fast (non-zero exit), NOT
+silently report `0` and thereby trigger an unwanted re-seed against a populated database. The
+script SHALL print the count to stdout, which the entrypoint captures. The check SHALL NOT use
+`psql` (the Deno image does not include `postgresql-client`).
 
 When the `users` table is not empty (count > 0), the seed SHALL be skipped with a log message:
 `"Seed skipped — database already contains data (<count> users)."`.
@@ -247,7 +251,10 @@ The web container has no env vars to configure at runtime.
 The `compose.yml` SHALL define a `prod` profile containing:
 - An `app-prod` service (named `app-prod` to avoid collision with the existing `dev`-profile
   `app` service) with `image: ghcr.io/ardakilic/brewform-api:latest`, `ports: ["8000:8000"]`,
-  `env_file: .env`, `depends_on: [postgres (healthy), denokv (healthy)]`, `profiles: [prod]`.
+  `env_file: .env`, `depends_on: [postgres (healthy), denokv (started)]` (denokv uses
+  `condition: service_started`, not `service_healthy` — see the `remote-cache` spec; a plain
+  HTTP `/` healthcheck on denokv flaps, so the API relies on its own fail-fast KV connection
+  instead), `profiles: [prod]`.
 - A `web-prod` service with `image: ghcr.io/ardakilic/brewform-web:latest`,
   `ports: ["8080:80"]` (host 8080 → container 80), `depends_on: [app-prod (started)]`,
   `profiles: [prod]`.
@@ -346,6 +353,12 @@ Environment Variables tab, or `compose.yml` `environment:`/`env_file:`), not as 
 The only build-time `ARG`s SHALL be `VITE_API_URL` and `VITE_PUBLIC_APP_URL` for the web image,
 which are public URLs (not secrets). The API Dockerfile has NO build-time `ARG`s.
 
+The `.dockerignore` MUST exclude `.env` and `*.env` (while keeping `*.env.example`). Both
+Dockerfiles use `COPY . .`, so without this exclusion a local `make images` / `make release` run
+in a working tree with a populated `.env` would bake a developer's real secrets into the PUBLIC
+image. The current `.dockerignore` only excludes `node_modules`/`.git`/`.turbo`/`coverage` and
+does NOT exclude `.env`; the implementation MUST add `.env`/`*.env` (retaining `*.env.example`).
+
 #### Scenario: API image has no baked secrets
 
 - **WHEN** `docker history ghcr.io/ardakilic/brewform-api:latest --no-trunc` is inspected
@@ -357,6 +370,13 @@ which are public URLs (not secrets). The API Dockerfile has NO build-time `ARG`s
 - **WHEN** the web image build command is inspected
 - **THEN** the only `--build-arg` values are `VITE_API_URL` and `VITE_PUBLIC_APP_URL`
 - **AND** neither value is a secret (they are public URLs)
+
+#### Scenario: Local image build does not include .env
+
+- **WHEN** `make images` is run in a working tree containing a populated `.env`
+- **THEN** the built image does NOT contain `.env` (because `.dockerignore` excludes `.env`/`*.env`)
+- **AND** `docker run --rm --entrypoint ls <image> /app` does not list `.env`
+- **AND** `*.env.example` files are still present (not excluded)
 
 ---
 

@@ -2,3 +2,15 @@ node_modules
 .git
 .turbo
 coverage
+
+# Keep local env / secret files out of the published images.
+# Both Dockerfile and Dockerfile.web use `COPY . .`, so without these exclusions
+# a populated .env would bake a developer's real secrets into the PUBLIC image.
+# The committed *.env.example templates are re-included by the negations below.
+.env
+*.env
+.env.*
+**/*.env
+**/.env.*
+!*.env.example
+!**/*.env.example

@@ -6,14 +6,14 @@ BrewForm ships as a Deno monorepo with two runtime artifacts: a Hono API (`apps/
 - The web SPA has **no Docker image** — `make preview` builds `dist/` on the host and serves it via a host-mounted `caddy:2-alpine` container reading `./apps/web/dist` and `./Caddyfile` from the host. This is unworkable for a registry-pull deployment on Coolify.
 - `compose.yml` is dev-first: `app`/`web-dev`/`app-preview` use volume mounts and `--watch`; there is no "pull the published image and run it" path. The existing `web` service (preview profile) binds `./apps/web/dist:/usr/share/caddy:ro` and `./Caddyfile:/etc/caddy/Caddyfile:ro` and listens on `:8080` (the `Caddyfile` is `:8080`).
 - CI (`ci.yml`) runs quality + tests but never builds or publishes images.
-- The cache backend (`CACHE_DRIVER=deno-kv`) calls `Deno.openKv()` (no URL arg) at `apps/api/src/main.ts:127` → local SQLite inside the API container at the default origin-storage path. This is durable only if the container's filesystem is persistent, and it doesn't match a remote-sidecar topology.
+- The cache backend (`CACHE_DRIVER=deno-kv`) calls `Deno.openKv()` (no URL arg) at `apps/api/src/main.ts:128` → local SQLite inside the API container at the default origin-storage path. This is durable only if the container's filesystem is persistent, and it doesn't match a remote-sidecar topology.
 
 The target is **Coolify** (self-hosted PaaS) deploying two **Docker Image** resources that pull from GHCR, plus a Coolify-managed Postgres and a `denokv` sidecar for the cache.
 
 Existing infrastructure that informs the design (verified by reading the codebase):
 - `apps/api/src/config/env.ts` — Zod-validated env schema; `CACHE_DRIVER` accepts `'deno-kv' | 'memory'`. Adding `DENO_KV_URL`/`DENO_KV_ACCESS_TOKEN` requires extending this schema with two `z.string().optional()` fields. The schema also contains `DATABASE_URL: z.string().min(1)`, `JWT_SECRET: z.string().min(16)`, `STORAGE_DRIVER: z.enum(['local','s3'])`, `S3_*` fields, `SMTP_*` fields, `CORS_ALLOWED_ORIGINS`, `ADMIN_*` fields, and `APP_PORT: z.coerce.number().default(8000)`.
-- `apps/api/src/utils/cache/index.ts` — `CacheProvider` abstraction with `DenoKVCacheProvider` and `InMemoryCacheProvider`. No change needed here; only the `Deno.openKv()` call site in `main.ts:127` changes.
-- `apps/api/src/main.ts:126-131` — the exact cache-init block:
+- `apps/api/src/utils/cache/index.ts` — `CacheProvider` abstraction with `DenoKVCacheProvider` and `InMemoryCacheProvider`. No change needed here; only the `Deno.openKv()` call site in `main.ts:128` changes.
+- `apps/api/src/main.ts:127-134` — the exact cache-init block (the `kv = await Deno.openKv()` call is line 128):
   ```ts
   if (config.CACHE_DRIVER === 'deno-kv') {
     kv = await Deno.openKv();
@@ -34,7 +34,7 @@ Existing infrastructure that informs the design (verified by reading the codebas
 - `packages/db/drizzle.config.ts` — reads `DATABASE_URL` from env at runtime. The entrypoint must have `DATABASE_URL` set for `drizzle-kit migrate` to work.
 - Root `deno.json` — `"unstable": ["cron", "kv"]` at the workspace level; the API's `deploy.runtime.args` is `["--unstable-cron"]`. The Dockerfile CMD currently passes `--unstable-cron` only. The explicit `--unstable-kv` flag on the container CMD is the safe choice (Deno reads the workspace `unstable` array for `deno run`, but the explicit flag guarantees behavior regardless of how Deno is invoked).
 - `Caddyfile` (repo root) — currently `:8080` (for the preview profile). The web Docker image needs its own `Caddyfile` (or a baked-in config) listening on `:80` since the container exposes 80.
-- `.dockerignore` — currently `node_modules`, `.git`, `.turbo`, `coverage`. Does **not** exclude `apps/web/dist` — so the builder stage will see any pre-built `dist/` if present. The web Dockerfile builder stage runs `vite build` fresh, so this is fine.
+- `.dockerignore` — currently `node_modules`, `.git`, `.turbo`, `coverage`. Does **not** exclude `apps/web/dist` — so the builder stage will see any pre-built `dist/` if present. The web Dockerfile builder stage runs `vite build` fresh, so this is fine. It also does **not** exclude `.env`, and since both Dockerfiles `COPY . .`, the implementation **must** add `.env`/`*.env` (while keeping `*.env.example`) to `.dockerignore` so a local `make images`/`make release` build does not bake real secrets into the public GHCR image.
 
 ## Goals / Non-Goals
 
@@ -98,7 +98,8 @@ RUN deno install --frozen
 # --- Stage 2: Build (Vite) ---
 FROM denoland/deno:debian-2.7.14 AS builder
 WORKDIR /app
-COPY --from=deps /root/.cache/deno /root/.cache/deno
+# The deno base image sets DENO_DIR=/deno-dir, so the cache lives there (NOT /root/.cache/deno).
+COPY --from=deps /deno-dir /deno-dir
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Build-time args → ENV so Vite's define picks them up
@@ -127,6 +128,8 @@ try_files {path} /index.html
 ```
 The inline `printf` in the Dockerfile is preferred (one less file to manage), but a `Caddyfile.prod` file is acceptable if the implementer prefers explicit files.
 
+> **Note (image pinning):** `caddy:2-alpine` is a floating minor tag that can change under you between builds. For reproducible web image builds, recommend pinning the runner base to a specific 2.x patch (e.g. `caddy:2.x.y-alpine`) and bumping it deliberately.
+
 ### 3. API entrypoint: migrate-always, seed-once
 
 **Choice:** A `docker-entrypoint.sh` in the API image that:
@@ -150,14 +153,11 @@ cd /app/packages/db && deno run -A npm:drizzle-kit@0.31.10 migrate
 echo "Migrations complete."
 
 # Check if the users table is empty (first-boot sentinel).
-# Uses a tiny inline Deno script so we don't need psql in the image.
-USER_COUNT=$(deno eval "
-  import { db } from '@brewform/db';
-  import { sql } from 'drizzle-orm';
-  const result = await db.execute(sql\`SELECT count(*)::int as count FROM users\`);
-  console.log(result.rows[0].count);
-  await (await import('@brewform/db')).client.end();
-" 2>/dev/null || echo "0")
+# Uses a standalone Deno script run with explicit perms so we don't need psql
+# in the image. The script must reach Postgres, so it needs --allow-env
+# --allow-net --allow-read. Do NOT mask failures to "0": with `set -e` a genuine
+# check failure must abort (not silently re-seed an already-populated DB).
+USER_COUNT=$(deno run --allow-env --allow-net --allow-read /app/scripts/check-users-empty.ts)
 
 if [ "$USER_COUNT" = "0" ]; then
   echo "Database is empty, running seed..."
@@ -172,14 +172,17 @@ cd /app
 exec deno run --allow-read --allow-write --allow-net --allow-env --allow-sys --unstable-cron --unstable-kv apps/api/src/main.ts
 ```
 
-> **Note on the count-check approach:** The `deno eval` one-liner imports from `@brewform/db` (the workspace package) which is already in `/app/node_modules` and `/app/packages/db`. If `deno eval` has issues with workspace resolution in this context, the implementer can fall back to a standalone script file `scripts/check-users-empty.ts` that does the same query — the entrypoint calls `deno run -A /app/scripts/check-users-empty.ts` and reads stdout. The key invariant is: **no `psql` dependency, the check uses Deno + the existing `@brewform/db` client.**
+> **Note on the count-check approach:** The recommended (primary) path is a standalone script file `scripts/check-users-empty.ts` that imports from `@brewform/db`, queries `SELECT count(*) FROM users`, and prints the count to stdout. The entrypoint runs it with **explicit permissions**: `deno run --allow-env --allow-net --allow-read /app/scripts/check-users-empty.ts`. Those flags are mandatory because the check must reach Postgres (`--allow-net`/`--allow-env` for `DATABASE_URL`). **Do not use an unflagged `deno eval` and do not mask its failure to `"0"`** (e.g. `... 2>/dev/null || echo "0"`): a bare `deno eval` runs with **no permissions**, so it cannot connect to Postgres and always errors; masking that error to `0` makes the entrypoint re-run the seed on **every** boot, violating "seed once." With `set -e`, a genuine check failure should abort the boot rather than silently re-seed. An inline `deno eval` is acceptable only as a documented alternative and **only if it carries the same `--allow-env --allow-net --allow-read` flags** and does not swallow errors. The key invariant is: **no `psql` dependency, the check uses Deno + the existing `@brewform/db` client with full DB-access permissions, and failures are not masked.**
+
+> **Note on the `drizzle-kit` pin:** this entrypoint pins `npm:drizzle-kit@0.31.10`, but the rest of the repo pins `npm:drizzle-kit@0.31` (`packages/db/deno.json` `migrate` task and the `Makefile`). Align the pin across all call sites (pick one of `0.31` or `0.31.10` and use it everywhere) so the entrypoint migration and the workspace tasks resolve the same version.
 
 **Reference `Dockerfile` (API, modified runner stage)** — the implementer changes only the `runner` stage and adds the entrypoint:
 ```dockerfile
 # --- Stage 3: Runtime (API only, with entrypoint) ---
 FROM denoland/deno:debian-2.7.14 AS runner
 WORKDIR /app
-COPY --from=builder /root/.cache/deno /root/.cache/deno
+# DENO_DIR=/deno-dir in the base image — copy the cache from there, not /root/.cache/deno.
+COPY --from=builder /deno-dir /deno-dir
 COPY --from=builder /app .
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
@@ -195,7 +198,7 @@ The `deps` and `builder` stages stay as-is, except the `builder` stage MUST run 
 
 ### 4. `DENO_KV_URL` + `denokv` sidecar
 
-**Choice:** Add a `denokv` service to both compose profiles, and change `main.ts:127` to `Deno.openKv(Deno.env.get('DENO_KV_URL') ?? 'http://denokv:4512')` when `CACHE_DRIVER=deno-kv`. `DENO_KV_ACCESS_TOKEN` is set in the API env.
+**Choice:** Add a `denokv` service to both compose profiles, and change `main.ts:128` to `Deno.openKv(Deno.env.get('DENO_KV_URL') ?? 'http://denokv:4512')` when `CACHE_DRIVER=deno-kv`. `DENO_KV_ACCESS_TOKEN` is set in the API env.
 
 **Rationale (per Q3 = path b):**
 - The user wants local and remote to be "almost the same." A `denokv` sidecar in both profiles achieves this — the API always talks to `http://denokv:4512`, whether local or on Coolify.
@@ -203,7 +206,7 @@ The `deps` and `builder` stages stay as-is, except the `builder` stage MUST run 
 - A single `denokv` instance is the ceiling for horizontal scaling (single-writer SQLite), but BrewForm runs one API replica today. If scaling is needed later, switching is a one-line change (or move to Deno Deploy KV).
 - `denokv` supports a bearer token (`--access-token`); the API sends it via `DENO_KV_ACCESS_TOKEN` (the Deno runtime reads this env var automatically as the bearer token for KV Connect). Inside the Docker network this is defense-in-depth, not strictly required, but cheap to configure.
 
-**Exact `main.ts` change** (at lines 126-131):
+**Exact `main.ts` change** (at lines 127-134; the `Deno.openKv()` call is line 128):
 ```ts
 // Before:
 if (config.CACHE_DRIVER === 'deno-kv') {
@@ -264,7 +267,7 @@ DENO_KV_ACCESS_TOKEN: z.string().optional(),
 
 ### 7. GitHub Actions: build + push to GHCR, public images
 
-**Choice (per Q6/Q7):** A `release.yml` workflow on `push: branches: [main]` and `push: tags: ['v*']`. Two jobs (`api`, `web`) using `docker/build-push-action@v6` with `GITHUB_TOKEN` (`packages: write`). Tag images with `latest`, the short SHA, and the git tag (on tag pushes). Images are **public** (GHCR default for an open-source repo with `GITHUB_TOKEN`).
+**Choice (per Q6/Q7):** A `release.yml` workflow on `push: branches: [main]` and `push: tags: ['v*']`. Two jobs (`api`, `web`) using `docker/build-push-action@v7` with `GITHUB_TOKEN` (`packages: write`). Tag images with `latest`, the short SHA, and the git tag (on tag pushes). Images are **public** (GHCR default for an open-source repo with `GITHUB_TOKEN`).
 
 **Rationale:**
 - `GITHUB_TOKEN` is automatically available in Actions; no PAT needed for push. `packages: write` is granted via the workflow `permissions:` block.
@@ -296,7 +299,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push API image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
@@ -319,7 +322,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push Web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.web
@@ -367,7 +370,7 @@ jobs:
       postgres:
         condition: service_healthy
       denokv:
-        condition: service_healthy
+        condition: service_started
     profiles:
       - prod
 
@@ -392,14 +395,10 @@ And the `denokv` service (shared by both profiles, so it's defined once with no 
     command: ["--sqlite-path", "/data/denokv.sqlite", "serve", "--access-token", "${DENO_KV_ACCESS_TOKEN}"]
     volumes:
       - denokv_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "deno eval \"const r = await fetch('http://localhost:4512/'); if (!r.ok) Deno.exit(1)\" || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+    # No healthcheck — see note below (omit + service_started + API fail-fast).
     # No profile — starts with both `make up` (infra) and `make prod-up`.
 ```
-> **Note:** The healthcheck uses `deno eval` with a fetch to `http://localhost:4512/` — denokv responds to HTTP HEAD/GET on its listen port. If this proves unreliable, the implementer can use a simple TCP check `["CMD-SHELL", "nc -z localhost 4512 || exit 1"]` (but `nc` may not be in the distroless image; `deno eval` is safer since Deno is in the image... actually `denokv` is a Rust binary, not Deno). **The implementer should verify whether `ghcr.io/denoland/denokv:0.14.0` includes any shell or `nc`** — if not, use a Docker-level healthcheck via Coolify's UI instead of a compose healthcheck. The safest compose healthcheck is `["CMD", "denokv", "ping"]` if such a subcommand exists (check denokv CLI). **Action: the implementer must verify the healthcheck command works against the denokv image; if not, remove the healthcheck from compose and rely on Coolify's UI healthcheck or the API's connection-retry behavior.**
+> **Note:** No compose healthcheck is defined for `denokv`, by design. The `ghcr.io/denoland/denokv:0.14.0` image is a **Rust binary** (no `deno`), based on `gcr.io/distroless/cc-debian12:debug` — the `:debug` variant *does* include a busybox shell (`/busybox/sh`) plus busybox `nc`/`wget` (no `curl`). But an HTTP healthcheck is unsuitable regardless: denokv's router only serves `POST /` and `POST /v2/*`, so a plain `GET /` returns **404** and any HTTP check would flap. denokv also has **no `ping`/health subcommand** (only `serve`), so a `["CMD","denokv","ping"]` check is impossible. **Recommendation: omit the healthcheck**, use `condition: service_started` in `depends_on`, and rely on the API's fail-fast behavior — `Deno.openKv()` throws on a failed connection and the container restarts. If a TCP-level liveness check is ever wanted, a busybox check `["CMD","/busybox/nc","-z","localhost","4512"]` is possible with this image, but omitting is still the recommended default.
 
 Add `denokv_data` to the top-level `volumes:` block:
 ```yaml
@@ -462,9 +461,9 @@ Update `.PHONY` to include: `images images-push prod-up prod-up-build prod-down 
 | Risk | Mitigation |
 |------|------------|
 | **`denokv` is pre-1.0 (0.14.0)** — CLI flags / protocol may change. | Pin the image to `0.14.0` (not `:latest`) in compose. The `Deno.openKv(url)` API is stable; only the server CLI could change. Upgrade deliberately. |
-| **denokv healthcheck command uncertainty** — the `ghcr.io/denoland/denokv:0.14.0` image is distroless (`gcr.io/distroless/cc-debian12`); it may not have `sh`, `nc`, or `curl`. | The implementer must verify whether a compose `healthcheck.test` command works. If not, remove the compose healthcheck and use Coolify's UI healthcheck (HTTP path `/`) or rely on the API's connection-retry behavior (the API will fail to start if `denokv` is unreachable, which is the desired fail-fast behavior). |
+| **denokv healthcheck** — an HTTP healthcheck would flap. | The `ghcr.io/denoland/denokv:0.14.0` image is a Rust binary (no `deno`) on `gcr.io/distroless/cc-debian12:debug`, which *does* ship a busybox shell + `nc`/`wget` (no `curl`). But denokv's router only serves `POST /` + `POST /v2/*`, so a `GET /` returns 404 and any HTTP check flaps; denokv also has no `ping`/health subcommand (only `serve`). **Resolution: omit the compose healthcheck**, use `depends_on: condition: service_started`, and rely on the API's fail-fast (`Deno.openKv()` throws if denokv is unreachable → container restarts). A busybox `["CMD","/busybox/nc","-z","localhost","4512"]` TCP check is possible if ever needed. |
 | **Seed-once check (`SELECT count(*) FROM users`) could be wrong** if the admin is deleted manually. | Document that the check is "empty DB = first boot." If the admin is deleted, the user should re-seed manually via `docker exec ... deno run --allow-all packages/db/src/seed.ts` (idempotent). |
-| **`deno eval` for the count check** may have issues resolving `@brewform/db` in the entrypoint context. | Fall back to a standalone script file `scripts/check-users-empty.ts` that imports from `@brewform/db` and prints the count. The entrypoint calls `deno run -A /app/scripts/check-users-empty.ts` and reads stdout. |
+| **Seed-once count check must reach Postgres and must not mask failures.** | Use a standalone script `scripts/check-users-empty.ts` (imports `@brewform/db`, prints the count) as the **primary** path, run with explicit DB-access perms: `deno run --allow-env --allow-net --allow-read /app/scripts/check-users-empty.ts`. Do **not** use an unflagged `deno eval` (no perms → cannot reach Postgres) and do **not** mask the failure to `"0"` (`2>/dev/null || echo "0"`), which would re-seed on every boot. With `set -e`, a genuine check failure aborts the boot. An inline `deno eval` is acceptable only if it carries the same `--allow-env --allow-net --allow-read` flags and does not swallow errors. |
 | **Public GHCR images expose the built artifact** but not source (source is already public). | Acceptable — the repo is open-source; images are a convenience. No secrets are baked into images (all env is runtime). |
 | **`denokv` single-writer SQLite** limits horizontal scaling. | Documented as a non-goal. One API replica is the target. The `CacheProvider` abstraction makes a future switch to Deno Deploy KV or a managed KV a one-line change. |
 | **`denokv` has no built-in TLS** — plain HTTP on port 4512. | Acceptable for intra-Docker-network traffic on a single host. For cross-host, front with Caddy/nginx (documented in `coolify_deployment_plan.md`). |
@@ -478,4 +477,4 @@ Update `.PHONY` to include: `images images-push prod-up prod-up-build prod-down 
 - Should the `release.yml` workflow also build on PRs (for a smoke test) or only on `main`/tags? **Decision: only on `main` and tags** — PR builds would publish `latest`-bound images prematurely. PRs run `ci.yml` (quality + tests) only.
 - Should the `prod` compose profile include `mailpit` for local prod-smoke-testing? **Decision: No** — `prod` is a mirror of Coolify; email goes to a real SMTP provider. `mailpit` stays in `dev` only.
 - Should the API image include `drizzle-kit` in the final runner stage (for the entrypoint migration)? **Decision: Yes** — the runner copies the full `/app` from the builder (including `node_modules` with `drizzle-kit` via `npm:drizzle-kit@0.31.10`). No extra layer needed.
-- Should the denokv compose healthcheck use `deno eval`, `nc`, or be omitted? **Decision: the implementer must verify** — `ghcr.io/denoland/denokv:0.14.0` is distroless and may lack a shell. If no working healthcheck command is found, omit the compose healthcheck and rely on (a) the API failing to start if denokv is down (fail-fast), or (b) Coolify's UI HTTP healthcheck on the denokv resource (path `/`).
+- Should the denokv compose healthcheck use `deno eval`, `nc`, or be omitted? **Decision: omit it.** denokv serves only `POST /` + `POST /v2/*`, so a `GET /` returns 404 and an HTTP healthcheck flaps; there is no `ping`/health subcommand (only `serve`). Use `depends_on: condition: service_started` and rely on the API's fail-fast (`Deno.openKv()` throws if denokv is unreachable → container restarts). If a TCP check is ever wanted, the `:debug` base image ships busybox `nc`, so `["CMD","/busybox/nc","-z","localhost","4512"]` is available.

@@ -16,6 +16,10 @@ const envSchema = z.object({
   DATABASE_PROVIDER: z.enum(['postgresql', 'mysql', 'sqlite']).default('postgresql'),
 
   CACHE_DRIVER: z.enum(['deno-kv', 'memory']).default('deno-kv'),
+  // Only used when CACHE_DRIVER=deno-kv: URL of the remote denokv sidecar and its
+  // bearer token (read automatically by the Deno runtime for KV Connect auth).
+  DENO_KV_URL: z.string().optional(),
+  DENO_KV_ACCESS_TOKEN: z.string().optional(),
 
   JWT_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRY: z.string().regex(
