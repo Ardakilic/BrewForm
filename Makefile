@@ -20,7 +20,7 @@ help: ## Show this help
 # Start infrastructure services only (postgres, mailpit, pgadmin, garage).
 # Does NOT start the API or web dev server — run `make dev` for that.
 up: ## Start infrastructure services (postgres, mailpit, pgadmin, garage)
-	docker compose up -d postgres mailpit pgadmin garage
+	docker compose up -d postgres mailpit pgadmin garage denokv
 
 down: ## Stop all services
 	docker compose --profile dev --profile preview --profile serena down
@@ -139,7 +139,7 @@ flush-db: up ## Truncate all database tables
 	docker compose run --rm app deno run --allow-env --allow-net apps/api/scripts/flush-db.ts
 
 flush-cache: up ## Clear Deno KV cache
-	docker compose run --rm app deno run --allow-env --allow-read --allow-write apps/api/scripts/flush-cache.ts
+	docker compose run --rm app deno run --allow-env --allow-net --allow-read --allow-write apps/api/scripts/flush-cache.ts
 
 flush-contents: flush-db flush-cache ## Truncate all database tables and clear Deno KV cache
 
@@ -216,4 +216,28 @@ serena-index: ## Index project with Serena
 serena-health: ## Check Serena health
 	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
 
-.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health
+# --- Production Images & Deploy ---
+
+images: ## Build both Docker images locally (API + Web)
+	docker build -t ghcr.io/ardakilic/brewform-api:latest -f Dockerfile .
+	docker build -t ghcr.io/ardakilic/brewform-web:latest -f Dockerfile.web \
+	  --build-arg VITE_API_URL=$${VITE_API_URL:-/api/v1} \
+	  --build-arg VITE_PUBLIC_APP_URL=$${VITE_PUBLIC_APP_URL:-http://localhost:8080} \
+	  .
+
+images-push: ## Push both images to GHCR (requires: docker login ghcr.io)
+	docker push ghcr.io/ardakilic/brewform-api:latest
+	docker push ghcr.io/ardakilic/brewform-web:latest
+
+prod-up: ## Start production profile (pulls published images from GHCR)
+	docker compose --profile prod up -d
+
+prod-up-build: ## Start production profile (builds images locally)
+	docker compose --profile prod up -d --build
+
+prod-down: ## Stop production profile
+	docker compose --profile prod down
+
+release: images images-push ## Build and push both images (local CI equivalent)
+
+.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health images images-push prod-up prod-up-build prod-down release

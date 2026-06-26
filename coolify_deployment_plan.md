@@ -6,30 +6,30 @@
 > GHCR, the `compose.yml` `prod` profile works, and the `release.yml` workflow is publishing
 > images on every `main` push.
 >
-> If the implementation has NOT been done yet, the "What's been done (codebase side)" section
-> below tells you what must land first; the "What needs to be done on Coolify" section is what
-> you do in the Coolify panel.
+> If the implementation has NOT been done yet, the "Codebase prerequisites" section below tells
+> you what must land first; the Coolify steps are what you do in the Coolify panel.
 
 ---
 
 ## Table of Contents
 
 1. [Architecture Overview](#1-architecture-overview)
-2. [What's been done (codebase side)](#2-whats-been-done-codebase-side)
+2. [Codebase prerequisites (implement & merge first)](#2-codebase-prerequisites-implement--merge-first)
 3. [Prerequisites (Coolify server)](#3-prerequisites-coolify-server)
-4. [Step 1 — Create the Coolify-managed PostgreSQL database](#step-1--create-the-coolify-managed-postgresql-database)
-5. [Step 2 — Deploy the `denokv` cache sidecar](#step-2--deploy-the-denokv-cache-sidecar)
-6. [Step 3 — Deploy the API (Docker Image resource)](#step-3--deploy-the-api-docker-image-resource)
-7. [Step 4 — Deploy the Web SPA (Docker Image resource)](#step-4--deploy-the-web-spa-docker-image-resource)
-8. [Step 5 — Domains, TLS, and CORS](#step-5--domains-tls-and-cors)
-9. [Step 6 — Persistent storage for denokv](#step-6--persistent-storage-for-denokv)
-10. [Step 7 — First deploy: migrations & seed](#step-7--first-deploy-migrations--seed)
-11. [Step 8 — Cloudflare R2 for uploads](#step-8--cloudflare-r2-for-uploads)
-12. [Step 9 — Email (SMTP)](#step-9--email-smtp)
-13. [Step 10 — GitHub Actions → Coolify deploy webhook (optional)](#step-10--github-actions--coolify-deploy-webhook-optional)
-14. [Post-deploy verification checklist](#post-deploy-verification-checklist)
-15. [Troubleshooting](#troubleshooting)
-16. [Maintenance & upgrades](#maintenance--upgrades)
+4. [Step 0 — Pre-flight (before any Coolify work)](#step-0--pre-flight-before-any-coolify-work)
+5. [Step 1 — Create the Coolify-managed PostgreSQL database](#step-1--create-the-coolify-managed-postgresql-database)
+6. [Step 2 — Deploy the `denokv` cache sidecar](#step-2--deploy-the-denokv-cache-sidecar)
+7. [Step 3 — Deploy the API (Docker Image resource)](#step-3--deploy-the-api-docker-image-resource)
+8. [Step 4 — Deploy the Web SPA (Docker Image resource)](#step-4--deploy-the-web-spa-docker-image-resource)
+9. [Step 5 — Domains, TLS, and CORS](#step-5--domains-tls-and-cors)
+10. [Step 6 — Persistent storage for denokv](#step-6--persistent-storage-for-denokv)
+11. [Step 7 — First deploy: migrations & seed](#step-7--first-deploy-migrations--seed)
+12. [Step 8 — Cloudflare R2 for uploads](#step-8--cloudflare-r2-for-uploads)
+13. [Step 9 — Email (SMTP)](#step-9--email-smtp)
+14. [Step 10 — GitHub Actions → Coolify deploy webhook (optional)](#step-10--github-actions--coolify-deploy-webhook-optional)
+15. [Post-deploy verification checklist](#post-deploy-verification-checklist)
+16. [Troubleshooting](#troubleshooting)
+17. [Maintenance & upgrades](#maintenance--upgrades)
 
 ---
 
@@ -42,7 +42,7 @@
                           │  ┌───────────────────────────────────────────────┐  │
                           │  │  Coolify-managed PostgreSQL                    │  │
                           │  │  (New Resource → Databases → PostgreSQL)      │  │
-                          │  │  internal hostname: postgres-<uuid>            │  │
+                          │  │  internal hostname: postgresql-<uuid>          │  │
                           │  │  Connection tab → copy DATABASE_URL            │  │
                           │  └───────────────────┬───────────────────────────┘  │
                           │                      │ same Docker destination      │
@@ -115,23 +115,27 @@
 
 ---
 
-## 2. What's been done (codebase side)
+## 2. Codebase prerequisites (implement & merge first)
 
-These are the codebase changes from the `d30-coolify-ghcr-deployment` OpenSpec change.
-**All of these must be merged to `main` before you start the Coolify steps.**
+This is the **prerequisite implementation checklist** for the `d30-coolify-ghcr-deployment`
+OpenSpec change. **The change is currently unapplied** — it must be implemented and
+merged to `main` *before* you start any Coolify step (see
+[Step 0](#step-0--pre-flight-before-any-coolify-work)). Most rows do **not** exist on disk yet;
+the **Status** column marks which files are already committed versus which still need to be
+written.
 
-| # | Change | File(s) |
-|---|--------|---------|
-| 1 | API Dockerfile: `builder` stage now runs `deno task email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL); `runner` stage uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]` instead of `CMD`, runs with `--unstable-cron --unstable-kv` | `Dockerfile`, `docker-entrypoint.sh` |
-| 2 | `docker-entrypoint.sh`: runs `drizzle-kit migrate` (always), checks `SELECT count(*) FROM users` and runs seed only if empty (first boot), then `exec`s the API server | `docker-entrypoint.sh` |
-| 3 | Web Dockerfile: 3-stage build (deps → vite build with `VITE_*` ARGs → `caddy:2-alpine` serving `dist/` on port 80) | `Dockerfile.web` |
-| 4 | `compose.yml` `prod` profile (`app-prod`, `web-prod` referencing GHCR images) + `denokv` sidecar service (shared across profiles, pinned to `0.14.0`) | `compose.yml` |
-| 5 | `Deno.openKv(DENO_KV_URL ?? 'http://denokv:4512')` in `main.ts` and `flush-cache.ts`; `--allow-net` added to `make flush-cache` | `apps/api/src/main.ts`, `apps/api/scripts/flush-cache.ts`, `Makefile` |
-| 6 | `DENO_KV_URL` + `DENO_KV_ACCESS_TOKEN` added to Zod env schema (both `z.string().optional()`) | `apps/api/src/config/env.ts` |
-| 7 | `.env.example` split into three files: root (local-dev infra), `apps/api/.env.example` (API runtime for Coolify), `apps/web/.env.example` (web build-time for GitHub Secrets) | `.env.example`, `apps/api/.env.example`, `apps/web/.env.example` |
-| 8 | `release.yml` workflow (build + push to GHCR on `main`/tags, with `cache-from/to: type=gha`, optional Coolify webhook deploy job) | `.github/workflows/release.yml` |
-| 9 | Makefile targets (`images`, `images-push`, `prod-up`, `prod-up-build`, `prod-down`, `release`) | `Makefile` |
-| 10 | This document | `coolify_deployment_plan.md` |
+| # | Change | File(s) | Status |
+|---|--------|---------|--------|
+| 1 | API Dockerfile: `builder` stage now runs `deno task email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL); `runner` stage uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]` instead of `CMD`, runs with `--unstable-cron --unstable-kv` | `Dockerfile`, `docker-entrypoint.sh` | Not yet implemented |
+| 2 | `docker-entrypoint.sh`: runs `drizzle-kit migrate` (always), checks `SELECT count(*) FROM users` and runs seed only if empty (first boot), then `exec`s the API server | `docker-entrypoint.sh` | Not yet implemented |
+| 3 | Web Dockerfile: 3-stage build (deps → vite build with `VITE_*` ARGs → `caddy:2-alpine` serving `dist/` on port 80) | `Dockerfile.web` | Not yet implemented |
+| 4 | `compose.yml` `prod` profile (`app-prod`, `web-prod` referencing GHCR images) + `denokv` sidecar service (shared across profiles, pinned to `0.14.0`) | `compose.yml` | Not yet implemented |
+| 5 | `Deno.openKv(DENO_KV_URL ?? 'http://denokv:4512')` in `main.ts` and `flush-cache.ts`; `--allow-net` added to `make flush-cache` | `apps/api/src/main.ts`, `apps/api/scripts/flush-cache.ts`, `Makefile` | Not yet implemented |
+| 6 | `DENO_KV_URL` + `DENO_KV_ACCESS_TOKEN` added to Zod env schema (both `z.string().optional()`) | `apps/api/src/config/env.ts` | Not yet implemented |
+| 7 | `.env.example` split into three files: root (local-dev infra), `apps/api/.env.example` (API runtime for Coolify), `apps/web/.env.example` (web build-time for GitHub Secrets) | `.env.example`, `apps/api/.env.example`, `apps/web/.env.example` | Already committed (on disk) |
+| 8 | `release.yml` workflow (build + push to GHCR on `main`/tags, with `cache-from/to: type=gha`, optional Coolify webhook deploy job) | `.github/workflows/release.yml` | Not yet implemented |
+| 9 | Makefile targets (`images`, `images-push`, `prod-up`, `prod-up-build`, `prod-down`, `release`) | `Makefile` | Not yet implemented |
+| 10 | This document | `coolify_deployment_plan.md` | Already committed (on disk) |
 
 **Health endpoints** (verified in `apps/api/src/routes/health.ts`):
 - `GET /health` — liveness, returns `200 { status: 'ok' }` (no DB check)
@@ -159,6 +163,14 @@ default to **private**, flip them to **public** once:
   - `brewform.example.com` → Coolify server IP (web SPA)
   - `api.brewform.example.com` → Coolify server IP (API)
   - (Replace `example.com` with your actual domain.)
+- **Verify DNS + firewall before deploying:** confirm both records actually resolve to the
+  server (`dig +short brewform.example.com` / `dig +short api.brewform.example.com`) and that
+  inbound ports **80/443** are open in the VPS firewall/security group — Let's Encrypt's
+  HTTP-01 challenge fails otherwise.
+- **Host architecture:** the published GHCR images are **amd64-only**. On an **ARM64** Coolify
+  host they fail with `exec format error`. Either run on an amd64 host, or rebuild the images
+  multi-arch (`platforms: linux/amd64,linux/arm64` plus `docker/setup-qemu-action` in
+  `release.yml`).
 - **No `docker login` required** — the GHCR images are public. If you later make them private,
   SSH into the Coolify server and run:
   ```bash
@@ -168,22 +180,73 @@ default to **private**, flip them to **public** once:
 
 ---
 
+## Step 0 — Pre-flight (before any Coolify work)
+
+Do all of this **before** you touch the Coolify panel. The web image bakes its config at build
+time, so getting these wrong means rebuilding and republishing images later.
+
+1. **Apply & merge the `d30-coolify-ghcr-deployment` change to `main`.** This change is currently
+   **unapplied** — implement it, open the PR, merge it, and confirm the new files
+   now exist on `main`:
+   - `Dockerfile.web`
+   - `docker-entrypoint.sh`
+   - `.github/workflows/release.yml`
+
+   (See [Section 2](#2-codebase-prerequisites-implement--merge-first) for the full prerequisite
+   checklist.)
+
+2. **Lock down `.dockerignore`.** Add `.env` and `*.env` while **keeping** `*.env.example`:
+   ```gitignore
+   .env
+   *.env
+   !*.env.example
+   ```
+   Both `Dockerfile` and `Dockerfile.web` do `COPY . .`, so without this a local `make images` /
+   `make release` bakes your real `.env` secrets into the **public** GHCR image.
+
+3. **Set the GitHub repo Secrets before the first push to `main`.** They are baked into the web
+   image at **build time** in `release.yml`, so an unset secret bakes a wrong `/api/v1` URL and
+   `http://localhost:8080` into the SPA:
+   - `VITE_API_URL=https://api.brewform.example.com/api/v1`
+   - `VITE_PUBLIC_APP_URL=https://brewform.example.com`
+   - (optional, for auto-deploy) `COOLIFY_API_TOKEN`, `COOLIFY_API_WEBHOOK`,
+     `COOLIFY_WEB_WEBHOOK` — see [Step 10](#step-10--github-actions--coolify-deploy-webhook-optional).
+
+4. **Push to `main`, wait for `release.yml` to finish, then make both packages public.** Once the
+   first workflow run completes, flip both GHCR packages to **Public** (GitHub → Packages →
+   `brewform-api` / `brewform-web` → Package settings → Change visibility → Public).
+
+5. **Generate the denokv access token** (reused in Steps 2 & 3):
+   ```bash
+   openssl rand -hex 32
+   ```
+   This produces 64 hex chars, well above denokv's **12-character minimum**.
+
+6. **Verify DNS + firewall.** Confirm both records resolve to the server and inbound ports 80/443
+   are open (Let's Encrypt's HTTP-01 challenge needs them):
+   ```bash
+   dig +short brewform.example.com
+   dig +short api.brewform.example.com
+   ```
+
+---
+
 ## Step 1 — Create the Coolify-managed PostgreSQL database
 
 1. In Coolify: **New Resource → Databases → PostgreSQL**.
 2. Name it (e.g. `brewform-db`), choose your server and destination, and click **Create**.
 3. Wait for the database container to be healthy (Coolify shows a green status).
 4. Go to the database's **Connection** tab. You'll see:
-   - **Internal URL** (e.g. `postgresql://postgres:<password>@postgres-<uuid>:5432/brewform`)
+   - **Internal URL** (e.g. `postgresql://postgres:<password>@postgresql-<uuid>:5432/brewform`)
    - Host, port, db name, username, password
-5. **Copy the internal hostname** (e.g. `postgres-a1b2c3d4`). You'll use this in the API's
+5. **Copy the internal hostname** (e.g. `postgresql-a1b2c3d4`). You'll use this in the API's
    `DATABASE_URL` env var.
 6. **Keep the database internal** (no public port) — the API will reach it over the Docker
    network. Exposing Postgres to the internet is a security risk.
 
-> **Note:** Coolify renames database containers to `<resource-name>-<uuid>`, so the internal
-> hostname is typically `postgres-<uuid>` (or whatever you named the resource, plus a UUID
-> suffix). Always copy the exact hostname from the Connection tab — don't guess.
+> **Note:** Coolify names the managed PostgreSQL container with an **engine prefix** — typically
+> `postgresql-<uuid>` (not `postgres-<uuid>`, and not your resource name). Always copy the exact
+> hostname from the Connection tab — don't guess.
 
 ---
 
@@ -196,7 +259,10 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    ```bash
    openssl rand -hex 32
    ```
-   Save this token — you'll set it in both the `denokv` container and the API's env.
+   Save this token — you'll set it in both the `denokv` container and the API's env. denokv's
+   `serve` enforces a **minimum 12-character** access token; `openssl rand -hex 32` (64 chars)
+   satisfies it. (If you already generated this in [Step 0](#step-0--pre-flight-before-any-coolify-work),
+   reuse the same value.)
 
 2. In Coolify: **New Resource → Docker Image** (no git connection needed).
 3. **Image:** `ghcr.io/denoland/denokv:0.14.0` (pinned; do NOT use `:latest` — `denokv` is
@@ -210,19 +276,29 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    `--access-token <token>` comes **after** `serve`. The denokv CLI syntax is
    `denokv [--sqlite-path <path>] <subcommand> [--flag <value>]`. (This tells denokv to write
    its SQLite file to `/data` and require the bearer token.)
+
+   > **Coolify field semantics:** this string is the container **command/arguments**, appended
+   > to the image's `denokv` entrypoint. If your Coolify version's field **replaces** the
+   > entrypoint instead of appending, prefix it with `denokv` (i.e.
+   > `denokv --sqlite-path /data/denokv.sqlite serve --access-token <token>`). Not all Coolify
+   > versions expose a command field — if yours doesn't, bake the args into a forked image or
+   > deploy denokv via `compose.yml`.
 6. **Persistent Storage** tab:
    - Add a **Volume** with Name `denokv_data` and Destination Path `/data`.
    - This ensures the SQLite file (`/data/denokv.sqlite`) survives container restarts and
      upgrades. Without this volume, the cache is wiped on every restart.
 7. **Environment Variables:** none required at the container level (the token is in the
    command). If Coolify requires at least one env var, add a dummy `DENOKV=1`.
-8. **Healthcheck:** The `ghcr.io/denoland/denokv:0.14.0` image is distroless (built from
-   `gcr.io/distroless/cc-debian12`) and has **no shell**, no `nc`, no `curl`. A Docker-level
-   healthcheck via `CMD-SHELL` will fail. Options:
-   - **Leave healthcheck off** — the API will fail to start if `denokv` is down (the
-     `Deno.openKv()` call errors and the container restarts). This is the simplest approach.
-   - **Use Coolify's HTTP healthcheck** (if it supports a plain HTTP GET without a shell): set
-     path `/` and port `4512`. denokv responds to HTTP GET on its listen port.
+8. **Healthcheck:** **Do not** configure a Coolify HTTP healthcheck on `/`. denokv's router only
+   serves `POST /` and `POST /v2/*`; a plain HTTP `GET /` returns **404**, so an HTTP healthcheck
+   flaps. denokv also has **no** `ping`/health subcommand (only `serve`). Options:
+   - **Recommended — leave the healthcheck off** and rely on the API's fail-fast: if `denokv` is
+     unreachable, `Deno.openKv()` errors on boot and the container restarts. This is the
+     simplest, most reliable approach.
+   - **Optional TCP check:** the image is `gcr.io/distroless/cc-debian12:debug` (the **:debug**
+     variant), which **does** include a busybox shell and `nc`/`wget` (but no `curl`). If you want
+     an explicit probe, a TCP check works: `["CMD","/busybox/nc","-z","localhost","4512"]`.
+     Omitting it is still recommended.
 9. **Assign to the same destination** as the Postgres database (so the API container, when
    deployed next, can reach `denokv` by container name over the Docker network).
 10. **Deploy.** Verify it starts: check the container logs for a line indicating it's listening
@@ -250,6 +326,12 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    adjust the values. The `apps/api/.env.example` file in the repo is the canonical reference
    for this block — copy it and adjust the values:
 
+   > **First-boot storage note:** with `STORAGE_DRIVER=s3` (below), the Zod schema requires all
+   > `S3_*` values and validates `S3_ENDPOINT`/`S3_PUBLIC_URL` as **URLs**, so the `<account-id>`
+   > placeholders make the API **exit on first boot**. For the first boot, either complete the R2
+   > setup ([Step 8](#step-8--cloudflare-r2-for-uploads)) first and paste real values, **or**
+   > temporarily set `STORAGE_DRIVER=local`, then switch to `s3` once R2 is ready.
+
    ```env
    # Application
    APP_PORT=8000
@@ -257,9 +339,10 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    LOG_LEVEL=info
    LOG_FORMAT=json
    PUBLIC_APP_URL=https://brewform.example.com
+   APP_URL=https://brewform.example.com   # QR-code generation uses APP_URL (defaults to http://localhost:8000)
 
    # Database — use the INTERNAL hostname from the Postgres Connection tab
-   DATABASE_URL=postgresql://postgres:<DB_PASSWORD>@postgres-<uuid>:5432/brewform
+   DATABASE_URL=postgresql://postgres:<DB_PASSWORD>@postgresql-<uuid>:5432/brewform
    DATABASE_PROVIDER=postgresql
 
    # Cache — remote denokv sidecar
@@ -286,7 +369,7 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    SMTP_PORT=587
    SMTP_USER=<smtp-user>
    SMTP_PASS=<smtp-password>
-   SMTP_SECURE=true
+   SMTP_SECURE=false   # 587 = STARTTLS → false; use 465 + true for implicit TLS
    EMAIL_FROM=noreply@yourdomain.com
 
    # OpenAPI
@@ -306,7 +389,7 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    ```
 
    **Replace every `<...>` placeholder** with your real values. Pay special attention to:
-   - `DATABASE_URL` — must use the **internal hostname** (`postgres-<uuid>`) and the password
+   - `DATABASE_URL` — must use the **internal hostname** (`postgresql-<uuid>`) and the password
      from the Postgres Connection tab.
    - `DENO_KV_URL` — must use the **internal hostname** of the `denokv` resource
      (`denokv-<uuid>`), and the token from Step 2.
@@ -391,19 +474,23 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
 1. On the **API** resource's **General** tab, set the **FQDN** to:
    `https://api.brewform.example.com`
 2. Coolify provisions TLS automatically.
-3. Verify: `https://api.brewform.example.com/api/v1/openapi.json` returns JSON (if
-   `OPENAPI_ENABLED=true`). If `OPENAPI_ENABLED=false`, verify `https://api.brewform.example.com/health`
-   returns `200 { status: 'ok' }` and `https://api.brewform.example.com/ready` returns `200`
-   (or `503` if the DB is unreachable).
+3. Verify liveness with `https://api.brewform.example.com/health` — it should return
+   `200 { status: 'ok' }`, and `https://api.brewform.example.com/ready` should return `200`
+   (or `503` if the DB is unreachable). This plan sets `OPENAPI_ENABLED=false` by default, so
+   `https://api.brewform.example.com/api/v1/openapi.json` **404s** unless you enable it — only
+   use the openapi endpoint as a check when `OPENAPI_ENABLED=true`.
 
 ### CORS verification
 The API's `CORS_ALLOWED_ORIGINS=https://brewform.example.com` allows the web SPA (on
 `https://brewform.example.com`) to make cross-origin requests to
 `https://api.brewform.example.com`.
 
-To verify CORS works:
+To verify CORS works, send a proper CORS **preflight** (an `OPTIONS` request with the
+`Access-Control-Request-*` headers) and check the response headers:
 ```bash
-curl -I -H "Origin: https://brewform.example.com" \
+curl -i -X OPTIONS \
+  -H "Origin: https://brewform.example.com" \
+  -H "Access-Control-Request-Method: GET" \
   https://api.brewform.example.com/health
 ```
 The response should include:
@@ -439,8 +526,9 @@ The API's `docker-entrypoint.sh` handles this automatically. Here's what happens
 deploy (Step 3 above):
 
 1. **Container starts** → `docker-entrypoint.sh` runs.
-2. **Migrations:** `deno task db:migrate` runs against `DATABASE_URL`. Drizzle applies any
-   pending migration SQL files in `packages/db/drizzle/`. This creates all tables.
+2. **Migrations:** `deno run -A npm:drizzle-kit@0.31.10 migrate` runs against `DATABASE_URL`.
+   Drizzle applies any pending migration SQL files in `packages/db/drizzle/`. This creates all
+   tables.
 3. **Seed check:** The script runs `SELECT count(*) FROM users`. If the count is `0`:
    - `deno run --allow-all packages/db/src/seed.ts` runs, inserting the admin user, badges,
      equipment catalog, coffee varieties, seed users/recipes, and social data.
@@ -458,6 +546,17 @@ On subsequent restarts/redeploys:
 >    (`onConflictDoNothing` on all inserts), so it won't overwrite or delete existing data.
 > 3. To start completely fresh: drop the database in Coolify, recreate it, and restart the API
 >    container (the entrypoint will re-migrate and re-seed).
+
+> **Partial-seed recovery:** the seed runs only when `SELECT count(*) FROM users` is `0`. If the
+> first-boot seed fails **partway** — after the admin row is inserted but before the rest — that
+> sentinel will be `>0` on the next boot and the seed is **skipped**, leaving a partially-seeded
+> DB. To recover, either drop & recreate the database before a successful first boot, or manually
+> re-run the (idempotent) seed: `deno run --allow-all packages/db/src/seed.ts`.
+
+> **Secrets hygiene:** the seed logs the admin email/password to stdout once, and Coolify retains
+> container logs — **change the admin password in-app after first login**. Likewise, the denokv
+> access token is passed as a CLI argument, so it's visible via `docker inspect` and the Coolify
+> UI. This is acceptable on a single-host private network, but be aware of it.
 
 ---
 
@@ -518,13 +617,14 @@ SMTP_HOST=smtp.your-provider.com
 SMTP_PORT=587
 SMTP_USER=<your-smtp-username>
 SMTP_PASS=<your-smtp-password>
-SMTP_SECURE=true
+SMTP_SECURE=false   # all providers above use port 587 (STARTTLS) → false
 EMAIL_FROM=noreply@yourdomain.com
 ```
 
-> `SMTP_SECURE=true` means TLS is used (STARTTLS on port 587, or implicit TLS on port 465).
-> For port 587 with STARTTLS, `SMTP_SECURE=true` is typically correct (BrewForm's transform
-> treats `true` as "use TLS"). Test by triggering a password reset email.
+> **`SMTP_SECURE` rule (nodemailer):** `secure: false` = **STARTTLS** = port **587**;
+> `secure: true` = **implicit TLS** = port **465**. So for the port-587 providers listed above,
+> use `SMTP_SECURE=false`; only set `SMTP_SECURE=true` when you connect on port 465. Test by
+> triggering a password reset email.
 
 ### Verify
 1. Register a new user with a real email address.
@@ -573,8 +673,9 @@ Run through this after completing Steps 1–9.
 - [ ] `https://api.brewform.example.com/health` returns `200 { status: 'ok' }` (liveness).
 - [ ] `https://api.brewform.example.com/ready` returns `200 { status: 'ready', db: 'connected' }`
       (readiness — confirms DB connectivity).
-- [ ] `https://api.brewform.example.com/api/v1/openapi.json` returns JSON (if
-      `OPENAPI_ENABLED=true`).
+- [ ] `https://api.brewform.example.com/api/v1/openapi.json` returns JSON **only if**
+      `OPENAPI_ENABLED=true` (the plan defaults it to `false`, so this endpoint 404s by default —
+      `/health` is the real liveness check).
 - [ ] `https://brewform.example.com` loads the SPA (HTML, JS, CSS).
 - [ ] **Login works:** log in as the admin user (credentials from the seed log or your
       `ADMIN_*` env).
@@ -607,7 +708,7 @@ missing or invalid required var causes an immediate exit with the field errors l
   `DATABASE_URL` hostname is wrong.
 - **Fix:** In Coolify, ensure both resources are assigned to the **same destination** (Docker
   network). Use the exact internal hostname from the Postgres Connection tab (e.g.
-  `postgres-<uuid>`, not `localhost` or `postgres`).
+  `postgresql-<uuid>`, not `localhost` or `postgres`).
 
 ### API can't reach denokv: connection refused
 - **Cause:** `DENO_KV_URL` hostname doesn't match the `denokv` resource's internal name, or
@@ -622,6 +723,11 @@ missing or invalid required var causes an immediate exit with the field errors l
   blocked by CORS policy`.
 - **Fix:** `CORS_ALLOWED_ORIGINS` on the API must exactly match the web origin
   (`https://brewform.example.com`, no trailing slash). Restart the API after changing it.
+- **Preflight (OPTIONS) failing:** for non-simple requests the browser first sends a CORS
+  **preflight** (`OPTIONS` with `Access-Control-Request-*` headers). If that request 4xx/5xxs,
+  the real request never fires and you see a CORS error. Reproduce it directly and confirm the
+  `access-control-allow-origin` header comes back — see the `curl -i -X OPTIONS` example in
+  [Step 5](#step-5--domains-tls-and-cors).
 
 ### Uploads return 404 / broken images
 - **Cause:** `STORAGE_DRIVER=s3` but R2 credentials/endpoint are wrong, or
@@ -643,6 +749,15 @@ missing or invalid required var causes an immediate exit with the field errors l
 - **Fix:** This is by design. If you don't want the seed to run, ensure the `users` table has
   at least one row. If you want to re-seed intentionally, the `onConflictDoNothing` makes it
   safe to run repeatedly.
+
+### Seed skipped after a failed first boot (partial seed)
+- **Cause:** The first-boot seed runs only when `SELECT count(*) FROM users` is `0`. If it fails
+  **partway** — after the admin row is inserted but before the rest — the count is now `>0`, so
+  the next boot **skips** the seed, leaving a partially-seeded database.
+- **Fix:** Either drop & recreate the database and let the API re-seed on a clean first boot, or
+  manually re-run the idempotent seed from the API container's Terminal:
+  `deno run --allow-all packages/db/src/seed.ts` (see
+  [Step 7](#step-7--first-deploy-migrations--seed)).
 
 ### denokv data is lost after restart
 - **Cause:** No persistent volume mounted at `/data`.
@@ -667,6 +782,16 @@ missing or invalid required var causes an immediate exit with the field errors l
    - Go to each Coolify resource → click **Redeploy** (or "Restart").
 4. The API entrypoint re-runs migrations (no-op if nothing new) and skips the seed (DB is not
    empty).
+
+### Rollback
+
+Coolify resources track the `:latest` tag, so you roll back a bad deploy by pinning to a
+known-good immutable tag. `release.yml` publishes both `:<commit-sha>` and `:vX.Y.Z` tags
+alongside `:latest`. To roll back:
+1. On the affected resource (API and/or web), change the image tag from `:latest` to a specific
+   `:<commit-sha>` or `:vX.Y.Z`.
+2. **Redeploy** — Coolify pulls the pinned image.
+3. Once a fix ships, switch the tag back to `:latest`.
 
 ### Upgrading `denokv`
 - `denokv` is pinned to `0.14.0`. To upgrade:

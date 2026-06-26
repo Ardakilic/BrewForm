@@ -27,6 +27,8 @@ services:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
       - CACHE_DRIVER=memory
+      - DENO_KV_URL=http://denokv:4512
+      - DENO_KV_ACCESS_TOKEN=${DENO_KV_ACCESS_TOKEN}
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -55,6 +57,8 @@ services:
         condition: service_started
       garage:
         condition: service_healthy
+      denokv:
+        condition: service_started
     profiles:
       - dev
 
@@ -107,6 +111,8 @@ services:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
       - CACHE_DRIVER=memory
+      - DENO_KV_URL=http://denokv:4512
+      - DENO_KV_ACCESS_TOKEN=${DENO_KV_ACCESS_TOKEN}
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -131,6 +137,8 @@ services:
         condition: service_started
       garage:
         condition: service_healthy
+      denokv:
+        condition: service_started
     profiles:
       - preview
 
@@ -187,6 +195,20 @@ services:
       timeout: 3s
       retries: 5
 
+  # ── denokv — remote Deno KV cache sidecar ───────────────────────────────────
+  # Used by the API when CACHE_DRIVER=deno-kv. Shared across dev and prod profiles,
+  # so it has NO profile constraint — it starts with both `make up` (infra) and
+  # `make prod-up` (prod).
+  # No healthcheck by design: denokv's router serves only POST / and POST /v2/*,
+  # so a plain GET / healthcheck returns 404 and would flap. Consumers depend on
+  # it via `condition: service_started` and rely on the API's fail-fast
+  # Deno.openKv() connection instead.
+  denokv:
+    image: ghcr.io/denoland/denokv:0.14.0
+    command: ["--sqlite-path", "/data/denokv.sqlite", "serve", "--access-token", "${DENO_KV_ACCESS_TOKEN}"]
+    volumes:
+      - denokv_data:/data
+
   # ── Preview — static SPA via Caddy ─────────────────────────────────────────
   # Serves the built React SPA on :8080 alongside app-preview on :8000.
   # Start with: make preview  (builds the web app first, then starts both)
@@ -229,10 +251,47 @@ services:
     profiles:
       - serena
 
+  # ── API — production (pulls published image) ──────────────────────────────
+  # Started via `make prod-up` (profile: prod). Pulls ghcr.io/ardakilic/brewform-api:latest.
+  # For local image builds, use `make prod-up-build` (--build overrides the image:).
+  app-prod:
+    image: ghcr.io/ardakilic/brewform-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      denokv:
+        condition: service_started
+    profiles:
+      - prod
+
+  # ── Web — production (pulls published image) ────────────────────────────────
+  # Caddy serving the pre-built SPA on :80. No runtime env (VITE_* baked in at
+  # image build). Host 8080 → container 80 (the prod Caddyfile listens on :80).
+  web-prod:
+    image: ghcr.io/ardakilic/brewform-web:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "8080:80"
+    depends_on:
+      app-prod:
+        condition: service_started
+    profiles:
+      - prod
+
 volumes:
   postgres_data:
   garage_data:
   garage_meta:
   deno_cache:
   node_modules:
+  denokv_data:
 

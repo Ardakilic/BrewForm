@@ -20,7 +20,7 @@ The system SHALL provide a multi-stage `Dockerfile` producing a `runner` stage t
 - Contains the compiled API source (`apps/api/src/main.ts` and all imported modules), generated
   Drizzle migrations (`packages/db/drizzle/`), `packages/db/drizzle.config.ts`, compiled email
   templates (in `apps/api/src/` or wherever `deno task email-build` outputs them), and
-  `node_modules` (which includes `drizzle-kit` via the `npm:drizzle-kit@0.31.10` dependency, used
+  `node_modules` (which includes `drizzle-kit` via the `npm:drizzle-kit@0.31` dependency, used
   by the entrypoint for migrations)
 - Exposes port `8000`
 - Uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]` (no `CMD` — the entrypoint `exec`s the API)
@@ -29,7 +29,7 @@ The system SHALL provide a multi-stage `Dockerfile` producing a `runner` stage t
 
 The `builder` stage SHALL run `deno task email-build` (compiles MJML templates to TypeScript —
 currently only run in CI, not in the Dockerfile) AND
-`cd packages/db && deno run -A npm:drizzle-kit@0.31.10 generate` (generates migration SQL files —
+`cd packages/db && deno run -A npm:drizzle-kit@0.31 generate` (generates migration SQL files —
 already present in the current Dockerfile) so the runner stage has both the compiled email
 templates and the migration SQL files for the entrypoint.
 
@@ -58,7 +58,7 @@ The `runner` stage SHALL `COPY docker-entrypoint.sh /app/docker-entrypoint.sh` a
 ### Requirement: Entrypoint runs migrations on every boot
 
 The `docker-entrypoint.sh` script SHALL run
-`cd /app/packages/db && deno run -A npm:drizzle-kit@0.31.10 migrate` before starting the API
+`cd /app/packages/db && deno run -A npm:drizzle-kit@0.31 migrate` before starting the API
 server, on every container start. `DATABASE_URL` MUST be set in the container environment (the
 `drizzle.config.ts` reads it via `Deno.env.get('DATABASE_URL')`). Migrations are idempotent via
 Drizzle's `__drizzle_migrations` tracking table.
@@ -73,7 +73,7 @@ and `"Migrations complete."` after it succeeds.
 #### Scenario: Migrations run on first boot
 
 - **WHEN** the API container starts against an empty database (no tables)
-- **THEN** `deno run -A npm:drizzle-kit@0.31.10 migrate` applies all pending migrations from
+- **THEN** `deno run -A npm:drizzle-kit@0.31 migrate` applies all pending migrations from
   `packages/db/drizzle/`
 - **AND** stdout contains "Running database migrations..." and "Migrations complete."
 - **AND** the API server starts after migrations complete
@@ -81,13 +81,13 @@ and `"Migrations complete."` after it succeeds.
 #### Scenario: Migrations run on subsequent boots
 
 - **WHEN** the API container starts against a database with all migrations already applied
-- **THEN** `deno run -A npm:drizzle-kit@0.31.10 migrate` is a no-op (Drizzle detects no pending
+- **THEN** `deno run -A npm:drizzle-kit@0.31 migrate` is a no-op (Drizzle detects no pending
   migrations via the `__drizzle_migrations` table)
 - **AND** the API server starts
 
 #### Scenario: Migration failure prevents API start
 
-- **WHEN** `deno run -A npm:drizzle-kit@0.31.10 migrate` exits with a non-zero code (e.g.,
+- **WHEN** `deno run -A npm:drizzle-kit@0.31 migrate` exits with a non-zero code (e.g.,
   `DATABASE_URL` is wrong, the DB is unreachable, or a migration SQL file is malformed)
 - **THEN** the entrypoint exits with a non-zero code (due to `set -e`)
 - **AND** the API server does NOT start
@@ -103,11 +103,15 @@ detects "first boot" because the admin user is the first row inserted by the see
 (`packages/db/src/seed.ts` inserts the admin user first, then seed users, then equipment,
 coffee varieties, vendors, beans, recipes, and social data — all with `onConflictDoNothing`).
 
-The first-boot check SHALL be performed by a Deno script (either an inline `deno eval` or a
-standalone `scripts/check-users-empty.ts` file) that queries `SELECT count(*) FROM users` using
-the existing `@brewform/db` client (which is already in `/app/node_modules` and
-`/app/packages/db`). The script SHALL print the count to stdout, which the entrypoint captures.
-The check SHALL NOT use `psql` (the Deno image does not include `postgresql-client`).
+The first-boot check SHALL be performed by a Deno script that queries `SELECT count(*) FROM users`
+using the existing `@brewform/db` client (which is already in `/app/node_modules` and
+`/app/packages/db`). The RECOMMENDED form is a standalone `scripts/check-users-empty.ts` file run
+with the minimal permissions `--allow-env --allow-net --allow-read`. If an inline `deno eval` is
+used instead, it MUST carry those same `--allow-env --allow-net --allow-read` permissions, and it
+MUST NOT mask a query failure to `0`: a failed/errored check MUST fail-fast (non-zero exit), NOT
+silently report `0` and thereby trigger an unwanted re-seed against a populated database. The
+script SHALL print the count to stdout, which the entrypoint captures. The check SHALL NOT use
+`psql` (the Deno image does not include `postgresql-client`).
 
 When the `users` table is not empty (count > 0), the seed SHALL be skipped with a log message:
 `"Seed skipped — database already contains data (<count> users)."`.
@@ -247,7 +251,10 @@ The web container has no env vars to configure at runtime.
 The `compose.yml` SHALL define a `prod` profile containing:
 - An `app-prod` service (named `app-prod` to avoid collision with the existing `dev`-profile
   `app` service) with `image: ghcr.io/ardakilic/brewform-api:latest`, `ports: ["8000:8000"]`,
-  `env_file: .env`, `depends_on: [postgres (healthy), denokv (healthy)]`, `profiles: [prod]`.
+  `env_file: .env`, `depends_on: [postgres (healthy), denokv (started)]` (denokv uses
+  `condition: service_started`, not `service_healthy` — see the `remote-cache` spec; a plain
+  HTTP `/` healthcheck on denokv flaps, so the API relies on its own fail-fast KV connection
+  instead), `profiles: [prod]`.
 - A `web-prod` service with `image: ghcr.io/ardakilic/brewform-web:latest`,
   `ports: ["8080:80"]` (host 8080 → container 80), `depends_on: [app-prod (started)]`,
   `profiles: [prod]`.
@@ -346,6 +353,12 @@ Environment Variables tab, or `compose.yml` `environment:`/`env_file:`), not as 
 The only build-time `ARG`s SHALL be `VITE_API_URL` and `VITE_PUBLIC_APP_URL` for the web image,
 which are public URLs (not secrets). The API Dockerfile has NO build-time `ARG`s.
 
+The `.dockerignore` MUST exclude `.env` and `*.env` (while keeping `*.env.example`). Both
+Dockerfiles use `COPY . .`, so without this exclusion a local `make images` / `make release` run
+in a working tree with a populated `.env` would bake a developer's real secrets into the PUBLIC
+image. The current `.dockerignore` only excludes `node_modules`/`.git`/`.turbo`/`coverage` and
+does NOT exclude `.env`; the implementation MUST add `.env`/`*.env` (retaining `*.env.example`).
+
 #### Scenario: API image has no baked secrets
 
 - **WHEN** `docker history ghcr.io/ardakilic/brewform-api:latest --no-trunc` is inspected
@@ -357,6 +370,13 @@ which are public URLs (not secrets). The API Dockerfile has NO build-time `ARG`s
 - **WHEN** the web image build command is inspected
 - **THEN** the only `--build-arg` values are `VITE_API_URL` and `VITE_PUBLIC_APP_URL`
 - **AND** neither value is a secret (they are public URLs)
+
+#### Scenario: Local image build does not include .env
+
+- **WHEN** `make images` is run in a working tree containing a populated `.env`
+- **THEN** the built image does NOT contain `.env` (because `.dockerignore` excludes `.env`/`*.env`)
+- **AND** `docker run --rm --entrypoint ls <image> /app` does not list `.env`
+- **AND** `*.env.example` files are still present (not excluded)
 
 ---
 

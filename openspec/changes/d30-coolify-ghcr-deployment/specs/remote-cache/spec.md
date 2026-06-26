@@ -6,7 +6,7 @@ service is added to `compose.yml` (shared across the `dev` and `prod` profiles) 
 remote share the same cache topology. The existing `CACHE_DRIVER=memory` path is retained as the
 dev/test fallback and requires no `denokv` service.
 
-The current cache-init code is at `apps/api/src/main.ts:126-131`:
+The current cache-init code is at `apps/api/src/main.ts:127-134`:
 ```ts
 if (config.CACHE_DRIVER === 'deno-kv') {
   kv = await Deno.openKv();
@@ -31,7 +31,7 @@ connecting to the remote `denokv` sidecar server over the KV Connect HTTP protoc
 the Deno runtime as the bearer token for the KV Connect protocol's metadata-exchange
 `Authorization: Bearer <token>` header.
 
-The exact code change at `apps/api/src/main.ts:126-131` SHALL be:
+The exact code change at `apps/api/src/main.ts:127-134` SHALL be:
 ```ts
 if (config.CACHE_DRIVER === 'deno-kv') {
   const kvUrl = Deno.env.get('DENO_KV_URL') ?? 'http://denokv:4512';
@@ -173,34 +173,40 @@ The `compose.yml` SHALL define a `denokv` service with:
   — note the flag order: `--sqlite-path` comes before the `serve` subcommand, and
   `--access-token` comes after `serve`
 - `volumes: ["denokv_data:/data"]` — persists the SQLite file across container restarts
-- A healthcheck (see implementation note below about the distroless image)
-- `DENO_KV_ACCESS_TOKEN` is sourced from the `.env` file via compose's `${VAR}` interpolation
+- No compose healthcheck (recommended — see implementation note below about the image variant)
+- `DENO_KV_ACCESS_TOKEN` is sourced from the `.env` file via compose's `${VAR}` interpolation, and
+  MUST be at least 12 characters (denokv's enforced minimum); an empty token makes the always-on
+  container fail to start and breaks `make up` (use `openssl rand -hex 32`)
 
 The `denokv` service SHALL NOT have a `profiles:` constraint (or SHALL be listed in both `dev`
 and `prod` profiles) so it starts with both `make up` (infrastructure) and `make prod-up`.
 
 The existing `app` (dev), `app-preview` (preview), and `app-prod` (prod) services SHALL add
-`denokv` to their `depends_on` with `condition: service_healthy` (or `service_started` if the
-healthcheck is unreliable — see implementation note).
+`denokv` to their `depends_on` with `condition: service_started` (the recommended option — see
+implementation note; a healthcheck-gated `service_healthy` is not used because the denokv HTTP
+endpoint is not suited to a plain `/` healthcheck).
 
 The `denokv_data` named volume SHALL be declared in the top-level `volumes:` block.
 
 **Implementation note on healthcheck:** The `ghcr.io/denoland/denokv:0.14.0` image is built from
-`gcr.io/distroless/cc-debian12` (a minimal image with no shell, no `nc`, no `curl`). A compose
-`healthcheck.test` using `["CMD-SHELL", "..."]` will fail because there is no shell. The
-implementer has three options:
-1. **Omit the compose healthcheck** and rely on (a) the API failing to start if `denokv` is down
-   (fail-fast via `Deno.openKv()` connection error), or (b) Coolify's UI HTTP healthcheck (path
-   `/` on port 4512).
-2. **Use `["CMD", "denokv", ...]`** if `denokv` has a healthcheck/ping subcommand (the
-   implementer must verify this against the denokv CLI — the README does not document one).
-3. **Use `service_started` instead of `service_healthy`** in `depends_on` (less safe — the API
-   may start before `denokv` is listening, but the API will retry the KV connection).
+`gcr.io/distroless/cc-debian12:debug` (the `:debug` variant), which DOES include a busybox shell
+at `/busybox/sh` plus busybox `nc`/`wget` (but no `curl`). So a `["CMD-SHELL", "..."]` healthcheck
+is technically runnable. The problem is the check itself: denokv's router serves only `POST /` and
+`POST /v2/*`, so a plain HTTP `GET /` to port `4512` returns `404`, which makes an HTTP `/`
+healthcheck flap (it never reports healthy). The implementer has two options:
+1. **Omit the compose healthcheck** and rely on the API failing to start if `denokv` is down
+   (fail-fast via `Deno.openKv()` connection error). Do NOT use a Coolify/compose HTTP healthcheck
+   on path `/` (port 4512) — a `GET /` returns `404` and the check flaps.
+2. **Optional busybox TCP check** — since the `:debug` image has a shell and `nc`, a
+   `["CMD-SHELL", "nc -z localhost 4512"]` healthcheck can verify the port is listening (TCP
+   connect only, no HTTP). This is available but not required. There is no `denokv` ping/health
+   subcommand (the CLI only exposes `serve`), so a `["CMD", "denokv", ...]` health probe is NOT an
+   option.
 
 **Recommended:** Option 1 (omit compose healthcheck, use `service_started` in `depends_on`).
 The API's `Deno.openKv()` will fail with a connection error if `denokv` isn't ready, the
-container will restart, and eventually `denokv` will be up. This is simpler than fighting the
-distroless image's lack of shell.
+container will restart, and eventually `denokv` will be up. This is simpler than maintaining a
+custom TCP healthcheck.
 
 #### Scenario: denokv starts with persistent volume
 
@@ -226,6 +232,17 @@ distroless image's lack of shell.
 - **WHEN** the `denokv` container starts with `--access-token <token>`
 - **THEN** the API must send `DENO_KV_ACCESS_TOKEN=<token>` to authenticate
 - **AND** requests without the token are rejected
+- **AND** the token MUST be at least 12 characters — `denokv serve` enforces a minimum-length
+  access token (`openssl rand -hex 32` satisfies this)
+
+#### Scenario: empty denokv token breaks startup
+
+- **WHEN** the `denokv` container starts with an empty `DENO_KV_ACCESS_TOKEN` (e.g., the `.env`
+  var is unset or blank, so `--access-token` receives `""`)
+- **THEN** `denokv serve` rejects the empty token (below the 12-char minimum) and the container
+  fails to start
+- **AND** because `denokv` is an always-on service, this breaks `make up` until a valid
+  (≥12-char) token is set
 
 ---
 

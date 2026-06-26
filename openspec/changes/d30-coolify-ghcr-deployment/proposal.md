@@ -13,9 +13,9 @@ BrewForm is currently a Deno Deploy-first monorepo: the `Dockerfile` builds an A
 
 - **New `Dockerfile.web`** — multi-stage build (deps → builder → runner) producing a `caddy:2-alpine` image with the compiled `apps/web/dist` and a production `Caddyfile` baked in. `VITE_API_URL` and `VITE_PUBLIC_APP_URL` are injected as `ARG`s at build time so the SPA talks to the API subdomain.
 - **Refactored `Dockerfile`** (API) — add a final `runner` stage with an **entrypoint script** (`docker-entrypoint.sh`) that runs `drizzle-kit migrate` (always, idempotent) and the seed (guarded so it only runs when the DB is empty / on first boot), then `exec`s the API server. Add `--unstable-kv` to the runtime flags.
-- **New `compose.yml`** structure — a single file with two profiles:
+- **New `compose.yml`** structure — this change adds a new `prod` profile to the existing file (which already has `preview`/`serena` profiles and profile-less infra services); those are left intact:
   - `dev` (unchanged behavior): source-mounted `app` + `web-dev` + infrastructure (postgres, mailpit, pgadmin, garage, denokv).
-  - `prod`: `app` and `web` services referencing `ghcr.io/ardakilic/brewform-api:latest` and `ghcr.io/ardakilic/brewform-web:latest`, plus `denokv` and `postgres` (the latter optional — Coolify manages its own Postgres). The `prod` profile supports `docker compose --profile prod up --build` for local image builds.
+  - `prod`: `app-prod` and `web-prod` services referencing `ghcr.io/ardakilic/brewform-api:latest` and `ghcr.io/ardakilic/brewform-web:latest`, plus `denokv` and `postgres` (the latter optional — Coolify manages its own Postgres). The `prod` profile supports `docker compose --profile prod up --build` for local image builds.
 - **Remote Deno KV via `denokv` sidecar** — add a `denokv` service to `compose.yml` (both profiles) using `ghcr.io/denoland/denokv:0.14.0` with a mounted volume and `--access-token`. Update `apps/api/src/main.ts:127` to call `Deno.openKv(Deno.env.get('DENO_KV_URL') ?? 'http://denokv:4512')` when `CACHE_DRIVER=deno-kv`, so the API talks to the sidecar. Same one-line change in `apps/api/scripts/flush-cache.ts`.
 - **Split `.env.example` into three files** — `apps/api/.env.example` (API runtime env, paste into Coolify), `apps/web/.env.example` (web build-time vars, set as GitHub Secrets), and a slimmed root `.env.example` (local-dev infra only: Postgres, Garage, pgAdmin, denokv token). New `DENO_KV_URL` and `DENO_KV_ACCESS_TOKEN` entries are documented in both `apps/api/.env.example` and the root `.env.example`.
 - **New GitHub Actions workflow** (`.github/workflows/release.yml`) — on push to `main` and on `v*` tags: build `brewform-api` and `brewform-web` images, push to GHCR with `GITHUB_TOKEN` (`packages: write`), tag images with `latest` + SHA + git tag. Optionally trigger Coolify deploy webhooks (documented, not required for the image-publish step).
@@ -45,7 +45,7 @@ None. The `static-cache` spec (in-process web cache) is untouched. The API `Cach
 - **Makefile**: new targets (`images`, `images-push`, `prod-up`, `prod-down`, `release`).
 - **coolify_deployment_plan.md**: new comprehensive deployment doc.
 - **No database schema changes** — migrations continue to run via `drizzle-kit migrate` in the entrypoint.
-- **No breaking changes to dev workflow** — `make dev` and `make up` behave exactly as before; `CACHE_DRIVER=memory` is still the default for the `dev` profile.
+- **No breaking changes to dev workflow** — `make dev` and `make up` behave exactly as before; the `dev` profile stays on `CACHE_DRIVER=memory`. (Note: the Zod schema's `CACHE_DRIVER` default is actually `deno-kv`; `memory` is the dev/test value set explicitly via the compose `environment:` block, not the schema default.)
 
 ## Non-Goals
 
