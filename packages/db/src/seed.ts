@@ -1,9 +1,11 @@
 /**
  * @module
- * Idempotent database seed for BrewForm. Populates reference data (taste notes, brew-method
+ * Re-runnable database seed for BrewForm. Populates reference data (taste notes, brew-method
  * compatibility, badges, equipment + coffee-variety catalogs) plus a baseline admin user, vendors,
- * beans, recipes, and social/setup sample data. Every insert uses `onConflictDoNothing`, so it is
- * safe to re-run; invoked on first container boot (when the users table is empty) and via `make db-seed`.
+ * beans, recipes, and social/setup sample data. Idempotent where supported: inserts use
+ * `onConflictDoNothing` on tables with unique constraints and fall back to select-before-insert
+ * existence checks for tables without them. Invoked on first container boot (when the users table is
+ * empty) and via `make db-seed`.
  */
 import { and, eq, ilike, sql } from 'drizzle-orm';
 import {
