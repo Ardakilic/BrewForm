@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { RouterProvider } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { ThemeProvider } from './contexts/ThemeContext.tsx';
 import { I18nProvider } from './contexts/I18nContext.tsx';

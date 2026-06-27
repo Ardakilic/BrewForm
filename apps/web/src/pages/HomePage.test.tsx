@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { createMemoryRouter } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import { HomePage, loader } from './HomePage.tsx';
 import { I18nProvider } from '../contexts/I18nContext.tsx';
 import type { RecipeListItem } from '../api/types.ts';

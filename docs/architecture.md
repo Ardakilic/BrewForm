@@ -209,7 +209,7 @@ A route without `describeRoute()` is considered incomplete (the coverage test wi
    (always `401` on auth-guarded routes; `404`/`403`/`400`/`409` where mapped).
 3. Document JSON request bodies with `jsonRequestBody(InputSchema)`
    (`apps/api/src/utils/openapi/index.ts`) — `resolver()` only converts responses in hono-openapi
-   v1.3.0. Never `import 'zod-openapi/extend'` (removed in `zod-openapi` v5; it breaks the build).
+   v1.3.0. Never `import 'zod-openapi/extend'` (the subpath does not exist in `zod-openapi` v6; it breaks the build).
 4. Add the entity Output Schema under `packages/shared/src/schemas/responses/` (derived from the real
    `service.ts` return shape, additive, with a co-located unit test) and register any new tag in the
    `tags` array of `routes/openapi.ts`. Non-JSON routes document their true content type, not a JSON envelope.

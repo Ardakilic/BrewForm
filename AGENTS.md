@@ -68,7 +68,7 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 - **Request bodies:** use `jsonRequestBody(InputSchema)` from `apps/api/src/utils/openapi/index.ts`
   (it runs Zod v4 `z.toJSONSchema` on the SAME schema `zValidator` uses). Do NOT use `resolver()`
   for request bodies — in `hono-openapi` v1.3.0 `resolver()` only converts response schemas.
-- **Do NOT** `import 'zod-openapi/extend'` — that subpath does not exist in `zod-openapi` v5 and
+- **Do NOT** `import 'zod-openapi/extend'` — that subpath does not exist in `zod-openapi` v6 and
   breaks the build; `resolver()` reads metadata natively from Zod v4 schemas.
 - **Response/entity schemas** live in `packages/shared/src/schemas/responses/` (`<Entity>OutputSchema`),
   the envelope helpers in `packages/shared/src/schemas/response.ts`. Derive output schemas from the

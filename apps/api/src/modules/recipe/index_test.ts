@@ -52,6 +52,31 @@ async function createRecipe(authorId: string, title: string, createdAt: Date) {
   return recipe;
 }
 
+/**
+ * Deletes a test user together with any badges awarded to them.
+ *
+ * Creating a recipe through the HTTP route triggers fire-and-forget badge
+ * evaluation (see recipe `service.ts`), so a `user_badge` row can be inserted
+ * asynchronously after the response returns — sometimes after a naive teardown
+ * has already cleared the user's badges, which then blocks the user delete on
+ * the `user_badge` foreign key. This drains that race by re-clearing badges and
+ * retrying the user delete until no late async insert remains.
+ *
+ * @param userId The id of the user to remove.
+ */
+async function deleteUserWithBadges(userId: string): Promise<void> {
+  for (let attempt = 0;; attempt++) {
+    await db.delete(userBadges).where(eq(userBadges.userId, userId));
+    try {
+      await db.delete(users).where(eq(users.id, userId));
+      return;
+    } catch (err) {
+      if (attempt >= 9) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+}
+
 const stubAuth = async (_c: Context, next: Next) => {
   await next();
 };
@@ -217,8 +242,7 @@ describe(
       }
       await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNoteId));
       await db.delete(equipment).where(eq(equipment.id, equipmentId));
-      await db.delete(userBadges).where(eq(userBadges.userId, user.id));
-      await db.delete(users).where(eq(users.id, user.id));
+      await deleteUserWithBadges(user.id);
     });
 
     it('creates a recipe and returns 201 with the rich shape', async () => {

@@ -14,12 +14,12 @@
   "scripts": {},
   "dependencies": {
     "drizzle-orm": "catalog:",
-    "postgres": "^3.4.5",
+    "postgres": "^3.4.9",
     "bcryptjs": "catalog:"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.0",
-    "@std/testing": "jsr:@std/testing@^1.0.18",
+    "drizzle-kit": "^0.31.10",
+    "@std/testing": "jsr:@std/testing@^1.0.19",
     "@std/expect": "jsr:@std/expect@^1.0.19"
   }
 }
