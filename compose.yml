@@ -48,7 +48,7 @@ services:
       - ADMIN_PASSWORD=admin123456
     volumes:
       - .:/app
-      - deno_cache:/root/.cache/deno
+      - deno_cache:/deno-dir
       - node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -92,7 +92,7 @@ services:
         condition: service_started
     volumes:
       - .:/app
-      - deno_cache:/root/.cache/deno
+      - deno_cache:/deno-dir
       - node_modules:/app/node_modules
     profiles:
       - dev
@@ -213,7 +213,7 @@ services:
   # Serves the built React SPA on :8080 alongside app-preview on :8000.
   # Start with: make preview  (builds the web app first, then starts both)
   web:
-    image: caddy:2-alpine
+    image: caddy:2.11.4-alpine
     ports:
       - "8080:8080"
     volumes:

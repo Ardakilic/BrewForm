@@ -40,6 +40,13 @@ export const template = \`${escapeBackticks(html)}\`;
   await Deno.writeTextFile(join(outputDir, `${name}.ts`), tsContent);
 }
 
+/**
+ * Escapes characters significant inside a JS template literal so a raw HTML/MJML string can be
+ * embedded safely between backticks: backslashes, backticks, and `$` (which would otherwise begin
+ * a `${...}` interpolation).
+ * @param str Raw string to escape.
+ * @returns The escaped string, safe to embed in a template literal.
+ */
 function escapeBackticks(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/\`/g, '\\`').replace(/\$/g, '\\$');
 }

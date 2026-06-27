@@ -124,17 +124,21 @@ merged to `main` *before* you start any Coolify step (see
 the **Status** column marks which files are already committed versus which still need to be
 written.
 
+> **Install command:** the Docker `deps` stages and CI install dependencies with `deno ci`
+> (a frozen, lockfile-strict install — `rm -rf node_modules && deno install --frozen`), not
+> `deno install`. `deno ci` fails fast if `deno.lock` is missing or out of date.
+
 | # | Change | File(s) | Status |
 |---|--------|---------|--------|
-| 1 | API Dockerfile: `builder` stage now runs `deno task email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL); `runner` stage uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]` instead of `CMD`, runs with `--unstable-cron --unstable-kv` | `Dockerfile`, `docker-entrypoint.sh` | Not yet implemented |
-| 2 | `docker-entrypoint.sh`: runs `drizzle-kit migrate` (always), checks `SELECT count(*) FROM users` and runs seed only if empty (first boot), then `exec`s the API server | `docker-entrypoint.sh` | Not yet implemented |
-| 3 | Web Dockerfile: 3-stage build (deps → vite build with `VITE_*` ARGs → `caddy:2-alpine` serving `dist/` on port 80) | `Dockerfile.web` | Not yet implemented |
-| 4 | `compose.yml` `prod` profile (`app-prod`, `web-prod` referencing GHCR images) + `denokv` sidecar service (shared across profiles, pinned to `0.14.0`) | `compose.yml` | Not yet implemented |
-| 5 | `Deno.openKv(DENO_KV_URL ?? 'http://denokv:4512')` in `main.ts` and `flush-cache.ts`; `--allow-net` added to `make flush-cache` | `apps/api/src/main.ts`, `apps/api/scripts/flush-cache.ts`, `Makefile` | Not yet implemented |
-| 6 | `DENO_KV_URL` + `DENO_KV_ACCESS_TOKEN` added to Zod env schema (both `z.string().optional()`) | `apps/api/src/config/env.ts` | Not yet implemented |
+| 1 | API Dockerfile: `builder` stage now runs `deno task email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL); `runner` stage uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]` instead of `CMD`, runs with `--unstable-cron --unstable-kv` | `Dockerfile`, `docker-entrypoint.sh` | Done (shipped in D30/D31) |
+| 2 | `docker-entrypoint.sh`: runs `drizzle-kit migrate` (always), checks `SELECT count(*) FROM users` and runs seed only if empty (first boot), then `exec`s the API server | `docker-entrypoint.sh` | Done (shipped in D30/D31) |
+| 3 | Web Dockerfile: 3-stage build (deps → vite build with `VITE_*` ARGs → `caddy:2.11.4-alpine` serving `dist/` on port 80) | `Dockerfile.web` | Done (shipped in D30/D31) |
+| 4 | `compose.yml` `prod` profile (`app-prod`, `web-prod` referencing GHCR images) + `denokv` sidecar service (shared across profiles, pinned to `0.14.0`) | `compose.yml` | Done (shipped in D30/D31) |
+| 5 | `Deno.openKv(DENO_KV_URL ?? 'http://denokv:4512')` in `main.ts` and `flush-cache.ts`; `--allow-net` added to `make flush-cache` | `apps/api/src/main.ts`, `apps/api/scripts/flush-cache.ts`, `Makefile` | Done (shipped in D30/D31) |
+| 6 | `DENO_KV_URL` + `DENO_KV_ACCESS_TOKEN` added to Zod env schema (both `z.string().optional()`) | `apps/api/src/config/env.ts` | Done (shipped in D30/D31) |
 | 7 | `.env.example` split into three files: root (local-dev infra), `apps/api/.env.example` (API runtime for Coolify), `apps/web/.env.example` (web build-time for GitHub Secrets) | `.env.example`, `apps/api/.env.example`, `apps/web/.env.example` | Already committed (on disk) |
-| 8 | `release.yml` workflow (build + push to GHCR on `main`/tags, with `cache-from/to: type=gha`, optional Coolify webhook deploy job) | `.github/workflows/release.yml` | Not yet implemented |
-| 9 | Makefile targets (`images`, `images-push`, `prod-up`, `prod-up-build`, `prod-down`, `release`) | `Makefile` | Not yet implemented |
+| 8 | `release.yml` workflow (build + push to GHCR on `main`/tags, with `cache-from/to: type=gha`, optional Coolify webhook deploy job) | `.github/workflows/release.yml` | Done (shipped in D30/D31) |
+| 9 | Makefile targets (`images`, `images-push`, `prod-up`, `prod-up-build`, `prod-down`, `release`) | `Makefile` | Done (shipped in D30/D31) |
 | 10 | This document | `coolify_deployment_plan.md` | Already committed (on disk) |
 
 **Health endpoints** (verified in `apps/api/src/routes/health.ts`):
@@ -181,6 +185,10 @@ default to **private**, flip them to **public** once:
 ---
 
 ## Step 0 — Pre-flight (before any Coolify work)
+
+> **Pinned runtime:** BrewForm runs on **Deno 2.9.0**. Both images build from
+> `denoland/deno:debian-2.9.0` (API `Dockerfile`, web `Dockerfile.web`), and CI pins
+> `deno-version: v2.9.0`. If you fork or rebuild an image, keep the base tag on `2.9.0`.
 
 Do all of this **before** you touch the Coolify panel. The web image bakes its config at build
 time, so getting these wrong means rebuilding and republishing images later.
@@ -522,11 +530,16 @@ To verify:
 
 ## Step 7 — First deploy: migrations & seed
 
+> **Workspace layout:** this is a native Deno workspace (root `deno.json`
+> `workspace.members = ["apps/*", "packages/*"]`; not Turborepo). The migrate/seed commands below
+> run from the repo root and reference `packages/db/` paths; the `cd packages/db && deno run -A
+> npm:drizzle-kit@0.31 …` form is equivalent and also correct.
+
 The API's `docker-entrypoint.sh` handles this automatically. Here's what happens on the first
 deploy (Step 3 above):
 
 1. **Container starts** → `docker-entrypoint.sh` runs.
-2. **Migrations:** `deno run -A npm:drizzle-kit@0.31.10 migrate` runs against `DATABASE_URL`.
+2. **Migrations:** `deno run -A npm:drizzle-kit@0.31 migrate` runs against `DATABASE_URL`.
    Drizzle applies any pending migration SQL files in `packages/db/drizzle/`. This creates all
    tables.
 3. **Seed check:** The script runs `SELECT count(*) FROM users`. If the count is `0`:
@@ -534,6 +547,9 @@ deploy (Step 3 above):
      equipment catalog, coffee varieties, seed users/recipes, and social data.
    - The admin credentials are logged once.
 4. **API starts:** `exec deno run --unstable-cron --unstable-kv apps/api/src/main.ts`.
+
+   > The `--unstable-cron` and `--unstable-kv` flags are still **required on Deno 2.9** — `Deno.cron`
+   > and Deno KV remain unstable APIs. Do not remove them.
 
 On subsequent restarts/redeploys:
 - Migrations run again (no-op if nothing pending).
@@ -741,7 +757,7 @@ missing or invalid required var causes an immediate exit with the field errors l
 - **Cause:** Usually a DB connectivity issue, or a migration file is missing from the image.
 - **Fix:** Verify `DATABASE_URL` is correct and the DB is reachable. If the image is missing
   migration files, the `Dockerfile` builder stage didn't run
-  `cd packages/db && deno run -A npm:drizzle-kit@0.31.10 generate` — rebuild and repush the
+  `cd packages/db && deno run -A npm:drizzle-kit@0.31 generate` — rebuild and repush the
   image.
 
 ### Seed runs on every restart (not just first boot)
