@@ -3,7 +3,15 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('api-client');
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+// API base URL resolution order:
+//   1. Runtime config — `globalThis.__BREWFORM_CONFIG__.apiUrl`, written into /config.js
+//      at container start by docker-web-entrypoint.sh from the $VITE_API_URL env var.
+//      Lets one prebuilt image be retargeted at deploy time with no rebuild.
+//   2. Build-time `import.meta.env.VITE_API_URL`, inlined into the bundle by Vite.
+//   3. Same-origin `/api/v1` fallback.
+const runtimeConfig =
+  (globalThis as { __BREWFORM_CONFIG__?: { apiUrl?: string } }).__BREWFORM_CONFIG__;
+const API_BASE = runtimeConfig?.apiUrl || import.meta.env.VITE_API_URL || '/api/v1';
 
 async function requestInternal(endpoint: string, options: RequestInit): Promise<unknown> {
   log.debug({ endpoint, method: options.method }, 'API request started');

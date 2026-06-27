@@ -14,6 +14,15 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
 
+    <!--
+      Runtime configuration. /config.js is regenerated at container start from the
+      $VITE_API_URL env var (see docker-web-entrypoint.sh), letting a prebuilt image be
+      retargeted without a rebuild. Loaded as a classic (blocking) script so
+      globalThis.__BREWFORM_CONFIG__ is set before the app module runs. In local dev / a
+      plain `vite build` it is an empty default and the build-time VITE_API_URL applies.
+    -->
+    <script src="/config.js"></script>
+
     <!-- Open Graph defaults -->
     <meta property="og:title" content="BrewForm" />
     <meta

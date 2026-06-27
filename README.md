@@ -283,6 +283,17 @@ The API is versioned at `/api/v1/`. See [docs/api.md](docs/api.md) for the full 
 | [docs/docker.md](docs/docker.md)                       | Docker development environment, volume strategy, troubleshooting |
 | [docs/serena-mcp.md](docs/serena-mcp.md)               | Serena MCP setup, architecture, and troubleshooting        |
 
+## Container images
+
+The API and SPA publish to GHCR (`ghcr.io/ardakilic/brewform-api`, `ghcr.io/ardakilic/brewform-web`)
+on every push to `main` via `.github/workflows/release.yml`.
+
+The **web image's API URL is runtime-configurable**: set `VITE_API_URL` as a container
+environment variable to point a prebuilt image at any API origin **without rebuilding** — the
+entrypoint writes it into `/config.js` at startup, overriding the build-time default baked by
+Vite (resolution order: runtime `/config.js` → build-time `VITE_API_URL` → `/api/v1`). See
+[coolify_deployment_plan.md](coolify_deployment_plan.md) and [docs/deployment.md](docs/deployment.md).
+
 ## License
 
 See [LICENSE](LICENSE) for details.
