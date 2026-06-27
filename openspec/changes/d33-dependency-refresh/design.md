@@ -61,7 +61,7 @@ accept React 19.2.x (they do — 19.2 is a minor).
 **This corrects an earlier understatement** ("not used in source"). zod-openapi **is** part of the
 live OpenAPI pipeline — just never directly imported. The chain (verified in `node_modules`):
 
-```
+```text
 our plain Zod schemas
   → hono-openapi  resolver()/describeRoute()              (apps/api/src/modules/**, utils/openapi)
   → hono-openapi  toOpenAPISchema()                       (hono-openapi@1.3.0 dist/index.js:343,471)
