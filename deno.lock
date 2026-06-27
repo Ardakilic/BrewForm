@@ -28,6 +28,7 @@
     "npm:@vitejs/plugin-react@^6.0.3": "6.0.3_vite@8.1.0",
     "npm:@vitest/coverage-v8@^4.1.9": "4.1.9_vitest@4.1.9_jsdom@29.1.1_vite@8.1.0",
     "npm:bcryptjs@^3.0.3": "3.0.3",
+    "npm:drizzle-kit@0.31": "0.31.10",
     "npm:drizzle-kit@~0.31.10": "0.31.10",
     "npm:drizzle-orm@~0.45.2": "0.45.2_postgres@3.4.9",
     "npm:fast-check@*": "4.8.0",
