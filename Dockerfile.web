@@ -39,15 +39,19 @@ RUN deno task --cwd apps/web build
 
 # --- Stage 3: Runtime (Caddy) ---
 # Minimal static web server — serves the compiled SPA with try_files fallback.
-# No runtime env: the VITE_* values are already baked into the bundle above.
+# VITE_PUBLIC_APP_URL / VITE_LOG_LEVEL are baked into the bundle above. VITE_API_URL
+# has a build-time default baked in too, but the entrypoint can OVERRIDE it at
+# container start from the runtime $VITE_API_URL env var (it writes /config.js) — so a
+# prebuilt image can be retargeted to any API origin without a rebuild.
 #
 # Pinned to a specific Caddy patch for reproducible builds. To track the latest
 # 2.x patch automatically instead, swap the line below for: FROM caddy:2-alpine
 FROM caddy:2.11.4-alpine AS runner
 COPY --from=builder /app/apps/web/dist /usr/share/caddy
-# Production Caddyfile listening on :80 (not :8080 like the repo-root preview one).
-RUN printf ':80\nroot * /usr/share/caddy\nfile_server\ntry_files {path} /index.html\n' > /etc/caddy/Caddyfile
+# Production Caddyfile on :80 (the repo-root Caddyfile is the :8080 preview one).
+COPY apps/web/Caddyfile /etc/caddy/Caddyfile
+# Entrypoint regenerates /usr/share/caddy/config.js from $VITE_API_URL at start, then execs Caddy.
+COPY docker-web-entrypoint.sh /docker-web-entrypoint.sh
+RUN chmod +x /docker-web-entrypoint.sh
 EXPOSE 80
-# No CMD — the caddy:2-alpine base image's default CMD is
-# `caddy run --config /etc/caddy/Caddyfile --adapter caddyfile`, which reads the
-# Caddyfile written above.
+ENTRYPOINT ["/docker-web-entrypoint.sh"]

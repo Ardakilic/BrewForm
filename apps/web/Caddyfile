@@ -1,0 +1,14 @@
+:80 {
+	root * /usr/share/caddy
+	encode gzip
+
+	# Never cache the runtime config. A redeployed container regenerates /config.js
+	# (see docker-web-entrypoint.sh) and its new API URL must take effect immediately.
+	# The hashed JS/CSS bundles are still cached normally by the browser.
+	@runtime-config path /config.js
+	header @runtime-config Cache-Control "no-store"
+
+	# SPA fallback: serve index.html for client-side (React Router) routes.
+	try_files {path} /index.html
+	file_server
+}

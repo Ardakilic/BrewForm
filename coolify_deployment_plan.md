@@ -456,13 +456,17 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
 3. **Port exposes:** `80`
 4. **Assign to the same destination** as the API (so Caddy could proxy to the API if needed,
    though with subdomain routing the SPA talks to the API cross-origin via CORS).
-5. **Environment Variables:** **None.** The `VITE_API_URL` and `VITE_PUBLIC_APP_URL` are
-   baked into the image at build time (in the `release.yml` workflow via GitHub Secrets). The
-   web container has no runtime configuration.
+5. **Environment Variables:** **Optional.** `VITE_API_URL` and `VITE_PUBLIC_APP_URL` are
+   baked into the image at build time (in the `release.yml` workflow via GitHub Secrets), so
+   for this deployment you can leave the web resource's env **empty**. However, `VITE_API_URL`
+   is **runtime-overridable**: set it as an env var on the web resource and the image's
+   entrypoint writes it into `/config.js` at startup, overriding the baked default — handy for
+   pointing a prebuilt image at a different API origin without a rebuild.
 
-   > **If you need to change the API URL**, you must rebuild the web image with new
-   > `VITE_API_URL` / `VITE_PUBLIC_APP_URL` build-args and push a new `:latest`. There's no
-   > way to change it at runtime because Vite inlines `import.meta.env.*` at build time.
+   > **Changing the API URL:** set `VITE_API_URL` on the web resource and redeploy (no rebuild
+   > needed — the entrypoint regenerates `/config.js`). `VITE_PUBLIC_APP_URL` (og:image /
+   > sitemap meta) is still build-time only; changing it requires rebuilding and re-pushing the
+   > web image.
 
 6. **Deploy.** Verify it starts: `curl http://<coolify-assigned-domain>/` should return the
    SPA's `index.html`.
@@ -832,5 +836,6 @@ alongside `:latest`. To roll back:
 - **API domain:** Change the FQDN on the API resource in Coolify. Update
   `CORS_ALLOWED_ORIGINS` if the web domain changed. No image rebuild needed.
 - **Web domain:** Change the FQDN on the web resource in Coolify. If the **API** domain
-  changed, you must rebuild the web image with a new `VITE_API_URL` build-arg and push to
-  GHCR, then redeploy the web resource.
+  changed, set `VITE_API_URL` as a runtime env var on the web resource and redeploy — the
+  entrypoint regenerates `/config.js`, no rebuild needed. (Rebuilding with a new
+  `VITE_API_URL` build-arg also works and additionally updates the image's baked default.)

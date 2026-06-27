@@ -81,6 +81,10 @@ Configured in `apps/web/deno.json`:
 - **`VITE_API_URL`** injected at build time via Vite's `define` config:
   - Production: `https://api.brewform.cc/api/v1`
   - Development: `/api/v1` (proxied by Vite dev server)
+  - **Runtime override (containerized / Coolify image only):** the Docker web image's
+    entrypoint (`docker-web-entrypoint.sh`) regenerates `/config.js` from a `VITE_API_URL`
+    env var at container start, overriding the baked default with no rebuild. The SPA reads
+    `window.__BREWFORM_CONFIG__.apiUrl` first, then the build-time value, then `/api/v1`.
 
 ## Deployment Process
 
@@ -146,6 +150,10 @@ TLS certificates are provisioned and auto-renewed via Let's Encrypt.
 | Variable | Description |
 |---|---|
 | `VITE_API_URL` | `https://api.brewform.cc/api/v1` |
+
+> `VITE_API_URL` can **also** be supplied at **runtime** to the containerized web image
+> (it overrides the build-time default via a regenerated `/config.js`); the other `VITE_*`
+> vars are build-time only.
 
 ## Deno Deploy Free Plan Capabilities
 
