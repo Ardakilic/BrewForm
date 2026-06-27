@@ -152,5 +152,5 @@ Targets confirmed against npm `latest` / JSR / upstream on 2026-06-27. "—" = a
 - [x] 7.1 `openspec validate d33-dependency-refresh --strict` passes.
 - [x] 7.2 Update README / Serena-memory prose ONLY if it states a now-changed dependency version
       (the Deno 2.9 / drizzle-kit 0.31 / caddy 2.11.4 prose is unchanged — leave it).
-- [ ] 7.3 Open the PR; reference issue #8; note it closes Renovate PRs #87 (react-router v8) and #95
+- [x] 7.3 Open the PR; reference issue #8; note it closes Renovate PRs #87 (react-router v8) and #95
       (zod-openapi v6) and supersedes the per-dep lockfile PRs listed on the dashboard.
