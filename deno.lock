@@ -51,7 +51,7 @@
     "npm:vite@8": "8.0.13",
     "npm:vitest@*": "4.1.6_@vitest+coverage-v8@4.1.6_jsdom@29.1.1_vite@8.0.13",
     "npm:vitest@4": "4.1.6_@vitest+coverage-v8@4.1.6_jsdom@29.1.1_vite@8.0.13",
-    "npm:zod-openapi@5": "5.4.6_zod@4.4.3",
+    "npm:zod-openapi@6": "6.0.0_zod@4.4.3",
     "npm:zod@*": "4.4.3",
     "npm:zod@4": "4.4.3"
   },
@@ -1021,11 +1021,11 @@
         "@standard-schema/spec",
         "openapi-types",
         "zod",
-        "zod-openapi"
+        "zod-openapi@5.4.6_zod@4.4.3"
       ],
       "optionalPeers": [
         "zod",
-        "zod-openapi"
+        "zod-openapi@5.4.6_zod@4.4.3"
       ]
     },
     "@standard-schema/spec@1.1.0": {
@@ -3666,6 +3666,12 @@
         "zod"
       ]
     },
+    "zod-openapi@6.0.0_zod@4.4.3": {
+      "integrity": "sha512-mS4eRJ4DGCPrg6elRbJqc/3nLe4EPVi8KiHRKZ7dcTR5m5orPy8EfoWmceAyGZAq71MAWuyrTTOag7W5N61ZPQ==",
+      "dependencies": [
+        "zod"
+      ]
+    },
     "zod@4.4.3": {
       "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="
     }
@@ -3739,7 +3745,7 @@
       "packages/shared": {
         "packageJson": {
           "dependencies": [
-            "npm:zod-openapi@5",
+            "npm:zod-openapi@6",
             "npm:zod@4"
           ]
         }
