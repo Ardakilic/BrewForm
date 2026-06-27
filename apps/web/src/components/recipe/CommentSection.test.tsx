@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, LoaderFunctionArgs, RouterProvider } from 'react-router';
+import { createMemoryRouter, LoaderFunctionArgs } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import { CommentSection } from './CommentSection.tsx';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────

@@ -64,7 +64,7 @@ Never call `Deno.openKv()` directly. Use `CacheProvider` interface injected via 
 - Request bodies: `jsonRequestBody(InputSchema)` from `apps/api/src/utils/openapi/index.ts`
   (`z.toJSONSchema` on the same schema `zValidator` uses) — NOT `resolver()` (v1.3.0 resolver only
   handles responses).
-- **Never `import 'zod-openapi/extend'`** — the subpath does not exist in `zod-openapi` v5 and breaks
+- **Never `import 'zod-openapi/extend'`** — the subpath does not exist in `zod-openapi` v6 and breaks
   the build; `resolver()` reads Zod v4 metadata natively.
 - Envelope helpers: `packages/shared/src/schemas/response.ts` (`ErrorEnvelopeSchema`, `PaginationMetaSchema`,
   `successEnvelope`, `paginatedEnvelope`). Entity output schemas: `packages/shared/src/schemas/responses/`

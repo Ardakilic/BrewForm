@@ -6,9 +6,9 @@ import { z } from 'zod';
  * documentation via `hono-openapi`'s `resolver()` and never alter runtime
  * behavior.
  *
- * Note: `hono-openapi` v1 + `zod-openapi` v5 read field metadata directly from
+ * Note: `hono-openapi` v1 + `zod-openapi` v6 read field metadata directly from
  * the Zod schema structure — no `zod-openapi/extend` side-effect import is
- * required (and v5 no longer exports that subpath).
+ * required (and v6 no longer exports that subpath).
  */
 
 /** Mirrors error() — { success:false, error:{ code, message, details?, requestId } }. */

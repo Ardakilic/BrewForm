@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { createMemoryRouter } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 import { loader, RecipeDetailPage } from './RecipeDetailPage.tsx';
 
 // ── Partial mock of react-router: override only useNavigation ─────────────
