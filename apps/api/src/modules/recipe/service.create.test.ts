@@ -19,6 +19,7 @@ import {
 } from '@brewform/db/schema';
 import { RecipeCreateSchema } from '@brewform/shared/schemas';
 import * as service from './service.ts';
+import { evaluateBadges } from '../badge/service.ts';
 
 describe('createRecipe (integration)', { sanitizeOps: false, sanitizeResources: false }, () => {
   let userId: string;
@@ -79,6 +80,12 @@ describe('createRecipe (integration)', { sanitizeOps: false, sanitizeResources: 
 
     await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNoteId));
     await db.delete(equipment).where(eq(equipment.id, equipmentId));
+    // `createRecipe` triggers `evaluateBadges()` as a non-awaited (fire-and-forget) side effect
+    // (see apps/api/src/modules/recipe/service.ts), which asynchronously inserts `user_badge` rows.
+    // Awaiting it here drains that in-flight insert (its own write is idempotent via
+    // onConflictDoNothing) so the rows have settled before we delete them and the user — otherwise a
+    // late insert races the user delete and violates the `user_badge -> user` foreign key.
+    await evaluateBadges(userId);
     await db.delete(userBadges).where(eq(userBadges.userId, userId));
     await db.delete(users).where(eq(users.id, userId));
   });

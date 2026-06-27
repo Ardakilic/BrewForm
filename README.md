@@ -26,7 +26,7 @@ notes.
 
 | Layer      | Technology                                  |
 | ---------- | ------------------------------------------- |
-| Runtime    | Deno 2.7                                    |
+| Runtime    | Deno 2.9                                    |
 | Monorepo   | Deno workspaces                             |
 | Backend    | Hono                                        |
 | Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |

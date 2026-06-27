@@ -10,18 +10,18 @@
 # --- Stage 1: Dependencies ---
 # Copies only manifest files and caches all Deno/npm dependencies.
 # Used as the base for the dev containers (source is volume-mounted at runtime).
-FROM denoland/deno:debian-2.7.14 AS deps
+FROM denoland/deno:debian-2.9.0 AS deps
 WORKDIR /app
 COPY deno.json deno.lock package.json ./
 COPY apps/api/package.json apps/api/deno.json ./apps/api/
 COPY apps/web/package.json apps/web/deno.json ./apps/web/
 COPY packages/shared/package.json packages/shared/deno.json ./packages/shared/
 COPY packages/db/package.json packages/db/deno.json ./packages/db/
-RUN deno install --frozen
+RUN deno ci
 
 # --- Stage 2: Build ---
 # Full source copy + type check. Used by CI and as the base for the runner.
-FROM denoland/deno:debian-2.7.14 AS builder
+FROM denoland/deno:debian-2.9.0 AS builder
 WORKDIR /app
 COPY --from=deps /deno-dir /deno-dir
 COPY --from=deps /app/node_modules ./node_modules
@@ -34,7 +34,7 @@ RUN deno check apps/api/src/main.ts
 # Minimal production image — the entrypoint runs migrations + first-boot seed,
 # then execs the Hono API server. The full app tree copied from the builder
 # already includes repo-root scripts/ (e.g. scripts/check-users-empty.ts).
-FROM denoland/deno:debian-2.7.14 AS runner
+FROM denoland/deno:debian-2.9.0 AS runner
 WORKDIR /app
 COPY --from=builder /deno-dir /deno-dir
 COPY --from=builder /app .

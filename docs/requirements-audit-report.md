@@ -5,7 +5,7 @@
 **Plan Reference:** `brewform-plan.md` (all sections §1–§11)\
 **Method:** Code inspection + Docker build/runtime verification (`make build`, `make up`,
 `make check`, `make test`) + test execution\
-**Deno Version:** 2.7.13 (Docker)\
+**Deno Version:** 2.9.0 (Docker)\
 **Test Results:** 45 passed, 0 failed, 316 steps
 
 ---
@@ -274,7 +274,7 @@ first-brew creation with tooltips. (Minor)
 
 ### §6.3 Docker Setup — ❌ Critical Gaps Found
 
-- Multi-stage Dockerfile present using `denoland/deno:debian-2.7.13`.
+- Multi-stage Dockerfile present using `denoland/deno:debian-2.9.0`.
 - `compose.yml` includes app, postgres, mailpit, pgadmin.
 
 **Gaps Found & Fixed During Audit:**
