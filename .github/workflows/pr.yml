@@ -12,10 +12,10 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.7.14
+          deno-version: v2.9.0
 
       - name: Install dependencies
-        run: deno install --frozen
+        run: deno ci
 
       - name: Generate Drizzle migration
         run: deno task db:generate
@@ -43,10 +43,10 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.7.14
+          deno-version: v2.9.0
 
       - name: Install dependencies
-        run: deno install --frozen
+        run: deno ci
 
       - name: Run shared package tests
         run: >
@@ -93,10 +93,10 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.7.14
+          deno-version: v2.9.0
 
       - name: Install dependencies
-        run: deno install --frozen
+        run: deno ci
 
       - name: Assert no uncommitted migrations
         run: |
@@ -141,10 +141,10 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.7.14
+          deno-version: v2.9.0
 
       - name: Install dependencies
-        run: deno install --frozen
+        run: deno ci
 
       - name: Run web tests
         run: deno task --cwd apps/web test

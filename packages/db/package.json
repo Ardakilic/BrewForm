@@ -13,9 +13,9 @@
   },
   "scripts": {},
   "dependencies": {
-    "drizzle-orm": "^0.45.0",
+    "drizzle-orm": "catalog:",
     "postgres": "^3.4.5",
-    "bcryptjs": "^3.0.0"
+    "bcryptjs": "catalog:"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.0",

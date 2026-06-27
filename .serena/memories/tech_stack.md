@@ -2,7 +2,7 @@
 
 | Layer      | Technology                       |
 |------------|----------------------------------|
-| Runtime    | Deno 2.7                         |
+| Runtime    | Deno 2.9                         |
 | Backend    | Hono (Deno Deploy)              |
 | Frontend   | React 19 + Vite + Tailwind v4 + Base UI |
 | ORM        | Drizzle ORM (postgres-js)       |

@@ -4,6 +4,11 @@
     "members": ["apps/*", "packages/*"]
   },
   "nodeModulesDir": "auto",
+  "catalog": {
+    "drizzle-orm": "^0.45.0",
+    "bcryptjs": "^3.0.0",
+    "zod": "^4.0.0"
+  },
   "tasks": {
     "dev": "deno task dev:api & deno task dev:web",
     "dev:api": "deno task --cwd apps/api dev",
@@ -38,6 +43,9 @@
     "db:seed": "deno run --allow-all packages/db/src/seed.ts",
 
     "email-build": "deno task --cwd apps/api email-build",
+    "bump:dry-run": "deno bump-version --base=main --dry-run",
+    "bump:patch": "deno bump-version patch",
+    "bump:minor": "deno bump-version minor",
     "ci": "deno task fmt-check && deno task lint && deno task check && deno task build && deno task test-coverage && deno task test:db && deno task --cwd apps/web test"
   },
   "compilerOptions": {
@@ -83,6 +91,8 @@
       "src/generated/",
       "node_modules/",
       "packages/db/drizzle/"
-    ]
+    ],
+    "sanitizeOps": true,
+    "sanitizeResources": true
   }
 }

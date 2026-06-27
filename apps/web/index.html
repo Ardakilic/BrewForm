@@ -51,18 +51,18 @@
   </head>
   <body>
     <script>
-      if (sessionStorage.redirect) {
-        var redirect = sessionStorage.redirect;
-        delete sessionStorage.redirect;
-        if (
-          typeof redirect === 'string' &&
-          redirect.charAt(0) === '/' &&
-          redirect.charAt(1) !== '/' &&
-          redirect.indexOf(':') === -1
-        ) {
-          history.replaceState(null, '', redirect);
-        }
+    if (sessionStorage.redirect) {
+      var redirect = sessionStorage.redirect;
+      delete sessionStorage.redirect;
+      if (
+        typeof redirect === 'string' &&
+        redirect.charAt(0) === '/' &&
+        redirect.charAt(1) !== '/' &&
+        redirect.indexOf(':') === -1
+      ) {
+        history.replaceState(null, '', redirect);
       }
+    }
     </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
