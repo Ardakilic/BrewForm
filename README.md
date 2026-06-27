@@ -276,7 +276,8 @@ The API is versioned at `/api/v1/`. See [docs/api.md](docs/api.md) for the full 
 | [docs/coffee-equipments.md](docs/coffee-equipments.md) | Equipment catalog reference (378 items, 17 types)           |
 | [docs/taste-notes.md](docs/taste-notes.md)             | SCAA Flavor Wheel integration and autocomplete              |
 | [docs/notifications.md](docs/notifications.md)         | Email categories, triggers, and delivery model              |
-| [docs/deployment.md](docs/deployment.md)               | Production deployment guide                                 |
+| [docs/deployment.md](docs/deployment.md)               | Production deployment guide (Deno Deploy / build context)   |
+| [docs/deployment_coolify.md](docs/deployment_coolify.md) | Coolify self-hosted deployment (as-built, GHCR, nuances)    |
 | [docs/architecture.md](docs/architecture.md)           | Monorepo structure, module pattern, conventions             |
 | [docs/request-lifecycle.md](docs/request-lifecycle.md) | End-to-end trace of an HTTP request through the API         |
 | [docs/decisions.md](docs/decisions.md)                 | Architectural decision records (the _why_ behind the stack) |
