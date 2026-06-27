@@ -173,3 +173,4 @@ until they also run the command.
 - Check `/deno.json` `tasks` field for all build/test/lint/dev commands.
 - Serena MCP: `make serena-up` to start (SSE on :10122, dashboard :34283).
 - OpenAPI docs: `GET /api/v1/docs` (Scalar UI), `GET /api/v1/openapi.json`; gated by `OPENAPI_ENABLED` env.
+- Self-hosted deployment: `docs/deployment_coolify.md` (Coolify v4.1.x, as-built) and `coolify_deployment_plan.md` (long-form). Images publish to GHCR via `.github/workflows/release.yml`; the web image's API URL is runtime-configurable via `VITE_API_URL` (`docker-web-entrypoint.sh` writes `/config.js`). Key Coolify nuances: denokv runs as a **Docker Compose** resource (Docker Image resources have no command field), cross-stack reachability needs "Connect to Predefined Network", and `S3_ENDPOINT` is the account endpoint only (no bucket path).
