@@ -1,3 +1,9 @@
+/**
+ * @module
+ * Workspace-integrity test: asserts every Deno workspace member declares a `name` and `version`,
+ * the root `catalog` is internally consistent and covers every cross-member duplicated dependency,
+ * and member names are unique. Guards the workspace-management configuration added in d31.
+ */
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 

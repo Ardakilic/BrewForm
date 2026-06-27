@@ -24,9 +24,9 @@ Overlays the container's own `node_modules` directory, **hiding** the host's `no
 Error: Cannot find module '@rolldown/binding-linux-arm64-gnu'
 ```
 
-### Deno Cache Volume (`deno_cache:/root/.cache/deno`)
+### Deno Cache Volume (`deno_cache:/deno-dir`)
 
-A persistent named volume for the global Deno cache (`/root/.cache/deno`). This avoids re-downloading JSR and npm packages on every container restart.
+A persistent named volume for the global Deno cache. The `denoland/deno:debian` image sets `DENO_DIR=/deno-dir`, so the cache is mounted there. This avoids re-downloading JSR and npm packages on every container restart.
 
 ### Volume Resolution Order
 

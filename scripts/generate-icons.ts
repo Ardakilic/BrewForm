@@ -1,3 +1,8 @@
+/**
+ * @module
+ * Generates raster PNG app icons from `apps/web/public/favicon.svg` using resvg. Run via
+ * `make generate-icons`; writes the sized PNGs into the web public assets directory.
+ */
 import { Resvg } from 'npm:@resvg/resvg-js';
 import { join } from 'jsr:@std/path';
 
