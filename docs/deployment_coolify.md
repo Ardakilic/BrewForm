@@ -345,12 +345,24 @@ Coolify keeps provisioning/serving the origin Let's Encrypt cert and routing.
 
 ---
 
-## 12. Step 10 — Auto-deploy webhook (optional)
+## 12. Step 10 — Auto-deploy via CI webhook
 
-1. Coolify → Settings → API → enable; create a **Deploy**-scoped token.
-2. API resource → Webhooks → copy deploy URL; same for the web resource.
-3. GitHub repo Secrets: `COOLIFY_API_TOKEN`, `COOLIFY_API_WEBHOOK`, `COOLIFY_WEB_WEBHOOK`.
-   `release.yml`'s `deploy` job then redeploys both on every `main` push.
+GitHub Actions builds/pushes the images; a final CI step pings Coolify's deploy
+endpoint, which pulls `:latest` and recreates each container — no server-side builds.
+
+1. Coolify → **Keys & Tokens → API Tokens** → create a token with the **Deploy** ability.
+2. Get each resource's **UUID** (last segment of its dashboard URL, or its General
+   settings) and build its deploy URL:
+   `https://<coolify-host>/api/v1/deploy?uuid=<resource-uuid>`
+   (Docker Image resources have no Git source, so the trigger is this API endpoint —
+   not the resource's "Webhooks" tab, which is for Git providers.)
+3. GitHub repo Secrets — `COOLIFY_API_TOKEN` (the Deploy token),
+   `COOLIFY_API_WEBHOOK` (API deploy URL), `COOLIFY_WEB_WEBHOOK` (web deploy URL).
+   `release.yml`'s `deploy` job redeploys both on every `main` push (it self-gates on
+   `COOLIFY_API_WEBHOOK` + `COOLIFY_API_TOKEN`).
+
+> If **Settings → Advanced → "Allowed IPs for API Access"** is set, leave it empty/`0.0.0.0`
+> — GitHub runner IPs rotate and can't be allowlisted; the bearer token is the protection.
 
 ---
 
