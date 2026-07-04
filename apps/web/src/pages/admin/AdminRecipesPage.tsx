@@ -15,6 +15,7 @@ interface Recipe {
   createdAt: string;
 }
 
+/** Admin page: recipe list with per-recipe visibility change and delete. */
 export function AdminRecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);

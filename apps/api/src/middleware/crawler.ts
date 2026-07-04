@@ -13,6 +13,12 @@ const RECIPE_PATH_RE = /^\/recipes\/([a-z0-9][\w-]*)$/i;
 
 export const deps = { getRecipeMeta };
 
+/**
+ * Serve a pre-rendered HTML page with Open Graph/Twitter meta tags when a known
+ * social/search crawler requests a public recipe URL. Falls through to `next()`
+ * for non-crawler UAs, non-recipe paths, non-public recipes, or on lookup errors.
+ * Responses are cacheable for 5 minutes with `Vary: User-Agent`.
+ */
 export async function crawlerMiddleware(c: Context, next: Next) {
   const ua = c.req.header('user-agent') ?? '';
   if (!CRAWLER_UA.test(ua)) return next();

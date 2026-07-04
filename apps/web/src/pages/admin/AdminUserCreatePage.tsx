@@ -6,6 +6,7 @@ import { AdminCreateUserSchema } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminUserCreatePage');
 
+/** Admin page: create-user form validated with `AdminCreateUserSchema`; redirects to the user list on success. */
 export function AdminUserCreatePage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({

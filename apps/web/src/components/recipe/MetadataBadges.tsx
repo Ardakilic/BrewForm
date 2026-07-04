@@ -23,6 +23,11 @@ const VISIBILITY_DOT_COLORS: Record<string, string> = {
   draft: '#a8a29e', // gray
 };
 
+/**
+ * Badge row for a recipe header: author link, colour-dotted visibility
+ * badge (dashed for drafts), brew method, and a version badge that
+ * opens version history when prior versions exist.
+ */
 export function MetadataBadges({
   author,
   visibility,

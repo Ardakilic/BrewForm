@@ -1,5 +1,11 @@
 # F16 — Automated Badge Criteria Expansion
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - Badge enum/rules are now single-sourced from `BADGE_RULES` in packages/shared/src/constants/badges.ts (D07) — add new rules there; do NOT hand-edit the pgEnum.
+> - Stale line references: badgeRuleEnum is at schema.ts:51, badges seed near :671, evaluateBadges checks in badge model.ts ~:116-126.
+> - Accurate: there are currently exactly 10 badge rules.
+
 ## Overview
 
 Expand the existing badge system with social badges (first follow, follower milestones), equipment badges, taste badges, and community badges. Extends the existing `badgeRuleEnum` and badge evaluation logic — no new tables.

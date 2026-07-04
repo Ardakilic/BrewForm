@@ -1,5 +1,6 @@
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 
+/** Static terms-of-service page. */
 export function TermsPage() {
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>

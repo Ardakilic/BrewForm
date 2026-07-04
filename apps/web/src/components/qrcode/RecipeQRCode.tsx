@@ -5,6 +5,10 @@ interface Props {
   visibility: string;
 }
 
+/**
+ * QR-code card with preview image and SVG download button for a recipe's
+ * share URL. Hidden for private/draft recipes.
+ */
 export function RecipeQRCode({ slug, visibility }: Props) {
   const [loading, setLoading] = useState(false);
 

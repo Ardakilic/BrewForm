@@ -4,6 +4,11 @@ import { createLogger } from '@/utils/logger.ts';
 
 const logger = createLogger('favourite');
 
+/**
+ * Action toggling the favourite state of recipe `:id` via
+ * `recipeApi.favourite`. Returns `{ ok: true }` or `{ ok: false, error }`
+ * so `FavouriteButton` can settle its optimistic UI.
+ */
 export const favouriteAction = async ({ params }: ActionFunctionArgs) => {
   const id = params.id;
   if (typeof id !== 'string' || id.length === 0) {

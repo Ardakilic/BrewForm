@@ -1,5 +1,6 @@
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 
+/** Static privacy-policy page. */
 export function PrivacyPage() {
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>

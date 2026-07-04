@@ -1,7 +1,9 @@
 # D24 — Add Request Body Size Limit at Hono Level
 
+> **Status (2026-07-04): ✅ Done** — `middleware/bodyLimit.ts` exists and is wired in `main.ts:70`.
+
 **Severity:** Low  
-**Status:** Open  
+**Status:** Implemented  
 **File:** `apps/api/src/main.ts`
 
 ---

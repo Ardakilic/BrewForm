@@ -1,5 +1,11 @@
 # F25 — Offline Support / PWA
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - PWA shell (manifest, service worker, vite plugin) is valid and purely additive — can ship independently.
+> - Offline brew-log sync POSTs `/api/v1/brew-logs`, which does not exist — blocked on F02 (and related F20); ship the PWA shell without it or sequence after F02.
+> - sw.js contains TypeScript syntax in a raw .js file — strip the types or compile the worker.
+
 ## Overview
 
 Add Progressive Web App capabilities with service worker caching for recipe pages, offline brew logging with sync, and a web manifest for "Add to Home Screen" functionality.

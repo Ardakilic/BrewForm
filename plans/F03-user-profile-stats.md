@@ -1,5 +1,12 @@
 # F03 — Public Profile Brew Stats Dashboard
 
+> **Validation status (2026-07-04): ✅ Valid (blocked by F02)**
+>
+> - Blocked: all stats derive from `brewLogs`, which does not exist until F02 lands.
+> - Contract inconsistency to fix: `averageRatingGiven` is typed `number | null` (plan line ~51) but the model section returns `{ average, total }` (plan lines ~148–151) — reconcile API contract and model.
+> - Gap: behaviour for brew logs with a null `recipeVersionId` is unspecified — define before implementation.
+> - Verified accurate: profile tab type `'recipes' | 'badges' | 'followers' | 'following'` (apps/web/src/pages/UserProfilePage.tsx:34, ALLOWED_TABS at :92).
+
 ## Overview
 
 Add a public stats dashboard to user profiles showing: most-used brew methods, average ratings given, favourite equipment, and brewing frequency over time. All data is derived from existing tables (brew_log, userRecipeLikes, userRecipeRatings, recipeVersion, recipeEquipment) — no new tables required.

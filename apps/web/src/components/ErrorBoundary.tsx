@@ -3,6 +3,11 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('ErrorBoundary');
 
+/**
+ * Router-level error boundary: logs the caught error and renders a
+ * full-page fallback (status-aware for route error responses, stack
+ * trace in dev) with home/reload actions.
+ */
 export function RootErrorBoundary() {
   const error = useRouteError();
 

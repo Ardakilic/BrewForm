@@ -1,13 +1,15 @@
 # Feature Suggestions — BrewForm
 
-> Based on comprehensive codebase analysis of API (18 modules), Web (28+ pages), Database (22 tables), and shared packages.
+> Based on comprehensive codebase analysis of API (18 modules), Web (28+ pages), Database (28 tables), and shared packages.
+>
+> **Validation pass (2026-07-04)**: every linked F-plan now carries a validation block under its title. See the Status column in the Priority Matrix below.
 
 ---
 
 ## 1. User Experience & Social Features
 
 ### 1.1 Recipe Collections / Playlists
-- **Current state**: Users can only favourite individual recipes.
+- **Current state**: Users can like AND favourite individual recipes (`userRecipeLikes` + `userRecipeFavourites`), but there is no way to group them.
 - **Suggestion**: Allow users to create named collections (e.g., "Morning Pour-overs", "Espresso Experiments") that group multiple recipes. Collections can be public or private.
 - **Why**: Improves recipe discovery and personal organisation. Common feature in recipe platforms.
 - **PRD**: [`plans/F01-recipe-collections.md`](plans/F01-recipe-collections.md)
@@ -34,11 +36,13 @@
 - **Current state**: Equipment is a static catalog with no user feedback.
 - **Suggestion**: Allow users to rate equipment (1-10) and add short reviews. Aggregate into equipment detail pages.
 - **Why**: Equipment recommendations are a top need for coffee enthusiasts. Data exists in `recipe_equipment` to derive usage stats.
+- **PRD**: [`plans/F27-equipment-reviews.md`](plans/F27-equipment-reviews.md)
 
 ### 1.6 Brew Method Tutorials / Guided Brews
 - **Current state**: Equipment compatibility rules exist but aren't surfaced to users.
 - **Suggestion**: Interactive step-by-step brew guides per method, integrating equipment compatibility rules. Could show recommended equipment, step timings, and water temperature curves.
 - **Why**: Onboarding new users and improving brew quality.
+- **PRD**: [`plans/F28-guided-brew-mode.md`](plans/F28-guided-brew-mode.md)
 
 ---
 
@@ -79,9 +83,9 @@
 ## 3. Discovery & Search
 
 ### 3.1 Advanced Search with Faceted Filters
-- **Current state**: Recipe list supports filtering by brew method, drink type, equipment, taste notes, coffee variety, and search text. Pagination is offset-based.
-- **Suggestion**: Add full-text search with ranking (PostgreSQL `tsvector`), filter by author, date range, rating range, and equipment compatibility. Switch to cursor-based pagination for performance at scale.
-- **Why**: Offset pagination degrades at scale; faceted search improves discovery.
+- **Current state**: Recipe list supports filtering by brew method, drink type, equipment, taste notes, coffee variety, and search text. Cursor pagination has shipped for the recipe list and follow feed (D27); offset pagination remains for other endpoints.
+- **Suggestion**: Add full-text search with ranking (PostgreSQL `tsvector`), filter by author, date range, rating range, and equipment compatibility, building on the shipped D27 cursor pagination.
+- **Why**: Faceted search and ranked full-text search improve discovery.
 - **PRD**: [`plans/F11-advanced-search.md`](plans/F11-advanced-search.md)
 
 ### 3.2 "Similar Recipes" Recommendations
@@ -216,24 +220,40 @@
 
 ---
 
+## 9. Newly proposed (2026-07-04)
+
+| Plan | Feature | Notes |
+|------|---------|-------|
+| [`plans/F27-equipment-reviews.md`](plans/F27-equipment-reviews.md) | Equipment reviews & ratings | Promotes existing §1.5 to a full PRD |
+| [`plans/F28-guided-brew-mode.md`](plans/F28-guided-brew-mode.md) | Guided brew mode / interactive step timer | Promotes §1.6 to a full PRD |
+| [`plans/F29-weekly-email-digest.md`](plans/F29-weekly-email-digest.md) | Weekly personalized email digest | New proposal |
+| [`plans/F30-bean-freshness-tracking.md`](plans/F30-bean-freshness-tracking.md) | Bean roast-date freshness tracking & alerts | New proposal |
+| [`plans/F31-recipe-embed-widgets.md`](plans/F31-recipe-embed-widgets.md) | Embeddable recipe widgets / oEmbed | New proposal |
+
+---
+
 ## Priority Matrix
 
-| Priority | Feature | Effort | Impact |
-|----------|---------|--------|--------|
-| **P0** | @Mention notifications | Low | High |
-| **P0** | Recipe version diff view | Medium | High |
-| **P0** | Fix broken fork navigation | Trivial | High |
-| **P1** | In-app notification center | High | High |
-| **P1** | Recipe collections/playlists | Medium | High |
-| **P1** | Advanced search with faceted filters | Medium | High |
-| **P1** | Image optimisation pipeline | Medium | Medium |
-| **P2** | Brew "again" / replicate workflow | Medium | Medium |
-| **P2** | Recipe templates | Low | Medium |
-| **P2** | Batch/scale calculator | Low | Medium |
-| **P2** | Similar recipes recommendations | Medium | Medium |
-| **P2** | Equipment reviews/ratings | Medium | Medium |
-| **P3** | Brew method landing pages | Medium | Low |
-| **P3** | Recipe export/import | Medium | Medium |
-| **P3** | Admin analytics improvements | Medium | Low |
-| **P3** | Offline support / PWA | High | Medium |
-| **P3** | Public API | High | Medium |
+Status reflects each linked F-plan's validation verdict as of 2026-07-04 (see the validation block at the top of each plan).
+
+| Priority | Feature | Effort | Impact | Status |
+|----------|---------|--------|--------|--------|
+| **P0** | @Mention notifications (F04) | Low | High | ✅ Valid (land before F05) |
+| **P0** | Recipe version diff view (F09) | Medium | High | ✅ Valid (depends on F08 DiffHighlighter) |
+| **P0** | Fix broken fork navigation (D04) | Trivial | High | ✅ Shipped (PR #61) |
+| **P1** | In-app notification center (F05) | High | High | ✅ Valid (depends on F04) |
+| **P1** | Recipe collections/playlists (F01) | Medium | High | ✅ Valid |
+| **P1** | Advanced search with faceted filters (F11) | Medium | High | ⚠️ Outdated — rebase on shipped D27 cursor pagination |
+| **P1** | Image optimisation pipeline (F23) | Medium | Medium | 🔧 Rough — needs design decisions |
+| **P2** | Brew "again" / replicate workflow (F02) | Medium | Medium | ✅ Valid |
+| **P2** | Recipe templates (F06) | Low | Medium | ⚠️ Outdated — corrections in plan |
+| **P2** | Batch/scale calculator (F07) | Low | Medium | ✅ Valid |
+| **P2** | Similar recipes recommendations (F12) | Medium | Medium | ⚠️ Outdated — corrections in plan |
+| **P2** | Equipment reviews/ratings (F27) | Medium | Medium | 📝 Newly proposed (2026-07-04) |
+| **P3** | Brew method landing pages (F14) | Medium | Low | ⚠️ Outdated — corrections in plan |
+| **P3** | Recipe export/import (F10) | Medium | Medium | ⚠️ Outdated — corrections in plan |
+| **P3** | Admin analytics improvements (F17) | Medium | Low | ⚠️ Outdated — corrections in plan |
+| **P3** | Offline support / PWA (F25) | High | Medium | ⚠️ Outdated — PWA shell valid; brew-log sync blocked on F02 |
+| **P3** | Public API (F21) | High | Medium | ✅ Valid |
+
+Not in the matrix but validated: F03 ✅ Valid (blocked by F02), F08 ✅ Valid, F13 ⚠️ Outdated, F15 ⚠️ Outdated, F16 ⚠️ Outdated, F18 ⚠️ Outdated, F19 ✅ Valid (minor client-call fixes), F20 ❌ Invalid — blocked on F02, F22 🔧 Rough, F24 ✅ Valid, F26 ❌ Invalid.

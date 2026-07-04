@@ -16,6 +16,7 @@ interface Bean {
   createdAt: string;
 }
 
+/** The user's saved beans: list plus inline create/delete form. */
 export function BeanListPage() {
   const [beans, setBeans] = useState<Bean[]>([]);
   const [loading, setLoading] = useState(true);

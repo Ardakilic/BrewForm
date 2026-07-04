@@ -1,5 +1,11 @@
 # F19 — Coffee Bean Database Import
 
+> **Validation status (2026-07-04): ✅ Valid (minor client-call fixes)**
+>
+> - Backend matches the existing `beans` table + bean model exactly.
+> - Fix axios-style client calls — the web API client is a custom fetch wrapper (apps/web/src/api/client.ts); for the multipart upload, do not hand-set the Content-Type boundary.
+> - Caveat: the proposed CSV parser is naive (no quoted-field handling).
+
 ## Overview
 
 Integrate with external coffee bean databases for auto-population of bean metadata. Users can search external sources, preview results, and import bean data directly into their BrewForm bean collection. First implementation uses CSV import; real API integration deferred.

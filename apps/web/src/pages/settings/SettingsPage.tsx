@@ -23,11 +23,17 @@ interface Preferences {
 
 const log = createLogger('SettingsPage');
 
+/** Fetches the current user's stored preferences; returns `{ preferences }`. */
 export const loader = async () => {
   const preferences = await api.get<Preferences>('/preferences');
   return { preferences };
 };
 
+/**
+ * Account settings page: read-only profile info, theme/locale pickers,
+ * unit/timezone/date-format and email-notification preferences saved via
+ * PATCH `/preferences`, plus account deletion.
+ */
 export function SettingsPage() {
   const { user, refreshUser, logout } = useAuth();
   const { theme, setTheme } = useTheme();

@@ -30,6 +30,7 @@ const FollowUserProfileSchema = z.object({
   bio: z.string().nullable(),
 });
 
+/** Validates a follower list item (`userFollows` row plus inner-joined `follower` profile); response envelope for the followers list. */
 export const FollowerListItemOutputSchema = z.object({
   id: z.string(),
   followerId: z.string(),
@@ -40,6 +41,7 @@ export const FollowerListItemOutputSchema = z.object({
 
 export type FollowerListItemOutput = z.infer<typeof FollowerListItemOutputSchema>;
 
+/** Validates a following list item (`userFollows` row plus inner-joined `following` profile); response envelope for the following list. */
 export const FollowingListItemOutputSchema = z.object({
   id: z.string(),
   followerId: z.string(),

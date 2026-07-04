@@ -6,6 +6,10 @@ import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 
+/**
+ * Login form (email/password with remember-me) driven by the auth
+ * context; navigates home on success and surfaces API errors inline.
+ */
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();

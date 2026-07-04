@@ -20,6 +20,7 @@ const AdditionalPreparationSchema = z.object({
   preparationType: z.string().min(1).max(100),
 });
 
+/** Base recipe payload object (no cross-field refinements); building block for RecipeCreateSchema and RecipeUpdateSchema. */
 export const RecipeCreateObjectSchema = z.object({
   title: z.string().min(1).max(200),
   visibility: VisibilityEnum.default('draft'),
@@ -57,6 +58,10 @@ export const RecipeCreateObjectSchema = z.object({
   tasteNoteIntensities: z.record(z.uuid(), z.number().int().min(1).max(3)).optional(),
 });
 
+/**
+ * Validates recipe-creation payloads, adding cross-field refinements (date ordering, pre-infusion vs extraction time).
+ * Used by POST /api/v1/recipes.
+ */
 export const RecipeCreateSchema = RecipeCreateObjectSchema
   .refine(
     (data) => {
@@ -110,10 +115,18 @@ export const RecipeCreateSchema = RecipeCreateObjectSchema
     },
   );
 
+/**
+ * Validates partial recipe-update payloads plus the bumpVersion flag.
+ * Used by PATCH /api/v1/recipes/:id.
+ */
 export const RecipeUpdateSchema = RecipeCreateObjectSchema.partial().extend({
   bumpVersion: z.boolean().default(false),
 });
 
+/**
+ * Validates recipe list/feed query params (filters, search, pagination, cursor, sorting).
+ * Used by GET /api/v1/recipes and GET /api/v1/recipes/starred.
+ */
 export const RecipeFilterSchema = z.object({
   brewMethod: BrewMethodEnum.optional(),
   drinkType: DrinkTypeEnum.optional(),

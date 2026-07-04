@@ -17,6 +17,10 @@ export interface CacheProvider {
   deleteByPrefix(prefix: string[]): Promise<void>;
 }
 
+/**
+ * CacheProvider backed by Deno KV. TTLs are enforced natively via KV's
+ * `expireIn`; prefix deletion iterates and deletes matching entries one by one.
+ */
 export class DenoKVCacheProvider implements CacheProvider {
   private kv: Deno.Kv;
 
@@ -45,6 +49,10 @@ export class DenoKVCacheProvider implements CacheProvider {
   }
 }
 
+/**
+ * Process-local CacheProvider backed by a Map. Used in tests and when the
+ * 'memory' driver is configured. Expired entries are evicted lazily on read.
+ */
 export class InMemoryCacheProvider implements CacheProvider {
   private store = new Map<string, { value: unknown; expiresAt: number | null }>();
 
@@ -81,6 +89,10 @@ export class InMemoryCacheProvider implements CacheProvider {
   }
 }
 
+/**
+ * Factory selecting a CacheProvider by driver name ('deno-kv' or 'memory').
+ * Throws if the driver is unknown or 'deno-kv' is requested without a Kv instance.
+ */
 export function createCacheProvider(driver: string, kv?: Deno.Kv): CacheProvider {
   switch (driver) {
     case 'deno-kv':

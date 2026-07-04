@@ -79,6 +79,8 @@ export async function verifyJwt(token: string): Promise<JwtPayload> {
   return payload as unknown as JwtPayload;
 }
 
+/** Whether a refresh token was issued with a longer-than-standard lifetime
+ *  (i.e. via "remember me"), by comparing exp - iat against JWT_REFRESH_EXPIRY. */
 export function isLongLivedRefreshToken(payload: RefreshPayload): boolean {
   const originalLifetime = payload.exp - payload.iat;
   const standardLifetime = parseExpiry(REFRESH_EXPIRY);

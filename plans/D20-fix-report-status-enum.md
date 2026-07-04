@@ -1,7 +1,9 @@
 # D20 — Fix `report.status` to Use pgEnum Instead of varchar
 
+> **Status (2026-07-04): ✅ Done** — `reportStatusEnum` pgEnum at `schema.ts:60`, column at :810; `constants/report-status.ts` SSoT; `schemas/report.ts:5` uses `z.enum(REPORT_STATUS_VALUES)`.
+
 **Severity:** Low
-**Status:** Open (plan corrected after live-code validation)
+**Status:** Implemented (plan corrected after live-code validation)
 **File:** `packages/db/src/schema.ts:670` *(was incorrectly listed as line 749)*
 
 ---

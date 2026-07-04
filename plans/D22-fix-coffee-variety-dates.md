@@ -1,7 +1,9 @@
 # D22 — Fix `CoffeeVariety` Type Date Fields
 
+> **Status (2026-07-04): ✅ Done** — `coffee-variety.ts:80/82/84` date fields are `Date`/`Date`/`Date | null`.
+
 **Severity:** Low  
-**Status:** Open  
+**Status:** Implemented  
 **File:** `packages/shared/src/types/coffee-variety.ts:43-45`
 
 ---

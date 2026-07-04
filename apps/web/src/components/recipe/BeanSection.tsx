@@ -63,6 +63,11 @@ function isPeakWindow(roastDate: Date, brewDate: Date): boolean {
   return days >= 7 && days <= 21;
 }
 
+/**
+ * Bean details card: product/brand/processing, origin/roaster/roast level,
+ * and roast / package-open / grind dates with relative-day badges and a
+ * "peak window" hint (7–21 days post-roast). Renders nothing without bean data.
+ */
 export function BeanSection(props: BeanSectionProps) {
   const { t } = useTranslation();
   const {

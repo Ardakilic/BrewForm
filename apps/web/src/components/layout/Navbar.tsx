@@ -170,6 +170,11 @@ const NAV_ITEMS = [
 
 // --- Navbar ---
 
+/**
+ * Top navigation bar with auth-aware links, theme toggle, and a
+ * focus-trapped mobile hamburger menu. Hides the register link when
+ * registration is disabled server-side.
+ */
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, setTheme } = useTheme();

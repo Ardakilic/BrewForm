@@ -47,6 +47,7 @@ export function validateImageUpload(file: { type: string; size: number }): strin
   return null;
 }
 
+/** Generate a collision-resistant upload filename (`<timestamp>-<uuid8>.<ext>`), keeping the original extension. */
 export function generateFilename(originalName: string): string {
   const ext = originalName.split('.').pop() || 'jpg';
   const uniqueId = crypto.randomUUID().slice(0, 8);
@@ -54,6 +55,7 @@ export function generateFilename(originalName: string): string {
   return `${timestamp}-${uniqueId}.${ext}`;
 }
 
+/** Derive a thumbnail filename from the original by appending `_<size>` before the extension. */
 export function generateThumbnailFilename(
   originalFilename: string,
   size: string = 'medium',
@@ -63,6 +65,10 @@ export function generateThumbnailFilename(
   return `${baseName}_${size}.${ext}`;
 }
 
+/**
+ * Build the public URL for a stored file: `/uploads/<name>` for the local
+ * driver, otherwise `<S3_PUBLIC_URL>/<name>`.
+ */
 export function getPublicUrl(filename: string): string {
   if (config.STORAGE_DRIVER === 'local') {
     return `/uploads/${filename}`;
@@ -70,10 +76,15 @@ export function getPublicUrl(filename: string): string {
   return `${config.S3_PUBLIC_URL}/${filename}`;
 }
 
+/**
+ * Persist raw file bytes via the module-level storage driver (chosen from
+ * config at load time) and return the file's public URL or path.
+ */
 export async function saveUploadedFile(data: Uint8Array, filename: string): Promise<string> {
   return driver.save(data, filename);
 }
 
+/** Return a shallow copy of the preset thumbnail size definitions (small/medium/large). */
 export function getThumbnailSizes(): Record<string, ThumbnailOptions> {
   return { ...THUMBNAIL_SIZES };
 }

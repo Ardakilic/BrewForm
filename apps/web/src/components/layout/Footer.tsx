@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { LanguageSelector } from './LanguageSelector.tsx';
 
+/** Site footer with branding, explore/legal link columns, and the language selector. */
 export function Footer() {
   const { locale, setLocale, t, availableLocales } = useTranslation();
 

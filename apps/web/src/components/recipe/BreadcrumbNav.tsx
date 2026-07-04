@@ -21,6 +21,10 @@ function truncateTitle(title: string): string {
   return title.slice(0, 37) + '…';
 }
 
+/**
+ * Breadcrumb trail for recipe pages: Recipes → brew method (as filter
+ * link) → truncated recipe title.
+ */
 export function BreadcrumbNav({ brewMethod, recipeTitle }: BreadcrumbNavProps) {
   const displayTitle = truncateTitle(recipeTitle);
 

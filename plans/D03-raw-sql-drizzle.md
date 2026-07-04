@@ -1,5 +1,7 @@
 # D03: Raw SQL in Equipment Model
 
+> **Status (2026-07-04): ❌ Not started** — raw SQL persists in `apps/api/src/modules/equipment/model.ts` `getRecipesUsingEquipment` (`IN (SELECT re.recipe_version_id FROM recipe_equipment ...)`, lines 103–107). When fixing, also fold the count branch's duplicated visibility/deletedAt predicates (~line 111) into one shared condition set.
+
 **Severity:** Critical — Security & Maintainability  
 **Date:** 2026-05-29  
 **Status:** Proposed  

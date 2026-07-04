@@ -6,6 +6,10 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const log = createLogger('ResetPasswordPage');
 
+/**
+ * Password-reset form using the `?token=` from the email link; shows a
+ * success state with a login link once the password is changed.
+ */
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';

@@ -13,6 +13,7 @@ interface EquipmentItem {
 
 const log = createLogger('AdminEquipmentPage');
 
+/** Admin page: equipment CRUD with inline form; invalidates the static cache on changes. */
 export function AdminEquipmentPage() {
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [loading, setLoading] = useState(true);

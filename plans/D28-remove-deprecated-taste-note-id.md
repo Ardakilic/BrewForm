@@ -1,5 +1,7 @@
 # D28 — Remove Deprecated tasteNoteId (Singular) Query Parameter
 
+> **Status (2026-07-04): ✅ Done** — `Deprecation` header at `index.ts:81/122/191/231`; `deprecations` flag at `service.ts:442`; test present.
+
 ## Severity
 
 **Low** (no behaviour change; the field still works and continues to filter as before)

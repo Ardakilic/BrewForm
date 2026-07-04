@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for an espresso filter basket. */
 export function BasketIcon({ size = 24, className }: IconProps) {
   return (
     <svg

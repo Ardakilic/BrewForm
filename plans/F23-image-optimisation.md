@@ -1,5 +1,10 @@
 # F23 — Image Optimisation Pipeline
 
+> **Validation status (2026-07-04): 🔧 Rough — needs design decisions**
+>
+> - The image-processing library is "TBD" and all image operations are stubs returning the originals — the core value is unimplementable until a library (e.g. sharp-equivalent for the runtime) is chosen.
+> - Schema/API surface is fine (photos table indeed lacks a blurPlaceholder column, as the plan assumes).
+
 ## Overview
 
 Add WebP/AVIF conversion, responsive image sizes, and lazy loading with blur placeholders. Images uploaded to BrewForm are automatically processed into multiple sizes and formats for optimal delivery.

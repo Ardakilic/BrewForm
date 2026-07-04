@@ -16,6 +16,10 @@ interface EquipmentItem {
 
 const log = createLogger('EquipmentListPage');
 
+/**
+ * The user's equipment list with inline create/delete; changes
+ * invalidate the static cache so loaders re-fetch fresh data.
+ */
 export function EquipmentListPage() {
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [loading, setLoading] = useState(true);

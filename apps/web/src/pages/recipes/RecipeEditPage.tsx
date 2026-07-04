@@ -17,6 +17,11 @@ import type { RecipeDetailResponse } from '../../api/types.ts';
 
 const log = createLogger('RecipeEditPage');
 
+/**
+ * Recipe edit form pre-filled from the current version; saving can
+ * optionally bump a new version. Navigates back to the recipe on
+ * success.
+ */
 export function RecipeEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();

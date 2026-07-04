@@ -1,5 +1,13 @@
 # F12 — "Similar Recipes" Recommendations
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - No TanStack Query in the repo: replace `useQuery` with a react-router v8 loader + `useLoaderData` (or useEffect + `api.get`); the web API client is a custom fetch wrapper (apps/web/src/api/client.ts), not axios.
+> - `db.query ... with: { currentVersion }` will THROW — no `currentVersion` relation exists, only the `currentVersionId` column (schema.ts:119); join on `currentVersionId` or add the relation first.
+> - Wrong path: RecipeCard lives at apps/web/src/components/recipe-list/RecipeCard.tsx, not components/recipe/.
+> - `c.get('cache')` is valid (apps/api/src/types/hono.ts:15).
+> - Scaling caveat: the proposed approach loads all public recipes into memory.
+
 ## Overview
 
 Show similar recipes on recipe detail pages based on brew method match, taste note overlap, equipment overlap, and drink type match. Computed from existing data — no new tables required.

@@ -10,6 +10,11 @@ interface Props {
 
 const log = createLogger('FavouriteButton');
 
+/**
+ * Optimistic star/unstar toggle with count, submitted via fetcher form
+ * to `/recipes/:id/favourite`; the UI reflects pending form data until
+ * the action settles.
+ */
 export function FavouriteButton({ recipeId, initialFavourited, initialCount }: Props) {
   const fetcher = useFetcher();
   const optimisticFavourited = fetcher.formData

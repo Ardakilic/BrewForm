@@ -1,7 +1,9 @@
 # D25 — Complete OpenAPI Documentation for All Route Modules
 
+> **Status (2026-07-04): ✅ Done** — all 15 modules + share/sitemap have `describeRoute`; `schemas/responses/*` shipped; `openapi.coverage.test.ts` guards coverage.
+
 **Severity:** Low
-**Status:** Open (validated & expanded 2026-06-13)
+**Status:** Implemented (validated & expanded 2026-06-13)
 **Files:** `apps/api/src/modules/*/index.ts` (15 undocumented modules), `apps/api/src/routes/{share,sitemap,openapi}.ts`, `packages/shared/src/schemas/*` (new output schemas), docs.
 
 ---

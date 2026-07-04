@@ -4,6 +4,11 @@ import { createLogger } from '@/utils/logger.ts';
 
 const logger = createLogger('like');
 
+/**
+ * Action toggling the like state of recipe `:id` via `recipeApi.like`.
+ * Returns `{ ok: true }` or `{ ok: false, error }` so `LikeButton` can
+ * settle its optimistic UI.
+ */
 export const likeAction = async ({ params }: ActionFunctionArgs) => {
   const id = params.id;
   if (typeof id !== 'string' || id.length === 0) {

@@ -1,285 +1,260 @@
 # Technical Debt — BrewForm
 
-> Based on comprehensive codebase analysis. Issues categorised by severity and area.
+> Status ledger for technical-debt items. Issues categorised by severity and area.
+> Last full audit: **2026-07-04** (plan-by-plan verification against `main`). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
+
+**Currently open: D03, D34–D43.** Everything else below is resolved and kept for history.
 
 ---
 
 ## 1. Critical — Security & Correctness
 
 ### 1.1 Vendor Update Missing Ownership Check
-- **File**: `apps/api/src/modules/vendor/service.ts:36`
-- **Issue**: `updateVendor()` accepts `_userId: string` but never uses it. Any authenticated user can update any vendor's data.
-- **Fix**: Add ownership/admin check before mutation.
-- **Severity**: Security vulnerability — unauthorized data modification.
-- **PRD**: [`plans/D01-vendor-ownership-check.md`](plans/D01-vendor-ownership-check.md)
+- **Status: Resolved** (date unknown — no archive entry)
+- **Issue**: `updateVendor()` accepted `_userId` but never used it — any authenticated user could update any vendor.
+- **Verified fix**: `apps/api/src/modules/vendor/service.ts:68` now enforces `vendor.createdBy !== userId && !isAdmin`; `createdBy` column + relations exist in `packages/db/src/schema.ts:470`; admin service/model pass `createdBy` through.
+- **PRD**: [`plans/D01-vendor-ownership-check.md`](D01-vendor-ownership-check.md)
 
 ### 1.2 Duplicate Email Transporter (Connection Leak)
-- **Files**: `apps/api/src/modules/auth/email.ts:34`, `apps/api/src/utils/notify/index.ts`
-- **Issue**: Two separate email sending implementations. `auth/email.ts` creates a new `nodemailer.createTransport()` on every `sendEmail()` call, while `utils/notify/` uses a singleton. This leaks SMTP connections.
-- **Fix**: Consolidate to the singleton transporter in `utils/notify/index.ts`.
-- **Severity**: Resource leak — SMTP connections not pooled.
-- **PRD**: [`plans/D02-email-transporter-consolidation.md`](plans/D02-email-transporter-consolidation.md)
+- **Status: Resolved** (date unknown — no archive entry)
+- **Issue**: `auth/email.ts` created a new `nodemailer.createTransport()` per send, leaking SMTP connections.
+- **Verified fix**: `apps/api/src/modules/auth/email.ts:3-4` imports `getTransporter`/`appBaseUrl`/`escapeHtml`; the only remaining `createTransport` is the singleton in `apps/api/src/utils/notify/index.ts:39`.
+- **PRD**: [`plans/D02-email-transporter-consolidation.md`](D02-email-transporter-consolidation.md)
 
-### 1.3 Raw SQL in Equipment Model
-- **File**: `apps/api/src/modules/equipment/model.ts:103`
-- **Issue**: Raw SQL subquery `sql\`...IN (SELECT re.recipe_version_id FROM recipe_equipment re WHERE re.equipment_id = ${equipmentId})\`` violates the project's "no raw SQL" rule from AGENTS.md. Raw SQL bypasses Drizzle's type safety and escape protection.
-- **Fix**: Rewrite using Drizzle's query builder or `exists()` with a subquery.
-- **Severity**: Anti-pattern that undermines project conventions.
-- **PRD**: [`plans/D03-raw-sql-drizzle.md`](plans/D03-raw-sql-drizzle.md)
+### 1.3 Raw SQL in Equipment Model — **OPEN**
+- **Status: Open** (only surviving item from D01–D29)
+- **File**: `apps/api/src/modules/equipment/model.ts:88` (`getRecipesUsingEquipment`), raw subquery at `:103-107`
+- **Issue**: Raw SQL subquery `sql\`... IN (SELECT re.recipe_version_id FROM recipe_equipment re WHERE re.equipment_id = ...)\`` violates the project's "no raw SQL" rule (AGENTS.md), bypassing Drizzle's type safety.
+- **Incidental sub-finding (fold into the fix)**: the count branch at `model.ts:111` duplicates the visibility/`deletedAt` predicates of the list branch — share one condition set when rewriting.
+- **Fix**: Rewrite with Drizzle's query builder / `exists()` subquery; land D39 Tier 1 (`equipment/model.test.ts`) first as the regression net.
+- **PRD**: [`plans/D03-raw-sql-drizzle.md`](D03-raw-sql-drizzle.md)
 
 ### 1.4 Recipe Fork Button Navigates to Non-Existent Route
-- **File**: `apps/web/src/pages/recipes/RecipeDetailPage.tsx:209`, `apps/web/src/pages/recipes/RecipeEditPage.tsx:209`
-- **Issue**: `navigate(\`/recipes/${recipe.id}/fork\`)` — no `/recipes/:id/fork` route exists in the router. This will 404.
-- **Fix**: Either add the route or change to the fork API call + redirect pattern.
-- **Severity**: Broken feature — fork from detail page is non-functional.
-- **PRD**: [`plans/D04-fork-navigation-fix.md`](plans/D04-fork-navigation-fix.md)
+- **Status: Resolved** (2026-06-05)
+- **Verified fix**: `apps/web/src/router.tsx:121` registers `recipes/:id/fork`; `RecipeForkPage.tsx` exists.
+- **PRD**: [`plans/D04-fork-navigation-fix.md`](D04-fork-navigation-fix.md)
+
+### 1.5 Admin User Mutations Ignore Soft-Delete — **OPEN** (new 2026-07-04)
+- **File**: `apps/api/src/modules/admin/model.ts:98-115`
+- **Issue**: `banUser`, `unbanUser`, and `setUserAdminRole` update by `eq(users.id)` alone with no `isNull(users.deletedAt)` guard — soft-deleted users can be banned/unbanned and even **granted admin**, unlike `softDeleteUser` (`:198-204`) and the D19-fixed delete functions.
+- **Severity**: High — data integrity + latent privilege-escalation edge on account restore.
+- **PRD**: [`plans/D41-admin-user-mutation-guards.md`](D41-admin-user-mutation-guards.md)
+
+### 1.6 Security & Error-Handling Hardening Bundle — **OPEN** (new 2026-07-04)
+- **Issues**:
+  - `POST /api/v1/reports` (`apps/api/src/modules/report/index.ts:19`) has no per-user rate limit (contact form has 3/15min at `contact/index.ts:28-33`) — moderation-queue flooding vector.
+  - `apps/api/src/utils/sanitize.ts` (XSS control) has zero test coverage.
+  - `apps/web/src/contexts/AuthContext.tsx:50` — `refreshUser().catch(() => {})` silently swallows session-restore failures (survivor of D17).
+- **Severity**: High (bundle of P2 security/correctness items).
+- **PRD**: [`plans/D38-security-error-hardening.md`](D38-security-error-hardening.md)
 
 ---
 
 ## 2. High — Type Safety & Code Quality
 
 ### 2.1 Pervasive `any` Types in API Services
-- **Files**: `apps/api/src/modules/recipe/service.ts` (13+ occurrences), `recipe/index.ts` (9+), `vendor/service.ts` (2), `admin/service.ts` (3), `auth/service.ts` (2), `photo/service.ts` (1), `routes/sitemap.ts` (1)
-- **Issue**: Production code heavily uses `any`, undermining TypeScript's type safety. The recipe module alone has 20+ `any` casts.
-- **Fix**: Define proper types for service parameters, Drizzle query results, and Hono context variables.
-- **Severity**: Defeats the purpose of TypeScript; hides type errors at compile time.
-- **PRD**: [`plans/D05-eliminate-any-types.md`](plans/D05-eliminate-any-types.md)
+- **Status: Resolved** (date unknown — no archive entry)
+- **Verified fix**: `recipe/service.ts` and `recipe/index.ts` now have **zero** `any` (the ledger previously said "13+ occurrences"); `routes/sitemap.ts` typed. Residual `any` in modules D05 never covered is tracked as **D34** (§2.6).
+- **PRD**: [`plans/D05-eliminate-any-types.md`](D05-eliminate-any-types.md)
 
 ### 2.2 `DrinkType` Type Missing 4 Enum Values
-- **File**: `packages/shared/src/types/recipe.ts:26-37`
-- **Issue**: The `DrinkType` union type is missing `aeropress`, `drip_coffee`, `moka_pot`, and `siphon` which exist in the DB enum and Zod schema. TypeScript code using `DrinkType` won't type-check recipes with these methods.
-- **Fix**: Update the type to include all 15 values from the DB enum.
-- **Severity**: Type mismatch between DB, Zod, and TypeScript types.
-- **PRD**: [`plans/D06-fix-drink-type-enum.md`](plans/D06-fix-drink-type-enum.md)
+- **Status: Resolved** (2026-06-04)
+- **Verified fix**: `packages/shared/src/types/recipe.ts:25` — `DrinkType = DrinkTypeValue` (all 15 values, derived via D07's single source).
+- **PRD**: [`plans/D06-fix-drink-type-enum.md`](D06-fix-drink-type-enum.md)
 
 ### 2.3 Enum Duplication Across 3 Locations
-- **Files**: `packages/db/src/schema.ts`, `packages/shared/src/schemas/*.ts`, `packages/shared/src/types/*.ts`
-- **Issue**: Every enum (BrewMethod, DrinkType, EquipmentType, Visibility, etc.) is defined independently in DB schema, Zod schemas, and TypeScript types. Adding a new value requires updating 3+ files in sync.
-- **Fix**: Create a single source of truth (e.g., `packages/shared/src/constants/enums.ts`) and derive Zod schemas and TS types from it.
-- **Severity**: Maintenance burden; high risk of drift.
-- **PRD**: [`plans/D07-enum-single-source.md`](plans/D07-enum-single-source.md)
+- **Status: Resolved** (date unknown — no archive entry)
+- **Verified fix**: `packages/db/src/schema.ts:36` imports `*_VALUES` from `@brewform/shared/constants`; `enums.test.ts` locks parity.
+- **PRD**: [`plans/D07-enum-single-source.md`](D07-enum-single-source.md)
 
 ### 2.4 Duplicate `AuthUser` Interface Definition
-- **Files**: `apps/web/src/api/index.ts:136`, `apps/web/src/contexts/AuthContext.tsx:4`
-- **Issue**: `AuthUser` is defined differently in two locations with different field shapes.
-- **Fix**: Consolidate to a single definition in `@brewform/shared/types`.
-- **Severity**: Inconsistent user object across the frontend.
-- **PRD**: [`plans/D08-auth-user-consolidation.md`](plans/D08-auth-user-consolidation.md)
+- **Status: Resolved** (2026-06-05)
+- **Verified fix**: single `AuthUser` in `packages/shared/src/types/user.ts:94`; both web files import from shared.
+- **PRD**: [`plans/D08-auth-user-consolidation.md`](D08-auth-user-consolidation.md)
 
 ### 2.5 `deno-lint-ignore` Directives in Production Code
-- **Files**: `auth/service.ts`, `user/service.ts`, `admin/service.ts`, `coffee-variety/service.ts`, `coffee-variety/model.ts`, `photo/service.ts`, `RecipeFocusModePage.tsx`, `RecipeComparePage.tsx`, `EquipmentDetailPage.tsx`, `EquipmentCatalogPage.tsx`, `CoffeeVarietyDetailPage.tsx`, `CoffeeVarietiesPage.tsx`
-- **Issue**: 12+ files suppress lint rules (`no-explicit-any`, `require-await`) rather than fixing the underlying issues.
-- **Fix**: Address each suppression: add proper types, use `void` return types for fire-and-forget functions.
-- **Severity**: Masks code quality issues.
-- **PRD**: [`plans/D09-fix-lint-suppressions.md`](plans/D09-fix-lint-suppressions.md)
+- **Status: Resolved** (2026-06-05) — audit note: the original file list here was inaccurate (named web files that never carried directives), and D09 landed as audit-scoped: no enforced-rule suppressions remained in its baseline. Suppressions **outside** that baseline were found in the 2026-07 sweep and are tracked as **D35** (§2.7).
+- **PRD**: [`plans/D09-fix-lint-suppressions.md`](D09-fix-lint-suppressions.md)
+
+### 2.6 Residual `any` in Service/Model Layer — **OPEN** (new 2026-07-04)
+- **Files**: `preference/service.ts:26`, `preference/index.ts:85`, `bean/service.ts:34,47`, `setup/service.ts:38`, `taste/model.ts:50`, `recipe/model.ts:466,473`, `badge/model.ts:131`, `utils/notify/index.ts:75,170`, `equipment/service.ts:42` (all under `apps/api/src/`); stretch: library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`.
+- **Issue**: `data: any` payloads and untyped casts in modules D05 never covered — validated Zod types are dropped at the route → service boundary.
+- **PRD**: [`plans/D34-residual-any-elimination.md`](D34-residual-any-elimination.md)
+
+### 2.7 Untracked Lint Suppressions — **OPEN** (new 2026-07-04)
+- **Files**: file-level `deno-lint-ignore-file no-explicit-any require-await` in `packages/shared/src/schemas/compatibility.ts:1`, `schemas/report.ts:1`, `logger/index.ts:1`, `logger/types.ts:1`; `apps/api/src/utils/openapi/index.ts:1` (+ `as any` at `:28`); line-level `no-unused-vars` in `middleware/cors.ts:5`, `middleware/requestId.ts:12`.
+- **Issue**: file-wide suppressions disable rules for all future edits to those files; none were in D09's audited baseline.
+- **PRD**: [`plans/D35-untracked-lint-suppressions.md`](D35-untracked-lint-suppressions.md)
 
 ---
 
 ## 3. Medium — Architecture & Patterns
 
-### 3.1 No Data Fetching Cache Layer (Frontend) — RESOLVED
-- **Files**: All pages in `apps/web/src/pages/`
-- **Fix**: Adopted React Router 7 data loaders + `useFetcher` for server state management. This eliminates ~80% of `useEffect`+`useState` data-fetching patterns across the 6 highest-traffic pages and 4 mutation components. Remaining pages to be migrated in follow-up PRs.
-- **Severity**: Major DX and UX issue (now resolved for pilot scope).
-- **PRD**: [`plans/D10-tanstack-query-migration.md`](plans/D10-tanstack-query-migration.md)
+### 3.1 No Data Fetching Cache Layer (Frontend)
+- **Status: Resolved** (pilot scope; date unknown — no archive entry)
+- **Verified fix**: 6 pages export loaders, 4 components use `useFetcher`; `static-cache.ts`, `recipe-filters.ts`, and `routes/{like,favourite,rate,follow,comments}.ts` exist.
+- **Known remainder**: `RecipeFocusModePage.tsx` still fetches via `useEffect`+`useState` — the one page never migrated; absorb into future work on that page.
+- **PRD**: [`plans/D10-tanstack-query-migration.md`](D10-tanstack-query-migration.md)
 
-### 3.2 Recipe List Code Duplication (~90%)
-- **Files**: `apps/web/src/pages/recipes/RecipeListPage.tsx` (693 lines), `apps/web/src/pages/recipes/StarredRecipesPage.tsx` (540 lines)
-- **Issue**: These pages share ~90% identical code: filter sidebar, `FilterField`, `ActiveFilterBadge`, `RecipeCard`, equipment type labels, pagination logic. `StarredRecipesPage` also has inconsistent `EQUIPMENT_TYPE_LABELS` (includes `gooseneck_kettle`/`scale` but missing `espresso_machine`/`grinder`).
-- **Fix**: Extract shared components and hooks into a `recipe-list/` module. Use a single `RecipeListView` component with a `source` prop (`all` vs `starred`).
-- **Severity**: Maintenance burden; inconsistent filter options between pages.
-- **PRD**: [`plans/D11-recipe-list-deduplication.md`](plans/D11-recipe-list-deduplication.md)
+### 3.2 Recipe List Code Duplication
+- **Status: Resolved** (2026-06-07)
+- **Verified fix**: `apps/web/src/components/recipe-list/` (8 files, incl. `RecipeListView` with `source: 'all' | 'starred'`); the two pages are now ~70/80 lines (previously 693/540). Note: these components shipped **without tests** — covered by D39 Tier 1.
+- **PRD**: [`plans/D11-recipe-list-deduplication.md`](D11-recipe-list-deduplication.md)
 
 ### 3.3 Recipe Filter Logic Duplication (Model vs Service)
-- **Files**: `apps/api/src/modules/recipe/model.ts` (`findStarred` ~100 lines), `apps/api/src/modules/recipe/service.ts` (`listRecipes` ~120 lines)
-- **Issue**: The filter logic in `findStarred()` substantially duplicates `listRecipes()` — same brew method, drink type, equipment, taste note, coffee variety, and search filters.
-- **Fix**: Extract a shared `buildRecipeFilters()` function used by both methods.
-- **Severity**: DRY violation; filter changes require updating two locations.
-- **PRD**: [`plans/D12-recipe-filter-logic.md`](plans/D12-recipe-filter-logic.md)
+- **Status: Resolved** (2026-06-06)
+- **Verified fix**: `apps/api/src/modules/recipe/model.ts:89` — shared `buildRecipeFilters(): SQL[]` used by `listRecipesFiltered` (`:219`) and `findStarred` (`:1040`).
+- **PRD**: [`plans/D12-recipe-filter-logic.md`](D12-recipe-filter-logic.md)
 
-### 3.4 Admin Coffee Variety Soft-Delete Inconsistency
-- **File**: `apps/api/src/modules/admin/model.ts:601-606`
-- **Issue**: `deleteCoffeeVariety()` soft-deletes without checking `isNull(deletedAt)` in the WHERE clause, unlike every other soft-delete implementation. This means it could update an already-deleted record.
-- **Fix**: Add `isNull(table.deletedAt)` to the WHERE clause.
-- **Severity**: Data integrity issue — double-deletion possible.
-- **PRD**: [`plans/D19-admin-soft-delete-fix.md`](plans/D19-admin-soft-delete-fix.md)
+### 3.4 Admin Soft-Delete Inconsistency
+- **Status: Resolved** (2026-06-09) — with wider scope than originally ledgered (the old `:601-606` ref was stale).
+- **Verified fix**: `isNull(deletedAt)` guards in `apps/api/src/modules/admin/model.ts` at `deleteEquipment:296`, `deleteVendor:339`, `deleteCoffeeVariety:608`, and the approve-request inner delete `:671`; double-delete idempotency locked in `admin/model.test.ts`.
+- **Follow-up**: the same guard is still missing on the admin **user-state** mutations — see §1.5 / **D41**.
+- **PRD**: [`plans/D19-admin-soft-delete-fix.md`](D19-admin-soft-delete-fix.md)
 
 ### 3.5 Module-Level Cache Without Invalidation
-- **Files**: `apps/web/src/pages/recipes/RecipeListPage.tsx:93-94`, `apps/web/src/pages/recipes/StarredRecipesPage.tsx:67-68`
-- **Issue**: `cachedEquipment` and `cachedTasteNotes` are module-level variables that survive re-renders but reset on page reload. If a user adds equipment in one tab, the cached data in another tab becomes stale.
-- **Fix**: Move to React Query or add a cache invalidation mechanism.
-- **Severity**: Stale UI data.
-- **PRD**: [`plans/D13-fix-module-cache.md`](plans/D13-fix-module-cache.md)
+- **Status: Resolved** (2026-06-07)
+- **Verified fix**: `invalidateStaticCache()` wired in `EquipmentListPage`/`AdminEquipmentPage`/`AdminTasteNotesPage`; `hooks/useStaticCacheSync.ts` handles cross-tab invalidation. (Old refs to `RecipeListPage.tsx:93-94` predate the D11 refactor.)
+- **PRD**: [`plans/D13-fix-module-cache.md`](D13-fix-module-cache.md)
 
 ### 3.6 `useUnitSystem` Hook is Not Reactive
-- **File**: `apps/web/src/hooks/useUnitSystem.ts`
-- **Issue**: Reads `brewform-preferences` from localStorage on every render call but has no state subscription. Changing unit preference in Settings won't update recipe detail pages until a full page reload.
-- **Fix**: Subscribe to preference changes via context or a custom event.
-- **Severity**: Stale unit display.
-- **PRD**: [`plans/D14-fix-use-unit-system.md`](plans/D14-fix-use-unit-system.md)
+- **Status: Resolved** (2026-06-08)
+- **Verified fix**: `apps/web/src/hooks/useUnitSystem.ts:18` now reads `user?.preferences?.unitSystem` via `useAuth()` — reactive through context. (The old ledger text blamed localStorage reads; the shipped fix moved the source of truth to auth context.)
+- **PRD**: [`plans/D14-fix-use-unit-system.md`](D14-fix-use-unit-system.md)
 
-### 3.7 Comment Section Pagination Broken
-- **File**: `apps/web/src/components/recipe/CommentSection.tsx:108`
-- **Issue**: Fetches `?page=${page}` but always sets `setTotal(data.length)` (current page count, not total). The "Load More" check `total > comments.length` will almost never be true.
-- **Fix**: Use the `meta.pagination.total` from the API response envelope.
-- **Severity**: Pagination is effectively broken.
-- **PRD**: [`plans/D15-fix-comment-pagination.md`](plans/D15-fix-comment-pagination.md)
-- **Status**: Resolved in pilot scope (D10 follow-up; remaining scope: ensure all callers use meta.pagination.total not data.length)
+### 3.7 Comment Section Pagination
+- **Status: Resolved** (2026-06-08)
+- **Verified fix**: `apps/web/src/routes/comments.ts:25` (`listCommentsLoader`) registered in `router.tsx:233` with loader + action. (Audit note: the originally claimed root cause `setTotal(data.length)` was shown by the D15 plan itself to not exist; the real fix was the loader migration.)
+- **PRD**: [`plans/D15-fix-comment-pagination.md`](D15-fix-comment-pagination.md)
 
 ### 3.8 Settings Page — Account Deletion Doesn't Logout
-- **File**: `apps/web/src/pages/settings/SettingsPage.tsx:57-63`
-- **Issue**: After successful account deletion, the page never calls `logout()` or navigates away. The user remains "logged in" with stale auth state.
-- **Fix**: Call `logout()` and redirect to home after successful deletion.
-- **Severity**: Broken user flow.
-- **PRD**: [`plans/D16-fix-account-deletion.md`](plans/D16-fix-account-deletion.md)
+- **Status: Resolved** (2026-06-08)
+- **Verified fix**: `apps/web/src/pages/settings/SettingsPage.tsx:105-109` calls `logout()` + `navigate('/')` after deletion (old `:57-63` ref stale; flow now at `:99-110`); en/tr i18n keys added.
+- **PRD**: [`plans/D16-fix-account-deletion.md`](D16-fix-account-deletion.md)
 
 ### 3.9 Recipe Service Layer Imports `drizzle-orm` Directly
-- **File**: `apps/api/src/modules/recipe/service.ts:16-24, 202-284`
-- **Issue**: `service.ts:createRecipe` imports `eq` from `drizzle-orm` and runs an inline `db.transaction` over six schema tables (`recipes`, `recipeVersions`, `recipeTasteNotes`, `recipeEquipment`, `recipeAdditionalPreparations`, `recipeVersionPhotos`). This violates the project's layering rule (AGENTS.md) that services must not import from `drizzle-orm` directly. The file-level docstring's "except for the compatibility validation helper" exception is outdated — that helper is pure and does not touch Drizzle. Other recipe operations (`forkRecipe`, `createVersion`, `update`, `toggleLike`) already follow the correct pattern of delegating to model helpers.
-- **Fix**: Move the entire `createRecipe` transaction body into a new `model.createRecipeWithRelations(input)` helper in `model.ts` (alongside the analogous `forkRecipe` helper), then replace the inline transaction in the service with a single model call. Remove the now-unused `drizzle-orm`, schema table, and `db` imports from `service.ts`. Update the file-level docstring.
-- **Severity**: Layering violation; reduced encapsulation; no runtime bug.
-- **PRD**: [`plans/D29-recipe-service-drizzle-orm-import.md`](plans/D29-recipe-service-drizzle-orm-import.md)
+- **Status: Resolved** (date unknown — no archive entry)
+- **Verified fix**: `apps/api/src/modules/recipe/service.ts` has zero `drizzle-orm` imports; transaction moved to `model.createRecipeWithRelations` (`model.ts:550`).
+- **PRD**: [`plans/D29-recipe-service-drizzle-orm-import.md`](D29-recipe-service-drizzle-orm-import.md)
 
 ---
 
 ## 4. Medium — Frontend Code Quality
 
-### 4.1 Duplicate Component Definitions
-- **Files**: Multiple locations
-- **Issue**: `RecipeCard` is duplicated in `HomePage`, `RecipeListPage`, `StarredRecipesPage`, and admin pages (each with slightly different structure). `Section`/`Field` helpers are duplicated between `RecipeCreatePage` and `RecipeEditPage`. Ban dialog is duplicated between `AdminUsersPage` and `AdminUserDetailPage`.
-- **Fix**: Extract `RecipeCard`, `Section`/`Field`, and `BanDialog` into shared components under `components/recipe/` and `components/admin/`.
-- **Severity**: Inconsistency and maintenance burden.
+### 4.1 Duplicate Component Definitions — **OPEN**
+- **Files**: `apps/web/src/pages/HomePage.tsx:94` (local `RecipeCard` duplicating `components/recipe-list/RecipeCard.tsx:14`); ban dialog + mutation duplicated across `AdminUsersPage.tsx` (`:26`, `~:341`) and `AdminUserDetailPage.tsx` (`:19`, `~:297`); `Section`/`Field` helpers at `RecipeCreatePage.tsx:535,545`.
+- **Audit correction**: `RecipeListPage`/`StarredRecipesPage` duplication was resolved by D11; `RecipeEditPage` no longer holds `Section`/`Field` copies — remaining scope is as listed above (plus optional `AdminRecipesPage.tsx:87` inline card).
+- **PRD**: [`plans/D36-extract-duplicated-ui.md`](D36-extract-duplicated-ui.md)
 
-### 4.2 Dead Code — Duplicate NotFoundPage Exports
-- **Files**: `apps/web/src/pages/NotFoundPage.tsx`, `apps/web/src/pages/ErrorPage.tsx`
-- **Issue**: `ErrorPage.tsx` exports `NotFoundPage`, `ServerErrorPage`, and `ForbiddenPage`, but the router imports from `NotFoundPage.tsx` only. The `ErrorPage.tsx` versions are dead code — never imported.
-- **Fix**: Remove duplicate exports from `ErrorPage.tsx` or consolidate.
-- **Severity**: Dead code; confusion about which to use.
+### 4.2 Dead Code — Duplicate NotFoundPage Exports — **OPEN**
+- **Files**: `apps/web/src/pages/ErrorPage.tsx` exports `NotFoundPage` (`:25`), `ServerErrorPage` (`:36`), `ForbiddenPage` (`:47`) — all dead; `router.tsx:7` imports only from `NotFoundPage.tsx`.
+- **PRD**: [`plans/D37-consolidate-error-pages.md`](D37-consolidate-error-pages.md) (also covers §6.5)
 
 ### 4.3 Silent Error Swallowing
-- **Files**: `RecipeListPage.tsx` (5), `RecipeDetailPage.tsx` (1), `StarredRecipesPage.tsx` (3), `SettingsPage.tsx` (2), `SetupListPage.tsx` (3), `BeanListPage.tsx` (3), `EquipmentListPage.tsx` (3), `UserProfilePage.tsx` (1), `HomePage.tsx` (1) — total 22+ occurrences
-- **Issue**: `.catch(() => {})` silently swallows errors for non-critical data loads. Users see no feedback when data fails to load.
-- **Fix**: Log errors at minimum; show user-facing error states for critical data.
-- **Severity**: Silent failures degrade UX.
-- **PRD**: [`plans/D17-fix-error-swallowing.md`](plans/D17-fix-error-swallowing.md)
+- **Status: Resolved** (2026-06-09)
+- **Verified fix**: zero empty `.catch` in the target pages; `createLogger` in place; focus-mode load-error i18n keys added.
+- **Known survivor**: `AuthContext.tsx:50` — tracked in **D38** (§1.6).
+- **PRD**: [`plans/D17-fix-error-swallowing.md`](D17-fix-error-swallowing.md)
 
 ### 4.4 No Optimistic Update Rollback
-- **Files**: `apps/web/src/components/recipe/LikeButton.tsx`, `FavouriteButton.tsx`, `apps/web/src/components/user/FollowButton.tsx`
-- **Issue**: These components do optimistic UI updates but never rollback on failure (they silently catch errors).
-- **Fix**: Store previous state and restore on API failure.
-- **Severity**: UI shows incorrect state after failed mutations.
-- **PRD**: [`plans/D18-fix-optimistic-rollback.md`](plans/D18-fix-optimistic-rollback.md)
-- **Status**: Resolved in pilot scope (D18 follow-up; remaining scope: ensure error tracking for rolled-back mutations)
+- **Status: Resolved** (2026-06-09)
+- **Verified fix**: `routes/like.ts`/`favourite.ts`/`follow.ts` return `{ ok: false, error }` for rollback; loggers added.
+- **PRD**: [`plans/D18-fix-optimistic-rollback.md`](D18-fix-optimistic-rollback.md)
 
-### 4.5 Hardcoded English Strings (Incomplete i18n)
-- **Files**: `RecipeCreatePage.tsx`, `RecipeEditPage.tsx`, `AdminLayout.tsx`, `AdminDashboard.tsx`, `RecipeComparePage.tsx`
-- **Issue**: Section titles, admin labels, and some UI text are hardcoded in English despite i18n being available via `t()`.
-- **Fix**: Move all user-facing strings to translation keys.
-- **Severity**: Incomplete localisation; Turkish translation will be partial.
+### 4.5 Hardcoded English Strings (Incomplete i18n) — **OPEN**
+- **Scope (2026-07-04 sweep)**: **zero `t()`** in all 15 admin pages plus `RecipeComparePage`, `VerifyEmailPage`, `PrivacyPage`, `TermsPage`, `NotFoundPage`; `RecipeCreatePage`/`RecipeEditPage` only partially converted (2 calls each).
+- **PRD**: [`plans/D40-complete-i18n.md`](D40-complete-i18n.md)
 
-### 4.6 `Record<string, unknown>` in API Types
-- **File**: `apps/web/src/api/index.ts`
-- **Issue**: Most API return types use `Record<string, unknown>` instead of properly typed interfaces. `RecipeListItem` is locally defined in `RecipeListPage` instead of using a shared type.
-- **Fix**: Define proper TypeScript interfaces for all API responses in `@brewform/shared/types`.
-- **Severity**: Loses type safety at the API boundary.
+### 4.6 `Record<string, unknown>` in API Types — **OPEN**
+- **File**: `apps/web/src/api/index.ts` — 25+ occurrences (`:30-140`: users, recipes, setups, beans, equipment, taste, follow).
+- **Now unblocked**: D25 created response Zod schemas in `packages/shared/src/schemas/responses/*` — types can be derived via `z.infer` instead of hand-written.
+- **PRD**: [`plans/D42-typed-web-api-boundary.md`](D42-typed-web-api-boundary.md)
 
 ---
 
 ## 5. Low — Schema & Database
 
 ### 5.1 `report.status` Uses String Instead of Enum
-- **File**: `packages/db/src/schema.ts:749`
-- **Issue**: `reports.status` is `varchar('status', { length: 50 })` with a default, not a pgEnum. The Zod schema defines `ReportStatusEnum` but the DB has no constraint on valid values.
-- **Fix**: Create a pgEnum for report status and use it in the schema.
-- **Severity**: DB allows invalid status values.
-- **PRD**: [`plans/D20-fix-report-status-enum.md`](plans/D20-fix-report-status-enum.md)
+- **Status: Resolved** (2026-06-10)
+- **Verified fix**: `reportStatusEnum` pgEnum at `packages/db/src/schema.ts:60`, column at `:810` (old `:749` ref stale); `constants/report-status.ts`; shared `schemas/report.ts` derives from it.
+- **PRD**: [`plans/D20-fix-report-status-enum.md`](D20-fix-report-status-enum.md)
 
 ### 5.3 `CoffeeVariety` Type Uses `string` for Dates
-- **File**: `packages/shared/src/types/coffee-variety.ts:34-36`
-- **Issue**: `createdAt`, `updatedAt`, `deletedAt` are typed as `string` while all other entity types use `Date`.
-- **Fix**: Use `Date` consistently.
-- **Severity**: Type inconsistency.
-- **PRD**: [`plans/D22-fix-coffee-variety-dates.md`](plans/D22-fix-coffee-variety-dates.md)
+- **Status: Resolved** (2026-06-11)
+- **Verified fix**: `packages/shared/src/types/coffee-variety.ts:80-84` (old `:34-36` ref stale) — `Date`/`Date`/`Date | null`.
+- **PRD**: [`plans/D22-fix-coffee-variety-dates.md`](D22-fix-coffee-variety-dates.md)
 
 ### 5.4 Missing Composite Indexes
-- **File**: `packages/db/src/schema.ts`
-- **Issue**: Common query patterns lack composite indexes: `recipe(authorId, visibility)`, `recipe(visibility, createdAt)`, `recipe(visibility, likeCount)`, `recipe(visibility, featured)`.
-- **Fix**: Add composite indexes for high-traffic query patterns.
-- **Severity**: Query performance degradation at scale.
-- **PRD**: [`plans/D23-add-composite-indexes.md`](plans/D23-add-composite-indexes.md)
+- **Status: Resolved** (2026-06-11)
+- **Verified fix**: 3 recipe composites at `schema.ts:149/158/166` plus cross-table composites.
+- **PRD**: [`plans/D23-add-composite-indexes.md`](D23-add-composite-indexes.md)
 
-### 5.5 Missing `createdAt`/`updatedAt` on Join Tables
-- **File**: `packages/db/src/schema.ts`
-- **Issue**: Join tables (`recipe_taste_note`, `recipe_equipment`, `recipe_version_photo`, `user_follow`, `user_recipe_like`, `user_recipe_favourite`, `user_recipe_rating`) lack `createdAt` timestamps.
-- **Fix**: Add timestamps to all join tables for audit trail.
-- **Severity**: No audit trail for social interactions.
+### 5.5 Missing `createdAt` on Join Tables — **OPEN** (scope corrected)
+- **Audit correction (2026-07-04)**: `user_follow`, `user_recipe_like`, `user_recipe_favourite`, `user_recipe_rating` **already have** `createdAt` (added with the D23-era index work). Remaining: `recipe_taste_note` (`schema.ts:241`), `recipe_equipment` (`:263`), `recipe_version_photo` (`:330`).
+- **PRD**: [`plans/D43-join-table-timestamps.md`](D43-join-table-timestamps.md)
 
 ---
 
 ## 6. Low — Infrastructure & DX
 
 ### 6.1 Incomplete OpenAPI Documentation
-- **Files**: Only 5 of 18 modules have `describeRoute()` decorators (auth, recipe, admin, health, openapi). Missing: user, bean, equipment, taste, photo, comment, follow, badge, setup, preference, report, contact, coffee-variety, vendor.
-- **Fix**: Add OpenAPI annotations to all route modules.
-- **Severity**: Incomplete API documentation.
-- **PRD**: [`plans/D25-complete-openapi-docs.md`](plans/D25-complete-openapi-docs.md)
+- **Status: Resolved** (date unknown — no archive entry)
+- **Verified fix**: all 15 modules + share/sitemap carry `describeRoute`; `packages/shared/src/schemas/responses/*` created; `openapi.coverage.test.ts` enforces coverage. (Old "only 5 of 18 modules" text stale.)
+- **PRD**: [`plans/D25-complete-openapi-docs.md`](D25-complete-openapi-docs.md)
 
 ### 6.2 Logging Coverage Gaps
-- **File**: `TODO_logs.md`
-- **Issue**: 15+ API services and 30+ web pages still lack structured logging coverage.
-- **P1 services**: user, vendor, bean, setup, report, coffee-variety
-- **P2 services**: preference, taste, qrcode, auth middleware, cors, rateLimit
-- **P2 pages**: All admin pages, user profile, recipe versions/compare/focus, starred recipes, bean/setup/equipment CRUD, coffee varieties, taste notes, settings, context providers
-- **Fix**: Expand logging per `TODO_logs.md` priorities.
-- **Severity**: Reduced observability in production.
-- **PRD**: [`plans/D26-expand-logging.md`](plans/D26-expand-logging.md)
+- **Status: Resolved** (2026-06-20)
+- **Verified fix**: P1 services + P2 middleware + P1 pages/contexts all logged.
+- **Housekeeping**: `TODO_logs.md` still lists all P1/P2 items as pending — actively misleading; retire it. `plans/D26-expand-logging.md` still says "Status: Open" — stale header.
+- **PRD**: [`plans/D26-expand-logging.md`](D26-expand-logging.md)
 
 ### 6.3 No Request Body Size Limits at Hono Level
-- **File**: `apps/api/src/main.ts`
-- **Issue**: Only file upload size is limited via `UPLOAD_MAX_SIZE_BYTES`. No global request body size limit is configured at the Hono level, making the API vulnerable to large payload attacks.
-- **Fix**: Add body size limit middleware (e.g., 1MB default).
-- **Severity**: Potential DoS vector.
-- **PRD**: [`plans/D24-add-request-body-limit.md`](plans/D24-add-request-body-limit.md)
+- **Status: Resolved** (2026-06-13)
+- **Verified fix**: `middleware/bodyLimit.ts` (1 MB, photos excluded) wired at `main.ts:70`.
+- **PRD**: [`plans/D24-add-request-body-limit.md`](D24-add-request-body-limit.md)
 
 ### 6.4 Offset-Based Pagination
-- **Files**: All paginated API endpoints
-- **Issue**: All pagination uses offset-based (`page`/`perPage`). This degrades at scale (OFFSET scans all previous rows) and causes inconsistent results when data changes between pages.
-- **Fix**: Migrate to cursor-based pagination for large datasets.
-- **Severity**: Performance issue at scale.
-- **PRD**: [`plans/D27-cursor-pagination.md`](plans/D27-cursor-pagination.md)
+- **Status: Resolved** (date unknown — archive pending)
+- **Verified fix**: `utils/cursor.ts`; `RecipeFilterSchema.cursor` (`recipe.ts:154`); cursor path in service + `model.findCursor`.
+- **PRD**: [`plans/D27-cursor-pagination.md`](D27-cursor-pagination.md)
 
-### 6.5 Duplicate `NotFoundPage` / Error Page Confusion
-- **Files**: `apps/web/src/pages/NotFoundPage.tsx`, `apps/web/src/pages/ErrorPage.tsx`
-- **Issue**: Two files export error-related components with overlapping names. `ErrorPage.tsx` exports `NotFoundPage` (dead code), `ServerErrorPage`, and `ForbiddenPage`. The router only imports from `NotFoundPage.tsx`.
-- **Fix**: Consolidate error pages into a single module; use `ErrorPage.tsx` as the canonical source.
-- **Severity**: Developer confusion.
+### 6.5 Duplicate `NotFoundPage` / Error Page Confusion — **OPEN**
+- Same finding as §4.2; consolidated into one plan.
+- **PRD**: [`plans/D37-consolidate-error-pages.md`](D37-consolidate-error-pages.md)
+
+### 6.6 Test Coverage Backfill — **OPEN** (new 2026-07-04)
+- **Scope**: API models with zero tests (equipment — holds D03's SQL; vendor — held D01's bug; badge/bean/comment/follow/photo/preference/qrcode/report/setup), `recipe-list/*` components (shipped by D11 untested), `RequireAuth`, plus P3 tiers (route layers, utils, web pages/components, shared schemas). `sanitize.ts` excluded — owned by D38.
+- **PRD**: [`plans/D39-test-coverage-backfill.md`](D39-test-coverage-backfill.md)
 
 ---
 
-## Summary — Priority Action Items
+## Infrastructure changes (openspec-only)
 
-| Priority | Item | Area | Effort |
-|----------|------|------|--------|
-| **P0** | Fix vendor update missing ownership check | Security | Trivial |
-| **P0** | Fix recipe fork broken navigation | Frontend | Trivial |
-| **P0** | Consolidate email transporters | Backend | Low |
-| **P0** | Replace raw SQL in equipment model | Backend | Low |
-| **P1** | Add React Router 7 loaders for data fetching (D10) | Frontend | High |
-| **P1** | Fix `DrinkType` type missing 4 values | Shared | Trivial |
-| **P1** | Fix admin soft-delete inconsistency | Backend | Trivial |
-| **P1** | Fix comment pagination (resolved in pilot scope) | Frontend | Low |
-| **P1** | Fix account deletion logout | Frontend | Trivial |
-| **P1** | Eliminate `any` types in API services | Backend | High |
-| **P2** | Extract shared RecipeList components | Frontend | Medium |
-| **P2** | Extract shared recipe filter logic | Backend | Medium |
-| **P2** | Create single source of truth for enums | Shared | Medium |
-| **P2** | Fix `useUnitSystem` reactivity | Frontend | Low |
-| **P2** | Move recipe createRecipe transaction into model helper (D29) | Backend | Low |
-| **P2** | Add optimistic update rollback (resolved in pilot scope) | Frontend | Low |
-| **P2** | Replace `Record<string, unknown>` with proper types | Frontend | Medium |
-| **P3** | Add composite indexes for common queries | DB | Low |
-| **P3** | Complete OpenAPI documentation | Backend | Medium |
-| **P3** | Expand logging coverage per TODO_logs.md | Both | Medium |
-| **P3** | Add request body size limits | Backend | Trivial |
-| **P3** | Migrate to cursor-based pagination | Both | High |
-| **P3** | Complete i18n coverage | Frontend | Medium |
+The following work was executed through OpenSpec changes only — there are no `plans/D*` files for them; all are complete:
+
+- **d30** — Coolify/GHCR deployment (Docker images, deploy guide, runtime-configurable web API URL)
+- **d31** — Deno 2.9 upgrade
+- **d32** — deploy-plan / local-dev sync for Deno 2.9 + workspaces (archived 2026-06-27)
+- **d33** — workspace dependency refresh (react-router v8, zod-openapi v6)
+
+Also resolved without a ledger section above: **D21** rating-scale CHECK constraint (2026-06-11), **D28** deprecated `tasteNoteId` removal with `Deprecation` headers (2026-06-22).
+
+---
+
+## Summary — Priority Action Items (open items only)
+
+| Priority | Item | Plan | Area | Effort |
+|----------|------|------|------|--------|
+| **P1** | Guard admin user mutations against soft-deleted users | [D41](D41-admin-user-mutation-guards.md) | Backend | Low |
+| **P1** | Rate-limit reports, test sanitizer, surface auth-refresh errors | [D38](D38-security-error-hardening.md) | Both | Low–Medium |
+| **P2** | Replace raw SQL in equipment model (+ fold in count-branch predicate dedup) | [D03](D03-raw-sql-drizzle.md) | Backend | Low |
+| **P2** | Eliminate residual `any` in service/model layer | [D34](D34-residual-any-elimination.md) | Backend | Medium |
+| **P2** | Extract duplicated UI (RecipeCard / BanDialog / form helpers) | [D36](D36-extract-duplicated-ui.md) | Frontend | Medium |
+| **P2** | Typed web API boundary via shared response schemas | [D42](D42-typed-web-api-boundary.md) | Both | Medium |
+| **P2** | Test coverage backfill — Tier 1 (equipment/vendor models, recipe-list, RequireAuth) | [D39](D39-test-coverage-backfill.md) | Both | High (incremental) |
+| **P3** | Remove untracked lint suppressions | [D35](D35-untracked-lint-suppressions.md) | Both | Low–Medium |
+| **P3** | Consolidate error pages / remove dead exports | [D37](D37-consolidate-error-pages.md) | Frontend | Low |
+| **P3** | Complete i18n (admin, legal, compare, auxiliary pages) | [D40](D40-complete-i18n.md) | Frontend | Medium–High |
+| **P3** | Add `createdAt` to remaining join tables | [D43](D43-join-table-timestamps.md) | DB | Low |
+
+**Sequencing notes**: D39 Tier 1 (equipment model tests) before D03; D37 before D40's NotFoundPage conversion; D36's `BanDialog` before/with D40's admin-page conversion.

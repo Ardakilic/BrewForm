@@ -4,6 +4,11 @@ import { createLogger } from '@/utils/logger.ts';
 
 const logger = createLogger('follow');
 
+/**
+ * Action for `/follow/:userId`: POST follows, DELETE unfollows.
+ * Returns `{ ok: true }` or `{ ok: false, error }` so `FollowButton`
+ * can confirm or roll back its optimistic toggle.
+ */
 export const followAction = async ({ params, request }: ActionFunctionArgs) => {
   const userId = params.userId;
   if (typeof userId !== 'string' || userId.length === 0) {

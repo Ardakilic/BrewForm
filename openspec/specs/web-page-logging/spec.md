@@ -145,13 +145,13 @@ The AuthContext provider SHALL detect and log when an authenticated user's accou
 
 #### Scenario: AuthContext logs banned user on login response
 
-- **WHEN** the login API returns a response indicating the user account is banned (e.g., HTTP 403 with `{ code: 'ACCOUNT_BANNED' }`)
-- **THEN** the system SHALL emit `log.warn({ userId }, 'AuthContext user account is banned')` before updating state to reflect the banned status
+- **WHEN** the login API returns a response indicating the user account is banned (e.g., an error with `code: 'USER_BANNED'` or a message containing "banned")
+- **THEN** the system SHALL emit `log.warn({ err }, 'AuthContext user account is banned')` before updating state to reflect the banned status
 
 #### Scenario: AuthContext logs banned user on token refresh response
 
-- **WHEN** the token refresh API returns a 403 response indicating the user was banned after initial login
-- **THEN** the system SHALL emit `log.warn({ userId }, 'AuthContext user account is banned')` before clearing auth state
+- **WHEN** the token refresh API returns an error response indicating the user was banned after initial login
+- **THEN** the system SHALL emit `log.warn({ err }, 'AuthContext user account is banned')` before clearing auth state
 
 #### Scenario: AuthContext logs token refresh lifecycle at debug level
 

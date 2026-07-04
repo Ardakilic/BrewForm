@@ -7,6 +7,11 @@ interface Props {
   illustration: string;
 }
 
+/**
+ * Generic error screen: emoji illustration, status code, message, and a
+ * home link. Currently unwired/dead — the router imports its 404 page
+ * from `NotFoundPage.tsx` instead (see plans/D37).
+ */
 export function ErrorPage({ statusCode, message, illustration }: Props) {
   const { t } = useTranslation();
 
@@ -22,6 +27,7 @@ export function ErrorPage({ statusCode, message, illustration }: Props) {
   );
 }
 
+/** 404 variant of {@link ErrorPage}. Unwired/dead — the router uses `NotFoundPage.tsx` (see plans/D37). */
 export function NotFoundPage() {
   const { t } = useTranslation();
   return (
@@ -33,6 +39,7 @@ export function NotFoundPage() {
   );
 }
 
+/** 500 variant of {@link ErrorPage}. Unwired/dead — nothing routes to it (see plans/D37). */
 export function ServerErrorPage() {
   const { t } = useTranslation();
   return (
@@ -44,6 +51,7 @@ export function ServerErrorPage() {
   );
 }
 
+/** 403 variant of {@link ErrorPage}. Unwired/dead — nothing routes to it (see plans/D37). */
 export function ForbiddenPage() {
   const { t } = useTranslation();
   return (

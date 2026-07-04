@@ -5,7 +5,7 @@ TBD - created by archiving change d26-expand-logging. Update Purpose after archi
 ## Requirements
 ### Requirement: Standard service functions log entry and exit at debug level
 
-Every public API service function (excluding content moderation service functions, which use `log.info`) SHALL emit a `log.debug` call on entry (with relevant identifiers) and a `log.debug` call on successful completion.
+Every public API service function SHALL emit a `log.debug` call on entry (with relevant identifiers) and a `log.debug` call on successful completion.
 
 #### Scenario: Read function logs entry and exit
 
@@ -45,20 +45,20 @@ Every guard clause that throws an error SHALL emit a `log.error` or `log.warn` c
 - **WHEN** `updateCoffeeVariety(id, data, userId, deps, isAdmin=false)` is called on a system variety by a non-admin
 - **THEN** the system SHALL emit `log.warn({ id, userId })` before throwing `SYSTEM_VARIETY_IMMUTABLE`
 
-### Requirement: Content moderation actions log at info level
+### Requirement: Content moderation actions log at debug level
 
-Service functions that represent significant moderation events (reporting content, resolving reports) SHALL use `log.info` instead of `log.debug` for entry and exit logs.
+Service functions that represent moderation events (reporting content, resolving reports) SHALL use `log.debug` for entry and exit logs, consistent with all other service functions.
 
-#### Scenario: Report creation is logged at info level
+#### Scenario: Report creation is logged at debug level
 
 - **WHEN** `createReport(reporterId, entityType, entityId, reason)` is called
-- **THEN** the system SHALL emit `log.info({ reporterId, entityType, entityId }, 'createReport started')` on entry
-- **AND** the system SHALL emit `log.info({ reporterId, reportId }, 'createReport completed')` on exit
+- **THEN** the system SHALL emit `log.debug({ reporterId, entityType, entityId }, 'createReport started')` on entry
+- **AND** the system SHALL emit `log.debug({ reporterId, entityType, entityId, reportId }, 'createReport completed')` on exit
 
-#### Scenario: Report resolution is logged at info level
+#### Scenario: Report resolution is logged at debug level
 
 - **WHEN** `resolveReport(id, resolvedBy)` successfully resolves a report
-- **THEN** the system SHALL emit `log.info({ id, resolvedBy }, 'resolveReport completed')` on exit
+- **THEN** the system SHALL emit `log.debug({ id, resolvedBy }, 'resolveReport completed')` on exit
 
 ### Requirement: Cache-aware functions log cache interactions
 
@@ -198,28 +198,28 @@ The vendor service (`apps/api/src/modules/vendor/service.ts`) already has a logg
 - **THEN** the existing `log.debug` entry/exit calls SHALL remain the only log statements
 - **AND** no new log calls SHALL be added to `listVendors`
 
-### Requirement: Report service moderation actions use log.info not log.debug
+### Requirement: Report service moderation actions use log.debug like other services
 
-The report service functions `createReport` and `resolveReport` represent content moderation actions — significant events that SHOULD be visible at production log levels. These functions SHALL use `log.info` for their entry and exit logs instead of `log.debug`. The read-only `listReports` function SHALL continue to use `log.debug`.
+The report service functions `createReport` and `resolveReport` SHALL use `log.debug` for their entry and exit logs, matching the standard service logging level. The read-only `listReports` function SHALL also use `log.debug`.
 
-#### Scenario: createReport logs at info level with all entity identifiers
+#### Scenario: createReport logs at debug level with all entity identifiers
 
 - **WHEN** `createReport(reporterId, entityType, entityId, reason)` is called with `reporterId = "user-1"`, `entityType = "recipe"`, `entityId = "recipe-42"`
-- **THEN** the system SHALL emit `log.info({ reporterId, entityType, entityId }, 'createReport started')` on entry
-- **AND** SHALL emit `log.info({ reporterId, entityType, entityId, reportId: result.id }, 'createReport completed')` on exit
+- **THEN** the system SHALL emit `log.debug({ reporterId, entityType, entityId }, 'createReport started')` on entry
+- **AND** SHALL emit `log.debug({ reporterId, entityType, entityId, reportId: result.id }, 'createReport completed')` on exit
 - **AND** SHALL NOT include the `reason` string in log context (may contain user-submitted content)
 
-#### Scenario: resolveReport logs at info level for successful resolution
+#### Scenario: resolveReport logs at debug level for successful resolution
 
 - **WHEN** `resolveReport(id, resolvedBy)` successfully resolves a pending report
-- **THEN** the system SHALL emit `log.info({ id, resolvedBy }, 'resolveReport started')` on entry
-- **AND** SHALL emit `log.info({ id, resolvedBy }, 'resolveReport completed')` on exit
+- **THEN** the system SHALL emit `log.debug({ id, resolvedBy }, 'resolveReport started')` on entry
+- **AND** SHALL emit `log.debug({ id, resolvedBy }, 'resolveReport completed')` on exit
 
 #### Scenario: resolveReport failure paths still use error/warn
 
 - **WHEN** `resolveReport(id, resolvedBy)` is called for a report that does not exist
-- **THEN** the system SHALL emit `log.error({ id, resolvedBy }, 'resolveReport failed: report not found')` before throwing `REPORT_NOT_FOUND`
-- **AND** the entry log SHALL still be at `log.info` level
+- **THEN** the system SHALL emit `log.error({ err, id, resolvedBy }, 'resolveReport failed: report not found')` before throwing `REPORT_NOT_FOUND`
+- **AND** the entry log SHALL still be at `log.debug` level
 
 #### Scenario: listReports continues to use log.debug
 

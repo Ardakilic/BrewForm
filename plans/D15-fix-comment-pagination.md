@@ -1,5 +1,7 @@
 # D15 — Comment Pagination "Load More" Broken
 
+> **Status (2026-07-04): ✅ Done** — `routes/comments.ts:25` `listCommentsLoader`; `router.tsx:233` registers loader + action.
+
 > **Validation status (June 2026): NOT resolved.**
 > The original plan contained a blanket claim that this issue was "Resolved by D10."
 > That claim is incorrect. The initial-page load works correctly (D10 did migrate it to a

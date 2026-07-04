@@ -1,5 +1,11 @@
 # F06 — Recipe Templates
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - Stale: "Register in apps/api/src/index.ts" → there is no apps/api/src/index.ts; register via `routes.route('/api/v1/templates', template)` in apps/api/src/routes/index.ts (:16-60).
+> - Stale: hardcoded brew-method/drink-type enum lists → use `z.enum(BREW_METHOD_VALUES)` / `z.enum(DRINK_TYPE_VALUES)` from `@brewform/shared/constants` (enums are single-sourced per D07).
+> - Rest is solid: `recipeTemplates` mirrors the real recipeVersions columns; the RecipeCreatePage setters referenced are real.
+
 ## Overview
 
 System-defined and user-defined templates that pre-fill brew parameters with sensible defaults per brew method. Users select a template when creating a recipe, reducing friction and establishing consistent starting points for common brewing styles.

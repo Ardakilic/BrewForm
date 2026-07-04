@@ -34,6 +34,10 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
 
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 
+/**
+ * Lazily create and reuse a single nodemailer SMTP transporter built from
+ * the SMTP_* config values. Call closeTransporter() on shutdown.
+ */
 export function getTransporter() {
   if (!transporter) {
     transporter = nodemailer.createTransport({
@@ -46,6 +50,10 @@ export function getTransporter() {
   return transporter;
 }
 
+/**
+ * Close the shared SMTP transporter (on shutdown) and reset it so the next
+ * getTransporter() call creates a fresh one. Safe to call when none exists.
+ */
 export function closeTransporter(): void {
   if (transporter) {
     transporter.close();
@@ -66,6 +74,10 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   }
 }
 
+/**
+ * Base URL for links embedded in notification emails: PUBLIC_APP_URL if set,
+ * otherwise the production domain or the local Vite dev server.
+ */
 export function appBaseUrl(): string {
   return config.PUBLIC_APP_URL ||
     (config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173');
@@ -86,6 +98,10 @@ async function loadRecipient(userId: string): Promise<
   return { email: user.email, username: user.username, prefs: prefs ?? {} };
 }
 
+/**
+ * Email a user that someone followed them. No-op if the recipient is
+ * missing/deleted or has the `newFollower` preference disabled.
+ */
 export async function notifyNewFollower(params: {
   followingId: string;
   followerUsername: string;
@@ -103,6 +119,10 @@ export async function notifyNewFollower(params: {
   await sendEmail(recipient.email, 'You have a new follower on BrewForm', html);
 }
 
+/**
+ * Email a recipe's author that someone liked it. No-op if the author is
+ * missing/deleted or has the `recipeLiked` preference disabled.
+ */
 export async function notifyRecipeLiked(params: {
   recipeAuthorId: string;
   likerUsername: string;
@@ -123,6 +143,10 @@ export async function notifyRecipeLiked(params: {
   await sendEmail(recipient.email, `${params.likerUsername} liked your recipe`, html);
 }
 
+/**
+ * Email a recipe's author that someone commented on it. No-op if the author
+ * is missing/deleted or has the `recipeCommented` preference disabled.
+ */
 export async function notifyRecipeCommented(params: {
   recipeAuthorId: string;
   commenterUsername: string;
@@ -143,6 +167,11 @@ export async function notifyRecipeCommented(params: {
   await sendEmail(recipient.email, `New comment on ${params.recipeTitle}`, html);
 }
 
+/**
+ * Email all followers of an author about a newly published recipe, skipping
+ * followers with the `followedUserPosted` preference disabled. Sends are
+ * batched 5 at a time to avoid overwhelming the SMTP server.
+ */
 export async function notifyFollowersOfNewRecipe(params: {
   authorId: string;
   authorUsername: string;

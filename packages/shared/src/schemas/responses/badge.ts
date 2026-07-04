@@ -36,6 +36,7 @@ const UserBadgeBadgeSchema = z
   })
   .nullable();
 
+/** Validates a user-badge award row with its left-joined badge definition (nullable); used in badge response envelopes for `getUserBadges`. */
 export const UserBadgeOutputSchema = z.object({
   id: z.string(),
   userId: z.string(),

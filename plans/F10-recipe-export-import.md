@@ -1,5 +1,10 @@
 # F10 — Recipe Export / Import
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - Stale (plan line ~134): `recipe.currentVersion ?? recipe.versions?.[0]` is broken — there is NO `currentVersion` Drizzle relation, only the `currentVersionId` column (schema.ts:119) plus `versions: many()`; `recipe.currentVersion` is always undefined in `db.query`. Resolve via `versions.find(v => v.id === recipe.currentVersionId)` or add a real one-relation.
+> - Rest of the plan is complete as written.
+
 ## Overview
 
 Export recipes as JSON or PDF, share via link, and import from JSON. No new database tables — extends existing recipe API with export/import endpoints and adds client-side PDF generation.

@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for an espresso puck screen. */
 export function PuckScreenIcon({ size = 24, className }: IconProps) {
   return (
     <svg

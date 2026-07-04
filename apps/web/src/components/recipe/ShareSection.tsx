@@ -7,6 +7,10 @@ interface ShareSectionProps {
   visibility: string;
 }
 
+/**
+ * Share card with copy-link, QR download, and social share buttons
+ * (Twitter/Facebook/WhatsApp/Reddit). Hidden for private/draft recipes.
+ */
 export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
   const { t } = useTranslation();
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');

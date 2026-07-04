@@ -1,5 +1,7 @@
 # D09: Fix `deno-lint-ignore` Directives in Production Code
 
+> **Status (2026-07-04): ✅ Done (audit-only)** — no enforced-rule suppressions remain; note the baseline table below is now stale (8 → 26 directives, mostly in tests).
+
 ## Severity: Medium
 
 ---

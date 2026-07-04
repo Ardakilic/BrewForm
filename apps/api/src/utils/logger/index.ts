@@ -13,6 +13,10 @@ const logger: Logger = pino({
     : undefined,
 });
 
+/**
+ * Create a child logger tagged with a `module` field. All children share the
+ * single root pino instance (level, redaction, and transport from config).
+ */
 export const createLogger: CreateLogger = (module: string) => {
   return logger.child({ module }) as ChildLogger;
 };

@@ -1,7 +1,9 @@
 # D27 — Migrate to Cursor-Based Pagination
 
+> **Status (2026-07-04): ✅ Done** — `utils/cursor.ts`; `RecipeFilterSchema.cursor` (:154); service cursor path + `model.findCursor`. Openspec change `d27-cursor-pagination` is complete — recommend archiving it.
+
 **Severity:** Low  
-**Status:** Open  
+**Status:** Implemented  
 **Files:** `packages/shared/src/schemas/recipe.ts`, `apps/api/src/modules/recipe/service.ts`, all paginated API endpoints
 
 ---

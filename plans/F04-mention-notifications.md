@@ -1,5 +1,11 @@
 # F04 — @Mention Notifications
 
+> **Validation status (2026-07-04): ✅ Valid**
+>
+> - Must land before F05 (F05 consumes the notifications table + module created here).
+> - Comment @mention auto-prepend already exists with no notification sent (apps/api/src/routes/comment/service.ts:5,18,68) — plan is genuinely additive; `mentionNotifications` pref column is a clean add.
+> - `getRecipeForNotification` / `getCommenterById` are NEW model functions to add — comment/model.ts (:157) currently only has a commenter helper.
+
 ## Overview
 
 When a comment contains `@username`, send an in-app notification to the mentioned user. This builds the foundation for the notification system (F05 expands it into a full notification center). Notifications are created on comment creation, with optional email delivery based on user preferences.

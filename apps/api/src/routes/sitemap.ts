@@ -68,6 +68,11 @@ export const deps = {
   },
 };
 
+/**
+ * Assemble the sitemap XML document from static pages, public recipes, and
+ * active user profiles. Pure string building — URL segments are XML-escaped
+ * and lastmod is emitted only when a valid updatedAt date is available.
+ */
 export function buildXml(
   baseUrl: string,
   publicRecipes: Array<{ slug: string; updatedAt: Date }>,

@@ -19,6 +19,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+/**
+ * Owns the authenticated-user state: restores the session on mount via
+ * `userApi.me()` and exposes login/register/logout/refreshUser. Banned
+ * accounts and expired sessions resolve to a logged-out state.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -105,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Accesses the auth context; throws when used outside {@link AuthProvider}. */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');

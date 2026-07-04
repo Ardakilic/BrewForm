@@ -5,6 +5,7 @@ interface Props {
   recipeId: string;
 }
 
+/** Card with a link to fork the recipe (`/recipes/:id/fork`) and a short explainer. */
 export function ForkCard({ recipeId }: Props) {
   const { t } = useTranslation();
 

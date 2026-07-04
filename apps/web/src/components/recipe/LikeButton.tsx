@@ -10,6 +10,11 @@ interface Props {
 
 const log = createLogger('LikeButton');
 
+/**
+ * Optimistic like/unlike toggle with count, submitted via fetcher form
+ * to `/recipes/:id/like`; the UI reflects pending form data until the
+ * action settles.
+ */
 export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
   const fetcher = useFetcher();
 

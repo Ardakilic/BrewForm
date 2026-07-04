@@ -7,6 +7,11 @@ interface RecipeNotesSectionProps {
   initialNotes?: string;
 }
 
+/**
+ * Personal-notes editor for a recipe (10k char limit) with explicit
+ * save via the recipe API and a transient "saved" indicator; prints
+ * as plain text.
+ */
 export function RecipeNotesSection({ recipeId, initialNotes = '' }: RecipeNotesSectionProps) {
   const { t } = useTranslation();
   const [notes, setNotes] = useState(initialNotes ?? '');

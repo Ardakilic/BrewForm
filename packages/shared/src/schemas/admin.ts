@@ -3,6 +3,10 @@ import { UuidSchema } from './common.ts';
 
 const usernameRegex = /^[a-zA-Z0-9_-]+$/;
 
+/**
+ * Validates admin user-creation payloads.
+ * Used by POST /api/v1/admin/users.
+ */
 export const AdminCreateUserSchema = z.object({
   email: z.email(),
   username: z.string().min(3).max(30).regex(
@@ -16,6 +20,10 @@ export const AdminCreateUserSchema = z.object({
   isBanned: z.boolean().optional(),
 });
 
+/**
+ * Validates admin user-update payloads (at least one field required).
+ * Used by PATCH /api/v1/admin/users/:id.
+ */
 export const AdminUpdateUserSchema = z.object({
   email: z.email().optional(),
   username: z.string().min(3).max(30).regex(
@@ -32,6 +40,10 @@ export const AdminUpdateUserSchema = z.object({
   { message: 'At least one field must be provided for update.' },
 );
 
+/**
+ * Validates ban/unban payloads (reason required when banning).
+ * Used by POST /api/v1/admin/users/:id/ban.
+ */
 export const AdminBanUserSchema = z.object({
   userId: UuidSchema,
   banned: z.boolean(),
@@ -44,11 +56,19 @@ export const AdminBanUserSchema = z.object({
   { message: 'Ban reason is required when banning a user.', path: ['reason'] },
 );
 
+/**
+ * Validates recipe-visibility change payloads.
+ * Used by PATCH /api/v1/admin/recipes/:id/visibility.
+ */
 export const AdminModifyRecipeVisibilitySchema = z.object({
   recipeId: UuidSchema,
   visibility: z.enum(['draft', 'private', 'unlisted', 'public']),
 });
 
+/**
+ * Validates cache-flush payloads (non-empty list of cache keys).
+ * Used by POST /api/v1/admin/cache/flush.
+ */
 export const AdminFlushCacheSchema = z.object({
   keys: z.array(z.string()).min(1),
 });

@@ -8,6 +8,10 @@ import { InMemoryCacheProvider } from './index.ts';
  */
 export let cacheProvider: CacheProvider = new InMemoryCacheProvider();
 
+/**
+ * Replace the global singleton cache provider. Called once from main.ts at
+ * startup after the configured driver (deno-kv or memory) is constructed.
+ */
 export function setCacheProvider(provider: CacheProvider): void {
   cacheProvider = provider;
 }

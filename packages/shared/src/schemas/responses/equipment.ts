@@ -36,6 +36,7 @@ export const EquipmentOutputSchema = z.object({
 
 export type EquipmentOutput = z.infer<typeof EquipmentOutputSchema>;
 
+/** Validates a full `equipmentDeleteRequests` row; response payload for POST /api/v1/equipment/:id/delete-request. */
 export const EquipmentDeleteRequestOutputSchema = z.object({
   id: z.string(),
   equipmentId: z.string(),

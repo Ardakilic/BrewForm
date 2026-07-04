@@ -42,6 +42,11 @@ export interface ProfileLoaderData {
   followData: FollowRecord[] | null;
 }
 
+/**
+ * Fetches the profile for `:username`, plus the follower/following list
+ * when `?tab=` selects one; returns `{ profile, followData }` with
+ * `followData` null on other tabs.
+ */
 export const loader = async (
   { params, request }: { params: { username: string }; request: Request },
 ): Promise<ProfileLoaderData> => {
@@ -82,6 +87,11 @@ function FollowList(
   );
 }
 
+/**
+ * Public profile page with recipes/badges/followers/following tabs
+ * (driven by `?tab=`), follow button for other users, and profile
+ * header from loader data.
+ */
 export function UserProfilePage() {
   const { username } = useParams();
   const { user } = useAuth();

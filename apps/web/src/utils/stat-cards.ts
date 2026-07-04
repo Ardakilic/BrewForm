@@ -24,6 +24,12 @@ function getUnitPlaceholder(
   return '—°C';
 }
 
+/**
+ * Builds the label/value pairs for the recipe stat cards (dose, yield,
+ * time, ratio, temperature) in the given unit system, using an em-dash
+ * placeholder for missing values; appends extraction yield when TDS,
+ * volume, and dose are all present.
+ */
 export function buildStatCards(
   version: {
     groundWeightGrams?: number | null;

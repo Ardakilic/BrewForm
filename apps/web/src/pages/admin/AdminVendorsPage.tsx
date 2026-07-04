@@ -11,6 +11,7 @@ interface Vendor {
   description: string | null;
 }
 
+/** Admin page: vendor CRUD with inline form. */
 export function AdminVendorsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);

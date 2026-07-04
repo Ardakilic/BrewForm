@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for a cezve (Turkish coffee pot). */
 export function CezveIcon({ size = 24, className }: IconProps) {
   return (
     <svg

@@ -1,5 +1,11 @@
 # F14 — Brew Method Landing Pages
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - Backend design is sound; the frontend uses TanStack `useQuery` → rewrite as a react-router v8 loader + `useLoaderData` (no TanStack Query in the repo).
+> - Stale schema line references; `brewMethodEnum` is now sourced from `BREW_METHOD_VALUES` in `@brewform/shared/constants` (D07).
+> - Verify the Helmet dependency actually exists before relying on it for SEO tags.
+
 ## Overview
 
 Dedicated pages per brew method (espresso, v60, french press, etc.) showing top recipes, recommended equipment, community stats, and brew guides. Dynamic route at `/brew/:method`.

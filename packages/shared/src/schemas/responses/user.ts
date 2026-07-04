@@ -59,10 +59,12 @@ const SelfPreferencesSchema = z
   })
   .nullable();
 
+/** Validates the bare `users` row (minus passwordHash); response envelope for PATCH /api/v1/users/me. */
 export const UserRowOutputSchema = UserBaseSchema;
 
 export type UserRowOutput = z.infer<typeof UserRowOutputSchema>;
 
+/** Validates the self profile (user row plus nullable `preferences` and profile stats); response envelope for GET /api/v1/users/me. */
 export const SelfUserOutputSchema = UserBaseSchema.extend({
   preferences: SelfPreferencesSchema,
   ...UserStatsSchema,
@@ -86,6 +88,7 @@ const PublicUserRecipeSchema = z.object({
     .nullable(),
 });
 
+/** Validates the public profile (user row minus email, plus stats, recipes[], badges, isFollowing); response envelope for GET /api/v1/users/:username. */
 export const PublicUserOutputSchema = UserBaseSchema.omit({ email: true }).extend({
   ...UserStatsSchema,
   recipes: z.array(PublicUserRecipeSchema),

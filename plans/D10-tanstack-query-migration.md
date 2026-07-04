@@ -1,5 +1,7 @@
 # D10 — Server State Layer via React Router 7 Data Loading
 
+> **Status (2026-07-04): ✅ Done (pilot scope)** — 6 pages export loaders, 4 components use `useFetcher`; `static-cache.ts`, `recipe-filters.ts`, and `routes/{like,favourite,rate,follow,comments}.ts` all exist.
+
 > **Plan revised after codebase analysis — June 2026**
 > The original plan proposed adding `@tanstack/react-query`. Analysis confirmed that
 > **`react-router@7.15.1`** (already in `apps/web/package.json:8`) provides

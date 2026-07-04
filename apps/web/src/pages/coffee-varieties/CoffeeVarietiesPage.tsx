@@ -20,6 +20,10 @@ interface CoffeeVarietyItem {
   slug: string;
 }
 
+/**
+ * Public coffee-variety catalog with URL-driven pagination, category
+ * tabs, and debounced search; cards link to variety detail pages.
+ */
 export function CoffeeVarietiesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [varieties, setVarieties] = useState<CoffeeVarietyItem[]>([]);

@@ -15,6 +15,7 @@ interface AuditLogEntry {
   admin?: { username: string };
 }
 
+/** Admin page: paginated audit-log table with an entity-type filter. */
 export function AdminAuditLogPage() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);

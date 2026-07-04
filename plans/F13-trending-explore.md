@@ -1,5 +1,13 @@
 # F13 — Trending / Popular Recipes & Explore Page
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - No TanStack Query — use react-router v8 loaders + `useLoaderData` instead of `useQuery`.
+> - New literal GET routes `/trending` and `/featured` must be registered BEFORE the `/:slugOrId` catch-all (apps/api/src/routes/recipe/index.ts:301).
+> - Trending query filters `recipes.createdAt` instead of the engagement window — move the time filter onto the engagement joins.
+> - Heavy raw sql`` blocks conflict with the no-raw-SQL convention (D03), and the alias used in ORDER BY may not bind.
+> - Verified: `featured` column (schema.ts:129) and `toggleFeature` (recipe/service.ts:600) exist.
+
 ## Overview
 
 Dedicated explore page with time-window trending recipes (today, week, month), category-based browsing, and admin-curated featured recipes. Computes trending from existing data (likes, ratings, comments) — no new tables.

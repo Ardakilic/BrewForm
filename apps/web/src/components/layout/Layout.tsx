@@ -7,6 +7,11 @@ import { EmailVerificationBanner } from '../EmailVerificationBanner.tsx';
 import { PageSkeleton } from '../ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 
+/**
+ * App shell for routed pages: skip link, verification banner, navbar,
+ * suspenseful `<Outlet />` main area, footer, and cookie consent, with
+ * scroll restoration.
+ */
 export function Layout() {
   const { t } = useTranslation();
 

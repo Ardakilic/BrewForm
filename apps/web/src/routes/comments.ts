@@ -34,6 +34,11 @@ export const listCommentsLoader = async ({ params, request }: LoaderFunctionArgs
   return commentApi.list(recipeId, isNaN(page) ? 1 : page);
 };
 
+/**
+ * Action for posting a comment (or reply via `parentCommentId`) on
+ * `comments/recipe/:recipeId`. Returns the created comment; throws a
+ * 400 Response for missing content or recipe id.
+ */
 export const createCommentAction = async ({ params, request }: ActionFunctionArgs) => {
   const form = await request.formData();
   const rawContent = form.get('content');
@@ -68,6 +73,11 @@ export const createCommentAction = async ({ params, request }: ActionFunctionArg
   }
 };
 
+/**
+ * Action for deleting comment `:id`. Returns `null` on success; throws
+ * a 400 Response when the id is missing. The optimistic removal and
+ * rollback live in `CommentSection`.
+ */
 export const deleteCommentAction = async ({ params }: ActionFunctionArgs) => {
   const id = params.id;
   if (typeof id !== 'string' || id.length === 0) {

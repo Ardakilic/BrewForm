@@ -1,8 +1,10 @@
 # D26 — Expand Structured Logging Coverage (Implementation Spec)
 
+> **Status (2026-07-04): ✅ Done** — spec fully executed: P1 services + P2 middleware + P1 pages/contexts are all logged; openspec change `d26-expand-logging` archived.
+
 **Generated:** 2026-06-16 — Validated against codebase at commit after rebase.
 **Source:** `TODO_logs.md` + `plans/D26-expand-logging.md` + 8 subagent research passes.
-**Status:** Ready for implementation in fresh session.
+**Status:** Implemented.
 
 ---
 

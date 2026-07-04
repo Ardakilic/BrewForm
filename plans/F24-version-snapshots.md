@@ -1,5 +1,10 @@
 # F24 — Recipe Version Immutability Guards
 
+> **Validation status (2026-07-04): ✅ Valid**
+>
+> - All FIELD_LABELS fields verified to exist on `recipeVersions`; components are props-based; plan is self-contained.
+> - Minor: verify the `GET /recipes/:slug/versions` route exists as assumed (recipe/index.ts:264).
+
 ## Overview
 
 Ensure version snapshots are truly immutable with application-level guards and change tracking. Versions cannot be modified after creation, and users can see exactly what changed between versions.

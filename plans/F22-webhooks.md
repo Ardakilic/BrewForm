@@ -1,5 +1,11 @@
 # F22 — Webhook System
 
+> **Validation status (2026-07-04): 🔧 Rough — needs design decisions**
+>
+> - delivery.ts is internally inconsistent: duplicate `const delivery` declaration, and references to `queue.enqueue`, `model.createDelivery` and `log` that are never defined.
+> - No queue infrastructure exists in the repo — the delivery mechanism (in-process retry vs. real queue) is unspecified and must be decided before implementation.
+> - The net-new webhook tables themselves are fine.
+
 ## Overview
 
 Allow users to register webhooks for events (new recipe, new follower, badge earned). Webhooks are HTTP POST requests with HMAC-signed payloads, delivered with retry logic and exponential backoff.

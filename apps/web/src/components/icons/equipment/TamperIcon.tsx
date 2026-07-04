@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for an espresso tamper. */
 export function TamperIcon({ size = 24, className }: IconProps) {
   return (
     <svg

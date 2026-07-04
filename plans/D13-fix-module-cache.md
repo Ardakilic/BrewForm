@@ -1,5 +1,7 @@
 # D13 — Module-Level Cache Without Invalidation
 
+> **Status (2026-07-04): ✅ Done** — `invalidateStaticCache()` wired in EquipmentListPage/AdminEquipmentPage/AdminTasteNotesPage plus `hooks/useStaticCacheSync.ts` for cross-tab sync.
+
 > **Plan validated against `main` branch — June 2026**
 > Five errors were found in the original plan and are corrected in this revision.
 > Errors are annotated inline with `[Corrected]` markers.

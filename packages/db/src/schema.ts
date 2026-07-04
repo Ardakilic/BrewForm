@@ -833,6 +833,7 @@ export const reports = pgTable(
 // Relations
 // ============================================================
 
+/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports. */
 export const usersRelations = relations(users, ({ one, many }) => ({
   preferences: one(userPreferences, {
     fields: [users.id],
@@ -855,6 +856,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   reports: many(reports),
 }));
 
+/** Drizzle relations for user_preferences: owning user. */
 export const userPreferencesRelations = relations(userPreferences, ({ one }) => ({
   user: one(users, {
     fields: [userPreferences.userId],
@@ -862,6 +864,7 @@ export const userPreferencesRelations = relations(userPreferences, ({ one }) => 
   }),
 }));
 
+/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, and fork lineage (forkedFrom/forks). */
 export const recipesRelations = relations(recipes, ({ one, many }) => ({
   author: one(users, {
     fields: [recipes.authorId],
@@ -879,6 +882,7 @@ export const recipesRelations = relations(recipes, ({ one, many }) => ({
   forks: many(recipes, { relationName: 'RecipeFork' }),
 }));
 
+/** Drizzle relations for recipe_versions: parent recipe, vendor, bean, coffee variety, taste notes, equipment, additional preparations, version photos. */
 export const recipeVersionsRelations = relations(recipeVersions, ({ one, many }) => ({
   recipe: one(recipes, {
     fields: [recipeVersions.recipeId],
@@ -903,6 +907,7 @@ export const recipeVersionsRelations = relations(recipeVersions, ({ one, many })
   versionPhotos: many(recipeVersionPhotos),
 }));
 
+/** Drizzle relations for the recipe_taste_notes join table: recipe version and taste note. */
 export const recipeTasteNotesRelations = relations(recipeTasteNotes, ({ one }) => ({
   recipeVersion: one(recipeVersions, {
     fields: [recipeTasteNotes.recipeVersionId],
@@ -914,6 +919,7 @@ export const recipeTasteNotesRelations = relations(recipeTasteNotes, ({ one }) =
   }),
 }));
 
+/** Drizzle relations for the recipe_equipment join table: recipe version and equipment. */
 export const recipeEquipmentRelations = relations(recipeEquipment, ({ one }) => ({
   recipeVersion: one(recipeVersions, {
     fields: [recipeEquipment.recipeVersionId],
@@ -925,6 +931,7 @@ export const recipeEquipmentRelations = relations(recipeEquipment, ({ one }) => 
   }),
 }));
 
+/** Drizzle relations for recipe_additional_preparations: owning recipe version. */
 export const recipeAdditionalPreparationsRelations = relations(
   recipeAdditionalPreparations,
   ({ one }) => ({
@@ -935,6 +942,7 @@ export const recipeAdditionalPreparationsRelations = relations(
   }),
 );
 
+/** Drizzle relations for photos: parent recipe and version-photo links. */
 export const photosRelations = relations(photos, ({ one, many }) => ({
   recipe: one(recipes, {
     fields: [photos.recipeId],
@@ -943,6 +951,7 @@ export const photosRelations = relations(photos, ({ one, many }) => ({
   versionPhotos: many(recipeVersionPhotos),
 }));
 
+/** Drizzle relations for the recipe_version_photos join table: recipe version and photo. */
 export const recipeVersionPhotosRelations = relations(recipeVersionPhotos, ({ one }) => ({
   recipeVersion: one(recipeVersions, {
     fields: [recipeVersionPhotos.recipeVersionId],
@@ -954,6 +963,7 @@ export const recipeVersionPhotosRelations = relations(recipeVersionPhotos, ({ on
   }),
 }));
 
+/** Drizzle relations for equipment: creating user, recipe-equipment links, and per-slot setup usages (portafilter, basket, puck screen, paper filter, tamper). */
 export const equipmentRelations = relations(equipment, ({ one, many }) => ({
   createdByUser: one(users, {
     fields: [equipment.createdBy],
@@ -967,6 +977,7 @@ export const equipmentRelations = relations(equipment, ({ one, many }) => ({
   setupTampers: many(setups, { relationName: 'SetupTamper' }),
 }));
 
+/** Drizzle relations for beans: vendor, owning user, and recipe versions brewed with the bean. */
 export const beansRelations = relations(beans, ({ one, many }) => ({
   vendor: one(vendors, {
     fields: [beans.vendorId],
@@ -979,6 +990,7 @@ export const beansRelations = relations(beans, ({ one, many }) => ({
   recipeVersions: many(recipeVersions),
 }));
 
+/** Drizzle relations for vendors: creating user, beans, and recipe versions referencing the vendor. */
 export const vendorsRelations = relations(vendors, ({ one, many }) => ({
   createdByUser: one(users, {
     fields: [vendors.createdBy],
@@ -988,6 +1000,7 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
   recipeVersions: many(recipeVersions),
 }));
 
+/** Drizzle relations for taste_notes: parent/children hierarchy and recipe-taste-note links. */
 export const tasteNotesRelations = relations(tasteNotes, ({ one, many }) => ({
   parent: one(tasteNotes, {
     fields: [tasteNotes.parentId],
@@ -997,6 +1010,7 @@ export const tasteNotesRelations = relations(tasteNotes, ({ one, many }) => ({
   recipeTasteNotes: many(recipeTasteNotes),
 }));
 
+/** Drizzle relations for setups: owning user and the five equipment slots (portafilter, basket, puck screen, paper filter, tamper). */
 export const setupsRelations = relations(setups, ({ one }) => ({
   user: one(users, {
     fields: [setups.userId],
@@ -1029,6 +1043,7 @@ export const setupsRelations = relations(setups, ({ one }) => ({
   }),
 }));
 
+/** Drizzle relations for comments: recipe, author, parent comment, and replies. */
 export const commentsRelations = relations(comments, ({ one, many }) => ({
   recipe: one(recipes, {
     fields: [comments.recipeId],
@@ -1045,6 +1060,7 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
   replies: many(comments),
 }));
 
+/** Drizzle relations for the user_follows join table: follower and followed user. */
 export const userFollowsRelations = relations(userFollows, ({ one }) => ({
   follower: one(users, {
     fields: [userFollows.followerId],
@@ -1058,6 +1074,7 @@ export const userFollowsRelations = relations(userFollows, ({ one }) => ({
   }),
 }));
 
+/** Drizzle relations for the user_recipe_favourites join table: user and recipe. */
 export const userRecipeFavouritesRelations = relations(userRecipeFavourites, ({ one }) => ({
   user: one(users, {
     fields: [userRecipeFavourites.userId],
@@ -1069,6 +1086,7 @@ export const userRecipeFavouritesRelations = relations(userRecipeFavourites, ({ 
   }),
 }));
 
+/** Drizzle relations for the user_recipe_ratings join table: user and recipe. */
 export const userRecipeRatingsRelations = relations(userRecipeRatings, ({ one }) => ({
   user: one(users, {
     fields: [userRecipeRatings.userId],
@@ -1080,6 +1098,7 @@ export const userRecipeRatingsRelations = relations(userRecipeRatings, ({ one })
   }),
 }));
 
+/** Drizzle relations for the user_recipe_likes join table: user and recipe. */
 export const userRecipeLikesRelations = relations(userRecipeLikes, ({ one }) => ({
   user: one(users, {
     fields: [userRecipeLikes.userId],
@@ -1091,10 +1110,12 @@ export const userRecipeLikesRelations = relations(userRecipeLikes, ({ one }) => 
   }),
 }));
 
+/** Drizzle relations for badges: user_badges award rows. */
 export const badgesRelations = relations(badges, ({ many }) => ({
   userBadges: many(userBadges),
 }));
 
+/** Drizzle relations for the user_badges join table: user and badge. */
 export const userBadgesRelations = relations(userBadges, ({ one }) => ({
   user: one(users, {
     fields: [userBadges.userId],
@@ -1106,8 +1127,10 @@ export const userBadgesRelations = relations(userBadges, ({ one }) => ({
   }),
 }));
 
+/** Drizzle relations for brew_method_equipment_rules: none (standalone lookup table). */
 export const brewMethodEquipmentRulesRelations = relations(brewMethodEquipmentRules, () => ({}));
 
+/** Drizzle relations for coffee_varieties: creating user and recipe versions using the variety. */
 export const coffeeVarietiesRelations = relations(coffeeVarieties, ({ one, many }) => ({
   createdByUser: one(users, {
     fields: [coffeeVarieties.createdBy],
@@ -1117,6 +1140,7 @@ export const coffeeVarietiesRelations = relations(coffeeVarieties, ({ one, many 
   recipeVersions: many(recipeVersions, { relationName: 'coffee_variety_versions' }),
 }));
 
+/** Drizzle relations for equipment_delete_requests: target equipment, requesting user, and reviewing admin. */
 export const equipmentDeleteRequestsRelations = relations(equipmentDeleteRequests, ({ one }) => ({
   equipment: one(equipment, {
     fields: [equipmentDeleteRequests.equipmentId],
@@ -1134,6 +1158,7 @@ export const equipmentDeleteRequestsRelations = relations(equipmentDeleteRequest
   }),
 }));
 
+/** Drizzle relations for audit_logs: acting admin user. */
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   admin: one(users, {
     fields: [auditLogs.adminId],
@@ -1141,6 +1166,7 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   }),
 }));
 
+/** Drizzle relations for password_resets: owning user. */
 export const passwordResetsRelations = relations(passwordResets, ({ one }) => ({
   user: one(users, {
     fields: [passwordResets.userId],
@@ -1148,6 +1174,7 @@ export const passwordResetsRelations = relations(passwordResets, ({ one }) => ({
   }),
 }));
 
+/** Drizzle relations for reports: reporting user. */
 export const reportsRelations = relations(reports, ({ one }) => ({
   reporter: one(users, {
     fields: [reports.reporterId],
@@ -1155,6 +1182,7 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   }),
 }));
 
+/** Drizzle relations for email_verification_tokens: owning user. */
 export const emailVerificationTokensRelations = relations(
   emailVerificationTokens,
   ({ one }) => ({

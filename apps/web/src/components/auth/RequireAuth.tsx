@@ -7,6 +7,11 @@ interface Props {
   requireAdmin?: boolean;
 }
 
+/**
+ * Guards children behind authentication; redirects to `/login` when
+ * unauthenticated and to `/` when `requireAdmin` is set but the user
+ * is not an admin. Shows a page skeleton while auth state loads.
+ */
 export function RequireAuth({ children, requireAdmin }: Props) {
   const { isAuthenticated, user, isLoading } = useAuth();
 

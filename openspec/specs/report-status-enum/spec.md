@@ -42,7 +42,7 @@ The `packages/shared/src/constants/index.ts` barrel file SHALL re-export `REPORT
 - **THEN** the import resolves to the tuple defined in `report-status.ts`
 
 ### Requirement: Zod ReportStatusEnum derives from the SSoT constant
-The Zod schema `ReportStatusEnum` in `packages/shared/src/schemas/report.ts` at line 3 SHALL be changed from hardcoded string literals to `z.enum(REPORT_STATUS_VALUES)`. An import for `REPORT_STATUS_VALUES` from `../constants/index.ts` SHALL be added.
+The Zod schema `ReportStatusEnum` in `packages/shared/src/schemas/report.ts` SHALL be changed from hardcoded string literals to `z.enum(REPORT_STATUS_VALUES)`. An import for `REPORT_STATUS_VALUES` from `../constants/index.ts` SHALL be added.
 
 #### Scenario: Zod enum rejects invalid status value
 - **WHEN** `ReportStatusEnum.safeParse('invalid')` is called

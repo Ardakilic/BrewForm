@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for a thermometer. */
 export function ThermometerIcon({ size = 24, className }: IconProps) {
   return (
     <svg

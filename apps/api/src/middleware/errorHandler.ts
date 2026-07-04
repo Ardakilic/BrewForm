@@ -4,6 +4,12 @@ import { config } from '../config/index.ts';
 
 const log = createLogger('errorHandler');
 
+/**
+ * Global Hono error handler mapping known errors to JSON error envelopes:
+ * equipment incompatibility -> 422, Postgres unique violation -> 409,
+ * ZodError -> 400, auth/JWT failures -> 401, COFFEE_VARIETY_NOT_FOUND -> 404.
+ * Everything else logs and returns 500, hiding the message in production.
+ */
 export function errorHandler(err: Error, c: Context) {
   const requestId = c.get('requestId') as string | undefined;
 

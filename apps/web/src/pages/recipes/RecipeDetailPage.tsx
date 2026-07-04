@@ -45,6 +45,12 @@ export interface DetailLoaderData {
   };
 }
 
+/**
+ * Fetches recipe `:slug` (404s propagate as a 404 Response), then the
+ * cached taste-note list and first comments page in parallel; QR visits
+ * (`?from=qr`) to non-public recipes redirect to `/recipes/unavailable`.
+ * Returns `{ recipe, tasteNotes, comments }`.
+ */
 export const loader = async (
   { params, request }: { params: { slug: string }; request: Request },
 ): Promise<DetailLoaderData> => {
@@ -68,6 +74,11 @@ export const loader = async (
   return { recipe, tasteNotes, comments };
 };
 
+/**
+ * Full recipe detail view: SEO/JSON-LD head, stat cards, bean, timeline,
+ * equipment, tasting notes, comments, and share/QR/fork side cards, with
+ * owner-only edit and rating controls.
+ */
 export function RecipeDetailPage() {
   const { recipe, tasteNotes: allTasteNotes, comments: initialComments } =
     useLoaderData() as DetailLoaderData;

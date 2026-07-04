@@ -4,12 +4,17 @@ import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
 
+/** Find a non-deleted coffee variety by ID. */
 export async function findById(id: string) {
   return db.query.coffeeVarieties.findFirst({
     where: and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)),
   });
 }
 
+/**
+ * List non-deleted coffee varieties with optional category and search filters
+ * (name/species/origin ILIKE), paginated and ordered by name, with total count.
+ */
 export async function findMany(params: {
   category?: string;
   search?: string;
@@ -45,11 +50,13 @@ export async function findMany(params: {
   return { data, total: Number(countResult[0]?.count ?? 0) };
 }
 
+/** Insert a new coffee variety. */
 export async function create(data: typeof coffeeVarieties.$inferInsert) {
   const [result] = await db.insert(coffeeVarieties).values(data).returning();
   return result;
 }
 
+/** Update a non-deleted coffee variety, bumping updatedAt. */
 export async function update(id: string, data: Partial<typeof coffeeVarieties.$inferInsert>) {
   const [result] = await db.update(coffeeVarieties)
     .set({ ...data, updatedAt: new Date() })
@@ -58,6 +65,7 @@ export async function update(id: string, data: Partial<typeof coffeeVarieties.$i
   return result;
 }
 
+/** Soft-delete a coffee variety by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
   const [result] = await db.update(coffeeVarieties)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
@@ -66,6 +74,10 @@ export async function softDelete(id: string) {
   return result;
 }
 
+/**
+ * List public, non-deleted recipes whose current version uses the given
+ * variety, paginated with total count and author/photo relations joined.
+ */
 export async function getRecipesUsingVariety(
   varietyId: string,
   page: number,

@@ -1,5 +1,11 @@
 # F08 — Recipe Comparison Improvements
 
+> **Validation status (2026-07-04): ✅ Valid**
+>
+> - Coordinate `DiffHighlighter` with F09 (shared component) — land F08 first or merge the two efforts.
+> - Verify `mergedData` keys against the `createRecipe` input schema before implementing the merge flow.
+> - Enhances the real RecipeComparePage (route `recipes/compare/:slug1/:slug2`, apps/web/src/router.tsx:89); `tn.tasteNoteId` is still valid — D28 removed only the deprecated query param, not the `recipeTasteNotes.tasteNoteId` column (schema.ts:249).
+
 ## Overview
 
 Enhance the existing `RecipeComparePage` with diff highlighting to visually mark parameters that differ between two recipes, and add a "merge" option to create a new recipe from selected parameters of both. No new database tables — frontend enhancement plus one new API endpoint for merge.

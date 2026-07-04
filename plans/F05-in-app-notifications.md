@@ -1,5 +1,10 @@
 # F05 — In-App Notification Center
 
+> **Validation status (2026-07-04): ✅ Valid (depends on F04)**
+>
+> - Requires the notifications table + module introduced by F04 — land F04 first.
+> - `/u/:username` route confirmed (apps/web/src/router.tsx:136); plan is well-specified.
+
 ## Overview
 
 Expand beyond email-only notifications to a full in-app notification system. Users receive notifications for social actions (mentions, follows, likes, comments, badges) directly in the app. Provides a notification bell with unread count, a dropdown for quick access, and a full notification list page with filtering and mark-as-read functionality.

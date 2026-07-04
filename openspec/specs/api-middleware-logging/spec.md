@@ -5,12 +5,12 @@ TBD - created by archiving change d26-expand-logging. Update Purpose after archi
 ## Requirements
 ### Requirement: Auth middleware logs authentication failures
 
-The auth middleware SHALL emit log messages at warn or error level for every authentication failure path: missing token, invalid/expired token, user not found for valid token, and banned user.
+The auth middleware SHALL emit log messages for every authentication failure path: missing token (debug), invalid/expired token (error), user not found for valid token (warn), and banned user (warn).
 
-#### Scenario: Missing token is logged at warn level
+#### Scenario: Missing token is logged at debug level
 
 - **WHEN** a request arrives without an Authorization header
-- **THEN** the system SHALL emit `log.warn({}, 'authMiddleware no token found in Authorization header')`
+- **THEN** the system SHALL emit `log.debug({}, 'authMiddleware no token found in Authorization header')`
 - **AND** return a 401 response unchanged
 
 #### Scenario: Token verification failure is logged at error level
@@ -29,7 +29,7 @@ The auth middleware SHALL emit log messages at warn or error level for every aut
 
 - **WHEN** an authenticated user has `isBanned = true`
 - **THEN** the system SHALL emit `log.warn({ userId }, 'authMiddleware access denied: user is banned')`
-- **AND** return a 403 response unchanged
+- **AND** return a 401 response (via `unauthorized()`) unchanged
 
 ### Requirement: Auth middleware logs successful authentication
 
@@ -58,18 +58,18 @@ The admin middleware SHALL emit a warn log when a non-admin user attempts to acc
 
 ### Requirement: Rate limit middleware logs exceeded limits
 
-The rate limit middleware SHALL emit a warn log with the client IP, user ID (if authenticated), and configured limit when the rate limit is exceeded.
+The rate limit middleware SHALL emit a warn log with the user ID (if authenticated) and configured limit when the rate limit is exceeded. The client IP is used for the rate-limit key but is not included in the log context.
 
 #### Scenario: IP-based rate limit exceeded is logged
 
 - **WHEN** an unauthenticated client exceeds the rate limit threshold
-- **THEN** the system SHALL emit `log.warn({ ip: "<client-ip>", limit: 100 }, 'rateLimitMiddleware rate limit exceeded')`
+- **THEN** the system SHALL emit `log.warn({ limit: 100 }, 'rateLimitMiddleware rate limit exceeded')`
 - **AND** return a 429 response unchanged
 
 #### Scenario: User-ID-based rate limit exceeded is logged
 
 - **WHEN** an authenticated client exceeds the auth rate limit threshold
-- **THEN** the system SHALL emit `log.warn({ userId: "<user-id>", ip: "<client-ip>", limit: 100 }, 'authRateLimitMiddleware rate limit exceeded')`
+- **THEN** the system SHALL emit `log.warn({ userId: "<user-id>", limit: 100 }, 'authRateLimitMiddleware rate limit exceeded')`
 - **AND** return a 429 response unchanged
 
 ### Requirement: CORS middleware infrastructure is loggable
@@ -138,25 +138,25 @@ Every log call added to middleware functions SHALL be placed such that it does n
 
 - **WHEN** a request with a missing token triggers `log.debug` and returns a 401 response
 - **THEN** the response status code SHALL be 401
-- **AND** the response body SHALL be `{ message: 'Unauthorized' }` (unchanged from before logging was added)
+- **AND** the response body SHALL be `{ success: false, error: { code: 'UNAUTHORIZED', message: 'Missing or invalid authentication' } }` (unchanged from before logging was added)
 
-#### Scenario: Auth middleware 403 response is unchanged after logging is added
+#### Scenario: Auth middleware banned-user 401 response is unchanged after logging is added
 
-- **WHEN** a request from a banned user triggers `log.warn` and returns a 403 response
-- **THEN** the response status code SHALL be 403
-- **AND** the response body SHALL be `{ message: 'Account suspended' }` (unchanged from before logging was added)
+- **WHEN** a request from a banned user triggers `log.warn` and returns a 401 response
+- **THEN** the response status code SHALL be 401
+- **AND** the response body SHALL be `{ success: false, error: { code: 'UNAUTHORIZED', message: 'User account is banned' } }` (unchanged from before logging was added)
 
 #### Scenario: Rate limit middleware 429 response is unchanged after logging is added
 
 - **WHEN** a request exceeds the rate limit, triggering `log.warn` and a 429 response
 - **THEN** the response status code SHALL be 429
-- **AND** the response body SHALL be `{ message: 'Too many requests' }` (unchanged from before logging was added)
+- **AND** the response body SHALL be `{ success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests, please try again later' } }` (unchanged from before logging was added)
 
 #### Scenario: Admin middleware 403 response is unchanged after logging is added
 
 - **WHEN** a non-admin user triggers `log.warn` and a 403 response from admin middleware
 - **THEN** the response status code SHALL be 403
-- **AND** the response body SHALL be `{ message: 'Forbidden' }` (unchanged from before logging was added)
+- **AND** the response body SHALL be `{ success: false, error: { code: 'FORBIDDEN', message: 'Admin access required' } }` (unchanged from before logging was added)
 
 ### Requirement: Auth middleware catch block log.error includes the err object without exposing token contents
 

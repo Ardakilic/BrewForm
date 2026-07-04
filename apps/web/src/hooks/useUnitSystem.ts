@@ -16,6 +16,7 @@ import type { UnitSystem } from '@brewform/shared/types';
 
 const log = createLogger('useUnitSystem');
 
+/** Current user's preferred unit system from auth state; falls back to `'metric'`. */
 export function useUnitSystem(): UnitSystem {
   const { user } = useAuth();
   const unitSystem = user?.preferences?.unitSystem ?? 'metric';

@@ -1,5 +1,13 @@
 # F15 — Content Moderation Queue
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - `'escalated'` is not a valid report status — `REPORT_STATUS_VALUES = ['pending','reviewed','resolved','dismissed']`; drop or formally add the enum value first.
+> - `resolveReport` / `dismissReport` ALREADY EXIST (admin/service.ts:463/:472, admin/model.ts:411/:420) — the plan re-adds them with conflicting signatures.
+> - Admin service signatures take `adminId` first: `banUser(adminId, userId, reason?)`, `softDeleteRecipe(adminId, recipeId)` — the plan's argument order is wrong.
+> - Raw `auditLogs` inserts should go through `model.createAuditLog` (admin/model.ts:429).
+> - No TanStack Query — use react-router v8 loaders + the custom fetch client.
+
 ## Overview
 
 Enhance the existing report module with a dedicated moderation dashboard queue, auto-flagging rules for new content, and moderation actions. Builds on the existing `reports` table and admin module.
