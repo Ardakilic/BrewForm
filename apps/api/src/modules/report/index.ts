@@ -9,6 +9,7 @@ import {
   successEnvelope,
 } from '@brewform/shared/schemas';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
+import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
 import * as service from './service.ts';
 import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
@@ -18,10 +19,12 @@ const report = new Hono<AppEnv>();
 
 report.post(
   '/',
+  rateLimitMiddleware({ windowMs: 15 * 60_000, maxRequests: 3, keyPrefix: 'report' }),
   describeRoute({
     tags: ['Reports'],
     summary: 'Create a report',
-    description: 'Submits a moderation report against a recipe or comment.',
+    description:
+      'Submits a moderation report against a recipe or comment. Rate-limited to 3 requests per 15 minutes per IP.',
     security: [{ bearerAuth: [] }],
     requestBody: jsonRequestBody(ReportCreateSchema),
     responses: {
@@ -33,6 +36,10 @@ report.post(
       },
       401: {
         description: 'Unauthorized',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      429: {
+        description: 'Rate limit exceeded (3 requests per 15 minutes)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },

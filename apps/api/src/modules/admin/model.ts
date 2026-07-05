@@ -95,22 +95,31 @@ export async function getUserById(id: string) {
 }
 
 /** Ban a user by setting `isBanned = true`. Returns the updated user or null. */
+/** Ban an active (non-deleted) user by setting `isBanned = true`. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function banUser(userId: string) {
-  const [result] = await db.update(users).set({ isBanned: true }).where(eq(users.id, userId))
+  const [result] = await db.update(users).set({ isBanned: true }).where(
+    and(eq(users.id, userId), isNull(users.deletedAt)),
+  )
     .returning();
   return result ?? null;
 }
 
 /** Unban a user by setting `isBanned = false`. Returns the updated user or null. */
+/** Unban an active (non-deleted) user by setting `isBanned = false`. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function unbanUser(userId: string) {
-  const [result] = await db.update(users).set({ isBanned: false }).where(eq(users.id, userId))
+  const [result] = await db.update(users).set({ isBanned: false }).where(
+    and(eq(users.id, userId), isNull(users.deletedAt)),
+  )
     .returning();
   return result ?? null;
 }
 
 /** Set or clear the admin role for a user. Returns the updated user or null. */
+/** Set or clear the admin role on an active (non-deleted) user. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function setUserAdminRole(userId: string, isAdmin: boolean) {
-  const [result] = await db.update(users).set({ isAdmin }).where(eq(users.id, userId)).returning();
+  const [result] = await db.update(users).set({ isAdmin }).where(
+    and(eq(users.id, userId), isNull(users.deletedAt)),
+  ).returning();
   return result ?? null;
 }
 
@@ -229,7 +238,7 @@ export async function updateRecipeVisibility(recipeId: string, visibility: strin
     return null;
   }
   const [result] = await db.update(recipes).set({ visibility }).where(
-    eq(recipes.id, recipeId),
+    and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)),
   ).returning();
   return result ?? null;
 }
@@ -285,7 +294,9 @@ export async function updateEquipment(
   if (data.model !== undefined) sanitized.model = data.model;
   if (data.description !== undefined) sanitized.description = data.description;
 
-  const [result] = await db.update(equipment).set(sanitized).where(eq(equipment.id, id))
+  const [result] = await db.update(equipment).set(sanitized).where(
+    and(eq(equipment.id, id), isNull(equipment.deletedAt)),
+  )
     .returning();
   return result ?? null;
 }
@@ -329,7 +340,9 @@ export async function updateVendor(
   if (data.website !== undefined) sanitized.website = data.website;
   if (data.description !== undefined) sanitized.description = data.description;
 
-  const [result] = await db.update(vendors).set(sanitized).where(eq(vendors.id, id)).returning();
+  const [result] = await db.update(vendors).set(sanitized).where(
+    and(eq(vendors.id, id), isNull(vendors.deletedAt)),
+  ).returning();
   return result ?? null;
 }
 

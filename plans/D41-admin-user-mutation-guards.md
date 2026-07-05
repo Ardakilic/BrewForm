@@ -1,7 +1,7 @@
 # D41 — Admin User Mutations Missing Soft-Delete Guard
 
 **Severity:** High (correctness / data integrity)
-**Status:** Open (2026-07-04)
+**Status:** Resolved (2026-07-05) — via openspec change `wave-1-correctness-security`
 **Relationship:** Extends [`D19-admin-soft-delete-fix.md`](D19-admin-soft-delete-fix.md) (resolved 2026-06-09). D19 added `isNull(deletedAt)` guards and double-delete idempotency to the admin **soft-delete** functions (`deleteEquipment`, `deleteVendor`, `deleteCoffeeVariety`, the approve-request inner delete) — but the admin **user-state mutations** were never audited and have the same class of bug.
 
 ---
@@ -96,11 +96,11 @@ Mirror the structure D19 established in `apps/api/src/modules/admin/model.test.t
 
 ## Acceptance Criteria
 
-- [ ] All three functions include `isNull(users.deletedAt)` in their WHERE clause and return `null` for soft-deleted targets.
-- [ ] Model tests cover the active-user and soft-deleted-user paths for each function, including the admin-grant-on-deleted-user case.
-- [ ] Admin API returns 404 (not success) when targeting a soft-deleted user.
-- [ ] Sweep of `admin/model.ts` for sibling unguarded updates completed and noted in the change.
-- [ ] `make ci` passes.
+- [x] All three functions include `isNull(users.deletedAt)` in their WHERE clause and return `null` for soft-deleted targets.
+- [x] Model tests cover the active-user and soft-deleted-user paths for each function, including the admin-grant-on-deleted-user case.
+- [x] Admin API returns 404 (not success) when targeting a soft-deleted user. (`PATCH /users/:id/admin` route wrapped in try/catch mapping `USER_NOT_FOUND` → 404; ban/unban route already correct.)
+- [x] Sweep of `admin/model.ts` for sibling unguarded updates completed and noted in the change. (Three siblings fixed: `updateRecipeVisibility`, `updateEquipment`, `updateVendor` — all now guard on `isNull(deletedAt)`. Tests added for all three.)
+- [x] `make ci` passes. (`make check`, `make lint`, `make test` all green — 205 API tests / 1387 steps + 819 web tests pass.)
 
 ---
 

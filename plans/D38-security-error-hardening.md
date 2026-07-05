@@ -1,8 +1,8 @@
 # D38 — Security & Error-Handling Hardening (Report Rate Limit, Sanitizer Tests, Auth Refresh)
 
 **Severity:** High
-**Status:** Open (2026-07-04)
-**Relationship:** Extends the hardening line of [`D24-add-request-body-limit.md`](D24-add-request-body-limit.md) (resolved) and the error-surfacing line of [`D17-fix-error-swallowing.md`](D17-fix-error-swallowing.md) (resolved — one survivor found).
+**Status:** Resolved (2026-07-05) — via openspec change `wave-1-correctness-security`
+**Relationship:** Extends the hardening line of [`D24-add-request-body-limit.md`](D24-add-request-body-limit.md) (resolved) and the error-surfacing line of [`D17-fix-error-swallowing.md`](D17-fix-error-swallowing.md) (resolved — survivor found and fixed here).
 
 ---
 
@@ -90,10 +90,10 @@ Three independent hardening gaps, bundled because each is small:
 
 ## Acceptance Criteria
 
-- [ ] Report POST is limited to 3/15min per user; 429 uses the standard error envelope and is documented in OpenAPI.
-- [ ] `utils/sanitize.ts` has a dedicated test file with dangerous-input and benign-input coverage.
-- [ ] No empty `.catch(() => {})` remains in `AuthContext.tsx`; refresh failures are logged and unexpected ones surfaced via context state.
-- [ ] `make ci` passes.
+- [x] Report POST is limited to 3/15min per IP; 429 uses the standard error envelope and is documented in OpenAPI. (Per-IP keying via `keyPrefix: 'report'`, applied to POST only — admin GET/PATCH routes NOT throttled, per design Decision 4.)
+- [x] `utils/sanitize.ts` has a dedicated test file with dangerous-input and benign-input coverage. (`sanitize.test.ts` — 28 cases including the 3 documented limitations as pass-through regression baselines.)
+- [x] No empty `.catch(() => {})` remains in `AuthContext.tsx`; refresh failures are logged and unexpected ones surfaced via context state. (5-branch catch: banned/401/5xx/network/other-4xx; `sessionError: 'network' | 'server' | null` + `clearSessionError`; `SessionRestoreBanner` mounted in Layout.)
+- [x] `make ci` passes. (`make check`, `make lint`, `make test` all green — 205 API tests / 1387 steps + 819 web tests pass; OpenAPI coverage test green.)
 
 ---
 

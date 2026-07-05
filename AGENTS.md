@@ -24,7 +24,7 @@ Granular targets: `make check-api`, `make check-web`, `make test-api`, `make tes
 
 Run a single test file: `deno test --no-check --allow-all apps/api/src/path/to/file_test.ts` (inside Docker: `make test-specific filter=path/to/test.ts`).
 
-Type-check + lint after every edit. Test command order matters: `deno task check` then `deno task test`.
+Type-check + lint + **format** after every edit. Test command order matters: `deno task check` then `deno task test`. After finishing a batch of edits, run `make fmt` to apply `deno fmt` (lineWidth 100, indentWidth 2, singleQuote, semiColons) — the agent's symbolic edits preserve logic but may not match Deno's exact whitespace rules, so a final `make fmt` is mandatory before commit/PR. CI enforces `deno fmt --check` and will fail the build on unformatted code.
 
 ## Architecture
 
@@ -100,6 +100,11 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 ## Code style
 
 - Formatting: `deno fmt` (lineWidth 100, indentWidth 2, singleQuote, semiColons).
+- **Run `make fmt` before every commit.** Symbolic edits and regex replacements preserve logic but
+  may not match Deno's exact whitespace rules (trailing commas, line wrapping, indentation). CI runs
+  `deno fmt --check` and fails the build on any diff. The pre-commit hook (`.githooks/pre-commit`,
+  enabled via `make setup-hooks`) also enforces this locally, but do not rely on the hook alone —
+  run `make fmt` proactively after each batch of edits, not just at commit time.
 - Lint exclusions: `no-explicit-any`, `require-await`, `no-empty`, `no-import-prefix`, `no-unversioned-import`.
 - Module files use `// deno-lint-ignore-file no-explicit-any require-await`.
 - All imports use explicit file extensions (`.ts`, `.tsx`, etc.) — no sloppy imports.
