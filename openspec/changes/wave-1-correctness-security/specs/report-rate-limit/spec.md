@@ -67,14 +67,12 @@ report.post(
 The API package SHALL contain a route-level test file `apps/api/src/modules/report/index.test.ts` that exercises the rate-limit behaviour on `POST /api/v1/reports`. The test SHALL:
 
 1. Build a test Hono app mounting the report router (mirroring `apps/api/src/modules/contact/contact.test.ts:7-11`).
-2. Satisfy the `authMiddleware` requirement on the POST route — either by stubbing the auth middleware with a no-op that sets `c.set('userId', 'test-user')`, or by minting a valid JWT. The stub approach is preferred (the rate-limit behaviour is under test, not auth).
+2. Send unauthenticated POSTs with a `ReportCreateSchema`-shaped body — no JWT minting or user-row seeding is required. This is valid because the rate-limit middleware runs FIRST in the POST route's middleware chain (before `authMiddleware` and `zValidator`), so the 429 fires regardless of body or auth validity. The rate-limit behaviour is what is under test, not auth or validation.
 3. Send 3 POSTs that are processed, then assert the 4th returns 429.
 4. Assert that `GET /api/v1/reports` (admin list) and/or `PATCH /api/v1/reports/:id/resolve` are NOT throttled by the report-specific limiter (a 4th request in the window does not return 429 from the `keyPrefix: 'report'` counter).
-5. Use the `InMemoryCacheProvider` (default under `CACHE_DRIVER=memory` / `APP_ENV=test`) so the rate-limit counter is fresh per test. Each `it` SHOULD build its own app to avoid counter leakage between tests, matching the contact test pattern.
+5. Use the `InMemoryCacheProvider` (default under `CACHE_DRIVER=memory` / `APP_ENV=test`) so the rate-limit counter is fresh per test. The cache SHALL be reset per test via `setCacheProvider(new InMemoryCacheProvider())` in `beforeEach` (pattern from `apps/api/src/middleware/rateLimit.test.ts:11-13`).
 
-The test SHALL mint a real JWT via `signAccessToken` (defined at `apps/api/src/modules/auth/jwt.ts:42-56`, signature `signAccessToken({ id, email, username, isAdmin }): Promise<string>`) — this is the established pattern for authenticated route tests in this codebase, used by `apps/api/src/modules/follow/index_test.ts:64-71` and `apps/api/src/modules/recipe/recipe-filter-deprecation.test.ts:104-114`. Because `authMiddleware` does a DB lookup (returns 401 if the user is not found), the test MUST insert a real user row into the `users` table in `beforeEach`. The cache SHALL be reset per test via `setCacheProvider(new InMemoryCacheProvider())` (pattern from `apps/api/src/middleware/rateLimit.test.ts:11-13`).
-
-A simplification the implementer MAY use: since the rate-limit middleware runs FIRST in the POST route's middleware chain (before `authMiddleware` and `zValidator`), the 429 fires regardless of body/auth validity — so the test could send unauthenticated POSTs with an empty body and still hit 429 on the 4th, removing the need for JWT minting. This is acceptable because the rate-limit behaviour is what is under test, not auth or validation.
+The unauthenticated-POST approach is chosen over the JWT-minting approach (`signAccessToken` + user-row seeding, used by `apps/api/src/modules/follow/index_test.ts:64-71`) because it is simpler and the limiter's position in the middleware chain makes auth irrelevant to the behaviour under test.
 
 #### Scenario: Report rate-limit test passes
 

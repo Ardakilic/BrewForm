@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.tsx';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('SessionRestoreBanner');
 
 /**
  * Renders a banner when the last session-restore attempt failed due to a
@@ -8,7 +11,8 @@ import { useAuth } from '../contexts/AuthContext.tsx';
  * intact). The retry button calls `refreshUser()`; on success the
  * `refreshUser` try block sets `sessionError` to null and this component
  * unmounts via the early return. The dismiss button calls
- * `clearSessionError()` to clear the banner without retrying.
+ * `clearSessionError()` to clear the banner without retrying. The banner
+ * uses `role='alert'` so screen readers announce it when it appears.
  */
 export function SessionRestoreBanner() {
   const { sessionError, clearSessionError, refreshUser } = useAuth();
@@ -22,9 +26,11 @@ export function SessionRestoreBanner() {
       await refreshUser();
       // On success, refreshUser's try block sets sessionError to null and
       // this component unmounts.
-    } catch {
+    } catch (err) {
       // refreshUser never throws (it catches internally) — this is a
-      // type-safety guard.
+      // type-safety guard. Log defensively in case a future change makes
+      // it rethrow.
+      log.error({ err }, 'SessionRestoreBanner retry failed');
     } finally {
       setRetrying(false);
     }
@@ -36,6 +42,7 @@ export function SessionRestoreBanner() {
 
   return (
     <div
+      role='alert'
       className='flex items-center justify-center gap-2 px-4 py-2 text-sm'
       style={{ backgroundColor: 'var(--error)', color: 'white' }}
     >

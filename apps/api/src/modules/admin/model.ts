@@ -94,7 +94,6 @@ export async function getUserById(id: string) {
   return result[0] ?? null;
 }
 
-/** Ban a user by setting `isBanned = true`. Returns the updated user or null. */
 /** Ban an active (non-deleted) user by setting `isBanned = true`. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function banUser(userId: string) {
   const [result] = await db.update(users).set({ isBanned: true }).where(
@@ -104,7 +103,6 @@ export async function banUser(userId: string) {
   return result ?? null;
 }
 
-/** Unban a user by setting `isBanned = false`. Returns the updated user or null. */
 /** Unban an active (non-deleted) user by setting `isBanned = false`. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function unbanUser(userId: string) {
   const [result] = await db.update(users).set({ isBanned: false }).where(
@@ -114,7 +112,6 @@ export async function unbanUser(userId: string) {
   return result ?? null;
 }
 
-/** Set or clear the admin role for a user. Returns the updated user or null. */
 /** Set or clear the admin role on an active (non-deleted) user. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function setUserAdminRole(userId: string, isAdmin: boolean) {
   const [result] = await db.update(users).set({ isAdmin }).where(

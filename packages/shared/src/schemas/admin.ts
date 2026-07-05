@@ -57,6 +57,14 @@ export const AdminBanUserSchema = z.object({
 );
 
 /**
+ * Validates admin role-grant/revoke payloads.
+ * Used by PATCH /api/v1/admin/users/:id/admin.
+ */
+export const AdminSetRoleSchema = z.object({
+  isAdmin: z.boolean(),
+});
+
+/**
  * Validates recipe-visibility change payloads.
  * Used by PATCH /api/v1/admin/recipes/:id/visibility.
  */

@@ -8,6 +8,7 @@ import {
   AdminCreateUserSchema,
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
+  AdminSetRoleSchema,
   AdminUpdateUserSchema,
   BrewMethodCompatibilityCreateSchema,
   BrewMethodCompatibilityUpdateSchema,
@@ -250,7 +251,7 @@ admin.patch(
     description:
       'Grants or revokes the admin role on a user. Requires admin role. Returns 404 if the target user is soft-deleted or does not exist.',
     security: [{ bearerAuth: [] }],
-    requestBody: jsonRequestBody(z.object({ isAdmin: z.boolean() })),
+    requestBody: jsonRequestBody(AdminSetRoleSchema),
     responses: {
       200: {
         description: 'User updated',
@@ -266,7 +267,7 @@ admin.patch(
       },
     },
   }),
-  zValidator('json', z.object({ isAdmin: z.boolean() }), zodValidationHook),
+  zValidator('json', AdminSetRoleSchema, zodValidationHook),
   async (c) => {
     const adminId = c.get('userId') as string;
     const userId = c.req.param('id')!;
