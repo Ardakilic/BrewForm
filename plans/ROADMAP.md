@@ -33,13 +33,14 @@
 
 ## Wave 2 — Backend hygiene
 
-- [ ] **D03** — Rewrite the raw SQL in `equipment/model.ts getRecipesUsingEquipment` with the
+- [x] **D03** — Rewrite the raw SQL in `equipment/model.ts getRecipesUsingEquipment` with the
       Drizzle query builder; fold the duplicated count-branch visibility/`deletedAt` predicates into
-      one shared condition set.
-  - [ ] Do **D39 Tier 1 first** (equipment/vendor model tests) — the plan frames these as D03's
-        regression net, since `equipment/model.ts` currently has zero tests.
-- [ ] **D34** — Residual `any` elimination in the modules D05 never covered (preference, bean,
+      one shared condition set. _(resolved 2026-07-06 via Wave 2)_
+  - [x] Do **D39 Tier 1 first** (equipment/vendor model tests) — the plan frames these as D03's
+        regression net, since `equipment/model.ts` currently has zero tests. _(done 2026-07-06)_
+- [x] **D34** — Residual `any` elimination in the modules D05 never covered (preference, bean,
       setup, taste, badge, recipe/model, notify). Mechanical, guided by the exact file:line list.
+      _(resolved 2026-07-06 via Wave 2; P2 scope complete, P3 stretch documented)_
 
 ## Wave 3 — Frontend structure (order matters)
 

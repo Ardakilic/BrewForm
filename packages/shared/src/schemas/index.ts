@@ -13,6 +13,7 @@ export {
   EquipmentFilterSchema,
   EquipmentUpdateSchema,
 } from './equipment.ts';
+export type { EquipmentCreate, EquipmentUpdate } from './equipment.ts';
 export {
   CoffeeVarietyCategoryEnum,
   CoffeeVarietyCreateSchema,
@@ -37,9 +38,12 @@ export {
   UuidSchema,
 } from './common.ts';
 export { SetupCreateSchema, SetupUpdateSchema } from './setup.ts';
+export type { SetupCreate, SetupUpdate } from './setup.ts';
 export { CommentCreateSchema } from './comment.ts';
 export { BeanCreateSchema, BeanUpdateSchema } from './bean.ts';
+export type { BeanCreate, BeanUpdate } from './bean.ts';
 export { VendorCreateSchema, VendorUpdateSchema } from './vendor.ts';
+export type { VendorCreate, VendorUpdate } from './vendor.ts';
 export { BadgeCreateSchema, BadgeUpdateSchema } from './badge.ts';
 export {
   AdminBanUserSchema,

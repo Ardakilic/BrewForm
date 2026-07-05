@@ -14,18 +14,21 @@ export function errorHandler(err: Error, c: Context) {
   const requestId = c.get('requestId') as string | undefined;
 
   if (err instanceof Error && 'code' in err && err.code === 'EQUIPMENT_INCOMPATIBLE') {
+    const details = 'details' in err
+      ? ((err as Error & { details: string[] }).details || []).map((
+        d: string,
+      ) => ({
+        field: 'equipmentIds',
+        message: d,
+      }))
+      : [];
     return c.json(
       {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Equipment is not compatible with the selected brew method',
-          details: ((err as unknown as Error & { details: string[] }).details || []).map((
-            d: string,
-          ) => ({
-            field: 'equipmentIds',
-            message: d,
-          })),
+          details,
           requestId,
         },
       },
@@ -50,10 +53,10 @@ export function errorHandler(err: Error, c: Context) {
   }
 
   if (err.name === 'ZodError') {
-    const zodErr = err as unknown as {
-      issues?: Array<{ path: (string | number)[]; message: string }>;
-    };
-    const details = zodErr.issues?.map((e) => ({
+    const zodErr = err instanceof Error && 'issues' in err
+      ? (err as Error & { issues?: Array<{ path: (string | number)[]; message: string }> })
+      : null;
+    const details = zodErr?.issues?.map((e) => ({
       field: e.path.join('.'),
       message: e.message,
     })) || [];

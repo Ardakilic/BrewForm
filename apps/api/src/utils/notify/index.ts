@@ -23,6 +23,13 @@ import { template as recipeLikedTemplate } from '../../templates/email/generated
 import { template as recipeCommentedTemplate } from '../../templates/email/generated/recipe-commented.ts';
 import { template as followedUserPostedTemplate } from '../../templates/email/generated/followed-user-posted.ts';
 
+/** A resolved notification recipient with their flat preference row. */
+interface NotifyRecipient {
+  email: string;
+  username: string;
+  prefs: typeof userPreferences.$inferSelect | Record<string, never>;
+}
+
 const logger = createLogger('notify');
 
 function renderTemplate(template: string, vars: Record<string, string>): string {
@@ -83,9 +90,7 @@ export function appBaseUrl(): string {
     (config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173');
 }
 
-async function loadRecipient(userId: string): Promise<
-  { email: string; username: string; prefs: any } | null
-> {
+async function loadRecipient(userId: string): Promise<NotifyRecipient | null> {
   const result = await db.select()
     .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
@@ -189,14 +194,14 @@ export async function notifyFollowersOfNewRecipe(params: {
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
     .where(and(inArray(users.id, followerIds), isNull(users.deletedAt)));
 
-  const recipients = userResults
+  const recipients: NotifyRecipient[] = userResults
     .filter((u) => u.user.email)
-    .map((u) => ({
+    .map((u): NotifyRecipient => ({
       email: u.user.email,
       username: u.user.username,
       prefs: u.user_preferences ?? {},
     }))
-    .filter((r: any) => r.prefs.followedUserPosted !== false);
+    .filter((r) => r.prefs.followedUserPosted !== false);
 
   if (recipients.length === 0) return;
 

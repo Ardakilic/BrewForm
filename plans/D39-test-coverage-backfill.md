@@ -1,7 +1,7 @@
 # D39 — Test Coverage Backfill (Prioritised)
 
 **Severity:** Medium
-**Status:** Open (2026-07-04)
+**Status:** Resolved (Tier 1) (2026-07-06) — Tier 2/3 remain open
 **Relationship:** A July 2026 coverage sweep found systematic gaps: several API models with zero tests (including the two that historically held real bugs — vendor held D01's ownership bug, equipment holds D03's raw SQL), and web components shipped by D11 without tests. `utils/sanitize.ts` is intentionally **excluded** here — it is covered by [`D38-security-error-hardening.md`](D38-security-error-hardening.md).
 
 ---
@@ -72,8 +72,8 @@ This plan *is* tests. Gates:
 
 ## Acceptance Criteria
 
-- [ ] Tier 1 complete: equipment model, vendor model, recipe-list components, and RequireAuth all have dedicated test files.
-- [ ] D03 can cite `equipment/model.test.ts` as its regression net.
+- [x] Tier 1 complete (2026-07-06): equipment model, vendor model, recipe-list components, and RequireAuth all have dedicated test files.
+- [x] D03 can cite `equipment/model.test.ts` as its regression net. _(D03 resolved 2026-07-06.)_
 - [ ] Tier 2/3 tracked as checklist items in the implementing change; each landed tier keeps `make ci` green.
 - [ ] No duplicate scope with D38 (`sanitize.ts` stays there).
 

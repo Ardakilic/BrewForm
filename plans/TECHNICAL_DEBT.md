@@ -3,7 +3,7 @@
 > Status ledger for technical-debt items. Issues categorised by severity and area.
 > Last full audit: **2026-07-04** (plan-by-plan verification against `main`). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
 
-**Currently open: D03, D34, D35, D36, D37, D39, D40, D42, D43.** Everything else below is resolved and kept for history.
+**Currently open: D35, D36, D37, D39 (Tier 2/3), D40, D42, D43.** Everything else below is resolved and kept for history. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1.)_
 
 ---
 
@@ -21,12 +21,12 @@
 - **Verified fix**: `apps/api/src/modules/auth/email.ts:3-4` imports `getTransporter`/`appBaseUrl`/`escapeHtml`; the only remaining `createTransport` is the singleton in `apps/api/src/utils/notify/index.ts:39`.
 - **PRD**: [`plans/D02-email-transporter-consolidation.md`](D02-email-transporter-consolidation.md)
 
-### 1.3 Raw SQL in Equipment Model — **OPEN**
-- **Status: Open** (only surviving item from D01–D29)
+### 1.3 Raw SQL in Equipment Model — **RESOLVED** (2026-07-06)
+- **Status: Resolved** (2026-07-06 via Wave 2)
 - **File**: `apps/api/src/modules/equipment/model.ts:88` (`getRecipesUsingEquipment`), raw subquery at `:103-107`
-- **Issue**: Raw SQL subquery `sql\`... IN (SELECT re.recipe_version_id FROM recipe_equipment re WHERE re.equipment_id = ...)\`` violates the project's "no raw SQL" rule (AGENTS.md), bypassing Drizzle's type safety.
-- **Incidental sub-finding (fold into the fix)**: the count branch at `model.ts:111` duplicates the visibility/`deletedAt` predicates of the list branch — share one condition set when rewriting.
-- **Fix**: Rewrite with Drizzle's query builder / `exists()` subquery; land D39 Tier 1 (`equipment/model.test.ts`) first as the regression net.
+- **Issue**: Raw SQL subquery `sql\`... IN (SELECT re.recipe_version_id FROM recipe_equipment re WHERE re.equipment_id = ...)\`` violated the project's "no raw SQL" rule (AGENTS.md), bypassing Drizzle's type safety.
+- **Incidental sub-finding (folded into the fix)**: the count branch at `model.ts:111` duplicated the visibility/`deletedAt` predicates of the list branch — now shared in one condition set.
+- **Fix**: Rewritten with the Drizzle query builder / `exists()` subquery; D39 Tier 1 (`equipment/model.test.ts`) landed first as the regression net.
 - **PRD**: [`plans/D03-raw-sql-drizzle.md`](D03-raw-sql-drizzle.md)
 
 ### 1.4 Recipe Fork Button Navigates to Non-Existent Route
@@ -75,9 +75,10 @@
 - **Status: Resolved** (2026-06-05) — audit note: the original file list here was inaccurate (named web files that never carried directives), and D09 landed as audit-scoped: no enforced-rule suppressions remained in its baseline. Suppressions **outside** that baseline were found in the 2026-07 sweep and are tracked as **D35** (§2.7).
 - **PRD**: [`plans/D09-fix-lint-suppressions.md`](D09-fix-lint-suppressions.md)
 
-### 2.6 Residual `any` in Service/Model Layer — **OPEN** (new 2026-07-04)
+### 2.6 Residual `any` in Service/Model Layer — **RESOLVED** (2026-07-06; P2 scope complete, P3 stretch documented)
 - **Files**: `preference/service.ts:26`, `preference/index.ts:85`, `bean/service.ts:34,47`, `setup/service.ts:38`, `taste/model.ts:50`, `recipe/model.ts:466,473`, `badge/model.ts:131`, `utils/notify/index.ts:75,170`, `equipment/service.ts:42` (all under `apps/api/src/`); stretch: library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`.
-- **Issue**: `data: any` payloads and untyped casts in modules D05 never covered — validated Zod types are dropped at the route → service boundary.
+- **Issue**: `data: any` payloads and untyped casts in modules D05 never covered — validated Zod types were dropped at the route → service boundary.
+- **Resolution (2026-07-06 via Wave 2)**: P2 scope complete — all twelve `any` locations replaced with shared-schema-inferred / Drizzle relation-row types. P3 stretch (library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`) documented with justification comments rather than removed, pending clean typed alternatives in the upstream libraries.
 - **PRD**: [`plans/D34-residual-any-elimination.md`](D34-residual-any-elimination.md)
 
 ### 2.7 Untracked Lint Suppressions — **OPEN** (new 2026-07-04)
@@ -221,8 +222,10 @@
 - Same finding as §4.2; consolidated into one plan.
 - **PRD**: [`plans/D37-consolidate-error-pages.md`](D37-consolidate-error-pages.md)
 
-### 6.6 Test Coverage Backfill — **OPEN** (new 2026-07-04)
-- **Scope**: API models with zero tests (equipment — holds D03's SQL; vendor — held D01's bug; badge/bean/comment/follow/photo/preference/qrcode/report/setup), `recipe-list/*` components (shipped by D11 untested), `RequireAuth`, plus P3 tiers (route layers, utils, web pages/components, shared schemas). `sanitize.ts` excluded — owned by D38.
+### 6.6 Test Coverage Backfill — **PARTIAL** (Tier 1 resolved 2026-07-06; Tier 2/3 open)
+- **Scope**: API models with zero tests (equipment — held D03's SQL; vendor — held D01's bug; badge/bean/comment/follow/photo/preference/qrcode/report/setup), `recipe-list/*` components (shipped by D11 untested), `RequireAuth`, plus P3 tiers (route layers, utils, web pages/components, shared schemas). `sanitize.ts` excluded — owned by D38.
+- **Tier 1 (resolved 2026-07-06 via Wave 2)**: `equipment/model.test.ts`, `vendor/model.test.ts`, `recipe-list/*` component tests, and `RequireAuth.test.tsx` all landed; D03 cites `equipment/model.test.ts` as its regression net.
+- **Tier 2/3 (open)**: remaining API models, route layers, utils, web pages/components/hooks/contexts, and shared schema tests — tracked as ongoing background work.
 - **PRD**: [`plans/D39-test-coverage-backfill.md`](D39-test-coverage-backfill.md)
 
 ---
@@ -244,16 +247,16 @@ Also resolved without a ledger section above: **D21** rating-scale CHECK constra
 
 | Priority | Item | Plan | Area | Effort |
 |----------|------|------|------|--------|
-| **P2** | Replace raw SQL in equipment model (+ fold in count-branch predicate dedup) | [D03](D03-raw-sql-drizzle.md) | Backend | Low |
-| **P2** | Eliminate residual `any` in service/model layer | [D34](D34-residual-any-elimination.md) | Backend | Medium |
 | **P2** | Extract duplicated UI (RecipeCard / BanDialog / form helpers) | [D36](D36-extract-duplicated-ui.md) | Frontend | Medium |
 | **P2** | Typed web API boundary via shared response schemas | [D42](D42-typed-web-api-boundary.md) | Both | Medium |
-| **P2** | Test coverage backfill — Tier 1 (equipment/vendor models, recipe-list, RequireAuth) | [D39](D39-test-coverage-backfill.md) | Both | High (incremental) |
+| **P2** | Test coverage backfill — Tier 2/3 (remaining models, routes, utils, web, shared schemas) | [D39](D39-test-coverage-backfill.md) | Both | High (incremental) |
 | **P3** | Remove untracked lint suppressions | [D35](D35-untracked-lint-suppressions.md) | Both | Low–Medium |
 | **P3** | Consolidate error pages / remove dead exports | [D37](D37-consolidate-error-pages.md) | Frontend | Low |
 | **P3** | Complete i18n (admin, legal, compare, auxiliary pages) | [D40](D40-complete-i18n.md) | Frontend | Medium–High |
 | **P3** | Add `createdAt` to remaining join tables | [D43](D43-join-table-timestamps.md) | DB | Low |
 
 **Recently resolved (2026-07-05, openspec change `wave-1-correctness-security`):** D41 (admin user mutation soft-delete guards + sibling sweep + setRole route try/catch + describeRoute) and D38 (report rate limit + sanitizer tests + AuthContext error surfacing + SessionRestoreBanner). See §1.5 and §1.6 above.
+
+**Recently resolved (2026-07-06, Wave 2):** D03 (raw SQL in `equipment/model.ts` rewritten with Drizzle query builder; count-branch predicate dedup folded in), D34 (residual `any` elimination — P2 scope complete, P3 stretch documented), and D39 Tier 1 (equipment/vendor model tests, `recipe-list/*` component tests, `RequireAuth` test). D39 Tier 2/3 remain open. See §1.3, §2.6, and §6.6 above.
 
 **Sequencing notes**: D39 Tier 1 (equipment model tests) before D03; D37 before D40's NotFoundPage conversion; D36's `BanDialog` before/with D40's admin-page conversion.

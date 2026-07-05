@@ -109,19 +109,18 @@ export async function getRecipesUsingEquipment(
   perPage: number,
 ) {
   const offset = (page - 1) * perPage;
+  const recipeConditions = and(
+    eq(recipes.visibility, 'public'),
+    isNull(recipes.deletedAt),
+  );
+  const equipmentExists =
+    sql`exists (select 1 from ${recipeEquipment} re where re.equipment_id = ${equipmentId} and re.recipe_version_id = ${recipes.currentVersionId})`;
   const [data, countResult] = await Promise.all([
     db.query.recipes.findMany({
       with: {
         author: { columns: { username: true, displayName: true, avatarUrl: true } },
       },
-      where: and(
-        eq(recipes.visibility, 'public'),
-        isNull(recipes.deletedAt),
-        sql`${recipes.currentVersionId} IN (
-          SELECT re.recipe_version_id FROM recipe_equipment re
-          WHERE re.equipment_id = ${equipmentId}
-        )`,
-      ),
+      where: and(recipeConditions, equipmentExists),
       orderBy: desc(recipes.createdAt),
       limit: perPage,
       offset,
@@ -133,8 +132,7 @@ export async function getRecipesUsingEquipment(
       .where(
         and(
           eq(recipeEquipment.equipmentId, equipmentId),
-          eq(recipes.visibility, 'public'),
-          isNull(recipes.deletedAt),
+          recipeConditions,
         ),
       ),
   ]);

@@ -1,7 +1,7 @@
 # D34 — Residual `any` Elimination in Service/Model Layer
 
 **Severity:** Medium
-**Status:** Open (2026-07-04)
+**Status:** Resolved (2026-07-06) — P2 scope complete; P3 stretch (library-boundary casts) documented
 **Relationship:** Extends [`D05-eliminate-any-types.md`](D05-eliminate-any-types.md) (resolved). D05 cleaned the recipe module, `vendor/service.ts`, `admin/service.ts`, `auth/service.ts`, `photo/service.ts`, and `routes/sitemap.ts` — but a July 2026 sweep found `any` usages in modules D05 never covered.
 
 ---

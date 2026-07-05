@@ -9,6 +9,9 @@ import { db } from '@brewform/db';
 import { userPreferences } from '@brewform/db/schema';
 import { eq } from 'drizzle-orm';
 
+/** Flat partial of a user_preferences row, used for upserts from the service layer. */
+export type PreferenceUpdate = Partial<typeof userPreferences.$inferInsert>;
+
 /** Find preferences for a user. Returns null if none exist. */
 export async function findByUserId(userId: string) {
   const result = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId))
