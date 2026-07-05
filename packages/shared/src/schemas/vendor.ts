@@ -15,3 +15,8 @@ export const VendorCreateSchema = z.object({
  * Used by PATCH /api/v1/vendors/:id and PATCH /api/v1/admin/vendors/:id.
  */
 export const VendorUpdateSchema = VendorCreateSchema.partial();
+
+/** Inferred TypeScript type for vendor-creation payloads. */
+export type VendorCreate = z.infer<typeof VendorCreateSchema>;
+/** Inferred TypeScript type for partial vendor-update payloads. */
+export type VendorUpdate = z.infer<typeof VendorUpdateSchema>;

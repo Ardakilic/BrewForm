@@ -6,6 +6,7 @@
  */
 import * as model from './model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import type { SetupCreate } from '@brewform/shared/schemas';
 
 export const log = createLogger('setup-service');
 
@@ -35,7 +36,7 @@ export async function getSetup(id: string) {
  *
  * If isDefault is true, clears any existing default setup for this user first.
  */
-export async function createSetup(userId: string, data: any) {
+export async function createSetup(userId: string, data: SetupCreate) {
   log.debug({ userId }, 'createSetup started');
   if (data.isDefault) {
     log.debug({ userId }, 'createSetup clearing defaults for user');

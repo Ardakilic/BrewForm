@@ -39,3 +39,8 @@ export const EquipmentFilterSchema = z.object({
 export const EquipmentDeleteRequestSchema = z.object({
   reason: z.string().max(500).optional(),
 });
+
+/** Inferred TypeScript type for equipment-creation payloads. */
+export type EquipmentCreate = z.infer<typeof EquipmentCreateSchema>;
+/** Inferred TypeScript type for partial equipment-update payloads. */
+export type EquipmentUpdate = z.infer<typeof EquipmentUpdateSchema>;

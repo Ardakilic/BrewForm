@@ -9,6 +9,7 @@ import {
 } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
+import type { PreferenceUpdate } from './model.ts';
 import { error, success } from '../../utils/response/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
@@ -82,7 +83,7 @@ preference.patch(
     const userId = c.get('userId') as string;
     const body = c.req.valid('json');
 
-    const flatData: any = {};
+    const flatData: PreferenceUpdate = {};
     if (body.unitSystem !== undefined) flatData.unitSystem = body.unitSystem;
     if (body.temperatureUnit !== undefined) flatData.temperatureUnit = body.temperatureUnit;
     if (body.theme !== undefined) flatData.theme = body.theme;

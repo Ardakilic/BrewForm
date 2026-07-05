@@ -76,6 +76,8 @@ export async function signRefreshToken(
 /** Verify and decode a JWT, returning a typed AccessPayload or RefreshPayload. */
 export async function verifyJwt(token: string): Promise<JwtPayload> {
   const payload = await verify(token, JWT_SECRET, 'HS256');
+  // hono/jwt's verify returns its own JWTPayload type; our JwtPayload union is
+  // a stricter discriminator — the double cast bridges the library type gap (D34 P3).
   return payload as unknown as JwtPayload;
 }
 
@@ -94,6 +96,7 @@ export function decodeJwt(
   try {
     const decoded = decode(token);
     return {
+      // decode returns loosely-typed header/payload objects; cast to Record (D34 P3).
       header: decoded.header as unknown as Record<string, unknown>,
       payload: decoded.payload as unknown as Record<string, unknown>,
     };

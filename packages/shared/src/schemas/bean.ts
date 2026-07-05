@@ -19,3 +19,8 @@ export const BeanCreateSchema = z.object({
  * Used by PATCH /api/v1/beans/:id.
  */
 export const BeanUpdateSchema = BeanCreateSchema.partial();
+
+/** Inferred TypeScript type for bean-creation payloads. */
+export type BeanCreate = z.infer<typeof BeanCreateSchema>;
+/** Inferred TypeScript type for partial bean-update payloads. */
+export type BeanUpdate = z.infer<typeof BeanUpdateSchema>;

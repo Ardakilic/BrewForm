@@ -5,6 +5,7 @@
  * per-user preference records.
  */
 import * as model from './model.ts';
+import type { PreferenceUpdate } from './model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
 export const log = createLogger('preference-service');
@@ -23,7 +24,7 @@ export async function getPreferences(userId: string) {
 }
 
 /** Insert or update preferences for the authenticated user. */
-export async function updatePreferences(userId: string, data: any) {
+export async function updatePreferences(userId: string, data: PreferenceUpdate) {
   log.debug({ userId }, 'updatePreferences started');
   const result = await model.upsert(userId, data);
   log.debug({ userId }, 'updatePreferences completed');

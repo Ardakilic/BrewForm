@@ -29,7 +29,7 @@ export async function getEquipment(id: string) {
 export async function getEquipmentById(id: string) {
   log.debug({ id }, 'getEquipmentById started');
   const cacheKey = ['equipment-detail', id];
-  const cached = await cacheProvider?.get<Record<string, unknown>>(cacheKey);
+  const cached = await cacheProvider?.get<typeof equipment.$inferSelect>(cacheKey);
   if (cached) {
     log.debug({ id }, 'getEquipmentById cache hit');
     return cached;
@@ -39,7 +39,7 @@ export async function getEquipmentById(id: string) {
     log.debug({ id }, 'getEquipmentById not found');
     return null;
   }
-  await cacheProvider?.set(cacheKey, eq as unknown as Record<string, unknown>, {
+  await cacheProvider?.set(cacheKey, eq, {
     ttlMs: CACHE_TTL_MS,
   });
   log.debug({ id }, 'getEquipmentById completed');

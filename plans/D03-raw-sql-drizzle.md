@@ -1,10 +1,10 @@
 # D03: Raw SQL in Equipment Model
 
-> **Status (2026-07-04): ❌ Not started** — raw SQL persists in `apps/api/src/modules/equipment/model.ts` `getRecipesUsingEquipment` (`IN (SELECT re.recipe_version_id FROM recipe_equipment ...)`, lines 103–107). When fixing, also fold the count branch's duplicated visibility/deletedAt predicates (~line 111) into one shared condition set.
+> **Status (2026-07-06): ✅ Resolved** — raw SQL in `getRecipesUsingEquipment` rewritten with the Drizzle query builder; the count branch's duplicated visibility/`deletedAt` predicates folded into one shared condition set. Regression net provided by D39 Tier 1 (`equipment/model.test.ts`).
 
 **Severity:** Critical — Security & Maintainability  
 **Date:** 2026-05-29  
-**Status:** Proposed  
+**Status:** Resolved (2026-07-06)
 **Module:** `apps/api/src/modules/equipment/model.ts`
 
 ---

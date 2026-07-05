@@ -15,6 +15,7 @@ import {
   userFollows,
 } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import type { BadgeRule } from '@brewform/shared/types';
 
 /** List all available badge definitions ordered by threshold ascending. */
 export async function listBadges() {
@@ -113,7 +114,7 @@ export async function evaluateBadges(userId: string) {
       v.flowRate !== null
     );
 
-  const checks: Array<{ rule: string; met: boolean }> = [
+  const checks: Array<{ rule: BadgeRule; met: boolean }> = [
     { rule: 'first_brew', met: userRecipes >= 1 },
     { rule: 'decade_brewer', met: userRecipes >= 10 },
     { rule: 'centurion', met: userRecipes >= 100 },
@@ -128,7 +129,7 @@ export async function evaluateBadges(userId: string) {
 
   for (const check of checks) {
     if (check.met) {
-      const badgeResult = await db.select().from(badges).where(eq(badges.rule, check.rule as any))
+      const badgeResult = await db.select().from(badges).where(eq(badges.rule, check.rule))
         .limit(1);
       if (badgeResult.length > 0) {
         const badge = badgeResult[0];

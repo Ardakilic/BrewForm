@@ -22,3 +22,8 @@ export const SetupCreateSchema = z.object({
  * Used by PATCH /api/v1/setups/:id.
  */
 export const SetupUpdateSchema = SetupCreateSchema.partial();
+
+/** Inferred TypeScript type for setup-creation payloads. */
+export type SetupCreate = z.infer<typeof SetupCreateSchema>;
+/** Inferred TypeScript type for partial setup-update payloads. */
+export type SetupUpdate = z.infer<typeof SetupUpdateSchema>;

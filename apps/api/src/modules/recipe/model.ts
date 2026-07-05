@@ -463,14 +463,12 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
         ...newVersion,
         tasteNotes: insertedTasteNotes.map((tn) => ({
           ...tn,
-          tasteNote: latestVersion.tasteNotes?.find((ltn: any) =>
-            ltn.tasteNoteId === tn.tasteNoteId
-          )
+          tasteNote: latestVersion.tasteNotes?.find((ltn) => ltn.tasteNoteId === tn.tasteNoteId)
             ?.tasteNote,
         })),
         equipment: insertedEquipment.map((eq) => ({
           ...eq,
-          equipment: latestVersion.equipment?.find((leq: any) => leq.equipmentId === eq.equipmentId)
+          equipment: latestVersion.equipment?.find((leq) => leq.equipmentId === eq.equipmentId)
             ?.equipment,
         })),
         additionalPreparations: insertedPreparations,

@@ -9,6 +9,11 @@ import { db } from '@brewform/db';
 import { tasteNotes } from '@brewform/db/schema';
 import { and, asc, eq, isNull, like } from 'drizzle-orm';
 
+/** A taste-note row with its nested children, used by getHierarchy. */
+type TasteNoteNode = typeof tasteNotes.$inferSelect & {
+  children: TasteNoteNode[];
+};
+
 /** Get all taste notes ordered by depth then name. */
 export async function findAll() {
   return db.select().from(tasteNotes).where(isNull(tasteNotes.deletedAt))
@@ -42,12 +47,12 @@ export async function getHierarchy() {
     .where(isNull(tasteNotes.deletedAt))
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
 
-  const nodeMap = new Map<string, any>();
+  const nodeMap = new Map<string, TasteNoteNode>();
   for (const note of allNotes) {
     nodeMap.set(note.id, { ...note, children: [] });
   }
 
-  const roots: any[] = [];
+  const roots: TasteNoteNode[] = [];
   for (const note of allNotes) {
     const node = nodeMap.get(note.id)!;
     if (note.parentId == null && note.depth === 0) {

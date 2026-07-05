@@ -6,6 +6,7 @@
  */
 import * as model from './model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import type { BeanCreate, BeanUpdate } from '@brewform/shared/schemas';
 
 export const log = createLogger('bean-service');
 
@@ -31,7 +32,7 @@ export async function getBean(id: string) {
 }
 
 /** Create a new bean owned by the authenticated user. */
-export async function createBean(userId: string, data: any) {
+export async function createBean(userId: string, data: BeanCreate) {
   log.debug({ userId }, 'createBean started');
   const result = await model.create({ ...data, userId });
   log.debug({ userId, beanId: result.id }, 'createBean completed');
@@ -44,7 +45,7 @@ export async function createBean(userId: string, data: any) {
  * @throws BEAN_NOT_FOUND if the bean doesn't exist
  * @throws FORBIDDEN if the user doesn't own the bean
  */
-export async function updateBean(userId: string, id: string, data: any) {
+export async function updateBean(userId: string, id: string, data: BeanUpdate) {
   log.debug({ userId, id }, 'updateBean started');
   const bean = await model.findById(id);
   if (!bean) {
