@@ -10,6 +10,10 @@ interface ContactFormData {
   message: string;
 }
 
+/**
+ * Contact form (name/email/subject/message) posting to `/contact`;
+ * swaps to a success message once sent.
+ */
 export function ContactPage() {
   const { t } = useTranslation();
   const [sent, setSent] = useState(false);

@@ -69,6 +69,11 @@ function buildPaths(
   return { fill, stroke };
 }
 
+/**
+ * SVG timeline of the brew: eased pre-infusion rise into an extraction
+ * plateau, with adaptive time-axis markers and an optional flow-rate
+ * label. Renders nothing without an extraction time.
+ */
 export function BrewTimeline({
   extractionTimeSeconds,
   preInfusionTimeSeconds,

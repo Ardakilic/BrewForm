@@ -51,6 +51,11 @@ function Star({ index, activeValue }: { index: number; activeValue: number }) {
   );
 }
 
+/**
+ * Five-star rating display on a 1–10 half-star scale with hover
+ * preview and optional community-vote count; clicking reports the
+ * hovered value via `onRate` when `interactive`.
+ */
 export function StarRating({ value, count, onRate, interactive = true }: Props) {
   const [hovered, setHovered] = useState(0);
 

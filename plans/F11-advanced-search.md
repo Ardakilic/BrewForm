@@ -1,5 +1,13 @@
 # F11 — Advanced Search with Faceted Filters
 
+> **Validation status (2026-07-04): ⚠️ Outdated — rebase on shipped D27 cursor pagination**
+>
+> - Cursor pagination ALREADY SHIPPED (D27: recipe/model.ts:42, 867-934; recipe/index.ts:27-29, 126-130). Plan's uuid cursor + `lt(recipes.id)` is wrong — the real cursor is a base64 `(createdAt, id)` composite.
+> - Stale envelope: plan's `meta.nextCursor` / `meta.hasMore` → real responses use `meta.cursor` / `meta.pagination` (apps/api/src/utils/response/index.ts:40,83,109).
+> - Indexes: `recipe_author_visibility_idx` and `recipe_visibility_like_count_idx` already exist (schema.ts:149,166 — D23); only the visibility_created_at and visibility_featured indexes are new.
+> - Do NOT apply the proposed `RecipeFilterSchema` rewrite as-is — it would clobber the current schema, which already has `search`, deprecated `tasteNoteId`, `sortBy` incl. rating, `cursor`, `includeTotal` (apps/api/src/schemas/recipe.ts:145-160).
+> - Salvageable scope: faceted filters (author, dateFrom/dateTo, min/maxRating), full-text search ranking, ActiveFilterChips.
+
 ## Overview
 
 Enhance the existing recipe listing with full-text search ranking, faceted filters (author, date range, rating range, equipment compatibility), and cursor-based pagination. Currently, search uses simple `ilike` on title/productName. This feature adds relevance ranking and multi-dimensional filtering.

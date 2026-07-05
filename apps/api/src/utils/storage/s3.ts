@@ -1,6 +1,12 @@
 import { config } from '../../config/index.ts';
 import type { StorageDriver } from './types.ts';
 
+/**
+ * StorageDriver for any S3-compatible endpoint, using hand-rolled AWS
+ * Signature V4 signing over plain fetch (no SDK dependency). Requests time
+ * out after 30s and transient failures (5xx / SlowDown) are retried with
+ * exponential backoff. save() returns a URL built from S3_PUBLIC_URL.
+ */
 export class S3StorageDriver implements StorageDriver {
   private endpoint: string;
   private region: string;

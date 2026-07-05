@@ -6,6 +6,10 @@ import {
   UNIT_SYSTEM_VALUES,
 } from '../constants/index.ts';
 
+/**
+ * Validates user-preference payloads (units, theme, locale, timezone, email notifications), with defaults for every field.
+ * Used by PATCH /api/v1/preferences.
+ */
 export const UserPreferencesSchema = z.object({
   unitSystem: z.enum(UNIT_SYSTEM_VALUES).default('metric'),
   temperatureUnit: z.enum(TEMPERATURE_UNIT_VALUES).default('celsius'),
@@ -26,6 +30,10 @@ export const UserPreferencesSchema = z.object({
   }),
 });
 
+/**
+ * Validates profile-update payloads (display name, bio, avatar URL).
+ * Used by PATCH /api/v1/users/me.
+ */
 export const UserProfileUpdateSchema = z.object({
   displayName: z.string().max(50).optional(),
   bio: z.string().max(500).optional(),

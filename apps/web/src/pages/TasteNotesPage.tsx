@@ -211,6 +211,11 @@ function DefinitionPopover({ definition, label }: { definition: string | null; l
   );
 }
 
+/**
+ * Browsable SCAA flavor-wheel explorer: fetches the taste-note
+ * hierarchy, supports search filtering, and shows definitions in
+ * info popovers.
+ */
 export function TasteNotesPage() {
   const [hierarchy, setHierarchy] = useState<TasteCategory[]>([]);
   const [search, setSearch] = useState('');

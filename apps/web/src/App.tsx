@@ -7,6 +7,10 @@ import { router } from './router.tsx';
 import { PageSkeleton } from './components/ui/Skeleton.tsx';
 import { useStaticCacheSync } from './hooks/useStaticCacheSync.ts';
 
+/**
+ * Application root: stacks the theme/i18n/auth providers around the
+ * router and keeps the static-data cache in sync across tabs.
+ */
 export default function App() {
   useStaticCacheSync();
 

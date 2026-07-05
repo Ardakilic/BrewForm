@@ -2,6 +2,11 @@ import { config } from '../../config/index.ts';
 import type { StorageDriver } from './types.ts';
 import * as path from 'jsr:@std/path';
 
+/**
+ * StorageDriver that writes files to UPLOAD_DIR on local disk and serves them
+ * under `/uploads/`. Filenames are validated against path traversal before
+ * any filesystem access; deletes are best-effort (missing files are ignored).
+ */
 export class LocalStorageDriver implements StorageDriver {
   async save(data: Uint8Array, filename: string): Promise<string> {
     const targetPath = this._resolvePath(filename);

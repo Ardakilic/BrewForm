@@ -1,5 +1,7 @@
 # D16 — Account Deletion Doesn't Logout
 
+> **Status (2026-07-04): ✅ Done** — `SettingsPage.tsx:105-109` calls `logout()` + `navigate('/')` after deletion; en/tr i18n keys added (:315).
+
 ## Severity
 
 **Medium**

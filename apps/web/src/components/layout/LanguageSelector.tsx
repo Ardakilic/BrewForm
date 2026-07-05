@@ -11,6 +11,10 @@ const LOCALE_LABELS: Record<string, string> = {
   tr: '🇹🇷 Türkçe',
 };
 
+/**
+ * Locale dropdown (Base UI Select) showing flag-labelled options.
+ * Renders nothing when no locales are available.
+ */
 export function LanguageSelector({ locale, setLocale, availableLocales }: LanguageSelectorProps) {
   if (!availableLocales || availableLocales.length === 0) {
     return null;

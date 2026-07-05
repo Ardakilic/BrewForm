@@ -1,8 +1,13 @@
 import { z } from 'zod';
 import { COFFEE_VARIETY_CATEGORY_VALUES } from '../constants/index.ts';
 
+/** Zod enum of coffee-variety categories; shared by the variety create and filter schemas. */
 export const CoffeeVarietyCategoryEnum = z.enum(COFFEE_VARIETY_CATEGORY_VALUES);
 
+/**
+ * Validates coffee-variety creation payloads.
+ * Used by POST /api/v1/coffee-varieties and POST /api/v1/admin/coffee-varieties.
+ */
 export const CoffeeVarietyCreateSchema = z.object({
   name: z.string().min(1).max(255),
   category: CoffeeVarietyCategoryEnum,
@@ -33,8 +38,16 @@ export const CoffeeVarietyCreateSchema = z.object({
   globalSharePct: z.string().max(50).optional(),
 });
 
+/**
+ * Validates partial coffee-variety update payloads.
+ * Used by PATCH /api/v1/coffee-varieties/:id and PATCH /api/v1/admin/coffee-varieties/:id.
+ */
 export const CoffeeVarietyUpdateSchema = CoffeeVarietyCreateSchema.partial();
 
+/**
+ * Validates coffee-variety list query params (category, search, pagination).
+ * Used by GET /api/v1/coffee-varieties.
+ */
 export const CoffeeVarietyFilterSchema = z.object({
   category: CoffeeVarietyCategoryEnum.optional(),
   search: z.string().max(200).optional(),

@@ -77,6 +77,11 @@ function dominantBaseline(
   return 'middle';
 }
 
+/**
+ * Static 9-axis SVG radar chart of SCAA category intensities with
+ * guide polygons and positioned labels; scale auto-fits to the max
+ * value (minimum 3) unless `maxValue` is given.
+ */
 export function ScaaRadarChart({
   categoryValues,
   maxValue,

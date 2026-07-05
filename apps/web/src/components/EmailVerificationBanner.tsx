@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import { authApi } from '../api/index.ts';
 
+/**
+ * Banner prompting unverified users to verify their email, with a
+ * resend button. Renders nothing when logged out or already verified.
+ */
 export function EmailVerificationBanner() {
   const { user } = useAuth();
   const [sending, setSending] = useState(false);

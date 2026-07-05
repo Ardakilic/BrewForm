@@ -1,5 +1,10 @@
 # F02 — Brew Journal / "Brew Again" Workflow
 
+> **Validation status (2026-07-04): ✅ Valid**
+>
+> - Net-new `brew_log` table; the 1–10 rating CHECK matches the D21 rating scale (schema.ts:210,237,662,671).
+> - Prerequisite for F03 (profile stats), F20 (brew logger integration) and the offline sync part of F25.
+
 ## Overview
 
 Allow users to log brew events (date, deviations from recipe, personal rating) when brewing a recipe. Populate a user's brew history with personal notes, actual measurements, and ratings. Provide recipe-level aggregation (times brewed, average personal rating) and user-level stats (total brews, brew frequency).

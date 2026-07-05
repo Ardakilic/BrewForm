@@ -119,6 +119,7 @@ function stringToArr(s: string): string[] {
   return trimmed.split(',').map((v) => v.trim()).filter(Boolean);
 }
 
+/** Admin page: paginated, searchable coffee-variety CRUD with category filter and inline form. */
 export function AdminCoffeeVarietiesPage() {
   const [items, setItems] = useState<CoffeeVarietyItem[]>([]);
   const [loading, setLoading] = useState(true);

@@ -7,6 +7,10 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('RegisterPage');
 
+/**
+ * Registration form with client-side password checks; hidden behind a
+ * server-side registration-enabled flag. Navigates home on success.
+ */
 export function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();

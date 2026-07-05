@@ -1,7 +1,9 @@
 # D26 — Expand Structured Logging Coverage
 
+> **Status (2026-07-04): ✅ Done** — P1 services + P2 middleware + P1 pages/contexts are all logged; openspec change `d26-expand-logging` archived. `TODO_logs.md` is retained for history only.
+
 **Severity:** Low  
-**Status:** Open  
+**Status:** Implemented  
 **File:** `TODO_logs.md`
 
 ---

@@ -20,6 +20,10 @@ interface VersionSummary {
   temperatureCelsius: number | null;
 }
 
+/**
+ * Version-history table for a recipe: per-version brew date, method,
+ * and key parameters formatted for the user's unit system.
+ */
 export function RecipeVersionsPage() {
   const { slug } = useParams<{ slug: string }>();
   const { t } = useTranslation();

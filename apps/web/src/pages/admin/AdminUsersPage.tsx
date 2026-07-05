@@ -12,6 +12,7 @@ interface PaginationState {
   totalPages: number;
 }
 
+/** Admin page: paginated, searchable user list with ban dialog and links to detail/edit/create. */
 export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);

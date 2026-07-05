@@ -26,12 +26,14 @@ export const CommentOutputSchema = z.object({
 
 export type CommentOutput = z.infer<typeof CommentOutputSchema>;
 
+/** Validates a comment row plus its left-joined `author` projection (nullable); used in comment-list response envelopes and replies. */
 export const CommentWithAuthorOutputSchema = CommentOutputSchema.extend({
   author: AuthorRefSchema,
 });
 
 export type CommentWithAuthorOutput = z.infer<typeof CommentWithAuthorOutputSchema>;
 
+/** Validates a top-level comment list item with nested `replies[]`; response envelope for GET /api/v1/comments/recipe/:recipeId. */
 export const CommentWithRepliesOutputSchema = CommentWithAuthorOutputSchema.extend({
   replies: z.array(CommentWithAuthorOutputSchema),
 });

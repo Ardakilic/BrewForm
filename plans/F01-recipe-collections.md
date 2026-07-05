@@ -1,5 +1,10 @@
 # F01 — Recipe Collections (Playlists)
 
+> **Validation status (2026-07-04): ✅ Valid**
+>
+> - Net-new collections module; matches all current patterns (react-router v8 loaders, route registration via `routes.route(...)` in apps/api/src/routes/index.ts).
+> - Offset pagination is fine here (both offset and cursor envelopes exist in apps/api/src/utils/response/index.ts).
+
 ## Overview
 
 Allow users to create named collections (e.g., "Morning Pour-overs", "Espresso Experiments") that group multiple recipes. Collections can be public or private, enabling users to organize their own recipes or curate public recipes into themed playlists. Other users can discover and follow public collections.

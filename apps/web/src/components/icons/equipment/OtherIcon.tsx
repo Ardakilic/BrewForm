@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** Generic fallback SVG icon for equipment types without a dedicated icon. */
 export function OtherIcon({ size = 24, className }: IconProps) {
   return (
     <svg

@@ -1,7 +1,9 @@
 # D19 — Admin Soft-Delete Missing `isNull` Guards (Equipment, Vendor, Coffee Variety)
 
+> **Status (2026-07-04): ✅ Done** — `admin/model.ts` has `isNull(deletedAt)` guards at deleteEquipment (:296), deleteVendor (:339), deleteCoffeeVariety (:608), and the approve inner query (:671).
+
 **Severity:** Medium  
-**Status:** Open  
+**Status:** Implemented  
 **File:** `apps/api/src/modules/admin/model.ts`
 
 ---

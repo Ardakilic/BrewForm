@@ -1,5 +1,10 @@
 # F17 — Admin Analytics Dashboard Improvements
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - Growth endpoints ALREADY EXIST: admin exposes `/analytics/users`, `/analytics/recipes`, `/analytics/top-recipes`, `/analytics/top-users` (`getUserGrowth`/`getRecipeGrowth`/`getDashboardStats` are implemented) — build on them instead of re-adding.
+> - No TanStack Query, and the API client is a custom fetch wrapper (not axios) — `responseType: 'blob'` for CSV download is impossible with it; use a direct `fetch` + blob download instead.
+
 ## Overview
 
 Enhance the existing admin analytics with time-series charts, retention metrics, and CSV export. Currently, admin dashboard shows simple stat cards. This adds visual trends and exportable data.

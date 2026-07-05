@@ -1,5 +1,10 @@
 # F07 — Batch / Scale Recipe Calculator
 
+> **Validation status (2026-07-04): ✅ Valid**
+>
+> - Pure client-side feature; `useUnitSystem`, `formatWeight`, `formatVolume`, `computeBrewRatio` all exist as described.
+> - Cosmetic: align the proposed test harness style with existing repo test conventions.
+
 ## Overview
 
 A recipe scaling calculator that lives on the RecipeDetailPage and RecipeCreatePage. Users input a desired yield, and the calculator auto-scales dose, water volume, and brew ratio. No new database tables — this is a pure UI + utility feature extending existing shared utilities.

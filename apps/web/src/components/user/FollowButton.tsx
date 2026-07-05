@@ -11,6 +11,11 @@ interface Props {
 
 const log = createLogger('FollowButton');
 
+/**
+ * Optimistic follow/unfollow toggle backed by a fetcher to `/follow/:userId`.
+ * Calls `onToggle` when the mutation settles successfully and
+ * `onToggleRollback` when the action returns an error.
+ */
 export function FollowButton({ userId, initialFollowing, onToggle, onToggleRollback }: Props) {
   const fetcher = useFetcher();
   const optimistic = fetcher.formData ? fetcher.formData.get('following') === 'true' : null;

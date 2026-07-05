@@ -1,6 +1,7 @@
 import { Link, Outlet } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 
+/** Admin shell: sidebar navigation to all admin sections around an `<Outlet />`. */
 export function AdminLayout() {
   const { user } = useAuth();
 

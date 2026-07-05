@@ -15,6 +15,11 @@ interface Props {
   canonical?: string;
 }
 
+/**
+ * Renders nothing; imperatively syncs document title, description,
+ * Open Graph / Twitter meta tags, robots noindex, and the canonical
+ * link with the given props.
+ */
 export function SEOHead(
   { title, description, image, url, type = 'website', noIndex, canonical }: Props,
 ) {

@@ -20,6 +20,10 @@ const LOCALE_DIR: Record<Locale, 'ltr' | 'rtl'> = {
   tr: 'ltr',
 };
 
+/**
+ * Owns the active locale (persisted in localStorage, default `en`),
+ * keeps `<html lang/dir>` in sync, and provides a locale-bound `t()`.
+ */
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
     const stored = localStorage.getItem('brewform_locale') as Locale | null;
@@ -47,6 +51,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Accesses the i18n context (`t`, locale, setLocale); throws outside {@link I18nProvider}. */
 export function useTranslation() {
   const context = useContext(I18nContext);
   if (!context) throw new Error('useTranslation must be used within I18nProvider');

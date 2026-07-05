@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for an espresso portafilter. */
 export function PortafilterIcon({ size = 24, className }: IconProps) {
   return (
     <svg

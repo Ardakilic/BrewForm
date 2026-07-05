@@ -1,7 +1,9 @@
 # D21 — Fix Recipe Rating Scale Mismatch
 
+> **Status (2026-07-04): ✅ Done** — `recipe_version_rating_check` CHECK constraint at `schema.ts:237`; “1–10” comment in `types/recipe.ts:123`.
+
 **Severity:** Low  
-**Status:** Open  
+**Status:** Implemented  
 **Files:**
 - `packages/db/src/schema.ts:179` — `recipeVersions.rating` column, no CHECK constraint
 - `packages/shared/src/types/recipe.ts:123` — JSDoc comment says "1-5" instead of "1–10"

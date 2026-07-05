@@ -52,6 +52,11 @@ function getRootCategoryName(
   return null;
 }
 
+/**
+ * Tasting-notes card: SCAA radar chart (when every note resolves to a
+ * root category) plus intensity chips grouped by category, each linking
+ * to the filtered recipe list. Also shows optional personal notes.
+ */
 export function TastingNotesSection({
   tasteNotes,
   personalNotes,

@@ -1,5 +1,10 @@
 # F09 — Recipe Version Diff View
 
+> **Validation status (2026-07-04): ✅ Valid (depends on F08 DiffHighlighter)**
+>
+> - Depends on F08's shared `DiffHighlighter` component — sequence after F08 (or merge).
+> - Verified: `tds` (schema.ts:199), `emojiTag` (schema.ts:211) and `formatTemperature` all exist; the page fetches versions by id, so it is unaffected by the missing `currentVersion` relation.
+
 ## Overview
 
 Side-by-side diff between any two versions of the same recipe, showing exactly which parameters changed. Similar to a git diff but for brewing parameters. No new database tables — a new API endpoint that compares two `recipe_version` records field-by-field, and a frontend view with color-coded changes.

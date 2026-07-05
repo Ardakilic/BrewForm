@@ -1,5 +1,7 @@
 # D08: Consolidate Duplicate `AuthUser` Interface Definitions
 
+> **Status (2026-07-04): ✅ Done** — shared `types/user.ts:94` exports `AuthUser`; both web consumers import it from shared.
+
 ## Severity: High
 
 ---

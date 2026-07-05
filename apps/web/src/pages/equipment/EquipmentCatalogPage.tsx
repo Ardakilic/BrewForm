@@ -19,6 +19,10 @@ interface CatalogEquipmentItem {
   description: string | null;
 }
 
+/**
+ * Public equipment catalog with URL-driven pagination, type-category
+ * tabs, and debounced search; cards link to equipment detail pages.
+ */
 export function EquipmentCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [equipment, setEquipment] = useState<CatalogEquipmentItem[]>([]);

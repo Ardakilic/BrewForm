@@ -1,11 +1,18 @@
 # TODO — Log Coverage Expansion
 
-Next steps to increase structured logging coverage across the BrewForm codebase.  
-PR #1 covered the infrastructure and key paths; this lists what remains.
+> ## ✅ COMPLETE (2026-06-20, change `d26-expand-logging` archived)
+>
+> **All P1 and P2 targets below have shipped** — every listed service, middleware, page, and
+> context provider now has structured logging, locked in by the `api-service-logging`,
+> `api-middleware-logging`, `web-page-logging`, and `logging-test-coverage` openspec specs.
+> This document is **retained for historical reference only; do NOT use it as a work list.**
+
+Original intro (historical): next steps to increase structured logging coverage across the
+BrewForm codebase. PR #1 covered the infrastructure and key paths; this listed what remained.
 
 ---
 
-## P1 — High Priority (data mutations, auth, external calls)
+## P1 — High Priority (data mutations, auth, external calls) — ✅ COMPLETED
 
 ### API Services
 
@@ -45,7 +52,7 @@ PR #1 covered the infrastructure and key paths; this lists what remains.
 
 ---
 
-## P2 — Medium Priority (admin operations, secondary pages, integrations)
+## P2 — Medium Priority (admin operations, secondary pages, integrations) — ✅ COMPLETED
 
 ### API Services
 

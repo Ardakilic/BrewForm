@@ -8,6 +8,7 @@ import {
 } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, isNull, like, or, SQL, sql } from 'drizzle-orm';
 
+/** Find an equipment item by ID. Returns null if deleted or not found. */
 export async function findById(id: string) {
   const result = await db.select().from(equipment).where(
     and(eq(equipment.id, id), isNull(equipment.deletedAt)),
@@ -15,6 +16,10 @@ export async function findById(id: string) {
   return result[0] ?? null;
 }
 
+/**
+ * List non-deleted equipment matching an optional extra where clause,
+ * paginated and ordered by name, with total count.
+ */
 export async function findMany(where: SQL | undefined, page: number, perPage: number) {
   const finalWhere = where ? and(where, isNull(equipment.deletedAt)) : isNull(equipment.deletedAt);
   const [items, totalResult] = await Promise.all([
@@ -25,6 +30,7 @@ export async function findMany(where: SQL | undefined, page: number, perPage: nu
   return { items, total: totalResult[0].count };
 }
 
+/** Search non-deleted equipment by name, brand, or model (LIKE match), limited to 10 results. */
 export async function search(query: string) {
   return db.select().from(equipment)
     .where(and(
@@ -39,16 +45,19 @@ export async function search(query: string) {
     .limit(10);
 }
 
+/** Insert a new equipment item. */
 export async function create(data: typeof equipment.$inferInsert) {
   const [result] = await db.insert(equipment).values(data).returning();
   return result;
 }
 
+/** Update an equipment item by ID (no soft-delete filter). Returns null if not found. */
 export async function update(id: string, data: Partial<typeof equipment.$inferInsert>) {
   const [result] = await db.update(equipment).set(data).where(eq(equipment.id, id)).returning();
   return result ?? null;
 }
 
+/** Soft-delete an equipment item by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
   const [result] = await db.update(equipment).set({ deletedAt: new Date() }).where(
     and(eq(equipment.id, id), isNull(equipment.deletedAt)),
@@ -56,6 +65,10 @@ export async function softDelete(id: string) {
   return result ?? null;
 }
 
+/**
+ * List non-deleted equipment with optional type and name/brand/model search
+ * filters, paginated and ordered by name, with total count.
+ */
 export async function findManyWithFilters(params: {
   type?: string;
   search?: string;
@@ -86,6 +99,10 @@ export async function findManyWithFilters(params: {
   return { items, total: totalResult[0].count };
 }
 
+/**
+ * List public, non-deleted recipes whose current version uses the given
+ * equipment item, paginated with total count and author relation joined.
+ */
 export async function getRecipesUsingEquipment(
   equipmentId: string,
   page: number,
@@ -124,6 +141,7 @@ export async function getRecipesUsingEquipment(
   return { data, total: Number(countResult[0]?.count ?? 0) };
 }
 
+/** Insert an equipment delete request for admin review. */
 export async function createDeleteRequest(
   data: typeof equipmentDeleteRequests.$inferInsert,
 ) {

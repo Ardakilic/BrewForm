@@ -1,5 +1,7 @@
 # D12 — Recipe Filter Logic Duplication (Backend)
 
+> **Status (2026-07-04): ✅ Done** — `model.ts:89` `buildRecipeFilters(): SQL[]` is shared by `listRecipesFiltered` (:219) and `findStarred` (:1040).
+
 ## Severity
 
 **High**

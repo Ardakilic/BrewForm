@@ -7,6 +7,7 @@ import { Skeleton } from '../../components/ui/Skeleton.tsx';
 
 const log = createLogger('AdminUserDetailPage');
 
+/** Admin page: single-user detail view with ban/unban dialog and delete/edit actions. */
 export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

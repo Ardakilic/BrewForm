@@ -39,7 +39,7 @@ Auth middleware tests SHALL assert that the appropriate log level is used for ea
 
 - **WHEN** a test calls `authMiddleware` with a valid token for a banned user
 - **THEN** the test SHALL assert `log.warn` was called with `{ userId }` and a message containing "banned"
-- **AND** the middleware returned a 403 response
+- **AND** the middleware returned a 401 response
 
 #### Scenario: Test verifies token verification failure is logged
 
@@ -48,12 +48,12 @@ Auth middleware tests SHALL assert that the appropriate log level is used for ea
 
 ### Requirement: Rate limit middleware tests assert warn logging on limit exceeded
 
-Rate limit middleware tests SHALL assert that `log.warn` is called with the client IP and limit value when the rate limit is exceeded.
+Rate limit middleware tests SHALL assert that `log.warn` is called with the configured limit value (and the user ID for the auth rate limiter) when the rate limit is exceeded.
 
 #### Scenario: Test verifies rate limit exceeded is logged
 
 - **WHEN** a test triggers the rate limit by making requests up to the limit threshold
-- **THEN** the test SHALL assert `log.warn` was called with `{ ip: "...", limit: 100 }` and a message containing "rate limit exceeded"
+- **THEN** the test SHALL assert `log.warn` was called with `{ limit: 100 }` and a message containing "rate limit exceeded"
 - **AND** the middleware returned a 429 response
 
 ### Requirement: Web page tests assert mount and unmount debug logging
@@ -127,7 +127,7 @@ New test files created for this change (report service test, auth middleware tes
 - **THEN** the file SHALL use `describe`/`it` blocks grouped by middleware function (`rateLimitMiddleware` and `authRateLimitMiddleware`)
 - **AND** SHALL create a mock Hono context for each test case
 - **AND** SHALL test both the under-limit (pass-through) and over-limit (429) scenarios
-- **AND** SHALL assert `log.warn` was called with `{ ip, limit }` on rate limit exceeded
+- **AND** SHALL assert `log.warn` was called with `{ limit }` (or `{ userId, limit }` for `authRateLimitMiddleware`) on rate limit exceeded
 
 ### Requirement: Web tests that update existing files must preserve all existing assertions
 
@@ -189,21 +189,21 @@ The auth middleware test file SHALL include a test case that verifies `optionalA
 
 ### Requirement: Rate limit test verifies both IP-based and user-ID-based rate limit logging
 
-The rate limit middleware test file SHALL include separate test cases for IP-based rate limiting (`rateLimitMiddleware`) and user-ID-based rate limiting (`authRateLimitMiddleware`), asserting that each emits the correct log context (IP only vs. IP + user ID) when the limit is exceeded.
+The rate limit middleware test file SHALL include separate test cases for IP-based rate limiting (`rateLimitMiddleware`) and user-ID-based rate limiting (`authRateLimitMiddleware`), asserting that each emits the correct log context (limit only vs. user ID + limit) when the limit is exceeded.
 
-#### Scenario: IP-based rate limit test verifies warn log with IP and limit
+#### Scenario: IP-based rate limit test verifies warn log with limit
 
 - **WHEN** a test triggers `rateLimitMiddleware` to exceed its limit by making 101 requests from the same IP
 - **THEN** the test SHALL assert that `log.warn` was called exactly once
-- **AND** the log call SHALL include `{ ip: "<client-ip>", limit: 100 }` in its first argument
+- **AND** the log call SHALL include `{ limit: 100 }` in its first argument
 - **AND** the log message SHALL contain "rate limit exceeded"
 - **AND** the middleware returned a 429 response
 
-#### Scenario: User-ID-based rate limit test verifies warn log with userId, IP, and limit
+#### Scenario: User-ID-based rate limit test verifies warn log with userId and limit
 
 - **WHEN** a test triggers `authRateLimitMiddleware` to exceed its limit for an authenticated user
 - **THEN** the test SHALL assert that `log.warn` was called exactly once
-- **AND** the log call SHALL include `{ userId: "<user-id>", ip: "<client-ip>", limit: 100 }` in its first argument
+- **AND** the log call SHALL include `{ userId: "<user-id>", limit: 100 }` in its first argument
 - **AND** the log message SHALL contain "rate limit exceeded"
 - **AND** the middleware returned a 429 response
 

@@ -4,6 +4,11 @@ import { createLogger } from '@/utils/logger.ts';
 
 const logger = createLogger('rate');
 
+/**
+ * Action submitting a 1–10 rating for recipe `:id`. Returns the API
+ * rating result; throws a 400 Response for a missing id or
+ * non-numeric rating.
+ */
 export const rateAction = async ({ params, request }: ActionFunctionArgs) => {
   const id = params.id;
   if (typeof id !== 'string' || id.length === 0) {

@@ -8,6 +8,11 @@ const STEPS = ['welcome', 'equipment', 'beans', 'first-brew', 'explore'] as cons
 
 type StepProps = { t: ReturnType<typeof useTranslation>['t'] };
 
+/**
+ * Five-step onboarding flow (welcome → equipment → beans → first brew →
+ * explore). Skip/complete both mark onboarding done in preferences and
+ * navigate home.
+ */
 export function OnboardingWizard() {
   const { t } = useTranslation();
   const { user: _user, refreshUser } = useAuth();

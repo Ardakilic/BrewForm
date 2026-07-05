@@ -15,6 +15,7 @@ interface Setup {
   createdAt: string;
 }
 
+/** The user's brewing setups: list plus inline create/delete and default-setup handling. */
 export function SetupListPage() {
   const [setups, setSetups] = useState<Setup[]>([]);
   const [loading, setLoading] = useState(true);

@@ -11,6 +11,7 @@ interface CompatibilityRule {
   isCompatible: boolean;
 }
 
+/** Admin page: brew-method/equipment compatibility rules with toggle and cache flush. */
 export function AdminCompatibilityPage() {
   const [rules, setRules] = useState<CompatibilityRule[]>([]);
   const [loading, setLoading] = useState(true);

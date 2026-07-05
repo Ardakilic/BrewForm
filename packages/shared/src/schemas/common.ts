@@ -1,14 +1,18 @@
 import { z } from 'zod';
 
+/** Validates page/perPage list query params (1-based page, perPage capped at 100); shared by paginated endpoints. */
 export const PaginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   perPage: z.coerce.number().int().positive().max(100).default(20),
 });
 
+/** Validates an 'asc'/'desc' sort-order query param (default 'desc'). */
 export const SortOrderSchema = z.enum(['asc', 'desc']).default('desc');
 
+/** Validates a UUID string; shared building block for id path params and payload fields. */
 export const UuidSchema = z.uuid();
 
+/** Validates a lowercase kebab-case slug (e.g. recipe slugs in path params). */
 export const SlugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 /**

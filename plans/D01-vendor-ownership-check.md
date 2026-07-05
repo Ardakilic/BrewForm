@@ -1,7 +1,9 @@
 # Ownership Check Audit — D01 / D02 / D03
 
+> **Status (2026-07-04): ✅ Done** — `vendor/service.ts:68` updateVendor enforces `vendor.createdBy !== userId && !isAdmin`; `schema.ts:470` has the `createdBy` column + relations; admin service/model persist `createdBy`.
+
 **Audit Date:** 2026-05-31  
-**Status:** Proposed  
+**Status:** Implemented (D01 scope; see banner)  
 **Scope:** Full `apps/api/src/modules` scan for `_userId` ignored-parameter pattern
 
 ---

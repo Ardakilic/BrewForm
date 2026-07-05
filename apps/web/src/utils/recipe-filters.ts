@@ -14,6 +14,11 @@ export interface ListFilterParams {
   coffeeVarietyId?: string;
 }
 
+/**
+ * Extracts sanitised recipe-list query params from the URL: clamps
+ * `page` to a positive integer, defaults `perPage`/`sortBy`, drops
+ * empty filters, and rejects non-UUID equipment/variety ids.
+ */
 export function extractListParams(sp: URLSearchParams): Record<string, string> {
   const rawPage = sp.get('page');
   let page = '1';

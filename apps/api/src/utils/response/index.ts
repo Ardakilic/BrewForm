@@ -27,7 +27,6 @@ export function success<T>(
   }, status);
 }
 
-/** Return a success envelope with pagination metadata. Shorthand for success() with pagination. */
 /**
  * Return a success envelope with pagination metadata and optional response
  * headers. Shorthand for success() with pagination.
@@ -58,16 +57,6 @@ export function paginated<T>(
   }, 200);
 }
 
-/**
- * Return a success envelope with cursor-pagination metadata.
- *
- * Use this for cursor-based list endpoints. The response shape is
- * `{ success: true, data, meta: { requestId, cursor: { nextCursor, hasMore, total? } } }`.
- *
- * @param c - Hono request context.
- * @param data - Items on the current page.
- * @param cursorMeta - Cursor pagination metadata.
- */
 /**
  * Return a success envelope with cursor-pagination metadata and optional
  * response headers.
@@ -129,22 +118,27 @@ export function error(
   }, status);
 }
 
+/** Return a 404 `NOT_FOUND` error envelope for the named resource. */
 export function notFound(c: Context, resource: string = 'Resource') {
   return error(c, 'NOT_FOUND', `${resource} not found`, 404);
 }
 
+/** Return a 401 `UNAUTHORIZED` error envelope. */
 export function unauthorized(c: Context, message: string = 'Authentication required') {
   return error(c, 'UNAUTHORIZED', message, 401);
 }
 
+/** Return a 403 `FORBIDDEN` error envelope. */
 export function forbidden(c: Context, message: string = 'Insufficient permissions') {
   return error(c, 'FORBIDDEN', message, 403);
 }
 
+/** Return a 400 `VALIDATION_ERROR` envelope with field-level details. */
 export function validationError(c: Context, details: Array<{ field: string; message: string }>) {
   return error(c, 'VALIDATION_ERROR', 'Validation failed', 400, details);
 }
 
+/** Whether the authenticated user on the context has a verified email address. */
 export function isEmailVerified(c: Context): boolean {
   const user = c.get('user') as { emailVerifiedAt: Date | null } | null;
   return !!user?.emailVerifiedAt;

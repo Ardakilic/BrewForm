@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for a brewing scale. */
 export function ScaleIcon({ size = 24, className }: IconProps) {
   return (
     <svg

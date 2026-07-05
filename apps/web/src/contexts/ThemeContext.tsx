@@ -12,6 +12,11 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
+/**
+ * Owns the active theme (light/dark/coffee), initialised from
+ * localStorage or the OS colour scheme, and mirrors it onto the root
+ * element's class name.
+ */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem('brewform_theme') as Theme | null;
@@ -36,6 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Accesses the theme context; throws when used outside {@link ThemeProvider}. */
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) throw new Error('useTheme must be used within ThemeProvider');

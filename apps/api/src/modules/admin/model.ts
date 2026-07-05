@@ -548,6 +548,7 @@ export async function getTopUsers(limit: number) {
 
 // --- Coffee Varieties ---
 
+/** List non-deleted coffee varieties with optional category filter and name/species/origin search, paginated alphabetically. */
 export async function listCoffeeVarieties(
   page: number,
   perPage: number,
@@ -585,11 +586,13 @@ export async function listCoffeeVarieties(
   return { varieties: data, total: countResult[0].count };
 }
 
+/** Create a new coffee variety. */
 export async function createCoffeeVariety(data: typeof coffeeVarieties.$inferInsert) {
   const [result] = await db.insert(coffeeVarieties).values(data).returning();
   return result;
 }
 
+/** Partially update a non-deleted coffee variety, bumping `updatedAt`. Returns the updated variety or null. */
 export async function updateCoffeeVariety(
   id: string,
   data: Partial<typeof coffeeVarieties.$inferInsert>,
@@ -610,6 +613,7 @@ export async function deleteCoffeeVariety(id: string) {
   return result ?? null;
 }
 
+/** Count distinct non-deleted recipes whose current version uses the given coffee variety. */
 export async function getVarietyRecipeCount(varietyId: string) {
   const [result] = await db.select({ count: sql<number>`count(distinct ${recipes.id})` })
     .from(recipes)
@@ -625,6 +629,7 @@ export async function getVarietyRecipeCount(varietyId: string) {
 
 // --- Equipment Delete Requests ---
 
+/** List equipment delete requests with optional status filter, including equipment and requester/reviewer relations, paginated newest first. */
 export async function listEquipmentDeleteRequests(
   page: number,
   perPage: number,
@@ -658,6 +663,7 @@ export async function listEquipmentDeleteRequests(
   return { requests: data, total: countResult[0].count };
 }
 
+/** Approve an equipment delete request and soft-delete its equipment within a single transaction. Returns the updated request or null. */
 export async function approveEquipmentDeleteRequest(id: string, adminId: string) {
   return await db.transaction(async (tx) => {
     const [request] = await tx.update(equipmentDeleteRequests)
@@ -674,6 +680,7 @@ export async function approveEquipmentDeleteRequest(id: string, adminId: string)
   });
 }
 
+/** Reject an equipment delete request, recording the reviewing admin and timestamp. Returns the updated request or null. */
 export async function rejectEquipmentDeleteRequest(id: string, adminId: string) {
   const [request] = await db.update(equipmentDeleteRequests)
     .set({ status: 'rejected', reviewedById: adminId, reviewedAt: new Date() })

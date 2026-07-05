@@ -1,5 +1,7 @@
 # D06: Fix `DrinkType` Type Missing 4 Enum Values
 
+> **Status (2026-07-04): ✅ Done** — `types/recipe.ts:25` defines `DrinkType = DrinkTypeValue` (15 values, via the D07 single source of truth).
+
 ## Severity: High
 
 ## Issue Description

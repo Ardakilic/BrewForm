@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for a gooseneck kettle. */
 export function GooseneckKettleIcon({ size = 24, className }: IconProps) {
   return (
     <svg

@@ -12,6 +12,7 @@ interface SkeletonProps {
   style?: CSSProperties;
 }
 
+/** Base pulsing placeholder block; sizing and shape via props. */
 export function Skeleton({ className = '', width, height, circle, style }: SkeletonProps) {
   return (
     <div
@@ -35,6 +36,7 @@ interface SkeletonTextProps {
   className?: string;
 }
 
+/** N stacked text-line skeletons with a shortened last line. */
 export function SkeletonText({ lines = 3, className = '' }: SkeletonTextProps) {
   const widths = ['65%', '75%', '70%', '80%', '60%', '85%'];
   return (
@@ -54,6 +56,7 @@ export function SkeletonText({ lines = 3, className = '' }: SkeletonTextProps) {
 // RecipeCardSkeleton
 // ---------------------------------------------------------------------------
 
+/** Placeholder matching a recipe card's title, author, and badge rows. */
 export function RecipeCardSkeleton() {
   return (
     <div className='card space-y-3'>
@@ -81,6 +84,7 @@ interface RecipeCardSkeletonGridProps {
   count?: number;
 }
 
+/** Responsive grid of `count` recipe-card skeletons. */
 export function RecipeCardSkeletonGrid({ count = 6 }: RecipeCardSkeletonGridProps) {
   return (
     <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
@@ -93,6 +97,7 @@ export function RecipeCardSkeletonGrid({ count = 6 }: RecipeCardSkeletonGridProp
 // RecipeDetailSkeleton -- mirrors RecipeDetailPage layout
 // ---------------------------------------------------------------------------
 
+/** Full-page placeholder mirroring the recipe detail layout. */
 export function RecipeDetailSkeleton() {
   return (
     <div className='mx-auto max-w-4xl px-6 py-8 space-y-6'>
@@ -134,6 +139,7 @@ export function RecipeDetailSkeleton() {
 // CommentSkeleton -- single comment placeholder
 // ---------------------------------------------------------------------------
 
+/** Placeholder for a single comment (avatar plus text lines). */
 export function CommentSkeleton() {
   return (
     <div className='flex gap-3 py-3'>
@@ -157,6 +163,7 @@ interface CommentSectionSkeletonProps {
   count?: number;
 }
 
+/** Divided list of `count` comment skeletons. */
 export function CommentSectionSkeleton({ count = 3 }: CommentSectionSkeletonProps) {
   return (
     <div className='divide-y' style={{ borderColor: 'var(--border-primary)' }}>
@@ -169,6 +176,7 @@ export function CommentSectionSkeleton({ count = 3 }: CommentSectionSkeletonProp
 // PageSkeleton -- full-page fallback for Suspense boundaries
 // ---------------------------------------------------------------------------
 
+/** Generic full-page placeholder used as a Suspense fallback. */
 export function PageSkeleton() {
   return (
     <div className='mx-auto max-w-4xl px-6 py-12 space-y-6'>
@@ -187,6 +195,7 @@ export function PageSkeleton() {
 // UserProfileSkeleton
 // ---------------------------------------------------------------------------
 
+/** Placeholder mirroring the user profile header and recipe grid. */
 export function UserProfileSkeleton() {
   return (
     <div className='mx-auto max-w-4xl px-6 py-8 space-y-6'>

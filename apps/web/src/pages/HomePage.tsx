@@ -15,6 +15,10 @@ export interface HomeLoaderData {
   popularRecipes: RecipeListItem[];
 }
 
+/**
+ * Home loader: fetches the six latest and six most-liked public recipes
+ * in parallel and returns them as {@link HomeLoaderData}.
+ */
 export const loader = async (): Promise<HomeLoaderData> => {
   const [latestRes, popularRes] = await Promise.all([
     recipeApi.list({ perPage: '6', sortBy: 'createdAt' }),
@@ -26,6 +30,11 @@ export const loader = async (): Promise<HomeLoaderData> => {
   };
 };
 
+/**
+ * Landing page: hero with browse/register CTAs plus "latest" and
+ * "popular" recipe grids from loader data, with skeletons while
+ * navigating.
+ */
 export function HomePage() {
   const { latestRecipes, popularRecipes } = useLoaderData() as HomeLoaderData;
   const navigation = useNavigation();

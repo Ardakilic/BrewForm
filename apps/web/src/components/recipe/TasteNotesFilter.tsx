@@ -21,6 +21,11 @@ interface TasteNotesFilterProps {
   maxSelections?: number;
 }
 
+/**
+ * Searchable multi-select (Base UI Select) of taste notes grouped by
+ * root category and sub-group; enforces `maxSelections` and clears the
+ * search on close.
+ */
 export function TasteNotesFilter({
   allTasteNotes,
   selectedIds,

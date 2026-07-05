@@ -46,6 +46,11 @@ async function createThumbnail(file: File): Promise<Blob | null> {
   }
 }
 
+/**
+ * Drag-and-drop / file-picker photo uploader for a recipe. Validates
+ * type and size (JPEG/PNG/WebP, max 10MB), generates a client-side
+ * JPEG thumbnail, and uploads each file to `/photos`.
+ */
 export function PhotoUpload({ recipeId, onUploadComplete }: Props) {
   const [previews, setPreviews] = useState<{ url: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);

@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for a paper filter. */
 export function PaperFilterIcon({ size = 24, className }: IconProps) {
   return (
     <svg

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { UuidSchema } from './common.ts';
 
+/**
+ * Validates setup-creation payloads (name plus optional equipment slot ids).
+ * Used by POST /api/v1/setups.
+ */
 export const SetupCreateSchema = z.object({
   name: z.string().min(1).max(100),
   brewerDetails: z.string().max(200).optional(),
@@ -13,4 +17,8 @@ export const SetupCreateSchema = z.object({
   isDefault: z.boolean().default(false),
 });
 
+/**
+ * Validates partial setup-update payloads.
+ * Used by PATCH /api/v1/setups/:id.
+ */
 export const SetupUpdateSchema = SetupCreateSchema.partial();

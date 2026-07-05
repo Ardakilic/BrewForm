@@ -14,6 +14,7 @@ interface DashboardStats {
   recentRecipes: number;
 }
 
+/** Admin landing page: stat cards for user/recipe/comment/photo totals and recent activity. */
 export function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);

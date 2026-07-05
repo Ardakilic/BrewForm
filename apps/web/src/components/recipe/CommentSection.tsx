@@ -59,6 +59,11 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
 // ---------------------------------------------------------------------------
 // CommentSection
 // ---------------------------------------------------------------------------
+/**
+ * Threaded comment section for a recipe: paginated list, top-level and
+ * reply forms with limited inline markdown, and optimistic delete with
+ * snapshot rollback. Mutations go through comment route fetchers.
+ */
 export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Props) {
   const { user, isAuthenticated } = useAuth();
   const { t } = useTranslation();

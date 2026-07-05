@@ -1,5 +1,7 @@
 # D14 — `useUnitSystem` Hook Always Returns `'metric'`
 
+> **Status (2026-07-04): ✅ Done** — `hooks/useUnitSystem.ts:18` reads `user?.preferences?.unitSystem` via `useAuth()`.
+
 ## Severity
 
 **Medium**

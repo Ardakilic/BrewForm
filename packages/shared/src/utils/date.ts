@@ -15,6 +15,7 @@ function formatPlainDate(d: Temporal.PlainDate, fmt: string): string {
     .replaceAll('dd', String(d.day).padStart(2, '0'));
 }
 
+/** Formats a Date or ISO date string using yyyy/MM/dd tokens (default "yyyy-MM-dd"); returns '' for invalid input. */
 export function formatDate(date: Date | string, dateFormat: string = 'yyyy-MM-dd'): string {
   try {
     return formatPlainDate(toPlainDate(date), dateFormat);
@@ -23,6 +24,7 @@ export function formatDate(date: Date | string, dateFormat: string = 'yyyy-MM-dd
   }
 }
 
+/** Returns true when date1 falls on an earlier calendar day than date2 (time of day ignored); false for invalid input. */
 export function isDateBefore(date1: Date | string, date2: Date | string): boolean {
   try {
     const d1 = toPlainDate(date1);

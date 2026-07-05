@@ -12,6 +12,7 @@ interface Badge {
   description: string;
 }
 
+/** Admin page: read-only grid of all badges with emoji, name, and rule. */
 export function AdminBadgesPage() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);

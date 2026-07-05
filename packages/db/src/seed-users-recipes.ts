@@ -1,5 +1,6 @@
 import { hashSync } from 'bcryptjs';
 
+/** Hashes a plaintext password with bcrypt (cost 10, synchronous) for seed-user rows. */
 export function hashPassword(password: string): string {
   return hashSync(password, 10);
 }

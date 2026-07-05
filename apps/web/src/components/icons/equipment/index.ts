@@ -49,6 +49,8 @@ const ICON_MAP: Record<string, React.FC<IconProps>> = {
   other: OtherIcon,
 };
 
+/** Maps an equipment type string to its icon component, falling back to {@link OtherIcon}. */
+
 export function getEquipmentIcon(type: string): React.FC<IconProps> {
   return Object.hasOwn(ICON_MAP, type) ? ICON_MAP[type] : OtherIcon;
 }

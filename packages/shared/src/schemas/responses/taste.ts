@@ -30,6 +30,7 @@ export type TasteNoteNodeOutput = TasteNoteOutput & {
   children: TasteNoteNodeOutput[];
 };
 
+/** Recursive schema for a taste-note hierarchy node (flat row plus lazy `children[]`); response envelope for GET /api/v1/taste-notes/hierarchy. */
 export const TasteNoteNodeOutputSchema: z.ZodType<TasteNoteNodeOutput> = TasteNoteOutputSchema
   .extend({
     children: z.lazy(() => z.array(TasteNoteNodeOutputSchema)),

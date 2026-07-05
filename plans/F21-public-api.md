@@ -1,5 +1,11 @@
 # F21 — Public API with API Keys
 
+> **Validation status (2026-07-04): ✅ Valid**
+>
+> - Net-new `apiKeys` table; self-contained.
+> - Fix: `hashApiKey` is typed as returning `string` but actually returns a `Promise` — correct the return type / await it.
+> - `unauthorized`/`forbidden` helpers exist in utils/response; align the auth guard with the repo's RequireAuth pattern.
+
 ## Overview
 
 Create a versioned public API with API key authentication, per-key rate limiting, and developer documentation. Users can generate API keys, manage scopes, and access BrewForm data programmatically.

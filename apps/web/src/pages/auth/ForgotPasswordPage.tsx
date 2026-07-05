@@ -6,6 +6,10 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const log = createLogger('ForgotPasswordPage');
 
+/**
+ * Forgot-password form: submits the email for a reset link and swaps to
+ * a "check your email" confirmation on success.
+ */
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');

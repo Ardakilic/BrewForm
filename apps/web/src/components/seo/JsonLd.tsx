@@ -40,6 +40,11 @@ function formatBrewMethod(method: string): string {
     .join(' ');
 }
 
+/**
+ * Emits a schema.org `Recipe` JSON-LD script tag built from recipe data
+ * (ingredients, instructions, timings, keywords, optional aggregate
+ * rating) for search-engine rich results.
+ */
 export function RecipeJsonLd(props: RecipeJsonLdProps) {
   const {
     title,

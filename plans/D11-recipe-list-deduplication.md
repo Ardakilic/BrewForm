@@ -1,5 +1,7 @@
 # D11 — Recipe List Code Deduplication (~90%)
 
+> **Status (2026-07-04): ✅ Done** — `components/recipe-list/` (8 files incl. `RecipeListView` with `source: 'all' | 'starred'`); the two pages are now ~70/80 lines.
+
 > **Plan validated against `main` branch — June 2026**
 > Eight errors were found in the original plan and corrected in this revision.
 > Errors are annotated inline with `[Corrected]` markers.

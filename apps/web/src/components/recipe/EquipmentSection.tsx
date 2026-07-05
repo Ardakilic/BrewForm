@@ -15,6 +15,11 @@ interface EquipmentSectionProps {
   brewerDetails?: string | null;
 }
 
+/**
+ * Equipment card listing the main brewer and gear used in a recipe;
+ * each item navigates to `/recipes` filtered by that equipment.
+ * Renders nothing when there is no equipment to show.
+ */
 export function EquipmentSection(
   { items, brewMethod: _brewMethod, brewerDetails }: EquipmentSectionProps,
 ) {

@@ -3,6 +3,7 @@ interface IconProps {
   className?: string;
 }
 
+/** SVG icon for a metal mesh filter. */
 export function MeshFilterIcon({ size = 24, className }: IconProps) {
   return (
     <svg

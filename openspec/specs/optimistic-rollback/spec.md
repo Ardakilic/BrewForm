@@ -49,7 +49,7 @@ Each resource route action SHALL log structured events via a module-scoped `crea
 
 - **Entry** (debug): On action start, SHALL log `{ id }` or `{ userId, method }` with the message `"<actionName> started"`
 - **Exit** (debug): On successful completion, SHALL log `{ id }` or `{ userId }` with the message `"<actionName> completed"`
-- **Error** (error): On failure, SHALL log `{ err, id }` or `{ err, userId }` with the message `"<actionName> failed"`
+- **Error** (error): On failure, SHALL log `{ err, id }` or `{ err, userId }` (or `{ errorType, errorMessage, id }` in the like action, which extracts the error name/message instead of logging the raw `err`) with the message `"<actionName> failed"`
 
 Each file SHALL create exactly one module-scoped logger at the top level via `const logger = createLogger('<module-name>')`.
 
@@ -63,7 +63,7 @@ Each file SHALL create exactly one module-scoped logger at the top level via `co
 
 - **WHEN** `likeAction` is called and the API fails with an `ApiError`
 - **THEN** `logger.debug({ id }, 'likeAction started')` SHALL be called before the API call
-- **AND** `logger.error({ err, id }, 'likeAction failed')` SHALL be called before returning the error object
+- **AND** `logger.error({ errorType, errorMessage, id }, 'likeAction failed')` SHALL be called before returning the error object
 
 #### Scenario: Favourite action logs entry and success
 

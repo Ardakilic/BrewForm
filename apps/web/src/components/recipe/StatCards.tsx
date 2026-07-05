@@ -13,6 +13,11 @@ interface StatCardsProps {
   unitSystem?: 'metric' | 'imperial';
 }
 
+/**
+ * Horizontal strip of brew-stat cards (dose, yield, time, ratio,
+ * temperature, TDS) built by `buildStatCards` and formatted for the
+ * given unit system.
+ */
 export function StatCards({ version, unitSystem = 'metric' }: StatCardsProps) {
   const { t } = useTranslation();
   const cards = buildStatCards(version, unitSystem);

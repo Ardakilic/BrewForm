@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 
+/**
+ * Bottom-fixed cookie consent bar. Shown until the user accepts or
+ * rejects; the choice persists in localStorage.
+ */
 export function CookieConsent() {
   const [show, setShow] = useState(false);
   const { t } = useTranslation();

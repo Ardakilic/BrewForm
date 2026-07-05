@@ -4,7 +4,7 @@
 - [x] 1.2 Run `make db-generate` to auto-generate migration SQL from the Drizzle schema (do NOT manually edit SQL files — per AGENTS.md, manual SQL edits break Drizzle's hash-based migration tracking)
 - [x] 1.3 Run `make db-migrate` to apply the index migration
 - [x] 1.4 Add test assertion for `recipe_created_at_id_idx` in `packages/db/src/schema-indexes.test.ts` (17 existing index assertions + 1 new = 18)
-- [ ] 1.5 Verify with `EXPLAIN ANALYZE` that cursor query uses the new index (not a sequential scan)
+- [ ] 1.5 Verify with `EXPLAIN ANALYZE` that cursor query uses the new index (not a sequential scan) _(deferred: manual runtime check requiring a populated live DB; not a code deliverable — code + automated tests complete. Archived 2026-07-05.)_
 
 ## 2. Shared: Cursor Utility
 

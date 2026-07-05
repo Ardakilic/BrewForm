@@ -1,5 +1,7 @@
 # D29 — Recipe Service Layer Imports `drizzle-orm` Directly
 
+> **Status (2026-07-04): ✅ Done** — `service.ts` has zero `drizzle-orm` imports; `model.createRecipeWithRelations` (:550). Openspec change `d29-recipe-service-layering` is complete — recommend archiving it.
+
 ## Severity
 
 **Medium** (architecture / layering violation; no runtime bug)

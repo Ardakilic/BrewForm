@@ -1,5 +1,11 @@
 # F18 — Bulk Admin Operations
 
+> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+>
+> - All admin service calls have the wrong argument order / missing adminId — signatures take `adminId` first: `banUser(adminId, userId, reason?)`, `unbanUser(adminId, userId)`, `softDeleteUser(adminId, userId)`, `softDeleteRecipe(adminId, recipeId)`, `deleteEquipment(adminId, id)`.
+> - `toggleFeature(id)` flips via NOT (recipe/model.ts) — it cannot force a boolean; bulk feature/unfeature needs a new set-based model function.
+> - TanStack `useQuery`/`useMutation`/`useQueryClient` → react-router v8 loaders + the custom fetch client (no TanStack Query, no axios).
+
 ## Overview
 
 Enable admins to perform bulk actions on users, recipes, and equipment from admin list pages. Includes checkbox selection, bulk action dropdown, confirmation dialogs, and audit logging.

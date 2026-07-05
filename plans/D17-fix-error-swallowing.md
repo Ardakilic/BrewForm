@@ -1,5 +1,7 @@
 # D17 — Silent Error Swallowing (4 Remaining Occurrences)
 
+> **Status (2026-07-04): ✅ Done** — zero empty `.catch` in the 3 target files; `createLogger` present; `recipe.focusMode.loadError` en/tr keys (:77).
+
 ## Severity
 
 **Medium**

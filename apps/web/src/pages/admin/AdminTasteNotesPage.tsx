@@ -12,6 +12,7 @@ interface TasteNote {
 
 const log = createLogger('AdminTasteNotesPage');
 
+/** Admin page: taste-note hierarchy management (create/delete); invalidates the static cache on changes. */
 export function AdminTasteNotesPage() {
   const [notes, setNotes] = useState<TasteNote[]>([]);
   const [loading, setLoading] = useState(true);

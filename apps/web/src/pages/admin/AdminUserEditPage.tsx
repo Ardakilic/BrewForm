@@ -7,6 +7,7 @@ import { AdminUpdateUserSchema } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminUserEditPage');
 
+/** Admin page: edit-user form validated with `AdminUpdateUserSchema`; self-editing is redirected away. */
 export function AdminUserEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

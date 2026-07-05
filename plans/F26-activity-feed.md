@@ -1,5 +1,12 @@
 # F26 — Expanded Activity Feed
 
+> **Validation status (2026-07-04): ❌ Invalid — blocked**
+>
+> - Imports a nonexistent `models/index.ts` barrel and `brewLogModel` — there is no brewLogs table or brew-log module (blocked on F02).
+> - Reimplements an offset-only feed while `getFeed` already supports cursor + offset pagination (D27) — build on the existing implementation instead.
+> - Stale stack: `useInfiniteQuery` (no TanStack Query — use react-router v8 loaders) and `react-router-dom` imports (repo imports from 'react-router'); plan also rewrites the loader-based HomePage.
+> - Needs a rewrite against current code before it is actionable.
+
 ## Overview
 
 Expand the activity feed to include comments on followed recipes, equipment additions, brew journal entries, and badge achievements. All data is derived from existing tables — no new schema required.

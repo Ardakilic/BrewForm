@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/**
+ * Validates taste-note search query params (search term, parent, depth).
+ * Used by GET /api/v1/taste-notes/search.
+ */
 export const TasteNoteFilterSchema = z.object({
   search: z.string().min(3).optional(),
   parentId: z.uuid().optional(),

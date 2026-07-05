@@ -1,3 +1,8 @@
+/**
+ * Derives a unique username from a base string: strips to [a-zA-Z0-9_-], caps at 30 chars,
+ * then probes `isTaken` with "-1".."-100" suffixes. Throws when the base is empty after
+ * cleaning or no candidate is free after 100 attempts.
+ */
 export async function generateUniqueUsername(
   baseUsername: string,
   isTaken: (username: string) => Promise<boolean>,

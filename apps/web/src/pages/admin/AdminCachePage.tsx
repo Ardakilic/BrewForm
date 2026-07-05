@@ -4,6 +4,7 @@ import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminCachePage');
 
+/** Admin page: single action to flush all server-side caches. */
 export function AdminCachePage() {
   const [flushing, setFlushing] = useState(false);
   const [message, setMessage] = useState('');

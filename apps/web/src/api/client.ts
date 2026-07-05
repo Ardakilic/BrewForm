@@ -76,6 +76,10 @@ async function requestWithMeta<T>(endpoint: string, options: RequestInit = {}): 
   return requestInternal(endpoint, options) as Promise<T>;
 }
 
+/**
+ * Error thrown for failed API requests, carrying the server error `code`,
+ * optional per-field validation `details`, and the HTTP `status`.
+ */
 export class ApiError extends Error {
   code: string;
   details?: Array<{ field: string; message: string }>;
@@ -94,6 +98,15 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Fetch-wrapper client for the BrewForm API. Prefixes `API_BASE`
+ * (runtime config → `VITE_API_URL` → same-origin `/api/v1`), sends
+ * cookie credentials plus an `X-Request-ID` header, and on a 401 from
+ * non-auth endpoints attempts one `POST /auth/refresh` before retrying.
+ * Non-OK responses throw {@link ApiError}. Verb helpers unwrap the
+ * response envelope's `data`; `getWithMeta` returns the full envelope
+ * and `upload` posts `FormData` without a JSON content type.
+ */
 export const api = {
   get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
   getWithMeta: <T>(endpoint: string) => requestWithMeta<T>(endpoint, { method: 'GET' }),

@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 
+/** 404 page (noindex) with a home link; wired into the router's catch-all. */
 export function NotFoundPage() {
   return (
     <div className='flex min-h-[60vh] flex-col items-center justify-center px-6 text-center'>

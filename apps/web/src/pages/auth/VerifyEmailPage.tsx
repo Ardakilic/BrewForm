@@ -6,6 +6,10 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('VerifyEmailPage');
 
+/**
+ * Verifies the email token from `?token=` on mount, refreshes the auth
+ * user, and renders loading/success/error states.
+ */
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const { refreshUser } = useAuth();

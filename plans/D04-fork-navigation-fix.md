@@ -1,8 +1,10 @@
 # D04: Recipe Fork Button Navigates to Non-Existent Route
 
+> **Status (2026-07-04): ✅ Done** — `router.tsx:121` registers path `recipes/:id/fork`; `RecipeForkPage.tsx` exists.
+
 **Severity:** Critical — Broken Feature  
 **Date:** 2026-05-29  
-**Status:** Proposed  
+**Status:** Implemented  
 **Module:** `apps/web/src/pages/recipes` + `apps/web/src/router.tsx`
 
 ---

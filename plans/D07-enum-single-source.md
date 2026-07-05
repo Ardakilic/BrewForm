@@ -1,5 +1,7 @@
 # D07: Enum Single Source of Truth Across 3 Locations
 
+> **Status (2026-07-04): ✅ Done** — `schema.ts:36` imports `*_VALUES` from `@brewform/shared/constants`; `enums.test.ts` covers the tuples.
+
 ## Severity: High
 
 ## Issue Description

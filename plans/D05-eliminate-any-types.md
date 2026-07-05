@@ -1,5 +1,7 @@
 # D05: Eliminate Pervasive `any` Types in API Services
 
+> **Status (2026-07-04): ✅ Done** — `recipe/service.ts` and `recipe/index.ts` have zero `any`; `sitemap.ts` is typed.
+
 ## Severity: High
 
 ## Issue Description

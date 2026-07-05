@@ -12,6 +12,11 @@ function labelFor(value: string, constants: any) {
   return constants.find((c: any) => c.value === value)?.label || value;
 }
 
+/**
+ * Side-by-side comparison of two recipes (`:slug1` vs `:slug2`):
+ * fetches both in parallel and renders their current versions'
+ * parameters in a comparison table.
+ */
 export function RecipeComparePage() {
   const { slug1, slug2 } = useParams();
   // deno-lint-ignore no-explicit-any
