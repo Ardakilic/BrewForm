@@ -176,4 +176,4 @@
 
 ## 14. Close out PR #54
 
-- [ ] 14.1 After this change merges, close PR #54 (`feat/workspace-management`) with a note pointing to `d31-deno-29-upgrade` as its superseding change, and delete the stale branch.
+- [ ] 14.1 After this change merges, close PR #54 (`feat/workspace-management`) with a note pointing to `d31-deno-29-upgrade` as its superseding change, and delete the stale branch. _(outstanding manual GitHub follow-up: PR #54 still open as of 2026-07-05; no code impact. Archived with this note as a reminder.)_

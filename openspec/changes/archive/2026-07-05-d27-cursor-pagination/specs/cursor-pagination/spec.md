@@ -362,3 +362,32 @@ receive docblocks where missing.
 - **WHEN** code is reviewed
 - **THEN** `encodeCursor`, `decodeCursor`, `CursorPaginationMeta`, `CursorPaginationMetaSchema`,
   `cursorEnvelope`, `cursorPaginated`, `findCursor` all have docblocks
+
+---
+
+### Requirement: RecipeFilterSchema includes cursor parameter
+
+The `RecipeFilterSchema` in `packages/shared/src/schemas/recipe.ts` SHALL include optional
+`cursor` and `includeTotal` fields:
+
+```typescript
+cursor: z.string().optional(),
+includeTotal: z.coerce.boolean().optional().default(false),
+```
+
+The schema SHALL continue to accept `page`, `perPage`, `sortBy`, and `sortOrder` without changes.
+
+#### Scenario: Cursor param is accepted and validated
+
+- **WHEN** `GET /api/v1/recipes?cursor=eyJjcmVhdGVkQXQ...` is called
+- **THEN** the query passes Zod validation and reaches the route handler
+
+#### Scenario: Cursor param is optional (not required)
+
+- **WHEN** `GET /api/v1/recipes?page=1&perPage=10` is called without `cursor`
+- **THEN** the query passes Zod validation (backward compatible)
+
+#### Scenario: includeTotal is accepted and defaults to false
+
+- **WHEN** `GET /api/v1/recipes?cursor=eyJ...` is called without `includeTotal`
+- **THEN** `includeTotal` defaults to `false` (no count query is executed)

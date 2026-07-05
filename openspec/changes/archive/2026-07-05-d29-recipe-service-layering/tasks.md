@@ -629,6 +629,6 @@
   read `index.ts` around the `POST /` route and verify.
 - [x] 12.6 Confirm the file-level docstring no longer mentions "compatibility
   validation helper": read `service.ts:1-11`.
-- [ ] 12.7 (Optional) Manual smoke: start `make dev`, `POST /api/v1/recipes`
+- [ ] 12.7 (Optional) Manual smoke: start `make dev`, `POST /api/v1/recipes` _(deferred: optional manual smoke test requiring a running server; not a code deliverable — code + automated tests complete. Archived 2026-07-05.)_
   with a valid body, confirm the response shape is unchanged from before
   D29.
