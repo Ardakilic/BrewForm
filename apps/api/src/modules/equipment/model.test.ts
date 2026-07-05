@@ -3,7 +3,7 @@
 import '../../test-setup.ts';
 import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import {
   equipment,
@@ -108,20 +108,25 @@ describe('findMany', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 
   it('should return paginated equipment with total count', async () => {
-    const result = await model.findMany(undefined, 1, 2);
+    // Filter to only our test rows (CI DB has seed data).
+    const result = await model.findMany(eq(equipment.createdBy, userId), 1, 2);
     expect(result.items.length).toBe(2);
     expect(result.total).toBe(2);
   });
 
   it('should respect a where clause', async () => {
-    const result = await model.findMany(eq(equipment.type, 'grinder'), 1, 10);
+    const result = await model.findMany(
+      and(eq(equipment.createdBy, userId), eq(equipment.type, 'grinder')),
+      1,
+      10,
+    );
     expect(result.items.length).toBe(1);
     expect(result.items[0].name).toBe('Alpha Grinder');
     expect(result.total).toBe(1);
   });
 
   it('should return { items, total } shape', async () => {
-    const result = await model.findMany(undefined, 1, 10);
+    const result = await model.findMany(eq(equipment.createdBy, userId), 1, 10);
     expect(Object.keys(result).sort()).toEqual(['items', 'total'].sort());
   });
 });
@@ -173,27 +178,39 @@ describe('findManyWithFilters', { sanitizeOps: false, sanitizeResources: false }
   });
 
   it('should return paginated equipment with total count', async () => {
+    // CI DB has seed data; assert pagination caps the page size.
     const result = await model.findManyWithFilters({ page: 1, perPage: 2 });
-    expect(result.items.length).toBe(2);
-    expect(result.total).toBe(2);
+    expect(result.items.length).toBeLessThanOrEqual(2);
+    expect(result.total).toBeGreaterThanOrEqual(2);
+    // Our two active rows must be findable via search (seed-safe membership check).
+    const bySearch = await model.findManyWithFilters({ search: 'PourX', page: 1, perPage: 100 });
+    expect(bySearch.items.some((i) => i.id === equipmentIds[0])).toBe(true);
+    const bySearch2 = await model.findManyWithFilters({ search: 'Stagg', page: 1, perPage: 100 });
+    expect(bySearch2.items.some((i) => i.id === equipmentIds[1])).toBe(true);
+    // Soft-deleted row must never appear.
+    const all = await model.findManyWithFilters({ page: 1, perPage: 100 });
+    expect(all.items.some((i) => i.id === equipmentIds[2])).toBe(false);
   });
 
   it('should filter by type', async () => {
-    const result = await model.findManyWithFilters({ type: 'grinder', page: 1, perPage: 10 });
-    expect(result.items.length).toBe(1);
-    expect(result.items[0].type).toBe('grinder');
+    const result = await model.findManyWithFilters({ type: 'grinder', page: 1, perPage: 100 });
+    const ours = result.items.filter((i) => equipmentIds.includes(i.id));
+    expect(ours.length).toBe(1);
+    expect(ours[0].name).toBe('PourX Grinder');
+    expect(ours[0].type).toBe('grinder');
   });
 
   it('should filter by search query', async () => {
-    const result = await model.findManyWithFilters({ search: 'Kettle', page: 1, perPage: 10 });
-    expect(result.items.length).toBe(1);
-    expect(result.items[0].name).toBe('Stagg Kettle');
+    const result = await model.findManyWithFilters({ search: 'Stagg', page: 1, perPage: 100 });
+    const ours = result.items.filter((i) => equipmentIds.includes(i.id));
+    expect(ours.length).toBe(1);
+    expect(ours[0].name).toBe('Stagg Kettle');
   });
 
   it('should exclude soft-deleted equipment', async () => {
-    const result = await model.findManyWithFilters({ page: 1, perPage: 10 });
-    const names = result.items.map((i) => i.name);
-    expect(names).not.toContain('Deleted Grinder');
+    const result = await model.findManyWithFilters({ page: 1, perPage: 100 });
+    const ids = result.items.map((i) => i.id);
+    expect(ids).not.toContain(equipmentIds[2]);
   });
 });
 
