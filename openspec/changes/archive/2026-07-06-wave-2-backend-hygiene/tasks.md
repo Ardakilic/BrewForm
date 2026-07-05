@@ -109,4 +109,4 @@
 
 - [x] 10.6 (Optional) Create `pr_description.md` at the project root summarising the three sub-changes (D39 Tier 1, D03, D34), following the Wave 1 PR-description format: `## Problem`, `## Solution` (table), `## What did NOT change`, `## Testing`, `## Risk`.
 
-- [ ] 10.7 Archive the change via `openspec archive wave-2-backend-hygiene` (after the PR merges) and sync the delta specs into `openspec/specs/`.
+- [x] 10.7 Archive the change via `openspec archive wave-2-backend-hygiene` (after the PR merges) and sync the delta specs into `openspec/specs/`.
