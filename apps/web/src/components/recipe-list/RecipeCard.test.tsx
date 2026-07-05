@@ -67,7 +67,7 @@ function renderWithRouter(ui: React.ReactElement) {
     ],
     { initialEntries: ['/'] },
   );
-  return render(<RouterProvider router={router} />);
+  return { router, ...render(<RouterProvider router={router} />) };
 }
 
 describe('RecipeCard', () => {
@@ -81,16 +81,18 @@ describe('RecipeCard', () => {
   });
 
   it('should render the author button and navigate to /u/:username on click (stopPropagation)', async () => {
-    renderWithRouter(<RecipeCard recipe={makeRecipe()} />);
+    const { router } = renderWithRouter(<RecipeCard recipe={makeRecipe()} />);
     const authorButton = screen.getByRole('button', { name: 'Alice' });
     expect(authorButton).toBeInTheDocument();
+    expect(authorButton.tagName).toBe('BUTTON');
+    // Card is still on '/' (author button is a <button>, not a nested <a>)
+    expect(router.state.location.pathname).toBe('/');
     const user = userEvent.setup();
     await user.click(authorButton);
-    // The card is a <Link> wrapping the button; stopPropagation prevents the
-    // outer card navigation. We assert the author button exists and is clickable
-    // — the navigate call is verified by the button being a <button> (not <a>)
-    // and the card link remaining on '/' (no navigation to /recipes/...).
-    expect(authorButton.tagName).toBe('BUTTON');
+    // Author button click navigates to /u/alice
+    expect(router.state.location.pathname).toBe('/u/alice');
+    // And stopPropagation prevented the outer card navigation to /recipes/test-recipe
+    expect(router.state.location.pathname).not.toBe('/recipes/test-recipe');
   });
 
   it('should render currentVersion brewMethod/drinkType/rating', () => {

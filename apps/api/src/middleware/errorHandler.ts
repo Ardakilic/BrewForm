@@ -14,14 +14,16 @@ export function errorHandler(err: Error, c: Context) {
   const requestId = c.get('requestId') as string | undefined;
 
   if (err instanceof Error && 'code' in err && err.code === 'EQUIPMENT_INCOMPATIBLE') {
-    const details = 'details' in err
-      ? ((err as Error & { details: string[] }).details || []).map((
-        d: string,
-      ) => ({
-        field: 'equipmentIds',
-        message: d,
-      }))
+    const rawDetails = 'details' in err
+      ? (err as Error & { details?: unknown }).details
+      : undefined;
+    const detailStrings = Array.isArray(rawDetails)
+      ? rawDetails.filter((d): d is string => typeof d === 'string')
       : [];
+    const details = detailStrings.map((d) => ({
+      field: 'equipmentIds',
+      message: d,
+    }));
     return c.json(
       {
         success: false,

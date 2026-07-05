@@ -442,8 +442,11 @@ describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
     const first = await model.softDelete(equipmentId);
     expect(first!.deletedAt).not.toBeNull();
     const firstDeletedAt = first!.deletedAt!.getTime();
-    await new Promise((r) => setTimeout(r, 10));
-    await model.softDelete(equipmentId);
+    // Second softDelete returns null (isNull(deletedAt) guard) and cannot
+    // overwrite the timestamp — no wall-clock sleep needed; the guard is
+    // the deterministic guarantee.
+    const second = await model.softDelete(equipmentId);
+    expect(second).toBeNull();
     const [row] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
     expect(row.deletedAt!.getTime()).toBe(firstDeletedAt);
   });

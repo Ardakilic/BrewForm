@@ -215,27 +215,13 @@ describe('RecipeListView', () => {
     expect(screen.queryByText('Clear Filters')).not.toBeInTheDocument();
   });
 
-  it('should render the admin visibility filter only when showAdminVisibilityFilter is true', () => {
-    const { rerender } = renderView({ recipesResponse: { data: [], meta: {} } });
+  it('should NOT render the admin visibility filter by default', () => {
+    renderView({ recipesResponse: { data: [], meta: {} } });
     expect(screen.queryByText('Visibility (Admins only)')).not.toBeInTheDocument();
-    const router2 = createMemoryRouter(
-      [{
-        path: '/',
-        element: (
-          <RecipeListView
-            source='all'
-            recipesResponse={{ data: [], meta: {} }}
-            equipment={[]}
-            tasteNotes={[]}
-            pageTitle='Recipes'
-            seoDescription='desc'
-            showAdminVisibilityFilter
-          />
-        ),
-      }],
-      { initialEntries: ['/'] },
-    );
-    rerender(<RouterProvider router={router2} />);
+  });
+
+  it('should render the admin visibility filter when showAdminVisibilityFilter is true', () => {
+    renderView({ recipesResponse: { data: [], meta: {} }, showAdminVisibilityFilter: true });
     expect(screen.getByText('Visibility (Admins only)')).toBeInTheDocument();
   });
 

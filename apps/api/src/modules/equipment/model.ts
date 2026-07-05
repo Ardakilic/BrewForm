@@ -113,6 +113,15 @@ export async function getRecipesUsingEquipment(
     eq(recipes.visibility, 'public'),
     isNull(recipes.deletedAt),
   );
+  // NOTE: Drizzle's `exists()` combinator generates a subquery that references
+  // the physical table name ("recipe_equipment"."recipe_version_id"), but the
+  // relational `db.query.recipes.findMany` API aliases the outer table as
+  // `"recipe" "recipes"`. The correlation against `recipes.currentVersionId`
+  // therefore resolves to the wrong alias and Postgres rejects it with
+  // "invalid reference to FROM-clause entry". The `sql` template tag below
+  // resolves `${recipes.currentVersionId}` against the outer aliased query,
+  // producing a correct correlated EXISTS clause. This is the same finding
+  // documented in design Decision 1 of the Wave 2 proposal.
   const equipmentExists =
     sql`exists (select 1 from ${recipeEquipment} re where re.equipment_id = ${equipmentId} and re.recipe_version_id = ${recipes.currentVersionId})`;
   const [data, countResult] = await Promise.all([

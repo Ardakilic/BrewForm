@@ -76,7 +76,7 @@
 - **PRD**: [`plans/D09-fix-lint-suppressions.md`](D09-fix-lint-suppressions.md)
 
 ### 2.6 Residual `any` in Service/Model Layer — **RESOLVED** (2026-07-06; P2 scope complete, P3 stretch documented)
-- **Files**: `preference/service.ts:26`, `preference/index.ts:85`, `bean/service.ts:34,47`, `setup/service.ts:38`, `taste/model.ts:50`, `recipe/model.ts:466,473`, `badge/model.ts:131`, `utils/notify/index.ts:75,170`, `equipment/service.ts:42` (all under `apps/api/src/`); stretch: library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`.
+- **Files**: `preference/service.ts:26`, `preference/index.ts:85`, `bean/service.ts:34,47`, `setup/service.ts:38`, `taste/model.ts:50`, `recipe/model.ts:466,473`, `badge/model.ts:131`, `utils/notify/index.ts:27,197` (`NotifyRecipient` interface + recipients `.filter` on `prefs.followedUserPosted`), `equipment/service.ts:42` (all under `apps/api/src/`); stretch: library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`.
 - **Issue**: `data: any` payloads and untyped casts in modules D05 never covered — validated Zod types were dropped at the route → service boundary.
 - **Resolution (2026-07-06 via Wave 2)**: P2 scope complete — all twelve `any` locations replaced with shared-schema-inferred / Drizzle relation-row types. P3 stretch (library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`) documented with justification comments rather than removed, pending clean typed alternatives in the upstream libraries.
 - **PRD**: [`plans/D34-residual-any-elimination.md`](D34-residual-any-elimination.md)

@@ -8,19 +8,37 @@ import { db } from '@brewform/db';
 import { users, vendors } from '@brewform/db/schema';
 import * as model from './model.ts';
 
+/**
+ * Insert a test user and return its id. Pairs with `cleanupTestUser`.
+ * Centralises the boilerplate email/username/passwordHash insert shape used
+ * across every describe block in this file.
+ */
+async function createTestUser(): Promise<string> {
+  const userId = crypto.randomUUID();
+  await db.insert(users).values({
+    id: userId,
+    email: `test-${userId}@example.com`,
+    username: `testuser-${userId}`,
+    passwordHash: 'hash',
+  });
+  return userId;
+}
+
+async function cleanupTestUser(userId: string): Promise<void> {
+  await db.delete(users).where(eq(users.id, userId));
+}
+
+async function cleanupTestVendor(vendorId: string): Promise<void> {
+  await db.delete(vendors).where(eq(vendors.id, vendorId));
+}
+
 describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
   let userId: string;
   let vendorId: string;
 
   beforeEach(async () => {
-    userId = crypto.randomUUID();
+    userId = await createTestUser();
     vendorId = crypto.randomUUID();
-    await db.insert(users).values({
-      id: userId,
-      email: `test-${userId}@example.com`,
-      username: `testuser-${userId}`,
-      passwordHash: 'hash',
-    });
     await db.insert(vendors).values({
       id: vendorId,
       name: 'Test Roaster',
@@ -29,8 +47,8 @@ describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 
   afterEach(async () => {
-    await db.delete(vendors).where(eq(vendors.id, vendorId));
-    await db.delete(users).where(eq(users.id, userId));
+    await cleanupTestVendor(vendorId);
+    await cleanupTestUser(userId);
   });
 
   it('should return an active vendor record', async () => {
@@ -56,14 +74,8 @@ describe('findMany', { sanitizeOps: false, sanitizeResources: false }, () => {
   let vendorIds: string[];
 
   beforeEach(async () => {
-    userId = crypto.randomUUID();
+    userId = await createTestUser();
     vendorIds = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
-    await db.insert(users).values({
-      id: userId,
-      email: `test-${userId}@example.com`,
-      username: `testuser-${userId}`,
-      passwordHash: 'hash',
-    });
     await db.insert(vendors).values([
       { id: vendorIds[0], name: 'Alpha Roaster', createdBy: userId },
       { id: vendorIds[1], name: 'Beta Roaster', createdBy: userId },
@@ -73,9 +85,9 @@ describe('findMany', { sanitizeOps: false, sanitizeResources: false }, () => {
 
   afterEach(async () => {
     for (const id of vendorIds) {
-      await db.delete(vendors).where(eq(vendors.id, id));
+      await cleanupTestVendor(id);
     }
-    await db.delete(users).where(eq(users.id, userId));
+    await cleanupTestUser(userId);
   });
 
   it('should return paginated vendors with total count, excluding soft-deleted', async () => {
@@ -99,21 +111,15 @@ describe('search', { sanitizeOps: false, sanitizeResources: false }, () => {
   let vendorIds: string[];
 
   beforeEach(async () => {
-    userId = crypto.randomUUID();
+    userId = await createTestUser();
     vendorIds = [];
-    await db.insert(users).values({
-      id: userId,
-      email: `test-${userId}@example.com`,
-      username: `testuser-${userId}`,
-      passwordHash: 'hash',
-    });
   });
 
   afterEach(async () => {
     for (const id of vendorIds) {
-      await db.delete(vendors).where(eq(vendors.id, id));
+      await cleanupTestVendor(id);
     }
-    await db.delete(users).where(eq(users.id, userId));
+    await cleanupTestUser(userId);
   });
 
   it('should return matching vendors by name (LIKE match)', async () => {
@@ -153,19 +159,13 @@ describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
   let vendorId: string;
 
   beforeEach(async () => {
-    userId = crypto.randomUUID();
+    userId = await createTestUser();
     vendorId = crypto.randomUUID();
-    await db.insert(users).values({
-      id: userId,
-      email: `test-${userId}@example.com`,
-      username: `testuser-${userId}`,
-      passwordHash: 'hash',
-    });
   });
 
   afterEach(async () => {
-    await db.delete(vendors).where(eq(vendors.id, vendorId));
-    await db.delete(users).where(eq(users.id, userId));
+    await cleanupTestVendor(vendorId);
+    await cleanupTestUser(userId);
   });
 
   it('should insert a vendor with createdBy and return it', async () => {
@@ -189,14 +189,8 @@ describe('update', { sanitizeOps: false, sanitizeResources: false }, () => {
   let vendorId: string;
 
   beforeEach(async () => {
-    userId = crypto.randomUUID();
+    userId = await createTestUser();
     vendorId = crypto.randomUUID();
-    await db.insert(users).values({
-      id: userId,
-      email: `test-${userId}@example.com`,
-      username: `testuser-${userId}`,
-      passwordHash: 'hash',
-    });
     await db.insert(vendors).values({
       id: vendorId,
       name: 'Original Roaster',
@@ -205,8 +199,8 @@ describe('update', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 
   afterEach(async () => {
-    await db.delete(vendors).where(eq(vendors.id, vendorId));
-    await db.delete(users).where(eq(users.id, userId));
+    await cleanupTestVendor(vendorId);
+    await cleanupTestUser(userId);
   });
 
   it('should update an active vendor', async () => {
@@ -235,14 +229,8 @@ describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
   let vendorId: string;
 
   beforeEach(async () => {
-    userId = crypto.randomUUID();
+    userId = await createTestUser();
     vendorId = crypto.randomUUID();
-    await db.insert(users).values({
-      id: userId,
-      email: `test-${userId}@example.com`,
-      username: `testuser-${userId}`,
-      passwordHash: 'hash',
-    });
     await db.insert(vendors).values({
       id: vendorId,
       name: 'Test Roaster',
@@ -251,8 +239,8 @@ describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 
   afterEach(async () => {
-    await db.delete(vendors).where(eq(vendors.id, vendorId));
-    await db.delete(users).where(eq(users.id, userId));
+    await cleanupTestVendor(vendorId);
+    await cleanupTestUser(userId);
   });
 
   it('should soft-delete an active vendor', async () => {
@@ -271,8 +259,11 @@ describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
     const first = await model.softDelete(vendorId);
     expect(first!.deletedAt).not.toBeNull();
     const firstDeletedAt = first!.deletedAt!.getTime();
-    await new Promise((r) => setTimeout(r, 10));
-    await model.softDelete(vendorId);
+    // Second softDelete returns null (isNull(deletedAt) guard) and cannot
+    // overwrite the timestamp — no wall-clock sleep needed; the guard is
+    // the deterministic guarantee.
+    const second = await model.softDelete(vendorId);
+    expect(second).toBeNull();
     const [row] = await db.select().from(vendors).where(eq(vendors.id, vendorId));
     expect(row.deletedAt!.getTime()).toBe(firstDeletedAt);
   });

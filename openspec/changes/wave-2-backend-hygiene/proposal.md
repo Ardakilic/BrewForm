@@ -38,9 +38,9 @@ Wave 2 of the debt roadmap bundles three backend-hygiene items that the `ROADMAP
 
 **D34 (the typing pass):**
 
-- `packages/shared/src/schemas/bean.ts`, `schemas/setup.ts`, `schemas/user.ts` (preference), `schemas/vendor.ts`, `schemas/equipment.ts` — add `export type BeanCreate = z.infer<typeof BeanCreateSchema>` (and `BeanUpdate`, `SetupCreate`, `SetupUpdate`, `UserPreferencesUpdate` flat partial, `VendorCreate`, `VendorUpdate`, `EquipmentCreate`, `EquipmentUpdate`) alongside the schema definitions. These are the inferred payload types the API services will import. **None of these are currently exported** — the schemas are exported as Zod objects only, so the API services cannot derive types from them today (this is why `data: any` was used).
-- `apps/api/src/modules/preference/service.ts:26` — `updatePreferences(userId, data: any)` → `updatePreferences(userId, data: UserPreferencesUpdate)` (flat partial type derived from the `userPreferences` DB row or a new shared `UserPreferencesUpdate`).
-- `apps/api/src/modules/preference/index.ts:85` — `const flatData: any = {}` → `const flatData: Partial<typeof userPreferences.$inferInsert> = {}` (the flat DB row insert type — NOT the shared nested `UserPreferences` interface; design Decision 3 explains the shape mismatch).
+- `packages/shared/src/schemas/bean.ts`, `schemas/setup.ts`, `schemas/vendor.ts`, `schemas/equipment.ts` — add `export type BeanCreate = z.infer<typeof BeanCreateSchema>` (and `BeanUpdate`, `SetupCreate`, `SetupUpdate`, `VendorCreate`, `VendorUpdate`, `EquipmentCreate`, `EquipmentUpdate`) alongside the schema definitions. These are the inferred payload types the API services will import. **None of these are currently exported** — the schemas are exported as Zod objects only, so the API services cannot derive types from them today (this is why `data: any` was used). The preference module does NOT add a shared `UserPreferencesUpdate` — the flat DB row insert type (`Partial<typeof userPreferences.$inferInsert>`, exported as `PreferenceUpdate` from `apps/api/src/modules/preference/model.ts`) is used instead, matching the spec's preference for the flat DB row insert type over a new shared nested preference type (design Decision 3).
+- `apps/api/src/modules/preference/service.ts:26` — `updatePreferences(userId, data: any)` → `updatePreferences(userId, data: PreferenceUpdate)` (flat partial type exported from `preference/model.ts` as `Partial<typeof userPreferences.$inferInsert>` — NOT a new shared `UserPreferencesUpdate`; design Decision 3 explains the shape mismatch).
+- `apps/api/src/modules/preference/index.ts:85` — `const flatData: any = {}` → `const flatData: PreferenceUpdate = {}` (the flat DB row insert type exported from `preference/model.ts` — NOT the shared nested `UserPreferences` interface; design Decision 3 explains the shape mismatch).
 - `apps/api/src/modules/bean/service.ts:34,47` — `data: any` → `data: BeanCreate` / `data: BeanUpdate` (newly exported from shared schemas).
 - `apps/api/src/modules/setup/service.ts:38` — `data: any` → `data: SetupCreate` (newly exported).
 - `apps/api/src/modules/taste/model.ts:45,50` — `Map<string, any>` + `any[]` → `TasteNoteNode` (new type = `typeof tasteNotes.$inferSelect & { children: TasteNoteNode[] }`, recursive; design Decision 5). Define the type locally in `taste/model.ts` (or export from shared types if the web needs it — the existing shared `TasteHierarchy` is a UI projection missing `parentId`/`depth`/`createdAt`, so a new `TasteNoteNode` is warranted).
@@ -79,8 +79,9 @@ No schema changes. No migrations. No DB package changes (the `TasteNoteNode` and
 | File | Change type |
 |---|---|
 | `apps/api/src/modules/equipment/model.ts` | edit — rewrite `getRecipesUsingEquipment` data branch with `exists()`, extract shared `recipeConditions`, add `exists` to imports |
-| `apps/api/src/modules/preference/service.ts` | edit — type `updatePreferences` payload |
-| `apps/api/src/modules/preference/index.ts` | edit — type `flatData` |
+| `apps/api/src/modules/preference/service.ts` | edit — type `updatePreferences` payload as `PreferenceUpdate` (exported from `preference/model.ts`) |
+| `apps/api/src/modules/preference/index.ts` | edit — type `flatData` as `PreferenceUpdate` |
+| `apps/api/src/modules/preference/model.ts` | edit — export `PreferenceUpdate = Partial<typeof userPreferences.$inferInsert>` type |
 | `apps/api/src/modules/bean/service.ts` | edit — type `createBean`/`updateBean` payloads |
 | `apps/api/src/modules/setup/service.ts` | edit — type `createSetup` payload |
 | `apps/api/src/modules/taste/model.ts` | edit — `TasteNoteNode` type for `nodeMap` + `roots` |
@@ -90,7 +91,6 @@ No schema changes. No migrations. No DB package changes (the `TasteNoteNode` and
 | `apps/api/src/modules/equipment/service.ts` | edit (P3 stretch) — remove cache double cast if cache provider generic is added |
 | `packages/shared/src/schemas/bean.ts` | edit — add `BeanCreate`/`BeanUpdate` type exports |
 | `packages/shared/src/schemas/setup.ts` | edit — add `SetupCreate`/`SetupUpdate` type exports |
-| `packages/shared/src/schemas/user.ts` | edit — add `UserPreferencesUpdate` flat partial type export (or document using `typeof userPreferences.$inferInsert`) |
 | `packages/shared/src/schemas/vendor.ts` | edit — add `VendorCreate`/`VendorUpdate` type exports (if not already present) |
 | `packages/shared/src/schemas/equipment.ts` | edit — add `EquipmentCreate`/`EquipmentUpdate` type exports (used by admin service, not strictly D34 but completes the set) |
 
@@ -118,7 +118,7 @@ No schema changes. No migrations. No DB package changes (the `TasteNoteNode` and
 | `packages/shared/src/schemas/bean.test.ts` | edit/new — `// @ts-expect-error` type-rejection test for `BeanCreate` (if not already present) |
 | `packages/shared/src/schemas/setup.test.ts` | edit/new — `// @ts-expect-error` type-rejection test for `SetupCreate` |
 
-**No schema/migration changes.** The Drizzle schema (`packages/db/src/schema.ts`) is untouched. The `exists()` function is already available in the installed Drizzle version (verified via Context7 docs). `BadgeRule` is already exported from `@brewform/shared/types`. The shared `UserPreferences` interface (nested) is NOT used for the flat DB-row typing — a new `UserPreferencesUpdate` flat partial type or the Drizzle `typeof userPreferences.$inferInsert` is used instead (design Decision 3).
+**No schema/migration changes.** The Drizzle schema (`packages/db/src/schema.ts`) is untouched. The `exists()` function is already available in the installed Drizzle version (verified via Context7 docs). `BadgeRule` is already exported from `@brewform/shared/types`. The preference module uses `PreferenceUpdate` (a flat `Partial<typeof userPreferences.$inferInsert>` exported from `apps/api/src/modules/preference/model.ts`) — NOT a shared `UserPreferencesUpdate` type; the shared `UserPreferences` interface (nested) is NOT used for the flat DB-row typing (design Decision 3).
 
 **Stakeholders:** API (equipment, preference, bean, setup, taste, recipe, badge, notify modules), shared (schemas — additive type exports), web (recipe-list components, RequireAuth). DB package, deployment unaffected.
 

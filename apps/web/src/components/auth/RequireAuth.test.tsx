@@ -32,6 +32,28 @@ const VALID_USER: AuthUser = {
   emailVerifiedAt: null,
 };
 
+/**
+ * Build a default `ReturnType<typeof useAuth>` value with all 9 properties,
+ * accepting overrides for the fields tests actually vary. Removes the 9-property
+ * object duplication across the four renderWithRouter call sites below.
+ */
+function makeAuthValue(
+  overrides: Partial<ReturnType<typeof useAuth>> = {},
+): ReturnType<typeof useAuth> {
+  return {
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+    sessionError: null,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+    refreshUser: vi.fn(),
+    clearSessionError: vi.fn(),
+    ...overrides,
+  } as ReturnType<typeof useAuth>;
+}
+
 function renderWithRouter(
   authValue: ReturnType<typeof useAuth>,
   requireAdmin = false,
@@ -67,33 +89,13 @@ beforeEach(() => {
 
 describe('RequireAuth', () => {
   it('should render the page skeleton when isLoading is true', () => {
-    renderWithRouter({
-      user: null,
-      isLoading: true,
-      isAuthenticated: false,
-      sessionError: null,
-      login: vi.fn(),
-      register: vi.fn(),
-      logout: vi.fn(),
-      refreshUser: vi.fn(),
-      clearSessionError: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+    renderWithRouter(makeAuthValue({ user: null, isLoading: true, isAuthenticated: false }));
     expect(screen.getByTestId('page-skeleton')).toBeInTheDocument();
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 
   it('should redirect to /login when unauthenticated', async () => {
-    renderWithRouter({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-      sessionError: null,
-      login: vi.fn(),
-      register: vi.fn(),
-      logout: vi.fn(),
-      refreshUser: vi.fn(),
-      clearSessionError: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+    renderWithRouter(makeAuthValue({ user: null, isLoading: false, isAuthenticated: false }));
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByTestId('login-page')).toBeInTheDocument();
@@ -102,17 +104,11 @@ describe('RequireAuth', () => {
 
   it('should redirect to / when authenticated non-admin and requireAdmin is true', async () => {
     renderWithRouter(
-      {
+      makeAuthValue({
         user: { ...VALID_USER, isAdmin: false },
         isLoading: false,
         isAuthenticated: true,
-        sessionError: null,
-        login: vi.fn(),
-        register: vi.fn(),
-        logout: vi.fn(),
-        refreshUser: vi.fn(),
-        clearSessionError: vi.fn(),
-      } as ReturnType<typeof useAuth>,
+      }),
       true,
     );
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
@@ -123,17 +119,11 @@ describe('RequireAuth', () => {
 
   it('should render children when authenticated admin and requireAdmin is true', () => {
     renderWithRouter(
-      {
+      makeAuthValue({
         user: VALID_USER,
         isLoading: false,
         isAuthenticated: true,
-        sessionError: null,
-        login: vi.fn(),
-        register: vi.fn(),
-        logout: vi.fn(),
-        refreshUser: vi.fn(),
-        clearSessionError: vi.fn(),
-      } as ReturnType<typeof useAuth>,
+      }),
       true,
     );
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
@@ -141,17 +131,11 @@ describe('RequireAuth', () => {
 
   it('should render children when authenticated and requireAdmin is false', () => {
     renderWithRouter(
-      {
+      makeAuthValue({
         user: { ...VALID_USER, isAdmin: false },
         isLoading: false,
         isAuthenticated: true,
-        sessionError: null,
-        login: vi.fn(),
-        register: vi.fn(),
-        logout: vi.fn(),
-        refreshUser: vi.fn(),
-        clearSessionError: vi.fn(),
-      } as ReturnType<typeof useAuth>,
+      }),
       false,
     );
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
