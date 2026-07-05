@@ -19,11 +19,17 @@
 
 ## Wave 1 — Correctness & security (P1, small, independent)
 
-- [ ] **D41** — Add `isNull(deletedAt)` guards to the three admin user mutations
+- [x] **D41** — Add `isNull(deletedAt)` guards to the three admin user mutations
       (`banUser`/`unbanUser`/`setUserAdminRole`). Trivial diff, real privilege-escalation edge; test
-      plan mirrors the existing D19 tests. **Best first pick.**
-- [ ] **D38** — Report-endpoint rate limit + `sanitize.ts` XSS tests + `AuthContext` silent catch.
-      Three small, independently shippable pieces in one change.
+      plan mirrors the existing D19 tests. **Best first pick.** _(resolved 2026-07-05 via
+      `wave-1-correctness-security`; also swept the three sibling unguarded updates
+      `updateRecipeVisibility`/`updateEquipment`/`updateVendor`, fixed the missing try/catch on
+      `PATCH /users/:id/admin`, and added `describeRoute` to the two touched admin user routes.)_
+- [x] **D38** — Report-endpoint rate limit + `sanitize.ts` XSS tests + `AuthContext` silent catch.
+      Three small, independently shippable pieces in one change. _(resolved 2026-07-05 via
+      `wave-1-correctness-security`; rate limit applied to POST only per design Decision 4,
+      `sessionError: 'network' | 'server' | null` + `SessionRestoreBanner` in Layout, 5-branch
+      `refreshUser` catch, `AuthContext.test.tsx` covers 401/500/network/banned/success.)_
 
 ## Wave 2 — Backend hygiene
 

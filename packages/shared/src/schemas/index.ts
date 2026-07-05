@@ -46,6 +46,7 @@ export {
   AdminCreateUserSchema,
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
+  AdminSetRoleSchema,
   AdminUpdateUserSchema,
 } from './admin.ts';
 export { PhotoUploadSchema } from './photo.ts';

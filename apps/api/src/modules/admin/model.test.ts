@@ -9,6 +9,7 @@ import {
   coffeeVarieties,
   equipment,
   equipmentDeleteRequests,
+  recipes,
   users,
   vendors,
 } from '@brewform/db/schema';
@@ -256,3 +257,239 @@ describe(
     });
   },
 );
+
+describe('banUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+  let userId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `ban-${userId}@example.com`,
+      username: `banuser-${userId}`,
+      passwordHash: 'hash',
+    });
+  });
+
+  afterEach(async () => {
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  it('should ban an active user', async () => {
+    const result = await model.banUser(userId);
+    expect(result).not.toBeNull();
+    expect(result!.isBanned).toBe(true);
+  });
+
+  it('should return null for a soft-deleted user and not change isBanned', async () => {
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+    const result = await model.banUser(userId);
+    expect(result).toBeNull();
+    const [row] = await db.select().from(users).where(eq(users.id, userId));
+    expect(row.isBanned).toBe(false);
+  });
+
+  it('should not ban a user that is already banned and soft-deleted', async () => {
+    await db.update(users).set({ isBanned: true }).where(eq(users.id, userId));
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+    const result = await model.banUser(userId);
+    expect(result).toBeNull();
+    const [row] = await db.select().from(users).where(eq(users.id, userId));
+    expect(row.isBanned).toBe(true);
+  });
+});
+
+describe('unbanUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+  let userId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `unban-${userId}@example.com`,
+      username: `unbanuser-${userId}`,
+      passwordHash: 'hash',
+      isBanned: true,
+    });
+  });
+
+  afterEach(async () => {
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  it('should unban an active banned user', async () => {
+    const result = await model.unbanUser(userId);
+    expect(result).not.toBeNull();
+    expect(result!.isBanned).toBe(false);
+  });
+
+  it('should return null for a soft-deleted user and not change isBanned', async () => {
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+    const result = await model.unbanUser(userId);
+    expect(result).toBeNull();
+    const [row] = await db.select().from(users).where(eq(users.id, userId));
+    expect(row.isBanned).toBe(true);
+  });
+});
+
+describe('setUserAdminRole', { sanitizeOps: false, sanitizeResources: false }, () => {
+  let userId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `role-${userId}@example.com`,
+      username: `roleuser-${userId}`,
+      passwordHash: 'hash',
+    });
+  });
+
+  afterEach(async () => {
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  it('should grant admin role on an active user', async () => {
+    const result = await model.setUserAdminRole(userId, true);
+    expect(result).not.toBeNull();
+    expect(result!.isAdmin).toBe(true);
+  });
+
+  it('should revoke admin role on an active user', async () => {
+    await model.setUserAdminRole(userId, true);
+    const result = await model.setUserAdminRole(userId, false);
+    expect(result).not.toBeNull();
+    expect(result!.isAdmin).toBe(false);
+  });
+
+  it('should return null for a soft-deleted user and not grant admin (privilege escalation blocked)', async () => {
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+    const result = await model.setUserAdminRole(userId, true);
+    expect(result).toBeNull();
+    const [row] = await db.select().from(users).where(eq(users.id, userId));
+    expect(row.isAdmin).toBe(false);
+  });
+});
+
+describe('updateRecipeVisibility', { sanitizeOps: false, sanitizeResources: false }, () => {
+  let userId: string;
+  let recipeId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    recipeId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `recipe-${userId}@example.com`,
+      username: `recipeuser-${userId}`,
+      passwordHash: 'hash',
+    });
+    await db.insert(recipes).values({
+      id: recipeId,
+      slug: `test-recipe-${recipeId}`,
+      title: 'Test Recipe',
+      authorId: userId,
+    });
+  });
+
+  afterEach(async () => {
+    await db.delete(recipes).where(eq(recipes.id, recipeId));
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  it('should update visibility on an active recipe', async () => {
+    const result = await model.updateRecipeVisibility(recipeId, 'public');
+    expect(result).not.toBeNull();
+    expect(result!.visibility).toBe('public');
+  });
+
+  it('should return null for a soft-deleted recipe and not change visibility', async () => {
+    await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, recipeId));
+    const result = await model.updateRecipeVisibility(recipeId, 'public');
+    expect(result).toBeNull();
+    const [row] = await db.select().from(recipes).where(eq(recipes.id, recipeId));
+    expect(row.visibility).toBe('draft');
+  });
+});
+
+describe('updateEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+  let userId: string;
+  let equipmentId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    equipmentId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `eq-${userId}@example.com`,
+      username: `equser-${userId}`,
+      passwordHash: 'hash',
+    });
+    await db.insert(equipment).values({
+      id: equipmentId,
+      name: 'Test Grinder',
+      type: 'grinder',
+      isSystem: false,
+      createdBy: userId,
+    });
+  });
+
+  afterEach(async () => {
+    await db.delete(equipment).where(eq(equipment.id, equipmentId));
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  it('should update name on an active equipment', async () => {
+    const result = await model.updateEquipment(equipmentId, { name: 'Renamed Grinder' });
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe('Renamed Grinder');
+  });
+
+  it('should return null for a soft-deleted equipment and not change name', async () => {
+    await db.update(equipment).set({ deletedAt: new Date() }).where(eq(equipment.id, equipmentId));
+    const result = await model.updateEquipment(equipmentId, { name: 'Renamed Grinder' });
+    expect(result).toBeNull();
+    const [row] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
+    expect(row.name).toBe('Test Grinder');
+  });
+});
+
+describe('updateVendor', { sanitizeOps: false, sanitizeResources: false }, () => {
+  let userId: string;
+  let vendorId: string;
+
+  beforeEach(async () => {
+    userId = crypto.randomUUID();
+    vendorId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `vendor-${userId}@example.com`,
+      username: `vendoruser-${userId}`,
+      passwordHash: 'hash',
+    });
+    await db.insert(vendors).values({
+      id: vendorId,
+      name: 'Test Vendor',
+      createdBy: userId,
+    });
+  });
+
+  afterEach(async () => {
+    await db.delete(vendors).where(eq(vendors.id, vendorId));
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  it('should update name on an active vendor', async () => {
+    const result = await model.updateVendor(vendorId, { name: 'Renamed Vendor' });
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe('Renamed Vendor');
+  });
+
+  it('should return null for a soft-deleted vendor and not change name', async () => {
+    await db.update(vendors).set({ deletedAt: new Date() }).where(eq(vendors.id, vendorId));
+    const result = await model.updateVendor(vendorId, { name: 'Renamed Vendor' });
+    expect(result).toBeNull();
+    const [row] = await db.select().from(vendors).where(eq(vendors.id, vendorId));
+    expect(row.name).toBe('Test Vendor');
+  });
+});

@@ -3,7 +3,7 @@
 > Status ledger for technical-debt items. Issues categorised by severity and area.
 > Last full audit: **2026-07-04** (plan-by-plan verification against `main`). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
 
-**Currently open: D03, D34–D43.** Everything else below is resolved and kept for history.
+**Currently open: D03, D34, D35, D36, D37, D39, D40, D42, D43.** Everything else below is resolved and kept for history.
 
 ---
 
@@ -34,17 +34,16 @@
 - **Verified fix**: `apps/web/src/router.tsx:121` registers `recipes/:id/fork`; `RecipeForkPage.tsx` exists.
 - **PRD**: [`plans/D04-fork-navigation-fix.md`](D04-fork-navigation-fix.md)
 
-### 1.5 Admin User Mutations Ignore Soft-Delete — **OPEN** (new 2026-07-04)
-- **File**: `apps/api/src/modules/admin/model.ts:98-115`
-- **Issue**: `banUser`, `unbanUser`, and `setUserAdminRole` update by `eq(users.id)` alone with no `isNull(users.deletedAt)` guard — soft-deleted users can be banned/unbanned and even **granted admin**, unlike `softDeleteUser` (`:198-204`) and the D19-fixed delete functions.
+### 1.5 Admin User Mutations Ignore Soft-Delete — **RESOLVED** (2026-07-05)
+- **Verified fix**: `apps/api/src/modules/admin/model.ts` — `banUser`, `unbanUser`, `setUserAdminRole` now use `and(eq(users.id, userId), isNull(users.deletedAt))`. Sibling sweep also fixed `updateRecipeVisibility`, `updateEquipment`, `updateVendor`. `PATCH /users/:id/admin` route wrapped in try/catch mapping `USER_NOT_FOUND` → 404 (was a 500). `describeRoute` metadata added to the two touched admin user routes. Tests in `admin/model.test.ts` cover active + soft-deleted paths for all six functions, including the privilege-escalation-blocked assertion.
 - **Severity**: High — data integrity + latent privilege-escalation edge on account restore.
 - **PRD**: [`plans/D41-admin-user-mutation-guards.md`](D41-admin-user-mutation-guards.md)
 
-### 1.6 Security & Error-Handling Hardening Bundle — **OPEN** (new 2026-07-04)
-- **Issues**:
-  - `POST /api/v1/reports` (`apps/api/src/modules/report/index.ts:19`) has no per-user rate limit (contact form has 3/15min at `contact/index.ts:28-33`) — moderation-queue flooding vector.
-  - `apps/api/src/utils/sanitize.ts` (XSS control) has zero test coverage.
-  - `apps/web/src/contexts/AuthContext.tsx:50` — `refreshUser().catch(() => {})` silently swallows session-restore failures (survivor of D17).
+### 1.6 Security & Error-Handling Hardening Bundle — **RESOLVED** (2026-07-05)
+- **Verified fix**:
+  - `POST /api/v1/reports` now applies `rateLimitMiddleware({ windowMs: 15 * 60_000, maxRequests: 3, keyPrefix: 'report' })` as the first middleware on the POST route only (admin GET/PATCH routes NOT throttled, per design Decision 4). 429 documented in OpenAPI. Test in `report/index.test.ts` asserts the 4th POST returns 429 and admin GET is not throttled.
+  - `apps/api/src/utils/sanitize.test.ts` (new) — 28 cases covering dangerous-input neutralisation (script/img/anchor tags, zero-width chars, whitespace abuse), benign-input pass-through (numeric comparisons, markdown, plain text), and the 3 documented limitations (`javascript:` URLs, HTML entities, `<` not followed by a letter) locked as pass-through regression baselines.
+  - `apps/web/src/contexts/AuthContext.tsx` — `refreshUser` catch now branches into 5 cases (banned/401/5xx/network/other-4xx); 401 keeps `log.warn` (silent logout correct — refresh cookie is also dead), 5xx/network use `log.error` and set `sessionError: 'network' | 'server' | null`; `clearSessionError()` exposed; outer `.catch(() => {})` removed. `SessionRestoreBanner.tsx` (new) mounted in `Layout.tsx` as a sibling to `EmailVerificationBanner`. `AuthContext.test.tsx` (new) covers 401/500/network/banned/success.
 - **Severity**: High (bundle of P2 security/correctness items).
 - **PRD**: [`plans/D38-security-error-hardening.md`](D38-security-error-hardening.md)
 
@@ -109,7 +108,7 @@
 ### 3.4 Admin Soft-Delete Inconsistency
 - **Status: Resolved** (2026-06-09) — with wider scope than originally ledgered (the old `:601-606` ref was stale).
 - **Verified fix**: `isNull(deletedAt)` guards in `apps/api/src/modules/admin/model.ts` at `deleteEquipment:296`, `deleteVendor:339`, `deleteCoffeeVariety:608`, and the approve-request inner delete `:671`; double-delete idempotency locked in `admin/model.test.ts`.
-- **Follow-up**: the same guard is still missing on the admin **user-state** mutations — see §1.5 / **D41**.
+- **Follow-up (resolved 2026-07-05)**: the same guard was missing on the admin **user-state** mutations — fixed in D41 (§1.5) along with the three sibling unguarded updates (`updateRecipeVisibility`/`updateEquipment`/`updateVendor`).
 - **PRD**: [`plans/D19-admin-soft-delete-fix.md`](D19-admin-soft-delete-fix.md)
 
 ### 3.5 Module-Level Cache Without Invalidation
@@ -151,9 +150,9 @@
 - **PRD**: [`plans/D37-consolidate-error-pages.md`](D37-consolidate-error-pages.md) (also covers §6.5)
 
 ### 4.3 Silent Error Swallowing
-- **Status: Resolved** (2026-06-09)
+- **Status: Resolved** (2026-06-09; D17 survivor fixed 2026-07-05 via D38)
 - **Verified fix**: zero empty `.catch` in the target pages; `createLogger` in place; focus-mode load-error i18n keys added.
-- **Known survivor**: `AuthContext.tsx:50` — tracked in **D38** (§1.6).
+- **D17 survivor (fixed 2026-07-05)**: the `AuthContext.tsx:50` `refreshUser().catch(() => {})` survivor was resolved by D38 (§1.6) — the outer `.catch` is removed, the inner catch now branches into 5 cases (banned/401/5xx/network/other-4xx) with `log.error` + `sessionError` state for 5xx/network, and a `SessionRestoreBanner` mounted in the shell.
 - **PRD**: [`plans/D17-fix-error-swallowing.md`](D17-fix-error-swallowing.md)
 
 ### 4.4 No Optimistic Update Rollback
@@ -245,8 +244,6 @@ Also resolved without a ledger section above: **D21** rating-scale CHECK constra
 
 | Priority | Item | Plan | Area | Effort |
 |----------|------|------|------|--------|
-| **P1** | Guard admin user mutations against soft-deleted users | [D41](D41-admin-user-mutation-guards.md) | Backend | Low |
-| **P1** | Rate-limit reports, test sanitizer, surface auth-refresh errors | [D38](D38-security-error-hardening.md) | Both | Low–Medium |
 | **P2** | Replace raw SQL in equipment model (+ fold in count-branch predicate dedup) | [D03](D03-raw-sql-drizzle.md) | Backend | Low |
 | **P2** | Eliminate residual `any` in service/model layer | [D34](D34-residual-any-elimination.md) | Backend | Medium |
 | **P2** | Extract duplicated UI (RecipeCard / BanDialog / form helpers) | [D36](D36-extract-duplicated-ui.md) | Frontend | Medium |
@@ -256,5 +253,7 @@ Also resolved without a ledger section above: **D21** rating-scale CHECK constra
 | **P3** | Consolidate error pages / remove dead exports | [D37](D37-consolidate-error-pages.md) | Frontend | Low |
 | **P3** | Complete i18n (admin, legal, compare, auxiliary pages) | [D40](D40-complete-i18n.md) | Frontend | Medium–High |
 | **P3** | Add `createdAt` to remaining join tables | [D43](D43-join-table-timestamps.md) | DB | Low |
+
+**Recently resolved (2026-07-05, openspec change `wave-1-correctness-security`):** D41 (admin user mutation soft-delete guards + sibling sweep + setRole route try/catch + describeRoute) and D38 (report rate limit + sanitizer tests + AuthContext error surfacing + SessionRestoreBanner). See §1.5 and §1.6 above.
 
 **Sequencing notes**: D39 Tier 1 (equipment model tests) before D03; D37 before D40's NotFoundPage conversion; D36's `BanDialog` before/with D40's admin-page conversion.

@@ -268,3 +268,44 @@ Commands:
 
 Tests run with `--no-check` (type checking done separately via `make check`).
 All barrel file imports use explicit `.ts` extensions.
+
+## Code Style & Formatting
+
+BrewForm uses `deno fmt` as the single source of truth for code formatting. The formatter config
+lives in the root `deno.json` (`fmt` key): `lineWidth: 100`, `indentWidth: 2`, `singleQuote`,
+`semiColons: true`.
+
+### Mandatory `make fmt` before commit
+
+**Run `make fmt` after every batch of edits, before committing or pushing.** Symbolic edits and
+regex replacements (whether from an agent, an IDE, or a manual refactor) preserve logic but may not
+match Deno's exact whitespace rules — trailing commas, line wrapping, indentation, and semicolon
+insertion are all normalised by `deno fmt` in ways that are easy to miss by eye.
+
+CI enforces `deno fmt --check` in both the `ci.yml` quality job and the `pr.yml` check job, and
+**fails the build on any formatting diff**. The pre-commit hook (`.githooks/pre-commit`, enabled via
+`make setup-hooks`) also runs `deno fmt --check` locally, but do not rely on the hook alone — run
+`make fmt` proactively after each batch of edits, not just at commit time.
+
+### Commands
+
+| Command | Purpose |
+|---------|---------|
+| `make fmt` | Apply `deno fmt` to all files (in-place) |
+| `make fmt-check` | Check formatting without changes (CI uses this) |
+| `make lint` | Run `deno lint` across all workspaces |
+| `make check` | Type-check all workspaces (`deno check`) |
+| `make ci` | Full pipeline: `fmt-check` → `lint` → `check` → `build` → `test` |
+
+### Lint exclusions
+
+The following rules are excluded repo-wide (configured in each workspace's `deno.json`):
+`no-explicit-any`, `require-await`, `no-empty`, `no-import-prefix`, `no-unversioned-import`. Module
+files that need `any` for Drizzle row types or test fixtures use a single file-level directive:
+`// deno-lint-ignore-file no-explicit-any require-await` on line 1.
+
+### Import conventions
+
+- All imports use explicit file extensions (`.ts`, `.tsx`) — no sloppy imports.
+- All npm/JSR specifiers are versioned (e.g. `hono@4.6.14`, `jsr:@std/testing@1.0.10`) — see
+  `deno.json` `imports` and each workspace's `deno.json`.

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { describeRoute } from 'hono-openapi';
+import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import {
@@ -8,6 +8,7 @@ import {
   AdminCreateUserSchema,
   AdminFlushCacheSchema,
   AdminModifyRecipeVisibilitySchema,
+  AdminSetRoleSchema,
   AdminUpdateUserSchema,
   BrewMethodCompatibilityCreateSchema,
   BrewMethodCompatibilityUpdateSchema,
@@ -16,13 +17,17 @@ import {
   CoffeeVarietyUpdateSchema,
   EquipmentCreateSchema,
   EquipmentUpdateSchema,
+  ErrorEnvelopeSchema,
   PaginationSchema,
   ReportFilterSchema,
+  successEnvelope,
   TasteNoteCreateSchema,
   TasteNoteUpdateSchema,
+  UserRowOutputSchema,
   VendorCreateSchema,
   VendorUpdateSchema,
 } from '@brewform/shared/schemas';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import * as service from './service.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
 import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
@@ -156,26 +161,52 @@ admin.post(
   },
 );
 
-admin.post('/users/:id/ban', zValidator('json', AdminBanUserSchema), async (c) => {
-  const adminId = c.get('userId') as string;
-  const targetId = c.req.param('id')!;
-  const { banned, reason } = c.req.valid('json');
-  try {
-    if (banned) {
-      const user = await service.banUser(adminId, targetId, reason);
-      return success(c, user);
-    } else {
-      const user = await service.unbanUser(adminId, targetId);
-      return success(c, user);
+admin.post(
+  '/users/:id/ban',
+  describeRoute({
+    tags: ['Admin'],
+    summary: 'Ban or unban a user',
+    description:
+      'Sets the banned state of a user. Requires admin role. Returns 404 if the target user is soft-deleted or does not exist.',
+    security: [{ bearerAuth: [] }],
+    requestBody: jsonRequestBody(AdminBanUserSchema),
+    responses: {
+      200: {
+        description: 'User updated',
+        content: { 'application/json': { schema: resolver(successEnvelope(UserRowOutputSchema)) } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      404: {
+        description: 'User not found (or soft-deleted)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
+  zValidator('json', AdminBanUserSchema, zodValidationHook),
+  async (c) => {
+    const adminId = c.get('userId') as string;
+    const targetId = c.req.param('id')!;
+    const { banned, reason } = c.req.valid('json');
+    try {
+      if (banned) {
+        const user = await service.banUser(adminId, targetId, reason);
+        return success(c, user);
+      } else {
+        const user = await service.unbanUser(adminId, targetId);
+        return success(c, user);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'USER_NOT_FOUND') {
+        return error(c, 'NOT_FOUND', 'User not found.', 404);
+      }
+      throw err;
     }
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message === 'USER_NOT_FOUND') {
-      return error(c, 'NOT_FOUND', 'User not found.', 404);
-    }
-    throw err;
-  }
-});
+  },
+);
 
 admin.patch(
   '/users/:id',
@@ -214,13 +245,43 @@ admin.patch(
 
 admin.patch(
   '/users/:id/admin',
-  zValidator('json', z.object({ isAdmin: z.boolean() })),
+  describeRoute({
+    tags: ['Admin'],
+    summary: 'Set or clear admin role on a user',
+    description:
+      'Grants or revokes the admin role on a user. Requires admin role. Returns 404 if the target user is soft-deleted or does not exist.',
+    security: [{ bearerAuth: [] }],
+    requestBody: jsonRequestBody(AdminSetRoleSchema),
+    responses: {
+      200: {
+        description: 'User updated',
+        content: { 'application/json': { schema: resolver(successEnvelope(UserRowOutputSchema)) } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      404: {
+        description: 'User not found (or soft-deleted)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
+  zValidator('json', AdminSetRoleSchema, zodValidationHook),
   async (c) => {
     const adminId = c.get('userId') as string;
     const userId = c.req.param('id')!;
     const { isAdmin } = c.req.valid('json');
-    const user = await service.setUserAdminRole(adminId, userId, isAdmin);
-    return success(c, user);
+    try {
+      const user = await service.setUserAdminRole(adminId, userId, isAdmin);
+      return success(c, user);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'USER_NOT_FOUND') {
+        return error(c, 'NOT_FOUND', 'User not found.', 404);
+      }
+      throw err;
+    }
   },
 );
 

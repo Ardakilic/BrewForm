@@ -9,6 +9,7 @@ import {
   successEnvelope,
 } from '@brewform/shared/schemas';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
+import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
 import * as service from './service.ts';
 import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
@@ -16,12 +17,25 @@ import type { AppEnv } from '../../types/hono.ts';
 
 const report = new Hono<AppEnv>();
 
+/** Per-IP rate limit for report submission: 3 requests per 15 minutes. */
+const REPORT_RATE_LIMIT_WINDOW_MS = 15 * 60_000;
+const REPORT_RATE_LIMIT_MAX_REQUESTS = 3;
+const REPORT_RATE_LIMIT_KEY_PREFIX = 'report';
+
 report.post(
   '/',
+  rateLimitMiddleware({
+    windowMs: REPORT_RATE_LIMIT_WINDOW_MS,
+    maxRequests: REPORT_RATE_LIMIT_MAX_REQUESTS,
+    keyPrefix: REPORT_RATE_LIMIT_KEY_PREFIX,
+  }),
   describeRoute({
     tags: ['Reports'],
     summary: 'Create a report',
-    description: 'Submits a moderation report against a recipe or comment.',
+    description:
+      `Submits a moderation report against a recipe or comment. Rate-limited to ${REPORT_RATE_LIMIT_MAX_REQUESTS} requests per ${
+        REPORT_RATE_LIMIT_WINDOW_MS / 60_000
+      } minutes per IP.`,
     security: [{ bearerAuth: [] }],
     requestBody: jsonRequestBody(ReportCreateSchema),
     responses: {
@@ -33,6 +47,12 @@ report.post(
       },
       401: {
         description: 'Unauthorized',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      429: {
+        description: `Rate limit exceeded (${REPORT_RATE_LIMIT_MAX_REQUESTS} requests per ${
+          REPORT_RATE_LIMIT_WINDOW_MS / 60_000
+        } minutes)`,
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },

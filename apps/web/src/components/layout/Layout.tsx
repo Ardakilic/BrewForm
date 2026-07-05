@@ -4,6 +4,7 @@ import { Navbar } from './Navbar.tsx';
 import { Footer } from './Footer.tsx';
 import { CookieConsent } from '../CookieConsent.tsx';
 import { EmailVerificationBanner } from '../EmailVerificationBanner.tsx';
+import { SessionRestoreBanner } from '../SessionRestoreBanner.tsx';
 import { PageSkeleton } from '../ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 
@@ -29,6 +30,7 @@ export function Layout() {
         {t('a11y.skipToContent')}
       </a>
       <EmailVerificationBanner />
+      <SessionRestoreBanner />
       <Navbar />
       <main id='main-content' className='flex-1' tabIndex={-1}>
         <Suspense fallback={<PageSkeleton />}>
