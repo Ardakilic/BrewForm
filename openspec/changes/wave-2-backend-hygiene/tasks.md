@@ -105,8 +105,8 @@
   - Zero regressions in all pre-existing tests.
   - The OpenAPI coverage test (`apps/api/src/routes/openapi.coverage.test.ts`) — unaffected (no routes changed).
 
-- [ ] 10.5 Update the `Status` banner in `plans/D03-raw-sql-drizzle.md`, `plans/D34-residual-any-elimination.md`, and `plans/D39-test-coverage-backfill.md` to `Resolved (2026-07-05)` and tick the Wave 2 checkboxes in `plans/ROADMAP.md`. Update the `TECHNICAL_DEBT.md` ledger rows for D03, D34, and D39 (mark D39 Tier 1 complete; Tier 2/3 remain open).
+- [x] 10.5 Update the `Status` banner in `plans/D03-raw-sql-drizzle.md`, `plans/D34-residual-any-elimination.md`, and `plans/D39-test-coverage-backfill.md` to `Resolved (2026-07-05)` and tick the Wave 2 checkboxes in `plans/ROADMAP.md`. Update the `TECHNICAL_DEBT.md` ledger rows for D03, D34, and D39 (mark D39 Tier 1 complete; Tier 2/3 remain open).
 
-- [ ] 10.6 (Optional) Create `pr_description.md` at the project root summarising the three sub-changes (D39 Tier 1, D03, D34), following the Wave 1 PR-description format: `## Problem`, `## Solution` (table), `## What did NOT change`, `## Testing`, `## Risk`.
+- [x] 10.6 (Optional) Create `pr_description.md` at the project root summarising the three sub-changes (D39 Tier 1, D03, D34), following the Wave 1 PR-description format: `## Problem`, `## Solution` (table), `## What did NOT change`, `## Testing`, `## Risk`.
 
 - [ ] 10.7 Archive the change via `openspec archive wave-2-backend-hygiene` (after the PR merges) and sync the delta specs into `openspec/specs/`.
