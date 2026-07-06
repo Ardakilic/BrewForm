@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { adminApi, type AdminUserDetail } from '../../api/index.ts';
+import { BanDialog } from '../../components/admin/BanDialog.tsx';
+import { useBanUser } from '../../hooks/useBanUser.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const log = createLogger('AdminUserDetailPage');
 
@@ -12,17 +15,23 @@ export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [banDialog, setBanDialog] = useState<
-    {
-      reason: string;
-      processing: boolean;
-    } | null
-  >(null);
+  const {
+    banDialogUser,
+    processing: banProcessing,
+    error: banError,
+    openBanDialog,
+    confirmBan,
+    unban,
+    closeDialog,
+  } = useBanUser((_userId, isBanned) => {
+    setUser((prev) => prev ? { ...prev, isBanned } : prev);
+  });
 
   useEffect(() => {
     log.debug({}, 'AdminUserDetailPage mounted');
@@ -46,32 +55,10 @@ export function AdminUserDetailPage() {
     }).finally(() => setLoading(false));
   }, [id]);
 
-  async function handleBan() {
-    if (!banDialog || !banDialog.reason.trim() || !id) return;
-    setBanDialog({ ...banDialog, processing: true });
-    try {
-      await adminApi.banUser(id, banDialog.reason);
-      setUser((prev) => prev ? { ...prev, isBanned: true } : prev);
-      setBanDialog(null);
-    } catch {
-      setBanDialog({ ...banDialog, processing: false });
-    }
-  }
-
-  async function handleUnban() {
-    if (!id) return;
-    try {
-      await adminApi.unbanUser(id);
-      setUser((prev) => prev ? { ...prev, isBanned: false } : prev);
-    } catch {}
-  }
-
   async function handleDelete() {
     if (
       !id ||
-      !globalThis.confirm(
-        'Are you sure you want to delete this user? This action cannot be undone.',
-      )
+      !globalThis.confirm(t('admin.users.deleteConfirm'))
     ) return;
     try {
       await adminApi.deleteUser(id);
@@ -93,13 +80,13 @@ export function AdminUserDetailPage() {
     return (
       <div className='text-center py-12'>
         <h2 className='text-xl font-semibold' style={{ color: 'var(--text-primary)' }}>
-          Failed to Load
+          {t('admin.users.loadFailedTitle')}
         </h2>
         <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
-          An error occurred while loading the user details. Please try again.
+          {t('admin.users.loadFailedMessage')}
         </p>
         <Link to='/admin/users' className='btn-primary mt-4 inline-block'>
-          Back to Users
+          {t('admin.users.backToUsers')}
         </Link>
       </div>
     );
@@ -109,13 +96,13 @@ export function AdminUserDetailPage() {
     return (
       <div className='text-center py-12'>
         <h2 className='text-xl font-semibold' style={{ color: 'var(--text-primary)' }}>
-          User Not Found
+          {t('admin.users.notFoundTitle')}
         </h2>
         <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
-          The requested user could not be found.
+          {t('admin.users.notFoundMessage')}
         </p>
         <Link to='/admin/users' className='btn-primary mt-4 inline-block'>
-          Back to Users
+          {t('admin.users.backToUsers')}
         </Link>
       </div>
     );
@@ -127,7 +114,7 @@ export function AdminUserDetailPage() {
     <div>
       <div className='flex items-center gap-4 mb-6'>
         <Link to='/admin/users' style={{ color: 'var(--accent-primary)' }}>
-          &larr; Back to Users
+          {t('admin.users.backToUsersArrow')}
         </Link>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
           {user.displayName || user.username}
@@ -139,11 +126,11 @@ export function AdminUserDetailPage() {
           className='mb-4 p-3 rounded text-sm'
           style={{ backgroundColor: 'var(--warning-bg, #fffbeb)', color: 'var(--warning)' }}
         >
-          This is your own account. Use{' '}
+          {t('admin.users.selfEditPrefix')}{' '}
           <Link to='/settings' style={{ color: 'var(--accent-primary)' }}>
-            Profile Settings
+            {t('admin.users.profileSettings')}
           </Link>{' '}
-          to edit your profile.
+          {t('admin.users.selfEditSuffix')}
         </div>
       )}
 
@@ -171,44 +158,60 @@ export function AdminUserDetailPage() {
           <div className='flex-1'>
             <div className='grid grid-cols-2 gap-4'>
               <div>
-                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>Email</span>
+                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                  {t('auth.email')}
+                </span>
                 <p style={{ color: 'var(--text-primary)' }}>{user.email}</p>
               </div>
               <div>
-                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>Username</span>
+                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                  {t('auth.username')}
+                </span>
                 <p style={{ color: 'var(--text-primary)' }}>{user.username}</p>
               </div>
               <div>
                 <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
-                  Display Name
+                  {t('settings.displayName')}
                 </span>
                 <p style={{ color: 'var(--text-primary)' }}>{user.displayName || '-'}</p>
               </div>
               <div>
-                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>Bio</span>
+                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                  {t('common.bio')}
+                </span>
                 <p style={{ color: 'var(--text-primary)' }}>{user.bio || '-'}</p>
               </div>
               <div>
-                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>Role</span>
+                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                  {t('admin.users.role')}
+                </span>
                 <p style={{ color: 'var(--text-primary)' }}>
-                  {user.isAdmin ? <span className='badge'>Admin</span> : 'User'}
+                  {user.isAdmin
+                    ? <span className='badge'>{t('admin.users.adminBadge')}</span>
+                    : t('admin.users.userRole')}
                 </p>
               </div>
               <div>
-                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>Status</span>
+                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                  {t('admin.users.status')}
+                </span>
                 <p style={{ color: 'var(--text-primary)' }}>
-                  {user.isBanned ? <span style={{ color: 'var(--error)' }}>Banned</span> : 'Active'}
+                  {user.isBanned
+                    ? <span style={{ color: 'var(--error)' }}>{t('admin.users.banned')}</span>
+                    : t('admin.users.active')}
                 </p>
               </div>
               <div>
-                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>Joined</span>
+                <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                  {t('admin.users.joined')}
+                </span>
                 <p style={{ color: 'var(--text-primary)' }}>
                   {new Date(user.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <div>
                 <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
-                  Last Updated
+                  {t('admin.users.lastUpdated')}
                 </span>
                 <p style={{ color: 'var(--text-primary)' }}>
                   {new Date(user.updatedAt).toLocaleDateString()}
@@ -220,49 +223,71 @@ export function AdminUserDetailPage() {
       </div>
 
       <div className='card mb-6'>
-        <h3 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>Stats</h3>
+        <h3 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+          {t('admin.users.stats')}
+        </h3>
         <div className='grid grid-cols-3 gap-4 text-center'>
           <div>
             <div className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
               {user.recipeCount ?? '-'}
             </div>
-            <div className='text-sm' style={{ color: 'var(--text-secondary)' }}>Recipes</div>
+            <div className='text-sm' style={{ color: 'var(--text-secondary)' }}>
+              {t('user.recipes')}
+            </div>
           </div>
           <div>
             <div className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
               {user.followerCount ?? '-'}
             </div>
-            <div className='text-sm' style={{ color: 'var(--text-secondary)' }}>Followers</div>
+            <div className='text-sm' style={{ color: 'var(--text-secondary)' }}>
+              {t('user.followers')}
+            </div>
           </div>
           <div>
             <div className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
               {user.followingCount ?? '-'}
             </div>
-            <div className='text-sm' style={{ color: 'var(--text-secondary)' }}>Following</div>
+            <div className='text-sm' style={{ color: 'var(--text-secondary)' }}>
+              {t('user.following')}
+            </div>
           </div>
         </div>
       </div>
+
+      {banError && (
+        <div
+          className='mb-4 p-3 rounded text-sm'
+          style={{ backgroundColor: 'var(--error-bg, #fef2f2)', color: 'var(--error)' }}
+        >
+          {t(banError)}
+        </div>
+      )}
 
       <div className='flex gap-3'>
         {!isSelf && (
           <>
             <Link to={`/admin/users/${id}/edit`} className='btn-primary'>
-              Edit User
+              {t('admin.users.editUser')}
             </Link>
             {user.isBanned
               ? (
-                <button type='button' onClick={handleUnban} className='btn-secondary'>
-                  Unban User
+                <button type='button' onClick={() => unban(id!)} className='btn-secondary'>
+                  {t('admin.unbanUser')}
                 </button>
               )
               : (
                 <button
                   type='button'
-                  onClick={() => setBanDialog({ reason: '', processing: false })}
+                  onClick={() =>
+                    openBanDialog({
+                      id: id!,
+                      username: user.username,
+                      displayName: user.displayName,
+                    })}
                   className='btn-secondary'
                   style={{ color: 'var(--error)' }}
                 >
-                  Ban User
+                  {t('admin.banUser')}
                 </button>
               )}
             <button
@@ -271,57 +296,20 @@ export function AdminUserDetailPage() {
               className='btn-secondary'
               style={{ color: 'var(--error)' }}
             >
-              Delete User
+              {t('admin.users.deleteUser')}
             </button>
           </>
         )}
       </div>
 
-      {banDialog && (
-        <div
-          className='fixed inset-0 flex items-center justify-center z-50'
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <div className='card max-w-md w-full mx-4'>
-            <h3 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-              Ban User: {user.displayName || user.username}
-            </h3>
-            <div className='mb-4'>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Ban Reason *
-              </label>
-              <textarea
-                value={banDialog.reason}
-                onChange={(e) => setBanDialog({ ...banDialog, reason: e.target.value })}
-                className='input-field'
-                rows={3}
-                placeholder='Enter reason for ban...'
-                autoFocus
-              />
-            </div>
-            <div className='flex gap-2 justify-end'>
-              <button
-                type='button'
-                onClick={() => setBanDialog(null)}
-                className='btn-secondary'
-              >
-                Cancel
-              </button>
-              <button
-                type='button'
-                onClick={handleBan}
-                disabled={banDialog.processing || !banDialog.reason.trim()}
-                className='btn-primary'
-                style={{ backgroundColor: 'var(--error)' }}
-              >
-                {banDialog.processing ? 'Banning...' : 'Confirm Ban'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {banDialogUser && (
+        <BanDialog
+          user={banDialogUser}
+          open={!!banDialogUser}
+          onClose={closeDialog}
+          onConfirm={confirmBan}
+          processing={banProcessing}
+        />
       )}
     </div>
   );

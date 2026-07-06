@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminBadgesPage');
@@ -14,6 +15,7 @@ interface Badge {
 
 /** Admin page: read-only grid of all badges with emoji, name, and rule. */
 export function AdminBadgesPage() {
+  const { t } = useTranslation();
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,12 +36,14 @@ export function AdminBadgesPage() {
 
   return (
     <div>
-      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>Badges</h1>
+      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+        {t('admin.badgesShort')}
+      </h1>
 
       {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
         : badges.length === 0
-        ? <div style={{ color: 'var(--text-tertiary)' }}>No badges found.</div>
+        ? <div style={{ color: 'var(--text-tertiary)' }}>{t('admin.badges.noResults')}</div>
         : (
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
             {badges.map((badge) => (

@@ -5,6 +5,7 @@ import { ApiError } from '../../api/client.ts';
 import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
+import { Field, Section } from '../../components/form/index.ts';
 import { createLogger } from '../../utils/logger.ts';
 import {
   BREW_METHODS_LIST,
@@ -70,16 +71,16 @@ export function RecipeCreatePage() {
         if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
           setEquipmentList(data as EquipmentListItem[]);
         } else {
-          setEquipError('Failed to load equipment');
+          setEquipError(t('recipe.form.equipmentLoadError'));
         }
-      }).catch(() => setEquipError('Failed to load equipment')),
+      }).catch(() => setEquipError(t('recipe.form.equipmentLoadError'))),
       setupApi.list().then((data) => {
         if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
           setSetupList(data as SetupListItem[]);
         } else {
-          setEquipError('Failed to load setups');
+          setEquipError(t('recipe.createPage.setupLoadError'));
         }
-      }).catch(() => setEquipError('Failed to load setups')),
+      }).catch(() => setEquipError(t('recipe.createPage.setupLoadError'))),
     ]).finally(() => setEquipLoading(false));
   }, []);
 
@@ -179,7 +180,7 @@ export function RecipeCreatePage() {
         const messages = err.details.map((d) => `${d.field}: ${d.message}`);
         setError(messages.join('\n'));
       } else {
-        const message = err instanceof Error ? err.message : 'Failed to create recipe';
+        const message = err instanceof Error ? err.message : t('recipe.createPage.error');
         setError(message);
       }
     } finally {
@@ -189,9 +190,9 @@ export function RecipeCreatePage() {
 
   return (
     <div className='mx-auto max-w-2xl px-6 py-8'>
-      <SEOHead title='New Recipe' />
+      <SEOHead title={t('recipe.create')} />
       <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
-        Create Recipe
+        {t('recipe.createPage.heading')}
       </h1>
 
       {error && (
@@ -210,17 +211,17 @@ export function RecipeCreatePage() {
       )}
 
       <form onSubmit={handleSubmit} className='space-y-6'>
-        <Section title='Basic Info'>
-          <Field label='Title' required>
+        <Section title={t('recipe.form.basicInfo')}>
+          <Field label={t('recipe.form.title')} required>
             <input
               type='text'
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className='input-field'
-              placeholder='My Espresso Recipe'
+              placeholder={t('recipe.form.titlePlaceholder')}
             />
           </Field>
-          <Field label='Visibility'>
+          <Field label={t('recipe.visibility')}>
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value)}
@@ -233,9 +234,9 @@ export function RecipeCreatePage() {
           </Field>
         </Section>
 
-        <Section title='Brew Configuration'>
+        <Section title={t('recipe.form.brewConfig')}>
           <div className='grid grid-cols-2 gap-4'>
-            <Field label='Brew Method' required>
+            <Field label={t('recipe.brewMethod')} required>
               <select
                 value={brewMethod}
                 onChange={(e) => setBrewMethod(e.target.value)}
@@ -246,7 +247,7 @@ export function RecipeCreatePage() {
                 ))}
               </select>
             </Field>
-            <Field label='Drink Type' required>
+            <Field label={t('recipe.drinkType')} required>
               <select
                 value={drinkType}
                 onChange={(e) => setDrinkType(e.target.value)}
@@ -260,24 +261,24 @@ export function RecipeCreatePage() {
           </div>
         </Section>
 
-        <Section title='Equipment & Setup'>
+        <Section title={t('recipe.form.equipmentSetup')}>
           {equipLoading
             ? (
               <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
-                Loading equipment...
+                {t('recipe.form.loadingEquipment')}
               </p>
             )
             : equipError
             ? <p className='text-sm' style={{ color: 'var(--error)' }}>{equipError}</p>
             : (
               <>
-                <Field label='Setup (auto-fills grinder & brewer)'>
+                <Field label={t('recipe.form.setupAutofill')}>
                   <select
                     value={selectedSetupId}
                     onChange={(e) => setSelectedSetupId(e.target.value)}
                     className='input-field'
                   >
-                    <option value=''>None</option>
+                    <option value=''>{t('recipe.form.none')}</option>
                     {setupList.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}
@@ -287,12 +288,12 @@ export function RecipeCreatePage() {
                   </select>
                 </Field>
 
-                <Field label='Equipment'>
+                <Field label={t('equipment.title')}>
                   <div className='space-y-2 mt-1'>
                     {equipmentList.length === 0
                       ? (
                         <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
-                          No equipment yet. Add some in your profile.
+                          {t('recipe.form.noEquipment')}
                         </p>
                       )
                       : (
@@ -321,9 +322,9 @@ export function RecipeCreatePage() {
             )}
         </Section>
 
-        <Section title='Coffee Identity'>
+        <Section title={t('recipe.form.coffeeIdentity')}>
           <div className='grid grid-cols-2 gap-4'>
-            <Field label='Product Name'>
+            <Field label={t('recipe.productName')}>
               <input
                 type='text'
                 value={productName}
@@ -331,7 +332,7 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Coffee Brand'>
+            <Field label={t('recipe.coffeeBrand')}>
               <input
                 type='text'
                 value={coffeeBrand}
@@ -339,18 +340,18 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Processing'>
+            <Field label={t('bean.processing')}>
               <input
                 type='text'
                 value={coffeeProcessing}
                 onChange={(e) => setCoffeeProcessing(e.target.value)}
                 className='input-field'
-                placeholder='e.g. washed, natural, honey'
+                placeholder={t('recipe.form.processingPlaceholder')}
               />
             </Field>
           </div>
           <div className='grid grid-cols-2 gap-4 mt-4'>
-            <Field label='Roast Date'>
+            <Field label={t('recipe.roastDate')}>
               <input
                 type='date'
                 value={roastDate}
@@ -358,7 +359,7 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Package Open Date'>
+            <Field label={t('recipe.packageOpenDate')}>
               <input
                 type='date'
                 value={packageOpenDate}
@@ -366,7 +367,7 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Grind Date'>
+            <Field label={t('recipe.grindDate')}>
               <input
                 type='date'
                 value={grindDate}
@@ -377,9 +378,9 @@ export function RecipeCreatePage() {
           </div>
         </Section>
 
-        <Section title='Brew Parameters'>
+        <Section title={t('recipe.form.brewParams')}>
           <div className='grid grid-cols-2 gap-4'>
-            <Field label='Grinder'>
+            <Field label={t('recipe.grinder')}>
               <input
                 type='text'
                 value={grinder}
@@ -387,7 +388,7 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Grind Size'>
+            <Field label={t('recipe.grindSize')}>
               <input
                 type='text'
                 value={grindSize}
@@ -395,16 +396,16 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Main Brewer'>
+            <Field label={t('recipe.mainBrewer')}>
               <input
                 type='text'
                 value={brewerDetails}
                 onChange={(e) => setBrewerDetails(e.target.value)}
                 className='input-field'
-                placeholder='e.g. 58mm portafilter, 20g basket'
+                placeholder={t('recipe.form.mainBrewerPlaceholder')}
               />
             </Field>
-            <Field label='Dose (grams)'>
+            <Field label={t('recipe.form.dose')}>
               <input
                 type='number'
                 value={groundWeightGrams}
@@ -414,7 +415,7 @@ export function RecipeCreatePage() {
                 min='0'
               />
             </Field>
-            <Field label='Extraction Time (seconds)'>
+            <Field label={t('recipe.form.extractionTime')}>
               <input
                 type='number'
                 value={extractionTimeSeconds}
@@ -422,7 +423,7 @@ export function RecipeCreatePage() {
                 className='input-field'
               />
             </Field>
-            <Field label='Yield (ml)'>
+            <Field label={t('recipe.form.yield')}>
               <input
                 type='number'
                 value={extractionVolumeMl}
@@ -432,7 +433,7 @@ export function RecipeCreatePage() {
                 min='0'
               />
             </Field>
-            <Field label='Temperature (°C)'>
+            <Field label={t('recipe.form.temperature')}>
               <input
                 type='number'
                 value={temperatureCelsius}
@@ -456,9 +457,9 @@ export function RecipeCreatePage() {
           </div>
         </Section>
 
-        <Section title='Taste & Rating'>
+        <Section title={t('recipe.form.tasteRating')}>
           <div className='grid grid-cols-2 gap-4'>
-            <Field label='Rating (1-10)'>
+            <Field label={t('recipe.form.rating')}>
               <input
                 type='number'
                 value={rating}
@@ -468,13 +469,13 @@ export function RecipeCreatePage() {
                 max='10'
               />
             </Field>
-            <Field label='How did it taste?'>
+            <Field label={t('recipe.form.howDidItTaste')}>
               <select
                 value={emojiTag}
                 onChange={(e) => setEmojiTag(e.target.value)}
                 className='input-field'
               >
-                <option value=''>Select...</option>
+                <option value=''>{t('recipe.form.selectPlaceholder')}</option>
                 {EMOJI_TAGS_LIST.map((t) => (
                   <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
                 ))}
@@ -486,7 +487,7 @@ export function RecipeCreatePage() {
               className='block text-sm font-medium mb-1'
               style={{ color: 'var(--text-secondary)' }}
             >
-              Taste Notes
+              {t('recipe.tasteNotes')}
             </label>
             <TasteAutocomplete
               selectedIds={tasteNoteIds}
@@ -497,61 +498,36 @@ export function RecipeCreatePage() {
           </div>
         </Section>
 
-        <Section title='Preparation Notes'>
+        <Section title={t('recipe.preparationNotes')}>
           <textarea
             value={preparationNotes}
             onChange={(e) => setPreparationNotes(e.target.value)}
             className='input-field'
             rows={6}
-            placeholder='Step-by-step instructions on how to prepare this recipe...'
+            placeholder={t('recipe.form.preparationPlaceholder')}
             required
           />
         </Section>
 
-        <Section title='Personal Notes'>
+        <Section title={t('recipe.personalNotes')}>
           <textarea
             value={personalNotes}
             onChange={(e) => setPersonalNotes(e.target.value)}
             className='input-field'
             rows={4}
-            placeholder='Tips, observations, things to try next time...'
+            placeholder={t('recipe.form.personalNotesPlaceholder')}
           />
         </Section>
 
         <div className='flex gap-3'>
           <button type='submit' className='btn-primary' disabled={loading}>
-            {loading ? 'Creating...' : 'Create Recipe'}
+            {loading ? t('recipe.createPage.creating') : t('recipe.createPage.submit')}
           </button>
           <button type='button' onClick={() => navigate(-1)} className='btn-secondary'>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </form>
-    </div>
-  );
-}
-
-/** Card wrapper for form sections with a title header. */
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className='card'>
-      <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>{title}</h2>
-      {children}
-    </div>
-  );
-}
-
-/** Labeled form field container with optional required indicator. */
-function Field(
-  { label, required, children }: { label: string; required?: boolean; children: React.ReactNode },
-) {
-  return (
-    <div>
-      <label className='block text-sm font-medium mb-1' style={{ color: 'var(--text-secondary)' }}>
-        {label}
-        {required && ' *'}
-      </label>
-      {children}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminCompatibilityPage');
@@ -13,6 +14,7 @@ interface CompatibilityRule {
 
 /** Admin page: brew-method/equipment compatibility rules with toggle and cache flush. */
 export function AdminCompatibilityPage() {
+  const { t } = useTranslation();
   const [rules, setRules] = useState<CompatibilityRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [flushing, setFlushing] = useState(false);
@@ -56,28 +58,28 @@ export function AdminCompatibilityPage() {
     <div>
       <div className='flex items-center justify-between mb-6'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Compatibility Matrix
+          {t('admin.compatibility.title')}
         </h1>
         <button type='button' onClick={flushCache} className='btn-secondary' disabled={flushing}>
-          {flushing ? 'Flushing...' : 'Flush Cache'}
+          {flushing ? t('common.flushing') : t('admin.flushCache')}
         </button>
       </div>
 
       {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
         : (
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Brew Method
+                    {t('admin.compatibility.brewMethod')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Equipment Type
+                    {t('admin.compatibility.equipmentType')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Compatible
+                    {t('admin.compatibility.compatible')}
                   </th>
                 </tr>
               </thead>
@@ -103,7 +105,7 @@ export function AdminCompatibilityPage() {
                           color: rule.isCompatible ? 'white' : 'var(--text-primary)',
                         }}
                       >
-                        {rule.isCompatible ? 'Yes' : 'No'}
+                        {rule.isCompatible ? t('common.yes') : t('common.no')}
                       </button>
                     </td>
                   </tr>

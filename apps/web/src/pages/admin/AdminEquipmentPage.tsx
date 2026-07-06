@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 interface EquipmentItem {
@@ -15,6 +16,7 @@ const log = createLogger('AdminEquipmentPage');
 
 /** Admin page: equipment CRUD with inline form; invalidates the static cache on changes. */
 export function AdminEquipmentPage() {
+  const { t } = useTranslation();
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -78,7 +80,7 @@ export function AdminEquipmentPage() {
    * invalidate the static cache so the next loader run re-fetches.
    */
   async function handleDelete(id: string) {
-    if (!globalThis.confirm('Delete this equipment?')) return;
+    if (!globalThis.confirm(t('admin.equipment.deleteConfirm'))) return;
     log.debug({ equipmentId: id }, 'handleDelete started');
     try {
       await api.delete(`/admin/equipment/${id}`);
@@ -106,17 +108,17 @@ export function AdminEquipmentPage() {
     <div>
       <div className='flex items-center justify-between mb-6'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Equipment Management
+          {t('admin.equipment.management')}
         </h1>
         <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
-          {showForm ? 'Cancel' : '+ Add Equipment'}
+          {showForm ? t('common.cancel') : t('admin.equipment.add')}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className='card mb-6'>
           <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-            {editId ? 'Edit Equipment' : 'Add Equipment'}
+            {editId ? t('admin.equipment.editTitle') : t('admin.equipment.addTitle')}
           </h2>
           <div className='grid grid-cols-2 gap-4'>
             <div>
@@ -125,7 +127,7 @@ export function AdminEquipmentPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Name *
+                {t('equipment.name')} *
               </label>
               <input
                 id='admin-eq-name'
@@ -142,7 +144,7 @@ export function AdminEquipmentPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Type *
+                {t('common.type')} *
               </label>
               <input
                 id='admin-eq-type'
@@ -159,7 +161,7 @@ export function AdminEquipmentPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Brand
+                {t('equipment.brand')}
               </label>
               <input
                 id='admin-eq-brand'
@@ -175,7 +177,7 @@ export function AdminEquipmentPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Model
+                {t('equipment.model')}
               </label>
               <input
                 id='admin-eq-model'
@@ -188,11 +190,11 @@ export function AdminEquipmentPage() {
           </div>
           <div className='flex gap-2 mt-4'>
             <button type='submit' className='btn-primary' disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('common.saving') : t('common.save')}
             </button>
             {editId && (
               <button type='button' onClick={resetForm} className='btn-secondary'>
-                Cancel Edit
+                {t('common.cancelEdit')}
               </button>
             )}
           </div>
@@ -200,23 +202,23 @@ export function AdminEquipmentPage() {
       )}
 
       {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
         : (
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Name
+                    {t('equipment.name')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Type
+                    {t('common.type')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Brand
+                    {t('equipment.brand')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -240,7 +242,7 @@ export function AdminEquipmentPage() {
                         className='text-xs'
                         style={{ color: 'var(--accent-primary)' }}
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         type='button'
@@ -249,7 +251,7 @@ export function AdminEquipmentPage() {
                         className='text-xs'
                         style={{ color: 'var(--error)' }}
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </td>
                   </tr>

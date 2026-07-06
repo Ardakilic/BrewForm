@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { adminApi, type AdminUser } from '../../api/index.ts';
+import { BanDialog } from '../../components/admin/BanDialog.tsx';
+import { useBanUser } from '../../hooks/useBanUser.ts';
 import { createLogger } from '../../utils/logger.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const log = createLogger('AdminUsersPage');
 
@@ -14,6 +17,7 @@ interface PaginationState {
 
 /** Admin page: paginated, searchable user list with ban dialog and links to detail/edit/create. */
 export function AdminUsersPage() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -24,13 +28,17 @@ export function AdminUsersPage() {
     totalPages: 0,
   });
   const [error, setError] = useState('');
-  const [banDialog, setBanDialog] = useState<
-    {
-      user: AdminUser;
-      reason: string;
-      processing: boolean;
-    } | null
-  >(null);
+  const {
+    banDialogUser,
+    processing: banProcessing,
+    error: banError,
+    openBanDialog,
+    confirmBan,
+    unban,
+    closeDialog,
+  } = useBanUser((userId, isBanned) => {
+    setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, isBanned } : u));
+  });
 
   useEffect(() => {
     log.debug({}, 'AdminUsersPage mounted');
@@ -54,7 +62,7 @@ export function AdminUsersPage() {
       }));
     }).catch((err) => {
       log.error({ err }, 'AdminUsersPage fetchUsers failed');
-      setError((err as { message?: string })?.message || 'Failed to load users.');
+      setError((err as { message?: string })?.message || t('admin.users.loadError'));
       setUsers([]);
       setPagination((prev) => ({ ...prev, page: 1, total: 0, totalPages: 0 }));
     }).finally(() => setLoading(false));
@@ -69,38 +77,14 @@ export function AdminUsersPage() {
     fetchUsers(1, search);
   }
 
-  async function handleBan(userId: string) {
-    if (!banDialog || !banDialog.reason.trim()) return;
-    setBanDialog({ ...banDialog, processing: true });
-    try {
-      await adminApi.banUser(userId, banDialog.reason);
-      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, isBanned: true } : u));
-      setBanDialog(null);
-      setError('');
-    } catch (err) {
-      setBanDialog({ ...banDialog, processing: false });
-      setError((err as { message?: string })?.message || 'Failed to ban user.');
-    }
-  }
-
-  async function handleUnban(userId: string) {
-    try {
-      await adminApi.unbanUser(userId);
-      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, isBanned: false } : u));
-      setError('');
-    } catch (err) {
-      setError((err as { message?: string })?.message || 'Failed to unban user.');
-    }
-  }
-
   return (
     <div>
       <div className='flex items-center justify-between mb-6'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          User Management
+          {t('admin.users.management')}
         </h1>
         <Link to='/admin/users/new' className='btn-primary'>
-          + New User
+          {t('admin.users.new')}
         </Link>
       </div>
 
@@ -113,16 +97,25 @@ export function AdminUsersPage() {
         </div>
       )}
 
+      {banError && (
+        <div
+          className='mb-4 p-3 rounded text-sm'
+          style={{ backgroundColor: 'var(--error-bg, #fef2f2)', color: 'var(--error)' }}
+        >
+          {t(banError)}
+        </div>
+      )}
+
       <form onSubmit={handleSearch} className='mb-4 flex gap-2'>
         <input
           type='text'
-          placeholder='Search users...'
+          placeholder={t('admin.users.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className='input-field flex-1'
         />
         <button type='submit' className='btn-secondary'>
-          Search
+          {t('common.search')}
         </button>
       </form>
 
@@ -141,7 +134,7 @@ export function AdminUsersPage() {
         : users.length === 0
         ? (
           <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-            {search ? 'No users match your search.' : 'No users found.'}
+            {search ? t('admin.users.noSearchResults') : t('admin.users.noUsers')}
           </div>
         )
         : (
@@ -150,22 +143,22 @@ export function AdminUsersPage() {
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Username
+                    {t('auth.username')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Email
+                    {t('auth.email')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Role
+                    {t('admin.users.role')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Status
+                    {t('admin.users.status')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Joined
+                    {t('admin.users.joined')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -184,12 +177,14 @@ export function AdminUsersPage() {
                       {user.email}
                     </td>
                     <td className='py-2 px-3'>
-                      {user.isAdmin ? <span className='badge'>Admin</span> : 'User'}
+                      {user.isAdmin
+                        ? <span className='badge'>{t('admin.users.adminBadge')}</span>
+                        : t('admin.users.userRole')}
                     </td>
                     <td className='py-2 px-3'>
                       {user.isBanned
-                        ? <span style={{ color: 'var(--error)' }}>Banned</span>
-                        : 'Active'}
+                        ? <span style={{ color: 'var(--error)' }}>{t('admin.users.banned')}</span>
+                        : t('admin.users.active')}
                     </td>
                     <td className='py-2 px-3' style={{ color: 'var(--text-tertiary)' }}>
                       {new Date(user.createdAt).toLocaleDateString()}
@@ -201,34 +196,34 @@ export function AdminUsersPage() {
                           className='text-xs'
                           style={{ color: 'var(--accent-primary)' }}
                         >
-                          View
+                          {t('common.view')}
                         </Link>
                         <Link
                           to={`/admin/users/${user.id}/edit`}
                           className='text-xs'
                           style={{ color: 'var(--accent-primary)' }}
                         >
-                          Edit
+                          {t('common.edit')}
                         </Link>
                         {user.isBanned
                           ? (
                             <button
                               type='button'
-                              onClick={() => handleUnban(user.id)}
+                              onClick={() => unban(user.id)}
                               className='text-xs'
                               style={{ color: 'var(--success)' }}
                             >
-                              Unban
+                              {t('admin.users.unban')}
                             </button>
                           )
                           : (
                             <button
                               type='button'
-                              onClick={() => setBanDialog({ user, reason: '', processing: false })}
+                              onClick={() => openBanDialog(user)}
                               className='text-xs'
                               style={{ color: 'var(--error)' }}
                             >
-                              Ban
+                              {t('admin.users.ban')}
                             </button>
                           )}
                         {user.isAdmin
@@ -244,14 +239,14 @@ export function AdminUsersPage() {
                                 } catch (err) {
                                   setError(
                                     (err as { message?: string })?.message ||
-                                      'Failed to remove admin privileges.',
+                                      t('admin.users.removeAdminError'),
                                   );
                                 }
                               }}
                               className='text-xs'
                               style={{ color: 'var(--warning)' }}
                             >
-                              Remove Admin
+                              {t('admin.users.removeAdmin')}
                             </button>
                           )
                           : (
@@ -266,14 +261,14 @@ export function AdminUsersPage() {
                                 } catch (err) {
                                   setError(
                                     (err as { message?: string })?.message ||
-                                      'Failed to grant admin privileges.',
+                                      t('admin.users.makeAdminError'),
                                   );
                                 }
                               }}
                               className='text-xs'
                               style={{ color: 'var(--accent-primary)' }}
                             >
-                              Make Admin
+                              {t('admin.users.makeAdmin')}
                             </button>
                           )}
                       </div>
@@ -293,7 +288,7 @@ export function AdminUsersPage() {
             disabled={pagination.page <= 1}
             className='btn-secondary'
           >
-            Previous
+            {t('common.previous')}
           </button>
           {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
             <button
@@ -316,56 +311,19 @@ export function AdminUsersPage() {
             disabled={pagination.page >= pagination.totalPages}
             className='btn-secondary'
           >
-            Next
+            {t('common.next')}
           </button>
         </div>
       )}
 
-      {banDialog && (
-        <div
-          className='fixed inset-0 flex items-center justify-center z-50'
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <div className='card max-w-md w-full mx-4'>
-            <h3 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-              Ban User: {banDialog.user.displayName || banDialog.user.username}
-            </h3>
-            <div className='mb-4'>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Ban Reason *
-              </label>
-              <textarea
-                value={banDialog.reason}
-                onChange={(e) => setBanDialog({ ...banDialog, reason: e.target.value })}
-                className='input-field'
-                rows={3}
-                placeholder='Enter reason for ban...'
-                autoFocus
-              />
-            </div>
-            <div className='flex gap-2 justify-end'>
-              <button
-                type='button'
-                onClick={() => setBanDialog(null)}
-                className='btn-secondary'
-              >
-                Cancel
-              </button>
-              <button
-                type='button'
-                onClick={() => handleBan(banDialog.user.id)}
-                disabled={banDialog.processing || !banDialog.reason.trim()}
-                className='btn-primary'
-                style={{ backgroundColor: 'var(--error)' }}
-              >
-                {banDialog.processing ? 'Banning...' : 'Confirm Ban'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {banDialogUser && (
+        <BanDialog
+          user={banDialogUser}
+          open={!!banDialogUser}
+          onClose={closeDialog}
+          onConfirm={confirmBan}
+          processing={banProcessing}
+        />
       )}
     </div>
   );

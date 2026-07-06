@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminAuditLogPage');
@@ -17,6 +18,7 @@ interface AuditLogEntry {
 
 /** Admin page: paginated audit-log table with an entity-type filter. */
 export function AdminAuditLogPage() {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -42,7 +44,7 @@ export function AdminAuditLogPage() {
   return (
     <div>
       <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
-        Audit Log
+        {t('admin.auditLog')}
       </h1>
 
       <div className='mb-4'>
@@ -54,37 +56,37 @@ export function AdminAuditLogPage() {
           }}
           className='input-field w-auto'
         >
-          <option value=''>All Entities</option>
-          <option value='user'>Users</option>
-          <option value='recipe'>Recipes</option>
-          <option value='equipment'>Equipment</option>
-          <option value='vendor'>Vendors</option>
-          <option value='taste_note'>Taste Notes</option>
-          <option value='report'>Reports</option>
+          <option value=''>{t('admin.audit.allEntities')}</option>
+          <option value='user'>{t('admin.audit.entityUsers')}</option>
+          <option value='recipe'>{t('admin.audit.entityRecipes')}</option>
+          <option value='equipment'>{t('admin.audit.entityEquipment')}</option>
+          <option value='vendor'>{t('admin.audit.entityVendors')}</option>
+          <option value='taste_note'>{t('admin.audit.entityTasteNotes')}</option>
+          <option value='report'>{t('admin.audit.entityReports')}</option>
         </select>
       </div>
 
       {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
         : (
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Date
+                    {t('admin.audit.date')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Admin
+                    {t('admin.audit.admin')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Action
+                    {t('admin.audit.action')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Entity
+                    {t('admin.audit.entity')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Details
+                    {t('admin.audit.details')}
                   </th>
                 </tr>
               </thead>
@@ -126,11 +128,11 @@ export function AdminAuditLogPage() {
             onClick={() => setPage(page - 1)}
             className='btn-secondary'
           >
-            Previous
+            {t('common.previous')}
           </button>
         )}
         <button type='button' onClick={() => setPage(page + 1)} className='btn-secondary'>
-          Next
+          {t('common.next')}
         </button>
       </div>
     </div>

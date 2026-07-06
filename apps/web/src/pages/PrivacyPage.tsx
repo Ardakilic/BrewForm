@@ -1,60 +1,60 @@
+import { useEffect } from 'react';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
+import { useTranslation } from '../contexts/I18nContext.tsx';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('PrivacyPage');
 
 /** Static privacy-policy page. */
 export function PrivacyPage() {
+  const { t, locale } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'PrivacyPage mounted');
+    return () => {
+      log.debug({}, 'PrivacyPage unmounted');
+    };
+  }, []);
+
   return (
     <div className='mx-auto max-w-4xl px-6 py-8'>
-      <SEOHead title='Privacy Policy' description='BrewForm privacy policy.' />
+      <SEOHead title={t('legal.privacy.title')} description={t('legal.privacy.description')} />
       <h1 className='text-3xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
-        Privacy Policy
+        {t('legal.privacy.title')}
       </h1>
       <div className='prose' style={{ color: 'var(--text-secondary)' }}>
-        <p>Last updated: {new Date().toLocaleDateString()}</p>
+        <p>{t('legal.notice')}</p>
+        <p>{t('legal.lastUpdated')} {new Date().toLocaleDateString(locale)}</p>
 
         <h2 className='text-xl font-semibold mt-6 mb-2' style={{ color: 'var(--text-primary)' }}>
-          1. Information We Collect
+          {t('legal.privacy.s1.title')}
         </h2>
-        <p>
-          We collect information you provide directly, including your email, username, display name,
-          and any content you create on the platform (recipes, comments, etc.).
-        </p>
+        <p>{t('legal.privacy.s1.body')}</p>
 
         <h2 className='text-xl font-semibold mt-6 mb-2' style={{ color: 'var(--text-primary)' }}>
-          2. How We Use Your Information
+          {t('legal.privacy.s2.title')}
         </h2>
-        <p>
-          We use your information to provide and improve the BrewForm service, send notifications
-          you've opted into, and ensure the security of the platform.
-        </p>
+        <p>{t('legal.privacy.s2.body')}</p>
 
         <h2 className='text-xl font-semibold mt-6 mb-2' style={{ color: 'var(--text-primary)' }}>
-          3. Information Sharing
+          {t('legal.privacy.s3.title')}
         </h2>
-        <p>
-          We do not sell your personal information. We may share information with service providers
-          who help operate the platform, or when required by law.
-        </p>
+        <p>{t('legal.privacy.s3.body')}</p>
 
         <h2 className='text-xl font-semibold mt-6 mb-2' style={{ color: 'var(--text-primary)' }}>
-          4. Data Retention
+          {t('legal.privacy.s4.title')}
         </h2>
-        <p>
-          You can delete your account at any time. When you delete your account, your personal data
-          is removed. Public recipes and comments may be anonymized rather than deleted.
-        </p>
+        <p>{t('legal.privacy.s4.body')}</p>
 
         <h2 className='text-xl font-semibold mt-6 mb-2' style={{ color: 'var(--text-primary)' }}>
-          5. Cookies
+          {t('legal.privacy.s5.title')}
         </h2>
-        <p>
-          We use cookies for authentication, preferences, and analytics. You can manage cookie
-          preferences through the consent banner.
-        </p>
+        <p>{t('legal.privacy.s5.body')}</p>
 
         <h2 className='text-xl font-semibold mt-6 mb-2' style={{ color: 'var(--text-primary)' }}>
-          6. Contact
+          {t('legal.privacy.s6.title')}
         </h2>
-        <p>For privacy questions, please contact us through the platform.</p>
+        <p>{t('legal.privacy.s6.body')}</p>
       </div>
     </div>
   );

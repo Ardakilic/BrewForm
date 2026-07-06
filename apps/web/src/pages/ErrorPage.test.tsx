@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { ErrorPage, ForbiddenPage, NotFoundPage, ServerErrorPage } from './ErrorPage.tsx';
+import { NotFoundPage, ServerErrorPage } from './ErrorPage.tsx';
 
 vi.mock('react-router', () => ({
   Link: (
@@ -48,30 +48,6 @@ beforeEach(() => {
   mockUseTranslation.mockReturnValue(defaultTranslation);
 });
 
-describe('ErrorPage — i18n', () => {
-  it('renders "Go Home" link using t() — English', () => {
-    render(<ErrorPage statusCode={404} message='Not found' illustration='🫥' />);
-
-    expect(screen.getByRole('link', { name: 'Go Home' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Go Home' })).toHaveAttribute('href', '/');
-  });
-
-  it('renders "Go Home" link in Turkish when locale is tr', () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-
-    render(<ErrorPage statusCode={404} message='Not found' illustration='🫥' />);
-
-    expect(screen.getByRole('link', { name: 'Ana Sayfaya Git' })).toBeInTheDocument();
-  });
-
-  it('renders the status code and message passed as props', () => {
-    render(<ErrorPage statusCode={503} message='Service unavailable' illustration='⚙️' />);
-
-    expect(screen.getByText('503')).toBeInTheDocument();
-    expect(screen.getByText('Service unavailable')).toBeInTheDocument();
-  });
-});
-
 describe('NotFoundPage — i18n', () => {
   it('renders 404 with translated message — English', () => {
     render(<NotFoundPage />);
@@ -90,6 +66,14 @@ describe('NotFoundPage — i18n', () => {
     expect(screen.getByText('Sayfa bulunamadı')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ana Sayfaya Git' })).toBeInTheDocument();
   });
+
+  it('renders SEOHead with noIndex (document title and robots meta)', () => {
+    render(<NotFoundPage />);
+    expect(document.title).toMatch(/404/);
+
+    const metaRobots = document.querySelector('meta[name="robots"]');
+    expect(metaRobots?.getAttribute('content')).toBe('noindex, nofollow');
+  });
 });
 
 describe('ServerErrorPage — i18n', () => {
@@ -106,22 +90,5 @@ describe('ServerErrorPage — i18n', () => {
     render(<ServerErrorPage />);
 
     expect(screen.getByText('Bir şeyler ters gitti')).toBeInTheDocument();
-  });
-});
-
-describe('ForbiddenPage — i18n', () => {
-  it('renders 403 with translated message — English', () => {
-    render(<ForbiddenPage />);
-
-    expect(screen.getByText('403')).toBeInTheDocument();
-    expect(screen.getByText("You don't have permission to access this page")).toBeInTheDocument();
-  });
-
-  it('renders 403 with translated message — Turkish', () => {
-    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-
-    render(<ForbiddenPage />);
-
-    expect(screen.getByText('Bu sayfaya erişim izniniz yok')).toBeInTheDocument();
   });
 });

@@ -44,12 +44,15 @@
 
 ## Wave 3 — Frontend structure (order matters)
 
-- [ ] **D36** — Extract duplicated UI (HomePage `RecipeCard`, admin `BanDialog`×2, `Section`/`Field`
+- [x] **D36** — Extract duplicated UI (HomePage `RecipeCard`, admin `BanDialog`×2, `Section`/`Field`
       helpers). _Do first: dedupe before translating so each string is touched once._
-- [ ] **D37** — Consolidate error pages / remove dead `ErrorPage.tsx` exports. _Settles which error
+      _(resolved 2026-07-06 via wave-3-frontend-structure)_
+- [x] **D37** — Consolidate error pages / remove dead `ErrorPage.tsx` exports. _Settles which error
       pages exist before they get localized._
-- [ ] **D40** — Complete i18n for the 15 admin pages + 5 zero-`t()` user-facing pages + the partial
+      _(resolved 2026-07-06 via wave-3-frontend-structure)_
+- [x] **D40** — Complete i18n for the 15 admin pages + 5 zero-`t()` user-facing pages + the partial
       `RecipeCreate`/`RecipeEdit` pages.
+      _(resolved 2026-07-06 via wave-3-frontend-structure)_
 
 ## Wave 4 — Independent fillers (anytime)
 

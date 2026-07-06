@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client.ts';
 import { recipeApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
+import { Field, Section } from '../../components/form/index.ts';
 import {
   BREW_METHODS_LIST,
   DRINK_TYPES_LIST,
@@ -67,7 +68,7 @@ export function RecipeEditPage() {
     if (!id) return;
     recipeApi.get(id).then((r: RecipeDetailResponse) => {
       if (!r.currentVersion) {
-        setError('Recipe has no versions');
+        setError(t('recipe.editPage.noVersions'));
         setFetching(false);
         return;
       }
@@ -103,7 +104,7 @@ export function RecipeEditPage() {
       );
       setGrindDate(r.currentVersion.grindDate ? r.currentVersion.grindDate.slice(0, 10) : '');
     }).catch(() => {
-      setError('Failed to load recipe');
+      setError(t('recipe.editPage.loadError'));
     }).finally(() => setFetching(false));
   }, [id]);
 
@@ -148,7 +149,7 @@ export function RecipeEditPage() {
         const messages = err.details.map((d) => `${d.field}: ${d.message}`);
         setError(messages.map((m) => `• ${m}`).join('\n'));
       } else {
-        const message = err instanceof Error ? err.message : 'Failed to update recipe';
+        const message = err instanceof Error ? err.message : t('recipe.editPage.updateError');
         setError(message);
       }
     } finally {
@@ -162,16 +163,16 @@ export function RecipeEditPage() {
         className='mx-auto max-w-2xl px-6 py-12 text-center'
         style={{ color: 'var(--text-secondary)' }}
       >
-        Loading...
+        {t('common.loading')}
       </div>
     );
   }
 
   return (
     <div className='mx-auto max-w-2xl px-6 py-8'>
-      <SEOHead title='Edit Recipe' />
+      <SEOHead title={t('recipe.edit')} />
       <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
-        Edit Recipe
+        {t('recipe.edit')}
       </h1>
 
       {error && (
@@ -198,21 +199,21 @@ export function RecipeEditPage() {
               onChange={(e) => setBumpVersion(e.target.checked)}
             />
             <span className='text-sm' style={{ color: 'var(--text-secondary)' }}>
-              Bump Version (creates a new immutable version)
+              {t('recipe.editPage.bumpVersion')}
             </span>
           </label>
         </div>
 
-        <EditSection title='Basic Info'>
-          <EditField label='Title' required>
+        <Section title={t('recipe.form.basicInfo')}>
+          <Field label={t('recipe.form.title')} required>
             <input
               type='text'
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className='input-field'
             />
-          </EditField>
-          <EditField label='Visibility'>
+          </Field>
+          <Field label={t('recipe.visibility')}>
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value)}
@@ -222,12 +223,12 @@ export function RecipeEditPage() {
                 <option key={v.value} value={v.value}>{v.label}</option>
               ))}
             </select>
-          </EditField>
-        </EditSection>
+          </Field>
+        </Section>
 
-        <EditSection title='Brew Configuration'>
+        <Section title={t('recipe.form.brewConfig')}>
           <div className='grid grid-cols-2 gap-4'>
-            <EditField label='Brew Method' required>
+            <Field label={t('recipe.brewMethod')} required>
               <select
                 value={brewMethod}
                 onChange={(e) => setBrewMethod(e.target.value)}
@@ -237,8 +238,8 @@ export function RecipeEditPage() {
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
-            </EditField>
-            <EditField label='Drink Type' required>
+            </Field>
+            <Field label={t('recipe.drinkType')} required>
               <select
                 value={drinkType}
                 onChange={(e) => setDrinkType(e.target.value)}
@@ -248,93 +249,93 @@ export function RecipeEditPage() {
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
               </select>
-            </EditField>
+            </Field>
           </div>
-        </EditSection>
+        </Section>
 
-        <EditSection title='Coffee Identity'>
+        <Section title={t('recipe.form.coffeeIdentity')}>
           <div className='grid grid-cols-2 gap-4'>
-            <EditField label='Product Name'>
+            <Field label={t('recipe.productName')}>
               <input
                 type='text'
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 className='input-field'
               />
-            </EditField>
-            <EditField label='Coffee Brand'>
+            </Field>
+            <Field label={t('recipe.coffeeBrand')}>
               <input
                 type='text'
                 value={coffeeBrand}
                 onChange={(e) => setCoffeeBrand(e.target.value)}
                 className='input-field'
               />
-            </EditField>
-            <EditField label='Processing'>
+            </Field>
+            <Field label={t('bean.processing')}>
               <input
                 type='text'
                 value={coffeeProcessing}
                 onChange={(e) => setCoffeeProcessing(e.target.value)}
                 className='input-field'
               />
-            </EditField>
+            </Field>
           </div>
           <div className='grid grid-cols-2 gap-4 mt-4'>
-            <EditField label='Roast Date'>
+            <Field label={t('recipe.roastDate')}>
               <input
                 type='date'
                 value={roastDate}
                 onChange={(e) => setRoastDate(e.target.value)}
                 className='input-field'
               />
-            </EditField>
-            <EditField label='Package Open Date'>
+            </Field>
+            <Field label={t('recipe.packageOpenDate')}>
               <input
                 type='date'
                 value={packageOpenDate}
                 onChange={(e) => setPackageOpenDate(e.target.value)}
                 className='input-field'
               />
-            </EditField>
-            <EditField label='Grind Date'>
+            </Field>
+            <Field label={t('recipe.grindDate')}>
               <input
                 type='date'
                 value={grindDate}
                 onChange={(e) => setGrindDate(e.target.value)}
                 className='input-field'
               />
-            </EditField>
+            </Field>
           </div>
-        </EditSection>
+        </Section>
 
-        <EditSection title='Brew Parameters'>
+        <Section title={t('recipe.form.brewParams')}>
           <div className='grid grid-cols-2 gap-4'>
-            <EditField label='Grinder'>
+            <Field label={t('recipe.grinder')}>
               <input
                 type='text'
                 value={grinder}
                 onChange={(e) => setGrinder(e.target.value)}
                 className='input-field'
               />
-            </EditField>
-            <EditField label='Grind Size'>
+            </Field>
+            <Field label={t('recipe.grindSize')}>
               <input
                 type='text'
                 value={grindSize}
                 onChange={(e) => setGrindSize(e.target.value)}
                 className='input-field'
               />
-            </EditField>
-            <EditField label='Main Brewer'>
+            </Field>
+            <Field label={t('recipe.mainBrewer')}>
               <input
                 type='text'
                 value={brewerDetails}
                 onChange={(e) => setBrewerDetails(e.target.value)}
                 className='input-field'
-                placeholder='e.g. 58mm portafilter, 20g basket'
+                placeholder={t('recipe.form.mainBrewerPlaceholder')}
               />
-            </EditField>
-            <EditField label='Dose (g)'>
+            </Field>
+            <Field label={t('recipe.form.dose')}>
               <input
                 type='number'
                 value={groundWeightGrams}
@@ -343,16 +344,16 @@ export function RecipeEditPage() {
                 step='0.1'
                 min='0'
               />
-            </EditField>
-            <EditField label='Extraction Time (s)'>
+            </Field>
+            <Field label={t('recipe.form.extractionTime')}>
               <input
                 type='number'
                 value={extractionTimeSeconds}
                 onChange={(e) => setExtractionTimeSeconds(e.target.value)}
                 className='input-field'
               />
-            </EditField>
-            <EditField label='Yield (ml)'>
+            </Field>
+            <Field label={t('recipe.form.yield')}>
               <input
                 type='number'
                 value={extractionVolumeMl}
@@ -361,8 +362,8 @@ export function RecipeEditPage() {
                 step='0.1'
                 min='0'
               />
-            </EditField>
-            <EditField label='Temperature (°C)'>
+            </Field>
+            <Field label={t('recipe.form.temperature')}>
               <input
                 type='number'
                 value={temperatureCelsius}
@@ -370,8 +371,8 @@ export function RecipeEditPage() {
                 className='input-field'
                 step='0.5'
               />
-            </EditField>
-            <EditField label={t('recipe.form.tds')}>
+            </Field>
+            <Field label={t('recipe.form.tds')}>
               <input
                 type='number'
                 value={tds}
@@ -382,13 +383,13 @@ export function RecipeEditPage() {
                 min='0'
                 max='25'
               />
-            </EditField>
+            </Field>
           </div>
-        </EditSection>
+        </Section>
 
-        <EditSection title='Taste & Rating'>
+        <Section title={t('recipe.form.tasteRating')}>
           <div className='grid grid-cols-2 gap-4'>
-            <EditField label='Rating (1-10)'>
+            <Field label={t('recipe.form.rating')}>
               <input
                 type='number'
                 value={rating}
@@ -397,26 +398,26 @@ export function RecipeEditPage() {
                 min='1'
                 max='10'
               />
-            </EditField>
-            <EditField label='How did it taste?'>
+            </Field>
+            <Field label={t('recipe.form.howDidItTaste')}>
               <select
                 value={emojiTag}
                 onChange={(e) => setEmojiTag(e.target.value)}
                 className='input-field'
               >
-                <option value=''>Select...</option>
+                <option value=''>{t('recipe.form.selectPlaceholder')}</option>
                 {EMOJI_TAGS_LIST.map((t) => (
                   <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
                 ))}
               </select>
-            </EditField>
+            </Field>
           </div>
           <div className='mt-4'>
             <label
               className='block text-sm font-medium mb-1'
               style={{ color: 'var(--text-secondary)' }}
             >
-              Taste Notes
+              {t('recipe.tasteNotes')}
             </label>
             <TasteAutocomplete
               selectedIds={tasteNoteIds}
@@ -425,9 +426,9 @@ export function RecipeEditPage() {
               onIntensitiesChange={setTasteNoteIntensities}
             />
           </div>
-        </EditSection>
+        </Section>
 
-        <EditSection title='Preparation Notes'>
+        <Section title={t('recipe.preparationNotes')}>
           <textarea
             value={preparationNotes}
             onChange={(e) => setPreparationNotes(e.target.value)}
@@ -435,49 +436,26 @@ export function RecipeEditPage() {
             rows={6}
             required
           />
-        </EditSection>
+        </Section>
 
-        <EditSection title='Personal Notes'>
+        <Section title={t('recipe.personalNotes')}>
           <textarea
             value={personalNotes}
             onChange={(e) => setPersonalNotes(e.target.value)}
             className='input-field'
             rows={4}
           />
-        </EditSection>
+        </Section>
 
         <div className='flex gap-3'>
           <button type='submit' className='btn-primary' disabled={loading}>
-            {loading ? 'Saving...' : 'Save Changes'}
+            {loading ? t('common.saving') : t('common.saveChanges')}
           </button>
           <button type='button' onClick={() => navigate(-1)} className='btn-secondary'>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </form>
-    </div>
-  );
-}
-
-function EditSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className='card'>
-      <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>{title}</h2>
-      {children}
-    </div>
-  );
-}
-
-function EditField(
-  { label, required, children }: { label: string; required?: boolean; children: React.ReactNode },
-) {
-  return (
-    <div>
-      <label className='block text-sm font-medium mb-1' style={{ color: 'var(--text-secondary)' }}>
-        {label}
-        {required && ' *'}
-      </label>
-      {children}
     </div>
   );
 }

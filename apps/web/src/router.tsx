@@ -4,7 +4,7 @@ import { RequireAuth } from './components/auth/RequireAuth.tsx';
 
 // Eagerly loaded: high-traffic public pages and lightweight auth pages
 import { HomePage, loader as homeLoader } from './pages/HomePage.tsx';
-import { NotFoundPage } from './pages/NotFoundPage.tsx';
+import { NotFoundPage } from './pages/ErrorPage.tsx';
 import { LoginPage } from './pages/auth/LoginPage.tsx';
 import { RegisterPage } from './pages/auth/RegisterPage.tsx';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.tsx';
