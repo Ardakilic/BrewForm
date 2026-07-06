@@ -1,20 +1,19 @@
 ## 1. D36 Cluster 1 — HomePage adopts the shared RecipeCard
 
 - [x] 1.1 Open `apps/web/src/pages/HomePage.tsx`. Delete the local `RecipeCard` function (lines
-      103–137). Add `import { RecipeCard } from '../components/recipe-list/';` (or from the barrel
-      `../components/recipe-list/index.ts`). Verify the two usage sites (lines 75 and 88 — the
+      103–137). Add `import { RecipeCard } from '../components/recipe-list/index.ts';`. Verify the two usage sites (lines 75 and 88 — the
       "Latest Recipes" and "Popular Recipes" sections) render `<RecipeCard recipe={r} />` with the
       shared import.
 - [x] 1.2 Remove the now-unused `AUTHOR_BUTTON_STYLE` import (line 8) — the shared `RecipeCard`
       imports it itself. Remove `useNavigate` from the `react-router` import (line 2) IF no other
       usage remains in `HomePage.tsx` (check: `useNavigation` is a different hook and stays; only
       `useNavigate` was used by the local `RecipeCard`).
-- [x] 1.3 Run `make test-web` — `HomePage.test.tsx` MUST pass unchanged. The test asserts on
+- [x] 1.3 Run `make check-web` and `make lint` — must pass with zero type errors and no new
+      lint suppressions.
+- [x] 1.4 Run `make test-web` — `HomePage.test.tsx` MUST pass unchanged. The test asserts on
       author buttons and titles, which the shared `RecipeCard` renders identically. Mock data
       without `currentVersion` renders nothing extra via the shared card's `recipe.currentVersion
       &&` guard.
-- [x] 1.4 Run `make check-web` and `make lint` — must pass with zero type errors and no new
-      lint suppressions.
 
 ## 2. D36 Cluster 2 — BanDialog component + useBanUser hook
 
@@ -61,8 +60,8 @@
       `confirmBan()` failure (mock rejects → `error` set, `processing: false`, dialog stays open);
       `unban(userId)` success → `onSuccess(userId, false)`; `unban(userId)` failure → `error` set;
       `clearError()` clears `error`.
-- [x] 2.7 Run `make test-web` — `BanDialog.test.tsx` and `useBanUser.test.ts` MUST pass. Run
-      `make check-web` and `make lint` — must pass.
+- [x] 2.7 Run `make check-web` and `make lint` — must pass. Run
+      `make test-web` — `BanDialog.test.tsx` and `useBanUser.test.ts` MUST pass.
 
 ## 3. D36 Cluster 3 — Section/Field form primitives
 
@@ -266,10 +265,10 @@
       Management` → `t('admin.users.title')`, `+ New User` → `t('admin.users.newUser')`, search
       placeholder → `t('admin.users.searchPlaceholder')`, table headers → `t('admin.users.username')`
       etc. (or reuse `common.*`), status badges → `t('admin.users.roleAdmin')` etc., action buttons
-      → `t('admin.users.view')`, `t('common.edit')`, `t('admin.users.ban')`, `t('admin.users.unban)`,
+      → `t('admin.users.view')`, `t('common.edit')`, `t('admin.users.ban')`, `t('admin.users.unban')`,
       `t('admin.users.removeAdmin')`, `t('admin.users.makeAdmin')`, pagination →
       `t('common.previous')`, `t('common.next')`, `t('admin.users.pageOf')`, ban dialog (now shared
-      `BanDialog` from D36 — strings already translated there), errors → `t('admin.users.errorLoad)`
+      `BanDialog` from D36 — strings already translated there), errors → `t('admin.users.errorLoad')`
       etc.
 - [x] 8.4 Edit `apps/web/src/pages/admin/AdminUserDetailPage.tsx`. Replace all literals: `Failed to
       Load`, `User Not Found`, `Back to Users`, field labels, `Admin`/`User`, `Banned`/`Active`,

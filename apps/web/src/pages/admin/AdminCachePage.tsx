@@ -10,6 +10,7 @@ export function AdminCachePage() {
   const { t } = useTranslation();
   const [flushing, setFlushing] = useState(false);
   const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<'success' | 'error' | ''>('');
 
   useEffect(() => {
     log.debug({}, 'AdminCachePage mounted');
@@ -21,12 +22,15 @@ export function AdminCachePage() {
   async function flushAll() {
     setFlushing(true);
     setMessage('');
+    setStatus('');
     try {
       await api.post('/admin/cache/flush', {});
       setMessage(t('admin.cache.flushSuccess'));
+      setStatus('success');
     } catch (err) {
       log.error({ err }, 'AdminCachePage flushAll failed');
       setMessage(t('admin.cache.flushError'));
+      setStatus('error');
     } finally {
       setFlushing(false);
     }
@@ -43,8 +47,7 @@ export function AdminCachePage() {
           {t('admin.flushCache')}
         </h2>
         <p className='text-sm mb-4' style={{ color: 'var(--text-secondary)' }}>
-          This will clear all cached data including taste note hierarchies, compatibility matrices,
-          and search results.
+          {t('admin.cache.flushDescription')}
         </p>
         <button type='button' onClick={flushAll} className='btn-primary' disabled={flushing}>
           {flushing ? t('common.flushing') : t('admin.flushCache')}
@@ -52,7 +55,7 @@ export function AdminCachePage() {
         {message && (
           <p
             className='mt-3 text-sm'
-            style={{ color: message.includes('Failed') ? 'var(--error)' : 'var(--success)' }}
+            style={{ color: status === 'error' ? 'var(--error)' : 'var(--success)' }}
           >
             {message}
           </p>
@@ -64,8 +67,7 @@ export function AdminCachePage() {
           {t('admin.cache.infoTitle')}
         </h2>
         <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
-          The application uses Deno KV for caching frequently accessed data. Cache is automatically
-          refreshed when underlying data changes, but you can manually flush it here.
+          {t('admin.cache.kvDescription')}
         </p>
         <div className='mt-3 text-sm' style={{ color: 'var(--text-tertiary)' }}>
           <p>{t('admin.cache.prefixes')}</p>

@@ -56,13 +56,16 @@ For strings requiring interpolation (e.g. "Page {page} of {total}", "Ban User: {
 New keys added by D40 SHALL follow this convention:
 - `admin.<page>.<field>` for per-page admin keys (e.g. `admin.users.searchPlaceholder`,
   `admin.equipment.addField`).
-- `compare.<field>` for RecipeComparePage (e.g. `compare.brewMethod`, `compare.loading`).
+- `compare.<field>` for RecipeComparePage (e.g. `compare.brewMethod`, `compare.loading`,
+  `compare.notFound`, `compare.seoTitle`).
 - `verifyEmail.<state>` for VerifyEmailPage (e.g. `verifyEmail.verifying`, `verifyEmail.verified`).
 - `legal.privacy.<section>` / `legal.terms.<section>` for legal page headers and notice.
-- `recipe.create.section.<name>` / `recipe.create.field.<name>` /
-  `recipe.create.placeholder.<name>` / `recipe.create.button.<name>` /
-  `recipe.create.error.<name>` for RecipeCreatePage.
-- `recipe.edit.section.<name>` / `recipe.edit.field.<name>` / etc. for RecipeEditPage.
+- `recipe.createPage.*` for RecipeCreatePage (e.g. `recipe.createPage.title`,
+  `recipe.createPage.basicInfo`).
+- `recipe.editPage.*` for RecipeEditPage (e.g. `recipe.editPage.title`,
+  `recipe.editPage.bumpVersion`).
+- `recipe.form.*` for shared field labels used by both create and edit pages
+  (e.g. `recipe.form.dose`, `recipe.form.extractionTime`, `recipe.form.yield`).
 - `error.boundary.<field>` for ErrorBoundary generic fallback.
 
 **Reason:** The locale files are already flat-keyed (504 keys, all string values, dotted paths).

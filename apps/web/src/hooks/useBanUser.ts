@@ -9,26 +9,18 @@ const log = createLogger('useBanUser');
  * machine plus the actions for banning and unbanning users.
  */
 interface UseBanUserReturn {
-  /** The user currently targeted by the open ban dialog, or null when closed. */
   banDialogUser: { id: string; username: string; displayName: string | null } | null;
-  /** The current reason text entered in the dialog. */
-  reason: string;
-  /** True while a ban/unban API call is in flight. */
   processing: boolean;
-  /** Last error message produced by a ban/unban call, or null. */
   error: string | null;
-  /** Open the ban dialog for the given user, resetting dialog state. */
   openBanDialog: (user: { id: string; username: string; displayName: string | null }) => void;
-  /** Update the reason textarea value. */
-  setReason: (reason: string) => void;
-  /** Confirm the ban for the currently-open dialog user. */
-  confirmBan: () => Promise<void>;
-  /** Unban the given user outside the dialog flow. */
+  confirmBan: (reason: string) => Promise<void>;
   unban: (userId: string) => Promise<void>;
-  /** Clear the last error message. */
   clearError: () => void;
-  /** Close the ban dialog and reset dialog state. */
   closeDialog: () => void;
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  return (err as { message?: string })?.message || fallback;
 }
 
 /**
@@ -42,14 +34,12 @@ export function useBanUser(
   const [banDialogUser, setBanDialogUser] = useState<
     { id: string; username: string; displayName: string | null } | null
   >(null);
-  const [reason, setReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const openBanDialog = useCallback(
     (user: { id: string; username: string; displayName: string | null }) => {
       setBanDialogUser(user);
-      setReason('');
       setError(null);
       setProcessing(false);
     },
@@ -58,7 +48,6 @@ export function useBanUser(
 
   const closeDialog = useCallback(() => {
     setBanDialogUser(null);
-    setReason('');
     setError(null);
     setProcessing(false);
   }, []);
@@ -67,7 +56,7 @@ export function useBanUser(
     setError(null);
   }, []);
 
-  const confirmBan = useCallback(async () => {
+  const confirmBan = useCallback(async (reason: string) => {
     if (!banDialogUser || !reason.trim()) return;
     const userId = banDialogUser.id;
     log.debug({ userId }, 'useBanUser confirmBan started');
@@ -76,16 +65,15 @@ export function useBanUser(
       await adminApi.banUser(banDialogUser.id, reason);
       onSuccess(banDialogUser.id, true);
       setBanDialogUser(null);
-      setReason('');
       setError(null);
       setProcessing(false);
       log.debug({ userId }, 'useBanUser confirmBan completed');
     } catch (err) {
-      setError((err as { message?: string })?.message || 'Failed to ban user.');
+      setError(getErrorMessage(err, 'Failed to ban user.'));
       setProcessing(false);
       log.error({ err, userId }, 'useBanUser confirmBan failed');
     }
-  }, [banDialogUser, reason, onSuccess]);
+  }, [banDialogUser, onSuccess]);
 
   const unban = useCallback(
     async (userId: string) => {
@@ -96,7 +84,7 @@ export function useBanUser(
         setError(null);
         log.debug({ userId }, 'useBanUser unban completed');
       } catch (err) {
-        setError((err as { message?: string })?.message || 'Failed to unban user.');
+        setError(getErrorMessage(err, 'Failed to unban user.'));
         log.error({ err, userId }, 'useBanUser unban failed');
       }
     },
@@ -105,11 +93,9 @@ export function useBanUser(
 
   return {
     banDialogUser,
-    reason,
     processing,
     error,
     openBanDialog,
-    setReason,
     confirmBan,
     unban,
     clearError,

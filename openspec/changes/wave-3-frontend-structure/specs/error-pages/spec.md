@@ -210,7 +210,7 @@ Logger mock via `vi.hoisted`.
 - **THEN** the `ErrorBoundary.test.tsx` suite passes, covering 404 → NotFoundPage and 500 →
   ServerErrorPage rendering via the boundary
 
-### Requirement: Error pages use existing error.* i18n keys (no notFound.* namespace)
+### Requirement: Error pages use existing `error.*` i18n keys (no `notFound.*` namespace)
 
 The consolidated error pages SHALL use the existing flat-key i18n convention:
 - `NotFoundPage` uses `t('error.404')` for the message and `t('common.goHome')` for the link.

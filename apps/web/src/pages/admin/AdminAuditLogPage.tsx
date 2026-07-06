@@ -57,12 +57,12 @@ export function AdminAuditLogPage() {
           className='input-field w-auto'
         >
           <option value=''>{t('admin.audit.allEntities')}</option>
-          <option value='user'>Users</option>
-          <option value='recipe'>Recipes</option>
-          <option value='equipment'>Equipment</option>
-          <option value='vendor'>Vendors</option>
-          <option value='taste_note'>Taste Notes</option>
-          <option value='report'>Reports</option>
+          <option value='user'>{t('admin.audit.entityUsers')}</option>
+          <option value='recipe'>{t('admin.audit.entityRecipes')}</option>
+          <option value='equipment'>{t('admin.audit.entityEquipment')}</option>
+          <option value='vendor'>{t('admin.audit.entityVendors')}</option>
+          <option value='taste_note'>{t('admin.audit.entityTasteNotes')}</option>
+          <option value='report'>{t('admin.audit.entityReports')}</option>
         </select>
       </div>
 

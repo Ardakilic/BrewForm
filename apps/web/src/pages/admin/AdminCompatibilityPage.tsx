@@ -73,10 +73,10 @@ export function AdminCompatibilityPage() {
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Brew Method
+                    {t('admin.compatibility.brewMethod')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Equipment Type
+                    {t('admin.compatibility.equipmentType')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
                     {t('admin.compatibility.compatible')}

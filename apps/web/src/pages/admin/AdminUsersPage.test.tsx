@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -11,10 +11,6 @@ vi.mock('@/utils/logger.ts', () => ({
     trace: vi.fn(),
     fatal: vi.fn(),
   }),
-}));
-
-vi.mock('../../components/admin/BanDialog.tsx', () => ({
-  BanDialog: () => null,
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
@@ -40,6 +36,12 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
         'admin.users.removeAdminError': 'Yönetici ayrıcalıkları kaldırılamadı.',
         'admin.users.makeAdminError': 'Yönetici ayrıcalıkları verilemedi.',
         'admin.users.loadError': 'Kullanıcılar yüklenemedi.',
+        'admin.users.banDialogTitle': 'Kullanıcıyı Yasakla',
+        'admin.users.banReason': 'Yasaklama Sebebi',
+        'admin.users.banReasonPlaceholder': 'Sebep girin...',
+        'admin.users.confirmBan': 'Yasakla',
+        'admin.users.banning': 'Yasaklanıyor...',
+        'common.cancel': 'İptal',
         'common.search': 'Ara',
         'common.view': 'Görüntüle',
         'common.edit': 'Düzenle',
@@ -61,6 +63,8 @@ vi.mock('../../api/index.ts', () => ({
   adminApi: {
     getUsers: vi.fn(),
     toggleAdmin: vi.fn(),
+    banUser: vi.fn(),
+    unbanUser: vi.fn(),
   },
 }));
 
@@ -90,6 +94,64 @@ describe('AdminUsersPage — tr locale spot-check', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Kullanıcı Yönetimi')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('AdminUsersPage — ban/unban flow', () => {
+  const mockUsers = [
+    {
+      id: 'u1',
+      username: 'alice',
+      email: 'alice@test.com',
+      displayName: null,
+      avatarUrl: null,
+      isAdmin: false,
+      isBanned: false,
+      createdAt: '2024-01-01T00:00:00Z',
+    },
+  ];
+
+  function renderPage() {
+    const router = createMemoryRouter(
+      [{ path: '/admin/users', element: <AdminUsersPage /> }],
+      { initialEntries: ['/admin/users'] },
+    );
+    return render(<RouterProvider router={router} />);
+  }
+
+  it('opens ban dialog when ban button is clicked', async () => {
+    mockAdminApi.getUsers.mockResolvedValue({ users: mockUsers, total: 1 });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('alice')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Yasakla'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Kullanıcıyı Yasakla: alice'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('calls unbanUser when unban button is clicked on a banned user', async () => {
+    const bannedUser = { ...mockUsers[0], isBanned: true };
+    mockAdminApi.getUsers.mockResolvedValue({ users: [bannedUser], total: 1 });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('alice')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Yasağı Kaldır'));
+
+    await waitFor(() => {
+      expect(mockAdminApi.unbanUser).toHaveBeenCalledWith('u1');
     });
   });
 });

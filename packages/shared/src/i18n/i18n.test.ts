@@ -12,13 +12,11 @@ describe('i18n key parity', () => {
   });
 
   it('every locale value is a string', () => {
-    for (const [key, value] of Object.entries(enJson)) {
+    for (const [_key, value] of Object.entries(enJson)) {
       expect(typeof value).toBe('string');
-      if (typeof value !== 'string') throw new Error(`en.json key ${key} is not a string`);
     }
-    for (const [key, value] of Object.entries(trJson)) {
+    for (const [_key, value] of Object.entries(trJson)) {
       expect(typeof value).toBe('string');
-      if (typeof value !== 'string') throw new Error(`tr.json key ${key} is not a string`);
     }
   });
 

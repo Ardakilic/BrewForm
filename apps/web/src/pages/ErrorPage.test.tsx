@@ -67,9 +67,12 @@ describe('NotFoundPage — i18n', () => {
     expect(screen.getByRole('link', { name: 'Ana Sayfaya Git' })).toBeInTheDocument();
   });
 
-  it('renders SEOHead with noIndex (document title includes status code)', () => {
+  it('renders SEOHead with noIndex (document title and robots meta)', () => {
     render(<NotFoundPage />);
     expect(document.title).toMatch(/404/);
+
+    const metaRobots = document.querySelector('meta[name="robots"]');
+    expect(metaRobots?.getAttribute('content')).toBe('noindex, nofollow');
   });
 });
 

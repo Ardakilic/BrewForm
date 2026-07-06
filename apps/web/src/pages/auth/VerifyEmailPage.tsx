@@ -42,7 +42,7 @@ export function VerifyEmailPage() {
       .catch((err) => {
         log.error({ err }, 'VerifyEmailPage verifyEmail failed');
         setStatus('error');
-        setErrorMessage(err.message || t('verifyEmail.failed'));
+        setErrorMessage(t('verifyEmail.failed'));
       });
   }, [token, refreshUser]);
 

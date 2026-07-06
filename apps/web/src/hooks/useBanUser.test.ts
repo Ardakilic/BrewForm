@@ -38,17 +38,8 @@ describe('useBanUser', () => {
       result.current.openBanDialog(testUser);
     });
     expect(result.current.banDialogUser).toEqual(testUser);
-    expect(result.current.reason).toBe('');
     expect(result.current.processing).toBe(false);
     expect(result.current.error).toBeNull();
-  });
-
-  it('setReason updates reason', () => {
-    const { result } = renderHook(() => useBanUser(vi.fn()));
-    act(() => {
-      result.current.setReason('Spam');
-    });
-    expect(result.current.reason).toBe('Spam');
   });
 
   it('confirmBan success: calls onSuccess with (userId, true), closes dialog, clears error', async () => {
@@ -57,10 +48,9 @@ describe('useBanUser', () => {
     const { result } = renderHook(() => useBanUser(onSuccess));
     act(() => {
       result.current.openBanDialog(testUser);
-      result.current.setReason('Spam');
     });
     await act(async () => {
-      await result.current.confirmBan();
+      await result.current.confirmBan('Spam');
     });
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith('u1', true);
@@ -78,10 +68,9 @@ describe('useBanUser', () => {
     const { result } = renderHook(() => useBanUser(onSuccess));
     act(() => {
       result.current.openBanDialog(testUser);
-      result.current.setReason('Spam');
     });
     await act(async () => {
-      await result.current.confirmBan();
+      await result.current.confirmBan('Spam');
     });
     await waitFor(() => {
       expect(result.current.error).toBe('Network error');
@@ -98,7 +87,7 @@ describe('useBanUser', () => {
       result.current.openBanDialog(testUser);
     });
     await act(async () => {
-      await result.current.confirmBan();
+      await result.current.confirmBan('');
     });
     expect(mockBanUser).not.toHaveBeenCalled();
     expect(onSuccess).not.toHaveBeenCalled();
@@ -143,18 +132,16 @@ describe('useBanUser', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('closeDialog clears banDialogUser, reason, error, and processing', () => {
+  it('closeDialog clears banDialogUser, error, and processing', () => {
     const { result } = renderHook(() => useBanUser(vi.fn()));
     act(() => {
       result.current.openBanDialog(testUser);
-      result.current.setReason('Spam');
     });
     expect(result.current.banDialogUser).toEqual(testUser);
     act(() => {
       result.current.closeDialog();
     });
     expect(result.current.banDialogUser).toBeNull();
-    expect(result.current.reason).toBe('');
     expect(result.current.error).toBeNull();
     expect(result.current.processing).toBe(false);
   });

@@ -103,12 +103,10 @@ takes an `onSuccess(userId: string, isBanned: boolean) => void` callback and ret
 ```typescript
 interface UseBanUserReturn {
   banDialogUser: { id: string; username: string; displayName: string | null } | null;
-  reason: string;
   processing: boolean;
   error: string | null;
   openBanDialog: (user: { id: string; username: string; displayName: string | null }) => void;
-  setReason: (reason: string) => void;
-  confirmBan: () => Promise<void>;
+  confirmBan: (reason: string) => Promise<void>;
   unban: (userId: string) => Promise<void>;
   clearError: () => void;
   closeDialog: () => void;
@@ -116,8 +114,8 @@ interface UseBanUserReturn {
 ```
 
 The hook SHALL:
-- `openBanDialog(user)` — set `banDialogUser`, clear `reason`/`error`, set `processing: false`.
-- `confirmBan()` — if no `banDialogUser` or empty reason, return early. Set `processing: true`, call
+- `openBanDialog(user)` — set `banDialogUser`, clear `error`, set `processing: false`.
+- `confirmBan(reason)` — if no `banDialogUser` or empty reason, return early. Set `processing: true`, call
   `adminApi.banUser(banDialogUser.id, reason)`. On success: call `onSuccess(banDialogUser.id, true)`,
   close the dialog, clear `error`. On failure: set `error` to the error message (or a fallback),
   reset `processing: false`, keep the dialog open.
@@ -135,16 +133,16 @@ This fixes the pre-existing bug where `AdminUserDetailPage` silently swallowed e
 machine and API calls; the `onSuccess` callback lets each page apply the result to its own state
 container (list array vs single object). This is the D36 plan's Cluster 2.
 
-#### Scenario: useBanUser open → processing → closed on success
+#### Scenario: useBanUser open → confirm → closed on success
 
-- **WHEN** `openBanDialog(user)` is called, then `setReason('Spam')`, then `confirmBan()` is called
+- **WHEN** `openBanDialog(user)` is called, then `confirmBan('Spam')` is called
   and `adminApi.banUser` resolves
 - **THEN** `onSuccess` is called with `(user.id, true)`, `banDialogUser` becomes null,
   `processing` is false, `error` is null
 
 #### Scenario: useBanUser surfaces error on ban failure
 
-- **WHEN** `confirmBan()` is called and `adminApi.banUser` rejects with an error
+- **WHEN** `confirmBan('Spam')` is called and `adminApi.banUser` rejects with an error
 - **THEN** `error` is set to the error message, `processing` is reset to false, `banDialogUser`
   remains set (dialog stays open)
 

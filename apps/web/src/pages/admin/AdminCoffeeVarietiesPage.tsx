@@ -109,6 +109,12 @@ const CATEGORY_BADGE_COLORS: Record<Category, string> = {
   market_name: 'var(--accent-tertiary)',
 };
 
+const CATEGORY_LABELS: Record<Category, string> = {
+  variety: 'admin.coffeeVarieties.catVariety',
+  processing: 'admin.coffeeVarieties.catProcessing',
+  market_name: 'admin.coffeeVarieties.catMarketName',
+};
+
 function arrToString(arr: string[] | null | undefined): string {
   if (!arr || arr.length === 0) return '';
   return arr.join(', ');
@@ -123,6 +129,10 @@ function stringToArr(s: string): string[] {
 /** Admin page: paginated, searchable coffee-variety CRUD with category filter and inline form. */
 export function AdminCoffeeVarietiesPage() {
   const { t } = useTranslation();
+
+  const categoryLabel = useCallback((cat: Category): string => {
+    return t(CATEGORY_LABELS[cat]);
+  }, [t]);
   const [items, setItems] = useState<CoffeeVarietyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -520,7 +530,7 @@ export function AdminCoffeeVarietiesPage() {
                           color: '#fff',
                         }}
                       >
-                        {item.category}
+                        {categoryLabel(item.category)}
                       </span>
                     </td>
                     <td className='py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
@@ -588,7 +598,10 @@ export function AdminCoffeeVarietiesPage() {
                 {t('common.previous')}
               </button>
               <span className='text-sm self-center' style={{ color: 'var(--text-secondary)' }}>
-                Page {page} of {Math.ceil(total / 20)}
+                {t('common.pagination').replace('{page}', String(page)).replace(
+                  '{total}',
+                  String(Math.ceil(total / 20)),
+                )}
               </span>
               <button
                 type='button'

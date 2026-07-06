@@ -241,7 +241,7 @@ export function AdminUserEditPage() {
               className='block text-sm font-medium mb-1'
               style={{ color: 'var(--text-secondary)' }}
             >
-              {t('auth.resetPassword.newPassword')}
+              {t('admin.users.newPassword')}
             </label>
             <input
               type='password'

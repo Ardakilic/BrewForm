@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '@/utils/logger.ts';
 
@@ -29,9 +29,11 @@ export function BanDialog({ user, open, onClose, onConfirm, processing }: BanDia
   const { t } = useTranslation();
   const [reason, setReason] = useState('');
 
-  if (!open) return null;
+  useEffect(() => {
+    log.debug({ userId: user.id, open }, 'BanDialog render');
+  }, [open]);
 
-  log.debug({ userId: user.id, open }, 'BanDialog render');
+  if (!open) return null;
 
   return (
     <div
