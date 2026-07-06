@@ -24,6 +24,33 @@ vi.mock('../../utils/logger.ts', () => ({
   }),
 }));
 
+vi.mock('../../contexts/I18nContext.tsx', () => ({
+  useTranslation: () => ({
+    t: (k: string) => {
+      const map: Record<string, string> = {
+        'admin.tasteNotes': 'Taste Notes',
+        'admin.tasteNotes.add': '+ Add Taste Note',
+        'admin.tasteNotes.addTitle': 'Add Taste Note',
+        'admin.tasteNotes.deleteConfirm': 'Delete this taste note?',
+        'admin.tasteNotes.parent': 'Parent (optional)',
+        'admin.tasteNotes.noneTopLevel': 'None (top-level)',
+        'admin.tasteNotes.cacheWarning':
+          'Note: Creating taste notes will flush the taste note cache.',
+        'common.cancel': 'Cancel',
+        'common.create': 'Create',
+        'common.creating': 'Creating...',
+        'common.delete': 'Delete',
+        'common.loading': 'Loading...',
+        'common.name': 'Name',
+      };
+      return map[k] ?? k;
+    },
+    locale: 'en',
+    setLocale: vi.fn(),
+    availableLocales: ['en', 'tr'],
+  }),
+}));
+
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { api } from '../../api/index.ts';

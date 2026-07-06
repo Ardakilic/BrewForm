@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminCoffeeVarietiesPage');
@@ -121,6 +122,7 @@ function stringToArr(s: string): string[] {
 
 /** Admin page: paginated, searchable coffee-variety CRUD with category filter and inline form. */
 export function AdminCoffeeVarietiesPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<CoffeeVarietyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -299,33 +301,33 @@ export function AdminCoffeeVarietiesPage() {
 
   function fieldLabel(field: string): string {
     const labels: Record<string, string> = {
-      name: 'Name',
-      category: 'Category',
-      species: 'Species',
-      origin: 'Origin',
-      spread: 'Spread',
-      altitudeRangeM: 'Altitude Range (m)',
-      cupProfile: 'Cup Profile',
-      body: 'Body',
-      acidity: 'Acidity',
-      caffeinePct: 'Caffeine %',
-      processingCompatibility: 'Processing Compatibility',
-      diseaseResistance: 'Disease Resistance',
-      yield: 'Yield',
-      plantSize: 'Plant Size',
-      notes: 'Notes',
-      subVarieties: 'Sub Varieties',
-      fermentation: 'Fermentation',
-      dryingTimeDays: 'Drying Time (days)',
-      dryingMethod: 'Drying Method',
-      mucilageRetentionPct: 'Mucilage Retention %',
-      priceRange: 'Price Range',
-      processing: 'Processing',
-      typeLabel: 'Type Label',
-      notableFarms: 'Notable Farms',
-      notableRegions: 'Notable Regions',
-      regionalVariants: 'Regional Variants',
-      globalSharePct: 'Global Share %',
+      name: t('common.name'),
+      category: t('common.category'),
+      species: t('admin.coffeeVarieties.species'),
+      origin: t('coffeeVarieties.fields.origin'),
+      spread: t('coffeeVarieties.fields.spread'),
+      altitudeRangeM: t('admin.coffeeVarieties.altitudeRange'),
+      cupProfile: t('coffeeVarieties.fields.cupProfile'),
+      body: t('coffeeVarieties.fields.body'),
+      acidity: t('coffeeVarieties.fields.acidity'),
+      caffeinePct: t('admin.coffeeVarieties.caffeinePct'),
+      processingCompatibility: t('coffeeVarieties.fields.processingCompatibility'),
+      diseaseResistance: t('coffeeVarieties.fields.diseaseResistance'),
+      yield: t('coffeeVarieties.fields.yield'),
+      plantSize: t('coffeeVarieties.fields.plantSize'),
+      notes: t('coffeeVarieties.fields.notes'),
+      subVarieties: t('coffeeVarieties.fields.subVarieties'),
+      fermentation: t('coffeeVarieties.fields.fermentation'),
+      dryingTimeDays: t('admin.coffeeVarieties.dryingTime'),
+      dryingMethod: t('admin.coffeeVarieties.dryingMethod'),
+      mucilageRetentionPct: t('admin.coffeeVarieties.mucilageRetention'),
+      priceRange: t('admin.coffeeVarieties.priceRange'),
+      processing: t('bean.processing'),
+      typeLabel: t('admin.coffeeVarieties.typeLabel'),
+      notableFarms: t('admin.coffeeVarieties.notableFarms'),
+      notableRegions: t('admin.coffeeVarieties.notableRegions'),
+      regionalVariants: t('admin.coffeeVarieties.regionalVariants'),
+      globalSharePct: t('admin.coffeeVarieties.globalShare'),
     };
     return labels[field] || field;
   }
@@ -340,7 +342,7 @@ export function AdminCoffeeVarietiesPage() {
         'regionalVariants',
       ].includes(field)
     ) {
-      return 'Comma-separated values';
+      return t('common.commaSeparated');
     }
     return '';
   }
@@ -351,11 +353,11 @@ export function AdminCoffeeVarietiesPage() {
     <div>
       <div className='flex items-center justify-between mb-6'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Coffee Varieties
+          {t('coffeeVarieties.title')}
         </h1>
         <div className='flex gap-2'>
           <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
-            {showForm ? 'Cancel' : '+ Add Coffee Variety'}
+            {showForm ? t('common.cancel') : t('admin.coffeeVarieties.add')}
           </button>
         </div>
       </div>
@@ -371,14 +373,14 @@ export function AdminCoffeeVarietiesPage() {
           className='input-field'
           style={{ width: '180px' }}
         >
-          <option value=''>All Categories</option>
-          <option value='variety'>Variety</option>
-          <option value='processing'>Processing</option>
-          <option value='market_name'>Market Name</option>
+          <option value=''>{t('admin.coffeeVarieties.allCategories')}</option>
+          <option value='variety'>{t('admin.coffeeVarieties.catVariety')}</option>
+          <option value='processing'>{t('admin.coffeeVarieties.catProcessing')}</option>
+          <option value='market_name'>{t('admin.coffeeVarieties.catMarketName')}</option>
         </select>
         <input
           type='text'
-          placeholder='Search by name...'
+          placeholder={t('admin.coffeeVarieties.searchPlaceholder')}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -392,7 +394,7 @@ export function AdminCoffeeVarietiesPage() {
       {showForm && (
         <form onSubmit={handleSubmit} className='card mb-6'>
           <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-            {editId ? 'Edit Coffee Variety' : 'Add Coffee Variety'}
+            {editId ? t('admin.coffeeVarieties.editTitle') : t('admin.coffeeVarieties.addTitle')}
           </h2>
           <div className='grid grid-cols-2 gap-4'>
             {fieldKeys.map((field) => {
@@ -413,9 +415,11 @@ export function AdminCoffeeVarietiesPage() {
                       className='input-field'
                       required
                     >
-                      <option value='variety'>Variety</option>
-                      <option value='processing'>Processing</option>
-                      <option value='market_name'>Market Name</option>
+                      <option value='variety'>{t('admin.coffeeVarieties.catVariety')}</option>
+                      <option value='processing'>{t('admin.coffeeVarieties.catProcessing')}</option>
+                      <option value='market_name'>
+                        {t('admin.coffeeVarieties.catMarketName')}
+                      </option>
                     </select>
                   </div>
                 );
@@ -465,40 +469,40 @@ export function AdminCoffeeVarietiesPage() {
           </div>
           <div className='flex gap-2 mt-4'>
             <button type='submit' className='btn-primary' disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('common.saving') : t('common.save')}
             </button>
             {editId && (
               <button type='button' onClick={resetForm} className='btn-secondary'>
-                Cancel Edit
+                {t('common.cancelEdit')}
               </button>
             )}
           </div>
         </form>
       )}
 
-      {loading ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div> : (
+      {loading ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div> : (
         <>
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Name
+                    {t('common.name')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Category
+                    {t('common.category')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Species
+                    {t('admin.coffeeVarieties.species')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Origin
+                    {t('coffeeVarieties.fields.origin')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    System
+                    {t('admin.coffeeVarieties.system')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -534,7 +538,7 @@ export function AdminCoffeeVarietiesPage() {
                             className='badge'
                             style={{ backgroundColor: 'var(--warning)', color: '#000' }}
                           >
-                            System
+                            {t('admin.coffeeVarieties.system')}
                           </span>
                         )
                         : (
@@ -542,7 +546,7 @@ export function AdminCoffeeVarietiesPage() {
                             className='badge'
                             style={{ backgroundColor: 'var(--success)', color: '#fff' }}
                           >
-                            Custom
+                            {t('admin.coffeeVarieties.custom')}
                           </span>
                         )}
                     </td>
@@ -554,7 +558,7 @@ export function AdminCoffeeVarietiesPage() {
                         className='text-xs'
                         style={{ color: 'var(--accent-primary)' }}
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       {!item.isSystem && (
                         <button
@@ -563,7 +567,7 @@ export function AdminCoffeeVarietiesPage() {
                           className='text-xs'
                           style={{ color: 'var(--error)' }}
                         >
-                          Delete
+                          {t('common.delete')}
                         </button>
                       )}
                     </td>
@@ -581,7 +585,7 @@ export function AdminCoffeeVarietiesPage() {
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Previous
+                {t('common.previous')}
               </button>
               <span className='text-sm self-center' style={{ color: 'var(--text-secondary)' }}>
                 Page {page} of {Math.ceil(total / 20)}
@@ -592,7 +596,7 @@ export function AdminCoffeeVarietiesPage() {
                 disabled={page >= Math.ceil(total / 20)}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next
+                {t('common.next')}
               </button>
             </div>
           )}
@@ -607,10 +611,10 @@ export function AdminCoffeeVarietiesPage() {
         >
           <div className='card max-w-sm w-full'>
             <h3 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
-              Confirm Delete
+              {t('common.confirmDelete')}
             </h3>
             <p className='text-sm mb-4' style={{ color: 'var(--text-secondary)' }}>
-              Are you sure you want to delete this coffee variety? This action cannot be undone.
+              {t('admin.coffeeVarieties.deleteConfirm')}
             </p>
             <div className='flex justify-end gap-2'>
               <button
@@ -618,7 +622,7 @@ export function AdminCoffeeVarietiesPage() {
                 onClick={() => setDeleteConfirm(null)}
                 className='btn-secondary'
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type='button'
@@ -626,7 +630,7 @@ export function AdminCoffeeVarietiesPage() {
                 className='btn-primary'
                 style={{ backgroundColor: 'var(--error)' }}
               >
-                Delete
+                {t('common.delete')}
               </button>
             </div>
           </div>

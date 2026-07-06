@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminVendorsPage');
@@ -13,6 +14,7 @@ interface Vendor {
 
 /** Admin page: vendor CRUD with inline form. */
 export function AdminVendorsPage() {
+  const { t } = useTranslation();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -62,7 +64,7 @@ export function AdminVendorsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!globalThis.confirm('Delete this vendor?')) return;
+    if (!globalThis.confirm(t('admin.vendors.deleteConfirm'))) return;
     try {
       await api.delete(`/admin/vendors/${id}`);
       setVendors((prev) => prev.filter((v) => v.id !== id));
@@ -90,17 +92,17 @@ export function AdminVendorsPage() {
     <div>
       <div className='flex items-center justify-between mb-6'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Vendor Management
+          {t('admin.vendors.management')}
         </h1>
         <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
-          {showForm ? 'Cancel' : '+ Add Vendor'}
+          {showForm ? t('common.cancel') : t('admin.vendors.add')}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className='card mb-6'>
           <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-            {editId ? 'Edit Vendor' : 'Add Vendor'}
+            {editId ? t('admin.vendors.editTitle') : t('admin.vendors.addTitle')}
           </h2>
           <div className='space-y-3'>
             <div>
@@ -108,7 +110,7 @@ export function AdminVendorsPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Name *
+                {t('common.name')}
               </label>
               <input
                 type='text'
@@ -123,7 +125,7 @@ export function AdminVendorsPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Website
+                {t('admin.vendors.website')}
               </label>
               <input
                 type='url'
@@ -137,7 +139,7 @@ export function AdminVendorsPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Description
+                {t('common.description')}
               </label>
               <textarea
                 value={form.description}
@@ -149,11 +151,11 @@ export function AdminVendorsPage() {
           </div>
           <div className='flex gap-2 mt-4'>
             <button type='submit' className='btn-primary' disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('common.saving') : t('common.save')}
             </button>
             {editId && (
               <button type='button' onClick={resetForm} className='btn-secondary'>
-                Cancel Edit
+                {t('common.cancelEdit')}
               </button>
             )}
           </div>
@@ -161,20 +163,20 @@ export function AdminVendorsPage() {
       )}
 
       {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
         : (
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Name
+                    {t('common.name')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Website
+                    {t('admin.vendors.website')}
                   </th>
                   <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    Actions
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -195,7 +197,7 @@ export function AdminVendorsPage() {
                         className='text-xs'
                         style={{ color: 'var(--accent-primary)' }}
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         type='button'
@@ -204,7 +206,7 @@ export function AdminVendorsPage() {
                         className='text-xs'
                         style={{ color: 'var(--error)' }}
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     </td>
                   </tr>

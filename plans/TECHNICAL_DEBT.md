@@ -3,7 +3,7 @@
 > Status ledger for technical-debt items. Issues categorised by severity and area.
 > Last full audit: **2026-07-04** (plan-by-plan verification against `main`). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
 
-**Currently open: D35, D36, D37, D39 (Tier 2/3), D40, D42, D43.** Everything else below is resolved and kept for history. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1.)_
+**Currently open: D35, D39 (Tier 2/3), D42, D43.** Everything else below is resolved and kept for history. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40.)_
 
 ---
 
@@ -141,13 +141,14 @@
 
 ## 4. Medium — Frontend Code Quality
 
-### 4.1 Duplicate Component Definitions — **OPEN**
-- **Files**: `apps/web/src/pages/HomePage.tsx:94` (local `RecipeCard` duplicating `components/recipe-list/RecipeCard.tsx:14`); ban dialog + mutation duplicated across `AdminUsersPage.tsx` (`:26`, `~:341`) and `AdminUserDetailPage.tsx` (`:19`, `~:297`); `Section`/`Field` helpers at `RecipeCreatePage.tsx:535,545`.
-- **Audit correction**: `RecipeListPage`/`StarredRecipesPage` duplication was resolved by D11; `RecipeEditPage` no longer holds `Section`/`Field` copies — remaining scope is as listed above (plus optional `AdminRecipesPage.tsx:87` inline card).
+### 4.1 Duplicate Component Definitions — **RESOLVED** (2026-07-06 via wave-3-frontend-structure)
+- **Status: Resolved** (2026-07-06 via wave-3-frontend-structure)
+- **Verified fix**: HomePage imports shared `RecipeCard` from `components/recipe-list/`; `BanDialog` + `useBanUser` extracted to `components/admin/` + `hooks/`; `Section`/`Field` extracted to `components/form/`; both recipe pages import shared primitives.
 - **PRD**: [`plans/D36-extract-duplicated-ui.md`](D36-extract-duplicated-ui.md)
 
-### 4.2 Dead Code — Duplicate NotFoundPage Exports — **OPEN**
-- **Files**: `apps/web/src/pages/ErrorPage.tsx` exports `NotFoundPage` (`:25`), `ServerErrorPage` (`:36`), `ForbiddenPage` (`:47`) — all dead; `router.tsx:7` imports only from `NotFoundPage.tsx`.
+### 4.2 Dead Code — Duplicate NotFoundPage Exports — **RESOLVED** (2026-07-06 via wave-3-frontend-structure)
+- **Status: Resolved** (2026-07-06 via wave-3-frontend-structure)
+- **Verified fix**: `ErrorPage.tsx` is the canonical module (exports `NotFoundPage` + `ServerErrorPage` only); `NotFoundPage.tsx` deleted; `ForbiddenPage` deleted; `ErrorBoundary` delegates 404/5xx to the canonical components; base `ErrorPage` un-exported.
 - **PRD**: [`plans/D37-consolidate-error-pages.md`](D37-consolidate-error-pages.md) (also covers §6.5)
 
 ### 4.3 Silent Error Swallowing
@@ -161,8 +162,9 @@
 - **Verified fix**: `routes/like.ts`/`favourite.ts`/`follow.ts` return `{ ok: false, error }` for rollback; loggers added.
 - **PRD**: [`plans/D18-fix-optimistic-rollback.md`](D18-fix-optimistic-rollback.md)
 
-### 4.5 Hardcoded English Strings (Incomplete i18n) — **OPEN**
-- **Scope (2026-07-04 sweep)**: **zero `t()`** in all 15 admin pages plus `RecipeComparePage`, `VerifyEmailPage`, `PrivacyPage`, `TermsPage`, `NotFoundPage`; `RecipeCreatePage`/`RecipeEditPage` only partially converted (2 calls each).
+### 4.5 Hardcoded English Strings (Incomplete i18n) — **RESOLVED** (2026-07-06 via wave-3-frontend-structure)
+- **Status: Resolved** (2026-07-06 via wave-3-frontend-structure)
+- **Verified fix**: all 15 admin pages + 5 user-facing pages + 2 partial recipe pages now use `t()` for user-visible strings; ~175 new i18n keys added to both en.json and tr.json; deterministic bidirectional parity test enforced; per-page tr-locale spot-check tests added.
 - **PRD**: [`plans/D40-complete-i18n.md`](D40-complete-i18n.md)
 
 ### 4.6 `Record<string, unknown>` in API Types — **OPEN**
@@ -218,8 +220,8 @@
 - **Verified fix**: `utils/cursor.ts`; `RecipeFilterSchema.cursor` (`recipe.ts:154`); cursor path in service + `model.findCursor`.
 - **PRD**: [`plans/D27-cursor-pagination.md`](D27-cursor-pagination.md)
 
-### 6.5 Duplicate `NotFoundPage` / Error Page Confusion — **OPEN**
-- Same finding as §4.2; consolidated into one plan.
+### 6.5 Duplicate `NotFoundPage` / Error Page Confusion — **RESOLVED** (2026-07-06 via wave-3-frontend-structure)
+- **Status: Resolved** (2026-07-06 via wave-3-frontend-structure; same fix as §4.2)
 - **PRD**: [`plans/D37-consolidate-error-pages.md`](D37-consolidate-error-pages.md)
 
 ### 6.6 Test Coverage Backfill — **PARTIAL** (Tier 1 resolved 2026-07-06; Tier 2/3 open)

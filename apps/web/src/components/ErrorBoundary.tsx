@@ -1,15 +1,19 @@
 import { isRouteErrorResponse, Link, useRouteError } from 'react-router';
+import { NotFoundPage, ServerErrorPage } from '../pages/ErrorPage.tsx';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('ErrorBoundary');
 
 /**
  * Router-level error boundary: logs the caught error and renders a
- * full-page fallback (status-aware for route error responses, stack
- * trace in dev) with home/reload actions.
+ * full-page fallback — delegating 404 to `NotFoundPage` and 5xx to
+ * `ServerErrorPage` from the canonical error-page module, with a
+ * generic fallback (Go Home + Reload Page) for non-route errors.
  */
 export function RootErrorBoundary() {
   const error = useRouteError();
+  const { t } = useTranslation();
 
   log.error(
     { err: error, componentStack: error instanceof Error ? error.stack : undefined },
@@ -22,33 +26,8 @@ export function RootErrorBoundary() {
   }
 
   if (isRouteErrorResponse(error)) {
-    return (
-      <div
-        className='flex min-h-screen flex-col items-center justify-center px-6 text-center'
-        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-      >
-        <h1 className='text-6xl font-bold' style={{ color: 'var(--accent-primary)' }}>
-          {error.status}
-        </h1>
-        <p className='mt-4 text-lg' style={{ color: 'var(--text-secondary)' }}>
-          {error.status === 404
-            ? "Looks like this cup is empty. The page you're looking for doesn't exist."
-            : error.statusText || 'Something went wrong.'}
-        </p>
-        <div className='mt-6 flex gap-4'>
-          <Link to='/' className='btn-primary'>
-            Go Home
-          </Link>
-          <button
-            type='button'
-            className='btn-primary'
-            onClick={handleReset}
-          >
-            Reload Page
-          </button>
-        </div>
-      </div>
-    );
+    if (error.status === 404) return <NotFoundPage />;
+    if (error.status >= 500) return <ServerErrorPage />;
   }
 
   const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
@@ -59,7 +38,7 @@ export function RootErrorBoundary() {
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
       <h1 className='text-6xl font-bold' style={{ color: 'var(--accent-primary)' }}>
-        Oops
+        {t('error.boundary.oops')}
       </h1>
       <p className='mt-4 text-lg' style={{ color: 'var(--text-secondary)' }}>
         {message}
@@ -74,14 +53,14 @@ export function RootErrorBoundary() {
       )}
       <div className='mt-6 flex gap-4'>
         <Link to='/' className='btn-primary'>
-          Go Home
+          {t('common.goHome')}
         </Link>
         <button
           type='button'
           className='btn-primary'
           onClick={handleReset}
         >
-          Reload Page
+          {t('error.boundary.reload')}
         </button>
       </div>
     </div>

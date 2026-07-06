@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { useTranslation } from '../contexts/I18nContext.tsx';
+import { SEOHead } from '../components/seo/SEOHead.tsx';
 
 interface Props {
   statusCode: number;
@@ -8,15 +9,15 @@ interface Props {
 }
 
 /**
- * Generic error screen: emoji illustration, status code, message, and a
- * home link. Currently unwired/dead — the router imports its 404 page
- * from `NotFoundPage.tsx` instead (see plans/D37).
+ * Internal helper: emoji illustration, status code, message, and a home link.
+ * All variants get `<SEOHead noIndex />` so error pages are never indexed.
  */
-export function ErrorPage({ statusCode, message, illustration }: Props) {
+function ErrorPage({ statusCode, message, illustration }: Props) {
   const { t } = useTranslation();
 
   return (
     <div className='flex min-h-[60vh] flex-col items-center justify-center px-6 text-center'>
+      <SEOHead title={String(statusCode)} noIndex />
       <div className='text-8xl'>{illustration}</div>
       <h1 className='mt-4 text-4xl font-bold' style={{ color: 'var(--text-primary)' }}>
         {statusCode}
@@ -27,7 +28,7 @@ export function ErrorPage({ statusCode, message, illustration }: Props) {
   );
 }
 
-/** 404 variant of {@link ErrorPage}. Unwired/dead — the router uses `NotFoundPage.tsx` (see plans/D37). */
+/** 404 page (noindex) with a home link; wired into the router's catch-all and the error boundary. */
 export function NotFoundPage() {
   const { t } = useTranslation();
   return (
@@ -39,7 +40,7 @@ export function NotFoundPage() {
   );
 }
 
-/** 500 variant of {@link ErrorPage}. Unwired/dead — nothing routes to it (see plans/D37). */
+/** 500 page (noindex); rendered by the router's `RootErrorBoundary` for 5xx route errors. */
 export function ServerErrorPage() {
   const { t } = useTranslation();
   return (
@@ -47,18 +48,6 @@ export function ServerErrorPage() {
       statusCode={500}
       message={t('error.500')}
       illustration='💔'
-    />
-  );
-}
-
-/** 403 variant of {@link ErrorPage}. Unwired/dead — nothing routes to it (see plans/D37). */
-export function ForbiddenPage() {
-  const { t } = useTranslation();
-  return (
-    <ErrorPage
-      statusCode={403}
-      message={t('error.403')}
-      illustration='🔒'
     />
   );
 }

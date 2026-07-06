@@ -24,6 +24,36 @@ vi.mock('../../utils/logger.ts', () => ({
   }),
 }));
 
+vi.mock('../../contexts/I18nContext.tsx', () => ({
+  useTranslation: () => ({
+    t: (k: string) => {
+      const map: Record<string, string> = {
+        'admin.equipment.management': 'Equipment Management',
+        'admin.equipment.add': '+ Add Equipment',
+        'admin.equipment.editTitle': 'Edit Equipment',
+        'admin.equipment.addTitle': 'Add Equipment',
+        'admin.equipment.deleteConfirm': 'Delete this equipment?',
+        'common.cancel': 'Cancel',
+        'common.save': 'Save',
+        'common.saving': 'Saving...',
+        'common.cancelEdit': 'Cancel Edit',
+        'common.edit': 'Edit',
+        'common.delete': 'Delete',
+        'common.loading': 'Loading...',
+        'common.actions': 'Actions',
+        'common.type': 'Type',
+        'equipment.name': 'Name',
+        'equipment.brand': 'Brand',
+        'equipment.model': 'Model',
+      };
+      return map[k] ?? k;
+    },
+    locale: 'en',
+    setLocale: vi.fn(),
+    availableLocales: ['en', 'tr'],
+  }),
+}));
+
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { api } from '../../api/index.ts';

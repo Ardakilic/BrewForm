@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { recipeApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { BREW_METHODS, DRINK_TYPES } from '@brewform/shared/constants';
@@ -18,6 +19,7 @@ function labelFor(value: string, constants: any) {
  * parameters in a comparison table.
  */
 export function RecipeComparePage() {
+  const { t } = useTranslation();
   const { slug1, slug2 } = useParams();
   // deno-lint-ignore no-explicit-any
   const [recipe1, setRecipe1] = useState<any>(null);
@@ -54,7 +56,7 @@ export function RecipeComparePage() {
         className='mx-auto max-w-6xl px-6 py-12 text-center'
         style={{ color: 'var(--text-secondary)' }}
       >
-        Loading...
+        {t('common.loading')}
       </div>
     );
   }
@@ -64,7 +66,7 @@ export function RecipeComparePage() {
         className='mx-auto max-w-6xl px-6 py-12 text-center'
         style={{ color: 'var(--text-tertiary)' }}
       >
-        One or both recipes not found.
+        {t('compare.notFound')}
       </div>
     );
   }
@@ -74,9 +76,14 @@ export function RecipeComparePage() {
 
   return (
     <div className='mx-auto max-w-6xl px-6 py-8'>
-      <SEOHead title={`Compare: ${recipe1.title} vs ${recipe2.title}`} />
+      <SEOHead
+        title={t('compare.seoTitle').replace('{title1}', recipe1.title).replace(
+          '{title2}',
+          recipe2.title,
+        )}
+      />
       <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
-        Compare Recipes
+        {t('recipe.compareTitle')}
       </h1>
 
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
@@ -105,38 +112,45 @@ function CompareTable(
     equipment: { id: string; name: string; type: string }[];
   },
 ) {
+  const { t } = useTranslation();
   return (
     <div className='card'>
       <table className='w-full text-sm'>
         <tbody>
-          <CompareRow label='Brew Method' value={labelFor(v.brewMethod, BREW_METHODS)} />
-          <CompareRow label='Drink Type' value={labelFor(v.drinkType, DRINK_TYPES)} />
-          <CompareRow label='Dose' value={v.groundWeightGrams ? `${v.groundWeightGrams}g` : '-'} />
+          <CompareRow label={t('recipe.brewMethod')} value={labelFor(v.brewMethod, BREW_METHODS)} />
           <CompareRow
-            label='Yield'
+            label={t('recipe.drinkType')}
+            value={labelFor(v.drinkType, DRINK_TYPES)}
+          />
+          <CompareRow
+            label={t('recipe.dose')}
+            value={v.groundWeightGrams ? `${v.groundWeightGrams}g` : '-'}
+          />
+          <CompareRow
+            label={t('recipe.yield')}
             value={v.extractionVolumeMl ? `${v.extractionVolumeMl}ml` : '-'}
           />
           <CompareRow
-            label='Time'
+            label={t('recipe.time')}
             value={v.extractionTimeSeconds ? `${v.extractionTimeSeconds}s` : '-'}
           />
           <CompareRow
-            label='Temperature'
+            label={t('recipe.temperature')}
             value={v.temperatureCelsius ? `${v.temperatureCelsius}°C` : '-'}
           />
-          <CompareRow label='Ratio' value={v.brewRatio ? `1:${v.brewRatio}` : '-'} />
-          <CompareRow label='Rating' value={v.rating ? `${v.rating}/10` : '-'} />
+          <CompareRow label={t('recipe.ratio')} value={v.brewRatio ? `1:${v.brewRatio}` : '-'} />
+          <CompareRow label={t('recipe.rating')} value={v.rating ? `${v.rating}/10` : '-'} />
           <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
             <td className='py-2 font-medium' style={{ color: 'var(--text-secondary)' }}>
-              Taste Notes
+              {t('recipe.tasteNotes')}
             </td>
             <td className='py-2' style={{ color: 'var(--text-primary)' }}>
-              {tasteNotes.map((t) => t.name).join(', ') || '-'}
+              {tasteNotes.map((note) => note.name).join(', ') || '-'}
             </td>
           </tr>
           <tr>
             <td className='py-2 font-medium' style={{ color: 'var(--text-secondary)' }}>
-              Equipment
+              {t('equipment.title')}
             </td>
             <td className='py-2' style={{ color: 'var(--text-primary)' }}>
               {equipment.map((e) => e.name).join(', ') || '-'}

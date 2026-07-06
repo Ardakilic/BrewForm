@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 interface TasteNote {
@@ -14,6 +15,7 @@ const log = createLogger('AdminTasteNotesPage');
 
 /** Admin page: taste-note hierarchy management (create/delete); invalidates the static cache on changes. */
 export function AdminTasteNotesPage() {
+  const { t } = useTranslation();
   const [notes, setNotes] = useState<TasteNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -65,7 +67,7 @@ export function AdminTasteNotesPage() {
    * invalidate the static cache so the next loader run re-fetches.
    */
   async function handleDelete(id: string) {
-    if (!globalThis.confirm('Delete this taste note?')) return;
+    if (!globalThis.confirm(t('admin.tasteNotes.deleteConfirm'))) return;
     log.debug({ tasteNoteId: id }, 'handleDelete started');
     try {
       await api.delete(`/admin/taste-notes/${id}`);
@@ -80,16 +82,18 @@ export function AdminTasteNotesPage() {
   return (
     <div>
       <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>Taste Notes</h1>
+        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+          {t('admin.tasteNotes')}
+        </h1>
         <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
-          {showForm ? 'Cancel' : '+ Add Taste Note'}
+          {showForm ? t('common.cancel') : t('admin.tasteNotes.add')}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleCreate} className='card mb-6'>
           <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-            Add Taste Note
+            {t('admin.tasteNotes.addTitle')}
           </h2>
           <div className='space-y-3'>
             <div>
@@ -98,7 +102,7 @@ export function AdminTasteNotesPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Name *
+                {t('common.name')} *
               </label>
               <input
                 id='tn-name'
@@ -115,7 +119,7 @@ export function AdminTasteNotesPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Parent (optional)
+                {t('admin.tasteNotes.parent')}
               </label>
               <select
                 id='tn-parent'
@@ -123,7 +127,7 @@ export function AdminTasteNotesPage() {
                 onChange={(e) => setForm({ ...form, parentId: e.target.value })}
                 className='input-field'
               >
-                <option value=''>None (top-level)</option>
+                <option value=''>{t('admin.tasteNotes.noneTopLevel')}</option>
                 {notes.filter((n) => n.depth === 0).map((n) => (
                   <option key={n.id} value={n.id}>{n.name}</option>
                 ))}
@@ -131,16 +135,16 @@ export function AdminTasteNotesPage() {
             </div>
           </div>
           <button type='submit' className='btn-primary mt-4' disabled={saving}>
-            {saving ? 'Creating...' : 'Create'}
+            {saving ? t('common.creating') : t('common.create')}
           </button>
           <p className='mt-2 text-xs' style={{ color: 'var(--warning)' }}>
-            Note: Creating taste notes will flush the taste note cache.
+            {t('admin.tasteNotes.cacheWarning')}
           </p>
         </form>
       )}
 
       {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
         : (
           <div className='space-y-1'>
             {notes.map((note) => (
@@ -156,7 +160,7 @@ export function AdminTasteNotesPage() {
                   className='text-xs'
                   style={{ color: 'var(--error)' }}
                 >
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             ))}

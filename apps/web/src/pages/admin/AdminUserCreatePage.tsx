@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router';
 import { adminApi } from '../../api/index.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { AdminCreateUserSchema } from '@brewform/shared/schemas';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const log = createLogger('AdminUserCreatePage');
 
 /** Admin page: create-user form validated with `AdminCreateUserSchema`; redirects to the user list on success. */
 export function AdminUserCreatePage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     email: '',
     username: '',
@@ -63,9 +65,9 @@ export function AdminUserCreatePage() {
     } catch (err: unknown) {
       const apiErr = err as { code?: string; message?: string };
       if (apiErr.code === 'CONFLICT') {
-        setServerError(apiErr.message || 'Email or username already exists.');
+        setServerError(apiErr.message || t('admin.users.conflictError'));
       } else {
-        setServerError(apiErr.message || 'Failed to create user.');
+        setServerError(apiErr.message || t('admin.users.createError'));
       }
     } finally {
       setSaving(false);
@@ -76,10 +78,10 @@ export function AdminUserCreatePage() {
     <div>
       <div className='flex items-center gap-4 mb-6'>
         <Link to='/admin/users' style={{ color: 'var(--accent-primary)' }}>
-          &larr; Back to Users
+          {t('admin.users.backToUsersArrow')}
         </Link>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
-          Create User
+          {t('admin.users.createUser')}
         </h1>
       </div>
 
@@ -99,7 +101,7 @@ export function AdminUserCreatePage() {
               className='block text-sm font-medium mb-1'
               style={{ color: 'var(--text-secondary)' }}
             >
-              Email *
+              {t('auth.email')} *
             </label>
             <input
               type='email'
@@ -117,7 +119,7 @@ export function AdminUserCreatePage() {
               className='block text-sm font-medium mb-1'
               style={{ color: 'var(--text-secondary)' }}
             >
-              Username *
+              {t('auth.username')} *
             </label>
             <input
               type='text'
@@ -135,7 +137,7 @@ export function AdminUserCreatePage() {
               className='block text-sm font-medium mb-1'
               style={{ color: 'var(--text-secondary)' }}
             >
-              Password *
+              {t('auth.password')} *
             </label>
             <input
               type='password'
@@ -153,7 +155,7 @@ export function AdminUserCreatePage() {
               className='block text-sm font-medium mb-1'
               style={{ color: 'var(--text-secondary)' }}
             >
-              Display Name
+              {t('settings.displayName')}
             </label>
             <input
               type='text'
@@ -171,7 +173,7 @@ export function AdminUserCreatePage() {
               className='block text-sm font-medium mb-1'
               style={{ color: 'var(--text-secondary)' }}
             >
-              Bio
+              {t('common.bio')}
             </label>
             <textarea
               value={form.bio}
@@ -191,7 +193,9 @@ export function AdminUserCreatePage() {
                 checked={form.isAdmin}
                 onChange={(e) => setForm({ ...form, isAdmin: e.target.checked })}
               />
-              <span className='text-sm' style={{ color: 'var(--text-primary)' }}>Admin</span>
+              <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
+                {t('admin.users.adminBadge')}
+              </span>
             </label>
             <label className='flex items-center gap-2'>
               <input
@@ -199,17 +203,19 @@ export function AdminUserCreatePage() {
                 checked={form.isBanned}
                 onChange={(e) => setForm({ ...form, isBanned: e.target.checked })}
               />
-              <span className='text-sm' style={{ color: 'var(--text-primary)' }}>Banned</span>
+              <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
+                {t('admin.users.banned')}
+              </span>
             </label>
           </div>
         </div>
 
         <div className='flex gap-2 mt-6'>
           <button type='submit' className='btn-primary' disabled={saving}>
-            {saving ? 'Creating...' : 'Create User'}
+            {saving ? t('common.creating') : t('admin.users.createUser')}
           </button>
           <Link to='/admin/users' className='btn-secondary'>
-            Cancel
+            {t('common.cancel')}
           </Link>
         </div>
       </form>

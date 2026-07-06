@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { authApi } from '../../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
 
@@ -11,6 +12,7 @@ const log = createLogger('VerifyEmailPage');
  * user, and renders loading/success/error states.
  */
 export function VerifyEmailPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const { refreshUser } = useAuth();
   const token = searchParams.get('token');
@@ -27,7 +29,7 @@ export function VerifyEmailPage() {
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setErrorMessage('No verification token provided.');
+      setErrorMessage(t('verifyEmail.noToken'));
       return;
     }
 
@@ -38,40 +40,40 @@ export function VerifyEmailPage() {
         setStatus('success');
       })
       .catch((err) => {
-        log.error({ err }, 'VerifyEmailPage token verification failed');
+        log.error({ err }, 'VerifyEmailPage verifyEmail failed');
         setStatus('error');
-        setErrorMessage(err.message || 'Verification failed.');
+        setErrorMessage(err.message || t('verifyEmail.failed'));
       });
   }, [token, refreshUser]);
 
   return (
     <div className='flex min-h-[60vh] flex-col items-center justify-center px-6 text-center'>
       {status === 'loading' && (
-        <p style={{ color: 'var(--text-secondary)' }}>Verifying your email...</p>
+        <p style={{ color: 'var(--text-secondary)' }}>{t('verifyEmail.verifying')}</p>
       )}
       {status === 'success' && (
         <>
           <h1 className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
-            Email Verified!
+            {t('verifyEmail.successTitle')}
           </h1>
           <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
-            Your email has been verified. You now have full access to all features.
+            {t('verifyEmail.successMessage')}
           </p>
           <Link to='/' className='btn-primary mt-6'>
-            Go Home
+            {t('common.goHome')}
           </Link>
         </>
       )}
       {status === 'error' && (
         <>
           <h1 className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
-            Verification Failed
+            {t('verifyEmail.errorTitle')}
           </h1>
           <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
             {errorMessage}
           </p>
           <Link to='/' className='btn-primary mt-6'>
-            Go Home
+            {t('common.goHome')}
           </Link>
         </>
       )}

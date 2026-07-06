@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { Link, useLoaderData, useNavigate, useNavigation } from 'react-router';
+import { Link, useLoaderData, useNavigation } from 'react-router';
 import { recipeApi } from '../api/index.ts';
 import type { RecipeListItem } from '../api/types.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { RecipeCardSkeletonGrid } from '../components/ui/Skeleton.tsx';
-import { AUTHOR_BUTTON_STYLE } from '../components/recipe/RecipeCard.styles.ts';
+import { RecipeCard } from '../components/recipe-list/index.ts';
 import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('HomePage');
@@ -90,48 +90,5 @@ export function HomePage() {
           )}
       </section>
     </div>
-  );
-}
-/**
- * Render a clickable recipe card with an inner author button.
- *
- * Uses `<button>` for the author link instead of `<Link>` to avoid nested
- * `<a>` elements (invalid HTML). The card itself is a `<Link>` for native
- * link behavior (Ctrl+click/new tab), while the author button uses
- * `useNavigate` with `e.stopPropagation()` to prevent card navigation.
- */
-function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
-  const navigate = useNavigate();
-  return (
-    <Link to={`/recipes/${recipe.slug}`} className='card hover:shadow-lg transition-shadow'>
-      <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>{recipe.title}</h3>
-      <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
-        by {recipe.author
-          ? (
-            <button
-              type='button'
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/u/${recipe.author!.username}`);
-              }}
-              className='hover:underline'
-              style={AUTHOR_BUTTON_STYLE}
-            >
-              {recipe.author.displayName || recipe.author.username}
-            </button>
-          )
-          : (
-            'unknown'
-          )}
-      </p>
-      <div
-        className='mt-2 flex items-center gap-2 text-xs'
-        style={{ color: 'var(--text-tertiary)' }}
-      >
-        <span>❤️ {recipe.likeCount}</span>
-        <span>💬 {recipe.commentCount}</span>
-        <span>🍴 {recipe.forkCount}</span>
-      </div>
-    </Link>
   );
 }
