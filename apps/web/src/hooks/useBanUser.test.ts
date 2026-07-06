@@ -62,7 +62,7 @@ describe('useBanUser', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('confirmBan failure: sets error, resets processing, keeps dialog open', async () => {
+  it('confirmBan failure: sets error (key, not server text), resets processing, keeps dialog open', async () => {
     mockBanUser.mockRejectedValue(new Error('Network error'));
     const onSuccess = vi.fn();
     const { result } = renderHook(() => useBanUser(onSuccess));
@@ -73,7 +73,7 @@ describe('useBanUser', () => {
       await result.current.confirmBan('Spam');
     });
     await waitFor(() => {
-      expect(result.current.error).toBe('Network error');
+      expect(result.current.error).toBe('admin.users.banError');
     });
     expect(result.current.processing).toBe(false);
     expect(result.current.banDialogUser).toEqual(testUser);
@@ -106,15 +106,51 @@ describe('useBanUser', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('unban failure: sets error', async () => {
+  it('unban failure: sets error (key, not server text)', async () => {
     mockUnbanUser.mockRejectedValue(new Error('Server error'));
     const { result } = renderHook(() => useBanUser(vi.fn()));
     await act(async () => {
       await result.current.unban('u1');
     });
     await waitFor(() => {
-      expect(result.current.error).toBe('Server error');
+      expect(result.current.error).toBe('admin.users.unbanError');
     });
+  });
+
+  it('unban success: sets processing during request', async () => {
+    let resolvePromise!: (value: unknown) => void;
+    mockUnbanUser.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePromise = resolve;
+      }) as never,
+    );
+    const { result } = renderHook(() => useBanUser(vi.fn()));
+    const unbanPromise = result.current.unban('u1');
+    await waitFor(() => {
+      expect(result.current.processing).toBe(true);
+    });
+    resolvePromise(undefined);
+    await unbanPromise;
+    await waitFor(() => {
+      expect(result.current.processing).toBe(false);
+    });
+  });
+
+  it('unban: rejects duplicate calls while processing', async () => {
+    let resolvePromise!: (value: unknown) => void;
+    mockUnbanUser.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePromise = resolve;
+      }) as never,
+    );
+    const { result } = renderHook(() => useBanUser(vi.fn()));
+    result.current.unban('u1');
+    await waitFor(() => {
+      expect(mockUnbanUser).toHaveBeenCalledTimes(1);
+    });
+    await result.current.unban('u1');
+    expect(mockUnbanUser).toHaveBeenCalledTimes(1);
+    resolvePromise(undefined);
   });
 
   it('clearError clears error', async () => {
@@ -124,7 +160,7 @@ describe('useBanUser', () => {
       await result.current.unban('u1');
     });
     await waitFor(() => {
-      expect(result.current.error).toBe('Server error');
+      expect(result.current.error).toBe('admin.users.unbanError');
     });
     act(() => {
       result.current.clearError();

@@ -4,23 +4,33 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('useBanUser');
 
+interface BanDialogUser {
+  id: string;
+  username: string;
+  displayName: string | null;
+}
+
 /**
  * Return shape of the {@link useBanUser} hook. Exposes the ban dialog state
  * machine plus the actions for banning and unbanning users.
  */
 interface UseBanUserReturn {
-  banDialogUser: { id: string; username: string; displayName: string | null } | null;
+  banDialogUser: BanDialogUser | null;
   processing: boolean;
   error: string | null;
-  openBanDialog: (user: { id: string; username: string; displayName: string | null }) => void;
+  openBanDialog: (user: BanDialogUser) => void;
   confirmBan: (reason: string) => Promise<void>;
   unban: (userId: string) => Promise<void>;
   clearError: () => void;
   closeDialog: () => void;
 }
 
-function getErrorMessage(err: unknown, fallback: string): string {
-  return (err as { message?: string })?.message || fallback;
+/**
+ * Returns only the fallback — never leaks raw backend error messages.
+ * The fallback should be a stable i18n key translated by the caller.
+ */
+function getErrorMessage(_err: unknown, fallback: string): string {
+  return fallback;
 }
 
 /**
@@ -31,14 +41,12 @@ function getErrorMessage(err: unknown, fallback: string): string {
 export function useBanUser(
   onSuccess: (userId: string, isBanned: boolean) => void,
 ): UseBanUserReturn {
-  const [banDialogUser, setBanDialogUser] = useState<
-    { id: string; username: string; displayName: string | null } | null
-  >(null);
+  const [banDialogUser, setBanDialogUser] = useState<BanDialogUser | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const openBanDialog = useCallback(
-    (user: { id: string; username: string; displayName: string | null }) => {
+    (user: BanDialogUser) => {
       setBanDialogUser(user);
       setError(null);
       setProcessing(false);
@@ -69,7 +77,7 @@ export function useBanUser(
       setProcessing(false);
       log.debug({ userId }, 'useBanUser confirmBan completed');
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to ban user.'));
+      setError(getErrorMessage(err, 'admin.users.banError'));
       setProcessing(false);
       log.error({ err, userId }, 'useBanUser confirmBan failed');
     }
@@ -77,18 +85,22 @@ export function useBanUser(
 
   const unban = useCallback(
     async (userId: string) => {
+      if (processing) return;
       log.debug({ userId }, 'useBanUser unban started');
+      setProcessing(true);
       try {
         await adminApi.unbanUser(userId);
         onSuccess(userId, false);
         setError(null);
+        setProcessing(false);
         log.debug({ userId }, 'useBanUser unban completed');
       } catch (err) {
-        setError(getErrorMessage(err, 'Failed to unban user.'));
+        setError(getErrorMessage(err, 'admin.users.unbanError'));
+        setProcessing(false);
         log.error({ err, userId }, 'useBanUser unban failed');
       }
     },
-    [onSuccess],
+    [onSuccess, processing],
   );
 
   return {

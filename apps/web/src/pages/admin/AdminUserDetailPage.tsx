@@ -259,7 +259,7 @@ export function AdminUserDetailPage() {
           className='mb-4 p-3 rounded text-sm'
           style={{ backgroundColor: 'var(--error-bg, #fef2f2)', color: 'var(--error)' }}
         >
-          {banError}
+          {t(banError)}
         </div>
       )}
 

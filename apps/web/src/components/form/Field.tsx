@@ -13,8 +13,8 @@ interface FieldProps {
  */
 export function Field({ label, required, children }: FieldProps) {
   return (
-    <label className='block text-sm font-medium mb-1' style={{ color: 'var(--text-secondary)' }}>
-      <span className='label-text'>
+    <label className='block mb-1' style={{ color: 'var(--text-secondary)' }}>
+      <span className='label-text text-sm font-medium'>
         {label}
         {required && ' *'}
       </span>

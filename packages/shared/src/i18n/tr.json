@@ -197,6 +197,8 @@
   "admin.flushCache": "Önbelleği Temizle",
   "admin.banUser": "Kullanıcıyı Yasakla",
   "admin.unbanUser": "Kullanıcının Yasağını Kaldır",
+  "admin.users.banError": "Kullanıcı yasaklanamadı.",
+  "admin.users.unbanError": "Kullanıcının yasağı kaldırılamadı.",
   "admin.users.banConfirm": "Bu kullanıcıyı yasaklamak istediğinize emin misiniz?",
   "admin.users.deleteConfirm": "Bu kullanıcıyı silmek istediğinize emin misiniz?",
   "admin.recipes.makePrivate": "Gizli Yap",

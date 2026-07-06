@@ -197,6 +197,8 @@
   "admin.flushCache": "Flush Cache",
   "admin.banUser": "Ban User",
   "admin.unbanUser": "Unban User",
+  "admin.users.banError": "Failed to ban user.",
+  "admin.users.unbanError": "Failed to unban user.",
   "admin.users.banConfirm": "Are you sure you want to ban this user?",
   "admin.users.deleteConfirm": "Are you sure you want to delete this user?",
   "admin.recipes.makePrivate": "Make Private",
