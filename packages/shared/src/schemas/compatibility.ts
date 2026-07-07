@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
 import { z } from 'zod';
 
 const BrewMethodEnum = z.enum([

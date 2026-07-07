@@ -52,10 +52,19 @@ const mockUseTranslation = vi.mocked(useTranslation);
 
 let testCurrentUserId = 'user-99';
 
+import type { CommentWithRepliesOutput } from '@brewform/shared/schemas';
+
 const recipeId = 'recipe-1';
 const recipeAuthorId = 'author-1';
 
-const defaultComments = {
+/** The `initialComments` shape expected by `CommentSection` (subset of the
+ * full `PaginatedResponse<CommentWithRepliesOutput>` — no `success`/`requestId`). */
+type InitialComments = {
+  data: CommentWithRepliesOutput[];
+  meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
+};
+
+const defaultComments: InitialComments = {
   data: [],
   meta: { pagination: { total: 0, page: 1, perPage: 10, totalPages: 0 } },
 };
@@ -76,14 +85,22 @@ function makePaginationInitialData(options: {
   page: number;
   perPage: number;
   commentCount: number;
-}) {
-  const comments = Array.from({ length: options.commentCount }, (_, i) => ({
-    id: `comment-init-${i + 1}`,
-    content: `Initial comment ${i + 1}`,
-    authorId: 'user-1',
-    createdAt: new Date(Date.now() - i * 60000).toISOString(),
-    replies: [],
-  }));
+}): InitialComments {
+  const comments: CommentWithRepliesOutput[] = Array.from(
+    { length: options.commentCount },
+    (_, i) => ({
+      id: `comment-init-${i + 1}`,
+      recipeId,
+      content: `Initial comment ${i + 1}`,
+      authorId: 'user-1',
+      parentCommentId: null,
+      createdAt: new Date(Date.now() - i * 60000).toISOString(),
+      updatedAt: new Date(Date.now() - i * 60000).toISOString(),
+      deletedAt: null,
+      author: null,
+      replies: [],
+    }),
+  );
   return {
     data: comments,
     meta: {
@@ -156,9 +173,12 @@ const guestAuth = {
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  sessionError: null as 'network' | 'server' | null,
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
+  refreshUser: vi.fn(),
+  clearSessionError: vi.fn(),
 };
 
 function makeUser(overrides: Partial<{ id: string; isAdmin: boolean }> = {}) {
@@ -178,33 +198,48 @@ const recipeOwnerUser = makeUser({ id: recipeAuthorId });
 const adminUser = makeUser({ id: 'admin-1', isAdmin: true });
 const regularUser = makeUser({ id: 'user-2' });
 
-const topLevelComment = {
+const topLevelComment: CommentWithRepliesOutput = {
   id: 'comment-1',
+  recipeId,
   content: 'Great recipe!',
   authorId: 'user-2',
-  author: { id: 'user-2', username: 'bob', displayName: 'Bob', avatarUrl: null },
+  parentCommentId: null,
   createdAt: '2026-05-09T10:00:00Z',
+  updatedAt: '2026-05-09T10:00:00Z',
+  deletedAt: null,
+  author: { id: 'user-2', username: 'bob', displayName: 'Bob', avatarUrl: null },
   replies: [],
 };
 
-const commentByOwner = {
+const commentByOwner: CommentWithRepliesOutput = {
   id: 'comment-owner',
+  recipeId,
   content: 'My own comment',
   authorId: recipeAuthorId,
-  author: { id: recipeAuthorId, username: 'alice', displayName: 'Alice', avatarUrl: null },
+  parentCommentId: null,
   createdAt: '2026-05-09T09:00:00Z',
+  updatedAt: '2026-05-09T09:00:00Z',
+  deletedAt: null,
+  author: { id: recipeAuthorId, username: 'alice', displayName: 'Alice', avatarUrl: null },
   replies: [],
 };
 
 const replyByAlice = {
   id: 'reply-1',
+  recipeId,
   content: 'Thanks!',
   authorId: recipeAuthorId,
-  author: { id: recipeAuthorId, username: 'alice', displayName: 'Alice', avatarUrl: null },
+  parentCommentId: 'comment-1',
   createdAt: '2026-05-09T11:00:00Z',
+  updatedAt: '2026-05-09T11:00:00Z',
+  deletedAt: null,
+  author: { id: recipeAuthorId, username: 'alice', displayName: 'Alice', avatarUrl: null },
 };
 
-const commentWithReply = { ...topLevelComment, replies: [replyByAlice] };
+const commentWithReply: CommentWithRepliesOutput = {
+  ...topLevelComment,
+  replies: [replyByAlice],
+};
 
 // ── Render helper ──────────────────────────────────────────────────────────
 

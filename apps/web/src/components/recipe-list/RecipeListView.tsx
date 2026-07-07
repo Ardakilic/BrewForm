@@ -8,10 +8,14 @@ import {
 } from '@brewform/shared/constants';
 import { RecipeCardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import type {
+  EquipmentOutput,
+  RecipeListItemOutput,
+  TasteNoteOutput,
+} from '@brewform/shared/schemas';
 import { type TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import type { EquipmentListItem, RecipeListItem, TasteNoteFlatItem } from '../../api/types.ts';
 import { useRecipeFilters } from './useRecipeFilters.ts';
 import { EQUIPMENT_FILTER_TYPES, EQUIPMENT_TYPE_LABELS } from './constants.ts';
 import { ActiveFilterBadge } from './ActiveFilterBadge.tsx';
@@ -23,9 +27,12 @@ const log = createLogger('RecipeListView');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PER_PAGE = 12;
 
-/** Loader-shaped recipes response consumed by {@link RecipeListView}. */
+/** Loader-shaped recipes response consumed by {@link RecipeListView}. Mirrors the runtime
+ * `paginated()` envelope: `{ success, data, meta: { requestId, pagination } }`. Kept as a
+ * permissive interface (optional `pagination.total`) so loaders that strip the envelope
+ * (e.g. `RecipeListPage` returns the full `PaginatedResponse`) remain assignable. */
 export interface RecipeListResponse {
-  data: RecipeListItem[];
+  data: RecipeListItemOutput[];
   meta: { pagination?: { total?: number } };
 }
 /** Props accepted by {@link RecipeListView}. */
@@ -35,9 +42,9 @@ export interface RecipeListViewProps {
   /** Loader response with recipes and optional pagination metadata. */
   recipesResponse: RecipeListResponse;
   /** Full equipment list used to build per-type dropdowns. */
-  equipment: EquipmentListItem[];
+  equipment: EquipmentOutput[];
   /** Flat taste-note list used to populate the multi-select filter. */
-  tasteNotes: TasteNoteFlatItem[];
+  tasteNotes: TasteNoteOutput[];
   /** When `true`, renders an admin-only visibility dropdown. Defaults to `false`. */
   showAdminVisibilityFilter?: boolean;
   /** Slot rendered between the taste-notes filter and the sort selector. */
@@ -105,12 +112,12 @@ export function RecipeListView({
     navigation.location?.pathname === location.pathname;
   const equipmentByType = useMemo(
     () =>
-      EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentListItem[]>>(
+      EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentOutput[]>>(
         (acc, type) => {
           acc[type] = equipment.filter((e) => e.type === type);
           return acc;
         },
-        {} as Record<string, EquipmentListItem[]>,
+        {} as Record<string, EquipmentOutput[]>,
       ),
     [equipment],
   );
@@ -129,7 +136,7 @@ export function RecipeListView({
     () =>
       tasteNotes.map((note) => {
         let depth = 0;
-        let current: TasteNoteFlatItem | undefined = note;
+        let current: TasteNoteOutput | undefined = note;
         const seen = new Set<string>();
         while (current?.parentId && !seen.has(current.id)) {
           seen.add(current.id);

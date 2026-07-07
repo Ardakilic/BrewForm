@@ -46,10 +46,15 @@ vi.mock('../../api/index.ts', () => ({
 }));
 
 import { recipeApi } from '../../api/index.ts';
+import type { RecipeDetailOutput } from '@brewform/shared/schemas';
 import { RecipeComparePage } from './RecipeComparePage.tsx';
 
 const mockRecipeApi = vi.mocked(recipeApi);
 
+/** Minimal `RecipeDetailOutput` mock for the compare page (only the fields the
+ * page reads: `id`, `slug`, `title`, `currentVersion`, `tasteNotes`,
+ * `equipment`). Cast through `unknown` because the full schema has many more
+ * required fields that the compare page does not use. */
 const recipe = {
   id: 'r1',
   slug: 'recipe-1',
@@ -66,7 +71,7 @@ const recipe = {
   },
   tasteNotes: [],
   equipment: [],
-};
+} as unknown as RecipeDetailOutput;
 
 beforeEach(() => {
   vi.clearAllMocks();

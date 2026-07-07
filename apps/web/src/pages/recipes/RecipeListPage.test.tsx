@@ -90,12 +90,44 @@ import { I18nProvider, useTranslation } from '../../contexts/I18nContext.tsx';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
 import { api, coffeeVarietyApi, recipeApi } from '../../api/index.ts';
 import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
+import type {
+  EquipmentOutput,
+  PaginatedResponse,
+  RecipeListItemOutput,
+} from '@brewform/shared/schemas';
 import fc from 'fast-check';
 import { loader, RecipeListPage } from './RecipeListPage.tsx';
 import {
   EQUIPMENT_FILTER_TYPES,
   EQUIPMENT_TYPE_LABELS,
 } from '../../components/recipe-list/constants.ts';
+
+/** Builds an empty `PaginatedResponse<RecipeListItemOutput>` for list mocks. */
+function makeEmptyListResponse(): PaginatedResponse<RecipeListItemOutput> {
+  return {
+    success: true,
+    data: [],
+    meta: { requestId: 'test', pagination: { page: 1, perPage: 12, total: 0, totalPages: 0 } },
+  };
+}
+
+/** Builds a minimal `EquipmentOutput` mock with all required fields. */
+function makeEquipment(overrides: Partial<EquipmentOutput> = {}): EquipmentOutput {
+  return {
+    id: 'e1',
+    name: 'Equipment',
+    type: 'scale_accessory',
+    brand: null,
+    model: null,
+    description: null,
+    createdBy: null,
+    isSystem: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
+    ...overrides,
+  };
+}
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -208,10 +240,12 @@ const defaultAuth = {
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  sessionError: null as 'network' | 'server' | null,
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
   refreshUser: vi.fn(),
+  clearSessionError: vi.fn(),
 };
 
 // Minimal URLSearchParams stub
@@ -224,7 +258,7 @@ function makeSearchParams(init: Record<string, string> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockRecipeApiList.mockResolvedValue({ data: [], meta: {} });
+  mockRecipeApiList.mockResolvedValue(makeEmptyListResponse());
   mockGetEquipmentCached.mockResolvedValue([]);
   mockGetTasteNotesCached.mockResolvedValue([]);
   mockUseTranslation.mockReturnValue(defaultTranslation);
@@ -306,8 +340,8 @@ describe('RecipeListPage — i18n', () => {
   });
 
   it('transitions from loading to loaded state when loader resolves', async () => {
-    let resolveLoader: (value: { data: never[]; meta: Record<string, never> }) => void;
-    const deferred = new Promise<{ data: never[]; meta: Record<string, never> }>((resolve) => {
+    let resolveLoader: (value: PaginatedResponse<RecipeListItemOutput>) => void;
+    const deferred = new Promise<PaginatedResponse<RecipeListItemOutput>>((resolve) => {
       resolveLoader = resolve;
     });
     mockRecipeApiList.mockReturnValueOnce(deferred);
@@ -318,7 +352,7 @@ describe('RecipeListPage — i18n', () => {
     expect(screen.queryByText('Recipes')).not.toBeInTheDocument();
 
     // Resolve the loader
-    resolveLoader!({ data: [], meta: {} });
+    resolveLoader!(makeEmptyListResponse());
 
     // Component renders after loader resolves
     await waitFor(() => {
@@ -374,19 +408,25 @@ describe('RecipeListPage — i18n', () => {
 
   it('renders recipe cards with clickable author link when loader returns data', async () => {
     mockRecipeApiList.mockResolvedValue({
+      success: true,
       data: [{
         id: 'recipe-1',
         slug: 'test-recipe',
         title: 'Test Recipe',
+        authorId: 'u1',
         visibility: 'public',
+        currentVersionId: null,
         likeCount: 5,
         commentCount: 2,
         forkCount: 1,
-        author: { username: 'testuser', displayName: 'Test User' },
-        currentVersion: { brewMethod: 'espresso_machine', drinkType: 'espresso', rating: null },
+        forkedFromId: null,
+        featured: false,
         createdAt: '2025-01-01T00:00:00Z',
+        updatedAt: '2025-01-01T00:00:00Z',
+        deletedAt: null,
+        author: { id: 'u1', username: 'testuser', displayName: 'Test User' },
       }],
-      meta: { pagination: { total: 1 } },
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 12, total: 1, totalPages: 1 } },
     });
 
     renderRecipeListPage();
@@ -405,8 +445,8 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
 
   it('renders a dropdown for each equipment type that has items', async () => {
     mockGetEquipmentCached.mockResolvedValue([
-      { id: 'eq-1', name: 'Acaia Lunar', type: 'scale_accessory', brand: 'Acaia' },
-      { id: 'eq-2', name: 'Fellow Stagg', type: 'kettle', brand: 'Fellow' },
+      makeEquipment({ id: 'eq-1', name: 'Acaia Lunar', type: 'scale_accessory', brand: 'Acaia' }),
+      makeEquipment({ id: 'eq-2', name: 'Fellow Stagg', type: 'kettle', brand: 'Fellow' }),
     ]);
 
     renderRecipeListPage();
@@ -420,7 +460,12 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
 
   it('shows equipment name in the dropdown when equipment is loaded', async () => {
     mockGetEquipmentCached.mockResolvedValue([
-      { id: VALID_UUID, name: 'My Espresso Scale', type: 'scale_accessory', brand: 'Acaia' },
+      makeEquipment({
+        id: VALID_UUID,
+        name: 'My Espresso Scale',
+        type: 'scale_accessory',
+        brand: 'Acaia',
+      }),
     ]);
 
     renderRecipeListPage();
@@ -433,7 +478,12 @@ describe('RecipeListPage — equipment filter (grouped dropdowns)', () => {
   it('shows active equipment filter badge when equipmentId is in URL', async () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: VALID_UUID }));
     mockGetEquipmentCached.mockResolvedValue([
-      { id: VALID_UUID, name: 'Acaia Lunar', type: 'scale_accessory', brand: 'Acaia' },
+      makeEquipment({
+        id: VALID_UUID,
+        name: 'Acaia Lunar',
+        type: 'scale_accessory',
+        brand: 'Acaia',
+      }),
     ]);
 
     renderRecipeListPage();
@@ -540,12 +590,12 @@ describe('RecipeListPage — taste note filter', () => {
     }));
     mockGetTasteNotesCached.mockResolvedValue(sampleTasteNotes);
     mockGetEquipmentCached.mockResolvedValue([
-      {
+      makeEquipment({
         id: '11111111-1111-1111-1111-111111111111',
         name: 'Acaia Lunar',
         type: 'scale_accessory',
         brand: 'Acaia',
-      },
+      }),
     ]);
 
     renderRecipeListPage();
@@ -573,7 +623,7 @@ describe('RecipeListPage — property-based tests', () => {
   function resetToDefaults() {
     cleanup();
     vi.clearAllMocks();
-    mockRecipeApiList.mockResolvedValue({ data: [], meta: {} });
+    mockRecipeApiList.mockResolvedValue(makeEmptyListResponse());
     mockGetEquipmentCached.mockResolvedValue([]);
     mockGetTasteNotesCached.mockResolvedValue([]);
     mockUseTranslation.mockReturnValue(defaultTranslation);
@@ -597,7 +647,19 @@ describe('RecipeListPage — property-based tests', () => {
         async (equipmentList) => {
           resetToDefaults();
           mockGetEquipmentCached.mockResolvedValue(
-            equipmentList.map((e) => ({ ...e, brand: null })),
+            equipmentList.map((e) =>
+              makeEquipment({
+                ...e,
+                brand: null,
+                model: null,
+                description: null,
+                createdBy: null,
+                isSystem: false,
+                createdAt: '2024-01-01T00:00:00Z',
+                updatedAt: '2024-01-01T00:00:00Z',
+                deletedAt: null,
+              })
+            ),
           );
 
           renderRecipeListPage();

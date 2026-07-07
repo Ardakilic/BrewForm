@@ -124,6 +124,18 @@ export const FeedRecipeOutputSchema = RecipeRowSchema.extend({
 export type FeedRecipeOutput = z.infer<typeof FeedRecipeOutputSchema>;
 
 /**
+ * Recipe list-item payload (`recipe/model.ts findMany` / `findCursor`): full recipe
+ * row plus mini author projection `{ id, username, displayName }`. No per-user
+ * overlay (the list endpoint does not compute like/favourite/rating state).
+ *
+ * Structurally identical to `FeedRecipeOutputSchema` — kept as a distinct export
+ * so the list endpoint's contract is named explicitly and can diverge from the
+ * feed endpoint if future enrichment is added.
+ */
+export const RecipeListItemOutputSchema = FeedRecipeOutputSchema;
+export type RecipeListItemOutput = z.infer<typeof RecipeListItemOutputSchema>;
+
+/**
  * Author projection for the recipe detail payload (`recipe/model.ts findById`).
  * Unlike `RecipeAuthorMiniSchema`, this includes `id`.
  */
@@ -193,15 +205,74 @@ const RecipeForkedFromMiniSchema = z.object({
 }).nullable();
 
 /**
- * Recipe detail payload (`recipe/model.ts findById`): full recipe row plus
- * author (with `id`), versions (each with nested taste notes, equipment,
- * additional preparations, version photos, and bean), photos, and forked-from.
+ * Flattened taste-note item returned by the GET /:slugOrId route handler. The
+ * handler spreads the joined `tasteNote` row, then adds `tasteNoteId` (the join
+ * row's foreign key), `rootCategoryName` (resolved from the taste-note root map
+ * for the radar chart), and `intensity` (the join row's intensity value).
+ */
+const RecipeDetailFlatTasteNoteSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  parentId: z.string().nullable(),
+  color: z.string().nullable(),
+  definition: z.string().nullable(),
+  depth: z.number().int(),
+  createdAt: z.string(),
+  deletedAt: z.string().nullable(),
+  tasteNoteId: z.string().nullable(),
+  rootCategoryName: z.string().nullable(),
+  intensity: z.number().int(),
+});
+
+/**
+ * Flattened equipment item returned by the GET /:slugOrId route handler. The
+ * handler spreads the joined `equipment` row and adds `equipmentId` (the join
+ * row's foreign key) so the frontend can reference the equipment without
+ * reaching into the nested object.
+ */
+const RecipeDetailFlatEquipmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  brand: z.string().nullable(),
+  model: z.string().nullable(),
+  description: z.string().nullable(),
+  createdBy: z.string().nullable(),
+  isSystem: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  deletedAt: z.string().nullable(),
+  equipmentId: z.string(),
+});
+
+/**
+ * Recipe detail payload (`recipe/model.ts findById` + per-request overlay
+ * computed by the GET /:slugOrId route handler): full recipe row plus author
+ * (with `id`), versions (each with nested taste notes, equipment, additional
+ * preparations, version photos, and bean), photos, and forked-from. The overlay
+ * fields (`currentVersion`, flattened `tasteNotes`/`equipment`, `bean`,
+ * `versionCount`, `forkedFromSlug`, `userLiked`, `userFavourited`,
+ * `favouriteCount`, `avgRating`, `ratingCount`, `userRating`) are added by the
+ * route handler from `model.getUserLikeStatus`/`getFavouriteCount`/
+ * `getRecipeRatingStats`/`getUserRating` and a taste-note root map.
  */
 export const RecipeDetailOutputSchema = RecipeRowSchema.extend({
   author: RecipeDetailAuthorOutputSchema,
   versions: z.array(RecipeDetailVersionOutputSchema),
   photos: z.array(PhotoOutputSchema),
   forkedFrom: RecipeForkedFromMiniSchema,
+  currentVersion: RecipeDetailVersionOutputSchema.nullable(),
+  tasteNotes: z.array(RecipeDetailFlatTasteNoteSchema),
+  equipment: z.array(RecipeDetailFlatEquipmentSchema),
+  bean: RecipeDetailBeanMiniSchema.nullable(),
+  versionCount: z.number().int(),
+  forkedFromSlug: z.string().nullable(),
+  userLiked: z.boolean(),
+  userFavourited: z.boolean(),
+  favouriteCount: z.number().int(),
+  avgRating: z.number().nullable(),
+  ratingCount: z.number().int(),
+  userRating: z.number().int().nullable(),
 });
 
 export type RecipeDetailOutput = z.infer<typeof RecipeDetailOutputSchema>;

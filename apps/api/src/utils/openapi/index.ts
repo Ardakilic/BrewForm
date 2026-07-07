@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import { z } from 'zod';
 
 /**
@@ -26,6 +25,7 @@ export function jsonRequestBody(
     content: {
       [mediaType]: {
         // hono-openapi v1.3.0's requestBody content schema type doesn't accept zod-openapi's JSON Schema output; cast required (D34 P3).
+        // deno-lint-ignore no-explicit-any
         schema: z.toJSONSchema(schema, { unrepresentable: 'any' }) as any,
       },
     },

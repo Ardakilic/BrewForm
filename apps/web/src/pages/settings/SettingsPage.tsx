@@ -6,18 +6,23 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { api } from '../../api/client.ts';
 import { createLogger } from '@/utils/logger.ts';
+import type { UserPreferences, UserPreferencesOutput } from '@brewform/shared/schemas';
 
-interface Preferences {
-  unitSystem: 'metric' | 'imperial';
-  temperatureUnit: 'celsius' | 'fahrenheit';
-  locale: string;
-  timezone: string;
-  dateFormat: string;
-  emailNotifications: {
-    newFollower: boolean;
-    recipeLiked: boolean;
-    recipeCommented: boolean;
-    followedUserPosted: boolean;
+/** Convert the flat GET response to the nested request shape used by the form. */
+function toUserPreferences(out: UserPreferencesOutput): UserPreferences {
+  return {
+    unitSystem: out.unitSystem as UserPreferences['unitSystem'],
+    temperatureUnit: out.temperatureUnit as UserPreferences['temperatureUnit'],
+    theme: out.theme as UserPreferences['theme'],
+    locale: out.locale,
+    timezone: out.timezone,
+    dateFormat: out.dateFormat as UserPreferences['dateFormat'],
+    emailNotifications: {
+      newFollower: out.newFollower,
+      recipeLiked: out.recipeLiked,
+      recipeCommented: out.recipeCommented,
+      followedUserPosted: out.followedUserPosted,
+    },
   };
 }
 
@@ -25,8 +30,8 @@ const log = createLogger('SettingsPage');
 
 /** Fetches the current user's stored preferences; returns `{ preferences }`. */
 export const loader = async () => {
-  const preferences = await api.get<Preferences>('/preferences');
-  return { preferences };
+  const out = await api.get<UserPreferencesOutput>('/preferences');
+  return { preferences: toUserPreferences(out) };
 };
 
 /**
@@ -40,7 +45,7 @@ export function SettingsPage() {
   const { locale, setLocale, availableLocales, t } = useTranslation();
   const navigate = useNavigate();
   const { preferences } = useLoaderData<typeof loader>();
-  const [prefs, setPrefs] = useState<Preferences>(preferences);
+  const [prefs, setPrefs] = useState<UserPreferences>(preferences);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
@@ -72,7 +77,7 @@ export function SettingsPage() {
         timezone: prefs.timezone,
         dateFormat: prefs.dateFormat,
         emailNotifications: prefs.emailNotifications,
-      } as Record<string, unknown>);
+      });
       setMessage(t('settings.savedMsg'));
       setMessageType('success');
     } catch {
@@ -273,7 +278,11 @@ export function SettingsPage() {
                 </label>
                 <select
                   value={prefs.dateFormat}
-                  onChange={(e) => setPrefs({ ...prefs, dateFormat: e.target.value })}
+                  onChange={(e) =>
+                    setPrefs({
+                      ...prefs,
+                      dateFormat: e.target.value as UserPreferences['dateFormat'],
+                    })}
                   className='input-field w-auto'
                 >
                   <option value='YYYY_MM_DD'>YYYY-MM-DD</option>

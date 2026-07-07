@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /** Structured logging interface with leveled methods and child logger support. */
 export interface Logger {
   level?: string;

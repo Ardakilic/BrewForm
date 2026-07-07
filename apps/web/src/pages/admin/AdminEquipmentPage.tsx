@@ -2,22 +2,15 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import type { EquipmentOutput } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger.ts';
-
-interface EquipmentItem {
-  id: string;
-  name: string;
-  type: string;
-  brand: string | null;
-  model: string | null;
-}
 
 const log = createLogger('AdminEquipmentPage');
 
 /** Admin page: equipment CRUD with inline form; invalidates the static cache on changes. */
 export function AdminEquipmentPage() {
   const { t } = useTranslation();
-  const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
+  const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -32,8 +25,8 @@ export function AdminEquipmentPage() {
   }, []);
 
   useEffect(() => {
-    api.get<EquipmentItem[]>('/admin/equipment').then((data) => {
-      setEquipment(data as EquipmentItem[]);
+    api.get<EquipmentOutput[]>('/admin/equipment').then((data) => {
+      setEquipment(data);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
@@ -49,21 +42,23 @@ export function AdminEquipmentPage() {
     log.debug({ editId }, 'handleSubmit started');
     try {
       if (editId) {
-        const updated = await api.patch<EquipmentItem>(`/admin/equipment/${editId}`, {
+        const updated = await api.patch<EquipmentOutput>(`/admin/equipment/${editId}`, {
           name: form.name.trim(),
           type: form.type.trim(),
           brand: form.brand || undefined,
           model: form.model || undefined,
         } as Record<string, unknown>);
-        setEquipment((prev) => prev.map((eq) => eq.id === editId ? updated as EquipmentItem : eq));
+        setEquipment((prev) =>
+          prev.map((eq) => eq.id === editId ? updated as EquipmentOutput : eq)
+        );
       } else {
-        const created = await api.post<EquipmentItem>('/admin/equipment', {
+        const created = await api.post<EquipmentOutput>('/admin/equipment', {
           name: form.name.trim(),
           type: form.type.trim(),
           brand: form.brand || undefined,
           model: form.model || undefined,
         } as Record<string, unknown>);
-        setEquipment((prev) => [...prev, created as EquipmentItem]);
+        setEquipment((prev) => [...prev, created as EquipmentOutput]);
       }
       resetForm();
       log.debug({ editId }, 'handleSubmit completed');
@@ -92,7 +87,7 @@ export function AdminEquipmentPage() {
     }
   }
 
-  function startEdit(eq: EquipmentItem) {
+  function startEdit(eq: EquipmentOutput) {
     setEditId(eq.id);
     setForm({ name: eq.name, type: eq.type, brand: eq.brand || '', model: eq.model || '' });
     setShowForm(true);

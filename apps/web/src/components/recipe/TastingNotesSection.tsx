@@ -10,13 +10,13 @@ import { useNavigate } from 'react-router';
 
 interface TasteNote {
   id: string;
-  tasteNoteId?: string; // explicit tasteNoteId from API; falls back to id
+  tasteNoteId?: string | null; // explicit tasteNoteId from API; falls back to id
   name: string;
   intensity: number; // 1-3
   parentId: string | null;
   depth: number;
   // The root category name (resolved from hierarchy)
-  rootCategoryName?: string;
+  rootCategoryName?: string | null;
 }
 
 interface TastingNotesSectionProps {

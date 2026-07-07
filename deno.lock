@@ -28,6 +28,7 @@
     "npm:@vitejs/plugin-react@^6.0.3": "6.0.3_vite@8.1.0",
     "npm:@vitest/coverage-v8@^4.1.9": "4.1.9_vitest@4.1.9_jsdom@29.1.1_vite@8.1.0",
     "npm:bcryptjs@^3.0.3": "3.0.3",
+    "npm:drizzle-kit@*": "0.31.10",
     "npm:drizzle-kit@0.31": "0.31.10",
     "npm:drizzle-kit@~0.31.10": "0.31.10",
     "npm:drizzle-orm@~0.45.2": "0.45.2_postgres@3.4.9",
@@ -48,12 +49,15 @@
     "npm:react-router@^8.0.1": "8.0.1_react@19.2.7_react-dom@19.2.7__react@19.2.7",
     "npm:react@^19.2.7": "19.2.7",
     "npm:tailwindcss@^4.3.1": "4.3.1",
+    "npm:tsc@*": "2.0.4",
+    "npm:typescript@*": "6.0.3",
     "npm:typescript@^6.0.3": "6.0.3",
     "npm:vite@*": "8.1.0",
     "npm:vite@^8.1.0": "8.1.0",
     "npm:vitest@*": "4.1.9_@vitest+coverage-v8@4.1.9_jsdom@29.1.1_vite@8.1.0",
     "npm:vitest@^4.1.9": "4.1.9_@vitest+coverage-v8@4.1.9_jsdom@29.1.1_vite@8.1.0",
     "npm:zod-openapi@6": "6.0.0_zod@4.4.3",
+    "npm:zod-openapi@6.0.0": "6.0.0_zod@4.4.3",
     "npm:zod@^4.4.3": "4.4.3"
   },
   "jsr": {
@@ -3400,6 +3404,11 @@
       "dependencies": [
         "punycode"
       ]
+    },
+    "tsc@2.0.4": {
+      "integrity": "sha512-fzoSieZI5KKJVBYGvwbVZs/J5za84f2lSTLPYf6AGiIf43tZ3GNrI1QzTLcjtyDDP4aLxd46RTZq1nQxe7+k5Q==",
+      "deprecated": true,
+      "bin": true
     },
     "tslib@2.8.1": {
       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="

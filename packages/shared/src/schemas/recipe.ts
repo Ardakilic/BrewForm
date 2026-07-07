@@ -198,3 +198,9 @@ export const RecipeNotesSchema = z.object({
 export const RecipeForkSchema = z.object({
   title: z.string().max(200).optional(),
 });
+
+export type RecipeCreate = z.infer<typeof RecipeCreateSchema>;
+export type RecipeUpdate = z.infer<typeof RecipeUpdateSchema>;
+export type RecipeFork = z.infer<typeof RecipeForkSchema>;
+export type RecipeRate = z.infer<typeof RecipeRateSchema>;
+export type RecipeNotes = z.infer<typeof RecipeNotesSchema>;

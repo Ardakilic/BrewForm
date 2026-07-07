@@ -6,33 +6,15 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import type { EquipmentOutput, RecipeWithAuthorOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('EquipmentDetailPage');
-
-interface EquipmentDetail {
-  id: string;
-  name: string;
-  brand: string | null;
-  model: string | null;
-  type: string | null;
-  description: string | null;
-}
-
-interface RecipeEntry {
-  id: string;
-  slug: string;
-  title: string;
-  author?: { username: string; displayName: string | null };
-  currentVersion?: { brewMethod: string; drinkType: string; rating: number | null };
-  likeCount: number;
-  commentCount: number;
-}
 
 /** Displays a single equipment item's details, description, and associated recipes. */
 export function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [equipment, setEquipment] = useState<EquipmentDetail | null>(null);
-  const [recipes, setRecipes] = useState<RecipeEntry[]>([]);
+  const [equipment, setEquipment] = useState<EquipmentOutput | null>(null);
+  const [recipes, setRecipes] = useState<RecipeWithAuthorOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { t } = useTranslation();
@@ -53,8 +35,8 @@ export function EquipmentDetailPage() {
     setError(false);
 
     Promise.all([
-      api.get<EquipmentDetail>(`/equipment/${id}`),
-      api.get<{ data: RecipeEntry[] }>(`/equipment/${id}/recipes?perPage=6`),
+      api.get<EquipmentOutput>(`/equipment/${id}`),
+      api.get<{ data: RecipeWithAuthorOutput[] }>(`/equipment/${id}/recipes?perPage=6`),
     ])
       .then(([equipData, recipesData]) => {
         setEquipment(equipData);
@@ -187,22 +169,9 @@ export function EquipmentDetailPage() {
                   <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
                     {r.title}
                   </h3>
-                  {r.author && (
-                    <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
-                      {t('recipe.focusMode.by')} {r.author.displayName || r.author.username}
-                    </p>
-                  )}
-                  {r.currentVersion && (
-                    <div
-                      className='mt-1 flex flex-wrap gap-1 text-xs'
-                      style={{ color: 'var(--text-tertiary)' }}
-                    >
-                      <span>{r.currentVersion.brewMethod.replace(/_/g, ' ')}</span>
-                      <span>•</span>
-                      <span>{r.currentVersion.drinkType.replace(/_/g, ' ')}</span>
-                      {r.currentVersion.rating && <span>• ★ {r.currentVersion.rating}</span>}
-                    </div>
-                  )}
+                  <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
+                    {t('recipe.focusMode.by')} {r.author.displayName || r.author.username}
+                  </p>
                   <div
                     className='mt-2 flex items-center gap-2 text-xs'
                     style={{ color: 'var(--text-tertiary)' }}

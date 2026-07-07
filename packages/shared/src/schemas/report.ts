@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
 import { z } from 'zod';
 import { REPORT_STATUS_VALUES } from '../constants/index.ts';
 

@@ -1,18 +1,11 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
+import { equipmentApi } from '../../api/index.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import type { EquipmentOutput } from '@brewform/shared/schemas';
+import type { EquipmentType } from '@brewform/shared/types';
 import { createLogger } from '../../utils/logger.ts';
-
-interface EquipmentItem {
-  id: string;
-  name: string;
-  type: string;
-  brand: string | null;
-  model: string | null;
-  createdAt: string;
-}
 
 const log = createLogger('EquipmentListPage');
 
@@ -21,7 +14,7 @@ const log = createLogger('EquipmentListPage');
  * invalidate the static cache so loaders re-fetch fresh data.
  */
 export function EquipmentListPage() {
-  const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
+  const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', type: '', brand: '', model: '' });
@@ -36,8 +29,8 @@ export function EquipmentListPage() {
   }, []);
 
   useEffect(() => {
-    api.get<EquipmentItem[]>('/equipment').then((data) => {
-      setEquipment(data as EquipmentItem[]);
+    equipmentApi.list().then((data) => {
+      setEquipment(data);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
@@ -52,14 +45,14 @@ export function EquipmentListPage() {
     setSaving(true);
     log.debug({}, 'handleCreate started');
     try {
-      const newEq = await api.post<EquipmentItem>('/equipment', {
+      const newEq = await equipmentApi.create({
         name: form.name.trim(),
-        type: form.type.trim(),
+        type: form.type.trim() as EquipmentType,
         brand: form.brand || undefined,
         model: form.model || undefined,
-      } as Record<string, unknown>);
-      setEquipment((prev) => [...prev, newEq as EquipmentItem]);
-      log.debug({ equipmentId: (newEq as EquipmentItem).id }, 'handleCreate completed');
+      });
+      setEquipment((prev) => [...prev, newEq]);
+      log.debug({ equipmentId: newEq.id }, 'handleCreate completed');
       setForm({ name: '', type: '', brand: '', model: '' });
       setShowForm(false);
       invalidateStaticCache();
@@ -78,7 +71,7 @@ export function EquipmentListPage() {
     if (!globalThis.confirm(t('common.delete') + '?')) return;
     log.debug({ equipmentId: id }, 'handleDelete started');
     try {
-      await api.delete(`/equipment/${id}`);
+      await equipmentApi.delete(id);
       setEquipment((prev) => prev.filter((e) => e.id !== id));
       log.debug({ equipmentId: id }, 'handleDelete completed');
       invalidateStaticCache();

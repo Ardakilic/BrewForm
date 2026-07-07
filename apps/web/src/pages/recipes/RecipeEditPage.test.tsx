@@ -86,10 +86,14 @@ vi.mock('../../api/index.ts', () => ({
 }));
 
 import { recipeApi } from '../../api/index.ts';
+import type { RecipeDetailOutput } from '@brewform/shared/schemas';
 import { RecipeEditPage } from './RecipeEditPage.tsx';
 
 const mockRecipeApi = vi.mocked(recipeApi);
 
+/** Minimal `RecipeDetailOutput` fixture cast through `unknown` — the edit
+ * page reads only a subset of fields from `currentVersion` and the top-level
+ * recipe row. */
 const recipe = {
   id: 'r1',
   slug: 'test-recipe',
@@ -144,7 +148,7 @@ const recipe = {
   userLiked: false,
   userFavourited: false,
   favouriteCount: 0,
-};
+} as unknown as RecipeDetailOutput;
 
 beforeEach(() => {
   vi.clearAllMocks();

@@ -468,6 +468,37 @@ const detailBeanArb = fc.option(
   { nil: null },
 );
 
+/** Flattened taste-note item as returned by the GET /:slugOrId route handler. */
+const flatTasteNoteArb = fc.record({
+  id: str,
+  name: str,
+  parentId: nstr,
+  color: nstr,
+  definition: nstr,
+  depth: int,
+  createdAt: ts,
+  deletedAt: fc.option(ts, { nil: null }),
+  tasteNoteId: nstr,
+  rootCategoryName: nstr,
+  intensity: int,
+});
+
+/** Flattened equipment item as returned by the GET /:slugOrId route handler. */
+const flatEquipmentArb = fc.record({
+  id: str,
+  name: str,
+  type: str,
+  brand: nstr,
+  model: nstr,
+  description: nstr,
+  createdBy: nstr,
+  isSystem: bool,
+  createdAt: ts,
+  updatedAt: ts,
+  deletedAt: fc.option(ts, { nil: null }),
+  equipmentId: str,
+});
+
 const detailVersionArb = recipeVersionArb.chain((base) =>
   fc
     .record({
@@ -491,6 +522,18 @@ const recipeDetailArb = recipeRowArb.chain((base) =>
       versions: fc.array(detailVersionArb),
       photos: fc.array(photoArb),
       forkedFrom: forkedFromArb,
+      currentVersion: fc.option(detailVersionArb, { nil: null }),
+      tasteNotes: fc.array(flatTasteNoteArb),
+      equipment: fc.array(flatEquipmentArb),
+      bean: detailBeanArb,
+      versionCount: int,
+      forkedFromSlug: nstr,
+      userLiked: bool,
+      userFavourited: bool,
+      favouriteCount: int,
+      avgRating: nnum,
+      ratingCount: int,
+      userRating: nint,
     })
     .map((extra) => ({ ...base, ...extra }))
 );

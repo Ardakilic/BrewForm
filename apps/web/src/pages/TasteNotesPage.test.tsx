@@ -84,10 +84,10 @@ vi.mock('../contexts/I18nContext', () => ({
   useTranslation: vi.fn(),
 }));
 
-const mockApiGet = vi.fn();
+const mockHierarchyFn = vi.fn();
 vi.mock('../api/index.ts', () => ({
-  api: {
-    get: (...args: unknown[]) => mockApiGet(...args),
+  tasteApi: {
+    hierarchy: (...args: unknown[]) => mockHierarchyFn(...args),
   },
 }));
 
@@ -207,12 +207,12 @@ beforeEach(() => {
   mockLogger.warn.mockClear();
   mockLogger.error.mockClear();
   mockUseTranslation.mockReturnValue(defaultTranslation);
-  mockApiGet.mockResolvedValue(mockHierarchy);
+  mockHierarchyFn.mockResolvedValue(mockHierarchy);
 });
 
 describe('TasteNotesPage — logging', () => {
   it('logs mount and unmount', async () => {
-    mockApiGet.mockResolvedValue(mockHierarchy);
+    mockHierarchyFn.mockResolvedValue(mockHierarchy);
     const { unmount } = render(<TasteNotesPage />);
     await waitFor(() =>
       expect(mockLogger.debug).toHaveBeenCalledWith({}, 'TasteNotesPage mounted')
@@ -226,7 +226,7 @@ describe('TasteNotesPage — logging', () => {
 
 describe('TasteNotesPage — loading state', () => {
   it('renders loading text when data has not loaded yet', () => {
-    mockApiGet.mockReturnValue(new Promise(() => {}));
+    mockHierarchyFn.mockReturnValue(new Promise(() => {}));
 
     render(<TasteNotesPage />);
 
@@ -413,7 +413,7 @@ describe('TasteNotesPage — leaf note chips', () => {
 
 describe('TasteNotesPage — empty/error state', () => {
   it('renders empty state when API returns an empty array', async () => {
-    mockApiGet.mockResolvedValue([]);
+    mockHierarchyFn.mockResolvedValue([]);
 
     render(<TasteNotesPage />);
 
@@ -425,7 +425,7 @@ describe('TasteNotesPage — empty/error state', () => {
   });
 
   it('handles API failure gracefully without crashing', async () => {
-    mockApiGet.mockRejectedValue(new Error('Network error'));
+    mockHierarchyFn.mockRejectedValue(new Error('Network error'));
 
     render(<TasteNotesPage />);
 

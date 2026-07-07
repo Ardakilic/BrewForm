@@ -56,12 +56,16 @@
 
 ## Wave 4 — Independent fillers (anytime)
 
-- [ ] **D42** — Typed web API boundary: replace `Record<string, unknown>` returns with types derived
+- [x] **D42** — Typed web API boundary: replace `Record<string, unknown>` returns with types derived
       from the `schemas/responses/*` schemas (bigger, self-contained).
-- [ ] **D43** — Add `createdAt` to the three recipe join tables (isolated Drizzle migration).
-- [ ] **D35** — Remove untracked lint suppressions in `packages/shared` + api utils/middleware
+      _(resolved 2026-07-07 via wave-4-independent-fillers)_
+- [x] **D43** — Add `createdAt` to the three recipe join tables (isolated Drizzle migration).
+      _(resolved 2026-07-07 via wave-4-independent-fillers)_
+- [x] **D35** — Remove untracked lint suppressions in `packages/shared` + api utils/middleware
       (tiny; could bundle into the D37 change).
-- [ ] **D39** — Remaining test-coverage backfill tiers (ongoing background work after Tier 1).
+      _(resolved 2026-07-07 via wave-4-independent-fillers)_
+- [x] **D39** — Remaining test-coverage backfill tiers (ongoing background work after Tier 1).
+      _(resolved 2026-07-07 via wave-4-independent-fillers)_
 
 ---
 

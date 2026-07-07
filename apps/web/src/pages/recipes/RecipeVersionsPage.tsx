@@ -6,19 +6,9 @@ import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { formatTemperature, formatVolume, formatWeight } from '@brewform/shared/utils';
+import type { RecipeVersionRow } from '@brewform/shared/schemas';
 
 const log = createLogger('RecipeVersionsPage');
-
-interface VersionSummary {
-  id: string;
-  versionNumber: number;
-  brewDate: string;
-  brewMethod: string;
-  groundWeightGrams: number | null;
-  extractionVolumeMl: number | null;
-  extractionTimeSeconds: number | null;
-  temperatureCelsius: number | null;
-}
 
 /**
  * Version-history table for a recipe: per-version brew date, method,
@@ -29,7 +19,7 @@ export function RecipeVersionsPage() {
   const { t } = useTranslation();
   const unitSystem = useUnitSystem();
   const [data, setData] = useState<
-    { title: string; slug: string; versions: VersionSummary[] } | null
+    { title: string; slug: string; versions: RecipeVersionRow[] } | null
   >(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +34,7 @@ export function RecipeVersionsPage() {
     if (!slug) return;
     setLoading(true);
     setData(null);
-    api.get<{ title: string; slug: string; versions: VersionSummary[] }>(
+    api.get<{ title: string; slug: string; versions: RecipeVersionRow[] }>(
       `/recipes/${slug}/versions`,
     )
       .then(setData)

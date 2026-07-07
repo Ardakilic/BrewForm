@@ -8,9 +8,12 @@ import { loader, RecipeDetailPage } from './RecipeDetailPage.tsx';
 // ── Partial mock of react-router: override only useNavigation ─────────────
 
 const { useNavigationM } = vi.hoisted(() => ({
-  useNavigationM: vi.fn(() => ({
-    state: 'idle' as const,
-    location: undefined as { pathname: string } | undefined,
+  useNavigationM: vi.fn((): {
+    state: 'idle' | 'loading' | 'submitting';
+    location: { pathname: string } | undefined;
+  } => ({
+    state: 'idle',
+    location: undefined,
   })),
 }));
 
@@ -112,6 +115,11 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { commentApi, recipeApi } from '../../api/index.ts';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
+import type {
+  CommentWithRepliesOutput,
+  PaginatedResponse,
+  RecipeDetailOutput,
+} from '@brewform/shared/schemas';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -176,19 +184,24 @@ const guestAuth = {
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  sessionError: null as 'network' | 'server' | null,
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
   refreshUser: vi.fn(),
+  clearSessionError: vi.fn(),
 };
 
+/** Minimal `RecipeDetailOutput` fixture cast through `unknown` — the page reads
+ * only a subset of fields, and constructing the full schema object (with
+ * `versions[]`, `forkedFrom`, etc.) would balloon the test for no gain. */
 const sampleRecipe = {
   id: 'recipe-1',
   slug: 'my-espresso',
   title: 'My Espresso',
   visibility: 'public',
   authorId: 'author-1',
-  author: { id: 'author-1', username: 'alice', displayName: 'Alice' },
+  author: { id: 'author-1', username: 'alice', displayName: 'Alice', avatarUrl: null },
   likeCount: 5,
   commentCount: 2,
   forkCount: 1,
@@ -214,11 +227,12 @@ const sampleRecipe = {
     personalNotes: 'Great shot',
     rating: 4,
   },
-};
+} as unknown as RecipeDetailOutput;
 
-const emptyComments = {
+const emptyComments: PaginatedResponse<CommentWithRepliesOutput> = {
+  success: true,
   data: [],
-  meta: { pagination: { total: 0, page: 1, perPage: 20, totalPages: 0 } },
+  meta: { requestId: 'test', pagination: { total: 0, page: 1, perPage: 20, totalPages: 0 } },
 };
 
 // ── Render helper ──────────────────────────────────────────────────────────
@@ -247,7 +261,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
-  mockRecipeApiGet.mockResolvedValue(sampleRecipe as unknown as Record<string, unknown>);
+  mockRecipeApiGet.mockResolvedValue(sampleRecipe);
   mockCommentApiList.mockResolvedValue(emptyComments);
   mockGetTasteNotesCached.mockResolvedValue([]);
   useNavigationM.mockReturnValue({ state: 'idle', location: undefined });
@@ -367,10 +381,12 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
     },
     isAuthenticated: true,
     isLoading: false,
+    sessionError: null,
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
     refreshUser: vi.fn(),
+    clearSessionError: vi.fn(),
   };
 
   const ownerAuth = {
@@ -386,10 +402,12 @@ describe('RecipeDetailPage — Fork Recipe button visibility', () => {
     },
     isAuthenticated: true,
     isLoading: false,
+    sessionError: null,
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
     refreshUser: vi.fn(),
+    clearSessionError: vi.fn(),
   };
 
   it('Fork Recipe button shown for authenticated non-owner', async () => {
@@ -439,10 +457,12 @@ describe('RecipeDetailPage — owner actions', () => {
     },
     isAuthenticated: true,
     isLoading: false,
+    sessionError: null,
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
     refreshUser: vi.fn(),
+    clearSessionError: vi.fn(),
   };
 
   it('shows Edit button for the recipe owner — English', async () => {
@@ -514,10 +534,12 @@ const nonOwnerAuth = {
   },
   isAuthenticated: true,
   isLoading: false,
+  sessionError: null,
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
   refreshUser: vi.fn(),
+  clearSessionError: vi.fn(),
 };
 
 describe('RecipeDetailPage — Social_Actions_Card layout', () => {
@@ -587,10 +609,12 @@ describe('RecipeDetailPage — Fork_Card visibility', () => {
       },
       isAuthenticated: true,
       isLoading: false,
+      sessionError: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
+      clearSessionError: vi.fn(),
     };
     mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
 
@@ -693,10 +717,12 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
     },
     isAuthenticated: true,
     isLoading: false,
+    sessionError: null,
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
     refreshUser: vi.fn(),
+    clearSessionError: vi.fn(),
   };
 
   it('guest (isAuthenticated=false): recipe notes section is NOT rendered', async () => {
@@ -733,10 +759,12 @@ describe('RecipeDetailPage — Recipe_Notes_Section visibility', () => {
       },
       isAuthenticated: true,
       isLoading: false,
+      sessionError: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
+      clearSessionError: vi.fn(),
     };
     mockUseAuth.mockReturnValue(ownerAuth as ReturnType<typeof useAuth>);
 

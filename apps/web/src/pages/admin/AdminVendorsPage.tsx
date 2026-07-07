@@ -2,20 +2,14 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type { VendorOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminVendorsPage');
-
-interface Vendor {
-  id: string;
-  name: string;
-  website: string | null;
-  description: string | null;
-}
 
 /** Admin page: vendor CRUD with inline form. */
 export function AdminVendorsPage() {
   const { t } = useTranslation();
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendors, setVendors] = useState<VendorOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -30,8 +24,8 @@ export function AdminVendorsPage() {
   }, []);
 
   useEffect(() => {
-    api.get<Vendor[]>('/admin/vendors').then((data) => {
-      setVendors(data as Vendor[]);
+    api.get<VendorOutput[]>('/admin/vendors').then((data) => {
+      setVendors(data);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
@@ -42,19 +36,19 @@ export function AdminVendorsPage() {
     setSaving(true);
     try {
       if (editId) {
-        const updated = await api.patch<Vendor>(`/admin/vendors/${editId}`, {
+        const updated = await api.patch<VendorOutput>(`/admin/vendors/${editId}`, {
           name: form.name.trim(),
           website: form.website || undefined,
           description: form.description || undefined,
-        } as Record<string, unknown>);
-        setVendors((prev) => prev.map((v) => v.id === editId ? updated as Vendor : v));
+        });
+        setVendors((prev) => prev.map((v) => v.id === editId ? updated : v));
       } else {
-        const created = await api.post<Vendor>('/admin/vendors', {
+        const created = await api.post<VendorOutput>('/admin/vendors', {
           name: form.name.trim(),
           website: form.website || undefined,
           description: form.description || undefined,
-        } as Record<string, unknown>);
-        setVendors((prev) => [...prev, created as Vendor]);
+        });
+        setVendors((prev) => [...prev, created]);
       }
       resetForm();
     } catch {
@@ -72,7 +66,7 @@ export function AdminVendorsPage() {
     }
   }
 
-  function startEdit(vendor: Vendor) {
+  function startEdit(vendor: VendorOutput) {
     setEditId(vendor.id);
     setForm({
       name: vendor.name,

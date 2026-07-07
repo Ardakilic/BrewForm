@@ -4,7 +4,7 @@ import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { HomePage, loader } from './HomePage.tsx';
 import { I18nProvider } from '../contexts/I18nContext.tsx';
-import type { RecipeListItem } from '../api/types.ts';
+import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 
 vi.mock('../api/index.ts', () => ({
   recipeApi: {
@@ -17,7 +17,33 @@ import { recipeApi } from '../api/index.ts';
 const mockRecipeApi = vi.mocked(recipeApi);
 
 const defaultPagination = { page: 1, perPage: 6, total: 0, totalPages: 0 };
-const emptyResponse = { data: [], meta: { pagination: defaultPagination } };
+const emptyResponse = {
+  success: true as const,
+  data: [],
+  meta: { requestId: 'test', pagination: defaultPagination },
+};
+
+/** Builds a `RecipeListItemOutput` mock with all required fields. */
+function makeRecipe(overrides: Partial<RecipeListItemOutput> = {}): RecipeListItemOutput {
+  return {
+    id: 'r1',
+    slug: 'test-recipe',
+    title: 'Test Recipe',
+    authorId: 'a1',
+    visibility: 'public',
+    currentVersionId: null,
+    likeCount: 0,
+    commentCount: 0,
+    forkCount: 0,
+    forkedFromId: null,
+    featured: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
+    author: { id: 'a1', username: 'testuser', displayName: 'Test User' },
+    ...overrides,
+  };
+}
 
 function renderHomePage() {
   const router = createMemoryRouter(
@@ -91,8 +117,9 @@ describe('HomePage — i18n', () => {
 
   it('renders recipe cards with clickable author link when API returns data', async () => {
     mockRecipeApi.list.mockResolvedValue({
+      success: true,
       data: [
-        {
+        makeRecipe({
           id: 'recipe-1',
           slug: 'test-recipe',
           title: 'Test Recipe',
@@ -100,9 +127,9 @@ describe('HomePage — i18n', () => {
           commentCount: 2,
           forkCount: 1,
           author: { id: 'a1', username: 'testuser', displayName: 'Test User' },
-        } as RecipeListItem,
+        }),
       ],
-      meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
     });
 
     renderHomePage();
@@ -113,19 +140,22 @@ describe('HomePage — i18n', () => {
   });
 
   it('renders "unknown" author when author is null', async () => {
+    // `author: null` tests RecipeCard's defensive fallback; the shared
+    // schema types `author` as non-nullable (recipes.authorId is NOT NULL
+    // and users are soft-deleted), so cast to satisfy the type-checker.
     mockRecipeApi.list.mockResolvedValue({
+      success: true,
       data: [
         {
+          ...makeRecipe(),
           id: 'recipe-2',
           slug: 'no-author',
           title: 'Anonymous Recipe',
           likeCount: 3,
-          commentCount: 0,
-          forkCount: 0,
           author: null,
-        } as RecipeListItem,
+        } as unknown as RecipeListItemOutput,
       ],
-      meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
     });
 
     renderHomePage();
@@ -139,22 +169,22 @@ describe('HomePage — i18n', () => {
   it('extracts data from the response envelope for both latest and popular sections', async () => {
     mockRecipeApi.list
       .mockResolvedValueOnce({
+        success: true,
         data: [
-          {
+          makeRecipe({
             id: 'latest-1',
             slug: 'latest',
             title: 'Latest Brew',
             likeCount: 1,
-            commentCount: 0,
-            forkCount: 0,
             author: { id: 'u1', username: 'u1', displayName: 'User 1' },
-          } as RecipeListItem,
+          }),
         ],
-        meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+        meta: { requestId: 'test', pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
       })
       .mockResolvedValueOnce({
+        success: true,
         data: [
-          {
+          makeRecipe({
             id: 'popular-1',
             slug: 'popular',
             title: 'Popular Brew',
@@ -162,9 +192,9 @@ describe('HomePage — i18n', () => {
             commentCount: 3,
             forkCount: 2,
             author: { id: 'u2', username: 'u2', displayName: 'User 2' },
-          } as RecipeListItem,
+          }),
         ],
-        meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+        meta: { requestId: 'test', pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
       });
 
     renderHomePage();
@@ -185,18 +215,17 @@ describe('HomePage — i18n', () => {
 
   it('renders recipes without skeleton placeholders after loader resolves', async () => {
     mockRecipeApi.list.mockResolvedValue({
+      success: true,
       data: [
         {
+          ...makeRecipe(),
           id: '1',
           slug: 'test',
           title: 'Loaded Recipe',
-          likeCount: 0,
-          commentCount: 0,
-          forkCount: 0,
           author: null,
-        } as RecipeListItem,
+        } as unknown as RecipeListItemOutput,
       ],
-      meta: { pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 6, total: 1, totalPages: 1 } },
     });
 
     renderHomePage();

@@ -60,7 +60,7 @@ describe('RecipeNotesSection', () => {
   });
 
   it('calls saveNotes API when save button is clicked', async () => {
-    mockRecipeApi.saveNotes.mockResolvedValue({});
+    mockRecipeApi.saveNotes.mockResolvedValue({ message: 'Notes saved' });
 
     render(<RecipeNotesSection recipeId='recipe-1' initialNotes='Notes to save' />);
 
@@ -73,7 +73,7 @@ describe('RecipeNotesSection', () => {
   });
 
   it('shows saved message after successful save', async () => {
-    mockRecipeApi.saveNotes.mockResolvedValue({});
+    mockRecipeApi.saveNotes.mockResolvedValue({ message: 'Notes saved' });
 
     render(<RecipeNotesSection recipeId='recipe-1' initialNotes='' />);
 

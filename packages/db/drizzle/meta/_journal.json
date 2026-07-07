@@ -57,6 +57,13 @@
       "when": 1782054390566,
       "tag": "0007_moaning_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783371035825,
+      "tag": "0008_stiff_bruce_banner",
+      "breakpoints": true
     }
   ]
 }

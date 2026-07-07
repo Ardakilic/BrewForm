@@ -3,7 +3,7 @@
 > Status ledger for technical-debt items. Issues categorised by severity and area.
 > Last full audit: **2026-07-04** (plan-by-plan verification against `main`). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
 
-**Currently open: D35, D39 (Tier 2/3), D42, D43.** Everything else below is resolved and kept for history. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40.)_
+**All debt items resolved.** _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`.)_
 
 ---
 
@@ -81,9 +81,10 @@
 - **Resolution (2026-07-06 via Wave 2)**: P2 scope complete — all twelve `any` locations replaced with shared-schema-inferred / Drizzle relation-row types. P3 stretch (library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`) documented with justification comments rather than removed, pending clean typed alternatives in the upstream libraries.
 - **PRD**: [`plans/D34-residual-any-elimination.md`](D34-residual-any-elimination.md)
 
-### 2.7 Untracked Lint Suppressions — **OPEN** (new 2026-07-04)
+### 2.7 Untracked Lint Suppressions — **RESOLVED** (2026-07-07 via wave-4-independent-fillers)
 - **Files**: file-level `deno-lint-ignore-file no-explicit-any require-await` in `packages/shared/src/schemas/compatibility.ts:1`, `schemas/report.ts:1`, `logger/index.ts:1`, `logger/types.ts:1`; `apps/api/src/utils/openapi/index.ts:1` (+ `as any` at `:28`); line-level `no-unused-vars` in `middleware/cors.ts:5`, `middleware/requestId.ts:12`.
 - **Issue**: file-wide suppressions disable rules for all future edits to those files; none were in D09's audited baseline.
+- **Fix**: Deleted 6 vestigial file-level directives (rules are in `deno.json` `rules.exclude`); narrowed `openapi/index.ts` to line-level with justification; deleted dead `const log` + import in `cors.ts`/`requestId.ts`. Production source now has zero `deno-lint-ignore-file` directives.
 - **PRD**: [`plans/D35-untracked-lint-suppressions.md`](D35-untracked-lint-suppressions.md)
 
 ---
@@ -167,9 +168,10 @@
 - **Verified fix**: all 15 admin pages + 5 user-facing pages + 2 partial recipe pages now use `t()` for user-visible strings; ~175 new i18n keys added to both en.json and tr.json; deterministic bidirectional parity test enforced; per-page tr-locale spot-check tests added.
 - **PRD**: [`plans/D40-complete-i18n.md`](D40-complete-i18n.md)
 
-### 4.6 `Record<string, unknown>` in API Types — **OPEN**
+### 4.6 `Record<string, unknown>` in API Types — **RESOLVED** (2026-07-07 via wave-4-independent-fillers)
 - **File**: `apps/web/src/api/index.ts` — 25+ occurrences (`:30-140`: users, recipes, setups, beans, equipment, taste, follow).
 - **Now unblocked**: D25 created response Zod schemas in `packages/shared/src/schemas/responses/*` — types can be derived via `z.infer` instead of hand-written.
+- **Fix**: Replaced all `Record<string, unknown>` with shared `z.infer`-derived types; deleted `apps/web/src/api/types.ts` (185 lines of shadow types); added web `tsc --noEmit` type-check to CI; extended `RecipeDetailOutputSchema` with per-request overlay fields; added `RecipeListItemOutputSchema` and `PaginatedResponse<T>` shared types.
 - **PRD**: [`plans/D42-typed-web-api-boundary.md`](D42-typed-web-api-boundary.md)
 
 ---
@@ -191,8 +193,9 @@
 - **Verified fix**: 3 recipe composites at `schema.ts:149/158/166` plus cross-table composites.
 - **PRD**: [`plans/D23-add-composite-indexes.md`](D23-add-composite-indexes.md)
 
-### 5.5 Missing `createdAt` on Join Tables — **OPEN** (scope corrected)
+### 5.5 Missing `createdAt` on Join Tables — **RESOLVED** (2026-07-07 via wave-4-independent-fillers)
 - **Audit correction (2026-07-04)**: `user_follow`, `user_recipe_like`, `user_recipe_favourite`, `user_recipe_rating` **already have** `createdAt` (added with the D23-era index work). Remaining: `recipe_taste_note` (`schema.ts:241`), `recipe_equipment` (`:263`), `recipe_version_photo` (`:330`).
+- **Fix**: Added `createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()` to all three tables; generated migration `0008_stiff_bruce_banner.sql`; added column-existence test (`schema-columns.test.ts`) and `createdAt` assertions to `model.create.test.ts`.
 - **PRD**: [`plans/D43-join-table-timestamps.md`](D43-join-table-timestamps.md)
 
 ---
@@ -224,10 +227,10 @@
 - **Status: Resolved** (2026-07-06 via wave-3-frontend-structure; same fix as §4.2)
 - **PRD**: [`plans/D37-consolidate-error-pages.md`](D37-consolidate-error-pages.md)
 
-### 6.6 Test Coverage Backfill — **PARTIAL** (Tier 1 resolved 2026-07-06; Tier 2/3 open)
+### 6.6 Test Coverage Backfill — **RESOLVED** (Tier 1 2026-07-06; Tier 2/3 2026-07-07 via wave-4-independent-fillers)
 - **Scope**: API models with zero tests (equipment — held D03's SQL; vendor — held D01's bug; badge/bean/comment/follow/photo/preference/qrcode/report/setup), `recipe-list/*` components (shipped by D11 untested), `RequireAuth`, plus P3 tiers (route layers, utils, web pages/components, shared schemas). `sanitize.ts` excluded — owned by D38.
 - **Tier 1 (resolved 2026-07-06 via Wave 2)**: `equipment/model.test.ts`, `vendor/model.test.ts`, `recipe-list/*` component tests, and `RequireAuth.test.tsx` all landed; D03 cites `equipment/model.test.ts` as its regression net.
-- **Tier 2/3 (open)**: remaining API models, route layers, utils, web pages/components/hooks/contexts, and shared schema tests — tracked as ongoing background work.
+- **Tier 2/3 (resolved 2026-07-07 via wave-4-independent-fillers)**: 9 API model tests, 9 API route tests, 4 API util tests, 4 web page tests, 6 web component tests, 5 web hook/util/context tests, and 6 shared input schema tests — 37 new test files total.
 - **PRD**: [`plans/D39-test-coverage-backfill.md`](D39-test-coverage-backfill.md)
 
 ---
@@ -259,6 +262,8 @@ Also resolved without a ledger section above: **D21** rating-scale CHECK constra
 
 **Recently resolved (2026-07-05, openspec change `wave-1-correctness-security`):** D41 (admin user mutation soft-delete guards + sibling sweep + setRole route try/catch + describeRoute) and D38 (report rate limit + sanitizer tests + AuthContext error surfacing + SessionRestoreBanner). See §1.5 and §1.6 above.
 
-**Recently resolved (2026-07-06, Wave 2):** D03 (raw SQL in `equipment/model.ts` rewritten with Drizzle query builder; count-branch predicate dedup folded in), D34 (residual `any` elimination — P2 scope complete, P3 stretch documented), and D39 Tier 1 (equipment/vendor model tests, `recipe-list/*` component tests, `RequireAuth` test). D39 Tier 2/3 remain open. See §1.3, §2.6, and §6.6 above.
+**Recently resolved (2026-07-06, Wave 2):** D03 (raw SQL in `equipment/model.ts` rewritten with Drizzle query builder; count-branch predicate dedup folded in), D34 (residual `any` elimination — P2 scope complete, P3 stretch documented), and D39 Tier 1 (equipment/vendor model tests, `recipe-list/*` component tests, `RequireAuth` test). See §1.3, §2.6, and §6.6 above.
 
-**Sequencing notes**: D39 Tier 1 (equipment model tests) before D03; D37 before D40's NotFoundPage conversion; D36's `BanDialog` before/with D40's admin-page conversion.
+**Recently resolved (2026-07-07, Wave 4 — `wave-4-independent-fillers`):** D35 (untracked lint suppressions — deleted 6 vestigial file-level directives, narrowed `openapi/index.ts` to line-level, deleted dead logger code in `cors.ts`/`requestId.ts`), D42 (typed web API boundary — replaced all `Record<string, unknown>` with shared `z.infer`-derived types, deleted `api/types.ts`, added web `tsc --noEmit` to CI, extended `RecipeDetailOutputSchema` with per-request overlay), D43 (`createdAt` on 3 remaining join tables — migration `0008`), and D39 Tier 2/3 (37 new test files: 9 API model + 9 API route + 4 API util + 4 web page + 6 web component + 5 web hook/util/context + 6 shared schema tests). All four items are independent and were bundled for ROADMAP hygiene. See §2.7, §4.6, §5.5, and §6.6 above.
+
+**Sequencing notes**: D39 Tier 1 (equipment model tests) before D03; D37 before D40's NotFoundPage conversion; D36's `BanDialog` before/with D40's admin-page conversion. Wave 4's four items had no sequencing dependency on each other.

@@ -93,6 +93,16 @@ import { I18nProvider, useTranslation } from '../../contexts/I18nContext.tsx';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
 import { recipeApi } from '../../api/index.ts';
 import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
+import type { PaginatedResponse, RecipeListItemOutput } from '@brewform/shared/schemas';
+
+/** Builds an empty `PaginatedResponse<RecipeListItemOutput>` for starred-list mocks. */
+function makeEmptyStarredResponse(): PaginatedResponse<RecipeListItemOutput> {
+  return {
+    success: true,
+    data: [],
+    meta: { requestId: 'test', pagination: { page: 1, perPage: 12, total: 0, totalPages: 0 } },
+  };
+}
 import { loader, StarredRecipesPage } from './StarredRecipesPage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
@@ -181,9 +191,12 @@ const defaultAuth = {
   },
   isAuthenticated: true,
   isLoading: false,
+  sessionError: null as 'network' | 'server' | null,
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
+  refreshUser: vi.fn(),
+  clearSessionError: vi.fn(),
 };
 
 // Minimal URLSearchParams stub
@@ -196,7 +209,7 @@ function makeSearchParams(init: Record<string, string> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockRecipeApiStarred.mockResolvedValue({ data: [], meta: { pagination: { total: 0 } } });
+  mockRecipeApiStarred.mockResolvedValue(makeEmptyStarredResponse());
   mockGetEquipmentCached.mockResolvedValue([]);
   mockGetTasteNotesCached.mockResolvedValue([]);
   mockUseTranslation.mockReturnValue(defaultTranslation);
@@ -249,25 +262,27 @@ describe('StarredRecipesPage', () => {
 
   it('renders recipe cards with clickable author link when API returns data', async () => {
     mockRecipeApiStarred.mockResolvedValue({
+      success: true,
       data: [
         {
           id: 'recipe-1',
           slug: 'test-recipe',
           title: 'Test Recipe',
+          authorId: 'u1',
           visibility: 'public',
+          currentVersionId: null,
           likeCount: 5,
           commentCount: 2,
           forkCount: 1,
-          author: { username: 'testuser', displayName: 'Test User' },
-          currentVersion: {
-            brewMethod: 'espresso_machine',
-            drinkType: 'espresso',
-            rating: null,
-          },
+          forkedFromId: null,
+          featured: false,
           createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+          deletedAt: null,
+          author: { id: 'u1', username: 'testuser', displayName: 'Test User' },
         },
       ],
-      meta: { pagination: { total: 1 } },
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 12, total: 1, totalPages: 1 } },
     });
 
     renderStarredPage();
@@ -293,13 +308,8 @@ describe('StarredRecipesPage', () => {
   });
 
   it('transitions from loading to loaded state when loader resolves', async () => {
-    let resolveLoader: (
-      value: { data: never[]; meta: { pagination: { total: number } } },
-    ) => void;
-    const deferred = new Promise<{
-      data: never[];
-      meta: { pagination: { total: number } };
-    }>((resolve) => {
+    let resolveLoader: (value: PaginatedResponse<RecipeListItemOutput>) => void;
+    const deferred = new Promise<PaginatedResponse<RecipeListItemOutput>>((resolve) => {
       resolveLoader = resolve;
     });
     mockRecipeApiStarred.mockReturnValueOnce(deferred);
@@ -311,7 +321,7 @@ describe('StarredRecipesPage', () => {
       screen.queryByRole('heading', { name: 'Starred Recipes' }),
     ).not.toBeInTheDocument();
 
-    resolveLoader!({ data: [], meta: { pagination: { total: 0 } } });
+    resolveLoader!(makeEmptyStarredResponse());
 
     await waitFor(() => {
       expect(

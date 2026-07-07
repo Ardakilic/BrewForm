@@ -1,15 +1,41 @@
 import type { AuthUser } from '@brewform/shared/types';
-import { api, ApiError } from './client.ts';
 import type {
-  CommentData,
-  EquipmentListItem,
-  RateResponse,
-  RecipeDetailResponse,
-  RecipeListItem,
-  TasteNoteFlatItem,
-} from './types.ts';
+  BeanCreate,
+  BeanOutput,
+  BeanUpdate,
+  CommentOutput,
+  CommentWithRepliesOutput,
+  EquipmentCreate,
+  EquipmentOutput,
+  EquipmentUpdate,
+  FollowerListItemOutput,
+  FollowingListItemOutput,
+  FollowOutput,
+  PaginatedResponse,
+  PublicUserOutput,
+  RecipeCreate,
+  RecipeDetailOutput,
+  RecipeFork,
+  RecipeListItemOutput,
+  RecipeNotes,
+  RecipeUpdate,
+  SetupCreate,
+  SetupOutput,
+  SetupUpdate,
+  TasteNoteNodeOutput,
+  TasteNoteOutput,
+  UserProfileUpdate,
+} from '@brewform/shared/schemas';
+import { api, ApiError } from './client.ts';
 
 export { api, ApiError };
+
+/** Rate-route response: `{ rating, avgRating, ratingCount }` returned by POST /recipes/:id/rate. */
+export type RateResponse = {
+  rating: number;
+  avgRating: number | null;
+  ratingCount: number;
+};
 
 export const authApi = {
   register: (data: { email: string; username: string; password: string; displayName?: string }) =>
@@ -28,71 +54,62 @@ export const authApi = {
 
 export const userApi = {
   me: () => api.get<AuthUser>('/users/me'),
-  updateProfile: (data: Record<string, unknown>) => api.patch<AuthUser>('/users/me', data),
+  updateProfile: (data: UserProfileUpdate) => api.patch<AuthUser>('/users/me', data),
   deleteAccount: () => api.delete<{ message: string }>('/users/me'),
-  getProfile: (username: string) => api.get<Record<string, unknown>>(`/users/${username}`),
+  getProfile: (username: string) => api.get<PublicUserOutput>(`/users/${username}`),
 };
 
 export const recipeApi = {
   list: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return api.getWithMeta<{ data: RecipeListItem[]; meta: { pagination?: { total: number } } }>(
-      `/recipes${query}`,
-    );
+    return api.getWithMeta<PaginatedResponse<RecipeListItemOutput>>(`/recipes${query}`);
   },
   starred: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
-    return api.getWithMeta<{ data: RecipeListItem[]; meta: { pagination?: { total: number } } }>(
-      `/recipes/starred${query}`,
-    );
+    return api.getWithMeta<PaginatedResponse<RecipeListItemOutput>>(`/recipes/starred${query}`);
   },
-  get: (slugOrId: string) => api.get<RecipeDetailResponse>(`/recipes/${slugOrId}`),
-  create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/recipes', data),
-  update: (id: string, data: Record<string, unknown>) =>
-    api.patch<Record<string, unknown>>(`/recipes/${id}`, data),
+  get: (slugOrId: string) => api.get<RecipeDetailOutput>(`/recipes/${slugOrId}`),
+  create: (data: RecipeCreate) => api.post<RecipeDetailOutput>('/recipes', data),
+  update: (id: string, data: RecipeUpdate) => api.patch<RecipeDetailOutput>(`/recipes/${id}`, data),
   delete: (id: string) => api.delete<{ message: string }>(`/recipes/${id}`),
   fork: (id: string, title?: string) =>
-    api.post<Record<string, unknown>>(`/recipes/${id}/fork`, { title }),
-  compare: (id1: string, id2: string) =>
-    api.get<Record<string, unknown>>(`/recipes/compare/${id1}/${id2}`),
-  like: (id: string) => api.post<Record<string, unknown>>(`/recipes/${id}/like`, {}),
-  favourite: (id: string) => api.post<Record<string, unknown>>(`/recipes/${id}/favourite`, {}),
-  feature: (id: string) => api.post<Record<string, unknown>>(`/recipes/${id}/feature`, {}),
+    api.post<RecipeDetailOutput>(`/recipes/${id}/fork`, { title } as RecipeFork),
+  like: (id: string) => api.post<{ liked: boolean }>(`/recipes/${id}/like`, {}),
+  favourite: (id: string) => api.post<{ favourited: boolean }>(`/recipes/${id}/favourite`, {}),
+  feature: (id: string) => api.post<{ featured: boolean }>(`/recipes/${id}/feature`, {}),
   rate: (id: string, rating: number) => api.post<RateResponse>(`/recipes/${id}/rate`, { rating }),
   saveNotes: (id: string, notes: string) =>
-    api.post<Record<string, unknown>>(`/recipes/${id}/notes`, { notes }),
+    api.post<{ message: string }>(`/recipes/${id}/notes`, { notes } as RecipeNotes),
 };
 
 export const tasteApi = {
-  hierarchy: () => api.get<Record<string, unknown>>('/taste-notes/hierarchy'),
+  hierarchy: () => api.get<TasteNoteNodeOutput[]>('/taste-notes/hierarchy'),
   search: (query: string) =>
-    api.get<TasteNoteFlatItem[]>(`/taste-notes/search?q=${encodeURIComponent(query)}`),
-  flat: () => api.get<TasteNoteFlatItem[]>('/taste-notes/flat'),
+    api.get<TasteNoteOutput[]>(`/taste-notes/search?q=${encodeURIComponent(query)}`),
+  flat: () => api.get<TasteNoteOutput[]>('/taste-notes/flat'),
 };
 
 export const setupApi = {
-  list: () => api.get<Record<string, unknown>[]>('/setups'),
-  create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/setups', data),
-  get: (id: string) => api.get<Record<string, unknown>>(`/setups/${id}`),
-  update: (id: string, data: Record<string, unknown>) =>
-    api.patch<Record<string, unknown>>(`/setups/${id}`, data),
+  list: () => api.get<SetupOutput[]>('/setups'),
+  create: (data: SetupCreate) => api.post<SetupOutput>('/setups', data),
+  get: (id: string) => api.get<SetupOutput>(`/setups/${id}`),
+  update: (id: string, data: SetupUpdate) => api.patch<SetupOutput>(`/setups/${id}`, data),
   delete: (id: string) => api.delete<{ message: string }>(`/setups/${id}`),
 };
 
 export const beanApi = {
-  list: () => api.get<Record<string, unknown>[]>('/beans'),
-  get: (id: string) => api.get<Record<string, unknown>>(`/beans/${id}`),
-  create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/beans', data),
-  update: (id: string, data: Record<string, unknown>) =>
-    api.patch<Record<string, unknown>>(`/beans/${id}`, data),
+  list: () => api.get<BeanOutput[]>('/beans'),
+  get: (id: string) => api.get<BeanOutput>(`/beans/${id}`),
+  create: (data: BeanCreate) => api.post<BeanOutput>('/beans', data),
+  update: (id: string, data: BeanUpdate) => api.patch<BeanOutput>(`/beans/${id}`, data),
   delete: (id: string) => api.delete<{ message: string }>(`/beans/${id}`),
 };
 
 export const equipmentApi = {
-  list: () => api.get<EquipmentListItem[]>('/equipment'),
-  create: (data: Record<string, unknown>) => api.post<Record<string, unknown>>('/equipment', data),
-  update: (id: string, data: Record<string, unknown>) =>
-    api.patch<Record<string, unknown>>(`/equipment/${id}`, data),
+  list: () => api.get<EquipmentOutput[]>('/equipment'),
+  create: (data: EquipmentCreate) => api.post<EquipmentOutput>('/equipment', data),
+  update: (id: string, data: EquipmentUpdate) =>
+    api.patch<EquipmentOutput>(`/equipment/${id}`, data),
   delete: (id: string) => api.delete<{ message: string }>(`/equipment/${id}`),
 };
 
@@ -135,24 +152,19 @@ export const adminApi = {
 };
 
 export const followApi = {
-  follow: (userId: string) => api.post<Record<string, unknown>>(`/follow/${userId}`, {}),
+  follow: (userId: string) => api.post<FollowOutput>(`/follow/${userId}`, {}),
   unfollow: (userId: string) => api.delete(`/follow/${userId}`),
-  followers: (userId: string) => api.get<Record<string, unknown>>(`/follow/${userId}/followers`),
-  following: (userId: string) => api.get<Record<string, unknown>>(`/follow/${userId}/following`),
+  followers: (userId: string) => api.get<FollowerListItemOutput[]>(`/follow/${userId}/followers`),
+  following: (userId: string) => api.get<FollowingListItemOutput[]>(`/follow/${userId}/following`),
 };
 
 export const commentApi = {
   list: (recipeId: string, page: number) =>
-    api.getWithMeta<
-      {
-        data: CommentData[];
-        meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
-      }
-    >(
+    api.getWithMeta<PaginatedResponse<CommentWithRepliesOutput>>(
       `/comments/recipe/${recipeId}?page=${page}`,
     ),
   create: (recipeId: string, payload: { content: string; parentCommentId?: string }) =>
-    api.post<CommentData>(`/comments/recipe/${recipeId}`, payload),
+    api.post<CommentOutput>(`/comments/recipe/${recipeId}`, payload),
   delete: (id: string) => api.delete<{ message: string }>(`/comments/${id}`),
 };
 

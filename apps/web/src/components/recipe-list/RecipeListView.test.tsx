@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import type { RecipeListItem } from '../../api/types.ts';
+import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 import { type RecipeListResponse, RecipeListView } from './RecipeListView.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -113,35 +113,62 @@ function makeSearchParams(init: Record<string, string> = {}) {
   return [params, vi.fn()] as ReturnType<typeof useSearchParams>;
 }
 
-function makeRecipe(overrides: Partial<RecipeListItem> = {}): RecipeListItem {
+function makeRecipe(overrides: Partial<RecipeListItemOutput> = {}): RecipeListItemOutput {
   return {
     id: 'r1',
     slug: 'test-recipe',
     title: 'Test Recipe',
+    authorId: 'u1',
     visibility: 'public',
-    brewMethod: 'v60',
-    drinkType: 'pour_over',
+    currentVersionId: null,
     likeCount: 5,
     commentCount: 2,
     forkCount: 1,
+    forkedFromId: null,
     featured: false,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
     author: {
       id: 'u1',
       username: 'alice',
       displayName: 'Alice',
-      avatarUrl: null,
     },
-    currentVersion: {
-      brewMethod: 'v60',
-      drinkType: 'pour_over',
-      emojiTag: null,
-      rating: 8,
-    },
-    avgRating: null,
-    userLiked: false,
-    userFavourited: false,
+    ...overrides,
+  };
+}
+
+/** Builds a minimal `EquipmentOutput` mock with all required fields. */
+function makeEquipment(overrides: Partial<{
+  id: string;
+  name: string;
+  type: string;
+  brand: string | null;
+}> = {}): {
+  id: string;
+  name: string;
+  type: string;
+  brand: string | null;
+  model: string | null;
+  description: string | null;
+  createdBy: string | null;
+  isSystem: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+} {
+  return {
+    id: 'e1',
+    name: 'Comandante C40',
+    type: 'grinder',
+    brand: null,
+    model: null,
+    description: null,
+    createdBy: null,
+    isSystem: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    deletedAt: null,
     ...overrides,
   };
 }
@@ -255,7 +282,7 @@ describe('RecipeListView', () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ equipmentId: equipmentUuid }));
     renderView({
       recipesResponse: { data: [], meta: {} },
-      equipment: [{ id: equipmentUuid, name: 'Comandante C40', type: 'grinder', brand: null }],
+      equipment: [makeEquipment({ id: equipmentUuid, name: 'Comandante C40', type: 'grinder' })],
     });
     // The badge label "Equipment" + value "Comandante C40" both render.
     // The select dropdown also contains the name as an <option>, so assert

@@ -88,6 +88,6 @@ describe('RootErrorBoundary', () => {
   });
 });
 
-function ThrowError() {
+function ThrowError(): null {
   throw new Error('boom');
 }

@@ -14,7 +14,7 @@ import {
   VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
-import type { RecipeDetailResponse } from '../../api/types.ts';
+import type { RecipeDetailOutput, RecipeUpdate } from '@brewform/shared/schemas';
 
 const log = createLogger('RecipeEditPage');
 
@@ -66,16 +66,16 @@ export function RecipeEditPage() {
 
   useEffect(() => {
     if (!id) return;
-    recipeApi.get(id).then((r: RecipeDetailResponse) => {
+    recipeApi.get(id).then((r: RecipeDetailOutput) => {
       if (!r.currentVersion) {
         setError(t('recipe.editPage.noVersions'));
         setFetching(false);
         return;
       }
       setTitle(r.title);
-      setVisibility(r.visibility);
-      setBrewMethod(r.currentVersion.brewMethod);
-      setDrinkType(r.currentVersion.drinkType);
+      setVisibility(r.visibility as Visibility);
+      setBrewMethod(r.currentVersion.brewMethod as BrewMethod);
+      setDrinkType(r.currentVersion.drinkType as DrinkType);
       setProductName(r.currentVersion.productName || '');
       setCoffeeBrand(r.currentVersion.coffeeBrand || '');
       setCoffeeProcessing(r.currentVersion.coffeeProcessing || '');
@@ -116,33 +116,38 @@ export function RecipeEditPage() {
     setLoading(true);
     setError('');
     try {
-      const data: Record<string, unknown> = {
+      // Build the update payload. `RecipeUpdate` is `RecipeCreateObjectSchema`
+      // (all fields optional) plus the required `bumpVersion` flag (Zod
+      // `.default(false)` makes it non-optional in `z.infer`). Optional fields
+      // are sent as `undefined` so the API preserves existing values.
+      const data: RecipeUpdate = {
         title: title.trim(),
         visibility,
         brewMethod,
         drinkType,
         bumpVersion,
-        ...(productName ? { productName } : {}),
-        ...(coffeeBrand ? { coffeeBrand } : {}),
-        ...(coffeeProcessing ? { coffeeProcessing } : {}),
-        ...(grinder ? { grinder } : {}),
-        ...(grindSize ? { grindSize } : {}),
-        ...(brewerDetails ? { brewerDetails } : {}),
-        ...(groundWeightGrams ? { groundWeightGrams: Number(groundWeightGrams) } : {}),
-        ...(extractionTimeSeconds ? { extractionTimeSeconds: Number(extractionTimeSeconds) } : {}),
-        ...(extractionVolumeMl ? { extractionVolumeMl: Number(extractionVolumeMl) } : {}),
-        ...(temperatureCelsius ? { temperatureCelsius: Number(temperatureCelsius) } : {}),
-        ...(tds !== '' ? { tds: Number(tds) } : { tds: null }),
-        ...(personalNotes ? { personalNotes } : {}),
+        productName: productName || undefined,
+        coffeeBrand: coffeeBrand || undefined,
+        coffeeProcessing: coffeeProcessing || undefined,
+        grinder: grinder || undefined,
+        grindSize: grindSize || undefined,
+        brewerDetails: brewerDetails || undefined,
+        groundWeightGrams: groundWeightGrams ? Number(groundWeightGrams) : undefined,
+        extractionTimeSeconds: extractionTimeSeconds ? Number(extractionTimeSeconds) : undefined,
+        extractionVolumeMl: extractionVolumeMl ? Number(extractionVolumeMl) : undefined,
+        temperatureCelsius: temperatureCelsius ? Number(temperatureCelsius) : undefined,
+        tds: tds !== '' ? Number(tds) : null,
+        personalNotes: personalNotes || undefined,
         preparationNotes: preparationNotes.trim(),
-        ...(rating ? { rating: Number(rating) } : {}),
-        ...(emojiTag ? { emojiTag } : {}),
-        ...(tasteNoteIds.length > 0 ? { tasteNoteIds, tasteNoteIntensities } : {}),
-        ...(roastDate ? { roastDate } : {}),
-        ...(packageOpenDate ? { packageOpenDate } : {}),
-        ...(grindDate ? { grindDate } : {}),
+        rating: rating ? Number(rating) : undefined,
+        emojiTag: (emojiTag || undefined) as RecipeUpdate['emojiTag'],
+        tasteNoteIds: tasteNoteIds.length > 0 ? tasteNoteIds : undefined,
+        tasteNoteIntensities: tasteNoteIds.length > 0 ? tasteNoteIntensities : undefined,
+        roastDate: roastDate || undefined,
+        packageOpenDate: packageOpenDate || undefined,
+        grindDate: grindDate || undefined,
       };
-      const result = await recipeApi.update(id, data) as Record<string, unknown>;
+      const result: RecipeDetailOutput = await recipeApi.update(id, data);
       navigate(`/recipes/${result.slug}`);
     } catch (err) {
       if (err instanceof ApiError && err.details) {
@@ -216,7 +221,7 @@ export function RecipeEditPage() {
           <Field label={t('recipe.visibility')}>
             <select
               value={visibility}
-              onChange={(e) => setVisibility(e.target.value)}
+              onChange={(e) => setVisibility(e.target.value as Visibility)}
               className='input-field'
             >
               {VISIBILITY_STATES_LIST.map((v) => (
@@ -231,7 +236,7 @@ export function RecipeEditPage() {
             <Field label={t('recipe.brewMethod')} required>
               <select
                 value={brewMethod}
-                onChange={(e) => setBrewMethod(e.target.value)}
+                onChange={(e) => setBrewMethod(e.target.value as BrewMethod)}
                 className='input-field'
               >
                 {BREW_METHODS_LIST.map((m) => (
@@ -242,7 +247,7 @@ export function RecipeEditPage() {
             <Field label={t('recipe.drinkType')} required>
               <select
                 value={drinkType}
-                onChange={(e) => setDrinkType(e.target.value)}
+                onChange={(e) => setDrinkType(e.target.value as DrinkType)}
                 className='input-field'
               >
                 {compatibleDrinks.map((d) => (

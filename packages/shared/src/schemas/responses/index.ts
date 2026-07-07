@@ -30,6 +30,7 @@ export {
   RecipeDetailAuthorOutputSchema,
   RecipeDetailOutputSchema,
   RecipeDetailVersionOutputSchema,
+  RecipeListItemOutputSchema,
   RecipeRowSchema,
   RecipeVersionRowSchema,
   RecipeWithAuthorOutputSchema,

@@ -1,44 +1,25 @@
 import { useEffect } from 'react';
 import { Link, useLoaderData, useParams, useSearchParams } from 'react-router';
-import { api } from '../../api/client.ts';
+import { followApi, userApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { createLogger } from '@/utils/logger.ts';
+import type {
+  FollowerListItemOutput,
+  FollowingListItemOutput,
+  PublicUserOutput,
+} from '@brewform/shared/schemas';
+import { createLogger } from '../../utils/logger.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { FollowButton } from '../../components/user/FollowButton.tsx';
 
 const log = createLogger('UserProfilePage');
 
-interface UserProfile {
-  id: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  bio: string | null;
-  followerCount: number;
-  followingCount: number;
-  recipeCount: number;
-  isFollowing: boolean;
-  badges: { id: string; name: string; emoji: string; description: string }[];
-  recipes: {
-    id: string;
-    slug: string;
-    title: string;
-    likeCount: number;
-    commentCount: number;
-    currentVersion?: { brewMethod: string; drinkType: string };
-    createdAt: string;
-  }[];
-}
-
 type Tab = 'recipes' | 'badges' | 'followers' | 'following';
 
-type FollowRecord =
-  | { id: string; follower: { id: string; username: string; displayName: string | null } }
-  | { id: string; following: { id: string; username: string; displayName: string | null } };
+type FollowRecord = FollowerListItemOutput | FollowingListItemOutput;
 
 export interface ProfileLoaderData {
-  profile: UserProfile;
+  profile: PublicUserOutput;
   followData: FollowRecord[] | null;
 }
 
@@ -48,13 +29,17 @@ export interface ProfileLoaderData {
  * `followData` null on other tabs.
  */
 export const loader = async (
-  { params, request }: { params: { username: string }; request: Request },
+  { params, request }: { params: Record<string, string | undefined>; request: Request },
 ): Promise<ProfileLoaderData> => {
-  const profile = await api.get<UserProfile>(`/users/${params.username}`);
+  const username = params.username;
+  if (!username) throw new Response('Not Found', { status: 404 });
+  const profile = await userApi.getProfile(username);
   const tab = new URL(request.url).searchParams.get('tab') ?? 'recipes';
   let followData: FollowRecord[] | null = null;
-  if (tab === 'followers' || tab === 'following') {
-    followData = await api.get<FollowRecord[]>(`/follow/${profile.id}/${tab}`);
+  if (tab === 'followers') {
+    followData = await followApi.followers(profile.id);
+  } else if (tab === 'following') {
+    followData = await followApi.following(profile.id);
   }
   return { profile, followData };
 };
@@ -254,7 +239,7 @@ export function UserProfilePage() {
             : (
               profile.badges.map((b) => (
                 <div key={b.id} className='card text-center'>
-                  <div className='text-2xl'>{b.emoji}</div>
+                  <div className='text-2xl'>{b.icon}</div>
                   <div className='text-sm font-medium' style={{ color: 'var(--text-primary)' }}>
                     {b.name}
                   </div>

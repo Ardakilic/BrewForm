@@ -268,7 +268,7 @@ describe('buildStatCards — TDS / extraction yield (M6)', () => {
     const cards = buildStatCards({
       groundWeightGrams: 15,
       extractionVolumeMl: 250,
-      tds: 1.35,
+      tds: '1.35',
     });
     expect(cards).toHaveLength(6);
     expect(cards[5]).toEqual({
@@ -281,7 +281,7 @@ describe('buildStatCards — TDS / extraction yield (M6)', () => {
     const cards = buildStatCards({
       groundWeightGrams: 15,
       extractionVolumeMl: null,
-      tds: 1.35,
+      tds: '1.35',
     });
     expect(cards).toHaveLength(5);
   });
@@ -290,7 +290,7 @@ describe('buildStatCards — TDS / extraction yield (M6)', () => {
     const cards = buildStatCards({
       groundWeightGrams: null,
       extractionVolumeMl: 250,
-      tds: 1.35,
+      tds: '1.35',
     });
     expect(cards).toHaveLength(5);
   });

@@ -5,3 +5,5 @@ import { UuidSchema } from './common.ts';
 export const FollowSchema = z.object({
   userId: UuidSchema,
 });
+
+export type Follow = z.infer<typeof FollowSchema>;

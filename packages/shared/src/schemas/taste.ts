@@ -31,3 +31,6 @@ export const TasteNoteUpdateSchema = z.object({
   color: z.string().max(7).optional(),
   definition: z.string().max(2000).optional(),
 });
+
+export type TasteNoteCreate = z.infer<typeof TasteNoteCreateSchema>;
+export type TasteNoteUpdate = z.infer<typeof TasteNoteUpdateSchema>;

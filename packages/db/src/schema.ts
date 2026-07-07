@@ -248,6 +248,8 @@ export const recipeTasteNotes = pgTable(
     ),
     tasteNoteId: varchar('taste_note_id', { length: 36 }).notNull().references(() => tasteNotes.id),
     intensity: integer('intensity').notNull().default(1),
+    /** Audit timestamp — when the taste note was attached to this recipe version. */
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     unique('recipe_taste_note_recipe_version_id_taste_note_id_unique').on(
@@ -269,6 +271,8 @@ export const recipeEquipment = pgTable(
       { onDelete: 'cascade' },
     ),
     equipmentId: varchar('equipment_id', { length: 36 }).notNull().references(() => equipment.id),
+    /** Audit timestamp — when the equipment was attached to this recipe version. */
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     unique('recipe_equipment_recipe_version_id_equipment_id_unique').on(
@@ -337,6 +341,8 @@ export const recipeVersionPhotos = pgTable(
     ),
     photoId: varchar('photo_id', { length: 36 }).notNull().references(() => photos.id),
     sortOrder: integer('sort_order').notNull().default(0),
+    /** Audit timestamp — when the photo was attached to this recipe version. */
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     unique('recipe_version_photo_recipe_version_id_photo_id_unique').on(
