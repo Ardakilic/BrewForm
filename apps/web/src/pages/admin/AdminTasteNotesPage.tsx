@@ -25,7 +25,7 @@ export function AdminTasteNotesPage() {
 
   useEffect(() => {
     api.get<TasteNoteOutput[]>('/taste-notes/flat').then((data) => {
-      setNotes(data as TasteNoteOutput[]);
+      setNotes(data);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
@@ -44,8 +44,8 @@ export function AdminTasteNotesPage() {
         name: form.name.trim(),
         parentId: form.parentId || undefined,
       } as Record<string, unknown>);
-      setNotes((prev) => [...prev, created as TasteNoteOutput]);
-      log.debug({ tasteNoteId: (created as TasteNoteOutput).id }, 'handleCreate completed');
+      setNotes((prev) => [...prev, created]);
+      log.debug({ tasteNoteId: created.id }, 'handleCreate completed');
       setForm({ name: '', parentId: '' });
       setShowForm(false);
       invalidateStaticCache();

@@ -79,6 +79,24 @@ const CATEGORY_LABELS: Record<Category, string> = {
   processing: 'admin.coffeeVarieties.catProcessing',
   market_name: 'admin.coffeeVarieties.catMarketName',
 };
+const DEFAULT_CATEGORY: Category = 'variety';
+
+/**
+ * Coerce an arbitrary API string into the page's `Category` union.
+ * `CoffeeVarietyOutputSchema.category` is typed as a plain string (not an
+ * enum), so an unknown value must not index `CATEGORY_BADGE_COLORS` /
+ * `CATEGORY_LABELS` — fall back to `DEFAULT_CATEGORY` instead.
+ */
+function toCategory(value: string | undefined | null): Category {
+  switch (value) {
+    case 'variety':
+    case 'processing':
+    case 'market_name':
+      return value;
+    default:
+      return DEFAULT_CATEGORY;
+  }
+}
 
 function arrToString(arr: string[] | null | undefined): string {
   if (!arr || arr.length === 0) return '';
@@ -204,7 +222,7 @@ export function AdminCoffeeVarietiesPage() {
     setEditId(item.id);
     setForm({
       name: item.name,
-      category: item.category as Category,
+      category: toCategory(item.category),
       species: item.species || '',
       origin: item.origin || '',
       spread: item.spread || '',
@@ -491,11 +509,11 @@ export function AdminCoffeeVarietiesPage() {
                       <span
                         className='badge'
                         style={{
-                          backgroundColor: CATEGORY_BADGE_COLORS[item.category as Category],
+                          backgroundColor: CATEGORY_BADGE_COLORS[toCategory(item.category)],
                           color: '#fff',
                         }}
                       >
-                        {categoryLabel(item.category as Category)}
+                        {categoryLabel(toCategory(item.category))}
                       </span>
                     </td>
                     <td className='py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
