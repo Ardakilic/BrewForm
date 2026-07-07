@@ -3,20 +3,14 @@ import { api } from '../../api/client.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
-
-interface TasteNote {
-  id: string;
-  name: string;
-  depth: number;
-  parentId: string | null;
-}
+import type { TasteNoteOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminTasteNotesPage');
 
 /** Admin page: taste-note hierarchy management (create/delete); invalidates the static cache on changes. */
 export function AdminTasteNotesPage() {
   const { t } = useTranslation();
-  const [notes, setNotes] = useState<TasteNote[]>([]);
+  const [notes, setNotes] = useState<TasteNoteOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', parentId: '' });
@@ -30,8 +24,8 @@ export function AdminTasteNotesPage() {
   }, []);
 
   useEffect(() => {
-    api.get<TasteNote[]>('/taste-notes/flat').then((data) => {
-      setNotes(data as TasteNote[]);
+    api.get<TasteNoteOutput[]>('/taste-notes/flat').then((data) => {
+      setNotes(data as TasteNoteOutput[]);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
@@ -46,12 +40,12 @@ export function AdminTasteNotesPage() {
     setSaving(true);
     log.debug({}, 'handleCreate started');
     try {
-      const created = await api.post<TasteNote>('/admin/taste-notes', {
+      const created = await api.post<TasteNoteOutput>('/admin/taste-notes', {
         name: form.name.trim(),
         parentId: form.parentId || undefined,
       } as Record<string, unknown>);
-      setNotes((prev) => [...prev, created as TasteNote]);
-      log.debug({ tasteNoteId: (created as TasteNote).id }, 'handleCreate completed');
+      setNotes((prev) => [...prev, created as TasteNoteOutput]);
+      log.debug({ tasteNoteId: (created as TasteNoteOutput).id }, 'handleCreate completed');
       setForm({ name: '', parentId: '' });
       setShowForm(false);
       invalidateStaticCache();

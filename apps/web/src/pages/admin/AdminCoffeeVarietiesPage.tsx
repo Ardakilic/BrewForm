@@ -2,46 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type { CoffeeVarietyOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminCoffeeVarietiesPage');
 
 type Category = 'variety' | 'processing' | 'market_name';
-
-interface CoffeeVarietyItem {
-  id: string;
-  name: string;
-  category: Category;
-  species: string | null;
-  origin: string | null;
-  spread: string | null;
-  altitudeRangeM: string | null;
-  cupProfile: string | null;
-  body: string | null;
-  acidity: string | null;
-  caffeinePct: string | null;
-  processingCompatibility: string[] | null;
-  diseaseResistance: string | null;
-  yield: string | null;
-  plantSize: string | null;
-  notes: string | null;
-  subVarieties: string[] | null;
-  fermentation: string | null;
-  dryingTimeDays: string | null;
-  dryingMethod: string | null;
-  mucilageRetentionPct: string | null;
-  priceRange: string | null;
-  processing: string | null;
-  typeLabel: string | null;
-  notableFarms: string[] | null;
-  notableRegions: string[] | null;
-  regionalVariants: string[] | null;
-  globalSharePct: string | null;
-  isSystem: boolean;
-  createdBy: string | null;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-}
 
 interface FormData {
   name: string;
@@ -133,7 +98,7 @@ export function AdminCoffeeVarietiesPage() {
   const categoryLabel = useCallback((cat: Category): string => {
     return t(CATEGORY_LABELS[cat]);
   }, [t]);
-  const [items, setItems] = useState<CoffeeVarietyItem[]>([]);
+  const [items, setItems] = useState<CoffeeVarietyOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -162,7 +127,7 @@ export function AdminCoffeeVarietiesPage() {
       if (search.trim()) params.set('search', search.trim());
 
       const res = await api.getWithMeta<
-        { success: boolean; data: CoffeeVarietyItem[]; total: number }
+        { success: boolean; data: CoffeeVarietyOutput[]; total: number }
       >(
         `/admin/coffee-varieties?${params.toString()}`,
       );
@@ -205,12 +170,12 @@ export function AdminCoffeeVarietiesPage() {
 
     try {
       if (editId) {
-        await api.patch<CoffeeVarietyItem>(
+        await api.patch<CoffeeVarietyOutput>(
           `/admin/coffee-varieties/${editId}`,
           body,
         );
       } else {
-        await api.post<CoffeeVarietyItem>('/admin/coffee-varieties', body);
+        await api.post<CoffeeVarietyOutput>('/admin/coffee-varieties', body);
       }
       await fetchData();
       resetForm();
@@ -235,11 +200,11 @@ export function AdminCoffeeVarietiesPage() {
     }
   }
 
-  function startEdit(item: CoffeeVarietyItem) {
+  function startEdit(item: CoffeeVarietyOutput) {
     setEditId(item.id);
     setForm({
       name: item.name,
-      category: item.category,
+      category: item.category as Category,
       species: item.species || '',
       origin: item.origin || '',
       spread: item.spread || '',
@@ -526,11 +491,11 @@ export function AdminCoffeeVarietiesPage() {
                       <span
                         className='badge'
                         style={{
-                          backgroundColor: CATEGORY_BADGE_COLORS[item.category],
+                          backgroundColor: CATEGORY_BADGE_COLORS[item.category as Category],
                           color: '#fff',
                         }}
                       >
-                        {categoryLabel(item.category)}
+                        {categoryLabel(item.category as Category)}
                       </span>
                     </td>
                     <td className='py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
