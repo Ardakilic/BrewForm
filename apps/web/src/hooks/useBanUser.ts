@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { adminApi } from '../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
 
@@ -45,20 +45,31 @@ export function useBanUser(
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Mirror `processing` in a ref so async guards read the freshest value even
+  // when a stale `useCallback` closure is still referenced (e.g. a second
+  // `unban` call issued before React re-renders). Without this, the
+  // `if (processing) return` guard in `unban` can read a stale `false` and
+  // allow duplicate concurrent calls.
+  const processingRef = useRef(false);
+  const setProcessingBoth = useCallback((next: boolean) => {
+    processingRef.current = next;
+    setProcessing(next);
+  }, []);
+
   const openBanDialog = useCallback(
     (user: BanDialogUser) => {
       setBanDialogUser(user);
       setError(null);
-      setProcessing(false);
+      setProcessingBoth(false);
     },
-    [],
+    [setProcessingBoth],
   );
 
   const closeDialog = useCallback(() => {
     setBanDialogUser(null);
     setError(null);
-    setProcessing(false);
-  }, []);
+    setProcessingBoth(false);
+  }, [setProcessingBoth]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -68,39 +79,39 @@ export function useBanUser(
     if (!banDialogUser || !reason.trim()) return;
     const userId = banDialogUser.id;
     log.debug({ userId }, 'useBanUser confirmBan started');
-    setProcessing(true);
+    setProcessingBoth(true);
     try {
       await adminApi.banUser(banDialogUser.id, reason);
       onSuccess(banDialogUser.id, true);
       setBanDialogUser(null);
       setError(null);
-      setProcessing(false);
+      setProcessingBoth(false);
       log.debug({ userId }, 'useBanUser confirmBan completed');
     } catch (err) {
       setError(getErrorMessage(err, 'admin.users.banError'));
-      setProcessing(false);
+      setProcessingBoth(false);
       log.error({ err, userId }, 'useBanUser confirmBan failed');
     }
-  }, [banDialogUser, onSuccess]);
+  }, [banDialogUser, onSuccess, setProcessingBoth]);
 
   const unban = useCallback(
     async (userId: string) => {
-      if (processing) return;
+      if (processingRef.current) return;
       log.debug({ userId }, 'useBanUser unban started');
-      setProcessing(true);
+      setProcessingBoth(true);
       try {
         await adminApi.unbanUser(userId);
         onSuccess(userId, false);
         setError(null);
-        setProcessing(false);
+        setProcessingBoth(false);
         log.debug({ userId }, 'useBanUser unban completed');
       } catch (err) {
         setError(getErrorMessage(err, 'admin.users.unbanError'));
-        setProcessing(false);
+        setProcessingBoth(false);
         log.error({ err, userId }, 'useBanUser unban failed');
       }
     },
-    [onSuccess, processing],
+    [onSuccess, setProcessingBoth],
   );
 
   return {
