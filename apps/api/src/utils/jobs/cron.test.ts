@@ -3,7 +3,6 @@ import '../../test-setup.ts';
 import { beforeAll, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 
-// deno-lint-ignore no-explicit-any
 let cronCalls: { name: string; schedule: string; handler: () => unknown }[] = [];
 
 beforeAll(() => {

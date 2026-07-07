@@ -28,10 +28,16 @@ directive. The 2 middleware files are covered by the next requirement (dead code
 requirement tightens the `lint-style` spec, which was previously silent on production file-level
 directives.
 
-**Note on the 2 missed files:** The D35 plan listed 7 files but the actual count is 9. The 2
-`coffee-variety` files were documented in D09's baseline (`plans/D09-fix-lint-suppressions.md`
-lines 100-101) but missed by D35's "July 2026 sweep." Without removing them, the acceptance
-criterion "zero `deno-lint-ignore-file` in production source" cannot be satisfied.
+**Note on the 2 missed files:** The D35 plan listed 7 production files but the actual total is 9.
+The 2 files omitted from D35's "July 2026 sweep" are `apps/api/src/modules/coffee-variety/model.ts`
+and `apps/api/src/modules/coffee-variety/service.ts` (documented in D09's baseline,
+`plans/D09-fix-lint-suppressions.md` lines 100-101). These 2 `coffee-variety` files are already
+included in the table above (rows 5-6) and are 2 of the 9; without removing their
+`// deno-lint-ignore-file require-await` directives, the acceptance criterion
+"zero `deno-lint-ignore-file` in production source" cannot be satisfied. The remaining 2 of the 9
+— `apps/api/src/middleware/cors.ts` and `apps/api/src/middleware/requestId.ts` — are not in this
+table because they are covered by the next requirement (dead code deletion). The 7 files in the
+table plus these 2 middleware files total the 9 production files in scope.
 
 #### Scenario: grep gate passes
 

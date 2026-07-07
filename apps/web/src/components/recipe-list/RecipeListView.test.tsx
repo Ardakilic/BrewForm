@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import type { RecipeListItemOutput } from '@brewform/shared/schemas';
+import type { EquipmentOutput, RecipeListItemOutput } from '@brewform/shared/schemas';
 import { type RecipeListResponse, RecipeListView } from './RecipeListView.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -139,24 +139,7 @@ function makeRecipe(overrides: Partial<RecipeListItemOutput> = {}): RecipeListIt
 }
 
 /** Builds a minimal `EquipmentOutput` mock with all required fields. */
-function makeEquipment(overrides: Partial<{
-  id: string;
-  name: string;
-  type: string;
-  brand: string | null;
-}> = {}): {
-  id: string;
-  name: string;
-  type: string;
-  brand: string | null;
-  model: string | null;
-  description: string | null;
-  createdBy: string | null;
-  isSystem: boolean;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-} {
+function makeEquipment(overrides: Partial<EquipmentOutput> = {}): EquipmentOutput {
   return {
     id: 'e1',
     name: 'Comandante C40',

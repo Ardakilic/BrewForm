@@ -6,7 +6,7 @@ import type { BadgeOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminBadgesPage');
 
-/** Admin page: read-only grid of all badges with emoji, name, and rule. */
+/** Admin page: read-only grid of all badges with icon, name, and rule. */
 export function AdminBadgesPage() {
   const { t } = useTranslation();
   const [badges, setBadges] = useState<BadgeOutput[]>([]);

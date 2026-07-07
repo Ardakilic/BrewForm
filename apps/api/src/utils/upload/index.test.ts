@@ -139,7 +139,7 @@ describe('validateImageUpload', () => {
     expect(result).toContain('File too large');
   });
 
-  it('should accept a file at exactly the default 10MB boundary minus 1 byte', () => {
-    expect(validateImageUpload({ type: 'image/jpeg', size: 10 * 1024 * 1024 })).toBeNull();
+  it('should accept a file one byte under the default 10MB boundary', () => {
+    expect(validateImageUpload({ type: 'image/jpeg', size: 10 * 1024 * 1024 - 1 })).toBeNull();
   });
 });

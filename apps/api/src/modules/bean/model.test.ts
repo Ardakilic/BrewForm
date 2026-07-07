@@ -74,10 +74,19 @@ describe('findByUser', { sanitizeOps: false, sanitizeResources: false }, () => {
       username: `testuser-${userId}`,
       passwordHash: 'hash',
     });
+    // Use distinct createdAt timestamps so findByUser's `ORDER BY createdAt DESC`
+    // has a deterministic order across the two active beans (Gamma is soft-deleted
+    // and excluded). Beta is newest → page 1, Alpha is older → page 2.
     await db.insert(beans).values([
-      { id: beanIds[0], name: 'Alpha Bean', userId },
-      { id: beanIds[1], name: 'Beta Bean', userId },
-      { id: beanIds[2], name: 'Gamma Bean', userId, deletedAt: new Date() },
+      { id: beanIds[0], name: 'Alpha Bean', userId, createdAt: new Date('2024-01-01T00:00:00Z') },
+      { id: beanIds[1], name: 'Beta Bean', userId, createdAt: new Date('2024-01-02T00:00:00Z') },
+      {
+        id: beanIds[2],
+        name: 'Gamma Bean',
+        userId,
+        deletedAt: new Date(),
+        createdAt: new Date('2024-01-03T00:00:00Z'),
+      },
     ]);
   });
 
@@ -113,7 +122,10 @@ describe('findByUser', { sanitizeOps: false, sanitizeResources: false }, () => {
     expect(page2.beans.length).toBe(1);
     expect(page1.total).toBe(2);
     expect(page2.total).toBe(2);
-    expect(page1.beans[0].id).not.toBe(page2.beans[0].id);
+    // findByUser orders by createdAt DESC, so Beta (newer) is page 1 and
+    // Alpha (older) is page 2. Lock the deterministic order explicitly.
+    expect(page1.beans[0].id).toBe(beanIds[1]);
+    expect(page2.beans[0].id).toBe(beanIds[0]);
   });
 });
 

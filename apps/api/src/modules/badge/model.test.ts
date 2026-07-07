@@ -145,20 +145,45 @@ describe('getUserBadges', { sanitizeOps: false, sanitizeResources: false }, () =
  */
 describe('evaluateBadges', { sanitizeOps: false, sanitizeResources: false }, () => {
   let userId: string;
+  let badgeId: string;
+  let insertedBadge: boolean;
 
   beforeEach(async () => {
     userId = crypto.randomUUID();
+    insertedBadge = false;
     await db.insert(users).values({
       id: userId,
       email: `test-${userId}@example.com`,
       username: `testuser-${userId}`,
       passwordHash: 'hash',
     });
+    // evaluateBadges silently no-ops when the badge definition row is missing,
+    // so mirror the getUserBadges test's defensive fallback: look up the seed
+    // 'first_brew' badge by rule and insert a fresh row only if the seed is
+    // absent. This keeps the award assertions stable even on a seedless DB.
+    const [existing] = await db.select().from(badges).where(eq(badges.rule, 'first_brew')).limit(1);
+    if (existing) {
+      badgeId = existing.id;
+    } else {
+      badgeId = crypto.randomUUID();
+      insertedBadge = true;
+      await db.insert(badges).values({
+        id: badgeId,
+        name: 'First Brew',
+        icon: 'coffee',
+        description: 'Logged your first recipe',
+        rule: 'first_brew',
+        threshold: 1,
+      });
+    }
   });
 
   afterEach(async () => {
     // Clean up awarded badges for this user.
     await db.delete(userBadges).where(eq(userBadges.userId, userId));
+    if (insertedBadge) {
+      await db.delete(badges).where(eq(badges.id, badgeId));
+    }
     await db.delete(users).where(eq(users.id, userId));
   });
 
@@ -166,8 +191,9 @@ describe('evaluateBadges', { sanitizeOps: false, sanitizeResources: false }, () 
     const { recipeId, versionId } = await insertRecipeFixture(userId);
     try {
       await model.evaluateBadges(userId);
-      // The seed DB has a first_brew badge; evaluateBadges should have upserted
-      // a user_badge row for it.
+      // The first_brew badge definition is ensured in beforeEach (seed or
+      // fallback insert), so evaluateBadges should have inserted a user_badge
+      // row for it via onConflictDoNothing.
       const awarded = await db.select().from(userBadges).where(eq(userBadges.userId, userId));
       expect(awarded.length).toBeGreaterThan(0);
       // Verify the first_brew badge is among the awarded ones by joining.

@@ -22,7 +22,7 @@ IDE language servers. D42's type-safety guarantees are unverifiable without a ty
 is the prerequisite for all other D42 requirements — without it, replacing `Record<string, unknown>`
 with real types cannot be verified.
 
-**Pre-existing error breakdown (verified 2026-07-06):** Running `tsc --noEmit` produces 881 errors,
+**Pre-existing error breakdown (verified 2026-07-06):** Running `tsc --noEmit` produces 887 errors,
 but 686 are `TS5097` (fixed by `allowImportingTsExtensions: true`), 145 are in test files (mock
 `AuthContextType` missing `sessionError`/`clearSessionError` from D38 — mechanical fix), and 56 are
 in non-test files (mostly `RecipeDetailPage.tsx` shadow-type mismatch — exactly what D42 fixes).
@@ -239,8 +239,9 @@ shared schemas are the single source of truth — deriving types via `z.infer` e
 
 #### Scenario: No per-page shadow type interfaces remain
 
-- **WHEN** `grep -rn "^interface Bean\b\|^interface Setup\b\|^interface EquipmentItem\b\|^interface UserProfile\b\|^interface TasteCategory\b\|^interface CoffeeVarietyItem\b" apps/web/src/pages/` is run
-- **THEN** zero matches are returned — all shadow types are deleted
+- **WHEN** `grep -rn "^interface Bean\b\|^interface Setup\b\|^interface EquipmentItem\b\|^interface EquipmentDetail\b\|^interface RecipeEntry\b\|^interface UserProfile\b\|^interface FollowRecord\b\|^interface TasteCategory\b\|^interface CoffeeVarietyItem\b\|^interface VarietyDetail\b\|^interface VersionSummary\b\|^interface Preferences\b" apps/web/src/pages/` is run
+- **AND** `grep -rn "^interface " apps/web/src/pages/admin/` is run
+- **THEN** both greps return zero matches — every named per-page shadow type (Bean, Setup, EquipmentItem, EquipmentDetail, RecipeEntry, UserProfile, FollowRecord, TasteCategory, CoffeeVarietyItem, VarietyDetail, VersionSummary, Preferences) and all 15 admin-page local interfaces are deleted
 
 #### Scenario: BeanListPage productName fallout is fixed
 

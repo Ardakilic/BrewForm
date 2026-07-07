@@ -28,7 +28,10 @@
     "node_modules",
     "dist",
     "src/**/*.exploration.test.ts",
+    "src/**/*.exploration.test.tsx",
     "src/**/*.preservation.test.ts",
-    "src/**/__tests__/*.integration.test.ts"
+    "src/**/*.preservation.test.tsx",
+    "src/**/__tests__/*.integration.test.ts",
+    "src/**/__tests__/*.integration.test.tsx"
   ]
 }
