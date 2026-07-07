@@ -43,3 +43,9 @@ export {
 } from './comment.ts';
 export { TasteNoteNodeOutputSchema, TasteNoteOutputSchema } from './taste.ts';
 export { PublicUserOutputSchema, SelfUserOutputSchema, UserRowOutputSchema } from './user.ts';
+export {
+  CollectionDetailOutputSchema,
+  CollectionItemOutputSchema,
+  CollectionListItemOutputSchema,
+  CollectionOutputSchema,
+} from './collection.ts';

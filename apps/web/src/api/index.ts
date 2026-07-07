@@ -3,6 +3,10 @@ import type {
   BeanCreate,
   BeanOutput,
   BeanUpdate,
+  CollectionCreate,
+  CollectionDetailOutput,
+  CollectionListItemOutput,
+  CollectionUpdate,
   CommentOutput,
   CommentWithRepliesOutput,
   EquipmentCreate,
@@ -166,6 +170,33 @@ export const commentApi = {
   create: (recipeId: string, payload: { content: string; parentCommentId?: string }) =>
     api.post<CommentOutput>(`/comments/recipe/${recipeId}`, payload),
   delete: (id: string) => api.delete<{ message: string }>(`/comments/${id}`),
+};
+
+/**
+ * Collection API client — CRUD, recipe add/remove/reorder, and user-scoped list.
+ */
+export const collectionApi = {
+  list: (params?: Record<string, string>) => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.getWithMeta<PaginatedResponse<CollectionListItemOutput>>(`/collections${query}`);
+  },
+  get: (id: string) => api.get<CollectionDetailOutput>(`/collections/${id}`),
+  create: (data: CollectionCreate) => api.post<CollectionDetailOutput>('/collections', data),
+  update: (id: string, data: CollectionUpdate) =>
+    api.patch<CollectionDetailOutput>(`/collections/${id}`, data),
+  delete: (id: string) => api.delete<{ message: string }>(`/collections/${id}`),
+  addRecipe: (id: string, recipeId: string) =>
+    api.post<{ message: string }>(`/collections/${id}/recipes`, { recipeId }),
+  removeRecipe: (id: string, recipeId: string) =>
+    api.delete<{ message: string }>(`/collections/${id}/recipes/${recipeId}`),
+  reorder: (id: string, itemIds: string[]) =>
+    api.patch<{ message: string }>(`/collections/${id}/reorder`, { itemIds }),
+  listByUser: (userId: string, params?: Record<string, string>) => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.getWithMeta<PaginatedResponse<CollectionListItemOutput>>(
+      `/users/${userId}/collections${query}`,
+    );
+  },
 };
 
 export interface AdminUser {

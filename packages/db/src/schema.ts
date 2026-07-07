@@ -835,11 +835,69 @@ export const reports = pgTable(
   ],
 );
 
+/**
+ * Collections — user-owned named groupings of recipes ("playlists for recipes").
+ *
+ * Soft-deletable main entity with `private`/`unlisted`/`public` visibility
+ * (reuses the existing `visibilityEnum`). The `collectionItems` join table
+ * carries ordering (`sortOrder`) and an audit timestamp (`createdAt`).
+ */
+export const collections = pgTable(
+  'collection',
+  {
+    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    visibility: visibilityEnum('visibility').notNull().default('private'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('collection_user_id_idx').on(table.userId),
+    index('collection_visibility_idx').on(table.visibility),
+    index('collection_created_at_idx').on(table.createdAt),
+    index('collection_deleted_at_idx').on(table.deletedAt),
+  ],
+);
+
+/**
+ * Collection items — join table between `collections` and `recipes`.
+ *
+ * `collectionId` cascades on collection hard-delete; `recipeId` has no
+ * `onDelete` (recipes are soft-deleted, the join row stays and is filtered
+ * by `isNull(recipes.deletedAt)` at query time). The composite unique
+ * constraint prevents duplicate recipe-in-collection entries.
+ */
+export const collectionItems = pgTable(
+  'collection_item',
+  {
+    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    collectionId: varchar('collection_id', { length: 36 }).notNull().references(
+      () => collections.id,
+      { onDelete: 'cascade' },
+    ),
+    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    sortOrder: integer('sort_order').notNull().default(0),
+    /** Audit timestamp — when the recipe was added to this collection. */
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('collection_item_collection_id_recipe_id_unique').on(
+      table.collectionId,
+      table.recipeId,
+    ),
+    index('collection_item_collection_id_idx').on(table.collectionId),
+    index('collection_item_recipe_id_idx').on(table.recipeId),
+  ],
+);
+
 // ============================================================
 // Relations
 // ============================================================
 
-/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports. */
+/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections. */
 export const usersRelations = relations(users, ({ one, many }) => ({
   preferences: one(userPreferences, {
     fields: [users.id],
@@ -852,6 +910,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   followsAsFollowing: many(userFollows, { relationName: 'UserFollowing' }),
   likes: many(userRecipeLikes),
   favourites: many(userRecipeFavourites),
+  collections: many(collections),
   setups: many(setups),
   equipment: many(equipment),
   beans: many(beans),
@@ -870,7 +929,7 @@ export const userPreferencesRelations = relations(userPreferences, ({ one }) => 
   }),
 }));
 
-/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, and fork lineage (forkedFrom/forks). */
+/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, and fork lineage (forkedFrom/forks), and collection items. */
 export const recipesRelations = relations(recipes, ({ one, many }) => ({
   author: one(users, {
     fields: [recipes.authorId],
@@ -881,6 +940,7 @@ export const recipesRelations = relations(recipes, ({ one, many }) => ({
   comments: many(comments),
   likes: many(userRecipeLikes),
   favourites: many(userRecipeFavourites),
+  collectionItems: many(collectionItems),
   forkedFrom: one(recipes, {
     fields: [recipes.forkedFromId],
     references: [recipes.id],
@@ -1198,3 +1258,24 @@ export const emailVerificationTokensRelations = relations(
     }),
   }),
 );
+
+/** Drizzle relations for collections: owner user and collection items. */
+export const collectionsRelations = relations(collections, ({ one, many }) => ({
+  user: one(users, {
+    fields: [collections.userId],
+    references: [users.id],
+  }),
+  items: many(collectionItems),
+}));
+
+/** Drizzle relations for collection_items: parent collection and recipe. */
+export const collectionItemsRelations = relations(collectionItems, ({ one }) => ({
+  collection: one(collections, {
+    fields: [collectionItems.collectionId],
+    references: [collections.id],
+  }),
+  recipe: one(recipes, {
+    fields: [collectionItems.recipeId],
+    references: [recipes.id],
+  }),
+}));

@@ -21,7 +21,12 @@ import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import type { PgTableWithColumns } from 'drizzle-orm/pg-core';
-import { recipeEquipment, recipeTasteNotes, recipeVersionPhotos } from './schema.ts';
+import {
+  collectionItems,
+  recipeEquipment,
+  recipeTasteNotes,
+  recipeVersionPhotos,
+} from './schema.ts';
 
 /**
  * Look up a column config from a Drizzle `pgTable` instance.
@@ -93,6 +98,25 @@ describe('recipeVersionPhotos createdAt audit column', () => {
 
   it('createdAt has a default expression (now())', () => {
     const column = getColumnConfig(recipeVersionPhotos, 'created_at');
+    expect(column).toBeDefined();
+    expect(column!.default).toBeDefined();
+  });
+});
+
+describe('collectionItems createdAt audit column', () => {
+  it('has a createdAt column', () => {
+    const column = getColumnConfig(collectionItems, 'created_at');
+    expect(column).toBeDefined();
+  });
+
+  it('createdAt is notNull', () => {
+    const column = getColumnConfig(collectionItems, 'created_at');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(true);
+  });
+
+  it('createdAt has a default expression (now())', () => {
+    const column = getColumnConfig(collectionItems, 'created_at');
     expect(column).toBeDefined();
     expect(column!.default).toBeDefined();
   });

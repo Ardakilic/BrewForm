@@ -24,6 +24,8 @@ import type { IndexedColumn, PgTableWithColumns } from 'drizzle-orm/pg-core';
 import {
   beans,
   coffeeVarieties,
+  collectionItems,
+  collections,
   comments,
   equipment,
   photos,
@@ -59,6 +61,29 @@ function getTableIndexes(table: PgTableWithColumns<any>): {
       return null; // raw SQL expression — column name not extractable
     }),
     isUnique: idx.config.unique ?? false,
+  }));
+}
+
+/**
+ * Extract unique-constraint definitions from a Drizzle `pgTable` instance.
+ *
+ * Drizzle stores `unique(...)` constraints in `getTableConfig().uniqueConstraints`
+ * (separate from `indexes`). Each entry's `.config` exposes `name` and `columns`.
+ *
+ * @param table - A Drizzle `pgTable` instance
+ * @returns Array of `{ name, columns }` for each defined unique constraint
+ */
+function getTableUniqueConstraints(table: PgTableWithColumns<any>): {
+  name: string;
+  columns: (string | null)[];
+}[] {
+  const { uniqueConstraints } = getTableConfig(table);
+  return uniqueConstraints.map((uc) => ({
+    name: uc.name ?? '',
+    columns: uc.columns.map((col) => {
+      if ('name' in col) return (col as IndexedColumn).name ?? null;
+      return null;
+    }),
   }));
 }
 
@@ -273,5 +298,71 @@ describe('Coffee varieties table composite indexes', () => {
     expect(idx).toBeDefined();
     expect(idx!.columns).toEqual(['category', 'name']);
     expect(idx!.isUnique).toBe(false);
+  });
+});
+
+describe('Collections table indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(collections);
+  });
+
+  it('has collection_user_id_idx on (userId)', () => {
+    const idx = indexes.find((i) => i.name === 'collection_user_id_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['user_id']);
+    expect(idx!.isUnique).toBe(false);
+  });
+
+  it('has collection_visibility_idx on (visibility)', () => {
+    const idx = indexes.find((i) => i.name === 'collection_visibility_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['visibility']);
+    expect(idx!.isUnique).toBe(false);
+  });
+
+  it('has collection_created_at_idx on (createdAt)', () => {
+    const idx = indexes.find((i) => i.name === 'collection_created_at_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['created_at']);
+    expect(idx!.isUnique).toBe(false);
+  });
+
+  it('has collection_deleted_at_idx on (deletedAt)', () => {
+    const idx = indexes.find((i) => i.name === 'collection_deleted_at_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['deleted_at']);
+    expect(idx!.isUnique).toBe(false);
+  });
+});
+
+describe('Collection items table indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+  let uniques: ReturnType<typeof getTableUniqueConstraints>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(collectionItems);
+    uniques = getTableUniqueConstraints(collectionItems);
+  });
+
+  it('has collection_item_collection_id_idx on (collectionId)', () => {
+    const idx = indexes.find((i) => i.name === 'collection_item_collection_id_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['collection_id']);
+    expect(idx!.isUnique).toBe(false);
+  });
+
+  it('has collection_item_recipe_id_idx on (recipeId)', () => {
+    const idx = indexes.find((i) => i.name === 'collection_item_recipe_id_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['recipe_id']);
+    expect(idx!.isUnique).toBe(false);
+  });
+
+  it('has collection_item_collection_id_recipe_id_unique on (collectionId, recipeId)', () => {
+    const uc = uniques.find((u) => u.name === 'collection_item_collection_id_recipe_id_unique');
+    expect(uc).toBeDefined();
+    expect(uc!.columns).toEqual(['collection_id', 'recipe_id']);
   });
 });

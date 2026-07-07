@@ -48,6 +48,14 @@ export { BeanCreateSchema, BeanUpdateSchema } from './bean.ts';
 export type { BeanCreate, BeanUpdate } from './bean.ts';
 export { VendorCreateSchema, VendorUpdateSchema } from './vendor.ts';
 export type { VendorCreate, VendorUpdate } from './vendor.ts';
+export {
+  CollectionAddRecipeSchema,
+  CollectionCreateSchema,
+  CollectionListFilterSchema,
+  CollectionReorderSchema,
+  CollectionUpdateSchema,
+} from './collection.ts';
+export type { CollectionCreate, CollectionUpdate } from './collection.ts';
 export { BadgeCreateSchema, BadgeUpdateSchema } from './badge.ts';
 export {
   AdminBanUserSchema,
@@ -116,3 +124,9 @@ export type {
 } from './responses/comment.ts';
 export type { TasteNoteNodeOutput, TasteNoteOutput } from './responses/taste.ts';
 export type { PublicUserOutput, SelfUserOutput, UserRowOutput } from './responses/user.ts';
+export type {
+  CollectionDetailOutput,
+  CollectionItemOutput,
+  CollectionListItemOutput,
+  CollectionOutput,
+} from './responses/collection.ts';

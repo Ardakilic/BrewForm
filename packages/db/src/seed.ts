@@ -14,6 +14,8 @@ import {
   brewMethodEnum,
   brewMethodEquipmentRules,
   coffeeVarieties,
+  collectionItems,
+  collections,
   comments,
   equipment,
   equipmentTypeEnum,
@@ -790,6 +792,69 @@ async function seedSetups(
  * Every helper is idempotent, so calling this function repeatedly is safe
  * even when the database already contains seed data.
  */
+/**
+ * Seed sample collections for demo users.
+ *
+ * Creates 1–2 public collections per seeded user and adds 2–3 recipes
+ * to each. Idempotent via `onConflictDoNothing` on the collection_item
+ * composite unique key and select-and-reuse for collections (looked up
+ * by userId + name).
+ *
+ * @param tx              - The transaction client.
+ * @param createdUsers    - Map of username → user row from `seedUsers`.
+ * @param createdRecipes  - Map of slug → recipe row from `seedRecipes`.
+ */
+async function seedCollections(
+  tx: SeedTX,
+  createdUsers: Record<string, typeof users.$inferSelect>,
+  createdRecipes: Record<string, typeof recipes.$inferSelect>,
+) {
+  const recipeSlugs = Object.keys(createdRecipes);
+  if (recipeSlugs.length === 0) return;
+
+  let collectionSortOrder = 0;
+
+  for (const [username, user] of Object.entries(createdUsers)) {
+    // Create 1–2 public collections per user
+    const collectionNames = [`${username}'s Favourites`];
+    if (recipeSlugs.length >= 3) {
+      collectionNames.push(`${username}'s Morning Brews`);
+    }
+
+    for (const name of collectionNames) {
+      // Select-and-reuse: look up existing collection by userId + name
+      const [existing] = await tx.select().from(collections).where(
+        and(eq(collections.userId, user.id), eq(collections.name, name)),
+      ).limit(1);
+
+      const collection = existing ??
+        (await tx.insert(collections).values({
+          userId: user.id,
+          name,
+          description: `A curated collection by ${username}`,
+          visibility: 'public',
+        }).returning())[0];
+
+      if (!collection) continue;
+
+      // Add 2–3 recipes to each collection
+      const recipesToAdd = recipeSlugs.slice(0, Math.min(3, recipeSlugs.length));
+      for (const slug of recipesToAdd) {
+        const recipe = createdRecipes[slug];
+        if (!recipe) continue;
+
+        await tx.insert(collectionItems).values({
+          collectionId: collection.id,
+          recipeId: recipe.id,
+          sortOrder: collectionSortOrder++,
+        }).onConflictDoNothing({
+          target: [collectionItems.collectionId, collectionItems.recipeId],
+        });
+      }
+    }
+  }
+}
+
 export async function main() {
   const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
   const adminPassword = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';
@@ -825,6 +890,7 @@ export async function main() {
     await seedSetups(tx, createdUsers, createdEquipment);
     await seedTasteNotes(tx, scaaData.data);
     await seedRecipeTasteNotes(tx, createdVersions);
+    await seedCollections(tx, createdUsers, createdRecipes);
   });
 
   console.log('Seeding complete!');
