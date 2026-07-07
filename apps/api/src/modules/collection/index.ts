@@ -70,6 +70,10 @@ collection.get(
           },
         },
       },
+      400: {
+        description: 'Validation error',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
       401: {
         description: 'Unauthorized',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
@@ -77,7 +81,7 @@ collection.get(
     },
   }),
   authGuard,
-  zValidator('query', CollectionListFilterSchema),
+  zValidator('query', CollectionListFilterSchema, zodValidationHook),
   async (c) => {
     const userId = c.get('userId') as string;
     const { page, perPage, visibility } = c.req.valid('query');
@@ -498,10 +502,14 @@ userCollections.get(
           },
         },
       },
+      400: {
+        description: 'Validation error',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   optionalAuthGuard,
-  zValidator('query', CollectionListFilterSchema),
+  zValidator('query', CollectionListFilterSchema, zodValidationHook),
   async (c) => {
     const targetUserId = c.req.param('userId')!;
     const requestingUserId = c.get('userId') as string | null;

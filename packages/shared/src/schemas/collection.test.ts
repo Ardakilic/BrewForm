@@ -55,9 +55,9 @@ describe('CollectionUpdateSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept empty object', () => {
+  it('should reject empty object', () => {
     const result = CollectionUpdateSchema.safeParse({});
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it('should accept visibility-only update', () => {

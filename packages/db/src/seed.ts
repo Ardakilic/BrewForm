@@ -7,7 +7,7 @@
  * existence checks for tables without them. Invoked on first container boot (when the users table is
  * empty) and via `make db-seed`.
  */
-import { and, eq, ilike, sql } from 'drizzle-orm';
+import { and, eq, ilike, isNull, sql } from 'drizzle-orm';
 import {
   badges,
   beans,
@@ -824,7 +824,11 @@ async function seedCollections(
     for (const name of collectionNames) {
       // Select-and-reuse: look up existing collection by userId + name
       const [existing] = await tx.select().from(collections).where(
-        and(eq(collections.userId, user.id), eq(collections.name, name)),
+        and(
+          eq(collections.userId, user.id),
+          eq(collections.name, name),
+          isNull(collections.deletedAt),
+        ),
       ).limit(1);
 
       const collection = existing ??

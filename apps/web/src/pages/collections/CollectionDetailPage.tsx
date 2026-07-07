@@ -23,6 +23,7 @@ export const loader = async (
 ): Promise<CollectionDetailLoaderData> => {
   const id = params.id;
   if (!id) throw new Response('Not Found', { status: 404 });
+  log.debug({ collectionId: id }, 'CollectionDetailPage loader started');
   let collection: CollectionDetailOutput;
   try {
     collection = await collectionApi.get(id);
@@ -30,8 +31,10 @@ export const loader = async (
     if (err instanceof ApiError && err.status === 404) {
       throw new Response('Not Found', { status: 404 });
     }
+    log.error({ err, collectionId: id }, 'CollectionDetailPage loader failed');
     throw err;
   }
+  log.debug({ collectionId: id }, 'CollectionDetailPage loader completed');
   return { collection };
 };
 

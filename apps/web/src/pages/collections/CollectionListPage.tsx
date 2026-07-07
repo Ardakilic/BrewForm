@@ -18,8 +18,15 @@ export interface CollectionListLoaderData {
  * user's collections (all visibilities), paginated.
  */
 export const loader = async (): Promise<CollectionListLoaderData> => {
-  const collectionsResponse = await collectionApi.list();
-  return { collectionsResponse };
+  log.debug({}, 'CollectionListPage loader started');
+  try {
+    const collectionsResponse = await collectionApi.list();
+    log.debug({}, 'CollectionListPage loader completed');
+    return { collectionsResponse };
+  } catch (err) {
+    log.error({ err }, 'CollectionListPage loader failed');
+    throw err;
+  }
 };
 
 /**

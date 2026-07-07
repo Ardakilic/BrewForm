@@ -367,6 +367,12 @@ describe(
       ).rejects.toThrow('REORDER_MISMATCH');
     });
 
+    it('duplicate item IDs throw REORDER_MISMATCH', async () => {
+      await expect(
+        service.reorderCollection(user.id, col.id, [itemIds[0], itemIds[0], itemIds[2]]),
+      ).rejects.toThrow('REORDER_MISMATCH');
+    });
+
     it('non-owner throws FORBIDDEN', async () => {
       const other = await createUser('svc-reorder-other');
       try {

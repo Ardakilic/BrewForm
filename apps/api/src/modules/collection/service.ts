@@ -227,6 +227,7 @@ export async function addRecipeToCollection(
     ) {
       throw new Error('ALREADY_IN_COLLECTION');
     }
+    logger.error({ err, userId, collectionId, recipeId }, 'addRecipeToCollection failed');
     throw err;
   }
   logger.debug({ userId, collectionId, recipeId }, 'addRecipeToCollection completed');
@@ -274,6 +275,8 @@ export async function reorderCollection(
   const existingItems = collection.items ?? [];
   if (itemIds.length !== existingItems.length) throw new Error('REORDER_MISMATCH');
   const existingIds = new Set(existingItems.map((i: any) => i.id));
+  // Reject duplicate item IDs — a duplicated payload can corrupt ordering
+  if (new Set(itemIds).size !== itemIds.length) throw new Error('REORDER_MISMATCH');
   for (const id of itemIds) {
     if (!existingIds.has(id)) throw new Error('REORDER_MISMATCH');
   }

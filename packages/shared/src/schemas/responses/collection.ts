@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { VISIBILITY_VALUES } from '../../constants/index.ts';
 import { RecipeListItemOutputSchema } from './recipe.ts';
 import { RecipeAuthorMiniSchema } from './_shared.ts';
 
@@ -16,7 +17,7 @@ export const CollectionOutputSchema = z.object({
   userId: z.string(),
   name: z.string(),
   description: z.string().nullable(),
-  visibility: z.string(),
+  visibility: z.enum(VISIBILITY_VALUES),
   createdAt: z.string(),
   updatedAt: z.string(),
   deletedAt: z.string().nullable(),

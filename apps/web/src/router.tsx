@@ -23,6 +23,11 @@ import {
   CollectionDetailPage,
   loader as collectionDetailLoader,
 } from './pages/collections/CollectionDetailPage.tsx';
+import { CollectionCreatePage } from './pages/collections/CollectionCreatePage.tsx';
+import {
+  CollectionEditPage,
+  loader as collectionEditLoader,
+} from './pages/collections/CollectionEditPage.tsx';
 import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
@@ -120,9 +125,28 @@ export const router = createBrowserRouter([
         errorElement: <RootErrorBoundary />,
       },
       {
+        path: 'collections/new',
+        element: (
+          <RequireAuth>
+            <CollectionCreatePage />
+          </RequireAuth>
+        ),
+        errorElement: <RootErrorBoundary />,
+      },
+      {
         path: 'collections/:id',
         element: <CollectionDetailPage />,
         loader: collectionDetailLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'collections/:id/edit',
+        element: (
+          <RequireAuth>
+            <CollectionEditPage />
+          </RequireAuth>
+        ),
+        loader: collectionEditLoader,
         errorElement: <RootErrorBoundary />,
       },
       { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },

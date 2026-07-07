@@ -116,19 +116,21 @@ export async function softDelete(id: string) {
  * Throws on unique-constraint violation (caught by the service layer).
  */
 export async function addItem(collectionId: string, recipeId: string, sortOrder?: number) {
-  let order = sortOrder;
-  if (order === undefined) {
-    const existing = await db
-      .select({ maxOrder: sql<number>`max(${collectionItems.sortOrder})` })
-      .from(collectionItems)
-      .where(eq(collectionItems.collectionId, collectionId));
-    order = (existing[0]?.maxOrder ?? -1) + 1;
-  }
-  const [row] = await db
-    .insert(collectionItems)
-    .values({ collectionId, recipeId, sortOrder: order })
-    .returning();
-  return row;
+  return db.transaction(async (tx) => {
+    let order = sortOrder;
+    if (order === undefined) {
+      const [existing] = await tx
+        .select({ maxOrder: sql<number>`max(${collectionItems.sortOrder})` })
+        .from(collectionItems)
+        .where(eq(collectionItems.collectionId, collectionId));
+      order = (existing?.maxOrder ?? -1) + 1;
+    }
+    const [row] = await tx
+      .insert(collectionItems)
+      .values({ collectionId, recipeId, sortOrder: order })
+      .returning();
+    return row;
+  });
 }
 
 /** Hard-delete a collection_item row. Returns the deleted row or undefined. */

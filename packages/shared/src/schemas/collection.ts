@@ -21,7 +21,13 @@ export const CollectionUpdateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2000).optional(),
   visibility: VisibilityEnum.optional(),
-});
+}).refine(
+  (data) =>
+    data.name !== undefined || data.description !== undefined || data.visibility !== undefined,
+  {
+    message: 'At least one field (name, description, or visibility) must be provided',
+  },
+);
 
 /**
  * Validates "add recipe to collection" payloads.
@@ -37,7 +43,7 @@ export const CollectionAddRecipeSchema = z.object({
  * Used by PATCH /api/v1/collections/:id/reorder.
  */
 export const CollectionReorderSchema = z.object({
-  itemIds: z.array(z.uuid()).min(1),
+  itemIds: z.array(z.uuid()).min(1).max(500),
 });
 
 /**

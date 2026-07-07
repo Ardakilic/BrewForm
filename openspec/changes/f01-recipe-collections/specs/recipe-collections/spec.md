@@ -534,11 +534,8 @@ The page SHALL create a `const log = createLogger('CollectionListPage')` and add
 
 `CollectionDetailPage` SHALL use a `loader` (exported from the page module and attached to the route) that calls `collectionApi.get(id)` and
 maps a 404 `ApiError` to `throw new Response('Not Found', { status: 404 })` (matching
-`RecipeDetailPage.tsx:66-71`). The route uses `lazy` for code-splitting the `Component`,
-and the `loader` is attached separately (react-router v8 supports `lazy` + a sibling
-`loader` export — see the `RecipeDetailPage` route at `router.tsx:98-103` which uses an
-eager import + `loader: detailLoader`; for the lazy variant, the `lazy` function returns
-`{ Component }` and the `loader` is imported alongside it: `{ lazy: async () => { const { CollectionDetailPage, loader } = await import('./...'); return { Component: CollectionDetailPage, loader } } }`). The page SHALL render the collection header (name, description,
+`RecipeDetailPage.tsx:66-71`). The route uses an eager import + separate `loader` export,
+matching the `RecipeDetailPage` route at `router.tsx:98-103`. The page SHALL render the collection header (name, description,
 visibility badge, owner link), the `CollectionRecipeList` (reorderable), and edit/delete buttons
 for the owner.
 

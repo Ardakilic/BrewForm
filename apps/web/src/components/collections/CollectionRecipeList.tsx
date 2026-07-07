@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useFetcher } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import type { CollectionItemOutput } from '@brewform/shared/schemas';
 import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -21,26 +21,33 @@ interface CollectionRecipeListProps {
  */
 export function CollectionRecipeList({ collectionId, items, isOwner }: CollectionRecipeListProps) {
   const { t } = useTranslation();
-  const fetcher = useFetcher();
   const [localItems, setLocalItems] = useState(items);
+
+  // Sync localItems when the items prop changes (e.g. navigating to a different collection)
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
 
   log.debug({ collectionId, itemCount: localItems.length }, 'CollectionRecipeList rendered');
 
-  const moveItem = (index: number, direction: 'up' | 'down') => {
+  const moveItem = async (index: number, direction: 'up' | 'down') => {
     if (direction === 'up' && index === 0) return;
     if (direction === 'down' && index === localItems.length - 1) return;
     const newItems = [...localItems];
     const swapIndex = direction === 'up' ? index - 1 : index + 1;
     [newItems[index], newItems[swapIndex]] = [newItems[swapIndex], newItems[index]];
+    // Optimistic update
+    const previousItems = localItems;
     setLocalItems(newItems);
-    const itemIds = newItems.map((i) => i.id);
-    fetcher.submit(
-      { itemIds: JSON.stringify(itemIds) },
-      {
-        method: 'PATCH',
-        action: `/api/v1/collections/${collectionId}/reorder`,
-      },
-    );
+    try {
+      const itemIds = newItems.map((i) => i.id);
+      await collectionApi.reorder(collectionId, itemIds);
+      log.debug({ collectionId }, 'Collection reordered');
+    } catch (err) {
+      // Rollback on error
+      setLocalItems(previousItems);
+      log.error({ err, collectionId }, 'Failed to reorder collection');
+    }
   };
 
   const handleRemove = async (itemId: string, recipeId: string) => {

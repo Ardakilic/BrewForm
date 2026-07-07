@@ -65,18 +65,28 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
   const handleCreate = async () => {
     if (!newName.trim()) return;
     setCreating(true);
+    let createdId: string | null = null;
     try {
       const created = await collectionApi.create({
         name: newName.trim(),
         visibility: newVisibility as 'private' | 'unlisted' | 'public' | 'draft',
       });
+      createdId = created.id;
       await collectionApi.addRecipe(created.id, recipeId);
       const res = await collectionApi.list();
       setCollections(res.data);
       setNewName('');
       log.debug({ collectionId: created.id }, 'New collection created with recipe');
     } catch (err) {
-      log.error({ err }, 'Failed to create collection');
+      if (createdId) {
+        // Create succeeded but addRecipe failed — collection exists without the recipe
+        log.error(
+          { err, collectionId: createdId, recipeId },
+          'Collection created but recipe add failed',
+        );
+      } else {
+        log.error({ err }, 'Failed to create collection');
+      }
     } finally {
       setCreating(false);
     }
@@ -95,11 +105,18 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
           <h2 className='text-lg font-bold' style={{ color: 'var(--text-primary)' }}>
             {t('collection.modal.title')}
           </h2>
-          <button type='button' onClick={onClose} className='text-xl' aria-label='Close'>×</button>
+          <button
+            type='button'
+            onClick={onClose}
+            className='text-xl'
+            aria-label={t('common.close')}
+          >
+            ×
+          </button>
         </div>
 
         {loading
-          ? <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
+          ? <p style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</p>
           : (
             <div className='space-y-2 mb-4'>
               {collections.length === 0
