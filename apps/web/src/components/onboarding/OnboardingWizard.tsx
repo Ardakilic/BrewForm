@@ -23,7 +23,7 @@ export function OnboardingWizard() {
 
   async function skip() {
     try {
-      await api.patch('/preferences', { onboardingCompleted: true } as Record<string, unknown>);
+      await api.patch('/preferences', { onboardingCompleted: true });
       await refreshUser();
       navigate('/');
     } catch {
@@ -33,7 +33,7 @@ export function OnboardingWizard() {
 
   async function complete() {
     try {
-      await api.patch('/preferences', { onboardingCompleted: true } as Record<string, unknown>);
+      await api.patch('/preferences', { onboardingCompleted: true });
       await refreshUser();
       navigate('/');
     } catch {

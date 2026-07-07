@@ -3,6 +3,7 @@ import { expect } from 'jsr:@std/expect';
 import {
   FeedRecipeOutputSchema,
   RecipeDetailOutputSchema,
+  RecipeListItemOutputSchema,
   RecipeRowSchema,
   RecipeVersionRowSchema,
   RecipeWithAuthorOutputSchema,
@@ -144,6 +145,37 @@ const detailVersion = {
   bean: detailBean,
 };
 
+/** Flattened taste-note item as returned by the GET /:slugOrId route handler. */
+const flatTasteNote = {
+  id: 'tn-1',
+  name: 'Floral',
+  parentId: null,
+  color: '#ff0000',
+  definition: 'Flower-like aroma',
+  depth: 1,
+  createdAt: new Date('2024-01-01T00:00:00.000Z'),
+  deletedAt: null,
+  tasteNoteId: 'tn-1',
+  rootCategoryName: 'Floral',
+  intensity: 2,
+};
+
+/** Flattened equipment item as returned by the GET /:slugOrId route handler. */
+const flatEquipment = {
+  id: 'eq-1',
+  name: 'V60 Dripper',
+  type: 'brewer',
+  brand: 'Hario',
+  model: 'V60-02',
+  description: null,
+  createdBy: null,
+  isSystem: true,
+  createdAt: new Date('2024-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+  deletedAt: null,
+  equipmentId: 'eq-1',
+};
+
 const forkedFrom = { id: 'recipe-0', slug: 'original-pour-over', title: 'Original Pour Over' };
 
 const detailPayload = {
@@ -163,6 +195,19 @@ const detailPayload = {
     },
   ],
   forkedFrom,
+  // Per-request overlay added by the GET /:slugOrId route handler:
+  currentVersion: detailVersion,
+  tasteNotes: [flatTasteNote],
+  equipment: [flatEquipment],
+  bean: detailBean,
+  versionCount: 1,
+  forkedFromSlug: 'original-pour-over',
+  userLiked: true,
+  userFavourited: false,
+  favouriteCount: 3,
+  avgRating: 8.5,
+  ratingCount: 4,
+  userRating: 9,
 };
 
 describe('RecipeRowSchema', () => {
@@ -211,6 +256,23 @@ describe('FeedRecipeOutputSchema', () => {
   });
 });
 
+describe('RecipeListItemOutputSchema', () => {
+  it('parses a list item (recipe row + mini author { id, username, displayName })', () => {
+    const payload = {
+      ...recipeRow,
+      author: { id: 'user-1', username: 'barista', displayName: 'Barista' },
+    };
+    const result = RecipeListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual(wire(payload));
+  });
+
+  it('rejects a list item missing the author projection', () => {
+    const payload = { ...recipeRow };
+    const result = RecipeListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(false);
+  });
+});
 describe('RecipeDetailOutputSchema', () => {
   it('parses a full recipe detail payload with nested relations and round-trips', () => {
     const result = RecipeDetailOutputSchema.safeParse(wire(detailPayload));

@@ -6,47 +6,21 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import type { CoffeeVarietyOutput, RecipeWithVersionsOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('CoffeeVarietyDetailPage');
 
-interface VarietyDetail {
-  id: string;
-  name: string;
-  species: string | null;
-  category: string | null;
-  origin: string | null;
-  altitude: string | null;
-  cupProfile: string | null;
-  body: string | null;
-  acidity: string | null;
-  caffeine: string | null;
-  diseaseResistance: string | null;
-  yield: string | null;
-  plantSize: string | null;
-  spread: string | null;
-  notes: string | null;
-  fermentation: string | null;
-  dryingTime: string | null;
-  processingCompatibility: string | null;
-  subVarieties: string | null;
-  slug: string;
-}
-
-interface RecipeEntry {
-  id: string;
-  slug: string;
-  title: string;
-  author?: { username: string; displayName: string | null };
-  currentVersion?: { brewMethod: string; drinkType: string; rating: number | null };
-  likeCount: number;
-  commentCount: number;
+/** Join an array field for display, or return null if empty/absent. */
+function joinArray(v: string[] | null): string | null {
+  if (!v || v.length === 0) return null;
+  return v.join(', ');
 }
 
 /** Displays a single coffee variety's details, properties, and associated recipes. */
 export function CoffeeVarietyDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [variety, setVariety] = useState<VarietyDetail | null>(null);
-  const [recipes, setRecipes] = useState<RecipeEntry[]>([]);
+  const [variety, setVariety] = useState<CoffeeVarietyOutput | null>(null);
+  const [recipes, setRecipes] = useState<RecipeWithVersionsOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { t } = useTranslation();
@@ -67,8 +41,10 @@ export function CoffeeVarietyDetailPage() {
     setError(false);
 
     Promise.all([
-      api.get<VarietyDetail>(`/coffee-varieties/${id}`),
-      api.get<{ data: RecipeEntry[] }>(`/coffee-varieties/${id}/recipes?perPage=6`),
+      api.get<CoffeeVarietyOutput>(`/coffee-varieties/${id}`),
+      api.get<{ data: RecipeWithVersionsOutput[] }>(
+        `/coffee-varieties/${id}/recipes?perPage=6`,
+      ),
     ])
       .then(([varietyData, recipesData]) => {
         setVariety(varietyData);
@@ -120,20 +96,23 @@ export function CoffeeVarietyDetailPage() {
 
   const fields: [string, string | null][] = ([
     [t('coffeeVarieties.fields.origin'), variety.origin],
-    [t('coffeeVarieties.fields.altitude'), variety.altitude],
+    [t('coffeeVarieties.fields.altitude'), variety.altitudeRangeM],
     [t('coffeeVarieties.fields.cupProfile'), variety.cupProfile],
     [t('coffeeVarieties.fields.body'), variety.body],
     [t('coffeeVarieties.fields.acidity'), variety.acidity],
-    [t('coffeeVarieties.fields.caffeine'), variety.caffeine],
+    [t('coffeeVarieties.fields.caffeine'), variety.caffeinePct],
     [t('coffeeVarieties.fields.diseaseResistance'), variety.diseaseResistance],
     [t('coffeeVarieties.fields.yield'), variety.yield],
     [t('coffeeVarieties.fields.plantSize'), variety.plantSize],
     [t('coffeeVarieties.fields.spread'), variety.spread],
     [t('coffeeVarieties.fields.notes'), variety.notes],
     [t('coffeeVarieties.fields.fermentation'), variety.fermentation],
-    [t('coffeeVarieties.fields.dryingTime'), variety.dryingTime],
-    [t('coffeeVarieties.fields.processingCompatibility'), variety.processingCompatibility],
-    [t('coffeeVarieties.fields.subVarieties'), variety.subVarieties],
+    [t('coffeeVarieties.fields.dryingTime'), variety.dryingTimeDays],
+    [
+      t('coffeeVarieties.fields.processingCompatibility'),
+      joinArray(variety.processingCompatibility),
+    ],
+    [t('coffeeVarieties.fields.subVarieties'), joinArray(variety.subVarieties)],
   ] as [string, string | null][]).filter(([, v]) => v != null && v !== '');
 
   return (
@@ -228,40 +207,41 @@ export function CoffeeVarietyDetailPage() {
           )
           : (
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-              {recipes.map((r) => (
-                <Link
-                  key={r.id}
-                  to={`/recipes/${r.slug}`}
-                  className='card hover:shadow-lg transition-shadow'
-                >
-                  <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                    {r.title}
-                  </h3>
-                  {r.author && (
+              {recipes.map((r) => {
+                const v = r.versions[0];
+                return (
+                  <Link
+                    key={r.id}
+                    to={`/recipes/${r.slug}`}
+                    className='card hover:shadow-lg transition-shadow'
+                  >
+                    <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
+                      {r.title}
+                    </h3>
                     <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
                       {t('recipe.focusMode.by')} {r.author.displayName || r.author.username}
                     </p>
-                  )}
-                  {r.currentVersion && (
+                    {v && (
+                      <div
+                        className='mt-1 flex flex-wrap gap-1 text-xs'
+                        style={{ color: 'var(--text-tertiary)' }}
+                      >
+                        <span>{v.brewMethod.replace(/_/g, ' ')}</span>
+                        <span>•</span>
+                        <span>{v.drinkType.replace(/_/g, ' ')}</span>
+                        {v.rating && <span>• ★ {v.rating}</span>}
+                      </div>
+                    )}
                     <div
-                      className='mt-1 flex flex-wrap gap-1 text-xs'
+                      className='mt-2 flex items-center gap-2 text-xs'
                       style={{ color: 'var(--text-tertiary)' }}
                     >
-                      <span>{r.currentVersion.brewMethod.replace(/_/g, ' ')}</span>
-                      <span>•</span>
-                      <span>{r.currentVersion.drinkType.replace(/_/g, ' ')}</span>
-                      {r.currentVersion.rating && <span>• ★ {r.currentVersion.rating}</span>}
+                      <span>❤️ {r.likeCount}</span>
+                      <span>💬 {r.commentCount}</span>
                     </div>
-                  )}
-                  <div
-                    className='mt-2 flex items-center gap-2 text-xs'
-                    style={{ color: 'var(--text-tertiary)' }}
-                  >
-                    <span>❤️ {r.likeCount}</span>
-                    <span>💬 {r.commentCount}</span>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
       </section>

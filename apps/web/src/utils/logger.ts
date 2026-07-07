@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { ChildLogger, CreateLogger } from '@brewform/shared/logger';
+import type { ChildLogger, CreateLogger, Logger } from '@brewform/shared/logger';
 
 const LEVELS: Record<string, number> = {
   trace: 10,
@@ -111,6 +111,14 @@ class ConsoleLogger implements ChildLogger {
 
   bindings(): Record<string, unknown> {
     return { module: this.#module };
+  }
+
+  /** Create a child logger with additional bindings. Returns a new ConsoleLogger. */
+  child(bindings: Record<string, unknown>): Logger {
+    const childModule = typeof bindings.module === 'string'
+      ? `${this.#module}:${bindings.module}`
+      : this.#module;
+    return new ConsoleLogger(childModule, logLevel);
   }
 }
 

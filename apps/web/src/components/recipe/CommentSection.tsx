@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useFetcher } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import type { CommentData } from '../../api/types.ts';
+import type {
+  CommentOutput,
+  CommentWithAuthorOutput,
+  CommentWithRepliesOutput,
+} from '@brewform/shared/schemas';
 import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('CommentSection');
@@ -11,7 +15,7 @@ interface Props {
   recipeId: string;
   recipeAuthorId: string;
   initialComments: {
-    data: CommentData[];
+    data: CommentWithRepliesOutput[];
     meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
   };
 }
@@ -67,7 +71,7 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
 export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Props) {
   const { user, isAuthenticated } = useAuth();
   const { t } = useTranslation();
-  const [comments, setComments] = useState<CommentData[]>(initialComments.data);
+  const [comments, setComments] = useState<CommentWithRepliesOutput[]>(initialComments.data);
   const [newComment, setNewComment] = useState('');
   const [page, setPage] = useState(initialComments.meta.pagination.page);
   const [total, setTotal] = useState(initialComments.meta.pagination.total);
@@ -83,7 +87,9 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
   const loadMoreFetcher = useFetcher();
 
   const submitIntent = useRef<string | { type: 'reply'; parentCommentId: string } | null>(null);
-  const deleteSnapshotRef = useRef<{ comments: CommentData[]; total: number } | null>(null);
+  const deleteSnapshotRef = useRef<{ comments: CommentWithRepliesOutput[]; total: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     setComments(initialComments.data);
@@ -128,11 +134,13 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     if (submitFetcher.state !== 'idle' || !submitFetcher.data || !submitIntent.current) return;
     const intent = submitIntent.current;
     submitIntent.current = null;
-    const data = submitFetcher.data as CommentData;
+    const data = submitFetcher.data as CommentOutput;
 
     if (typeof intent === 'string') {
-      // Top-level comment
-      const comment: CommentData = {
+      // Top-level comment: API returns `CommentOutput` (no `author`/`replies`);
+      // the client wraps it with the local user's author projection and an
+      // empty replies array so the optimistic insert matches the list shape.
+      const comment: CommentWithRepliesOutput = {
         ...data,
         author: user
           ? {
@@ -141,7 +149,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
             displayName: user.displayName,
             avatarUrl: user.avatarUrl,
           }
-          : undefined,
+          : null,
         replies: [],
       };
       setComments((prev) => [comment, ...prev]);
@@ -149,8 +157,8 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
       setNewComment('');
       setStatusMessage(t('comment.posted'));
     } else {
-      // Reply
-      const reply: CommentData = {
+      // Reply: same wrapping as above; replies are appended to the parent.
+      const reply: CommentWithRepliesOutput = {
         ...data,
         author: user
           ? {
@@ -159,7 +167,8 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
             displayName: user.displayName,
             avatarUrl: user.avatarUrl,
           }
-          : undefined,
+          : null,
+        replies: [],
       };
       setComments((prev) =>
         prev.map((c) =>
@@ -176,7 +185,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
   useEffect(() => {
     if (loadMoreFetcher.state !== 'idle' || !loadMoreFetcher.data) return;
     const result = loadMoreFetcher.data as {
-      data: CommentData[];
+      data: CommentWithRepliesOutput[];
       meta: { pagination: { total: number; page: number; perPage: number; totalPages: number } };
     };
     if (!Array.isArray(result.data)) return;
@@ -186,7 +195,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
   }, [loadMoreFetcher.state, loadMoreFetcher.data]);
 
   // A user can reply if they are: the recipe owner, an admin, OR the author of the top-level comment
-  function canReplyToComment(topLevelComment: CommentData): boolean {
+  function canReplyToComment(topLevelComment: CommentWithRepliesOutput): boolean {
     if (!isAuthenticated || user == null) return false;
     if (user.id === recipeAuthorId) return true;
     if (user.isAdmin === true) return true;
@@ -246,19 +255,22 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     });
   }
 
-  function isRecipeAuthor(comment: CommentData) {
+  function isRecipeAuthor(comment: CommentWithAuthorOutput) {
     return comment.authorId === recipeAuthorId;
   }
 
-  function getAuthorUsername(comment: CommentData): string | null {
+  function getAuthorUsername(comment: CommentWithAuthorOutput): string | null {
     return comment.author?.username || null;
   }
 
-  function getAuthorName(comment: CommentData): string {
+  function getAuthorName(comment: CommentWithAuthorOutput): string {
     return comment.author?.displayName || comment.author?.username || 'Unknown';
   }
 
-  function AuthorLink({ comment, className }: { comment: CommentData; className?: string }) {
+  function AuthorLink({ comment, className }: {
+    comment: CommentWithAuthorOutput;
+    className?: string;
+  }) {
     const username = getAuthorUsername(comment);
     const name = getAuthorName(comment);
     if (username) {
@@ -274,7 +286,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     return <span className={`${className ?? ''} text-[color:var(--text-primary)]`}>{name}</span>;
   }
 
-  function renderComment(comment: CommentData) {
+  function renderComment(comment: CommentWithRepliesOutput) {
     const isReplyOpen = replyingToId === comment.id;
     const userCanReply = canReplyToComment(comment);
     const userIsCommentAuthor = isAuthenticated && user != null && user.id === comment.authorId;

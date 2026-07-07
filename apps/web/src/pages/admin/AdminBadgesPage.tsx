@@ -2,21 +2,14 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type { BadgeOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminBadgesPage');
 
-interface Badge {
-  id: string;
-  name: string;
-  emoji: string;
-  rule: string;
-  description: string;
-}
-
-/** Admin page: read-only grid of all badges with emoji, name, and rule. */
+/** Admin page: read-only grid of all badges with icon, name, and rule. */
 export function AdminBadgesPage() {
   const { t } = useTranslation();
-  const [badges, setBadges] = useState<Badge[]>([]);
+  const [badges, setBadges] = useState<BadgeOutput[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,8 +20,8 @@ export function AdminBadgesPage() {
   }, []);
 
   useEffect(() => {
-    api.get<Badge[]>('/badges').then((data) => {
-      setBadges(data as Badge[]);
+    api.get<BadgeOutput[]>('/badges').then((data) => {
+      setBadges(data);
     }).catch((err) => {
       log.error({ err }, 'AdminBadgesPage loadBadges failed');
     }).finally(() => setLoading(false));
@@ -48,7 +41,7 @@ export function AdminBadgesPage() {
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
             {badges.map((badge) => (
               <div key={badge.id} className='card'>
-                <div className='text-3xl mb-2'>{badge.emoji}</div>
+                <div className='text-3xl mb-2'>{badge.icon}</div>
                 <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
                   {badge.name}
                 </h3>

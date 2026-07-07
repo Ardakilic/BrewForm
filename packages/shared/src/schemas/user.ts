@@ -39,3 +39,6 @@ export const UserProfileUpdateSchema = z.object({
   bio: z.string().max(500).optional(),
   avatarUrl: z.url().optional(),
 });
+
+export type UserProfileUpdate = z.infer<typeof UserProfileUpdateSchema>;
+export type UserPreferences = z.infer<typeof UserPreferencesSchema>;

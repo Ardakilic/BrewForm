@@ -2,7 +2,12 @@ import { useEffect } from 'react';
 import { redirect, useLoaderData } from 'react-router';
 import { ApiError, recipeApi } from '../../api/index.ts';
 import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
-import type { EquipmentListItem, RecipeListItem, TasteNoteFlatItem } from '../../api/types.ts';
+import type {
+  EquipmentOutput,
+  PaginatedResponse,
+  RecipeListItemOutput,
+  TasteNoteOutput,
+} from '@brewform/shared/schemas';
 import { extractListParams } from '../../utils/recipe-filters.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -13,9 +18,9 @@ const log = createLogger('StarredRecipesPage');
 
 /** Loader payload for {@link StarredRecipesPage}. */
 export interface StarredRecipesLoaderData {
-  recipesResponse: { data: RecipeListItem[]; meta: { pagination?: { total?: number } } };
-  equipment: EquipmentListItem[];
-  tasteNotes: TasteNoteFlatItem[];
+  recipesResponse: PaginatedResponse<RecipeListItemOutput>;
+  equipment: EquipmentOutput[];
+  tasteNotes: TasteNoteOutput[];
 }
 
 /** React Router data loader for `/recipes/starred` — fetches the

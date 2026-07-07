@@ -7,18 +7,9 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import type { CoffeeVarietyOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('CoffeeVarietiesPage');
-
-interface CoffeeVarietyItem {
-  id: string;
-  name: string;
-  species: string | null;
-  category: string | null;
-  origin: string | null;
-  cupProfile: string | null;
-  slug: string;
-}
 
 /**
  * Public coffee-variety catalog with URL-driven pagination, category
@@ -26,7 +17,7 @@ interface CoffeeVarietyItem {
  */
 export function CoffeeVarietiesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [varieties, setVarieties] = useState<CoffeeVarietyItem[]>([]);
+  const [varieties, setVarieties] = useState<CoffeeVarietyOutput[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +53,7 @@ export function CoffeeVarietiesPage() {
     if (category) params.set('category', category);
     if (debouncedSearch) params.set('search', debouncedSearch);
 
-    api.getWithMeta<{ data: CoffeeVarietyItem[]; meta: { pagination?: { total: number } } }>(
+    api.getWithMeta<{ data: CoffeeVarietyOutput[]; meta: { pagination?: { total: number } } }>(
       `/coffee-varieties?${params.toString()}`,
     )
       .then((data) => {

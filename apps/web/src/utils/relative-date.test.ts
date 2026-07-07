@@ -189,6 +189,7 @@ describe('Property 3: Relative date calculation (PBT)', () => {
             ]
           ) {
             expect(result.type).not.toBe('today');
+            if (result.type === 'today') return;
             expect(Number.isInteger(result.days)).toBe(true);
             expect(result.days).toBeGreaterThan(0);
           }

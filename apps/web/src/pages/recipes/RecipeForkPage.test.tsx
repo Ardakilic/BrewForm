@@ -25,6 +25,7 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 import { useParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { recipeApi } from '../../api/index.ts';
+import type { RecipeDetailOutput } from '@brewform/shared/schemas';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 
 const mockUseParams = vi.mocked(useParams);
@@ -69,8 +70,8 @@ beforeEach(() => {
   mockUseParams.mockReturnValue({ id: 'recipe-99' });
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockNavigateFn.mockReset();
-  mockRecipeApi.get.mockResolvedValue(sampleRecipe as unknown as Record<string, unknown>);
-  mockRecipeApi.fork.mockResolvedValue({ id: 'forked-42' } as unknown as Record<string, unknown>);
+  mockRecipeApi.get.mockResolvedValue(sampleRecipe as unknown as RecipeDetailOutput);
+  mockRecipeApi.fork.mockResolvedValue({ id: 'forked-42' } as unknown as RecipeDetailOutput);
 });
 
 describe('RecipeForkPage — loading state', () => {

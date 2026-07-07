@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BadgeOutputSchema } from './badge.ts';
 
 /**
  * User Output Schemas — three distinct returned shapes.
@@ -92,7 +93,7 @@ const PublicUserRecipeSchema = z.object({
 export const PublicUserOutputSchema = UserBaseSchema.omit({ email: true }).extend({
   ...UserStatsSchema,
   recipes: z.array(PublicUserRecipeSchema),
-  badges: z.array(z.unknown()),
+  badges: z.array(BadgeOutputSchema),
   isFollowing: z.boolean(),
 });
 

@@ -1,20 +1,20 @@
 import { equipmentApi, tasteApi } from './index.ts';
-import type { EquipmentListItem, TasteNoteFlatItem } from './types.ts';
+import type { EquipmentOutput, TasteNoteOutput } from '@brewform/shared/schemas';
 
 export const CACHE_BUST_KEY = 'brewform-static-cache-bust';
 
 /** Module-level cache slot for the authenticated user's equipment list. Nulled by {@link invalidateStaticCache}. */
-let _equipment: EquipmentListItem[] | null = null;
+let _equipment: EquipmentOutput[] | null = null;
 
 /** Module-level cache slot for the flat taste-note tree. Nulled by {@link invalidateStaticCache}. */
-let _tasteNotes: TasteNoteFlatItem[] | null = null;
+let _tasteNotes: TasteNoteOutput[] | null = null;
 
 /**
  * Lazy-fetches the equipment list via `equipmentApi.list()` on first call
  * and returns the same memoised array on every subsequent call until
  * `invalidateStaticCache()` is invoked.
  */
-export async function getEquipmentCached(): Promise<EquipmentListItem[]> {
+export async function getEquipmentCached(): Promise<EquipmentOutput[]> {
   if (!_equipment) _equipment = await equipmentApi.list();
   return _equipment;
 }
@@ -24,7 +24,7 @@ export async function getEquipmentCached(): Promise<EquipmentListItem[]> {
  * and returns the same memoised array on every subsequent call until
  * `invalidateStaticCache()` is invoked.
  */
-export async function getTasteNotesCached(): Promise<TasteNoteFlatItem[]> {
+export async function getTasteNotesCached(): Promise<TasteNoteOutput[]> {
   if (!_tasteNotes) _tasteNotes = await tasteApi.flat();
   return _tasteNotes;
 }

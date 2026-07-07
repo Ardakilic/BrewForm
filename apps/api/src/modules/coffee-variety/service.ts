@@ -1,4 +1,3 @@
-// deno-lint-ignore-file require-await
 import * as model from './model.ts';
 import { coffeeVarieties } from '@brewform/db/schema';
 import { cacheProvider } from '../../utils/cache/singleton.ts';

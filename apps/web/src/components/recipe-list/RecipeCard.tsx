@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router';
 import { AUTHOR_BUTTON_STYLE } from '../../components/recipe/RecipeCard.styles.ts';
-import type { RecipeListItem } from '../../api/types.ts';
+import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 
 /**
  * Renders a clickable recipe card with an inner author button.
@@ -10,8 +10,15 @@ import type { RecipeListItem } from '../../api/types.ts';
  * for native link behaviour (Ctrl+click / new tab), while the author
  * button uses `useNavigate` with `e.stopPropagation()` to prevent the
  * outer card navigation.
+ *
+ * Note: the list endpoint (`GET /recipes`) does NOT return a per-item
+ * `currentVersion` projection (see `recipe/model.ts findMany`), so the
+ * card no longer renders a brew-method/drink-type/rating strip — the
+ * shared `RecipeListItemOutput` correctly models this absence. If a
+ * future enrichment adds those fields, extend the schema and restore
+ * the strip.
  */
-export function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
+export function RecipeCard({ recipe }: { recipe: RecipeListItemOutput }) {
   const navigate = useNavigate();
   const { author } = recipe;
   return (
@@ -36,17 +43,6 @@ export function RecipeCard({ recipe }: { recipe: RecipeListItem }) {
             'unknown'
           )}
       </p>
-      {recipe.currentVersion && (
-        <div
-          className='mt-1 flex flex-wrap gap-1 text-xs'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
-          <span>{recipe.currentVersion.brewMethod.replace(/_/g, ' ')}</span>
-          <span>•</span>
-          <span>{recipe.currentVersion.drinkType.replace(/_/g, ' ')}</span>
-          {recipe.currentVersion.rating && <span>• ★ {recipe.currentVersion.rating}</span>}
-        </div>
-      )}
       <div
         className='mt-2 flex items-center gap-2 text-xs'
         style={{ color: 'var(--text-tertiary)' }}

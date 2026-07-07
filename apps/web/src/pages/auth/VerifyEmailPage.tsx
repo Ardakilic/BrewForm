@@ -34,7 +34,7 @@ export function VerifyEmailPage() {
     }
 
     authApi
-      .verifyEmail({ token })
+      .verifyEmail(token)
       .then(async () => {
         await refreshUser();
         setStatus('success');

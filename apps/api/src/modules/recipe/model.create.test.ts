@@ -207,6 +207,84 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     expect(tasteNoteRows[0].intensity).toBe(2);
   });
 
+  it('taste note rows have createdAt populated via defaultNow()', async () => {
+    const input = buildInput({
+      tasteNoteIds: [tasteNote.id],
+      tasteNoteIntensities: { [tasteNote.id]: 2 },
+    });
+    const result = await model.createRecipeWithRelations(input);
+    createdRecipeIds.push(result!.id);
+
+    const [versionRow] = await db.select().from(recipeVersions).where(
+      eq(recipeVersions.recipeId, result!.id),
+    );
+    const tasteNoteRows = await db.select().from(recipeTasteNotes).where(
+      eq(recipeTasteNotes.recipeVersionId, versionRow.id),
+    );
+    expect(tasteNoteRows.length).toBe(1);
+    expect(tasteNoteRows[0].createdAt).toBeInstanceOf(Date);
+    expect(tasteNoteRows[0].createdAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+  });
+
+  it('equipment rows have createdAt populated via defaultNow()', async () => {
+    const input = buildInput({ equipmentIds: [equipmentRow.id] });
+    const result = await model.createRecipeWithRelations(input);
+    createdRecipeIds.push(result!.id);
+
+    const [versionRow] = await db.select().from(recipeVersions).where(
+      eq(recipeVersions.recipeId, result!.id),
+    );
+    const equipmentRows = await db.select().from(recipeEquipment).where(
+      eq(recipeEquipment.recipeVersionId, versionRow.id),
+    );
+    expect(equipmentRows.length).toBe(1);
+    expect(equipmentRows[0].createdAt).toBeInstanceOf(Date);
+    expect(equipmentRows[0].createdAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+  });
+
+  it('version photo rows have createdAt populated via defaultNow()', async () => {
+    const throwawayRecipeId = crypto.randomUUID();
+    const throwawayVersionId = crypto.randomUUID();
+    const photoId = crypto.randomUUID();
+
+    await db.insert(recipes).values({
+      id: throwawayRecipeId,
+      slug: `throwaway-${throwawayRecipeId}`,
+      title: 'Throwaway',
+      authorId: user.id,
+      visibility: 'draft',
+    });
+    await db.insert(recipeVersions).values({
+      id: throwawayVersionId,
+      recipeId: throwawayRecipeId,
+      versionNumber: 1,
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: '',
+    });
+    await db.insert(photos).values({
+      id: photoId,
+      recipeId: throwawayRecipeId,
+      url: 'https://example.com/photo.jpg',
+    });
+    throwawayRecipeIds.push(throwawayRecipeId);
+    throwawayPhotoIds.push(photoId);
+
+    const input = buildInput({ photoIds: [photoId] });
+    const result = await model.createRecipeWithRelations(input);
+    createdRecipeIds.push(result!.id);
+
+    const [versionRow] = await db.select().from(recipeVersions).where(
+      eq(recipeVersions.recipeId, result!.id),
+    );
+    const photoRows = await db.select().from(recipeVersionPhotos).where(
+      eq(recipeVersionPhotos.recipeVersionId, versionRow.id),
+    );
+    expect(photoRows.length).toBe(1);
+    expect(photoRows[0].createdAt).toBeInstanceOf(Date);
+    expect(photoRows[0].createdAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+  });
+
   it('taste notes default intensity is 1', async () => {
     const input = buildInput({
       tasteNoteIds: [tasteNote.id],

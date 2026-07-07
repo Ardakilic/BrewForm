@@ -1,28 +1,19 @@
 import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { api } from '../../api/client.ts';
+import { beanApi } from '../../api/index.ts';
+import type { BeanOutput } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('BeanListPage');
 
-interface Bean {
-  id: string;
-  productName: string | null;
-  brand: string | null;
-  origin: string | null;
-  processing: string | null;
-  roastLevel: string | null;
-  createdAt: string;
-}
-
 /** The user's saved beans: list plus inline create/delete form. */
 export function BeanListPage() {
-  const [beans, setBeans] = useState<Bean[]>([]);
+  const [beans, setBeans] = useState<BeanOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    productName: '',
+    name: '',
     brand: '',
     origin: '',
     processing: '',
@@ -39,8 +30,8 @@ export function BeanListPage() {
   }, []);
 
   useEffect(() => {
-    api.get<Bean[]>('/beans').then((data) => {
-      setBeans(data as Bean[]);
+    beanApi.list().then((data) => {
+      setBeans(data);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
@@ -50,15 +41,15 @@ export function BeanListPage() {
     if (saving) return;
     setSaving(true);
     try {
-      const newBean = await api.post<Bean>('/beans', {
-        productName: form.productName || undefined,
+      const newBean = await beanApi.create({
+        name: form.name,
         brand: form.brand || undefined,
         origin: form.origin || undefined,
         processing: form.processing || undefined,
         roastLevel: form.roastLevel || undefined,
-      } as Record<string, unknown>);
-      setBeans((prev) => [...prev, newBean as Bean]);
-      setForm({ productName: '', brand: '', origin: '', processing: '', roastLevel: '' });
+      });
+      setBeans((prev) => [...prev, newBean]);
+      setForm({ name: '', brand: '', origin: '', processing: '', roastLevel: '' });
       setShowForm(false);
     } catch {
     } finally {
@@ -69,7 +60,7 @@ export function BeanListPage() {
   async function handleDelete(id: string) {
     if (!globalThis.confirm(t('common.delete') + '?')) return;
     try {
-      await api.delete(`/beans/${id}`);
+      await beanApi.delete(id);
       setBeans((prev) => prev.filter((b) => b.id !== id));
     } catch {
     }
@@ -109,12 +100,12 @@ export function BeanListPage() {
                 className='block text-sm font-medium mb-1'
                 style={{ color: 'var(--text-secondary)' }}
               >
-                {t('recipe.productName')}
+                {t('common.name')}
               </label>
               <input
                 type='text'
-                value={form.productName}
-                onChange={(e) => setForm({ ...form, productName: e.target.value })}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className='input-field'
               />
             </div>
@@ -197,7 +188,7 @@ export function BeanListPage() {
                 <div className='flex items-start justify-between'>
                   <div>
                     <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                      {bean.productName || t('bean.unnamed')}
+                      {bean.name || t('bean.unnamed')}
                     </h3>
                     {bean.brand && (
                       <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>

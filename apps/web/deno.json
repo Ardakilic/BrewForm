@@ -5,7 +5,7 @@
   "tasks": {
     "dev": "deno run -A npm:vite --host 0.0.0.0 --port 5173",
     "build": "deno run -A npm:vite build",
-    "check": "deno lint src/",
+    "check": "deno lint src/ && deno run -A npm:typescript/tsc --noEmit -p tsconfig.json",
     "preview": "deno run -A npm:vite preview",
     "lint": "deno lint src/",
     "test": "deno run -A npm:vitest run",

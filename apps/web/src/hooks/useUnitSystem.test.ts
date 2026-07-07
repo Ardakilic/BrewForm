@@ -21,11 +21,13 @@ describe('useUnitSystem', () => {
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      sessionError: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+      clearSessionError: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
 
     const { result } = renderHook(() => useUnitSystem());
     expect(result.current).toBe('metric');
@@ -46,11 +48,13 @@ describe('useUnitSystem', () => {
       },
       isAuthenticated: true,
       isLoading: false,
+      sessionError: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+      clearSessionError: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
 
     const { result } = renderHook(() => useUnitSystem());
     expect(result.current).toBe('metric');
@@ -71,11 +75,13 @@ describe('useUnitSystem', () => {
       },
       isAuthenticated: true,
       isLoading: false,
+      sessionError: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+      clearSessionError: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
 
     const { result } = renderHook(() => useUnitSystem());
     expect(result.current).toBe('metric');
@@ -96,11 +102,13 @@ describe('useUnitSystem', () => {
       },
       isAuthenticated: true,
       isLoading: false,
+      sessionError: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+      clearSessionError: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
 
     const { result } = renderHook(() => useUnitSystem());
     expect(result.current).toBe('metric');
@@ -121,11 +129,13 @@ describe('useUnitSystem', () => {
       },
       isAuthenticated: true,
       isLoading: false,
+      sessionError: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+      clearSessionError: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
 
     const { result } = renderHook(() => useUnitSystem());
     expect(result.current).toBe('imperial');
@@ -146,11 +156,13 @@ describe('useUnitSystem', () => {
       },
       isAuthenticated: true,
       isLoading: false,
+      sessionError: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
-    } as ReturnType<typeof useAuth>);
+      clearSessionError: vi.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
 
     const { result } = renderHook(() => useUnitSystem());
     expect(result.current).toBe('metric');

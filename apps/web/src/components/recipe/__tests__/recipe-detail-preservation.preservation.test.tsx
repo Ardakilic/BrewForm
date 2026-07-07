@@ -234,7 +234,7 @@ describe('Preservation - TastingNotesSection empty state', () => {
     fc.assert(
       fc.property(fc.constant([]), (_emptyNotes) => {
         const { unmount } = render(
-          withProviders(<TastingNotesSection tasteNotes={_emptyNotes} personalNotes={null} />),
+          withProviders(<TastingNotesSection tasteNotes={[..._emptyNotes]} personalNotes={null} />),
         );
         const emptyMsg = screen.queryByText(/no tasting notes/i);
         const hasEmptyState = emptyMsg !== null;

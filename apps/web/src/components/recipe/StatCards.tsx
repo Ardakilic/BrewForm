@@ -8,8 +8,8 @@ interface StatCardsProps {
     extractionTimeSeconds?: number | null;
     brewRatio?: number | null;
     temperatureCelsius?: number | null;
-    tds?: number | null;
-  };
+    tds?: string | null;
+  } | null;
   unitSystem?: 'metric' | 'imperial';
 }
 

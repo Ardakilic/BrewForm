@@ -120,10 +120,12 @@ const defaultAuth = {
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  sessionError: null as 'network' | 'server' | null,
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
   refreshUser: vi.fn(),
+  clearSessionError: vi.fn(),
 };
 
 const HydrateFallback = () => null;

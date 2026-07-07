@@ -1,23 +1,15 @@
 import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { api } from '../../api/client.ts';
+import { setupApi } from '../../api/index.ts';
+import type { SetupOutput } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('SetupListPage');
 
-interface Setup {
-  id: string;
-  name: string;
-  brewerDetails: string | null;
-  grinder: string | null;
-  isDefault: boolean;
-  createdAt: string;
-}
-
 /** The user's brewing setups: list plus inline create/delete and default-setup handling. */
 export function SetupListPage() {
-  const [setups, setSetups] = useState<Setup[]>([]);
+  const [setups, setSetups] = useState<SetupOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
@@ -34,8 +26,8 @@ export function SetupListPage() {
   }, []);
 
   useEffect(() => {
-    api.get<Setup[]>('/setups').then((data) => {
-      setSetups(data as Setup[]);
+    setupApi.list().then((data) => {
+      setSetups(data);
     }).catch(() => {
     }).finally(() => setLoading(false));
   }, []);
@@ -45,15 +37,13 @@ export function SetupListPage() {
     if (!name.trim() || saving) return;
     setSaving(true);
     try {
-      const newSetup = await api.post<Setup>(
-        '/setups',
-        {
-          name: name.trim(),
-          brewerDetails: brewerDetails || undefined,
-          grinder: grinder || undefined,
-        } as Record<string, unknown>,
-      );
-      setSetups((prev) => [...prev, newSetup as Setup]);
+      const newSetup = await setupApi.create({
+        name: name.trim(),
+        isDefault: false,
+        brewerDetails: brewerDetails || undefined,
+        grinder: grinder || undefined,
+      });
+      setSetups((prev) => [...prev, newSetup]);
       setName('');
       setBrewerDetails('');
       setGrinder('');
@@ -67,7 +57,7 @@ export function SetupListPage() {
   async function handleDelete(id: string) {
     if (!globalThis.confirm(t('setup.delete') + '?')) return;
     try {
-      await api.delete(`/setups/${id}`);
+      await setupApi.delete(id);
       setSetups((prev) => prev.filter((s) => s.id !== id));
     } catch {
     }

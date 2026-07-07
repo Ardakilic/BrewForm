@@ -32,6 +32,8 @@ export const PaginationMetaSchema = z.object({
   totalPages: z.number().int().min(0),
 });
 
+/** Inferred pagination metadata type — mirrors `PaginationMeta` in `@brewform/shared/types`. */
+export type PaginationMeta = z.infer<typeof PaginationMetaSchema>;
 /** Mirrors CursorPaginationMeta in `@brewform/shared/types`. */
 export const CursorPaginationMetaSchema = z.object({
   nextCursor: z.string().nullable(),
@@ -60,6 +62,20 @@ export function paginatedEnvelope<T extends z.ZodTypeAny>(itemSchema: T) {
   });
 }
 
+/**
+ * Static paginated-response envelope type (the runtime shape returned by
+ * `paginated(c, items, meta)` in `apps/api/src/utils/response/index.ts`).
+ *
+ * Use this when typing API client return values where the item type is known
+ * but no Zod schema object is needed at runtime (e.g. web `api.getWithMeta`
+ * helpers). For OpenAPI documentation, prefer `paginatedEnvelope(itemSchema)`
+ * so `hono-openapi`'s `resolver()` can introspect the item shape.
+ */
+export type PaginatedResponse<T> = {
+  success: true;
+  data: T[];
+  meta: { requestId: string; pagination: PaginationMeta };
+};
 /**
  * Mirrors cursorPaginated(c, items, meta) — data is an array + meta.cursor.
  *

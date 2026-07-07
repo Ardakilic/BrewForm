@@ -138,10 +138,12 @@ const defaultAuth = {
   user: authenticatedUser,
   isAuthenticated: true,
   isLoading: false,
+  sessionError: null as 'network' | 'server' | null,
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
   refreshUser: vi.fn(),
+  clearSessionError: vi.fn(),
 };
 
 const defaultTranslation = {
@@ -551,10 +553,12 @@ describe('Navbar — Property 3: All Visible Text From i18n', () => {
               user: null,
               isAuthenticated: false,
               isLoading: false,
+              sessionError: null,
               login: vi.fn(),
               register: vi.fn(),
               logout: vi.fn(),
               refreshUser: vi.fn(),
+              clearSessionError: vi.fn(),
             } as ReturnType<typeof useAuth>);
 
             const { unmount } = render(<Navbar />);
@@ -630,10 +634,12 @@ describe('Navbar — Property 3: All Visible Text From i18n', () => {
               user: authenticatedUser,
               isAuthenticated: true,
               isLoading: false,
+              sessionError: null,
               login: vi.fn(),
               register: vi.fn(),
               logout: vi.fn(),
               refreshUser: vi.fn(),
+              clearSessionError: vi.fn(),
             } as ReturnType<typeof useAuth>);
 
             const { unmount } = render(<Navbar />);
@@ -709,10 +715,12 @@ describe('Navbar — Property 3: All Visible Text From i18n', () => {
               user: isAuthenticated ? authenticatedUser : null,
               isAuthenticated,
               isLoading: false,
+              sessionError: null,
               login: vi.fn(),
               register: vi.fn(),
               logout: vi.fn(),
               refreshUser: vi.fn(),
+              clearSessionError: vi.fn(),
             } as ReturnType<typeof useAuth>);
 
             const { unmount } = render(<Navbar />);

@@ -13,7 +13,19 @@ afterEach(() => {
 describe('static-cache', () => {
   it('getEquipmentCached fetches once and memoises', async () => {
     const spy = vi.spyOn(equipmentApi, 'list').mockResolvedValue([
-      { id: '1', name: 'Scale', type: 'scale_accessory', brand: null },
+      {
+        id: '1',
+        name: 'Scale',
+        type: 'scale_accessory',
+        brand: null,
+        model: null,
+        description: null,
+        createdBy: null,
+        isSystem: false,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        deletedAt: null,
+      },
     ]);
 
     const first = await getEquipmentCached();
@@ -25,7 +37,16 @@ describe('static-cache', () => {
 
   it('getTasteNotesCached fetches once and memoises', async () => {
     const spy = vi.spyOn(tasteApi, 'flat').mockResolvedValue([
-      { id: '1', name: 'Fruity', parentId: null, category: 'taste' },
+      {
+        id: '1',
+        name: 'Fruity',
+        parentId: null,
+        color: null,
+        definition: null,
+        depth: 0,
+        createdAt: '2024-01-01T00:00:00Z',
+        deletedAt: null,
+      },
     ]);
 
     const first = await getTasteNotesCached();
@@ -38,10 +59,34 @@ describe('static-cache', () => {
   it('invalidateStaticCache re-arms the equipment fetch', async () => {
     const spy = vi.spyOn(equipmentApi, 'list')
       .mockResolvedValueOnce([
-        { id: '1', name: 'Scale', type: 'scale_accessory', brand: null },
+        {
+          id: '1',
+          name: 'Scale',
+          type: 'scale_accessory',
+          brand: null,
+          model: null,
+          description: null,
+          createdBy: null,
+          isSystem: false,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          deletedAt: null,
+        },
       ])
       .mockResolvedValueOnce([
-        { id: '2', name: 'Kettle', type: 'kettle', brand: null },
+        {
+          id: '2',
+          name: 'Kettle',
+          type: 'kettle',
+          brand: null,
+          model: null,
+          description: null,
+          createdBy: null,
+          isSystem: false,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          deletedAt: null,
+        },
       ]);
 
     await getEquipmentCached();
@@ -49,16 +94,48 @@ describe('static-cache', () => {
     const after = await getEquipmentCached();
 
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(after).toEqual([{ id: '2', name: 'Kettle', type: 'kettle', brand: null }]);
+    expect(after).toEqual([
+      {
+        id: '2',
+        name: 'Kettle',
+        type: 'kettle',
+        brand: null,
+        model: null,
+        description: null,
+        createdBy: null,
+        isSystem: false,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        deletedAt: null,
+      },
+    ]);
   });
 
   it('invalidateStaticCache re-arms the taste-notes fetch', async () => {
     const spy = vi.spyOn(tasteApi, 'flat')
       .mockResolvedValueOnce([
-        { id: '1', name: 'Fruity', parentId: null, category: 'taste' },
+        {
+          id: '1',
+          name: 'Fruity',
+          parentId: null,
+          color: null,
+          definition: null,
+          depth: 0,
+          createdAt: '2024-01-01T00:00:00Z',
+          deletedAt: null,
+        },
       ])
       .mockResolvedValueOnce([
-        { id: '2', name: 'Floral', parentId: null, category: 'taste' },
+        {
+          id: '2',
+          name: 'Floral',
+          parentId: null,
+          color: null,
+          definition: null,
+          depth: 0,
+          createdAt: '2024-01-01T00:00:00Z',
+          deletedAt: null,
+        },
       ]);
 
     await getTasteNotesCached();
@@ -66,7 +143,18 @@ describe('static-cache', () => {
     const after = await getTasteNotesCached();
 
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(after).toEqual([{ id: '2', name: 'Floral', parentId: null, category: 'taste' }]);
+    expect(after).toEqual([
+      {
+        id: '2',
+        name: 'Floral',
+        parentId: null,
+        color: null,
+        definition: null,
+        depth: 0,
+        createdAt: '2024-01-01T00:00:00Z',
+        deletedAt: null,
+      },
+    ]);
   });
 
   it('invalidateStaticCache writes the bust key', () => {

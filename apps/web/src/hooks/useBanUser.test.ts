@@ -144,13 +144,19 @@ describe('useBanUser', () => {
       }) as never,
     );
     const { result } = renderHook(() => useBanUser(vi.fn()));
-    result.current.unban('u1');
+    const firstUnban = result.current.unban('u1');
     await waitFor(() => {
       expect(mockUnbanUser).toHaveBeenCalledTimes(1);
+      expect(result.current.processing).toBe(true);
     });
+    // Second call must early-return because the first is still in flight;
+    // it should not call unbanUser again and should resolve immediately.
     await result.current.unban('u1');
     expect(mockUnbanUser).toHaveBeenCalledTimes(1);
+    // Release the in-flight promise and let the first call settle so no
+    // dangling state update leaks into the next test.
     resolvePromise(undefined);
+    await firstUnban;
   });
 
   it('clearError clears error', async () => {

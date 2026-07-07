@@ -37,39 +37,40 @@ export function buildStatCards(
     extractionTimeSeconds?: number | null;
     brewRatio?: number | null;
     temperatureCelsius?: number | null;
-    tds?: number | null;
-  },
+    tds?: string | null;
+  } | null,
   unitSystem: 'metric' | 'imperial' = 'metric',
 ): StatCardItem[] {
+  const v = version ?? {};
   const dose: StatCardItem = {
     label: 'recipe.stat.dose',
-    value: version.groundWeightGrams != null
-      ? formatWeight(version.groundWeightGrams, unitSystem)
+    value: v.groundWeightGrams != null
+      ? formatWeight(v.groundWeightGrams, unitSystem)
       : getUnitPlaceholder('weight', unitSystem),
   };
 
   const yieldCard: StatCardItem = {
     label: 'recipe.stat.yield',
-    value: version.extractionVolumeMl != null
-      ? formatVolume(version.extractionVolumeMl, unitSystem)
+    value: v.extractionVolumeMl != null
+      ? formatVolume(v.extractionVolumeMl, unitSystem)
       : getUnitPlaceholder('volume', unitSystem),
   };
 
   const time: StatCardItem = {
     label: 'recipe.stat.time',
-    value: version.extractionTimeSeconds != null ? `${version.extractionTimeSeconds}s` : '—s',
+    value: v.extractionTimeSeconds != null ? `${v.extractionTimeSeconds}s` : '—s',
   };
 
   const ratio: StatCardItem = {
     label: 'recipe.stat.ratio',
-    value: version.brewRatio != null ? `1:${version.brewRatio}` : '1:—',
+    value: v.brewRatio != null ? `1:${v.brewRatio}` : '1:—',
   };
 
   const temp: StatCardItem = {
     label: 'recipe.stat.temp',
-    value: version.temperatureCelsius != null
+    value: v.temperatureCelsius != null
       ? formatTemperature(
-        version.temperatureCelsius,
+        v.temperatureCelsius,
         unitSystem === 'imperial' ? 'fahrenheit' : 'celsius',
       )
       : getUnitPlaceholder('temp', unitSystem),
@@ -78,20 +79,25 @@ export function buildStatCards(
   const cards: StatCardItem[] = [dose, yieldCard, time, ratio, temp];
 
   if (
-    version.tds != null &&
-    version.extractionVolumeMl != null &&
-    version.groundWeightGrams != null
+    v.tds != null &&
+    v.extractionVolumeMl != null &&
+    v.groundWeightGrams != null
   ) {
-    const ey = computeExtractionYieldFromTds(
-      version.tds,
-      version.extractionVolumeMl,
-      version.groundWeightGrams,
-    );
-    if (ey !== null) {
-      cards.push({
-        label: 'recipe.stat.extractionYield',
-        value: `${ey.toFixed(1)}%`,
-      });
+    // `tds` is `numeric` in Postgres → serialized as a string by postgres-js;
+    // parse to a number before computing extraction yield.
+    const tdsNum = typeof v.tds === 'number' ? v.tds : parseFloat(v.tds);
+    if (!Number.isNaN(tdsNum)) {
+      const ey = computeExtractionYieldFromTds(
+        tdsNum,
+        v.extractionVolumeMl,
+        v.groundWeightGrams,
+      );
+      if (ey !== null) {
+        cards.push({
+          label: 'recipe.stat.extractionYield',
+          value: `${ey.toFixed(1)}%`,
+        });
+      }
     }
   }
 

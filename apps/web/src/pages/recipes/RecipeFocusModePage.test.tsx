@@ -71,6 +71,7 @@ vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({
 import { useParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { recipeApi, tasteApi } from '../../api/index.ts';
+import type { RecipeDetailOutput } from '@brewform/shared/schemas';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 
 const mockUseParams = vi.mocked(useParams);
@@ -135,7 +136,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUseParams.mockReturnValue({ slug: 'my-espresso' });
   mockUseTranslation.mockReturnValue(defaultTranslation);
-  mockRecipeApi.get.mockResolvedValue(sampleRecipe as unknown as Record<string, unknown>);
+  mockRecipeApi.get.mockResolvedValue(sampleRecipe as unknown as RecipeDetailOutput);
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -255,7 +256,7 @@ describe('RecipeFocusModePage — BeanSection conditional rendering', () => {
         grindDate: null,
         bean: null,
       },
-    } as unknown as Record<string, unknown>);
+    } as unknown as RecipeDetailOutput);
 
     render(<RecipeFocusModePage />);
 
@@ -282,7 +283,7 @@ describe('RecipeFocusModePage — TastingNotesSection conditional rendering', ()
         ...sampleRecipe.currentVersion,
         personalNotes: 'Great shot today.',
       },
-    } as unknown as Record<string, unknown>);
+    } as unknown as RecipeDetailOutput);
 
     render(<RecipeFocusModePage />);
 
@@ -299,7 +300,7 @@ describe('RecipeFocusModePage — TastingNotesSection conditional rendering', ()
         ...sampleRecipe.currentVersion,
         personalNotes: null,
       },
-    } as unknown as Record<string, unknown>);
+    } as unknown as RecipeDetailOutput);
 
     render(<RecipeFocusModePage />);
 
@@ -316,7 +317,7 @@ describe('RecipeFocusModePage — TastingNotesSection conditional rendering', ()
         ...sampleRecipe.currentVersion,
         personalNotes: '',
       },
-    } as unknown as Record<string, unknown>);
+    } as unknown as RecipeDetailOutput);
 
     render(<RecipeFocusModePage />);
 

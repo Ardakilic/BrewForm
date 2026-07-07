@@ -1,23 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { Popover } from '@base-ui/react/popover';
-import { api } from '../api/index.ts';
+import { tasteApi } from '../api/index.ts';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
+import type { TasteNoteNodeOutput } from '@brewform/shared/schemas';
 import { createLogger } from '../utils/logger.ts';
 
 const log = createLogger('TasteNotesPage');
 
-interface TasteCategory {
-  id: string;
-  name: string;
-  parentId: string | null;
-  color: string | null;
-  definition: string | null;
-  depth: number;
-  createdAt: string;
-  children: TasteCategory[];
-}
+/** Recursive taste-note hierarchy node returned by GET /taste-notes/hierarchy. */
+type TasteCategory = TasteNoteNodeOutput;
 
 function collectLeafIds(cat: TasteCategory): string[] {
   if (cat.children.length === 0) return [cat.id];
@@ -230,8 +223,8 @@ export function TasteNotesPage() {
   }, []);
 
   useEffect(() => {
-    api.get<TasteCategory[]>('/taste-notes/hierarchy').then((data: TasteCategory[] | null) => {
-      setHierarchy((data ?? []) as TasteCategory[]);
+    tasteApi.hierarchy().then((data: TasteNoteNodeOutput[] | null) => {
+      setHierarchy(data ?? []);
     }).catch((err) => {
       log.error({ err }, 'TasteNotesPage loadData failed');
     }).finally(() => setLoading(false));

@@ -1,4 +1,3 @@
-// deno-lint-ignore-file require-await
 import type { CoffeeVarietyCategory } from '@brewform/shared';
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@brewform/db';

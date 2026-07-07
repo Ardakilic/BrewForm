@@ -67,17 +67,20 @@ const authenticatedUser = {
 };
 
 const mockPreferences = {
+  id: 'pref-1',
+  userId: 'u1',
   unitSystem: 'metric' as const,
   temperatureUnit: 'celsius' as const,
+  theme: 'light',
   locale: 'en',
   timezone: 'UTC',
   dateFormat: 'YYYY_MM_DD',
-  emailNotifications: {
-    newFollower: true,
-    recipeLiked: true,
-    recipeCommented: false,
-    followedUserPosted: true,
-  },
+  newFollower: true,
+  recipeLiked: true,
+  recipeCommented: false,
+  followedUserPosted: true,
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z',
 };
 
 // ── Translation tables ──
@@ -174,10 +177,12 @@ function renderSettingsPage(
     user: authenticatedUser,
     isAuthenticated: true,
     isLoading: false,
+    sessionError: null,
     login: vi.fn(),
     register: vi.fn(),
     logout: mockLogout,
     refreshUser: vi.fn(),
+    clearSessionError: vi.fn(),
     ...options.auth,
   });
 

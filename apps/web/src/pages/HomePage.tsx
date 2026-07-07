@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useLoaderData, useNavigation } from 'react-router';
 import { recipeApi } from '../api/index.ts';
-import type { RecipeListItem } from '../api/types.ts';
+import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { RecipeCardSkeletonGrid } from '../components/ui/Skeleton.tsx';
@@ -11,8 +11,8 @@ import { createLogger } from '@/utils/logger.ts';
 const log = createLogger('HomePage');
 
 export interface HomeLoaderData {
-  latestRecipes: RecipeListItem[];
-  popularRecipes: RecipeListItem[];
+  latestRecipes: RecipeListItemOutput[];
+  popularRecipes: RecipeListItemOutput[];
 }
 
 /**

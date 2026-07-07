@@ -10,7 +10,7 @@
  * fewer characters, the full title is displayed unchanged.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import fc from 'fast-check';
 import { BreadcrumbNav } from './BreadcrumbNav.tsx';
