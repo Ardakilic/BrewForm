@@ -541,3 +541,68 @@ describe(
     });
   },
 );
+
+describe(
+  {
+    name: 'collection service — listAllPublicCollections',
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  () => {
+    let userA: typeof users.$inferSelect;
+    let userB: typeof users.$inferSelect;
+    const colIds: string[] = [];
+
+    beforeAll(async () => {
+      userA = await createUser('svc-allpub-a');
+      userB = await createUser('svc-allpub-b');
+      // userA: 1 public + 1 private; userB: 2 public + 1 draft
+      const aPub = await createCollectionRow(userA.id, 'A Pub', 'public');
+      const aPriv = await createCollectionRow(userA.id, 'A Priv', 'private');
+      const bPub1 = await createCollectionRow(userB.id, 'B Pub 1', 'public');
+      const bPub2 = await createCollectionRow(userB.id, 'B Pub 2', 'public');
+      const bDraft = await createCollectionRow(userB.id, 'B Draft', 'draft');
+      colIds.push(aPub.id, aPriv.id, bPub1.id, bPub2.id, bDraft.id);
+    });
+
+    afterAll(async () => {
+      await cleanupCollections(colIds);
+      await cleanupUsers([userA.id, userB.id]);
+    });
+
+    it('returns public collections from all users with author and recipeCount', async () => {
+      const result = await service.listAllPublicCollections(1, 100);
+      // The total includes seed data, so verify our test collections are present
+      const names = result.collections.map((c) => (c as any).name);
+      expect(names).toContain('A Pub');
+      expect(names).toContain('B Pub 1');
+      expect(names).toContain('B Pub 2');
+      // Private/draft collections we created must NOT appear
+      expect(names).not.toContain('A Priv');
+      expect(names).not.toContain('B Draft');
+      // Each returned row must have the right shape
+      for (const c of result.collections) {
+        expect((c as any).visibility).toBe('public');
+        expect((c as any).author).toBeDefined();
+        expect(typeof (c as any).author.username).toBe('string');
+        expect((c as any).author).toHaveProperty('displayName');
+        expect((c as any).author).toHaveProperty('avatarUrl');
+        expect(typeof (c as any).recipeCount).toBe('number');
+      }
+    });
+
+    it('paginates results (perPage respected, items spread across pages)', async () => {
+      const page1 = await service.listAllPublicCollections(1, 2);
+      expect(page1.collections.length).toBeLessThanOrEqual(2);
+      // total reflects all public collections (seed + test), so just check
+      // that pagination metadata is consistent and page 2 has the remainder
+      if (page1.collections.length === 2) {
+        const page2 = await service.listAllPublicCollections(2, 2);
+        expect(page2.total).toBe(page1.total);
+        if (page1.total > 2) {
+          expect(page2.collections.length).toBeGreaterThan(0);
+        }
+      }
+    });
+  },
+);

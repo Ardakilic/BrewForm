@@ -1,5 +1,5 @@
 import { db } from '@brewform/db';
-import { collectionItems, collections } from '@brewform/db/schema';
+import { collectionItems, collections, recipeVersions } from '@brewform/db/schema';
 import { and, asc, count, desc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
 import type { Visibility } from '@brewform/shared/types';
 
@@ -18,6 +18,13 @@ export async function findById(id: string) {
           recipe: {
             with: {
               author: { columns: { id: true, username: true, displayName: true } },
+              // Load the latest recipe version (highest versionNumber) to
+              // project brewMethod/drinkType on the collection detail output.
+              versions: {
+                orderBy: desc(recipeVersions.versionNumber),
+                limit: 1,
+                columns: { brewMethod: true, drinkType: true },
+              },
             },
           },
         },
@@ -82,6 +89,55 @@ export async function findPublicByUserId(
   perPage: number,
 ): Promise<{ collections: Record<string, unknown>[]; total: number }> {
   return findByUserId(userId, page, perPage, 'public');
+}
+
+/**
+ * Fetch all public collections across all users, paginated, with a per-collection
+ * recipeCount and the owner's mini author projection. Excludes soft-deleted rows.
+ * Used by the global "browse public collections" endpoint.
+ *
+ * @param page    - 1-based page number.
+ * @param perPage - Page size.
+ * @returns `{ collections: Record<string, unknown>[]; total: number }` where each
+ *          collection row includes `recipeCount` and a nested `user` relation
+ *          (id, username, displayName, avatarUrl) for the owner.
+ */
+export async function findAllPublic(
+  page: number,
+  perPage: number,
+): Promise<{ collections: Record<string, unknown>[]; total: number }> {
+  const where = and(eq(collections.visibility, 'public'), isNull(collections.deletedAt));
+
+  const [data, totalResult] = await Promise.all([
+    db.query.collections.findMany({
+      where,
+      orderBy: desc(collections.createdAt),
+      limit: perPage,
+      offset: (page - 1) * perPage,
+      with: {
+        user: { columns: { id: true, username: true, displayName: true, avatarUrl: true } },
+      },
+    }),
+    db.select({ count: count() }).from(collections).where(where),
+  ]);
+
+  // Compute recipeCount per collection via a batch query
+  const collectionIds = data.map((c) => c.id);
+  const countRows = collectionIds.length
+    ? await db
+      .select({ collectionId: collectionItems.collectionId, count: count() })
+      .from(collectionItems)
+      .where(inArray(collectionItems.collectionId, collectionIds))
+      .groupBy(collectionItems.collectionId)
+    : [];
+  const countMap = new Map(countRows.map((r) => [r.collectionId, r.count]));
+
+  const collectionsWithCount = data.map((c) => ({
+    ...c,
+    recipeCount: countMap.get(c.id) ?? 0,
+  }));
+
+  return { collections: collectionsWithCount, total: totalResult[0].count };
 }
 
 /** Insert a new collection row and return it. */
@@ -173,6 +229,13 @@ export async function getItems(collectionId: string) {
       recipe: {
         with: {
           author: { columns: { id: true, username: true, displayName: true } },
+          // Load the latest recipe version (highest versionNumber) so
+          // callers can read brewMethod/drinkType for the current version.
+          versions: {
+            orderBy: desc(recipeVersions.versionNumber),
+            limit: 1,
+            columns: { brewMethod: true, drinkType: true },
+          },
         },
       },
     },

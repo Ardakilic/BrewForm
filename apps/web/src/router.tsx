@@ -28,6 +28,10 @@ import {
   CollectionEditPage,
   loader as collectionEditLoader,
 } from './pages/collections/CollectionEditPage.tsx';
+import {
+  CollectionsBrowsePage,
+  loader as collectionsBrowseLoader,
+} from './pages/collections/CollectionsBrowsePage.tsx';
 import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
@@ -122,6 +126,12 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
         loader: collectionListLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'collections/browse',
+        element: <CollectionsBrowsePage />,
+        loader: collectionsBrowseLoader,
         errorElement: <RootErrorBoundary />,
       },
       {

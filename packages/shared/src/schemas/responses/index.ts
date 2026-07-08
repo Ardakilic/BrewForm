@@ -46,6 +46,8 @@ export { PublicUserOutputSchema, SelfUserOutputSchema, UserRowOutputSchema } fro
 export {
   CollectionDetailOutputSchema,
   CollectionItemOutputSchema,
+  CollectionItemRecipeOutputSchema,
   CollectionListItemOutputSchema,
   CollectionOutputSchema,
+  PublicCollectionListItemOutputSchema,
 } from './collection.ts';

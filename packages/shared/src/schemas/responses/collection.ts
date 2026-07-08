@@ -5,7 +5,8 @@ import { RecipeAuthorMiniSchema } from './_shared.ts';
 
 /**
  * Collection Output Schemas — mirrors the shapes returned by
- * `collection/service.ts` (`getCollection`, `listMyCollections`, `listPublicCollections`).
+ * `collection/service.ts` (`getCollection`, `listMyCollections`, `listPublicCollections`,
+ * `listAllPublicCollections`).
  *
  * Verified against `packages/db/src/schema.ts` (`collections`, `collectionItems`)
  * and `apps/api/src/modules/collection/{service,model}.ts`.
@@ -30,6 +31,19 @@ export const CollectionListItemOutputSchema = CollectionOutputSchema.extend({
 });
 export type CollectionListItemOutput = z.infer<typeof CollectionListItemOutputSchema>;
 
+/**
+ * Recipe projection for collection items — extends the standard list-item
+ * shape with `brewMethod` and `drinkType` from the recipe's current version.
+ * Both fields are nullable because a recipe may not have a current version
+ * (e.g. draft recipes with no published version yet). Used by the collection
+ * detail endpoint to enable brew-method grouping on the frontend.
+ */
+export const CollectionItemRecipeOutputSchema = RecipeListItemOutputSchema.extend({
+  brewMethod: z.string().nullable(),
+  drinkType: z.string().nullable(),
+});
+export type CollectionItemRecipeOutput = z.infer<typeof CollectionItemRecipeOutputSchema>;
+
 /** A single collection item with its nested recipe (for the detail endpoint). */
 export const CollectionItemOutputSchema = z.object({
   id: z.string(),
@@ -37,7 +51,7 @@ export const CollectionItemOutputSchema = z.object({
   recipeId: z.string(),
   sortOrder: z.number().int(),
   createdAt: z.string(),
-  recipe: RecipeListItemOutputSchema,
+  recipe: CollectionItemRecipeOutputSchema,
 });
 export type CollectionItemOutput = z.infer<typeof CollectionItemOutputSchema>;
 
@@ -48,3 +62,15 @@ export const CollectionDetailOutputSchema = CollectionOutputSchema.extend({
   recipeCount: z.number().int(),
 });
 export type CollectionDetailOutput = z.infer<typeof CollectionDetailOutputSchema>;
+
+/**
+ * Public collection list item — a {@link CollectionListItemOutputSchema}
+ * enriched with a mini author projection so the global browse page can
+ * display "by @username" without a second request.
+ */
+export const PublicCollectionListItemOutputSchema = CollectionListItemOutputSchema.extend({
+  author: RecipeAuthorMiniSchema,
+});
+export type PublicCollectionListItemOutput = z.infer<
+  typeof PublicCollectionListItemOutputSchema
+>;

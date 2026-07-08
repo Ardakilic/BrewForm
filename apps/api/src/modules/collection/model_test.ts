@@ -12,7 +12,7 @@ import '../../test-setup.ts';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { db } from '@brewform/db';
-import { collectionItems, collections, recipes, users } from '@brewform/db/schema';
+import { collectionItems, collections, recipes, recipeVersions, users } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import * as model from './model.ts';
 
@@ -123,6 +123,71 @@ describe(
       await db.update(collections).set({ deletedAt: new Date() }).where(eq(collections.id, col.id));
       const found = await model.findById(col.id);
       expect(found).toBeUndefined();
+    });
+  },
+);
+
+describe(
+  {
+    name: 'collection model — findById loads recipe versions',
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  () => {
+    let user: typeof users.$inferSelect;
+    let col: typeof collections.$inferSelect;
+    let recipe: typeof recipes.$inferSelect;
+    const colIds: string[] = [];
+    const recipeIds: string[] = [];
+
+    beforeEach(async () => {
+      user = await createUser('col-findById-versions');
+      col = await createCollectionRow(user.id, 'Versions Col');
+      colIds.push(col.id);
+      recipe = await createRecipe(user.id, 'public');
+      recipeIds.push(recipe.id);
+      // Create two versions; the latest (versionNumber = 2) should be loaded.
+      await db.insert(recipeVersions).values({
+        id: crypto.randomUUID(),
+        recipeId: recipe.id,
+        versionNumber: 1,
+        brewMethod: 'french_press' as any,
+        drinkType: 'french_press' as any,
+        preparationNotes: 'first',
+      });
+      await db.insert(recipeVersions).values({
+        id: crypto.randomUUID(),
+        recipeId: recipe.id,
+        versionNumber: 2,
+        brewMethod: 'v60' as any,
+        drinkType: 'pour_over' as any,
+        preparationNotes: 'second',
+      });
+      await db.insert(collectionItems).values({
+        collectionId: col.id,
+        recipeId: recipe.id,
+        sortOrder: 0,
+      });
+    });
+
+    afterEach(async () => {
+      await cleanupCollections(colIds);
+      await db.delete(recipeVersions).where(eq(recipeVersions.recipeId, recipe.id));
+      await cleanupRecipes(recipeIds);
+      colIds.length = 0;
+      recipeIds.length = 0;
+      await db.delete(users).where(eq(users.id, user.id));
+    });
+
+    it('returns the latest recipe version brewMethod/drinkType on item.recipe.versions', async () => {
+      const found = await model.findById(col.id);
+      expect(found).toBeDefined();
+      expect(found!.items.length).toBe(1);
+      const versions = found!.items[0].recipe?.versions;
+      expect(Array.isArray(versions)).toBe(true);
+      expect(versions!.length).toBe(1);
+      expect(versions![0].brewMethod).toBe('v60');
+      expect(versions![0].drinkType).toBe('pour_over');
     });
   },
 );

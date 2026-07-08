@@ -14,6 +14,7 @@ import {
   ErrorEnvelopeSchema,
   MessageResponseSchema,
   paginatedEnvelope,
+  PublicCollectionListItemOutputSchema,
   successEnvelope,
 } from '@brewform/shared/schemas';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
@@ -98,6 +99,52 @@ collection.get(
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not your collection', 403);
       throw err;
     }
+  },
+);
+
+// GET /public — Browse all public collections (global, unauthenticated)
+collection.get(
+  '/public',
+  describeRoute({
+    tags: ['Collections'],
+    summary: 'Browse all public collections',
+    description: 'Paginated list of all public collections across all users.',
+    security: [],
+    parameters: [
+      { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
+      {
+        name: 'perPage',
+        in: 'query',
+        required: false,
+        schema: { type: 'integer', minimum: 1, maximum: 100 },
+      },
+    ],
+    responses: {
+      200: {
+        description: 'Paginated list of public collections',
+        content: {
+          'application/json': {
+            schema: resolver(paginatedEnvelope(PublicCollectionListItemOutputSchema)),
+          },
+        },
+      },
+      400: {
+        description: 'Validation error',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
+  optionalAuthGuard,
+  zValidator('query', CollectionListFilterSchema, zodValidationHook),
+  async (c) => {
+    const { page, perPage } = c.req.valid('query');
+    const result = await service.listAllPublicCollections(page, perPage);
+    return paginated(c, result.collections, {
+      page,
+      perPage,
+      total: result.total,
+      totalPages: Math.ceil(result.total / perPage),
+    });
   },
 );
 

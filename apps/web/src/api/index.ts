@@ -16,6 +16,7 @@ import type {
   FollowingListItemOutput,
   FollowOutput,
   PaginatedResponse,
+  PublicCollectionListItemOutput,
   PublicUserOutput,
   RecipeCreate,
   RecipeDetailOutput,
@@ -195,6 +196,12 @@ export const collectionApi = {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
     return api.getWithMeta<PaginatedResponse<CollectionListItemOutput>>(
       `/users/${userId}/collections${query}`,
+    );
+  },
+  listPublic: (params?: Record<string, string>) => {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return api.getWithMeta<PaginatedResponse<PublicCollectionListItemOutput>>(
+      `/collections/public${query}`,
     );
   },
 };

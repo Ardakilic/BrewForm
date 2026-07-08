@@ -77,7 +77,7 @@ export function CollectionDetailPage() {
           </p>
         )}
         <div className='flex items-center gap-4 text-sm' style={{ color: 'var(--text-secondary)' }}>
-          <Link to={`/users/${collection.author.username}`} className='hover:underline'>
+          <Link to={`/u/${collection.author.username}`} className='hover:underline'>
             {collection.author.displayName || collection.author.username}
           </Link>
           <span>{t('collection.detail.recipes')}: {collection.recipeCount}</span>

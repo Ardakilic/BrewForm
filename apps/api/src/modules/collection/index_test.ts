@@ -760,3 +760,83 @@ describe(
     });
   },
 );
+
+describe(
+  {
+    name: 'GET /api/v1/collections/public — browse all public collections',
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  () => {
+    let userA: typeof users.$inferSelect;
+    let userB: typeof users.$inferSelect;
+    const colIds: string[] = [];
+
+    beforeAll(async () => {
+      userA = await createUser('route-public-a');
+      userB = await createUser('route-public-b');
+      const aPub = await createCollectionRow(userA.id, 'A Pub', 'public');
+      const aPriv = await createCollectionRow(userA.id, 'A Priv', 'private');
+      const bPub = await createCollectionRow(userB.id, 'B Pub', 'public');
+      const bDraft = await createCollectionRow(userB.id, 'B Draft', 'draft');
+      colIds.push(aPub.id, aPriv.id, bPub.id, bDraft.id);
+    });
+
+    afterAll(async () => {
+      deps.authMiddleware = originalAuthMiddleware;
+      deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+      await cleanupCollections(colIds);
+      await cleanupUsers([userA.id, userB.id]);
+    });
+
+    it('returns 200 with paginated public collections (no auth required)', async () => {
+      const app = createTestApp(null);
+      const res = await app.request('/api/v1/collections/public?page=1&perPage=10');
+      const body = await res.json() as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.meta.pagination).toBeDefined();
+      // The DB may contain seed public collections; verify our test ones are present
+      const names = body.data.map((c: any) => c.name);
+      expect(names).toContain('A Pub');
+      expect(names).toContain('B Pub');
+      expect(names).not.toContain('A Priv');
+      expect(names).not.toContain('B Draft');
+      for (const c of body.data) {
+        expect(c.visibility).toBe('public');
+        expect(c.author).toBeDefined();
+        expect(typeof c.author.username).toBe('string');
+        expect(c.author).toHaveProperty('displayName');
+        expect(c.author).toHaveProperty('avatarUrl');
+        expect(typeof c.recipeCount).toBe('number');
+      }
+    });
+
+    it('excludes private and draft collections', async () => {
+      const app = createTestApp(null);
+      const res = await app.request('/api/v1/collections/public');
+      const body = await res.json() as any;
+
+      expect(res.status).toBe(200);
+      for (const c of body.data) {
+        expect(c.visibility).not.toBe('private');
+        expect(c.visibility).not.toBe('draft');
+      }
+    });
+
+    it('is reachable by authenticated users too', async () => {
+      const app = createTestApp(userA.id);
+      const res = await app.request('/api/v1/collections/public?page=1&perPage=10');
+      const body = await res.json() as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      // Same as unauthenticated: our test public collections should be present
+      const names = body.data.map((c: any) => c.name);
+      expect(names).toContain('A Pub');
+      expect(names).toContain('B Pub');
+    });
+  },
+);

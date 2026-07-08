@@ -70,6 +70,10 @@ function toDetailOutput(collection: any): any {
               displayName: item.recipe.author.displayName,
             }
             : { id: '', username: '', displayName: null },
+          // Projected from the latest recipe version (versions is limited to 1
+          // in the model query). Null when the recipe has no versions yet.
+          brewMethod: item.recipe?.versions?.[0]?.brewMethod ?? null,
+          drinkType: item.recipe?.versions?.[0]?.drinkType ?? null,
         }
         : null,
     })),
@@ -185,6 +189,40 @@ export async function listPublicCollections(userId: string, page: number, perPag
   const result = await model.findPublicByUserId(userId, page, perPage);
   logger.debug({ userId, total: result.total }, 'listPublicCollections completed');
   return result;
+}
+
+/**
+ * List all public collections across all users, for the global browse endpoint.
+ * Each item includes `recipeCount` and the owner's `author` projection
+ * (username, displayName, avatarUrl) to match PublicCollectionListItemOutputSchema.
+ *
+ * @param page    - 1-based page number.
+ * @param perPage - Page size.
+ * @returns `{ collections, total }` where each collection has author + recipeCount.
+ */
+export async function listAllPublicCollections(page: number, perPage: number) {
+  logger.debug({ page, perPage }, 'listAllPublicCollections started');
+  const result = await model.findAllPublic(page, perPage);
+  const collections = result.collections.map((c: any) => ({
+    id: c.id,
+    userId: c.userId,
+    name: c.name,
+    description: c.description,
+    visibility: c.visibility,
+    createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
+    updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
+    deletedAt: c.deletedAt instanceof Date ? c.deletedAt.toISOString() : c.deletedAt ?? null,
+    recipeCount: c.recipeCount,
+    author: c.user
+      ? {
+        username: c.user.username,
+        displayName: c.user.displayName,
+        avatarUrl: c.user.avatarUrl,
+      }
+      : { username: '', displayName: null, avatarUrl: null },
+  }));
+  logger.debug({ total: result.total }, 'listAllPublicCollections completed');
+  return { collections, total: result.total };
 }
 
 /**

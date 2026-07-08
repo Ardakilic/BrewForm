@@ -127,6 +127,8 @@ export type { PublicUserOutput, SelfUserOutput, UserRowOutput } from './response
 export type {
   CollectionDetailOutput,
   CollectionItemOutput,
+  CollectionItemRecipeOutput,
   CollectionListItemOutput,
   CollectionOutput,
+  PublicCollectionListItemOutput,
 } from './responses/collection.ts';

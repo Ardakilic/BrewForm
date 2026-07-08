@@ -37,6 +37,7 @@ import {
   userRecipeRatings,
   users,
   vendors,
+  visibilityEnum,
 } from './schema.ts';
 import { db } from './index.ts';
 import {
@@ -804,29 +805,80 @@ async function seedSetups(
  * @param createdUsers    - Map of username → user row from `seedUsers`.
  * @param createdRecipes  - Map of slug → recipe row from `seedRecipes`.
  */
+/**
+ * Seed sample collections for demo users.
+ *
+ * Creates collections covering **all four visibility values** (`public`,
+ * `unlisted`, `private`, `draft`) so the UI, API, and tests can exercise every
+ * visibility branch. Public and unlisted collections are seeded with recipes
+ * spanning multiple brew methods so the frontend brew-method grouping renders
+ * meaningful sections.
+ *
+ * Idempotent via `onConflictDoNothing` on the `collection_item` composite
+ * unique key and select-and-reuse for collections (looked up by userId + name).
+ *
+ * @param tx              - The transaction client.
+ * @param createdUsers    - Map of username → user row from `seedUsers`.
+ * @param createdRecipes  - Map of slug → recipe row from `seedRecipes`.
+ * @param createdVersions - Map of slug → recipe_version row from `seedRecipes`
+ *                          (used to read `brewMethod` for grouping).
+ */
 async function seedCollections(
   tx: SeedTX,
   createdUsers: Record<string, typeof users.$inferSelect>,
   createdRecipes: Record<string, typeof recipes.$inferSelect>,
+  createdVersions: Record<string, typeof recipeVersions.$inferSelect>,
 ) {
   const recipeSlugs = Object.keys(createdRecipes);
   if (recipeSlugs.length === 0) return;
 
+  /** Map of recipe slug → brew method string (from the recipe's version). */
+  const brewMethodBySlug: Record<string, string> = {};
+  for (const slug of recipeSlugs) {
+    const version = createdVersions[slug];
+    if (version) brewMethodBySlug[slug] = version.brewMethod;
+  }
+
+  /** Ordered brew methods seen in seed data (deduped, insertion order). */
+  const brewMethodsPresent = [...new Set(Object.values(brewMethodBySlug))];
+
   let collectionSortOrder = 0;
 
   for (const [username, user] of Object.entries(createdUsers)) {
-    // Create 1–2 public collections per user
-    const collectionNames = [`${username}'s Favourites`];
-    if (recipeSlugs.length >= 3) {
-      collectionNames.push(`${username}'s Morning Brews`);
-    }
+    // Create one collection per visibility value to cover all branches.
+    const collectionDefs: {
+      name: string;
+      visibility: typeof visibilityEnum.enumValues[number];
+      description: string;
+    }[] = [
+      {
+        name: `${username}'s Favourites`,
+        visibility: 'public',
+        description: `A curated public collection by ${username} with recipes across brew methods.`,
+      },
+      {
+        name: `${username}'s Morning Brews`,
+        visibility: 'unlisted',
+        description: `An unlisted collection of ${username}'s go-to morning recipes.`,
+      },
+      {
+        name: `${username}'s Experiments`,
+        visibility: 'private',
+        description: `A private collection of experimental recipes by ${username}.`,
+      },
+      {
+        name: `${username}'s Drafts`,
+        visibility: 'draft',
+        description: `A draft collection — work in progress by ${username}.`,
+      },
+    ];
 
-    for (const name of collectionNames) {
-      // Select-and-reuse: look up existing collection by userId + name
+    for (const def of collectionDefs) {
+      // Select-and-reuse: look up existing collection by userId + name (exclude soft-deleted).
       const [existing] = await tx.select().from(collections).where(
         and(
           eq(collections.userId, user.id),
-          eq(collections.name, name),
+          eq(collections.name, def.name),
           isNull(collections.deletedAt),
         ),
       ).limit(1);
@@ -834,15 +886,28 @@ async function seedCollections(
       const collection = existing ??
         (await tx.insert(collections).values({
           userId: user.id,
-          name,
-          description: `A curated collection by ${username}`,
-          visibility: 'public',
+          name: def.name,
+          description: def.description,
+          visibility: def.visibility,
         }).returning())[0];
 
       if (!collection) continue;
 
-      // Add 2–3 recipes to each collection
-      const recipesToAdd = recipeSlugs.slice(0, Math.min(3, recipeSlugs.length));
+      // Public and unlisted collections get recipes across multiple brew methods
+      // so the frontend brew-method grouping displays meaningful sections.
+      // Private and draft collections get a smaller subset.
+      const recipesToAdd: string[] = [];
+      if (def.visibility === 'public' || def.visibility === 'unlisted') {
+        // Pick one recipe per brew method (up to 5) so groups are diverse.
+        for (const bm of brewMethodsPresent.slice(0, 5)) {
+          const slugForBm = recipeSlugs.find((s) => brewMethodBySlug[s] === bm);
+          if (slugForBm) recipesToAdd.push(slugForBm);
+        }
+      } else {
+        // Private/draft: just the first 2 recipes.
+        recipesToAdd.push(...recipeSlugs.slice(0, 2));
+      }
+
       for (const slug of recipesToAdd) {
         const recipe = createdRecipes[slug];
         if (!recipe) continue;
@@ -894,7 +959,7 @@ export async function main() {
     await seedSetups(tx, createdUsers, createdEquipment);
     await seedTasteNotes(tx, scaaData.data);
     await seedRecipeTasteNotes(tx, createdVersions);
-    await seedCollections(tx, createdUsers, createdRecipes);
+    await seedCollections(tx, createdUsers, createdRecipes, createdVersions);
   });
 
   console.log('Seeding complete!');
