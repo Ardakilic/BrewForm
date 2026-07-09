@@ -68,6 +68,10 @@ export function registerOpenApi(app: Hono<AppEnv>): void {
           name: 'Coffee Varieties',
           description: 'Coffee cultivar reference data and recipes using a variety',
         },
+        {
+          name: 'Collections',
+          description: 'User-owned named collections of recipes',
+        },
         { name: 'Comments', description: 'Recipe comment threads and replies' },
         { name: 'Contact', description: 'Contact-form message submission' },
         { name: 'Equipment', description: 'Brewing equipment catalogue and deletion requests' },

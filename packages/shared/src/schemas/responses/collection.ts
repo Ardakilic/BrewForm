@@ -1,0 +1,76 @@
+import { z } from 'zod';
+import { VISIBILITY_VALUES } from '../../constants/index.ts';
+import { RecipeListItemOutputSchema } from './recipe.ts';
+import { RecipeAuthorMiniSchema } from './_shared.ts';
+
+/**
+ * Collection Output Schemas — mirrors the shapes returned by
+ * `collection/service.ts` (`getCollection`, `listMyCollections`, `listPublicCollections`,
+ * `listAllPublicCollections`).
+ *
+ * Verified against `packages/db/src/schema.ts` (`collections`, `collectionItems`)
+ * and `apps/api/src/modules/collection/{service,model}.ts`.
+ */
+
+/** Base collection row as returned by the API (wire format — timestamps are ISO strings). */
+export const CollectionOutputSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  visibility: z.enum(VISIBILITY_VALUES),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  deletedAt: z.string().nullable(),
+});
+export type CollectionOutput = z.infer<typeof CollectionOutputSchema>;
+
+/** Collection list item with computed recipe count (for list endpoints). */
+export const CollectionListItemOutputSchema = CollectionOutputSchema.extend({
+  recipeCount: z.number().int(),
+});
+export type CollectionListItemOutput = z.infer<typeof CollectionListItemOutputSchema>;
+
+/**
+ * Recipe projection for collection items — extends the standard list-item
+ * shape with `brewMethod` and `drinkType` from the recipe's current version.
+ * Both fields are nullable because a recipe may not have a current version
+ * (e.g. draft recipes with no published version yet). Used by the collection
+ * detail endpoint to enable brew-method grouping on the frontend.
+ */
+export const CollectionItemRecipeOutputSchema = RecipeListItemOutputSchema.extend({
+  brewMethod: z.string().nullable(),
+  drinkType: z.string().nullable(),
+});
+export type CollectionItemRecipeOutput = z.infer<typeof CollectionItemRecipeOutputSchema>;
+
+/** A single collection item with its nested recipe (for the detail endpoint). */
+export const CollectionItemOutputSchema = z.object({
+  id: z.string(),
+  collectionId: z.string(),
+  recipeId: z.string(),
+  sortOrder: z.number().int(),
+  createdAt: z.string(),
+  recipe: CollectionItemRecipeOutputSchema,
+});
+export type CollectionItemOutput = z.infer<typeof CollectionItemOutputSchema>;
+
+/** Full collection detail with author, items, and computed recipe count. */
+export const CollectionDetailOutputSchema = CollectionOutputSchema.extend({
+  author: RecipeAuthorMiniSchema,
+  items: z.array(CollectionItemOutputSchema),
+  recipeCount: z.number().int(),
+});
+export type CollectionDetailOutput = z.infer<typeof CollectionDetailOutputSchema>;
+
+/**
+ * Public collection list item — a {@link CollectionListItemOutputSchema}
+ * enriched with a mini author projection so the global browse page can
+ * display "by @username" without a second request.
+ */
+export const PublicCollectionListItemOutputSchema = CollectionListItemOutputSchema.extend({
+  author: RecipeAuthorMiniSchema,
+});
+export type PublicCollectionListItemOutput = z.infer<
+  typeof PublicCollectionListItemOutputSchema
+>;

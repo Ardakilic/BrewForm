@@ -15,6 +15,23 @@ import {
   StarredRecipesPage,
 } from './pages/recipes/StarredRecipesPage.tsx';
 import { loader as detailLoader, RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
+import {
+  CollectionListPage,
+  loader as collectionListLoader,
+} from './pages/collections/CollectionListPage.tsx';
+import {
+  CollectionDetailPage,
+  loader as collectionDetailLoader,
+} from './pages/collections/CollectionDetailPage.tsx';
+import { CollectionCreatePage } from './pages/collections/CollectionCreatePage.tsx';
+import {
+  CollectionEditPage,
+  loader as collectionEditLoader,
+} from './pages/collections/CollectionEditPage.tsx';
+import {
+  CollectionsBrowsePage,
+  loader as collectionsBrowseLoader,
+} from './pages/collections/CollectionsBrowsePage.tsx';
 import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
@@ -99,6 +116,47 @@ export const router = createBrowserRouter([
         path: 'recipes/:slug',
         element: <RecipeDetailPage />,
         loader: detailLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'collections',
+        element: (
+          <RequireAuth>
+            <CollectionListPage />
+          </RequireAuth>
+        ),
+        loader: collectionListLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'collections/browse',
+        element: <CollectionsBrowsePage />,
+        loader: collectionsBrowseLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'collections/new',
+        element: (
+          <RequireAuth>
+            <CollectionCreatePage />
+          </RequireAuth>
+        ),
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'collections/:id',
+        element: <CollectionDetailPage />,
+        loader: collectionDetailLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'collections/:id/edit',
+        element: (
+          <RequireAuth>
+            <CollectionEditPage />
+          </RequireAuth>
+        ),
+        loader: collectionEditLoader,
         errorElement: <RootErrorBoundary />,
       },
       { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },

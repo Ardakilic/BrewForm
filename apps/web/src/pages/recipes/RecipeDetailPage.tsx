@@ -22,6 +22,7 @@ import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
 import { LikeButton } from '../../components/recipe/LikeButton.tsx';
 import { FavouriteButton } from '../../components/recipe/FavouriteButton.tsx';
 import { ForkCard } from '../../components/recipe/ForkCard.tsx';
+import { AddToCollectionButton } from '../../components/collections/AddToCollectionButton.tsx';
 import { CommentSection } from '../../components/recipe/CommentSection.tsx';
 import { StarRating } from '../../components/recipe/StarRating.tsx';
 import { BreadcrumbNav } from '../../components/recipe/BreadcrumbNav.tsx';
@@ -222,6 +223,9 @@ export function RecipeDetailPage() {
                   {t('recipe.fork')}
                 </button>
               )}
+
+              {/* Add to Collection button — authenticated users */}
+              {isAuthenticated && <AddToCollectionButton recipeId={recipe.id} />}
 
               {/* Edit button — owner only */}
               {isOwner && (

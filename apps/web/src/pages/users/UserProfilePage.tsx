@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { Link, useLoaderData, useParams, useSearchParams } from 'react-router';
-import { followApi, userApi } from '../../api/index.ts';
+import { collectionApi, followApi, userApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import type {
+  CollectionListItemOutput,
   FollowerListItemOutput,
   FollowingListItemOutput,
+  PaginatedResponse,
   PublicUserOutput,
 } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger.ts';
@@ -14,13 +16,14 @@ import { FollowButton } from '../../components/user/FollowButton.tsx';
 
 const log = createLogger('UserProfilePage');
 
-type Tab = 'recipes' | 'badges' | 'followers' | 'following';
+type Tab = 'recipes' | 'badges' | 'followers' | 'following' | 'collections';
 
 type FollowRecord = FollowerListItemOutput | FollowingListItemOutput;
 
 export interface ProfileLoaderData {
   profile: PublicUserOutput;
   followData: FollowRecord[] | null;
+  collectionsData: PaginatedResponse<CollectionListItemOutput> | null;
 }
 
 /**
@@ -36,12 +39,15 @@ export const loader = async (
   const profile = await userApi.getProfile(username);
   const tab = new URL(request.url).searchParams.get('tab') ?? 'recipes';
   let followData: FollowRecord[] | null = null;
+  let collectionsData: PaginatedResponse<CollectionListItemOutput> | null = null;
   if (tab === 'followers') {
     followData = await followApi.followers(profile.id);
   } else if (tab === 'following') {
     followData = await followApi.following(profile.id);
+  } else if (tab === 'collections') {
+    collectionsData = await collectionApi.listByUser(profile.id);
   }
-  return { profile, followData };
+  return { profile, followData, collectionsData };
 };
 
 function FollowList(
@@ -82,9 +88,15 @@ export function UserProfilePage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { profile, followData } = useLoaderData() as ProfileLoaderData;
+  const { profile, followData, collectionsData } = useLoaderData() as ProfileLoaderData;
 
-  const ALLOWED_TABS: readonly Tab[] = ['recipes', 'badges', 'followers', 'following'];
+  const ALLOWED_TABS: readonly Tab[] = [
+    'recipes',
+    'badges',
+    'followers',
+    'following',
+    'collections',
+  ];
   const rawTab = searchParams.get('tab') ?? 'recipes';
   const tab: Tab = (ALLOWED_TABS as readonly string[]).includes(rawTab)
     ? (rawTab as Tab)
@@ -114,6 +126,7 @@ export function UserProfilePage() {
     { key: 'badges', label: t('user.badges') },
     { key: 'followers', label: t('user.followers') },
     { key: 'following', label: t('user.following') },
+    { key: 'collections', label: t('user.collections') },
   ];
 
   return (
@@ -225,6 +238,32 @@ export function UserProfilePage() {
                   >
                     <span>❤️ {r.likeCount}</span>
                     <span>💬 {r.commentCount}</span>
+                  </div>
+                </Link>
+              ))
+            )}
+        </div>
+      )}
+
+      {tab === 'collections' && (
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          {!collectionsData || collectionsData.data.length === 0
+            ? <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noCollections')}</p>
+            : (
+              collectionsData.data.map((c) => (
+                <Link
+                  key={c.id}
+                  to={`/collections/${c.id}`}
+                  className='card hover:shadow-lg transition-shadow'
+                >
+                  <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
+                    {c.name}
+                  </h3>
+                  <div
+                    className='mt-1 flex gap-2 text-xs'
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
+                    <span>{c.recipeCount} {t('collection.detail.recipes')}</span>
                   </div>
                 </Link>
               ))
