@@ -173,6 +173,14 @@ export async function softDelete(id: string) {
  */
 export async function addItem(collectionId: string, recipeId: string, sortOrder?: number) {
   return db.transaction(async (tx) => {
+    // Lock the parent collection row so concurrent appends serialize and
+    // can't compute the same next sortOrder under READ COMMITTED.
+    await tx
+      .select({ id: collections.id })
+      .from(collections)
+      .where(eq(collections.id, collectionId))
+      .for('update');
+
     let order = sortOrder;
     if (order === undefined) {
       const [existing] = await tx
