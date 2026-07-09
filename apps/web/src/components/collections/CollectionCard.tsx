@@ -16,9 +16,14 @@ export interface CollectionCardAuthor {
   avatarUrl: string | null;
 }
 
+/** Collection with an optional author projection (from the public-browse endpoint). */
+type CollectionWithOptionalAuthor = CollectionListItemOutput & {
+  author?: CollectionCardAuthor;
+};
+
 /** Props for {@link CollectionCard}. */
 interface CollectionCardProps {
-  collection: CollectionListItemOutput;
+  collection: CollectionWithOptionalAuthor;
   /** When true (and `collection.author` is present), render an author link. */
   showAuthor?: boolean;
 }
@@ -44,10 +49,7 @@ export function CollectionCard({ collection, showAuthor }: CollectionCardProps) 
     ? '🔗'
     : '🔒';
 
-  // `author` is not part of `CollectionListItemOutput`; it is present on the
-  // public-list payload (`PublicCollectionListItemOutput`). Read defensively.
-  const author =
-    (collection as CollectionListItemOutput & { author?: CollectionCardAuthor }).author;
+  const author = collection.author;
 
   return (
     <Link
@@ -67,7 +69,7 @@ export function CollectionCard({ collection, showAuthor }: CollectionCardProps) 
       )}
       {showAuthor && author && (
         <p className='text-xs mb-2' style={{ color: 'var(--text-secondary)' }}>
-          by{' '}
+          {t('common.by')}{' '}
           <button
             type='button'
             onClick={(e) => {

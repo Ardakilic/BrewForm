@@ -277,6 +277,7 @@
   "common.no": "No",
   "common.copy": "Copy",
   "common.copied": "Copied!",
+  "common.by": "by",
   "common.required": "Required",
   "common.optional": "Optional",
   "common.goHome": "Go Home",

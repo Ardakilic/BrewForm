@@ -53,6 +53,7 @@ const enT = (key: string) => {
     'collection.browse.title': 'Browse Collections',
     'collection.browse.noResults': 'No public collections yet.',
     'collection.detail.recipes': 'recipes',
+    'common.by': 'by',
   };
   return map[key] ?? key;
 };
@@ -102,8 +103,8 @@ function renderBrowsePage() {
         element: <CollectionsBrowsePage />,
         loader,
         HydrateFallback,
-        children: [{ path: 'u/:username', element: null }],
       },
+      { path: 'u/:username', element: null },
     ],
     { initialEntries: ['/collections/browse'] },
   );

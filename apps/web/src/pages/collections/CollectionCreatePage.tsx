@@ -83,6 +83,7 @@ export function CollectionCreatePage() {
             onChange={(e) => setVisibility(e.target.value)}
             className='input w-full'
           >
+            <option value='draft'>{t('collection.visibility.draft')}</option>
             <option value='private'>{t('collection.visibility.private')}</option>
             <option value='unlisted'>{t('collection.visibility.unlisted')}</option>
             <option value='public'>{t('collection.visibility.public')}</option>

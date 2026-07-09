@@ -202,27 +202,32 @@ export async function listPublicCollections(userId: string, page: number, perPag
  */
 export async function listAllPublicCollections(page: number, perPage: number) {
   logger.debug({ page, perPage }, 'listAllPublicCollections started');
-  const result = await model.findAllPublic(page, perPage);
-  const collections = result.collections.map((c: any) => ({
-    id: c.id,
-    userId: c.userId,
-    name: c.name,
-    description: c.description,
-    visibility: c.visibility,
-    createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
-    updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
-    deletedAt: c.deletedAt instanceof Date ? c.deletedAt.toISOString() : c.deletedAt ?? null,
-    recipeCount: c.recipeCount,
-    author: c.user
-      ? {
-        username: c.user.username,
-        displayName: c.user.displayName,
-        avatarUrl: c.user.avatarUrl,
-      }
-      : { username: '', displayName: null, avatarUrl: null },
-  }));
-  logger.debug({ total: result.total }, 'listAllPublicCollections completed');
-  return { collections, total: result.total };
+  try {
+    const result = await model.findAllPublic(page, perPage);
+    const collections = result.collections.map((c: any) => ({
+      id: c.id,
+      userId: c.userId,
+      name: c.name,
+      description: c.description,
+      visibility: c.visibility,
+      createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
+      updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
+      deletedAt: c.deletedAt instanceof Date ? c.deletedAt.toISOString() : c.deletedAt ?? null,
+      recipeCount: c.recipeCount,
+      author: c.user
+        ? {
+          username: c.user.username,
+          displayName: c.user.displayName,
+          avatarUrl: c.user.avatarUrl,
+        }
+        : { username: '', displayName: null, avatarUrl: null },
+    }));
+    logger.debug({ total: result.total }, 'listAllPublicCollections completed');
+    return { collections, total: result.total };
+  } catch (err) {
+    logger.error({ err, page, perPage }, 'listAllPublicCollections failed');
+    throw err;
+  }
 }
 
 /**
