@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collectionApi } from '../../api/index.ts';
+import { ApiError, collectionApi } from '../../api/index.ts';
 import type { CollectionListItemOutput } from '@brewform/shared/schemas';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
@@ -47,8 +47,8 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
       // needing per-collection membership info from the list endpoint.
       await collectionApi.addRecipe(collection.id, recipeId);
       log.debug({ collectionId: collection.id, recipeId }, 'Recipe added to collection');
-    } catch (err: any) {
-      if (err?.code === 'CONFLICT' || err?.status === 409) {
+    } catch (err) {
+      if (err instanceof ApiError && (err.code === 'CONFLICT' || err.status === 409)) {
         await collectionApi.removeRecipe(collection.id, recipeId);
         log.debug(
           { collectionId: collection.id, recipeId },

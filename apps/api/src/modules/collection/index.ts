@@ -37,6 +37,7 @@ async function optionalAuthGuard(c: Context<AppEnv>, next: Next) {
   return deps.optionalAuthMiddleware(c, next);
 }
 
+/** Hono sub-router for collection endpoints, mounted at `/api/v1/collections`. */
 const collection = new Hono<AppEnv>();
 
 // GET / — List my collections

@@ -211,6 +211,7 @@ export async function softDeleteUser(userId: string) {
 
 const RECIPE_VISIBILITIES: readonly string[] = ['draft', 'private', 'unlisted', 'public'];
 
+/** Type guard: whether a string is one of the four valid recipe visibility values. */
 function isValidVisibility(v: string): v is RecipeVisibility {
   return RECIPE_VISIBILITIES.includes(v);
 }
