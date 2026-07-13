@@ -1,9 +1,12 @@
 # F09 — Recipe Version Diff View
 
-> **Validation status (2026-07-04): ✅ Valid (depends on F08 DiffHighlighter)**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below (design valid)**
 >
-> - Depends on F08's shared `DiffHighlighter` component — sequence after F08 (or merge).
-> - Verified: `tds` (schema.ts:199), `emojiTag` (schema.ts:211) and `formatTemperature` all exist; the page fetches versions by id, so it is unaffected by the missing `currentVersion` relation.
+> - Still depends on F08's `DiffHighlighter` (net-new, absent from components/recipe/) — sequence after F08 or merge.
+> - Verified: all scalarFields exist on recipeVersions — `tds` (schema.ts:200), `emojiTag` (:212), productName/coffeeBrand/coffeeProcessing (:183–185), rating/brewRatio/flowRate/preInfusionTimeSeconds. `formatTemperature`/`formatWeight`/`formatVolume` exist (conversion.ts). `getRecipeVersionsForDiff` is net-new; the relations it loads exist (schema.ts:1029–1031). Diff fetches versions by id, so the missing `currentVersion` relation is irrelevant.
+> - Entry point OK: RecipeVersionsPage uses `useEffect` + `api.get<{…versions…}>` and renders `data.versions.map` (RecipeVersionsPage.tsx:37,83) — the checkbox/diff-link addition is viable. `api` is exported by api/client.ts, so the page-local `api.get<VersionDiff>` works; router `lazy` snippet matches the compare route.
+> - Minor: `service.getRecipe` THROWS `RECIPE_NOT_FOUND` (never returns null), so the handler's `if (!recipe)` branch is dead — harmless, the try/catch already maps it to 404.
+> - NEW — D42: prefer a shared `VersionDiffOutputSchema` (schemas/responses/recipe.ts) + typed method over the page-local `VersionDiff` interface (`api/types.ts` deleted). NEW — D40 i18n: "Version Diff"/"Parameters"/"Taste Notes"/"Equipment"/field labels/"Compare Selected" must go in both en.json + tr.json; the server currently returns English field labels — return field keys and translate client-side.
 
 ## Overview
 

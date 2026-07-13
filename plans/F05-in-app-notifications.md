@@ -1,9 +1,24 @@
 # F05 — In-App Notification Center
 
-> **Validation status (2026-07-04): ✅ Valid (depends on F04)**
+> **Validation status (2026-07-13): ⚠️ Outdated — F04 shipped the substrate; scope shrinks to extension**
 >
-> - Requires the notifications table + module introduced by F04 — land F04 first.
-> - `/u/:username` route confirmed (apps/web/src/router.tsx:136); plan is well-specified.
+> Supersedes the 2026-07-04 ✅ (which assumed F04 was unbuilt). F04 has landed (uncommitted) in this tree via migration `0010_clever_wilson_fisk.sql`, building most of this plan's foundation — but with a different shape than proposed, so several sections here are now stale.
+>
+> **Already shipped by F04 (verify before extending):**
+> - `notifications` table (`packages/db/src/schema.ts:918-952`): `userId` (recipient, cascade delete), nullable `actorId` (acting user, `ON DELETE no action`), `type`, `referenceId`/`referenceType`, `metadata` (TEXT holding a JSON string — not typed columns), `readAt`, soft-delete `deletedAt`; indexes `(userId,createdAt)` and `(userId,readAt)`. Relations `NotificationRecipient`/`NotificationActor` (schema.ts:1349-1358).
+> - API module `apps/api/src/modules/notification/` — the endpoints this plan lists as "defined in F04" all exist: `GET /` (paginated, `unreadOnly`), `GET /unread-count`, `PATCH /read-all`, `PATCH /:id/read`; mounted at `/api/v1/notifications`; `Notifications` OpenAPI tag; the service flattens the actor join to `actorUsername` (service.ts:31-44).
+> - `mentionedInComment` boolean on `user_preferences` (schema.ts:107, default true); mention fan-out wired in `comment/service.ts` → `createMentionNotifications` (notification/service.ts:67), which gates BOTH the record and the email on the pref (service.ts:97) and skips the mention email for the recipe author (record still created, service.ts:109).
+>
+> **Schema deltas vs this plan's proposal (reconcile — the plan is stale here):**
+> - `notificationTypeEnum` ships with **only `'mention'`** (schema.ts:904), not the 6-value enum this plan authors up front (mention/follow/like/comment/badge/system). Extending it is a Drizzle `ALTER TYPE … ADD VALUE` migration via `make db-generate`; note Postgres runs `ADD VALUE` outside a transaction and it is not reversible per value — add values as each type lands.
+> - The 5 extra per-type boolean columns this plan proposes (`followNotifications`, `likeNotifications`, `commentNotifications`, `badgeNotifications`, `systemNotifications`) were **not** added. The existing gates are `newFollower`/`recipeLiked`/`recipeCommented`/`followedUserPosted` (email-only today) plus F04's `mentionedInComment` (gates both record and email). The free-form `metadata` JSON + the `actorUsername` join already support every per-type text pattern in the plan's rendering table — no typed columns needed.
+>
+> **Remaining F05 work:**
+> 1. Extend `notificationTypeEnum` with `follow`/`like`/`comment` (and, if kept in scope, `badge`/`system`).
+> 2. Add fan-out record creation beside the existing email call sites — none of which write notification records yet, except mentions: `follow/service.ts:40` (`notifyNewFollower`), the recipe-like path (`notifyRecipeLiked`), `comment/service.ts:93` (`notifyRecipeCommented` — a comment-author record, distinct from the mention record already created there), and optionally `notifyFollowersOfNewRecipe` (`utils/notify/index.ts:222`) and `badge/service.ts` awards. Note the plan's enum has no `followed_user_posted` type — the "followed user posted" fan-out has no matching notification type, so decide reuse-vs-add before wiring a record there.
+> 3. **Decision — per-type in-app-vs-email split (in scope, unresolved):** prefs gate email only today; F04's `mentionedInComment` set the precedent of one flag gating both. Recommend reusing the existing email flags to also gate records (avoids column sprawl) rather than adding this plan's parallel `*Notifications` columns — but make this scope call explicit.
+> 4. **UI substrate shipped with F04 (verified in tree).** The correction supersedes the earlier claim that no web UI existed. The notification bell, dropdown, item, `/notifications` list page, Navbar mounting (desktop + mobile), `notificationApi` client, SettingsPage toggle, and `notifications.*` i18n keys (en+tr, parity green) all landed with F04 — see `apps/web/src/components/layout/NotificationBell.tsx`, `NotificationDropdown.tsx`, `NotificationItem.tsx`, and `apps/web/src/pages/notifications/NotificationListPage.tsx`. `mentionedInComment` is likewise now surfaced end-to-end: shared `emailNotifications.mentionedInComment` (`schemas/user.ts`), `/preferences` PATCH flatten (`preference/index.ts`), `responses/preference.ts` field, and the SettingsPage toggle. So this plan's Frontend Components / router entry / settings scaffolding / i18n sections are **done**; the remaining F05 UI work is only **per-type `NotificationItem` icon/text rendering** for the new types and any **pagination/UX polish** (e.g. the All/Unread filter).
+> - `/u/:username` route still confirmed (apps/web/src/router.tsx) for the follow/badge notification link targets.
 
 ## Overview
 

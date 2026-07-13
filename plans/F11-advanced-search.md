@@ -1,12 +1,15 @@
 # F11 — Advanced Search with Faceted Filters
 
-> **Validation status (2026-07-04): ⚠️ Outdated — rebase on shipped D27 cursor pagination**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below (some scope already shipped)**
 >
-> - Cursor pagination ALREADY SHIPPED (D27: recipe/model.ts:42, 867-934; recipe/index.ts:27-29, 126-130). Plan's uuid cursor + `lt(recipes.id)` is wrong — the real cursor is a base64 `(createdAt, id)` composite.
-> - Stale envelope: plan's `meta.nextCursor` / `meta.hasMore` → real responses use `meta.cursor` / `meta.pagination` (apps/api/src/utils/response/index.ts:40,83,109).
-> - Indexes: `recipe_author_visibility_idx` and `recipe_visibility_like_count_idx` already exist (schema.ts:149,166 — D23); only the visibility_created_at and visibility_featured indexes are new.
-> - Do NOT apply the proposed `RecipeFilterSchema` rewrite as-is — it would clobber the current schema, which already has `search`, deprecated `tasteNoteId`, `sortBy` incl. rating, `cursor`, `includeTotal` (apps/api/src/schemas/recipe.ts:145-160).
-> - Salvageable scope: faceted filters (author, dateFrom/dateTo, min/maxRating), full-text search ranking, ActiveFilterChips.
+> - Cursor pagination shipped (D27). The real cursor is a base64 `(createdAt, id)` composite (`encodeCursor`), decoded in `findCursor` (apps/api/src/modules/recipe/model.ts:920) via `buildCursorWhere` (model.ts:884). Plan's `cursor: z.string().uuid()` + `findManyCursor` using `lt(recipes.id, cursor)` is wrong — drop `findManyCursor`, reuse `findCursor`.
+> - Response envelope wrong: cursor lists emit `meta.cursor.{nextCursor,hasMore,total?}` via `cursorPaginated()` (apps/api/src/utils/response/index.ts:71-89); offset lists emit `meta.pagination` via `paginated()` (:41-56). The plan's flat `meta.nextCursor`/`meta.hasMore` does not exist.
+> - `RecipeFilterSchema` is now packages/shared/src/schemas/recipe.ts:129-175 (not :140) and already carries `search`, `tasteNoteIds` + deprecated `tasteNoteId`, `sortBy` incl. `rating`, `cursor` (string, not uuid), `includeTotal`. Do NOT replace wholesale — extend additively (add author/dateFrom/dateTo/min-maxRating only).
+> - Indexes: three of four already exist — `recipe_author_visibility_idx` (schema.ts:149), `recipe_visibility_created_idx` (:157, note actual name has no `_at`), `recipe_visibility_like_count_idx` (:166), plus cursor index `recipe_created_at_id_idx` (:174). The ONLY new index is `recipe_visibility_featured_idx`.
+> - Equipment-compatibility facet (US-11.5) is ALREADY implemented: `buildRecipeFilters` maps `equipmentId` → `recipes.currentVersionId IN (recipeEquipment…)` (model.ts:151-160). Current keyword search (model.ts:113-128) ilikes `recipes.title` + `recipeVersions.productName` only; `personalNotes` column exists (schema.ts:208) if you widen it.
+> - App-code ranking accessor `recipe.currentVersion?.productName` won't work — no `currentVersion` relation exists (recipesRelations, schema.ts:991 has only `versions` + `currentVersionId` column). Join/fetch the version explicitly.
+> - `apps/web/src/api/types.ts` was DELETED (D42) — step 7 is stale; response types are z.infer from packages/shared. There is no `components/recipe/FilterSidebar.tsx`: filter UI lives in apps/web/src/components/recipe-list/ (FilterField.tsx, useRecipeFilters.ts, ActiveFilterBadge.tsx) + apps/web/src/utils/recipe-filters.ts; the proposed `ActiveFilterChips` duplicates existing `ActiveFilterBadge`.
+> - tsvector/GIN still correctly avoided — conventions memory reaffirms "No raw SQL, no Postgres-specific operators"; the ilike approach stays valid. Salvageable net-new scope: author/date/rating facets + relevance ranking.
 
 ## Overview
 

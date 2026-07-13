@@ -302,9 +302,10 @@ minimum:
 
 ### Requirement: Mutation pages have JSDoc, a module logger, and mount/unmount debug logs
 
+The three mutation pages SHALL each meet the requirements below —
 `apps/web/src/pages/equipment/EquipmentListPage.tsx`,
 `apps/web/src/pages/admin/AdminEquipmentPage.tsx`, and
-`apps/web/src/pages/admin/AdminTasteNotesPage.tsx` SHALL each:
+`apps/web/src/pages/admin/AdminTasteNotesPage.tsx`:
 
 - Import `createLogger` from `../../utils/logger.ts` and define a
   module-scoped `const log = createLogger('<PageName>')` at the

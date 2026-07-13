@@ -1,10 +1,12 @@
 # F16 — Automated Badge Criteria Expansion
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — much already wired**
 >
-> - Badge enum/rules are now single-sourced from `BADGE_RULES` in packages/shared/src/constants/badges.ts (D07) — add new rules there; do NOT hand-edit the pgEnum.
-> - Stale line references: badgeRuleEnum is at schema.ts:51, badges seed near :671, evaluateBadges checks in badge model.ts ~:116-126.
-> - Accurate: there are currently exactly 10 badge rules.
+> - Badge rules single-sourced from `BADGE_RULES` (packages/shared/src/constants/badges.ts:1-72, exactly 10) → `BADGE_RULE_VALUES` (:89) → `badgeRuleEnum` (schema.ts:50). Add new rules to BADGE_RULES (NOT a hand-edited pgEnum); `evaluateBadges` types `checks` as `Array<{ rule: BadgeRule; met }>` (badge/model.ts:118) so string literals won't type-check until BADGE_RULES is extended.
+> - Seed data is the hand-written array `badgeSeedData` in packages/db/src/seed-users-recipes.ts:10 (consumed by `seedBadges`, seed.ts:174) — NOT seed.ts as the plan says; `seed.test.ts` asserts every seed rule is valid, so update there too.
+> - Triggers ALREADY EXIST (fire-and-forget `evaluateBadges`): followUser (follow/service.ts:46), createRecipe (recipe/service.ts:241), forkRecipe (:397), comment create (comment/service.ts:115). Only the LIKE (`toggleLike`, recipe/service.ts:565) and RATING (`upsertUserRating`) triggers are still missing — add those two; the plan's follow/create triggers are redundant.
+> - evaluateBadges shape confirmed (badge/model.ts:53-141): count queries → `checks[]` → insert userBadges with onConflictDoNothing. New checks slot in cleanly. 11 brew methods for taste_explorer match BREW_METHOD_VALUES.
+> - Frontend: there is NO `BadgeGallery.tsx` — badges render inline in apps/web/src/pages/users/UserProfilePage.tsx; the "enhanced gallery" is net-new, not an edit.
 
 ## Overview
 

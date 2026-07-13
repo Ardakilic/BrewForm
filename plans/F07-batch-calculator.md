@@ -1,9 +1,11 @@
 # F07 — Batch / Scale Recipe Calculator
 
-> **Validation status (2026-07-04): ✅ Valid**
+> **Validation status (2026-07-13): ⚠️ Outdated — minor corrections below (design valid)**
 >
-> - Pure client-side feature; `useUnitSystem`, `formatWeight`, `formatVolume`, `computeBrewRatio` all exist as described.
-> - Cosmetic: align the proposed test harness style with existing repo test conventions.
+> - Core still valid: pure client-side. `useUnitSystem` (hooks/useUnitSystem.ts:20), `formatWeight`/`formatVolume`/`formatTemperature` (conversion.ts:34/42/50), `computeBrewRatio` (metrics.ts:2), `convertGramsToOunces`/`convertMlToFlOz` all exist. `scaleRecipe`/`suggestGrindAdjustment`/`scaleExtractionTime` are net-new as intended.
+> - Correction: the new functions must ALSO be added to the utils barrel `packages/shared/src/utils/index.ts` (the metrics export block), not just metrics.ts — `@brewform/shared/utils` resolves through the barrel.
+> - Correction (the test snippet is broken): the plan imports `assertEquals, assertStrictEquals` from `jsr:@std/testing/bdd` and uses `Deno.test(...)`. Repo convention (metrics.test.ts) is `import { describe, it } from 'jsr:@std/testing/bdd'` + `import { expect } from 'jsr:@std/expect'` with `describe/it/expect`; `assertEquals` isn't exported by bdd. Rewrite tests in the expect style.
+> - NEW — D40 i18n: `BatchCalculator` hardcodes English ("Batch Calculator", "Target Yield", "Scaled Dose", …) — route through `t()` and add keys to both en.json + tr.json (strict parity test). `suggestGrindAdjustment` returns English sentences from a shared util — return a key/enum and translate client-side instead.
 
 ## Overview
 

@@ -1,10 +1,10 @@
 # F25 — Offline Support / PWA
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >
-> - PWA shell (manifest, service worker, vite plugin) is valid and purely additive — can ship independently.
-> - Offline brew-log sync POSTs `/api/v1/brew-logs`, which does not exist — blocked on F02 (and related F20); ship the PWA shell without it or sequence after F02.
-> - sw.js contains TypeScript syntax in a raw .js file — strip the types or compile the worker.
+> - PWA shell (manifest, service worker, offline page, registration) is valid and purely additive — can ship independently.
+> - Offline brew-log sync still POSTs `/api/v1/brew-logs`, which does not exist — blocked on F02 (and related F20). Ship the shell without sync or sequence after F02.
+> - `sw.js` still contains TypeScript (typed `openIndexedDB(): Promise<IDBDatabase>`, `event.target as …`) inside a raw `.js` file — strip the types or compile the worker.
 
 ## Overview
 

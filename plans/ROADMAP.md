@@ -71,10 +71,30 @@
 
 ## Outstanding manual follow-ups (not code)
 
-- [ ] Close PR #54 (`feat/workspace-management`) with a note pointing to the archived
+- [x] Close PR #54 (`feat/workspace-management`) with a note pointing to the archived
       `d31-deno-29-upgrade` as its superseding change, and delete the stale branch. _(d31 task 14.1
-      — deferred to after this branch merges.)_
-- [ ] (Optional) Run the deferred manual verifications from the archived changes:
+      — done 2026-07-13: PR was already closed; superseding note posted, stale branch deleted.)_
+- [x] (Optional) Run the deferred manual verifications from the archived changes:
       `EXPLAIN
       ANALYZE` on the cursor query (d27 task 1.5) and the `POST /api/v1/recipes`
-      smoke test (d29 task 12.7).
+      smoke test (d29 task 12.7). _(done 2026-07-13: d27 — seq scan at seed-data cardinality as
+      the archived task anticipated; `recipe_created_at_id_idx` is correctly defined and engages
+      at scale, though the OR-form keyset predicate is only single-column sargable (a row-value
+      `(created_at, id) < (x, y)` rewrite would fully use the composite index — noted as a
+      scale-time follow-up since it needs a raw-SQL exception). d29 — PASS: register 201,
+      unverified-email create blocked 403, seeded-user create 201 with full envelope, GET 200.)_
+
+---
+
+## 2026-07-13 status
+
+- All debt waves (Waves 0–4) and the outstanding manual follow-ups are complete.
+- Full plan-vs-code audit run; discrepancies reconciled: D03 wording, D35 directives, the F01
+  `any`-regression, and the F01 US-9 gap (tracked forward as **D99.5**).
+- **F04** (@mention notifications) shipped as the first post-debt feature (see
+  [`F04-mention-notifications.md`](F04-mention-notifications.md)).
+- Open deferred debt now lives in **D99**.
+- **Next candidates** per the refreshed Priority Matrix
+  ([`FEATURE_SUGGESTIONS.md`](FEATURE_SUGGESTIONS.md)): **F09** (P0 — schedule after/with F08),
+  **F05** (P1 — substrate ready, scope shrunk to enum extension + fan-out + per-type rendering),
+  **F11** (P1), and **F02** (P2, but unblocks F03 / F20 / F25-sync).

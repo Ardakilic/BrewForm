@@ -1,12 +1,12 @@
 # F12 — "Similar Recipes" Recommendations
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >
-> - No TanStack Query in the repo: replace `useQuery` with a react-router v8 loader + `useLoaderData` (or useEffect + `api.get`); the web API client is a custom fetch wrapper (apps/web/src/api/client.ts), not axios.
-> - `db.query ... with: { currentVersion }` will THROW — no `currentVersion` relation exists, only the `currentVersionId` column (schema.ts:119); join on `currentVersionId` or add the relation first.
-> - Wrong path: RecipeCard lives at apps/web/src/components/recipe-list/RecipeCard.tsx, not components/recipe/.
-> - `c.get('cache')` is valid (apps/api/src/types/hono.ts:15).
-> - Scaling caveat: the proposed approach loads all public recipes into memory.
+> - `db.query… with: { currentVersion }` (getSourceRecipeData/getCandidateRecipes) will THROW — `recipesRelations` (schema.ts:991) has no `currentVersion` relation, only `versions` + the `currentVersionId` column (schema.ts:119). Query `recipeVersions` by `recipes.currentVersionId` (as `buildRecipeFilters` does, model.ts:151) or add the relation first.
+> - No TanStack Query: `SimilarRecipesSection`'s `useQuery` must become a react-router v8 loader + `useLoaderData` (or `useEffect` + `api.get`); web client is a custom fetch wrapper (apps/web/src/api/client.ts), not axios. react-router is v8.0.1 (apps/web/package.json).
+> - Wrong path: RecipeCard lives at apps/web/src/components/recipe-list/RecipeCard.tsx (D36 shared card), not components/recipe/.
+> - Verified: `service.getRecipe(slug)` exists (recipe/service.ts) and resolves slug-or-id → RecipeWithRelations with `.id`; `optionalAuthMiddleware` exists; `c.get('cache')` valid; `cacheProvider`/`setCacheProvider` exported from apps/api/src/utils/cache/singleton.ts. Route `/:slug/similar` is 2-segment so won't be shadowed by `/:slugOrId` (index.ts:299), but register it beside the other `/:slug/*` routes (e.g. `/:slug/versions` at :262), before the catch-all.
+> - Scaling caveat still applies: the approach loads all public recipes into memory.
 
 ## Overview
 

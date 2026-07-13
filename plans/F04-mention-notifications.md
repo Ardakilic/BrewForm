@@ -1,10 +1,20 @@
 # F04 — @Mention Notifications
 
-> **Validation status (2026-07-04): ✅ Valid**
->
-> - Must land before F05 (F05 consumes the notifications table + module created here).
-> - Comment @mention auto-prepend already exists with no notification sent (apps/api/src/routes/comment/service.ts:5,18,68) — plan is genuinely additive; `mentionNotifications` pref column is a clean add.
-> - `getRecipeForNotification` / `getCommenterById` are NEW model functions to add — comment/model.ts (:157) currently only has a commenter helper.
+> **Status:** ✅ Implemented (2026-07-13)
+
+### As-built summary (2026-07-13)
+
+Shipped as the first post-debt feature. The plan below is retained as historical record; the implementation deliberately diverged from it in the following ways:
+
+- **Preference named `mentionedInComment`** (not `mentionNotifications`): follows house event-style naming (`newFollower`/`recipeLiked`/…) and, unlike the plan's opt-out-for-email intent, gates **BOTH** the DB record and the mention email — an opted-out target is skipped entirely (`user_preferences.mentioned_in_comment`, default `true`; notification/service.ts). A missing prefs row is treated as opted-in.
+- **Shared, hyphen-safe mention parser**: `packages/shared/src/utils/mention.ts` exports `parseMentions` with left/right boundary guards (email text like `a@bcd` is a non-match; over-length tokens produce no partial match), first-seen dedupe, a `MAX_MENTIONS = 10` cap (anti-spam), and **exact-case** matching (usernames preserved for exact-match resolution) — not the plan's naive `/@(\w+)/g`, which excluded hyphens and truncated.
+- **`notifications` table gained `actorId` + `metadata`** beyond the plan's columns: nullable `actorId` (the triggering user, `ON DELETE no action`) and `metadata` (a TEXT column holding a JSON string) so notification rows render without extra joins. The service flattens the actor join to `actorUsername`.
+- **`notificationTypeEnum` ships with only `['mention']`** — extra types (follow/like/comment/badge/system) are deferred to F05 via `ALTER TYPE … ADD VALUE`, rather than authored up front.
+- **`z.stringbool()` (Zod 4) for `unreadOnly`**: `NotificationQuerySchema` extends `PaginationSchema`; query-string coercion uses `z.stringbool()` rather than `z.coerce.boolean()`. Response shapes are `NotificationOutputSchema`/`UnreadCountOutputSchema`.
+- **No 30s polling** (plan §Navbar): the bell refreshes event-driven only — on mount, on window `focus`, and on a custom `NOTIFICATIONS_CHANGED_EVENT` dispatched by read-state changes.
+- **No comment-edit path**: comments are create-only in this codebase, so mentions are parsed once in `createComment` (on the post-prepend, sanitized `effectiveContent`); there is no edit-time re-scan.
+- **Recipe-author email dedupe**: when the mentioned target is the recipe author, the notification record is still created but the mention email is suppressed (they already get the recipe-commented email for the same comment). The mention scan runs even when the commenter is the recipe author. Self-mentions are dropped entirely.
+- Delivered as migration `0010_clever_wilson_fisk.sql`; API module `apps/api/src/modules/notification/` (model/service/index + 3 test files) with full `describeRoute` and a `Notifications` OpenAPI tag (coverage 19/19); web `NotificationBell`/`NotificationDropdown`/`NotificationItem` + `/notifications` list page, Navbar mounting (desktop + mobile), SettingsPage toggle, `notificationApi`, 12 i18n keys (en+tr, parity green), and 16 new web tests.
 
 ## Overview
 

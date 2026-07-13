@@ -1,10 +1,11 @@
 # F21 — Public API with API Keys
 
-> **Validation status (2026-07-04): ✅ Valid**
+> **Validation status (2026-07-13): ✅ Valid**
 >
-> - Net-new `apiKeys` table; self-contained.
-> - Fix: `hashApiKey` is typed as returning `string` but actually returns a `Promise` — correct the return type / await it.
-> - `unauthorized`/`forbidden` helpers exist in utils/response; align the auth guard with the repo's RequireAuth pattern.
+> - `apiKeys` table is net-new (absent from `packages/db/src/schema.ts`); self-contained. `unauthorized`/`forbidden` helpers exist (`utils/response/index.ts`); `authMiddleware` is cookie/Bearer JWT (`middleware/auth.ts:57`) and API-key auth setting `c.set('user', null)` is compatible with the existing `optionalAuthMiddleware` null pattern.
+> - Rate-limiting is sound: `cacheProvider` (`utils/cache/singleton.ts:9`) takes array keys + `{ ttlMs }` (see live use in `equipment/service.ts:32-44`). Import it from `utils/cache/singleton.ts`.
+> - OpenAPI: `bearerAuth` scheme + `/api/v1/docs` already exist (`routes/openapi.ts:39-115`, gated by `OPENAPI_ENABLED`); add an `apiKeyAuth` (X-API-Key) scheme there. Register the module via `routes.route('/api/v1/api-keys', apiKey)` in `routes/index.ts`.
+> - Still fix: `hashApiKey` returns `Promise<string>`, not `string` (plan's own note). Mirror the repo `deps` + `describeRoute()` OpenAPI convention (see `equipment/index.ts`) in the new module.
 
 ## Overview
 

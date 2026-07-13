@@ -1,10 +1,12 @@
 # F06 — Recipe Templates
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >
-> - Stale: "Register in apps/api/src/index.ts" → there is no apps/api/src/index.ts; register via `routes.route('/api/v1/templates', template)` in apps/api/src/routes/index.ts (:16-60).
-> - Stale: hardcoded brew-method/drink-type enum lists → use `z.enum(BREW_METHOD_VALUES)` / `z.enum(DRINK_TYPE_VALUES)` from `@brewform/shared/constants` (enums are single-sourced per D07).
-> - Rest is solid: `recipeTemplates` mirrors the real recipeVersions columns; the RecipeCreatePage setters referenced are real.
+> - Still stale: the body says "Register in main API router (apps/api/src/index.ts)" / `app.route(...)` (plan ~455–459) — there is NO apps/api/src/index.ts (only main.ts). Register via `routes.route('/api/v1/templates', template)` in apps/api/src/routes/index.ts (:40–63).
+> - Still stale: the hardcoded `BrewMethodEnum`/`DrinkTypeEnum` z.enum lists (plan ~98–109) — use `z.enum(BREW_METHOD_VALUES)` / `z.enum(DRINK_TYPE_VALUES)` from `@brewform/shared/constants` (constants/index.ts:29–30; the DB pgEnums are built from the same arrays, schema.ts:47–48).
+> - Verified solid: `recipeTemplates` columns mirror real `recipeVersions` columns (schema.ts:191–212); `computeBrewRatio` exists (metrics.ts:2); RecipeCreatePage setters + `useSearchParams` all present (RecipeCreatePage.tsx:30,36–49).
+> - NEW — D42: the `templateApi` added to apps/web/src/api/index.ts must be TYPED (`api/types.ts` deleted). Add a `TemplateOutputSchema` under `schemas/responses/`, export it, and type `templateApi` via `z.infer` (+ `api.getWithMeta<PaginatedResponse<TemplateOutput>>` for the list); the `templateApi.get(id).then(...)` prefill is otherwise untyped.
+> - NEW — D40 i18n: template UI strings must be added to BOTH en.json and tr.json (strict parity test).
 
 ## Overview
 

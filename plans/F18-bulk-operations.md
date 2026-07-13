@@ -1,10 +1,11 @@
 # F18 — Bulk Admin Operations
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >
-> - All admin service calls have the wrong argument order / missing adminId — signatures take `adminId` first: `banUser(adminId, userId, reason?)`, `unbanUser(adminId, userId)`, `softDeleteUser(adminId, userId)`, `softDeleteRecipe(adminId, recipeId)`, `deleteEquipment(adminId, id)`.
-> - `toggleFeature(id)` flips via NOT (recipe/model.ts) — it cannot force a boolean; bulk feature/unfeature needs a new set-based model function.
-> - TanStack `useQuery`/`useMutation`/`useQueryClient` → react-router v8 loaders + the custom fetch client (no TanStack Query, no axios).
+> - All admin service calls have the wrong arg order / missing adminId — actual signatures (admin/service.ts): `banUser(adminId, userId, reason?)` (:52), `unbanUser(adminId, userId)` (:63), `softDeleteUser(adminId, userId)` (:164), `softDeleteRecipe(adminId, recipeId)` (:214), `deleteEquipment(adminId, id)` (:261). The bulk loops pass `(userId, adminId)` / `(recipeId)` — reverse them and thread adminId.
+> - `toggleFeature(id)` flips via `sql\`not ${recipes.featured}\`` (recipe/model.ts:827) — it cannot force a target boolean, so `toggleFeature(recipeId, true/false)` won't compile. Add a set-based model fn (e.g. `setFeatured(id, value)`).
+> - No TanStack Query — `useQuery`/`useMutation`/`useQueryClient` in AdminUsersPage etc. → react-router v8 loaders + actions/custom fetch (react-router 8.0.1). Bulk audit logging should reuse `model.createAuditLog(adminId, action, entity, entityId?, details?)` (admin/model.ts:439), not raw `db.insert(auditLogs)`.
+> - New: `/admin/{users,recipes,equipment}/bulk` routes don't exist yet; target admin pages exist (AdminUsersPage/AdminRecipesPage/AdminEquipmentPage, router.tsx:323/351/358). `apps/web/src/api/types.ts` was DELETED (D42) — put BulkOperationResult in packages/shared. D36 shipped a shared BanDialog + useBanUser — reuse for the confirm UI where it fits.
 
 ## Overview
 

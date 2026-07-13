@@ -1,10 +1,10 @@
 # F22 — Webhook System
 
-> **Validation status (2026-07-04): 🔧 Rough — needs design decisions**
+> **Validation status (2026-07-13): 🔧 Rough — needs design decisions**
 >
-> - delivery.ts is internally inconsistent: duplicate `const delivery` declaration, and references to `queue.enqueue`, `model.createDelivery` and `log` that are never defined.
-> - No queue infrastructure exists in the repo — the delivery mechanism (in-process retry vs. real queue) is unspecified and must be decided before implementation.
-> - The net-new webhook tables themselves are fine.
+> - `webhooks` / `webhookDeliveries` tables are net-new (absent from `packages/db/src/schema.ts`) and fine. The `delivery.ts` bugs remain: duplicate `const delivery`, plus undefined `model.createDelivery`, `queue.enqueue`, and `log`.
+> - No queue infrastructure exists anywhere in the repo — the durable-delivery mechanism (in-process retry vs. real queue/worker) is still unspecified and must be decided before implementation.
+> - NEW substrate: F04 shipped an in-app notification system (`notifications` table + `notificationTypeEnum` in schema; `apps/api/src/modules/notification/`). The dispatch integration points (recipe/follow/badge services) can mirror how the notification service is invoked; decide whether outbound webhooks and in-app notifications should share one event-emit call site.
 
 ## Overview
 

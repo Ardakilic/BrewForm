@@ -1,5 +1,12 @@
 # F27 — Equipment Reviews & Ratings
 
+> **Validation status (2026-07-13): ✅ Valid**
+>
+> - Verified against current code with only minor line-number drift. `equipment` has no rating/review columns (`packages/db/src/schema.ts:357-384`, cited 350-377). `recipeEquipment` references `recipe_version` and now carries a `createdAt` from D43 (`schema.ts:265-285`, cited 262-280). `userRecipeRatings` pattern (`unique(userId, recipeId)` + `check rating BETWEEN 1 AND 10`) confirmed (`schema.ts:662-678`, cited 655-671).
+> - Service actor-id-first confirmed (`deleteEquipment(userId, id)`, `service.ts:122`). The usage-count join `recipeEquipment → recipeVersions → recipes` already exists as `getRecipesUsingEquipment` (D03 raw SQL, `equipment/model.ts:106-149`) — note it counts via `recipes.currentVersionId`, so a "used in N recipes" stat that mirrors it is a one-liner. `optionalAuthMiddleware` exists (`middleware/auth.ts:116`).
+> - `EquipmentDetailPage` useEffect fetch (`api.get('/equipment/${id}')` + `.../recipes?perPage=6`) confirmed (`EquipmentDetailPage.tsx:36-38`) — the loader conversion is valid.
+> - Implementation nuance: the equipment module uses a `deps`/`authGuard` proxy + `describeRoute()` OpenAPI blocks (`equipment/index.ts`). Register `/:id/reviews` before GET `/:id` (line 204) and mirror that convention.
+
 ## Summary
 
 Let users rate equipment on the platform-standard 1–10 scale and leave a short review. Aggregate average rating and review count onto the equipment detail and catalog pages, and derive "used in N recipes" usage stats from the existing `recipe_equipment` join table. Promotes FEATURE_SUGGESTIONS §1.5, which never received a PRD.

@@ -1,10 +1,11 @@
 # F08 — Recipe Comparison Improvements
 
-> **Validation status (2026-07-04): ✅ Valid**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below (design valid)**
 >
-> - Coordinate `DiffHighlighter` with F09 (shared component) — land F08 first or merge the two efforts.
-> - Verify `mergedData` keys against the `createRecipe` input schema before implementing the merge flow.
-> - Enhances the real RecipeComparePage (route `recipes/compare/:slug1/:slug2`, apps/web/src/router.tsx:89); `tn.tasteNoteId` is still valid — D28 removed only the deprecated query param, not the `recipeTasteNotes.tasteNoteId` column (schema.ts:249).
+> - Verified: RecipeComparePage route is `recipes/compare/:slug1/:slug2` (router.tsx:108); `recipeTasteNotes.tasteNoteId` column exists (schema.ts:250) so `tn.tasteNoteId` is valid. `DiffHighlighter` is net-new (absent from components/recipe/) — F09 depends on it, so land F08 first or merge the two efforts.
+> - `mergedData` keys verified against `createRecipe`: title/visibility/brewMethod/drinkType/grindSize/groundWeightGrams/extractionTimeSeconds/extractionVolumeMl/temperatureCelsius/brewerDetails/grinder/preparationNotes/personalNotes/tasteNoteIds/equipmentIds/additionalPreparations all exist on RecipeCreateObjectSchema (recipe.ts:24–59). Note `preparationNotes` is REQUIRED (min 1), so the plan's `pick('preparationNotes') || 'Merged recipe'` fallback is needed. `fetchRecipeVersionWithRelations` is net-new; the tasteNotes/equipment/additionalPreparations relations it loads exist (recipeVersionsRelations, schema.ts:1029–1031).
+> - Shape alignment: RecipeComparePage consumes `recipe.currentVersion` + top-level `recipe.tasteNotes`/`recipe.equipment` from `RecipeDetailOutput` (composed as `versions[0]` in recipe/index.ts:326–350) — the CompareTable rewrite must read those same fields.
+> - NEW — D42: the merge endpoint returns a recipe via `createRecipe` → wrap in `success()`; add a typed `recipeApi.merge(...)` client method (`api/types.ts` deleted). NEW — D40 i18n: MergeSelector/DiffHighlighter labels must be added to both en.json + tr.json; RecipeComparePage already uses `t()` + `labelFor(BREW_METHODS/DRINK_TYPES)` — preserve that in the diff rewrite.
 
 ## Overview
 
