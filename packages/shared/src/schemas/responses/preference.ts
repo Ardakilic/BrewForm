@@ -24,6 +24,7 @@ export const UserPreferencesOutputSchema = z.object({
   recipeLiked: z.boolean(),
   recipeCommented: z.boolean(),
   followedUserPosted: z.boolean(),
+  mentionedInComment: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

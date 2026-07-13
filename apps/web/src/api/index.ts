@@ -15,6 +15,7 @@ import type {
   FollowerListItemOutput,
   FollowingListItemOutput,
   FollowOutput,
+  NotificationOutput,
   PaginatedResponse,
   PublicCollectionListItemOutput,
   PublicUserOutput,
@@ -29,6 +30,7 @@ import type {
   SetupUpdate,
   TasteNoteNodeOutput,
   TasteNoteOutput,
+  UnreadCountOutput,
   UserProfileUpdate,
 } from '@brewform/shared/schemas';
 import { api, ApiError } from './client.ts';
@@ -42,6 +44,10 @@ export type RateResponse = {
   ratingCount: number;
 };
 
+/**
+ * Auth API client — register, login/logout, password reset, email verification,
+ * and registration-status checks.
+ */
 export const authApi = {
   register: (data: { email: string; username: string; password: string; displayName?: string }) =>
     api.post<{ user: AuthUser }>('/auth/register', data),
@@ -57,6 +63,10 @@ export const authApi = {
   verifyEmail: (token: string) => api.post<{ message: string }>('/auth/verify-email', { token }),
 };
 
+/**
+ * Current-user API client — fetch/update the authenticated user, delete the
+ * account, and read another user's public profile.
+ */
 export const userApi = {
   me: () => api.get<AuthUser>('/users/me'),
   updateProfile: (data: UserProfileUpdate) => api.patch<AuthUser>('/users/me', data),
@@ -64,6 +74,10 @@ export const userApi = {
   getProfile: (username: string) => api.get<PublicUserOutput>(`/users/${username}`),
 };
 
+/**
+ * Recipe API client — paginated list/starred feeds, CRUD, fork, and the social
+ * actions (like, favourite, feature, rate, save notes).
+ */
 export const recipeApi = {
   list: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
@@ -87,6 +101,7 @@ export const recipeApi = {
     api.post<{ message: string }>(`/recipes/${id}/notes`, { notes } as RecipeNotes),
 };
 
+/** Taste-note API client — full hierarchy, name search, and flat list. */
 export const tasteApi = {
   hierarchy: () => api.get<TasteNoteNodeOutput[]>('/taste-notes/hierarchy'),
   search: (query: string) =>
@@ -94,6 +109,7 @@ export const tasteApi = {
   flat: () => api.get<TasteNoteOutput[]>('/taste-notes/flat'),
 };
 
+/** Brew-setup API client — list and CRUD over the user's saved equipment setups. */
 export const setupApi = {
   list: () => api.get<SetupOutput[]>('/setups'),
   create: (data: SetupCreate) => api.post<SetupOutput>('/setups', data),
@@ -102,6 +118,7 @@ export const setupApi = {
   delete: (id: string) => api.delete<{ message: string }>(`/setups/${id}`),
 };
 
+/** Coffee-bean API client — list and CRUD over the user's beans. */
 export const beanApi = {
   list: () => api.get<BeanOutput[]>('/beans'),
   get: (id: string) => api.get<BeanOutput>(`/beans/${id}`),
@@ -110,6 +127,7 @@ export const beanApi = {
   delete: (id: string) => api.delete<{ message: string }>(`/beans/${id}`),
 };
 
+/** Equipment API client — list and CRUD over the shared equipment catalogue. */
 export const equipmentApi = {
   list: () => api.get<EquipmentOutput[]>('/equipment'),
   create: (data: EquipmentCreate) => api.post<EquipmentOutput>('/equipment', data),
@@ -118,11 +136,16 @@ export const equipmentApi = {
   delete: (id: string) => api.delete<{ message: string }>(`/equipment/${id}`),
 };
 
+/** Coffee-variety API client — typeahead search over the variety catalogue. */
 export const coffeeVarietyApi = {
   search: (q: string) =>
     api.get<CoffeeVarietySearchResult[]>(`/coffee-varieties/search?q=${encodeURIComponent(q)}`),
 };
 
+/**
+ * Admin API client — user management (list, detail, create, update), ban/unban,
+ * admin-role toggle, and user deletion.
+ */
 export const adminApi = {
   getUsers: (params?: Record<string, string>) => {
     const query = params ? '?' + new URLSearchParams(params).toString() : '';
@@ -156,6 +179,7 @@ export const adminApi = {
   deleteUser: (id: string) => api.delete<{ message: string }>(`/admin/users/${id}`),
 };
 
+/** Follow API client — follow/unfollow plus the followers and following lists. */
 export const followApi = {
   follow: (userId: string) => api.post<FollowOutput>(`/follow/${userId}`, {}),
   unfollow: (userId: string) => api.delete(`/follow/${userId}`),
@@ -163,6 +187,7 @@ export const followApi = {
   following: (userId: string) => api.get<FollowingListItemOutput[]>(`/follow/${userId}/following`),
 };
 
+/** Comment API client — paginated recipe comment list, create (with replies), and delete. */
 export const commentApi = {
   list: (recipeId: string, page: number) =>
     api.getWithMeta<PaginatedResponse<CommentWithRepliesOutput>>(
@@ -171,6 +196,21 @@ export const commentApi = {
   create: (recipeId: string, payload: { content: string; parentCommentId?: string }) =>
     api.post<CommentOutput>(`/comments/recipe/${recipeId}`, payload),
   delete: (id: string) => api.delete<{ message: string }>(`/comments/${id}`),
+};
+
+/**
+ * Notification API client — paginated list, unread count, and per-item /
+ * bulk mark-as-read (F04 @mention notifications).
+ */
+export const notificationApi = {
+  list: (page: number, unreadOnly?: boolean) => {
+    const params = new URLSearchParams({ page: String(page) });
+    if (unreadOnly !== undefined) params.set('unreadOnly', String(unreadOnly));
+    return api.getWithMeta<PaginatedResponse<NotificationOutput>>(`/notifications?${params}`);
+  },
+  unreadCount: () => api.get<UnreadCountOutput>('/notifications/unread-count'),
+  markRead: (id: string) => api.patch<NotificationOutput>(`/notifications/${id}/read`, {}),
+  markAllRead: () => api.patch<{ message: string }>('/notifications/read-all', {}),
 };
 
 /**
@@ -206,6 +246,7 @@ export const collectionApi = {
   },
 };
 
+/** Admin user-list row — the core account fields surfaced in the admin users table. */
 export interface AdminUser {
   id: string;
   email: string;
@@ -217,6 +258,7 @@ export interface AdminUser {
   createdAt: string;
 }
 
+/** Admin user-detail projection — {@link AdminUser} plus bio, `updatedAt`, and profile counts. */
 export interface AdminUserDetail extends AdminUser {
   bio: string | null;
   updatedAt: string;
@@ -225,6 +267,7 @@ export interface AdminUserDetail extends AdminUser {
   followingCount?: number;
 }
 
+/** Coffee-variety typeahead result — `id`, `name`, and `category` for the search dropdown. */
 export interface CoffeeVarietySearchResult {
   id: string;
   name: string;

@@ -6,10 +6,12 @@
  * sanitization, and async notification + badge evaluation side-effects.
  */
 import { sanitizeText } from '../../utils/sanitize.ts';
+import { parseMentions } from '@brewform/shared/utils';
 import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyRecipeCommented } from '../../utils/notify/index.ts';
+import { createMentionNotifications } from '../notification/service.ts';
 import { evaluateBadges } from '../badge/service.ts';
 
 const logger = createLogger('comment-service');
@@ -83,16 +85,32 @@ export async function createComment(
 
   (async () => {
     const recipe = await model.getRecipeForNotification(recipeId);
-    if (!recipe || recipe.authorId === userId) return;
+    if (!recipe) return;
     const commenter = await model.getCommenterById(userId);
     if (!commenter?.username) return;
-    await notifyRecipeCommented({
-      recipeAuthorId: recipe.authorId,
-      commenterUsername: commenter.username,
-      recipeTitle: recipe.title,
+    // Recipe-commented email only when someone ELSE comments on the recipe.
+    if (recipe.authorId !== userId) {
+      await notifyRecipeCommented({
+        recipeAuthorId: recipe.authorId,
+        commenterUsername: commenter.username,
+        recipeTitle: recipe.title,
+        recipeSlug: recipe.slug,
+      });
+    }
+    // Mention notifications always run — including when the commenter IS the
+    // recipe author. Mentions are parsed from the effective (post-prepend,
+    // sanitized) content; createMentionNotifications no-ops on empty mentions.
+    await createMentionNotifications({
+      mentions: parseMentions(effectiveContent),
+      commentId: comment.id,
+      recipeId: recipe.id,
       recipeSlug: recipe.slug,
+      recipeTitle: recipe.title,
+      mentionerUserId: userId,
+      mentionerUsername: commenter.username,
+      recipeAuthorId: recipe.authorId,
     });
-  })().catch((err) => logger.error({ err }, 'notifyRecipeCommented failed'));
+  })().catch((err) => logger.error({ err }, 'comment notification side-effects failed'));
 
   evaluateBadges(userId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 

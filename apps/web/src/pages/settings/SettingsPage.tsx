@@ -22,6 +22,7 @@ function toUserPreferences(out: UserPreferencesOutput): UserPreferences {
       recipeLiked: out.recipeLiked,
       recipeCommented: out.recipeCommented,
       followedUserPosted: out.followedUserPosted,
+      mentionedInComment: out.mentionedInComment,
     },
   };
 }
@@ -342,6 +343,15 @@ export function SettingsPage() {
                   setPrefs({
                     ...prefs,
                     emailNotifications: { ...prefs.emailNotifications, followedUserPosted: v },
+                  })}
+              />
+              <NotificationToggle
+                label={t('settings.notif.mentionedInComment')}
+                checked={prefs.emailNotifications.mentionedInComment}
+                onChange={(v) =>
+                  setPrefs({
+                    ...prefs,
+                    emailNotifications: { ...prefs.emailNotifications, mentionedInComment: v },
                   })}
               />
             </div>

@@ -12,9 +12,14 @@
  * Requirements: 2.5, 2.7, 3.5
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
+import '../../test-setup.ts';
+import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
+import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import comment from './index.ts';
+import type { AppEnv } from '../../types/hono.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers — replicate the router's isAdmin extraction logic
@@ -181,3 +186,89 @@ describe('Comment_Router — isAdmin extraction and forwarding', () => {
     });
   });
 });
+
+/**
+ * Rate-limit route tests for `POST /api/v1/comments/recipe/:recipeId`.
+ *
+ * Unlike the isAdmin-extraction tests above (which use self-contained Hono apps
+ * that replicate router logic), these mount the REAL `comment` router so the
+ * actual `rateLimitMiddleware` chain is exercised. The rate-limit middleware is
+ * the FIRST middleware on the POST route (before `authMiddleware` and
+ * `zValidator`), so the 429 fires regardless of body or auth validity: the
+ * limiter keys by IP, not auth state, so the 6th POST from the same IP returns
+ * 429 no matter what. This mirrors the report rate-limit test
+ * (`report/index.test.ts:37-93`) and avoids JWT-minting complexity.
+ *
+ * The GET list route on the same router is NOT throttled by the
+ * `keyPrefix: 'comment'` limiter (it is applied to POST only, not via
+ * `comment.use('*', ...)`) — the second test asserts that exhausting the POST
+ * budget does not produce 429 on `GET /api/v1/comments/recipe/:recipeId`.
+ */
+function createRateLimitTestApp() {
+  const app = new Hono<AppEnv>();
+  app.use('*', async (c, next) => {
+    c.set('requestId', crypto.randomUUID());
+    await next();
+  });
+  app.route('/api/v1/comments', comment);
+  return app;
+}
+
+describe(
+  'POST /api/v1/comments/recipe/:recipeId — rate limit',
+  { sanitizeOps: false, sanitizeResources: false },
+  () => {
+    beforeEach(() => {
+      // Fresh cache per test so the rate-limit counter does not leak between tests
+      // (pattern from report/index.test.ts:41-49).
+      setCacheProvider(new InMemoryCacheProvider());
+    });
+
+    afterEach(() => {
+      setCacheProvider(new InMemoryCacheProvider());
+    });
+
+    it('returns 429 on the 6th POST within the rate-limit window', async () => {
+      const app = createRateLimitTestApp();
+      const recipeId = crypto.randomUUID();
+      // The first 5 POSTs are processed by the limiter (they 401 because no auth
+      // header is present, but the limiter counter increments regardless — it
+      // runs before authMiddleware and zValidator).
+      for (let i = 0; i < 5; i++) {
+        await app.request(`/api/v1/comments/recipe/${recipeId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: 'hello' }),
+        });
+      }
+      // The 6th POST in the same 1-minute window from the same IP returns 429.
+      const res = await app.request(`/api/v1/comments/recipe/${recipeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'hello' }),
+      });
+      expect(res.status).toBe(429);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('RATE_LIMITED');
+    });
+
+    it('does not throttle the GET list route (comment limiter is POST-only)', async () => {
+      const app = createRateLimitTestApp();
+      const recipeId = crypto.randomUUID();
+      // Exhaust the POST budget first.
+      for (let i = 0; i < 6; i++) {
+        await app.request(`/api/v1/comments/recipe/${recipeId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: 'hello' }),
+        });
+      }
+      // A GET on the same router must NOT be 429 (the comment-specific limiter is
+      // applied to POST only, not via `comment.use('*', ...)`). The assertion is
+      // simply that the GET is not throttled by the comment limiter.
+      const res = await app.request(`/api/v1/comments/recipe/${recipeId}`, { method: 'GET' });
+      expect(res.status).not.toBe(429);
+    });
+  },
+);

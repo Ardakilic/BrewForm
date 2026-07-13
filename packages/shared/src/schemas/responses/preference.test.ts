@@ -21,12 +21,37 @@ describe('UserPreferencesOutputSchema', () => {
       recipeLiked: true,
       recipeCommented: false,
       followedUserPosted: true,
+      mentionedInComment: true,
       createdAt: new Date('2024-01-01T00:00:00.000Z'),
       updatedAt: new Date('2024-01-01T00:00:00.000Z'),
     };
     const result = UserPreferencesOutputSchema.safeParse(wire(payload));
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual(wire(payload));
+  });
+
+  it('rejects a row missing the mentionedInComment flag (F04)', () => {
+    const payload = {
+      id: 'pref-1',
+      userId: 'user-1',
+      unitSystem: 'metric',
+      temperatureUnit: 'celsius',
+      theme: 'light',
+      locale: 'en',
+      timezone: 'UTC',
+      dateFormat: 'YYYY_MM_DD',
+      newFollower: true,
+      recipeLiked: true,
+      recipeCommented: false,
+      followedUserPosted: true,
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    };
+    const result = UserPreferencesOutputSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('mentionedInComment'))).toBe(true);
+    }
   });
 
   it('rejects a nested emailNotifications object (request-body shape, not the flat row)', () => {

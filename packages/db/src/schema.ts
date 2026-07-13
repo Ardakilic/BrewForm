@@ -104,6 +104,7 @@ export const userPreferences = pgTable('user_preferences', {
   recipeLiked: boolean('recipe_liked').notNull().default(true),
   recipeCommented: boolean('recipe_commented').notNull().default(true),
   followedUserPosted: boolean('followed_user_posted').notNull().default(true),
+  mentionedInComment: boolean('mentioned_in_comment').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -893,11 +894,68 @@ export const collectionItems = pgTable(
   ],
 );
 
+/**
+ * Notification type enum. F04 (@mention notifications) ships only `'mention'`;
+ * F05 (notification center) extends this with the remaining types.
+ *
+ * Values are declared inline (not sourced from `@brewform/shared/constants`
+ * like the other enums) because F04 does not touch the shared package.
+ */
+export const notificationTypeEnum = pgEnum('notification_type', ['mention']);
+
+/**
+ * Notifications — per-user in-app notification feed.
+ *
+ * Soft-deletable main entity. `userId` is the recipient (cascades on user
+ * hard-delete); `actorId` is the user who triggered the notification (nullable
+ * — e.g. the mentioning user — left as a plain reference so it is unaffected by
+ * actor removal). `type` is the `notification_type` enum. `referenceId` /
+ * `referenceType` point at the related entity (e.g. a comment on a recipe) and
+ * `metadata` holds an optional JSON string payload (precedent:
+ * `auditLogs.details`). Indexes serve the paginated feed `(userId, createdAt)`
+ * and the unread-count query `(userId, readAt)`.
+ */
+export const notifications = pgTable(
+  'notification',
+  {
+    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    actorId: varchar('actor_id', { length: 36 }).references(() => users.id),
+    type: notificationTypeEnum('type').notNull(),
+    referenceId: varchar('reference_id', { length: 36 }),
+    referenceType: varchar('reference_type', { length: 50 }),
+    /** Optional JSON string payload (precedent: `auditLogs.details` text column). */
+    metadata: text('metadata'),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('notification_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for the paginated notification feed.
+     *
+     * Serves list queries filtering by `userId` equality and ordering by
+     * `createdAt` DESC.
+     */
+    index('notification_user_created_idx').on(table.userId, table.createdAt),
+    /**
+     * Composite index for the unread-count query.
+     *
+     * Serves `WHERE userId = ? AND readAt IS NULL` — `userId` equality first,
+     * `readAt` second.
+     */
+    index('notification_user_read_at_idx').on(table.userId, table.readAt),
+  ],
+);
+
 // ============================================================
 // Relations
 // ============================================================
 
-/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections. */
+/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections, notifications. */
 export const usersRelations = relations(users, ({ one, many }) => ({
   preferences: one(userPreferences, {
     fields: [users.id],
@@ -919,6 +977,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   passwordResets: many(passwordResets),
   emailVerificationTokens: many(emailVerificationTokens),
   reports: many(reports),
+  notifications: many(notifications, { relationName: 'NotificationRecipient' }),
 }));
 
 /** Drizzle relations for user_preferences: owning user. */
@@ -1277,5 +1336,25 @@ export const collectionItemsRelations = relations(collectionItems, ({ one }) => 
   recipe: one(recipes, {
     fields: [collectionItems.recipeId],
     references: [recipes.id],
+  }),
+}));
+
+/**
+ * Drizzle relations for notifications: recipient user and triggering actor.
+ *
+ * Both foreign keys point at `users`, so they are disambiguated via
+ * `relationName` (`NotificationRecipient` pairs with `usersRelations.notifications`;
+ * `NotificationActor` is a one-directional link to the acting user).
+ */
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+    relationName: 'NotificationRecipient',
+  }),
+  actor: one(users, {
+    fields: [notifications.actorId],
+    references: [users.id],
+    relationName: 'NotificationActor',
   }),
 }));

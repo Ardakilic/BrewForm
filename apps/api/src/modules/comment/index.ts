@@ -11,6 +11,7 @@ import {
   successEnvelope,
 } from '@brewform/shared/schemas';
 import { authMiddleware } from '../../middleware/auth.ts';
+import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
 import * as service from './service.ts';
 import { error, isEmailVerified, paginated, success } from '../../utils/response/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
@@ -18,12 +19,25 @@ import type { AppEnv } from '../../types/hono.ts';
 
 const comment = new Hono<AppEnv>();
 
+/** Per-IP rate limit for comment creation: 5 requests per 1 minute. */
+const COMMENT_RATE_LIMIT_WINDOW_MS = 60_000;
+const COMMENT_RATE_LIMIT_MAX_REQUESTS = 5;
+const COMMENT_RATE_LIMIT_KEY_PREFIX = 'comment';
+
 comment.post(
   '/recipe/:recipeId',
+  rateLimitMiddleware({
+    windowMs: COMMENT_RATE_LIMIT_WINDOW_MS,
+    maxRequests: COMMENT_RATE_LIMIT_MAX_REQUESTS,
+    keyPrefix: COMMENT_RATE_LIMIT_KEY_PREFIX,
+  }),
   describeRoute({
     tags: ['Comments'],
     summary: 'Create a comment on a recipe',
-    description: 'Creates a comment (or reply) on a recipe. Requires a verified email.',
+    description:
+      `Creates a comment (or reply) on a recipe. Requires a verified email. Rate-limited to ${COMMENT_RATE_LIMIT_MAX_REQUESTS} requests per ${
+        COMMENT_RATE_LIMIT_WINDOW_MS / 60_000
+      } minute per IP.`,
     security: [{ bearerAuth: [] }],
     parameters: [
       { name: 'recipeId', in: 'path', required: true, schema: { type: 'string' } },
@@ -50,6 +64,12 @@ comment.post(
       },
       404: {
         description: 'Parent comment not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      429: {
+        description: `Rate limit exceeded (${COMMENT_RATE_LIMIT_MAX_REQUESTS} requests per ${
+          COMMENT_RATE_LIMIT_WINDOW_MS / 60_000
+        } minute)`,
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },

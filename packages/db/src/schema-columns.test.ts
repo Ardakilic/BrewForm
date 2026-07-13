@@ -12,6 +12,8 @@
  *  - `recipeTasteNotes` (`recipe_taste_note`) has `createdAt` notNull + default
  *  - `recipeEquipment` (`recipe_equipment`) has `createdAt` notNull + default
  *  - `recipeVersionPhotos` (`recipe_version_photo`) has `createdAt` notNull + default
+ *  - `notifications` (`notification`) columns added by F04 (@mention notifications)
+ *  - `userPreferences` gains `mentionedInComment` (F04) notNull + default
  *
  * The pattern mirrors `userRecipeLikes.createdAt` (the established house style
  * for join-table audit columns added by D23).
@@ -23,9 +25,11 @@ import { getTableConfig } from 'drizzle-orm/pg-core';
 import type { PgTableWithColumns } from 'drizzle-orm/pg-core';
 import {
   collectionItems,
+  notifications,
   recipeEquipment,
   recipeTasteNotes,
   recipeVersionPhotos,
+  userPreferences,
 } from './schema.ts';
 
 /**
@@ -117,6 +121,88 @@ describe('collectionItems createdAt audit column', () => {
 
   it('createdAt has a default expression (now())', () => {
     const column = getColumnConfig(collectionItems, 'created_at');
+    expect(column).toBeDefined();
+    expect(column!.default).toBeDefined();
+  });
+});
+
+describe('notifications table columns (F04)', () => {
+  it('has an id primary-key column', () => {
+    const column = getColumnConfig(notifications, 'id');
+    expect(column).toBeDefined();
+    expect(column!.primary).toBe(true);
+  });
+
+  it('has a notNull userId (recipient) column', () => {
+    const column = getColumnConfig(notifications, 'user_id');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(true);
+  });
+
+  it('has a nullable actorId column', () => {
+    const column = getColumnConfig(notifications, 'actor_id');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a notNull type column', () => {
+    const column = getColumnConfig(notifications, 'type');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(true);
+  });
+
+  it('has a nullable referenceId column', () => {
+    const column = getColumnConfig(notifications, 'reference_id');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a nullable referenceType column', () => {
+    const column = getColumnConfig(notifications, 'reference_type');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a nullable metadata column', () => {
+    const column = getColumnConfig(notifications, 'metadata');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a nullable readAt column', () => {
+    const column = getColumnConfig(notifications, 'read_at');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a notNull createdAt column with a default expression (now())', () => {
+    const column = getColumnConfig(notifications, 'created_at');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(true);
+    expect(column!.default).toBeDefined();
+  });
+
+  it('has a nullable deletedAt (soft-delete) column', () => {
+    const column = getColumnConfig(notifications, 'deleted_at');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+});
+
+describe('userPreferences mentionedInComment column (F04)', () => {
+  it('has a mentionedInComment column', () => {
+    const column = getColumnConfig(userPreferences, 'mentioned_in_comment');
+    expect(column).toBeDefined();
+  });
+
+  it('mentionedInComment is notNull', () => {
+    const column = getColumnConfig(userPreferences, 'mentioned_in_comment');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(true);
+  });
+
+  it('mentionedInComment has a default expression', () => {
+    const column = getColumnConfig(userPreferences, 'mentioned_in_comment');
     expect(column).toBeDefined();
     expect(column!.default).toBeDefined();
   });

@@ -55,7 +55,7 @@ interface OpenApiSpec {
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'];
 
-/** The 18 in-scope base paths (matched by prefix). */
+/** The 19 in-scope base paths (matched by prefix). */
 const IN_SCOPE_BASE_PATHS = [
   '/api/v1/beans',
   '/api/v1/badges',
@@ -65,6 +65,7 @@ const IN_SCOPE_BASE_PATHS = [
   '/api/v1/contact',
   '/api/v1/equipment',
   '/api/v1/follow',
+  '/api/v1/notifications',
   '/api/v1/photos',
   '/api/v1/preferences',
   '/api/v1/qrcode',
@@ -100,7 +101,7 @@ function isResolvedSchema(value: unknown): boolean {
   return true;
 }
 
-/** True when an operation path belongs to one of the 18 in-scope groups. */
+/** True when an operation path belongs to one of the 19 in-scope groups. */
 function isInScope(path: string): boolean {
   return IN_SCOPE_BASE_PATHS.some(
     (base) => path === base || path.startsWith(base + '/'),
@@ -134,7 +135,7 @@ describe('OpenAPI coverage — generated spec is well-formed', () => {
   });
 
   // Property 1 — coverage of all in-scope routes.
-  it('documents all 18 in-scope base paths (P1)', () => {
+  it('documents all 19 in-scope base paths (P1)', () => {
     const pathKeys = Object.keys(spec.paths ?? {});
     const missing = IN_SCOPE_BASE_PATHS.filter(
       (base) => !pathKeys.some((p) => p === base || p.startsWith(base + '/')),

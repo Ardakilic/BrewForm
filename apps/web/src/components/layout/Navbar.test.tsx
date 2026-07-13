@@ -75,6 +75,16 @@ vi.mock('../../api/index.ts', () => ({
     registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
     logout: vi.fn().mockResolvedValue({}),
   },
+  notificationApi: {
+    unreadCount: vi.fn().mockResolvedValue({ count: 0 }),
+    list: vi.fn().mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 0, totalPages: 0 } },
+    }),
+    markRead: vi.fn().mockResolvedValue({}),
+    markAllRead: vi.fn().mockResolvedValue({ message: 'ok' }),
+  },
 }));
 
 import { useTranslation } from '../../contexts/I18nContext.tsx';

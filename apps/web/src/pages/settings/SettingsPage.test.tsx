@@ -79,6 +79,7 @@ const mockPreferences = {
   recipeLiked: true,
   recipeCommented: false,
   followedUserPosted: true,
+  mentionedInComment: true,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
 };
@@ -106,6 +107,7 @@ const enT = (key: string) => {
     'settings.notif.recipeLiked': 'Recipe liked',
     'settings.notif.recipeCommented': 'Recipe commented',
     'settings.notif.followedUserPosted': 'Followed user posted',
+    'settings.notif.mentionedInComment': 'Someone mentions me in a comment',
     'settings.dangerZone': 'Danger Zone',
     'settings.dangerZoneDesc': 'Permanently delete your account and all your data.',
     'settings.deleteAccountBtn': 'Delete Account',
@@ -333,6 +335,34 @@ describe('SettingsPage', () => {
         const banner = screen.getByText('Tercihler kaydedilemedi.');
         expect(banner).toBeInTheDocument();
         expect(banner.style.backgroundColor).toBe('var(--error)');
+      });
+    });
+  });
+
+  describe('Email notification preferences', () => {
+    it('renders the mentioned-in-comment toggle reflecting the loaded preference', async () => {
+      renderSettingsPage({ locale: 'en' });
+
+      const toggle = await screen.findByLabelText('Someone mentions me in a comment');
+      expect(toggle).toBeInTheDocument();
+      expect(toggle).toBeChecked();
+    });
+
+    it('sends the mentionedInComment flag in the save payload when toggled off', async () => {
+      const user = userEvent.setup();
+      renderSettingsPage({ locale: 'en' });
+
+      const toggle = await screen.findByLabelText('Someone mentions me in a comment');
+      await user.click(toggle);
+      await user.click(screen.getByText('Save Notifications'));
+
+      await waitFor(() => {
+        expect(mockApi.patch).toHaveBeenCalledWith(
+          '/preferences',
+          expect.objectContaining({
+            emailNotifications: expect.objectContaining({ mentionedInComment: false }),
+          }),
+        );
       });
     });
   });

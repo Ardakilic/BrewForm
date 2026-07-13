@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { authApi } from '../../api/index.ts';
+import { NotificationBell } from './NotificationBell.tsx';
 
 const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -283,6 +284,9 @@ export function Navbar() {
             )}
           </ul>
 
+          {/* Notification bell — only for authenticated users */}
+          {isAuthenticated && <NotificationBell />}
+
           {/* Theme switcher — Base UI Select, styled with CSS custom properties */}
           <ThemeSwitcher theme={theme} setTheme={setTheme} t={t} />
 
@@ -454,8 +458,9 @@ export function Navbar() {
               </ul>
             </nav>
 
-            {/* Footer: ThemeSwitcher + auth actions */}
+            {/* Footer: notification bell + ThemeSwitcher + auth actions */}
             <div className='border-t border-[color:var(--border-primary)] px-4 py-4 flex flex-col gap-3'>
+              {isAuthenticated && <NotificationBell onNavigate={() => setIsMenuOpen(false)} />}
               <ThemeSwitcher theme={theme} setTheme={setTheme} t={t} />
 
               {isAuthenticated
