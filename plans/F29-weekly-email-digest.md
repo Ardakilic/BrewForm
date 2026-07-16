@@ -73,7 +73,7 @@ Deno.cron('weekly-digest', '0 8 * * 1', async () => { // Mondays 08:00 UTC
 - `service.ts` — `createLogger('digest-service')`:
   - `buildDigest(userId)` — assembles the three sections; returns `null` when **all** sections are empty (never send an empty email).
   - `sendWeeklyDigests()` — iterates opted-in users in batches of 5 (mirror `notifyFollowersOfNewRecipe`), renders the template, sends via a new exported `sendDigestEmail` helper in `utils/notify` (reuses `getTransporter()`/test-skip/logging), then `markDigestSent`. Failures per user are logged and never abort the run.
-- Email template: `apps/api/src/templates/email/weekly-digest.html` → compiled to `apps/api/src/templates/email/generated/weekly-digest.ts` (same generated-template pipeline as `new-follower.ts` etc.). All interpolations go through `renderTemplate` (HTML-escaped). Footer links to `${appBaseUrl()}/settings` for one-click preference change.
+- Email template: `apps/api/src/templates/email/weekly-digest.mjml` → compiled to `apps/api/src/templates/email/generated/weekly-digest.ts` (same generated-template pipeline as `new-follower.ts` etc.). All interpolations go through `renderTemplate` (HTML-escaped). Footer links to `${appBaseUrl()}/settings` for one-click preference change.
 
 ### API endpoints
 

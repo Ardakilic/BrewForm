@@ -25,9 +25,17 @@ export const CollectionOutputSchema = z.object({
 });
 export type CollectionOutput = z.infer<typeof CollectionOutputSchema>;
 
-/** Collection list item with computed recipe count (for list endpoints). */
+/**
+ * Collection list item with computed recipe count (for list endpoints).
+ *
+ * `containsRecipe` is populated only when the list request carries a recipe
+ * context (the `recipeId` query param on GET /api/v1/collections): it flags
+ * whether the collection already contains that recipe. Consumed by the web
+ * `AddToCollectionModal` to render a checkmark and toggle membership.
+ */
 export const CollectionListItemOutputSchema = CollectionOutputSchema.extend({
   recipeCount: z.number().int(),
+  containsRecipe: z.boolean().optional(),
 });
 export type CollectionListItemOutput = z.infer<typeof CollectionListItemOutputSchema>;
 

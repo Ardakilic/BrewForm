@@ -64,4 +64,10 @@ describe('UnreadCountOutputSchema', () => {
   it('rejects a non-integer count', () => {
     expect(UnreadCountOutputSchema.safeParse({ count: 1.5 }).success).toBe(false);
   });
+
+  it('rejects a negative count and accepts zero or positive counts', () => {
+    expect(UnreadCountOutputSchema.safeParse({ count: -1 }).success).toBe(false);
+    expect(UnreadCountOutputSchema.safeParse({ count: 0 }).success).toBe(true);
+    expect(UnreadCountOutputSchema.safeParse({ count: 3 }).success).toBe(true);
+  });
 });

@@ -63,6 +63,7 @@ export function rateLimitMiddleware(options: {
         error: {
           code: 'RATE_LIMITED',
           message: 'Too many requests, please try again later',
+          requestId: c.get('requestId'),
         },
       }, 429);
     }
@@ -115,6 +116,7 @@ export function authRateLimitMiddleware(options: {
         error: {
           code: 'RATE_LIMITED',
           message: 'Too many login attempts, please try again later',
+          requestId: c.get('requestId'),
         },
       }, 429);
     }

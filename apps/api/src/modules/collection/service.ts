@@ -1,7 +1,6 @@
 import * as model from './model.ts';
 import type { CollectionCreate, CollectionUpdate } from '@brewform/shared/schemas';
 import type { Visibility } from '@brewform/shared/types';
-import { collections } from '@brewform/db/schema';
 import { createLogger } from '../../utils/logger/index.ts';
 import * as recipeModel from '../recipe/model.ts';
 
@@ -14,16 +13,6 @@ const logger = createLogger('collection-service');
  * D34 idiom used in `recipe/service.ts`.
  */
 type CollectionWithRelations = NonNullable<Awaited<ReturnType<typeof model.findById>>>;
-
-/**
- * A public-collection list row as returned by {@link model.findAllPublic}: the
- * base collection columns plus a computed `recipeCount` and the owner's mini
- * author relation (`user`), which the model widens to `Record<string, unknown>`.
- */
-type PublicCollectionRow = typeof collections.$inferSelect & {
-  recipeCount: number;
-  user: { username: string; displayName: string | null; avatarUrl: string | null } | null;
-};
 
 /**
  * Map a model.findById result (with `user` and `items` relations) to the CollectionDetailOutput
@@ -181,6 +170,8 @@ export async function getCollection(userId: string | null, collectionId: string)
  * @param page       - 1-based page number.
  * @param perPage    - Page size.
  * @param visibility - Optional visibility filter.
+ * @param recipeId   - Optional recipe context; when provided, each row carries
+ *   `containsRecipe` flagging whether the collection already contains that recipe.
  * @returns `{ collections, total }` where each collection has a recipeCount.
  */
 export async function listMyCollections(
@@ -188,9 +179,10 @@ export async function listMyCollections(
   page: number,
   perPage: number,
   visibility?: Visibility,
+  recipeId?: string,
 ) {
   logger.debug({ userId, page, perPage }, 'listMyCollections started');
-  const result = await model.findByUserId(userId, page, perPage, visibility);
+  const result = await model.findByUserId(userId, page, perPage, visibility, recipeId);
   logger.debug({ userId, total: result.total }, 'listMyCollections completed');
   return result;
 }
@@ -222,7 +214,7 @@ export async function listAllPublicCollections(page: number, perPage: number) {
   logger.debug({ page, perPage }, 'listAllPublicCollections started');
   try {
     const result = await model.findAllPublic(page, perPage);
-    const mapped = (result.collections as PublicCollectionRow[]).map((c) => ({
+    const mapped = result.collections.map((c) => ({
       id: c.id,
       userId: c.userId,
       name: c.name,

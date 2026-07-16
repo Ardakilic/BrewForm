@@ -1,7 +1,12 @@
 # web-shared-components Specification
 
 ## Purpose
-TBD - created by archiving change wave-3-frontend-structure. Update Purpose after archive.
+
+This spec defines the single-source reusable building blocks for `apps/web`: shared presentational
+components (e.g. `RecipeCard`, `BanDialog`, error pages) and companion hooks (e.g. `useBanUser`)
+extracted from duplicated page-level implementations. It covers their props/API shape, i18n,
+logging, and testing expectations.
+
 ## Requirements
 ### Requirement: HomePage renders the shared RecipeCard component
 
@@ -62,6 +67,9 @@ The component SHALL render a modal overlay with:
 - A "Cancel" button that calls `onClose`.
 - A "Confirm Ban" button that calls `onConfirm(reason)`. When `processing` is true, the button is
   disabled and displays "Banning..." instead of "Confirm Ban".
+
+`BanDialog` SHALL reset its local reason state whenever the dialog closes or the selected user
+changes.
 
 All user-visible strings in `BanDialog` SHALL use `t()` from `useTranslation()` — coordination with
 D40 (the ban dialog strings are translated once here, not in each admin page).
@@ -125,7 +133,7 @@ The hook SHALL:
 - `unban(userId)` — call `adminApi.unbanUser(userId)`. On success: call `onSuccess(userId, false)`,
   clear `error`. On failure: set `error`.
 - `clearError()` — set `error: null`.
-- `closeDialog()` — set `banDialogUser: null`, clear `reason`/`error`, set `processing: false`.
+- `closeDialog()` — set `banDialogUser: null`, clear `error`, set `processing: false`.
 
 The hook SHALL surface errors on BOTH call sites — it SHALL NOT silently swallow ban/unban failures.
 This fixes the pre-existing bug where `AdminUserDetailPage` silently swallowed errors via
@@ -222,12 +230,12 @@ components from `apps/web/src/components/form/index.ts`:
 
 ```typescript
 // Section.tsx
-export function Section({ title, children }: { title: string; children: React.ReactNode }): JSX.Element;
+export function Section({ title, children }: { title: string; children: React.ReactNode }): React.JSX.Element;
 
 // Field.tsx
 export function Field(
   { label, required, children }: { label: string; required?: boolean; children: React.ReactNode },
-): JSX.Element;
+): React.JSX.Element;
 ```
 
 - `Section` renders a `<div className='card'>` containing an `<h2 className='font-semibold mb-4'>`

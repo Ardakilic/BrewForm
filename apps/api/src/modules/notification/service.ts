@@ -58,6 +58,9 @@ function toOutput(row: NotificationRow) {
  *   6. A mention email is sent EXCEPT when the target is the recipe author,
  *      who already receives the recipe-commented email for the same comment.
  *
+ * Per-target failures are isolated: a failed insert or email is logged and
+ * skipped without aborting the remaining targets.
+ *
  * Designed to be fire-and-forget from the comment service: callers attach a
  * `.catch(...)` and failures never block comment creation.
  *
@@ -88,34 +91,51 @@ export async function createMentionNotifications(params: {
     { commentId, recipeId, mentionCount: mentions.length },
     'createMentionNotifications started',
   );
-  if (mentions.length === 0) return;
-
-  const targets = await deps.model.findMentionTargets(mentions);
-  let created = 0;
-  for (const target of targets) {
-    if (target.id === mentionerUserId) continue;
-    if (target.prefs?.mentionedInComment === false) continue;
-
-    await deps.model.create({
-      userId: target.id,
-      type: 'mention',
-      actorId: mentionerUserId,
-      referenceId: commentId,
-      referenceType: 'comment',
-      metadata: JSON.stringify({ recipeSlug, recipeTitle }),
-    });
-    created++;
-
-    if (target.id !== recipeAuthorId) {
-      await deps.notifyMentioned({
-        mentionedUserId: target.id,
-        mentionerUsername,
-        recipeTitle,
-        recipeSlug,
-      });
-    }
+  if (mentions.length === 0) {
+    logger.debug({ commentId, recipeId, created: 0 }, 'createMentionNotifications completed');
+    return;
   }
-  logger.debug({ commentId, recipeId, created }, 'createMentionNotifications completed');
+
+  try {
+    const targets = await deps.model.findMentionTargets(mentions);
+    let created = 0;
+    for (const target of targets) {
+      if (target.id === mentionerUserId) continue;
+      if (target.prefs?.mentionedInComment === false) continue;
+
+      try {
+        await deps.model.create({
+          userId: target.id,
+          type: 'mention',
+          actorId: mentionerUserId,
+          referenceId: commentId,
+          referenceType: 'comment',
+          metadata: JSON.stringify({ recipeSlug, recipeTitle }),
+        });
+        created++;
+      } catch (err) {
+        logger.error({ err, commentId, recipeId }, 'mention notification create failed');
+        continue;
+      }
+
+      if (target.id !== recipeAuthorId) {
+        try {
+          await deps.notifyMentioned({
+            mentionedUserId: target.id,
+            mentionerUsername,
+            recipeTitle,
+            recipeSlug,
+          });
+        } catch (err) {
+          logger.error({ err, commentId, recipeId }, 'mention email failed');
+        }
+      }
+    }
+    logger.debug({ commentId, recipeId, created }, 'createMentionNotifications completed');
+  } catch (err) {
+    logger.error({ err, commentId, recipeId }, 'createMentionNotifications failed');
+    throw err;
+  }
 }
 
 /**
@@ -133,10 +153,15 @@ export async function listNotifications(
   perPage: number,
   unreadOnly: boolean,
 ) {
-  logger.debug({ userId, page, perPage, unreadOnly }, 'listNotifications started');
-  const result = await deps.model.findByUserId(userId, page, perPage, unreadOnly);
-  logger.debug({ userId, total: result.total }, 'listNotifications completed');
-  return { notifications: result.notifications.map(toOutput), total: result.total };
+  logger.debug({ page, perPage, unreadOnly }, 'listNotifications started');
+  try {
+    const result = await deps.model.findByUserId(userId, page, perPage, unreadOnly);
+    logger.debug({ total: result.total }, 'listNotifications completed');
+    return { notifications: result.notifications.map(toOutput), total: result.total };
+  } catch (err) {
+    logger.error({ err, page, perPage, unreadOnly }, 'listNotifications failed');
+    throw err;
+  }
 }
 
 /**
@@ -151,13 +176,18 @@ export async function listNotifications(
  * @returns The wire-shaped notification with its read timestamp set.
  */
 export async function markAsRead(userId: string, notificationId: string) {
-  logger.debug({ userId, notificationId }, 'markAsRead started');
-  const row = await deps.model.findById(notificationId);
-  if (!row) throw new Error('NOTIFICATION_NOT_FOUND');
-  if (row.userId !== userId) throw new Error('FORBIDDEN');
-  const updated = await deps.model.markAsRead(notificationId);
-  logger.debug({ userId, notificationId }, 'markAsRead completed');
-  return toOutput({ ...row, readAt: updated ? updated.readAt : row.readAt });
+  logger.debug({ notificationId }, 'markAsRead started');
+  try {
+    const row = await deps.model.findById(notificationId);
+    if (!row) throw new Error('NOTIFICATION_NOT_FOUND');
+    if (row.userId !== userId) throw new Error('FORBIDDEN');
+    const updated = await deps.model.markAsRead(notificationId);
+    logger.debug({ notificationId }, 'markAsRead completed');
+    return toOutput({ ...row, readAt: updated ? updated.readAt : row.readAt });
+  } catch (err) {
+    logger.error({ err, notificationId }, 'markAsRead failed');
+    throw err;
+  }
 }
 
 /**
@@ -167,10 +197,15 @@ export async function markAsRead(userId: string, notificationId: string) {
  * @returns The number of notifications that were marked read.
  */
 export async function markAllAsRead(userId: string) {
-  logger.debug({ userId }, 'markAllAsRead started');
-  const marked = await deps.model.markAllAsRead(userId);
-  logger.debug({ userId, marked }, 'markAllAsRead completed');
-  return marked;
+  logger.debug({}, 'markAllAsRead started');
+  try {
+    const marked = await deps.model.markAllAsRead(userId);
+    logger.debug({ marked }, 'markAllAsRead completed');
+    return marked;
+  } catch (err) {
+    logger.error({ err }, 'markAllAsRead failed');
+    throw err;
+  }
 }
 
 /**
@@ -180,8 +215,13 @@ export async function markAllAsRead(userId: string) {
  * @returns The number of unread notifications.
  */
 export async function getUnreadCount(userId: string) {
-  logger.debug({ userId }, 'getUnreadCount started');
-  const unreadCount = await deps.model.getUnreadCount(userId);
-  logger.debug({ userId, unreadCount }, 'getUnreadCount completed');
-  return unreadCount;
+  logger.debug({}, 'getUnreadCount started');
+  try {
+    const unreadCount = await deps.model.getUnreadCount(userId);
+    logger.debug({ unreadCount }, 'getUnreadCount completed');
+    return unreadCount;
+  } catch (err) {
+    logger.error({ err }, 'getUnreadCount failed');
+    throw err;
+  }
 }

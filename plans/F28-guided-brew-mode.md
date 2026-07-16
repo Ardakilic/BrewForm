@@ -16,7 +16,7 @@ FEATURE_SUGGESTIONS §1.6 (guided brews) is the natural next step after focus mo
 
 ## Current state (verified)
 
-- `RecipeFocusModePage` (`apps/web/src/pages/recipes/RecipeFocusModePage.tsx`) renders `StatCards`, `BeanSection`, `BrewTimeline`, `EquipmentSection`, `TastingNotesSection` from `recipe.currentVersion`. It fetches with `recipeApi.get(slug)` in `useEffect` (no loader). Route: `recipes/:slug/focus` (`apps/web/src/router.tsx:104`).
+- `RecipeFocusModePage` (`apps/web/src/pages/recipes/RecipeFocusModePage.tsx`) renders `StatCards`, `BeanSection`, `BrewTimeline`, `EquipmentSection`, `TastingNotesSection` from `recipe.currentVersion`. It fetches with `recipeApi.get(slug)` in `useEffect` (no loader). Route: `recipes/:slug/focus` (`apps/web/src/router.tsx:161`).
 - `BrewTimeline` (`apps/web/src/components/recipe/BrewTimeline.tsx`) takes `extractionTimeSeconds`, `preInfusionTimeSeconds`, `flowRate` and renders a static SVG pre-infusion/extraction curve.
 - `recipeVersions` (`packages/db/src/schema.ts:175-238`) provides everything a session needs: `brewMethod` (`brewMethodEnum`), `groundWeightGrams`, `extractionTimeSeconds`, `preInfusionTimeSeconds`, `temperatureCelsius`, `extractionVolumeMl`, `brewRatio`, `grindSize`, `preparationNotes` (notNull).
 - Brew methods are single-sourced: `BREW_METHODS` / `BREW_METHOD_VALUES` in `packages/shared/src/constants/brew-methods.ts` (11 methods, each with `equipmentTypes`), per D07.

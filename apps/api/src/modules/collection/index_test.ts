@@ -124,19 +124,22 @@ describe(
   },
   () => {
     let user: typeof users.$inferSelect;
+    let listA: typeof collections.$inferSelect;
     const colIds: string[] = [];
+    const recipeIds: string[] = [];
 
     beforeAll(async () => {
       user = await createUser('route-list');
-      const c1 = await createCollectionRow(user.id, 'List A', 'private');
+      listA = await createCollectionRow(user.id, 'List A', 'private');
       const c2 = await createCollectionRow(user.id, 'List B', 'public');
-      colIds.push(c1.id, c2.id);
+      colIds.push(listA.id, c2.id);
     });
 
     afterAll(async () => {
       deps.authMiddleware = originalAuthMiddleware;
       deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
       await cleanupCollections(colIds);
+      await cleanupRecipes(recipeIds);
       await cleanupUsers([user.id]);
     });
 
@@ -166,6 +169,28 @@ describe(
       expect(body.success).toBe(true);
       expect(body.data.length).toBe(1);
       expect(body.data[0].visibility).toBe('public');
+    });
+
+    it('wires the recipeId query param through to containsRecipe flags', async () => {
+      const recipe = await createRecipe(user.id);
+      recipeIds.push(recipe.id);
+      // Only 'List A' contains the recipe
+      await db.insert(collectionItems).values({
+        collectionId: listA.id,
+        recipeId: recipe.id,
+        sortOrder: 0,
+      });
+
+      const app = createTestApp(user.id);
+      const res = await app.request(`/api/v1/collections?recipeId=${recipe.id}`);
+      const body = await res.json() as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(body.data.length).toBe(2);
+      const byName = new Map(body.data.map((c: any) => [c.name, c]));
+      expect(byName.get('List A').containsRecipe).toBe(true);
+      expect(byName.get('List B').containsRecipe).toBe(false);
     });
   },
 );

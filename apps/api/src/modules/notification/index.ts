@@ -37,12 +37,17 @@ notification.get(
       "Paginated list of the authenticated user's notifications, newest first. Optionally filtered to unread only.",
     security: [{ bearerAuth: [] }],
     parameters: [
-      { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
+      {
+        name: 'page',
+        in: 'query',
+        required: false,
+        schema: { type: 'integer', minimum: 1, default: 1 },
+      },
       {
         name: 'perPage',
         in: 'query',
         required: false,
-        schema: { type: 'integer', minimum: 1, maximum: 100 },
+        schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
       },
       {
         name: 'unreadOnly',

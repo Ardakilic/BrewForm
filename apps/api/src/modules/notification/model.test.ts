@@ -169,6 +169,35 @@ describe('findByUserId', { sanitizeOps: false, sanitizeResources: false }, () =>
 });
 
 /**
+ * findByUserId ordering tie-breaker — rows sharing the same `createdAt` are
+ * ordered by `id` descending so pagination stays deterministic.
+ */
+describe('findByUserId tie-breaker', { sanitizeOps: false, sanitizeResources: false }, () => {
+  let userId: string;
+  const lowerId = 'tie-break-aaa';
+  const higherId = 'tie-break-bbb';
+
+  beforeEach(async () => {
+    userId = await insertUser();
+    const sameTime = new Date('2026-01-01T00:00:00.000Z');
+    await db.insert(notifications).values([
+      { id: lowerId, userId, type: 'mention', referenceType: 'comment', createdAt: sameTime },
+      { id: higherId, userId, type: 'mention', referenceType: 'comment', createdAt: sameTime },
+    ]);
+  });
+
+  afterEach(async () => {
+    await db.delete(notifications).where(inArray(notifications.id, [lowerId, higherId]));
+    await db.delete(users).where(eq(users.id, userId));
+  });
+
+  it('orders rows with identical createdAt by id descending', async () => {
+    const result = await model.findByUserId(userId, 1, 10, false);
+    expect(result.notifications.map((n) => n.id)).toEqual([higherId, lowerId]);
+  });
+});
+
+/**
  * markAsRead — Sets readAt on an unread, non-deleted row; returns undefined
  * when the row is missing, already read, or soft-deleted.
  */

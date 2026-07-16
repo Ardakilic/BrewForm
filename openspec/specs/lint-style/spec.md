@@ -70,7 +70,7 @@ table plus these 2 middleware files total the 9 production files in scope.
 
 #### Scenario: grep gate passes
 
-- **WHEN** `grep -rn "deno-lint-ignore-file" packages/shared/src apps/api/src --glob='*.ts' --glob='*.tsx' | grep -v test` is run
+- **WHEN** `rg -n "deno-lint-ignore-file" packages/shared/src apps/api/src -g '*.ts' -g '*.tsx' -g '!*.test.ts' -g '!*.test.tsx' -g '!*_test.ts'` is run
 - **THEN** zero matches are returned — no production file carries a `deno-lint-ignore-file`
   directive
 
@@ -178,7 +178,7 @@ intentional, not a mistake.
 
 #### Scenario: Surviving line-level directive has justification
 
-- **WHEN** `grep -rn "// deno-lint-ignore " packages/shared/src apps/api/src --glob='*.ts' --glob='*.tsx' | grep -v test | grep -v "ignore-file"` is run
+- **WHEN** `rg -n "// deno-lint-ignore " packages/shared/src apps/api/src -g '*.ts' -g '*.tsx' -g '!*.test.ts' -g '!*.test.tsx' -g '!*_test.ts' | rg -v "ignore-file"` is run
 - **THEN** every matched line-level directive is immediately preceded by a comment line explaining
   the justification
 

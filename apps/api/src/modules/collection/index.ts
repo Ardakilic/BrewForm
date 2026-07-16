@@ -62,6 +62,14 @@ collection.get(
         required: false,
         schema: { type: 'string', enum: ['draft', 'private', 'unlisted', 'public'] },
       },
+      {
+        name: 'recipeId',
+        in: 'query',
+        required: false,
+        schema: { type: 'string' },
+        description:
+          'Optional recipe context — each returned collection includes `containsRecipe` flagging whether it already contains this recipe.',
+      },
     ],
     responses: {
       200: {
@@ -86,9 +94,9 @@ collection.get(
   zValidator('query', CollectionListFilterSchema, zodValidationHook),
   async (c) => {
     const userId = c.get('userId') as string;
-    const { page, perPage, visibility } = c.req.valid('query');
+    const { page, perPage, visibility, recipeId } = c.req.valid('query');
     try {
-      const result = await service.listMyCollections(userId, page, perPage, visibility);
+      const result = await service.listMyCollections(userId, page, perPage, visibility, recipeId);
       return paginated(c, result.collections, {
         page,
         perPage,

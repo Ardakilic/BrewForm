@@ -37,7 +37,7 @@ report.post(
 );
 ```
 
-**Note on the 429 envelope:** The runtime 429 body emitted by `rateLimitMiddleware` (`rateLimit.ts:61-67`) is `{ success: false, error: { code: 'RATE_LIMITED', message: '...' } }` and omits `error.requestId`, while `ErrorEnvelopeSchema` (`packages/shared/src/schemas/response.ts:15-25`) requires `requestId: z.string()`. This is a pre-existing inconsistency shared by every 429 in the codebase (contact, auth, global) and is out of scope for this change. The OpenAPI `429` entry uses `resolver(ErrorEnvelopeSchema)` per the AGENTS.md convention, matching the contact module's existing 429 documentation at `contact/index.ts:56-59`.
+**Note on the 429 envelope:** The runtime 429 body emitted by `rateLimitMiddleware` (`rateLimit.ts`) is `{ success: false, error: { code: 'RATE_LIMITED', message: '...', requestId } }`: `error.requestId` is populated from the request context (supplied by the requestId middleware, which runs before rate limiting in the middleware stack), so the body validates against `ErrorEnvelopeSchema` (`packages/shared/src/schemas/response.ts`), which requires `requestId: z.string()`. All rate-limit paths (global, auth, contact, report) consistently provide the request ID. The OpenAPI `429` entry continues to use `resolver(ErrorEnvelopeSchema)` per the AGENTS.md convention, matching the contact module's existing 429 documentation at `contact/index.ts:56-59`.
 
 #### Scenario: 4th report POST within 15 minutes returns 429
 

@@ -209,6 +209,11 @@ export type CollectionOutput = z.infer<typeof CollectionOutputSchema>;
 
 export const CollectionListItemOutputSchema = CollectionOutputSchema.extend({
   recipeCount: z.number().int(),
+  // Populated only when the list request carries a recipe context (`recipeId` query param on
+  // `GET /api/v1/collections`) so AddToCollectionModal can initialize checkmarks and toggle
+  // membership without separate detail fetches; `collectionApi.list()` accepts the recipe
+  // context and passes it through.
+  containsRecipe: z.boolean().optional(),
 });
 export type CollectionListItemOutput = z.infer<typeof CollectionListItemOutputSchema>;
 
@@ -355,9 +360,11 @@ Every function SHALL include `logger.debug({ relevantIds }, 'functionName starte
 - Mutations: `if (collection.userId !== userId) throw new Error('FORBIDDEN')`
 - Reads on private/draft collections: `if (collection.userId !== userId) throw new Error('FORBIDDEN')`
 - Reads on unlisted/public collections: allowed for any caller (including unauthenticated)
-- `addRecipeToCollection`: fetch recipe; `if (!recipe) throw 'RECIPE_NOT_FOUND'`; THEN check visibility `if (recipe.visibility !== 'public' && recipe.authorId !== userId) throw 'FORBIDDEN'` (null-check BEFORE property access)
-- `addRecipeToCollection`: catch unique-constraint violation and throw `ALREADY_IN_COLLECTION`
-- `reorderCollection`: validate `itemIds.length === collection.items.length` and all belong to the collection, else throw `REORDER_MISMATCH`
+- `addRecipeToCollection`: fetch recipe; `if (!recipe) throw new Error('RECIPE_NOT_FOUND')`; THEN check visibility `if (recipe.visibility !== 'public' && recipe.authorId !== userId) throw new Error('FORBIDDEN')` (null-check BEFORE property access)
+- `addRecipeToCollection`: catch unique-constraint violation and throw `new Error('ALREADY_IN_COLLECTION')`
+- `reorderCollection`: validate `itemIds.length === collection.items.length` and all belong to the collection, else throw `new Error('REORDER_MISMATCH')`
+
+All service failures are thrown as `Error` instances whose `message` is a stable UPPER_SNAKE code; the route layer maps each code to its HTTP response (COLLECTION_NOT_FOUND/RECIPE_NOT_FOUND → 404 with envelope code `NOT_FOUND`, FORBIDDEN → 403, ALREADY_IN_COLLECTION → 409, REORDER_MISMATCH → 400) rather than 500.
 
 #### Scenario: Non-owner cannot update a collection
 
@@ -561,7 +568,7 @@ for the owner.
 
 The system SHALL create `apps/web/src/components/collections/`:
 
-**`CollectionCard.tsx`** — a `<Link to={\`/collections/${c.id}\`} className='card hover:shadow-lg transition-shadow'>`
+**`CollectionCard.tsx`** — a `` `<Link to={\`/collections/${c.id}\`} className='card hover:shadow-lg transition-shadow'>` ``
 displaying the collection name, visibility badge (🔒 private / 🌐 public), and `recipeCount`. Matches
 the `RecipeCard.tsx` pattern (Tailwind + `var(--text-*)` CSS vars).
 
@@ -639,7 +646,7 @@ all collections are returned (the `GET /users/:userId/collections` endpoint chec
 
 The system SHALL add these keys to BOTH `packages/shared/src/i18n/en.json` and `packages/shared/src/i18n/tr.json`:
 
-```
+```text
 collection.list.title
 collection.list.create
 collection.list.noResults
@@ -688,7 +695,8 @@ The system SHALL add a `seedCollections(tx, createdUsers, createdRecipes)` helpe
 `packages/db/src/seed.ts` that:
 - Creates 1–2 sample collections per seeded user with `visibility: 'public'`
 - Adds 2–3 seeded recipes to each collection
-- Uses `onConflictDoNothing({ target: [collectionItems.collectionId, collectionItems.recipeId] })` for idempotency
+- Gives each seeded collection a stable seed-derived name (e.g. `` `${username}'s Favourites` ``) that is used as the lookup key, so collection rows are idempotent — existing collections are selected and reused (not re-inserted) before items are added
+- Is idempotent on BOTH collection rows (select-and-reuse on `(userId, name)` excluding soft-deleted rows) and collection_item rows (`onConflictDoNothing({ target: [collectionItems.collectionId, collectionItems.recipeId] })` on the composite unique key)
 - Uses the select-and-reuse pattern to resolve FK IDs from the `createdUsers` and `createdRecipes` maps
 - Is called from `main()` inside the `db.transaction` block after `seedRecipes`
 - Does NOT break the `if (import.meta.main)` guard

@@ -12,6 +12,17 @@ vi.mock('../contexts/I18nContext', () => ({
   useTranslation: vi.fn(),
 }));
 
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
+
 import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);

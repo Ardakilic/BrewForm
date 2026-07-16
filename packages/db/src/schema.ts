@@ -908,8 +908,10 @@ export const notificationTypeEnum = pgEnum('notification_type', ['mention']);
  *
  * Soft-deletable main entity. `userId` is the recipient (cascades on user
  * hard-delete); `actorId` is the user who triggered the notification (nullable
- * — e.g. the mentioning user — left as a plain reference so it is unaffected by
- * actor removal). `type` is the `notification_type` enum. `referenceId` /
+ * — e.g. the mentioning user — uses `onDelete: 'set null'` so deleting an
+ * actor nullifies the reference instead of blocking deletion; the model layer
+ * left-joins actor and tolerates null actors). `type` is the
+ * `notification_type` enum. `referenceId` /
  * `referenceType` point at the related entity (e.g. a comment on a recipe) and
  * `metadata` holds an optional JSON string payload (precedent:
  * `auditLogs.details`). Indexes serve the paginated feed `(userId, createdAt)`
@@ -922,7 +924,9 @@ export const notifications = pgTable(
     userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id, {
       onDelete: 'cascade',
     }),
-    actorId: varchar('actor_id', { length: 36 }).references(() => users.id),
+    actorId: varchar('actor_id', { length: 36 }).references(() => users.id, {
+      onDelete: 'set null',
+    }),
     type: notificationTypeEnum('type').notNull(),
     referenceId: varchar('reference_id', { length: 36 }),
     referenceType: varchar('reference_type', { length: 50 }),

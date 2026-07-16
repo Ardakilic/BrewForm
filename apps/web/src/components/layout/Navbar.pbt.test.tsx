@@ -111,6 +111,23 @@ const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
 const mockUseTheme = vi.mocked(useTheme);
 
+// jsdom does not implement matchMedia; stub it to a desktop viewport (matches=true)
+// so the Navbar's useMediaQuery('(min-width: 768px)') mounts the desktop nav path.
+Object.defineProperty(globalThis, 'matchMedia', {
+  value: (query: string): MediaQueryList => ({
+    matches: true,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }),
+  configurable: true,
+  writable: true,
+});
+
 // ---------------------------------------------------------------------------
 // Default mock values
 // ---------------------------------------------------------------------------

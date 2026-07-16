@@ -395,7 +395,7 @@
 - [x] 19.5 Grep gates:
        - `grep -n "Record<string, unknown>" apps/web/src/api/index.ts` → zero hits (D42)
        - `ls apps/web/src/api/types.ts` → file does not exist (D42)
-       - `grep -rn "deno-lint-ignore-file" packages/shared/src apps/api/src --glob='*.ts' --glob='*.tsx' | grep -v test` → zero matches (D35)
+       - `rg -n "deno-lint-ignore-file" packages/shared/src apps/api/src -g '*.ts' -g '*.tsx' -g '!*.test.ts' -g '!*.test.tsx' -g '!*_test.ts'` → zero matches (D35)
        - `grep -rn "^interface Bean\b\|^interface Setup\b\|^interface EquipmentItem\b\|^interface UserProfile\b" apps/web/src/pages/` → zero matches (D42 shadow types deleted)
        - `grep -n "createdAt" packages/db/src/schema.ts | grep -E "recipeTasteNotes|recipeEquipment|recipeVersionPhotos"` → confirm createdAt added (D43; this grep is approximate — verify by reading the three table definitions)
 - [x] 19.6 Manual verification (optional but recommended):

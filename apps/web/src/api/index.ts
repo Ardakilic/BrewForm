@@ -34,8 +34,11 @@ import type {
   UserProfileUpdate,
 } from '@brewform/shared/schemas';
 import { api, ApiError } from './client.ts';
+import { createLogger } from '@/utils/logger.ts';
 
 export { api, ApiError };
+
+const notificationLog = createLogger('notificationApi');
 
 /** Rate-route response: `{ rating, avgRating, ratingCount }` returned by POST /recipes/:id/rate. */
 export type RateResponse = {
@@ -203,14 +206,54 @@ export const commentApi = {
  * bulk mark-as-read (F04 @mention notifications).
  */
 export const notificationApi = {
-  list: (page: number, unreadOnly?: boolean) => {
-    const params = new URLSearchParams({ page: String(page) });
-    if (unreadOnly !== undefined) params.set('unreadOnly', String(unreadOnly));
-    return api.getWithMeta<PaginatedResponse<NotificationOutput>>(`/notifications?${params}`);
+  list: async (page: number, unreadOnly?: boolean) => {
+    notificationLog.debug({ page, unreadOnly }, 'notificationApi.list started');
+    try {
+      const params = new URLSearchParams({ page: String(page) });
+      if (unreadOnly !== undefined) params.set('unreadOnly', String(unreadOnly));
+      const result = await api.getWithMeta<PaginatedResponse<NotificationOutput>>(
+        `/notifications?${params}`,
+      );
+      notificationLog.debug({ page, unreadOnly }, 'notificationApi.list completed');
+      return result;
+    } catch (err) {
+      notificationLog.error({ err, page, unreadOnly }, 'notificationApi.list failed');
+      throw err;
+    }
   },
-  unreadCount: () => api.get<UnreadCountOutput>('/notifications/unread-count'),
-  markRead: (id: string) => api.patch<NotificationOutput>(`/notifications/${id}/read`, {}),
-  markAllRead: () => api.patch<{ message: string }>('/notifications/read-all', {}),
+  unreadCount: async () => {
+    notificationLog.debug({}, 'notificationApi.unreadCount started');
+    try {
+      const result = await api.get<UnreadCountOutput>('/notifications/unread-count');
+      notificationLog.debug({}, 'notificationApi.unreadCount completed');
+      return result;
+    } catch (err) {
+      notificationLog.error({ err }, 'notificationApi.unreadCount failed');
+      throw err;
+    }
+  },
+  markRead: async (id: string) => {
+    notificationLog.debug({ id }, 'notificationApi.markRead started');
+    try {
+      const result = await api.patch<NotificationOutput>(`/notifications/${id}/read`, {});
+      notificationLog.debug({ id }, 'notificationApi.markRead completed');
+      return result;
+    } catch (err) {
+      notificationLog.error({ err, id }, 'notificationApi.markRead failed');
+      throw err;
+    }
+  },
+  markAllRead: async () => {
+    notificationLog.debug({}, 'notificationApi.markAllRead started');
+    try {
+      const result = await api.patch<{ message: string }>('/notifications/read-all', {});
+      notificationLog.debug({}, 'notificationApi.markAllRead completed');
+      return result;
+    } catch (err) {
+      notificationLog.error({ err }, 'notificationApi.markAllRead failed');
+      throw err;
+    }
+  },
 };
 
 /**

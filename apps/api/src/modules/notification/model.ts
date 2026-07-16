@@ -48,7 +48,8 @@ export async function create(data: typeof notifications.$inferInsert) {
  * List paginated notifications for a user, newest first, with the actor's
  * username joined (the actor join is soft-delete aware, so a self-deleted
  * actor yields a null actor). Excludes soft-deleted rows; optionally restricts
- * to unread.
+ * to unread. Ordering is deterministic: rows sharing the same `createdAt`
+ * are tie-broken by `id` descending, keeping pagination boundaries stable.
  *
  * @param userId - The recipient user's UUID.
  * @param page - 1-based page number.
@@ -71,7 +72,7 @@ export async function findByUserId(
       .from(notifications)
       .leftJoin(users, and(eq(notifications.actorId, users.id), isNull(users.deletedAt)))
       .where(where)
-      .orderBy(desc(notifications.createdAt))
+      .orderBy(desc(notifications.createdAt), desc(notifications.id))
       .limit(perPage)
       .offset((page - 1) * perPage),
     db.select({ count: count() }).from(notifications).where(where),

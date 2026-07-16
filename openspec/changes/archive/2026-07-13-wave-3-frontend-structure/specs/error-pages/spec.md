@@ -16,6 +16,10 @@ internally and is NOT reachable from the router or boundary directly. This satis
 exports" criterion: every export is reachable from the router (`NotFoundPage` via the `*`
 catch-all) or the error boundary (`ServerErrorPage` via the 5xx branch).
 
+Both exported page components SHALL emit mount and unmount debug logs implemented via `useEffect`,
+using the web logger (`createLogger` from `@/utils/logger.ts`). This keeps `NotFoundPage` and
+`ServerErrorPage` consistent with the project-wide page-logging convention.
+
 `ForbiddenPage` SHALL be **deleted**. It had no clean trigger — `RequireAuth` redirects non-admin
 users to `/` rather than throwing a 403 route error, and no loader throws 403. Wiring it would
 require changing `RequireAuth`'s admin-guard UX (silent redirect → 403 page), which is a product
