@@ -1,10 +1,11 @@
 # F14 — Brew Method Landing Pages
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): 🔧 Rough — needs design decisions (SEO stack absent)**
 >
-> - Backend design is sound; the frontend uses TanStack `useQuery` → rewrite as a react-router v8 loader + `useLoaderData` (no TanStack Query in the repo).
-> - Stale schema line references; `brewMethodEnum` is now sourced from `BREW_METHOD_VALUES` in `@brewform/shared/constants` (D07).
-> - Verify the Helmet dependency actually exists before relying on it for SEO tags.
+> - Helmet does NOT exist — no react-helmet in apps/web/package.json (react 19.2, react-dom 19.2, react-router 8.0.1) and no Helmet usage anywhere in web src. Pick an approach: React 19 native `<title>`/`<meta>` head hoisting inside the component, or a loader-driven document-head helper. `window.location.origin` in the JSON-LD is fine client-side.
+> - No TanStack Query — BrewMethodPage `useQuery` → react-router v8 loader + `useLoaderData` (lazy route is the norm, see router.tsx).
+> - Backend design sound: `brewMethod` lives on recipeVersions (NOT NULL, schema.ts), `BrewMethodEnum` param validation OK; `BREW_METHOD_VALUES` (11 methods) is single-sourced from `BREW_METHODS` (packages/shared/src/constants/brew-methods.ts:85). Route `/brew-method/:method` is 2-segment (won't collide) but place it before `/:slugOrId` (index.ts:299) per convention. `cacheProvider` singleton exists (utils/cache/singleton.ts).
+> - `apps/web/src/api/types.ts` DELETED (D42) — put `BrewMethodPageData` in packages/shared (z.infer), not that file. FilterSidebar chip-nav target is a wrong path — filter UI is in apps/web/src/components/recipe-list/ (FilterField.tsx / ActiveFilterBadge.tsx), not components/recipe/FilterSidebar.tsx.
 
 ## Overview
 

@@ -33,6 +33,13 @@ export function BanDialog({ user, open, onClose, onConfirm, processing }: BanDia
     log.debug({ userId: user.id, open }, 'BanDialog render');
   }, [open]);
 
+  // `reason` is locally owned by the dialog: reset it whenever the dialog
+  // closes or the targeted user changes, so a stale reason never leaks
+  // into the next ban.
+  useEffect(() => {
+    setReason('');
+  }, [open, user.id]);
+
   if (!open) return null;
 
   return (

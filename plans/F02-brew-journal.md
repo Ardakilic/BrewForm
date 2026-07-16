@@ -1,9 +1,12 @@
 # F02 — Brew Journal / "Brew Again" Workflow
 
-> **Validation status (2026-07-04): ✅ Valid**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below (core design valid)**
 >
-> - Net-new `brew_log` table; the 1–10 rating CHECK matches the D21 rating scale (schema.ts:210,237,662,671).
-> - Prerequisite for F03 (profile stats), F20 (brew logger integration) and the offline sync part of F25.
+> - Core still sound: `brew_log` is net-new (no brew-log module/table exists). The 1–10 `personalRating` CHECK matches the D21 scale; line refs drifted — `recipeVersions.rating` CHECK is now schema.ts:238, the `user_recipe_rating` table + 1–10 CHECK at schema.ts:664/677. Offset helpers `paginated` + `PaginationSchema`, `optionalAuthMiddleware`, and `success/error/paginated/isEmailVerified` all exist as assumed (utils/response/index.ts).
+> - NEW — D42 (typed web boundary) not reflected in plan: `apps/web/src/api/types.ts` is DELETED. Each new endpoint needs Zod output schemas under `packages/shared/src/schemas/responses/` (e.g. `BrewLogOutputSchema`, `BrewStatsOutputSchema`), exported via `responses/index.ts`, plus a typed `brewLogApi` in `apps/web/src/api/index.ts` using `z.infer` types (+ `api.getWithMeta<PaginatedResponse<T>>` for the paginated lists).
+> - NEW — D40 (i18n): every new UI string must be added to BOTH `packages/shared/src/i18n/en.json` and `tr.json`. The parity test (`i18n.test.ts`) asserts identical key sets (`expect(enKeys).toEqual(trKeys)`), so English-only strings fail `make test`.
+> - Web-pattern note: current data pages use react-router v8 loaders + `useLoaderData` (e.g. UserProfilePage, RecipeDetailPage) — prefer a `loader` for `BrewLogListPage` over an in-component `useEffect` fetch. The router `element:`/`lazy:` snippets remain valid.
+> - Still a prerequisite for F03 (blocked until this lands), F20, and the F25 offline-sync part.
 
 ## Overview
 

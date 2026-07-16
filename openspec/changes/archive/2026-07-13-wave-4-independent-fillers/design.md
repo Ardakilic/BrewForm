@@ -98,7 +98,7 @@ explicit decision.
 │  │  D38 added AuthContext test; D36 added BanDialog; D37 added            │  │
 │  │    ErrorBoundary + ErrorPage consolidation                             │  │
 │  │                                                                        │  │
-│  │  GENUINE GAPS remaining (37 new test files):                           │  │
+│  │  GENUINE GAPS remaining (43 new test files):                           │  │
 │  │  Tier 2 API (22 files):                                                │  │
 │  │    9 model tests (badge/bean/comment/follow/photo/preference/qrcode/   │  │
 │  │      report/setup)                                                     │  │
@@ -172,7 +172,7 @@ single-phase approach** — D42 is the natural moment to fix the web type bounda
 leave the gate unverifiable.
 
 **Verified error breakdown (2026-07-06):** Running `tsc --noEmit -p tsconfig.json
---ignoreDeprecations 6.0` produces 881 errors, but they break down as:
+--ignoreDeprecations 6.0` produces 887 errors, but they break down as:
 - **686 errors** are `TS5097` (import path `.ts`/`.tsx` extensions) — fixed by adding
   `"allowImportingTsExtensions": true` to `tsconfig.json` (one config line, zero code change).
 - **145 errors** are in **test files** — mostly `TS2352`/`TS2345` from mock `AuthContextType`

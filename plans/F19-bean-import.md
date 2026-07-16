@@ -1,10 +1,11 @@
 # F19 — Coffee Bean Database Import
 
-> **Validation status (2026-07-04): ✅ Valid (minor client-call fixes)**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >
-> - Backend matches the existing `beans` table + bean model exactly.
-> - Fix axios-style client calls — the web API client is a custom fetch wrapper (apps/web/src/api/client.ts); for the multipart upload, do not hand-set the Content-Type boundary.
-> - Caveat: the proposed CSV parser is naive (no quoted-field handling).
+> - Backend still matches the `beans` table exactly (`packages/db/src/schema.ts:386-414`) and `bean/model.ts` (`findByUser(userId, page, perPage)` → `{ beans, total }` at model.ts:23; `create` at model.ts:35). `success(c, data, 201)` / `error(c, code, msg, status)` signatures confirmed (`equipment/index.ts:121,197`). CSV-parser caveat (no quoted-field handling) still stands.
+> - Web client changed under D42. There is NO generic `client.post(endpoint, body, { headers })` axios-style call. `apps/web/src/api/index.ts` now exposes domain objects (e.g. `beanApi`) built on `api` from `./client.ts` — add the import calls to `beanApi`. For the multipart upload use the dedicated `api.upload('/beans/import-csv', formData)` (`client.ts:120-125`): it posts `FormData` with empty headers so the browser sets the boundary. `api.post` JSON-stringifies its body and cannot carry `FormData`.
+> - `searchExternalBeans`: use `api.post('/beans/search-external', { query })`.
+> - `BeanImportCsvSchema` / `BeanSearchExternalSchema` are net-new — only `BeanCreateSchema`/`BeanUpdateSchema` exist today (`packages/shared/src/schemas/bean.ts`).
 
 ## Overview
 

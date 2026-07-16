@@ -28,7 +28,11 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
 
   describe('rateLimitMiddleware', () => {
     function buildApp(limit: number) {
-      const app = new Hono();
+      const app = new Hono<{ Variables: { requestId: string } }>();
+      app.use('/test', (c, next) => {
+        c.set('requestId', 'req-test-1');
+        return next();
+      });
       app.use('/test', rateLimitMiddleware({ maxRequests: limit, windowMs: 60_000 }));
       app.get('/test', (c) => c.text('ok'));
       return app;
@@ -61,6 +65,8 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
 
         expect(res.status).toBe(429);
         expect(body.success).toBe(false);
+        expect(body.error.code).toBe('RATE_LIMITED');
+        expect(body.error.requestId).toBe('req-test-1');
         assertSpyCalls(spies.warn, 1);
         assertSpyCallArgs(spies.warn, 0, [
           { limit: 2 },
@@ -74,9 +80,10 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
 
   describe('authRateLimitMiddleware', () => {
     function buildApp(limit: number) {
-      const app = new Hono<{ Variables: { userId: string } }>();
+      const app = new Hono<{ Variables: { userId: string; requestId: string } }>();
       app.use('/test', (c, next) => {
         c.set('userId', 'user-123');
+        c.set('requestId', 'req-test-1');
         return next();
       });
       app.use('/test', authRateLimitMiddleware({ maxAttempts: limit, windowMs: 60_000 }));
@@ -111,6 +118,8 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
 
         expect(res.status).toBe(429);
         expect(body.success).toBe(false);
+        expect(body.error.code).toBe('RATE_LIMITED');
+        expect(body.error.requestId).toBe('req-test-1');
         assertSpyCalls(spies.warn, 1);
         assertSpyCallArgs(spies.warn, 0, [
           { userId: 'user-123', limit: 2 },

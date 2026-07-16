@@ -13,6 +13,7 @@ export { PhotoOutputSchema } from './photo.ts';
 export { ReportOutputSchema } from './report.ts';
 export { SetupOutputSchema } from './setup.ts';
 export { UserPreferencesOutputSchema } from './preference.ts';
+export { NotificationOutputSchema, UnreadCountOutputSchema } from './notification.ts';
 export {
   FollowerListItemOutputSchema,
   FollowingListItemOutputSchema,

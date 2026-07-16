@@ -173,6 +173,7 @@ const preferencesArb = fc.record({
   recipeLiked: bool,
   recipeCommented: bool,
   followedUserPosted: bool,
+  mentionedInComment: bool,
   createdAt: ts,
   updatedAt: ts,
 });

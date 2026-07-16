@@ -1,5 +1,11 @@
 # F30 — Bean Roast-Date Freshness Tracking
 
+> **Validation status (2026-07-13): ✅ Valid**
+>
+> - Verified. `recipeVersions.roastDate` / `packageOpenDate` / `grindDate` / `brewDate` present (`schema.ts:176-239`, cited 175-238); `brewDate` is notNull default now. The `beans` table still has NO roast date (`schema.ts:386-414`) — the plan correctly flags any `beans.roastDate` assumption as wrong.
+> - `brewMethod` enum sourced from `BREW_METHOD_VALUES`; `espresso_machine` and `cold_brew` both exist for the method-specific windows. `BeanSection` receives `roastDate`/`packageOpenDate`/`grindDate`/`brewDate` props (`RecipeFocusModePage.tsx:134-145`, exact). Shared `utils/` + `constants/` dirs follow the `*_VALUES` convention.
+> - Phase-2 note: F04 has landed an in-app notification substrate (`notifications` table + `apps/api/src/modules/notification/`). The phase-2 "approaching past peak" nudge could ride that (in-app) in addition to email, gated by a `userPreferences` flag.
+
 ## Summary
 
 Derive a coffee-freshness status from the roast date already captured on recipe versions and surface it as a badge on recipe pages ("Peak freshness", "Degassing", "Past peak"), plus an optional gentle "past peak" nudge in the recipe form. Phase 1 is **pure derivation** — a shared, unit-tested utility and UI components, zero schema or API changes. An optional phase 2 (roast date on the `beans` table + email nudge) is sketched but explicitly out of scope.

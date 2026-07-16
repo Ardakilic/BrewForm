@@ -3,6 +3,8 @@
 > Based on comprehensive codebase analysis of API (18 modules), Web (28+ pages), Database (28 tables), and shared packages.
 >
 > **Validation pass (2026-07-04)**: every linked F-plan now carries a validation block under its title. See the Status column in the Priority Matrix below.
+>
+> **Re-validation pass (2026-07-13)**: full plan-vs-code audit re-run after the debt waves and F04 landed; the validation block in every F-plan was refreshed against the current tree. F01 and F04 have shipped; the Priority Matrix Status column and the "Not in the matrix" line below reflect the 2026-07-13 verdicts.
 
 ---
 
@@ -117,7 +119,7 @@
 - **PRD**: [`plans/F05-in-app-notifications.md`](plans/F05-in-app-notifications.md)
 
 ### 4.2 @Mention Notifications
-- **Current state**: Comments support @mentions (auto-prepended), but no notification is sent.
+- **Current state**: ✅ Shipped (2026-07-13). A comment containing `@username` now creates an in-app notification record and (unless the target opted out via `mentionedInComment`, or is the recipe author) sends a mention email. Backed by the `notifications` table + `notification` module + shared `parseMentions`, surfaced through the notification bell/dropdown/list page.
 - **Suggestion**: When a comment contains @username, send a notification (in-app + optional email) to the mentioned user.
 - **Why**: Mentions without notification are broken social features.
 - **PRD**: [`plans/F04-mention-notifications.md`](plans/F04-mention-notifications.md)
@@ -238,22 +240,22 @@ Status reflects each linked F-plan's validation verdict as of 2026-07-04 (see th
 
 | Priority | Feature | Effort | Impact | Status |
 |----------|---------|--------|--------|--------|
-| **P0** | @Mention notifications (F04) | Low | High | ✅ Valid (land before F05) |
-| **P0** | Recipe version diff view (F09) | Medium | High | ✅ Valid (depends on F08 DiffHighlighter) |
+| **P0** | @Mention notifications (F04) | Low | High | ✅ Shipped (2026-07-13) |
+| **P0** | Recipe version diff view (F09) | Medium | High | ⚠️ Outdated — corrections in plan (depends on F08) |
 | **P0** | Fix broken fork navigation (D04) | Trivial | High | ✅ Shipped (PR #61) |
-| **P1** | In-app notification center (F05) | High | High | ✅ Valid (depends on F04) |
-| **P1** | Recipe collections/playlists (F01) | Medium | High | ✅ Valid |
+| **P1** | In-app notification center (F05) | High | High | ⚠️ Outdated — F04 substrate + bell/list UI shipped; scope shrinks to enum extension + fan-out + pref split |
+| **P1** | Recipe collections/playlists (F01) | Medium | High | ✅ Shipped (2026-07-09) |
 | **P1** | Advanced search with faceted filters (F11) | Medium | High | ⚠️ Outdated — rebase on shipped D27 cursor pagination |
 | **P1** | Image optimisation pipeline (F23) | Medium | Medium | 🔧 Rough — needs design decisions |
-| **P2** | Brew "again" / replicate workflow (F02) | Medium | Medium | ✅ Valid |
+| **P2** | Brew "again" / replicate workflow (F02) | Medium | Medium | ⚠️ Outdated — corrections in plan (unblocks F03/F20/F25-sync) |
 | **P2** | Recipe templates (F06) | Low | Medium | ⚠️ Outdated — corrections in plan |
-| **P2** | Batch/scale calculator (F07) | Low | Medium | ✅ Valid |
+| **P2** | Batch/scale calculator (F07) | Low | Medium | ⚠️ Outdated — minor corrections in plan |
 | **P2** | Similar recipes recommendations (F12) | Medium | Medium | ⚠️ Outdated — corrections in plan |
-| **P2** | Equipment reviews/ratings (F27) | Medium | Medium | 📝 Newly proposed (2026-07-04) |
-| **P3** | Brew method landing pages (F14) | Medium | Low | ⚠️ Outdated — corrections in plan |
+| **P2** | Equipment reviews/ratings (F27) | Medium | Medium | ✅ Valid |
+| **P3** | Brew method landing pages (F14) | Medium | Low | 🔧 Rough — SEO stack undecided (no Helmet) |
 | **P3** | Recipe export/import (F10) | Medium | Medium | ⚠️ Outdated — corrections in plan |
 | **P3** | Admin analytics improvements (F17) | Medium | Low | ⚠️ Outdated — corrections in plan |
 | **P3** | Offline support / PWA (F25) | High | Medium | ⚠️ Outdated — PWA shell valid; brew-log sync blocked on F02 |
 | **P3** | Public API (F21) | High | Medium | ✅ Valid |
 
-Not in the matrix but validated: F03 ✅ Valid (blocked by F02), F08 ✅ Valid, F13 ⚠️ Outdated, F15 ⚠️ Outdated, F16 ⚠️ Outdated, F18 ⚠️ Outdated, F19 ✅ Valid (minor client-call fixes), F20 ❌ Invalid — blocked on F02, F22 🔧 Rough, F24 ✅ Valid, F26 ❌ Invalid.
+Not in the matrix, per the 2026-07-13 re-validation: F03 ❌ blocked by F02, F08 ⚠️ Outdated, F13 ⚠️ Outdated, F15 ⚠️ Outdated, F16 ⚠️ Outdated, F18 ⚠️ Outdated, F19 ⚠️ Outdated (was ✅), F20 ❌ Invalid — blocked on F02, F22 🔧 Rough, F24 ✅ Valid, F26 ❌ Invalid, F28 ✅ Valid, F29 ✅ Valid, F30 ✅ Valid, F31 ✅ Valid.

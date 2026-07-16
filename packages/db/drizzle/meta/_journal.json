@@ -71,6 +71,20 @@
       "when": 1783465539886,
       "tag": "0009_worthless_typhoid_mary",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783905467972,
+      "tag": "0010_clever_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784238172359,
+      "tag": "0011_thankful_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }

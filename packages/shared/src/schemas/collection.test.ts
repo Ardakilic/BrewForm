@@ -133,4 +133,20 @@ describe('CollectionListFilterSchema', () => {
     const result = CollectionListFilterSchema.safeParse({ visibility: 'public' });
     expect(result.success).toBe(true);
   });
+
+  it('should accept optional recipeId', () => {
+    const result = CollectionListFilterSchema.safeParse({ recipeId: crypto.randomUUID() });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(typeof result.data.recipeId).toBe('string');
+    }
+  });
+
+  it('should omit recipeId when not provided', () => {
+    const result = CollectionListFilterSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.recipeId).toBeUndefined();
+    }
+  });
 });

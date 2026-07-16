@@ -1,9 +1,9 @@
 # F20 — Brew Logger App Integration
 
-> **Validation status (2026-07-04): ❌ Invalid — blocked**
+> **Validation status (2026-07-13): ❌ Invalid — blocked on F02**
 >
-> - Blocked on F02: depends on the `brewLogs` table + brew-log module, neither of which exists (no brew-log module among the 18 API modules).
-> - Also uses axios-style client calls — the web API client is a custom fetch wrapper, not axios.
+> - Still blocked: no `brewLogs` table in `packages/db/src/schema.ts` and no `brew-log` module among the API modules (`apps/api/src/modules/` has bean, recipe, equipment, notification, … but no brew-log). Every `model.*` / `service.*` call here targets code that does not exist.
+> - Client calls are also stale under D42: `client.post(url, formData, { headers })`, `client.get(url, { params })`, and `response.data` are axios-isms. Use `api.upload(...)` for import and `api.get`/`api.getWithMeta` for export — but note the JSON-unwrapping client (`apps/web/src/api/client.ts`) cannot return a raw CSV body, so CSV export needs a bespoke `fetch`.
 > - Re-validate after F02 lands.
 
 ## Overview

@@ -80,6 +80,33 @@ describe('CollectionListItemOutputSchema', () => {
     const result = CollectionListItemOutputSchema.safeParse(wire(collectionRow));
     expect(result.success).toBe(false);
   });
+
+  it('parses a list item with containsRecipe true and round-trips', () => {
+    const payload = { ...collectionRow, recipeCount: 3, containsRecipe: true };
+    const result = CollectionListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual(wire(payload));
+  });
+
+  it('parses a list item with containsRecipe false and round-trips', () => {
+    const payload = { ...collectionRow, recipeCount: 3, containsRecipe: false };
+    const result = CollectionListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual(wire(payload));
+  });
+
+  it('parses a list item without containsRecipe (optional)', () => {
+    const payload = { ...collectionRow, recipeCount: 3 };
+    const result = CollectionListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.containsRecipe).toBeUndefined();
+  });
+
+  it('rejects a non-boolean containsRecipe', () => {
+    const payload = { ...collectionRow, recipeCount: 3, containsRecipe: 'yes' };
+    const result = CollectionListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('CollectionItemRecipeOutputSchema', () => {

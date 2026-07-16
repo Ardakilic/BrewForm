@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collectionApi } from '../../api/index.ts';
+import { ApiError, collectionApi } from '../../api/index.ts';
 import type { CollectionListItemOutput } from '@brewform/shared/schemas';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
@@ -14,9 +14,11 @@ interface AddToCollectionModalProps {
 }
 
 /**
- * Modal for adding a recipe to collections. Lists the user's collections
- * with a checkmark for those already containing the recipe, and supports
- * inline creation of a new collection.
+ * Modal for adding a recipe to collections. Lists the user's collections with
+ * a checkmark for those already containing the recipe (via the `containsRecipe`
+ * flag returned when listing with a `recipeId` context), toggles membership on
+ * click (add vs. remove based on `containsRecipe`, with a 409→remove fallback
+ * for stale state), and supports inline creation of a new collection.
  */
 export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectionModalProps) {
   const { t } = useTranslation();
@@ -31,7 +33,7 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
     if (!open) return;
     log.debug({ recipeId }, 'AddToCollectionModal opened');
     setLoading(true);
-    collectionApi.list()
+    collectionApi.list({ recipeId })
       .then((res) => setCollections(res.data))
       .catch((err) => log.error({ err }, 'Failed to load collections'))
       .finally(() => setLoading(false));
@@ -39,21 +41,51 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
 
   if (!open) return null;
 
+  /** Flip membership state locally for one collection (avoids a refetch). */
+  const applyMembership = (collectionId: string, contains: boolean) => {
+    setCollections((prev) =>
+      prev.map((c) =>
+        c.id === collectionId
+          ? {
+            ...c,
+            containsRecipe: contains,
+            recipeCount: Math.max(0, c.recipeCount + (contains ? 1 : -1)),
+          }
+          : c
+      )
+    );
+  };
+
   const handleToggle = async (collection: CollectionListItemOutput) => {
     setToggleLoading(collection.id);
     try {
-      // Optimistically add; if the API rejects with 409 (already present),
-      // remove the recipe instead — this gives toggle semantics without
-      // needing per-collection membership info from the list endpoint.
+      if (collection.containsRecipe) {
+        await collectionApi.removeRecipe(collection.id, recipeId);
+        log.debug({ collectionId: collection.id, recipeId }, 'Recipe removed from collection');
+        applyMembership(collection.id, false);
+        return;
+      }
       await collectionApi.addRecipe(collection.id, recipeId);
       log.debug({ collectionId: collection.id, recipeId }, 'Recipe added to collection');
-    } catch (err: any) {
-      if (err?.code === 'CONFLICT' || err?.status === 409) {
-        await collectionApi.removeRecipe(collection.id, recipeId);
-        log.debug(
-          { collectionId: collection.id, recipeId },
-          'Recipe removed from collection',
-        );
+      applyMembership(collection.id, true);
+    } catch (err) {
+      if (
+        !collection.containsRecipe &&
+        err instanceof ApiError &&
+        (err.code === 'CONFLICT' || err.status === 409)
+      ) {
+        // Fallback for stale state: the server says the recipe is already in
+        // the collection, so interpret the toggle as a removal instead.
+        try {
+          await collectionApi.removeRecipe(collection.id, recipeId);
+          log.debug(
+            { collectionId: collection.id, recipeId },
+            'Recipe removed from collection',
+          );
+          applyMembership(collection.id, false);
+        } catch (removeErr) {
+          log.error({ err: removeErr }, 'Failed to toggle recipe in collection');
+        }
       } else {
         log.error({ err }, 'Failed to toggle recipe in collection');
       }
@@ -73,7 +105,7 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
       });
       createdId = created.id;
       await collectionApi.addRecipe(created.id, recipeId);
-      const res = await collectionApi.list();
+      const res = await collectionApi.list({ recipeId });
       setCollections(res.data);
       setNewName('');
       log.debug({ collectionId: created.id }, 'New collection created with recipe');
@@ -147,8 +179,19 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
                             : '🔒'}
                         </span>
                       </div>
-                      <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
-                        {col.recipeCount}
+                      <span className='flex items-center gap-2'>
+                        {col.containsRecipe === true && (
+                          <span
+                            aria-label={t('collection.modal.alreadyIn')}
+                            title={t('collection.modal.alreadyIn')}
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            ✓
+                          </span>
+                        )}
+                        <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+                          {col.recipeCount}
+                        </span>
                       </span>
                     </button>
                   ))

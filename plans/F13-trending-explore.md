@@ -1,12 +1,12 @@
 # F13 — Trending / Popular Recipes & Explore Page
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below (+ raw-SQL conflict)**
 >
-> - No TanStack Query — use react-router v8 loaders + `useLoaderData` instead of `useQuery`.
-> - New literal GET routes `/trending` and `/featured` must be registered BEFORE the `/:slugOrId` catch-all (apps/api/src/routes/recipe/index.ts:301).
-> - Trending query filters `recipes.createdAt` instead of the engagement window — move the time filter onto the engagement joins.
-> - Heavy raw sql`` blocks conflict with the no-raw-SQL convention (D03), and the alias used in ORDER BY may not bind.
-> - Verified: `featured` column (schema.ts:129) and `toggleFeature` (recipe/service.ts:600) exist.
+> - New literal single-segment routes `/trending` and `/featured` WILL be shadowed by the `/:slugOrId` catch-all (apps/api/src/modules/recipe/index.ts:299) unless registered before it. (2-segment routes like `/:slug/versions` at :262 already sit ahead of it.)
+> - Heavy `` `sql`…case when…` `` trending block conflicts with the standing convention "No raw SQL, no Postgres-specific operators" (conventions memory); the ORDER-BY alias `recentLikes…` may not bind. Existing time-series code (`getUserGrowth`, admin/model.ts:505) selects rows and aggregates in JS — follow that pattern.
+> - Trending WHERE filters `recipes.createdAt >= since` (recipe age) instead of the engagement window — move the time filter onto the like/comment/rating joins.
+> - No TanStack Query — ExplorePage `useQuery` → react-router v8 loader + `useLoaderData`; web client is a custom fetch wrapper, react-router v8.0.1.
+> - Verified: `featured` column (schema.ts:129), `toggleFeature` (recipe/service.ts + model.ts:827), `getRecipe`/`listRecipes` exist. HomePage already renders "Latest"/"Popular" grids with the shared RecipeCard (HomePage.tsx); `/explore` + `/brew` routes are genuinely new (router.tsx has neither).
 
 ## Overview
 

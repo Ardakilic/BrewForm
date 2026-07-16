@@ -11,9 +11,11 @@
  * **Validates: Requirements 2.1, 2.2, 6.6**
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
+import '../../test-setup.ts';
+import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import fc from 'npm:fast-check';
+import { deps, runCommentNotificationSideEffects } from './service.ts';
 
 // ---------------------------------------------------------------------------
 // Minimal type definitions — mirror the shape returned by the real model layer
@@ -648,5 +650,166 @@ describe('deleteComment — edge cases', () => {
       expect((err as Error).message).toBe('COMMENT_NOT_FOUND');
     }
     expect(threw).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F04 — createComment notification side-effects (mention flow integration)
+//
+// Exercises the REAL runCommentNotificationSideEffects exported by service.ts
+// via the service-layer `deps` proxy (same idiom as notification/service.test.ts):
+// model lookups and the two notification functions are replaced with in-memory
+// recorders and restored after each test. Verifies:
+//   - notifyRecipeCommented remains gated on recipe.authorId !== userId
+//   - the mention scan ALWAYS runs (even when the commenter IS the recipe
+//     author) on the effective content, forwarding recipeAuthorId
+//   - each notification call has independent error handling: a rejection in
+//     one never prevents the other from running
+// ---------------------------------------------------------------------------
+
+type ModelDeps = typeof deps.model;
+type NotifyRecipeCommentedParams = Parameters<typeof deps.notifyRecipeCommented>[0];
+type MentionNotificationParams = Parameters<typeof deps.createMentionNotifications>[0];
+
+const originalModel = deps.model;
+const originalNotifyRecipeCommented = deps.notifyRecipeCommented;
+const originalCreateMentionNotifications = deps.createMentionNotifications;
+
+describe('createComment — notification side-effects (F04 mention flow)', () => {
+  const recipe = {
+    id: 'recipe-1',
+    slug: 'recipe-slug',
+    title: 'Recipe Title',
+    authorId: 'author-1',
+  };
+
+  let notifyCalls: NotifyRecipeCommentedParams[];
+  let mentionCalls: MentionNotificationParams[];
+
+  /** Replace deps with in-memory recorders; pass null to simulate a missing recipe. */
+  function stubDeps(recipeResult: typeof recipe | null) {
+    const modelStub: ModelDeps = {
+      ...originalModel,
+      // The model's declared return type omits null (Drizzle types the selected
+      // row as non-nullable), so the nullable stub result needs a downcast.
+      getRecipeForNotification: () =>
+        Promise.resolve(recipeResult) as ReturnType<ModelDeps['getRecipeForNotification']>,
+      getCommenterById: (userId: string) => Promise.resolve({ id: userId, username: 'commenter' }),
+    };
+    deps.model = modelStub;
+    deps.notifyRecipeCommented = (params) => {
+      notifyCalls.push(params);
+      return Promise.resolve();
+    };
+    deps.createMentionNotifications = (params) => {
+      mentionCalls.push(params);
+      return Promise.resolve();
+    };
+  }
+
+  beforeEach(() => {
+    notifyCalls = [];
+    mentionCalls = [];
+  });
+
+  afterEach(() => {
+    deps.model = originalModel;
+    deps.notifyRecipeCommented = originalNotifyRecipeCommented;
+    deps.createMentionNotifications = originalCreateMentionNotifications;
+  });
+
+  it('sends recipe-commented AND triggers the mention flow when the commenter is not the author', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-1',
+      effectiveContent: 'Nice one @alice and @bob-2!',
+    });
+    expect(notifyCalls.length).toBe(1);
+    expect(notifyCalls[0].recipeAuthorId).toBe('author-1');
+    expect(mentionCalls.length).toBe(1);
+    expect(mentionCalls[0].mentions).toEqual(['alice', 'bob-2']);
+    expect(mentionCalls[0].commentId).toBe('comment-1');
+    expect(mentionCalls[0].mentionerUserId).toBe('commenter-1');
+    expect(mentionCalls[0].mentionerUsername).toBe('commenter');
+    expect(mentionCalls[0].recipeAuthorId).toBe('author-1');
+  });
+
+  it('still triggers the mention flow when the commenter IS the recipe author (no recipe-commented email)', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'author-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-2',
+      effectiveContent: 'Thanks @alice for the tip',
+    });
+    expect(notifyCalls.length).toBe(0); // gated: author commenting on own recipe
+    expect(mentionCalls.length).toBe(1); // mention scan must NOT be skipped
+    expect(mentionCalls[0].mentions).toEqual(['alice']);
+    expect(mentionCalls[0].recipeAuthorId).toBe('author-1');
+  });
+
+  it('parses mentions from the effective (post-prepend) content', async () => {
+    stubDeps(recipe);
+    // Simulates the reply auto-prepend: "@target original text"
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-3',
+      effectiveContent: '@reply-target I agree with @alice',
+    });
+    expect(mentionCalls[0].mentions).toEqual(['reply-target', 'alice']);
+  });
+
+  it('invokes the mention flow with an empty list when there are no mentions (service no-ops)', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-4',
+      effectiveContent: 'no mentions here',
+    });
+    expect(notifyCalls.length).toBe(1);
+    expect(mentionCalls.length).toBe(1);
+    expect(mentionCalls[0].mentions).toEqual([]);
+  });
+
+  it('does nothing when the recipe cannot be loaded', async () => {
+    stubDeps(null);
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-5',
+      effectiveContent: 'hello @alice',
+    });
+    expect(notifyCalls.length).toBe(0);
+    expect(mentionCalls.length).toBe(0);
+  });
+
+  it('still runs the mention flow when notifyRecipeCommented rejects', async () => {
+    stubDeps(recipe);
+    deps.notifyRecipeCommented = () => Promise.reject(new Error('smtp down'));
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-6',
+      effectiveContent: 'cc @alice',
+    });
+    expect(mentionCalls.length).toBe(1);
+    expect(mentionCalls[0].mentions).toEqual(['alice']);
+  });
+
+  it('still sends recipe-commented when createMentionNotifications rejects', async () => {
+    stubDeps(recipe);
+    deps.createMentionNotifications = () => Promise.reject(new Error('db down'));
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-7',
+      effectiveContent: 'cc @alice',
+    });
+    expect(notifyCalls.length).toBe(1);
+    expect(notifyCalls[0].recipeAuthorId).toBe('author-1');
   });
 });

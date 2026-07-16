@@ -1,9 +1,10 @@
 # F24 — Recipe Version Immutability Guards
 
-> **Validation status (2026-07-04): ✅ Valid**
+> **Validation status (2026-07-13): ✅ Valid**
 >
-> - All FIELD_LABELS fields verified to exist on `recipeVersions`; components are props-based; plan is self-contained.
-> - Minor: verify the `GET /recipes/:slug/versions` route exists as assumed (recipe/index.ts:264).
+> - All `FIELD_LABELS` fields verified on `recipeVersions` (`packages/db/src/schema.ts:176-239`); components are props-based; plan is self-contained.
+> - `GET /recipes/:slug/versions` exists (`recipe/index.ts:262`, was cited as :264). Catch-all `/:slugOrId` at line 300 — register the immutability PATCH/PUT rejections before it.
+> - Note on the known `currentVersion` trap: the plan is safe. `recipes` has a `currentVersionId` **column** (`schema.ts:116`) and a `versions` **relation** (loaded by `recipe/model.ts:236` `findById`), but there is NO `currentVersion` relation. The guard correctly uses `.versions` + `.currentVersionId`, so it never touches the missing relation.
 
 ## Overview
 

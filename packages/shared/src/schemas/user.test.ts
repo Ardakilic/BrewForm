@@ -12,6 +12,18 @@ describe('UserPreferencesSchema', () => {
       expect(result.data.theme).toBe('light');
       expect(result.data.locale).toBe('en');
       expect(result.data.dateFormat).toBe('YYYY_MM_DD');
+      expect(result.data.emailNotifications.mentionedInComment).toBe(true);
+    }
+  });
+
+  it('should default mentionedInComment to true when emailNotifications is partial', () => {
+    const result = UserPreferencesSchema.safeParse({
+      emailNotifications: { newFollower: false },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.emailNotifications.newFollower).toBe(false);
+      expect(result.data.emailNotifications.mentionedInComment).toBe(true);
     }
   });
 
@@ -41,9 +53,13 @@ describe('UserPreferencesSchema', () => {
         recipeLiked: true,
         recipeCommented: true,
         followedUserPosted: true,
+        mentionedInComment: false,
       },
     });
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.emailNotifications.mentionedInComment).toBe(false);
+    }
   });
 });
 

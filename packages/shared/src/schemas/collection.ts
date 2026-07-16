@@ -47,13 +47,16 @@ export const CollectionReorderSchema = z.object({
 });
 
 /**
- * Validates collection-list query parameters (pagination + optional visibility filter).
+ * Validates collection-list query parameters (pagination + optional visibility
+ * filter + optional recipe context).
  * Used by GET /api/v1/collections and GET /api/v1/users/:userId/collections.
  */
 export const CollectionListFilterSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   perPage: z.coerce.number().int().positive().max(100).default(20),
   visibility: VisibilityEnum.optional(),
+  /** Optional recipe context — list items flag membership via `containsRecipe`. */
+  recipeId: z.string().optional(),
 });
 
 /** Inferred TypeScript type for collection-creation payloads. */

@@ -1,6 +1,10 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
+import { createLogger } from '@/utils/logger.ts';
+
+const log = createLogger('ErrorPage');
 
 interface Props {
   statusCode: number;
@@ -31,6 +35,14 @@ function ErrorPage({ statusCode, message, illustration }: Props) {
 /** 404 page (noindex) with a home link; wired into the router's catch-all and the error boundary. */
 export function NotFoundPage() {
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'NotFoundPage mounted');
+    return () => {
+      log.debug({}, 'NotFoundPage unmounted');
+    };
+  }, []);
+
   return (
     <ErrorPage
       statusCode={404}
@@ -43,6 +55,14 @@ export function NotFoundPage() {
 /** 500 page (noindex); rendered by the router's `RootErrorBoundary` for 5xx route errors. */
 export function ServerErrorPage() {
   const { t } = useTranslation();
+
+  useEffect(() => {
+    log.debug({}, 'ServerErrorPage mounted');
+    return () => {
+      log.debug({}, 'ServerErrorPage unmounted');
+    };
+  }, []);
+
   return (
     <ErrorPage
       statusCode={500}

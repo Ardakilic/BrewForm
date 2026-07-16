@@ -1,5 +1,17 @@
 # F29 — Weekly Personalized Email Digest
 
+> **Validation status (2026-07-13): ✅ Valid — infrastructure assumptions verified; two corrections**
+>
+> All load-bearing "Current state" claims check out against the tree:
+> - Notify pipeline (`utils/notify/index.ts`): `getTransporter`/`closeTransporter`, `sendEmail` skips `APP_ENV=test`, `renderTemplate` HTML-escapes via `escapeHtml`, `appBaseUrl()`, and `notifyFollowersOfNewRecipe` batches at `BATCH_SIZE = 5` (:253) — all present.
+> - `Deno.cron` scheduler exists: `utils/jobs/cron.ts` registers `evaluate-badges` (`'0 * * * *'`) via dynamic import + try/catch + `createLogger('jobs')`; `cron.test.ts` (D39) stubs `Deno.cron` and asserts single registration — the `weekly-digest` entry and its test slot straight into this pattern.
+> - `userPreferences` flat booleans (`newFollower`/`recipeLiked`/`recipeCommented`/`followedUserPosted`, all default true) + `locale`/`timezone`; no digest flag today (schema.ts:103-107). Trending infra present: `recipe_visibility_like_count_idx` (schema.ts:167), `recipeVersions.brewMethod` + `recipe_version_brew_method_idx` (schema.ts:191,221). `admin` module + `adminMiddleware` (`middleware/auth.ts:162`) exist for the manual-trigger route.
+>
+> **Correction 1 — template extension.** Email template *sources* are MJML (`apps/api/src/templates/email/*.mjml`), compiled to `generated/*.ts` by `make email-build` (Makefile:55 → `deno task email-build`). The design text names `weekly-digest.html`; it should be `weekly-digest.mjml` → `generated/weekly-digest.ts`, matching the eight existing templates.
+> **Correction 2 — the `mentionedInComment` precedent is now complete end-to-end (was: "weaker than stated").** As of F04 (2026-07-13, verified in tree) `mentionedInComment` is no longer just a DB column + comment-service gate — it is surfaced through the full preferences plumbing: exposed in the shared `emailNotifications` object (now 5 flags, `schemas/user.ts:20-31`), flattened by the `/api/v1/preferences` PATCH handler (`preference/index.ts:98`), present in the `responses/preference.ts` output schema (`:27`), and toggled in `SettingsPage` (`:349-354`). This makes the plan's route — add `weeklyDigest` to `emailNotifications` so the existing PATCH flow picks it up unchanged — a proven, working pattern: `mentionedInComment` is the exact end-to-end precedent to follow. `weeklyDigestLastSentAt` is a new nullable timestamp on a table otherwise all booleans/varchars — fine, just novel.
+>
+> Verdict: buildable as specified once the two corrections are folded in; effort **M** stands.
+
 ## Summary
 
 An opt-in weekly email summarising: top new recipes from users you follow, trending recipes in your favourite brew methods, and badges you earned this week. Built on the existing singleton nodemailer transporter in `apps/api/src/utils/notify` and the established `Deno.cron()` job pattern in `apps/api/src/utils/jobs/cron.ts`. Opt-in via a new `userPreferences` flag (default **off**).
@@ -61,7 +73,7 @@ Deno.cron('weekly-digest', '0 8 * * 1', async () => { // Mondays 08:00 UTC
 - `service.ts` — `createLogger('digest-service')`:
   - `buildDigest(userId)` — assembles the three sections; returns `null` when **all** sections are empty (never send an empty email).
   - `sendWeeklyDigests()` — iterates opted-in users in batches of 5 (mirror `notifyFollowersOfNewRecipe`), renders the template, sends via a new exported `sendDigestEmail` helper in `utils/notify` (reuses `getTransporter()`/test-skip/logging), then `markDigestSent`. Failures per user are logged and never abort the run.
-- Email template: `apps/api/src/templates/email/weekly-digest.html` → compiled to `apps/api/src/templates/email/generated/weekly-digest.ts` (same generated-template pipeline as `new-follower.ts` etc.). All interpolations go through `renderTemplate` (HTML-escaped). Footer links to `${appBaseUrl()}/settings` for one-click preference change.
+- Email template: `apps/api/src/templates/email/weekly-digest.mjml` → compiled to `apps/api/src/templates/email/generated/weekly-digest.ts` (same generated-template pipeline as `new-follower.ts` etc.). All interpolations go through `renderTemplate` (HTML-escaped). Footer links to `${appBaseUrl()}/settings` for one-click preference change.
 
 ### API endpoints
 

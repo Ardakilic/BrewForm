@@ -1,12 +1,13 @@
 # F15 — Content Moderation Queue
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >
-> - `'escalated'` is not a valid report status — `REPORT_STATUS_VALUES = ['pending','reviewed','resolved','dismissed']`; drop or formally add the enum value first.
-> - `resolveReport` / `dismissReport` ALREADY EXIST (admin/service.ts:463/:472, admin/model.ts:411/:420) — the plan re-adds them with conflicting signatures.
-> - Admin service signatures take `adminId` first: `banUser(adminId, userId, reason?)`, `softDeleteRecipe(adminId, recipeId)` — the plan's argument order is wrong.
-> - Raw `auditLogs` inserts should go through `model.createAuditLog` (admin/model.ts:429).
-> - No TanStack Query — use react-router v8 loaders + the custom fetch client.
+> - `'escalated'` is still NOT a valid status — `REPORT_STATUS_VALUES = ['pending','reviewed','resolved','dismissed']` (packages/shared/src/constants/report-status.ts:7). The escalate route + `escalateReport` require adding the enum value first (+ migration); drop it or formalize it.
+> - `resolveReport`/`dismissReport` ALREADY EXIST with DIFFERENT signatures: service `resolveReport(adminId, id)` (admin/service.ts:462), `dismissReport(adminId, id)` (:471), delegating to model `resolveReport(id, resolvedBy)` (admin/model.ts:421) + `model.createAuditLog(...)`. The plan's `resolveReport(reportId, adminId, action)` / `dismissReport(reportId, adminId)` conflict — rename the new action-taking fn (e.g. `moderateReport`) or extend the existing ones; don't redefine.
+> - Admin service signatures take `adminId` FIRST: `banUser(adminId, userId, reason?)` (:52), `softDeleteRecipe(adminId, recipeId)` (:214) — the plan's resolveReport→banUser/softDeleteRecipe calls have the wrong order and omit adminId.
+> - Raw `db.insert(auditLogs)` should go through `model.createAuditLog(adminId, action, entity, entityId?, details?)` (admin/model.ts:439).
+> - Existing routes `/reports` (index.ts:459), `/reports/:id/resolve` (:477), `/reports/:id/dismiss` (:493) already cover resolve/dismiss — the queue overlaps them; no `/moderation/*` yet. Report POST is rate-limited 3/15min (D38, report/index.ts:21-23) but does NOT auto-flag.
+> - No TanStack Query — ModerationQueuePage `useQuery` → react-router v8 loader + custom fetch. Auto-flag hooks: `createRecipe` (recipe/service.ts:161) and comment create (comment/service.ts:115) already fire-and-forget `evaluateBadges` — add `checkContentForAutoFlags` the same fire-and-forget way.
 
 ## Overview
 

@@ -1,9 +1,10 @@
 # F23 — Image Optimisation Pipeline
 
-> **Validation status (2026-07-04): 🔧 Rough — needs design decisions**
+> **Validation status (2026-07-13): 🔧 Rough — needs design decisions**
 >
-> - The image-processing library is "TBD" and all image operations are stubs returning the originals — the core value is unimplementable until a library (e.g. sharp-equivalent for the runtime) is chosen.
-> - Schema/API surface is fine (photos table indeed lacks a blurPlaceholder column, as the plan assumes).
+> - Core blocker unchanged: the image-processing library is still TBD and every conversion (`convertToWebP` / `generateResponsiveSizes` / `generateBlurPlaceholder`) is a stub returning the original bytes. Unimplementable until a Deno/WASM codec is chosen.
+> - `photos` table still lacks `blurPlaceholder` (`packages/db/src/schema.ts:308-332`) — the additive-column assumption holds.
+> - Correction: the current pipeline already generates thumbnails CLIENT-SIDE (`<canvas>` in `PhotoUpload.tsx`); the server only stores pre-resized bytes via `saveThumbnail` (`utils/upload/index.ts:100-112`). Storage is a pluggable driver — local `/uploads/<name>` or S3/garage `${S3_PUBLIC_URL}/<name>` (`utils/upload/index.ts:72-85`), not a fixed path. `processAndUploadPhoto` would replace the client-side approach, and the migration job's `fetch(photo.url)` must handle both relative-local and absolute-S3 URLs.
 
 ## Overview
 

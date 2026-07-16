@@ -1,4 +1,3 @@
-// deno-lint-ignore-file require-await
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';

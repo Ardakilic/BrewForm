@@ -1,5 +1,11 @@
 # F31 — Embeddable Recipe Widgets
 
+> **Validation status (2026-07-13): ✅ Valid**
+>
+> - Verified. `share.ts` serves `GET /:slug` mounted at `/share` (`routes/index.ts:41`, cited :40), returns `RECIPE_NOT_FOUND_HTML` unless `visibility === 'public'`, exports `OG_TEMPLATE`, and uses `escapeHtml`/`escapeHtmlAttr` + `config.PUBLIC_APP_URL || config.APP_URL`. `getRecipeMeta` returns exactly the documented shape (`recipe/service.ts:625-644`).
+> - Recipe route order confirmed: catch-all `/:slugOrId` at `recipe/index.ts:300` — register `/:slug/embed` before it. The `oembed` route is net-new (absent from `routes/index.ts`). Visibility values `draft|private|unlisted|public` (`constants/visibility.ts`).
+> - `ShareSection` matches: props `{ slug, title, visibility }`, returns `null` for `private`/`draft`, `copyState` pattern, QR via `/api/v1/qrcode/recipe/:slug.svg`, 4 social buttons (`ShareSection.tsx`). `getApiOrigin()` is not yet exported from `client.ts` — the plan's proposal to add it is correct (the client resolves `runtimeConfig.apiUrl → VITE_API_URL → /api/v1`, `client.ts:12-14`).
+
 ## Summary
 
 Let public recipes be embedded anywhere on the web: `GET /api/v1/recipes/:slug/embed` returns a small, self-contained, sanitized HTML recipe card designed for an `<iframe>`; `GET /api/v1/oembed` implements the oEmbed provider protocol so platforms (WordPress, Notion, Discourse, etc.) auto-unfurl BrewForm links; and `ShareSection` gains a "Copy embed code" button. Public-visibility recipes only. Backlinks from embeds are an SEO channel.

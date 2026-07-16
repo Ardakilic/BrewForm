@@ -482,17 +482,28 @@ describe(
   { name: 'collection service — listMyCollections', sanitizeResources: false, sanitizeOps: false },
   () => {
     let user: typeof users.$inferSelect;
+    let recipe: typeof recipes.$inferSelect;
     const colIds: string[] = [];
+    const recipeIds: string[] = [];
 
     beforeAll(async () => {
       user = await createUser('svc-list');
       const c1 = await createCollectionRow(user.id, 'C1', 'private');
       const c2 = await createCollectionRow(user.id, 'C2', 'public');
       colIds.push(c1.id, c2.id);
+      recipe = await createRecipe(user.id);
+      recipeIds.push(recipe.id);
+      // C1 contains the recipe; C2 does not
+      await db.insert(collectionItems).values({
+        collectionId: c1.id,
+        recipeId: recipe.id,
+        sortOrder: 0,
+      });
     });
 
     afterAll(async () => {
       await cleanupCollections(colIds);
+      await cleanupRecipes(recipeIds);
       await cleanupUsers([user.id]);
     });
 
@@ -507,6 +518,22 @@ describe(
       expect(result.total).toBe(1);
       for (const c of result.collections) {
         expect((c as any).visibility).toBe('public');
+      }
+    });
+
+    it('marks containsRecipe per collection when a recipeId context is given', async () => {
+      const result = await service.listMyCollections(user.id, 1, 10, undefined, recipe.id);
+      expect(result.total).toBe(2);
+      const byName = new Map(result.collections.map((c) => [(c as any).name, c as any]));
+      expect(byName.get('C1')?.containsRecipe).toBe(true);
+      expect(byName.get('C2')?.containsRecipe).toBe(false);
+    });
+
+    it('sets containsRecipe to false when no recipeId is given', async () => {
+      const result = await service.listMyCollections(user.id, 1, 10);
+      expect(result.collections.length).toBe(2);
+      for (const c of result.collections) {
+        expect((c as any).containsRecipe).toBe(false);
       }
     });
   },

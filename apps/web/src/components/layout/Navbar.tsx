@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { authApi } from '../../api/index.ts';
+import { NotificationBell } from './NotificationBell.tsx';
+import { useMediaQuery } from '../../hooks/useMediaQuery.ts';
 
 const FOCUSABLE_SELECTOR =
   'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -187,6 +189,10 @@ export function Navbar() {
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
+  // Tailwind `md` breakpoint (768px — default theme, not overridden in globals.css).
+  // Coordinates which single NotificationBell instance is mounted (desktop nav vs
+  // mobile drawer) so duplicate unread-count requests/listeners never occur.
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   useEffect(() => {
     if (user) return;
@@ -282,6 +288,9 @@ export function Navbar() {
               </li>
             )}
           </ul>
+
+          {/* Notification bell — only for authenticated users, mounted only on desktop */}
+          {isAuthenticated && isDesktop && <NotificationBell />}
 
           {/* Theme switcher — Base UI Select, styled with CSS custom properties */}
           <ThemeSwitcher theme={theme} setTheme={setTheme} t={t} />
@@ -454,8 +463,11 @@ export function Navbar() {
               </ul>
             </nav>
 
-            {/* Footer: ThemeSwitcher + auth actions */}
+            {/* Footer: notification bell + ThemeSwitcher + auth actions */}
             <div className='border-t border-[color:var(--border-primary)] px-4 py-4 flex flex-col gap-3'>
+              {isAuthenticated && !isDesktop && (
+                <NotificationBell onNavigate={() => setIsMenuOpen(false)} />
+              )}
               <ThemeSwitcher theme={theme} setTheme={setTheme} t={t} />
 
               {isAuthenticated

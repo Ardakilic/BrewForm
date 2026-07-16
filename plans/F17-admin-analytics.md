@@ -1,9 +1,11 @@
 # F17 — Admin Analytics Dashboard Improvements
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — raw-SQL/date-pattern conflict**
 >
-> - Growth endpoints ALREADY EXIST: admin exposes `/analytics/users`, `/analytics/recipes`, `/analytics/top-recipes`, `/analytics/top-users` (`getUserGrowth`/`getRecipeGrowth`/`getDashboardStats` are implemented) — build on them instead of re-adding.
-> - No TanStack Query, and the API client is a custom fetch wrapper (not axios) — `responseType: 'blob'` for CSV download is impossible with it; use a direct `fetch` + blob download instead.
+> - Growth endpoints ALREADY EXIST: `/analytics/users` (admin/index.ts:54), `/analytics/recipes` (:70), `/analytics/top-recipes` (:86), `/analytics/top-users` (:102), `/stats` (:40); `getUserGrowth`/`getRecipeGrowth`/`getDashboardStats`/`getTopRecipes`/`getTopUsers` implemented in admin model+service. New `/analytics/trends|retention|export` don't exist — build on the existing ones.
+> - Plan's `to_char(...)` GROUP BY and `.union()` conflict with convention "No raw SQL, no Postgres-specific operators". The established pattern (`getUserGrowth`, admin/model.ts:505) selects raw `createdAt` rows and buckets by date in JS — mirror that; the `fillMissingDates` helper is fine.
+> - No TanStack Query + custom fetch client → AdminDashboard `useQuery` must become a loader/`useLoaderData`; CSV `responseType:'blob'` is impossible with the wrapper — use direct `fetch()` + `blob()` download. AdminDashboard exists (router.tsx:317).
+> - `apps/web/src/api/types.ts` was DELETED (D42) — put AnalyticsTrends/RetentionMetrics in packages/shared (z.infer), not that file.
 
 ## Overview
 

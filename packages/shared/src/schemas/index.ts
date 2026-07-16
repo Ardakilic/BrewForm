@@ -69,6 +69,8 @@ export { PhotoUploadSchema } from './photo.ts';
 export { FollowSchema } from './follow.ts';
 export type { Follow } from './follow.ts';
 export { ReportCreateSchema, ReportFilterSchema } from './report.ts';
+export { NotificationQuerySchema } from './notification.ts';
+export type { NotificationQuery } from './notification.ts';
 export {
   BrewMethodCompatibilityCreateSchema,
   BrewMethodCompatibilityUpdateSchema,
@@ -105,6 +107,7 @@ export type { PhotoOutput } from './responses/photo.ts';
 export type { ReportOutput } from './responses/report.ts';
 export type { SetupOutput } from './responses/setup.ts';
 export type { UserPreferencesOutput } from './responses/preference.ts';
+export type { NotificationOutput, UnreadCountOutput } from './responses/notification.ts';
 export type {
   FollowerListItemOutput,
   FollowingListItemOutput,

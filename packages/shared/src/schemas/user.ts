@@ -22,11 +22,13 @@ export const UserPreferencesSchema = z.object({
     recipeLiked: z.boolean().default(true),
     recipeCommented: z.boolean().default(true),
     followedUserPosted: z.boolean().default(true),
+    mentionedInComment: z.boolean().default(true),
   }).default({
     newFollower: true,
     recipeLiked: true,
     recipeCommented: true,
     followedUserPosted: true,
+    mentionedInComment: true,
   }),
 });
 

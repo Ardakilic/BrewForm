@@ -95,6 +95,7 @@ preference.patch(
       flatData.recipeLiked = body.emailNotifications.recipeLiked;
       flatData.recipeCommented = body.emailNotifications.recipeCommented;
       flatData.followedUserPosted = body.emailNotifications.followedUserPosted;
+      flatData.mentionedInComment = body.emailNotifications.mentionedInComment;
     }
 
     const prefs = await service.updatePreferences(userId, flatData);

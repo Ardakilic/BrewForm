@@ -89,4 +89,31 @@ describe('BanDialog', () => {
     render(<BanDialog {...defaultProps} open={false} />);
     expect(screen.queryByText(/admin\.users\.banDialogTitle/)).not.toBeInTheDocument();
   });
+
+  it('resets the reason when the dialog is closed and reopened', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<BanDialog {...defaultProps} />);
+    const textarea = screen.getByPlaceholderText('admin.users.banReasonPlaceholder');
+    await user.type(textarea, 'Spam');
+    expect(textarea).toHaveValue('Spam');
+
+    rerender(<BanDialog {...defaultProps} open={false} />);
+    rerender(<BanDialog {...defaultProps} open />);
+
+    expect(screen.getByPlaceholderText('admin.users.banReasonPlaceholder')).toHaveValue('');
+  });
+
+  it('resets the reason when the target user changes', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<BanDialog {...defaultProps} />);
+    const textarea = screen.getByPlaceholderText('admin.users.banReasonPlaceholder');
+    await user.type(textarea, 'Spam');
+    expect(textarea).toHaveValue('Spam');
+
+    rerender(
+      <BanDialog {...defaultProps} user={{ id: 'u2', username: 'bob', displayName: 'Bob B' }} />,
+    );
+
+    expect(screen.getByPlaceholderText('admin.users.banReasonPlaceholder')).toHaveValue('');
+  });
 });

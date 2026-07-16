@@ -36,12 +36,17 @@ export async function findById(id: string) {
 /**
  * Fetch a paginated list of a user's collections (all visibilities), with recipeCount.
  * Returns `{ collections, total }` where each collection has a computed `recipeCount`.
+ *
+ * When `recipeId` is provided, each row also carries `containsRecipe` flagging
+ * whether the collection already contains that recipe (used by the web
+ * AddToCollectionModal checkmarks); otherwise `containsRecipe` is `false`.
  */
 export async function findByUserId(
   userId: string,
   page: number,
   perPage: number,
   visibility?: Visibility,
+  recipeId?: string,
 ): Promise<{ collections: Record<string, unknown>[]; total: number }> {
   const where: SQL | undefined = visibility
     ? and(
@@ -72,9 +77,25 @@ export async function findByUserId(
     : [];
   const countMap = new Map(countRows.map((r) => [r.collectionId, r.count]));
 
+  // When a recipe context is given, batch-query which of these collections
+  // already contain that recipe so callers can flag membership per row.
+  const membershipRows = recipeId && collectionIds.length
+    ? await db
+      .select({ collectionId: collectionItems.collectionId })
+      .from(collectionItems)
+      .where(
+        and(
+          eq(collectionItems.recipeId, recipeId),
+          inArray(collectionItems.collectionId, collectionIds),
+        ),
+      )
+    : [];
+  const membershipSet = new Set(membershipRows.map((r) => r.collectionId));
+
   const collectionsWithCount = data.map((c) => ({
     ...c,
     recipeCount: countMap.get(c.id) ?? 0,
+    containsRecipe: recipeId ? membershipSet.has(c.id) : false,
   }));
 
   return { collections: collectionsWithCount, total: totalResult[0].count };
@@ -92,20 +113,31 @@ export async function findPublicByUserId(
 }
 
 /**
+ * A public-collection list row as returned by {@link findAllPublic}: the base
+ * collection columns plus a computed `recipeCount` and the owner's mini author
+ * relation (`user`). Exported so the service layer consumes model rows already
+ * typed, instead of widening to `Record<string, unknown>` and re-asserting.
+ */
+export type PublicCollectionRow = typeof collections.$inferSelect & {
+  recipeCount: number;
+  user: { username: string; displayName: string | null; avatarUrl: string | null } | null;
+};
+
+/**
  * Fetch all public collections across all users, paginated, with a per-collection
  * recipeCount and the owner's mini author projection. Excludes soft-deleted rows.
  * Used by the global "browse public collections" endpoint.
  *
  * @param page    - 1-based page number.
  * @param perPage - Page size.
- * @returns `{ collections: Record<string, unknown>[]; total: number }` where each
+ * @returns `{ collections: PublicCollectionRow[]; total: number }` where each
  *          collection row includes `recipeCount` and a nested `user` relation
  *          (id, username, displayName, avatarUrl) for the owner.
  */
 export async function findAllPublic(
   page: number,
   perPage: number,
-): Promise<{ collections: Record<string, unknown>[]; total: number }> {
+): Promise<{ collections: PublicCollectionRow[]; total: number }> {
   const where = and(eq(collections.visibility, 'public'), isNull(collections.deletedAt));
 
   const [data, totalResult] = await Promise.all([

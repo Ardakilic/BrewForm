@@ -1,9 +1,9 @@
 # Technical Debt — BrewForm
 
 > Status ledger for technical-debt items. Issues categorised by severity and area.
-> Last full audit: **2026-07-04** (plan-by-plan verification against `main`). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
+> Last full audit: **2026-07-13** (verification audit of waves 1–4 + F01 recipe collections + a legacy D01–D33 citation sweep against `main`; prior baseline audit was 2026-07-04). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
 
-**All debt items resolved.** _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`.)_
+**All ledgered D-items are resolved.** Open, non-blocking deferred items are tracked separately in [`plans/D99-debts.md`](D99-debts.md), which gained items **D99.5–D99.9** on 2026-07-13. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`.)_
 
 ---
 
@@ -12,7 +12,7 @@
 ### 1.1 Vendor Update Missing Ownership Check
 - **Status: Resolved** (date unknown — no archive entry)
 - **Issue**: `updateVendor()` accepted `_userId` but never used it — any authenticated user could update any vendor.
-- **Verified fix**: `apps/api/src/modules/vendor/service.ts:68` now enforces `vendor.createdBy !== userId && !isAdmin`; `createdBy` column + relations exist in `packages/db/src/schema.ts:470`; admin service/model pass `createdBy` through.
+- **Verified fix**: `apps/api/src/modules/vendor/service.ts:82` now enforces `vendor.createdBy !== userId && !isAdmin`; `createdBy` column + relations exist in `packages/db/src/schema.ts:477`; admin service/model pass `createdBy` through.
 - **PRD**: [`plans/D01-vendor-ownership-check.md`](D01-vendor-ownership-check.md)
 
 ### 1.2 Duplicate Email Transporter (Connection Leak)
@@ -21,17 +21,18 @@
 - **Verified fix**: `apps/api/src/modules/auth/email.ts:3-4` imports `getTransporter`/`appBaseUrl`/`escapeHtml`; the only remaining `createTransport` is the singleton in `apps/api/src/utils/notify/index.ts:39`.
 - **PRD**: [`plans/D02-email-transporter-consolidation.md`](D02-email-transporter-consolidation.md)
 
-### 1.3 Raw SQL in Equipment Model — **RESOLVED** (2026-07-06)
-- **Status: Resolved** (2026-07-06 via Wave 2)
-- **File**: `apps/api/src/modules/equipment/model.ts:88` (`getRecipesUsingEquipment`), raw subquery at `:103-107`
+### 1.3 Raw SQL in Equipment Model — **RESOLVED** (2026-07-06; documented raw-SQL exception)
+- **Status: Resolved** (2026-07-06 via Wave 2) — resolved with an accepted, documented raw-SQL exception.
+- **File**: `apps/api/src/modules/equipment/model.ts:106` (`getRecipesUsingEquipment`), raw `exists` subquery at `:126`
 - **Issue**: Raw SQL subquery `sql\`... IN (SELECT re.recipe_version_id FROM recipe_equipment re WHERE re.equipment_id = ...)\`` violated the project's "no raw SQL" rule (AGENTS.md), bypassing Drizzle's type safety.
-- **Incidental sub-finding (folded into the fix)**: the count branch at `model.ts:111` duplicated the visibility/`deletedAt` predicates of the list branch — now shared in one condition set.
-- **Fix**: Rewritten with the Drizzle query builder / `exists()` subquery; D39 Tier 1 (`equipment/model.test.ts`) landed first as the regression net.
+- **Incidental sub-finding (fixed)**: the count branch (`model.ts:137`) duplicated the visibility/`deletedAt` predicates of the list branch — now shared in one `recipeConditions` set. **This predicate dedup is what landed.**
+- **Fix / accepted exception**: The correlated subquery **retains a raw `sql` template by documented design** — see the `NOTE` at `model.ts:116-124`: Drizzle's `exists()` combinator emits the wrong table alias under the relational `db.query.recipes.findMany` API (correlating against `recipes.currentVersionId` resolves to the physical table name, which Postgres rejects). The `sql` tag resolves the correlation against the outer aliased query correctly. This is Decision 1 of the Wave 2 proposal — so no `exists()` rewrite was performed. D39 Tier 1 (`equipment/model.test.ts`) is the regression net.
+- **Raw-SQL sweep (2026-07-13)**: the verification audit swept the codebase for stray `sql` uses and found **one genuine stray** — `badge/model.ts:67` used `sql\`... is not null\`` — fixed 2026-07-13 with `isNotNull()`. The remaining `sql` uses are accepted idiomatic exceptions: atomic ±1 counter updates, `count(distinct …)`, and the `SELECT 1` health-check probe.
 - **PRD**: [`plans/D03-raw-sql-drizzle.md`](D03-raw-sql-drizzle.md)
 
 ### 1.4 Recipe Fork Button Navigates to Non-Existent Route
 - **Status: Resolved** (2026-06-05)
-- **Verified fix**: `apps/web/src/router.tsx:121` registers `recipes/:id/fork`; `RecipeForkPage.tsx` exists.
+- **Verified fix**: `apps/web/src/router.tsx:178` registers `recipes/:id/fork`; `RecipeForkPage.tsx` exists.
 - **PRD**: [`plans/D04-fork-navigation-fix.md`](D04-fork-navigation-fix.md)
 
 ### 1.5 Admin User Mutations Ignore Soft-Delete — **RESOLVED** (2026-07-05)
@@ -79,12 +80,14 @@
 - **Files**: `preference/service.ts:26`, `preference/index.ts:85`, `bean/service.ts:34,47`, `setup/service.ts:38`, `taste/model.ts:50`, `recipe/model.ts:466,473`, `badge/model.ts:131`, `utils/notify/index.ts:27,204` (`NotifyRecipient` interface + recipients `.filter` on `prefs.followedUserPosted`), `equipment/service.ts:42` (all under `apps/api/src/`); stretch: library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`.
 - **Issue**: `data: any` payloads and untyped casts in modules D05 never covered — validated Zod types were dropped at the route → service boundary.
 - **Resolution (2026-07-06 via Wave 2)**: P2 scope complete — all twelve `any` locations replaced with shared-schema-inferred / Drizzle relation-row types. P3 stretch (library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`) documented with justification comments rather than removed, pending clean typed alternatives in the upstream libraries.
+- **Regression note (2026-07-13)**: F01 (recipe collections, 2026-07-09) reintroduced 4 `any` at the collection service boundary (`collection/service.ts` — `toDetailOutput` signature + three `.map` callbacks) plus 1 `catch (err: any)` in `AddToCollectionModal.tsx`. All five were fixed 2026-07-13 — the service types via the `NonNullable<Awaited<ReturnType<typeof model.findById>>>` relation-row pattern and the modal catch via `ApiError` narrowing.
 - **PRD**: [`plans/D34-residual-any-elimination.md`](D34-residual-any-elimination.md)
 
 ### 2.7 Untracked Lint Suppressions — **RESOLVED** (2026-07-07 via wave-4-independent-fillers)
 - **Files**: file-level `deno-lint-ignore-file no-explicit-any require-await` in `packages/shared/src/schemas/compatibility.ts:1`, `schemas/report.ts:1`, `logger/index.ts:1`, `logger/types.ts:1`; `apps/api/src/utils/openapi/index.ts:1` (+ `as any` at `:28`); line-level `no-unused-vars` in `middleware/cors.ts:5`, `middleware/requestId.ts:12`.
 - **Issue**: file-wide suppressions disable rules for all future edits to those files; none were in D09's audited baseline.
-- **Fix**: Deleted 6 vestigial file-level directives (rules are in `deno.json` `rules.exclude`); narrowed `openapi/index.ts` to line-level with justification; deleted dead `const log` + import in `cors.ts`/`requestId.ts`. Production source now has zero `deno-lint-ignore-file` directives.
+- **Fix**: Deleted 6 vestigial file-level directives (rules are in `deno.json` `rules.exclude`); narrowed `openapi/index.ts` to line-level with justification; deleted dead `const log` + import in `cors.ts`/`requestId.ts`.
+- **Correction (2026-07-13)**: the "production source now has zero `deno-lint-ignore-file` directives" claim was **inaccurate between 2026-07-07 and 2026-07-13** — the verification audit found **6 more** vestigial file-level directives: 4 pre-dating D35's scope (in the `coffee-varieties/` and `equipment/` pages) and 2 reintroduced by F01 (`collection/service.ts`, `CollectionRecipeList.tsx`). All 6 were removed 2026-07-13, so production source now genuinely has zero `deno-lint-ignore-file` directives.
 - **PRD**: [`plans/D35-untracked-lint-suppressions.md`](D35-untracked-lint-suppressions.md)
 
 ---
@@ -93,7 +96,7 @@
 
 ### 3.1 No Data Fetching Cache Layer (Frontend)
 - **Status: Resolved** (pilot scope; date unknown — no archive entry)
-- **Verified fix**: 6 pages export loaders, 4 components use `useFetcher`; `static-cache.ts`, `recipe-filters.ts`, and `routes/{like,favourite,rate,follow,comments}.ts` exist.
+- **Verified fix**: 10 pages export loaders (F01 added 4 collection pages), 4 components use `useFetcher`; `static-cache.ts`, `recipe-filters.ts`, and `routes/{like,favourite,rate,follow,comments}.ts` exist.
 - **Known remainder**: `RecipeFocusModePage.tsx` still fetches via `useEffect`+`useState` — the one page never migrated; absorb into future work on that page.
 - **PRD**: [`plans/D10-tanstack-query-migration.md`](D10-tanstack-query-migration.md)
 
@@ -104,12 +107,12 @@
 
 ### 3.3 Recipe Filter Logic Duplication (Model vs Service)
 - **Status: Resolved** (2026-06-06)
-- **Verified fix**: `apps/api/src/modules/recipe/model.ts:89` — shared `buildRecipeFilters(): SQL[]` used by `listRecipesFiltered` (`:219`) and `findStarred` (`:1040`).
+- **Verified fix**: `apps/api/src/modules/recipe/model.ts:89` — shared `buildRecipeFilters(): SQL[]` used by `listRecipesFiltered` (`:219`) and `findStarred` (`:1038`).
 - **PRD**: [`plans/D12-recipe-filter-logic.md`](D12-recipe-filter-logic.md)
 
 ### 3.4 Admin Soft-Delete Inconsistency
 - **Status: Resolved** (2026-06-09) — with wider scope than originally ledgered (the old `:601-606` ref was stale).
-- **Verified fix**: `isNull(deletedAt)` guards in `apps/api/src/modules/admin/model.ts` at `deleteEquipment:296`, `deleteVendor:339`, `deleteCoffeeVariety:608`, and the approve-request inner delete `:671`; double-delete idempotency locked in `admin/model.test.ts`.
+- **Verified fix**: `isNull(deletedAt)` guards in `apps/api/src/modules/admin/model.ts` at `deleteEquipment:303`, `deleteVendor:348`, `deleteCoffeeVariety:619`, and the approve-request inner delete `:686`; double-delete idempotency locked in `admin/model.test.ts`.
 - **Follow-up (resolved 2026-07-05)**: the same guard was missing on the admin **user-state** mutations — fixed in D41 (§1.5) along with the three sibling unguarded updates (`updateRecipeVisibility`/`updateEquipment`/`updateVendor`).
 - **PRD**: [`plans/D19-admin-soft-delete-fix.md`](D19-admin-soft-delete-fix.md)
 
@@ -120,17 +123,17 @@
 
 ### 3.6 `useUnitSystem` Hook is Not Reactive
 - **Status: Resolved** (2026-06-08)
-- **Verified fix**: `apps/web/src/hooks/useUnitSystem.ts:18` now reads `user?.preferences?.unitSystem` via `useAuth()` — reactive through context. (The old ledger text blamed localStorage reads; the shipped fix moved the source of truth to auth context.)
+- **Verified fix**: `apps/web/src/hooks/useUnitSystem.ts:20-21` now reads `user?.preferences?.unitSystem` via `useAuth()` — reactive through context. (The old ledger text blamed localStorage reads; the shipped fix moved the source of truth to auth context.)
 - **PRD**: [`plans/D14-fix-use-unit-system.md`](D14-fix-use-unit-system.md)
 
 ### 3.7 Comment Section Pagination
 - **Status: Resolved** (2026-06-08)
-- **Verified fix**: `apps/web/src/routes/comments.ts:25` (`listCommentsLoader`) registered in `router.tsx:233` with loader + action. (Audit note: the originally claimed root cause `setTotal(data.length)` was shown by the D15 plan itself to not exist; the real fix was the loader migration.)
+- **Verified fix**: `apps/web/src/routes/comments.ts:25` (`listCommentsLoader`) registered in `router.tsx:290` with loader + action. (Audit note: the originally claimed root cause `setTotal(data.length)` was shown by the D15 plan itself to not exist; the real fix was the loader migration.)
 - **PRD**: [`plans/D15-fix-comment-pagination.md`](D15-fix-comment-pagination.md)
 
 ### 3.8 Settings Page — Account Deletion Doesn't Logout
 - **Status: Resolved** (2026-06-08)
-- **Verified fix**: `apps/web/src/pages/settings/SettingsPage.tsx:105-109` calls `logout()` + `navigate('/')` after deletion (old `:57-63` ref stale; flow now at `:99-110`); en/tr i18n keys added.
+- **Verified fix**: `apps/web/src/pages/settings/SettingsPage.tsx:116-117` calls `logout()` + `navigate('/')` after deletion (old `:57-63` ref stale; `handleDeleteAccount` at `:110`); en/tr i18n keys added.
 - **PRD**: [`plans/D16-fix-account-deletion.md`](D16-fix-account-deletion.md)
 
 ### 3.9 Recipe Service Layer Imports `drizzle-orm` Directly
@@ -180,7 +183,7 @@
 
 ### 5.1 `report.status` Uses String Instead of Enum
 - **Status: Resolved** (2026-06-10)
-- **Verified fix**: `reportStatusEnum` pgEnum at `packages/db/src/schema.ts:60`, column at `:810` (old `:749` ref stale); `constants/report-status.ts`; shared `schemas/report.ts` derives from it.
+- **Verified fix**: `reportStatusEnum` pgEnum at `packages/db/src/schema.ts:60`, column at `:817` (old `:749`/`:810` refs stale); `constants/report-status.ts`; shared `schemas/report.ts` derives from it.
 - **PRD**: [`plans/D20-fix-report-status-enum.md`](D20-fix-report-status-enum.md)
 
 ### 5.3 `CoffeeVariety` Type Uses `string` for Dates
@@ -190,7 +193,7 @@
 
 ### 5.4 Missing Composite Indexes
 - **Status: Resolved** (2026-06-11)
-- **Verified fix**: 3 recipe composites at `schema.ts:149/158/166` plus cross-table composites.
+- **Verified fix**: 3 recipe composites at `schema.ts:150/159/167` plus cross-table composites.
 - **PRD**: [`plans/D23-add-composite-indexes.md`](D23-add-composite-indexes.md)
 
 ### 5.5 Missing `createdAt` on Join Tables — **RESOLVED** (2026-07-07 via wave-4-independent-fillers)
@@ -210,7 +213,7 @@
 ### 6.2 Logging Coverage Gaps
 - **Status: Resolved** (2026-06-20)
 - **Verified fix**: P1 services + P2 middleware + P1 pages/contexts all logged.
-- **Housekeeping**: `TODO_logs.md` still lists all P1/P2 items as pending — actively misleading; retire it. `plans/D26-expand-logging.md` still says "Status: Open" — stale header.
+- **Housekeeping (resolved)**: `TODO_logs.md` now carries a "✅ COMPLETE (2026-06-20)" historical banner and `plans/D26-expand-logging.md` reads "Status: ✅ Done" — both corrected in commit `b882b89` (2026-07-05), so the earlier "stale/misleading" note no longer applies.
 - **PRD**: [`plans/D26-expand-logging.md`](D26-expand-logging.md)
 
 ### 6.3 No Request Body Size Limits at Hono Level
@@ -220,7 +223,7 @@
 
 ### 6.4 Offset-Based Pagination
 - **Status: Resolved** (date unknown — archive pending)
-- **Verified fix**: `utils/cursor.ts`; `RecipeFilterSchema.cursor` (`recipe.ts:154`); cursor path in service + `model.findCursor`.
+- **Verified fix**: `packages/shared/src/utils/cursor.ts`; `RecipeFilterSchema.cursor` (`schemas/recipe.ts:167`); cursor path in service + `model.findCursor`.
 - **PRD**: [`plans/D27-cursor-pagination.md`](D27-cursor-pagination.md)
 
 ### 6.5 Duplicate `NotFoundPage` / Error Page Confusion — **RESOLVED** (2026-07-06 via wave-3-frontend-structure)
@@ -231,6 +234,7 @@
 - **Scope**: API models with zero tests (equipment — held D03's SQL; vendor — held D01's bug; badge/bean/comment/follow/photo/preference/qrcode/report/setup), `recipe-list/*` components (shipped by D11 untested), `RequireAuth`, plus P3 tiers (route layers, utils, web pages/components, shared schemas). `sanitize.ts` excluded — owned by D38.
 - **Tier 1 (resolved 2026-07-06 via Wave 2)**: `equipment/model.test.ts`, `vendor/model.test.ts`, `recipe-list/*` component tests, and `RequireAuth.test.tsx` all landed; D03 cites `equipment/model.test.ts` as its regression net.
 - **Tier 2/3 (resolved 2026-07-07 via wave-4-independent-fillers)**: 9 API model tests, 9 API route tests, 4 API util tests, 4 web page tests, 6 web component tests, 5 web hook/util/context tests, and 6 shared input schema tests — 43 new test files total.
+- **Audit note (2026-07-13)**: the verification audit confirmed all 43 Tier 2/3 files are substantive (no stub/placeholder tests). Separately, F01 shipped 3 collection pages (`CollectionCreatePage`, `CollectionEditPage`, `CollectionListPage`) without tests — tracked as **D99.6**, not a D39 regression.
 - **PRD**: [`plans/D39-test-coverage-backfill.md`](D39-test-coverage-backfill.md)
 
 ---
@@ -259,6 +263,8 @@ Also resolved without a ledger section above: **D21** rating-scale CHECK constra
 | **P3** | Consolidate error pages / remove dead exports | [D37](D37-consolidate-error-pages.md) | Frontend | Low |
 | **P3** | Complete i18n (admin, legal, compare, auxiliary pages) | [D40](D40-complete-i18n.md) | Frontend | Medium–High |
 | **P3** | Add `createdAt` to remaining join tables | [D43](D43-join-table-timestamps.md) | DB | Low |
+
+**Open deferred items (2026-07-13, tracked in [`plans/D99-debts.md`](D99-debts.md)):** D99.1 collection module caching, D99.5 F01 US-9 "collections containing this recipe" surfacing, D99.6 collection page tests (`CollectionCreate/Edit/List`), D99.7 i18n stragglers, D99.8 cursor keyset sargability (scale-time follow-up — row-value keyset needs a raw-SQL exception), D99.9 comment creation not visibility-gated (recipe-title disclosure via mentions — 2026-07-13 F04 security review). D99.2 (draft visibility option) is **resolved**; D99.4 (OpenAPI `security: []`) **downgraded to a style choice**. These are non-blocking and deferred until in-flight feature plans ship.
 
 **Recently resolved (2026-07-05, openspec change `wave-1-correctness-security`):** D41 (admin user mutation soft-delete guards + sibling sweep + setRole route try/catch + describeRoute) and D38 (report rate limit + sanitizer tests + AuthContext error surfacing + SessionRestoreBanner). See §1.5 and §1.6 above.
 

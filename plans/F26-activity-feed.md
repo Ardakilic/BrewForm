@@ -1,11 +1,15 @@
 # F26 — Expanded Activity Feed
 
-> **Validation status (2026-07-04): ❌ Invalid — blocked**
+> **Validation status (2026-07-13): ❌ Invalid — every 2026-07-04 blocker still stands**
 >
-> - Imports a nonexistent `models/index.ts` barrel and `brewLogModel` — there is no brewLogs table or brew-log module (blocked on F02).
-> - Reimplements an offset-only feed while `getFeed` already supports cursor + offset pagination (D27) — build on the existing implementation instead.
-> - Stale stack: `useInfiniteQuery` (no TanStack Query — use react-router v8 loaders) and `react-router-dom` imports (repo imports from 'react-router'); plan also rewrites the loader-based HomePage.
-> - Needs a rewrite against current code before it is actionable.
+> Re-validated against current code; all original blockers hold and the new notification substrate does not help.
+> - **brewLogs still absent (blocked on F02).** No `brewLogs` table in `packages/db/src/schema.ts` and no brew-log module; the plan's `brewLogModel.getFollowedBrewLogs` and the `brew_log` feed type cannot compile.
+> - **No `models/index.ts` barrel.** The plan imports `{ recipeModel, commentModel, badgeModel, brewLogModel } from '../../models/index.ts'`; modules own their own `model.ts` — no aggregate barrel exists, so every import needs rewriting.
+> - **Reimplements an offset-only feed over the existing cursor feed (D27).** `getFeed` (`follow/service.ts:93`) already delegates to `recipeModel.getFeed` with cursor + offset support, exposed at `GET /follow/feed` with a `cursor` param and `cursorEnvelope`/`cursorPaginated`/`decodeCursor` (`follow/index.ts:198`). The plan's `getExpandedFeed` fetches 100 rows per type and `.slice()`s in memory, discarding that infrastructure.
+> - **Stale frontend stack.** Plan uses `useInfiniteQuery` (no TanStack Query in the repo) and `react-router-dom`. `HomePage.tsx` is loader-based today (`useLoaderData` from `'react-router'`, HomePage.tsx:2); the plan would rewrite it back to a client-fetch pattern.
+> - **Notification substrate does not unblock this.** F04's `notifications` table holds recipient-targeted social events (things aimed at *you*), whereas this feed aggregates followed users' *public activity* — a different query surface. It is not a usable event source for F26.
+>
+> Verdict unchanged (❌): needs a full rewrite against current code (build on the cursor feed + loaders) and depends on F02 (brew logs) before it is actionable.
 
 ## Overview
 

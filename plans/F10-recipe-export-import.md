@@ -1,9 +1,11 @@
 # F10 — Recipe Export / Import
 
-> **Validation status (2026-07-04): ⚠️ Outdated — corrections below**
+> **Validation status (2026-07-13): ⚠️ Outdated — corrections below**
 >
-> - Stale (plan line ~134): `recipe.currentVersion ?? recipe.versions?.[0]` is broken — there is NO `currentVersion` Drizzle relation, only the `currentVersionId` column (schema.ts:119) plus `versions: many()`; `recipe.currentVersion` is always undefined in `db.query`. Resolve via `versions.find(v => v.id === recipe.currentVersionId)` or add a real one-relation.
-> - Rest of the plan is complete as written.
+> - Still stale (plan ~139): server-side `exportRecipeAsJson(recipe)` receives `service.getRecipe`'s shape (model.findBySlug/findById → `versions` ordered desc, NO `currentVersion`; recipesRelations still has only `versions: many()` + the `currentVersionId` column, schema.ts:120,997). So `recipe.currentVersion` is undefined server-side and it falls through to `versions?.[0]` — which happens to be the current version but is fragile; resolve via `versions.find(v => v.id === recipe.currentVersionId)`. (The FRONTEND `handleExportJson` uses `v = recipe.currentVersion`, which IS valid because the API response composes `currentVersion = versions[0]` at recipe/index.ts:326.)
+> - Verified: RecipeDetailPage has `ShareSection` (:314) and an existing `globalThis.print()` button (:198) — the "print needs no extra work" claim holds; `const v = recipe.currentVersion` at :115. `ApiError.details` is `{ field, message }[]` (client.ts:85), matching the import error handler.
+> - NEW — D42: `api/types.ts` is DELETED. Type `recipeApi.export`/`recipeApi.import` (import should return `RecipeDetailOutput` so `result.slug` isn't an untyped cast). Also the export endpoint returns RAW `c.json(exportData)` with no success envelope, but the web `api.get` unwraps `.data` — reconcile (use `success(c, exportData)`, or a raw fetch). Latent today since the export button builds JSON client-side rather than calling `recipeApi.export`.
+> - NEW — D40 i18n: export-card + import-page strings ("Export"/"Download JSON"/"Print / PDF"/"Import Recipe"/"Preview"/…) must be added to both en.json + tr.json (RecipeImportPage imports `useTranslation` but then hardcodes English).
 
 ## Overview
 

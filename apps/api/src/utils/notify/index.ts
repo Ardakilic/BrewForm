@@ -22,6 +22,7 @@ import { template as newFollowerTemplate } from '../../templates/email/generated
 import { template as recipeLikedTemplate } from '../../templates/email/generated/recipe-liked.ts';
 import { template as recipeCommentedTemplate } from '../../templates/email/generated/recipe-commented.ts';
 import { template as followedUserPostedTemplate } from '../../templates/email/generated/followed-user-posted.ts';
+import { template as mentionedInCommentTemplate } from '../../templates/email/generated/mentioned-in-comment.ts';
 
 /** A resolved notification recipient with their flat preference row. */
 interface NotifyRecipient {
@@ -32,6 +33,10 @@ interface NotifyRecipient {
 
 const logger = createLogger('notify');
 
+/**
+ * Substitute `{{key}}` placeholders in an email template with HTML-escaped
+ * values from `vars`. Placeholders with no matching key are left untouched.
+ */
 function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
     const value = vars[key];
@@ -68,6 +73,11 @@ export function closeTransporter(): void {
   }
 }
 
+/**
+ * Send a notification email via the shared SMTP transporter. A no-op (info log
+ * only) when `APP_ENV=test`. Delivery failures are logged, never thrown, so
+ * fire-and-forget callers are unaffected.
+ */
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   if (config.APP_ENV === 'test') {
     logger.info({ delivery: 'skipped', subject }, 'Notification skipped (test environment)');
@@ -90,6 +100,11 @@ export function appBaseUrl(): string {
     (config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173');
 }
 
+/**
+ * Load a notification recipient (email, username, and flat preference row) for
+ * an active user. Returns null if the user is missing, soft-deleted, or has no
+ * email address.
+ */
 async function loadRecipient(userId: string): Promise<NotifyRecipient | null> {
   const result = await db.select()
     .from(users)
@@ -170,6 +185,33 @@ export async function notifyRecipeCommented(params: {
     recipe_url: `${appBaseUrl()}/recipes/${params.recipeSlug}`,
   });
   await sendEmail(recipient.email, `New comment on ${params.recipeTitle}`, html);
+}
+
+/**
+ * Email a user that someone mentioned them (`@username`) in a comment. No-op
+ * if the recipient is missing/deleted or has the `mentionedInComment`
+ * preference disabled.
+ */
+export async function notifyMentioned(params: {
+  mentionedUserId: string;
+  mentionerUsername: string;
+  recipeTitle: string;
+  recipeSlug: string;
+}): Promise<void> {
+  logger.debug({ mentionedUserId: params.mentionedUserId }, 'notifyMentioned started');
+  const recipient = await loadRecipient(params.mentionedUserId);
+  if (!recipient) return;
+  if (recipient.prefs.mentionedInComment === false) return;
+
+  const html = renderTemplate(mentionedInCommentTemplate, {
+    app_name: 'BrewForm',
+    username: recipient.username,
+    mentioner_username: params.mentionerUsername,
+    recipe_title: params.recipeTitle,
+    recipe_url: `${appBaseUrl()}/recipes/${params.recipeSlug}`,
+  });
+  await sendEmail(recipient.email, `${params.mentionerUsername} mentioned you in a comment`, html);
+  logger.debug({ mentionedUserId: params.mentionedUserId }, 'notifyMentioned completed');
 }
 
 /**

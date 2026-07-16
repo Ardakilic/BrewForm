@@ -65,7 +65,7 @@ export async function evaluateBadges(userId: string) {
       and(
         eq(recipes.authorId, userId),
         isNull(recipes.deletedAt),
-        sql`${recipes.forkedFromId} is not null`,
+        isNotNull(recipes.forkedFromId),
       ),
     );
   const userForks = userForksResult[0].count;

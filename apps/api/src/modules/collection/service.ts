@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
 import * as model from './model.ts';
 import type { CollectionCreate, CollectionUpdate } from '@brewform/shared/schemas';
 import type { Visibility } from '@brewform/shared/types';
@@ -8,11 +7,19 @@ import * as recipeModel from '../recipe/model.ts';
 const logger = createLogger('collection-service');
 
 /**
+ * A fully-loaded collection row as returned by {@link model.findById}: the
+ * collection with its owner `user` relation and ordered `items`, each carrying
+ * the nested recipe (author + latest-version brew/drink projection). Mirrors the
+ * D34 idiom used in `recipe/service.ts`.
+ */
+type CollectionWithRelations = NonNullable<Awaited<ReturnType<typeof model.findById>>>;
+
+/**
  * Map a model.findById result (with `user` and `items` relations) to the CollectionDetailOutput
  * wire shape. Converts Date timestamps to ISO strings and projects the user to the
  * RecipeAuthorMini shape.
  */
-function toDetailOutput(collection: any): any {
+function toDetailOutput(collection: CollectionWithRelations) {
   return {
     id: collection.id,
     userId: collection.userId,
@@ -35,7 +42,7 @@ function toDetailOutput(collection: any): any {
         avatarUrl: collection.user.avatarUrl,
       }
       : { username: '', displayName: null, avatarUrl: null },
-    items: (collection.items ?? []).map((item: any) => ({
+    items: (collection.items ?? []).map((item) => ({
       id: item.id,
       collectionId: item.collectionId,
       recipeId: item.recipeId,
@@ -163,6 +170,8 @@ export async function getCollection(userId: string | null, collectionId: string)
  * @param page       - 1-based page number.
  * @param perPage    - Page size.
  * @param visibility - Optional visibility filter.
+ * @param recipeId   - Optional recipe context; when provided, each row carries
+ *   `containsRecipe` flagging whether the collection already contains that recipe.
  * @returns `{ collections, total }` where each collection has a recipeCount.
  */
 export async function listMyCollections(
@@ -170,9 +179,10 @@ export async function listMyCollections(
   page: number,
   perPage: number,
   visibility?: Visibility,
+  recipeId?: string,
 ) {
   logger.debug({ userId, page, perPage }, 'listMyCollections started');
-  const result = await model.findByUserId(userId, page, perPage, visibility);
+  const result = await model.findByUserId(userId, page, perPage, visibility, recipeId);
   logger.debug({ userId, total: result.total }, 'listMyCollections completed');
   return result;
 }
@@ -204,7 +214,7 @@ export async function listAllPublicCollections(page: number, perPage: number) {
   logger.debug({ page, perPage }, 'listAllPublicCollections started');
   try {
     const result = await model.findAllPublic(page, perPage);
-    const collections = result.collections.map((c: any) => ({
+    const mapped = result.collections.map((c) => ({
       id: c.id,
       userId: c.userId,
       name: c.name,
@@ -223,7 +233,7 @@ export async function listAllPublicCollections(page: number, perPage: number) {
         : { username: '', displayName: null, avatarUrl: null },
     }));
     logger.debug({ total: result.total }, 'listAllPublicCollections completed');
-    return { collections, total: result.total };
+    return { collections: mapped, total: result.total };
   } catch (err) {
     logger.error({ err, page, perPage }, 'listAllPublicCollections failed');
     throw err;
@@ -317,7 +327,7 @@ export async function reorderCollection(
   if (collection.userId !== userId) throw new Error('FORBIDDEN');
   const existingItems = collection.items ?? [];
   if (itemIds.length !== existingItems.length) throw new Error('REORDER_MISMATCH');
-  const existingIds = new Set(existingItems.map((i: any) => i.id));
+  const existingIds = new Set(existingItems.map((i) => i.id));
   // Reject duplicate item IDs — a duplicated payload can corrupt ordering
   if (new Set(itemIds).size !== itemIds.length) throw new Error('REORDER_MISMATCH');
   for (const id of itemIds) {

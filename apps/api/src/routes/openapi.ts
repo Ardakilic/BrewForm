@@ -76,6 +76,10 @@ export function registerOpenApi(app: Hono<AppEnv>): void {
         { name: 'Contact', description: 'Contact-form message submission' },
         { name: 'Equipment', description: 'Brewing equipment catalogue and deletion requests' },
         { name: 'Follow', description: 'Follow/unfollow, follower/following lists, and feed' },
+        {
+          name: 'Notifications',
+          description: 'In-app notification feed and read-state management',
+        },
         { name: 'Photos', description: 'Recipe photo upload and listing' },
         { name: 'Preferences', description: 'Per-user application and notification preferences' },
         { name: 'QR Codes', description: 'Recipe QR-code image generation' },

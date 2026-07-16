@@ -75,6 +75,16 @@ vi.mock('../../api/index.ts', () => ({
     registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
     logout: vi.fn().mockResolvedValue({}),
   },
+  notificationApi: {
+    unreadCount: vi.fn().mockResolvedValue({ count: 0 }),
+    list: vi.fn().mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 0, totalPages: 0 } },
+    }),
+    markRead: vi.fn().mockResolvedValue({}),
+    markAllRead: vi.fn().mockResolvedValue({ message: 'ok' }),
+  },
 }));
 
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -85,6 +95,23 @@ import { authApi } from '../../api/index.ts';
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
 const mockUseTheme = vi.mocked(useTheme);
+
+// jsdom does not implement matchMedia; stub it to a desktop viewport (matches=true)
+// so the Navbar's useMediaQuery('(min-width: 768px)') mounts the desktop nav path.
+Object.defineProperty(globalThis, 'matchMedia', {
+  value: (query: string): MediaQueryList => ({
+    matches: true,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }),
+  configurable: true,
+  writable: true,
+});
 
 // A t() that returns the Turkish value for a known set of keys, falling back to the key itself.
 // This lets us assert that the component re-renders with translated text when locale changes.

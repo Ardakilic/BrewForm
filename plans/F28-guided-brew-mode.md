@@ -1,5 +1,11 @@
 # F28 — Guided Brew Mode
 
+> **Validation status (2026-07-13): ✅ Valid**
+>
+> - All 11 brew methods confirmed in `BREW_METHODS` / `BREW_METHOD_VALUES` (`packages/shared/src/constants/brew-methods.ts:1-89`) — the exhaustive `Record<BrewMethodValue, …>` template is well-founded. `recipeVersions` supplies every field a session needs (`schema.ts:176-239`, cited 175-238).
+> - `RecipeFocusModePage` confirmed: `recipeApi.get(slug)` in `useEffect`, renders StatCards/BeanSection/BrewTimeline/EquipmentSection/TastingNotesSection from `recipe.currentVersion` (`RecipeFocusModePage.tsx:42,131-194`). `GET /recipes/:slugOrId` returns `currentVersion` (`recipe/index.ts:326,340`). F02 remains an integration point only.
+> - Correction: the focus route is now at `router.tsx:161` (`{ path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> }`), not :104 (drifted after F01/collections). Add the `recipes/:slug/brew` loader route beside it. Loader pattern is used widely (homeLoader/detailLoader/etc.); the `HomePage.tsx:18` line may have drifted but the pattern holds.
+
 ## Summary
 
 An interactive, step-by-step brew session view at `/recipes/:slug/brew`: per-brew-method step templates hydrated with the recipe version's actual numbers (dose, temperature, pre-infusion, extraction time), live countdown timers, screen wake-lock, and a completion summary. Builds on the existing distraction-free `RecipeFocusModePage` and the `BrewTimeline` visualisation. Defines — but does not depend on — a completion hook for the future brew journal (F02).
@@ -10,7 +16,7 @@ FEATURE_SUGGESTIONS §1.6 (guided brews) is the natural next step after focus mo
 
 ## Current state (verified)
 
-- `RecipeFocusModePage` (`apps/web/src/pages/recipes/RecipeFocusModePage.tsx`) renders `StatCards`, `BeanSection`, `BrewTimeline`, `EquipmentSection`, `TastingNotesSection` from `recipe.currentVersion`. It fetches with `recipeApi.get(slug)` in `useEffect` (no loader). Route: `recipes/:slug/focus` (`apps/web/src/router.tsx:104`).
+- `RecipeFocusModePage` (`apps/web/src/pages/recipes/RecipeFocusModePage.tsx`) renders `StatCards`, `BeanSection`, `BrewTimeline`, `EquipmentSection`, `TastingNotesSection` from `recipe.currentVersion`. It fetches with `recipeApi.get(slug)` in `useEffect` (no loader). Route: `recipes/:slug/focus` (`apps/web/src/router.tsx:161`).
 - `BrewTimeline` (`apps/web/src/components/recipe/BrewTimeline.tsx`) takes `extractionTimeSeconds`, `preInfusionTimeSeconds`, `flowRate` and renders a static SVG pre-infusion/extraction curve.
 - `recipeVersions` (`packages/db/src/schema.ts:175-238`) provides everything a session needs: `brewMethod` (`brewMethodEnum`), `groundWeightGrams`, `extractionTimeSeconds`, `preInfusionTimeSeconds`, `temperatureCelsius`, `extractionVolumeMl`, `brewRatio`, `grindSize`, `preparationNotes` (notNull).
 - Brew methods are single-sourced: `BREW_METHODS` / `BREW_METHOD_VALUES` in `packages/shared/src/constants/brew-methods.ts` (11 methods, each with `equipmentTypes`), per D07.

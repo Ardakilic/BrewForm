@@ -37,6 +37,10 @@ import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
 import { loader as profileLoader, UserProfilePage } from './pages/users/UserProfilePage.tsx';
 import { loader as settingsLoader, SettingsPage } from './pages/settings/SettingsPage.tsx';
+import {
+  loader as notificationListLoader,
+  NotificationListPage,
+} from './pages/notifications/NotificationListPage.tsx';
 import { SetupListPage } from './pages/setups/SetupListPage.tsx';
 import { BeanListPage } from './pages/beans/BeanListPage.tsx';
 import { EquipmentListPage } from './pages/equipment/EquipmentListPage.tsx';
@@ -204,6 +208,16 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
         loader: settingsLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'notifications',
+        element: (
+          <RequireAuth>
+            <NotificationListPage />
+          </RequireAuth>
+        ),
+        loader: notificationListLoader,
         errorElement: <RootErrorBoundary />,
       },
       {

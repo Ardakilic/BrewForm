@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import { useEffect, useMemo, useState } from 'react';
 import type { CollectionItemOutput } from '@brewform/shared/schemas';
 import { BREW_METHODS_LIST } from '@brewform/shared/constants';

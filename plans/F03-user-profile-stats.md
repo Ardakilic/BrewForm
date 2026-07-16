@@ -1,11 +1,13 @@
 # F03 — Public Profile Brew Stats Dashboard
 
-> **Validation status (2026-07-04): ✅ Valid (blocked by F02)**
+> **Validation status (2026-07-13): ❌ Blocked by F02 — plus corrections below**
 >
-> - Blocked: all stats derive from `brewLogs`, which does not exist until F02 lands.
-> - Contract inconsistency to fix: `averageRatingGiven` is typed `number | null` (plan line ~51) but the model section returns `{ average, total }` (plan lines ~148–151) — reconcile API contract and model.
-> - Gap: behaviour for brew logs with a null `recipeVersionId` is unspecified — define before implementation.
-> - Verified accurate: profile tab type `'recipes' | 'badges' | 'followers' | 'following'` (apps/web/src/pages/UserProfilePage.tsx:34, ALLOWED_TABS at :92).
+> - Still blocked: every stat derives from `brewLogs`, which does not exist until F02 lands.
+> - Tab type has DRIFTED since 07-04: F01 added a `collections` tab. `type Tab` is now `'recipes' | 'badges' | 'followers' | 'following' | 'collections'` (apps/web/src/pages/users/UserProfilePage.tsx:19); `ALLOWED_TABS` (:93–99) and the `tabs` array (:124–130) both include `collections`. The plan's proposed `Tab`/`tabs` (which omit `collections`) would regress F01 — ADD `stats` to the existing five, don't replace them.
+> - Page now uses a react-router LOADER (`loader` at UserProfilePage.tsx:39, `useLoaderData` at :91) that pre-fetches per-tab data (followers/following/collections). Load stats in the loader (or via a child fetch) — the old "tab renders a child that fetches on mount" shape no longer matches the page.
+> - NEW — D42: `api.get(\`/users/${username}/stats\`)` untyped is stale (`api/types.ts` deleted). Add a `UserStatsOutputSchema` in `packages/shared/src/schemas/responses/user.ts`, export it, and a typed `userApi.getStats(username)` returning its `z.infer`.
+> - NEW — D40 i18n: `user.stats.*` keys do NOT exist (only user.recipes/user.collections present). Add every key to BOTH en.json and tr.json — the plan lists English only; strict parity test fails otherwise.
+> - Unchanged prior issues: `averageRatingGiven` typed `number | null` (plan ~51) vs the model returning `{ average, total }` (~148–151) — reconcile; null-`recipeVersionId` brew-log behaviour still unspecified. Note the existing basic `getUserStats` (user/model.ts:78) is DISTINCT from the proposed brew aggregations — no collision, but name the new service fn (`getUserBrewStats`) to avoid confusion.
 
 ## Overview
 

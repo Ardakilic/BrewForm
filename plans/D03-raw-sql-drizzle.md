@@ -1,10 +1,12 @@
 # D03: Raw SQL in Equipment Model
 
-> **Status (2026-07-06): ✅ Resolved** — raw SQL in `getRecipesUsingEquipment` rewritten with the Drizzle query builder; the count branch's duplicated visibility/`deletedAt` predicates folded into one shared condition set. Regression net provided by D39 Tier 1 (`equipment/model.test.ts`).
+> **Status (2026-07-06): ✅ Resolved — with an accepted, documented raw-SQL exception.** What landed: the count branch's duplicated visibility/`deletedAt` predicates were folded into one shared `recipeConditions` set (`model.ts:137`). What did **not** land: the `exists()` rewrite proposed below. `getRecipesUsingEquipment` (`model.ts:106`) **retains a raw `sql` template for the correlated subquery** (`model.ts:126`) **by documented design** — see the `NOTE` at `model.ts:116-124`: Drizzle's `exists()` combinator emits the wrong table alias under the relational `db.query.recipes.findMany` API (the correlation against `recipes.currentVersionId` resolves to the physical table name and Postgres rejects it), whereas the `sql` tag resolves it against the outer aliased query correctly. This is **Decision 1 of the Wave 2 proposal**. Regression net provided by D39 Tier 1 (`equipment/model.test.ts`).
+>
+> **Raw-SQL sweep (2026-07-13):** the verification audit found one genuine stray `sql` use — `badge/model.ts:67` (`sql\`... is not null\``) — fixed 2026-07-13 with `isNotNull()`. Remaining `sql` uses (atomic ±1 counters, `count(distinct …)`, the `SELECT 1` health-check) are accepted idiomatic exceptions. **No `exists()` rewrite of this function was or will be performed.**
 
 **Severity:** Critical — Security & Maintainability  
 **Date:** 2026-05-29  
-**Status:** Resolved (2026-07-06)
+**Status:** Resolved (2026-07-06) — documented raw-SQL exception (no `exists()` rewrite)
 **Module:** `apps/api/src/modules/equipment/model.ts`
 
 ---
