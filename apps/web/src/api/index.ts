@@ -24,6 +24,7 @@ import type {
   RecipeDetailOutput,
   RecipeFork,
   RecipeListItemOutput,
+  RecipeMerge,
   RecipeNotes,
   RecipeUpdate,
   SetupCreate,
@@ -103,6 +104,7 @@ export const recipeApi = {
   rate: (id: string, rating: number) => api.post<RateResponse>(`/recipes/${id}/rate`, { rating }),
   saveNotes: (id: string, notes: string) =>
     api.post<{ message: string }>(`/recipes/${id}/notes`, { notes } as RecipeNotes),
+  merge: (body: RecipeMerge) => api.post<RecipeDetailOutput, RecipeMerge>('/recipes/merge', body),
 };
 
 /** Taste-note API client — full hierarchy, name search, and flat list. */

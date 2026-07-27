@@ -52,6 +52,7 @@
     --error: #dc2626;
     --error-bg: #fef2f2;
     --info: #2563eb;
+    --diff-highlight: rgba(255, 200, 0, 0.1);
   }
 
   .dark {
@@ -71,6 +72,7 @@
     --error: #ef4444;
     --error-bg: #450a0a;
     --info: #3b82f6;
+    --diff-highlight: rgba(255, 200, 0, 0.15);
   }
 
   .coffee {
@@ -90,6 +92,7 @@
     --error: #fca5a5;
     --error-bg: #4e2320;
     --info: #93c5fd;
+    --diff-highlight: rgba(255, 200, 0, 0.12);
   }
 
   body {

@@ -18,6 +18,7 @@ import {
   RecipeFilterSchema,
   RecipeUpdateSchema,
 } from '@brewform/shared/schemas';
+import type { RecipeMerge } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger/index.ts';
 import { decodeCursor } from '@brewform/shared/utils';
 import { notifyFollowersOfNewRecipe, notifyRecipeLiked } from '../../utils/notify/index.ts';
@@ -706,4 +707,87 @@ export function getUserRating(userId: string, recipeId: string) {
 /** Create or update a user's rating for a recipe. */
 export function upsertUserRating(userId: string, recipeId: string, rating: number) {
   return model.upsertUserRating(userId, recipeId, rating);
+}
+
+export function getMergedIds(
+  list1: { [key: string]: unknown }[] | undefined,
+  list2: { [key: string]: unknown }[] | undefined,
+  choice: string | undefined,
+  idField: string,
+): string[] {
+  if (!choice || choice === 'none') return [];
+  if (choice === 'v1') return (list1 ?? []).map((x) => x[idField] as string);
+  if (choice === 'v2') return (list2 ?? []).map((x) => x[idField] as string);
+  const ids = new Set<string>();
+  (list1 ?? []).forEach((x) => ids.add(x[idField] as string));
+  (list2 ?? []).forEach((x) => ids.add(x[idField] as string));
+  return Array.from(ids);
+}
+
+export function getMergedPreparations(
+  v1: { additionalPreparations?: unknown[] },
+  v2: { additionalPreparations?: unknown[] },
+  choice?: string,
+): unknown[] {
+  if (!choice || choice === 'none') return [];
+  if (choice === 'v1') return v1.additionalPreparations ?? [];
+  if (choice === 'v2') return v2.additionalPreparations ?? [];
+  return [...(v1.additionalPreparations ?? []), ...(v2.additionalPreparations ?? [])];
+}
+
+/**
+ * Merge two recipe versions into a new draft recipe.
+ * @param authorId - UUID of the user performing the merge.
+ * @param data - Validated merge selection payload.
+ * @returns The newly created draft recipe.
+ */
+export async function mergeRecipes(authorId: string, data: RecipeMerge) {
+  logger.debug({ authorId }, 'mergeRecipes started');
+
+  const v1 = await model.fetchRecipeVersionWithRelations(data.recipeVersionId1);
+  const v2 = await model.fetchRecipeVersionWithRelations(data.recipeVersionId2);
+
+  if (!v1 || !v2) throw new Error('RECIPE_NOT_FOUND');
+
+  const sel = data.selections;
+  const pick = <K extends keyof typeof v1>(field: K) => {
+    const choice = sel[field as keyof typeof sel];
+    if (!choice || choice === 'none') return null;
+    if (choice === 'v2') return v2[field];
+    return v1[field];
+  };
+
+  const mergedData = {
+    title: data.title,
+    visibility: 'draft' as const,
+    brewMethod: pick('brewMethod') ?? v1.brewMethod,
+    drinkType: pick('drinkType') ?? v1.drinkType,
+    grindSize: pick('grindSize') ?? undefined,
+    groundWeightGrams: pick('groundWeightGrams') ?? undefined,
+    extractionTimeSeconds: pick('extractionTimeSeconds') ?? undefined,
+    extractionVolumeMl: pick('extractionVolumeMl') ?? undefined,
+    temperatureCelsius: pick('temperatureCelsius') ?? undefined,
+    brewerDetails: pick('brewerDetails') ?? undefined,
+    grinder: pick('grinder') ?? undefined,
+    preparationNotes: pick('preparationNotes') || 'Merged recipe',
+    personalNotes: pick('personalNotes') ?? undefined,
+    isFavourite: false,
+    tasteNoteIds: getMergedIds(v1.tasteNotes, v2.tasteNotes, sel.tasteNotes, 'tasteNoteId'),
+    equipmentIds: getMergedIds(v1.equipment, v2.equipment, sel.equipment, 'equipmentId'),
+    additionalPreparations: getMergedPreparations(v1, v2, sel.additionalPreparations) as Array<{
+      name: string;
+      type: 'milk' | 'water' | 'syrup' | 'spice' | 'other';
+      inputAmount: string;
+      preparationType: string;
+    }>,
+  };
+
+  try {
+    const recipe = await createRecipe(authorId, mergedData);
+    logger.debug({ authorId, recipeId: recipe?.id }, 'mergeRecipes completed');
+    return recipe;
+  } catch (err) {
+    logger.error({ err, authorId }, 'mergeRecipes failed');
+    throw err;
+  }
 }

@@ -1120,3 +1120,20 @@ export function getVersionPhotos(versionId: string) {
     .from(recipeVersionPhotos)
     .where(eq(recipeVersionPhotos.recipeVersionId, versionId));
 }
+
+/**
+ * Fetch a single recipe version by ID with its taste notes, equipment, and
+ * additional preparations relations populated.
+ * @param versionId - The recipe version UUID.
+ * @returns The version row with nested relations, or undefined if not found.
+ */
+export function fetchRecipeVersionWithRelations(versionId: string) {
+  return db.query.recipeVersions.findFirst({
+    where: eq(recipeVersions.id, versionId),
+    with: {
+      tasteNotes: { with: { tasteNote: true } },
+      equipment: { with: { equipment: true } },
+      additionalPreparations: true,
+    },
+  });
+}
