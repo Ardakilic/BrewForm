@@ -12,13 +12,9 @@
 
 ## Remaining Debt
 
-| Priority | Item | Area | Effort | Status | Detail |
-|----------|------|------|--------|--------|--------|
-| **P1** | Wave 5 task 12.3 — manual walk via `make dev` | Both | Manual | Open — verify In-collections section, comment 404 on private recipe, collection cache, toasts/confirms, de-duped cards, dark/coffee error themes, width parity | [`openspec/changes/wave-5-debt-clearance/tasks.md`](../openspec/changes/wave-5-debt-clearance/tasks.md) |
-| **P1** | Wave 5 task 12.5 — archive the change | Meta | Trivial | Open — run `openspec archive wave-5-debt-clearance` after 12.3 passes | same |
-
-All other ledgered debt (D01–D43, D99.1–.19) is **resolved** — see
-[`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md).
+All ledgered debt (D01–D43, D99.1–.19) is **resolved** — see
+[`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md). Wave-5 closeout (manual walk + archive) completed
+2026-07-28.
 
 ---
 
@@ -48,7 +44,8 @@ Status reflects each F-plan's 2026-07-13 validation verdict.
 **Not in matrix (2026-07-13 re-validation):**
 
 - ❌ Invalid / blocked: F03 (blocked by F02), F20 (blocked by F02), F26
-- ⚠️ Outdated (refresh plan before pickup): F08, F13, F15, F16, F18, F19
+- ⚠️ Outdated (refresh plan before pickup): F13, F15, F16, F18, F19
+- ✅ Refreshed (2026-07-28): F08 (recipe comparison improvements — ready to implement)
 - 🔧 Rough: F22 webhooks
 - ✅ Valid (ready to spec): F24 version snapshots, F28 guided brew mode, F29 weekly email digest, F30 bean freshness tracking, F31 recipe embed widgets
 
@@ -56,11 +53,7 @@ Status reflects each F-plan's 2026-07-13 validation verdict.
 
 ## Next candidates
 
-**Before any new debt or feature work:** finish wave-5 closeout — task 12.3 (manual walk via
-`make dev`) then task 12.5 (`openspec archive wave-5-debt-clearance`). This confirms the wave
-shipped clean and clears the openspec change directory.
-
-**Then**, per the 2026-07-13 priority matrix refresh:
+Per the 2026-07-13 priority matrix refresh:
 
 1. **F09** (P0) — highest-impact remaining feature; schedule with/after F08 (its plan is
    outdated and depends on F08 landing first).
