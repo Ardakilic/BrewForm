@@ -34,22 +34,24 @@ Encoding SHALL use `JSON.stringify` then `btoa`. Decoding SHALL use `atob` then 
 ### Requirement: Cursor-based query with DESC order
 
 When `sortBy=createdAt` and `sortOrder=desc` (the default "newest first" feed), the system SHALL
-execute a query via `db.query.recipes.findMany()` with:
+execute a query via `db.query.recipes.findMany()` with a row-value keyset predicate for composite
+index sargability:
 
 ```typescript
 db.query.recipes.findMany({
   where: and(
     existingWhere,
-    or(
-      lt(recipes.createdAt, cursor.createdAt),
-      and(eq(recipes.createdAt, cursor.createdAt), lt(recipes.id, cursor.id)),
-    ),
+    // D03 raw-SQL exception: row-value comparison, Drizzle has no native operator.
+    sql`(${recipes.createdAt}, ${recipes.id}) < (${cursor.createdAt}, ${cursor.id})`,
   ),
   orderBy: [desc(recipes.createdAt), desc(recipes.id)],
   limit: perPage + 1,
   with: { author: { columns: { id: true, username: true, displayName: true } } },
 });
 ```
+
+The row-value comparison is a D03 raw-SQL exception — Drizzle has no first-class row-value
+operator. See the lint-style raw-SQL registry.
 
 Existing WHERE conditions (`deletedAt IS NULL`, visibility, authorId, etc.) SHALL be combined
 with the cursor condition via `and()`. The `with` relation SHALL match the existing `findMany()`
@@ -102,22 +104,23 @@ behavior.
 ### Requirement: Cursor-based query with ASC order
 
 When `sortBy=createdAt` and `sortOrder=asc` (oldest first), the system SHALL
-execute the cursor query using `gt()` instead of `lt()`, with `orderBy: [asc(recipes.createdAt), asc(recipes.id)]`:
+execute the cursor query using a row-value comparison with `>` instead of `<`, with
+`orderBy: [asc(recipes.createdAt), asc(recipes.id)]`:
 
 ```typescript
 db.query.recipes.findMany({
   where: and(
     existingWhere,
-    or(
-      gt(recipes.createdAt, cursor.createdAt),
-      and(eq(recipes.createdAt, cursor.createdAt), gt(recipes.id, cursor.id)),
-    ),
+    // D03 raw-SQL exception: row-value comparison, Drizzle has no native operator.
+    sql`(${recipes.createdAt}, ${recipes.id}) > (${cursor.createdAt}, ${cursor.id})`,
   ),
   orderBy: [asc(recipes.createdAt), asc(recipes.id)],
   limit: perPage + 1,
   with: { author: { columns: { id: true, username: true, displayName: true } } },
 });
 ```
+
+The row-value comparison is a D03 raw-SQL exception — see the lint-style raw-SQL registry.
 
 #### Scenario: First page ASC
 
@@ -323,11 +326,11 @@ The implementation SHALL:
 
 Every new function and code path SHALL be covered by tests with at least 80% line coverage.
 New test files SHALL be created for:
-- `packages/shared/src/utils/cursor_test.ts` — cursor encode/decode unit tests
-- `packages/shared/src/schemas/response_test.ts` — cursor envelope schema tests (if not already covered)
-- `apps/api/src/modules/recipe/model_test.ts` — cursor query tests (if not already covered, or update existing)
-- `apps/api/src/modules/recipe/service_test.ts` — cursor/offset routing tests
-- `apps/api/src/modules/recipe/index_test.ts` — route handler cursor mode tests
+- `packages/shared/src/utils/cursor.test.ts` — cursor encode/decode unit tests
+- `packages/shared/src/schemas/response.test.ts` — cursor envelope schema tests (if not already covered)
+- `apps/api/src/modules/recipe/model.test.ts` — cursor query tests (if not already covered, or update existing)
+- `apps/api/src/modules/recipe/service.test.ts` — cursor/offset routing tests
+- `apps/api/src/modules/recipe/index.test.ts` — route handler cursor mode tests
 
 Existing tests SHALL continue to pass — offset pagination behavior is unchanged.
 

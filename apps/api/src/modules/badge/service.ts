@@ -6,9 +6,7 @@
  * users. Batch evaluation processes users in cursor-paginated batches of 100.
  */
 import * as model from './model.ts';
-import { db } from '@brewform/db';
-import { users } from '@brewform/db/schema';
-import { and, asc, gt, isNull } from 'drizzle-orm';
+import * as userModel from '../user/model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
 const logger = createLogger('badge-service');
@@ -39,24 +37,20 @@ export async function evaluateAllBadges() {
   let lastId: string | undefined;
 
   while (true) {
-    const userBatch = await db.select({ id: users.id })
-      .from(users)
-      .where(lastId ? and(isNull(users.deletedAt), gt(users.id, lastId)) : isNull(users.deletedAt))
-      .orderBy(asc(users.id))
-      .limit(BATCH_SIZE);
+    const userIds = await userModel.listActiveUserIds(lastId ?? null, BATCH_SIZE);
 
-    if (userBatch.length === 0) {
+    if (userIds.length === 0) {
       break;
     }
 
-    for (const user of userBatch) {
+    for (const userId of userIds) {
       try {
-        await model.evaluateBadges(user.id);
+        await model.evaluateBadges(userId);
       } catch (err) {
-        logger.error({ err, userId: user.id }, 'evaluateBadges failed');
+        logger.error({ err, userId }, 'evaluateBadges failed');
       }
     }
 
-    lastId = userBatch[userBatch.length - 1].id;
+    lastId = userIds[userIds.length - 1];
   }
 }

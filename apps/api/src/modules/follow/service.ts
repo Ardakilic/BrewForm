@@ -8,9 +8,7 @@
 import * as model from './model.ts';
 import type { CursorResult } from '../recipe/model.ts';
 import * as recipeModel from '../recipe/model.ts';
-import { db } from '@brewform/db';
-import { users } from '@brewform/db/schema';
-import { eq } from 'drizzle-orm';
+import * as userModel from '../user/model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyNewFollower } from '../../utils/notify/index.ts';
 import { evaluateBadges } from '../badge/service.ts';
@@ -34,8 +32,7 @@ export async function followUser(followerId: string, followingId: string) {
   const follow = await model.createFollow(followerId, followingId);
 
   (async () => {
-    const followerResult = await db.select().from(users).where(eq(users.id, followerId)).limit(1);
-    const follower = followerResult[0];
+    const follower = await userModel.findById(followerId);
     if (!follower?.username) return;
     await notifyNewFollower({
       followingId,

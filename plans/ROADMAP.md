@@ -16,12 +16,8 @@
 |----------|------|------|--------|--------|--------|
 | **P1** | Wave 5 task 12.3 — manual walk via `make dev` | Both | Manual | Open — verify In-collections section, comment 404 on private recipe, collection cache, toasts/confirms, de-duped cards, dark/coffee error themes, width parity | [`openspec/changes/wave-5-debt-clearance/tasks.md`](../openspec/changes/wave-5-debt-clearance/tasks.md) |
 | **P1** | Wave 5 task 12.5 — archive the change | Meta | Trivial | Open — run `openspec archive wave-5-debt-clearance` after 12.3 passes | same |
-| **P3** | D99.4 — `security: []` on public collection route | API | Trivial | Optional style choice — drop the lone `security: []` to match the omit convention, or keep if a global `security` requirement is planned | [`D99-debts.md`](D99-debts.md) |
-| **P4** | D99.8 — cursor keyset sargability | API | Low | Deferred, scale-time — row-value rewrite needs a raw-SQL exception; seq scan on ~20-row table is correct today | [`D99-debts.md`](D99-debts.md) |
-| **P4** | D99.17 — architecture deviations (recipe model-import bypass; contact module shape) | API | Med/Low | Deferred until either module is next touched for feature work | [`D99-debts.md`](D99-debts.md) |
-| **P4** | D99.18 — test-file naming split `*_test.ts` vs `*.test.ts` | Both | Low | Deferred to avoid churning the wave-5 coverage work | [`D99-debts.md`](D99-debts.md) |
 
-All other ledgered debt (D01–D43, D99.1–.3 / .5–.7 / .9–.16 / .19) is **resolved** — see
+All other ledgered debt (D01–D43, D99.1–.19) is **resolved** — see
 [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md).
 
 ---
@@ -74,7 +70,6 @@ shipped clean and clears the openspec change directory.
 
 **Optional quick wins** (no plan refresh needed):
 
-- D99.4 — drop the lone `security: []` (~5 min, trivial consistency).
 - Any ✅ Valid feature: F21, F24, F27, F28, F29, F30, F31.
 
 ---
@@ -85,5 +80,7 @@ shipped clean and clears the openspec change directory.
   [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md) for the per-item resolution log.
 - **Wave 5** (2026-07-27): resolved D99.1, .3, .5, .6, .7, .9, .10–.16, .19 via the
   `wave-5-debt-clearance` OpenSpec change. D99.8, .17, .18 remain deferred by design.
+- **Remaining debt clearance** (2026-07-27): resolved D99.4, .8, .17, .18 via the
+  `remaining-debt-clearance` OpenSpec change. The D99 ledger is now fully closed.
 - **Features shipped:** F01 (recipe collections, 2026-07-09), F04 (mention notifications,
   2026-07-13).

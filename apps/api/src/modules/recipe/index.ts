@@ -21,7 +21,6 @@ import {
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
-import * as model from './model.ts';
 import * as collectionService from '../collection/service.ts';
 import * as tasteService from '../taste/service.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
@@ -290,7 +289,7 @@ recipe.get(
       if (!service.canViewRecipe(recipe, c.get('userId'))) {
         return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
-      const versions = await model.getVersionsByRecipeId(recipe.id);
+      const versions = await service.getVersionsByRecipeId(recipe.id);
       return success(c, {
         id: recipe.id,
         title: recipe.title,
@@ -383,11 +382,11 @@ recipe.get(
       const [rootMap, likeStatus, favouriteCount, ratingStats, userRating] = await Promise.all([
         tasteService.getTasteNoteRootMap(cacheProvider!),
         userId
-          ? model.getUserLikeStatus(userId, recipeId)
+          ? service.getUserLikeStatus(userId, recipeId)
           : Promise.resolve({ userLiked: false, userFavourited: false }),
-        model.getFavouriteCount(recipeId),
-        model.getRecipeRatingStats(recipeId),
-        userId ? model.getUserRating(userId, recipeId) : Promise.resolve(null),
+        service.getFavouriteCount(recipeId),
+        service.getRecipeRatingStats(recipeId),
+        userId ? service.getUserRating(userId, recipeId) : Promise.resolve(null),
       ]);
       const payload = {
         ...r,
@@ -605,8 +604,8 @@ recipe.post(
     const userId = c.get('userId') as string;
     const { rating } = c.req.valid('json');
     try {
-      const result = await model.upsertUserRating(userId, recipeId, rating);
-      const stats = await model.getRecipeRatingStats(recipeId);
+      const result = await service.upsertUserRating(userId, recipeId, rating);
+      const stats = await service.getRecipeRatingStats(recipeId);
       return success(c, { ...result, ...stats });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

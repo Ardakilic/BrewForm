@@ -256,6 +256,7 @@ accepted-exception registry; any site outside the registry is a violation. The r
 | `count(distinct ...)` | where Drizzle lacks a helper |
 | Correlated `EXISTS` | `equipment/model.ts:116-124` (existing NOTE) |
 | Schema `check()` constraint expressions | `packages/db/src/schema.ts` |
+| Row-value keyset comparison | `recipe/model.ts` `buildCursorWhere` — `(created_at, id) < ($1, $2)` for composite index sargability; Drizzle has no native row-value operator |
 
 The 5 stray sites outside the registry SHALL be converted to Drizzle helpers:
 `coffee-variety/model.ts:46` `count(*)` → `count()`; `collection/model.ts:219` → `max()`;
@@ -271,11 +272,26 @@ an investigation.
 
 - **WHEN** production code is grepped for `` sql` `` after the conversion
 - **THEN** every match corresponds to a registry row (health probe, counters/toggle,
-  count(distinct), equipment EXISTS, schema check())
+  count(distinct), equipment EXISTS, schema check(), row-value keyset)
 
 #### Scenario: Converted sites behave identically
 
 - **WHEN** `make test-api` and `deno task test:db` run after the 5 conversions
 - **THEN** all existing assertions over the affected queries (counts, max-sortOrder, badge
   thresholds, seed idempotency) pass unchanged
+
+---
+
+### Requirement: Test files use `*.test.ts` naming convention
+
+All test files across the monorepo SHALL use the `*.test.ts` (or `*.test.tsx`) naming
+convention. The `*_test.ts` suffix SHALL NOT be used.
+
+**Reason:** The codebase has ~150 `*.test.ts` files and only 6 `*_test.ts` files (96% majority
+for the dot convention). Standardizing on the majority convention minimizes churn.
+
+#### Scenario: No `*_test.ts` files remain
+
+- **WHEN** `find apps packages -name '*_test.ts' -o -name '*_test.tsx'` is run
+- **THEN** zero files are returned
 

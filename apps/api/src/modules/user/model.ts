@@ -7,7 +7,7 @@
  */
 import { db } from '@brewform/db';
 import { recipes, recipeVersions, userFollows, userPreferences, users } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, isNull, like, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, isNull, like, or } from 'drizzle-orm';
 
 /**
  * Find a user by ID, including preferences via LEFT JOIN.
@@ -155,4 +155,25 @@ export async function searchUsers(query: string, page: number, perPage: number) 
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };
+}
+
+/**
+ * List active (non-deleted) user IDs in ascending ID order, for cursor-based batching.
+ * @param afterId - Return IDs strictly greater than this value; null starts from the beginning.
+ * @param limit - Maximum number of IDs to return.
+ */
+export async function listActiveUserIds(
+  afterId: string | null,
+  limit: number,
+): Promise<string[]> {
+  const where = afterId
+    ? and(isNull(users.deletedAt), gt(users.id, afterId))
+    : isNull(users.deletedAt);
+  const rows = await db.query.users.findMany({
+    columns: { id: true },
+    where,
+    orderBy: [asc(users.id)],
+    limit,
+  });
+  return rows.map((r) => r.id);
 }

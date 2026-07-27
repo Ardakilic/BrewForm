@@ -49,6 +49,8 @@ Every domain module follows 3-layer pattern: `model.ts` → `service.ts` → `in
 - Controllers validate with shared Zod schemas from `@brewform/shared/schemas`.
 - All Hono routes use typed `<AppEnv>` context (userId, user, cache, requestId).
 - Middleware stack order: cors → requestId → secureHeaders → rateLimit → bodyLimit → cache injection → crawler → onError (via `app.onError`, not stack middleware) → optional /uploads static handler → routes.
+- **Accepted deviation:** the `contact` module is a controller-only email endpoint with no
+  DB access; it intentionally skips the `model.ts`/`service.ts` split.
 
 ## OpenAPI documentation
 
@@ -95,6 +97,7 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 
 - Framework: `jsr:@std/testing/bdd` (`describe`/`it`) + `jsr:@std/expect`.
 - Tests run with `--no-check` (type-checking done separately).
+- Test files use `*.test.ts` (or `*.test.tsx`) naming — never `*_test.ts`.
 - Tests need `DATABASE_URL` and `JWT_SECRET` set; `CACHE_DRIVER=memory` and `APP_ENV=test` skip KV and email.
 - DB-backed tests target the dedicated `brewform_test` database (the `make test*` targets inject `DATABASE_URL` for it) — NEVER the dev `brewform` DB, which tests would pollute. Run `make test-db-provision` once after `make up` (mirrors `.github/workflows/pr.yml` CI provisioning).
 - Email notifications are suppressed when `APP_ENV === 'test'`.

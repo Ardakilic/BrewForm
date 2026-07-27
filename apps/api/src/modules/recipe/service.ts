@@ -674,3 +674,36 @@ export function canViewRecipe(
   }
   return true;
 }
+
+// ponytail: no entry/exit debug logs on these 6 passthroughs — deliberate deviation,
+// same precedent as canViewRecipe above. Add logging if these gain business logic.
+
+/** List all versions for a recipe. */
+export function getVersionsByRecipeId(recipeId: string) {
+  return model.getVersionsByRecipeId(recipeId);
+}
+
+/** Fetch the current user's like and favourite status for a recipe. */
+export function getUserLikeStatus(userId: string, recipeId: string) {
+  return model.getUserLikeStatus(userId, recipeId);
+}
+
+/** Count the total number of users who have favourited a recipe. */
+export function getFavouriteCount(recipeId: string) {
+  return model.getFavouriteCount(recipeId);
+}
+
+/** Compute the average rating and total rating count for a recipe. */
+export function getRecipeRatingStats(recipeId: string) {
+  return model.getRecipeRatingStats(recipeId);
+}
+
+/** Fetch a specific user's rating for a recipe, or null if they haven't rated it. */
+export function getUserRating(userId: string, recipeId: string) {
+  return model.getUserRating(userId, recipeId);
+}
+
+/** Create or update a user's rating for a recipe. */
+export function upsertUserRating(userId: string, recipeId: string, rating: number) {
+  return model.upsertUserRating(userId, recipeId, rating);
+}

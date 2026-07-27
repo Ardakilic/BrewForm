@@ -2,7 +2,7 @@
  * Route-level integration tests for the admin module.
  *
  * Mounts the REAL admin router on a stub Hono app with auth stubbed at the
- * middleware seam (the `deps` proxy — same idiom as collection/index_test.ts
+ * middleware seam (the `deps` proxy — same idiom as collection/index.test.ts
  * and the D99.9 block in comment/index.test.ts), then exercises the full HTTP
  * stack (Zod validation, auth/admin guards, service dispatch, envelope
  * response shaping) against the PostgreSQL test database.

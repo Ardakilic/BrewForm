@@ -1,7 +1,7 @@
 # D99 — Deferred Technical Debt (Post-Feature Batch)
 
 **Severity:** Mixed (Low–Medium)
-**Status:** Mostly resolved — 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; D99.8,.17,.18 remain deferred per design.md)
+**Status:** Fully resolved — 2026-07-27 (wave-5-debt-clearance resolved D99.1,.3,.5,.6,.7,.9,.10–.16,.19; remaining-debt-clearance resolved D99.4,.8,.17,.18)
 **Relationship:** Aggregates deferred items discovered during F01-recipe-collections implementation, other recent feature work, and the 2026-07-19 full audit (D99.10–D99.19). These are non-blocking polish/hardening tasks; items marked **Scheduled** are carried by the `wave-5-debt-clearance` OpenSpec change (which holds the full task-level detail — this ledger is the index), items marked **Deferred** wait for a future trigger. Individual items may be split into their own D-plan files when picked up.
 
 ---
@@ -218,7 +218,9 @@ for (const def of collectionDefs) {
 
 ---
 
-## D99.4 — OpenAPI `security: []` on public collection route (trivial consistency choice)
+## D99.4 — OpenAPI `security: []` on public collection route (trivial consistency choice) — ✅ Resolved (2026-07-27, remaining-debt-clearance)
+
+> **Resolved 2026-07-27 (remaining-debt-clearance).** Removed lone `security: []` from collection/index.ts — aligned with omit convention.
 
 ### Finding (reframed 2026-07-13)
 
@@ -353,9 +355,9 @@ Route each literal through `t()` with a new key in `packages/shared/src/i18n/en.
 
 ---
 
-## D99.8 — Cursor keyset predicate sargability (scale-time note)
+## D99.8 — Cursor keyset predicate sargability (scale-time note) — ✅ Resolved (2026-07-27, remaining-debt-clearance)
 
-**Deferred** — not in wave 5; scale-time follow-up only. Re-verified 2026-07-19 (Drizzle limitation, D03-exception need, and ~20-row seq-scan deferral all still hold).
+> **Resolved 2026-07-27 (remaining-debt-clearance).** Rewrote `buildCursorWhere` to row-value comparison `(created_at, id) < ($1, $2)` for composite index sargability (D03 raw-SQL exception).
 
 ### Problem
 
@@ -626,9 +628,9 @@ Replace with drizzle helpers: `count()`, `max()`, `isNull()` (all already used e
 
 ---
 
-## D99.17 — Architecture deviations: recipe model-import bypass; contact module shape
+## D99.17 — Architecture deviations: recipe model-import bypass; contact module shape — ✅ Resolved (2026-07-27, remaining-debt-clearance)
 
-**Deferred** — ledger-only; not in wave 5. Added 2026-07-19.
+> **Resolved 2026-07-27 (remaining-debt-clearance).** Threaded recipe index.ts through service layer (6 wrappers), replaced follow/badge direct drizzle imports with user model functions, documented contact module as accepted deviation.
 
 ### Problem
 
@@ -644,9 +646,9 @@ Thread the recipe routes through the service layer; give contact a minimal servi
 
 ---
 
-## D99.18 — Test-file naming split: `*_test.ts` vs `*.test.ts`
+## D99.18 — Test-file naming split: `*_test.ts` vs `*.test.ts` — ✅ Resolved (2026-07-27, remaining-debt-clearance)
 
-**Deferred** — ledger-only; not in wave 5. Added 2026-07-19.
+> **Resolved 2026-07-27 (remaining-debt-clearance).** Renamed 6 `*_test.ts` files to `*.test.ts`, codified convention in AGENTS.md and lint-style spec.
 
 ### Problem
 
