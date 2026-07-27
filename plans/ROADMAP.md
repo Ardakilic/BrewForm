@@ -1,100 +1,89 @@
-# Debt Implementation Roadmap
+# Roadmap
 
-> Derived from the 2026-07-04 plans/specs audit (openspec change `plans-specs-audit`). Tracks the
-> open debt items (**D03**, **D34–D43**) in dependency-aware waves. Feature work (F01–F31) is
-> tracked separately in [`FEATURE_SUGGESTIONS.md`](FEATURE_SUGGESTIONS.md); per-item status lives in
-> [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md).
+> Living index of remaining work. Per-item detail lives in the source-of-truth files —
+> [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md) for resolved history, [`D99-debts.md`](D99-debts.md)
+> for deferred debt, [`FEATURE_SUGGESTIONS.md`](FEATURE_SUGGESTIONS.md) for the feature backlog
+> with per-plan PRDs. Update this file ONLY when an item's status changes; do NOT duplicate
+> problem/fix detail here.
 
-**Rhythm:** one openspec change per item — `opsx:propose` → implement → `openspec archive`. Keep the
-`Status` banner in each `plans/D*.md` and the `TECHNICAL_DEBT.md` ledger updated as each lands.
-
-**Legend:** `P1` correctness/security · `P2` structural · `P3` polish.
+**Legend:** `P0` critical · `P1` correctness/security · `P2` structural · `P3` polish · `P4` deferred.
 
 ---
 
-## Wave 0 — Housekeeping (no code)
+## Remaining Debt
 
-- [x] Archive the five verified-complete changes (`d27`, `d29`, `d30`, `d31`, `d33`) so the changes
-      directory reflects reality _(done 2026-07-05; delta specs synced into `openspec/specs/`)_
+| Priority | Item | Area | Effort | Status | Detail |
+|----------|------|------|--------|--------|--------|
+| **P1** | Wave 5 task 12.3 — manual walk via `make dev` | Both | Manual | Open — verify In-collections section, comment 404 on private recipe, collection cache, toasts/confirms, de-duped cards, dark/coffee error themes, width parity | [`openspec/changes/wave-5-debt-clearance/tasks.md`](../openspec/changes/wave-5-debt-clearance/tasks.md) |
+| **P1** | Wave 5 task 12.5 — archive the change | Meta | Trivial | Open — run `openspec archive wave-5-debt-clearance` after 12.3 passes | same |
+| **P3** | D99.4 — `security: []` on public collection route | API | Trivial | Optional style choice — drop the lone `security: []` to match the omit convention, or keep if a global `security` requirement is planned | [`D99-debts.md`](D99-debts.md) |
+| **P4** | D99.8 — cursor keyset sargability | API | Low | Deferred, scale-time — row-value rewrite needs a raw-SQL exception; seq scan on ~20-row table is correct today | [`D99-debts.md`](D99-debts.md) |
+| **P4** | D99.17 — architecture deviations (recipe model-import bypass; contact module shape) | API | Med/Low | Deferred until either module is next touched for feature work | [`D99-debts.md`](D99-debts.md) |
+| **P4** | D99.18 — test-file naming split `*_test.ts` vs `*.test.ts` | Both | Low | Deferred to avoid churning the wave-5 coverage work | [`D99-debts.md`](D99-debts.md) |
 
-## Wave 1 — Correctness & security (P1, small, independent)
-
-- [x] **D41** — Add `isNull(deletedAt)` guards to the three admin user mutations
-      (`banUser`/`unbanUser`/`setUserAdminRole`). Trivial diff, real privilege-escalation edge; test
-      plan mirrors the existing D19 tests. **Best first pick.** _(resolved 2026-07-05 via
-      `wave-1-correctness-security`; also swept the three sibling unguarded updates
-      `updateRecipeVisibility`/`updateEquipment`/`updateVendor`, fixed the missing try/catch on
-      `PATCH /users/:id/admin`, and added `describeRoute` to the two touched admin user routes.)_
-- [x] **D38** — Report-endpoint rate limit + `sanitize.ts` XSS tests + `AuthContext` silent catch.
-      Three small, independently shippable pieces in one change. _(resolved 2026-07-05 via
-      `wave-1-correctness-security`; rate limit applied to POST only per design Decision 4,
-      `sessionError: 'network' | 'server' | null` + `SessionRestoreBanner` in Layout, 5-branch
-      `refreshUser` catch, `AuthContext.test.tsx` covers 401/500/network/banned/success.)_
-
-## Wave 2 — Backend hygiene
-
-- [x] **D03** — Rewrite the raw SQL in `equipment/model.ts getRecipesUsingEquipment` with the
-      Drizzle query builder; fold the duplicated count-branch visibility/`deletedAt` predicates into
-      one shared condition set. _(resolved 2026-07-06 via Wave 2)_
-  - [x] Do **D39 Tier 1 first** (equipment/vendor model tests) — the plan frames these as D03's
-        regression net, since `equipment/model.ts` currently has zero tests. _(done 2026-07-06)_
-- [x] **D34** — Residual `any` elimination in the modules D05 never covered (preference, bean,
-      setup, taste, badge, recipe/model, notify). Mechanical, guided by the exact file:line list.
-      _(resolved 2026-07-06 via Wave 2; P2 scope complete, P3 stretch documented)_
-
-## Wave 3 — Frontend structure (order matters)
-
-- [x] **D36** — Extract duplicated UI (HomePage `RecipeCard`, admin `BanDialog`×2, `Section`/`Field`
-      helpers). _Do first: dedupe before translating so each string is touched once._
-      _(resolved 2026-07-06 via wave-3-frontend-structure)_
-- [x] **D37** — Consolidate error pages / remove dead `ErrorPage.tsx` exports. _Settles which error
-      pages exist before they get localized._
-      _(resolved 2026-07-06 via wave-3-frontend-structure)_
-- [x] **D40** — Complete i18n for the 15 admin pages + 5 zero-`t()` user-facing pages + the partial
-      `RecipeCreate`/`RecipeEdit` pages.
-      _(resolved 2026-07-06 via wave-3-frontend-structure)_
-
-## Wave 4 — Independent fillers (anytime)
-
-- [x] **D42** — Typed web API boundary: replace `Record<string, unknown>` returns with types derived
-      from the `schemas/responses/*` schemas (bigger, self-contained).
-      _(resolved 2026-07-07 via wave-4-independent-fillers)_
-- [x] **D43** — Add `createdAt` to the three recipe join tables (isolated Drizzle migration).
-      _(resolved 2026-07-07 via wave-4-independent-fillers)_
-- [x] **D35** — Remove untracked lint suppressions in `packages/shared` + api utils/middleware
-      (tiny; could bundle into the D37 change).
-      _(resolved 2026-07-07 via wave-4-independent-fillers)_
-- [x] **D39** — Remaining test-coverage backfill tiers (ongoing background work after Tier 1).
-      _(resolved 2026-07-07 via wave-4-independent-fillers)_
+All other ledgered debt (D01–D43, D99.1–.3 / .5–.7 / .9–.16 / .19) is **resolved** — see
+[`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md).
 
 ---
 
-## Outstanding manual follow-ups (not code)
+## Feature Backlog
 
-- [x] Close PR #54 (`feat/workspace-management`) with a note pointing to the archived
-      `d31-deno-29-upgrade` as its superseding change, and delete the stale branch. _(d31 task 14.1
-      — done 2026-07-13: PR was already closed; superseding note posted, stale branch deleted.)_
-- [x] (Optional) Run the deferred manual verifications from the archived changes:
-      `EXPLAIN
-      ANALYZE` on the cursor query (d27 task 1.5) and the `POST /api/v1/recipes`
-      smoke test (d29 task 12.7). _(done 2026-07-13: d27 — seq scan at seed-data cardinality as
-      the archived task anticipated; `recipe_created_at_id_idx` is correctly defined and engages
-      at scale, though the OR-form keyset predicate is only single-column sargable (a row-value
-      `(created_at, id) < (x, y)` rewrite would fully use the composite index — noted as a
-      scale-time follow-up since it needs a raw-SQL exception). d29 — PASS: register 201,
-      unverified-email create blocked 403, seeded-user create 201 with full envelope, GET 200.)_
+Status reflects each F-plan's 2026-07-13 validation verdict.
+
+| Priority | Feature | Effort | Impact | Status | PRD |
+|----------|---------|--------|--------|--------|-----|
+| **P0** | @Mention notifications (F04) | Low | High | ✅ Shipped (2026-07-13) | [`F04`](F04-mention-notifications.md) |
+| **P0** | Recipe collections (F01) | Medium | High | ✅ Shipped (2026-07-09) | [`F01`](F01-recipe-collections.md) |
+| **P0** | Recipe version diff (F09) | Medium | High | ⚠️ Outdated — depends on F08 | [`F09`](F09-version-diff.md) |
+| **P1** | In-app notification center (F05) | High | High | ⚠️ Outdated — substrate shipped via F04; scope shrunk to enum + fan-out + per-type rendering + pref split | [`F05`](F05-in-app-notifications.md) |
+| **P1** | Advanced search w/ facets (F11) | Medium | High | ⚠️ Outdated — rebase on shipped D27 cursor pagination | [`F11`](F11-advanced-search.md) |
+| **P1** | Image optimisation (F23) | Medium | Medium | 🔧 Rough — needs design decisions | [`F23`](F23-image-optimisation.md) |
+| **P2** | Brew journal / "brew again" (F02) | Medium | Medium | ⚠️ Outdated — unblocks F03 / F20 / F25-sync | [`F02`](F02-brew-journal.md) |
+| **P2** | Recipe templates (F06) | Low | Medium | ⚠️ Outdated | [`F06`](F06-recipe-templates.md) |
+| **P2** | Batch/scale calculator (F07) | Low | Medium | ⚠️ Outdated — minor corrections | [`F07`](F07-batch-calculator.md) |
+| **P2** | Similar recipes (F12) | Medium | Medium | ⚠️ Outdated | [`F12`](F12-similar-recipes.md) |
+| **P2** | Equipment reviews/ratings (F27) | Medium | Medium | ✅ Valid | [`F27`](F27-equipment-reviews.md) |
+| **P3** | Brew method landing pages (F14) | Medium | Low | 🔧 Rough — SEO stack undecided | [`F14`](F14-brew-method-pages.md) |
+| **P3** | Recipe export/import (F10) | Medium | Medium | ⚠️ Outdated | [`F10`](F10-recipe-export-import.md) |
+| **P3** | Admin analytics (F17) | Medium | Low | ⚠️ Outdated | [`F17`](F17-admin-analytics.md) |
+| **P3** | PWA / offline (F25) | High | Medium | ⚠️ Outdated — PWA shell valid; brew-log sync blocked on F02 | [`F25`](F25-pwa-offline.md) |
+| **P3** | Public API v2 (F21) | High | Medium | ✅ Valid | [`F21`](F21-public-api.md) |
+
+**Not in matrix (2026-07-13 re-validation):**
+
+- ❌ Invalid / blocked: F03 (blocked by F02), F20 (blocked by F02), F26
+- ⚠️ Outdated (refresh plan before pickup): F08, F13, F15, F16, F18, F19
+- 🔧 Rough: F22 webhooks
+- ✅ Valid (ready to spec): F24 version snapshots, F28 guided brew mode, F29 weekly email digest, F30 bean freshness tracking, F31 recipe embed widgets
 
 ---
 
-## 2026-07-13 status
+## Next candidates
 
-- All debt waves (Waves 0–4) and the outstanding manual follow-ups are complete.
-- Full plan-vs-code audit run; discrepancies reconciled: D03 wording, D35 directives, the F01
-  `any`-regression, and the F01 US-9 gap (tracked forward as **D99.5**).
-- **F04** (@mention notifications) shipped as the first post-debt feature (see
-  [`F04-mention-notifications.md`](F04-mention-notifications.md)).
-- Open deferred debt now lives in **D99**.
-- **Next candidates** per the refreshed Priority Matrix
-  ([`FEATURE_SUGGESTIONS.md`](FEATURE_SUGGESTIONS.md)): **F09** (P0 — schedule after/with F08),
-  **F05** (P1 — substrate ready, scope shrunk to enum extension + fan-out + per-type rendering),
-  **F11** (P1), and **F02** (P2, but unblocks F03 / F20 / F25-sync).
+**Before any new debt or feature work:** finish wave-5 closeout — task 12.3 (manual walk via
+`make dev`) then task 12.5 (`openspec archive wave-5-debt-clearance`). This confirms the wave
+shipped clean and clears the openspec change directory.
+
+**Then**, per the 2026-07-13 priority matrix refresh:
+
+1. **F09** (P0) — highest-impact remaining feature; schedule with/after F08 (its plan is
+   outdated and depends on F08 landing first).
+2. **F05** (P1) — substrate already shipped via F04; the shrunk scope is the fastest P1 win.
+3. **F11** (P1) — rebase the plan on shipped D27 cursor pagination, then build faceted search.
+4. **F02** (P2) — unblocks F03, F20, and F25's brew-log sync; high leverage despite P2.
+
+**Optional quick wins** (no plan refresh needed):
+
+- D99.4 — drop the lone `security: []` (~5 min, trivial consistency).
+- Any ✅ Valid feature: F21, F24, F27, F28, F29, F30, F31.
+
+---
+
+## History
+
+- **Waves 0–4** (2026-07-05 → 2026-07-07): all ledgered D-items resolved. See
+  [`TECHNICAL_DEBT.md`](TECHNICAL_DEBT.md) for the per-item resolution log.
+- **Wave 5** (2026-07-27): resolved D99.1, .3, .5, .6, .7, .9, .10–.16, .19 via the
+  `wave-5-debt-clearance` OpenSpec change. D99.8, .17, .18 remain deferred by design.
+- **Features shipped:** F01 (recipe collections, 2026-07-09), F04 (mention notifications,
+  2026-07-13).
