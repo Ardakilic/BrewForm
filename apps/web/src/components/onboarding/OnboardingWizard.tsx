@@ -106,6 +106,9 @@ function EquipmentStep({ t, onSelect }: StepProps & { onSelect: (id: string | nu
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Intentionally best-effort: onboarding only pre-fills the optional setup picker,
+    // so a rejected fetch must never block the wizard — it silently falls back to the
+    // "create a setup" CTA (empty `setups`), hence the empty catch.
     api.get<{ id: string; name: string }[]>('/setups').then((data) => setSetups(data ?? [])).catch(
       () => {},
     );

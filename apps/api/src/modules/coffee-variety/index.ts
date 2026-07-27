@@ -22,10 +22,11 @@ import * as service from './service.ts';
 import { error, paginated, success } from '../../utils/response/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 
+/** Dependency-injection proxy for test stubbing (auth middleware + service). */
 export const deps = { authMiddleware, service };
 
 /** Proxy that resolves authMiddleware at request time (supports test mocking via deps). */
-async function authGuard(c: Context, next: Next) {
+function authGuard(c: Context, next: Next) {
   return deps.authMiddleware(c, next);
 }
 
@@ -34,6 +35,7 @@ const CoffeeVarietyRecipesQuerySchema = z.object({
   perPage: z.coerce.number().int().positive().max(100).default(12),
 });
 
+/** Hono sub-router for coffee-variety endpoints, mounted at `/api/v1/coffee-varieties`. */
 const router = new Hono<AppEnv>();
 
 router.get(

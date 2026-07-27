@@ -1,3 +1,4 @@
+/** Brew methods with labels and their associated equipment types. */
 export const BREW_METHODS = [
   {
     value: 'espresso_machine',
@@ -64,8 +65,10 @@ export const BREW_METHODS = [
   },
 ] as const;
 
+/** Union of valid brew method values derived from {@link BREW_METHODS}. */
 export type BrewMethodValue = (typeof BREW_METHODS)[number]['value'];
 
+/** A single brew method option with value, label, and equipment types. */
 export type BrewMethodOption = {
   value: BrewMethodValue;
   label: string;

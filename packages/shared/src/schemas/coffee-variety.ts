@@ -54,3 +54,8 @@ export const CoffeeVarietyFilterSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   perPage: z.coerce.number().int().positive().max(100).default(20),
 });
+
+/** Inferred TypeScript type for coffee-variety creation payloads. */
+export type CoffeeVarietyCreate = z.infer<typeof CoffeeVarietyCreateSchema>;
+/** Inferred TypeScript type for partial coffee-variety update payloads. */
+export type CoffeeVarietyUpdate = z.infer<typeof CoffeeVarietyUpdateSchema>;

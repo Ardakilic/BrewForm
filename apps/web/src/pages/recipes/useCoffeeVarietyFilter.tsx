@@ -4,7 +4,7 @@ import { api, coffeeVarietyApi, type CoffeeVarietySearchResult } from '../../api
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { createLogger } from '../../utils/logger.ts';
-import { FilterField } from '../../components/recipe-list/index.ts';
+import { Field } from '../../components/form/Field.tsx';
 
 const log = createLogger('useCoffeeVarietyFilter');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -112,7 +112,7 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
   }
 
   const slot = (
-    <FilterField label={t('recipe.list.coffeeVarietyFilter')}>
+    <Field label={t('recipe.list.coffeeVarietyFilter')}>
       <div ref={varietyRef} className='relative'>
         <input
           type='text'
@@ -169,13 +169,13 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
             onClick={clear}
             className='absolute right-2 top-1/2 -translate-y-1/2 text-xs'
             style={{ color: 'var(--text-tertiary)' }}
-            aria-label='Clear variety filter'
+            aria-label={t('a11y.clearVarietyFilter')}
           >
             ✕
           </button>
         )}
       </div>
-    </FilterField>
+    </Field>
   );
 
   return { slot, selectedName: selectedVarietyName, clear };

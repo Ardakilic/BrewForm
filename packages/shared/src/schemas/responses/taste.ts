@@ -23,6 +23,7 @@ export const TasteNoteOutputSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link TasteNoteOutputSchema}. */
 export type TasteNoteOutput = z.infer<typeof TasteNoteOutputSchema>;
 
 /** Recursive hierarchy node: a flat taste note plus its `children[]`. */

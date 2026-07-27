@@ -5,6 +5,9 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
+import { RecipeCard } from '../../components/recipe-list/RecipeCard.tsx';
+import { TypeBadge } from '../../components/catalog/TypeBadge.tsx';
 import type { CoffeeVarietyOutput, RecipeWithVersionsOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('CoffeeVarietyDetailPage');
@@ -125,39 +128,28 @@ export function CoffeeVarietyDetailPage() {
       />
 
       {/* Breadcrumb */}
-      <nav aria-label='Breadcrumb' className='mb-4'>
-        <ol
-          className='flex items-center gap-1 flex-wrap text-xs'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
-          <li>
-            <Link
-              to='/coffee-varieties'
-              className='transition-colors'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('coffeeVarieties.title')}
-            </Link>
-          </li>
-          <li aria-hidden='true' className='select-none'>›</li>
-          <li aria-current='page' style={{ color: 'var(--text-secondary)' }}>{variety.name}</li>
-        </ol>
-      </nav>
+      <div className='mb-4'>
+        <Breadcrumb
+          items={[
+            { label: t('coffeeVarieties.title'), to: '/coffee-varieties' },
+            { label: variety.name },
+          ]}
+        />
+      </div>
 
       {/* Category badge */}
       {variety.category && (
-        <span
-          className='inline-block text-xs px-2 py-0.5 rounded-full mb-2'
-          style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
-        >
-          {variety.category === 'variety'
-            ? t('coffeeVarieties.category.varietyDetail')
-            : variety.category === 'processing'
-            ? t('coffeeVarieties.category.processingDetail')
-            : variety.category === 'market_name'
-            ? t('coffeeVarieties.category.marketNameDetail')
-            : variety.category}
-        </span>
+        <div className='mb-2'>
+          <TypeBadge
+            label={variety.category === 'variety'
+              ? t('coffeeVarieties.category.varietyDetail')
+              : variety.category === 'processing'
+              ? t('coffeeVarieties.category.processingDetail')
+              : variety.category === 'market_name'
+              ? t('coffeeVarieties.category.marketNameDetail')
+              : variety.category}
+          />
+        </div>
       )}
 
       {/* Title */}
@@ -206,41 +198,7 @@ export function CoffeeVarietyDetailPage() {
           )
           : (
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-              {recipes.map((r) => {
-                const v = r.versions[0];
-                return (
-                  <Link
-                    key={r.id}
-                    to={`/recipes/${r.slug}`}
-                    className='card hover:shadow-lg transition-shadow'
-                  >
-                    <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                      {r.title}
-                    </h3>
-                    <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
-                      {t('recipe.focusMode.by')} {r.author.displayName || r.author.username}
-                    </p>
-                    {v && (
-                      <div
-                        className='mt-1 flex flex-wrap gap-1 text-xs'
-                        style={{ color: 'var(--text-tertiary)' }}
-                      >
-                        <span>{v.brewMethod.replace(/_/g, ' ')}</span>
-                        <span>•</span>
-                        <span>{v.drinkType.replace(/_/g, ' ')}</span>
-                        {v.rating && <span>• ★ {v.rating}</span>}
-                      </div>
-                    )}
-                    <div
-                      className='mt-2 flex items-center gap-2 text-xs'
-                      style={{ color: 'var(--text-tertiary)' }}
-                    >
-                      <span>❤️ {r.likeCount}</span>
-                      <span>💬 {r.commentCount}</span>
-                    </div>
-                  </Link>
-                );
-              })}
+              {recipes.map((r) => <RecipeCard key={r.id} recipe={r} version={r.versions[0]} />)}
             </div>
           )}
       </section>

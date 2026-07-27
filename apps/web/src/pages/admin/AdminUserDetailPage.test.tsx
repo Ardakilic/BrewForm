@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -80,7 +81,11 @@ describe('AdminUserDetailPage — tr locale spot-check', () => {
       [
         {
           path: '/admin/users/:id',
-          element: <AdminUserDetailPage />,
+          element: (
+            <ToastProvider>
+              <AdminUserDetailPage />
+            </ToastProvider>
+          ),
         },
       ],
       { initialEntries: ['/admin/users/missing-id'] },

@@ -1,7 +1,9 @@
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import type { CollectionListItemOutput } from '@brewform/shared/schemas';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import { AuthorButton } from '../ui/AuthorButton.tsx';
+import { CollectionVisibilityBadge } from './CollectionVisibilityBadge.tsx';
 
 const log = createLogger('CollectionCard');
 
@@ -34,20 +36,13 @@ interface CollectionCardProps {
  * collection carries an `author` projection (e.g. from the public browse
  * endpoint), a "by @username" button is rendered below the description.
  *
- * Uses a `<button>` for the author link (with `useNavigate` + `stopPropagation`)
- * instead of a nested `<Link>` to avoid invalid nested `<a>` elements — the
- * same approach as {@link RecipeCard}.
+ * Uses the shared {@link AuthorButton} (a `<button>` with `useNavigate` +
+ * `stopPropagation`) instead of a nested `<Link>` to avoid invalid nested `<a>`
+ * elements — the same approach as {@link RecipeCard}.
  */
 export function CollectionCard({ collection, showAuthor }: CollectionCardProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   log.debug({ collectionId: collection.id }, 'CollectionCard rendered');
-
-  const visibilityBadge = collection.visibility === 'public'
-    ? '🌐'
-    : collection.visibility === 'unlisted'
-    ? '🔗'
-    : '🔒';
 
   const author = collection.author;
 
@@ -60,7 +55,11 @@ export function CollectionCard({ collection, showAuthor }: CollectionCardProps) 
         <h3 className='font-semibold truncate' style={{ color: 'var(--text-primary)' }}>
           {collection.name}
         </h3>
-        <span className='text-lg' title={collection.visibility}>{visibilityBadge}</span>
+        <CollectionVisibilityBadge
+          visibility={collection.visibility}
+          className='text-lg'
+          title={collection.visibility}
+        />
       </div>
       {collection.description && (
         <p className='text-sm mb-2 line-clamp-2' style={{ color: 'var(--text-secondary)' }}>
@@ -69,24 +68,7 @@ export function CollectionCard({ collection, showAuthor }: CollectionCardProps) 
       )}
       {showAuthor && author && (
         <p className='text-xs mb-2' style={{ color: 'var(--text-secondary)' }}>
-          {t('common.by')}{' '}
-          <button
-            type='button'
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/u/${author.username}`);
-            }}
-            className='hover:underline'
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              cursor: 'pointer',
-              color: 'inherit',
-            }}
-          >
-            {author.displayName || author.username}
-          </button>
+          {t('common.by')} <AuthorButton author={author} />
         </p>
       )}
       <p className='text-xs' style={{ color: 'var(--text-tertiary)' }}>

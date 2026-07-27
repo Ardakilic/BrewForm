@@ -5,6 +5,7 @@ import {
   formatWeight,
 } from '@brewform/shared/utils';
 
+/** A single label/value pair rendered as a recipe stat card. */
 export interface StatCardItem {
   label: string;
   value: string;

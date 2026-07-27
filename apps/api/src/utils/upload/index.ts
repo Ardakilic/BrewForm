@@ -6,6 +6,7 @@ const MAX_SIZE = config.UPLOAD_MAX_SIZE_BYTES;
 
 const driver = createStorageDriver();
 
+/** Metadata for a file persisted to the storage driver. */
 export interface UploadedFile {
   filename: string;
   path: string;
@@ -14,6 +15,7 @@ export interface UploadedFile {
   mimeType: string;
 }
 
+/** Resize options for a thumbnail variant; height defaults to width for a square crop. */
 export interface ThumbnailOptions {
   width: number;
   height?: number;
@@ -80,7 +82,7 @@ export function getPublicUrl(filename: string): string {
  * Persist raw file bytes via the module-level storage driver (chosen from
  * config at load time) and return the file's public URL or path.
  */
-export async function saveUploadedFile(data: Uint8Array, filename: string): Promise<string> {
+export function saveUploadedFile(data: Uint8Array, filename: string): Promise<string> {
   return driver.save(data, filename);
 }
 

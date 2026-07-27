@@ -1,9 +1,9 @@
 # Technical Debt — BrewForm
 
 > Status ledger for technical-debt items. Issues categorised by severity and area.
-> Last full audit: **2026-07-13** (verification audit of waves 1–4 + F01 recipe collections + a legacy D01–D33 citation sweep against `main`; prior baseline audit was 2026-07-04). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
+> Last full audit: **2026-07-19** (verification audit of the 2026-07-13 state + fresh sweeps — type-safety, raw SQL/error handling, frontend duplication + consistency, dependencies, docblocks, measured coverage, architecture map; 15-agent audit. Prior audits: 2026-07-13 verification, 2026-07-04 baseline). Resolved dates come from `openspec/changes/archive/` directory names; items implemented outside the spec-driven flow have no archive entry and are marked "date unknown".
 
-**All ledgered D-items are resolved.** Open, non-blocking deferred items are tracked separately in [`plans/D99-debts.md`](D99-debts.md), which gained items **D99.5–D99.9** on 2026-07-13. _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`.)_
+**All ledgered D-items are resolved.** Open, non-blocking deferred items are tracked separately in [`plans/D99-debts.md`](D99-debts.md), which gained items **D99.5–D99.9** on 2026-07-13 and **D99.10–D99.19** on 2026-07-19; the non-deferred set was resolved 2026-07-27 via the `wave-5-debt-clearance` OpenSpec change (D99.8, D99.17, D99.18 remain deferred per design.md). _(Wave 2 resolved 2026-07-06: D03, D34, D39 Tier 1. Wave 3 resolved 2026-07-06: D36, D37, D40. Wave 4 resolved 2026-07-07: D35, D42, D43, D39 Tier 2/3 — via `wave-4-independent-fillers`. Wave 5 resolved 2026-07-27: D99.1,.3,.5,.6,.7,.9,.10–.16,.19 — via `wave-5-debt-clearance`.)_
 
 ---
 
@@ -28,6 +28,7 @@
 - **Incidental sub-finding (fixed)**: the count branch (`model.ts:137`) duplicated the visibility/`deletedAt` predicates of the list branch — now shared in one `recipeConditions` set. **This predicate dedup is what landed.**
 - **Fix / accepted exception**: The correlated subquery **retains a raw `sql` template by documented design** — see the `NOTE` at `model.ts:116-124`: Drizzle's `exists()` combinator emits the wrong table alias under the relational `db.query.recipes.findMany` API (correlating against `recipes.currentVersionId` resolves to the physical table name, which Postgres rejects). The `sql` tag resolves the correlation against the outer aliased query correctly. This is Decision 1 of the Wave 2 proposal — so no `exists()` rewrite was performed. D39 Tier 1 (`equipment/model.test.ts`) is the regression net.
 - **Raw-SQL sweep (2026-07-13)**: the verification audit swept the codebase for stray `sql` uses and found **one genuine stray** — `badge/model.ts:67` used `sql\`... is not null\`` — fixed 2026-07-13 with `isNotNull()`. The remaining `sql` uses are accepted idiomatic exceptions: atomic ±1 counter updates, `count(distinct …)`, and the `SELECT 1` health-check probe.
+- **Correction (2026-07-19)**: the 2026-07-13 "remaining uses are accepted exceptions" claim was incomplete — that sweep's plain `` sql` `` grep missed the typed `sql<number>` form. The 2026-07-19 widened sweep found 5 more strays (`recipe/model.ts:830` featured-toggle, `coffee-variety/model.ts:46` `count(*)`, `collection/model.ts:219` `max()`, `badge/model.ts:78` `coalesce(max())`, `seed.ts:93/404/697` `is null`) — now tracked as **D99.16**. The accepted exceptions themselves were re-verified intact.
 - **PRD**: [`plans/D03-raw-sql-drizzle.md`](D03-raw-sql-drizzle.md)
 
 ### 1.4 Recipe Fork Button Navigates to Non-Existent Route
@@ -81,6 +82,7 @@
 - **Issue**: `data: any` payloads and untyped casts in modules D05 never covered — validated Zod types were dropped at the route → service boundary.
 - **Resolution (2026-07-06 via Wave 2)**: P2 scope complete — all twelve `any` locations replaced with shared-schema-inferred / Drizzle relation-row types. P3 stretch (library-boundary casts in `utils/openapi`, `auth/jwt.ts`, `middleware/errorHandler.ts`) documented with justification comments rather than removed, pending clean typed alternatives in the upstream libraries.
 - **Regression note (2026-07-13)**: F01 (recipe collections, 2026-07-09) reintroduced 4 `any` at the collection service boundary (`collection/service.ts` — `toDetailOutput` signature + three `.map` callbacks) plus 1 `catch (err: any)` in `AddToCollectionModal.tsx`. All five were fixed 2026-07-13 — the service types via the `NonNullable<Awaited<ReturnType<typeof model.findById>>>` relation-row pattern and the modal catch via `ApiError` narrowing.
+- **Correction (2026-07-19)**: `taste/service.ts` carries **3 pre-existing undocumented `any`** (`:27`, `:90` — `cache.get<any>` casts that make `getHierarchy`/`getFlatList` return `any` on cache hits — and `:119` untyped `Map`) that date to the initial commit and escaped D34's sweep (D34's file table covered `taste/model.ts:50` only). D34 stays resolved as scoped; the escapees are now tracked as **D99.10**.
 - **PRD**: [`plans/D34-residual-any-elimination.md`](D34-residual-any-elimination.md)
 
 ### 2.7 Untracked Lint Suppressions — **RESOLVED** (2026-07-07 via wave-4-independent-fillers)
@@ -98,6 +100,7 @@
 - **Status: Resolved** (pilot scope; date unknown — no archive entry)
 - **Verified fix**: 10 pages export loaders (F01 added 4 collection pages), 4 components use `useFetcher`; `static-cache.ts`, `recipe-filters.ts`, and `routes/{like,favourite,rate,follow,comments}.ts` exist.
 - **Known remainder**: `RecipeFocusModePage.tsx` still fetches via `useEffect`+`useState` — the one page never migrated; absorb into future work on that page.
+- **Note (2026-07-19)**: the remainder claim re-verified accurate — the page is still `useEffect`-based (3 hooks). It *is* tested, though (93.75% lines; see the §6.6 correction), so only the data-fetching migration remains outstanding here.
 - **PRD**: [`plans/D10-tanstack-query-migration.md`](D10-tanstack-query-migration.md)
 
 ### 3.2 Recipe List Code Duplication
@@ -175,6 +178,7 @@
 - **File**: `apps/web/src/api/index.ts` — 25+ occurrences (`:30-140`: users, recipes, setups, beans, equipment, taste, follow).
 - **Now unblocked**: D25 created response Zod schemas in `packages/shared/src/schemas/responses/*` — types can be derived via `z.infer` instead of hand-written.
 - **Fix**: Replaced all `Record<string, unknown>` with shared `z.infer`-derived types; deleted `apps/web/src/api/types.ts` (185 lines of shadow types); added web `tsc --noEmit` type-check to CI; extended `RecipeDetailOutputSchema` with per-request overlay fields; added `RecipeListItemOutputSchema` and `PaginatedResponse<T>` shared types.
+- **Correction (2026-07-19)**: "replaced all `Record<string, unknown>`" is off by one — `apps/web/src/api/client.ts:72` (`(data as Record<string, unknown>).data as T`, the generic envelope unwrapper) remains. The line predates D42 and the D42 plan itself anticipated client.ts as envelope plumbing, but it lacks a justification comment; now tracked as **D99.10** (along with ~10 page-level `Record` body/response casts outside `api/`, which were never in D42's scope).
 - **PRD**: [`plans/D42-typed-web-api-boundary.md`](D42-typed-web-api-boundary.md)
 
 ---
@@ -235,6 +239,7 @@
 - **Tier 1 (resolved 2026-07-06 via Wave 2)**: `equipment/model.test.ts`, `vendor/model.test.ts`, `recipe-list/*` component tests, and `RequireAuth.test.tsx` all landed; D03 cites `equipment/model.test.ts` as its regression net.
 - **Tier 2/3 (resolved 2026-07-07 via wave-4-independent-fillers)**: 9 API model tests, 9 API route tests, 4 API util tests, 4 web page tests, 6 web component tests, 5 web hook/util/context tests, and 6 shared input schema tests — 43 new test files total.
 - **Audit note (2026-07-13)**: the verification audit confirmed all 43 Tier 2/3 files are substantive (no stub/placeholder tests). Separately, F01 shipped 3 collection pages (`CollectionCreatePage`, `CollectionEditPage`, `CollectionListPage`) without tests — tracked as **D99.6**, not a D39 regression.
+- **Correction (2026-07-19)**: two updates from the measured-coverage audit. (a) Contrary to the impression left by the 2026-07-13 notes, `RecipeFocusModePage` **is** tested — 93.75% lines (it remains `useEffect`-based, see §3.1). (b) Four legacy-era test files are **mock-mirrors that import zero production code** — `admin/service.test.ts`, `admin/index.test.ts`, `equipment/service.test.ts`, `photo/service.test.ts` re-implement the logic they claim to test (the admin module alone carries 1,349 uncovered lines). These predate D39's tiers but falsify the coverage the suite implies; now tracked as **D99.13** together with the broken `deno task test:db`, the 14 web files invisible to Vitest, the missing coverage gate, and the missing local test-DB provisioning.
 - **PRD**: [`plans/D39-test-coverage-backfill.md`](D39-test-coverage-backfill.md)
 
 ---
@@ -254,17 +259,42 @@ Also resolved without a ledger section above: **D21** rating-scale CHECK constra
 
 ## Summary — Priority Action Items (open items only)
 
-| Priority | Item | Plan | Area | Effort |
-|----------|------|------|------|--------|
-| **P2** | Extract duplicated UI (RecipeCard / BanDialog / form helpers) | [D36](D36-extract-duplicated-ui.md) | Frontend | Medium |
-| **P2** | Typed web API boundary via shared response schemas | [D42](D42-typed-web-api-boundary.md) | Both | Medium |
-| **P2** | Test coverage backfill — Tier 2/3 (remaining models, routes, utils, web, shared schemas) | [D39](D39-test-coverage-backfill.md) | Both | High (incremental) |
-| **P3** | Remove untracked lint suppressions | [D35](D35-untracked-lint-suppressions.md) | Both | Low–Medium |
-| **P3** | Consolidate error pages / remove dead exports | [D37](D37-consolidate-error-pages.md) | Frontend | Low |
-| **P3** | Complete i18n (admin, legal, compare, auxiliary pages) | [D40](D40-complete-i18n.md) | Frontend | Medium–High |
-| **P3** | Add `createdAt` to remaining join tables | [D43](D43-join-table-timestamps.md) | DB | Low |
+_(Corrected 2026-07-19: the previous table here still listed D36/D42/D39/D35/D37/D40/D43 — all resolved per this very document since 2026-07-06/07. The actual open set lives in [`plans/D99-debts.md`](D99-debts.md); wave-5 scheduling refers to the `openspec/changes/wave-5-debt-clearance/` change.)_
 
-**Open deferred items (2026-07-13, tracked in [`plans/D99-debts.md`](D99-debts.md)):** D99.1 collection module caching, D99.5 F01 US-9 "collections containing this recipe" surfacing, D99.6 collection page tests (`CollectionCreate/Edit/List`), D99.7 i18n stragglers, D99.8 cursor keyset sargability (scale-time follow-up — row-value keyset needs a raw-SQL exception), D99.9 comment creation not visibility-gated (recipe-title disclosure via mentions — 2026-07-13 F04 security review). D99.2 (draft visibility option) is **resolved**; D99.4 (OpenAPI `security: []`) **downgraded to a style choice**. These are non-blocking and deferred until in-flight feature plans ship.
+| Priority | Item | Area | Effort | Where |
+|----------|------|------|--------|-------|
+| **P1** | [D99.13](D99-debts.md) Coverage integrity — broken `deno task test:db` (breaks root `test`/`ci`), 4 mock-mirror test files importing zero production code, 14 web files invisible to Vitest, no coverage gate, no local test-DB provisioning, cross-suite pollution | Both | High | Wave 5 — Tracks 1 & 8 |
+| **P2** | [D99.9](D99-debts.md) Comment create/list not visibility-gated (mention flow leaks recipe title/slug) | API | Low–Medium | Wave 5 — Track 1 |
+| **P2** | [D99.1](D99-debts.md) Collection module cache layer (6 mutation invalidation paths) | API | Medium | Wave 5 — Track 2 |
+| **P2** | [D99.10](D99-debts.md) Type-safety & lint regressions — re-enable `no-explicit-any`/`require-await`/`no-empty`, 14 silent catches, taste/recipe-page `any`, `client.ts:72` | Both | Medium–High | Wave 5 — Track 6 |
+| **P2** | [D99.11](D99-debts.md) Frontend duplication — hand-rolled cards/pagination/modals, Toast + ConfirmDialog, EmptyState/LoadingState, Field merge | Frontend | High | Wave 5 — Track 3 |
+| **P3** | [D99.12](D99-debts.md) Visual consistency — page shells, `--error-bg` theming bug, `.btn-danger`, locale-aware dates, breadcrumbs, forms | Frontend | Medium–High | Wave 5 — Track 4 |
+| **P3** | [D99.5](D99-debts.md) F01 US-9 — surface "in collections" on RecipeDetailPage | Both | Low–Medium | Wave 5 — Track 2 |
+| **P3** | [D99.6](D99-debts.md) Collection page tests (`CollectionCreate/Edit/List`) | Frontend | Low | Wave 5 — Track 2 |
+| **P3** | [D99.3](D99-debts.md) Seed per-collection `sortOrder` | DB | Low | Wave 5 — Track 2 |
+| **P3** | [D99.7](D99-debts.md) i18n stragglers (~30 files after the 2026-07-19 sweep) | Frontend | Medium | Wave 5 — Track 5 |
+| **P3** | [D99.16](D99-debts.md) Stray raw `sql` tags (5 sites; typed `sql<number>` forms) | API/DB | Low | Wave 5 — Track 7 |
+| **P3** | [D99.14](D99-debts.md) Docblock gaps — 196 undocumented exported symbols | All | Medium | Wave 5 — Track 9 |
+| **P3** | [D99.15](D99-debts.md) Dependency refresh — 15 safe bumps, Deno/CI version sync, renovate blind spots, gated TypeScript 7 | Tooling | Medium | Wave 5 — Track 10 |
+| **P3** | [D99.19](D99-debts.md) AGENTS.md middleware-order doc drift | Docs | Trivial | Wave 5 — Track 11 |
+| **P4** | [D99.8](D99-debts.md) Cursor keyset sargability (row-value rewrite needs a raw-SQL exception) | API | Low | Deferred (scale-time) |
+| **P4** | [D99.17](D99-debts.md) Architecture deviations — recipe model-import bypass, contact module shape | API | Medium | Deferred |
+| **P4** | [D99.18](D99-debts.md) Test-file naming split (`*_test.ts` vs `*.test.ts`) | Both | Low | Deferred |
+
+**Open deferred items (2026-07-19, tracked in [`plans/D99-debts.md`](D99-debts.md)):** all seven pre-existing open items — D99.1 collection caching, D99.3 seed `sortOrder`, D99.5 US-9 surfacing, D99.6 collection page tests, D99.7 i18n stragglers, D99.8 cursor sargability, D99.9 comment visibility gate — were **re-verified open against code** by the 2026-07-19 audit (with per-item doc corrections applied in the D99 ledger: six-not-five collection mutations, the dead `c.get('cache')` DI route, the `getCollectionsForRecipe` no-consumer contradiction, the corrected D99.9 predicate location, the widened ~30-file i18n scope). D99.2 (draft visibility option) remains **resolved**; D99.4 (OpenAPI `security: []`) remains **downgraded to a style choice**. Everything except D99.8/.17/.18 is scheduled in `wave-5-debt-clearance`.
+
+**New findings (2026-07-19 audit), ledgered as D99.10–D99.19:**
+
+- **D99.10 — Type-safety & lint regressions.** `deno.json` disables `no-explicit-any`/`require-await`/`no-empty` repo-wide, masking 7 production `any` (3 in `taste/service.ts`, 10 across the two recipe compare/focus pages behind 8 justification-free ignores), 14 silent `catch {}` on user mutations, and 44 `require-await` sites. Decision: fix all production violations and re-enable all three rules, flipping `deno.json` last. → Track 6.
+- **D99.11 — Frontend duplication.** Three pages hand-roll recipe cards vs the shared `RecipeCard`; plus a hand-rolled collection card, 4–5 pagination clones, catalog/CRUD near-clone pages, 3 modal shells + 9 `globalThis.confirm` sites, and no Toast/ConfirmDialog/EmptyState/LoadingState primitives. Primitives-first consolidation (generic page components explicitly rejected). → Track 3.
+- **D99.12 — Visual consistency.** Collections use a divergent page shell; error UI diverges 4 ways with an undefined `--error-bg` breaking dark/coffee themes; 8 date sites ignore the app locale; 3 breadcrumb implementations; form primitives adopted by only 2 of ~12 forms. → Track 4.
+- **D99.13 — Coverage integrity (P1).** `deno task test:db` is broken (TS2352, breaks root `test`/`ci`); 4 mock-mirror test files import zero production code (admin alone: 1,349 uncovered lines); measured deno-scope coverage is 72.21% (api 65.38%) and web's 75.31% is inflated by 14 invisible files; no gate, no local test-DB provisioning, cross-suite seed pollution. Path to ≥85% mapped (admin + recipe + auth backfill). → Tracks 1 & 8.
+- **D99.14 — Docblock gaps.** 196 of 1,059 exported symbols undocumented — nearly all `const`/`type` exports (schema.ts 43, shared `z.infer` aliases 49 + constants 21, 22 router consts); the only undocumented true function is `seed.ts main()`. → Track 9.
+- **D99.15 — Dependency refresh.** 15 safe patch/minor bumps; Deno 2.9.3 + CI pins drifted at v2.9.0; renovate blind spots (deno.json catalog, jsr-in-package.json, CI deno-version); TypeScript 7 (tsgo) major handled as a gated verify-then-bump with an explicit defer fallback. → Track 10.
+- **D99.16 — Stray raw `sql` tags.** 5 sites using typed `sql<number>` forms that the earlier sweep's grep pattern missed; all replaceable with drizzle `count()`/`max()`/`isNull()` except the featured-toggle (rewrite with `not()` or document as an atomic-toggle exception). → Track 7.
+- **D99.17 — Architecture deviations (deferred).** `recipe/index.ts` imports the model directly, bypassing the service layer; the contact module has no service/model split. Convention drift only — deferred until those modules are next touched.
+- **D99.18 — Test-file naming split (deferred).** `*_test.ts` vs `*.test.ts` coexist; a rename sweep is deferred to avoid conflicting with the D99.13 coverage work.
+- **D99.19 — AGENTS.md doc drift.** The documented middleware order at `AGENTS.md:50` no longer matches `main.ts:41-76`. Trivial doc fix. → Track 11.
 
 **Recently resolved (2026-07-05, openspec change `wave-1-correctness-security`):** D41 (admin user mutation soft-delete guards + sibling sweep + setRole route try/catch + describeRoute) and D38 (report rate limit + sanitizer tests + AuthContext error surfacing + SessionRestoreBanner). See §1.5 and §1.6 above.
 

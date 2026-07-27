@@ -42,5 +42,7 @@ export const UserProfileUpdateSchema = z.object({
   avatarUrl: z.url().optional(),
 });
 
+/** Inferred type of {@link UserProfileUpdateSchema}. */
 export type UserProfileUpdate = z.infer<typeof UserProfileUpdateSchema>;
+/** Inferred type of {@link UserPreferencesSchema}. */
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;

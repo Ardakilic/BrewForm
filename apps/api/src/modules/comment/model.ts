@@ -154,6 +154,27 @@ export async function getRecipeForNotification(recipeId: string) {
   return result[0] ?? null;
 }
 
+/**
+ * Get recipe authorId + visibility for comment access checks.
+ *
+ * Mirrors {@link getRecipeForNotification}'s soft-delete guard but returns the
+ * minimal shape the visibility gate needs. Used by createComment/listComments
+ * to existence-hide recipes the caller may not see (D99.9).
+ *
+ * @param recipeId - The recipe to check
+ * @returns `{ authorId, visibility }` or null when missing/soft-deleted
+ */
+export async function getRecipeForAccessCheck(recipeId: string) {
+  const result = await db.select({
+    authorId: recipes.authorId,
+    visibility: recipes.visibility,
+  })
+    .from(recipes)
+    .where(and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)))
+    .limit(1);
+  return result[0] ?? null;
+}
+
 /** Get a commenter's ID and username for mention text. */
 export async function getCommenterById(userId: string) {
   const result = await db.select({ id: users.id, username: users.username })

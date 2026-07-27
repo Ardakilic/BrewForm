@@ -2,15 +2,18 @@ import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { generateUniqueUsername } from './username.ts';
 
+// deno-lint-ignore require-await -- test mock async signature
 async function neverTaken(_username: string): Promise<boolean> {
   return false;
 }
 
+// deno-lint-ignore require-await -- test mock async signature
 async function alwaysTaken(_username: string): Promise<boolean> {
   return true;
 }
 
 function makeTakenSet(set: Set<string>): (username: string) => Promise<boolean> {
+  // deno-lint-ignore require-await -- test mock async signature
   return async (username: string) => set.has(username);
 }
 

@@ -1,3 +1,4 @@
+/** Coffee drink types with labels and compatible brew methods. */
 export const DRINK_TYPES = [
   { value: 'espresso', label: 'Espresso', compatibleMethods: ['espresso_machine'] },
   { value: 'americano', label: 'Americano', compatibleMethods: ['espresso_machine'] },
@@ -16,14 +17,17 @@ export const DRINK_TYPES = [
   { value: 'siphon', label: 'Siphon', compatibleMethods: ['siphon'] },
 ] as const;
 
+/** Union of valid drink type values derived from {@link DRINK_TYPES}. */
 export type DrinkTypeValue = (typeof DRINK_TYPES)[number]['value'];
 
+/** A single drink type option with value, label, and compatible methods. */
 export type DrinkTypeOption = {
   value: DrinkTypeValue;
   label: string;
   compatibleMethods: readonly string[];
 };
 
+/** Mutable copy of {@link DRINK_TYPES} for use in UI iteration. */
 export const DRINK_TYPES_LIST: DrinkTypeOption[] = [...DRINK_TYPES];
 
 /**

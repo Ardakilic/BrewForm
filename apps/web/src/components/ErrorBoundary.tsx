@@ -30,7 +30,7 @@ export function RootErrorBoundary() {
     if (error.status >= 500) return <ServerErrorPage />;
   }
 
-  const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+  const message = error instanceof Error ? error.message : t('error.unexpected');
 
   return (
     <div

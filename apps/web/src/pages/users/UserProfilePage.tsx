@@ -13,6 +13,8 @@ import type {
 import { createLogger } from '../../utils/logger.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { FollowButton } from '../../components/user/FollowButton.tsx';
+import { RecipeCard } from '../../components/recipe-list/RecipeCard.tsx';
+import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
 
 const log = createLogger('UserProfilePage');
 
@@ -20,6 +22,7 @@ type Tab = 'recipes' | 'badges' | 'followers' | 'following' | 'collections';
 
 type FollowRecord = FollowerListItemOutput | FollowingListItemOutput;
 
+/** Loader data for the user profile page — public profile plus tab-specific follow/collection data. */
 export interface ProfileLoaderData {
   profile: PublicUserOutput;
   followData: FollowRecord[] | null;
@@ -222,26 +225,7 @@ export function UserProfilePage() {
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           {profile.recipes.length === 0
             ? <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noRecipes')}</p>
-            : (
-              profile.recipes.map((r) => (
-                <Link
-                  key={r.id}
-                  to={`/recipes/${r.slug}`}
-                  className='card hover:shadow-lg transition-shadow'
-                >
-                  <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                    {r.title}
-                  </h3>
-                  <div
-                    className='mt-1 flex gap-2 text-xs'
-                    style={{ color: 'var(--text-tertiary)' }}
-                  >
-                    <span>❤️ {r.likeCount}</span>
-                    <span>💬 {r.commentCount}</span>
-                  </div>
-                </Link>
-              ))
-            )}
+            : profile.recipes.map((r) => <RecipeCard key={r.id} recipe={r} hideAuthor />)}
         </div>
       )}
 
@@ -249,25 +233,7 @@ export function UserProfilePage() {
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           {!collectionsData || collectionsData.data.length === 0
             ? <p style={{ color: 'var(--text-tertiary)' }}>{t('user.noCollections')}</p>
-            : (
-              collectionsData.data.map((c) => (
-                <Link
-                  key={c.id}
-                  to={`/collections/${c.id}`}
-                  className='card hover:shadow-lg transition-shadow'
-                >
-                  <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                    {c.name}
-                  </h3>
-                  <div
-                    className='mt-1 flex gap-2 text-xs'
-                    style={{ color: 'var(--text-tertiary)' }}
-                  >
-                    <span>{c.recipeCount} {t('collection.detail.recipes')}</span>
-                  </div>
-                </Link>
-              ))
-            )}
+            : collectionsData.data.map((c) => <CollectionCard key={c.id} collection={c} />)}
         </div>
       )}
 

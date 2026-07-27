@@ -32,5 +32,7 @@ export const TasteNoteUpdateSchema = z.object({
   definition: z.string().max(2000).optional(),
 });
 
+/** Inferred type of {@link TasteNoteCreateSchema}. */
 export type TasteNoteCreate = z.infer<typeof TasteNoteCreateSchema>;
+/** Inferred type of {@link TasteNoteUpdateSchema}. */
 export type TasteNoteUpdate = z.infer<typeof TasteNoteUpdateSchema>;

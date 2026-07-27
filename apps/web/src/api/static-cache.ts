@@ -1,6 +1,7 @@
 import { equipmentApi, tasteApi } from './index.ts';
 import type { EquipmentOutput, TasteNoteOutput } from '@brewform/shared/schemas';
 
+/** Cache-bust key for the module-level static data cache. */
 export const CACHE_BUST_KEY = 'brewform-static-cache-bust';
 
 /** Module-level cache slot for the authenticated user's equipment list. Nulled by {@link invalidateStaticCache}. */

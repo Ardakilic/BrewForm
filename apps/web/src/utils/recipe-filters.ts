@@ -1,5 +1,6 @@
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Raw recipe-list filter parameters parsed from the URL query string. */
 export interface ListFilterParams {
   page: string;
   perPage: string;

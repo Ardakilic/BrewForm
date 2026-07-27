@@ -199,8 +199,13 @@ export const RecipeForkSchema = z.object({
   title: z.string().max(200).optional(),
 });
 
+/** Inferred type of {@link RecipeCreateSchema}. */
 export type RecipeCreate = z.infer<typeof RecipeCreateSchema>;
+/** Inferred type of {@link RecipeUpdateSchema}. */
 export type RecipeUpdate = z.infer<typeof RecipeUpdateSchema>;
+/** Inferred type of {@link RecipeForkSchema}. */
 export type RecipeFork = z.infer<typeof RecipeForkSchema>;
+/** Inferred type of {@link RecipeRateSchema}. */
 export type RecipeRate = z.infer<typeof RecipeRateSchema>;
+/** Inferred type of {@link RecipeNotesSchema}. */
 export type RecipeNotes = z.infer<typeof RecipeNotesSchema>;

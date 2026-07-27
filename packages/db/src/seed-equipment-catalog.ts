@@ -1,6 +1,9 @@
-// Static seed data: coffee equipment catalog
-// Auto-generated from files/coffee_equipments_v2.json
+/**
+ * Static seed data: coffee equipment catalog.
+ * Auto-generated from files/coffee_equipments_v2.json.
+ */
 
+/** Shape of a single equipment catalog seed row. */
 export interface EquipmentCatalogEntry {
   id: string;
   name: string;
@@ -11,6 +14,7 @@ export interface EquipmentCatalogEntry {
   isSystem: boolean;
 }
 
+/** System equipment catalog entries seeded with `isSystem: true`. */
 export const equipmentCatalogSeedData: EquipmentCatalogEntry[] = [
   {
     id: 'cb0456f0-8710-50b0-8c70-00005e82d1e0',

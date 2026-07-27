@@ -2,5 +2,32 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  // JSR-in-package.json blind spot: Renovate's `npm` manager parses package.json but
+  // skips `jsr:`-protocol semver ranges, so the JSR devDependencies below are NOT
+  // auto-updated and must be bumped manually (e.g. `deno outdated` / `deno update`):
+  //   - apps/api/package.json:22-23    "@std/testing", "@std/expect" (jsr:@std/...)
+  //   - packages/db/package.json:22-23 "@std/testing", "@std/expect" (jsr:@std/...)
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update the root deno.json `catalog` pins (drizzle-orm, bcryptjs, zod). The deno manager does not treat `catalog` as a supported depType, so these are matched by regex against the npm datasource.",
+      "managerFilePatterns": ["/^deno\\.json$/"],
+      "matchStrings": [
+        "\"(?<depName>drizzle-orm|bcryptjs|zod)\":\\s*\"\\^(?<currentValue>[\\d.]+)\""
+      ],
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
+      "description": "Keep the .deno-version file — the single source of truth for the Deno runtime, consumed by CI via deno-version-file and mirrored in the Dockerfile base-image tags — up to date from denoland/deno GitHub releases.",
+      "managerFilePatterns": ["/^\\.deno-version$/"],
+      "matchStrings": [
+        "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "denoland/deno",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    }
   ]
 }

@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Tests that composite indexes are defined in the Drizzle schema.
  *
@@ -47,6 +45,7 @@ import {
  * @param table - A Drizzle `pgTable` instance (e.g., `recipes`, `comments`)
  * @returns Array of `{ name, columns, isUnique }` for each defined index
  */
+// deno-lint-ignore no-explicit-any -- test any usage
 function getTableIndexes(table: PgTableWithColumns<any>): {
   name: string;
   columns: (string | null)[];
@@ -73,6 +72,7 @@ function getTableIndexes(table: PgTableWithColumns<any>): {
  * @param table - A Drizzle `pgTable` instance
  * @returns Array of `{ name, columns }` for each defined unique constraint
  */
+// deno-lint-ignore no-explicit-any -- test any usage
 function getTableUniqueConstraints(table: PgTableWithColumns<any>): {
   name: string;
   columns: (string | null)[];
@@ -80,10 +80,10 @@ function getTableUniqueConstraints(table: PgTableWithColumns<any>): {
   const { uniqueConstraints } = getTableConfig(table);
   return uniqueConstraints.map((uc) => ({
     name: uc.name ?? '',
-    columns: uc.columns.map((col) => {
-      if ('name' in col) return (col as IndexedColumn).name ?? null;
-      return null;
-    }),
+    // Unique-constraint columns are concrete PgColumn instances (drizzle
+    // `unique().on(...)` takes columns only — never SQL expressions like
+    // index columns can), so `.name` is always present without a cast.
+    columns: uc.columns.map((col) => col.name ?? null),
   }));
 }
 

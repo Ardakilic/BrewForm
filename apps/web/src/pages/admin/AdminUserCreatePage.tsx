@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { adminApi } from '../../api/index.ts';
 import { createLogger } from '../../utils/logger.ts';
-import { AdminCreateUserSchema } from '@brewform/shared/schemas';
+import { type AdminCreateUser, AdminCreateUserSchema } from '@brewform/shared/schemas';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { Field } from '../../components/form/Field.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 
 const log = createLogger('AdminUserCreatePage');
 
@@ -51,7 +53,7 @@ export function AdminUserCreatePage() {
     setSaving(true);
     setServerError('');
     try {
-      const data: Record<string, unknown> = {
+      const data: AdminCreateUser = {
         email: form.email,
         username: form.username,
         password: form.password,
@@ -60,7 +62,7 @@ export function AdminUserCreatePage() {
       if (form.bio) data.bio = form.bio;
       if (form.isAdmin) data.isAdmin = true;
       if (form.isBanned) data.isBanned = true;
-      await adminApi.createUser(data as Parameters<typeof adminApi.createUser>[0]);
+      await adminApi.createUser(data);
       navigate('/admin/users');
     } catch (err: unknown) {
       const apiErr = err as { code?: string; message?: string };
@@ -85,106 +87,63 @@ export function AdminUserCreatePage() {
         </h1>
       </div>
 
-      {serverError && (
-        <div
-          className='mb-4 p-3 rounded text-sm'
-          style={{ backgroundColor: 'var(--error-bg, #fef2f2)', color: 'var(--error)' }}
-        >
-          {serverError}
-        </div>
-      )}
+      {serverError && <ErrorState message={serverError} className='mb-4' />}
 
       <form onSubmit={handleSubmit} className='card max-w-lg'>
         <div className='space-y-4'>
-          <div>
-            <label
-              className='block text-sm font-medium mb-1'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('auth.email')} *
-            </label>
+          <Field label={t('auth.email')} htmlFor='email' required error={errors.email}>
             <input
+              id='email'
               type='email'
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               className='input-field'
             />
-            {errors.email && (
-              <p className='text-xs mt-1' style={{ color: 'var(--error)' }}>{errors.email}</p>
-            )}
-          </div>
+          </Field>
 
-          <div>
-            <label
-              className='block text-sm font-medium mb-1'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('auth.username')} *
-            </label>
+          <Field label={t('auth.username')} htmlFor='username' required error={errors.username}>
             <input
+              id='username'
               type='text'
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               className='input-field'
             />
-            {errors.username && (
-              <p className='text-xs mt-1' style={{ color: 'var(--error)' }}>{errors.username}</p>
-            )}
-          </div>
+          </Field>
 
-          <div>
-            <label
-              className='block text-sm font-medium mb-1'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('auth.password')} *
-            </label>
+          <Field label={t('auth.password')} htmlFor='password' required error={errors.password}>
             <input
+              id='password'
               type='password'
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               className='input-field'
             />
-            {errors.password && (
-              <p className='text-xs mt-1' style={{ color: 'var(--error)' }}>{errors.password}</p>
-            )}
-          </div>
+          </Field>
 
-          <div>
-            <label
-              className='block text-sm font-medium mb-1'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('settings.displayName')}
-            </label>
+          <Field
+            label={t('settings.displayName')}
+            htmlFor='displayName'
+            error={errors.displayName}
+          >
             <input
+              id='displayName'
               type='text'
               value={form.displayName}
               onChange={(e) => setForm({ ...form, displayName: e.target.value })}
               className='input-field'
             />
-            {errors.displayName && (
-              <p className='text-xs mt-1' style={{ color: 'var(--error)' }}>{errors.displayName}</p>
-            )}
-          </div>
+          </Field>
 
-          <div>
-            <label
-              className='block text-sm font-medium mb-1'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('common.bio')}
-            </label>
+          <Field label={t('common.bio')} htmlFor='bio' error={errors.bio}>
             <textarea
+              id='bio'
               value={form.bio}
               onChange={(e) => setForm({ ...form, bio: e.target.value })}
               className='input-field'
               rows={3}
             />
-            {errors.bio && (
-              <p className='text-xs mt-1' style={{ color: 'var(--error)' }}>{errors.bio}</p>
-            )}
-          </div>
+          </Field>
 
           <div className='flex gap-6'>
             <label className='flex items-center gap-2'>

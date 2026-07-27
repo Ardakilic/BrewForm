@@ -26,13 +26,15 @@ import { error, paginated, success, zodValidationHook } from '../../utils/respon
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Dependency-injection proxy for test stubbing (auth middleware + service). */
 export const deps = { authMiddleware, service };
 
 /** Proxy that resolves authMiddleware at request time (supports test mocking via deps). */
-async function authGuard(c: Context, next: Next) {
+function authGuard(c: Context, next: Next) {
   return deps.authMiddleware(c, next);
 }
 
+/** Hono sub-router for equipment endpoints, mounted at `/api/v1/equipment`. */
 const equipment = new Hono<AppEnv>();
 
 equipment.get(

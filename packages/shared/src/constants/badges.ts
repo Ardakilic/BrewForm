@@ -1,3 +1,4 @@
+/** Badge definitions with rule identifiers, display metadata, and unlock thresholds. */
 export const BADGE_RULES = [
   {
     rule: 'first_brew',

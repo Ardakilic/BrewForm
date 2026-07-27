@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import type { RecipeListItemOutput } from '@brewform/shared/schemas';
-import { RecipeCard } from './RecipeCard.tsx';
+import { RecipeCard, type RecipeCardRecipe } from './RecipeCard.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -16,8 +16,29 @@ vi.mock('@/utils/logger.ts', () => ({
   }),
 }));
 
+vi.mock('../../contexts/I18nContext.tsx', () => ({
+  useTranslation: vi.fn(),
+}));
+
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+
+const mockUseTranslation = vi.mocked(useTranslation);
+
+const enT = (key: string) => {
+  const map: Record<string, string> = { 'recipe.card.by': 'by' };
+  return map[key] ?? key;
+};
+
+const defaultTranslation = {
+  locale: 'en' as const,
+  setLocale: vi.fn(),
+  t: enT,
+  availableLocales: ['en', 'tr'],
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUseTranslation.mockReturnValue(defaultTranslation);
 });
 
 function makeRecipe(overrides: Partial<RecipeListItemOutput> = {}): RecipeListItemOutput {
@@ -106,5 +127,64 @@ describe('RecipeCard', () => {
     const paragraph = document.querySelector('p.mt-1');
     expect(paragraph).not.toBeNull();
     expect(paragraph!.textContent).toContain('unknown');
+  });
+
+  it('hides the author line entirely when hideAuthor is set', () => {
+    renderWithRouter(<RecipeCard recipe={makeRecipe()} hideAuthor />);
+    expect(screen.queryByRole('button', { name: 'Alice' })).not.toBeInTheDocument();
+    // The "by <author>" paragraph (className "mt-1 ...") is not rendered
+    expect(document.querySelector('p.mt-1')).toBeNull();
+    expect(screen.queryByText('unknown')).not.toBeInTheDocument();
+  });
+
+  it('renders the brew-method/drink-type/rating strip when a version is passed', () => {
+    renderWithRouter(
+      <RecipeCard
+        recipe={makeRecipe()}
+        version={{ brewMethod: 'pour_over', drinkType: 'filter_coffee', rating: 4 }}
+      />,
+    );
+    expect(screen.getByText('pour over')).toBeInTheDocument();
+    expect(screen.getByText('filter coffee')).toBeInTheDocument();
+    expect(screen.getByText(/★ 4/)).toBeInTheDocument();
+  });
+
+  it('omits the rating from the version strip when rating is null', () => {
+    renderWithRouter(
+      <RecipeCard
+        recipe={makeRecipe()}
+        version={{ brewMethod: 'v60', drinkType: 'filter', rating: null }}
+      />,
+    );
+    expect(screen.getByText('v60')).toBeInTheDocument();
+    expect(screen.getByText('filter')).toBeInTheDocument();
+    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+  });
+
+  it('does not render the version strip when no version is passed', () => {
+    renderWithRouter(<RecipeCard recipe={makeRecipe()} />);
+    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+  });
+
+  it('omits the fork count when forkCount is undefined', () => {
+    const recipe: RecipeCardRecipe = {
+      id: 'r1',
+      slug: 'test-recipe',
+      title: 'Test Recipe',
+      likeCount: 5,
+      commentCount: 2,
+      author: { username: 'alice', displayName: 'Alice' },
+    };
+    renderWithRouter(<RecipeCard recipe={recipe} />);
+    expect(screen.getByText(/❤️ 5/)).toBeInTheDocument();
+    expect(screen.queryByText(/🍴/)).not.toBeInTheDocument();
+  });
+
+  it('translates the "by" label via t(recipe.card.by)', () => {
+    const tSpy = vi.fn((key: string) => (key === 'recipe.card.by' ? 'YAZAN' : key));
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, t: tSpy });
+    renderWithRouter(<RecipeCard recipe={makeRecipe()} />);
+    expect(tSpy).toHaveBeenCalledWith('recipe.card.by');
+    expect(screen.getByText(/YAZAN/)).toBeInTheDocument();
   });
 });

@@ -36,6 +36,10 @@ import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
 
+/**
+ * Root Hono application. Applies the middleware stack and mounts {@link routes};
+ * exported below for tests and the request handler.
+ */
 const app = new Hono<AppEnv>();
 
 app.use('*', corsMiddleware);

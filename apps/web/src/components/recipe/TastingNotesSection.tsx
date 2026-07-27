@@ -98,7 +98,7 @@ export function TastingNotesSection({
   }
 
   return (
-    <section className='card' aria-label='Tasting notes'>
+    <section className='card' aria-label={t('a11y.tastingNotes.section')}>
       {/* Section header */}
       <div className='flex items-center justify-between mb-4'>
         <span className='text-xs font-semibold uppercase tracking-widest text-[color:var(--text-tertiary)]'>
@@ -139,7 +139,7 @@ export function TastingNotesSection({
                         type='button'
                         onClick={() => navigate(`/recipes?tasteNoteIds=${noteId}`)}
                         className='inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-75 bg-[color:var(--bg-tertiary)] border border-[color:var(--border-primary)] text-[color:var(--text-primary)] cursor-pointer'
-                        aria-label={`Filter recipes by ${note.name}`}
+                        aria-label={t('a11y.tastingNotes.filterBy').replace('{name}', note.name)}
                       >
                         <span>{note.name}</span>
                         <IntensityDots intensity={note.intensity} />

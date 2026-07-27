@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
 import { createLogger } from '../../utils/logger.ts';
+import { formatDate } from '../../utils/format.ts';
 import { formatTemperature, formatVolume, formatWeight } from '@brewform/shared/utils';
 import type { RecipeVersionRow } from '@brewform/shared/schemas';
+import { PageContainer } from '../../components/ui/PageContainer.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
 
 const log = createLogger('RecipeVersionsPage');
 
@@ -16,7 +21,7 @@ const log = createLogger('RecipeVersionsPage');
  */
 export function RecipeVersionsPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const unitSystem = useUnitSystem();
   const [data, setData] = useState<
     { title: string; slug: string; versions: RecipeVersionRow[] } | null
@@ -47,16 +52,16 @@ export function RecipeVersionsPage() {
 
   if (loading) {
     return (
-      <div className='mx-auto max-w-4xl px-4 py-12 text-[color:var(--text-secondary)]'>
-        {t('common.loading')}
-      </div>
+      <PageContainer width='4xl'>
+        <LoadingState />
+      </PageContainer>
     );
   }
   if (!data) {
     return (
-      <div className='mx-auto max-w-4xl px-4 py-12 text-[color:var(--text-secondary)]'>
-        {t('common.noResults')}
-      </div>
+      <PageContainer width='4xl'>
+        <EmptyState message={t('common.noResults')} />
+      </PageContainer>
     );
   }
 
@@ -66,15 +71,18 @@ export function RecipeVersionsPage() {
   return (
     <>
       <SEOHead title={`${data.title} – ${t('recipe.versionHistory')}`} />
-      <div className='mx-auto max-w-4xl px-4 py-12'>
+      <PageContainer width='4xl'>
         <div className='mb-6'>
-          <Link
-            to={`/recipes/${data.slug}`}
-            className='text-sm text-[color:var(--accent-primary)] hover:underline'
-          >
-            ← {t('common.back')}
-          </Link>
-          <h1 className='text-2xl font-bold mt-2 text-[color:var(--text-primary)]'>
+          <div className='mb-2'>
+            <Breadcrumb
+              items={[
+                { label: t('recipe.list.title'), to: '/recipes' },
+                { label: data.title, to: `/recipes/${data.slug}` },
+                { label: t('recipe.versionHistory') },
+              ]}
+            />
+          </div>
+          <h1 className='text-2xl font-bold text-[color:var(--text-primary)]'>
             {data.title} – {t('recipe.versionHistory')}
           </h1>
         </div>
@@ -90,7 +98,7 @@ export function RecipeVersionsPage() {
                   v{v.versionNumber}
                 </span>
                 <span className='text-sm text-[color:var(--text-tertiary)]'>
-                  {new Date(v.brewDate).toLocaleDateString()}
+                  {formatDate(v.brewDate, locale)}
                 </span>
               </div>
               <div className='mt-2 flex gap-4 text-sm text-[color:var(--text-secondary)]'>
@@ -114,7 +122,7 @@ export function RecipeVersionsPage() {
             </div>
           ))}
         </div>
-      </div>
+      </PageContainer>
     </>
   );
 }

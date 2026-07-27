@@ -10,6 +10,7 @@ export type ContextUser = Omit<User, 'preferences'> & {
   preferences?: User['preferences'];
 };
 
+/** Context variables set by middleware (request ID, cache, auth) and read by route handlers. */
 export type AppVariables = {
   requestId: string;
   cache: CacheProvider;
@@ -17,6 +18,7 @@ export type AppVariables = {
   user: ContextUser | null;
 };
 
+/** Hono environment binding {@link AppVariables}; the generic passed to every `Hono<AppEnv>` router. */
 export type AppEnv = {
   Variables: AppVariables;
 };

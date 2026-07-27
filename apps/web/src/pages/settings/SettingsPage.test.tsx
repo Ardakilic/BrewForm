@@ -288,9 +288,10 @@ describe('SettingsPage', () => {
       await user.click(screen.getByText('Hesabı Sil'));
 
       await waitFor(() => {
-        const banner = screen.getByText('Hesap silinemedi.');
+        const banner = screen.getByText('Hesap silinemedi.')
+          .closest('[role="alert"]') as HTMLElement | null;
         expect(banner).toBeInTheDocument();
-        expect(banner.style.backgroundColor).toBe('var(--error)');
+        expect(banner!.style.backgroundColor).toBe('var(--error-bg)');
       });
 
       expect(mockLogout).not.toHaveBeenCalled();
@@ -332,9 +333,10 @@ describe('SettingsPage', () => {
       await user.click(screen.getByText('Tercihleri Kaydet'));
 
       await waitFor(() => {
-        const banner = screen.getByText('Tercihler kaydedilemedi.');
+        const banner = screen.getByText('Tercihler kaydedilemedi.')
+          .closest('[role="alert"]') as HTMLElement | null;
         expect(banner).toBeInTheDocument();
-        expect(banner.style.backgroundColor).toBe('var(--error)');
+        expect(banner!.style.backgroundColor).toBe('var(--error-bg)');
       });
     });
   });
@@ -382,9 +384,10 @@ describe('SettingsPage', () => {
       await user.click(screen.getByText('Delete Account'));
 
       await waitFor(() => {
-        const banner = screen.getByText('Account deletion failed.');
+        const banner = screen.getByText('Account deletion failed.')
+          .closest('[role="alert"]') as HTMLElement | null;
         expect(banner).toBeInTheDocument();
-        expect(banner.style.backgroundColor).toBe('var(--error)');
+        expect(banner!.style.backgroundColor).toBe('var(--error-bg)');
       });
 
       confirmSpy.mockRestore();

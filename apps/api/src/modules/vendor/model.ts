@@ -33,7 +33,7 @@ export async function findMany(page: number, perPage: number) {
 }
 
 /** Search non-deleted vendors by name (LIKE match), limited to 10 results. */
-export async function search(query: string) {
+export function search(query: string) {
   return db.select().from(vendors)
     .where(and(isNull(vendors.deletedAt), like(vendors.name, `%${query}%`)))
     .orderBy(asc(vendors.name))

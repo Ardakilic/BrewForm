@@ -7,9 +7,12 @@ import type { AppEnv } from '../types/hono.ts';
 import { cacheProvider } from '../utils/cache/singleton.ts';
 import type { db as DbType } from '@brewform/db';
 
+/** Hono router for the XML sitemap, mounted at `/api/v1/sitemap.xml` in `routes/index.ts`. */
 const sitemap = new Hono<AppEnv>();
 
+/** Cache key for the rendered sitemap XML. */
 export const SITEMAP_CACHE_KEY = ['sitemap'];
+/** Cache TTL for the sitemap XML (24 hours). */
 export const SITEMAP_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 let inFlightSitemapBuildPromise: Promise<string> | null = null;
@@ -39,6 +42,7 @@ async function getDb() {
   return _db;
 }
 
+/** Dependency-injection proxy for test stubbing (public recipe + active user queries). */
 export const deps = {
   getPublicRecipes: async () => {
     const db = await getDb();

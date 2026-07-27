@@ -125,6 +125,7 @@ describe('EquipmentSection — unit tests', () => {
 
   it('renders without crashing when item type is undefined', () => {
     const item = { id: 'x', equipmentId: 'eq-x', name: 'No Type Item', type: undefined };
+    // deno-lint-ignore no-explicit-any -- test cast
     const { container } = render(<EquipmentSection items={[item as any]} />);
     expect(container.firstChild).not.toBeNull();
   });

@@ -32,16 +32,16 @@ function createApp() {
     return c.json({ received: true, size: JSON.stringify(body).length }, 201);
   });
 
-  app.post('/api/v1/photos', async (c) => {
+  app.post('/api/v1/photos', (c) => {
     // Simulate photo handler — return 401 because we don't send auth
     return c.json({ error: 'Authentication required' }, 401);
   });
 
-  app.post('/api/v1/photos/sub', async (c) => {
+  app.post('/api/v1/photos/sub', (c) => {
     return c.json({ error: 'Authentication required' }, 401);
   });
 
-  app.post('/api/v1/photoshop', async (c) => {
+  app.post('/api/v1/photoshop', (c) => {
     // Handler for the lookalike route — bodyLimit must apply here
     return c.json({ ok: true }, 201);
   });

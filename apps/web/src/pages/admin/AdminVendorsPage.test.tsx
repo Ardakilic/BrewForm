@@ -1,16 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 
-vi.mock('@/utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     trace: vi.fn(),
     fatal: vi.fn(),
-  }),
+  },
 }));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: () => ({
@@ -22,6 +24,9 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
         'admin.vendors.addTitle': 'Satıcı Ekle',
         'admin.vendors.website': 'Web Sitesi',
         'admin.vendors.deleteConfirm': 'Bu satıcı silinsin mi?',
+        'admin.vendors.loadError': 'Satıcılar yüklenemedi.',
+        'admin.vendors.saveError': 'Satıcı kaydedilemedi.',
+        'admin.vendors.deleteFailed': 'Satıcı silinemedi.',
         'common.loading': 'Yükleniyor...',
         'common.name': 'Ad',
         'common.description': 'Açıklama',
@@ -50,17 +55,47 @@ import { AdminVendorsPage } from './AdminVendorsPage.tsx';
 
 const mockApi = vi.mocked(api);
 
+function renderPage() {
+  return render(
+    <ToastProvider>
+      <AdminVendorsPage />
+    </ToastProvider>,
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockApi.get.mockResolvedValue([]);
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('AdminVendorsPage — tr locale spot-check', () => {
   it('renders the Turkish vendor management heading', async () => {
-    render(<AdminVendorsPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Satıcı Yönetimi')).toBeInTheDocument();
     });
+  });
+
+  it('shows an error toast when delete fails', async () => {
+    mockApi.get.mockResolvedValue([
+      { id: 'v1', name: 'Onyx', website: null, description: null },
+    ]);
+    mockApi.delete.mockRejectedValue(new Error('Network error'));
+    vi.stubGlobal('confirm', () => true);
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Onyx')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sil' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Satıcı silinemedi.')).toBeInTheDocument();
+    });
+    expect(mockLogger.error).toHaveBeenCalled();
   });
 });

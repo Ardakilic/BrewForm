@@ -363,15 +363,17 @@ describe('RecipeForkPage — missing id param', () => {
 });
 
 describe('RecipeForkPage — title error container', () => {
-  it('error div uses error background color', async () => {
+  it('error banner is a themed role=alert ErrorState', async () => {
     mockRecipeApi.get.mockRejectedValue(new Error('Not found'));
 
     render(<RecipeForkPage />);
 
     await waitFor(() => {
-      const errorDiv = screen.getByText('Failed to load recipe').closest('div');
+      const errorDiv = screen.getByText('Failed to load recipe')
+        .closest('[role="alert"]') as HTMLElement | null;
       expect(errorDiv).toBeInTheDocument();
-      expect(errorDiv!.style.backgroundColor).toBe('var(--error)');
+      expect(errorDiv!.style.backgroundColor).toBe('var(--error-bg)');
+      expect(errorDiv!.style.color).toBe('var(--error)');
     });
   });
 });

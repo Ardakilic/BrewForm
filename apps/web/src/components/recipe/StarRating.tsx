@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 interface Props {
   /** Current rating value 1–10 (5 stars, each star = 2 points, half-star = 1 point) */
@@ -58,6 +59,7 @@ function Star({ index, activeValue }: { index: number; activeValue: number }) {
  */
 export function StarRating({ value, count, onRate, interactive = true }: Props) {
   const [hovered, setHovered] = useState(0);
+  const { t } = useTranslation();
 
   /** Compute the 1–10 value from a mouse event over a star element */
   function valueFromEvent(e: React.MouseEvent<HTMLDivElement>, starIndex: number): number {
@@ -103,8 +105,8 @@ export function StarRating({ value, count, onRate, interactive = true }: Props) 
       {count !== undefined && (
         <p className='text-xs mt-0.5 text-[color:var(--text-tertiary)]'>
           {count === 0
-            ? 'No community votes yet'
-            : `${count} community ${count === 1 ? 'vote' : 'votes'}`}
+            ? t('recipe.rating.noVotes')
+            : t('recipe.rating.voteCount').replace('{count}', String(count))}
         </p>
       )}
     </div>

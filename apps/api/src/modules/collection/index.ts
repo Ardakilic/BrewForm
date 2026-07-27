@@ -28,12 +28,12 @@ import type { Context, Next } from 'hono';
 export const deps = { authMiddleware, optionalAuthMiddleware };
 
 /** Proxy that resolves authMiddleware at request time (supports test mocking via deps). */
-async function authGuard(c: Context<AppEnv>, next: Next) {
+function authGuard(c: Context<AppEnv>, next: Next) {
   return deps.authMiddleware(c, next);
 }
 
 /** Proxy that resolves optionalAuthMiddleware at request time (supports test mocking via deps). */
-async function optionalAuthGuard(c: Context<AppEnv>, next: Next) {
+function optionalAuthGuard(c: Context<AppEnv>, next: Next) {
   return deps.optionalAuthMiddleware(c, next);
 }
 

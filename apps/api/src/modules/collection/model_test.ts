@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * DB integration tests for the collection model layer.
  *
@@ -151,7 +149,9 @@ describe(
         id: crypto.randomUUID(),
         recipeId: recipe.id,
         versionNumber: 1,
+        // deno-lint-ignore no-explicit-any -- test mock invalid enum value
         brewMethod: 'french_press' as any,
+        // deno-lint-ignore no-explicit-any -- test mock invalid enum value
         drinkType: 'french_press' as any,
         preparationNotes: 'first',
       });
@@ -159,7 +159,9 @@ describe(
         id: crypto.randomUUID(),
         recipeId: recipe.id,
         versionNumber: 2,
+        // deno-lint-ignore no-explicit-any -- test mock invalid enum value
         brewMethod: 'v60' as any,
+        // deno-lint-ignore no-explicit-any -- test mock invalid enum value
         drinkType: 'pour_over' as any,
         preparationNotes: 'second',
       });
@@ -246,12 +248,14 @@ describe(
       expect(result.collections.length).toBe(3);
       // Each row should have recipeCount
       for (const c of result.collections) {
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect(typeof (c as any).recipeCount).toBe('number');
       }
     });
 
     it('computes recipeCount per collection correctly', async () => {
       const result = await model.findByUserId(user.id, 1, 10);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const byName = new Map(result.collections.map((c) => [(c as any).name, c as any]));
       expect(byName.get('Private One').recipeCount).toBe(1);
       expect(byName.get('Public One').recipeCount).toBe(2);
@@ -262,6 +266,7 @@ describe(
       const result = await model.findByUserId(user.id, 1, 10, 'public');
       expect(result.total).toBe(2);
       for (const c of result.collections) {
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).visibility).toBe('public');
       }
     });
@@ -276,6 +281,7 @@ describe(
     it('does not return collections owned by other users', async () => {
       const result = await model.findByUserId(user.id, 1, 10);
       for (const c of result.collections) {
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).userId).toBe(user.id);
       }
     });
@@ -306,6 +312,7 @@ describe(
       const result = await model.findPublicByUserId(user.id, 1, 10);
       expect(result.total).toBe(2);
       for (const c of result.collections) {
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).visibility).toBe('public');
       }
     });
@@ -632,6 +639,8 @@ describe(
     let otherUser: typeof users.$inferSelect;
     let publicCol: typeof collections.$inferSelect;
     let privateCol: typeof collections.$inferSelect;
+    let draftCol: typeof collections.$inferSelect;
+    let unlistedCol: typeof collections.$inferSelect;
     let r1: typeof recipes.$inferSelect;
     const colIds: string[] = [];
     const recipeIds: string[] = [];
@@ -641,19 +650,18 @@ describe(
       otherUser = await createUser('col-forRecipe-other');
       publicCol = await createCollectionRow(otherUser.id, 'Public', 'public');
       privateCol = await createCollectionRow(otherUser.id, 'Private', 'private');
-      colIds.push(publicCol.id, privateCol.id);
+      draftCol = await createCollectionRow(otherUser.id, 'Draft', 'draft');
+      unlistedCol = await createCollectionRow(otherUser.id, 'Unlisted', 'unlisted');
+      colIds.push(publicCol.id, privateCol.id, draftCol.id, unlistedCol.id);
       r1 = await createRecipe(user.id);
       recipeIds.push(r1.id);
-      await db.insert(collectionItems).values({
-        collectionId: publicCol.id,
-        recipeId: r1.id,
-        sortOrder: 0,
-      });
-      await db.insert(collectionItems).values({
-        collectionId: privateCol.id,
-        recipeId: r1.id,
-        sortOrder: 0,
-      });
+      for (const col of [publicCol, privateCol, draftCol, unlistedCol]) {
+        await db.insert(collectionItems).values({
+          collectionId: col.id,
+          recipeId: r1.id,
+          sortOrder: 0,
+        });
+      }
     });
 
     afterAll(async () => {
@@ -662,19 +670,35 @@ describe(
       await cleanupUsers([user.id, otherUser.id]);
     });
 
-    it('returns only public collections containing the recipe', async () => {
-      const rows = await model.getCollectionsForRecipe(r1.id);
+    it('returns only public collections containing the recipe for an anonymous viewer', async () => {
+      const rows = await model.getCollectionsForRecipe(r1.id, null);
       expect(rows.length).toBe(1);
       expect(rows[0].id).toBe(publicCol.id);
       expect(rows[0].visibility).toBe('public');
+    });
+
+    it('returns only public collections for a non-owner viewer', async () => {
+      const rows = await model.getCollectionsForRecipe(r1.id, user.id);
+      expect(rows.length).toBe(1);
+      expect(rows[0].id).toBe(publicCol.id);
+    });
+
+    it('additionally returns the owner viewer’s own private/draft/unlisted collections', async () => {
+      const rows = await model.getCollectionsForRecipe(r1.id, otherUser.id);
+      const ids = rows.map((r) => r.id).sort();
+      expect(ids).toEqual([publicCol.id, privateCol.id, draftCol.id, unlistedCol.id].sort());
     });
 
     it('excludes soft-deleted collections', async () => {
       await db.update(collections).set({ deletedAt: new Date() }).where(
         eq(collections.id, publicCol.id),
       );
-      const rows = await model.getCollectionsForRecipe(r1.id);
+      const rows = await model.getCollectionsForRecipe(r1.id, null);
       expect(rows.length).toBe(0);
+      const ownerRows = await model.getCollectionsForRecipe(r1.id, otherUser.id);
+      expect(ownerRows.map((r) => r.id)).not.toContain(publicCol.id);
+      // Restore so later test runs on a re-seeded DB stay order-independent.
+      await db.update(collections).set({ deletedAt: null }).where(eq(collections.id, publicCol.id));
     });
   },
 );

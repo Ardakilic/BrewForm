@@ -15,6 +15,7 @@ import { error, paginated, success } from '../../utils/response/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Hono sub-router for setup endpoints, mounted at `/api/v1/setups`. */
 const setup = new Hono<AppEnv>();
 
 setup.get(

@@ -7,6 +7,11 @@
 import * as model from './model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
+/**
+ * Report service.
+ *
+ * Provides creation, listing, and resolution of user-submitted content reports.
+ */
 export const log = createLogger('report-service');
 
 /** Create a new content report submitted by a user. */

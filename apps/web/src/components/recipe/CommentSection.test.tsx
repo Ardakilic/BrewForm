@@ -275,6 +275,7 @@ function renderCommentSection(
              * so the "all pages loaded" assertion (`comments.length === total`)
              * passes once the user clicks "Load More" twice.
              */
+            // deno-lint-ignore require-await -- router loader mock returns promise
             loader: async ({ request, params }: LoaderFunctionArgs) => {
               if (params.recipeId !== 'recipe-1') {
                 throw new Response('Wrong recipe id', { status: 400 });
@@ -330,6 +331,7 @@ function renderCommentSection(
           },
           {
             path: 'comments/:id',
+            // deno-lint-ignore require-await -- router action mock returns promise
             action: async () => ({ success: true }),
             element: null,
           },

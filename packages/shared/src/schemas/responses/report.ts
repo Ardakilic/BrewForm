@@ -20,4 +20,5 @@ export const ReportOutputSchema = z.object({
   updatedAt: z.string(),
 });
 
+/** Inferred type of {@link ReportOutputSchema}. */
 export type ReportOutput = z.infer<typeof ReportOutputSchema>;

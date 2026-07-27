@@ -8,10 +8,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "ignoreDeprecations": "6.0",
     "types": ["vite/client", "vitest", "@testing-library/jest-dom"],
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@brewform/shared": ["../../packages/shared/src/index.ts"],
@@ -32,6 +30,7 @@
     "src/**/*.preservation.test.ts",
     "src/**/*.preservation.test.tsx",
     "src/**/__tests__/*.integration.test.ts",
-    "src/**/__tests__/*.integration.test.tsx"
+    "src/**/__tests__/*.integration.test.tsx",
+    "src/i18n-literals.test.ts"
   ]
 }

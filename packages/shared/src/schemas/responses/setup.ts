@@ -24,4 +24,5 @@ export const SetupOutputSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link SetupOutputSchema}. */
 export type SetupOutput = z.infer<typeof SetupOutputSchema>;

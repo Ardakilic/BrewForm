@@ -16,7 +16,7 @@ export async function findById(id: string) {
 }
 
 /** List all non-deleted photos for a recipe, ordered by sortOrder. */
-export async function findByRecipe(recipeId: string) {
+export function findByRecipe(recipeId: string) {
   return db.select().from(photos)
     .where(and(eq(photos.recipeId, recipeId), isNull(photos.deletedAt)))
     .orderBy(asc(photos.sortOrder));

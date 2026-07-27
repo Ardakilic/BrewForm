@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
+import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
+import { Field } from '../../components/form/Field.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import type { CoffeeVarietyOutput } from '@brewform/shared/schemas';
+import type { CoffeeVarietyOutput, CoffeeVarietyUpdate } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminCoffeeVarietiesPage');
 
@@ -112,6 +117,8 @@ function stringToArr(s: string): string[] {
 /** Admin page: paginated, searchable coffee-variety CRUD with category filter and inline form. */
 export function AdminCoffeeVarietiesPage() {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
+  const toast = useToast();
 
   const categoryLabel = useCallback((cat: Category): string => {
     return t(CATEGORY_LABELS[cat]);
@@ -126,7 +133,6 @@ export function AdminCoffeeVarietiesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>({ ...emptyForm });
   const [saving, setSaving] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     log.debug({}, 'AdminCoffeeVarietiesPage mounted');
@@ -175,16 +181,17 @@ export function AdminCoffeeVarietiesPage() {
       'regionalVariants',
     ];
 
-    const body: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(form)) {
-      if (arrayFields.includes(key)) {
-        const arr = stringToArr(val as string);
-        if (arr.length > 0) body[key] = arr;
-        else body[key] = undefined;
-      } else {
-        body[key] = (val as string).trim() || undefined;
-      }
-    }
+    // Dynamic form keys prevent a statically-checked object literal; build the
+    // entries and narrow once to the shared input schema (validated server-side).
+    const body = Object.fromEntries(
+      Object.entries(form).map(([key, val]) => {
+        if (arrayFields.includes(key)) {
+          const arr = stringToArr(val);
+          return [key, arr.length > 0 ? arr : undefined];
+        }
+        return [key, val.trim() || undefined];
+      }),
+    ) as CoffeeVarietyUpdate;
 
     try {
       if (editId) {
@@ -197,24 +204,28 @@ export function AdminCoffeeVarietiesPage() {
       }
       await fetchData();
       resetForm();
-    } catch {
+    } catch (err) {
+      log.error({ err, editId }, 'handleSubmit failed');
+      toast.error('admin.coffeeVarieties.saveError');
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    setDeleteConfirm(id);
-  }
-
-  async function confirmDelete() {
-    if (!deleteConfirm) return;
+    if (
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'admin.coffeeVarieties.deleteConfirm',
+        danger: true,
+      })
+    ) return;
     try {
-      await api.delete(`/admin/coffee-varieties/${deleteConfirm}`);
+      await api.delete(`/admin/coffee-varieties/${id}`);
       await fetchData();
-    } catch {
-    } finally {
-      setDeleteConfirm(null);
+    } catch (err) {
+      log.error({ err, varietyId: id }, 'handleDelete failed');
+      toast.error('admin.coffeeVarieties.deleteFailed');
     }
   }
 
@@ -396,24 +407,22 @@ export function AdminCoffeeVarietiesPage() {
               if (field === 'category') {
                 return (
                   <div key={field}>
-                    <label
-                      className='block text-sm font-medium mb-1'
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      {fieldLabel(field)} *
-                    </label>
-                    <select
-                      value={form.category}
-                      onChange={(e) => setForm({ ...form, category: e.target.value as Category })}
-                      className='input-field'
-                      required
-                    >
-                      <option value='variety'>{t('admin.coffeeVarieties.catVariety')}</option>
-                      <option value='processing'>{t('admin.coffeeVarieties.catProcessing')}</option>
-                      <option value='market_name'>
-                        {t('admin.coffeeVarieties.catMarketName')}
-                      </option>
-                    </select>
+                    <Field label={fieldLabel(field)} required>
+                      <select
+                        value={form.category}
+                        onChange={(e) => setForm({ ...form, category: e.target.value as Category })}
+                        className='input-field'
+                        required
+                      >
+                        <option value='variety'>{t('admin.coffeeVarieties.catVariety')}</option>
+                        <option value='processing'>
+                          {t('admin.coffeeVarieties.catProcessing')}
+                        </option>
+                        <option value='market_name'>
+                          {t('admin.coffeeVarieties.catMarketName')}
+                        </option>
+                      </select>
+                    </Field>
                   </div>
                 );
               }
@@ -421,19 +430,15 @@ export function AdminCoffeeVarietiesPage() {
               if (field === 'notes' || field === 'cupProfile' || field === 'spread') {
                 return (
                   <div key={field} className='col-span-2'>
-                    <label
-                      className='block text-sm font-medium mb-1'
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      {fieldLabel(field)}
-                    </label>
-                    <textarea
-                      value={(form as unknown as Record<string, string>)[field]}
-                      onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                      className='input-field'
-                      rows={3}
-                      placeholder={fieldPlaceholder(field)}
-                    />
+                    <Field label={fieldLabel(field)}>
+                      <textarea
+                        value={(form as unknown as Record<string, string>)[field]}
+                        onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                        className='input-field'
+                        rows={3}
+                        placeholder={fieldPlaceholder(field)}
+                      />
+                    </Field>
                   </div>
                 );
               }
@@ -441,21 +446,16 @@ export function AdminCoffeeVarietiesPage() {
               const required = field === 'name';
               return (
                 <div key={field}>
-                  <label
-                    className='block text-sm font-medium mb-1'
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
-                    {fieldLabel(field)}
-                    {required ? ' *' : ''}
-                  </label>
-                  <input
-                    type='text'
-                    value={(form as unknown as Record<string, string>)[field]}
-                    onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                    className='input-field'
-                    required={required}
-                    placeholder={fieldPlaceholder(field)}
-                  />
+                  <Field label={fieldLabel(field)} required={required}>
+                    <input
+                      type='text'
+                      value={(form as unknown as Record<string, string>)[field]}
+                      onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                      className='input-field'
+                      required={required}
+                      placeholder={fieldPlaceholder(field)}
+                    />
+                  </Field>
                 </div>
               );
             })}
@@ -473,7 +473,7 @@ export function AdminCoffeeVarietiesPage() {
         </form>
       )}
 
-      {loading ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div> : (
+      {loading ? <LoadingState /> : (
         <>
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
@@ -557,8 +557,7 @@ export function AdminCoffeeVarietiesPage() {
                         <button
                           type='button'
                           onClick={() => handleDelete(item.id)}
-                          className='text-xs'
-                          style={{ color: 'var(--error)' }}
+                          className='btn-danger-text text-xs'
                         >
                           {t('common.delete')}
                         </button>
@@ -571,66 +570,14 @@ export function AdminCoffeeVarietiesPage() {
           </div>
 
           {total > 20 && (
-            <div className='flex justify-center gap-2 mt-4'>
-              <button
-                type='button'
-                className='btn-secondary text-sm'
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                {t('common.previous')}
-              </button>
-              <span className='text-sm self-center' style={{ color: 'var(--text-secondary)' }}>
-                {t('common.pagination').replace('{page}', String(page)).replace(
-                  '{total}',
-                  String(Math.ceil(total / 20)),
-                )}
-              </span>
-              <button
-                type='button'
-                className='btn-secondary text-sm'
-                disabled={page >= Math.ceil(total / 20)}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                {t('common.next')}
-              </button>
-            </div>
+            <PaginationControls
+              page={page}
+              totalPages={Math.ceil(total / 20)}
+              onPageChange={setPage}
+              variant='disable'
+            />
           )}
         </>
-      )}
-
-      {/* Delete confirmation modal */}
-      {deleteConfirm && (
-        <div
-          className='fixed inset-0 flex items-center justify-center z-50'
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <div className='card max-w-sm w-full'>
-            <h3 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
-              {t('common.confirmDelete')}
-            </h3>
-            <p className='text-sm mb-4' style={{ color: 'var(--text-secondary)' }}>
-              {t('admin.coffeeVarieties.deleteConfirm')}
-            </p>
-            <div className='flex justify-end gap-2'>
-              <button
-                type='button'
-                onClick={() => setDeleteConfirm(null)}
-                className='btn-secondary'
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type='button'
-                onClick={confirmDelete}
-                className='btn-primary'
-                style={{ backgroundColor: 'var(--error)' }}
-              >
-                {t('common.delete')}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

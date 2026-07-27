@@ -121,6 +121,26 @@ export async function setUserAdminRole(userId: string, isAdmin: boolean) {
 }
 
 /**
+ * Translate a Postgres unique-violation (23505) into a domain error.
+ *
+ * Drizzle wraps driver errors in a `DrizzleQueryError`; the underlying
+ * postgres-js `PostgresError` (with `code` and `constraint_name`) lives on
+ * `err.cause`. Re-throws the original error when it is not a recognized
+ * unique violation.
+ */
+export function throwIfUniqueViolation(err: unknown): void {
+  const wrapped = err as {
+    cause?: { name?: string; code?: string; constraint_name?: string };
+  };
+  const pgErr = wrapped.cause ??
+    (err as { name?: string; code?: string; constraint_name?: string });
+  if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
+    if (pgErr.constraint_name?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
+    if (pgErr.constraint_name?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
+  }
+}
+
+/**
  * Create a new user with hashed password, user preferences, and unique constraint handling.
  * Runs inside a transaction. Throws EMAIL_ALREADY_EXISTS or USERNAME_ALREADY_EXISTS on conflict.
  */
@@ -149,11 +169,7 @@ export async function adminCreateUser(data: {
       return user;
     });
   } catch (err) {
-    const pgErr = err as { name?: string; code?: string; constraint?: string };
-    if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
-      if (pgErr.constraint?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
-      if (pgErr.constraint?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
-    }
+    throwIfUniqueViolation(err);
     throw err;
   }
 }
@@ -191,11 +207,7 @@ export async function adminUpdateUser(
     ).returning();
     return result ?? null;
   } catch (err) {
-    const pgErr = err as { name?: string; code?: string; constraint?: string };
-    if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
-      if (pgErr.constraint?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
-      if (pgErr.constraint?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
-    }
+    throwIfUniqueViolation(err);
     throw err;
   }
 }
@@ -353,7 +365,7 @@ export async function deleteVendor(id: string) {
 }
 
 /** List all brew method ↔ equipment type compatibility rules. */
-export async function listCompatibilityRules() {
+export function listCompatibilityRules() {
   return db.select().from(brewMethodEquipmentRules).orderBy(
     asc(brewMethodEquipmentRules.brewMethod),
     asc(brewMethodEquipmentRules.equipmentType),
@@ -525,7 +537,7 @@ export async function getRecipeGrowth(days: number) {
 }
 
 /** Fetch the top public recipes ordered by like count, limited to N results. */
-export async function getTopRecipes(limit: number) {
+export function getTopRecipes(limit: number) {
   return db.select().from(recipes)
     .where(and(isNull(recipes.deletedAt), eq(recipes.visibility, 'public')))
     .orderBy(desc(recipes.likeCount))

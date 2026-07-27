@@ -14,8 +14,18 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 
+const enT = (key: string) => {
+  const map: Record<string, string> = {
+    'a11y.share.section': 'Share recipe',
+    'a11y.share.copyUrl': 'Copy recipe URL to clipboard',
+    'a11y.share.downloadQr': 'Download QR code as SVG',
+    'a11y.share.on': 'Share on {platform}',
+  };
+  return map[key] ?? key;
+};
+
 const defaultTranslation = {
-  t: (key: string) => key,
+  t: enT,
   locale: 'en',
   setLocale: vi.fn(),
   availableLocales: ['en'],

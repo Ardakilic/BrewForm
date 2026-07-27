@@ -22,6 +22,7 @@ const logger = createLogger('comments');
  * @throws {Response} 400 with body `'Missing recipe id'` when `params.recipeId`
  *   is not a non-empty string.
  */
+// deno-lint-ignore require-await -- react-router loader; throws must reject (async), not throw synchronously
 export const listCommentsLoader = async ({ params, request }: LoaderFunctionArgs) => {
   const recipeId = params.recipeId;
   if (typeof recipeId !== 'string' || recipeId.length === 0) {

@@ -87,6 +87,7 @@ const envSchema = z.object({
   }
 });
 
+/** Inferred type of the validated environment schema — the shape of {@link config}. */
 export type Env = z.infer<typeof envSchema>;
 
 function loadEnv(): Env {
@@ -99,6 +100,7 @@ function loadEnv(): Env {
   return result.data;
 }
 
+/** Validated environment singleton, loaded once at startup; re-parsed only via {@link reloadConfig}. */
 export let config: Env = loadEnv();
 
 /** Re-parse env vars and update the singleton — used in tests to toggle config between cases. */

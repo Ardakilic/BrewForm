@@ -1,3 +1,4 @@
+/** Canonical measurement units used as the internal representation. */
 export const CANONICAL_UNITS = {
   weight: 'grams',
   volume: 'milliliters',
@@ -5,6 +6,7 @@ export const CANONICAL_UNITS = {
   time: 'seconds',
 } as const;
 
+/** Unit conversion functions between metric and imperial systems. */
 export const UNIT_CONVERSIONS = {
   gramsToOunces: (g: number) => g / 28.3495,
   ouncesToGrams: (oz: number) => oz * 28.3495,

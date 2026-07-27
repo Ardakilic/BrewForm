@@ -1,6 +1,9 @@
-// Static seed data: coffee varieties catalog
-// Auto-generated from files/coffee_types_v2.json
+/**
+ * Static seed data: coffee varieties catalog.
+ * Auto-generated from files/coffee_types_v2.json.
+ */
 
+/** Shape of a single coffee variety seed row. */
 export interface CoffeeVarietySeedEntry {
   id: string;
   name: string;
@@ -33,6 +36,7 @@ export interface CoffeeVarietySeedEntry {
   isSystem: boolean;
 }
 
+/** System coffee variety catalogue entries seeded with `isSystem: true`. */
 export const coffeeVarietySeedData: CoffeeVarietySeedEntry[] = [
   {
     id: '69e0eb15-778b-5a09-865d-0000bbdc9c9e',

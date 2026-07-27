@@ -9,6 +9,11 @@ import * as model from './model.ts';
 import { generateQRCodePng, generateQRCodeSvg } from '../../utils/qrcode/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
+/**
+ * QR code service.
+ *
+ * Generates PNG/SVG QR codes that link to public recipe pages.
+ */
 export const log = createLogger('qrcode-service');
 
 /**

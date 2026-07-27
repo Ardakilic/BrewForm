@@ -1,10 +1,14 @@
+import { useSafeT } from '../../../utils/safe-translation.ts';
+
 interface IconProps {
   size?: number;
   className?: string;
+  label?: string;
 }
 
 /** SVG icon for an espresso filter basket. */
-export function BasketIcon({ size = 24, className }: IconProps) {
+export function BasketIcon({ size = 24, className, label }: IconProps) {
+  const t = useSafeT();
   return (
     <svg
       width={size}
@@ -16,7 +20,7 @@ export function BasketIcon({ size = 24, className }: IconProps) {
       strokeLinecap='round'
       strokeLinejoin='round'
       role='img'
-      aria-label='Basket'
+      aria-label={label ?? t('a11y.equipment.basket')}
       className={className}
     >
       {/* Basket body — trapezoid shape */}

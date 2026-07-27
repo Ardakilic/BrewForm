@@ -18,4 +18,5 @@ export const VendorOutputSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link VendorOutputSchema}. */
 export type VendorOutput = z.infer<typeof VendorOutputSchema>;

@@ -34,6 +34,7 @@ export const EquipmentOutputSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link EquipmentOutputSchema}. */
 export type EquipmentOutput = z.infer<typeof EquipmentOutputSchema>;
 
 /** Validates a full `equipmentDeleteRequests` row; response payload for POST /api/v1/equipment/:id/delete-request. */
@@ -49,6 +50,7 @@ export const EquipmentDeleteRequestOutputSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link EquipmentDeleteRequestOutputSchema}. */
 export type EquipmentDeleteRequestOutput = z.infer<typeof EquipmentDeleteRequestOutputSchema>;
 
 /** Bespoke envelope for `POST /:id/delete-request` (201, no `meta`). */
@@ -57,6 +59,7 @@ export const EquipmentDeleteRequestResponseSchema = z.object({
   data: EquipmentDeleteRequestOutputSchema,
 });
 
+/** Inferred type of {@link EquipmentDeleteRequestResponseSchema}. */
 export type EquipmentDeleteRequestResponse = z.infer<typeof EquipmentDeleteRequestResponseSchema>;
 
 /** Bespoke envelope for `GET /:id/recipes` (200, `total` instead of `meta`). */
@@ -66,4 +69,5 @@ export const EquipmentRecipesResponseSchema = z.object({
   total: z.number().int(),
 });
 
+/** Inferred type of {@link EquipmentRecipesResponseSchema}. */
 export type EquipmentRecipesResponse = z.infer<typeof EquipmentRecipesResponseSchema>;

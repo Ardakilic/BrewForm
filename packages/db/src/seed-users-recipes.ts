@@ -5,8 +5,10 @@ export function hashPassword(password: string): string {
   return hashSync(password, 10);
 }
 
+/** Shared plaintext password for all non-admin seed users. */
 export const defaultPassword = 'user123456';
 
+/** Badge definitions seeded into the `badge` table. */
 export const badgeSeedData = [
   {
     name: 'First Brew',
@@ -80,6 +82,7 @@ export const badgeSeedData = [
   },
 ];
 
+/** Brew-method ↔ equipment-type compatibility rows for {@link brewMethodEquipmentRules}. */
 export const brewMethodCompatibilityRules: Array<{
   brewMethod: string;
   equipmentType: string;
@@ -151,6 +154,7 @@ export const brewMethodCompatibilityRules: Array<{
   { brewMethod: 'siphon', equipmentType: 'kettle', compatible: true },
 ];
 
+/** Demo user accounts with preferences. */
 export const userSeedData = [
   {
     email: 'alice@example.com',
@@ -194,6 +198,7 @@ export const userSeedData = [
   },
 ];
 
+/** User-created equipment entries (non-catalog). */
 export const equipmentSeedData = [
   {
     name: 'Bottomless Portafilter 58mm',
@@ -261,6 +266,7 @@ export const equipmentSeedData = [
   },
 ];
 
+/** Coffee vendor/roaster entries. */
 export const vendorSeedData = [
   {
     name: 'Heart Coffee Roasters',
@@ -299,6 +305,7 @@ export const vendorSeedData = [
   },
 ];
 
+/** Coffee bean entries linked to vendors and users. */
 export const beanSeedData = [
   {
     name: 'Heart Ethiopia Yirgacheffe',
@@ -452,6 +459,7 @@ export const beanSeedData = [
   },
 ];
 
+/** Full recipe seed data with versions, taste notes, equipment, and photos. */
 export const recipeSeedData = [
   {
     slug: 'alices-signature-espresso',
@@ -1516,6 +1524,7 @@ export const recipeSeedData = [
   },
 ];
 
+/** Social graph seed data: follows, likes, favourites, ratings, comments, and badges. */
 export const socialSeedData = {
   follows: [
     { followerUsername: 'bob', followingUsername: 'alice' },
@@ -1697,6 +1706,7 @@ export const socialSeedData = {
   ],
 };
 
+/** User brewing setup entries with equipment slot assignments. */
 export const setupSeedData = [
   {
     name: "Alice's Espresso Setup",

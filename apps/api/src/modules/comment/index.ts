@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context, Next } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute, resolver } from 'hono-openapi';
 import { CommentCreateSchema, PaginationSchema } from '@brewform/shared/schemas';
@@ -10,13 +11,27 @@ import {
   paginatedEnvelope,
   successEnvelope,
 } from '@brewform/shared/schemas';
-import { authMiddleware } from '../../middleware/auth.ts';
+import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
 import * as service from './service.ts';
 import { error, isEmailVerified, paginated, success } from '../../utils/response/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Dependency-injection proxy for auth middleware (test stubbing seam). */
+export const deps = { authMiddleware, optionalAuthMiddleware };
+
+/** Proxy that resolves authMiddleware at request time (supports test mocking via deps). */
+function authGuard(c: Context<AppEnv>, next: Next) {
+  return deps.authMiddleware(c, next);
+}
+
+/** Proxy that resolves optionalAuthMiddleware at request time (supports test mocking via deps). */
+function optionalAuthGuard(c: Context<AppEnv>, next: Next) {
+  return deps.optionalAuthMiddleware(c, next);
+}
+
+/** Hono sub-router for comment endpoints, mounted at `/api/v1/comments`. */
 const comment = new Hono<AppEnv>();
 
 /** Per-IP rate limit for comment creation: 5 requests per 1 minute. */
@@ -63,7 +78,8 @@ comment.post(
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       404: {
-        description: 'Parent comment not found',
+        description:
+          'Recipe not found (or not visible to the caller — existence-hiding), or parent comment not found',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       429: {
@@ -74,7 +90,7 @@ comment.post(
       },
     },
   }),
-  authMiddleware,
+  authGuard,
   zValidator('json', CommentCreateSchema),
   async (c) => {
     if (!isEmailVerified(c)) {
@@ -96,6 +112,14 @@ comment.post(
       return success(c, result, 201);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') {
+        return error(
+          c,
+          'NOT_FOUND',
+          'Recipe not found',
+          404,
+        );
+      }
       if (message === 'COMMENT_NOT_FOUND') {
         return error(
           c,
@@ -140,19 +164,35 @@ comment.get(
           },
         },
       },
+      404: {
+        description: 'Recipe not found (or not visible to the caller — existence-hiding)',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
+  optionalAuthGuard,
   zValidator('query', PaginationSchema),
   async (c) => {
     const recipeId = c.req.param('recipeId')!;
     const { page, perPage } = c.req.valid('query');
-    const result = await service.listComments(recipeId, page, perPage);
-    return paginated(c, result.comments, {
-      page,
-      perPage,
-      total: result.total,
-      totalPages: Math.ceil(result.total / perPage),
-    });
+    const userId = c.get('userId');
+    const user = c.get('user') as { isAdmin: boolean } | null;
+    const isAdmin = user?.isAdmin ?? false;
+    try {
+      const result = await service.listComments(recipeId, page, perPage, userId, isAdmin);
+      return paginated(c, result.comments, {
+        page,
+        perPage,
+        total: result.total,
+        totalPages: Math.ceil(result.total / perPage),
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') {
+        return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      }
+      throw err;
+    }
   },
 );
 
@@ -187,7 +227,7 @@ comment.delete(
       },
     },
   }),
-  authMiddleware,
+  authGuard,
   async (c) => {
     const id = c.req.param('id')!;
     const userId = c.get('userId') as string;

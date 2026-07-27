@@ -59,6 +59,7 @@ import { rateAction } from './routes/rate.ts';
 import { followAction } from './routes/follow.ts';
 import { createCommentAction, deleteCommentAction, listCommentsLoader } from './routes/comments.ts';
 
+/** Application browser router — declares all routes, loaders, and resource-route actions. */
 export const router = createBrowserRouter([
   {
     path: '/',

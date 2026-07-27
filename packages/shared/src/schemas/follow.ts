@@ -6,4 +6,5 @@ export const FollowSchema = z.object({
   userId: UuidSchema,
 });
 
+/** Inferred type of {@link FollowSchema}. */
 export type Follow = z.infer<typeof FollowSchema>;

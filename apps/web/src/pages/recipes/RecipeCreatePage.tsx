@@ -6,6 +6,7 @@ import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
 import { Field, Section } from '../../components/form/index.ts';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import {
   BREW_METHODS_LIST,
@@ -95,11 +96,10 @@ export function RecipeCreatePage() {
     if (!beanId) return;
     beanApi.get(beanId).then((data) => {
       if (data && typeof data === 'object') {
-        const bean = data as Record<string, unknown>;
-        if (bean.name) setProductName(String(bean.name));
-        if (bean.brand) setCoffeeBrand(String(bean.brand));
-        else if (bean.roaster) setCoffeeBrand(String(bean.roaster));
-        if (bean.processing) setCoffeeProcessing(String(bean.processing));
+        if (data.name) setProductName(data.name);
+        if (data.brand) setCoffeeBrand(data.brand);
+        else if (data.roaster) setCoffeeBrand(data.roaster);
+        if (data.processing) setCoffeeProcessing(data.processing);
       }
     }).catch((err) => {
       log.error({ err, beanId }, 'Failed to pre-fill bean info from URL param');
@@ -207,20 +207,7 @@ export function RecipeCreatePage() {
         {t('recipe.createPage.heading')}
       </h1>
 
-      {error && (
-        <div
-          className='mb-4 rounded p-3 text-sm'
-          style={{ backgroundColor: 'var(--error)', color: 'white' }}
-        >
-          {typeof error === 'string' && error.includes('\n')
-            ? (
-              <ul className='list-disc pl-4 space-y-1'>
-                {error.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
-              </ul>
-            )
-            : error}
-        </div>
-      )}
+      {error && <ErrorState message={error} className='mb-4' />}
 
       <form onSubmit={handleSubmit} className='space-y-6'>
         <Section title={t('recipe.form.basicInfo')}>

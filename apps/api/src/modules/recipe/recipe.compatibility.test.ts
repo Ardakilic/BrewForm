@@ -22,7 +22,7 @@ import { errorHandler } from '../../middleware/errorHandler.ts';
 function createCompatibilityErrorApp(details: string[]) {
   const app = new Hono().onError(errorHandler);
 
-  app.post('/recipes', async (_c) => {
+  app.post('/recipes', (_c) => {
     const err = Object.assign(new Error('EQUIPMENT_INCOMPATIBLE'), {
       code: 'EQUIPMENT_INCOMPATIBLE',
       details,

@@ -55,7 +55,7 @@ const jsonBodyLimit = bodyLimit({
  * @returns The result of either `next()` (for photo routes) or the
  *          `jsonBodyLimit` middleware (for all other routes).
  */
-export const bodyLimitMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
+export const bodyLimitMiddleware: MiddlewareHandler<AppEnv> = (c, next) => {
   if (PHOTOS_ROUTE_RE.test(c.req.path)) {
     return next();
   }

@@ -63,6 +63,7 @@ describe('Coffee Variety Service', () => {
     });
 
     it('should return variety from cache and log cache hit', async () => {
+      // deno-lint-ignore no-explicit-any -- test cast
       const variety = { id: 'var-1', name: 'Arabica', category: 'variety' } as any;
       const cache = new InMemoryCacheProvider();
       await cache.set(['coffee-variety', 'var-1'], variety);
@@ -80,6 +81,7 @@ describe('Coffee Variety Service', () => {
     });
 
     it('should return variety from model, cache it, and log cache miss', async () => {
+      // deno-lint-ignore no-explicit-any -- test cast
       const variety = { id: 'var-1', name: 'Arabica', category: 'variety' } as any;
       const cache = new InMemoryCacheProvider();
       const mockModel = createMockModel({
@@ -103,6 +105,7 @@ describe('Coffee Variety Service', () => {
     it('should log entry/exit with filter params and total', async () => {
       const mockModel = createMockModel({
         findMany: () =>
+          // deno-lint-ignore no-explicit-any -- test cast
           Promise.resolve({ data: [{ id: 'v1', name: 'Arabica' } as any], total: 42 }),
       });
       const result = await listCoffeeVarieties(
@@ -126,9 +129,12 @@ describe('Coffee Variety Service', () => {
   describe('createCoffeeVariety', () => {
     it('should set createdBy to the provided userId', async () => {
       const userId = 'user-42';
+      // deno-lint-ignore no-explicit-any -- test cast
       const data = { name: 'Geisha', category: 'variety' } as any;
+      // deno-lint-ignore no-explicit-any -- test mock parameter
       let capturedData: any;
       const mockModel = createMockModel({
+        // deno-lint-ignore no-explicit-any -- test mock parameter
         create: (d: any) => {
           capturedData = d;
           return Promise.resolve({ ...d, id: 'var-new' });
@@ -141,9 +147,12 @@ describe('Coffee Variety Service', () => {
 
     it('should set isSystem to false for user-created varieties', async () => {
       const userId = 'user-42';
+      // deno-lint-ignore no-explicit-any -- test cast
       const data = { name: 'Geisha', category: 'variety' } as any;
+      // deno-lint-ignore no-explicit-any -- test mock parameter
       let capturedData: any;
       const mockModel = createMockModel({
+        // deno-lint-ignore no-explicit-any -- test mock parameter
         create: (d: any) => {
           capturedData = d;
           return Promise.resolve({ ...d, id: 'var-new' });
@@ -156,8 +165,10 @@ describe('Coffee Variety Service', () => {
 
     it('should log entry/exit', async () => {
       const userId = 'user-42';
+      // deno-lint-ignore no-explicit-any -- test cast
       const data = { name: 'Geisha', category: 'variety' } as any;
       const mockModel = createMockModel({
+        // deno-lint-ignore no-explicit-any -- test mock parameter
         create: (d: any) => Promise.resolve({ ...d, id: 'var-new' }),
       });
 
@@ -187,6 +198,7 @@ describe('Coffee Variety Service', () => {
 
     it('should block system variety updates', async () => {
       const mockModel = createMockModel({
+        // deno-lint-ignore no-explicit-any -- test cast
         findById: () => Promise.resolve({ id: 'var-1', isSystem: true } as any),
       });
       await expect(updateCoffeeVariety('var-1', {}, 'user-1', { model: mockModel }))
@@ -196,6 +208,7 @@ describe('Coffee Variety Service', () => {
     it('should throw FORBIDDEN when non-owner tries to update a user-created variety', async () => {
       const mockModel = createMockModel({
         findById: () =>
+          // deno-lint-ignore no-explicit-any -- test cast
           Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
       });
       await expect(updateCoffeeVariety('var-1', {}, 'not-owner', { model: mockModel }))
@@ -205,7 +218,9 @@ describe('Coffee Variety Service', () => {
     it('should allow owner to update their own variety', async () => {
       const mockModel = createMockModel({
         findById: () =>
+          // deno-lint-ignore no-explicit-any -- test cast
           Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
+        // deno-lint-ignore no-explicit-any -- test cast
         update: () => Promise.resolve({ id: 'var-1', name: 'Updated' } as any),
       });
       const result = await updateCoffeeVariety('var-1', { name: 'Updated' }, 'owner-1', {
@@ -217,7 +232,9 @@ describe('Coffee Variety Service', () => {
     it('should allow admin to update any user-created variety', async () => {
       const mockModel = createMockModel({
         findById: () =>
+          // deno-lint-ignore no-explicit-any -- test cast
           Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
+        // deno-lint-ignore no-explicit-any -- test cast
         update: () => Promise.resolve({ id: 'var-1', name: 'Updated' } as any),
       });
       const result = await updateCoffeeVariety('var-1', { name: 'Updated' }, 'admin-user', {
@@ -228,6 +245,7 @@ describe('Coffee Variety Service', () => {
 
     it('should still throw SYSTEM_VARIETY_IMMUTABLE for system varieties regardless of admin status', async () => {
       const mockModel = createMockModel({
+        // deno-lint-ignore no-explicit-any -- test cast
         findById: () => Promise.resolve({ id: 'var-1', isSystem: true, createdBy: null } as any),
       });
       await expect(updateCoffeeVariety('var-1', {}, 'admin-user', { model: mockModel }, true))
@@ -246,6 +264,7 @@ describe('Coffee Variety Service', () => {
 
     it('should block system variety deletion', async () => {
       const mockModel = createMockModel({
+        // deno-lint-ignore no-explicit-any -- test cast
         findById: () => Promise.resolve({ id: 'var-1', isSystem: true } as any),
       });
       await expect(deleteCoffeeVariety('var-1', 'user-1', { model: mockModel }))
@@ -255,6 +274,7 @@ describe('Coffee Variety Service', () => {
     it('should throw FORBIDDEN when non-owner tries to delete a user-created variety', async () => {
       const mockModel = createMockModel({
         findById: () =>
+          // deno-lint-ignore no-explicit-any -- test cast
           Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
       });
       await expect(deleteCoffeeVariety('var-1', 'not-owner', { model: mockModel }))
@@ -264,7 +284,9 @@ describe('Coffee Variety Service', () => {
     it('should allow admin to delete any user-created variety', async () => {
       const mockModel = createMockModel({
         findById: () =>
+          // deno-lint-ignore no-explicit-any -- test cast
           Promise.resolve({ id: 'var-1', isSystem: false, createdBy: 'owner-1' } as any),
+        // deno-lint-ignore no-explicit-any -- test cast
         softDelete: () => Promise.resolve({ id: 'var-1' } as any),
       });
       const result = await deleteCoffeeVariety('var-1', 'admin-user', { model: mockModel }, true);
@@ -278,6 +300,7 @@ describe('Coffee Variety Service', () => {
       const mockModel = createMockModel({
         getRecipesUsingVariety: (varietyId, page, perPage) => {
           capturedArgs = [varietyId, page, perPage];
+          // deno-lint-ignore no-explicit-any -- test cast
           return Promise.resolve({ data: [], total: 0 } as any);
         },
       });
@@ -292,6 +315,7 @@ describe('Coffee Variety Service', () => {
 
     it('should return total count from the model result and log it', async () => {
       const mockModel = createMockModel({
+        // deno-lint-ignore no-explicit-any -- test cast
         getRecipesUsingVariety: () => Promise.resolve({ data: [{ id: 'r1' }], total: 15 } as any),
       });
       const result = await getRecipesForVariety('var-1', 1, 12, { model: mockModel });

@@ -12,6 +12,7 @@ import * as service from './service.ts';
 import { error, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Hono sub-router for photo endpoints, mounted at `/api/v1/photos`. */
 const photo = new Hono<AppEnv>();
 
 const PhotoFormSchema = z.object({

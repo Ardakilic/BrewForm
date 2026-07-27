@@ -13,6 +13,7 @@ import * as service from './service.ts';
 import { success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Hono sub-router for badge endpoints, mounted at `/api/v1/badges`. */
 const badge = new Hono<AppEnv>();
 
 badge.get(

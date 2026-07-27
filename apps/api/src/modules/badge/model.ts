@@ -14,16 +14,16 @@ import {
   userBadges,
   userFollows,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNotNull, isNull, max } from 'drizzle-orm';
 import type { BadgeRule } from '@brewform/shared/types';
 
 /** List all available badge definitions ordered by threshold ascending. */
-export async function listBadges() {
+export function listBadges() {
   return db.select().from(badges).orderBy(asc(badges.threshold));
 }
 
 /** Get all badges awarded to a user, with badge definition joined. */
-export async function getUserBadges(userId: string) {
+export function getUserBadges(userId: string) {
   return db.select({
     id: userBadges.id,
     userId: userBadges.userId,
@@ -75,10 +75,10 @@ export async function evaluateBadges(userId: string) {
   const userFollowers = userFollowersResult[0].count;
 
   const maxLikesResult = await db.select({
-    maxLikes: sql<number>`coalesce(max(${recipes.likeCount}), 0)`,
+    maxLikes: max(recipes.likeCount),
   }).from(recipes)
     .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
-  const maxLikes = maxLikesResult[0].maxLikes;
+  const maxLikes = maxLikesResult[0].maxLikes ?? 0;
 
   const distinctMethodsResult = await db.selectDistinct({ brewMethod: recipeVersions.brewMethod })
     .from(recipeVersions)

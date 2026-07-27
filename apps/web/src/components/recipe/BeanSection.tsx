@@ -6,6 +6,7 @@ import {
   roastDateResult,
 } from '../../utils/relative-date.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatDate } from '../../utils/format.ts';
 
 interface BeanSectionProps {
   productName?: string | null;
@@ -27,11 +28,6 @@ function parseDate(value: string | Date | null | undefined): Date | null {
   if (value instanceof Date) return value;
   const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
-}
-
-/** ISO compact date: 2026-03-15 */
-function formatDateISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
 }
 
 function hasBeanData(props: BeanSectionProps): boolean {
@@ -69,7 +65,7 @@ function isPeakWindow(roastDate: Date, brewDate: Date): boolean {
  * "peak window" hint (7–21 days post-roast). Renders nothing without bean data.
  */
 export function BeanSection(props: BeanSectionProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const {
     productName,
     coffeeBrand,
@@ -128,7 +124,7 @@ export function BeanSection(props: BeanSectionProps) {
   const origin = bean?.origin ?? null;
 
   return (
-    <section className='card' aria-label='Bean information'>
+    <section className='card' aria-label={t('a11y.bean.section')}>
       {/* Section header */}
       <div className='flex items-center justify-between mb-4'>
         <span className='text-xs uppercase tracking-widest font-semibold text-[color:var(--text-tertiary)]'>
@@ -151,7 +147,7 @@ export function BeanSection(props: BeanSectionProps) {
         {/* Bean image placeholder */}
         <div
           className='flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center w-[72px] h-[72px] bg-[color:var(--bg-tertiary)] text-[color:var(--text-tertiary)] text-2xl'
-          aria-label='Coffee bean image placeholder'
+          aria-label={t('a11y.bean.imagePlaceholder')}
           role='img'
         >
           ☕
@@ -180,6 +176,7 @@ export function BeanSection(props: BeanSectionProps) {
                 label={t('recipe.bean.roasted')}
                 date={roastDate}
                 relative={shortRelative(roastResult)}
+                locale={locale}
               />
             )}
             {packageOpenDate && (
@@ -187,6 +184,7 @@ export function BeanSection(props: BeanSectionProps) {
                 label={t('recipe.bean.bagOpened')}
                 date={packageOpenDate}
                 relative={shortRelative(packageOpenDateResult(packageOpenDate, brewDate))}
+                locale={locale}
               />
             )}
             {grindDate && (
@@ -194,6 +192,7 @@ export function BeanSection(props: BeanSectionProps) {
                 label={t('recipe.bean.ground')}
                 date={grindDate}
                 relative={shortRelative(grindDateResult(grindDate, brewDate))}
+                locale={locale}
               />
             )}
             {origin && (
@@ -217,9 +216,10 @@ interface DateFieldProps {
   label: string;
   date: Date;
   relative: string;
+  locale: string;
 }
 
-function DateField({ label, date, relative }: DateFieldProps) {
+function DateField({ label, date, relative, locale }: DateFieldProps) {
   return (
     <div className='flex flex-col gap-0.5'>
       <span className='text-xs uppercase tracking-widest text-[color:var(--text-tertiary)]'>
@@ -228,7 +228,7 @@ function DateField({ label, date, relative }: DateFieldProps) {
       {/* Date + short relative on one line */}
       <span className='flex items-baseline gap-1.5'>
         <span className='text-sm font-bold text-[color:var(--text-primary)]'>
-          {formatDateISO(date)}
+          {formatDate(date, locale)}
         </span>
         <span className='text-xs text-[color:var(--text-tertiary)]'>
           {relative}

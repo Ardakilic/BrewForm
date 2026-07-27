@@ -5,6 +5,8 @@ import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { PageContainer } from '../../components/ui/PageContainer.tsx';
 
 const log = createLogger('CollectionsBrowsePage');
 
@@ -46,17 +48,13 @@ export function CollectionsBrowsePage() {
   }, []);
 
   return (
-    <div className='container mx-auto px-4 py-8'>
+    <PageContainer width='6xl'>
       <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
         {t('collection.browse.title')}
       </h1>
 
       {collectionsResponse.data.length === 0
-        ? (
-          <p className='text-center py-12' style={{ color: 'var(--text-secondary)' }}>
-            {t('collection.browse.noResults')}
-          </p>
-        )
+        ? <EmptyState message={t('collection.browse.noResults')} />
         : (
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
             {collectionsResponse.data.map((collection) => (
@@ -64,6 +62,6 @@ export function CollectionsBrowsePage() {
             ))}
           </div>
         )}
-    </div>
+    </PageContainer>
   );
 }

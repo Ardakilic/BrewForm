@@ -56,36 +56,39 @@ export class DenoKVCacheProvider implements CacheProvider {
 export class InMemoryCacheProvider implements CacheProvider {
   private store = new Map<string, { value: unknown; expiresAt: number | null }>();
 
-  async get<T>(key: string[]): Promise<T | null> {
+  get<T>(key: string[]): Promise<T | null> {
     const k = key.join(':');
     const entry = this.store.get(k);
-    if (!entry) return null;
+    if (!entry) return Promise.resolve(null);
     if (entry.expiresAt && entry.expiresAt < Date.now()) {
       this.store.delete(k);
-      return null;
+      return Promise.resolve(null);
     }
-    return entry.value as T;
+    return Promise.resolve(entry.value as T);
   }
 
-  async set<T>(key: string[], value: T, options?: { ttlMs?: number }): Promise<void> {
+  set<T>(key: string[], value: T, options?: { ttlMs?: number }): Promise<void> {
     const k = key.join(':');
     this.store.set(k, {
       value,
       expiresAt: options?.ttlMs ? Date.now() + options.ttlMs : null,
     });
+    return Promise.resolve();
   }
 
-  async delete(key: string[]): Promise<void> {
+  delete(key: string[]): Promise<void> {
     this.store.delete(key.join(':'));
+    return Promise.resolve();
   }
 
-  async deleteByPrefix(prefix: string[]): Promise<void> {
+  deleteByPrefix(prefix: string[]): Promise<void> {
     const p = prefix.join(':');
     for (const k of this.store.keys()) {
       if (k.startsWith(p)) {
         this.store.delete(k);
       }
     }
+    return Promise.resolve();
   }
 }
 

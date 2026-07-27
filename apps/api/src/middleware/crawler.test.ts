@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import '../test-setup.ts';
 import { afterEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
@@ -41,6 +40,7 @@ describe('Crawler Middleware', () => {
   it('returns pre-rendered HTML for Twitterbot', async () => {
     const orig = deps.getRecipeMeta;
     try {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => publicMeta;
       const res = await app.request('/recipes/v60-ethiopian', {
         headers: { 'User-Agent': 'Twitterbot/1.0' },
@@ -58,6 +58,7 @@ describe('Crawler Middleware', () => {
   it('returns pre-rendered HTML for facebookexternalhit', async () => {
     const orig = deps.getRecipeMeta;
     try {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => publicMeta;
       const res = await app.request('/recipes/v60-ethiopian', {
         headers: { 'User-Agent': 'facebookexternalhit/1.1' },
@@ -80,6 +81,7 @@ describe('Crawler Middleware', () => {
   it('falls through for private recipes', async () => {
     const orig = deps.getRecipeMeta;
     try {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => ({ ...publicMeta, visibility: 'private' as const });
       const res = await app.request('/recipes/private-brew', {
         headers: { 'User-Agent': 'Twitterbot/1.0' },
@@ -93,6 +95,7 @@ describe('Crawler Middleware', () => {
   it('falls through when getRecipeMeta throws', async () => {
     const orig = deps.getRecipeMeta;
     try {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => {
         throw new Error('RECIPE_NOT_FOUND');
       };
@@ -108,6 +111,7 @@ describe('Crawler Middleware', () => {
   it('includes og:image:width and og:image:height only for fallback image', async () => {
     const orig = deps.getRecipeMeta;
     try {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => publicMeta;
       const resWithPhoto = await app.request('/recipes/v60-ethiopian', {
         headers: { 'User-Agent': 'WhatsApp/2.0' },
@@ -116,6 +120,7 @@ describe('Crawler Middleware', () => {
       expect(htmlWithPhoto).not.toContain('content="1200"');
       expect(htmlWithPhoto).not.toContain('content="630"');
 
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => ({ ...publicMeta, photoUrl: null });
       const resFallback = await app.request('/recipes/v60-ethiopian', {
         headers: { 'User-Agent': 'WhatsApp/2.0' },
@@ -131,6 +136,7 @@ describe('Crawler Middleware', () => {
   it('includes twitter meta tags', async () => {
     const orig = deps.getRecipeMeta;
     try {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => publicMeta;
       const res = await app.request('/recipes/v60-ethiopian', {
         headers: { 'User-Agent': 'Slackbot-LinkExpanding 1.0' },
@@ -148,6 +154,7 @@ describe('Crawler Middleware', () => {
   it('uses productName in description when available', async () => {
     const orig = deps.getRecipeMeta;
     try {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => publicMeta;
       const res = await app.request('/recipes/v60-ethiopian', {
         headers: { 'User-Agent': 'Twitterbot/1.0' },
@@ -162,6 +169,7 @@ describe('Crawler Middleware', () => {
   it('uses brewMethod and drinkType in description when productName is absent', async () => {
     const orig = deps.getRecipeMeta;
     try {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async () => ({
         ...publicMeta,
         productName: null,

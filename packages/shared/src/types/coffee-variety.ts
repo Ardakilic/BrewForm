@@ -7,6 +7,7 @@
  */
 import type { CoffeeVarietyCategory as _CoffeeVarietyCategory } from '../constants/coffee-variety.ts';
 
+/** Coffee variety category union, re-exported from `@brewform/shared/constants`. */
 export type CoffeeVarietyCategory = _CoffeeVarietyCategory;
 
 /**

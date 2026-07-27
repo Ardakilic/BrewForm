@@ -77,6 +77,51 @@ export function RecipeCardSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
+// CatalogCardSkeleton -- placeholder for catalog (variety/equipment) cards
+// ---------------------------------------------------------------------------
+
+/** Placeholder matching a catalog card's title row, type pill, and body lines. */
+export function CatalogCardSkeleton() {
+  return (
+    <div className='card space-y-3'>
+      <div className='flex gap-2'>
+        <Skeleton height='1.25rem' width='60%' />
+        <Skeleton height='1.25rem' width='4rem' className='rounded-full' />
+      </div>
+      <Skeleton height='0.875rem' width='40%' />
+      <Skeleton height='0.875rem' width='80%' />
+      <Skeleton height='2.5rem' />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CardSkeletonGrid -- responsive grid of N card skeletons (recipe or catalog)
+// ---------------------------------------------------------------------------
+
+interface CardSkeletonGridProps {
+  count?: number;
+  variant?: 'recipe' | 'catalog';
+}
+
+/**
+ * Responsive grid of `count` card skeletons. `variant` selects the card shape
+ * and grid columns: `recipe` (default) mirrors recipe cards, `catalog` mirrors
+ * the variety/equipment catalog cards.
+ */
+export function CardSkeletonGrid({ count = 6, variant = 'recipe' }: CardSkeletonGridProps) {
+  const gridClass = variant === 'catalog'
+    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+    : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+  return (
+    <div className={gridClass}>
+      {Array.from({ length: count }, (_, i) =>
+        variant === 'catalog' ? <CatalogCardSkeleton key={i} /> : <RecipeCardSkeleton key={i} />)}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // RecipeCardSkeletonGrid -- grid of N recipe card skeletons
 // ---------------------------------------------------------------------------
 
@@ -86,11 +131,7 @@ interface RecipeCardSkeletonGridProps {
 
 /** Responsive grid of `count` recipe-card skeletons. */
 export function RecipeCardSkeletonGrid({ count = 6 }: RecipeCardSkeletonGridProps) {
-  return (
-    <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-      {Array.from({ length: count }, (_, i) => <RecipeCardSkeleton key={i} />)}
-    </div>
-  );
+  return <CardSkeletonGrid count={count} variant='recipe' />;
 }
 
 // ---------------------------------------------------------------------------

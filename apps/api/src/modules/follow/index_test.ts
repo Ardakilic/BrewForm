@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Route-level integration tests for cursor pagination on GET /api/v1/follow/feed.
  *
@@ -124,6 +122,7 @@ describe(
         `/api/v1/follow/feed?cursor=${cursor}&perPage=10`,
         follower.id,
       );
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -132,12 +131,14 @@ describe(
       expect(body.meta.cursor).toBeDefined();
       expect(body.meta.pagination).toBeUndefined();
       expect(Array.isArray(body.data)).toBe(true);
+      // deno-lint-ignore no-explicit-any -- test mock
       expect(body.data.some((r: any) => r.id === r1.id)).toBe(true);
     });
 
     it('returns 400 INVALID_CURSOR when the cursor is malformed base64', async () => {
       const app = createTestApp(follower.id);
       const res = await authedRequest(app, '/api/v1/follow/feed?cursor=!!!invalid!!!', follower.id);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(400);
@@ -152,6 +153,7 @@ describe(
 
       const app = createTestApp(follower.id);
       const res = await authedRequest(app, '/api/v1/follow/feed?page=1&perPage=10', follower.id);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -171,6 +173,7 @@ describe(
 
       const app = createTestApp(loner.id);
       const res = await authedRequest(app, '/api/v1/follow/feed?page=1&perPage=10', loner.id);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);

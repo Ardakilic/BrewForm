@@ -3,6 +3,7 @@ import { describeRoute } from 'hono-openapi';
 import { db } from '@brewform/db';
 import { sql } from 'drizzle-orm';
 
+/** Hono router for the `/health` and `/ready` probes, mounted at `/` in `routes/index.ts`. */
 const health = new Hono();
 
 health.get(

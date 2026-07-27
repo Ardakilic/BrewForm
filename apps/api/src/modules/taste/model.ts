@@ -15,20 +15,20 @@ type TasteNoteNode = typeof tasteNotes.$inferSelect & {
 };
 
 /** Get all taste notes ordered by depth then name. */
-export async function findAll() {
+export function findAll() {
   return db.select().from(tasteNotes).where(isNull(tasteNotes.deletedAt))
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
 }
 
 /** Get all child taste notes for a given parent, ordered by name. */
-export async function findChildren(parentId: string) {
+export function findChildren(parentId: string) {
   return db.select().from(tasteNotes)
     .where(and(eq(tasteNotes.parentId, parentId), isNull(tasteNotes.deletedAt)))
     .orderBy(asc(tasteNotes.name));
 }
 
 /** Search taste notes by name (LIKE match), limited to 50 results. */
-export async function searchByName(query: string) {
+export function searchByName(query: string) {
   return db.select().from(tasteNotes)
     .where(and(like(tasteNotes.name, `%${query}%`), isNull(tasteNotes.deletedAt)))
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name))

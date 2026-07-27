@@ -1,10 +1,14 @@
+import { useSafeT } from '../../../utils/safe-translation.ts';
+
 interface IconProps {
   size?: number;
   className?: string;
+  label?: string;
 }
 
 /** SVG icon for an espresso portafilter. */
-export function PortafilterIcon({ size = 24, className }: IconProps) {
+export function PortafilterIcon({ size = 24, className, label }: IconProps) {
+  const t = useSafeT();
   return (
     <svg
       width={size}
@@ -16,7 +20,7 @@ export function PortafilterIcon({ size = 24, className }: IconProps) {
       strokeLinecap='round'
       strokeLinejoin='round'
       role='img'
-      aria-label='Portafilter'
+      aria-label={label ?? t('a11y.equipment.portafilter')}
       className={className}
     >
       {/* Handle */}

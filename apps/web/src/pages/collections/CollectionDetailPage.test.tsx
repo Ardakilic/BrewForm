@@ -144,7 +144,7 @@ describe('CollectionDetailPage', () => {
     renderDetailPage();
 
     await waitFor(() => {
-      expect(screen.getByText('My Collection')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'My Collection' })).toBeInTheDocument();
       expect(screen.getByText(/recipes: 0/)).toBeInTheDocument();
     });
   });
@@ -153,7 +153,7 @@ describe('CollectionDetailPage', () => {
     renderDetailPage();
 
     await waitFor(() => {
-      expect(screen.getByText('My Collection')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'My Collection' })).toBeInTheDocument();
     });
 
     // "Edit" is the i18n key 'collection.detail.edit' — non-owner should not see it

@@ -8,10 +8,11 @@ import {
   useNavigation,
   useParams,
 } from 'react-router';
-import { ApiError, commentApi, recipeApi } from '../../api/index.ts';
+import { ApiError, collectionApi, commentApi, recipeApi } from '../../api/index.ts';
 import type {
   CommentWithRepliesOutput,
   PaginatedResponse,
+  RecipeCollectionsOutput,
   RecipeDetailOutput,
   TasteNoteOutput,
 } from '@brewform/shared/schemas';
@@ -42,17 +43,20 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('RecipeDetailPage');
 
+/** Loader data for the recipe detail page — recipe, taste notes, comments, and collections. */
 export interface DetailLoaderData {
   recipe: RecipeDetailOutput;
   tasteNotes: TasteNoteOutput[];
   comments: PaginatedResponse<CommentWithRepliesOutput>;
+  collections: RecipeCollectionsOutput;
 }
 
 /**
  * Fetches recipe `:slug` (404s propagate as a 404 Response), then the
- * cached taste-note list and first comments page in parallel; QR visits
- * (`?from=qr`) to non-public recipes redirect to `/recipes/unavailable`.
- * Returns `{ recipe, tasteNotes, comments }`.
+ * cached taste-note list, first comments page, and containing collections
+ * (D99.5/US-9) in parallel; QR visits (`?from=qr`) to non-public recipes
+ * redirect to `/recipes/unavailable`.
+ * Returns `{ recipe, tasteNotes, comments, collections }`.
  */
 export const loader = async (
   { params, request }: { params: Record<string, string | undefined>; request: Request },
@@ -72,11 +76,13 @@ export const loader = async (
   if (fromQr && recipe.visibility !== 'public') {
     throw redirect('/recipes/unavailable');
   }
-  const [tasteNotes, comments] = await Promise.all([
+  const [tasteNotes, comments, collections] = await Promise.all([
     getTasteNotesCached(),
     commentApi.list(recipe.id, 1),
+    // collections outage must not 500 the recipe page
+    collectionApi.listByRecipe(recipe.id).catch(() => []),
   ]);
-  return { recipe, tasteNotes, comments };
+  return { recipe, tasteNotes, comments, collections };
 };
 
 /**
@@ -85,7 +91,7 @@ export const loader = async (
  * owner-only edit and rating controls.
  */
 export function RecipeDetailPage() {
-  const { recipe, tasteNotes: allTasteNotes, comments: initialComments } =
+  const { recipe, tasteNotes: allTasteNotes, comments: initialComments, collections } =
     useLoaderData() as DetailLoaderData;
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -276,7 +282,7 @@ export function RecipeDetailPage() {
               brewerDetails={v?.brewerDetails}
             />
 
-            <section className='card' aria-label='Preparation notes'>
+            <section className='card' aria-label={t('a11y.preparationNotes')}>
               <div className='flex items-center justify-between mb-4'>
                 <span
                   className='text-xs font-semibold uppercase tracking-widest'
@@ -396,6 +402,34 @@ export function RecipeDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* In collections — D99.5/US-9: collections containing this recipe; hidden when empty */}
+            {collections.length > 0 && (
+              <section
+                className='card'
+                aria-label={t('collection.inCollections')}
+                data-testid='in-collections-card'
+              >
+                <p
+                  className='text-sm font-medium mb-3'
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {t('collection.inCollections')}
+                </p>
+                <ul className='space-y-1'>
+                  {collections.map((c) => (
+                    <li key={c.id}>
+                      <Link
+                        to={`/collections/${c.id}`}
+                        className='text-sm text-[color:var(--accent-primary)] hover:underline'
+                      >
+                        {c.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             {/* Fork card */}
             {isAuthenticated && !isOwner && <ForkCard recipeId={recipe.id} />}

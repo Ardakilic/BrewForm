@@ -7,6 +7,7 @@ import {
   CollectionListItemOutputSchema,
   CollectionOutputSchema,
   PublicCollectionListItemOutputSchema,
+  RecipeCollectionsOutputSchema,
 } from './collection.ts';
 
 /** Normalize to JSON wire shape (Dates → ISO strings) before parsing. */
@@ -188,6 +189,36 @@ describe('PublicCollectionListItemOutputSchema', () => {
   it('rejects a list item missing author', () => {
     const payload = { ...collectionRow, recipeCount: 3 };
     const result = PublicCollectionListItemOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('RecipeCollectionsOutputSchema', () => {
+  it('parses an array of minimal recipe-collection items', () => {
+    const payload = [
+      { id: 'col-1', name: 'My V60s', visibility: 'public', userId: 'user-1' },
+      { id: 'col-2', name: 'Draft picks', visibility: 'draft', userId: 'user-2' },
+    ];
+    const result = RecipeCollectionsOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual(payload);
+  });
+
+  it('parses an empty array', () => {
+    const result = RecipeCollectionsOutputSchema.safeParse([]);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual([]);
+  });
+
+  it('rejects an item missing userId', () => {
+    const payload = [{ id: 'col-1', name: 'My V60s', visibility: 'public' }];
+    const result = RecipeCollectionsOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an item with an invalid visibility', () => {
+    const payload = [{ id: 'col-1', name: 'My V60s', visibility: 'secret', userId: 'user-1' }];
+    const result = RecipeCollectionsOutputSchema.safeParse(wire(payload));
     expect(result.success).toBe(false);
   });
 });

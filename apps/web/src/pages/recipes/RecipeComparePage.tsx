@@ -5,12 +5,12 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { BREW_METHODS, DRINK_TYPES } from '@brewform/shared/constants';
+import type { RecipeDetailOutput, RecipeDetailVersionOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('RecipeComparePage');
 
-// deno-lint-ignore no-explicit-any
-function labelFor(value: string, constants: any) {
-  return constants.find((c: any) => c.value === value)?.label || value;
+function labelFor(value: string, constants: ReadonlyArray<{ value: string; label: string }>) {
+  return constants.find((c) => c.value === value)?.label || value;
 }
 
 /**
@@ -21,10 +21,8 @@ function labelFor(value: string, constants: any) {
 export function RecipeComparePage() {
   const { t } = useTranslation();
   const { slug1, slug2 } = useParams();
-  // deno-lint-ignore no-explicit-any
-  const [recipe1, setRecipe1] = useState<any>(null);
-  // deno-lint-ignore no-explicit-any
-  const [recipe2, setRecipe2] = useState<any>(null);
+  const [recipe1, setRecipe1] = useState<RecipeDetailOutput | null>(null);
+  const [recipe2, setRecipe2] = useState<RecipeDetailOutput | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +35,8 @@ export function RecipeComparePage() {
   useEffect(() => {
     if (!slug1 || !slug2) return;
     setLoading(true);
+    // Deliberate null-fallback: a missing/unloadable recipe renders as an empty pane
+    // (the not-found branch below) instead of failing the whole comparison.
     Promise.all([
       recipeApi.get(slug1).catch(() => {
         return null;
@@ -60,7 +60,7 @@ export function RecipeComparePage() {
       </div>
     );
   }
-  if (!recipe1 || !recipe2) {
+  if (!recipe1 || !recipe2 || !recipe1.currentVersion || !recipe2.currentVersion) {
     return (
       <div
         className='mx-auto max-w-6xl px-6 py-12 text-center'
@@ -104,10 +104,9 @@ export function RecipeComparePage() {
   );
 }
 
-// deno-lint-ignore no-explicit-any
 function CompareTable(
   { v, tasteNotes, equipment }: {
-    v: any;
+    v: RecipeDetailVersionOutput;
     tasteNotes: { id: string; name: string }[];
     equipment: { id: string; name: string; type: string }[];
   },

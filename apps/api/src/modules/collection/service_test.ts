@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * DB integration tests for the collection service layer.
  *
@@ -15,6 +13,8 @@ import { collectionItems, collections, recipes, users } from '@brewform/db/schem
 import { eq, inArray } from 'drizzle-orm';
 import * as service from './service.ts';
 import * as model from './model.ts';
+import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
+import { type CacheProvider, InMemoryCacheProvider } from '../../utils/cache/index.ts';
 
 async function createUser(prefix: string) {
   const id = crypto.randomUUID();
@@ -517,6 +517,7 @@ describe(
       const result = await service.listMyCollections(user.id, 1, 10, 'public');
       expect(result.total).toBe(1);
       for (const c of result.collections) {
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).visibility).toBe('public');
       }
     });
@@ -524,6 +525,7 @@ describe(
     it('marks containsRecipe per collection when a recipeId context is given', async () => {
       const result = await service.listMyCollections(user.id, 1, 10, undefined, recipe.id);
       expect(result.total).toBe(2);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const byName = new Map(result.collections.map((c) => [(c as any).name, c as any]));
       expect(byName.get('C1')?.containsRecipe).toBe(true);
       expect(byName.get('C2')?.containsRecipe).toBe(false);
@@ -533,6 +535,7 @@ describe(
       const result = await service.listMyCollections(user.id, 1, 10);
       expect(result.collections.length).toBe(2);
       for (const c of result.collections) {
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).containsRecipe).toBe(false);
       }
     });
@@ -564,6 +567,7 @@ describe(
     it('returns only public collections', async () => {
       const result = await service.listPublicCollections(user.id, 1, 10);
       expect(result.total).toBe(1);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result.collections[0] as any).name).toBe('Pub');
     });
   },
@@ -600,6 +604,7 @@ describe(
     it('returns public collections from all users with author and recipeCount', async () => {
       const result = await service.listAllPublicCollections(1, 100);
       // The total includes seed data, so verify our test collections are present
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const names = result.collections.map((c) => (c as any).name);
       expect(names).toContain('A Pub');
       expect(names).toContain('B Pub 1');
@@ -609,11 +614,17 @@ describe(
       expect(names).not.toContain('B Draft');
       // Each returned row must have the right shape
       for (const c of result.collections) {
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).visibility).toBe('public');
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).author).toBeDefined();
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect(typeof (c as any).author.username).toBe('string');
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).author).toHaveProperty('displayName');
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect((c as any).author).toHaveProperty('avatarUrl');
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         expect(typeof (c as any).recipeCount).toBe('number');
       }
     });
@@ -630,6 +641,261 @@ describe(
           expect(page2.collections.length).toBeGreaterThan(0);
         }
       }
+    });
+  },
+);
+
+/** CacheProvider that counts calls — proves cache reads/writes/bypasses. */
+class CountingCacheProvider extends InMemoryCacheProvider {
+  getCount = 0;
+  setCount = 0;
+  deleteCount = 0;
+  deleteByPrefixCount = 0;
+  override get<T>(key: string[]): Promise<T | null> {
+    this.getCount++;
+    return super.get(key);
+  }
+  override set<T>(key: string[], value: T, options?: { ttlMs?: number }): Promise<void> {
+    this.setCount++;
+    return super.set(key, value, options);
+  }
+  override delete(key: string[]): Promise<void> {
+    this.deleteCount++;
+    return super.delete(key);
+  }
+  override deleteByPrefix(prefix: string[]): Promise<void> {
+    this.deleteByPrefixCount++;
+    return super.deleteByPrefix(prefix);
+  }
+}
+
+const DETAIL_KEY = (id: string) => ['collection-detail', id];
+const LIST_PREFIX = ['cache', 'collections'];
+
+describe(
+  { name: 'collection service — cache behaviour', sanitizeResources: false, sanitizeOps: false },
+  () => {
+    let user: typeof users.$inferSelect;
+    let other: typeof users.$inferSelect;
+    let provider: CountingCacheProvider;
+    let originalCache: CacheProvider;
+    const colIds: string[] = [];
+    const recipeIds: string[] = [];
+
+    beforeEach(async () => {
+      originalCache = cacheProvider;
+      provider = new CountingCacheProvider();
+      setCacheProvider(provider);
+      user = await createUser('svc-cache');
+      other = await createUser('svc-cache-other');
+    });
+
+    afterEach(async () => {
+      setCacheProvider(originalCache);
+      await cleanupCollections(colIds);
+      colIds.length = 0;
+      await cleanupRecipes(recipeIds);
+      recipeIds.length = 0;
+      await cleanupUsers([user.id, other.id]);
+    });
+
+    it('should cache getCollection on miss and serve the second call from cache', async () => {
+      const col = await createCollectionRow(user.id, 'Cached', 'public');
+      colIds.push(col.id);
+      const first = await service.getCollection(user.id, col.id);
+      expect(first.id).toBe(col.id);
+      expect(await provider.get(DETAIL_KEY(col.id))).not.toBeNull();
+      // Prove the second call does not touch the DB: hard-delete the row —
+      // a cached response must still come back.
+      await db.delete(collections).where(eq(collections.id, col.id));
+      const second = await service.getCollection(user.id, col.id);
+      expect(second).toEqual(first);
+    });
+
+    it('should still throw FORBIDDEN for a cached private collection requested by a non-owner', async () => {
+      const col = await createCollectionRow(user.id, 'Private', 'private');
+      colIds.push(col.id);
+      await service.getCollection(user.id, col.id); // warm the cache as owner
+      expect(await provider.get(DETAIL_KEY(col.id))).not.toBeNull();
+      await expect(service.getCollection(other.id, col.id)).rejects.toThrow('FORBIDDEN');
+    });
+
+    it('should return a cached private collection to its owner', async () => {
+      const col = await createCollectionRow(user.id, 'Private', 'private');
+      colIds.push(col.id);
+      const first = await service.getCollection(user.id, col.id);
+      const second = await service.getCollection(user.id, col.id);
+      expect(second).toEqual(first);
+    });
+
+    it('should invalidate the detail cache and sweep the list prefix on updateCollection', async () => {
+      const col = await createCollectionRow(user.id, 'ToUpdate', 'public');
+      colIds.push(col.id);
+      await service.getCollection(user.id, col.id);
+      expect(await provider.get(DETAIL_KEY(col.id))).not.toBeNull();
+      const prefixBefore = provider.deleteByPrefixCount;
+      await service.updateCollection(user.id, col.id, { name: 'Updated' });
+      expect(await provider.get(DETAIL_KEY(col.id))).toBeNull();
+      expect(provider.deleteByPrefixCount).toBe(prefixBefore + 1);
+    });
+
+    it('should invalidate the detail cache and sweep the list prefix on deleteCollection', async () => {
+      const col = await createCollectionRow(user.id, 'ToDelete', 'public');
+      colIds.push(col.id);
+      await service.getCollection(user.id, col.id);
+      const prefixBefore = provider.deleteByPrefixCount;
+      await service.deleteCollection(user.id, col.id);
+      expect(await provider.get(DETAIL_KEY(col.id))).toBeNull();
+      expect(provider.deleteByPrefixCount).toBe(prefixBefore + 1);
+    });
+
+    it('should invalidate the detail cache and sweep the list prefix on addRecipeToCollection', async () => {
+      const col = await createCollectionRow(user.id, 'ToAdd', 'public');
+      colIds.push(col.id);
+      const recipe = await createRecipe(user.id);
+      recipeIds.push(recipe.id);
+      await service.getCollection(user.id, col.id);
+      const prefixBefore = provider.deleteByPrefixCount;
+      await service.addRecipeToCollection(user.id, col.id, recipe.id);
+      expect(await provider.get(DETAIL_KEY(col.id))).toBeNull();
+      expect(provider.deleteByPrefixCount).toBe(prefixBefore + 1);
+    });
+
+    it('should invalidate the detail cache and sweep the list prefix on removeRecipeFromCollection', async () => {
+      const col = await createCollectionRow(user.id, 'ToRemove', 'public');
+      colIds.push(col.id);
+      const recipe = await createRecipe(user.id);
+      recipeIds.push(recipe.id);
+      await service.addRecipeToCollection(user.id, col.id, recipe.id);
+      await service.getCollection(user.id, col.id); // re-warm after the add invalidated
+      const prefixBefore = provider.deleteByPrefixCount;
+      await service.removeRecipeFromCollection(user.id, col.id, recipe.id);
+      expect(await provider.get(DETAIL_KEY(col.id))).toBeNull();
+      expect(provider.deleteByPrefixCount).toBe(prefixBefore + 1);
+    });
+
+    it('should invalidate the detail cache and sweep the list prefix on reorderCollection', async () => {
+      const col = await createCollectionRow(user.id, 'ToReorder', 'public');
+      colIds.push(col.id);
+      const recipeA = await createRecipe(user.id);
+      const recipeB = await createRecipe(user.id);
+      recipeIds.push(recipeA.id, recipeB.id);
+      await service.addRecipeToCollection(user.id, col.id, recipeA.id);
+      await service.addRecipeToCollection(user.id, col.id, recipeB.id);
+      await service.getCollection(user.id, col.id); // re-warm
+      const loaded = await model.findById(col.id);
+      const itemIds = (loaded?.items ?? []).map((i) => i.id).reverse();
+      const prefixBefore = provider.deleteByPrefixCount;
+      await service.reorderCollection(user.id, col.id, itemIds);
+      expect(await provider.get(DETAIL_KEY(col.id))).toBeNull();
+      expect(provider.deleteByPrefixCount).toBe(prefixBefore + 1);
+    });
+
+    it('should sweep existing list-prefix entries on createCollection (no detail delete needed)', async () => {
+      await service.listMyCollections(user.id, 1, 10);
+      const listKey = [...LIST_PREFIX, 'my', user.id, '1', '10', 'all'];
+      expect(await provider.get(listKey)).not.toBeNull();
+      const deleteBefore = provider.deleteCount;
+      const col = await service.createCollection(user.id, { name: 'New', visibility: 'public' });
+      if (col) colIds.push(col.id);
+      expect(await provider.get(listKey)).toBeNull();
+      // Fresh UUID — createCollection must NOT pay for a detail-key delete.
+      expect(provider.deleteCount).toBe(deleteBefore);
+    });
+
+    it('should serve the second listMyCollections call from cache', async () => {
+      await createCollectionRow(user.id, 'Listed', 'public').then((c) => colIds.push(c.id));
+      const first = await service.listMyCollections(user.id, 1, 10);
+      const second = await service.listMyCollections(user.id, 1, 10);
+      expect(second).toEqual(first);
+      expect(provider.setCount).toBe(1); // second call was a hit, not a re-store
+    });
+
+    it('should bypass the cache entirely for listMyCollections with a recipeId', async () => {
+      const recipe = await createRecipe(user.id);
+      recipeIds.push(recipe.id);
+      const getBefore = provider.getCount;
+      const setBefore = provider.setCount;
+      const result = await service.listMyCollections(user.id, 1, 10, undefined, recipe.id);
+      expect(result.collections.every((c) => 'containsRecipe' in c)).toBe(true);
+      expect(provider.getCount).toBe(getBefore); // no read
+      expect(provider.setCount).toBe(setBefore); // no store
+      // Without recipeId the same call DOES read + write the cache.
+      await service.listMyCollections(user.id, 1, 10);
+      expect(provider.getCount).toBe(getBefore + 1);
+      expect(provider.setCount).toBe(setBefore + 1);
+    });
+  },
+);
+
+describe(
+  {
+    name: 'collection service — listCollectionsForRecipe (D99.5)',
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  () => {
+    let owner: typeof users.$inferSelect;
+    let stranger: typeof users.$inferSelect;
+    let publicCol: typeof collections.$inferSelect;
+    let privateCol: typeof collections.$inferSelect;
+    let recipe: typeof recipes.$inferSelect;
+    const colIds: string[] = [];
+    const recipeIds: string[] = [];
+
+    beforeEach(async () => {
+      owner = await createUser('svc-forRecipe-owner');
+      stranger = await createUser('svc-forRecipe-stranger');
+      publicCol = await createCollectionRow(owner.id, 'Public', 'public');
+      privateCol = await createCollectionRow(owner.id, 'Private', 'private');
+      colIds.push(publicCol.id, privateCol.id);
+      recipe = await createRecipe(stranger.id);
+      recipeIds.push(recipe.id);
+      for (const col of [publicCol, privateCol]) {
+        await db.insert(collectionItems).values({
+          collectionId: col.id,
+          recipeId: recipe.id,
+          sortOrder: 0,
+        });
+      }
+    });
+
+    afterEach(async () => {
+      await cleanupCollections(colIds);
+      colIds.length = 0;
+      await cleanupRecipes(recipeIds);
+      recipeIds.length = 0;
+      await cleanupUsers([owner.id, stranger.id]);
+    });
+
+    it('should return only public collections for an anonymous viewer', async () => {
+      const result = await service.listCollectionsForRecipe(null, recipe.id);
+      expect(result.length).toBe(1);
+      expect(result[0]).toMatchObject({
+        id: publicCol.id,
+        name: 'Public',
+        visibility: 'public',
+        userId: owner.id,
+      });
+    });
+
+    it('should return only public collections for a stranger', async () => {
+      const result = await service.listCollectionsForRecipe(stranger.id, recipe.id);
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe(publicCol.id);
+    });
+
+    it('should additionally return the owner’s own private collection', async () => {
+      const result = await service.listCollectionsForRecipe(owner.id, recipe.id);
+      const ids = result.map((r) => r.id).sort();
+      expect(ids).toEqual([publicCol.id, privateCol.id].sort());
+    });
+
+    it('should return an empty array when no visible collection contains the recipe', async () => {
+      const other = await createRecipe(stranger.id);
+      recipeIds.push(other.id);
+      const result = await service.listCollectionsForRecipe(owner.id, other.id);
+      expect(result).toEqual([]);
     });
   },
 );

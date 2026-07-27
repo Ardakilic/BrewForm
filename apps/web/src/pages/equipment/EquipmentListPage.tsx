@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import { equipmentApi } from '../../api/index.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { Field } from '../../components/form/Field.tsx';
+import { OwnedItemCard } from '../../components/ui/OwnedItemCard.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
 import type { EquipmentOutput } from '@brewform/shared/schemas';
 import type { EquipmentType } from '@brewform/shared/types';
 import { createLogger } from '../../utils/logger.ts';
@@ -15,11 +21,12 @@ const log = createLogger('EquipmentListPage');
  */
 export function EquipmentListPage() {
   const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', type: '', brand: '', model: '' });
   const [saving, setSaving] = useState(false);
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
 
   useEffect(() => {
     log.debug({}, 'EquipmentListPage mounted');
@@ -31,8 +38,11 @@ export function EquipmentListPage() {
   useEffect(() => {
     equipmentApi.list().then((data) => {
       setEquipment(data);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'equipment list fetch failed');
+      setStatus('error');
+    });
   }, []);
 
   /**
@@ -68,7 +78,13 @@ export function EquipmentListPage() {
    * invalidate the static cache so the next loader run re-fetches.
    */
   async function handleDelete(id: string) {
-    if (!globalThis.confirm(t('common.delete') + '?')) return;
+    if (
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'equipment.deleteConfirm',
+        danger: true,
+      })
+    ) return;
     log.debug({ equipmentId: id }, 'handleDelete started');
     try {
       await equipmentApi.delete(id);
@@ -80,15 +96,8 @@ export function EquipmentListPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div
-        className='mx-auto max-w-4xl px-6 py-12 text-center'
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {t('common.loading')}
-      </div>
-    );
+  if (status === 'loading') {
+    return <LoadingState className='mx-auto max-w-4xl px-6' />;
   }
 
   return (
@@ -109,73 +118,41 @@ export function EquipmentListPage() {
             {t('equipment.addEquipmentTitle')}
           </h2>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <div>
-              <label
-                htmlFor='eq-name'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('equipment.name')} *
-              </label>
+            <Field label={t('equipment.name')} required>
               <input
-                id='eq-name'
                 type='text'
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className='input-field'
                 required
               />
-            </div>
-            <div>
-              <label
-                htmlFor='eq-type'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('equipment.type')} *
-              </label>
+            </Field>
+            <Field label={t('equipment.type')} required>
               <input
-                id='eq-type'
                 type='text'
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
                 className='input-field'
-                placeholder='portafilter, basket, tamper...'
+                placeholder={t('equipment.type.placeholder')}
                 required
               />
-            </div>
-            <div>
-              <label
-                htmlFor='eq-brand'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('equipment.brand')}
-              </label>
+            </Field>
+            <Field label={t('equipment.brand')}>
               <input
-                id='eq-brand'
                 type='text'
                 value={form.brand}
                 onChange={(e) => setForm({ ...form, brand: e.target.value })}
                 className='input-field'
               />
-            </div>
-            <div>
-              <label
-                htmlFor='eq-model'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('equipment.model')}
-              </label>
+            </Field>
+            <Field label={t('equipment.model')}>
               <input
-                id='eq-model'
                 type='text'
                 value={form.model}
                 onChange={(e) => setForm({ ...form, model: e.target.value })}
                 className='input-field'
               />
-            </div>
+            </Field>
           </div>
           <button type='submit' className='btn-primary mt-4' disabled={saving}>
             {saving ? t('equipment.adding') : t('equipment.addEquipmentTitle')}
@@ -183,40 +160,26 @@ export function EquipmentListPage() {
         </form>
       )}
 
-      {equipment.length === 0
-        ? (
-          <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-            {t('equipment.noEquipment')}
-          </div>
-        )
+      {status === 'error'
+        ? <ErrorState message={t('equipment.error.loadFailed')} />
+        : equipment.length === 0
+        ? <EmptyState message={t('equipment.noEquipment')} />
         : (
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             {equipment.map((eq) => (
-              <div key={eq.id} className='card'>
-                <div className='flex items-start justify-between'>
-                  <div>
-                    <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                      {eq.name}
-                    </h3>
-                    <div
-                      className='flex gap-2 mt-1 text-xs'
-                      style={{ color: 'var(--text-tertiary)' }}
-                    >
-                      <span className='badge'>{eq.type}</span>
-                      {eq.brand && <span>{eq.brand}</span>}
-                      {eq.model && <span>{eq.model}</span>}
-                    </div>
-                  </div>
-                  <button
-                    type='button'
-                    onClick={() => handleDelete(eq.id)}
-                    className='text-sm'
-                    style={{ color: 'var(--error)' }}
-                  >
-                    {t('common.delete')}
-                  </button>
-                </div>
-              </div>
+              <OwnedItemCard
+                key={eq.id}
+                title={eq.name}
+                meta={
+                  <>
+                    <span className='badge'>{eq.type}</span>
+                    {eq.brand && <span>{eq.brand}</span>}
+                    {eq.model && <span>{eq.model}</span>}
+                  </>
+                }
+                onDelete={() => handleDelete(eq.id)}
+                deleteLabel={t('common.delete')}
+              />
             ))}
           </div>
         )}

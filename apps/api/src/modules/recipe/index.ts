@@ -8,6 +8,7 @@ import {
   ErrorEnvelopeSchema,
   FeedRecipeOutputSchema,
   paginatedEnvelope,
+  RecipeCollectionsOutputSchema,
   RecipeCreateSchema,
   RecipeDetailOutputSchema,
   RecipeFilterSchema,
@@ -21,6 +22,7 @@ import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import * as service from './service.ts';
 import * as model from './model.ts';
+import * as collectionService from '../collection/service.ts';
 import * as tasteService from '../taste/service.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
 import {
@@ -34,13 +36,20 @@ import {
 } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
-export const deps = { authMiddleware };
+/** Dependency-injection proxy for test stubbing (auth + optional-auth middleware). */
+export const deps = { authMiddleware, optionalAuthMiddleware };
 
 /** Proxy that resolves authMiddleware at request time (supports test mocking via deps). */
-async function authGuard(c: Context<AppEnv>, next: Next) {
+function authGuard(c: Context<AppEnv>, next: Next) {
   return deps.authMiddleware(c, next);
 }
 
+/** Proxy that resolves optionalAuthMiddleware at request time (supports test mocking via deps). */
+function optionalAuthGuard(c: Context<AppEnv>, next: Next) {
+  return deps.optionalAuthMiddleware(c, next);
+}
+
+/** Hono sub-router for recipe endpoints, mounted at `/api/v1/recipes`. */
 const recipe = new Hono<AppEnv>();
 
 recipe.get(
@@ -278,9 +287,8 @@ recipe.get(
     try {
       const recipe = await service.getRecipe(slug);
       if (!recipe) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
-      if (recipe.visibility === 'draft' || recipe.visibility === 'private') {
-        const userId = c.get('userId');
-        if (userId !== recipe.authorId) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      if (!service.canViewRecipe(recipe, c.get('userId'))) {
+        return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
       const versions = await model.getVersionsByRecipeId(recipe.id);
       return success(c, {
@@ -289,6 +297,53 @@ recipe.get(
         slug: recipe.slug,
         versions,
       });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      throw err;
+    }
+  },
+);
+
+// NOTE: registered BEFORE the catch-all GET '/:slugOrId' so Hono matches the
+// more specific path first.
+recipe.get(
+  '/:slugOrId/collections',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'List collections containing a recipe',
+    description:
+      "Returns the collections containing the recipe, visibility-filtered for the caller: public collections for anyone, plus the caller's own collections of any visibility (US-9/D99.5).",
+    parameters: [
+      { name: 'slugOrId', in: 'path', required: true, schema: { type: 'string' } },
+    ],
+    responses: {
+      200: {
+        description: 'Collections containing the recipe',
+        content: {
+          'application/json': { schema: resolver(successEnvelope(RecipeCollectionsOutputSchema)) },
+        },
+      },
+      404: {
+        description: 'Recipe not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
+  optionalAuthGuard,
+  async (c) => {
+    const slugOrId = c.req.param('slugOrId')!;
+    try {
+      const r = await service.getRecipe(slugOrId);
+      // Same existence-hiding visibility gate as GET '/:slugOrId' (no admin bypass).
+      if (!service.canViewRecipe(r, c.get('userId'))) {
+        return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      }
+      const result = await collectionService.listCollectionsForRecipe(
+        c.get('userId') ?? null,
+        r.id,
+      );
+      return success(c, result);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
@@ -313,9 +368,8 @@ recipe.get(
     const slugOrId = c.req.param('slugOrId')!;
     try {
       const r = await service.getRecipe(slugOrId);
-      if (r.visibility === 'draft' || r.visibility === 'private') {
-        const userId = c.get('userId');
-        if (userId !== r.authorId) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      if (!service.canViewRecipe(r, c.get('userId'))) {
+        return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
       // Transform the Drizzle result into the shape the frontend expects:
       // - currentVersion: the latest version (versions[0])

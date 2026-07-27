@@ -1,10 +1,10 @@
 import type { CoffeeVarietyCategory } from '@brewform/shared';
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
 
 /** Find a non-deleted coffee variety by ID. */
-export async function findById(id: string) {
+export function findById(id: string) {
   return db.query.coffeeVarieties.findFirst({
     where: and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)),
   });
@@ -43,10 +43,10 @@ export async function findMany(params: {
     db.select().from(coffeeVarieties).where(where)
       .orderBy(asc(coffeeVarieties.name))
       .limit(params.perPage).offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(coffeeVarieties).where(where),
+    db.select({ count: count() }).from(coffeeVarieties).where(where),
   ]);
 
-  return { data, total: Number(countResult[0]?.count ?? 0) };
+  return { data, total: countResult[0]?.count ?? 0 };
 }
 
 /** Insert a new coffee variety. */

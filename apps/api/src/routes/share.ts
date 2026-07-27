@@ -5,13 +5,17 @@ import { getRecipeMeta } from '../modules/recipe/service.ts';
 import { config } from '../config/index.ts';
 import type { AppEnv } from '../types/hono.ts';
 
+/** Hono router for recipe share/OG preview pages, mounted at `/share` in `routes/index.ts`. */
 const share = new Hono<AppEnv>();
 
+/** Dependency-injection proxy for test stubbing (recipe meta lookup). */
 export const deps = { getRecipeMeta };
 
+/** Static 404 HTML returned when a shared recipe is missing or not public. */
 export const RECIPE_NOT_FOUND_HTML =
   '<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 — Recipe not found</h1></body></html>';
 
+/** Renders the Open Graph/Twitter meta preview HTML that redirects browsers to the recipe page. */
 export const OG_TEMPLATE = (meta: {
   title: string;
   description: string;

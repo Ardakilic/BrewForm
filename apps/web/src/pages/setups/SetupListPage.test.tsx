@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router';
 import { SetupListPage } from './SetupListPage.tsx';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -59,9 +60,11 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <I18nProvider>
-        <AuthProvider>
-          <SetupListPage />
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <SetupListPage />
+          </AuthProvider>
+        </ToastProvider>
       </I18nProvider>
     </MemoryRouter>,
   );

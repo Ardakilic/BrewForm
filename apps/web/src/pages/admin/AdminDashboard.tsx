@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { api } from '../../api/client.ts';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 
@@ -19,7 +21,7 @@ interface DashboardStats {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
 
   useEffect(() => {
     log.debug({}, 'AdminDashboard mounted');
@@ -31,8 +33,11 @@ export function AdminDashboard() {
   useEffect(() => {
     api.get<DashboardStats>('/admin/stats').then((data) => {
       setStats(data as DashboardStats);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'admin stats fetch failed');
+      setStatus('error');
+    });
   }, []);
 
   return (
@@ -42,8 +47,10 @@ export function AdminDashboard() {
         {t('admin.dashboard')}
       </h1>
 
-      {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>{t('admin.dashboard.loading')}</div>
+      {status === 'loading'
+        ? <LoadingState message={t('admin.dashboard.loading')} />
+        : status === 'error'
+        ? <ErrorState message={t('admin.dashboard.loadError')} />
         : stats
         ? (
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
@@ -55,7 +62,7 @@ export function AdminDashboard() {
             <StatCard label={t('admin.dashboard.recentRecipes')} value={stats.recentRecipes} />
           </div>
         )
-        : <div style={{ color: 'var(--text-tertiary)' }}>{t('admin.dashboard.loadError')}</div>}
+        : null}
     </div>
   );
 }

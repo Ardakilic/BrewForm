@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { Field } from '../../components/form/Field.tsx';
+import { OwnedItemCard } from '../../components/ui/OwnedItemCard.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
 import { setupApi } from '../../api/index.ts';
 import type { SetupOutput } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger.ts';
@@ -10,13 +17,15 @@ const log = createLogger('SetupListPage');
 /** The user's brewing setups: list plus inline create/delete and default-setup handling. */
 export function SetupListPage() {
   const [setups, setSetups] = useState<SetupOutput[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [brewerDetails, setBrewerDetails] = useState('');
   const [grinder, setGrinder] = useState('');
   const [saving, setSaving] = useState(false);
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
+  const toast = useToast();
 
   useEffect(() => {
     log.debug({}, 'SetupListPage mounted');
@@ -28,8 +37,11 @@ export function SetupListPage() {
   useEffect(() => {
     setupApi.list().then((data) => {
       setSetups(data);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'setup list fetch failed');
+      setStatus('error');
+    });
   }, []);
 
   async function handleCreate(e: React.FormEvent) {
@@ -48,30 +60,33 @@ export function SetupListPage() {
       setBrewerDetails('');
       setGrinder('');
       setShowForm(false);
-    } catch {
+    } catch (err) {
+      log.error({ err }, 'handleCreate failed');
+      toast.error('setup.error.createFailed');
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!globalThis.confirm(t('setup.delete') + '?')) return;
+    if (
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'setup.deleteConfirm',
+        danger: true,
+      })
+    ) return;
     try {
       await setupApi.delete(id);
       setSetups((prev) => prev.filter((s) => s.id !== id));
-    } catch {
+    } catch (err) {
+      log.error({ err, setupId: id }, 'handleDelete failed');
+      toast.error('setup.error.deleteFailed');
     }
   }
 
-  if (loading) {
-    return (
-      <div
-        className='mx-auto max-w-4xl px-6 py-12 text-center'
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {t('common.loading')}
-      </div>
-    );
+  if (status === 'loading') {
+    return <LoadingState className='mx-auto max-w-4xl px-6' />;
   }
 
   return (
@@ -92,51 +107,33 @@ export function SetupListPage() {
             {t('setup.createSetup')}
           </h2>
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('setup.name')} *
-              </label>
+            <Field label={t('setup.name')} required>
               <input
                 type='text'
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className='input-field'
-                placeholder='My V60 Setup'
+                placeholder={t('setup.name.placeholder')}
               />
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('setup.brewerDetails')}
-              </label>
+            </Field>
+            <Field label={t('setup.brewerDetails')}>
               <input
                 type='text'
                 value={brewerDetails}
                 onChange={(e) => setBrewerDetails(e.target.value)}
                 className='input-field'
-                placeholder='May 2024 batch'
+                placeholder={t('setup.brewerDetails.placeholder')}
               />
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('recipe.grinder')}
-              </label>
+            </Field>
+            <Field label={t('recipe.grinder')}>
               <input
                 type='text'
                 value={grinder}
                 onChange={(e) => setGrinder(e.target.value)}
                 className='input-field'
-                placeholder='Niche Zero'
+                placeholder={t('setup.grinder.placeholder')}
               />
-            </div>
+            </Field>
           </div>
           <button type='submit' className='btn-primary mt-4' disabled={saving}>
             {saving ? t('setup.creating') : t('setup.createSetup')}
@@ -144,24 +141,25 @@ export function SetupListPage() {
         </form>
       )}
 
-      {setups.length === 0
-        ? (
-          <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-            {t('setup.noSetups')}
-          </div>
-        )
+      {status === 'error'
+        ? <ErrorState message={t('setup.error.loadFailed')} />
+        : setups.length === 0
+        ? <EmptyState message={t('setup.noSetups')} />
         : (
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             {setups.map((setup) => (
-              <div key={setup.id} className='card'>
-                <div className='flex items-start justify-between'>
-                  <div>
-                    <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                      {setup.name}
-                      {setup.isDefault && (
-                        <span className='badge ml-2 text-xs'>{t('setup.default')}</span>
-                      )}
-                    </h3>
+              <OwnedItemCard
+                key={setup.id}
+                title={
+                  <>
+                    {setup.name}
+                    {setup.isDefault && (
+                      <span className='badge ml-2 text-xs'>{t('setup.default')}</span>
+                    )}
+                  </>
+                }
+                subtitle={
+                  <>
                     {setup.brewerDetails && (
                       <p className='text-sm mt-1' style={{ color: 'var(--text-secondary)' }}>
                         {setup.brewerDetails}
@@ -172,17 +170,11 @@ export function SetupListPage() {
                         {t('recipe.grinder')}: {setup.grinder}
                       </p>
                     )}
-                  </div>
-                  <button
-                    type='button'
-                    onClick={() => handleDelete(setup.id)}
-                    className='text-sm'
-                    style={{ color: 'var(--error)' }}
-                  >
-                    {t('common.delete')}
-                  </button>
-                </div>
-              </div>
+                  </>
+                }
+                onDelete={() => handleDelete(setup.id)}
+                deleteLabel={t('common.delete')}
+              />
             ))}
           </div>
         )}

@@ -24,10 +24,7 @@ function isSameCalendarDay(a: Date, b: Date): boolean {
   return toISODateString(a) === toISODateString(b);
 }
 
-// ---------------------------------------------------------------------------
-// Structured result types — callers translate using t()
-// ---------------------------------------------------------------------------
-
+/** Structured relative-date result — a discriminated union that callers translate using `t()`. */
 export type RelativeDateResult =
   | { type: 'today' }
   | { type: 'daysPostRoast'; days: number }

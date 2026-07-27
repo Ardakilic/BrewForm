@@ -1,13 +1,13 @@
 import { db } from '@brewform/db';
 import { collectionItems, collections, recipeVersions } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, max, or, type SQL } from 'drizzle-orm';
 import type { Visibility } from '@brewform/shared/types';
 
 /**
  * Fetch a single collection by UUID, excluding soft-deleted rows.
  * Loads the owner user and all items with their nested recipes (ordered by sortOrder).
  */
-export async function findById(id: string) {
+export function findById(id: string) {
   return db.query.collections.findFirst({
     where: and(eq(collections.id, id), isNull(collections.deletedAt)),
     with: {
@@ -104,7 +104,7 @@ export async function findByUserId(
 /**
  * Fetch a paginated list of a user's public collections only, with recipeCount.
  */
-export async function findPublicByUserId(
+export function findPublicByUserId(
   userId: string,
   page: number,
   perPage: number,
@@ -203,7 +203,7 @@ export async function softDelete(id: string) {
  * If sortOrder is not provided, appends to the end (max existing + 1, or 0 if empty).
  * Throws on unique-constraint violation (caught by the service layer).
  */
-export async function addItem(collectionId: string, recipeId: string, sortOrder?: number) {
+export function addItem(collectionId: string, recipeId: string, sortOrder?: number) {
   return db.transaction(async (tx) => {
     // Lock the parent collection row so concurrent appends serialize and
     // can't compute the same next sortOrder under READ COMMITTED.
@@ -216,7 +216,7 @@ export async function addItem(collectionId: string, recipeId: string, sortOrder?
     let order = sortOrder;
     if (order === undefined) {
       const [existing] = await tx
-        .select({ maxOrder: sql<number>`max(${collectionItems.sortOrder})` })
+        .select({ maxOrder: max(collectionItems.sortOrder) })
         .from(collectionItems)
         .where(eq(collectionItems.collectionId, collectionId));
       order = (existing?.maxOrder ?? -1) + 1;
@@ -283,8 +283,21 @@ export async function getItems(collectionId: string) {
   return items.filter((item) => item.recipe && !item.recipe.deletedAt);
 }
 
-/** Fetch public collections that contain a given recipe (for RecipeDetailPage). */
-export async function getCollectionsForRecipe(recipeId: string) {
+/**
+ * Fetch collections that contain a given recipe, visibility-filtered for the
+ * viewer (for RecipeDetailPage, US-9/D99.5): public collections for anyone,
+ * plus the viewer's OWN collections of any visibility. Others' non-public
+ * collections are never returned — listing them would leak their existence.
+ * Soft-deleted collections are always excluded.
+ *
+ * @param recipeId - The recipe's UUID.
+ * @param viewerId - The requesting user's UUID, or null when unauthenticated.
+ */
+export async function getCollectionsForRecipe(recipeId: string, viewerId: string | null) {
+  // Built conditionally — no sql`false` fragment for the anonymous case.
+  const visibilityPredicate = viewerId
+    ? or(eq(collections.visibility, 'public'), eq(collections.userId, viewerId))
+    : eq(collections.visibility, 'public');
   const rows = await db
     .select({
       id: collections.id,
@@ -301,7 +314,7 @@ export async function getCollectionsForRecipe(recipeId: string) {
     .where(
       and(
         eq(collectionItems.recipeId, recipeId),
-        eq(collections.visibility, 'public'),
+        visibilityPredicate,
         isNull(collections.deletedAt),
       ),
     );

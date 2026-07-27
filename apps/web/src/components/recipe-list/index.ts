@@ -6,10 +6,9 @@
  * `/recipes` and `/recipes/starred`.
  */
 export { RecipeListView, type RecipeListViewProps } from './RecipeListView.tsx';
-export { FilterField } from './FilterField.tsx';
 export { ActiveFilterBadge } from './ActiveFilterBadge.tsx';
 export { RecipeCard } from './RecipeCard.tsx';
-export { PaginationControls } from './PaginationControls.tsx';
+export { PaginationControls } from '../ui/PaginationControls.tsx';
 export { useRecipeFilters } from './useRecipeFilters.ts';
 export { EQUIPMENT_FILTER_TYPES, EQUIPMENT_TYPE_LABELS } from './constants.ts';
 export type { EquipmentFilterType } from './constants.ts';

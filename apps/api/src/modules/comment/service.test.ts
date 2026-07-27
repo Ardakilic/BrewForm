@@ -15,7 +15,12 @@ import '../../test-setup.ts';
 import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import fc from 'npm:fast-check';
-import { deps, runCommentNotificationSideEffects } from './service.ts';
+import {
+  createComment as realCreateComment,
+  deps,
+  listComments,
+  runCommentNotificationSideEffects,
+} from './service.ts';
 
 // ---------------------------------------------------------------------------
 // Minimal type definitions — mirror the shape returned by the real model layer
@@ -811,5 +816,211 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
     });
     expect(notifyCalls.length).toBe(1);
     expect(notifyCalls[0].recipeAuthorId).toBe('author-1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D99.9 — comment visibility gate (createComment + listComments)
+//
+// Exercises the REAL createComment/listComments via the deps proxy: the model
+// layer is replaced with in-memory recorders over a fixture recipe, so the
+// visibility × caller matrix runs without a database. Asserts:
+//   - draft/private: non-owner (and anonymous for list) → RECIPE_NOT_FOUND;
+//     owner/admin → allowed
+//   - unlisted/public: every caller allowed (public surface unchanged)
+//   - missing recipe → RECIPE_NOT_FOUND (clean 404, no FK error)
+//   - on rejection: zero side-effects — deps.model.create,
+//     deps.recipeModel.incrementComments, and the mention/notification
+//     functions are never invoked (they only run inside successful creation)
+// ---------------------------------------------------------------------------
+
+type GateModelDeps = typeof deps.model;
+type GateRecipeModelDeps = typeof deps.recipeModel;
+
+const gateOriginalModel = deps.model;
+const gateOriginalRecipeModel = deps.recipeModel;
+const gateOriginalNotify = deps.notifyRecipeCommented;
+const gateOriginalMentions = deps.createMentionNotifications;
+const gateOriginalBadges = deps.evaluateBadges;
+
+describe('D99.9 — comment visibility gate', () => {
+  const AUTHOR = 'author-1';
+  const STRANGER = 'stranger-2';
+  const ADMIN = 'admin-3';
+  const RECIPE_ID = 'recipe-1';
+
+  interface FixtureRecipe {
+    authorId: string;
+    visibility: string;
+  }
+
+  let createCalls: unknown[];
+  let incrementCalls: unknown[];
+  let findByRecipeCalls: unknown[];
+  let notifyCalls: unknown[];
+  let mentionCalls: unknown[];
+
+  /** Replace deps with in-memory recorders over `fixture` (null = missing recipe). */
+  function stubGateDeps(fixture: FixtureRecipe | null) {
+    deps.model = {
+      ...gateOriginalModel,
+      getRecipeForAccessCheck: () => Promise.resolve(fixture),
+      // Null here makes the fire-and-forget side-effect chain early-return, so
+      // success-path tests stay unit-only (F04 covers the side-effect logic).
+      getRecipeForNotification: () => Promise.resolve(null),
+      create: (data: unknown) => {
+        createCalls.push(data);
+        return Promise.resolve({ id: 'comment-new' });
+      },
+      findByRecipe: (...args: unknown[]) => {
+        findByRecipeCalls.push(args);
+        return Promise.resolve({ comments: [], total: 0 });
+      },
+      // Recorder stub — only the gate-relevant model surface is exercised.
+    } as unknown as GateModelDeps;
+    deps.recipeModel = {
+      ...gateOriginalRecipeModel,
+      incrementComments: (id: string) => {
+        incrementCalls.push(id);
+        return Promise.resolve();
+      },
+    } as GateRecipeModelDeps;
+    deps.notifyRecipeCommented = (params) => {
+      notifyCalls.push(params);
+      return Promise.resolve();
+    };
+    deps.createMentionNotifications = (params) => {
+      mentionCalls.push(params);
+      return Promise.resolve();
+    };
+    deps.evaluateBadges = () => Promise.resolve();
+  }
+
+  /** Let fire-and-forget side-effect chains drain before the next test resets the recorders. */
+  function flushSideEffects(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  beforeEach(() => {
+    createCalls = [];
+    incrementCalls = [];
+    findByRecipeCalls = [];
+    notifyCalls = [];
+    mentionCalls = [];
+  });
+
+  afterEach(() => {
+    deps.model = gateOriginalModel;
+    deps.recipeModel = gateOriginalRecipeModel;
+    deps.notifyRecipeCommented = gateOriginalNotify;
+    deps.createMentionNotifications = gateOriginalMentions;
+    deps.evaluateBadges = gateOriginalBadges;
+  });
+
+  function expectZeroSideEffects() {
+    expect(createCalls.length).toBe(0);
+    expect(incrementCalls.length).toBe(0);
+    expect(notifyCalls.length).toBe(0);
+    expect(mentionCalls.length).toBe(0);
+  }
+
+  // ---- createComment matrix ----
+
+  for (const visibility of ['draft', 'private']) {
+    it(`createComment rejects a non-owner on a ${visibility} recipe (404 semantics, zero side-effects)`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      await expect(realCreateComment(STRANGER, RECIPE_ID, 'hello', false)).rejects.toThrow(
+        'RECIPE_NOT_FOUND',
+      );
+      expectZeroSideEffects();
+    });
+
+    it(`createComment allows the owner on a ${visibility} recipe`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      const result = await realCreateComment(AUTHOR, RECIPE_ID, 'hello', false);
+      expect(result).toEqual({ id: 'comment-new' });
+      expect(createCalls.length).toBe(1);
+      expect(incrementCalls.length).toBe(1);
+      await flushSideEffects();
+    });
+
+    it(`createComment allows an admin on a ${visibility} recipe`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      const result = await realCreateComment(ADMIN, RECIPE_ID, 'hello', true);
+      expect(result).toEqual({ id: 'comment-new' });
+      expect(createCalls.length).toBe(1);
+      await flushSideEffects();
+    });
+  }
+
+  for (const visibility of ['unlisted', 'public']) {
+    it(`createComment allows any caller on a ${visibility} recipe`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      const result = await realCreateComment(STRANGER, RECIPE_ID, 'hello', false);
+      expect(result).toEqual({ id: 'comment-new' });
+      expect(createCalls.length).toBe(1);
+      await flushSideEffects();
+    });
+  }
+
+  it('createComment rejects with RECIPE_NOT_FOUND when the recipe does not exist', async () => {
+    stubGateDeps(null);
+    await expect(realCreateComment(STRANGER, RECIPE_ID, 'hello', false)).rejects.toThrow(
+      'RECIPE_NOT_FOUND',
+    );
+    expectZeroSideEffects();
+  });
+
+  it('createComment rejects mention-bearing content on an invisible recipe with zero side-effects', async () => {
+    stubGateDeps({ authorId: AUTHOR, visibility: 'private' });
+    await expect(realCreateComment(STRANGER, RECIPE_ID, 'cc @alice', false)).rejects.toThrow(
+      'RECIPE_NOT_FOUND',
+    );
+    expectZeroSideEffects();
+  });
+
+  // ---- listComments matrix ----
+
+  for (const visibility of ['draft', 'private']) {
+    it(`listComments rejects anonymous on a ${visibility} recipe`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      await expect(listComments(RECIPE_ID, 1, 20, null)).rejects.toThrow('RECIPE_NOT_FOUND');
+      expect(findByRecipeCalls.length).toBe(0);
+    });
+
+    it(`listComments rejects a non-owner on a ${visibility} recipe`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      await expect(listComments(RECIPE_ID, 1, 20, STRANGER)).rejects.toThrow('RECIPE_NOT_FOUND');
+      expect(findByRecipeCalls.length).toBe(0);
+    });
+
+    it(`listComments allows the owner on a ${visibility} recipe`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      const result = await listComments(RECIPE_ID, 1, 20, AUTHOR);
+      expect(result).toEqual({ comments: [], total: 0 });
+      expect(findByRecipeCalls.length).toBe(1);
+    });
+
+    it(`listComments allows an admin on a ${visibility} recipe`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      const result = await listComments(RECIPE_ID, 1, 20, ADMIN, true);
+      expect(result).toEqual({ comments: [], total: 0 });
+      expect(findByRecipeCalls.length).toBe(1);
+    });
+  }
+
+  for (const visibility of ['unlisted', 'public']) {
+    it(`listComments allows anonymous callers on a ${visibility} recipe`, async () => {
+      stubGateDeps({ authorId: AUTHOR, visibility });
+      const result = await listComments(RECIPE_ID, 1, 20, null);
+      expect(result).toEqual({ comments: [], total: 0 });
+      expect(findByRecipeCalls.length).toBe(1);
+    });
+  }
+
+  it('listComments rejects with RECIPE_NOT_FOUND when the recipe does not exist', async () => {
+    stubGateDeps(null);
+    await expect(listComments(RECIPE_ID, 1, 20, STRANGER)).rejects.toThrow('RECIPE_NOT_FOUND');
+    expect(findByRecipeCalls.length).toBe(0);
   });
 });

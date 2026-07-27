@@ -8,6 +8,11 @@ import * as model from './model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import type { SetupCreate } from '@brewform/shared/schemas';
 
+/**
+ * Setup service.
+ *
+ * Provides brewing-setup CRUD and default-setup selection for the authenticated user.
+ */
 export const log = createLogger('setup-service');
 
 /** List paginated setups for the authenticated user. */

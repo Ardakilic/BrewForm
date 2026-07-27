@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockList } = vi.hoisted(() => ({ mockList: vi.fn() }));

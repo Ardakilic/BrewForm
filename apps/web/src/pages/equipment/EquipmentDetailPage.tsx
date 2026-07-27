@@ -5,6 +5,9 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
+import { RecipeCard } from '../../components/recipe-list/RecipeCard.tsx';
+import { TypeBadge } from '../../components/catalog/TypeBadge.tsx';
 import type { EquipmentOutput, RecipeWithAuthorOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('EquipmentDetailPage');
@@ -94,36 +97,20 @@ export function EquipmentDetailPage() {
       />
 
       {/* Breadcrumb */}
-      <nav aria-label='Breadcrumb' className='mb-4'>
-        <ol
-          className='flex items-center gap-1 flex-wrap text-xs'
-          style={{ color: 'var(--text-tertiary)' }}
-        >
-          <li>
-            <Link
-              to='/equipments'
-              className='transition-colors'
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {t('equipment.catalog.title')}
-            </Link>
-          </li>
-          <li aria-hidden='true' className='select-none'>›</li>
-          <li aria-current='page' style={{ color: 'var(--text-secondary)' }}>
-            {equipment.brand && <span className='font-medium'>{equipment.brand}</span>}
-            {equipment.model || equipment.name}
-          </li>
-        </ol>
-      </nav>
+      <div className='mb-4'>
+        <Breadcrumb
+          items={[
+            { label: t('equipment.catalog.title'), to: '/equipments' },
+            { label: displayTitle },
+          ]}
+        />
+      </div>
 
       {/* Type badge */}
       {equipment.type && (
-        <span
-          className='inline-block text-xs px-2 py-0.5 rounded-full mb-2'
-          style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
-        >
-          {equipment.type.replace(/_/g, ' ')}
-        </span>
+        <div className='mb-2'>
+          <TypeBadge label={equipment.type.replace(/_/g, ' ')} />
+        </div>
       )}
 
       {/* Title */}
@@ -132,7 +119,7 @@ export function EquipmentDetailPage() {
           {equipment.brand}
         </p>
       )}
-      <h1 className='text-2xl font-semibold mb-1' style={{ color: 'var(--text-primary)' }}>
+      <h1 className='text-2xl font-bold mb-1' style={{ color: 'var(--text-primary)' }}>
         {equipment.model || equipment.name}
       </h1>
 
@@ -159,27 +146,7 @@ export function EquipmentDetailPage() {
           )
           : (
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-              {recipes.map((r) => (
-                <Link
-                  key={r.id}
-                  to={`/recipes/${r.slug}`}
-                  className='card hover:shadow-lg transition-shadow'
-                >
-                  <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                    {r.title}
-                  </h3>
-                  <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
-                    {t('recipe.focusMode.by')} {r.author.displayName || r.author.username}
-                  </p>
-                  <div
-                    className='mt-2 flex items-center gap-2 text-xs'
-                    style={{ color: 'var(--text-tertiary)' }}
-                  >
-                    <span>❤️ {r.likeCount}</span>
-                    <span>💬 {r.commentCount}</span>
-                  </div>
-                </Link>
-              ))}
+              {recipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
             </div>
           )}
       </section>

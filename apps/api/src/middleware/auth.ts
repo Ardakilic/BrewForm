@@ -22,6 +22,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { forbidden, unauthorized } from '../utils/response/index.ts';
 import { createLogger } from '../utils/logger/index.ts';
 
+/** Module-scoped structured logger for the JWT auth middleware. */
 export const log = createLogger('auth-middleware');
 
 /** Extract a JWT from the `brewform_access_token` cookie, falling back to

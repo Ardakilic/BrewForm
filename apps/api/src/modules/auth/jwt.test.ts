@@ -48,6 +48,7 @@ describe('JWT Module', () => {
         await verifyJwt('invalid-token');
         expect(true).toBe(false);
       } catch {
+        // intentional: rejection is the expected outcome; swallow the error
       }
     });
 
@@ -58,6 +59,7 @@ describe('JWT Module', () => {
         await verifyJwt(token);
         expect(true).toBe(false);
       } catch {
+        // intentional: rejection is the expected outcome; swallow the error
       }
     });
   });

@@ -1,3 +1,4 @@
+/** Emoji reaction tags for quick recipe sentiment, ordered best to worst. */
 export const EMOJI_TAGS = [
   { key: 'fire', emoji: '\u{1F525}', label: 'Amazing' },
   { key: 'rocket', emoji: '\u{1F680}', label: 'Super Good' },
@@ -7,8 +8,10 @@ export const EMOJI_TAGS = [
   { key: 'nauseated', emoji: '\u{1F922}', label: 'Horrible' },
 ] as const;
 
+/** Union of valid emoji tag keys derived from {@link EMOJI_TAGS}. */
 export type EmojiTagKey = (typeof EMOJI_TAGS)[number]['key'];
 
+/** A single emoji tag option with value, emoji, and label. */
 export type EmojiTagOption = {
   value: EmojiTagKey;
   emoji: string;

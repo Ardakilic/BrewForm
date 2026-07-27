@@ -51,4 +51,6 @@ export {
   CollectionListItemOutputSchema,
   CollectionOutputSchema,
   PublicCollectionListItemOutputSchema,
+  RecipeCollectionListItemOutputSchema,
+  RecipeCollectionsOutputSchema,
 } from './collection.ts';

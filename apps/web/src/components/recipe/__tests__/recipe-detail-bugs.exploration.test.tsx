@@ -29,6 +29,7 @@ function withProviders(ui: React.ReactElement) {
 describe('Bug 1.1 - EquipmentSection crashes when item.type is undefined', () => {
   it('should NOT crash when item.type is undefined (simulating v.equipment data shape)', () => {
     const itemsWithUndefinedType = [
+      // deno-lint-ignore no-explicit-any -- test cast
       { id: '1', equipmentId: 'eq1', name: 'Portafilter', type: undefined as any },
     ];
     // This WILL crash on unfixed code: item.type.replace(/_/g, ' ') throws TypeError
@@ -38,6 +39,7 @@ describe('Bug 1.1 - EquipmentSection crashes when item.type is undefined', () =>
 
   it('should NOT crash when item.name is undefined', () => {
     const itemsWithUndefinedName = [
+      // deno-lint-ignore no-explicit-any -- test cast
       { id: '1', equipmentId: 'eq1', name: undefined as any, type: 'portafilter' },
     ];
     expect(() => render(withProviders(<EquipmentSection items={itemsWithUndefinedName} />))).not

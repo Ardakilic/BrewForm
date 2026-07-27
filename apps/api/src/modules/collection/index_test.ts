@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Route-level integration tests for the collection module.
  *
@@ -11,7 +9,7 @@
  */
 
 import '../../test-setup.ts';
-import { afterAll, afterEach, beforeAll, describe, it } from 'jsr:@std/testing/bdd';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
@@ -20,6 +18,10 @@ import { db } from '@brewform/db';
 import { collectionItems, collections, recipes, users } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import collectionRouter, { deps } from './index.ts';
+import { logger } from './service.ts';
+import { spy } from 'jsr:@std/testing/mock';
+import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
+import { type CacheProvider, InMemoryCacheProvider } from '../../utils/cache/index.ts';
 
 const stubAuth = async (_c: Context, next: Next) => {
   await next();
@@ -39,6 +41,7 @@ function createTestApp(userId: string | null) {
         id: userId,
         isAdmin: false,
         emailVerifiedAt: new Date(),
+        // deno-lint-ignore no-explicit-any -- test mock request body
       } as any);
     } else {
       c.set('userId', null);
@@ -146,6 +149,7 @@ describe(
     it('returns paginated own collections with success envelope', async () => {
       const app = createTestApp(user.id);
       const res = await app.request('/api/v1/collections?page=1&perPage=10');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -163,6 +167,7 @@ describe(
     it('respects the visibility query filter', async () => {
       const app = createTestApp(user.id);
       const res = await app.request('/api/v1/collections?visibility=public');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -183,11 +188,13 @@ describe(
 
       const app = createTestApp(user.id);
       const res = await app.request(`/api/v1/collections?recipeId=${recipe.id}`);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
       expect(body.data.length).toBe(2);
+      // deno-lint-ignore no-explicit-any -- test mock
       const byName = new Map(body.data.map((c: any) => [c.name, c]));
       expect(byName.get('List A').containsRecipe).toBe(true);
       expect(byName.get('List B').containsRecipe).toBe(false);
@@ -226,6 +233,7 @@ describe(
     it('returns 403 for private collection by non-owner', async () => {
       const app = createTestApp(userB.id);
       const res = await app.request(`/api/v1/collections/${privateCol.id}`);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(403);
@@ -236,6 +244,7 @@ describe(
     it('returns 403 for private collection by unauthenticated user', async () => {
       const app = createTestApp(null);
       const res = await app.request(`/api/v1/collections/${privateCol.id}`);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(403);
@@ -246,6 +255,7 @@ describe(
     it('returns 200 for public collection by anyone', async () => {
       const app = createTestApp(userB.id);
       const res = await app.request(`/api/v1/collections/${publicCol.id}`);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -271,6 +281,7 @@ describe(
     it('returns 404 for non-existent collection', async () => {
       const app = createTestApp(userA.id);
       const res = await app.request(`/api/v1/collections/${crypto.randomUUID()}`);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(404);
@@ -308,6 +319,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'My V60s', visibility: 'public' }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(201);
@@ -327,6 +339,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'Default Private' }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(201);
@@ -341,6 +354,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ visibility: 'public' }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(400);
@@ -378,6 +392,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'Renamed', visibility: 'public' }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -393,6 +408,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'hacked' }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(403);
@@ -407,6 +423,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'x' }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(404);
@@ -443,6 +460,7 @@ describe(
     it('returns 200 for owner', async () => {
       const app = createTestApp(userA.id);
       const res = await app.request(`/api/v1/collections/${colOwned.id}`, { method: 'DELETE' });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -453,6 +471,7 @@ describe(
     it('returns 403 for non-owner', async () => {
       const app = createTestApp(userA.id);
       const res = await app.request(`/api/v1/collections/${colOther.id}`, { method: 'DELETE' });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(403);
@@ -465,6 +484,7 @@ describe(
       const res = await app.request(`/api/v1/collections/${crypto.randomUUID()}`, {
         method: 'DELETE',
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(404);
@@ -514,6 +534,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeId: publicRecipe.id }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(201);
@@ -528,6 +549,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeId: publicRecipe.id }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(409);
@@ -542,6 +564,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeId: privateRecipe.id }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(403);
@@ -556,6 +579,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeId: crypto.randomUUID() }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(404);
@@ -617,6 +641,7 @@ describe(
         `/api/v1/collections/${col.id}/recipes/${r1.id}`,
         { method: 'DELETE' },
       );
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -636,6 +661,7 @@ describe(
         `/api/v1/collections/${col.id}/recipes/${r1.id}`,
         { method: 'DELETE' },
       );
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(403);
@@ -649,6 +675,7 @@ describe(
         `/api/v1/collections/${crypto.randomUUID()}/recipes/${r1.id}`,
         { method: 'DELETE' },
       );
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(404);
@@ -716,6 +743,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemIds: reordered }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -730,6 +758,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemIds: [itemIds[0], itemIds[1]] }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(400);
@@ -744,6 +773,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemIds: [itemIds[0], itemIds[1], crypto.randomUUID()] }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(400);
@@ -760,6 +790,7 @@ describe(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ itemIds: [itemIds[0], itemIds[1], itemIds[2]] }),
         });
+        // deno-lint-ignore no-explicit-any -- test assertion cast
         const body = await res.json() as any;
 
         expect(res.status).toBe(403);
@@ -777,6 +808,7 @@ describe(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemIds: [itemIds[0], itemIds[1], itemIds[2]] }),
       });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(404);
@@ -817,6 +849,7 @@ describe(
     it('returns 200 with paginated public collections (no auth required)', async () => {
       const app = createTestApp(null);
       const res = await app.request('/api/v1/collections/public?page=1&perPage=10');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -824,6 +857,7 @@ describe(
       expect(Array.isArray(body.data)).toBe(true);
       expect(body.meta.pagination).toBeDefined();
       // The DB may contain seed public collections; verify our test ones are present
+      // deno-lint-ignore no-explicit-any -- test mock
       const names = body.data.map((c: any) => c.name);
       expect(names).toContain('A Pub');
       expect(names).toContain('B Pub');
@@ -842,6 +876,7 @@ describe(
     it('excludes private and draft collections', async () => {
       const app = createTestApp(null);
       const res = await app.request('/api/v1/collections/public');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
@@ -854,14 +889,78 @@ describe(
     it('is reachable by authenticated users too', async () => {
       const app = createTestApp(userA.id);
       const res = await app.request('/api/v1/collections/public?page=1&perPage=10');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       const body = await res.json() as any;
 
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
       // Same as unauthenticated: our test public collections should be present
+      // deno-lint-ignore no-explicit-any -- test mock
       const names = body.data.map((c: any) => c.name);
       expect(names).toContain('A Pub');
       expect(names).toContain('B Pub');
+    });
+  },
+);
+
+describe(
+  {
+    name: 'GET /api/v1/collections/:id — cache behaviour',
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  () => {
+    let user: typeof users.$inferSelect;
+    let originalCache: CacheProvider;
+    const colIds: string[] = [];
+
+    beforeEach(async () => {
+      originalCache = cacheProvider;
+      setCacheProvider(new InMemoryCacheProvider());
+      user = await createUser('route-cache');
+    });
+
+    afterEach(async () => {
+      setCacheProvider(originalCache);
+      deps.authMiddleware = originalAuthMiddleware;
+      deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+      await cleanupCollections(colIds);
+      colIds.length = 0;
+      await cleanupUsers([user.id]);
+    });
+
+    it('serves a repeated GET from the cache with an identical payload', async () => {
+      const col = await createCollectionRow(user.id, 'Cached', 'public');
+      colIds.push(col.id);
+      const app = createTestApp(user.id);
+      const res1 = await app.request(`/api/v1/collections/${col.id}`);
+      expect(res1.status).toBe(200);
+      const body1 = await res1.json();
+      const debugSpy = spy(logger, 'debug');
+      try {
+        const res2 = await app.request(`/api/v1/collections/${col.id}`);
+        expect(res2.status).toBe(200);
+        const body2 = await res2.json();
+        // meta.requestId legitimately differs per request; the payload must be identical.
+        expect(body2.data).toEqual(body1.data);
+        const hit = debugSpy.calls.find((call) => call.args[1] === 'getCollection cache hit');
+        expect(hit).toBeDefined();
+      } finally {
+        debugSpy.restore();
+      }
+    });
+
+    it('returns 403 for anonymous on a private collection before AND after the owner warms the cache', async () => {
+      const col = await createCollectionRow(user.id, 'Private', 'private');
+      colIds.push(col.id);
+      const anonApp = createTestApp(null);
+      const before = await anonApp.request(`/api/v1/collections/${col.id}`);
+      expect(before.status).toBe(403);
+      const ownerApp = createTestApp(user.id);
+      const warm = await ownerApp.request(`/api/v1/collections/${col.id}`);
+      expect(warm.status).toBe(200);
+      const after = await anonApp.request(`/api/v1/collections/${col.id}`);
+      expect(after.status).toBe(403);
     });
   },
 );

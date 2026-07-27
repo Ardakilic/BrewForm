@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Select } from '@base-ui/react/select';
+import { useSafeT } from '../../utils/safe-translation.ts';
 
+/** A flattened taste-note node (id, name, depth, parent) used to build the filter tree. */
 export interface TasteNoteFlat {
   id: string;
   name: string;
@@ -33,6 +35,7 @@ export function TasteNotesFilter({
   placeholder,
   maxSelections = 10,
 }: TasteNotesFilterProps) {
+  const t = useSafeT();
   const count = selectedIds.length;
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -189,7 +192,7 @@ export function TasteNotesFilter({
                 type='text'
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder='Search taste notes...'
+                placeholder={t('taste.searchPlaceholder')}
                 className={[
                   'w-full rounded-md py-1.5 px-2.5 text-sm',
                   'bg-[color:var(--bg-primary)]',

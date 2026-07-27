@@ -59,8 +59,6 @@ import { invalidateStaticCache } from '../../api/static-cache.ts';
 const mockApi = vi.mocked(api);
 const mockInvalidateStaticCache = vi.mocked(invalidateStaticCache);
 
-const realConfirm = globalThis.confirm;
-
 // ── Setup ──────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
@@ -69,7 +67,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  globalThis.confirm = realConfirm;
+  vi.unstubAllGlobals();
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────

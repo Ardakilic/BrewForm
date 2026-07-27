@@ -18,7 +18,9 @@ describe('LocalStorageDriver', () => {
 
     // Override config.UPLOAD_DIR for testing
     const { config } = await import('../../config/index.ts');
+    // deno-lint-ignore no-explicit-any -- test config mutation
     originalUploadDir = (config as any).UPLOAD_DIR;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).UPLOAD_DIR = testDir;
 
     driver = new LocalStorageDriver();
@@ -27,6 +29,7 @@ describe('LocalStorageDriver', () => {
   afterEach(async () => {
     // Restore original config.UPLOAD_DIR
     const { config } = await import('../../config/index.ts');
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).UPLOAD_DIR = originalUploadDir;
 
     // Clean up test directory
@@ -76,11 +79,13 @@ describe('createStorageDriver', () => {
     const { createStorageDriver } = await import('./index.ts');
     const { config } = await import('../../config/index.ts');
     const originalDriver = config.STORAGE_DRIVER;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).STORAGE_DRIVER = 'local';
 
     const driver = createStorageDriver();
     expect(driver).toBeInstanceOf(LocalStorageDriver);
 
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).STORAGE_DRIVER = originalDriver;
   });
 
@@ -89,26 +94,43 @@ describe('createStorageDriver', () => {
     const { S3StorageDriver } = await import('./s3.ts');
     const { config } = await import('../../config/index.ts');
     const originalDriver = config.STORAGE_DRIVER;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     const originalEndpoint = (config as any).S3_ENDPOINT;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     const originalBucket = (config as any).S3_BUCKET;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     const originalAccessKey = (config as any).S3_ACCESS_KEY;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     const originalSecretKey = (config as any).S3_SECRET_KEY;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     const originalPublicUrl = (config as any).S3_PUBLIC_URL;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).STORAGE_DRIVER = 's3';
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_ENDPOINT = 'https://s3.example.com';
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_BUCKET = 'test-bucket';
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_ACCESS_KEY = 'test-access-key';
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_SECRET_KEY = 'test-secret-key';
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_PUBLIC_URL = 'https://cdn.example.com';
 
     const driver = createStorageDriver();
     expect(driver).toBeInstanceOf(S3StorageDriver);
 
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).STORAGE_DRIVER = originalDriver;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_ENDPOINT = originalEndpoint;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_BUCKET = originalBucket;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_ACCESS_KEY = originalAccessKey;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_SECRET_KEY = originalSecretKey;
+    // deno-lint-ignore no-explicit-any -- test config mutation
     (config as any).S3_PUBLIC_URL = originalPublicUrl;
   });
 });

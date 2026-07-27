@@ -190,6 +190,8 @@ const enT = (key: string) => {
     'common.loading': 'Loading...',
     'common.previous': 'Previous',
     'common.next': 'Next',
+    'a11y.filterBy': 'Filter by {label}',
+    'a11y.filter.remove': 'Remove {label} filter',
   };
   return map[key] ?? key;
 };
@@ -382,6 +384,7 @@ describe('RecipeListPage — i18n', () => {
     });
   });
 
+  // deno-lint-ignore require-await -- test callback signature
   it('does not show Visibility filter for non-admin users', async () => {
     renderRecipeListPage();
 
@@ -515,6 +518,7 @@ describe('RecipeListPage — taste note filter', () => {
     { id: 'root-2', name: 'Floral', depth: 0, parentId: null, category: 'taste' },
     { id: 'mid-2', name: 'Floral', depth: 1, parentId: 'root-2', category: 'taste' },
     { id: 'leaf-2', name: 'Rose', depth: 2, parentId: 'mid-2', category: 'taste' },
+    // deno-lint-ignore no-explicit-any -- test cast
   ] as any[];
 
   it('renders taste note dropdown when taste notes are loaded', async () => {
@@ -525,6 +529,7 @@ describe('RecipeListPage — taste note filter', () => {
     await waitFor(() => expect(screen.getByText('Taste Notes')).toBeInTheDocument());
   });
 
+  // deno-lint-ignore require-await -- test callback signature
   it('does NOT render taste note dropdown when no taste notes are loaded', async () => {
     renderRecipeListPage();
 

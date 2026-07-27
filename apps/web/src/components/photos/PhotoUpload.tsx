@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { api } from '../../api/client.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import type { PhotoOutput } from '@brewform/shared/schemas';
 
 interface Props {
   recipeId: string;
-  onUploadComplete?: (photos: Record<string, unknown>[]) => void;
+  onUploadComplete?: (photos: PhotoOutput[]) => void;
 }
 
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -56,17 +58,18 @@ export function PhotoUpload({ recipeId, onUploadComplete }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     setError('');
     const validFiles: File[] = [];
     for (const file of files) {
       if (!ALLOWED_TYPES.includes(file.type)) {
-        setError(`${file.name}: Unsupported file type. Use JPEG, PNG, or WebP.`);
+        setError(t('photo.error.unsupportedType').replace('{name}', file.name));
         continue;
       }
       if (file.size > MAX_SIZE) {
-        setError(`${file.name}: File too large. Max 10MB.`);
+        setError(t('photo.error.tooLarge').replace('{name}', file.name));
         continue;
       }
       validFiles.push(file);
@@ -84,15 +87,15 @@ export function PhotoUpload({ recipeId, onUploadComplete }: Props) {
           formData.append('thumbnail', thumbnail, thumbName);
         }
         formData.append('recipeId', recipeId);
-        const result = await api.upload<Record<string, unknown>>('/photos', formData);
+        const result = await api.upload<PhotoOutput>('/photos', formData);
         setPreviews((prev) => [...prev, { url: URL.createObjectURL(file), name: file.name }]);
         onUploadComplete?.([result]);
       } catch {
-        setError(`Failed to upload ${file.name}`);
+        setError(t('photo.error.uploadFailed').replace('{name}', file.name));
       }
     }
     setUploading(false);
-  }, [recipeId, onUploadComplete]);
+  }, [recipeId, onUploadComplete, t]);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -110,10 +113,10 @@ export function PhotoUpload({ recipeId, onUploadComplete }: Props) {
       >
         <div className='text-3xl mb-2'>📷</div>
         <p className='text-sm font-medium' style={{ color: 'var(--text-primary)' }}>
-          Drop photos here or click to browse
+          {t('photo.dropzone')}
         </p>
         <p className='text-xs mt-1' style={{ color: 'var(--text-tertiary)' }}>
-          JPEG, PNG, or WebP — Max 10MB each
+          {t('photo.hint')}
         </p>
         <input
           ref={inputRef}
@@ -128,7 +131,9 @@ export function PhotoUpload({ recipeId, onUploadComplete }: Props) {
       {error && <p className='mt-2 text-sm' style={{ color: 'var(--error)' }}>{error}</p>}
 
       {uploading && (
-        <p className='mt-2 text-sm' style={{ color: 'var(--text-secondary)' }}>Uploading...</p>
+        <p className='mt-2 text-sm' style={{ color: 'var(--text-secondary)' }}>
+          {t('photo.uploading')}
+        </p>
       )}
 
       {previews.length > 0 && (

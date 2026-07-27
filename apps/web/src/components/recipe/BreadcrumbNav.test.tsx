@@ -29,6 +29,15 @@ vi.mock('@brewform/shared/constants', () => ({
   BREW_METHODS: [],
 }));
 
+vi.mock('../../contexts/I18nContext.tsx', () => ({
+  useTranslation: () => ({
+    t: (k: string) => k,
+    locale: 'en',
+    setLocale: vi.fn(),
+    availableLocales: ['en', 'tr'],
+  }),
+}));
+
 /** Renders BreadcrumbNav and returns the text content of the last <li> element */
 function getLastSegmentText(title: string): string {
   const { container } = render(<BreadcrumbNav brewMethod={null} recipeTitle={title} />);

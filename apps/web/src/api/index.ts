@@ -19,6 +19,7 @@ import type {
   PaginatedResponse,
   PublicCollectionListItemOutput,
   PublicUserOutput,
+  RecipeCollectionsOutput,
   RecipeCreate,
   RecipeDetailOutput,
   RecipeFork,
@@ -257,7 +258,7 @@ export const notificationApi = {
 };
 
 /**
- * Collection API client — CRUD, recipe add/remove/reorder, and user-scoped list.
+ * Collection API client — CRUD, recipe add/remove/reorder, and user-/recipe-scoped lists.
  */
 export const collectionApi = {
   list: (params?: Record<string, string>) => {
@@ -287,6 +288,8 @@ export const collectionApi = {
       `/collections/public${query}`,
     );
   },
+  listByRecipe: (recipeIdOrSlug: string) =>
+    api.get<RecipeCollectionsOutput>(`/recipes/${recipeIdOrSlug}/collections`),
 };
 
 /** Admin user-list row — the core account fields surfaced in the admin users table. */

@@ -8,6 +8,7 @@ import type {
   CommentWithRepliesOutput,
 } from '@brewform/shared/schemas';
 import { createLogger } from '@/utils/logger.ts';
+import { formatDate } from '../../utils/format.ts';
 
 const log = createLogger('CommentSection');
 
@@ -70,7 +71,7 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
  */
 export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Props) {
   const { user, isAuthenticated } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [comments, setComments] = useState<CommentWithRepliesOutput[]>(initialComments.data);
   const [newComment, setNewComment] = useState('');
   const [page, setPage] = useState(initialComments.meta.pagination.page);
@@ -302,7 +303,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
           <AuthorLink comment={comment} className='font-medium text-sm' />
           {isRecipeAuthor(comment) && <span className='badge text-xs'>{t('comment.op')}</span>}
           <span className='text-xs text-[color:var(--text-tertiary)]'>
-            {new Date(comment.createdAt).toLocaleDateString()}
+            {formatDate(comment.createdAt, locale)}
           </span>
         </div>
 
@@ -392,7 +393,7 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
                       <span className='badge text-xs'>{t('comment.op')}</span>
                     )}
                     <span className='text-xs text-[color:var(--text-tertiary)]'>
-                      {new Date(reply.createdAt).toLocaleDateString()}
+                      {formatDate(reply.createdAt, locale)}
                     </span>
                   </div>
                   {/* Reply body -- inline markdown */}

@@ -9,6 +9,11 @@ import * as model from './model.ts';
 import type { CacheProvider } from '../../utils/cache/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
+/**
+ * Taste note service.
+ *
+ * Provides taste-note hierarchy, flat-list, search, and root-map lookups (cache-backed) plus CRUD.
+ */
 export const log = createLogger('taste-service');
 
 const TASTE_CACHE_KEY = ['cache', 'taste-notes'];
@@ -24,7 +29,7 @@ const TASTE_CACHE_TTL = 2592000000; // 30 days
  */
 export async function getHierarchy(cache: CacheProvider) {
   log.debug({}, 'getHierarchy started');
-  const cached = await cache.get<any>(TASTE_CACHE_KEY);
+  const cached = await cache.get<Awaited<ReturnType<typeof model.getHierarchy>>>(TASTE_CACHE_KEY);
   if (cached !== null && cached.length > 0) {
     log.debug({ cached: true }, 'getHierarchy completed');
     return cached;
@@ -87,7 +92,7 @@ export async function searchTasteNotes(query: string, _cache: CacheProvider) {
 /** Get the flat list of all taste notes with 30-day caching. */
 export async function getFlatList(cache: CacheProvider) {
   log.debug({}, 'getFlatList started');
-  const cached = await cache.get<any>(TASTE_FLAT_CACHE_KEY);
+  const cached = await cache.get<Awaited<ReturnType<typeof model.findAll>>>(TASTE_FLAT_CACHE_KEY);
   if (cached !== null && cached.length > 0) {
     log.debug({ cached: true }, 'getFlatList completed');
     return cached;
@@ -116,7 +121,7 @@ export async function getTasteNoteRootMap(cache: CacheProvider): Promise<Record<
   }
 
   const allNotes = await getFlatList(cache);
-  const noteMap = new Map<string, any>();
+  const noteMap = new Map<string, Awaited<ReturnType<typeof model.findAll>>[number]>();
   for (const note of allNotes) {
     noteMap.set(note.id, note);
   }

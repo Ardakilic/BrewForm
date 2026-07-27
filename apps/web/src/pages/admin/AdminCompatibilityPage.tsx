@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminCompatibilityPage');
@@ -15,8 +18,9 @@ interface CompatibilityRule {
 /** Admin page: brew-method/equipment compatibility rules with toggle and cache flush. */
 export function AdminCompatibilityPage() {
   const { t } = useTranslation();
+  const toast = useToast();
   const [rules, setRules] = useState<CompatibilityRule[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [flushing, setFlushing] = useState(false);
 
   useEffect(() => {
@@ -29,18 +33,23 @@ export function AdminCompatibilityPage() {
   useEffect(() => {
     api.get<CompatibilityRule[]>('/admin/compatibility').then((data) => {
       setRules(data as CompatibilityRule[]);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'compatibility rules fetch failed');
+      setStatus('error');
+    });
   }, []);
 
   async function toggleCompatibility(id: string, current: boolean) {
     try {
       const updated = await api.patch<CompatibilityRule>(
         `/admin/compatibility/${id}`,
-        { isCompatible: !current } as Record<string, unknown>,
+        { isCompatible: !current },
       );
       setRules((prev) => prev.map((r) => r.id === id ? updated as CompatibilityRule : r));
-    } catch {
+    } catch (err) {
+      log.error({ err, ruleId: id }, 'toggleCompatibility failed');
+      toast.error('admin.compatibility.toggleError');
     }
   }
 
@@ -48,7 +57,9 @@ export function AdminCompatibilityPage() {
     setFlushing(true);
     try {
       await api.post('/admin/cache/flush', {});
-    } catch {
+    } catch (err) {
+      log.error({ err }, 'flushCache failed');
+      toast.error('admin.compatibility.flushError');
     } finally {
       setFlushing(false);
     }
@@ -65,8 +76,10 @@ export function AdminCompatibilityPage() {
         </button>
       </div>
 
-      {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
+      {status === 'loading'
+        ? <LoadingState />
+        : status === 'error'
+        ? <ErrorState message={t('admin.compatibility.loadError')} />
         : (
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>

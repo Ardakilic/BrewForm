@@ -73,7 +73,7 @@ export async function uploadPhoto(
 }
 
 /** List all non-deleted photos for a recipe. */
-export async function listPhotos(recipeId: string) {
+export function listPhotos(recipeId: string) {
   return model.findByRecipe(recipeId);
 }
 

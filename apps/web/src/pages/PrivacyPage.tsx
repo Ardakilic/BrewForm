@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import { createLogger } from '@/utils/logger.ts';
+import { formatDate } from '../utils/format.ts';
 
 const log = createLogger('PrivacyPage');
 
@@ -24,7 +25,7 @@ export function PrivacyPage() {
       </h1>
       <div className='prose' style={{ color: 'var(--text-secondary)' }}>
         <p>{t('legal.notice')}</p>
-        <p>{t('legal.lastUpdated')} {new Date().toLocaleDateString(locale)}</p>
+        <p>{t('legal.lastUpdated')} {formatDate(new Date(), locale)}</p>
 
         <h2 className='text-xl font-semibold mt-6 mb-2' style={{ color: 'var(--text-primary)' }}>
           {t('legal.privacy.s1.title')}

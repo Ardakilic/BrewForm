@@ -17,6 +17,18 @@ vi.mock('@/utils/logger.ts', () => ({
   }),
 }));
 
+vi.mock('../../contexts/I18nContext.tsx', async () => {
+  const { t: translate } = await import('@brewform/shared/i18n');
+  return {
+    useTranslation: () => ({
+      t: (key: string) => translate(key, 'en'),
+      locale: 'en',
+      setLocale: () => {},
+      availableLocales: ['en', 'tr'],
+    }),
+  };
+});
+
 import { api } from '../../api/client.ts';
 
 const mockApi = vi.mocked(api);

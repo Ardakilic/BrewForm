@@ -4,6 +4,8 @@ import { ApiError, collectionApi } from '../../api/index.ts';
 import type { CollectionDetailOutput, CollectionUpdate } from '@brewform/shared/schemas';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import { PageContainer } from '../../components/ui/PageContainer.tsx';
+import { Field } from '../../components/form/Field.tsx';
 
 const log = createLogger('CollectionEditPage');
 
@@ -78,39 +80,33 @@ export function CollectionEditPage() {
   };
 
   return (
-    <div className='container mx-auto px-4 py-8 max-w-2xl'>
+    <PageContainer width='2xl'>
       <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
         {t('collection.detail.edit')}
       </h1>
       <form onSubmit={handleSubmit} className='space-y-4'>
-        <div>
-          <label className='block text-sm mb-1' style={{ color: 'var(--text-secondary)' }}>
-            {t('collection.create.name')}
-          </label>
+        <Field label={t('collection.create.name')} htmlFor='collection-name' required>
           <input
+            id='collection-name'
             type='text'
             value={name}
             onChange={(e) => setName(e.target.value)}
             className='input w-full'
             required
           />
-        </div>
-        <div>
-          <label className='block text-sm mb-1' style={{ color: 'var(--text-secondary)' }}>
-            {t('collection.create.description')}
-          </label>
+        </Field>
+        <Field label={t('collection.create.description')} htmlFor='collection-description'>
           <textarea
+            id='collection-description'
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className='input w-full'
             rows={3}
           />
-        </div>
-        <div>
-          <label className='block text-sm mb-1' style={{ color: 'var(--text-secondary)' }}>
-            {t('collection.create.visibility')}
-          </label>
+        </Field>
+        <Field label={t('collection.create.visibility')} htmlFor='collection-visibility'>
           <select
+            id='collection-visibility'
             value={visibility}
             onChange={(e) =>
               setVisibility(e.target.value as 'private' | 'unlisted' | 'public' | 'draft')}
@@ -121,15 +117,15 @@ export function CollectionEditPage() {
             <option value='unlisted'>{t('collection.visibility.unlisted')}</option>
             <option value='public'>{t('collection.visibility.public')}</option>
           </select>
-        </div>
+        </Field>
         <button
           type='submit'
           disabled={submitting || !name.trim()}
-          className='btn-primary min-h-11 px-6'
+          className='btn-primary'
         >
           {submitting ? t('collection.create.creating') : t('collection.create.submit')}
         </button>
       </form>
-    </div>
+    </PageContainer>
   );
 }

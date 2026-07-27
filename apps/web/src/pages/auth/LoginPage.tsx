@@ -5,6 +5,8 @@ const log = createLogger('LoginPage');
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { Field } from '../../components/form/Field.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 
 /**
  * Login form (email/password with remember-me) driven by the auth
@@ -36,7 +38,7 @@ export function LoginPage() {
       navigate('/');
     } catch (err: unknown) {
       log.error({ err }, 'LoginPage login failed');
-      const message = err instanceof Error ? err.message : t('auth.login.title');
+      const message = err instanceof Error ? err.message : t('auth.login.error.failed');
       setError(message);
     } finally {
       setLoading(false);
@@ -48,23 +50,9 @@ export function LoginPage() {
       <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
         {t('auth.login.title')}
       </h1>
-      {error && (
-        <div
-          className='mt-4 rounded p-3 text-sm'
-          style={{ backgroundColor: 'var(--error)', color: 'white' }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <ErrorState message={error} className='mt-4' />}
       <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
-        <div>
-          <label
-            htmlFor='email'
-            className='mb-1 block text-sm font-medium'
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {t('auth.email')}
-          </label>
+        <Field label={t('auth.email')} htmlFor='email'>
           <input
             id='email'
             type='email'
@@ -74,25 +62,18 @@ export function LoginPage() {
             className='input-field'
             required
           />
-        </div>
-        <div>
-          <label
-            htmlFor='password'
-            className='mb-1 block text-sm font-medium'
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {t('auth.password')}
-          </label>
+        </Field>
+        <Field label={t('auth.password')} htmlFor='password'>
           <input
             id='password'
             type='password'
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder='Enter your password'
+            placeholder={t('auth.login.password.placeholder')}
             className='input-field'
             required
           />
-        </div>
+        </Field>
         <div className='flex items-center gap-2'>
           <input
             type='checkbox'

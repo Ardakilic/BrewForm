@@ -11,7 +11,7 @@
 # Copies only manifest files and caches all Deno/npm dependencies.
 # Identical to the API Dockerfile's `deps` stage so both images share the same
 # dependency graph and lockfile resolution.
-FROM denoland/deno:debian-2.9.0 AS deps
+FROM denoland/deno:debian-2.9.3 AS deps
 WORKDIR /app
 COPY deno.json deno.lock package.json ./
 COPY apps/api/package.json apps/api/deno.json ./apps/api/
@@ -24,7 +24,7 @@ RUN deno ci
 # Full source copy + production Vite build. The VITE_* values are passed as
 # build ARGs, promoted to ENV, and inlined into the bundle by Vite's `define`
 # (apps/web/vite.config.ts). The defaults match the dev/local topology.
-FROM denoland/deno:debian-2.9.0 AS builder
+FROM denoland/deno:debian-2.9.3 AS builder
 WORKDIR /app
 COPY --from=deps /deno-dir /deno-dir
 COPY --from=deps /app/node_modules ./node_modules

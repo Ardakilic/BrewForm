@@ -15,8 +15,10 @@ export const SCAA_CATEGORIES = [
   'Other',
 ] as const;
 
+/** Union of the 9 SCAA top-level flavor-wheel category names. */
 export type ScaaCategory = typeof SCAA_CATEGORIES[number];
 
+/** A taste note flattened for radar-chart aggregation, with its resolved root category. */
 export interface TasteNoteForChart {
   tasteNoteId: string;
   intensity: number; // 1-3

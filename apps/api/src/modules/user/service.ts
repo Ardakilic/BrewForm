@@ -10,6 +10,11 @@ import * as model from './model.ts';
 import * as followModel from '../follow/model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
+/**
+ * User service.
+ *
+ * Provides private/public profile retrieval, profile updates, and account deletion.
+ */
 export const log = createLogger('user-service');
 
 /**

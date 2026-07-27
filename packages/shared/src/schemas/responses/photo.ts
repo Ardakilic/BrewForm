@@ -19,4 +19,5 @@ export const PhotoOutputSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link PhotoOutputSchema}. */
 export type PhotoOutput = z.infer<typeof PhotoOutputSchema>;
