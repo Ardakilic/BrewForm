@@ -3,63 +3,6 @@
 ## Purpose
 TBD - created by archiving change d31-deno-29-upgrade. Update Purpose after archive.
 ## Requirements
-### Requirement: Deno 2.9.0 pinned in all Docker build stages
-
-Both Dockerfiles SHALL pin the Deno base image to the exact tag `denoland/deno:debian-2.9.0` in
-every stage that uses a Deno base image:
-
-- `Dockerfile` — the `deps`, `builder`, and `runner` stages (3 `FROM` lines).
-- `Dockerfile.web` — the `deps` and `builder` stages (2 `FROM` lines). The `caddy:*` runner stage
-  is unaffected.
-
-The pin SHALL be an exact patch version (`debian-2.9.0`), never a floating tag (`debian-2.9`,
-`latest`), so image builds are reproducible. No other Dockerfile content (entrypoint, `EXPOSE`,
-`/deno-dir` cache copy, `--unstable-cron`/`--unstable-kv` runtime flags) changes as part of the
-version pin.
-
-#### Scenario: API image builds on Deno 2.9.0
-
-- **WHEN** `docker build -f Dockerfile .` runs
-- **THEN** all three stages (`deps`, `builder`, `runner`) use `denoland/deno:debian-2.9.0`
-- **AND** the built image's `deno --version` reports `2.9.0`
-
-#### Scenario: Web image builds on Deno 2.9.0
-
-- **WHEN** `docker build -f Dockerfile.web .` runs
-- **THEN** the `deps` and `builder` stages use `denoland/deno:debian-2.9.0`
-- **AND** the Vite build (`deno task --cwd apps/web build`) completes under 2.9.0
-- **AND** the `caddy` runner stage is unchanged
-
-#### Scenario: No floating Deno tags remain
-
-- **WHEN** the Dockerfiles are grepped for `denoland/deno:`
-- **THEN** every match is the exact tag `denoland/deno:debian-2.9.0`
-- **AND** no `denoland/deno:debian-2.7.14`, `:debian-2.8.x`, `:debian-2.9` (minor-only), or `:latest`
-  remains
-
-### Requirement: Deno 2.9.0 pinned in all CI workflows
-
-Both CI workflows SHALL pin `denoland/setup-deno@v2` to `deno-version: v2.9.0` in every job that
-sets up Deno:
-
-- `.github/workflows/ci.yml` — the `quality` and `test` jobs (2 pins).
-- `.github/workflows/pr.yml` — the `check`, `test-unit`, `test-api`, and `test-web` jobs (4 pins).
-
-`.github/workflows/release.yml` SHALL NOT contain a `setup-deno` pin — it builds via the Docker
-base images, so its Deno version flows from the Dockerfile pins.
-
-#### Scenario: CI runs on the same version as Docker
-
-- **WHEN** `ci.yml` or `pr.yml` runs
-- **THEN** every `setup-deno` step installs `v2.9.0`
-- **AND** the version matches the `debian-2.9.0` Docker base images (no CI/Docker drift)
-
-#### Scenario: No stale CI version pins remain
-
-- **WHEN** `ci.yml` and `pr.yml` are grepped for `deno-version:`
-- **THEN** every occurrence is `v2.9.0`
-- **AND** no `v2.7.14` (the prior pin) remains
-
 ### Requirement: Lockfile regenerated and frozen-installable on 2.9.0
 
 The single root `deno.lock` SHALL be refreshed using Deno 2.9.0 via a **non-destructive**
@@ -130,4 +73,86 @@ SHALL NOT fail on 2.9.0 as a result of the runtime bump.
 - **THEN** `index.html` still contains its Vite placeholders (e.g. `%VITE_PUBLIC_APP_URL%`)
 - **AND** `globals.css` still contains its Tailwind v4 `@import`/`@theme` directives
 - **AND** the web image build (`Dockerfile.web`) still produces a working SPA
+
+### Requirement: Deno 2.9.3 pinned in all Docker build stages
+
+Both Dockerfiles SHALL pin the Deno base image to the exact tag `denoland/deno:debian-2.9.3` in
+every stage that uses a Deno base image:
+
+- `Dockerfile` — the `deps`, `builder`, and `runner` stages (3 `FROM` lines).
+- `Dockerfile.web` — the `deps` and `builder` stages (2 `FROM` lines). The `caddy:*` runner stage
+  is unaffected.
+
+The pin SHALL be an exact patch version (`debian-2.9.3`), never a floating tag (`debian-2.9`,
+`latest`), so image builds are reproducible. No other Dockerfile content (entrypoint, `EXPOSE`,
+`/deno-dir` cache copy, `--unstable-cron`/`--unstable-kv` runtime flags) changes as part of the
+version pin. Per the dependency-management deployment-pin decoupling requirement, this Docker bump
+is raised here as a coordinated deployment-touching change (not folded silently into a dependency
+refresh).
+
+**Reason:** 2.9.3 is the current patch release; keeping Docker on 2.9.0 while CI/local move would
+recreate the CI/Docker drift the d31 spec prohibits.
+
+#### Scenario: API image builds on Deno 2.9.3
+
+- **WHEN** `docker build -f Dockerfile .` runs
+- **THEN** all three stages use `denoland/deno:debian-2.9.3` and the built image's
+  `deno --version` reports `2.9.3`
+
+#### Scenario: No floating or stale Deno tags remain
+
+- **WHEN** the Dockerfiles are grepped for `denoland/deno:`
+- **THEN** every match is the exact tag `denoland/deno:debian-2.9.3` — no `debian-2.9.0`,
+  minor-only, or `latest` tag remains
+
+### Requirement: Deno 2.9.3 pinned in all CI workflows
+
+Both CI workflows SHALL pin `denoland/setup-deno@v2` to `deno-version: v2.9.3` in every job that
+sets up Deno:
+
+- `.github/workflows/ci.yml` — the `quality` and `test` jobs (2 pins, currently `:17,76`).
+- `.github/workflows/pr.yml` — the `check`, `test-unit`, `test-api`, and `test-web` jobs (4 pins,
+  currently `:15,46,96,144`).
+
+`.github/workflows/release.yml` SHALL NOT contain a `setup-deno` pin — it builds via the Docker
+base images, so its Deno version flows from the Dockerfile pins.
+
+**Reason:** The six CI pins are the surface that actually drifted (v2.9.0 while local dev ran
+2.9.2) — Renovate never bumps the `deno-version` input (see the dependency-management renovate
+requirement, which adds a customManager so this cannot silently drift again).
+
+#### Scenario: CI runs on the same version as Docker
+
+- **WHEN** `ci.yml` or `pr.yml` runs
+- **THEN** every `setup-deno` step installs `v2.9.3`, matching the `debian-2.9.3` Docker base
+  images (no CI/Docker drift)
+
+#### Scenario: No stale CI version pins remain
+
+- **WHEN** `ci.yml` and `pr.yml` are grepped for `deno-version:`
+- **THEN** every occurrence is `v2.9.3` and no `v2.9.0` remains
+
+### Requirement: Deno version parity across local, CI, and Docker
+
+The Deno version SHALL be a single exact version stated identically across all pinned surfaces —
+local development (`deno --version`, documented in README/tech-stack prose), both CI workflows'
+`deno-version` inputs, and both Dockerfiles' base-image tags — currently `2.9.3`. Any future Deno
+bump SHALL update ALL of these surfaces in one change; a partial bump (e.g. local upgraded, CI
+pins stale) is a violation of this requirement, not routine drift.
+
+**Reason:** The 2026-07-19 audit found three different versions in play at once (local 2.9.2, CI
+v2.9.0, latest 2.9.3). d31 established pin parity between CI and Docker; wave 5 codifies the full
+sync rule including the local/doc surface so the next drift is a spec violation with a grep-able
+check, not a surprise.
+
+#### Scenario: All surfaces state one version
+
+- **WHEN** `deno --version` output, the six CI `deno-version` inputs, the five Docker `FROM`
+  lines, and the README runtime prose are compared
+- **THEN** they all state the same exact version (2.9.3 as of this change)
+
+#### Scenario: A future bump moves everything together
+
+- **WHEN** a later change bumps the Deno version on any one surface
+- **THEN** the same change updates every other pinned surface, keeping the parity scenario green
 
