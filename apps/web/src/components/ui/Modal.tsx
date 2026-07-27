@@ -162,6 +162,7 @@ export function useConfirm(): ConfirmContextValue {
   const ctx = useContext(ConfirmContext);
   if (!ctx) {
     return {
+      // Native confirm is the documented fallback when used outside a ConfirmProvider (e.g. unit tests).
       // deno-lint-ignore no-window
       confirm: (opts: ConfirmOptions) => Promise.resolve(window.confirm(opts.bodyKey)),
     };

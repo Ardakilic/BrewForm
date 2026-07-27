@@ -107,8 +107,8 @@ stay complete. This is mandatory, like logging — a route without `describeRout
   `deno fmt --check` and fails the build on any diff. The pre-commit hook (`.githooks/pre-commit`,
   enabled via `make setup-hooks`) also enforces this locally, but do not rely on the hook alone —
   run `make fmt` proactively after each batch of edits, not just at commit time.
-- Lint exclusions: `no-explicit-any`, `require-await`, `no-empty`, `no-import-prefix`, `no-unversioned-import`.
-- Module files use `// deno-lint-ignore-file no-explicit-any require-await`.
+- Lint exclusions: `no-import-prefix`, `no-unversioned-import` (`no-explicit-any`, `require-await`, `no-empty` were re-enabled in wave 5; see `openspec/specs/lint-style`).
+- Test files use line-level `// deno-lint-ignore <rule> -- <justification>` directives, each immediately preceded by a comment explaining the rationale. File-level `// deno-lint-ignore-file` directives are not permitted (production or test).
 - All imports use explicit file extensions (`.ts`, `.tsx`, etc.) — no sloppy imports.
 - Cache: never call `Deno.openKv()` directly — use `CacheProvider` interface via DI.
 
