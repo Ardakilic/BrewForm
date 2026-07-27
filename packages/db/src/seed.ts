@@ -7,7 +7,7 @@
  * existence checks for tables without them. Invoked on first container boot (when the users table is
  * empty) and via `make db-seed`.
  */
-import { and, eq, ilike, isNull, sql } from 'drizzle-orm';
+import { and, eq, ilike, isNull } from 'drizzle-orm';
 import {
   badges,
   beans,
@@ -90,7 +90,7 @@ async function upsertTasteNote(
   const conditions = [
     eq(tasteNotes.name, values.name),
     values.parentId == null
-      ? sql`${tasteNotes.parentId} is null`
+      ? isNull(tasteNotes.parentId)
       : eq(tasteNotes.parentId, values.parentId!),
     eq(tasteNotes.depth, values.depth ?? 0),
   ];
@@ -401,7 +401,7 @@ async function seedBeans(
     if (userId) {
       conditions.push(eq(beans.userId, userId));
     } else {
-      conditions.push(sql`${beans.userId} is null`);
+      conditions.push(isNull(beans.userId));
     }
     const [existing] = await tx.select().from(beans).where(and(...conditions)).limit(1);
     if (existing) continue;
@@ -694,7 +694,7 @@ async function seedSocialData(
         eq(comments.recipeId, recipeId),
         eq(comments.authorId, authorId),
         eq(comments.content, comment.content),
-        sql`${comments.parentCommentId} is null`,
+        isNull(comments.parentCommentId),
       ),
     ).limit(1);
 
@@ -842,8 +842,6 @@ async function seedCollections(
   /** Ordered brew methods seen in seed data (deduped, insertion order). */
   const brewMethodsPresent = [...new Set(Object.values(brewMethodBySlug))];
 
-  let collectionSortOrder = 0;
-
   for (const [username, user] of Object.entries(createdUsers)) {
     // Create one collection per visibility value to cover all branches.
     const collectionDefs: {
@@ -908,6 +906,9 @@ async function seedCollections(
         recipesToAdd.push(...recipeSlugs.slice(0, 2));
       }
 
+      // sortOrder is per-collection (0..n-1), not globally sequenced — D99.3.
+      let collectionSortOrder = 0;
+
       for (const slug of recipesToAdd) {
         const recipe = createdRecipes[slug];
         if (!recipe) continue;
@@ -916,14 +917,17 @@ async function seedCollections(
           collectionId: collection.id,
           recipeId: recipe.id,
           sortOrder: collectionSortOrder++,
-        }).onConflictDoNothing({
+        }).onConflictDoUpdate({
+          // Re-seeding a dirty DB also repairs old globally-sequenced rows.
           target: [collectionItems.collectionId, collectionItems.recipeId],
+          set: { sortOrder: collectionSortOrder - 1 },
         });
       }
     }
   }
 }
 
+/** Seed entrypoint: provisions all demo data inside a single transaction. */
 export async function main() {
   const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
   const adminPassword = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';

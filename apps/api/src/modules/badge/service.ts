@@ -14,12 +14,12 @@ import { createLogger } from '../../utils/logger/index.ts';
 const logger = createLogger('badge-service');
 
 /** List all available badge definitions. */
-export async function listBadges() {
+export function listBadges() {
   return model.listBadges();
 }
 
 /** Get all badges awarded to a user. */
-export async function getUserBadges(userId: string) {
+export function getUserBadges(userId: string) {
   return model.getUserBadges(userId);
 }
 

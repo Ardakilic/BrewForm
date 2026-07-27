@@ -4,6 +4,7 @@ import { notificationApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '@/utils/logger.ts';
 import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
+import { formatDate } from '../../utils/format.ts';
 
 const log = createLogger('NotificationItem');
 
@@ -51,7 +52,7 @@ interface NotificationItemProps {
  * the metadata carries a `recipeSlug`.
  */
 export function NotificationItem({ notification, onRead, onNavigate }: NotificationItemProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const meta = parseMetadata(notification.metadata);
   const username = notification.actorUsername ?? '';
@@ -98,7 +99,7 @@ export function NotificationItem({ notification, onRead, onNavigate }: Notificat
           {text}
         </span>
         <span className='block text-xs' style={{ color: 'var(--text-secondary)' }}>
-          {new Date(notification.createdAt).toLocaleDateString()}
+          {formatDate(notification.createdAt, locale)}
         </span>
       </span>
     </span>

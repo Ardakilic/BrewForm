@@ -129,9 +129,12 @@ export function BrewTimeline({
         <div
           className='flex w-full absolute top-0 left-0 h-full opacity-0 pointer-events-none'
           role='img'
-          aria-label={`Brew timeline: ${
-            preInfusion != null ? `${preInfusion}s pre-infusion, ` : ''
-          }${preInfusion != null ? total - preInfusion : total}s extraction`}
+          aria-label={preInfusion != null
+            ? t('a11y.brewTimeline').replace('{preInfusion}', String(preInfusion)).replace(
+              '{extraction}',
+              String(total - preInfusion),
+            )
+            : t('a11y.brewTimelineNoPreInfusion').replace('{extraction}', String(total))}
         >
           {preInfusion != null && <div style={{ width: `${preInfusionPct}%` }} />}
           <div style={{ width: `${extractionPct}%` }} />

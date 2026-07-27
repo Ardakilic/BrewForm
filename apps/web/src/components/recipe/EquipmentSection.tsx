@@ -83,7 +83,7 @@ export function EquipmentSection(
                 {brewerDetails}
               </span>
               <span className='text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]'>
-                {mainBrewerLabel === 'recipe.mainBrewer' ? 'Main Brewer' : mainBrewerLabel}
+                {mainBrewerLabel}
               </span>
             </span>
           </div>

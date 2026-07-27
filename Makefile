@@ -94,18 +94,37 @@ build-shared: ## Type-check shared package as build artifact
 
 # --- Testing ---
 
+# Dedicated test database (mirrors .github/workflows/pr.yml:63-113 — CI uses
+# postgresql://brewform:brewform@localhost:5432/brewform_test; inside the compose
+# network the host is `postgres`, not `localhost`). API tests MUST NOT run against
+# the dev `brewform` database — they mutate seeded rows (see wave-5 task 8.2).
+TEST_DATABASE_URL := postgresql://brewform:brewform@postgres:5432/brewform_test
+
 check-tests: ## Type-check test files
 	docker compose run --rm --no-deps app deno check apps/api/src/ packages/shared/src/
 
+# Create + migrate + seed the brewform_test database (safe to re-run; the seed is
+# idempotent via on-conflict handling — but note it cannot remove stray rows left
+# by API tests; drop and recreate the DB for a fully clean slate, see wave-5 task 8.2).
+# Mirrors the CI provisioning steps in .github/workflows/pr.yml:63-113.
+test-db-provision: up ## Provision the brewform_test database (create + migrate + seed)
+	@docker compose exec -T postgres psql -U brewform -d postgres -tc \
+	  "SELECT 1 FROM pg_database WHERE datname='brewform_test'" | grep -q 1 || \
+	docker compose exec -T postgres psql -U brewform -d postgres -c "CREATE DATABASE brewform_test;"
+	docker compose run --rm --no-deps -e DATABASE_URL=$(TEST_DATABASE_URL) app \
+	  sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
+	docker compose run --rm --no-deps -e DATABASE_URL=$(TEST_DATABASE_URL) app \
+	  deno run --allow-all packages/db/src/seed.ts
+
 test: up ## Run all tests (API + shared + web)
-	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/ && \
+	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/ && \
 	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
 test-coverage: up ## Run all tests with coverage
-	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
+	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
 
 test-api: up ## Run API tests only
-	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/
+	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/
 
 test-shared: ## Run shared package tests only
 	docker compose run --rm --no-deps app deno test --allow-env --allow-read --allow-write --allow-net packages/shared/src/
@@ -114,7 +133,7 @@ test-web: ## Run web (Vitest) tests
 	docker compose run --rm --no-deps app deno task --cwd apps/web test
 
 test-specific: up ## Run specific test (use filter=)
-	docker compose run --rm app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
+	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
 
 # --- Database ---
 
@@ -240,4 +259,4 @@ prod-down: ## Stop production profile
 
 release: images images-push ## Build and push both images (local CI equivalent)
 
-.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health images images-push prod-up prod-up-build prod-down release
+.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health images images-push prod-up prod-up-build prod-down release

@@ -5,7 +5,6 @@
  * runtime, serving as a regression guard against accidental reversion to
  * `string`.
  */
-// deno-lint-ignore-file no-explicit-any require-await
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import type { CoffeeVariety } from './coffee-variety.ts';

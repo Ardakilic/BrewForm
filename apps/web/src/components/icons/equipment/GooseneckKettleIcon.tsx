@@ -1,10 +1,14 @@
+import { useSafeT } from '../../../utils/safe-translation.ts';
+
 interface IconProps {
   size?: number;
   className?: string;
+  label?: string;
 }
 
 /** SVG icon for a gooseneck kettle. */
-export function GooseneckKettleIcon({ size = 24, className }: IconProps) {
+export function GooseneckKettleIcon({ size = 24, className, label }: IconProps) {
+  const t = useSafeT();
   return (
     <svg
       width={size}
@@ -16,7 +20,7 @@ export function GooseneckKettleIcon({ size = 24, className }: IconProps) {
       strokeLinecap='round'
       strokeLinejoin='round'
       role='img'
-      aria-label='Gooseneck Kettle'
+      aria-label={label ?? t('a11y.equipment.gooseneckKettle')}
       className={className}
     >
       {/* Kettle body */}

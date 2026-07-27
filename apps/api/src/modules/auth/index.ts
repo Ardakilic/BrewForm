@@ -22,6 +22,7 @@ import type { User } from '@brewform/shared/types';
 
 const log = createLogger('auth');
 
+/** Hono sub-router for auth endpoints, mounted at `/api/v1/auth`. */
 const auth = new Hono<AppEnv>();
 const authRateLimit = authRateLimitMiddleware({ windowMs: 15 * 60_000, maxAttempts: 5 });
 

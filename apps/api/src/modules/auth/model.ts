@@ -55,7 +55,7 @@ export async function findUserById(id: string) {
  * @param data.displayName - Optional display name
  * @returns The newly created user row (without preferences)
  */
-export async function createUser(data: {
+export function createUser(data: {
   email: string;
   username: string;
   password: string;

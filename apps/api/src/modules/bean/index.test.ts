@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
 import '../../test-setup.ts';
 import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';

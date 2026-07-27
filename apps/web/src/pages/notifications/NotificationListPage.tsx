@@ -6,6 +6,7 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { PaginationControls } from '../../components/recipe-list/index.ts';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { NotificationItem } from '../../components/layout/NotificationItem.tsx';
 import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
 
@@ -109,11 +110,7 @@ export function NotificationListPage() {
       </div>
 
       {items.length === 0
-        ? (
-          <p className='py-12 text-center' style={{ color: 'var(--text-secondary)' }}>
-            {t('notifications.empty')}
-          </p>
-        )
+        ? <EmptyState message={t('notifications.empty')} />
         : (
           <ul className='m-0 list-none space-y-1 p-0'>
             {items.map((n) => (
@@ -129,9 +126,6 @@ export function NotificationListPage() {
           page={page}
           totalPages={totalPages}
           onPageChange={handlePageChange}
-          previousLabel={t('common.previous')}
-          nextLabel={t('common.next')}
-          pageLabel={t('common.pagination')}
         />
       )}
     </div>

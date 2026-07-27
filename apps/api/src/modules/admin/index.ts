@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context, Next } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
@@ -33,9 +34,23 @@ import { cacheProvider } from '../../utils/cache/singleton.ts';
 import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Dependency-injection proxy for auth middleware (test stubbing seam). */
+export const deps = { authMiddleware, adminMiddleware };
+
+/** Proxy that resolves authMiddleware at request time (supports test mocking via deps). */
+function authGuard(c: Context<AppEnv>, next: Next) {
+  return deps.authMiddleware(c, next);
+}
+
+/** Proxy that resolves adminMiddleware at request time (supports test mocking via deps). */
+function adminGuard(c: Context<AppEnv>, next: Next) {
+  return deps.adminMiddleware(c, next);
+}
+
+/** Hono sub-router for admin endpoints, mounted at `/api/v1/admin`. */
 const admin = new Hono<AppEnv>();
 
-admin.use('*', authMiddleware, adminMiddleware);
+admin.use('*', authGuard, adminGuard);
 
 // --- Analytics Dashboard ---
 admin.get(

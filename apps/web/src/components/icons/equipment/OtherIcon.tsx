@@ -1,10 +1,14 @@
+import { useSafeT } from '../../../utils/safe-translation.ts';
+
 interface IconProps {
   size?: number;
   className?: string;
+  label?: string;
 }
 
 /** Generic fallback SVG icon for equipment types without a dedicated icon. */
-export function OtherIcon({ size = 24, className }: IconProps) {
+export function OtherIcon({ size = 24, className, label }: IconProps) {
+  const t = useSafeT();
   return (
     <svg
       width={size}
@@ -16,7 +20,7 @@ export function OtherIcon({ size = 24, className }: IconProps) {
       strokeLinecap='round'
       strokeLinejoin='round'
       role='img'
-      aria-label='Other Equipment'
+      aria-label={label ?? t('a11y.equipment.other')}
       className={className}
     >
       {/* Wrench shape */}

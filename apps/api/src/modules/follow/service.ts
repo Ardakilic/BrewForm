@@ -54,12 +54,12 @@ export async function unfollowUser(followerId: string, followingId: string) {
 }
 
 /** List paginated followers for a user. */
-export async function getFollowers(userId: string, page: number, perPage: number) {
+export function getFollowers(userId: string, page: number, perPage: number) {
   return model.getFollowers(userId, page, perPage);
 }
 
 /** List paginated users that a given user follows. */
-export async function getFollowing(userId: string, page: number, perPage: number) {
+export function getFollowing(userId: string, page: number, perPage: number) {
   return model.getFollowing(userId, page, perPage);
 }
 

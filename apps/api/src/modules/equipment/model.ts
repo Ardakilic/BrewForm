@@ -31,7 +31,7 @@ export async function findMany(where: SQL | undefined, page: number, perPage: nu
 }
 
 /** Search non-deleted equipment by name, brand, or model (LIKE match), limited to 10 results. */
-export async function search(query: string) {
+export function search(query: string) {
   return db.select().from(equipment)
     .where(and(
       isNull(equipment.deletedAt),

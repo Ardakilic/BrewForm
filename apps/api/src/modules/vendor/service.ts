@@ -9,6 +9,11 @@ import * as model from './model.ts';
 import { VendorCreateSchema, VendorUpdateSchema } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger/index.ts';
 
+/**
+ * Vendor service.
+ *
+ * Provides vendor listing, search, lookup, creation, update, and soft-deletion.
+ */
 export const log = createLogger('vendor-service');
 
 /** List all non-deleted vendors with pagination. */

@@ -643,3 +643,34 @@ export async function getRecipeMeta(slug: string) {
     photoUrl: recipe.photos?.[0]?.url || null,
   };
 }
+
+/**
+ * True when the caller may view the recipe.
+ *
+ * Canonical visibility predicate (previously duplicated inline at
+ * `recipe/index.ts` GET /:slugOrId and GET /:slug/versions): `public`/`unlisted`
+ * are visible to any caller including anonymous; `draft`/`private` are visible
+ * only to the author (`userId === recipe.authorId`) or to an admin. The admin
+ * bypass is deliberate: the recipe GET routes do NOT pass an admin flag (they
+ * keep their pre-existing author-only semantics), but the comment surface does
+ * — the comment-reply permission rule already honours `isAdmin`
+ * (comment/service.ts), so the predicate supports it for that caller.
+ *
+ * Pure function with no I/O — intentionally has no entry/exit debug logging;
+ * the calling routes/services already log.
+ *
+ * @param recipe - Minimal recipe shape: visibility + authorId
+ * @param userId - Authenticated caller id, or null/undefined when anonymous
+ * @param isAdmin - Whether the caller has admin privileges
+ * @returns true when the caller may view the recipe
+ */
+export function canViewRecipe(
+  recipe: { visibility: string; authorId: string },
+  userId?: string | null,
+  isAdmin?: boolean,
+): boolean {
+  if (recipe.visibility === 'draft' || recipe.visibility === 'private') {
+    return userId === recipe.authorId || isAdmin === true;
+  }
+  return true;
+}

@@ -35,6 +35,7 @@ import {
   inArray,
   isNull,
   lt,
+  not,
   or,
   SQL,
   sql,
@@ -234,7 +235,7 @@ export async function create(data: typeof recipes.$inferInsert) {
  * Loads all relations: author, versions (with taste notes, equipment, preparations,
  * photos, bean), photos, and forked-from recipe.
  */
-export async function findById(id: string) {
+export function findById(id: string) {
   return db.query.recipes.findFirst({
     where: and(eq(recipes.id, id), isNull(recipes.deletedAt)),
     with: {
@@ -261,7 +262,7 @@ export async function findById(id: string) {
  * Loads the same relation tree as {@link findById}: author, versions (with taste notes,
  * equipment, preparations, photos, bean), photos, and forked-from recipe.
  */
-export async function findBySlug(slug: string) {
+export function findBySlug(slug: string) {
   return db.query.recipes.findFirst({
     where: and(eq(recipes.slug, slug), isNull(recipes.deletedAt)),
     with: {
@@ -765,7 +766,7 @@ export async function getUserLikeStatus(userId: string, recipeId: string) {
  *
  * @returns `{ liked: true }` if the like was added, `{ liked: false }` if removed
  */
-export async function toggleLike(userId: string, recipeId: string) {
+export function toggleLike(userId: string, recipeId: string) {
   return db.transaction(async (tx) => {
     const inserted = await tx.insert(userRecipeLikes)
       .values({ userId, recipeId })
@@ -827,7 +828,7 @@ export async function toggleFavourite(userId: string, recipeId: string) {
  */
 export async function toggleFeature(id: string) {
   const [recipe] = await db.update(recipes)
-    .set({ featured: sql`not ${recipes.featured}` })
+    .set({ featured: not(recipes.featured) })
     .where(eq(recipes.id, id))
     .returning();
 
@@ -837,7 +838,7 @@ export async function toggleFeature(id: string) {
 }
 
 /** Fetch all versions for a recipe (summary fields only), ordered newest-first. */
-export async function getVersionsByRecipeId(recipeId: string) {
+export function getVersionsByRecipeId(recipeId: string) {
   return db
     .select({
       id: recipeVersions.id,
@@ -985,7 +986,7 @@ export async function findCursor(
  * @returns Either `{ recipes, total }` for offset mode or
  *          `{ recipes, hasMore, nextCursor, total? }` for cursor mode.
  */
-export async function getFeed(
+export function getFeed(
   authorIds: string[],
   page: number,
   perPage: number,
@@ -1071,7 +1072,7 @@ export async function findStarred(
 }
 
 /** Fetch equipment by IDs, returning id + type for compatibility checks. */
-export async function getEquipmentByIds(ids: string[]) {
+export function getEquipmentByIds(ids: string[]) {
   return db
     .select({ id: equipment.id, type: equipment.type })
     .from(equipment)
@@ -1079,7 +1080,7 @@ export async function getEquipmentByIds(ids: string[]) {
 }
 
 /** Fetch brew method equipment rules for a given brew method. */
-export async function getBrewMethodEquipmentRules(brewMethod: BrewMethod) {
+export function getBrewMethodEquipmentRules(brewMethod: BrewMethod) {
   return db
     .select()
     .from(brewMethodEquipmentRules)
@@ -1117,7 +1118,7 @@ export async function insertVersionPhotos(
 }
 
 /** Fetch all version-photo relations for a recipe version. */
-export async function getVersionPhotos(versionId: string) {
+export function getVersionPhotos(versionId: string) {
   return db
     .select()
     .from(recipeVersionPhotos)

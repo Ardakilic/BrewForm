@@ -1,14 +1,15 @@
-import { Link } from 'react-router';
 import { BREW_METHODS } from '@brewform/shared/constants';
+import { Breadcrumb, type BreadcrumbItem } from '../ui/Breadcrumb.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 interface BreadcrumbNavProps {
   brewMethod: string | null | undefined;
   recipeTitle: string;
 }
 
-function getBrewMethodLabel(value: string): string {
+function getBrewMethodLabel(value: string, t: (key: string) => string): string {
   const found = BREW_METHODS.find((m) => m.value === value);
-  if (found) return found.label;
+  if (found) return t(`brewMethod.${value}`);
   // Fallback: replace underscores with spaces and title-case each word
   return value
     .split('_')
@@ -23,61 +24,18 @@ function truncateTitle(title: string): string {
 
 /**
  * Breadcrumb trail for recipe pages: Recipes → brew method (as filter
- * link) → truncated recipe title.
+ * link) → truncated recipe title. Thin adapter over the generic
+ * {@link Breadcrumb} primitive.
  */
 export function BreadcrumbNav({ brewMethod, recipeTitle }: BreadcrumbNavProps) {
-  const displayTitle = truncateTitle(recipeTitle);
+  const { t } = useTranslation();
+  const items: BreadcrumbItem[] = [
+    { label: t('recipe.list.title'), to: '/recipes' },
+    ...(brewMethod
+      ? [{ label: getBrewMethodLabel(brewMethod, t), to: `/recipes?brewMethod=${brewMethod}` }]
+      : []),
+    { label: truncateTitle(recipeTitle) },
+  ];
 
-  return (
-    <nav aria-label='Breadcrumb'>
-      <ol className='flex items-center gap-1 flex-wrap text-[color:var(--text-tertiary)] text-xs'>
-        <li>
-          <Link
-            to='/recipes'
-            className='transition-colors text-[color:var(--text-secondary)]'
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-secondary)';
-            }}
-          >
-            Recipes
-          </Link>
-        </li>
-
-        {brewMethod && (
-          <>
-            <li
-              aria-hidden='true'
-              className='select-none text-[color:var(--text-tertiary)]'
-            >
-              ›
-            </li>
-            <li>
-              <Link
-                to={`/recipes?brewMethod=${brewMethod}`}
-                className='transition-colors text-[color:var(--text-secondary)]'
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-secondary)';
-                }}
-              >
-                {getBrewMethodLabel(brewMethod)}
-              </Link>
-            </li>
-          </>
-        )}
-
-        <li aria-hidden='true' className='select-none text-[color:var(--text-tertiary)]'>
-          ›
-        </li>
-        <li aria-current='page' className='text-[color:var(--text-secondary)]'>
-          {displayTitle}
-        </li>
-      </ol>
-    </nav>
-  );
+  return <Breadcrumb items={items} />;
 }

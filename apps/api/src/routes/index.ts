@@ -36,6 +36,7 @@ import admin from '../modules/admin/index.ts';
 import share from './share.ts';
 import sitemap from './sitemap.ts';
 
+/** Root Hono router aggregating every `/api/v1/*` sub-router; mounted in `main.ts`. */
 const routes = new Hono<AppEnv>();
 
 routes.route('/', health);

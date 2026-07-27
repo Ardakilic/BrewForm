@@ -26,6 +26,7 @@ import {
 import { decodeCursor } from '@brewform/shared/utils';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Hono sub-router for follow endpoints, mounted at `/api/v1/follow`. */
 const follow = new Hono<AppEnv>();
 
 follow.post(

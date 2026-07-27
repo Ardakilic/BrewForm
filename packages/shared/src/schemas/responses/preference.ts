@@ -29,4 +29,5 @@ export const UserPreferencesOutputSchema = z.object({
   updatedAt: z.string(),
 });
 
+/** Inferred type of {@link UserPreferencesOutputSchema}. */
 export type UserPreferencesOutput = z.infer<typeof UserPreferencesOutputSchema>;

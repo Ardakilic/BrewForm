@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import { formatDate } from '../../utils/format.ts';
 
 const log = createLogger('AdminAuditLogPage');
 
@@ -18,9 +22,9 @@ interface AuditLogEntry {
 
 /** Admin page: paginated audit-log table with an entity-type filter. */
 export function AdminAuditLogPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [page, setPage] = useState(1);
   const [entityFilter, setEntityFilter] = useState('');
 
@@ -35,10 +39,12 @@ export function AdminAuditLogPage() {
     const params = new URLSearchParams({ page: String(page), perPage: '50' });
     if (entityFilter) params.set('entityType', entityFilter);
     api.get<{ logs: AuditLogEntry[]; total: number }>(`/admin/audit-log?${params}`).then((data) => {
-      const d = data as Record<string, unknown>;
-      setLogs((d.logs as AuditLogEntry[]) || []);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setLogs(data.logs || []);
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'audit log fetch failed');
+      setStatus('error');
+    });
   }, [page, entityFilter]);
 
   return (
@@ -66,8 +72,10 @@ export function AdminAuditLogPage() {
         </select>
       </div>
 
-      {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
+      {status === 'loading'
+        ? <LoadingState />
+        : status === 'error'
+        ? <ErrorState message={t('admin.audit.loadError')} />
         : (
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
@@ -97,7 +105,7 @@ export function AdminAuditLogPage() {
                       className='py-2 px-3 whitespace-nowrap'
                       style={{ color: 'var(--text-tertiary)' }}
                     >
-                      {new Date(log.createdAt).toLocaleDateString()}
+                      {formatDate(log.createdAt, locale)}
                     </td>
                     <td className='py-2 px-3' style={{ color: 'var(--text-primary)' }}>
                       {log.admin?.username || log.adminId}
@@ -121,20 +129,12 @@ export function AdminAuditLogPage() {
           </div>
         )}
 
-      <div className='flex gap-2 mt-4'>
-        {page > 1 && (
-          <button
-            type='button'
-            onClick={() => setPage(page - 1)}
-            className='btn-secondary'
-          >
-            {t('common.previous')}
-          </button>
-        )}
-        <button type='button' onClick={() => setPage(page + 1)} className='btn-secondary'>
-          {t('common.next')}
-        </button>
-      </div>
+      <PaginationControls
+        page={page}
+        totalPages={page + 1}
+        onPageChange={setPage}
+        showPageLabel={false}
+      />
     </div>
   );
 }

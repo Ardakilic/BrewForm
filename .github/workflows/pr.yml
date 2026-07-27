@@ -12,7 +12,7 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.9.0
+          deno-version-file: .deno-version
 
       - name: Install dependencies
         run: deno ci
@@ -43,7 +43,7 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.9.0
+          deno-version-file: .deno-version
 
       - name: Install dependencies
         run: deno ci
@@ -93,7 +93,7 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.9.0
+          deno-version-file: .deno-version
 
       - name: Install dependencies
         run: deno ci
@@ -141,7 +141,7 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.9.0
+          deno-version-file: .deno-version
 
       - name: Install dependencies
         run: deno ci

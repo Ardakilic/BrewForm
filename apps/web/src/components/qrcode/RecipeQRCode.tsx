@@ -1,4 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
+import { createLogger } from '../../utils/logger.ts';
+
+const log = createLogger('RecipeQRCode');
 
 interface Props {
   slug: string;
@@ -11,6 +16,8 @@ interface Props {
  */
 export function RecipeQRCode({ slug, visibility }: Props) {
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
+  const toast = useToast();
 
   if (visibility === 'private' || visibility === 'draft') {
     return null;
@@ -31,7 +38,9 @@ export function RecipeQRCode({ slug, visibility }: Props) {
       a.download = `brewform-${slug}-qr.svg`;
       a.click();
       URL.revokeObjectURL(a.href);
-    } catch {
+    } catch (err) {
+      log.error({ err, slug }, 'QR code download failed');
+      toast.error('qrcode.downloadFailed');
     } finally {
       setLoading(false);
     }
@@ -42,13 +51,13 @@ export function RecipeQRCode({ slug, visibility }: Props) {
       <h4 className='font-semibold mb-3' style={{ color: 'var(--text-primary)' }}>QR Code</h4>
       <div className='flex items-center gap-3'>
         <button type='button' onClick={download} className='btn-primary text-sm' disabled={loading}>
-          {loading ? 'Downloading...' : 'Download QR Code'}
+          {loading ? t('qrcode.downloading') : t('qrcode.download')}
         </button>
       </div>
       <div className='mt-3'>
         <img
           src={getQRUrl()}
-          alt='Recipe QR Code'
+          alt={t('qrcode.alt')}
           className='w-32 h-32'
           loading='lazy'
           width={128}

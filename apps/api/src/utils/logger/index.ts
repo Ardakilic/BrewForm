@@ -2,6 +2,10 @@ import type { ChildLogger, CreateLogger, Logger } from '@brewform/shared/logger'
 import pino from 'pino';
 import { config } from '../../config/index.ts';
 
+/**
+ * Root pino logger — level, redaction, and transport come from config.
+ * Every module logger is a child of this instance via {@link createLogger}.
+ */
 const logger: Logger = pino({
   level: config.LOG_LEVEL || (config.APP_ENV === 'development' ? 'debug' : 'info'),
   redact: ['*.passwordHash', '*.password', '*.token', '*.secret', '*.apiKey', '*.authorization'],

@@ -7,6 +7,7 @@ import {
   VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
 import { RecipeCardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import type {
   EquipmentOutput,
@@ -19,8 +20,8 @@ import { createLogger } from '../../utils/logger.ts';
 import { useRecipeFilters } from './useRecipeFilters.ts';
 import { EQUIPMENT_FILTER_TYPES, EQUIPMENT_TYPE_LABELS } from './constants.ts';
 import { ActiveFilterBadge } from './ActiveFilterBadge.tsx';
-import { FilterField } from './FilterField.tsx';
-import { PaginationControls } from './PaginationControls.tsx';
+import { Field } from '../form/Field.tsx';
+import { PaginationControls } from '../ui/PaginationControls.tsx';
 import { RecipeCard } from './RecipeCard.tsx';
 
 const log = createLogger('RecipeListView');
@@ -37,7 +38,7 @@ export interface RecipeListResponse {
 }
 /** Props accepted by {@link RecipeListView}. */
 export interface RecipeListViewProps {
-  /** List source — controls per-source branches (loading state, total fallback, etc.). */
+  /** List source — controls per-source branches (total fallback, etc.). */
   source: 'all' | 'starred';
   /** Loader response with recipes and optional pagination metadata. */
   recipesResponse: RecipeListResponse;
@@ -155,7 +156,7 @@ export function RecipeListView({
   return (
     <div className='mx-auto max-w-6xl px-6 py-8'>
       <SEOHead title={pageTitle} description={seoDescription} />
-      <h1 className='text-3xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
         {pageTitle}
       </h1>
       <div className='flex flex-col lg:flex-row gap-6'>
@@ -220,7 +221,7 @@ export function RecipeListView({
                 onRemove={handleClearCoffeeVariety}
               />
             )}
-            <FilterField label={t('recipe.list.search')}>
+            <Field label={t('recipe.list.search')}>
               <input
                 type='text'
                 placeholder={t('recipe.list.searchPlaceholder')}
@@ -228,8 +229,8 @@ export function RecipeListView({
                 onChange={(e) => updateFilter('search', e.target.value)}
                 className='input-field text-sm'
               />
-            </FilterField>
-            <FilterField label={t('recipe.brewMethod')}>
+            </Field>
+            <Field label={t('recipe.brewMethod')}>
               <select
                 value={brewMethod}
                 onChange={(e) => updateFilter('brewMethod', e.target.value)}
@@ -240,8 +241,8 @@ export function RecipeListView({
                   <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
-            </FilterField>
-            <FilterField label={t('recipe.drinkType')}>
+            </Field>
+            <Field label={t('recipe.drinkType')}>
               <select
                 value={drinkType}
                 onChange={(e) => updateFilter('drinkType', e.target.value)}
@@ -252,9 +253,9 @@ export function RecipeListView({
                   <option key={d.value} value={d.value}>{d.label}</option>
                 ))}
               </select>
-            </FilterField>
+            </Field>
             {showAdminVisibilityFilter && (
-              <FilterField label={t('recipe.list.visibilityAdmin')}>
+              <Field label={t('recipe.list.visibilityAdmin')}>
                 <select
                   value={visibility}
                   onChange={(e) => updateFilter('visibility', e.target.value)}
@@ -265,7 +266,7 @@ export function RecipeListView({
                     <option key={v.value} value={v.value}>{v.label}</option>
                   ))}
                 </select>
-              </FilterField>
+              </Field>
             )}
             {EQUIPMENT_FILTER_TYPES.map((type) => {
               const items = equipmentByType[type];
@@ -273,32 +274,31 @@ export function RecipeListView({
               const label = EQUIPMENT_TYPE_LABELS[type] ?? type;
               const selectedItem = items.find((e) => e.id === equipmentId);
               return (
-                <FilterField key={type} label={label}>
+                <Field key={type} label={label}>
                   <select
                     value={selectedItem ? equipmentId : ''}
                     onChange={(e) => updateFilter('equipmentId', e.target.value)}
                     className='input-field text-sm'
-                    aria-label={`Filter by ${label}`}
+                    aria-label={t('a11y.filterBy').replace('{label}', label)}
                   >
                     <option value=''>{t('recipe.list.all')}</option>
                     {items.map((eq) => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
                   </select>
-                </FilterField>
+                </Field>
               );
             })}
             {allTasteNotesWithDepth.length > 0 && (
-              <FilterField label={t('recipe.list.tasteNotesFilter')}>
+              <Field label={t('recipe.list.tasteNotesFilter')}>
                 <TasteNotesFilter
                   allTasteNotes={allTasteNotesWithDepth}
                   selectedIds={tasteNoteIds}
-                  onChange={(ids) =>
-                    updateFilter('tasteNoteIds', ids)}
+                  onChange={(ids) => updateFilter('tasteNoteIds', ids)}
                   placeholder={t('recipe.list.tasteNotesPlaceholder')}
                 />
-              </FilterField>
+              </Field>
             )}
             {coffeeVarietyFilterSlot}
-            <FilterField label={t('recipe.list.sortBy')}>
+            <Field label={t('recipe.list.sortBy')}>
               <select
                 value={sortBy}
                 onChange={(e) => updateFilter('sortBy', e.target.value)}
@@ -308,24 +308,14 @@ export function RecipeListView({
                 <option value='likeCount'>{t('recipe.list.mostLiked')}</option>
                 <option value='rating'>{t('recipe.list.topRated')}</option>
               </select>
-            </FilterField>
+            </Field>
           </div>
         </aside>
         <main className='flex-1'>
           {loading
-            ? (source === 'all'
-              ? <RecipeCardSkeletonGrid />
-              : (
-                <div className='text-center py-12' style={{ color: 'var(--text-secondary)' }}>
-                  {t('common.loading')}
-                </div>
-              ))
+            ? <RecipeCardSkeletonGrid />
             : recipes.length === 0
-            ? (
-              <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-                {t(emptyMessageKey)}
-              </div>
-            )
+            ? <EmptyState message={t(emptyMessageKey)} />
             : (
               <>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -336,8 +326,6 @@ export function RecipeListView({
                     page={page}
                     totalPages={totalPages}
                     onPageChange={(p) => updateFilter('page', String(p))}
-                    previousLabel={t('common.previous')}
-                    nextLabel={t('common.next')}
                     pageLabel={t('recipe.list.page')}
                   />
                 )}

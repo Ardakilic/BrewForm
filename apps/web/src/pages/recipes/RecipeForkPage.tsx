@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { recipeApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { Field } from '../../components/form/Field.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '@/utils/logger.ts';
 
@@ -76,33 +78,21 @@ export function RecipeForkPage() {
       <SEOHead title={t('recipe.fork.seoTitle').replace('{title}', sourceTitle)} noIndex />
       <h1 className='text-2xl font-bold mb-6'>{t('recipe.fork')}</h1>
 
-      {error && (
-        <div
-          className='mb-4 rounded p-3 text-sm'
-          style={{ backgroundColor: 'var(--error)', color: 'white' }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <ErrorState message={error} className='mb-4' />}
 
       <div className='card'>
         <p className='text-sm mb-4' style={{ color: 'var(--text-secondary)' }}>
           {t('recipe.fork.forking')} <strong>{sourceTitle}</strong>
         </p>
-        <label
-          htmlFor='fork-title'
-          className='block text-sm font-medium mb-1'
-        >
-          {t('recipe.fork.title')}
-        </label>
-        <input
-          id='fork-title'
-          type='text'
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={200}
-          className='input-field mb-4'
-        />
+        <Field label={t('recipe.fork.title')}>
+          <input
+            type='text'
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+            className='input-field mb-4'
+          />
+        </Field>
         <div className='flex gap-3'>
           <button type='button' onClick={handleFork} disabled={forking} className='btn-primary'>
             {forking ? t('recipe.fork.creating') : t('recipe.fork.create')}

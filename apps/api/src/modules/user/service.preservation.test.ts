@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Preservation Test 2.1 — Unauthenticated `GET /users/:username` returns `isFollowing: false`
  *
@@ -78,6 +76,7 @@ async function getPublicProfile_buggy(
 ) {
   const user = await userModel.findByUsername(username);
   if (!user) throw new Error('USER_NOT_FOUND');
+  // deno-lint-ignore no-explicit-any -- test cast
   const { passwordHash: _passwordHash, email: _email, ...safe } = user as any;
   const [stats, recipes] = await Promise.all([
     userModel.getUserStats(user.id),
@@ -107,6 +106,7 @@ async function getPublicProfile_fixed(
 ) {
   const user = await userModel.findByUsername(username);
   if (!user) throw new Error('USER_NOT_FOUND');
+  // deno-lint-ignore no-explicit-any -- test cast
   const { passwordHash: _passwordHash, email: _email, ...safe } = user as any;
   const [stats, recipes] = await Promise.all([
     userModel.getUserStats(user.id),

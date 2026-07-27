@@ -3,6 +3,8 @@ import { Link } from 'react-router';
 import { Popover } from '@base-ui/react/popover';
 import { tasteApi } from '../api/index.ts';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
+import { EmptyState } from '../components/ui/EmptyState.tsx';
+import { LoadingState } from '../components/ui/LoadingState.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 import type { TasteNoteNodeOutput } from '@brewform/shared/schemas';
 import { createLogger } from '../utils/logger.ts';
@@ -155,6 +157,7 @@ function TasteCategoryCard({
 }
 
 function DefinitionPopover({ definition, label }: { definition: string | null; label: string }) {
+  const { t } = useTranslation();
   if (!definition) return null;
 
   return (
@@ -166,7 +169,7 @@ function DefinitionPopover({ definition, label }: { definition: string | null; l
                    hover:bg-[var(--bg-tertiary)] text-[var(--text-tertiary)]
                    hover:text-[var(--accent-primary)] transition-colors
                    cursor-pointer flex-shrink-0'
-        aria-label={`Definition of ${label}`}
+        aria-label={t('a11y.taste.definition').replace('{label}', label)}
       >
         <svg
           width='14'
@@ -236,7 +239,7 @@ export function TasteNotesPage() {
     <div className='mx-auto max-w-6xl px-6 py-8'>
       <SEOHead
         title={t('page.tasteNotes')}
-        description='Explore the SCAA flavor wheel taste notes on BrewForm.'
+        description={t('seo.tasteNotes.description')}
       />
 
       <div className='mb-8'>
@@ -287,13 +290,9 @@ export function TasteNotesPage() {
       </div>
 
       {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
+        ? <LoadingState />
         : filteredHierarchy.length === 0
-        ? (
-          <div className='card text-center py-12'>
-            <p style={{ color: 'var(--text-secondary)' }}>{t('taste.noResults')}</p>
-          </div>
-        )
+        ? <EmptyState message={t('taste.noResults')} />
         : (
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
             {filteredHierarchy.map((category) => (

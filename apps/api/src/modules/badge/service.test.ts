@@ -3,6 +3,7 @@ import { expect } from 'jsr:@std/expect';
 
 describe('Badge Service Logic', () => {
   describe('Badge evaluation triggers', () => {
+    // deno-lint-ignore require-await -- test callback signature
     it('should list all available badges', async () => {
       const badges = [
         {

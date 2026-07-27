@@ -8,12 +8,14 @@
 import type { EquipmentType } from './equipment-types.ts';
 import type { BrewMethodValue } from './brew-methods.ts';
 
+/** A single brew-method × equipment-type compatibility rule. */
 export interface BrewMethodEquipmentRuleDef {
   brewMethod: BrewMethodValue;
   equipmentType: EquipmentType;
   compatible: boolean;
 }
 
+/** Full compatibility matrix of brew methods and equipment types. */
 export const BREW_METHOD_EQUIPMENT_RULES: BrewMethodEquipmentRuleDef[] = [
   { brewMethod: 'espresso_machine', equipmentType: 'espresso_machine', compatible: true },
   { brewMethod: 'espresso_machine', equipmentType: 'grinder', compatible: true },

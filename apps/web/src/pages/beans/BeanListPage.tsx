@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { Field } from '../../components/form/Field.tsx';
+import { OwnedItemCard } from '../../components/ui/OwnedItemCard.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
 import { beanApi } from '../../api/index.ts';
 import type { BeanOutput } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger.ts';
@@ -10,7 +17,7 @@ const log = createLogger('BeanListPage');
 /** The user's saved beans: list plus inline create/delete form. */
 export function BeanListPage() {
   const [beans, setBeans] = useState<BeanOutput[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -21,6 +28,8 @@ export function BeanListPage() {
   });
   const [saving, setSaving] = useState(false);
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
+  const toast = useToast();
 
   useEffect(() => {
     log.debug({}, 'BeanListPage mounted');
@@ -32,8 +41,11 @@ export function BeanListPage() {
   useEffect(() => {
     beanApi.list().then((data) => {
       setBeans(data);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'bean list fetch failed');
+      setStatus('error');
+    });
   }, []);
 
   async function handleCreate(e: React.FormEvent) {
@@ -51,30 +63,33 @@ export function BeanListPage() {
       setBeans((prev) => [...prev, newBean]);
       setForm({ name: '', brand: '', origin: '', processing: '', roastLevel: '' });
       setShowForm(false);
-    } catch {
+    } catch (err) {
+      log.error({ err }, 'handleCreate failed');
+      toast.error('bean.error.createFailed');
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!globalThis.confirm(t('common.delete') + '?')) return;
+    if (
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'bean.deleteConfirm',
+        danger: true,
+      })
+    ) return;
     try {
       await beanApi.delete(id);
       setBeans((prev) => prev.filter((b) => b.id !== id));
-    } catch {
+    } catch (err) {
+      log.error({ err, beanId: id }, 'handleDelete failed');
+      toast.error('bean.error.deleteFailed');
     }
   }
 
-  if (loading) {
-    return (
-      <div
-        className='mx-auto max-w-4xl px-6 py-12 text-center'
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {t('common.loading')}
-      </div>
-    );
+  if (status === 'loading') {
+    return <LoadingState className='mx-auto max-w-4xl px-6' />;
   }
 
   return (
@@ -95,79 +110,49 @@ export function BeanListPage() {
             {t('bean.addBeanTitle')}
           </h2>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('common.name')}
-              </label>
+            <Field label={t('common.name')}>
               <input
                 type='text'
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className='input-field'
               />
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('bean.brand')}
-              </label>
+            </Field>
+            <Field label={t('bean.brand')}>
               <input
                 type='text'
                 value={form.brand}
                 onChange={(e) => setForm({ ...form, brand: e.target.value })}
                 className='input-field'
               />
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('bean.origin')}
-              </label>
+            </Field>
+            <Field label={t('bean.origin')}>
               <input
                 type='text'
                 value={form.origin}
                 onChange={(e) => setForm({ ...form, origin: e.target.value })}
                 className='input-field'
-                placeholder='Ethiopia, Colombia...'
+                placeholder={t('bean.origin.placeholder')}
               />
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('bean.processing')}
-              </label>
+            </Field>
+            <Field label={t('bean.processing')}>
               <input
                 type='text'
                 value={form.processing}
                 onChange={(e) => setForm({ ...form, processing: e.target.value })}
                 className='input-field'
-                placeholder='Washed, Natural, Honey...'
+                placeholder={t('bean.processing.placeholder')}
               />
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('bean.roastLevel')}
-              </label>
+            </Field>
+            <Field label={t('bean.roastLevel')}>
               <input
                 type='text'
                 value={form.roastLevel}
                 onChange={(e) => setForm({ ...form, roastLevel: e.target.value })}
                 className='input-field'
-                placeholder='Light, Medium, Dark...'
+                placeholder={t('bean.roastLevel.placeholder')}
               />
-            </div>
+            </Field>
           </div>
           <button type='submit' className='btn-primary mt-4' disabled={saving}>
             {saving ? t('bean.adding') : t('bean.addBeanTitle')}
@@ -175,45 +160,33 @@ export function BeanListPage() {
         </form>
       )}
 
-      {beans.length === 0
-        ? (
-          <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-            {t('bean.noBeansYet')}
-          </div>
-        )
+      {status === 'error'
+        ? <ErrorState message={t('bean.error.loadFailed')} />
+        : beans.length === 0
+        ? <EmptyState message={t('bean.noBeansYet')} />
         : (
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             {beans.map((bean) => (
-              <div key={bean.id} className='card'>
-                <div className='flex items-start justify-between'>
-                  <div>
-                    <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
-                      {bean.name || t('bean.unnamed')}
-                    </h3>
-                    {bean.brand && (
-                      <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
-                        {bean.brand}
-                      </p>
-                    )}
-                    <div
-                      className='flex gap-2 mt-1 text-xs'
-                      style={{ color: 'var(--text-tertiary)' }}
-                    >
-                      {bean.origin && <span>{bean.origin}</span>}
-                      {bean.processing && <span>• {bean.processing}</span>}
-                      {bean.roastLevel && <span>• {bean.roastLevel}</span>}
-                    </div>
-                  </div>
-                  <button
-                    type='button'
-                    onClick={() => handleDelete(bean.id)}
-                    className='text-sm'
-                    style={{ color: 'var(--error)' }}
-                  >
-                    {t('common.delete')}
-                  </button>
-                </div>
-              </div>
+              <OwnedItemCard
+                key={bean.id}
+                title={bean.name || t('bean.unnamed')}
+                subtitle={bean.brand
+                  ? (
+                    <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
+                      {bean.brand}
+                    </p>
+                  )
+                  : undefined}
+                meta={
+                  <>
+                    {bean.origin && <span>{bean.origin}</span>}
+                    {bean.processing && <span>• {bean.processing}</span>}
+                    {bean.roastLevel && <span>• {bean.roastLevel}</span>}
+                  </>
+                }
+                onDelete={() => handleDelete(bean.id)}
+                deleteLabel={t('common.delete')}
+              />
             ))}
           </div>
         )}

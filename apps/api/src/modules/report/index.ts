@@ -15,6 +15,7 @@ import { error, paginated, success, zodValidationHook } from '../../utils/respon
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Hono sub-router for report endpoints, mounted at `/api/v1/reports`. */
 const report = new Hono<AppEnv>();
 
 /** Per-IP rate limit for report submission: 3 requests per 15 minutes. */

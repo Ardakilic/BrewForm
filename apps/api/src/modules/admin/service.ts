@@ -501,6 +501,11 @@ export async function listAuditLogs(
 /**
  * Flush the entire cache or specific keys via cache provider.
  * Logs the action with key details (or 'ALL' if no keys specified).
+ *
+ * The audit row is written with the synthetic 'system' admin ID, which only
+ * satisfies the audit_log.admin_id FK when a user with that ID exists (no
+ * seed creates one). The audit insert is therefore best-effort: a failed
+ * audit write must never fail the cache flush itself.
  */
 export async function flushCache(cache: CacheProvider, keys: string[]) {
   logger.debug({}, 'flushCache started');
@@ -511,13 +516,17 @@ export async function flushCache(cache: CacheProvider, keys: string[]) {
       await cache.delete(['cache', key]);
     }
   }
-  await model.createAuditLog(
-    'system',
-    'FLUSH_CACHE',
-    'Cache',
-    undefined,
-    keys.length > 0 ? keys.join(',') : 'ALL',
-  );
+  try {
+    await model.createAuditLog(
+      'system',
+      'FLUSH_CACHE',
+      'Cache',
+      undefined,
+      keys.length > 0 ? keys.join(',') : 'ALL',
+    );
+  } catch (err) {
+    logger.warn({ err }, 'Failed to write FLUSH_CACHE audit log');
+  }
   logger.debug({}, 'flushCache completed');
 }
 

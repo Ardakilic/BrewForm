@@ -3,7 +3,11 @@ import { useLoaderData, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { Field } from '../../components/form/Field.tsx';
+import { Section } from '../../components/form/Section.tsx';
 import { api } from '../../api/client.ts';
 import { createLogger } from '@/utils/logger.ts';
 import type { UserPreferences, UserPreferencesOutput } from '@brewform/shared/schemas';
@@ -44,6 +48,7 @@ export function SettingsPage() {
   const { user, refreshUser, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, availableLocales, t } = useTranslation();
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
   const { preferences } = useLoaderData<typeof loader>();
   const [prefs, setPrefs] = useState<UserPreferences>(preferences);
@@ -109,7 +114,13 @@ export function SettingsPage() {
    * shared banner. The auth state is preserved so the user can retry.
    */
   async function handleDeleteAccount() {
-    if (!globalThis.confirm(t('settings.deleteConfirm'))) return;
+    if (
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'settings.deleteConfirm',
+        danger: true,
+      })
+    ) return;
     setMessage('');
     setMessageType(null);
     try {
@@ -134,69 +145,38 @@ export function SettingsPage() {
       </h1>
 
       {message && (
-        <div
-          className='mb-4 rounded p-3 text-sm'
-          style={{
-            backgroundColor: messageType === 'error' ? 'var(--error)' : 'var(--success)',
-            color: 'white',
-          }}
-        >
-          {message}
-        </div>
+        messageType === 'error' ? <ErrorState message={message} className='mb-4' /> : (
+          <div
+            className='mb-4 rounded p-3 text-sm'
+            style={{ backgroundColor: 'var(--success)', color: 'white' }}
+          >
+            {message}
+          </div>
+        )
       )}
 
       <div className='space-y-6'>
-        <div className='card'>
-          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-            {t('settings.profile')}
-          </h2>
+        <Section title={t('settings.profile')}>
           <div className='space-y-3'>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('settings.displayName')}
-              </label>
+            <Field label={t('settings.displayName')}>
               <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
                 {user.displayName || t('settings.notSet')}
               </span>
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('auth.username')}
-              </label>
+            </Field>
+            <Field label={t('auth.username')}>
               <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
                 @{user.username}
               </span>
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('auth.email')}
-              </label>
+            </Field>
+            <Field label={t('auth.email')}>
               <span className='text-sm' style={{ color: 'var(--text-primary)' }}>{user.email}</span>
-            </div>
+            </Field>
           </div>
-        </div>
+        </Section>
 
-        <div className='card'>
-          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-            {t('settings.appearance')}
-          </h2>
+        <Section title={t('settings.appearance')}>
           <div className='space-y-3'>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('preferences.theme')}
-              </label>
+            <Field label={t('preferences.theme')}>
               <select
                 value={theme}
                 onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'coffee')}
@@ -206,14 +186,8 @@ export function SettingsPage() {
                 <option value='dark'>{t('theme.dark')}</option>
                 <option value='coffee'>{t('theme.coffee')}</option>
               </select>
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('preferences.locale')}
-              </label>
+            </Field>
+            <Field label={t('preferences.locale')}>
               <select
                 value={locale}
                 onChange={(e) => setLocale(e.target.value as 'en' | 'tr')}
@@ -223,23 +197,14 @@ export function SettingsPage() {
                   <option key={l} value={l}>{l === 'en' ? 'English' : 'Türkçe'}</option>
                 ))}
               </select>
-            </div>
+            </Field>
           </div>
-        </div>
+        </Section>
 
         {prefs && (
-          <div className='card'>
-            <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-              {t('preferences.title')}
-            </h2>
+          <Section title={t('preferences.title')}>
             <div className='space-y-3'>
-              <div>
-                <label
-                  className='block text-sm font-medium mb-1'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {t('preferences.unitSystem')}
-                </label>
+              <Field label={t('preferences.unitSystem')}>
                 <select
                   value={prefs.unitSystem}
                   onChange={(e) =>
@@ -249,14 +214,8 @@ export function SettingsPage() {
                   <option value='metric'>{t('settings.unitSystem.metric')}</option>
                   <option value='imperial'>{t('settings.unitSystem.imperial')}</option>
                 </select>
-              </div>
-              <div>
-                <label
-                  className='block text-sm font-medium mb-1'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {t('preferences.temperature')}
-                </label>
+              </Field>
+              <Field label={t('preferences.temperature')}>
                 <select
                   value={prefs.temperatureUnit}
                   onChange={(e) =>
@@ -269,14 +228,8 @@ export function SettingsPage() {
                   <option value='celsius'>{t('settings.temperatureUnit.celsius')}</option>
                   <option value='fahrenheit'>{t('settings.temperatureUnit.fahrenheit')}</option>
                 </select>
-              </div>
-              <div>
-                <label
-                  className='block text-sm font-medium mb-1'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {t('preferences.dateFormat')}
-                </label>
+              </Field>
+              <Field label={t('preferences.dateFormat')}>
                 <select
                   value={prefs.dateFormat}
                   onChange={(e) =>
@@ -290,7 +243,7 @@ export function SettingsPage() {
                   <option value='DD_MM_YYYY'>DD/MM/YYYY</option>
                   <option value='MM_DD_YYYY'>MM/DD/YYYY</option>
                 </select>
-              </div>
+              </Field>
               <button
                 type='button'
                 onClick={savePreferences}
@@ -300,14 +253,11 @@ export function SettingsPage() {
                 {saving ? t('settings.saving') : t('settings.savePreferences')}
               </button>
             </div>
-          </div>
+          </Section>
         )}
 
         {prefs && (
-          <div className='card'>
-            <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
-              {t('settings.emailNotifications')}
-            </h2>
+          <Section title={t('settings.emailNotifications')}>
             <div className='space-y-3'>
               <NotificationToggle
                 label={t('settings.notif.newFollower')}
@@ -363,7 +313,7 @@ export function SettingsPage() {
             >
               {saving ? t('settings.saving') : t('settings.saveNotifications')}
             </button>
-          </div>
+          </Section>
         )}
 
         <div className='card' style={{ borderColor: 'var(--error)' }}>
@@ -376,8 +326,7 @@ export function SettingsPage() {
           <button
             type='button'
             onClick={handleDeleteAccount}
-            className='text-sm px-4 py-2 rounded'
-            style={{ backgroundColor: 'var(--error)', color: 'white' }}
+            className='btn-danger text-sm'
           >
             {t('settings.deleteAccountBtn')}
           </button>

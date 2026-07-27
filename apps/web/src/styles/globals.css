@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+/*
+ * Heading scale convention (wave-5 T4.7):
+ * - List/detail page titles: `text-2xl font-bold`.
+ * - Browse/landing hero titles: `text-3xl font-bold`.
+ * Recipe titles additionally use `font-serif` (RecipeDetailPage / RecipeFocusModePage).
+ */
+
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -43,6 +50,7 @@
     --success: #16a34a;
     --warning: #d97706;
     --error: #dc2626;
+    --error-bg: #fef2f2;
     --info: #2563eb;
   }
 
@@ -61,6 +69,7 @@
     --success: #22c55e;
     --warning: #f59e0b;
     --error: #ef4444;
+    --error-bg: #450a0a;
     --info: #3b82f6;
   }
 
@@ -79,6 +88,7 @@
     --success: #86efac;
     --warning: #fbbf24;
     --error: #fca5a5;
+    --error-bg: #4e2320;
     --info: #93c5fd;
   }
 
@@ -94,6 +104,15 @@
     border: 1px solid var(--border-primary);
     border-radius: 0.75rem;
     padding: 1.5rem;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
   }
 
   .btn-primary {
@@ -119,6 +138,26 @@
   }
   .btn-secondary:hover {
     background-color: var(--border-secondary);
+  }
+
+  .btn-danger {
+    background-color: var(--error);
+    color: var(--bg-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: background-color 0.15s ease;
+  }
+  .btn-danger:hover {
+    background-color: color-mix(in srgb, var(--error) 85%, black);
+  }
+
+  .btn-danger-text {
+    color: var(--error);
+    transition: color 0.15s ease;
+  }
+  .btn-danger-text:hover {
+    text-decoration: underline;
   }
 
   .input-field {
@@ -154,7 +193,8 @@
 
   .input-field:focus-visible,
   .btn-primary:focus-visible,
-  .btn-secondary:focus-visible {
+  .btn-secondary:focus-visible,
+  .btn-danger:focus-visible {
     outline: none;
   }
 
@@ -164,6 +204,10 @@
 
   .btn-secondary:focus-visible {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 15%, transparent);
+  }
+
+  .btn-danger:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 30%, transparent);
   }
 
   .focus-mode header,
@@ -194,6 +238,7 @@
   .comments-section,
   .btn-primary,
   .btn-secondary,
+  .btn-danger,
   .no-print,
   .print-hidden,
   button[type='button'] {

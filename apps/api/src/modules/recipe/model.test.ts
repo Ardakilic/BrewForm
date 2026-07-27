@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Unit tests for buildRecipeFilters() — the shared filter-building helper.
  *
@@ -74,6 +72,7 @@ const recipeTasteNotes = {
   tasteNoteId: 'recipeTasteNotes.tasteNoteId',
 };
 
+// deno-lint-ignore no-explicit-any -- test mock parameter
 const db: any = {
   select: (projection: unknown) => ({
     from: (table: unknown) => ({

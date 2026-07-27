@@ -10,6 +10,7 @@ function eq(column: string, value: unknown) {
   return { type: 'eq', column, value };
 }
 
+// deno-lint-ignore no-explicit-any -- test mock array
 function and(...conditions: any[]) {
   return { type: 'and', conditions };
 }
@@ -54,6 +55,7 @@ describe('Starred recipes filtering', () => {
   });
 
   it('should handle empty filters gracefully', () => {
+    // deno-lint-ignore no-explicit-any -- test mock array
     const conditions: any[] = [eq('recipes.visibility', 'public')];
     expect(conditions).toHaveLength(1);
     expect(conditions[0].type).toBe('eq');

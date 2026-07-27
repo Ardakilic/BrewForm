@@ -8,6 +8,11 @@ import * as model from './model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import type { BeanCreate, BeanUpdate } from '@brewform/shared/schemas';
 
+/**
+ * Bean service.
+ *
+ * Provides listing, lookup, creation, update, and soft-deletion of coffee beans.
+ */
 export const log = createLogger('bean-service');
 
 /** List paginated beans for the authenticated user. */

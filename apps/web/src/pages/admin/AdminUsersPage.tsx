@@ -5,6 +5,10 @@ import { BanDialog } from '../../components/admin/BanDialog.tsx';
 import { useBanUser } from '../../hooks/useBanUser.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { formatDate } from '../../utils/format.ts';
 
 const log = createLogger('AdminUsersPage');
 
@@ -17,7 +21,7 @@ interface PaginationState {
 
 /** Admin page: paginated, searchable user list with ban dialog and links to detail/edit/create. */
 export function AdminUsersPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -88,23 +92,9 @@ export function AdminUsersPage() {
         </Link>
       </div>
 
-      {error && (
-        <div
-          className='mb-4 p-3 rounded text-sm'
-          style={{ backgroundColor: 'var(--error-bg, #fef2f2)', color: 'var(--error)' }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <ErrorState message={error} className='mb-4' />}
 
-      {banError && (
-        <div
-          className='mb-4 p-3 rounded text-sm'
-          style={{ backgroundColor: 'var(--error-bg, #fef2f2)', color: 'var(--error)' }}
-        >
-          {t(banError)}
-        </div>
-      )}
+      {banError && <ErrorState message={t(banError)} className='mb-4' />}
 
       <form onSubmit={handleSearch} className='mb-4 flex gap-2'>
         <input
@@ -122,20 +112,14 @@ export function AdminUsersPage() {
       {loading
         ? (
           <div className='space-y-4'>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className='h-12 rounded animate-pulse'
-                style={{ backgroundColor: 'var(--bg-tertiary)' }}
-              />
-            ))}
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height='3rem' />)}
           </div>
         )
         : users.length === 0
         ? (
-          <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-            {search ? t('admin.users.noSearchResults') : t('admin.users.noUsers')}
-          </div>
+          <EmptyState
+            message={search ? t('admin.users.noSearchResults') : t('admin.users.noUsers')}
+          />
         )
         : (
           <div className='overflow-x-auto'>
@@ -187,7 +171,7 @@ export function AdminUsersPage() {
                         : t('admin.users.active')}
                     </td>
                     <td className='py-2 px-3' style={{ color: 'var(--text-tertiary)' }}>
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {formatDate(user.createdAt, locale)}
                     </td>
                     <td className='py-2 px-3'>
                       <div className='flex gap-2'>
@@ -220,8 +204,7 @@ export function AdminUsersPage() {
                             <button
                               type='button'
                               onClick={() => openBanDialog(user)}
-                              className='text-xs'
-                              style={{ color: 'var(--error)' }}
+                              className='btn-danger-text text-xs'
                             >
                               {t('admin.users.ban')}
                             </button>

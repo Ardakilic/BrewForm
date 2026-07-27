@@ -24,6 +24,7 @@ const contactSchema = z.object({
   message: z.string().min(10).max(5000),
 });
 
+/** Hono sub-router for contact endpoints, mounted at `/api/v1/contact`. */
 const contact = new Hono<AppEnv>();
 
 contact.use(

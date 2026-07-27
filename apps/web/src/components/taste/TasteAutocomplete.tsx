@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/index.ts';
 import { IntensityDots } from '../recipe/IntensityDots.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import { useSafeT } from '../../utils/safe-translation.ts';
 
 const log = createLogger('TasteAutocomplete');
 
@@ -29,6 +30,7 @@ export function TasteAutocomplete({
   intensities = {},
   onIntensitiesChange,
 }: Props) {
+  const t = useSafeT();
   const [query, setQuery] = useState('');
   const [allNotes, setAllNotes] = useState<TasteNote[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -254,7 +256,7 @@ export function TasteAutocomplete({
                     border: 'none',
                     padding: 0,
                   }}
-                  aria-label={`Set intensity for ${note.name}`}
+                  aria-label={t('a11y.taste.setIntensity').replace('{name}', note.name)}
                 >
                   <IntensityDots intensity={intensity} />
                 </button>
@@ -271,7 +273,7 @@ export function TasteAutocomplete({
                     color: 'var(--text-tertiary)',
                     fontSize: '0.75rem',
                   }}
-                  aria-label={`Remove ${note.name}`}
+                  aria-label={t('a11y.taste.removeNote').replace('{name}', note.name)}
                 >
                   ×
                 </button>
@@ -290,7 +292,7 @@ export function TasteAutocomplete({
         }}
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder='Search SCAA taste notes...'
+        placeholder={t('taste.autocomplete.placeholder')}
         className='input-field'
       />
 

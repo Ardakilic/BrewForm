@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Integration tests for the cursor-pagination routing in the recipe service.
  *
@@ -78,6 +76,7 @@ describe({
     recipesToClean.push(r.id);
 
     const result = await service.listRecipes(
+      // deno-lint-ignore no-explicit-any -- test cast
       { sortBy: 'createdAt', sortOrder: 'desc' } as any,
       1,
       10,
@@ -97,6 +96,7 @@ describe({
     recipesToClean.push(r1.id, r2.id);
 
     const firstPage = await service.listRecipes(
+      // deno-lint-ignore no-explicit-any -- test cast
       { sortBy: 'createdAt', sortOrder: 'desc', perPage: 1 } as any,
       1,
       1,
@@ -105,6 +105,7 @@ describe({
 
     const cursor = encodeCursor({ createdAt: r2.createdAt.toISOString(), id: r2.id });
     const result = await service.listRecipes(
+      // deno-lint-ignore no-explicit-any -- test cast
       { sortBy: 'createdAt', sortOrder: 'desc', cursor } as any,
       1,
       10,
@@ -112,7 +113,9 @@ describe({
 
     expect('hasMore' in result).toBe(true);
     expect(result.recipes.length).toBe(1);
+    // deno-lint-ignore no-explicit-any -- test assertion cast
     expect((result as any).recipes[0].id).toBe(r1.id);
+    // deno-lint-ignore no-explicit-any -- test assertion cast
     expect((result as any).hasMore).toBe(false);
   });
 
@@ -121,6 +124,7 @@ describe({
     recipesToClean.push(r.id);
 
     const cursor = encodeCursor({ createdAt: r.createdAt.toISOString(), id: r.id });
+    // deno-lint-ignore no-explicit-any -- test assertion cast
     const result = await service.listRecipes({ sortBy: 'likeCount', cursor } as any, 1, 10);
 
     expect('total' in result).toBe(true);
@@ -129,6 +133,7 @@ describe({
 
   it('throws INVALID_CURSOR when cursor cannot be decoded', async () => {
     await expect(
+      // deno-lint-ignore no-explicit-any -- test cast
       service.listRecipes({ sortBy: 'createdAt', cursor: '!!!invalid!!!' } as any, 1, 10),
     ).rejects.toThrow('VALIDATION_ERROR: INVALID_CURSOR');
   });
@@ -144,13 +149,16 @@ describe({
 
     const descCursor = encodeCursor({ createdAt: r1.createdAt.toISOString(), id: r1.id });
     const ascResult = await service.listRecipes(
+      // deno-lint-ignore no-explicit-any -- test cast
       { sortBy: 'createdAt', sortOrder: 'asc', cursor: descCursor } as any,
       1,
       10,
     );
 
     expect('hasMore' in ascResult).toBe(true);
+    // deno-lint-ignore no-explicit-any -- test assertion cast
     expect((ascResult as any).recipes.some((recipe: any) => recipe.id === r2.id)).toBe(true);
+    // deno-lint-ignore no-explicit-any -- test assertion cast
     expect((ascResult as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(false);
   });
 
@@ -167,13 +175,16 @@ describe({
     // Using it with DESC should return recipes OLDER than r2 (i.e. r1).
     const ascCursor = encodeCursor({ createdAt: r2.createdAt.toISOString(), id: r2.id });
     const descResult = await service.listRecipes(
+      // deno-lint-ignore no-explicit-any -- test cast
       { sortBy: 'createdAt', sortOrder: 'desc', cursor: ascCursor } as any,
       1,
       10,
     );
 
     expect('hasMore' in descResult).toBe(true);
+    // deno-lint-ignore no-explicit-any -- test assertion cast
     expect((descResult as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(true);
+    // deno-lint-ignore no-explicit-any -- test assertion cast
     expect((descResult as any).recipes.some((recipe: any) => recipe.id === r2.id)).toBe(false);
   });
 
@@ -189,12 +200,14 @@ describe({
     // Pass both cursor and page=5 — cursor must win, page is ignored.
     const cursor = encodeCursor({ createdAt: r2.createdAt.toISOString(), id: r2.id });
     const result = await service.listRecipes(
+      // deno-lint-ignore no-explicit-any -- test cast
       { sortBy: 'createdAt', sortOrder: 'desc', cursor } as any,
       5,
       10,
     );
 
     expect('hasMore' in result).toBe(true);
+    // deno-lint-ignore no-explicit-any -- test assertion cast
     expect((result as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(true);
   });
 
@@ -210,6 +223,7 @@ describe({
       .replaceAll('/', '_')
       .replaceAll('=', '');
     await expect(
+      // deno-lint-ignore no-explicit-any -- test cast
       service.listRecipes({ sortBy: 'createdAt', cursor: badCursor } as any, 1, 10),
     ).rejects.toThrow('VALIDATION_ERROR: INVALID_CURSOR');
   });
@@ -223,6 +237,7 @@ describe({
       id: r.id,
     });
     const result = await service.listRecipes(
+      // deno-lint-ignore no-explicit-any -- test cast
       { sortBy: 'createdAt', cursor: futureCursor, includeTotal: true } as any,
       1,
       10,

@@ -44,4 +44,5 @@ export const CoffeeVarietyOutputSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link CoffeeVarietyOutputSchema}. */
 export type CoffeeVarietyOutput = z.infer<typeof CoffeeVarietyOutputSchema>;

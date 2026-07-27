@@ -1,3 +1,5 @@
+import { useSafeT } from '../../utils/safe-translation.ts';
+
 /**
  * Renders a removable active-filter badge for the recipe-list sidebar.
  *
@@ -7,6 +9,7 @@
 export function ActiveFilterBadge(
   { label, value, onRemove }: { label: string; value: string; onRemove: () => void },
 ) {
+  const t = useSafeT();
   return (
     <div>
       <span
@@ -27,7 +30,7 @@ export function ActiveFilterBadge(
           onClick={onRemove}
           className='text-xs flex-shrink-0'
           style={{ color: 'var(--text-tertiary)' }}
-          aria-label={`Remove ${label} filter`}
+          aria-label={t('a11y.filter.remove').replace('{label}', label)}
         >
           ✕
         </button>

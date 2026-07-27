@@ -4,6 +4,9 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { authApi } from '../../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
+import { Field } from '../../components/form/Field.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 
 const log = createLogger('RegisterPage');
 
@@ -68,7 +71,7 @@ export function RegisterPage() {
       navigate('/');
     } catch (err: unknown) {
       log.error({ err }, 'RegisterPage registration failed');
-      const message = err instanceof Error ? err.message : 'Registration failed';
+      const message = err instanceof Error ? err.message : t('auth.register.error.failed');
       setError(message);
     } finally {
       setLoading(false);
@@ -76,11 +79,7 @@ export function RegisterPage() {
   }
 
   if (statusLoading) {
-    return (
-      <div className='mx-auto max-w-md px-6 py-12 text-center'>
-        <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>
-      </div>
-    );
+    return <LoadingState className='mx-auto max-w-md px-6' />;
   }
 
   if (!registrationEnabled) {
@@ -115,23 +114,17 @@ export function RegisterPage() {
       <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
         {t('auth.register.title')}
       </h1>
-      {error && (
-        <div
-          className='mt-4 rounded p-3 text-sm'
-          style={{ backgroundColor: 'var(--error)', color: 'white' }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <ErrorState message={error} className='mt-4' />}
       <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
-        <div>
-          <label
-            className='mb-1 block text-sm font-medium'
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {t('auth.email')}
-          </label>
+        <Field label={t('auth.email')} htmlFor='email'>
+          {
+            /*
+            D40: 'you@example.com' (and 'coffee_lover' for username) are locale-neutral
+            example values, not prose, so they are intentionally left untranslated.
+          */
+          }
           <input
+            id='email'
             type='email'
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -139,15 +132,10 @@ export function RegisterPage() {
             className='input-field'
             required
           />
-        </div>
-        <div>
-          <label
-            className='mb-1 block text-sm font-medium'
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {t('auth.username')}
-          </label>
+        </Field>
+        <Field label={t('auth.username')} htmlFor='username'>
           <input
+            id='username'
             type='text'
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -155,40 +143,39 @@ export function RegisterPage() {
             className='input-field'
             required
           />
-        </div>
-        <div>
-          <label
-            className='mb-1 block text-sm font-medium'
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {t('auth.register.displayName')}{' '}
-            <span style={{ color: 'var(--text-tertiary)' }}>({t('common.optional')})</span>
-          </label>
+        </Field>
+        <Field
+          label={
+            <>
+              {t('auth.register.displayName')}{' '}
+              <span style={{ color: 'var(--text-tertiary)' }}>({t('common.optional')})</span>
+            </>
+          }
+          htmlFor='displayName'
+        >
           <input
+            id='displayName'
             type='text'
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder='Coffee Lover'
+            placeholder={t('auth.register.displayName.placeholder')}
             className='input-field'
           />
-        </div>
+        </Field>
         <div>
-          <label
-            className='mb-1 block text-sm font-medium'
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {t('auth.password')}
-          </label>
-          <input
-            type='password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder='At least 8 characters'
-            className='input-field'
-            required
-            minLength={8}
-            maxLength={128}
-          />
+          <Field label={t('auth.password')} htmlFor='password'>
+            <input
+              id='password'
+              type='password'
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('auth.password.placeholder')}
+              className='input-field'
+              required
+              minLength={8}
+              maxLength={128}
+            />
+          </Field>
           {password.length > 0 && (
             <ul className='mt-1 text-xs space-y-0.5' style={{ color: 'var(--text-tertiary)' }}>
               <li
@@ -233,22 +220,17 @@ export function RegisterPage() {
             </ul>
           )}
         </div>
-        <div>
-          <label
-            className='mb-1 block text-sm font-medium'
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            {t('auth.confirmPassword')}
-          </label>
+        <Field label={t('auth.confirmPassword')} htmlFor='confirmPassword'>
           <input
+            id='confirmPassword'
             type='password'
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder='Re-enter your password'
+            placeholder={t('auth.register.confirmPassword.placeholder')}
             className='input-field'
             required
           />
-        </div>
+        </Field>
         <button type='submit' className='btn-primary' disabled={loading}>
           {loading ? t('auth.register.creating') : t('nav.register')}
         </button>

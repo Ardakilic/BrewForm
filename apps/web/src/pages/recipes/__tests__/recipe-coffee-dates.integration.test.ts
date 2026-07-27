@@ -18,8 +18,7 @@
  *   4. RecipeDetailPage — all other parameter rows are unaffected by date field presence
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // 1. RecipeCreatePage — date fields in initial form state

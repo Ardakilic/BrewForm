@@ -21,6 +21,7 @@ import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Hono sub-router for taste-note endpoints, mounted at `/api/v1/taste-notes`. */
 const taste = new Hono<AppEnv>();
 
 taste.get(

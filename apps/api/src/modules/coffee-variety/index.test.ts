@@ -53,6 +53,7 @@ function createTestApp() {
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID());
     c.set('userId', 'test-user-id');
+    // deno-lint-ignore no-explicit-any -- test cast
     c.set('user', { id: 'test-user-id', isAdmin: false } as any);
     await next();
   });

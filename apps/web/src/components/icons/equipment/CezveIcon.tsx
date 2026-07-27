@@ -1,10 +1,14 @@
+import { useSafeT } from '../../../utils/safe-translation.ts';
+
 interface IconProps {
   size?: number;
   className?: string;
+  label?: string;
 }
 
 /** SVG icon for a cezve (Turkish coffee pot). */
-export function CezveIcon({ size = 24, className }: IconProps) {
+export function CezveIcon({ size = 24, className, label }: IconProps) {
+  const t = useSafeT();
   return (
     <svg
       width={size}
@@ -16,7 +20,7 @@ export function CezveIcon({ size = 24, className }: IconProps) {
       strokeLinecap='round'
       strokeLinejoin='round'
       role='img'
-      aria-label='Cezve'
+      aria-label={label ?? t('a11y.equipment.cezve')}
       className={className}
     >
       {/* Cezve body — wider at top, narrower at bottom */}

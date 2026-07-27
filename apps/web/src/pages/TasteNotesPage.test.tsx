@@ -25,13 +25,16 @@ vi.mock('@base-ui/react/popover', () => {
       >
         {React.Children.map(children, (child) => {
           if (
+            // deno-lint-ignore no-explicit-any -- test cast
             React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverTrigger'
           ) {
+            // deno-lint-ignore no-explicit-any -- test any usage
             return React.cloneElement(child as React.ReactElement<any>, {
               onClick: () => setOpen((prev: boolean) => !prev),
               'data-open': open,
             });
           }
+          // deno-lint-ignore no-explicit-any -- test cast
           if (React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverPortal') {
             return open ? child : null;
           }
@@ -42,21 +45,28 @@ vi.mock('@base-ui/react/popover', () => {
   };
 
   const PopoverTrigger = (
+    // deno-lint-ignore no-explicit-any -- test mock component props
     { children, openOnHover: _openOnHover, delay: _delay, ...props }: any,
   ) => {
+    // deno-lint-ignore no-explicit-any -- test cast
     const Comp = 'span' as any;
     return <Comp data-popover-trigger {...props}>{children}</Comp>;
   };
   PopoverTrigger.displayName = 'PopoverTrigger';
 
+  // deno-lint-ignore no-explicit-any -- test mock component props
   const PopoverPortal = ({ children }: any) => <>{children}</>;
   PopoverPortal.displayName = 'PopoverPortal';
 
+  // deno-lint-ignore no-explicit-any -- test mock component props
   const PopoverPositioner = ({ children }: any) => <div data-popover-positioner>{children}</div>;
+  // deno-lint-ignore no-explicit-any -- test mock component props
   const PopoverPopup = ({ children, className, ...props }: any) => (
     <div className={className} data-popover-popup {...props}>{children}</div>
   );
+  // deno-lint-ignore no-explicit-any -- test mock parameter
   const PopoverArrow = ({ className }: any) => <div className={className} data-popover-arrow />;
+  // deno-lint-ignore no-explicit-any -- test mock component props
   const PopoverDescription = ({ children, className, ...props }: any) => (
     <div className={className} data-popover-description {...props}>{children}</div>
   );
@@ -168,12 +178,14 @@ const enT = (key: string) => {
   const map: Record<string, string> = {
     'page.tasteNotes': 'Taste Notes',
     'page.tasteNotes.description': 'Explore the SCAA flavor wheel taste notes.',
+    'seo.tasteNotes.description': 'Explore the SCAA flavor wheel taste notes on BrewForm.',
     'taste.reference': 'Reference: notbadcoffee.com/flavor-wheel-en/',
     'common.loading': 'Loading...',
     'taste.searchPlaceholder': 'Search taste notes...',
     'taste.noResults': 'No taste notes match your search.',
     'taste.leafCount': '{count} recipes',
     'taste.infoIconHint': 'Click the info icons next to taste names to see their description.',
+    'a11y.taste.definition': 'Definition of {label}',
   };
   return map[key] ?? key;
 };

@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { BeanListPage } from './BeanListPage.tsx';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -59,9 +60,11 @@ function renderPage() {
   return render(
     <MemoryRouter>
       <I18nProvider>
-        <AuthProvider>
-          <BeanListPage />
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <BeanListPage />
+          </AuthProvider>
+        </ToastProvider>
       </I18nProvider>
     </MemoryRouter>,
   );
@@ -111,6 +114,10 @@ describe('BeanListPage', () => {
     mockLogger.error.mockClear();
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('renders the bean list with bean names after fetch', async () => {
     vi.mocked(beanApi.list).mockResolvedValue(mockBeans);
     renderPage();
@@ -128,12 +135,28 @@ describe('BeanListPage', () => {
     });
   });
 
-  it('renders the empty state message when the fetch rejects', async () => {
+  it('renders the error state when the fetch rejects', async () => {
     vi.mocked(beanApi.list).mockRejectedValue(new Error('Network error'));
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('No beans yet. Add your coffee beans!')).toBeInTheDocument();
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load beans.')).toBeInTheDocument();
     });
+  });
+
+  it('shows an error toast when delete fails', async () => {
+    vi.mocked(beanApi.list).mockResolvedValue(mockBeans);
+    vi.mocked(beanApi.delete).mockRejectedValue(new Error('Network error'));
+    vi.stubGlobal('confirm', () => true);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Ethiopian Yirgacheffe')).toBeInTheDocument());
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to delete bean.')).toBeInTheDocument();
+    });
+    expect(mockLogger.error).toHaveBeenCalled();
   });
 
   it('logs mount and unmount', async () => {

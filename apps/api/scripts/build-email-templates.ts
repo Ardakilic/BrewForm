@@ -26,8 +26,8 @@ for await (const entry of Deno.readDir(templateDir)) {
   if (errors?.length > 0) {
     throw new Error(
       `MJML validation failed for ${entry.name}: ${
-        errors.map((e: any) => (e as any).formattedMessage ?? (e as any).message).join(', ')
-      }`,
+        // deno-lint-ignore no-explicit-any -- MJML error objects are untyped
+        errors.map((e: any) => (e as any).formattedMessage ?? (e as any).message).join(', ')}`,
     );
   }
 

@@ -17,6 +17,7 @@ function createMockContext(requestId: string = 'test-req-id') {
   return {
     get: (key: string) => key === 'requestId' ? requestId : null,
     json: (body: unknown, status: number) => ({ body, status }),
+    // deno-lint-ignore no-explicit-any -- test cast
   } as any;
 }
 
@@ -33,13 +34,16 @@ describe('Response Helpers', () => {
       const c = createMockContext();
       const result = success(c, { id: '1', name: 'Test' }, 200);
       expect(result.status).toBe(200);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.success).toBe(true);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.data).toEqual({ id: '1', name: 'Test' });
     });
 
     it('should include pagination meta when provided', () => {
       const c = createMockContext();
       const result = success(c, [], 200, { pagination });
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.meta.pagination).toEqual(pagination);
     });
 
@@ -55,8 +59,11 @@ describe('Response Helpers', () => {
       const c = createMockContext();
       const data = [{ id: '1' }, { id: '2' }];
       const result = paginated(c, data, pagination);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.success).toBe(true);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.data).toEqual(data);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.meta.pagination).toEqual(pagination);
     });
   });
@@ -66,8 +73,11 @@ describe('Response Helpers', () => {
       const c = createMockContext();
       const result = error(c, 'NOT_FOUND', 'Resource not found', 404);
       expect(result.status).toBe(404);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.success).toBe(false);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.code).toBe('NOT_FOUND');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.message).toBe('Resource not found');
     });
 
@@ -75,6 +85,7 @@ describe('Response Helpers', () => {
       const c = createMockContext();
       const details = [{ field: 'email', message: 'Invalid email' }];
       const result = error(c, 'VALIDATION_ERROR', 'Validation failed', 400, details);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.details).toEqual(details);
     });
   });
@@ -84,13 +95,16 @@ describe('Response Helpers', () => {
       const c = createMockContext();
       const result = notFound(c);
       expect(result.status).toBe(404);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.code).toBe('NOT_FOUND');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.message).toBe('Resource not found');
     });
 
     it('should use custom resource name', () => {
       const c = createMockContext();
       const result = notFound(c, 'Recipe');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.message).toBe('Recipe not found');
     });
   });
@@ -100,12 +114,14 @@ describe('Response Helpers', () => {
       const c = createMockContext();
       const result = unauthorized(c);
       expect(result.status).toBe(401);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.code).toBe('UNAUTHORIZED');
     });
 
     it('should use custom message', () => {
       const c = createMockContext();
       const result = unauthorized(c, 'Token expired');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.message).toBe('Token expired');
     });
   });
@@ -115,6 +131,7 @@ describe('Response Helpers', () => {
       const c = createMockContext();
       const result = forbidden(c);
       expect(result.status).toBe(403);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.code).toBe('FORBIDDEN');
     });
   });
@@ -128,7 +145,9 @@ describe('Response Helpers', () => {
       ];
       const result = validationError(c, details);
       expect(result.status).toBe(400);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.code).toBe('VALIDATION_ERROR');
+      // deno-lint-ignore no-explicit-any -- test assertion cast
       expect((result as any).body.error.details).toEqual(details);
     });
   });

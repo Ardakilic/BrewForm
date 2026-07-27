@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Schema column-existence tests for join-table audit timestamps.
  *
@@ -43,6 +41,7 @@ import {
  * @returns The column config object, or `undefined` when missing.
  */
 function getColumnConfig(
+  // deno-lint-ignore no-explicit-any -- test any usage
   table: PgTableWithColumns<any>,
   columnName: string,
 ) {

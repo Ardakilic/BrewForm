@@ -14,6 +14,7 @@ import { error, success } from '../../utils/response/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
 
+/** Hono sub-router for preference endpoints, mounted at `/api/v1/preferences`. */
 const preference = new Hono<AppEnv>();
 
 preference.get(

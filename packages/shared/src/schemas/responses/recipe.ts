@@ -31,6 +31,7 @@ export const RecipeRowSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link RecipeRowSchema}. */
 export type RecipeRow = z.infer<typeof RecipeRowSchema>;
 
 /**
@@ -42,6 +43,7 @@ export const RecipeWithAuthorOutputSchema = RecipeRowSchema.extend({
   author: RecipeAuthorMiniSchema,
 });
 
+/** Inferred type of {@link RecipeWithAuthorOutputSchema}. */
 export type RecipeWithAuthorOutput = z.infer<typeof RecipeWithAuthorOutputSchema>;
 
 /** A `recipeVersionPhotos` join row carrying the full joined `photo`. */
@@ -95,6 +97,7 @@ export const RecipeVersionRowSchema = z.object({
   versionPhotos: z.array(RecipeVersionPhotoSchema),
 });
 
+/** Inferred type of {@link RecipeVersionRowSchema}. */
 export type RecipeVersionRow = z.infer<typeof RecipeVersionRowSchema>;
 
 /**
@@ -106,6 +109,7 @@ export const RecipeWithVersionsOutputSchema = RecipeRowSchema.extend({
   versions: z.array(RecipeVersionRowSchema),
 });
 
+/** Inferred type of {@link RecipeWithVersionsOutputSchema}. */
 export type RecipeWithVersionsOutput = z.infer<typeof RecipeWithVersionsOutputSchema>;
 
 /**
@@ -121,6 +125,7 @@ export const FeedRecipeOutputSchema = RecipeRowSchema.extend({
   }),
 });
 
+/** Inferred type of {@link FeedRecipeOutputSchema}. */
 export type FeedRecipeOutput = z.infer<typeof FeedRecipeOutputSchema>;
 
 /**
@@ -133,6 +138,7 @@ export type FeedRecipeOutput = z.infer<typeof FeedRecipeOutputSchema>;
  * feed endpoint if future enrichment is added.
  */
 export const RecipeListItemOutputSchema = FeedRecipeOutputSchema;
+/** Inferred type of {@link RecipeListItemOutputSchema}. */
 export type RecipeListItemOutput = z.infer<typeof RecipeListItemOutputSchema>;
 
 /**
@@ -196,6 +202,9 @@ export const RecipeDetailVersionOutputSchema = RecipeVersionRowSchema.omit({ ver
       bean: RecipeDetailBeanMiniSchema.nullable(),
     },
   );
+
+/** Inferred type of {@link RecipeDetailVersionOutputSchema}. */
+export type RecipeDetailVersionOutput = z.infer<typeof RecipeDetailVersionOutputSchema>;
 
 /** Forked-from recipe projection (`{ id, slug, title }`) — `null` when not a fork. */
 const RecipeForkedFromMiniSchema = z.object({
@@ -275,4 +284,5 @@ export const RecipeDetailOutputSchema = RecipeRowSchema.extend({
   userRating: z.number().int().nullable(),
 });
 
+/** Inferred type of {@link RecipeDetailOutputSchema}. */
 export type RecipeDetailOutput = z.infer<typeof RecipeDetailOutputSchema>;

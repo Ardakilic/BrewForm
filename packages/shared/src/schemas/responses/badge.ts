@@ -22,6 +22,7 @@ export const BadgeOutputSchema = z.object({
   updatedAt: z.string(),
 });
 
+/** Inferred type of {@link BadgeOutputSchema}. */
 export type BadgeOutput = z.infer<typeof BadgeOutputSchema>;
 
 /** Badge definition projection embedded in a user-badge row (leftJoin → nullable). */
@@ -45,4 +46,5 @@ export const UserBadgeOutputSchema = z.object({
   badge: UserBadgeBadgeSchema,
 });
 
+/** Inferred type of {@link UserBadgeOutputSchema}. */
 export type UserBadgeOutput = z.infer<typeof UserBadgeOutputSchema>;

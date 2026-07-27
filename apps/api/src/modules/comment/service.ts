@@ -9,6 +9,7 @@ import { sanitizeText } from '../../utils/sanitize.ts';
 import { parseMentions } from '@brewform/shared/utils';
 import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
+import { canViewRecipe } from '../recipe/service.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyRecipeCommented } from '../../utils/notify/index.ts';
 import { createMentionNotifications } from '../notification/service.ts';
@@ -52,6 +53,15 @@ export async function createComment(
   isAdmin: boolean,
   parentCommentId?: string,
 ) {
+  // D99.9 visibility gate FIRST: a recipe the caller may not view is
+  // indistinguishable from a recipe that does not exist (404, not 403).
+  // This also closes the F04 mention side-effect disclosure vector — the
+  // side-effects below only run inside successful creation.
+  const recipe = await deps.model.getRecipeForAccessCheck(recipeId);
+  if (!recipe || !canViewRecipe(recipe, userId, isAdmin)) {
+    throw new Error('RECIPE_NOT_FOUND');
+  }
+
   let effectiveParentCommentId: string | null = parentCommentId || null;
   let effectiveContent = sanitizeText(content);
 
@@ -59,8 +69,7 @@ export async function createComment(
     const targetComment = await deps.model.findById(parentCommentId);
     if (!targetComment) throw new Error('COMMENT_NOT_FOUND');
 
-    const recipeAuthorId = await deps.model.getRecipeAuthorId(recipeId);
-    if (!isAdmin && recipeAuthorId !== userId) {
+    if (!isAdmin && recipe.authorId !== userId) {
       throw new Error('FORBIDDEN');
     }
 
@@ -183,8 +192,31 @@ export async function runCommentNotificationSideEffects(params: {
   logger.debug({ userId, recipeId, commentId }, 'runCommentNotificationSideEffects completed');
 }
 
-/** List paginated comments for a recipe with nested replies. */
-export async function listComments(recipeId: string, page: number, perPage: number) {
+/**
+ * List paginated comments for a recipe with nested replies.
+ *
+ * Applies the same D99.9 visibility gate as {@link createComment} — a recipe
+ * the caller may not view throws RECIPE_NOT_FOUND (existence-hiding, mapped to
+ * 404 by the route). Gating only creation would still leak content via list.
+ *
+ * @param recipeId - The recipe whose comments to list
+ * @param page - 1-based page number
+ * @param perPage - Top-level comments per page
+ * @param userId - Authenticated caller id, or null/undefined when anonymous
+ * @param isAdmin - Whether the caller has admin privileges
+ * @returns Paginated comments with nested replies
+ */
+export async function listComments(
+  recipeId: string,
+  page: number,
+  perPage: number,
+  userId?: string | null,
+  isAdmin?: boolean,
+) {
+  const recipe = await deps.model.getRecipeForAccessCheck(recipeId);
+  if (!recipe || !canViewRecipe(recipe, userId, isAdmin)) {
+    throw new Error('RECIPE_NOT_FOUND');
+  }
   return deps.model.findByRecipe(recipeId, page, perPage);
 }
 

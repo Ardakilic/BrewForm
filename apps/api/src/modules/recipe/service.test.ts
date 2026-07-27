@@ -1,8 +1,20 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
-import { describe, it } from 'jsr:@std/testing/bdd';
+import '../../test-setup.ts';
+import { afterAll, afterEach, beforeAll, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import fc from 'npm:fast-check';
+import { db } from '@brewform/db';
+import {
+  recipes,
+  recipeVersions,
+  userBadges,
+  userRecipeFavourites,
+  userRecipeLikes,
+  users,
+} from '@brewform/db/schema';
+import { eq, inArray } from 'drizzle-orm';
+import * as model from './model.ts';
+import * as service from './service.ts';
+import { canViewRecipe } from './service.ts';
 import { computeBrewRatio, computeExtractionYield, computeFlowRate } from '@brewform/shared/utils';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import {
@@ -392,15 +404,19 @@ describe('tasteNoteIds AND logic filtering', () => {
     tasteNoteId: 'recipeTasteNotes.tasteNoteId',
   };
 
+  // deno-lint-ignore no-explicit-any -- test mock parameter
   const db: any = {
     select: () => ({
+      // deno-lint-ignore no-explicit-any -- test mock parameter
       from: (_table: any) => ({
         where: (cond: unknown) => cond,
       }),
     }),
   };
 
+  // deno-lint-ignore no-explicit-any require-await -- test mock parameter
   async function listRecipes_withTasteNoteFilters(filters: any, page: number, perPage: number) {
+    // deno-lint-ignore no-explicit-any -- test mock array
     const conditions: any[] = [eq(recipes.visibility, 'public')];
 
     if (filters.tasteNoteIds) {
@@ -488,3 +504,381 @@ describe('Recipe Create/Update input types', () => {
     expect(parsed.visibility).toBe('public');
   });
 });
+
+describe('canViewRecipe', () => {
+  const authorId = 'author-1';
+  const otherId = 'other-2';
+
+  for (const visibility of ['public', 'unlisted']) {
+    it(`should return true for ${visibility} recipes regardless of caller`, () => {
+      expect(canViewRecipe({ visibility, authorId })).toBe(true);
+      expect(canViewRecipe({ visibility, authorId }, null)).toBe(true);
+      expect(canViewRecipe({ visibility, authorId }, otherId)).toBe(true);
+      expect(canViewRecipe({ visibility, authorId }, authorId)).toBe(true);
+      expect(canViewRecipe({ visibility, authorId }, otherId, true)).toBe(true);
+    });
+  }
+
+  for (const visibility of ['draft', 'private']) {
+    it(`should return false for ${visibility} recipes when anonymous`, () => {
+      expect(canViewRecipe({ visibility, authorId })).toBe(false);
+      expect(canViewRecipe({ visibility, authorId }, null)).toBe(false);
+    });
+
+    it(`should return false for ${visibility} recipes for a non-owner`, () => {
+      expect(canViewRecipe({ visibility, authorId }, otherId)).toBe(false);
+    });
+
+    it(`should return true for ${visibility} recipes for the owner`, () => {
+      expect(canViewRecipe({ visibility, authorId }, authorId)).toBe(true);
+    });
+
+    it(`should return true for ${visibility} recipes for an admin (deliberate bypass)`, () => {
+      expect(canViewRecipe({ visibility, authorId }, otherId, true)).toBe(true);
+      expect(canViewRecipe({ visibility, authorId }, null, true)).toBe(true);
+    });
+  }
+});
+
+/**
+ * DB-backed integration tests for recipe service branches.
+ *
+ * Exercises the real service functions against the PostgreSQL test database:
+ * lookup (slug vs id), authorization errors (FORBIDDEN / RECIPE_NOT_FOUND),
+ * the like/favourite/feature toggles, notes, metadata, forking, and updates.
+ */
+describe(
+  'Recipe Service — DB integration',
+  { sanitizeOps: false, sanitizeResources: false },
+  () => {
+    let author: typeof users.$inferSelect;
+    let other: typeof users.$inferSelect;
+    const createdRecipes: string[] = [];
+    const createdUsers: string[] = [];
+
+    async function makeUser(prefix: string) {
+      const id = crypto.randomUUID();
+      const [user] = await db.insert(users).values({
+        id,
+        email: `${prefix}-${id}@example.com`,
+        username: `${prefix}-${id.slice(0, 8)}`,
+        passwordHash: 'hash',
+      }).returning();
+      createdUsers.push(user.id);
+      return user;
+    }
+
+    /** Insert a recipe + first version, linking `currentVersionId`. */
+    async function makeRecipe(
+      authorId: string,
+      title: string,
+      visibility: 'public' | 'draft' | 'private' | 'unlisted' = 'public',
+    ) {
+      const recipeId = crypto.randomUUID();
+      const [recipe] = await db.insert(recipes).values({
+        id: recipeId,
+        slug: `slug-${recipeId.slice(0, 8)}`,
+        title,
+        authorId,
+        visibility,
+      }).returning();
+      createdRecipes.push(recipe.id);
+      const [version] = await db.insert(recipeVersions).values({
+        recipeId: recipe.id,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: 'test preparation',
+      }).returning();
+      await db.update(recipes).set({ currentVersionId: version.id }).where(
+        eq(recipes.id, recipe.id),
+      );
+      return recipe;
+    }
+
+    /** Insert a recipe with no version (currentVersionId stays null). */
+    async function makeBareRecipe(authorId: string, title: string) {
+      const recipeId = crypto.randomUUID();
+      const [recipe] = await db.insert(recipes).values({
+        id: recipeId,
+        slug: `slug-${recipeId.slice(0, 8)}`,
+        title,
+        authorId,
+        visibility: 'public',
+      }).returning();
+      createdRecipes.push(recipe.id);
+      return recipe;
+    }
+
+    /** Delete a user, draining the fire-and-forget badge-evaluation race. */
+    async function deleteUserWithBadges(userId: string) {
+      for (let attempt = 0;; attempt++) {
+        await db.delete(userBadges).where(eq(userBadges.userId, userId));
+        try {
+          await db.delete(users).where(eq(users.id, userId));
+          return;
+        } catch (err) {
+          if (attempt >= 9) throw err;
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+      }
+    }
+
+    beforeAll(async () => {
+      author = await makeUser('svc-author');
+      other = await makeUser('svc-other');
+    });
+
+    afterEach(async () => {
+      if (createdRecipes.length) {
+        await db.delete(userRecipeLikes).where(inArray(userRecipeLikes.recipeId, createdRecipes));
+        await db.delete(userRecipeFavourites).where(
+          inArray(userRecipeFavourites.recipeId, createdRecipes),
+        );
+        await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipes));
+        await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+        createdRecipes.length = 0;
+      }
+    });
+
+    afterAll(async () => {
+      if (createdRecipes.length) {
+        await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipes));
+        await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+      }
+      for (const userId of createdUsers) {
+        await deleteUserWithBadges(userId);
+      }
+    });
+
+    describe('getRecipe', () => {
+      it('should resolve a recipe by id', async () => {
+        const recipe = await makeRecipe(author.id, 'Get By Id');
+        const found = await service.getRecipe(recipe.id);
+        expect(found.id).toBe(recipe.id);
+      });
+
+      it('should resolve a recipe by slug', async () => {
+        const recipe = await makeRecipe(author.id, 'Get By Slug');
+        const found = await service.getRecipe(recipe.slug);
+        expect(found.id).toBe(recipe.id);
+      });
+
+      it('should throw RECIPE_NOT_FOUND for an unknown slug', async () => {
+        await expect(service.getRecipe('no-such-slug')).rejects.toThrow('RECIPE_NOT_FOUND');
+      });
+    });
+
+    describe('deleteRecipe', () => {
+      it('should soft-delete the recipe for its author', async () => {
+        const recipe = await makeRecipe(author.id, 'Delete Mine');
+        await service.deleteRecipe(recipe.id, author.id);
+        const found = await model.findById(recipe.id);
+        expect(found).toBeUndefined();
+      });
+
+      it('should throw FORBIDDEN for a non-author', async () => {
+        const recipe = await makeRecipe(author.id, 'Delete Forbidden');
+        await expect(service.deleteRecipe(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
+      });
+
+      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+        await expect(service.deleteRecipe(crypto.randomUUID(), author.id)).rejects.toThrow(
+          'RECIPE_NOT_FOUND',
+        );
+      });
+    });
+
+    describe('toggleLike', () => {
+      it('should like then unlike a recipe', async () => {
+        const recipe = await makeRecipe(author.id, 'Like Toggle');
+        const first = await service.toggleLike(author.id, recipe.id);
+        expect(first.liked).toBe(true);
+        const second = await service.toggleLike(author.id, recipe.id);
+        expect(second.liked).toBe(false);
+      });
+
+      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+        await expect(service.toggleLike(author.id, crypto.randomUUID())).rejects.toThrow(
+          'RECIPE_NOT_FOUND',
+        );
+      });
+    });
+
+    describe('toggleFavourite', () => {
+      it('should favourite then unfavourite a recipe', async () => {
+        const recipe = await makeRecipe(author.id, 'Fav Toggle');
+        const first = await service.toggleFavourite(author.id, recipe.id);
+        expect(first.favourited).toBe(true);
+        const second = await service.toggleFavourite(author.id, recipe.id);
+        expect(second.favourited).toBe(false);
+      });
+
+      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+        await expect(service.toggleFavourite(author.id, crypto.randomUUID())).rejects.toThrow(
+          'RECIPE_NOT_FOUND',
+        );
+      });
+    });
+
+    describe('toggleFeature', () => {
+      it('should toggle the featured flag for the author', async () => {
+        const recipe = await makeRecipe(author.id, 'Feature Toggle');
+        const result = await service.toggleFeature(recipe.id, author.id);
+        expect(typeof result.featured).toBe('boolean');
+      });
+
+      it('should throw FORBIDDEN for a non-author', async () => {
+        const recipe = await makeRecipe(author.id, 'Feature Forbidden');
+        await expect(service.toggleFeature(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
+      });
+
+      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+        await expect(service.toggleFeature(crypto.randomUUID(), author.id)).rejects.toThrow(
+          'RECIPE_NOT_FOUND',
+        );
+      });
+    });
+
+    describe('saveNotes', () => {
+      it('should save notes on the current version', async () => {
+        const recipe = await makeRecipe(author.id, 'Notes OK');
+        await service.saveNotes(recipe.id, 'My personal notes');
+        const reloaded = await model.findById(recipe.id);
+        expect(reloaded?.versions?.[0]?.personalNotes).toBe('My personal notes');
+      });
+
+      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+        await expect(service.saveNotes(crypto.randomUUID(), 'x')).rejects.toThrow(
+          'RECIPE_NOT_FOUND',
+        );
+      });
+
+      it('should throw RECIPE_NOT_FOUND when there is no current version', async () => {
+        const recipe = await makeBareRecipe(author.id, 'Notes No Version');
+        await expect(service.saveNotes(recipe.id, 'x')).rejects.toThrow('RECIPE_NOT_FOUND');
+      });
+    });
+
+    describe('getRecipeMeta', () => {
+      it('should return lightweight metadata for a slug', async () => {
+        const recipe = await makeRecipe(author.id, 'Meta Recipe');
+        const meta = await service.getRecipeMeta(recipe.slug);
+        expect(meta.id).toBe(recipe.id);
+        expect(meta.slug).toBe(recipe.slug);
+        expect(meta.title).toBe('Meta Recipe');
+        expect(meta.brewMethod).toBe('v60');
+      });
+
+      it('should throw RECIPE_NOT_FOUND for an unknown slug', async () => {
+        await expect(service.getRecipeMeta('no-such-slug')).rejects.toThrow('RECIPE_NOT_FOUND');
+      });
+    });
+
+    describe('checkEquipmentCompatibility', () => {
+      it('should return no messages when all equipment is compatible', () => {
+        const messages = service.checkEquipmentCompatibility(
+          [{ id: 'e1', type: 'paper_filter' }],
+          'v60' as never,
+          [{ brewMethod: 'v60' as never, equipmentType: 'paper_filter', compatible: true }],
+        );
+        expect(messages).toEqual([]);
+      });
+
+      it('should report incompatible equipment', () => {
+        const messages = service.checkEquipmentCompatibility(
+          [{ id: 'e1', type: 'french_press' }],
+          'espresso_machine' as never,
+          [{
+            brewMethod: 'espresso_machine' as never,
+            equipmentType: 'french_press',
+            compatible: false,
+          }],
+        );
+        expect(messages).toEqual(['french_press is not compatible with espresso_machine']);
+      });
+
+      it('should ignore equipment with no matching rule', () => {
+        const messages = service.checkEquipmentCompatibility(
+          [{ id: 'e1', type: 'unknown_thing' }],
+          'v60' as never,
+          [{ brewMethod: 'v60' as never, equipmentType: 'paper_filter', compatible: false }],
+        );
+        expect(messages).toEqual([]);
+      });
+    });
+
+    describe('forkRecipe', () => {
+      it('should throw RECIPE_NOT_FOUND for an unknown source', async () => {
+        await expect(service.forkRecipe(crypto.randomUUID(), author.id)).rejects.toThrow(
+          'RECIPE_NOT_FOUND',
+        );
+      });
+
+      it('should throw FORBIDDEN when a non-author forks a draft', async () => {
+        const recipe = await makeRecipe(author.id, 'Fork Draft', 'draft');
+        await expect(service.forkRecipe(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
+      });
+
+      it('should fork a public recipe into a new draft', async () => {
+        const source = await makeRecipe(author.id, 'Fork Public Source', 'public');
+        const forked = await service.forkRecipe(source.id, other.id);
+        createdRecipes.push(forked.id);
+        expect(forked.authorId).toBe(other.id);
+        expect(forked.visibility).toBe('draft');
+        expect(forked.forkedFromId).toBe(source.id);
+      });
+    });
+
+    describe('updateRecipe', () => {
+      it('should update top-level fields without bumping the version', async () => {
+        const recipe = await makeRecipe(author.id, 'Update Title');
+        const updated = await service.updateRecipe(recipe.id, author.id, {
+          bumpVersion: false,
+          title: 'Updated Title',
+          visibility: 'unlisted',
+        });
+        expect(updated?.title).toBe('Updated Title');
+        expect(updated?.visibility).toBe('unlisted');
+        expect(updated?.versions?.length).toBe(1);
+      });
+
+      it('should create a new version when bumpVersion is set', async () => {
+        const recipe = await makeRecipe(author.id, 'Update Bump');
+        const updated = await service.updateRecipe(recipe.id, author.id, {
+          bumpVersion: true,
+          productName: 'New Bean',
+        });
+        expect(updated?.versions?.length).toBe(2);
+        expect(updated?.versions?.[0]?.versionNumber).toBe(2);
+      });
+
+      it('should throw FORBIDDEN for a non-author', async () => {
+        const recipe = await makeRecipe(author.id, 'Update Forbidden');
+        await expect(service.updateRecipe(recipe.id, other.id, { bumpVersion: false, title: 'X' }))
+          .rejects.toThrow('FORBIDDEN');
+      });
+
+      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+        await expect(
+          service.updateRecipe(crypto.randomUUID(), author.id, { bumpVersion: false, title: 'X' }),
+        ).rejects.toThrow('RECIPE_NOT_FOUND');
+      });
+    });
+
+    describe('listStarredRecipes', () => {
+      it('should flag the deprecated tasteNoteId param and ignore cursor', async () => {
+        const viewer = await makeUser('svc-starred');
+        const result = await service.listStarredRecipes(
+          // deno-lint-ignore no-explicit-any -- test cast
+          { tasteNoteId: crypto.randomUUID(), cursor: 'ignored' } as any,
+          1,
+          10,
+          viewer.id,
+        );
+        expect(result.deprecations?.tasteNoteId).toBe(true);
+        expect(result.recipes.length).toBe(0);
+      });
+    });
+  },
+);

@@ -3,8 +3,17 @@ import type { CollectionCreate, CollectionUpdate } from '@brewform/shared/schema
 import type { Visibility } from '@brewform/shared/types';
 import { createLogger } from '../../utils/logger/index.ts';
 import * as recipeModel from '../recipe/model.ts';
+import { cacheProvider } from '../../utils/cache/singleton.ts';
 
-const logger = createLogger('collection-service');
+/** Module logger (exported for test spies — mirrors coffee-variety/service.ts). */
+export const logger = createLogger('collection-service');
+
+/** Detail-cache key for one collection (TTL 10 min). */
+const COLLECTION_DETAIL_KEY = (id: string) => ['collection-detail', id];
+const COLLECTION_DETAIL_TTL_MS = 10 * 60 * 1000;
+/** Shared prefix for all collection LIST caches — swept on every mutation. */
+const COLLECTION_LIST_PREFIX = ['cache', 'collections'];
+const COLLECTION_LIST_TTL_MS = 5 * 60 * 1000;
 
 /**
  * A fully-loaded collection row as returned by {@link model.findById}: the
@@ -88,6 +97,34 @@ function toDetailOutput(collection: CollectionWithRelations) {
   };
 }
 
+/** A single public-collection row as returned by {@link model.findAllPublic}. */
+type PublicCollectionRow = Awaited<ReturnType<typeof model.findAllPublic>>['collections'][number];
+
+/**
+ * Map a model.findAllPublic row to the PublicCollectionListItemOutput wire
+ * shape: ISO timestamps, recipeCount, and the owner `author` projection.
+ */
+function toPublicListItemOutput(c: PublicCollectionRow) {
+  return {
+    id: c.id,
+    userId: c.userId,
+    name: c.name,
+    description: c.description,
+    visibility: c.visibility,
+    createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
+    updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
+    deletedAt: c.deletedAt instanceof Date ? c.deletedAt.toISOString() : c.deletedAt ?? null,
+    recipeCount: c.recipeCount,
+    author: c.user
+      ? {
+        username: c.user.username,
+        displayName: c.user.displayName,
+        avatarUrl: c.user.avatarUrl,
+      }
+      : { username: '', displayName: null, avatarUrl: null },
+  };
+}
+
 /**
  * Create a collection for the authenticated user.
  * @param userId - The authenticated user's UUID.
@@ -98,6 +135,8 @@ export async function createCollection(userId: string, data: CollectionCreate) {
   logger.debug({ userId }, 'createCollection started');
   const created = await model.create({ userId, ...data });
   const collection = await model.findById(created.id);
+  // Fresh UUID — no detail-cache entry can exist yet; sweep lists only.
+  await cacheProvider?.deleteByPrefix(COLLECTION_LIST_PREFIX);
   logger.debug({ userId, collectionId: created.id }, 'createCollection completed');
   return collection ? toDetailOutput(collection) : null;
 }
@@ -122,6 +161,8 @@ export async function updateCollection(
   if (collection.userId !== userId) throw new Error('FORBIDDEN');
   await model.update(collectionId, data);
   const updated = await model.findById(collectionId);
+  await cacheProvider?.delete(COLLECTION_DETAIL_KEY(collectionId));
+  await cacheProvider?.deleteByPrefix(COLLECTION_LIST_PREFIX);
   logger.debug({ userId, collectionId }, 'updateCollection completed');
   return updated ? toDetailOutput(updated) : null;
 }
@@ -139,11 +180,13 @@ export async function deleteCollection(userId: string, collectionId: string) {
   if (!collection) throw new Error('COLLECTION_NOT_FOUND');
   if (collection.userId !== userId) throw new Error('FORBIDDEN');
   await model.softDelete(collectionId);
+  await cacheProvider?.delete(COLLECTION_DETAIL_KEY(collectionId));
+  await cacheProvider?.deleteByPrefix(COLLECTION_LIST_PREFIX);
   logger.debug({ userId, collectionId }, 'deleteCollection completed');
 }
 
 /**
- * Get a collection by ID with visibility check.
+ * Get a collection by ID with visibility check (cache-aside, 10 min TTL).
  * @param userId       - The requesting user's UUID (null if unauthenticated).
  * @param collectionId - The collection's UUID.
  * @throws 'COLLECTION_NOT_FOUND' if the collection does not exist.
@@ -152,6 +195,23 @@ export async function deleteCollection(userId: string, collectionId: string) {
  */
 export async function getCollection(userId: string | null, collectionId: string) {
   logger.debug({ userId, collectionId }, 'getCollection started');
+  const cached = await cacheProvider?.get<ReturnType<typeof toDetailOutput>>(
+    COLLECTION_DETAIL_KEY(collectionId),
+  );
+  if (cached) {
+    // A cache hit must NEVER widen access (design.md Risk 3): replay the
+    // visibility check against the cached shape, which retains userId and
+    // visibility — a private collection warmed by its owner stays forbidden
+    // to everyone else.
+    if (
+      (cached.visibility === 'private' || cached.visibility === 'draft') &&
+      cached.userId !== userId
+    ) {
+      throw new Error('FORBIDDEN');
+    }
+    logger.debug({ userId, collectionId }, 'getCollection cache hit');
+    return cached;
+  }
   const collection = await model.findById(collectionId);
   if (!collection) throw new Error('COLLECTION_NOT_FOUND');
   if (
@@ -160,8 +220,14 @@ export async function getCollection(userId: string | null, collectionId: string)
   ) {
     throw new Error('FORBIDDEN');
   }
+  // Cache only AFTER the not-found check; cache regardless of visibility —
+  // the cached-hit re-check above guards private/draft entries.
+  const result = toDetailOutput(collection);
+  await cacheProvider?.set(COLLECTION_DETAIL_KEY(collectionId), result, {
+    ttlMs: COLLECTION_DETAIL_TTL_MS,
+  });
   logger.debug({ userId, collectionId }, 'getCollection completed');
-  return toDetailOutput(collection);
+  return result;
 }
 
 /**
@@ -182,7 +248,29 @@ export async function listMyCollections(
   recipeId?: string,
 ) {
   logger.debug({ userId, page, perPage }, 'listMyCollections started');
-  const result = await model.findByUserId(userId, page, perPage, visibility, recipeId);
+  // With a recipe context the per-(user, recipe) `containsRecipe` overlay feeds
+  // the AddToCollection modal and has near-zero hit rate — BYPASS the cache
+  // entirely (read-through, no store; design.md Decision 5).
+  if (recipeId) {
+    const result = await model.findByUserId(userId, page, perPage, visibility, recipeId);
+    logger.debug({ userId, total: result.total }, 'listMyCollections completed (cache bypass)');
+    return result;
+  }
+  const key = [
+    ...COLLECTION_LIST_PREFIX,
+    'my',
+    userId,
+    String(page),
+    String(perPage),
+    visibility ?? 'all',
+  ];
+  const cached = await cacheProvider?.get<Awaited<ReturnType<typeof model.findByUserId>>>(key);
+  if (cached) {
+    logger.debug({ userId }, 'listMyCollections cache hit');
+    return cached;
+  }
+  const result = await model.findByUserId(userId, page, perPage, visibility);
+  await cacheProvider?.set(key, result, { ttlMs: COLLECTION_LIST_TTL_MS });
   logger.debug({ userId, total: result.total }, 'listMyCollections completed');
   return result;
 }
@@ -196,9 +284,42 @@ export async function listMyCollections(
  */
 export async function listPublicCollections(userId: string, page: number, perPage: number) {
   logger.debug({ userId, page, perPage }, 'listPublicCollections started');
+  const key = [...COLLECTION_LIST_PREFIX, 'user', userId, String(page), String(perPage)];
+  const cached = await cacheProvider?.get<Awaited<ReturnType<typeof model.findPublicByUserId>>>(
+    key,
+  );
+  if (cached) {
+    logger.debug({ userId }, 'listPublicCollections cache hit');
+    return cached;
+  }
   const result = await model.findPublicByUserId(userId, page, perPage);
+  await cacheProvider?.set(key, result, { ttlMs: COLLECTION_LIST_TTL_MS });
   logger.debug({ userId, total: result.total }, 'listPublicCollections completed');
   return result;
+}
+
+/**
+ * List the collections containing a recipe, visibility-filtered for the viewer
+ * (D99.5 / US-9): public collections for anyone, plus the viewer's own of any
+ * visibility. No recipe existence/visibility check here — the route sits under
+ * the recipe read path which has already resolved the recipe. NOT cached in
+ * wave 5 (the ledger docCorrection drops the old cache sub-item for this
+ * surface).
+ *
+ * @param viewerId - The requesting user's UUID (null if unauthenticated).
+ * @param recipeId - The recipe's UUID.
+ * @returns Array of `{ id, name, visibility, userId }` list items.
+ */
+export async function listCollectionsForRecipe(viewerId: string | null, recipeId: string) {
+  logger.debug({ viewerId, recipeId }, 'listCollectionsForRecipe started');
+  const rows = await model.getCollectionsForRecipe(recipeId, viewerId);
+  logger.debug({ viewerId, recipeId, count: rows.length }, 'listCollectionsForRecipe completed');
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    visibility: row.visibility,
+    userId: row.userId,
+  }));
 }
 
 /**
@@ -212,28 +333,22 @@ export async function listPublicCollections(userId: string, page: number, perPag
  */
 export async function listAllPublicCollections(page: number, perPage: number) {
   logger.debug({ page, perPage }, 'listAllPublicCollections started');
+  const key = [...COLLECTION_LIST_PREFIX, 'public', String(page), String(perPage)];
+  const cached = await cacheProvider?.get<{
+    collections: ReturnType<typeof toPublicListItemOutput>[];
+    total: number;
+  }>(key);
+  if (cached) {
+    logger.debug({ page, perPage }, 'listAllPublicCollections cache hit');
+    return cached;
+  }
   try {
     const result = await model.findAllPublic(page, perPage);
-    const mapped = result.collections.map((c) => ({
-      id: c.id,
-      userId: c.userId,
-      name: c.name,
-      description: c.description,
-      visibility: c.visibility,
-      createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
-      updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
-      deletedAt: c.deletedAt instanceof Date ? c.deletedAt.toISOString() : c.deletedAt ?? null,
-      recipeCount: c.recipeCount,
-      author: c.user
-        ? {
-          username: c.user.username,
-          displayName: c.user.displayName,
-          avatarUrl: c.user.avatarUrl,
-        }
-        : { username: '', displayName: null, avatarUrl: null },
-    }));
+    const mapped = result.collections.map(toPublicListItemOutput);
+    const output = { collections: mapped, total: result.total };
+    await cacheProvider?.set(key, output, { ttlMs: COLLECTION_LIST_TTL_MS });
     logger.debug({ total: result.total }, 'listAllPublicCollections completed');
-    return { collections: mapped, total: result.total };
+    return output;
   } catch (err) {
     logger.error({ err, page, perPage }, 'listAllPublicCollections failed');
     throw err;
@@ -283,6 +398,10 @@ export async function addRecipeToCollection(
     logger.error({ err, userId, collectionId, recipeId }, 'addRecipeToCollection failed');
     throw err;
   }
+  // Invalidate only AFTER the write succeeded — an ALREADY_IN_COLLECTION
+  // failure above must not flush the cache.
+  await cacheProvider?.delete(COLLECTION_DETAIL_KEY(collectionId));
+  await cacheProvider?.deleteByPrefix(COLLECTION_LIST_PREFIX);
   logger.debug({ userId, collectionId, recipeId }, 'addRecipeToCollection completed');
 }
 
@@ -304,6 +423,8 @@ export async function removeRecipeFromCollection(
   if (!collection) throw new Error('COLLECTION_NOT_FOUND');
   if (collection.userId !== userId) throw new Error('FORBIDDEN');
   await model.removeItem(collectionId, recipeId);
+  await cacheProvider?.delete(COLLECTION_DETAIL_KEY(collectionId));
+  await cacheProvider?.deleteByPrefix(COLLECTION_LIST_PREFIX);
   logger.debug({ userId, collectionId, recipeId }, 'removeRecipeFromCollection completed');
 }
 
@@ -334,5 +455,7 @@ export async function reorderCollection(
     if (!existingIds.has(id)) throw new Error('REORDER_MISMATCH');
   }
   await model.reorderItems(collectionId, itemIds);
+  await cacheProvider?.delete(COLLECTION_DETAIL_KEY(collectionId));
+  await cacheProvider?.deleteByPrefix(COLLECTION_LIST_PREFIX);
   logger.debug({ userId, collectionId }, 'reorderCollection completed');
 }

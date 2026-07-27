@@ -6,7 +6,9 @@
  */
 
 import { SCAA_CATEGORIES } from '../../utils/radar-chart-data.ts';
+import { useSafeT } from '../../utils/safe-translation.ts';
 
+/** Props for {@link ScaaRadarChart} — category→intensity values plus optional scale and size. */
 export interface ScaaRadarChartProps {
   /** category name → aggregated intensity */
   categoryValues: Record<string, number>;
@@ -87,6 +89,7 @@ export function ScaaRadarChart({
   maxValue,
   size = 300,
 }: ScaaRadarChartProps) {
+  const t = useSafeT();
   const cx = size / 2;
   const cy = size / 2;
 
@@ -114,7 +117,7 @@ export function ScaaRadarChart({
       width={size}
       height={size}
       role='img'
-      aria-label='SCAA taste profile radar chart'
+      aria-label={t('a11y.scaaRadarChart')}
       style={{ display: 'block', overflow: 'visible' }}
     >
       {/* Axis lines from center to each vertex */}

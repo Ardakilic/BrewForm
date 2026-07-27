@@ -9,4 +9,5 @@ export const CommentCreateSchema = z.object({
   parentCommentId: z.uuid().optional(),
 });
 
+/** Inferred type of {@link CommentCreateSchema}. */
 export type CommentCreate = z.infer<typeof CommentCreateSchema>;

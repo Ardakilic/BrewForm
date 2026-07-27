@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -68,7 +69,11 @@ beforeEach(() => {
 
 describe('AdminCoffeeVarietiesPage — tr locale spot-check', () => {
   it('renders the Turkish coffee varieties heading', async () => {
-    render(<AdminCoffeeVarietiesPage />);
+    render(
+      <ToastProvider>
+        <AdminCoffeeVarietiesPage />
+      </ToastProvider>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Kahve Çeşitleri')).toBeInTheDocument();

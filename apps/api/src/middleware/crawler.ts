@@ -11,6 +11,7 @@ const CRAWLER_UA =
 
 const RECIPE_PATH_RE = /^\/recipes\/([a-z0-9][\w-]*)$/i;
 
+/** Dependency-injection proxy for test stubbing (recipe meta lookup). */
 export const deps = { getRecipeMeta };
 
 /**

@@ -6,6 +6,10 @@ import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { CollectionRecipeList } from '../../components/collections/CollectionRecipeList.tsx';
+import { CollectionVisibilityBadge } from '../../components/collections/CollectionVisibilityBadge.tsx';
+import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { PageContainer } from '../../components/ui/PageContainer.tsx';
 
 const log = createLogger('CollectionDetailPage');
 
@@ -56,20 +60,26 @@ export function CollectionDetailPage() {
     };
   }, [collection.id]);
 
-  const visibilityBadge = collection.visibility === 'public'
-    ? '🌐'
-    : collection.visibility === 'unlisted'
-    ? '🔗'
-    : '🔒';
-
   return (
-    <div className='container mx-auto px-4 py-8'>
+    <PageContainer width='4xl'>
       <div className='mb-6'>
+        <div className='mb-2'>
+          <Breadcrumb
+            items={[
+              { label: t('collection.list.title'), to: '/collections' },
+              { label: collection.name },
+            ]}
+          />
+        </div>
         <div className='flex items-center gap-3 mb-2'>
           <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
             {collection.name}
           </h1>
-          <span className='text-lg' title={collection.visibility}>{visibilityBadge}</span>
+          <CollectionVisibilityBadge
+            visibility={collection.visibility}
+            className='text-lg'
+            title={collection.visibility}
+          />
         </div>
         {collection.description && (
           <p className='mb-2' style={{ color: 'var(--text-secondary)' }}>
@@ -88,7 +98,7 @@ export function CollectionDetailPage() {
         <div className='flex gap-2 mb-6'>
           <Link
             to={`/collections/${collection.id}/edit`}
-            className='btn-secondary text-sm min-h-11 px-3'
+            className='btn-secondary'
           >
             {t('collection.detail.edit')}
           </Link>
@@ -96,11 +106,7 @@ export function CollectionDetailPage() {
       )}
 
       {collection.items.length === 0
-        ? (
-          <p className='text-center py-12' style={{ color: 'var(--text-secondary)' }}>
-            {t('collection.detail.noRecipes')}
-          </p>
-        )
+        ? <EmptyState message={t('collection.detail.noRecipes')} />
         : (
           <CollectionRecipeList
             collectionId={collection.id}
@@ -108,6 +114,6 @@ export function CollectionDetailPage() {
             isOwner={isOwner}
           />
         )}
-    </div>
+    </PageContainer>
   );
 }

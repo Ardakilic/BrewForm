@@ -11,7 +11,7 @@ export function RecipeNotAvailablePage() {
 
   return (
     <div className='flex min-h-[60vh] flex-col items-center justify-center px-6 text-center'>
-      <SEOHead title='Recipe Not Available' noIndex />
+      <SEOHead title={t('seo.recipeNotAvailable.title')} noIndex />
       <div className='text-8xl'>☕</div>
       <h1 className='mt-4 text-3xl font-bold' style={{ color: 'var(--text-primary)' }}>
         {t('recipe.unavailable.title')}

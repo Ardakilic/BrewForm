@@ -1,22 +1,46 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Integration tests verifying that the seed script is idempotent.
  *
  * These tests exercise the real seed helpers against a PostgreSQL test
  * database. Running the same seed function twice must not raise unique
  * constraint violations and must leave the table with the same row count.
+ *
+ * ── Cross-suite isolation (wave-5 task 8.2) ────────────────────────────────
+ * The root `test` task runs the API suite BEFORE the db suite against the SAME
+ * `brewform_test` database (deno.json: `test:api && … && test:db`). The API
+ * tests create and delete users/recipes/etc. and leave stray rows behind, which
+ * broke the exact row-count assertions below whenever the db suite ran after the
+ * API suite on a shared database.
+ *
+ * Chosen fix: reset the database to a clean slate at the start of every describe
+ * block by TRUNCATE-ing all tables (`RESTART IDENTITY CASCADE`), then let the
+ * seed under test repopulate from an empty database. We chose truncate-and-reseed
+ * over the alternatives:
+ *   • vs. drop + recreate + migrate: truncating keeps the shared module
+ *     connection pool (`db`/`client`) valid. A `DROP DATABASE … WITH (FORCE)`
+ *     would kill the pool's live connections (other db test files use `db` before
+ *     this one runs) and force a reconnect, adding fragility; it would also
+ *     require re-running migrations and is slower. The schema is already
+ *     provisioned by `make test-db-provision` / CI before any tests run, and no
+ *     migration inserts reference data, so truncating rows is sufficient.
+ *   • vs. relative (before/after delta) counts: exact counts are a stronger
+ *     regression test for the duplicate-key crashes this file guards against.
+ * This mirrors the repo's existing reset pattern (apps/api/scripts/flush-db.ts).
+ * The seed is designed to run on an empty database (idempotent via on-conflict
+ * handling), so truncate → seed reproduces the exact fresh-database counts.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
+import { beforeAll, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { count } from 'drizzle-orm';
-import { db } from './index.ts';
+import { getTableConfig } from 'drizzle-orm/pg-core';
+import { client, db } from './index.ts';
 import {
   badges,
   beans,
   brewMethodEquipmentRules,
   coffeeVarieties,
+  collectionItems,
   comments,
   equipment,
   photos,
@@ -73,6 +97,29 @@ function collectScaaNames(data: unknown[]): Set<string> {
 
 const scaaNames = collectScaaNames(scaaData.data);
 
+// Names of every table in the schema, discovered once (mirrors the
+// table-discovery loop in apps/api/scripts/flush-db.ts). Used by resetDatabase
+// to truncate the whole database before each describe block (wave-5 task 8.2).
+const TABLE_NAMES: string[] = [];
+for (const value of Object.values(await import('./schema.ts'))) {
+  try {
+    TABLE_NAMES.push(getTableConfig(value as never).name);
+  } catch {
+    // skip non-table exports (enums, relations, etc.)
+  }
+}
+
+/**
+ * Resets the test database to a clean slate by truncating every table, so the
+ * seed under test repopulates from an empty database regardless of stray rows
+ * left by earlier suites (wave-5 task 8.2). See the file header for rationale.
+ */
+async function resetDatabase(): Promise<void> {
+  // Quote identifiers: some table names (e.g. "user") are reserved words.
+  const tables = TABLE_NAMES.map((name) => `"${name}"`).join(', ');
+  await client.unsafe(`TRUNCATE TABLE ${tables} RESTART IDENTITY CASCADE`);
+}
+
 /**
  * Runs `seedBrewMethodCompatibility` twice in a transaction and asserts that
  * the resulting row count equals the seed data length. This verifies the
@@ -83,6 +130,8 @@ describe({
   sanitizeResources: false,
   sanitizeOps: false,
 }, () => {
+  beforeAll(resetDatabase);
+
   it('can run seedBrewMethodCompatibility twice without duplicates', async () => {
     await db.transaction(async (tx) => {
       await seedBrewMethodCompatibility(tx);
@@ -105,6 +154,8 @@ describe({
   sanitizeResources: false,
   sanitizeOps: false,
 }, () => {
+  beforeAll(resetDatabase);
+
   it('can run the full seed twice without throwing and leaves expected counts', async () => {
     const { main } = await import('./seed.ts');
 
@@ -173,5 +224,48 @@ describe({
     expect((await db.select({ count: count() }).from(brewMethodEquipmentRules))[0].count).toBe(
       brewMethodCompatibilityRules.length,
     );
+  });
+});
+
+/**
+ * D99.3 — collection item sortOrder must be per-collection (0..n-1), not
+ * globally sequenced across all collections. A shared counter would produce
+ * e.g. [0,1,2,3,4] for the first collection and [5,6] for the second; the
+ * per-collection fix resets to 0 for each collection.
+ */
+describe({
+  name: 'Seed idempotency — collection sortOrder (D99.3)',
+  sanitizeResources: false,
+  sanitizeOps: false,
+}, () => {
+  beforeAll(resetDatabase);
+
+  it('numbers items 0..n-1 per collection, not globally sequenced', async () => {
+    const { main } = await import('./seed.ts');
+    await main();
+
+    const items = await db.select({
+      collectionId: collectionItems.collectionId,
+      sortOrder: collectionItems.sortOrder,
+    }).from(collectionItems);
+
+    const byCollection = new Map<string, number[]>();
+    for (const item of items) {
+      const orders = byCollection.get(item.collectionId) ?? [];
+      orders.push(item.sortOrder);
+      byCollection.set(item.collectionId, orders);
+    }
+
+    // At least one collection has >2 items — otherwise a shared counter
+    // would be indistinguishable from per-collection numbering.
+    const maxItems = Math.max(...[...byCollection.values()].map((o) => o.length));
+    expect(maxItems).toBeGreaterThan(2);
+
+    // Each group's sorted sortOrder values equal [0, 1, ..., n-1].
+    for (const [, orders] of byCollection) {
+      const sorted = [...orders].sort((a, b) => a - b);
+      const expected = Array.from({ length: sorted.length }, (_, i) => i);
+      expect(sorted).toEqual(expected);
+    }
   });
 });

@@ -65,7 +65,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
   }
 
   return (
-    <section className='card' aria-label='Share recipe'>
+    <section className='card' aria-label={t('a11y.share.section')}>
       <div className='mb-4'>
         <span
           className='text-xs font-semibold uppercase tracking-widest'
@@ -81,7 +81,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
             type='button'
             onClick={handleCopy}
             className='btn-secondary text-sm flex-1 min-h-11'
-            aria-label='Copy recipe URL to clipboard'
+            aria-label={t('a11y.share.copyUrl')}
           >
             {copyState === 'copied'
               ? t('recipe.share.copied')
@@ -94,7 +94,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
             type='button'
             onClick={handleDownloadQr}
             className='btn-secondary text-sm flex-1 min-h-11'
-            aria-label='Download QR code as SVG'
+            aria-label={t('a11y.share.downloadQr')}
           >
             {t('recipe.share.downloadQr')}
           </button>
@@ -105,7 +105,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
             type='button'
             onClick={() => handleSocialShare(socialUrls.twitter)}
             className='btn-secondary text-sm flex-1 min-h-11 flex items-center justify-center gap-1'
-            aria-label='Share on Twitter/X'
+            aria-label={t('a11y.share.on').replace('{platform}', 'Twitter/X')}
           >
             <span aria-hidden='true'>𝕏</span>
             <span className='sr-only'>Twitter/X</span>
@@ -115,7 +115,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
             type='button'
             onClick={() => handleSocialShare(socialUrls.facebook)}
             className='btn-secondary text-sm flex-1 min-h-11 flex items-center justify-center gap-1'
-            aria-label='Share on Facebook'
+            aria-label={t('a11y.share.on').replace('{platform}', 'Facebook')}
           >
             <span aria-hidden='true'>
               <svg
@@ -135,7 +135,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
             type='button'
             onClick={() => handleSocialShare(socialUrls.whatsapp)}
             className='btn-secondary text-sm flex-1 min-h-11 flex items-center justify-center gap-1'
-            aria-label='Share on WhatsApp'
+            aria-label={t('a11y.share.on').replace('{platform}', 'WhatsApp')}
           >
             <span aria-hidden='true'>
               <svg
@@ -155,7 +155,7 @@ export function ShareSection({ slug, title, visibility }: ShareSectionProps) {
             type='button'
             onClick={() => handleSocialShare(socialUrls.reddit)}
             className='btn-secondary text-sm flex-1 min-h-11 flex items-center justify-center gap-1'
-            aria-label='Share on Reddit'
+            aria-label={t('a11y.share.on').replace('{platform}', 'Reddit')}
           >
             <span aria-hidden='true'>
               <svg

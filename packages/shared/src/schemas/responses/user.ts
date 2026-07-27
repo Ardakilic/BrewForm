@@ -63,6 +63,7 @@ const SelfPreferencesSchema = z
 /** Validates the bare `users` row (minus passwordHash); response envelope for PATCH /api/v1/users/me. */
 export const UserRowOutputSchema = UserBaseSchema;
 
+/** Inferred type of {@link UserRowOutputSchema}. */
 export type UserRowOutput = z.infer<typeof UserRowOutputSchema>;
 
 /** Validates the self profile (user row plus nullable `preferences` and profile stats); response envelope for GET /api/v1/users/me. */
@@ -71,6 +72,7 @@ export const SelfUserOutputSchema = UserBaseSchema.extend({
   ...UserStatsSchema,
 });
 
+/** Inferred type of {@link SelfUserOutputSchema}. */
 export type SelfUserOutput = z.infer<typeof SelfUserOutputSchema>;
 
 /** Public-profile recipe summary item with the latest version's brew metadata. */
@@ -97,4 +99,5 @@ export const PublicUserOutputSchema = UserBaseSchema.omit({ email: true }).exten
   isFollowing: z.boolean(),
 });
 
+/** Inferred type of {@link PublicUserOutputSchema}. */
 export type PublicUserOutput = z.infer<typeof PublicUserOutputSchema>;

@@ -80,3 +80,8 @@ export const AdminModifyRecipeVisibilitySchema = z.object({
 export const AdminFlushCacheSchema = z.object({
   keys: z.array(z.string()).min(1),
 });
+
+/** Inferred TypeScript type for admin user-creation payloads. */
+export type AdminCreateUser = z.infer<typeof AdminCreateUserSchema>;
+/** Inferred TypeScript type for admin user-update payloads. */
+export type AdminUpdateUser = z.infer<typeof AdminUpdateUserSchema>;

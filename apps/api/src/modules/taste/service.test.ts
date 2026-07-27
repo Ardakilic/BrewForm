@@ -192,6 +192,7 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
 
       const result = await getFlatList(cache);
 
+      // deno-lint-ignore no-explicit-any -- test mock parameter
       expect(result.map((n: any) => n.name)).toContain('Berry');
       assertSpyCalls(debugSpy, 2);
       assertSpyCallArgs(debugSpy, 0, [{}, 'getFlatList started']);
@@ -245,6 +246,7 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
 
       const result = await searchTasteNotes('Zes', cache);
 
+      // deno-lint-ignore no-explicit-any -- test mock parameter
       expect(result.map((n: any) => n.id)).toContain(note.id);
       assertSpyCalls(debugSpy, 2);
       assertSpyCallArgs(debugSpy, 0, [

@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any require-await
-
 /**
  * Tests for the D28 deprecation signal on the recipe filter.
  *
@@ -140,8 +138,11 @@ describe(
           tasteNoteId: TEST_TASTE_NOTE_ID,
           page: 1,
           perPage: 20,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortBy: 'createdAt' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortOrder: 'desc' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
         } as any,
         1,
         20,
@@ -158,8 +159,11 @@ describe(
           tasteNoteIds: TEST_TASTE_NOTE_ID,
           page: 1,
           perPage: 20,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortBy: 'createdAt' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortOrder: 'desc' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
         } as any,
         1,
         20,
@@ -177,8 +181,11 @@ describe(
           tasteNoteId: TEST_TASTE_NOTE_ID_2,
           page: 1,
           perPage: 20,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortBy: 'createdAt' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortOrder: 'desc' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
         } as any,
         1,
         20,
@@ -194,8 +201,11 @@ describe(
         {
           page: 1,
           perPage: 20,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortBy: 'createdAt' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortOrder: 'desc' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
         } as any,
         1,
         20,
@@ -228,8 +238,11 @@ describe(
           tasteNoteId: TEST_TASTE_NOTE_ID,
           page: 1,
           perPage: 20,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortBy: 'createdAt' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortOrder: 'desc' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
         } as any,
         1,
         20,
@@ -245,8 +258,11 @@ describe(
           tasteNoteIds: TEST_TASTE_NOTE_ID,
           page: 1,
           perPage: 20,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortBy: 'createdAt' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortOrder: 'desc' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
         } as any,
         1,
         20,
@@ -263,8 +279,11 @@ describe(
           tasteNoteId: TEST_TASTE_NOTE_ID_2,
           page: 1,
           perPage: 20,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortBy: 'createdAt' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortOrder: 'desc' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
         } as any,
         1,
         20,
@@ -279,8 +298,11 @@ describe(
         {
           page: 1,
           perPage: 20,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortBy: 'createdAt' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
           sortOrder: 'desc' as any,
+          // deno-lint-ignore no-explicit-any -- test cast
         } as any,
         1,
         20,

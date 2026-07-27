@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
+import { ErrorState } from '../components/ui/ErrorState.tsx';
 import { api } from '../api/client.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 
@@ -69,11 +70,7 @@ export function ContactPage() {
         {t('contact.description')}
       </p>
 
-      {error && (
-        <div className='mt-4 rounded p-3 text-sm bg-[color:var(--error)] text-white'>
-          {error}
-        </div>
-      )}
+      {error && <ErrorState message={error} className='mt-4' />}
 
       <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
         <div>

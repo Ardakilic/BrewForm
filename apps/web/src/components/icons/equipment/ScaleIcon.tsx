@@ -1,10 +1,14 @@
+import { useSafeT } from '../../../utils/safe-translation.ts';
+
 interface IconProps {
   size?: number;
   className?: string;
+  label?: string;
 }
 
 /** SVG icon for a brewing scale. */
-export function ScaleIcon({ size = 24, className }: IconProps) {
+export function ScaleIcon({ size = 24, className, label }: IconProps) {
+  const t = useSafeT();
   return (
     <svg
       width={size}
@@ -16,7 +20,7 @@ export function ScaleIcon({ size = 24, className }: IconProps) {
       strokeLinecap='round'
       strokeLinejoin='round'
       role='img'
-      aria-label='Scale'
+      aria-label={label ?? t('a11y.equipment.scale')}
       className={className}
     >
       {/* Scale base */}

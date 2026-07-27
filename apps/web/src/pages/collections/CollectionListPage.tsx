@@ -5,6 +5,8 @@ import type { CollectionListItemOutput, PaginatedResponse } from '@brewform/shar
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { PageContainer } from '../../components/ui/PageContainer.tsx';
 
 const log = createLogger('CollectionListPage');
 
@@ -45,22 +47,18 @@ export function CollectionListPage() {
   }, []);
 
   return (
-    <div className='container mx-auto px-4 py-8'>
+    <PageContainer width='4xl'>
       <div className='flex items-center justify-between mb-6'>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
           {t('collection.list.title')}
         </h1>
-        <Link to='/collections/new' className='btn-primary text-sm min-h-11 px-4'>
+        <Link to='/collections/new' className='btn-primary'>
           {t('collection.list.create')}
         </Link>
       </div>
 
       {collectionsResponse.data.length === 0
-        ? (
-          <p className='text-center py-12' style={{ color: 'var(--text-secondary)' }}>
-            {t('collection.list.noResults')}
-          </p>
-        )
+        ? <EmptyState message={t('collection.list.noResults')} />
         : (
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
             {collectionsResponse.data.map((collection) => (
@@ -68,6 +66,6 @@ export function CollectionListPage() {
             ))}
           </div>
         )}
-    </div>
+    </PageContainer>
   );
 }

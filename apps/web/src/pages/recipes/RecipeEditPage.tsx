@@ -7,6 +7,7 @@ import { recipeApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
 import { Field, Section } from '../../components/form/index.ts';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import {
   BREW_METHODS_LIST,
   DRINK_TYPES_LIST,
@@ -180,20 +181,7 @@ export function RecipeEditPage() {
         {t('recipe.edit')}
       </h1>
 
-      {error && (
-        <div
-          className='mb-4 rounded p-3 text-sm'
-          style={{ backgroundColor: 'var(--error)', color: 'white' }}
-        >
-          {typeof error === 'string' && error.includes('\n')
-            ? (
-              <ul className='list-disc pl-4 space-y-1'>
-                {error.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
-              </ul>
-            )
-            : error}
-        </div>
-      )}
+      {error && <ErrorState message={error} className='mb-4' />}
 
       <form onSubmit={handleSubmit} className='space-y-6'>
         <div className='card'>

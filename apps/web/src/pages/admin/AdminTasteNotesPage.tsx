@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import { Field } from '../../components/form/Field.tsx';
 import type { TasteNoteOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminTasteNotesPage');
@@ -10,8 +14,9 @@ const log = createLogger('AdminTasteNotesPage');
 /** Admin page: taste-note hierarchy management (create/delete); invalidates the static cache on changes. */
 export function AdminTasteNotesPage() {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const [notes, setNotes] = useState<TasteNoteOutput[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', parentId: '' });
   const [saving, setSaving] = useState(false);
@@ -26,8 +31,11 @@ export function AdminTasteNotesPage() {
   useEffect(() => {
     api.get<TasteNoteOutput[]>('/taste-notes/flat').then((data) => {
       setNotes(data);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'taste notes fetch failed');
+      setStatus('error');
+    });
   }, []);
 
   /**
@@ -43,7 +51,7 @@ export function AdminTasteNotesPage() {
       const created = await api.post<TasteNoteOutput>('/admin/taste-notes', {
         name: form.name.trim(),
         parentId: form.parentId || undefined,
-      } as Record<string, unknown>);
+      });
       setNotes((prev) => [...prev, created]);
       log.debug({ tasteNoteId: created.id }, 'handleCreate completed');
       setForm({ name: '', parentId: '' });
@@ -61,7 +69,13 @@ export function AdminTasteNotesPage() {
    * invalidate the static cache so the next loader run re-fetches.
    */
   async function handleDelete(id: string) {
-    if (!globalThis.confirm(t('admin.tasteNotes.deleteConfirm'))) return;
+    if (
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'admin.tasteNotes.deleteConfirm',
+        danger: true,
+      })
+    ) return;
     log.debug({ tasteNoteId: id }, 'handleDelete started');
     try {
       await api.delete(`/admin/taste-notes/${id}`);
@@ -90,33 +104,17 @@ export function AdminTasteNotesPage() {
             {t('admin.tasteNotes.addTitle')}
           </h2>
           <div className='space-y-3'>
-            <div>
-              <label
-                htmlFor='tn-name'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('common.name')} *
-              </label>
+            <Field label={`${t('common.name')} *`}>
               <input
-                id='tn-name'
                 type='text'
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className='input-field'
                 required
               />
-            </div>
-            <div>
-              <label
-                htmlFor='tn-parent'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('admin.tasteNotes.parent')}
-              </label>
+            </Field>
+            <Field label={t('admin.tasteNotes.parent')}>
               <select
-                id='tn-parent'
                 value={form.parentId}
                 onChange={(e) => setForm({ ...form, parentId: e.target.value })}
                 className='input-field'
@@ -126,7 +124,7 @@ export function AdminTasteNotesPage() {
                   <option key={n.id} value={n.id}>{n.name}</option>
                 ))}
               </select>
-            </div>
+            </Field>
           </div>
           <button type='submit' className='btn-primary mt-4' disabled={saving}>
             {saving ? t('common.creating') : t('common.create')}
@@ -137,8 +135,10 @@ export function AdminTasteNotesPage() {
         </form>
       )}
 
-      {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
+      {status === 'loading'
+        ? <LoadingState />
+        : status === 'error'
+        ? <ErrorState message={t('admin.tasteNotes.loadError')} />
         : (
           <div className='space-y-1'>
             {notes.map((note) => (
@@ -151,8 +151,7 @@ export function AdminTasteNotesPage() {
                 <button
                   type='button'
                   onClick={() => handleDelete(note.id)}
-                  className='text-xs'
-                  style={{ color: 'var(--error)' }}
+                  className='btn-danger-text text-xs'
                 >
                   {t('common.delete')}
                 </button>

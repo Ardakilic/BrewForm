@@ -12,6 +12,7 @@ vi.mock('react-router', () => ({
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
   ) => <a href={to} {...props}>{children}</a>,
   useParams: vi.fn(),
+  useNavigate: vi.fn(() => vi.fn()),
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
@@ -44,6 +45,7 @@ const enT = (key: string) => {
     'equipment.noRecipes': 'No recipes use this equipment yet.',
     'equipment.catalog.title': 'Coffee Equipment',
     'recipe.focusMode.by': 'by',
+    'recipe.card.by': 'by',
   };
   return map[key] ?? key;
 };
@@ -56,6 +58,7 @@ const trT = (key: string) => {
     'equipment.noRecipes': 'Bu ekipmanı kullanan tarif henüz yok.',
     'equipment.catalog.title': 'Kahve Ekipmanları',
     'recipe.focusMode.by': 'tarafından',
+    'recipe.card.by': 'tarafından',
   };
   return map[key] ?? key;
 };
@@ -140,7 +143,7 @@ describe('EquipmentDetailPage', () => {
       expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
     );
 
-    expect(screen.getAllByText('Fellow').length).toBe(2);
+    expect(screen.getAllByText('Fellow').length).toBe(1);
     expect(screen.getByText('Electric pour-over kettle with temperature control'))
       .toBeInTheDocument();
     expect(screen.getByText('kettle')).toBeInTheDocument();
@@ -218,6 +221,20 @@ describe('EquipmentDetailPage', () => {
       expect(screen.getByText('Recipes using this equipment')).toBeInTheDocument()
     );
     expect(screen.getByText('My Espresso')).toBeInTheDocument();
+  });
+
+  it('renders each recipe via the shared RecipeCard with a clickable author button', async () => {
+    render(<EquipmentDetailPage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    // RecipeCard wraps the title in a link to /recipes/:slug
+    const link = screen.getByText('My Espresso').closest('a');
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute('href')).toBe('/recipes/my-espresso');
+
+    // The author is now a clickable button (canonical stopPropagation AuthorButton)
+    expect(screen.getByRole('button', { name: 'Coffee Lover' })).toBeInTheDocument();
   });
 
   it('shows empty recipes message when no recipes', async () => {

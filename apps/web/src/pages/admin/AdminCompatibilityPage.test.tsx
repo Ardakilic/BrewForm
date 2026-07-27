@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -48,7 +49,11 @@ beforeEach(() => {
 
 describe('AdminCompatibilityPage — tr locale spot-check', () => {
   it('renders the Turkish compatibility matrix heading', async () => {
-    render(<AdminCompatibilityPage />);
+    render(
+      <ToastProvider>
+        <AdminCompatibilityPage />
+      </ToastProvider>,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Uyumluluk Matrisi')).toBeInTheDocument();

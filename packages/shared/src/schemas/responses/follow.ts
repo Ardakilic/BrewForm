@@ -19,6 +19,7 @@ export const FollowOutputSchema = z.object({
   createdAt: z.string(),
 });
 
+/** Inferred type of {@link FollowOutputSchema}. */
 export type FollowOutput = z.infer<typeof FollowOutputSchema>;
 
 /** Joined user profile projection used by follower/following list items. */
@@ -39,6 +40,7 @@ export const FollowerListItemOutputSchema = z.object({
   follower: FollowUserProfileSchema,
 });
 
+/** Inferred type of {@link FollowerListItemOutputSchema}. */
 export type FollowerListItemOutput = z.infer<typeof FollowerListItemOutputSchema>;
 
 /** Validates a following list item (`userFollows` row plus inner-joined `following` profile); response envelope for the following list. */
@@ -50,4 +52,5 @@ export const FollowingListItemOutputSchema = z.object({
   following: FollowUserProfileSchema,
 });
 
+/** Inferred type of {@link FollowingListItemOutputSchema}. */
 export type FollowingListItemOutput = z.infer<typeof FollowingListItemOutputSchema>;

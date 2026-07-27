@@ -18,6 +18,7 @@ import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
 const scaaData = JSON.parse(await Deno.readTextFile(scaaPath));
 
+// deno-lint-ignore no-explicit-any -- test mock array
 function collectScaaNames(data: any[]): Set<string> {
   const names = new Set<string>();
   for (const item of data) {
@@ -393,6 +394,7 @@ describe('Seed Data Integrity', () => {
     it('should reference valid badge rules', () => {
       const validRules = new Set(badgeSeedData.map((b) => b.rule));
       for (const badge of socialSeedData.badges) {
+        // deno-lint-ignore no-explicit-any -- test cast
         expect(validRules.has(badge.badgeRule as any)).toBe(true);
       }
     });

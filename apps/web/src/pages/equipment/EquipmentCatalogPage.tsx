@@ -1,22 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import { CardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
+import { CategoryTabs } from '../../components/catalog/CategoryTabs.tsx';
+import { CatalogEntityCard } from '../../components/catalog/CatalogEntityCard.tsx';
+import type { EquipmentOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('EquipmentCatalogPage');
-
-interface CatalogEquipmentItem {
-  id: string;
-  name: string;
-  brand: string | null;
-  model: string | null;
-  type: string | null;
-  description: string | null;
-}
 
 /**
  * Public equipment catalog with URL-driven pagination, type-category
@@ -24,7 +21,7 @@ interface CatalogEquipmentItem {
  */
 export function EquipmentCatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [equipment, setEquipment] = useState<CatalogEquipmentItem[]>([]);
+  const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +42,7 @@ export function EquipmentCatalogPage() {
   }, []);
 
   const categoryButtons = [
+    { value: '', label: t('common.all') },
     { value: 'espresso_machine', label: t('equipment.category.espresso_machine') },
     { value: 'grinder', label: t('equipment.category.grinder') },
     { value: 'pour_over_brewer', label: t('equipment.category.pour_over_brewer') },
@@ -65,7 +63,7 @@ export function EquipmentCatalogPage() {
     if (debouncedSearch) params.set('search', debouncedSearch);
 
     api.getWithMeta<{
-      data: CatalogEquipmentItem[];
+      data: EquipmentOutput[];
       meta?: { pagination?: { total?: number; totalPages?: number } };
     }>(
       `/equipment?${params.toString()}`,
@@ -112,35 +110,11 @@ export function EquipmentCatalogPage() {
       </p>
 
       {/* Category tabs */}
-      <div className='flex flex-wrap gap-2 mb-4'>
-        <button
-          type='button'
-          onClick={() => updateFilter('type', '')}
-          className={[
-            'rounded-full px-3 py-1.5 text-sm transition-colors',
-            !type
-              ? 'bg-[color:var(--accent-primary)] text-white'
-              : 'bg-[color:var(--bg-tertiary)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-primary)]',
-          ].join(' ')}
-        >
-          {t('common.all')}
-        </button>
-        {categoryButtons.map((cat) => (
-          <button
-            key={cat.value}
-            type='button'
-            onClick={() => updateFilter('type', cat.value)}
-            className={[
-              'rounded-full px-3 py-1.5 text-sm transition-colors',
-              type === cat.value
-                ? 'bg-[color:var(--accent-primary)] text-white'
-                : 'bg-[color:var(--bg-tertiary)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-primary)]',
-            ].join(' ')}
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
+      <CategoryTabs
+        tabs={categoryButtons}
+        active={type}
+        onSelect={(v) => updateFilter('type', v)}
+      />
 
       {/* Search */}
       <div className='mb-6'>
@@ -170,25 +144,10 @@ export function EquipmentCatalogPage() {
       )}
 
       {/* Content */}
-      {loading
-        ? (
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-            {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className='card space-y-3'>
-                <div className='flex gap-2'>
-                  <Skeleton height='1.25rem' width='60%' />
-                  <Skeleton height='1.25rem' width='4rem' className='rounded-full' />
-                </div>
-                <Skeleton height='0.875rem' width='40%' />
-                <Skeleton height='1.5rem' />
-              </div>
-            ))}
-          </div>
-        )
-        : error
+      {loading ? <CardSkeletonGrid variant='catalog' /> : error
         ? (
           <div className='text-center py-12'>
-            <p className='mb-4' style={{ color: 'var(--error)' }}>{error}</p>
+            <ErrorState message={error} className='mb-4' />
             <button
               type='button'
               onClick={() => {
@@ -207,103 +166,42 @@ export function EquipmentCatalogPage() {
         )
         : equipment.length === 0
         ? (
-          <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
-            <p className='mb-2'>{t('equipment.catalog.empty')}</p>
-            {hasActiveFilters && (
-              <button
-                type='button'
-                onClick={() => setSearchParams({})}
-                className='btn-secondary text-sm'
-              >
-                {t('common.clearSearch')}
-              </button>
-            )}
-          </div>
+          <EmptyState
+            message={t('equipment.catalog.empty')}
+            action={hasActiveFilters
+              ? (
+                <button
+                  type='button'
+                  onClick={() => setSearchParams({})}
+                  className='btn-secondary text-sm'
+                >
+                  {t('common.clearSearch')}
+                </button>
+              )
+              : undefined}
+          />
         )
         : (
           <>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
               {equipment.map((eq) => (
-                <Link
+                <CatalogEntityCard
                   key={eq.id}
                   to={`/equipment/${eq.id}`}
-                  className='card hover:shadow-lg transition-shadow'
-                >
-                  <div className='flex items-start justify-between mb-1'>
-                    <div>
-                      {eq.brand && (
-                        <p className='font-bold' style={{ color: 'var(--text-primary)' }}>
-                          {eq.brand}
-                        </p>
-                      )}
-                      <h3
-                        className={eq.brand ? 'text-sm' : 'font-semibold'}
-                        style={{
-                          color: eq.brand ? 'var(--text-secondary)' : 'var(--text-primary)',
-                        }}
-                      >
-                        {eq.model || eq.name}
-                      </h3>
-                    </div>
-                    {eq.type && (
-                      <span
-                        className='text-xs px-2 py-0.5 rounded-full flex-shrink-0 ml-2'
-                        style={{
-                          backgroundColor: 'var(--accent-primary)',
-                          color: 'white',
-                        }}
-                      >
-                        {eq.type.replace(/_/g, ' ')}
-                      </span>
-                    )}
-                  </div>
-                  {eq.description && (
-                    <p
-                      className='text-xs mt-2'
-                      style={{
-                        color: 'var(--text-tertiary)',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {eq.description}
-                    </p>
-                  )}
-                </Link>
+                  title={eq.model || eq.name}
+                  brand={eq.brand}
+                  badge={eq.type ? eq.type.replace(/_/g, ' ') : null}
+                  description={eq.description}
+                />
               ))}
             </div>
 
             {/* Pagination */}
-            <div className='flex justify-center gap-2 mt-8'>
-              {page > 1 && (
-                <button
-                  type='button'
-                  onClick={() => updateFilter('page', String(page - 1))}
-                  className='btn-secondary'
-                >
-                  {t('common.previous')}
-                </button>
-              )}
-              <span
-                className='py-2 px-4 text-sm'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('common.pagination')
-                  .replace('{page}', String(page))
-                  .replace('{total}', String(totalPages))}
-              </span>
-              {page < totalPages && (
-                <button
-                  type='button'
-                  onClick={() => updateFilter('page', String(page + 1))}
-                  className='btn-secondary'
-                >
-                  {t('common.next')}
-                </button>
-              )}
-            </div>
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              onPageChange={(p) => updateFilter('page', String(p))}
+            />
           </>
         )}
     </div>

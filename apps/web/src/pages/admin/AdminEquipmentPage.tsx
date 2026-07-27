@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
+import { Field } from '../../components/form/Field.tsx';
 import type { EquipmentOutput } from '@brewform/shared/schemas';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminEquipmentPage');
@@ -10,8 +14,9 @@ const log = createLogger('AdminEquipmentPage');
 /** Admin page: equipment CRUD with inline form; invalidates the static cache on changes. */
 export function AdminEquipmentPage() {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
   const [equipment, setEquipment] = useState<EquipmentOutput[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', type: '', brand: '', model: '' });
@@ -27,8 +32,11 @@ export function AdminEquipmentPage() {
   useEffect(() => {
     api.get<EquipmentOutput[]>('/admin/equipment').then((data) => {
       setEquipment(data);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'admin equipment fetch failed');
+      setStatus('error');
+    });
   }, []);
 
   /**
@@ -47,7 +55,7 @@ export function AdminEquipmentPage() {
           type: form.type.trim(),
           brand: form.brand || undefined,
           model: form.model || undefined,
-        } as Record<string, unknown>);
+        });
         setEquipment((prev) =>
           prev.map((eq) => eq.id === editId ? updated as EquipmentOutput : eq)
         );
@@ -57,7 +65,7 @@ export function AdminEquipmentPage() {
           type: form.type.trim(),
           brand: form.brand || undefined,
           model: form.model || undefined,
-        } as Record<string, unknown>);
+        });
         setEquipment((prev) => [...prev, created as EquipmentOutput]);
       }
       resetForm();
@@ -75,7 +83,13 @@ export function AdminEquipmentPage() {
    * invalidate the static cache so the next loader run re-fetches.
    */
   async function handleDelete(id: string) {
-    if (!globalThis.confirm(t('admin.equipment.deleteConfirm'))) return;
+    if (
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'admin.equipment.deleteConfirm',
+        danger: true,
+      })
+    ) return;
     log.debug({ equipmentId: id }, 'handleDelete started');
     try {
       await api.delete(`/admin/equipment/${id}`);
@@ -116,72 +130,40 @@ export function AdminEquipmentPage() {
             {editId ? t('admin.equipment.editTitle') : t('admin.equipment.addTitle')}
           </h2>
           <div className='grid grid-cols-2 gap-4'>
-            <div>
-              <label
-                htmlFor='admin-eq-name'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('equipment.name')} *
-              </label>
+            <Field label={t('equipment.name')} required>
               <input
-                id='admin-eq-name'
                 type='text'
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className='input-field'
                 required
               />
-            </div>
-            <div>
-              <label
-                htmlFor='admin-eq-type'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('common.type')} *
-              </label>
+            </Field>
+            <Field label={t('common.type')} required>
               <input
-                id='admin-eq-type'
                 type='text'
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
                 className='input-field'
                 required
               />
-            </div>
-            <div>
-              <label
-                htmlFor='admin-eq-brand'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('equipment.brand')}
-              </label>
+            </Field>
+            <Field label={t('equipment.brand')}>
               <input
-                id='admin-eq-brand'
                 type='text'
                 value={form.brand}
                 onChange={(e) => setForm({ ...form, brand: e.target.value })}
                 className='input-field'
               />
-            </div>
-            <div>
-              <label
-                htmlFor='admin-eq-model'
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('equipment.model')}
-              </label>
+            </Field>
+            <Field label={t('equipment.model')}>
               <input
-                id='admin-eq-model'
                 type='text'
                 value={form.model}
                 onChange={(e) => setForm({ ...form, model: e.target.value })}
                 className='input-field'
               />
-            </div>
+            </Field>
           </div>
           <div className='flex gap-2 mt-4'>
             <button type='submit' className='btn-primary' disabled={saving}>
@@ -196,8 +178,10 @@ export function AdminEquipmentPage() {
         </form>
       )}
 
-      {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
+      {status === 'loading'
+        ? <LoadingState />
+        : status === 'error'
+        ? <ErrorState message={t('admin.equipment.loadError')} />
         : (
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
@@ -243,8 +227,7 @@ export function AdminEquipmentPage() {
                         type='button'
                         onClick={() =>
                           handleDelete(eq.id)}
-                        className='text-xs'
-                        style={{ color: 'var(--error)' }}
+                        className='btn-danger-text text-xs'
                       >
                         {t('common.delete')}
                       </button>

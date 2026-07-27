@@ -13,7 +13,20 @@ const runtimeConfig =
   (globalThis as { __BREWFORM_CONFIG__?: { apiUrl?: string } }).__BREWFORM_CONFIG__;
 const API_BASE = runtimeConfig?.apiUrl || import.meta.env.VITE_API_URL || '/api/v1';
 
-async function requestInternal(endpoint: string, options: RequestInit): Promise<unknown> {
+/**
+ * Parsed API response body: the success envelope carries the payload under
+ * `data`, the error envelope carries `error` (see `apps/api/src/utils/openapi`).
+ */
+type ResponseEnvelope = {
+  data: unknown;
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Array<{ field: string; message: string }>;
+  };
+};
+
+async function requestInternal(endpoint: string, options: RequestInit): Promise<ResponseEnvelope> {
   log.debug({ endpoint, method: options.method }, 'API request started');
 
   try {
@@ -48,7 +61,7 @@ async function requestInternal(endpoint: string, options: RequestInit): Promise<
       }
     }
 
-    const data = await response.json();
+    const data: ResponseEnvelope = await response.json();
 
     if (!response.ok) {
       throw new ApiError(
@@ -69,10 +82,11 @@ async function requestInternal(endpoint: string, options: RequestInit): Promise<
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const data = await requestInternal(endpoint, options);
-  return (data as Record<string, unknown>).data as T;
+  // Unwrap the success envelope's generic `data` field to the caller's type (openapi/index.ts envelope convention).
+  return data.data as T;
 }
 
-async function requestWithMeta<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+function requestWithMeta<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return requestInternal(endpoint, options) as Promise<T>;
 }
 
@@ -110,11 +124,11 @@ export class ApiError extends Error {
 export const api = {
   get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
   getWithMeta: <T>(endpoint: string) => requestWithMeta<T>(endpoint, { method: 'GET' }),
-  post: <T>(endpoint: string, body: unknown) =>
+  post: <T, B = unknown>(endpoint: string, body: B) =>
     request<T>(endpoint, { method: 'POST', body: JSON.stringify(body) }),
-  patch: <T>(endpoint: string, body: unknown) =>
+  patch: <T, B = unknown>(endpoint: string, body: B) =>
     request<T>(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
-  put: <T>(endpoint: string, body: unknown) =>
+  put: <T, B = unknown>(endpoint: string, body: B) =>
     request<T>(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
   upload: <T>(endpoint: string, formData: FormData) =>

@@ -21,6 +21,7 @@ export {
   CoffeeVarietyFilterSchema,
   CoffeeVarietyUpdateSchema,
 } from './coffee-variety.ts';
+export type { CoffeeVarietyCreate, CoffeeVarietyUpdate } from './coffee-variety.ts';
 export {
   AuthLoginSchema,
   AuthRefreshSchema,
@@ -65,6 +66,7 @@ export {
   AdminSetRoleSchema,
   AdminUpdateUserSchema,
 } from './admin.ts';
+export type { AdminCreateUser, AdminUpdateUser } from './admin.ts';
 export { PhotoUploadSchema } from './photo.ts';
 export { FollowSchema } from './follow.ts';
 export type { Follow } from './follow.ts';
@@ -94,6 +96,7 @@ export * from './responses/index.ts';
 export type {
   FeedRecipeOutput,
   RecipeDetailOutput,
+  RecipeDetailVersionOutput,
   RecipeListItemOutput,
   RecipeRow,
   RecipeVersionRow,
@@ -134,4 +137,6 @@ export type {
   CollectionListItemOutput,
   CollectionOutput,
   PublicCollectionListItemOutput,
+  RecipeCollectionListItemOutput,
+  RecipeCollectionsOutput,
 } from './responses/collection.ts';

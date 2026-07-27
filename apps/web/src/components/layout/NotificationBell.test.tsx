@@ -101,6 +101,7 @@ describe('NotificationBell', () => {
     expect(mockUnreadCount).toHaveBeenCalledTimes(1);
 
     mockUnreadCount.mockResolvedValue({ count: 5 });
+    // deno-lint-ignore require-await -- act() requires async wrapper
     await act(async () => {
       globalThis.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     });

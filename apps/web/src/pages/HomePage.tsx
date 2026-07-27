@@ -10,6 +10,7 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('HomePage');
 
+/** Loader data for the home page — latest and most-liked public recipes. */
 export interface HomeLoaderData {
   latestRecipes: RecipeListItemOutput[];
   popularRecipes: RecipeListItemOutput[];
@@ -50,7 +51,7 @@ export function HomePage() {
 
   return (
     <div>
-      <SEOHead title='Home' />
+      <SEOHead title={t('seo.home.title')} />
       <section className='mx-auto max-w-6xl px-6 py-12 text-center'>
         <h1 className='text-4xl font-bold' style={{ color: 'var(--accent-primary)' }}>
           ☕ {t('app.name')}

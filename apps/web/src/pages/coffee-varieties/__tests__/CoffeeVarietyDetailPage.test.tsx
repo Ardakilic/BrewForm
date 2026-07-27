@@ -12,6 +12,7 @@ vi.mock('react-router', () => ({
     { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
   ) => <a href={to} {...props}>{children}</a>,
   useParams: vi.fn(),
+  useNavigate: vi.fn(() => vi.fn()),
 }));
 
 vi.mock('../../../contexts/I18nContext.tsx', () => ({
@@ -63,6 +64,7 @@ const enT = (key: string) => {
     'coffeeVarieties.recipesUsing': 'Recipes using {name}',
     'coffeeVarieties.noRecipes': 'No recipes use this variety yet.',
     'recipe.focusMode.by': 'by',
+    'recipe.card.by': 'by',
   };
   return map[key] ?? key;
 };
@@ -94,6 +96,7 @@ const trT = (key: string) => {
     'coffeeVarieties.recipesUsing': '{name} kullanan tarifler',
     'coffeeVarieties.noRecipes': 'Bu çeşidi kullanan tarif henüz yok.',
     'recipe.focusMode.by': 'tarafından',
+    'recipe.card.by': 'tarafından',
   };
   return map[key] ?? key;
 };
@@ -280,6 +283,29 @@ describe('CoffeeVarietyDetailPage', () => {
     await waitFor(() => expect(screen.getByText('Recipes using Bourbon')).toBeInTheDocument());
     expect(screen.getByText('My Espresso')).toBeInTheDocument();
     expect(screen.getByText('Morning Pour Over')).toBeInTheDocument();
+  });
+
+  it('renders each recipe via the shared RecipeCard with a clickable author button', async () => {
+    render(<CoffeeVarietyDetailPage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    // r1 author renders its displayName; r2 has a null displayName → username fallback
+    expect(screen.getByRole('button', { name: 'Coffee Lover' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'barista' })).toBeInTheDocument();
+  });
+
+  it('renders the brew-method/drink-type/rating strip from r.versions[0]', async () => {
+    render(<CoffeeVarietyDetailPage />);
+
+    await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
+
+    // r1 version: espresso / espresso / ★ 4
+    expect(screen.getAllByText('espresso').length).toBeGreaterThan(0);
+    expect(screen.getByText(/★ 4/)).toBeInTheDocument();
+    // r2 version: v60 / filter / no rating
+    expect(screen.getByText('v60')).toBeInTheDocument();
+    expect(screen.getByText('filter')).toBeInTheDocument();
   });
 
   it('shows empty recipes message when no recipes', async () => {

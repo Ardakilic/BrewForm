@@ -19,6 +19,7 @@ Everything runs through Docker. No local Deno installation required. Use `make <
 - `make check` — type-check all workspaces
 - `make lint` — lint all apps and packages
 - `make test` — run all tests (via Docker, with `--allow-all`)
+- `make test-db-provision` — create + migrate + seed the `brewform_test` DB (idempotent; required once before DB-backed tests run, safe to re-run)
 
 Granular targets: `make check-api`, `make check-web`, `make test-api`, `make test-shared`, `make test-specific filter=path/to/test.ts`.
 
@@ -47,7 +48,7 @@ Every domain module follows 3-layer pattern: `model.ts` → `service.ts` → `in
 - **Services import from model files, never from `drizzle-orm` directly.**
 - Controllers validate with shared Zod schemas from `@brewform/shared/schemas`.
 - All Hono routes use typed `<AppEnv>` context (userId, user, cache, requestId).
-- Middleware stack order: cors → requestId → rateLimit(100/min) → cache injection → error handler → routes.
+- Middleware stack order: cors → requestId → secureHeaders → rateLimit → bodyLimit → cache injection → crawler → onError (via `app.onError`, not stack middleware) → optional /uploads static handler → routes.
 
 ## OpenAPI documentation
 
@@ -95,6 +96,7 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 - Framework: `jsr:@std/testing/bdd` (`describe`/`it`) + `jsr:@std/expect`.
 - Tests run with `--no-check` (type-checking done separately).
 - Tests need `DATABASE_URL` and `JWT_SECRET` set; `CACHE_DRIVER=memory` and `APP_ENV=test` skip KV and email.
+- DB-backed tests target the dedicated `brewform_test` database (the `make test*` targets inject `DATABASE_URL` for it) — NEVER the dev `brewform` DB, which tests would pollute. Run `make test-db-provision` once after `make up` (mirrors `.github/workflows/pr.yml` CI provisioning).
 - Email notifications are suppressed when `APP_ENV === 'test'`.
 
 ## Code style

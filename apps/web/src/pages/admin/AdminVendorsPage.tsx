@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import { Field } from '../../components/form/Field.tsx';
 import type { VendorOutput } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminVendorsPage');
@@ -9,8 +14,10 @@ const log = createLogger('AdminVendorsPage');
 /** Admin page: vendor CRUD with inline form. */
 export function AdminVendorsPage() {
   const { t } = useTranslation();
+  const { confirm } = useConfirm();
+  const toast = useToast();
   const [vendors, setVendors] = useState<VendorOutput[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', website: '', description: '' });
@@ -26,8 +33,11 @@ export function AdminVendorsPage() {
   useEffect(() => {
     api.get<VendorOutput[]>('/admin/vendors').then((data) => {
       setVendors(data);
-    }).catch(() => {
-    }).finally(() => setLoading(false));
+      setStatus('ready');
+    }).catch((err) => {
+      log.error({ err }, 'vendor list fetch failed');
+      setStatus('error');
+    });
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -51,18 +61,28 @@ export function AdminVendorsPage() {
         setVendors((prev) => [...prev, created]);
       }
       resetForm();
-    } catch {
+    } catch (err) {
+      log.error({ err, editId }, 'handleSubmit failed');
+      toast.error('admin.vendors.saveError');
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!globalThis.confirm(t('admin.vendors.deleteConfirm'))) return;
+    if (
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'admin.vendors.deleteConfirm',
+        danger: true,
+      })
+    ) return;
     try {
       await api.delete(`/admin/vendors/${id}`);
       setVendors((prev) => prev.filter((v) => v.id !== id));
-    } catch {
+    } catch (err) {
+      log.error({ err, vendorId: id }, 'handleDelete failed');
+      toast.error('admin.vendors.deleteFailed');
     }
   }
 
@@ -99,13 +119,7 @@ export function AdminVendorsPage() {
             {editId ? t('admin.vendors.editTitle') : t('admin.vendors.addTitle')}
           </h2>
           <div className='space-y-3'>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('common.name')}
-              </label>
+            <Field label={t('common.name')}>
               <input
                 type='text'
                 value={form.name}
@@ -113,35 +127,23 @@ export function AdminVendorsPage() {
                 className='input-field'
                 required
               />
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('admin.vendors.website')}
-              </label>
+            </Field>
+            <Field label={t('admin.vendors.website')}>
               <input
                 type='url'
                 value={form.website}
                 onChange={(e) => setForm({ ...form, website: e.target.value })}
                 className='input-field'
               />
-            </div>
-            <div>
-              <label
-                className='block text-sm font-medium mb-1'
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {t('common.description')}
-              </label>
+            </Field>
+            <Field label={t('common.description')}>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className='input-field'
                 rows={3}
               />
-            </div>
+            </Field>
           </div>
           <div className='flex gap-2 mt-4'>
             <button type='submit' className='btn-primary' disabled={saving}>
@@ -156,8 +158,10 @@ export function AdminVendorsPage() {
         </form>
       )}
 
-      {loading
-        ? <div style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</div>
+      {status === 'loading'
+        ? <LoadingState />
+        : status === 'error'
+        ? <ErrorState message={t('admin.vendors.loadError')} />
         : (
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
@@ -197,8 +201,7 @@ export function AdminVendorsPage() {
                         type='button'
                         onClick={() =>
                           handleDelete(vendor.id)}
-                        className='text-xs'
-                        style={{ color: 'var(--error)' }}
+                        className='btn-danger-text text-xs'
                       >
                         {t('common.delete')}
                       </button>

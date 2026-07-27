@@ -8,7 +8,13 @@ import { BeanSection } from '../../components/recipe/BeanSection.tsx';
 import { BrewTimeline } from '../../components/recipe/BrewTimeline.tsx';
 import { EquipmentSection } from '../../components/recipe/EquipmentSection.tsx';
 import { TastingNotesSection } from '../../components/recipe/TastingNotesSection.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import type {
+  RecipeDetailOutput,
+  RecipeDetailVersionOutput,
+  TasteNoteOutput,
+} from '@brewform/shared/schemas';
 
 const log = createLogger('RecipeFocusModePage');
 
@@ -16,10 +22,8 @@ const log = createLogger('RecipeFocusModePage');
 export function RecipeFocusModePage() {
   const { slug } = useParams();
   const { t } = useTranslation();
-  // deno-lint-ignore no-explicit-any
-  const [recipe, setRecipe] = useState<any>(null);
-  // deno-lint-ignore no-explicit-any
-  const [allTasteNotes, setAllTasteNotes] = useState<any[]>([]);
+  const [recipe, setRecipe] = useState<RecipeDetailOutput | null>(null);
+  const [allTasteNotes, setAllTasteNotes] = useState<TasteNoteOutput[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,7 +35,7 @@ export function RecipeFocusModePage() {
 
   useEffect(() => {
     tasteApi.flat().then((data) => {
-      setAllTasteNotes(Array.isArray(data) ? data as any[] : []);
+      setAllTasteNotes(Array.isArray(data) ? data : []);
     }).catch((err) => {
       log.error({ err }, 'Failed to fetch taste notes for focus mode');
     });
@@ -39,7 +43,7 @@ export function RecipeFocusModePage() {
 
   useEffect(() => {
     if (!slug) return;
-    recipeApi.get(slug).then((data: Record<string, unknown>) => {
+    recipeApi.get(slug).then((data) => {
       setRecipe(data);
     }).catch((err) => {
       log.error({ err, slug }, 'Failed to fetch recipe for focus mode');
@@ -49,11 +53,8 @@ export function RecipeFocusModePage() {
 
   if (error) {
     return (
-      <div
-        className='mx-auto max-w-3xl px-4 sm:px-6 py-12 text-center'
-        style={{ color: 'var(--error)' }}
-      >
-        {error}
+      <div className='mx-auto max-w-3xl px-4 sm:px-6 py-12'>
+        <ErrorState message={error} />
       </div>
     );
   }
@@ -69,15 +70,17 @@ export function RecipeFocusModePage() {
     );
   }
 
-  const v = recipe.currentVersion ?? {};
+  const v: Partial<RecipeDetailVersionOutput> = recipe.currentVersion ?? {};
 
   // Equipment items from the API
-  // deno-lint-ignore no-explicit-any
-  const equipmentItems: any[] = Array.isArray(recipe.equipment) ? recipe.equipment : [];
+  const equipmentItems: RecipeDetailOutput['equipment'] = Array.isArray(recipe.equipment)
+    ? recipe.equipment
+    : [];
 
   // Taste notes from the API
-  // deno-lint-ignore no-explicit-any
-  const tasteNotes: any[] = Array.isArray(recipe.tasteNotes) ? recipe.tasteNotes : [];
+  const tasteNotes: RecipeDetailOutput['tasteNotes'] = Array.isArray(recipe.tasteNotes)
+    ? recipe.tasteNotes
+    : [];
 
   // Determine section visibility
   const hasBeanData = v.productName != null ||
@@ -116,8 +119,8 @@ export function RecipeFocusModePage() {
         {/* Recipe title in serif font */}
         <div>
           <h1
-            className='text-3xl font-bold mb-1'
-            style={{ color: 'var(--text-primary)', fontFamily: 'Georgia, serif' }}
+            className='text-3xl font-bold font-serif mb-1'
+            style={{ color: 'var(--text-primary)' }}
           >
             {recipe.title}
           </h1>
@@ -163,7 +166,7 @@ export function RecipeFocusModePage() {
         )}
 
         {/* Preparation Notes Section — always show (mandatory field) */}
-        <section className='card' aria-label='Preparation notes'>
+        <section className='card' aria-label={t('a11y.preparationNotes')}>
           <div className='flex items-center justify-between mb-4'>
             <span
               className='text-xs font-semibold uppercase tracking-widest'

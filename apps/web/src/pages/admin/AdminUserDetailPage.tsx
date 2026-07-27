@@ -6,7 +6,12 @@ import { BanDialog } from '../../components/admin/BanDialog.tsx';
 import { useBanUser } from '../../hooks/useBanUser.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
+import { formatDate } from '../../utils/format.ts';
 
 const log = createLogger('AdminUserDetailPage');
 
@@ -15,7 +20,9 @@ export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { confirm } = useConfirm();
+  const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<AdminUserDetail | null>(null);
@@ -58,12 +65,19 @@ export function AdminUserDetailPage() {
   async function handleDelete() {
     if (
       !id ||
-      !globalThis.confirm(t('admin.users.deleteConfirm'))
+      !await confirm({
+        titleKey: 'common.confirmDelete',
+        bodyKey: 'admin.users.deleteConfirm',
+        danger: true,
+      })
     ) return;
     try {
       await adminApi.deleteUser(id);
       navigate('/admin/users');
-    } catch {}
+    } catch (err) {
+      log.error({ err, userId: id }, 'handleDelete failed');
+      toast.error('admin.users.deleteFailed');
+    }
   }
 
   if (loading) {
@@ -112,10 +126,15 @@ export function AdminUserDetailPage() {
 
   return (
     <div>
-      <div className='flex items-center gap-4 mb-6'>
-        <Link to='/admin/users' style={{ color: 'var(--accent-primary)' }}>
-          {t('admin.users.backToUsersArrow')}
-        </Link>
+      <div className='mb-6'>
+        <div className='mb-2'>
+          <Breadcrumb
+            items={[
+              { label: t('admin.users.management'), to: '/admin/users' },
+              { label: user.displayName || user.username },
+            ]}
+          />
+        </div>
         <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
           {user.displayName || user.username}
         </h1>
@@ -206,7 +225,7 @@ export function AdminUserDetailPage() {
                   {t('admin.users.joined')}
                 </span>
                 <p style={{ color: 'var(--text-primary)' }}>
-                  {new Date(user.createdAt).toLocaleDateString()}
+                  {formatDate(user.createdAt, locale)}
                 </p>
               </div>
               <div>
@@ -214,7 +233,7 @@ export function AdminUserDetailPage() {
                   {t('admin.users.lastUpdated')}
                 </span>
                 <p style={{ color: 'var(--text-primary)' }}>
-                  {new Date(user.updatedAt).toLocaleDateString()}
+                  {formatDate(user.updatedAt, locale)}
                 </p>
               </div>
             </div>
@@ -254,14 +273,7 @@ export function AdminUserDetailPage() {
         </div>
       </div>
 
-      {banError && (
-        <div
-          className='mb-4 p-3 rounded text-sm'
-          style={{ backgroundColor: 'var(--error-bg, #fef2f2)', color: 'var(--error)' }}
-        >
-          {t(banError)}
-        </div>
-      )}
+      {banError && <ErrorState message={t(banError)} className='mb-4' />}
 
       <div className='flex gap-3'>
         {!isSelf && (
@@ -284,8 +296,7 @@ export function AdminUserDetailPage() {
                       username: user.username,
                       displayName: user.displayName,
                     })}
-                  className='btn-secondary'
-                  style={{ color: 'var(--error)' }}
+                  className='btn-danger-text'
                 >
                   {t('admin.banUser')}
                 </button>
@@ -293,8 +304,7 @@ export function AdminUserDetailPage() {
             <button
               type='button'
               onClick={handleDelete}
-              className='btn-secondary'
-              style={{ color: 'var(--error)' }}
+              className='btn-danger-text'
             >
               {t('admin.users.deleteUser')}
             </button>

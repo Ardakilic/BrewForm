@@ -24,7 +24,7 @@ vi.mock('../../contexts/AuthContext.tsx', () => ({
 }));
 
 vi.mock('../../api/client.ts', () => ({
-  api: { get: vi.fn() },
+  api: { get: vi.fn(), getWithMeta: vi.fn() },
   ApiError: class extends Error {
     code: string;
     status: number;
@@ -67,6 +67,7 @@ const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
 const mockApiGet = vi.mocked(api.get);
+const mockApiGetWithMeta = vi.mocked(api.getWithMeta);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -83,6 +84,9 @@ const enT = (key: string) => {
     'user.noBadges': 'No badges yet.',
     'user.noFollowers': 'No followers yet.',
     'user.noFollowing': 'Not following anyone yet.',
+    'user.collections': 'Collections',
+    'user.noCollections': 'No collections yet.',
+    'collection.detail.recipes': 'recipes',
     'a11y.userAvatar': "{name}'s avatar",
   };
   return map[key] ?? key;
@@ -126,6 +130,18 @@ const defaultAuth = {
   logout: vi.fn(),
   refreshUser: vi.fn(),
   clearSessionError: vi.fn(),
+};
+
+const mockCollection = {
+  id: 'c1',
+  userId: 'profile-user-id',
+  name: 'Favorites',
+  description: 'My favorite recipes',
+  visibility: 'private',
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z',
+  deletedAt: null,
+  recipeCount: 3,
 };
 
 const HydrateFallback = () => null;
@@ -206,5 +222,59 @@ describe('UserProfilePage — FollowButton visibility', () => {
     expect(editProfileLink).toHaveAttribute('href', '/settings');
 
     expect(screen.queryByText('Follow')).not.toBeInTheDocument();
+  });
+});
+
+describe('UserProfilePage — shared cards', () => {
+  it('renders profile recipes via RecipeCard with the author hidden', async () => {
+    mockApiGet.mockResolvedValue({
+      ...mockProfile,
+      recipes: [
+        {
+          id: 'r1',
+          slug: 'my-recipe',
+          title: 'My Recipe',
+          likeCount: 3,
+          commentCount: 1,
+          createdAt: '2024-01-01T00:00:00Z',
+          currentVersion: null,
+        },
+      ],
+    });
+
+    renderProfilePage();
+
+    await waitFor(() => {
+      expect(screen.getByText('My Recipe')).toBeInTheDocument();
+    });
+
+    // RecipeCard wraps the title in a link to /recipes/:slug
+    const link = screen.getByText('My Recipe').closest('a');
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute('href')).toBe('/recipes/my-recipe');
+
+    // hideAuthor → no "by unknown" fallback even though the projection has no author
+    expect(screen.queryByText('unknown')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /by/i })).not.toBeInTheDocument();
+  });
+
+  it('renders collections via CollectionCard on the collections tab (badge + description)', async () => {
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'collections' }));
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [mockCollection],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 1, totalPages: 1 } },
+    });
+
+    renderProfilePage('diana', 'collections');
+
+    await waitFor(() => {
+      expect(screen.getByText('Favorites')).toBeInTheDocument();
+    });
+
+    // CollectionCard restores the visibility badge and description the inline copy dropped
+    expect(screen.getByText('🔒')).toBeInTheDocument();
+    expect(screen.getByText('My favorite recipes')).toBeInTheDocument();
+    expect(screen.getByText(/3 recipes/)).toBeInTheDocument();
   });
 });

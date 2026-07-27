@@ -35,34 +35,46 @@ import {
   VISIBILITY_VALUES,
 } from '@brewform/shared/constants';
 
-// ============================================================
-// Enums — values imported from @brewform/shared/constants
-// (single source of truth across DB, Zod, and TypeScript)
-// ============================================================
+/**
+ * Enums — values imported from @brewform/shared/constants
+ * (single source of truth across DB, Zod, and TypeScript).
+ */
 
+/** Postgres enum driven by {@link VISIBILITY_VALUES}. */
 export const visibilityEnum = pgEnum('visibility', [...VISIBILITY_VALUES]);
 
+/** Union of {@link visibilityEnum} values. */
 export type RecipeVisibility = typeof visibilityEnum.enumValues[number];
 
+/** Postgres enum driven by {@link BREW_METHOD_VALUES}. */
 export const brewMethodEnum = pgEnum('brew_method', [...BREW_METHOD_VALUES]);
+/** Postgres enum driven by {@link DRINK_TYPE_VALUES}. */
 export const drinkTypeEnum = pgEnum('drink_type', [...DRINK_TYPE_VALUES]);
+/** Postgres enum driven by {@link EQUIPMENT_TYPE_VALUES}. */
 export const equipmentTypeEnum = pgEnum('equipment_type', [...EQUIPMENT_TYPE_VALUES]);
+/** Postgres enum driven by {@link EMOJI_TAG_VALUES}. */
 export const emojiTagEnum = pgEnum('emoji_tag', [...EMOJI_TAG_VALUES]);
+/** Postgres enum driven by {@link BADGE_RULE_VALUES}. */
 export const badgeRuleEnum = pgEnum('badge_rule', [...BADGE_RULE_VALUES]);
+/** Postgres enum driven by {@link UNIT_SYSTEM_VALUES}. */
 export const unitSystemEnum = pgEnum('unit_system', [...UNIT_SYSTEM_VALUES]);
+/** Postgres enum driven by {@link TEMPERATURE_UNIT_VALUES}. */
 export const temperatureUnitEnum = pgEnum('temperature_unit', [...TEMPERATURE_UNIT_VALUES]);
+/** Postgres enum driven by {@link THEME_VALUES}. */
 export const themeEnum = pgEnum('theme', [...THEME_VALUES]);
+/** Postgres enum driven by {@link DATE_FORMAT_VALUES}. */
 export const dateFormatEnum = pgEnum('date_format', [...DATE_FORMAT_VALUES]);
+/** Postgres enum driven by {@link ADDITIONAL_PREPARATION_TYPE_VALUES}. */
 export const additionalPreparationTypeEnum = pgEnum(
   'additional_preparation_type',
   [...ADDITIONAL_PREPARATION_TYPE_VALUES],
 );
+/** Postgres enum driven by {@link REPORT_STATUS_VALUES}. */
 export const reportStatusEnum = pgEnum('report_status', [...REPORT_STATUS_VALUES]);
 
-// ============================================================
-// Tables
-// ============================================================
+/** Tables — Drizzle pgTable definitions for all BrewForm entities. */
 
+/** User accounts; unique on `email` and `username`, soft-deleted via `deletedAt`. */
 export const users = pgTable(
   'user',
   {
@@ -89,6 +101,7 @@ export const users = pgTable(
   ],
 );
 
+/** Per-user preferences (units, theme, locale, notification toggles); unique on `userId`. */
 export const userPreferences = pgTable('user_preferences', {
   id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: varchar('user_id', { length: 36 }).notNull().unique().references(() => users.id, {
@@ -109,6 +122,7 @@ export const userPreferences = pgTable('user_preferences', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Recipes; unique `slug`, soft-deleted via `deletedAt`, denormalized like/comment/fork counts. */
 export const recipes = pgTable(
   'recipe',
   {
@@ -174,6 +188,7 @@ export const recipes = pgTable(
   ],
 );
 
+/** Immutable recipe versions; unique on (`recipeId`, `versionNumber`), rating CHECK 1–10. */
 export const recipeVersions = pgTable(
   'recipe_version',
   {
@@ -239,6 +254,7 @@ export const recipeVersions = pgTable(
   ],
 );
 
+/** Join: recipe versions ↔ taste notes; unique on (`recipeVersionId`, `tasteNoteId`), intensity CHECK 1–3. */
 export const recipeTasteNotes = pgTable(
   'recipe_taste_note',
   {
@@ -263,6 +279,7 @@ export const recipeTasteNotes = pgTable(
   ],
 );
 
+/** Join: recipe versions ↔ equipment; unique on (`recipeVersionId`, `equipmentId`). */
 export const recipeEquipment = pgTable(
   'recipe_equipment',
   {
@@ -285,6 +302,7 @@ export const recipeEquipment = pgTable(
   ],
 );
 
+/** Additional preparation steps for a recipe version; cascades on version delete. */
 export const recipeAdditionalPreparations = pgTable(
   'recipe_additional_preparation',
   {
@@ -306,6 +324,7 @@ export const recipeAdditionalPreparations = pgTable(
   ],
 );
 
+/** Recipe photos with thumbnail and sort order; soft-deleted via `deletedAt`. */
 export const photos = pgTable(
   'photo',
   {
@@ -332,6 +351,7 @@ export const photos = pgTable(
   ],
 );
 
+/** Join: recipe versions ↔ photos; unique on (`recipeVersionId`, `photoId`). */
 export const recipeVersionPhotos = pgTable(
   'recipe_version_photo',
   {
@@ -355,6 +375,7 @@ export const recipeVersionPhotos = pgTable(
   ],
 );
 
+/** Coffee equipment entries; typed via {@link equipmentTypeEnum}, soft-deleted via `deletedAt`. */
 export const equipment = pgTable(
   'equipment',
   {
@@ -384,6 +405,7 @@ export const equipment = pgTable(
   ],
 );
 
+/** Coffee bean entries per user; soft-deleted via `deletedAt`. */
 export const beans = pgTable(
   'bean',
   {
@@ -414,11 +436,13 @@ export const beans = pgTable(
   ],
 );
 
+/** Postgres enum driven by {@link COFFEE_VARIETY_CATEGORY_VALUES}. */
 export const coffeeVarietyCategoryEnum = pgEnum(
   'coffee_variety_category',
   [...COFFEE_VARIETY_CATEGORY_VALUES],
 );
 
+/** Coffee variety catalogue (system + user-created); soft-deleted via `deletedAt`. */
 export const coffeeVarieties = pgTable('coffee_variety', {
   id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: varchar('name', { length: 255 }).notNull(),
@@ -467,6 +491,7 @@ export const coffeeVarieties = pgTable('coffee_variety', {
   index('coffee_variety_category_name_idx').on(table.category, table.name),
 ]);
 
+/** Coffee vendors/roasters; soft-deleted via `deletedAt`. */
 export const vendors = pgTable(
   'vendor',
   {
@@ -485,6 +510,7 @@ export const vendors = pgTable(
   ],
 );
 
+/** Hierarchical taste-note taxonomy (self-referencing `parentId`); soft-deleted via `deletedAt`. */
 export const tasteNotes = pgTable(
   'taste_note',
   {
@@ -524,6 +550,7 @@ export const tasteNotes = pgTable(
   ],
 );
 
+/** User brewing setups with five equipment slots; soft-deleted via `deletedAt`. */
 export const setups = pgTable(
   'setup',
   {
@@ -556,6 +583,7 @@ export const setups = pgTable(
   ],
 );
 
+/** Threaded recipe comments (self-referencing `parentCommentId`); soft-deleted via `deletedAt`. */
 export const comments = pgTable(
   'comment',
   {
@@ -598,6 +626,7 @@ export const comments = pgTable(
   ],
 );
 
+/** User follow graph; unique on (`followerId`, `followingId`). */
 export const userFollows = pgTable(
   'user_follow',
   {
@@ -628,6 +657,7 @@ export const userFollows = pgTable(
   ],
 );
 
+/** User recipe favourites; unique on (`userId`, `recipeId`). */
 export const userRecipeFavourites = pgTable(
   'user_recipe_favourite',
   {
@@ -644,6 +674,7 @@ export const userRecipeFavourites = pgTable(
   ],
 );
 
+/** User recipe likes; unique on (`userId`, `recipeId`). */
 export const userRecipeLikes = pgTable(
   'user_recipe_like',
   {
@@ -660,6 +691,7 @@ export const userRecipeLikes = pgTable(
   ],
 );
 
+/** User recipe ratings (1–10 CHECK); unique on (`userId`, `recipeId`). */
 export const userRecipeRatings = pgTable(
   'user_recipe_rating',
   {
@@ -678,6 +710,7 @@ export const userRecipeRatings = pgTable(
   ],
 );
 
+/** Badge definitions; unique on `rule`. */
 export const badges = pgTable(
   'badge',
   {
@@ -696,6 +729,7 @@ export const badges = pgTable(
   ],
 );
 
+/** Awarded user badges; unique on (`userId`, `badgeId`). */
 export const userBadges = pgTable(
   'user_badge',
   {
@@ -711,6 +745,7 @@ export const userBadges = pgTable(
   ],
 );
 
+/** Brew-method ↔ equipment-type compatibility matrix; unique on (`brewMethod`, `equipmentType`). */
 export const brewMethodEquipmentRules = pgTable(
   'brew_method_equipment_rule',
   {
@@ -730,11 +765,13 @@ export const brewMethodEquipmentRules = pgTable(
   ],
 );
 
+/** Postgres enum driven by {@link EQUIPMENT_DELETE_REQUEST_STATUS_VALUES}. */
 export const equipmentDeleteRequestStatusEnum = pgEnum(
   'equipment_delete_request_status',
   [...EQUIPMENT_DELETE_REQUEST_STATUS_VALUES],
 );
 
+/** Community equipment deletion requests with review workflow; soft-deleted via `deletedAt`. */
 export const equipmentDeleteRequests = pgTable('equipment_delete_request', {
   id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   equipmentId: varchar('equipment_id', { length: 36 }).notNull()
@@ -753,6 +790,7 @@ export const equipmentDeleteRequests = pgTable('equipment_delete_request', {
   index('edr_deleted_at_idx').on(table.deletedAt),
 ]);
 
+/** Admin audit trail (action, entity, details). */
 export const auditLogs = pgTable(
   'audit_log',
   {
@@ -771,6 +809,7 @@ export const auditLogs = pgTable(
   ],
 );
 
+/** Password reset tokens; unique `token`, expiry-tracked. */
 export const passwordResets = pgTable(
   'password_reset',
   {
@@ -788,6 +827,7 @@ export const passwordResets = pgTable(
   ],
 );
 
+/** Email verification tokens; unique `token`, cascades on user delete. */
 export const emailVerificationTokens = pgTable(
   'email_verification_token',
   {
@@ -806,6 +846,7 @@ export const emailVerificationTokens = pgTable(
   ],
 );
 
+/** User content reports with resolution workflow; typed via {@link reportStatusEnum}. */
 export const reports = pgTable(
   'report',
   {

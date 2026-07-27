@@ -1,3 +1,5 @@
+import { useSafeT } from '../../utils/safe-translation.ts';
+
 interface IntensityDotsProps {
   intensity: number; // 1, 2, or 3
   className?: string;
@@ -8,11 +10,12 @@ interface IntensityDotsProps {
  * Filled dots use --accent-primary; empty dots use a muted border.
  */
 export function IntensityDots({ intensity, className }: IntensityDotsProps) {
+  const t = useSafeT();
   return (
     <div
       className={className}
       style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}
-      aria-label={`Intensity ${intensity} of 3`}
+      aria-label={t('a11y.intensity').replace('{intensity}', String(intensity))}
     >
       {Array.from({ length: 3 }, (_, i) => {
         const filled = i < intensity;

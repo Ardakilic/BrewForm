@@ -20,6 +20,6 @@
   "devDependencies": {
     "drizzle-kit": "^0.31.10",
     "@std/testing": "jsr:@std/testing@^1.0.19",
-    "@std/expect": "jsr:@std/expect@^1.0.19"
+    "@std/expect": "jsr:@std/expect@^1.0.20"
   }
 }

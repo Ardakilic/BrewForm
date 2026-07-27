@@ -16,4 +16,5 @@ export function getAvailableLocales(): string[] {
   return Object.keys(locales);
 }
 
+/** Bundled locale translation maps (English and Turkish). */
 export { en, tr };

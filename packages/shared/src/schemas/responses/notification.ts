@@ -22,6 +22,7 @@ export const NotificationOutputSchema = z.object({
   createdAt: z.string(),
 });
 
+/** Inferred type of {@link NotificationOutputSchema}. */
 export type NotificationOutput = z.infer<typeof NotificationOutputSchema>;
 
 /** Unread-count response shape for GET /api/v1/notifications/unread-count. */
@@ -29,4 +30,5 @@ export const UnreadCountOutputSchema = z.object({
   count: z.number().int().nonnegative(),
 });
 
+/** Inferred type of {@link UnreadCountOutputSchema}. */
 export type UnreadCountOutput = z.infer<typeof UnreadCountOutputSchema>;

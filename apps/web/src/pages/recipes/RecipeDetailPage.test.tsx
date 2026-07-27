@@ -39,6 +39,7 @@ vi.mock('../../contexts/AuthContext.tsx', () => ({
 vi.mock('../../api/index.ts', () => ({
   recipeApi: { get: vi.fn() },
   commentApi: { list: vi.fn() },
+  collectionApi: { listByRecipe: vi.fn() },
 }));
 
 vi.mock('../../api/static-cache.ts', () => ({
@@ -113,11 +114,12 @@ vi.mock(
 
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { commentApi, recipeApi } from '../../api/index.ts';
+import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
 import type {
   CommentWithRepliesOutput,
   PaginatedResponse,
+  RecipeCollectionsOutput,
   RecipeDetailOutput,
 } from '@brewform/shared/schemas';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
@@ -126,6 +128,7 @@ const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
 const mockRecipeApiGet = vi.mocked(recipeApi.get);
 const mockCommentApiList = vi.mocked(commentApi.list);
+const mockCollectionApiListByRecipe = vi.mocked(collectionApi.listByRecipe);
 const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
 const mockSEOHead = vi.mocked(SEOHead);
 
@@ -148,6 +151,7 @@ const enT = (key: string) => {
     'recipe.focusModeAriaLabel': 'Focus mode',
     'recipe.forkAriaLabel': 'Fork recipe',
     'recipe.preparationNotes': 'Preparation notes',
+    'collection.inCollections': 'In Collections',
   };
   return map[key] ?? key;
 };
@@ -169,6 +173,7 @@ const trT = (key: string) => {
     'recipe.focusModeAriaLabel': 'Odak Modu',
     'recipe.forkAriaLabel': 'Tarifi Çatalla',
     'recipe.preparationNotes': 'Hazırlık Notları',
+    'collection.inCollections': 'Koleksiyonlarda',
   };
   return map[key] ?? key;
 };
@@ -263,6 +268,7 @@ beforeEach(() => {
   mockUseAuth.mockReturnValue(guestAuth as ReturnType<typeof useAuth>);
   mockRecipeApiGet.mockResolvedValue(sampleRecipe);
   mockCommentApiList.mockResolvedValue(emptyComments);
+  mockCollectionApiListByRecipe.mockResolvedValue([]);
   mockGetTasteNotesCached.mockResolvedValue([]);
   useNavigationM.mockReturnValue({ state: 'idle', location: undefined });
 });
@@ -786,5 +792,57 @@ describe('RecipeDetailPage — Print layout hiding', () => {
 
     const commentWrapper = screen.getByTestId('comment-section-wrapper');
     expect(commentWrapper.classList.contains('no-print')).toBe(true);
+  });
+});
+
+describe('RecipeDetailPage — In collections section (D99.5)', () => {
+  const sampleCollections: RecipeCollectionsOutput = [
+    { id: 'col-1', name: 'Espresso Favourites', visibility: 'public', userId: 'other-user' },
+    { id: 'col-2', name: 'Morning Brews', visibility: 'private', userId: 'other-user' },
+  ];
+
+  it('renders a link per collection when the loader returns collections', async () => {
+    mockCollectionApiListByRecipe.mockResolvedValue(sampleCollections);
+
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('in-collections-card')).toBeInTheDocument();
+    });
+
+    const card = screen.getByTestId('in-collections-card');
+    expect(within(card).getByText('In Collections')).toBeInTheDocument();
+
+    const links = within(card).getAllByRole('link');
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveTextContent('Espresso Favourites');
+    expect(links[0]).toHaveAttribute('href', '/collections/col-1');
+    expect(links[1]).toHaveTextContent('Morning Brews');
+    expect(links[1]).toHaveAttribute('href', '/collections/col-2');
+  });
+
+  it('section is absent when the recipe is in no collections', async () => {
+    mockCollectionApiListByRecipe.mockResolvedValue([]);
+
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('in-collections-card')).toBeNull();
+  });
+
+  it('section is absent when the collections request fails (swallowed to [])', async () => {
+    mockCollectionApiListByRecipe.mockRejectedValue(new Error('boom'));
+
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('stat-cards')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('in-collections-card')).toBeNull();
+    expect(screen.getByText('My Espresso')).toBeInTheDocument();
   });
 });

@@ -72,6 +72,7 @@ describe('Share Route', () => {
     const originalGetRecipeMeta = deps.getRecipeMeta;
 
     it('returns 404 with RECIPE_NOT_FOUND_HTML when visibility is not public', async () => {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => ({
         id: '1',
         title: 'Private Recipe',
@@ -95,6 +96,7 @@ describe('Share Route', () => {
     });
 
     it('returns 404 with RECIPE_NOT_FOUND_HTML when getRecipeMeta throws RECIPE_NOT_FOUND', async () => {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => {
         throw new Error('RECIPE_NOT_FOUND');
       };
@@ -108,6 +110,7 @@ describe('Share Route', () => {
     });
 
     it('uses productName in description when present', async () => {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => ({
         id: '1',
         title: 'V60 Recipe',
@@ -132,6 +135,7 @@ describe('Share Route', () => {
     });
 
     it('falls back to author name when productName is absent', async () => {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => ({
         id: '1',
         title: 'Espresso Recipe',
@@ -155,6 +159,7 @@ describe('Share Route', () => {
     });
 
     it('falls back to generic user when productName and author are absent', async () => {
+      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => ({
         id: '1',
         title: 'Cold Brew',

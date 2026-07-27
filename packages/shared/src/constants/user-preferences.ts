@@ -12,6 +12,7 @@ export const UNIT_SYSTEM_VALUES = ['metric', 'imperial'] as const;
 /** Measurement system for weight and volume display. */
 export type UnitSystem = (typeof UNIT_SYSTEM_VALUES)[number];
 
+/** Valid temperature unit values. */
 export const TEMPERATURE_UNIT_VALUES = ['celsius', 'fahrenheit'] as const;
 /**
  * Temperature unit for display.
@@ -22,6 +23,7 @@ export const TEMPERATURE_UNIT_VALUES = ['celsius', 'fahrenheit'] as const;
  */
 export type TemperatureUnit = (typeof TEMPERATURE_UNIT_VALUES)[number];
 
+/** Valid UI theme values. */
 export const THEME_VALUES = ['light', 'dark', 'coffee'] as const;
 /** UI colour theme. */
 export type Theme = (typeof THEME_VALUES)[number];

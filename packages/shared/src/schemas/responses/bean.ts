@@ -24,4 +24,5 @@ export const BeanOutputSchema = z.object({
   deletedAt: z.string().nullable(),
 });
 
+/** Inferred type of {@link BeanOutputSchema}. */
 export type BeanOutput = z.infer<typeof BeanOutputSchema>;
