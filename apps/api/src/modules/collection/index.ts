@@ -118,7 +118,6 @@ collection.get(
     tags: ['Collections'],
     summary: 'Browse all public collections',
     description: 'Paginated list of all public collections across all users.',
-    security: [],
     parameters: [
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
       {

@@ -30,11 +30,9 @@ import {
   count,
   desc,
   eq,
-  gt,
   ilike,
   inArray,
   isNull,
-  lt,
   not,
   or,
   SQL,
@@ -892,16 +890,14 @@ function buildCursorWhere(cursor: { createdAt: string; id: string }, sortOrder: 
   if (isNaN(createdAtValue.getTime())) {
     throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
   }
+  // D03 raw-SQL exception: row-value comparison for composite index sargability.
+  // Drizzle has no first-class row-value operator; sql template is the idiomatic escape hatch.
+  // ponytail: upgrade path — if Drizzle adds row-value support, replace with the native operator.
+  const iso = createdAtValue.toISOString();
   if (sortOrder === 'asc') {
-    return or(
-      gt(recipes.createdAt, createdAtValue),
-      and(eq(recipes.createdAt, createdAtValue), gt(recipes.id, id)),
-    ) as SQL;
+    return sql`(${recipes.createdAt}, ${recipes.id}) > (${iso}, ${id})`;
   }
-  return or(
-    lt(recipes.createdAt, createdAtValue),
-    and(eq(recipes.createdAt, createdAtValue), lt(recipes.id, id)),
-  ) as SQL;
+  return sql`(${recipes.createdAt}, ${recipes.id}) < (${iso}, ${id})`;
 }
 
 /**

@@ -281,7 +281,7 @@ describe(
 // D99.9 — comment visibility gate route tests
 //
 // Mounts the REAL comment router on a stub Hono app with auth stubbed at the
-// middleware seam (the `deps` proxy — same idiom as collection/index_test.ts)
+// middleware seam (the `deps` proxy — same idiom as collection/index.test.ts)
 // and exercises the visibility gate end-to-end against the test database:
 // invisible (draft/private) recipes are existence-hidden as 404 for anonymous
 // and non-owner callers; owners (and public recipes) pass through.
