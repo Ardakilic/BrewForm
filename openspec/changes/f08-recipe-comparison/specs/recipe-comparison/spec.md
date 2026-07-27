@@ -10,7 +10,7 @@ component from this spec.
 
 ---
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Shared Zod schema for merge payloads
 
@@ -107,7 +107,7 @@ export async function fetchRecipeVersionWithRelations(versionId: string) {
 This function uses the existing `db` import and `recipeVersions` table already present in
 `model.ts`. It follows the same relational query pattern as `findById` (which uses
 `db.query.recipes.findFirst({ with: {...} })`). The `recipeVersions` table has Drizzle relations
-defined at `packages/db/src/schema.ts` (lines ~1029–1031) for `tasteNotes`, `equipment`, and
+defined at `packages/db/src/schema.ts` (lines ~1029-1031) for `tasteNotes`, `equipment`, and
 `additionalPreparations`.
 
 #### Scenario: fetchRecipeVersionWithRelations returns version with relations
@@ -212,6 +212,7 @@ function getMergedPreparations(
 - `preparationNotes` falls back to `'Merged recipe'` when neither version has notes and no selection is made.
 - The function delegates to the existing `createRecipe` service function, which handles slug generation, equipment compatibility validation, brew ratio computation, and returns the full `RecipeDetailOutput` shape.
 - The service SHALL NOT import from `drizzle-orm` or `@brewform/db` directly — all DB access goes through `model.fetchRecipeVersionWithRelations` and `createRecipe` (per the `recipe-write` spec).
+- Taste note intensities are NOT preserved during merge — `createRecipe` defaults all intensities to `1` when `tasteNoteIntensities` is not provided. This is acceptable since the merged recipe is a draft the user will review.
 
 **Logging:** entry log with `{ authorId }`, exit log with `{ authorId, recipeId }`. Error path logs `{ err, authorId }` at error level. Never log the merge payload (may contain `personalNotes`).
 
@@ -281,6 +282,10 @@ recipe.post(
         description: 'Authentication required',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
+      403: {
+        description: 'Email not verified or equipment compatibility violation',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
       404: {
         description: 'One or both recipe versions not found',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
@@ -290,6 +295,9 @@ recipe.post(
   authGuard,
   zValidator('json', RecipeMergeSchema, zodValidationHook),
   async (c) => {
+    if (!isEmailVerified(c)) {
+      return error(c, 'EMAIL_NOT_VERIFIED', 'Please verify your email to perform this action', 403);
+    }
     const authorId = c.get('userId') as string;
     const body = c.req.valid('json');
     try {
@@ -298,6 +306,7 @@ recipe.post(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not authorized', 403);
       throw err;
     }
   },
@@ -314,7 +323,7 @@ recipe.post(
 - `success(c, data, 201)` and `error(c, code, message, status)` from `apps/api/src/utils/response/index.ts`
 - `zodValidationHook` from `apps/api/src/utils/response/index.ts` (line ~151)
 
-**New import in `index.ts`:** `RecipeMergeSchema` from `@brewform/shared/schemas`.
+**New imports in `index.ts`:** `RecipeMergeSchema` from `@brewform/shared/schemas`. `isEmailVerified` is already imported (line 31).
 
 **Route placement:** The `/merge` route MUST be registered BEFORE the `/:id` param routes to avoid
 `merge` being captured as an `:id` parameter. Place it after `POST /` (create) and before
@@ -329,6 +338,11 @@ recipe.post(
 
 - **WHEN** an unauthenticated request is made to `/api/v1/recipes/merge`
 - **THEN** the response is 401 with `{ success: false, error: { code: 'UNAUTHORIZED', ... } }`
+
+#### Scenario: POST /recipes/merge returns 403 when email not verified
+
+- **WHEN** an authenticated user with unverified email POSTs a valid payload to `/api/v1/recipes/merge`
+- **THEN** the response is 403 with `{ success: false, error: { code: 'EMAIL_NOT_VERIFIED', ... } }`
 
 #### Scenario: POST /recipes/merge returns 404 for missing version
 
@@ -579,16 +593,23 @@ function CompareTable({ v1, v2 }: { v1: RecipeDetailVersionOutput; v2: RecipeDet
 
 // In RecipeComparePage — merge flow:
 const [showMerge, setShowMerge] = useState(false);
+const [mergeError, setMergeError] = useState<string | null>(null);
 const navigate = useNavigate();
 
 async function handleMerge(selections: Record<string, 'v1' | 'v2' | 'both' | 'none'>) {
-  const merged = await recipeApi.merge({
-    recipeVersionId1: recipe1.currentVersion.id,
-    recipeVersionId2: recipe2.currentVersion.id,
-    title: `${recipe1.title} + ${recipe2.title}`,
-    selections,
-  });
-  navigate(`/recipes/${merged.id}/edit`);
+  setMergeError(null);
+  try {
+    const merged = await recipeApi.merge({
+      recipeVersionId1: recipe1.currentVersion.id,
+      recipeVersionId2: recipe2.currentVersion.id,
+      title: `${recipe1.title} + ${recipe2.title}`,
+      selections,
+    });
+    navigate(`/recipes/${merged.id}/edit`);
+  } catch (err) {
+    log.error({ err }, 'handleMerge failed');
+    setMergeError(err instanceof Error ? err.message : 'Merge failed');
+  }
 }
 
 // Render:
@@ -693,13 +714,18 @@ for `DiffHighlighter` labels — do NOT duplicate them.
 
 ### Requirement: CSS variable for diff highlighting
 
-The system SHALL add a `--diff-highlight` CSS custom property to the theme (in the root CSS file
-where other `--*` variables are defined, e.g. `apps/web/src/index.css` or the theme file):
+The system SHALL add a `--diff-highlight` CSS custom property to `apps/web/src/styles/globals.css`
+in all three theme blocks (`:root`, `.dark`, `.coffee`):
 
 ```css
-:root {
-  --diff-highlight: rgba(255, 200, 0, 0.1);
-}
+/* In :root */
+--diff-highlight: rgba(255, 200, 0, 0.1);
+
+/* In .dark */
+--diff-highlight: rgba(255, 200, 0, 0.15);
+
+/* In .coffee */
+--diff-highlight: rgba(255, 200, 0, 0.12);
 ```
 
 The `DiffHighlighter` component uses `var(--diff-highlight, rgba(255, 200, 0, 0.1))` with a
@@ -737,7 +763,7 @@ The system SHALL follow the project's logging conventions (AGENTS.md):
 
 ---
 
-### Requirement: Test coverage (≥85% for new code)
+### Requirement: Test coverage (>=85% for new code)
 
 The system SHALL create these test files:
 
@@ -761,10 +787,10 @@ The system SHALL create these test files:
 - `getMergedIds` unit tests (v1, v2, both, none, undefined)
 - `getMergedPreparations` unit tests (v1, v2, both, none, undefined)
 
-**API route tests** — extend existing `apps/api/src/modules/recipe/index_test.ts` OR create
-`apps/api/src/modules/recipe/merge.route.test.ts`:
+**API route tests** — `apps/api/src/modules/recipe/merge.route.test.ts`:
 - `POST /api/v1/recipes/merge` returns 201 with success envelope
 - Returns 401 without auth token
+- Returns 403 when email is not verified
 - Returns 404 for non-existent version ID
 - Returns 400 for invalid payload (missing title)
 
@@ -795,7 +821,7 @@ The system SHALL create these test files:
 #### Scenario: Coverage meets threshold
 
 - **WHEN** coverage is measured for new files (`DiffHighlighter.tsx`, `MergeSelector.tsx`, `mergeRecipes` in service.ts, `fetchRecipeVersionWithRelations` in model.ts)
-- **THEN** line coverage is ≥85% for each new file/function
+- **THEN** line coverage is >=85% for each new file/function
 
 ---
 
@@ -860,18 +886,3 @@ Specifically:
 - `describeRoute`, `resolver` from `hono-openapi`
 - `jsonRequestBody` from `apps/api/src/utils/openapi/index.ts`
 - `createLogger` from `apps/api/src/utils/logger/index.ts` (API) and `@/utils/logger.ts` (web)
-
-## Implementation Order
-
-1. Add `RecipeMergeSchema` + type to shared schemas; export from barrel
-2. Add `merge.*` i18n keys to en.json + tr.json
-3. Add `fetchRecipeVersionWithRelations` to model.ts
-4. Add `mergeRecipes` + helpers to service.ts
-5. Add `POST /merge` route to index.ts (full OpenAPI docs)
-6. Write API tests (schema + service + route)
-7. Create `DiffHighlighter.tsx` + tests
-8. Create `MergeSelector.tsx` + tests
-9. Add `recipeApi.merge(...)` to web API client
-10. Update `RecipeComparePage.tsx` (diff highlighting + merge flow)
-11. Add `--diff-highlight` CSS variable
-12. Run `make fmt && make check && make lint && make test`
