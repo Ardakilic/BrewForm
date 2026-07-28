@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { api } from '../../api/client.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
@@ -27,6 +27,14 @@ export function RecipeVersionsPage() {
     { title: string; slug: string; versions: RecipeVersionRow[] } | null
   >(null);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<string[]>([]);
+
+  /** Toggle a version ID in the selection set (max 2). */
+  const toggleSelect = (id: string) => {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= 2 ? prev : [...prev, id]
+    );
+  };
 
   useEffect(() => {
     log.debug({}, 'RecipeVersionsPage mounted');
@@ -39,6 +47,7 @@ export function RecipeVersionsPage() {
     if (!slug) return;
     setLoading(true);
     setData(null);
+    setSelected([]);
     api.get<{ title: string; slug: string; versions: RecipeVersionRow[] }>(
       `/recipes/${slug}/versions`,
     )
@@ -85,6 +94,14 @@ export function RecipeVersionsPage() {
           <h1 className='text-2xl font-bold text-[color:var(--text-primary)]'>
             {data.title} – {t('recipe.versionHistory')}
           </h1>
+          {selected.length === 2 && (
+            <Link
+              to={`/recipes/${data.slug}/versions/diff?v1=${selected[0]}&v2=${selected[1]}`}
+              className='mt-2 inline-block rounded-md bg-[color:var(--accent-primary)] px-3 py-1.5 text-sm font-medium text-white'
+            >
+              {t('versionDiff.compareSelected')}
+            </Link>
+          )}
         </div>
 
         <div className='space-y-3'>
@@ -94,9 +111,18 @@ export function RecipeVersionsPage() {
               className='rounded-lg p-4 bg-[color:var(--bg-secondary)] border border-[color:var(--border-primary)]'
             >
               <div className='flex items-center justify-between'>
-                <span className='font-semibold text-[color:var(--text-primary)]'>
-                  v{v.versionNumber}
-                </span>
+                <label className='flex items-center gap-2'>
+                  <input
+                    type='checkbox'
+                    checked={selected.includes(v.id)}
+                    onChange={() => toggleSelect(v.id)}
+                    disabled={!selected.includes(v.id) && selected.length >= 2}
+                    className='h-4 w-4 accent-[color:var(--accent-primary)]'
+                  />
+                  <span className='font-semibold text-[color:var(--text-primary)]'>
+                    v{v.versionNumber}
+                  </span>
+                </label>
                 <span className='text-sm text-[color:var(--text-tertiary)]'>
                   {formatDate(v.brewDate, locale)}
                 </span>

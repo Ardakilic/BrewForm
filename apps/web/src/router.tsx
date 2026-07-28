@@ -116,6 +116,13 @@ export const router = createBrowserRouter([
           return { Component: RecipeComparePage };
         },
       },
+      {
+        path: 'recipes/:slug/versions/diff',
+        lazy: async () => {
+          const { VersionDiffPage } = await import('./pages/recipes/VersionDiffPage.tsx');
+          return { Component: VersionDiffPage };
+        },
+      },
       { path: 'recipes/:slug/versions', element: <RecipeVersionsPage /> },
       {
         path: 'recipes/:slug',

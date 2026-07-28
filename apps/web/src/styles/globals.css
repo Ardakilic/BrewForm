@@ -53,6 +53,12 @@
     --error-bg: #fef2f2;
     --info: #2563eb;
     --diff-highlight: rgba(255, 200, 0, 0.1);
+    --diff-added-bg: rgba(22, 163, 74, 0.1);
+    --diff-added-text: #15803d;
+    --diff-removed-bg: rgba(220, 38, 38, 0.1);
+    --diff-removed-text: #b91c1c;
+    --diff-modified-bg: rgba(217, 119, 6, 0.1);
+    --diff-modified-text: #92400e;
   }
 
   .dark {
@@ -73,6 +79,12 @@
     --error-bg: #450a0a;
     --info: #3b82f6;
     --diff-highlight: rgba(255, 200, 0, 0.15);
+    --diff-added-bg: rgba(34, 197, 94, 0.15);
+    --diff-added-text: #22c55e;
+    --diff-removed-bg: rgba(239, 68, 68, 0.15);
+    --diff-removed-text: #ef4444;
+    --diff-modified-bg: rgba(245, 158, 11, 0.15);
+    --diff-modified-text: #f59e0b;
   }
 
   .coffee {
@@ -93,6 +105,12 @@
     --error-bg: #4e2320;
     --info: #93c5fd;
     --diff-highlight: rgba(255, 200, 0, 0.12);
+    --diff-added-bg: rgba(134, 239, 172, 0.12);
+    --diff-added-text: #86efac;
+    --diff-removed-bg: rgba(252, 165, 165, 0.12);
+    --diff-removed-text: #fca5a5;
+    --diff-modified-bg: rgba(251, 191, 36, 0.12);
+    --diff-modified-text: #fbbf24;
   }
 
   body {

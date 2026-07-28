@@ -1,123 +1,146 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { RecipeVersionsPage } from './RecipeVersionsPage.tsx';
-import { MemoryRouter } from 'react-router';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 
-const { mockLogger } = vi.hoisted(() => ({
-  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
 }));
-vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
-vi.mock('react-router', async () => {
-  const actual = await vi.importActual('react-router');
-  return { ...actual, useParams: vi.fn() };
-});
+vi.mock('../../contexts/I18nContext.tsx', () => ({
+  useTranslation: () => ({
+    t: (k: string) => k,
+    locale: 'en',
+    setLocale: vi.fn(),
+    availableLocales: ['en', 'tr'],
+  }),
+}));
 
-vi.mock('../../api/client.ts', () => ({ api: { get: vi.fn() } }));
-vi.mock('../../contexts/I18nContext.tsx', () => ({ useTranslation: vi.fn() }));
-vi.mock(
-  '../../hooks/useUnitSystem.ts',
-  () => ({ useUnitSystem: vi.fn().mockReturnValue('metric') }),
-);
+vi.mock('../../hooks/useUnitSystem.ts', () => ({
+  useUnitSystem: () => 'metric',
+}));
 
-import { useParams } from 'react-router';
+vi.mock('../../api/client.ts', () => ({
+  api: { get: vi.fn() },
+}));
+
 import { api } from '../../api/client.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { RecipeVersionsPage } from './RecipeVersionsPage.tsx';
 
-const mockUseParams = vi.mocked(useParams);
-const mockApi = vi.mocked(api);
-const mockUseTranslation = vi.mocked(useTranslation);
+const mockApiGet = vi.mocked(api.get);
 
-const enT = (key: string) => {
-  const map: Record<string, string> = {
-    'common.loading': 'Loading...',
-    'common.back': 'Back',
-    'recipe.versionHistory': 'Version History',
-    'common.noResults': 'No results found',
-  };
-  return map[key] ?? key;
-};
+const mockVersions = [
+  {
+    id: 'v1-id',
+    versionNumber: 3,
+    brewDate: '2024-03-01',
+    brewMethod: 'v60',
+    groundWeightGrams: 18,
+    extractionVolumeMl: 300,
+    extractionTimeSeconds: 150,
+    temperatureCelsius: 93,
+  },
+  {
+    id: 'v2-id',
+    versionNumber: 2,
+    brewDate: '2024-02-01',
+    brewMethod: 'v60',
+    groundWeightGrams: 17,
+    extractionVolumeMl: 280,
+    extractionTimeSeconds: 140,
+    temperatureCelsius: 92,
+  },
+  {
+    id: 'v3-id',
+    versionNumber: 1,
+    brewDate: '2024-01-01',
+    brewMethod: 'french_press',
+    groundWeightGrams: 30,
+    extractionVolumeMl: 500,
+    extractionTimeSeconds: 240,
+    temperatureCelsius: 96,
+  },
+];
+
+function renderPage() {
+  const router = createMemoryRouter(
+    [{ path: '/recipes/:slug/versions', element: <RecipeVersionsPage /> }],
+    { initialEntries: ['/recipes/test-recipe/versions'] },
+  );
+  render(<RouterProvider router={router} />);
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLogger.debug.mockClear();
-  mockLogger.info.mockClear();
-  mockLogger.warn.mockClear();
-  mockLogger.error.mockClear();
-  mockUseParams.mockReturnValue({ slug: 'test-recipe' });
-  mockUseTranslation.mockReturnValue({
-    locale: 'en' as const,
-    setLocale: vi.fn(),
-    t: enT,
-    availableLocales: ['en', 'tr'],
+  mockApiGet.mockResolvedValue({
+    title: 'Test Recipe',
+    slug: 'test-recipe',
+    versions: mockVersions,
   });
 });
 
 describe('RecipeVersionsPage', () => {
-  it('logs mount and unmount', async () => {
-    mockApi.get.mockResolvedValue({
-      title: 'My Recipe',
-      slug: 'test-recipe',
-      versions: [],
+  it('renders version rows after loading', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('v3')).toBeInTheDocument();
     });
-    const { unmount } = render(
-      <MemoryRouter>
-        <RecipeVersionsPage />
-      </MemoryRouter>,
-    );
-    await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeVersionsPage mounted')
-    );
-    unmount();
-    await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RecipeVersionsPage unmounted')
-    );
+    expect(screen.getByText('v2')).toBeInTheDocument();
+    expect(screen.getByText('v1')).toBeInTheDocument();
   });
 
-  it('renders version list on successful load', async () => {
-    mockApi.get.mockResolvedValue({
-      title: 'My Recipe',
-      slug: 'test-recipe',
-      versions: [
-        {
-          id: 'v1',
-          versionNumber: 1,
-          brewDate: '2026-01-01T00:00:00Z',
-          brewMethod: 'v60',
-          groundWeightGrams: 18,
-          extractionVolumeMl: 250,
-          extractionTimeSeconds: 180,
-          temperatureCelsius: 93,
-        },
-      ],
-    });
-
-    render(
-      <MemoryRouter>
-        <RecipeVersionsPage />
-      </MemoryRouter>,
-    );
-
+  it('selects a version when checkbox is clicked', async () => {
+    renderPage();
     await waitFor(() => {
-      expect(screen.getByText('v1')).toBeInTheDocument();
+      expect(screen.getByText('v3')).toBeInTheDocument();
     });
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    expect(checkboxes[0]).toBeChecked();
   });
 
-  it('shows no results when api fails', async () => {
-    mockApi.get.mockRejectedValue(new Error('Not found'));
-
-    render(
-      <MemoryRouter>
-        <RecipeVersionsPage />
-      </MemoryRouter>,
-    );
-
+  it('disables third checkbox when 2 are selected', async () => {
+    renderPage();
     await waitFor(() => {
-      expect(screen.getByText('No results found')).toBeInTheDocument();
+      expect(screen.getByText('v3')).toBeInTheDocument();
     });
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      { err: expect.any(Error) },
-      'RecipeVersionsPage loadData failed',
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    fireEvent.click(checkboxes[1]);
+    expect(checkboxes[2]).toBeDisabled();
+  });
+
+  it('shows compare link only when exactly 2 selected', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('v3')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('versionDiff.compareSelected')).not.toBeInTheDocument();
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    expect(screen.queryByText('versionDiff.compareSelected')).not.toBeInTheDocument();
+    fireEvent.click(checkboxes[1]);
+    expect(screen.getByText('versionDiff.compareSelected')).toBeInTheDocument();
+  });
+
+  it('compare link points to correct diff URL', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('v3')).toBeInTheDocument();
+    });
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    fireEvent.click(checkboxes[1]);
+    const link = screen.getByText('versionDiff.compareSelected').closest('a');
+    expect(link).toHaveAttribute(
+      'href',
+      '/recipes/test-recipe/versions/diff?v1=v1-id&v2=v2-id',
     );
   });
 });

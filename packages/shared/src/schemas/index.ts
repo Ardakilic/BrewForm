@@ -102,7 +102,10 @@ export * from './responses/index.ts';
 // file declares `export type X = z.infer<typeof XSchema>;`; mirror that here so
 // `import type { RecipeDetailOutput } from '@brewform/shared/schemas'` resolves.
 export type {
+  DiffField,
+  DiffStatus,
   FeedRecipeOutput,
+  ListDiff,
   RecipeDetailOutput,
   RecipeDetailVersionOutput,
   RecipeListItemOutput,
@@ -110,6 +113,8 @@ export type {
   RecipeVersionRow,
   RecipeWithAuthorOutput,
   RecipeWithVersionsOutput,
+  VersionDiffOutput,
+  VersionMeta,
 } from './responses/recipe.ts';
 export type { BeanOutput } from './responses/bean.ts';
 export type { BadgeOutput, UserBadgeOutput } from './responses/badge.ts';

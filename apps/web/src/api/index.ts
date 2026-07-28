@@ -34,6 +34,7 @@ import type {
   TasteNoteOutput,
   UnreadCountOutput,
   UserProfileUpdate,
+  VersionDiffOutput,
 } from '@brewform/shared/schemas';
 import { api, ApiError } from './client.ts';
 import { createLogger } from '@/utils/logger.ts';
@@ -105,6 +106,9 @@ export const recipeApi = {
   saveNotes: (id: string, notes: string) =>
     api.post<{ message: string }>(`/recipes/${id}/notes`, { notes } as RecipeNotes),
   merge: (body: RecipeMerge) => api.post<RecipeDetailOutput, RecipeMerge>('/recipes/merge', body),
+  /** Fetch a field-by-field diff between two versions of a recipe. */
+  diffVersions: (slug: string, v1: string, v2: string) =>
+    api.get<VersionDiffOutput>(`/recipes/${slug}/versions/diff?v1=${v1}&v2=${v2}`),
 };
 
 /** Taste-note API client — full hierarchy, name search, and flat list. */

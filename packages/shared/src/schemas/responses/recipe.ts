@@ -286,3 +286,59 @@ export const RecipeDetailOutputSchema = RecipeRowSchema.extend({
 
 /** Inferred type of {@link RecipeDetailOutputSchema}. */
 export type RecipeDetailOutput = z.infer<typeof RecipeDetailOutputSchema>;
+
+/** Status of a single field comparison between two recipe versions. */
+export const DiffStatusSchema = z.enum(['added', 'removed', 'modified', 'unchanged']);
+
+/** Inferred type of {@link DiffStatusSchema}. */
+export type DiffStatus = z.infer<typeof DiffStatusSchema>;
+
+/**
+ * A single scalar field comparison between two recipe versions.
+ * `field` is a machine key (e.g. `"brewMethod"`), not a translated label.
+ */
+export const DiffFieldSchema = z.object({
+  field: z.string(),
+  value1: z.union([z.string(), z.number(), z.null()]),
+  value2: z.union([z.string(), z.number(), z.null()]),
+  status: DiffStatusSchema,
+});
+
+/** Inferred type of {@link DiffFieldSchema}. */
+export type DiffField = z.infer<typeof DiffFieldSchema>;
+
+/** Minimal version metadata included in a diff response. */
+export const VersionMetaSchema = z.object({
+  id: z.string(),
+  versionNumber: z.number().int(),
+  brewDate: z.string(),
+});
+
+/** Inferred type of {@link VersionMetaSchema}. */
+export type VersionMeta = z.infer<typeof VersionMetaSchema>;
+
+/** Set-diff result for list relations (taste notes, equipment). */
+export const ListDiffSchema = z.object({
+  added: z.array(z.string()),
+  removed: z.array(z.string()),
+  unchanged: z.array(z.string()),
+});
+
+/** Inferred type of {@link ListDiffSchema}. */
+export type ListDiff = z.infer<typeof ListDiffSchema>;
+
+/**
+ * Full version-diff payload returned by `GET /recipes/:slug/versions/diff`.
+ * Contains metadata for both versions, per-field scalar diffs, and set diffs
+ * for taste notes and equipment.
+ */
+export const VersionDiffOutputSchema = z.object({
+  version1: VersionMetaSchema,
+  version2: VersionMetaSchema,
+  fields: z.array(DiffFieldSchema),
+  tasteNotes: ListDiffSchema,
+  equipment: ListDiffSchema,
+});
+
+/** Inferred type of {@link VersionDiffOutputSchema}. */
+export type VersionDiffOutput = z.infer<typeof VersionDiffOutputSchema>;

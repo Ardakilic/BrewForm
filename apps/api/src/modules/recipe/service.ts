@@ -795,3 +795,108 @@ export async function mergeRecipes(authorId: string, data: RecipeMerge) {
     throw err;
   }
 }
+
+/** The 20 scalar fields compared between two recipe versions. */
+const DIFF_SCALAR_FIELDS = [
+  'brewMethod',
+  'drinkType',
+  'productName',
+  'coffeeBrand',
+  'coffeeProcessing',
+  'grindSize',
+  'grinder',
+  'brewerDetails',
+  'groundWeightGrams',
+  'extractionTimeSeconds',
+  'extractionVolumeMl',
+  'temperatureCelsius',
+  'brewRatio',
+  'flowRate',
+  'preInfusionTimeSeconds',
+  'tds',
+  'preparationNotes',
+  'personalNotes',
+  'rating',
+  'emojiTag',
+] as const;
+
+/**
+ * Compute a field-by-field diff between two versions of the same recipe.
+ *
+ * @param recipeId - The recipe both versions must belong to.
+ * @param v1Id - UUID of the first (older) version.
+ * @param v2Id - UUID of the second (newer) version.
+ * @returns A structured diff payload matching `VersionDiffOutputSchema`.
+ * @throws Error('VERSION_NOT_FOUND') if either version is missing or belongs to a different recipe.
+ * @throws Error('SAME_VERSION') if v1Id === v2Id.
+ */
+export async function diffVersions(recipeId: string, v1Id: string, v2Id: string) {
+  logger.debug({ recipeId, v1Id, v2Id }, 'diffVersions started');
+
+  if (v1Id === v2Id) throw new Error('SAME_VERSION');
+
+  try {
+    const [v1, v2] = await Promise.all([
+      model.fetchRecipeVersionWithRelations(v1Id),
+      model.fetchRecipeVersionWithRelations(v2Id),
+    ]);
+
+    if (!v1 || !v2 || v1.recipeId !== recipeId || v2.recipeId !== recipeId) {
+      throw new Error('VERSION_NOT_FOUND');
+    }
+
+    const fields = DIFF_SCALAR_FIELDS.map((field) => {
+      const value1 = v1[field] ?? null;
+      const value2 = v2[field] ?? null;
+      let status: 'added' | 'removed' | 'modified' | 'unchanged';
+      if (value1 === null && value2 !== null) status = 'added';
+      else if (value1 !== null && value2 === null) status = 'removed';
+      else if (value1 !== value2) status = 'modified';
+      else status = 'unchanged';
+      return { field, value1, value2, status };
+    });
+
+    const names1 = new Set(v1.tasteNotes.map((tn) => tn.tasteNote.name));
+    const names2 = new Set(v2.tasteNotes.map((tn) => tn.tasteNote.name));
+    const tasteNotes = {
+      added: [...names2].filter((n) => !names1.has(n)),
+      removed: [...names1].filter((n) => !names2.has(n)),
+      unchanged: [...names1].filter((n) => names2.has(n)),
+    };
+
+    const equip1 = new Set(v1.equipment.map((e) => e.equipment.name));
+    const equip2 = new Set(v2.equipment.map((e) => e.equipment.name));
+    const equipment = {
+      added: [...equip2].filter((n) => !equip1.has(n)),
+      removed: [...equip1].filter((n) => !equip2.has(n)),
+      unchanged: [...equip1].filter((n) => equip2.has(n)),
+    };
+
+    const result = {
+      version1: {
+        id: v1.id,
+        versionNumber: v1.versionNumber,
+        brewDate: new Date(v1.brewDate).toISOString(),
+      },
+      version2: {
+        id: v2.id,
+        versionNumber: v2.versionNumber,
+        brewDate: new Date(v2.brewDate).toISOString(),
+      },
+      fields,
+      tasteNotes,
+      equipment,
+    };
+
+    logger.debug({ recipeId, v1Id, v2Id }, 'diffVersions completed');
+    return result;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'VERSION_NOT_FOUND') {
+      logger.debug({ recipeId, v1Id, v2Id }, 'diffVersions version not found');
+    } else {
+      logger.error({ err, recipeId, v1Id, v2Id }, 'diffVersions failed');
+    }
+    throw err;
+  }
+}
