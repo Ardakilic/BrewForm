@@ -238,6 +238,7 @@ describe(
 
       expect(res.status).toBe(404);
       expect(body.success).toBe(false);
+      expect(body.error.code).toBe('NOT_FOUND');
     });
 
     it('returns 400 for invalid payload (missing title)', async () => {
@@ -256,6 +257,8 @@ describe(
 
       expect(res.status).toBe(400);
       expect(body.success).toBe(false);
+      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expect(body.error.details).toBeDefined();
     });
   },
 );

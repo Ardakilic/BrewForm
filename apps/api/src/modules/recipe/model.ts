@@ -1131,6 +1131,7 @@ export function fetchRecipeVersionWithRelations(versionId: string) {
   return db.query.recipeVersions.findFirst({
     where: eq(recipeVersions.id, versionId),
     with: {
+      recipe: true,
       tasteNotes: { with: { tasteNote: true } },
       equipment: { with: { equipment: true } },
       additionalPreparations: true,

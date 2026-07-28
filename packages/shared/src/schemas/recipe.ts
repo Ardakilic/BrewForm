@@ -218,8 +218,11 @@ export const RecipeMergeSchema = z.object({
     tasteNotes: z.enum(['v1', 'v2', 'both', 'none']).optional(),
     equipment: z.enum(['v1', 'v2', 'both', 'none']).optional(),
     additionalPreparations: z.enum(['v1', 'v2', 'both', 'none']).optional(),
-  }),
-});
+  }).default({}),
+}).refine(
+  (data) => data.recipeVersionId1 !== data.recipeVersionId2,
+  { message: 'Cannot merge a version with itself', path: ['recipeVersionId2'] },
+);
 
 /** Inferred type of {@link RecipeCreateSchema}. */
 export type RecipeCreate = z.infer<typeof RecipeCreateSchema>;

@@ -107,4 +107,30 @@ describe('RecipeMergeSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('defaults selections to empty object when omitted', () => {
+    const result = RecipeMergeSchema.safeParse({
+      recipeVersionId1: crypto.randomUUID(),
+      recipeVersionId2: crypto.randomUUID(),
+      title: 'X',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.selections).toEqual({});
+    }
+  });
+
+  it('rejects self-merge (same version ID twice)', () => {
+    const id = crypto.randomUUID();
+    const result = RecipeMergeSchema.safeParse({
+      recipeVersionId1: id,
+      recipeVersionId2: id,
+      title: 'X',
+      selections: {},
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('recipeVersionId2'))).toBe(true);
+    }
+  });
 });

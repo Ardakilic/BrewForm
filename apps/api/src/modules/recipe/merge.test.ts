@@ -266,6 +266,7 @@ describe(
           preparationNotes: 'v1',
         },
       });
+      createdRecipeIds.push(result!.id);
       expect(result).toBeDefined();
       expect(result!.visibility).toBe('draft');
       const version = result!.versions?.[0];
@@ -273,7 +274,6 @@ describe(
       expect(version!.drinkType).toBe('pour_over');
       expect(version!.grindSize).toBe('medium');
       expect(version!.preparationNotes).toBe('Bloom 30s');
-      createdRecipeIds.push(result!.id);
     });
 
     it('picks v2 fields when selected', async () => {
@@ -288,12 +288,12 @@ describe(
           grinder: 'v2',
         },
       });
+      createdRecipeIds.push(result!.id);
       const version = result!.versions?.[0];
       expect(version!.brewMethod).toBe('espresso_machine');
       expect(version!.drinkType).toBe('espresso');
       expect(version!.grindSize).toBe('fine');
       expect(version!.grinder).toBe('Niche Zero');
-      createdRecipeIds.push(result!.id);
     });
 
     it('deduplicates taste notes with both', async () => {
@@ -303,10 +303,10 @@ describe(
         title: 'Merged Both',
         selections: { tasteNotes: 'both', equipment: 'both' },
       });
+      createdRecipeIds.push(result!.id);
       const version = result!.versions?.[0];
       expect(version!.tasteNotes!.length).toBe(3);
       expect(version!.equipment!.length).toBe(2);
-      createdRecipeIds.push(result!.id);
     });
 
     it('returns empty arrays for none', async () => {
@@ -316,11 +316,11 @@ describe(
         title: 'Merged None',
         selections: { tasteNotes: 'none', equipment: 'none', additionalPreparations: 'none' },
       });
+      createdRecipeIds.push(result!.id);
       const version = result!.versions?.[0];
       expect(version!.tasteNotes!.length).toBe(0);
       expect(version!.equipment!.length).toBe(0);
       expect(version!.additionalPreparations!.length).toBe(0);
-      createdRecipeIds.push(result!.id);
     });
 
     it('throws RECIPE_NOT_FOUND for missing version', async () => {
@@ -341,10 +341,54 @@ describe(
         title: 'Fallback Test',
         selections: {},
       });
+      createdRecipeIds.push(result!.id);
       const version = result!.versions?.[0];
       expect(version!.brewMethod).toBe('v60');
       expect(version!.drinkType).toBe('pour_over');
-      createdRecipeIds.push(result!.id);
+    });
+
+    it('throws FORBIDDEN when merging private recipes owned by another user', async () => {
+      const otherUserId = crypto.randomUUID();
+      const otherRecipeId = crypto.randomUUID();
+      const otherVersionId = crypto.randomUUID();
+      await db.insert(users).values({
+        id: otherUserId,
+        email: `other-${otherUserId}@example.com`,
+        username: `other-${otherUserId.slice(0, 8)}`,
+        passwordHash: 'hash',
+      });
+      await db.insert(recipes).values({
+        id: otherRecipeId,
+        slug: `merge-priv-${otherRecipeId.slice(0, 8)}`,
+        title: 'Private Recipe',
+        authorId: otherUserId,
+        visibility: 'private',
+      });
+      await db.insert(recipeVersions).values({
+        id: otherVersionId,
+        recipeId: otherRecipeId,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        brewDate: new Date(),
+        preparationNotes: 'secret',
+        isFavourite: false,
+      });
+
+      try {
+        await expect(
+          mergeRecipes(userId, {
+            recipeVersionId1: versionId1,
+            recipeVersionId2: otherVersionId,
+            title: 'Should Be Forbidden',
+            selections: {},
+          }),
+        ).rejects.toThrow('FORBIDDEN');
+      } finally {
+        await db.delete(recipeVersions).where(eq(recipeVersions.id, otherVersionId));
+        await db.delete(recipes).where(eq(recipes.id, otherRecipeId));
+        await db.delete(users).where(eq(users.id, otherUserId));
+      }
     });
   },
 );

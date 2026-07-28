@@ -16,7 +16,7 @@ function labelFor(value: string, constants: ReadonlyArray<{ value: string; label
 }
 
 const unitFormatter = (unit: string) => (val: string | number | null) =>
-  val ? `${val}${unit}` : '-';
+  val != null ? `${val}${unit}` : '-';
 
 /**
  * Unified diff comparison of two recipes (`:slug1` vs `:slug2`):
@@ -41,6 +41,15 @@ export function RecipeComparePage() {
   }, []);
 
   useEffect(() => {
+    if (!showMerge) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMerge(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showMerge]);
+
+  useEffect(() => {
     if (!slug1 || !slug2) return;
     setLoading(true);
     // Deliberate null-fallback: a missing/unloadable recipe renders as an empty pane
@@ -58,7 +67,7 @@ export function RecipeComparePage() {
     }).finally(() => setLoading(false));
   }, [slug1, slug2]);
 
-  async function handleMerge(selections: Record<string, 'v1' | 'v2' | 'both' | 'none'>) {
+  async function handleMerge(selections: Record<string, 'v1' | 'v2'>) {
     if (!recipe1?.currentVersion || !recipe2?.currentVersion) return;
     setMergeError(null);
     try {
@@ -175,6 +184,8 @@ export function RecipeComparePage() {
         <div
           className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4'
           onClick={() => setShowMerge(false)}
+          role='dialog'
+          aria-modal='true'
         >
           <div className='w-full max-w-lg' onClick={(e) => e.stopPropagation()}>
             <MergeSelector fields={mergeFields} onMerge={handleMerge} />
@@ -210,13 +221,13 @@ function CompareTable(
         labelKey='recipe.brewMethod'
         value1={v1.brewMethod}
         value2={v2.brewMethod}
-        formatter={(val) => (val ? labelFor(String(val), BREW_METHODS) : '-')}
+        formatter={(val) => (val != null ? labelFor(String(val), BREW_METHODS) : '-')}
       />
       <DiffHighlighter
         labelKey='recipe.drinkType'
         value1={v1.drinkType}
         value2={v2.drinkType}
-        formatter={(val) => (val ? labelFor(String(val), DRINK_TYPES) : '-')}
+        formatter={(val) => (val != null ? labelFor(String(val), DRINK_TYPES) : '-')}
       />
       <DiffHighlighter labelKey='recipe.grindSize' value1={v1.grindSize} value2={v2.grindSize} />
       <DiffHighlighter
@@ -247,13 +258,13 @@ function CompareTable(
         labelKey='recipe.ratio'
         value1={v1.brewRatio}
         value2={v2.brewRatio}
-        formatter={(val) => (val ? `1:${val}` : '-')}
+        formatter={(val) => (val != null ? `1:${val}` : '-')}
       />
       <DiffHighlighter
         labelKey='recipe.rating'
         value1={v1.rating}
         value2={v2.rating}
-        formatter={(val) => (val ? `${val}/10` : '-')}
+        formatter={(val) => (val != null ? `${val}/10` : '-')}
       />
       <DiffHighlighter labelKey='recipe.grinder' value1={v1.grinder} value2={v2.grinder} />
       <DiffHighlighter

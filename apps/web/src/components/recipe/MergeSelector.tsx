@@ -10,7 +10,7 @@ interface MergeField {
 
 interface MergeSelectorProps {
   fields: MergeField[];
-  onMerge: (selections: Record<string, 'v1' | 'v2' | 'both' | 'none'>) => void;
+  onMerge: (selections: Record<string, 'v1' | 'v2'>) => void;
 }
 
 export function MergeSelector({ fields, onMerge }: MergeSelectorProps) {
@@ -57,7 +57,7 @@ export function MergeSelector({ fields, onMerge }: MergeSelectorProps) {
       ))}
       <button
         type='button'
-        onClick={() => onMerge(selections as Record<string, 'v1' | 'v2' | 'both' | 'none'>)}
+        onClick={() => onMerge(selections as Record<string, 'v1' | 'v2'>)}
         className='btn-primary w-full'
       >
         {t('merge.create')}

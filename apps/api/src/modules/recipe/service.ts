@@ -749,6 +749,10 @@ export async function mergeRecipes(authorId: string, data: RecipeMerge) {
 
   if (!v1 || !v2) throw new Error('RECIPE_NOT_FOUND');
 
+  const canAccess = (v: typeof v1) =>
+    v.recipe.authorId === authorId || v.recipe.visibility === 'public';
+  if (!canAccess(v1) || !canAccess(v2)) throw new Error('FORBIDDEN');
+
   const sel = data.selections;
   const pick = <K extends keyof typeof v1>(field: K) => {
     const choice = sel[field as keyof typeof sel];
