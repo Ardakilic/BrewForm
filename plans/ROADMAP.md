@@ -26,7 +26,8 @@ Status reflects each F-plan's 2026-07-13 validation verdict.
 |----------|---------|--------|--------|--------|-----|
 | **P0** | @Mention notifications (F04) | Low | High | ✅ Shipped (2026-07-13) | [`F04`](F04-mention-notifications.md) |
 | **P0** | Recipe collections (F01) | Medium | High | ✅ Shipped (2026-07-09) | [`F01`](F01-recipe-collections.md) |
-| **P0** | Recipe version diff (F09) | Medium | High | ⚠️ Outdated — depends on F08 | [`F09`](F09-version-diff.md) |
+| **P0** | Recipe comparison improvements (F08) | Medium | High | ✅ Shipped (2026-07-28) | [`F08`](F08-recipe-comparison-improvements.md) |
+| **P0** | Recipe version diff (F09) | Medium | High | ⚠️ Outdated — F08 landed; rebase plan snippets on shipped DiffHighlighter/canViewRecipe/OpenAPI patterns | [`F09`](F09-version-diff.md) |
 | **P1** | In-app notification center (F05) | High | High | ⚠️ Outdated — substrate shipped via F04; scope shrunk to enum + fan-out + per-type rendering + pref split | [`F05`](F05-in-app-notifications.md) |
 | **P1** | Advanced search w/ facets (F11) | Medium | High | ⚠️ Outdated — rebase on shipped D27 cursor pagination | [`F11`](F11-advanced-search.md) |
 | **P1** | Image optimisation (F23) | Medium | Medium | 🔧 Rough — needs design decisions | [`F23`](F23-image-optimisation.md) |
@@ -45,7 +46,7 @@ Status reflects each F-plan's 2026-07-13 validation verdict.
 
 - ❌ Invalid / blocked: F03 (blocked by F02), F20 (blocked by F02), F26
 - ⚠️ Outdated (refresh plan before pickup): F13, F15, F16, F18, F19
-- ✅ Refreshed (2026-07-28): F08 (recipe comparison improvements — ready to implement)
+- ✅ Shipped (2026-07-28): F08 (recipe comparison improvements — diff highlighting + merge endpoint)
 - 🔧 Rough: F22 webhooks
 - ✅ Valid (ready to spec): F24 version snapshots, F28 guided brew mode, F29 weekly email digest, F30 bean freshness tracking, F31 recipe embed widgets
 
@@ -55,8 +56,9 @@ Status reflects each F-plan's 2026-07-13 validation verdict.
 
 Per the 2026-07-13 priority matrix refresh:
 
-1. **F09** (P0) — highest-impact remaining feature; schedule with/after F08 (its plan is
-   outdated and depends on F08 landing first).
+1. **F09** (P0) — highest-impact remaining feature; F08 dependency satisfied. Plan design is
+   valid but code snippets need rebasing on shipped F08 APIs (DiffHighlighter props,
+   canViewRecipe, typed response schemas, OpenAPI style, model reuse).
 2. **F05** (P1) — substrate already shipped via F04; the shrunk scope is the fastest P1 win.
 3. **F11** (P1) — rebase the plan on shipped D27 cursor pagination, then build faceted search.
 4. **F02** (P2) — unblocks F03, F20, and F25's brew-log sync; high leverage despite P2.
@@ -76,4 +78,4 @@ Per the 2026-07-13 priority matrix refresh:
 - **Remaining debt clearance** (2026-07-27): resolved D99.4, .8, .17, .18 via the
   `remaining-debt-clearance` OpenSpec change. The D99 ledger is now fully closed.
 - **Features shipped:** F01 (recipe collections, 2026-07-09), F04 (mention notifications,
-  2026-07-13).
+  2026-07-13), F08 (recipe comparison improvements, 2026-07-28).
