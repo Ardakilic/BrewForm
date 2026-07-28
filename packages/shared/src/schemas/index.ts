@@ -3,11 +3,19 @@ export {
   RecipeCreateSchema,
   RecipeFilterSchema,
   RecipeForkSchema,
+  RecipeMergeSchema,
   RecipeNotesSchema,
   RecipeRateSchema,
   RecipeUpdateSchema,
 } from './recipe.ts';
-export type { RecipeCreate, RecipeFork, RecipeNotes, RecipeRate, RecipeUpdate } from './recipe.ts';
+export type {
+  RecipeCreate,
+  RecipeFork,
+  RecipeMerge,
+  RecipeNotes,
+  RecipeRate,
+  RecipeUpdate,
+} from './recipe.ts';
 export {
   EquipmentCreateSchema,
   EquipmentDeleteRequestSchema,

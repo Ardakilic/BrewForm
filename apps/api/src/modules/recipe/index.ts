@@ -13,6 +13,7 @@ import {
   RecipeDetailOutputSchema,
   RecipeFilterSchema,
   RecipeForkSchema,
+  RecipeMergeSchema,
   RecipeNotesSchema,
   RecipeRateSchema,
   RecipeUpdateSchema,
@@ -464,6 +465,61 @@ recipe.post(
       return success(c, r, 201);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not authorized', 403);
+      throw err;
+    }
+  },
+);
+
+recipe.post(
+  '/merge',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'Merge two recipe versions',
+    description: 'Creates a new recipe draft from selected parameters of two recipe versions.',
+    security: [{ bearerAuth: [] }],
+    requestBody: jsonRequestBody(RecipeMergeSchema, 'Merge selection payload'),
+    responses: {
+      201: {
+        description: 'Merged recipe draft created',
+        content: {
+          'application/json': {
+            schema: resolver(successEnvelope(RecipeDetailOutputSchema)),
+          },
+        },
+      },
+      400: {
+        description: 'Invalid merge parameters',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      401: {
+        description: 'Authentication required',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      403: {
+        description: 'Email not verified or equipment compatibility violation',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      404: {
+        description: 'One or both recipe versions not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
+  authGuard,
+  zValidator('json', RecipeMergeSchema, zodValidationHook),
+  async (c) => {
+    if (!isEmailVerified(c)) {
+      return error(c, 'EMAIL_NOT_VERIFIED', 'Please verify your email to perform this action', 403);
+    }
+    const authorId = c.get('userId') as string;
+    const body = c.req.valid('json');
+    try {
+      const merged = await service.mergeRecipes(authorId, body);
+      return success(c, merged, 201);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       if (message === 'FORBIDDEN') return error(c, 'FORBIDDEN', 'Not authorized', 403);
       throw err;
     }

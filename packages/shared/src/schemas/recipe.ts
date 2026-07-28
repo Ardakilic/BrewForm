@@ -199,6 +199,31 @@ export const RecipeForkSchema = z.object({
   title: z.string().max(200).optional(),
 });
 
+export const RecipeMergeSchema = z.object({
+  recipeVersionId1: z.uuid(),
+  recipeVersionId2: z.uuid(),
+  title: z.string().min(1).max(200),
+  selections: z.object({
+    brewMethod: z.enum(['v1', 'v2']).optional(),
+    drinkType: z.enum(['v1', 'v2']).optional(),
+    grindSize: z.enum(['v1', 'v2']).optional(),
+    groundWeightGrams: z.enum(['v1', 'v2']).optional(),
+    extractionTimeSeconds: z.enum(['v1', 'v2']).optional(),
+    extractionVolumeMl: z.enum(['v1', 'v2']).optional(),
+    temperatureCelsius: z.enum(['v1', 'v2']).optional(),
+    brewerDetails: z.enum(['v1', 'v2']).optional(),
+    grinder: z.enum(['v1', 'v2']).optional(),
+    preparationNotes: z.enum(['v1', 'v2']).optional(),
+    personalNotes: z.enum(['v1', 'v2']).optional(),
+    tasteNotes: z.enum(['v1', 'v2', 'both', 'none']).optional(),
+    equipment: z.enum(['v1', 'v2', 'both', 'none']).optional(),
+    additionalPreparations: z.enum(['v1', 'v2', 'both', 'none']).optional(),
+  }).default({}),
+}).refine(
+  (data) => data.recipeVersionId1 !== data.recipeVersionId2,
+  { message: 'Cannot merge a version with itself', path: ['recipeVersionId2'] },
+);
+
 /** Inferred type of {@link RecipeCreateSchema}. */
 export type RecipeCreate = z.infer<typeof RecipeCreateSchema>;
 /** Inferred type of {@link RecipeUpdateSchema}. */
@@ -209,3 +234,5 @@ export type RecipeFork = z.infer<typeof RecipeForkSchema>;
 export type RecipeRate = z.infer<typeof RecipeRateSchema>;
 /** Inferred type of {@link RecipeNotesSchema}. */
 export type RecipeNotes = z.infer<typeof RecipeNotesSchema>;
+/** Inferred type of {@link RecipeMergeSchema}. */
+export type RecipeMerge = z.infer<typeof RecipeMergeSchema>;
