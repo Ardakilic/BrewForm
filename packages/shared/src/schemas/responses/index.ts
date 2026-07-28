@@ -27,7 +27,10 @@ export {
   EquipmentRecipesResponseSchema,
 } from './equipment.ts';
 export {
+  DiffFieldSchema,
+  DiffStatusSchema,
   FeedRecipeOutputSchema,
+  ListDiffSchema,
   RecipeDetailAuthorOutputSchema,
   RecipeDetailOutputSchema,
   RecipeDetailVersionOutputSchema,
@@ -36,6 +39,8 @@ export {
   RecipeVersionRowSchema,
   RecipeWithAuthorOutputSchema,
   RecipeWithVersionsOutputSchema,
+  VersionDiffOutputSchema,
+  VersionMetaSchema,
 } from './recipe.ts';
 export {
   CommentOutputSchema,

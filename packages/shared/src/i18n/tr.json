@@ -121,6 +121,9 @@
   "recipe.coffeeBrand": "Kahve Markası",
   "recipe.coffeeProcessing": "Kahve İşleme Yöntemi",
   "recipe.productName": "Ürün Adı",
+  "recipe.preInfusionTime": "Ön Demleme Süresi",
+  "recipe.tds": "TDS",
+  "recipe.brewerDetails": "Demleyici Detayları",
   "recipe.notFound": "Tarif bulunamadı",
   "recipe.unavailable.title": "Bu tarif artık kullanılamıyor",
   "recipe.unavailable.message": "Tarif silinmiş, gizli yapılmış veya taslağa dönmüş olabilir.",
@@ -887,5 +890,15 @@
   "admin.audit.loadError": "Denetim günlüğü yüklenemedi.",
   "admin.coffeeVarieties.saveError": "Kahve çeşidi kaydedilemedi.",
   "admin.coffeeVarieties.deleteFailed": "Kahve çeşidi silinemedi.",
-  "admin.users.deleteFailed": "Kullanıcı silinemedi."
+  "admin.users.deleteFailed": "Kullanıcı silinemedi.",
+  "versionDiff.title": "Sürüm Karşılaştırması",
+  "versionDiff.parameters": "Parametreler",
+  "versionDiff.tasteNotes": "Tat Notaları",
+  "versionDiff.equipment": "Ekipman",
+  "versionDiff.compareSelected": "Seçilenleri Karşılaştır",
+  "versionDiff.added": "Eklenen",
+  "versionDiff.removed": "Kaldırılan",
+  "versionDiff.unchanged": "Değişmeyen",
+  "versionDiff.version": "Sürüm",
+  "versionDiff.brewDate": "Demleme Tarihi"
 }

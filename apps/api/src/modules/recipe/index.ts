@@ -18,6 +18,7 @@ import {
   RecipeRateSchema,
   RecipeUpdateSchema,
   successEnvelope,
+  VersionDiffOutputSchema,
 } from '@brewform/shared/schemas';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
@@ -300,6 +301,90 @@ recipe.get(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      throw err;
+    }
+  },
+);
+
+const VersionDiffQuerySchema = z.object({
+  v1: z.string().uuid(),
+  v2: z.string().uuid(),
+});
+
+recipe.get(
+  '/:slug/versions/diff',
+  describeRoute({
+    tags: ['Recipes'],
+    summary: 'Diff two versions of a recipe',
+    description:
+      'Returns a field-by-field comparison between two versions of the same recipe, including scalar field diffs and set diffs for taste notes and equipment.',
+    parameters: [
+      {
+        name: 'slug',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+      },
+      {
+        name: 'v1',
+        in: 'query',
+        required: true,
+        description: 'UUID of the first version',
+        schema: { type: 'string', format: 'uuid' },
+      },
+      {
+        name: 'v2',
+        in: 'query',
+        required: true,
+        description: 'UUID of the second version',
+        schema: { type: 'string', format: 'uuid' },
+      },
+    ],
+    responses: {
+      200: {
+        description: 'Version diff payload',
+        content: {
+          'application/json': {
+            schema: resolver(successEnvelope(VersionDiffOutputSchema)),
+          },
+        },
+      },
+      400: {
+        description: 'Missing params or same version requested',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      401: {
+        description: 'Unauthorized',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+      404: {
+        description: 'Recipe or version not found',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
+    },
+  }),
+  optionalAuthGuard,
+  zValidator('query', VersionDiffQuerySchema, zodValidationHook),
+  async (c) => {
+    const { slug } = c.req.param();
+    const { v1, v2 } = c.req.valid('query');
+    try {
+      const recipe = await service.getRecipe(slug);
+      if (!recipe) return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      if (!service.canViewRecipe(recipe, c.get('userId'), c.get('user')?.isAdmin)) {
+        return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      }
+      const diff = await service.diffVersions(recipe.id, v1, v2);
+      return success(c, diff);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
+      if (message === 'SAME_VERSION') {
+        return error(c, 'VALIDATION_ERROR', 'v1 and v2 must be different versions', 400);
+      }
+      if (message === 'VERSION_NOT_FOUND') {
+        return error(c, 'VERSION_NOT_FOUND', 'Version not found for this recipe', 404);
+      }
       throw err;
     }
   },

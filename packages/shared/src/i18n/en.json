@@ -121,6 +121,9 @@
   "recipe.coffeeBrand": "Coffee Brand",
   "recipe.coffeeProcessing": "Coffee Processing",
   "recipe.productName": "Product Name",
+  "recipe.preInfusionTime": "Pre-infusion Time",
+  "recipe.tds": "TDS",
+  "recipe.brewerDetails": "Brewer Details",
   "recipe.notFound": "Recipe not found",
   "recipe.unavailable.title": "This recipe is no longer available",
   "recipe.unavailable.message": "It may have been deleted, set to private, or returned to draft.",
@@ -887,5 +890,15 @@
   "admin.audit.loadError": "Failed to load audit log.",
   "admin.coffeeVarieties.saveError": "Failed to save coffee variety.",
   "admin.coffeeVarieties.deleteFailed": "Failed to delete coffee variety.",
-  "admin.users.deleteFailed": "Failed to delete user."
+  "admin.users.deleteFailed": "Failed to delete user.",
+  "versionDiff.title": "Version Comparison",
+  "versionDiff.parameters": "Parameters",
+  "versionDiff.tasteNotes": "Taste Notes",
+  "versionDiff.equipment": "Equipment",
+  "versionDiff.compareSelected": "Compare Selected",
+  "versionDiff.added": "Added",
+  "versionDiff.removed": "Removed",
+  "versionDiff.unchanged": "Unchanged",
+  "versionDiff.version": "Version",
+  "versionDiff.brewDate": "Brew Date"
 }
