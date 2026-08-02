@@ -7,8 +7,13 @@ import {
 } from '../constants/index.ts';
 
 /**
- * Validates user-preference payloads (units, theme, locale, timezone, email notifications), with defaults for every field.
+ * Validates user-preference payloads (units, theme, locale, timezone,
+ * notification preferences), with defaults for every field.
  * Used by PATCH /api/v1/preferences.
+ *
+ * F05: notification preferences are FLAT (no `emailNotifications` nest).
+ * One flag per event gates BOTH in-app record creation AND email sending
+ * (the F04 precedent set by `notifyMentionedInComment`).
  */
 export const UserPreferencesSchema = z.object({
   unitSystem: z.enum(UNIT_SYSTEM_VALUES).default('metric'),
@@ -17,19 +22,11 @@ export const UserPreferencesSchema = z.object({
   locale: z.string().default('en'),
   timezone: z.string().default('UTC'),
   dateFormat: z.enum(DATE_FORMAT_VALUES).default('YYYY_MM_DD'),
-  emailNotifications: z.object({
-    newFollower: z.boolean().default(true),
-    recipeLiked: z.boolean().default(true),
-    recipeCommented: z.boolean().default(true),
-    followedUserPosted: z.boolean().default(true),
-    mentionedInComment: z.boolean().default(true),
-  }).default({
-    newFollower: true,
-    recipeLiked: true,
-    recipeCommented: true,
-    followedUserPosted: true,
-    mentionedInComment: true,
-  }),
+  notifyNewFollower: z.boolean().default(true),
+  notifyRecipeLiked: z.boolean().default(true),
+  notifyRecipeCommented: z.boolean().default(true),
+  notifyFollowedUserPosted: z.boolean().default(true),
+  notifyMentionedInComment: z.boolean().default(true),
 });
 
 /**

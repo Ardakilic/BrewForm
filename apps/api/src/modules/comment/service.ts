@@ -12,7 +12,7 @@ import * as recipeModel from '../recipe/model.ts';
 import { canViewRecipe } from '../recipe/service.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyRecipeCommented } from '../../utils/notify/index.ts';
-import { createMentionNotifications } from '../notification/service.ts';
+import { createCommentNotification, createMentionNotifications } from '../notification/service.ts';
 import { evaluateBadges } from '../badge/service.ts';
 
 const logger = createLogger('comment-service');
@@ -28,6 +28,7 @@ export const deps = {
   recipeModel,
   notifyRecipeCommented,
   createMentionNotifications,
+  createCommentNotification,
   evaluateBadges,
 };
 
@@ -158,6 +159,8 @@ export async function runCommentNotificationSideEffects(params: {
   if (!commenter?.username) return;
 
   // Recipe-commented email only when someone ELSE comments on the recipe.
+  // F05 fan-out colocates an in-app `comment` notification record
+  // (gated on `notifyRecipeCommented` prefs — single flag gates both).
   if (recipe.authorId !== userId) {
     try {
       await deps.notifyRecipeCommented({
@@ -169,6 +172,15 @@ export async function runCommentNotificationSideEffects(params: {
     } catch (err) {
       logger.error({ err, commentId }, 'notifyRecipeCommented failed');
     }
+    deps.createCommentNotification({
+      commenterId: userId,
+      commenterUsername: commenter.username,
+      recipeAuthorId: recipe.authorId,
+      recipeId: recipe.id,
+      recipeSlug: recipe.slug,
+      recipeTitle: recipe.title,
+      commentId,
+    }).catch((err) => logger.error({ err, commentId }, 'createCommentNotification failed'));
   }
 
   // Mention notifications always run — including when the commenter IS the

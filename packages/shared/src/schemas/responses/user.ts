@@ -42,7 +42,14 @@ const UserStatsSchema = {
   followingCount: z.number().int(),
 };
 
-/** Nested preferences projection on the self profile (nullable when absent). */
+/**
+ * Nested preferences projection on the self profile (nullable when absent).
+ *
+ * F05: flat `notify*` fields (was nested `emailNotifications` object missing
+ * `mentionedInComment` — the F04 latent bug). The flatten fixes it
+ * structurally: adding a flat field is a one-line change, whereas the nest
+ * required re-listing every field at every projection site.
+ */
 const SelfPreferencesSchema = z
   .object({
     unitSystem: z.string(),
@@ -51,12 +58,11 @@ const SelfPreferencesSchema = z
     locale: z.string(),
     timezone: z.string(),
     dateFormat: z.string(),
-    emailNotifications: z.object({
-      newFollower: z.boolean(),
-      recipeLiked: z.boolean(),
-      recipeCommented: z.boolean(),
-      followedUserPosted: z.boolean(),
-    }),
+    notifyNewFollower: z.boolean(),
+    notifyRecipeLiked: z.boolean(),
+    notifyRecipeCommented: z.boolean(),
+    notifyFollowedUserPosted: z.boolean(),
+    notifyMentionedInComment: z.boolean(),
   })
   .nullable();
 

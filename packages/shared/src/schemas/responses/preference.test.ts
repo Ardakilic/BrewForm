@@ -17,11 +17,11 @@ describe('UserPreferencesOutputSchema', () => {
       locale: 'en',
       timezone: 'UTC',
       dateFormat: 'YYYY_MM_DD',
-      newFollower: true,
-      recipeLiked: true,
-      recipeCommented: false,
-      followedUserPosted: true,
-      mentionedInComment: true,
+      notifyNewFollower: true,
+      notifyRecipeLiked: true,
+      notifyRecipeCommented: false,
+      notifyFollowedUserPosted: true,
+      notifyMentionedInComment: true,
       createdAt: new Date('2024-01-01T00:00:00.000Z'),
       updatedAt: new Date('2024-01-01T00:00:00.000Z'),
     };
@@ -30,7 +30,7 @@ describe('UserPreferencesOutputSchema', () => {
     if (result.success) expect(result.data).toEqual(wire(payload));
   });
 
-  it('rejects a row missing the mentionedInComment flag (F04)', () => {
+  it('rejects a row missing the notifyMentionedInComment flag (F05 rename)', () => {
     const payload = {
       id: 'pref-1',
       userId: 'user-1',
@@ -40,17 +40,19 @@ describe('UserPreferencesOutputSchema', () => {
       locale: 'en',
       timezone: 'UTC',
       dateFormat: 'YYYY_MM_DD',
-      newFollower: true,
-      recipeLiked: true,
-      recipeCommented: false,
-      followedUserPosted: true,
+      notifyNewFollower: true,
+      notifyRecipeLiked: true,
+      notifyRecipeCommented: false,
+      notifyFollowedUserPosted: true,
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
     };
     const result = UserPreferencesOutputSchema.safeParse(payload);
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((i) => i.path.includes('mentionedInComment'))).toBe(true);
+      expect(result.error.issues.some((i) => i.path.includes('notifyMentionedInComment'))).toBe(
+        true,
+      );
     }
   });
 

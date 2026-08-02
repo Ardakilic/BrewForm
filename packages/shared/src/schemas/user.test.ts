@@ -12,18 +12,39 @@ describe('UserPreferencesSchema', () => {
       expect(result.data.theme).toBe('light');
       expect(result.data.locale).toBe('en');
       expect(result.data.dateFormat).toBe('YYYY_MM_DD');
-      expect(result.data.emailNotifications.mentionedInComment).toBe(true);
+      expect(result.data.notifyNewFollower).toBe(true);
+      expect(result.data.notifyRecipeLiked).toBe(true);
+      expect(result.data.notifyRecipeCommented).toBe(true);
+      expect(result.data.notifyFollowedUserPosted).toBe(true);
+      expect(result.data.notifyMentionedInComment).toBe(true);
     }
   });
 
-  it('should default mentionedInComment to true when emailNotifications is partial', () => {
+  it('should default notifyMentionedInComment to true when partial input omits it', () => {
+    const result = UserPreferencesSchema.safeParse({
+      notifyNewFollower: false,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.notifyNewFollower).toBe(false);
+      expect(result.data.notifyRecipeLiked).toBe(true);
+      expect(result.data.notifyRecipeCommented).toBe(true);
+      expect(result.data.notifyFollowedUserPosted).toBe(true);
+      expect(result.data.notifyMentionedInComment).toBe(true);
+    }
+  });
+
+  it('treats legacy { emailNotifications: {...} } payload as no-op (Zod strips unknown keys)', () => {
     const result = UserPreferencesSchema.safeParse({
       emailNotifications: { newFollower: false },
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.emailNotifications.newFollower).toBe(false);
-      expect(result.data.emailNotifications.mentionedInComment).toBe(true);
+      expect(result.data.notifyNewFollower).toBe(true);
+      expect(result.data.notifyRecipeLiked).toBe(true);
+      expect(result.data.notifyRecipeCommented).toBe(true);
+      expect(result.data.notifyFollowedUserPosted).toBe(true);
+      expect(result.data.notifyMentionedInComment).toBe(true);
     }
   });
 
@@ -46,19 +67,21 @@ describe('UserPreferencesSchema', () => {
     }
   });
 
-  it('should accept email notifications object', () => {
+  it('should accept flat notify fields', () => {
     const result = UserPreferencesSchema.safeParse({
-      emailNotifications: {
-        newFollower: false,
-        recipeLiked: true,
-        recipeCommented: true,
-        followedUserPosted: true,
-        mentionedInComment: false,
-      },
+      notifyNewFollower: false,
+      notifyRecipeLiked: true,
+      notifyRecipeCommented: true,
+      notifyFollowedUserPosted: true,
+      notifyMentionedInComment: false,
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.emailNotifications.mentionedInComment).toBe(false);
+      expect(result.data.notifyNewFollower).toBe(false);
+      expect(result.data.notifyRecipeLiked).toBe(true);
+      expect(result.data.notifyRecipeCommented).toBe(true);
+      expect(result.data.notifyFollowedUserPosted).toBe(true);
+      expect(result.data.notifyMentionedInComment).toBe(false);
     }
   });
 });

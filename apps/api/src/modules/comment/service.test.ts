@@ -675,10 +675,12 @@ describe('deleteComment — edge cases', () => {
 type ModelDeps = typeof deps.model;
 type NotifyRecipeCommentedParams = Parameters<typeof deps.notifyRecipeCommented>[0];
 type MentionNotificationParams = Parameters<typeof deps.createMentionNotifications>[0];
+type CommentNotificationParams = Parameters<typeof deps.createCommentNotification>[0];
 
 const originalModel = deps.model;
 const originalNotifyRecipeCommented = deps.notifyRecipeCommented;
 const originalCreateMentionNotifications = deps.createMentionNotifications;
+const originalCreateCommentNotification = deps.createCommentNotification;
 
 describe('createComment — notification side-effects (F04 mention flow)', () => {
   const recipe = {
@@ -690,6 +692,7 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
 
   let notifyCalls: NotifyRecipeCommentedParams[];
   let mentionCalls: MentionNotificationParams[];
+  let commentCalls: CommentNotificationParams[];
 
   /** Replace deps with in-memory recorders; pass null to simulate a missing recipe. */
   function stubDeps(recipeResult: typeof recipe | null) {
@@ -710,17 +713,23 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       mentionCalls.push(params);
       return Promise.resolve();
     };
+    deps.createCommentNotification = (params) => {
+      commentCalls.push(params);
+      return Promise.resolve();
+    };
   }
 
   beforeEach(() => {
     notifyCalls = [];
     mentionCalls = [];
+    commentCalls = [];
   });
 
   afterEach(() => {
     deps.model = originalModel;
     deps.notifyRecipeCommented = originalNotifyRecipeCommented;
     deps.createMentionNotifications = originalCreateMentionNotifications;
+    deps.createCommentNotification = originalCreateCommentNotification;
   });
 
   it('sends recipe-commented AND triggers the mention flow when the commenter is not the author', async () => {
@@ -816,6 +825,60 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
     });
     expect(notifyCalls.length).toBe(1);
     expect(notifyCalls[0].recipeAuthorId).toBe('author-1');
+  });
+
+  // F05 — single-recipient comment fan-out (createCommentNotification) is
+  // gated on commenter != recipe author. The F04 mention flow is independent
+  // of that gate and must keep firing for @mentioned users regardless of the
+  // commenter/author relationship (regression guard).
+
+  it('createCommentNotification invoked when commenter != recipe author', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-8',
+      effectiveContent: 'nice recipe',
+    });
+    expect(commentCalls.length).toBe(1);
+    expect(commentCalls[0]).toEqual({
+      commenterId: 'commenter-1',
+      commenterUsername: 'commenter',
+      recipeAuthorId: 'author-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'recipe-slug',
+      recipeTitle: 'Recipe Title',
+      commentId: 'comment-8',
+    });
+  });
+
+  it('createCommentNotification NOT invoked when commenter === recipe author (self-comment)', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'author-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-9',
+      effectiveContent: 'thanks for the tips',
+    });
+    expect(commentCalls.length).toBe(0);
+    // The mention flow (F04) is NOT gated on the commenter/author relationship.
+    expect(mentionCalls.length).toBe(1);
+  });
+
+  it('createMentionNotifications STILL fires for @mentioned users (F04 regression)', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-10',
+      effectiveContent: 'cc @alice agree',
+    });
+    // F05 comment fan-out fires (non-author commenter) ...
+    expect(commentCalls.length).toBe(1);
+    // ... AND the F04 mention fan-out still fires for the @mentioned user.
+    expect(mentionCalls.length).toBe(1);
+    expect(mentionCalls[0].mentions).toEqual(['alice']);
+    expect(mentionCalls[0].recipeAuthorId).toBe('author-1');
   });
 });
 

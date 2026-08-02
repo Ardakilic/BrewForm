@@ -75,11 +75,11 @@ const mockPreferences = {
   locale: 'en',
   timezone: 'UTC',
   dateFormat: 'YYYY_MM_DD',
-  newFollower: true,
-  recipeLiked: true,
-  recipeCommented: false,
-  followedUserPosted: true,
-  mentionedInComment: true,
+  notifyNewFollower: true,
+  notifyRecipeLiked: true,
+  notifyRecipeCommented: false,
+  notifyFollowedUserPosted: true,
+  notifyMentionedInComment: true,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
 };
@@ -102,7 +102,7 @@ const enT = (key: string) => {
     'settings.unitSystem.imperial': 'Imperial (oz, fl oz, °F)',
     'settings.temperatureUnit.celsius': 'Celsius',
     'settings.temperatureUnit.fahrenheit': 'Fahrenheit',
-    'settings.emailNotifications': 'Email Notifications',
+    'settings.notifications': 'Notifications',
     'settings.notif.newFollower': 'New follower',
     'settings.notif.recipeLiked': 'Recipe liked',
     'settings.notif.recipeCommented': 'Recipe commented',
@@ -362,7 +362,7 @@ describe('SettingsPage', () => {
         expect(mockApi.patch).toHaveBeenCalledWith(
           '/preferences',
           expect.objectContaining({
-            emailNotifications: expect.objectContaining({ mentionedInComment: false }),
+            notifyMentionedInComment: false,
           }),
         );
       });

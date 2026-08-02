@@ -11,6 +11,7 @@ import * as recipeModel from '../recipe/model.ts';
 import * as userModel from '../user/model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyNewFollower } from '../../utils/notify/index.ts';
+import { createFollowNotification } from '../notification/service.ts';
 import { evaluateBadges } from '../badge/service.ts';
 
 const logger = createLogger('follow-service');
@@ -38,6 +39,15 @@ export async function followUser(followerId: string, followingId: string) {
       followingId,
       followerUsername: follower.username,
     });
+    // F05 fan-out: persist a `follow` notification record for the followed
+    // user (gated on `notifyNewFollower` prefs — single flag gates both).
+    createFollowNotification({
+      followerId,
+      followerUsername: follower.username,
+      followingId,
+    }).catch((err) =>
+      logger.error({ err, followerId, followingId }, 'createFollowNotification failed')
+    );
   })().catch((err) => logger.error({ err }, 'notifyNewFollower failed'));
 
   evaluateBadges(followerId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));

@@ -174,7 +174,7 @@ export async function findMentionTargets(usernames: string[]) {
     id: users.id,
     username: users.username,
     prefs: {
-      mentionedInComment: userPreferences.mentionedInComment,
+      notifyMentionedInComment: userPreferences.notifyMentionedInComment,
     },
   })
     .from(users)
@@ -184,4 +184,38 @@ export async function findMentionTargets(usernames: string[]) {
       isNull(users.deletedAt),
       eq(users.isBanned, false),
     ));
+}
+
+/**
+ * Look up a single notification recipient with their preferences row
+ * (parallel to `findMentionTargets`, used by the single-recipient fan-out
+ * creators in `service.ts` — `createFollow/Like/CommentNotification`).
+ * Returns `null` when the user does not exist, is soft-deleted, or is
+ * banned. Missing prefs (`null`) is treated as opted-in by the caller
+ * (DB-column default-true semantics).
+ *
+ * @param userId - The recipient's UUID.
+ * @returns The `{ id, username, prefs }` row, or `null` if not found.
+ */
+export async function findNotifyTarget(userId: string) {
+  const rows = await db.select({
+    id: users.id,
+    username: users.username,
+    prefs: {
+      notifyNewFollower: userPreferences.notifyNewFollower,
+      notifyRecipeLiked: userPreferences.notifyRecipeLiked,
+      notifyRecipeCommented: userPreferences.notifyRecipeCommented,
+      notifyFollowedUserPosted: userPreferences.notifyFollowedUserPosted,
+      notifyMentionedInComment: userPreferences.notifyMentionedInComment,
+    },
+  })
+    .from(users)
+    .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
+    .where(and(
+      eq(users.id, userId),
+      isNull(users.deletedAt),
+      eq(users.isBanned, false),
+    ))
+    .limit(1);
+  return rows[0] ?? null;
 }

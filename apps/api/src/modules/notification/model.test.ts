@@ -409,7 +409,7 @@ describe('findMentionTargets', { sanitizeOps: false, sanitizeResources: false },
     await db.insert(userPreferences).values({
       id: prefsId,
       userId: optedOutUserId,
-      mentionedInComment: false,
+      notifyMentionedInComment: false,
     });
   });
 
@@ -429,7 +429,7 @@ describe('findMentionTargets', { sanitizeOps: false, sanitizeResources: false },
     const optedOut = result.find((r) => r.id === optedOutUserId);
     expect(optedOut!.username).toBe(`testuser-${optedOutUserId}`);
     expect(optedOut!.prefs).not.toBeNull();
-    expect(optedOut!.prefs!.mentionedInComment).toBe(false);
+    expect(optedOut!.prefs!.notifyMentionedInComment).toBe(false);
   });
 
   it('should return prefs null for a user without a preferences row', async () => {
@@ -456,5 +456,77 @@ describe('findMentionTargets', { sanitizeOps: false, sanitizeResources: false },
   it('should return [] for unknown usernames', async () => {
     const result = await model.findMentionTargets(['no-such-user-abc', 'no-such-user-def']);
     expect(result).toEqual([]);
+  });
+});
+
+/**
+ * findNotifyTarget — Loads a single notification recipient with their
+ * preferences row left-joined (F05 single-recipient fan-out). Returns null
+ * when the user does not exist, is soft-deleted, or is banned; Drizzle
+ * collapses the nested `prefs` object to null when no preferences row matched.
+ */
+describe('findNotifyTarget', { sanitizeOps: false, sanitizeResources: false }, () => {
+  let withPrefsUserId: string;
+  let noPrefsUserId: string;
+  let deletedUserId: string;
+  let bannedUserId: string;
+  let prefsId: string;
+
+  beforeEach(async () => {
+    withPrefsUserId = await insertUser();
+    noPrefsUserId = await insertUser();
+    deletedUserId = await insertUser({ deletedAt: new Date() });
+    bannedUserId = await insertUser({ isBanned: true });
+    prefsId = crypto.randomUUID();
+    await db.insert(userPreferences).values({
+      id: prefsId,
+      userId: withPrefsUserId,
+      notifyMentionedInComment: false,
+    });
+  });
+
+  afterEach(async () => {
+    await db.delete(userPreferences).where(eq(userPreferences.id, prefsId));
+    await db.delete(users).where(
+      inArray(users.id, [withPrefsUserId, noPrefsUserId, deletedUserId, bannedUserId]),
+    );
+  });
+
+  it('should resolve a user with prefs joined when user exists and has preferences row', async () => {
+    const result = await model.findNotifyTarget(withPrefsUserId);
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe(withPrefsUserId);
+    expect(result!.username).toBe(`testuser-${withPrefsUserId}`);
+    expect(result!.prefs).not.toBeNull();
+    expect(result!.prefs!.notifyMentionedInComment).toBe(false);
+    // Columns not set in the insert default to true at the DB level.
+    expect(result!.prefs!.notifyNewFollower).toBe(true);
+    expect(result!.prefs!.notifyRecipeLiked).toBe(true);
+    expect(result!.prefs!.notifyRecipeCommented).toBe(true);
+    expect(result!.prefs!.notifyFollowedUserPosted).toBe(true);
+  });
+
+  it('should return prefs null for a user without a preferences row', async () => {
+    const result = await model.findNotifyTarget(noPrefsUserId);
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe(noPrefsUserId);
+    expect(result!.username).toBe(`testuser-${noPrefsUserId}`);
+    // Drizzle collapses the nested prefs object to null when the LEFT JOIN row is absent.
+    expect(result!.prefs).toBeNull();
+  });
+
+  it('should return null when user does not exist', async () => {
+    const result = await model.findNotifyTarget(crypto.randomUUID());
+    expect(result).toBeNull();
+  });
+
+  it('should return null when user is soft-deleted', async () => {
+    const result = await model.findNotifyTarget(deletedUserId);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when user is banned', async () => {
+    const result = await model.findNotifyTarget(bannedUserId);
+    expect(result).toBeNull();
   });
 });

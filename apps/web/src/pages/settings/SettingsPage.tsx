@@ -12,7 +12,11 @@ import { api } from '../../api/client.ts';
 import { createLogger } from '@/utils/logger.ts';
 import type { UserPreferences, UserPreferencesOutput } from '@brewform/shared/schemas';
 
-/** Convert the flat GET response to the nested request shape used by the form. */
+/**
+ * Convert the flat GET response to the form state. F05 flatten: the request
+ * and response share the same flat `notify*` shape (no `emailNotifications`
+ * re-nest step anymore).
+ */
 function toUserPreferences(out: UserPreferencesOutput): UserPreferences {
   return {
     unitSystem: out.unitSystem as UserPreferences['unitSystem'],
@@ -21,13 +25,11 @@ function toUserPreferences(out: UserPreferencesOutput): UserPreferences {
     locale: out.locale,
     timezone: out.timezone,
     dateFormat: out.dateFormat as UserPreferences['dateFormat'],
-    emailNotifications: {
-      newFollower: out.newFollower,
-      recipeLiked: out.recipeLiked,
-      recipeCommented: out.recipeCommented,
-      followedUserPosted: out.followedUserPosted,
-      mentionedInComment: out.mentionedInComment,
-    },
+    notifyNewFollower: out.notifyNewFollower,
+    notifyRecipeLiked: out.notifyRecipeLiked,
+    notifyRecipeCommented: out.notifyRecipeCommented,
+    notifyFollowedUserPosted: out.notifyFollowedUserPosted,
+    notifyMentionedInComment: out.notifyMentionedInComment,
   };
 }
 
@@ -76,13 +78,18 @@ export function SettingsPage() {
     setMessage('');
     setMessageType(null);
     try {
+      // F05: flat `notify*` flags sent directly (no `emailNotifications` nest).
       await api.patch('/preferences', {
         unitSystem: prefs.unitSystem,
         temperatureUnit: prefs.temperatureUnit,
         locale: prefs.locale,
         timezone: prefs.timezone,
         dateFormat: prefs.dateFormat,
-        emailNotifications: prefs.emailNotifications,
+        notifyNewFollower: prefs.notifyNewFollower,
+        notifyRecipeLiked: prefs.notifyRecipeLiked,
+        notifyRecipeCommented: prefs.notifyRecipeCommented,
+        notifyFollowedUserPosted: prefs.notifyFollowedUserPosted,
+        notifyMentionedInComment: prefs.notifyMentionedInComment,
       });
       setMessage(t('settings.savedMsg'));
       setMessageType('success');
@@ -257,52 +264,32 @@ export function SettingsPage() {
         )}
 
         {prefs && (
-          <Section title={t('settings.emailNotifications')}>
+          <Section title={t('settings.notifications')}>
             <div className='space-y-3'>
               <NotificationToggle
                 label={t('settings.notif.newFollower')}
-                checked={prefs.emailNotifications.newFollower}
-                onChange={(v) =>
-                  setPrefs({
-                    ...prefs,
-                    emailNotifications: { ...prefs.emailNotifications, newFollower: v },
-                  })}
+                checked={prefs.notifyNewFollower}
+                onChange={(v) => setPrefs({ ...prefs, notifyNewFollower: v })}
               />
               <NotificationToggle
                 label={t('settings.notif.recipeLiked')}
-                checked={prefs.emailNotifications.recipeLiked}
-                onChange={(v) =>
-                  setPrefs({
-                    ...prefs,
-                    emailNotifications: { ...prefs.emailNotifications, recipeLiked: v },
-                  })}
+                checked={prefs.notifyRecipeLiked}
+                onChange={(v) => setPrefs({ ...prefs, notifyRecipeLiked: v })}
               />
               <NotificationToggle
                 label={t('settings.notif.recipeCommented')}
-                checked={prefs.emailNotifications.recipeCommented}
-                onChange={(v) =>
-                  setPrefs({
-                    ...prefs,
-                    emailNotifications: { ...prefs.emailNotifications, recipeCommented: v },
-                  })}
+                checked={prefs.notifyRecipeCommented}
+                onChange={(v) => setPrefs({ ...prefs, notifyRecipeCommented: v })}
               />
               <NotificationToggle
                 label={t('settings.notif.followedUserPosted')}
-                checked={prefs.emailNotifications.followedUserPosted}
-                onChange={(v) =>
-                  setPrefs({
-                    ...prefs,
-                    emailNotifications: { ...prefs.emailNotifications, followedUserPosted: v },
-                  })}
+                checked={prefs.notifyFollowedUserPosted}
+                onChange={(v) => setPrefs({ ...prefs, notifyFollowedUserPosted: v })}
               />
               <NotificationToggle
                 label={t('settings.notif.mentionedInComment')}
-                checked={prefs.emailNotifications.mentionedInComment}
-                onChange={(v) =>
-                  setPrefs({
-                    ...prefs,
-                    emailNotifications: { ...prefs.emailNotifications, mentionedInComment: v },
-                  })}
+                checked={prefs.notifyMentionedInComment}
+                onChange={(v) => setPrefs({ ...prefs, notifyMentionedInComment: v })}
               />
             </div>
             <button

@@ -1,5 +1,7 @@
 # F29 — Weekly Personalized Email Digest
 
+> **⚠️ Forward-compat note (F05, 2026-08-02):** The `emailNotifications` namespace was flattened and renamed by the F05 `f05-in-app-notifications` OpenSpec change. References to "add `weeklyDigest` to `emailNotifications`" below should be read as "add a flat top-level `notifyWeeklyDigest` boolean column on `user_preferences` (per the F05 pattern)." Do NOT introduce a new nested namespace; align with F05's flat `notify*` convention.
+
 > **Validation status (2026-07-13): ✅ Valid — infrastructure assumptions verified; two corrections**
 >
 > All load-bearing "Current state" claims check out against the tree:

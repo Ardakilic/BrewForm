@@ -128,7 +128,7 @@ export async function notifyNewFollower(params: {
 }): Promise<void> {
   const recipient = await loadRecipient(params.followingId);
   if (!recipient) return;
-  if (recipient.prefs.newFollower === false) return;
+  if (recipient.prefs.notifyNewFollower === false) return;
 
   const html = renderTemplate(newFollowerTemplate, {
     app_name: 'BrewForm',
@@ -151,7 +151,7 @@ export async function notifyRecipeLiked(params: {
 }): Promise<void> {
   const recipient = await loadRecipient(params.recipeAuthorId);
   if (!recipient) return;
-  if (recipient.prefs.recipeLiked === false) return;
+  if (recipient.prefs.notifyRecipeLiked === false) return;
 
   const html = renderTemplate(recipeLikedTemplate, {
     app_name: 'BrewForm',
@@ -175,7 +175,7 @@ export async function notifyRecipeCommented(params: {
 }): Promise<void> {
   const recipient = await loadRecipient(params.recipeAuthorId);
   if (!recipient) return;
-  if (recipient.prefs.recipeCommented === false) return;
+  if (recipient.prefs.notifyRecipeCommented === false) return;
 
   const html = renderTemplate(recipeCommentedTemplate, {
     app_name: 'BrewForm',
@@ -201,7 +201,7 @@ export async function notifyMentioned(params: {
   logger.debug({ mentionedUserId: params.mentionedUserId }, 'notifyMentioned started');
   const recipient = await loadRecipient(params.mentionedUserId);
   if (!recipient) return;
-  if (recipient.prefs.mentionedInComment === false) return;
+  if (recipient.prefs.notifyMentionedInComment === false) return;
 
   const html = renderTemplate(mentionedInCommentTemplate, {
     app_name: 'BrewForm',
@@ -243,7 +243,7 @@ export async function notifyFollowersOfNewRecipe(params: {
       username: u.user.username,
       prefs: u.user_preferences ?? {},
     }))
-    .filter((r) => r.prefs.followedUserPosted !== false);
+    .filter((r) => r.prefs.notifyFollowedUserPosted !== false);
 
   if (recipients.length === 0) return;
 

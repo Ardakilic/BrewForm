@@ -52,6 +52,9 @@ const mockNotify = vi.mocked(notifyNotificationsChanged);
 const templates: Record<string, string> = {
   'notifications.mention': '{username} mentioned you in a comment on {recipeTitle}',
   'notifications.mentionGeneric': '{username} mentioned you in a comment',
+  'notifications.follow': '{actorUsername} started following you',
+  'notifications.like': '{actorUsername} liked your recipe {recipeTitle}',
+  'notifications.comment': '{actorUsername} commented on {recipeTitle}',
   'notifications.markRead': 'Mark as read',
 };
 
@@ -131,5 +134,45 @@ describe('NotificationItem', () => {
       expect(onRead).toHaveBeenCalledWith('n1');
       expect(mockNotify).toHaveBeenCalled();
     });
+  });
+
+  it('renders follow text with actorUsername interpolated and links to the actor profile', () => {
+    render(
+      <NotificationItem
+        notification={baseNotification({
+          type: 'follow',
+          metadata: JSON.stringify({ followerUsername: 'alice' }),
+        })}
+      />,
+    );
+    expect(screen.getByText('alice started following you')).toBeInTheDocument();
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/u/alice');
+  });
+
+  it('renders like text with actorUsername and recipeTitle and links to the recipe', () => {
+    render(<NotificationItem notification={baseNotification({ type: 'like' })} />);
+    expect(screen.getByText('alice liked your recipe Pour Over')).toBeInTheDocument();
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/recipes/pour-over');
+  });
+
+  it('renders comment text and links to the recipe with #commentId anchor', () => {
+    render(
+      <NotificationItem
+        notification={baseNotification({ type: 'comment', referenceId: 'c-123' })}
+      />,
+    );
+    expect(screen.getByText('alice commented on Pour Over')).toBeInTheDocument();
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/recipes/pour-over#c-123');
+  });
+
+  it('falls back to mentionGeneric for an unknown notification type', () => {
+    // ponytail: `as never` deliberately crosses the type union for forward-compat testing.
+    render(
+      <NotificationItem notification={baseNotification({ type: 'futureType' as never })} />,
+    );
+    expect(screen.getByText('alice mentioned you in a comment')).toBeInTheDocument();
   });
 });

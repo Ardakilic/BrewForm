@@ -4,6 +4,7 @@ import { expect } from 'jsr:@std/expect';
 import fc from 'npm:fast-check';
 import { db } from '@brewform/db';
 import {
+  notifications,
   recipes,
   recipeVersions,
   userBadges,
@@ -11,7 +12,7 @@ import {
   userRecipeLikes,
   users,
 } from '@brewform/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import * as model from './model.ts';
 import * as service from './service.ts';
 import { canViewRecipe } from './service.ts';
@@ -630,6 +631,10 @@ describe(
     });
 
     afterEach(async () => {
+      // F05 fan-out: toggleLike may leave a `like` notification row for the author.
+      // Clean these between tests so the polling assertions below stay isolated
+      // (userId cascades on user delete in afterAll; this just prevents leakage).
+      await db.delete(notifications).where(inArray(notifications.userId, [author.id, other.id]));
       if (createdRecipes.length) {
         await db.delete(userRecipeLikes).where(inArray(userRecipeLikes.recipeId, createdRecipes));
         await db.delete(userRecipeFavourites).where(
@@ -702,6 +707,70 @@ describe(
         await expect(service.toggleLike(author.id, crypto.randomUUID())).rejects.toThrow(
           'RECIPE_NOT_FOUND',
         );
+      });
+
+      // F05 fan-out polling helper: toggleLike fires createLikeNotification via
+      // a fire-and-forget IIFE. Returns true if the `like` notification row
+      // appears within ~1.5s.
+      async function likeNotificationAppeared(
+        authorId: string,
+        likerId: string,
+        recipeId: string,
+        timeoutMs = 1500,
+      ): Promise<boolean> {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+          const rows = await db.select().from(notifications).where(and(
+            eq(notifications.userId, authorId),
+            eq(notifications.actorId, likerId),
+            eq(notifications.type, 'like'),
+            eq(notifications.referenceId, recipeId),
+          ));
+          if (rows.length > 0) return true;
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        return false;
+      }
+
+      it('createLikeNotification invoked when like toggles ON and liker != author', async () => {
+        const recipe = await makeRecipe(author.id, 'Like Notify Fanout');
+        await service.toggleLike(other.id, recipe.id);
+        expect(await likeNotificationAppeared(author.id, other.id, recipe.id)).toBe(true);
+      });
+
+      it('createLikeNotification NOT invoked when like toggles OFF', async () => {
+        const recipe = await makeRecipe(author.id, 'Like Off No Notify');
+        // First toggle ON creates a like + notification; drain the fan-out.
+        await service.toggleLike(other.id, recipe.id);
+        await likeNotificationAppeared(author.id, other.id, recipe.id);
+        const before = await db.select().from(notifications).where(and(
+          eq(notifications.userId, author.id),
+          eq(notifications.actorId, other.id),
+          eq(notifications.type, 'like'),
+          eq(notifications.referenceId, recipe.id),
+        ));
+        // Toggle OFF — `result.liked` is false, the notification IIFE is not spawned.
+        await service.toggleLike(other.id, recipe.id);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const after = await db.select().from(notifications).where(and(
+          eq(notifications.userId, author.id),
+          eq(notifications.actorId, other.id),
+          eq(notifications.type, 'like'),
+          eq(notifications.referenceId, recipe.id),
+        ));
+        expect(after.length).toBe(before.length);
+      });
+
+      it('createLikeNotification NOT invoked when liker === recipe author (self-like)', async () => {
+        const recipe = await makeRecipe(author.id, 'Self Like No Notify');
+        await service.toggleLike(author.id, recipe.id);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const rows = await db.select().from(notifications).where(and(
+          eq(notifications.userId, author.id),
+          eq(notifications.actorId, author.id),
+          eq(notifications.type, 'like'),
+        ));
+        expect(rows.length).toBe(0);
       });
     });
 

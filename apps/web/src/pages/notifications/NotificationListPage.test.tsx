@@ -67,6 +67,8 @@ const enMap: Record<string, string> = {
   'notifications.title': 'Notifications',
   'notifications.empty': 'No notifications yet',
   'notifications.markAllRead': 'Mark all as read',
+  'notifications.all': 'All',
+  'notifications.unread': 'Unread',
   'common.previous': 'Previous',
   'common.next': 'Next',
   'common.pagination': 'Page {page} of {total}',
@@ -76,6 +78,8 @@ const trMap: Record<string, string> = {
   'notifications.title': 'Bildirimler',
   'notifications.empty': 'Henüz bildirim yok',
   'notifications.markAllRead': 'Tümünü okundu işaretle',
+  'notifications.all': 'Tümü',
+  'notifications.unread': 'Okunmamış',
 };
 
 function makeNotification(overrides: Partial<NotificationOutput> = {}): NotificationOutput {
@@ -140,7 +144,7 @@ describe('NotificationListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('notif-item')).toHaveLength(2);
     });
-    expect(mockList).toHaveBeenCalledWith(1);
+    expect(mockList).toHaveBeenCalledWith(1, false);
   });
 
   it('shows the empty state when there are no notifications', async () => {
@@ -174,5 +178,56 @@ describe('NotificationListPage', () => {
 
     expect(await screen.findByText('Bildirimler')).toBeInTheDocument();
     expect(screen.getByText('Henüz bildirim yok')).toBeInTheDocument();
+  });
+
+  // ── F05 filter UI tests (T41) ──
+  // TODO: needs signature confirm — actual `notificationApi.list(page: number, unreadOnly?: boolean)`
+  // (positional, NOT the object form the design hint described). T38's All/Unread filter UI
+  // has NOT landed yet; these tests will only pass once buttons labeled 'All' / 'Unread'
+  // (via t('notifications.all') / t('notifications.unread')) render in the page header.
+
+  it('initial render loads notifications with unread filter off (default All)', async () => {
+    mockList.mockResolvedValue(makeResponse([makeNotification()]));
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('notif-item')).toHaveLength(1);
+    });
+    expect(mockList).toHaveBeenCalledWith(1, false);
+  });
+
+  it("clicking the 'Unread' filter calls notificationApi.list with unreadOnly: true", async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue(makeResponse([makeNotification()]));
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('notif-item')).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Unread' }));
+
+    await waitFor(() => {
+      expect(mockList).toHaveBeenCalledWith(1, true);
+    });
+  });
+
+  it("clicking 'All' after 'Unread' reverts to unreadOnly: false", async () => {
+    const user = userEvent.setup();
+    mockList.mockResolvedValue(makeResponse([makeNotification()]));
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('notif-item')).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Unread' }));
+    await waitFor(() => expect(mockList).toHaveBeenCalledWith(1, true));
+
+    await user.click(screen.getByRole('button', { name: 'All' }));
+    // TODO: T38 may revert to (1) without second arg, or (1, false) explicitly.
+    await waitFor(() => {
+      expect(mockList).toHaveBeenLastCalledWith(1, false);
+    });
   });
 });

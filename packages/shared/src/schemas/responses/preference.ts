@@ -4,9 +4,10 @@ import { z } from 'zod';
  * User preferences Output Schema — the **flat** `user_preferences` row returned
  * by `preference/service.ts` (`model.findByUserId`/`upsert` via `.returning()`).
  *
- * Note: the request body (`UserPreferencesSchema`) nests notification flags
- * under `emailNotifications`, but the persisted/returned row is flat
- * (`newFollower`, `recipeLiked`, …). This schema reflects the flat row.
+ * F05: both the request body and the response share the same flat `notify*`
+ * field names (the F04 asymmetry — request nested under `emailNotifications`
+ * while response was flat — is gone). DB columns are also renamed with the
+ * `notify_` prefix to match end-to-end.
  *
  * Verified against `packages/db/src/schema.ts` (`userPreferences`) and
  * `apps/api/src/modules/preference/{service,model}.ts`.
@@ -20,11 +21,11 @@ export const UserPreferencesOutputSchema = z.object({
   locale: z.string(),
   timezone: z.string(),
   dateFormat: z.string(),
-  newFollower: z.boolean(),
-  recipeLiked: z.boolean(),
-  recipeCommented: z.boolean(),
-  followedUserPosted: z.boolean(),
-  mentionedInComment: z.boolean(),
+  notifyNewFollower: z.boolean(),
+  notifyRecipeLiked: z.boolean(),
+  notifyRecipeCommented: z.boolean(),
+  notifyFollowedUserPosted: z.boolean(),
+  notifyMentionedInComment: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

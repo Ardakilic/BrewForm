@@ -1,24 +1,41 @@
 /**
- * Notification business logic for BrewForm (F04 — @mention notifications).
+ * Notification business logic for BrewForm (F04 + F05 — `mention`, `follow`,
+ * `like`, `comment` notification types).
  *
  * Orchestrates mention-notification fan-out (resolve mentioned usernames,
- * drop self-mentions, respect the `mentionedInComment` preference, persist
- * records, and send mention emails) plus the read-state operations behind the
+ * drop self-mentions, respect the `notifyMentionedInComment` preference,
+ * persist records, and send mention emails) plus single-recipient fan-out
+ * for `follow` / `like` / `comment` (mirror pattern: load prefs, skip
+ * self-action and opted-out recipients, persist record, send email via the
+ * matching `notify*` helper), plus the read-state operations behind the
  * notification endpoints (list, unread count, mark read, mark all read).
  */
 import * as model from './model.ts';
-import { notifyMentioned } from '../../utils/notify/index.ts';
+import {
+  notifyMentioned,
+  notifyNewFollower,
+  notifyRecipeCommented,
+  notifyRecipeLiked,
+} from '../../utils/notify/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 
 const logger = createLogger('notification-service');
 
 /**
  * Dependency-injection proxy for test stubbing (data access + email
- * side-effect). Mirrors the `deps` idiom used by router modules
+ * side-effects). Mirrors the `deps` idiom used by router modules
  * (e.g. `coffee-variety/index.ts`), applied at the service layer so unit
  * tests can exercise the real service functions without a database or SMTP.
+ * F05 extends: `notifyNewFollower` / `notifyRecipeLiked` / `notifyRecipeCommented`
+ * joined for the three new fan-out creators.
  */
-export const deps = { model, notifyMentioned };
+export const deps = {
+  model,
+  notifyMentioned,
+  notifyNewFollower,
+  notifyRecipeLiked,
+  notifyRecipeCommented,
+};
 
 /** A notification row as returned by the model layer (actor username joined). */
 type NotificationRow = NonNullable<Awaited<ReturnType<typeof model.findById>>>;
@@ -101,7 +118,7 @@ export async function createMentionNotifications(params: {
     let created = 0;
     for (const target of targets) {
       if (target.id === mentionerUserId) continue;
-      if (target.prefs?.mentionedInComment === false) continue;
+      if (target.prefs?.notifyMentionedInComment === false) continue;
 
       try {
         await deps.model.create({
@@ -134,6 +151,262 @@ export async function createMentionNotifications(params: {
     logger.debug({ commentId, recipeId, created }, 'createMentionNotifications completed');
   } catch (err) {
     logger.error({ err, commentId, recipeId }, 'createMentionNotifications failed');
+    throw err;
+  }
+}
+
+/**
+ * Create a follow notification (and follow email) when a user follows another.
+ *
+ * Flow per F05 D1/D2/D4:
+ *   1. Resolve the followed user + their preferences row via the model.
+ *   2. Drop self-follow (should never happen at the call-site, belt-and-braces).
+ *   3. The `notifyNewFollower` preference gates BOTH the DB record and the
+ *      email: an opted-out target is skipped entirely (missing prefs row
+ *      counts as enabled — the column defaults to true).
+ *   4. Insert a `follow` notification row with `actorId = followerId`,
+ *      `referenceType = 'actor'`, `metadata = { followerUsername }`.
+ *   5. Send the follow email (`notifyNewFollower`).
+ *
+ * Per-target failures are isolated: a failed insert or email is logged and
+ * skipped without aborting. Designed fire-and-forget from the follow service.
+ *
+ * @param params - `{ followerId, followerUsername, followingId }`.
+ */
+export async function createFollowNotification(params: {
+  followerId: string;
+  followerUsername: string;
+  followingId: string;
+}): Promise<void> {
+  const { followerId, followerUsername, followingId } = params;
+  logger.debug({ followerId, followingId }, 'createFollowNotification started');
+  if (followerId === followingId) {
+    logger.debug(
+      { followerId, followingId, created: 0 },
+      'createFollowNotification completed (self-follow skipped)',
+    );
+    return;
+  }
+
+  try {
+    const target = await deps.model.findNotifyTarget(followingId);
+    if (!target) {
+      logger.debug(
+        { followingId, created: 0 },
+        'createFollowNotification completed (target not found)',
+      );
+      return;
+    }
+    if (target.prefs?.notifyNewFollower === false) {
+      logger.debug(
+        { followingId, created: 0 },
+        'createFollowNotification completed (opted out)',
+      );
+      return;
+    }
+
+    let created = 0;
+    try {
+      await deps.model.create({
+        userId: followingId,
+        type: 'follow',
+        actorId: followerId,
+        referenceId: null,
+        referenceType: 'actor',
+        metadata: JSON.stringify({ followerUsername }),
+      });
+      created++;
+    } catch (err) {
+      logger.error({ err, followerId, followingId }, 'follow notification create failed');
+    }
+
+    try {
+      await deps.notifyNewFollower({ followingId, followerUsername });
+    } catch (err) {
+      logger.error({ err, followerId, followingId }, 'follow email failed');
+    }
+
+    logger.debug({ followingId, created }, 'createFollowNotification completed');
+  } catch (err) {
+    logger.error({ err, followerId, followingId }, 'createFollowNotification failed');
+    throw err;
+  }
+}
+
+/**
+ * Create a like notification (and recipe-liked email) when a user likes
+ * someone else's recipe. Skips self-likes. Single-recipient: targets the
+ * recipe author only. Flow mirrors `createFollowNotification`.
+ *
+ * @param params - `{ likerId, likerUsername, recipeAuthorId, recipeId, recipeSlug, recipeTitle }`.
+ */
+export async function createLikeNotification(params: {
+  likerId: string;
+  likerUsername: string;
+  recipeAuthorId: string;
+  recipeId: string;
+  recipeSlug: string;
+  recipeTitle: string;
+}): Promise<void> {
+  const { likerId, likerUsername, recipeAuthorId, recipeId, recipeSlug, recipeTitle } = params;
+  logger.debug({ likerId, recipeId, recipeAuthorId }, 'createLikeNotification started');
+  if (likerId === recipeAuthorId) {
+    logger.debug(
+      { likerId, recipeId, created: 0 },
+      'createLikeNotification completed (self-like skipped)',
+    );
+    return;
+  }
+
+  try {
+    const target = await deps.model.findNotifyTarget(recipeAuthorId);
+    if (!target) {
+      logger.debug(
+        { recipeAuthorId, created: 0 },
+        'createLikeNotification completed (target not found)',
+      );
+      return;
+    }
+    if (target.prefs?.notifyRecipeLiked === false) {
+      logger.debug(
+        { recipeAuthorId, created: 0 },
+        'createLikeNotification completed (opted out)',
+      );
+      return;
+    }
+
+    let created = 0;
+    try {
+      await deps.model.create({
+        userId: recipeAuthorId,
+        type: 'like',
+        actorId: likerId,
+        referenceId: recipeId,
+        referenceType: 'recipe',
+        metadata: JSON.stringify({ recipeSlug, recipeTitle }),
+      });
+      created++;
+    } catch (err) {
+      logger.error(
+        { err, likerId, recipeId, recipeAuthorId },
+        'like notification create failed',
+      );
+    }
+
+    try {
+      await deps.notifyRecipeLiked({
+        recipeAuthorId,
+        likerUsername,
+        recipeTitle,
+        recipeSlug,
+      });
+    } catch (err) {
+      logger.error({ err, likerId, recipeId }, 'like email failed');
+    }
+
+    logger.debug({ recipeAuthorId, created }, 'createLikeNotification completed');
+  } catch (err) {
+    logger.error(
+      { err, likerId, recipeId, recipeAuthorId },
+      'createLikeNotification failed',
+    );
+    throw err;
+  }
+}
+
+/**
+ * Create a comment-on-recipe notification (and recipe-commented email) for
+ * the recipe author when someone else comments on their recipe. Skips
+ * self-comments. This path is DISTINCT from `createMentionNotifications`
+ * (F04), which targets each `@username` in the comment body. The same
+ * comment can trigger BOTH fan-outs: this one targets the recipe author
+ * ("X commented on your recipe"); the mention path targets each mentioned
+ * user ("X mentioned you"). See design D6.
+ *
+ * @param params - `{ commenterId, commenterUsername, recipeAuthorId, recipeId, recipeSlug, recipeTitle, commentId }`.
+ */
+export async function createCommentNotification(params: {
+  commenterId: string;
+  commenterUsername: string;
+  recipeAuthorId: string;
+  recipeId: string;
+  recipeSlug: string;
+  recipeTitle: string;
+  commentId: string;
+}): Promise<void> {
+  const {
+    commenterId,
+    commenterUsername,
+    recipeAuthorId,
+    recipeId,
+    recipeSlug,
+    recipeTitle,
+    commentId,
+  } = params;
+  logger.debug(
+    { commenterId, recipeId, recipeAuthorId },
+    'createCommentNotification started',
+  );
+  if (commenterId === recipeAuthorId) {
+    logger.debug(
+      { commenterId, recipeId, created: 0 },
+      'createCommentNotification completed (self-comment skipped)',
+    );
+    return;
+  }
+
+  try {
+    const target = await deps.model.findNotifyTarget(recipeAuthorId);
+    if (!target) {
+      logger.debug(
+        { recipeAuthorId, created: 0 },
+        'createCommentNotification completed (target not found)',
+      );
+      return;
+    }
+    if (target.prefs?.notifyRecipeCommented === false) {
+      logger.debug(
+        { recipeAuthorId, created: 0 },
+        'createCommentNotification completed (opted out)',
+      );
+      return;
+    }
+
+    let created = 0;
+    try {
+      await deps.model.create({
+        userId: recipeAuthorId,
+        type: 'comment',
+        actorId: commenterId,
+        referenceId: commentId,
+        referenceType: 'comment',
+        metadata: JSON.stringify({ recipeSlug, recipeTitle }),
+      });
+      created++;
+    } catch (err) {
+      logger.error(
+        { err, commentId, recipeId, recipeAuthorId },
+        'comment notification create failed',
+      );
+    }
+
+    try {
+      await deps.notifyRecipeCommented({
+        recipeAuthorId,
+        commenterUsername,
+        recipeTitle,
+        recipeSlug,
+      });
+    } catch (err) {
+      logger.error({ err, commentId, recipeId }, 'comment email failed');
+    }
+
+    logger.debug({ recipeAuthorId, created }, 'createCommentNotification completed');
+  } catch (err) {
+    logger.error(
+      { err, commenterId, recipeId, recipeAuthorId },
+      'createCommentNotification failed',
+    );
     throw err;
   }
 }

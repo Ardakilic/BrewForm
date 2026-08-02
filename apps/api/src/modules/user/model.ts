@@ -33,12 +33,14 @@ export async function findById(id: string) {
         locale: prefsRow.locale,
         timezone: prefsRow.timezone,
         dateFormat: prefsRow.dateFormat,
-        emailNotifications: {
-          newFollower: prefsRow.newFollower,
-          recipeLiked: prefsRow.recipeLiked,
-          recipeCommented: prefsRow.recipeCommented,
-          followedUserPosted: prefsRow.followedUserPosted,
-        },
+        // F05: flat `notify*` fields — `/me` and `/preferences` now share the
+        // same shape. The F04 latent `mentionedInComment` omission (the 4-flag
+        // nest here forgot it) is structurally fixed by the flatten.
+        notifyNewFollower: prefsRow.notifyNewFollower,
+        notifyRecipeLiked: prefsRow.notifyRecipeLiked,
+        notifyRecipeCommented: prefsRow.notifyRecipeCommented,
+        notifyFollowedUserPosted: prefsRow.notifyFollowedUserPosted,
+        notifyMentionedInComment: prefsRow.notifyMentionedInComment,
       }
       : null,
   };

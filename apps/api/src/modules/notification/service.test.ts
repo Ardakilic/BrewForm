@@ -13,26 +13,60 @@ import { deps } from './service.ts';
 
 type ModelDeps = typeof deps.model;
 type NotifyMentioned = typeof deps.notifyMentioned;
+type NotifyNewFollower = typeof deps.notifyNewFollower;
+type NotifyRecipeLiked = typeof deps.notifyRecipeLiked;
+type NotifyRecipeCommented = typeof deps.notifyRecipeCommented;
 type MentionTarget = Awaited<ReturnType<ModelDeps['findMentionTargets']>>[number];
+type NotifyTarget = NonNullable<Awaited<ReturnType<ModelDeps['findNotifyTarget']>>>;
 type NotificationRow = NonNullable<Awaited<ReturnType<ModelDeps['findById']>>>;
 type CreateData = Parameters<ModelDeps['create']>[0];
+
+/** Default "all notify flags on" preferences for {@link makeNotifyTarget}. */
+const ALL_NOTIFY_PREFS_TRUE = {
+  notifyNewFollower: true,
+  notifyRecipeLiked: true,
+  notifyRecipeCommented: true,
+  notifyFollowedUserPosted: true,
+  notifyMentionedInComment: true,
+};
 
 /** In-memory call recorder for the model + email stubs. */
 interface Calls {
   findMentionTargets: string[][];
+  findNotifyTarget: string[];
   create: CreateData[];
   notifyMentioned: Parameters<NotifyMentioned>[0][];
+  notifyNewFollower: Parameters<NotifyNewFollower>[0][];
+  notifyRecipeLiked: Parameters<NotifyRecipeLiked>[0][];
+  notifyRecipeCommented: Parameters<NotifyRecipeCommented>[0][];
 }
 
 function makeCalls(): Calls {
-  return { findMentionTargets: [], create: [], notifyMentioned: [] };
+  return {
+    findMentionTargets: [],
+    findNotifyTarget: [],
+    create: [],
+    notifyMentioned: [],
+    notifyNewFollower: [],
+    notifyRecipeLiked: [],
+    notifyRecipeCommented: [],
+  };
 }
 
 function makeTarget(overrides: Partial<MentionTarget> = {}): MentionTarget {
   return {
     id: 'target-1',
     username: 'target',
-    prefs: { mentionedInComment: true },
+    prefs: { notifyMentionedInComment: true },
+    ...overrides,
+  };
+}
+
+function makeNotifyTarget(overrides: Partial<NotifyTarget> = {}): NotifyTarget {
+  return {
+    id: 'target-1',
+    username: 'target',
+    prefs: { ...ALL_NOTIFY_PREFS_TRUE },
     ...overrides,
   };
 }
@@ -63,6 +97,10 @@ function makeModel(overrides: Partial<ModelDeps>, calls: Calls): ModelDeps {
       calls.findMentionTargets.push(usernames);
       return Promise.resolve([]);
     },
+    findNotifyTarget: (userId: string) => {
+      calls.findNotifyTarget.push(userId);
+      return Promise.resolve(makeNotifyTarget({ id: userId }));
+    },
     create: (data: CreateData) => {
       calls.create.push(data);
       return Promise.resolve(
@@ -86,6 +124,9 @@ function makeModel(overrides: Partial<ModelDeps>, calls: Calls): ModelDeps {
 
 const originalModel = deps.model;
 const originalNotifyMentioned = deps.notifyMentioned;
+const originalNotifyNewFollower = deps.notifyNewFollower;
+const originalNotifyRecipeLiked = deps.notifyRecipeLiked;
+const originalNotifyRecipeCommented = deps.notifyRecipeCommented;
 
 let calls: Calls;
 
@@ -95,11 +136,26 @@ beforeEach(() => {
     calls.notifyMentioned.push(params);
     return Promise.resolve();
   };
+  deps.notifyNewFollower = (params) => {
+    calls.notifyNewFollower.push(params);
+    return Promise.resolve();
+  };
+  deps.notifyRecipeLiked = (params) => {
+    calls.notifyRecipeLiked.push(params);
+    return Promise.resolve();
+  };
+  deps.notifyRecipeCommented = (params) => {
+    calls.notifyRecipeCommented.push(params);
+    return Promise.resolve();
+  };
 });
 
 afterEach(() => {
   deps.model = originalModel;
   deps.notifyMentioned = originalNotifyMentioned;
+  deps.notifyNewFollower = originalNotifyNewFollower;
+  deps.notifyRecipeLiked = originalNotifyRecipeLiked;
+  deps.notifyRecipeCommented = originalNotifyRecipeCommented;
 });
 
 /** Default params for createMentionNotifications; recipe author is a third user. */
@@ -163,10 +219,10 @@ describe('createMentionNotifications', () => {
     expect(calls.notifyMentioned).toEqual([]);
   });
 
-  it('skips record AND email when mentionedInComment preference is false', async () => {
+  it('skips record AND email when notifyMentionedInComment preference is false', async () => {
     deps.model = makeModel({
       findMentionTargets: () =>
-        Promise.resolve([makeTarget({ prefs: { mentionedInComment: false } })]),
+        Promise.resolve([makeTarget({ prefs: { notifyMentionedInComment: false } })]),
     }, calls);
     await service.createMentionNotifications(mentionParams());
     expect(calls.create).toEqual([]);
@@ -205,7 +261,11 @@ describe('createMentionNotifications', () => {
       findMentionTargets: () =>
         Promise.resolve([
           makeTarget({ id: 'mentioner-1', username: 'self' }),
-          makeTarget({ id: 'opted-out', username: 'quiet', prefs: { mentionedInComment: false } }),
+          makeTarget({
+            id: 'opted-out',
+            username: 'quiet',
+            prefs: { notifyMentionedInComment: false },
+          }),
           makeTarget({ id: 'author-1', username: 'author' }),
           makeTarget({ id: 'plain-1', username: 'plain' }),
         ]),
@@ -315,5 +375,327 @@ describe('markAllAsRead / getUnreadCount', () => {
       getUnreadCount: (userId) => Promise.resolve(userId === 'user-1' ? 7 : 0),
     }, calls);
     expect(await service.getUnreadCount('user-1')).toBe(7);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F05 — single-recipient fan-out creators (follow / like / comment).
+//
+// Mirrors `createMentionNotifications` but targets ONE recipient (the followed
+// user / recipe author) and gates on a single `notify*` preference that, when
+// false, skips BOTH the DB record and the email. Missing prefs (`null`) counts
+// as opted-in. Per-call failures are isolated: a thrown `create` is logged and
+// execution continues to the email (independent try/catch), and vice-versa.
+// ---------------------------------------------------------------------------
+
+describe('createFollowNotification', () => {
+  function followerParams(
+    overrides: Partial<Parameters<typeof service.createFollowNotification>[0]> = {},
+  ) {
+    return {
+      followerId: 'follower-1',
+      followerUsername: 'follower-username',
+      followingId: 'target-1',
+      ...overrides,
+    };
+  }
+
+  it('skips record and email when notifyNewFollower preference is false', async () => {
+    deps.model = makeModel({
+      findNotifyTarget: (userId: string) => {
+        calls.findNotifyTarget.push(userId);
+        return Promise.resolve(
+          makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyNewFollower: false } }),
+        );
+      },
+    }, calls);
+    await service.createFollowNotification(followerParams());
+    expect(calls.findNotifyTarget).toEqual(['target-1']);
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyNewFollower).toEqual([]);
+  });
+
+  it('treats missing preferences row (prefs null) as opted in', async () => {
+    deps.model = makeModel({
+      findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
+    }, calls);
+    await service.createFollowNotification(followerParams());
+    expect(calls.create.length).toBe(1);
+    expect(calls.notifyNewFollower.length).toBe(1);
+  });
+
+  it('skips self-follow (no record, no email)', async () => {
+    deps.model = makeModel({}, calls);
+    await service.createFollowNotification(followerParams({
+      followerId: 'self-1',
+      followingId: 'self-1',
+    }));
+    expect(calls.findNotifyTarget).toEqual([]);
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyNewFollower).toEqual([]);
+  });
+
+  it('target not found returns early without record or email', async () => {
+    deps.model = makeModel({ findNotifyTarget: () => Promise.resolve(null as never) }, calls);
+    await service.createFollowNotification(followerParams());
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyNewFollower).toEqual([]);
+  });
+
+  it('creates record and sends email when opted in', async () => {
+    deps.model = makeModel({}, calls);
+    await service.createFollowNotification(followerParams());
+    expect(calls.findNotifyTarget).toEqual(['target-1']);
+    expect(calls.create.length).toBe(1);
+    expect(calls.create[0]).toEqual({
+      userId: 'target-1',
+      type: 'follow',
+      actorId: 'follower-1',
+      referenceId: null,
+      referenceType: 'actor',
+      metadata: JSON.stringify({ followerUsername: 'follower-username' }),
+    });
+    expect(calls.notifyNewFollower).toEqual([{
+      followingId: 'target-1',
+      followerUsername: 'follower-username',
+    }]);
+  });
+
+  it('creates record but logs error if email send throws', async () => {
+    deps.model = makeModel({}, calls);
+    deps.notifyNewFollower = (params) => {
+      calls.notifyNewFollower.push(params);
+      return Promise.reject(new Error('smtp down'));
+    };
+    await service.createFollowNotification(followerParams());
+    expect(calls.create.length).toBe(1);
+    expect(calls.notifyNewFollower.length).toBe(1);
+  });
+
+  it('logs error but does not throw if model.create throws (email still fires)', async () => {
+    deps.model = makeModel(
+      {
+        create: (data) => {
+          calls.create.push(data);
+          return Promise.reject(new Error('db down'));
+        },
+      },
+      calls,
+    );
+    await service.createFollowNotification(followerParams());
+    expect(calls.create.length).toBe(1);
+    // Independent try/catch: the email fires even after the record insert failed.
+    expect(calls.notifyNewFollower.length).toBe(1);
+  });
+});
+
+describe('createLikeNotification', () => {
+  function likeParams(
+    overrides: Partial<Parameters<typeof service.createLikeNotification>[0]> = {},
+  ) {
+    return {
+      likerId: 'liker-1',
+      likerUsername: 'liker-username',
+      recipeAuthorId: 'target-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'slug-1',
+      recipeTitle: 'Title 1',
+      ...overrides,
+    };
+  }
+
+  it('skips record and email when notifyRecipeLiked preference is false', async () => {
+    deps.model = makeModel({
+      findNotifyTarget: (userId: string) => {
+        calls.findNotifyTarget.push(userId);
+        return Promise.resolve(
+          makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyRecipeLiked: false } }),
+        );
+      },
+    }, calls);
+    await service.createLikeNotification(likeParams());
+    expect(calls.findNotifyTarget).toEqual(['target-1']);
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyRecipeLiked).toEqual([]);
+  });
+
+  it('treats missing preferences row (prefs null) as opted in', async () => {
+    deps.model = makeModel({
+      findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
+    }, calls);
+    await service.createLikeNotification(likeParams());
+    expect(calls.create.length).toBe(1);
+    expect(calls.notifyRecipeLiked.length).toBe(1);
+  });
+
+  it('skips self-like (no record, no email)', async () => {
+    deps.model = makeModel({}, calls);
+    await service.createLikeNotification(likeParams({
+      likerId: 'self-1',
+      recipeAuthorId: 'self-1',
+    }));
+    expect(calls.findNotifyTarget).toEqual([]);
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyRecipeLiked).toEqual([]);
+  });
+
+  it('target not found returns early without record or email', async () => {
+    deps.model = makeModel({ findNotifyTarget: () => Promise.resolve(null as never) }, calls);
+    await service.createLikeNotification(likeParams());
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyRecipeLiked).toEqual([]);
+  });
+
+  it('creates record and sends email when opted in', async () => {
+    deps.model = makeModel({}, calls);
+    await service.createLikeNotification(likeParams());
+    expect(calls.findNotifyTarget).toEqual(['target-1']);
+    expect(calls.create.length).toBe(1);
+    expect(calls.create[0]).toEqual({
+      userId: 'target-1',
+      type: 'like',
+      actorId: 'liker-1',
+      referenceId: 'recipe-1',
+      referenceType: 'recipe',
+      metadata: JSON.stringify({ recipeSlug: 'slug-1', recipeTitle: 'Title 1' }),
+    });
+    expect(calls.notifyRecipeLiked).toEqual([{
+      recipeAuthorId: 'target-1',
+      likerUsername: 'liker-username',
+      recipeTitle: 'Title 1',
+      recipeSlug: 'slug-1',
+    }]);
+  });
+
+  it('creates record but logs error if email send throws', async () => {
+    deps.model = makeModel({}, calls);
+    deps.notifyRecipeLiked = (params) => {
+      calls.notifyRecipeLiked.push(params);
+      return Promise.reject(new Error('smtp down'));
+    };
+    await service.createLikeNotification(likeParams());
+    expect(calls.create.length).toBe(1);
+    expect(calls.notifyRecipeLiked.length).toBe(1);
+  });
+
+  it('logs error but does not throw if model.create throws (email still fires)', async () => {
+    deps.model = makeModel(
+      {
+        create: (data) => {
+          calls.create.push(data);
+          return Promise.reject(new Error('db down'));
+        },
+      },
+      calls,
+    );
+    await service.createLikeNotification(likeParams());
+    expect(calls.create.length).toBe(1);
+    expect(calls.notifyRecipeLiked.length).toBe(1);
+  });
+});
+
+describe('createCommentNotification', () => {
+  function commentParams(
+    overrides: Partial<Parameters<typeof service.createCommentNotification>[0]> = {},
+  ) {
+    return {
+      commenterId: 'commenter-1',
+      commenterUsername: 'commenter-username',
+      recipeAuthorId: 'target-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'slug-1',
+      recipeTitle: 'Title 1',
+      commentId: 'comment-1',
+      ...overrides,
+    };
+  }
+
+  it('skips record and email when notifyRecipeCommented preference is false', async () => {
+    deps.model = makeModel({
+      findNotifyTarget: (userId: string) => {
+        calls.findNotifyTarget.push(userId);
+        return Promise.resolve(
+          makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyRecipeCommented: false } }),
+        );
+      },
+    }, calls);
+    await service.createCommentNotification(commentParams());
+    expect(calls.findNotifyTarget).toEqual(['target-1']);
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyRecipeCommented).toEqual([]);
+  });
+
+  it('treats missing preferences row (prefs null) as opted in', async () => {
+    deps.model = makeModel({
+      findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
+    }, calls);
+    await service.createCommentNotification(commentParams());
+    expect(calls.create.length).toBe(1);
+    expect(calls.notifyRecipeCommented.length).toBe(1);
+  });
+
+  it('skips self-comment (no record, no email)', async () => {
+    deps.model = makeModel({}, calls);
+    await service.createCommentNotification(commentParams({
+      commenterId: 'self-1',
+      recipeAuthorId: 'self-1',
+    }));
+    expect(calls.findNotifyTarget).toEqual([]);
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyRecipeCommented).toEqual([]);
+  });
+
+  it('target not found returns early without record or email', async () => {
+    deps.model = makeModel({ findNotifyTarget: () => Promise.resolve(null as never) }, calls);
+    await service.createCommentNotification(commentParams());
+    expect(calls.create).toEqual([]);
+    expect(calls.notifyRecipeCommented).toEqual([]);
+  });
+
+  it('creates record and sends email when opted in', async () => {
+    deps.model = makeModel({}, calls);
+    await service.createCommentNotification(commentParams());
+    expect(calls.findNotifyTarget).toEqual(['target-1']);
+    expect(calls.create.length).toBe(1);
+    expect(calls.create[0]).toEqual({
+      userId: 'target-1',
+      type: 'comment',
+      actorId: 'commenter-1',
+      referenceId: 'comment-1',
+      referenceType: 'comment',
+      metadata: JSON.stringify({ recipeSlug: 'slug-1', recipeTitle: 'Title 1' }),
+    });
+    expect(calls.notifyRecipeCommented).toEqual([{
+      recipeAuthorId: 'target-1',
+      commenterUsername: 'commenter-username',
+      recipeTitle: 'Title 1',
+      recipeSlug: 'slug-1',
+    }]);
+  });
+
+  it('creates record but logs error if email send throws', async () => {
+    deps.model = makeModel({}, calls);
+    deps.notifyRecipeCommented = (params) => {
+      calls.notifyRecipeCommented.push(params);
+      return Promise.reject(new Error('smtp down'));
+    };
+    await service.createCommentNotification(commentParams());
+    expect(calls.create.length).toBe(1);
+    expect(calls.notifyRecipeCommented.length).toBe(1);
+  });
+
+  it('logs error but does not throw if model.create throws (email still fires)', async () => {
+    deps.model = makeModel(
+      {
+        create: (data) => {
+          calls.create.push(data);
+          return Promise.reject(new Error('db down'));
+        },
+      },
+      calls,
+    );
+    await service.createCommentNotification(commentParams());
+    expect(calls.create.length).toBe(1);
+    expect(calls.notifyRecipeCommented.length).toBe(1);
   });
 });
