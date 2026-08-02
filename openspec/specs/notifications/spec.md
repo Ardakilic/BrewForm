@@ -1,9 +1,8 @@
-# notifications
+# notifications Specification
 
-In-app notification feed, per-type preference gating, fan-out rules, and feed UI. This specification is the source of truth for the `notifications` capability introduced by F05; the historical PRD at `plans/F05-in-app-notifications.md` (Option A proposal) is preserved as context but is superseded by the implemented shape (Option C — flat `notify*` schema fields + `notify_`-prefixed DB columns, per `proposal.md`).
-
-## ADDED Requirements
-
+## Purpose
+TBD - created by archiving change f05-in-app-notifications. Update Purpose after archive.
+## Requirements
 ### Requirement: Flat channel-agnostic notification preferences
 
 The `UserPreferences` shared schema SHALL expose 5 notification preference fields as FLAT top-level booleans: `notifyNewFollower`, `notifyRecipeLiked`, `notifyRecipeCommented`, `notifyFollowedUserPosted`, `notifyMentionedInComment`. There SHALL NOT be a nested `emailNotifications` or `notifyPreferences` object.
@@ -79,7 +78,7 @@ For each notification type, the matching `notify*` flag SHALL gate BOTH in-app r
 
 ### Requirement: Independent gating of mention vs comment events
 
-The `notifyMentionedInComment` and `notifyRecipeCommented` flags are INDEPENDENT. A recipe author mentioned in a comment on their own recipe may receive any combination of the four outputs (mention record, comment record, mention email, recipe-commented email) based on their prefs and the recipe-author email skip-rule.
+The `notifyMentionedInComment` and `notifyRecipeCommented` flags SHALL be gated INDEPENDENTLY. A recipe author mentioned in a comment on their own recipe may receive any combination of the four outputs (mention record, comment record, mention email, recipe-commented email) based on their prefs and the recipe-author email skip-rule.
 
 - The mention record is gated on `notifyMentionedInComment`.
 - The comment record is gated on `notifyRecipeCommented`.
@@ -287,12 +286,3 @@ The change SHALL pass all repo-mandated code quality gates before commit.
 - When `make fmt` runs (applies `deno fmt` formatting)
 - Then `git status` shows no unformatted files; `deno fmt --check` (run by the pre-commit hook and CI) passes — the build does not fail on formatting diffs
 
-## Non-goals
-
-- `badge` and `system` notification types (no fan-out call sites; deferred until call sites exist)
-- Real-time push (SSE / WebSocket / polling beyond the existing window-focus refetch)
-- Separate in-app vs email preference columns per type (F04 precedent of one flag gates both is the chosen design)
-- Deprecation acceptance of the legacy `emailNotifications` request body shape (clean rename — single in-repo client; legacy payloads are silently stripped by Zod's default unknown-keys behavior, not explicitly rejected)
-- `notifyFollowersOfNewRecipe` in-app record (no matching enum type; design deferred to a future change)
-- Public API versioning (pre-v1 self-hosted app)
-- Notification idempotency (re-like → re-notify is the documented behavior; matching the existing email-fan-out semantics. A future change may introduce de-dup if needed.)

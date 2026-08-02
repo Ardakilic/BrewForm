@@ -3,9 +3,7 @@
 ## Purpose
 
 Eliminates residual `any` usage across the API service and model layer (preference, bean, setup, taste, recipe/model, badge, notify) by deriving payload and row types from shared Zod schemas, Drizzle inferred row types, and local recursive/utility interfaces. Establishes that shared schemas export inferred `z.infer<>` types and that validated payloads flow through the route → service boundary with their inferred types intact, completing the D05 type-safety requirement across the remaining modules.
-
 ## Requirements
-
 ### Requirement: Shared schemas export inferred payload types
 
 The input Zod schemas in `packages/shared/src/schemas/` SHALL export their inferred TypeScript types via `export type X = z.infer<typeof XSchema>` alongside the schema definitions. The following type exports SHALL be added (none currently exist — only the Zod schema objects are exported):
@@ -40,7 +38,7 @@ The input Zod schemas in `packages/shared/src/schemas/` SHALL export their infer
 
 `apps/api/src/modules/preference/index.ts:85` — `const flatData: any = {}` SHALL be replaced with `const flatData: Partial<typeof userPreferences.$inferInsert> = {}`. The `userPreferences` table is imported from `@brewform/db/schema` (add the import if not present).
 
-**Reason:** The `flatData` object is built by flattening the nested `body.emailNotifications.*` into top-level keys matching the flat DB row. The shared nested `UserPreferences` type is the wrong shape (Decision 3). The DB row insert type is correct and already used by the downstream model function.
+**Reason:** Decision 3 — F05 (Option C) flattens the request body to top-level `notify*` fields, so the API step maps each `body.notifyX` one-to-one to `flatData.notifyX`. There is no nested namespace object anymore. The flatten is closer to a per-field identity copy. The shared nested `UserPreferences` type is the wrong shape (Decision 3); the DB row insert type is correct and already used by the downstream model function. The original `body.emailNotifications.*` reference in Decision 3's rationale is updated to flat `body.notify*` field accesses to reflect the F05 rename + flatten; the per-field copy pattern replaces the nested-flatten pattern.
 
 #### Scenario: updatePreferences accepts the flat partial type
 
@@ -50,7 +48,7 @@ The input Zod schemas in `packages/shared/src/schemas/` SHALL export their infer
 #### Scenario: flatData is typed as the flat DB row partial
 
 - **WHEN** `apps/api/src/modules/preference/index.ts` is type-checked
-- **THEN** `const flatData: Partial<typeof userPreferences.$inferInsert> = {}` — no `any`, and the subsequent `flatData.unitSystem = body.unitSystem` assignments type-check against the DB row columns
+- **THEN** `const flatData: Partial<typeof userPreferences.$inferInsert> = {}` — no `any`, and the subsequent `flatData.notifyNewFollower = body.notifyNewFollower` (and 4 siblings) assignments type-check against the renamed flat DB row columns, with body source keys being flat top-level `body.notify*` fields (no nested `body.emailNotifications.*` access)
 
 ### Requirement: Bean and setup services use typed payloads, not `any`
 
@@ -227,3 +225,4 @@ The D34 plan lists four explicit acceptance criteria. This change SHALL satisfy 
 
 - **WHEN** `make fmt` is run followed by `git diff --exit-code`
 - **THEN** there is no diff — `deno fmt` has been applied to all changed files (CI enforces `deno fmt --check`)
+
