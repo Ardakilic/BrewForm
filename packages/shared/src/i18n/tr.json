@@ -337,6 +337,7 @@
   "notifications.empty": "Henüz bildirim yok",
   "notifications.all": "Tümü",
   "notifications.unread": "Okunmamış",
+  "notifications.filterLabel": "Bildirimleri filtrele",
   "notifications.markAllRead": "Tümünü okundu işaretle",
   "notifications.markRead": "Okundu işaretle",
   "notifications.viewAll": "Tüm bildirimleri gör",

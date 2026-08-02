@@ -10,7 +10,6 @@ import type { CursorResult } from '../recipe/model.ts';
 import * as recipeModel from '../recipe/model.ts';
 import * as userModel from '../user/model.ts';
 import { createLogger } from '../../utils/logger/index.ts';
-import { notifyNewFollower } from '../../utils/notify/index.ts';
 import { createFollowNotification } from '../notification/service.ts';
 import { evaluateBadges } from '../badge/service.ts';
 
@@ -35,20 +34,18 @@ export async function followUser(followerId: string, followingId: string) {
   (async () => {
     const follower = await userModel.findById(followerId);
     if (!follower?.username) return;
-    await notifyNewFollower({
-      followingId,
-      followerUsername: follower.username,
-    });
-    // F05 fan-out: persist a `follow` notification record for the followed
-    // user (gated on `notifyNewFollower` prefs — single flag gates both).
-    createFollowNotification({
+    // F05: createFollowNotification owns BOTH the in-app `follow` record AND
+    // the follow email (gated on `notifyNewFollower` prefs — single flag gates
+    // both). No direct notifyNewFollower call here — that would double-send
+    // and bypass the preference gate.
+    await createFollowNotification({
       followerId,
       followerUsername: follower.username,
       followingId,
-    }).catch((err) =>
-      logger.error({ err, followerId, followingId }, 'createFollowNotification failed')
-    );
-  })().catch((err) => logger.error({ err }, 'notifyNewFollower failed'));
+    });
+  })().catch((err) =>
+    logger.error({ err, followerId, followingId }, 'createFollowNotification failed')
+  );
 
   evaluateBadges(followerId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 

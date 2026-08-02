@@ -166,7 +166,9 @@ export async function createMentionNotifications(params: {
  *      counts as enabled — the column defaults to true).
  *   4. Insert a `follow` notification row with `actorId = followerId`,
  *      `referenceType = 'actor'`, `metadata = { followerUsername }`.
- *   5. Send the follow email (`notifyNewFollower`).
+ *   5. Send the follow email (`notifyNewFollower`). SOLE OWNER of the email —
+ *      callers must NOT also call `notifyNewFollower`, or they bypass the
+ *      preference gate above and double-send.
  *
  * Per-target failures are isolated: a failed insert or email is logged and
  * skipped without aborting. Designed fire-and-forget from the follow service.
@@ -236,7 +238,8 @@ export async function createFollowNotification(params: {
 /**
  * Create a like notification (and recipe-liked email) when a user likes
  * someone else's recipe. Skips self-likes. Single-recipient: targets the
- * recipe author only. Flow mirrors `createFollowNotification`.
+ * recipe author only. SOLE OWNER of the recipe-liked email — callers must
+ * NOT also call `notifyRecipeLiked`. Flow mirrors `createFollowNotification`.
  *
  * @param params - `{ likerId, likerUsername, recipeAuthorId, recipeId, recipeSlug, recipeTitle }`.
  */
@@ -317,11 +320,12 @@ export async function createLikeNotification(params: {
 /**
  * Create a comment-on-recipe notification (and recipe-commented email) for
  * the recipe author when someone else comments on their recipe. Skips
- * self-comments. This path is DISTINCT from `createMentionNotifications`
- * (F04), which targets each `@username` in the comment body. The same
- * comment can trigger BOTH fan-outs: this one targets the recipe author
- * ("X commented on your recipe"); the mention path targets each mentioned
- * user ("X mentioned you"). See design D6.
+ * self-comments. SOLE OWNER of the recipe-commented email — callers must
+ * NOT also call `notifyRecipeCommented`. This path is DISTINCT from
+ * `createMentionNotifications` (F04), which targets each `@username` in the
+ * comment body. The same comment can trigger BOTH fan-outs: this one targets
+ * the recipe author ("X commented on your recipe"); the mention path targets
+ * each mentioned user ("X mentioned you"). See design D6.
  *
  * @param params - `{ commenterId, commenterUsername, recipeAuthorId, recipeId, recipeSlug, recipeTitle, commentId }`.
  */

@@ -337,6 +337,7 @@
   "notifications.empty": "No notifications yet",
   "notifications.all": "All",
   "notifications.unread": "Unread",
+  "notifications.filterLabel": "Filter notifications",
   "notifications.markAllRead": "Mark all as read",
   "notifications.markRead": "Mark as read",
   "notifications.viewAll": "View all notifications",

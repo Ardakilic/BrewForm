@@ -65,6 +65,7 @@ const mockMarkAllRead = vi.mocked(notificationApi.markAllRead);
 
 const enMap: Record<string, string> = {
   'notifications.title': 'Notifications',
+  'notifications.filterLabel': 'Filter notifications',
   'notifications.empty': 'No notifications yet',
   'notifications.markAllRead': 'Mark all as read',
   'notifications.all': 'All',
@@ -76,6 +77,7 @@ const enMap: Record<string, string> = {
 
 const trMap: Record<string, string> = {
   'notifications.title': 'Bildirimler',
+  'notifications.filterLabel': 'Bildirimleri filtrele',
   'notifications.empty': 'Henüz bildirim yok',
   'notifications.markAllRead': 'Tümünü okundu işaretle',
   'notifications.all': 'Tümü',
@@ -180,12 +182,6 @@ describe('NotificationListPage', () => {
     expect(screen.getByText('Henüz bildirim yok')).toBeInTheDocument();
   });
 
-  // ── F05 filter UI tests (T41) ──
-  // TODO: needs signature confirm — actual `notificationApi.list(page: number, unreadOnly?: boolean)`
-  // (positional, NOT the object form the design hint described). T38's All/Unread filter UI
-  // has NOT landed yet; these tests will only pass once buttons labeled 'All' / 'Unread'
-  // (via t('notifications.all') / t('notifications.unread')) render in the page header.
-
   it('initial render loads notifications with unread filter off (default All)', async () => {
     mockList.mockResolvedValue(makeResponse([makeNotification()]));
     renderPage();
@@ -225,7 +221,6 @@ describe('NotificationListPage', () => {
     await waitFor(() => expect(mockList).toHaveBeenCalledWith(1, true));
 
     await user.click(screen.getByRole('button', { name: 'All' }));
-    // TODO: T38 may revert to (1) without second arg, or (1, false) explicitly.
     await waitFor(() => {
       expect(mockList).toHaveBeenLastCalledWith(1, false);
     });

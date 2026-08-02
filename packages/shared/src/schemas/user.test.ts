@@ -1,6 +1,10 @@
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
-import { UserPreferencesSchema, UserProfileUpdateSchema } from './user.ts';
+import {
+  UserPreferencesPatchSchema,
+  UserPreferencesSchema,
+  UserProfileUpdateSchema,
+} from './user.ts';
 
 describe('UserPreferencesSchema', () => {
   it('should apply defaults', () => {
@@ -117,6 +121,45 @@ describe('UserPreferencesSchema: DateFormat fix (D07)', () => {
   it('should reject invalid TemperatureUnit', () => {
     const result = UserPreferencesSchema.safeParse({ temperatureUnit: 'kelvin' });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('UserPreferencesPatchSchema', () => {
+  it('omitted fields parse to undefined (no default fill)', () => {
+    const result = UserPreferencesPatchSchema.safeParse({ theme: 'dark' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.theme).toBe('dark');
+      expect(result.data.notifyNewFollower).toBeUndefined();
+      expect(result.data.notifyRecipeLiked).toBeUndefined();
+      expect(result.data.notifyRecipeCommented).toBeUndefined();
+      expect(result.data.notifyFollowedUserPosted).toBeUndefined();
+      expect(result.data.notifyMentionedInComment).toBeUndefined();
+      expect(result.data.unitSystem).toBeUndefined();
+    }
+  });
+
+  it('accepts flat notify fields when present', () => {
+    const result = UserPreferencesPatchSchema.safeParse({ notifyNewFollower: false });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.notifyNewFollower).toBe(false);
+      expect(result.data.notifyRecipeLiked).toBeUndefined();
+    }
+  });
+
+  it('empty object parses to all-undefined', () => {
+    const result = UserPreferencesPatchSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.notifyNewFollower).toBeUndefined();
+      expect(result.data.theme).toBeUndefined();
+    }
+  });
+
+  it('rejects invalid enum values', () => {
+    expect(UserPreferencesPatchSchema.safeParse({ theme: 'neon' }).success).toBe(false);
+    expect(UserPreferencesPatchSchema.safeParse({ unitSystem: 'kelvin' }).success).toBe(false);
   });
 });
 

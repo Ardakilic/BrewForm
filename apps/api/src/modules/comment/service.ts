@@ -11,7 +11,6 @@ import * as model from './model.ts';
 import * as recipeModel from '../recipe/model.ts';
 import { canViewRecipe } from '../recipe/service.ts';
 import { createLogger } from '../../utils/logger/index.ts';
-import { notifyRecipeCommented } from '../../utils/notify/index.ts';
 import { createCommentNotification, createMentionNotifications } from '../notification/service.ts';
 import { evaluateBadges } from '../badge/service.ts';
 
@@ -26,7 +25,6 @@ const logger = createLogger('comment-service');
 export const deps = {
   model,
   recipeModel,
-  notifyRecipeCommented,
   createMentionNotifications,
   createCommentNotification,
   evaluateBadges,
@@ -129,8 +127,11 @@ export async function createComment(
  * Flow:
  *   1. Load the recipe (early return when it cannot be found).
  *   2. Load the commenter (early return when no username is available).
- *   3. Send the recipe-commented email ONLY when the commenter is not the
- *      recipe author (`recipe.authorId !== userId`).
+ *   3. `createCommentNotification` owns BOTH the in-app `comment` record AND
+ *      the recipe-commented email — gated on `notifyRecipeCommented` prefs
+ *      (single flag gates both). It self-skips when the commenter IS the
+ *      recipe author, so the `recipe.authorId !== userId` guard here only
+ *      avoids the call; the creator's own self-check is belt-and-braces.
  *   4. ALWAYS run the mention flow — including when the commenter IS the
  *      recipe author. Mentions are parsed from the effective (post-prepend,
  *      sanitized) content; createMentionNotifications no-ops on empty lists.
@@ -158,20 +159,11 @@ export async function runCommentNotificationSideEffects(params: {
   const commenter = await deps.model.getCommenterById(userId);
   if (!commenter?.username) return;
 
-  // Recipe-commented email only when someone ELSE comments on the recipe.
-  // F05 fan-out colocates an in-app `comment` notification record
-  // (gated on `notifyRecipeCommented` prefs — single flag gates both).
+  // F05: createCommentNotification owns BOTH the in-app `comment` record AND
+  // the recipe-commented email (gated on `notifyRecipeCommented` prefs —
+  // single flag gates both). No direct notifyRecipeCommented call here —
+  // that would double-send and bypass the preference gate.
   if (recipe.authorId !== userId) {
-    try {
-      await deps.notifyRecipeCommented({
-        recipeAuthorId: recipe.authorId,
-        commenterUsername: commenter.username,
-        recipeTitle: recipe.title,
-        recipeSlug: recipe.slug,
-      });
-    } catch (err) {
-      logger.error({ err, commentId }, 'notifyRecipeCommented failed');
-    }
     deps.createCommentNotification({
       commenterId: userId,
       commenterUsername: commenter.username,

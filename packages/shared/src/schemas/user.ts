@@ -43,3 +43,30 @@ export const UserProfileUpdateSchema = z.object({
 export type UserProfileUpdate = z.infer<typeof UserProfileUpdateSchema>;
 /** Inferred type of {@link UserPreferencesSchema}. */
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
+
+/**
+ * PATCH-only variant of {@link UserPreferencesSchema}: every field is
+ * optional with NO defaults. Used by `PATCH /api/v1/preferences` so omitted
+ * fields parse to `undefined` (not a default), letting the handler copy only
+ * the fields actually present in the request — omitted preferences stay
+ * unchanged. The base schema's `.default()` would otherwise fill omitted
+ * booleans to `true` and silently overwrite the stored value.
+ *
+ * Built by re-wrapping the same enum types with `.optional()` (NOT
+ * `UserPreferencesSchema.partial()`, which preserves `.default()` — Zod v4
+ * `.default()` short-circuits on `undefined` input, so `.partial()` still
+ * fills defaults).
+ */
+export const UserPreferencesPatchSchema = z.object({
+  unitSystem: z.enum(UNIT_SYSTEM_VALUES).optional(),
+  temperatureUnit: z.enum(TEMPERATURE_UNIT_VALUES).optional(),
+  theme: z.enum(THEME_VALUES).optional(),
+  locale: z.string().optional(),
+  timezone: z.string().optional(),
+  dateFormat: z.enum(DATE_FORMAT_VALUES).optional(),
+  notifyNewFollower: z.boolean().optional(),
+  notifyRecipeLiked: z.boolean().optional(),
+  notifyRecipeCommented: z.boolean().optional(),
+  notifyFollowedUserPosted: z.boolean().optional(),
+  notifyMentionedInComment: z.boolean().optional(),
+});

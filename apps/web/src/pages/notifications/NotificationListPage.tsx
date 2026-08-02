@@ -131,7 +131,7 @@ export function NotificationListPage() {
       </div>
 
       {/* F05: All / Unread filter */}
-      <div className='mb-4 flex gap-2' role='group' aria-label={t('notifications.title')}>
+      <div className='mb-4 flex gap-2' role='group' aria-label={t('notifications.filterLabel')}>
         <button
           type='button'
           onClick={() => handleFilterChange('all')}

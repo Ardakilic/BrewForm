@@ -50,10 +50,11 @@ describe('Follow Service Logic', () => {
 // The follow service calls createFollowNotification via a DIRECT import (no
 // deps proxy), so the only way to assert the fan-out here is against the real
 // DB. `followUser` spawns a fire-and-forget IIFE that loads the follower's
-// username, sends the follow email (suppressed under APP_ENV=test), and
-// persists a `follow` notification record for the followed user (gated on
-// notifyNewFollower prefs — missing prefs counts as opted-in, which is the
-// state for the freshly-inserted `followed` user below).
+// username and delegates to `createFollowNotification`, which owns BOTH the
+// follow email (suppressed under APP_ENV=test) AND the in-app `follow`
+// notification record (gated on `notifyNewFollower` prefs — missing prefs
+// counts as opted-in, which is the state for the freshly-inserted `followed`
+// user below).
 // ---------------------------------------------------------------------------
 
 describe(

@@ -37,7 +37,11 @@ export {
   PasswordResetConfirmSchema,
   PasswordResetSchema,
 } from './auth.ts';
-export { UserPreferencesSchema, UserProfileUpdateSchema } from './user.ts';
+export {
+  UserPreferencesPatchSchema,
+  UserPreferencesSchema,
+  UserProfileUpdateSchema,
+} from './user.ts';
 export type { UserPreferences, UserProfileUpdate } from './user.ts';
 export { TasteNoteCreateSchema, TasteNoteFilterSchema, TasteNoteUpdateSchema } from './taste.ts';
 export type { TasteNoteCreate, TasteNoteUpdate } from './taste.ts';
