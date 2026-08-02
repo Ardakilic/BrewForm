@@ -31,7 +31,7 @@ describe('UserRowOutputSchema (PATCH /me)', () => {
 });
 
 describe('SelfUserOutputSchema (GET /me)', () => {
-  it('parses row + nested preferences + stats and round-trips', () => {
+  it('parses row + flat preferences + stats and round-trips', () => {
     const payload = {
       ...baseUser,
       preferences: {
@@ -41,12 +41,11 @@ describe('SelfUserOutputSchema (GET /me)', () => {
         locale: 'en',
         timezone: 'UTC',
         dateFormat: 'YYYY_MM_DD',
-        emailNotifications: {
-          newFollower: true,
-          recipeLiked: true,
-          recipeCommented: false,
-          followedUserPosted: true,
-        },
+        notifyNewFollower: true,
+        notifyRecipeLiked: true,
+        notifyRecipeCommented: false,
+        notifyFollowedUserPosted: true,
+        notifyMentionedInComment: true,
       },
       recipeCount: 5,
       followerCount: 10,
@@ -55,6 +54,34 @@ describe('SelfUserOutputSchema (GET /me)', () => {
     const result = SelfUserOutputSchema.safeParse(wire(payload));
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual(wire(payload));
+  });
+
+  it('round-trips notifyMentionedInComment: false (F04 latent-bug regression guard)', () => {
+    const payload = {
+      ...baseUser,
+      preferences: {
+        unitSystem: 'metric',
+        temperatureUnit: 'celsius',
+        theme: 'light',
+        locale: 'en',
+        timezone: 'UTC',
+        dateFormat: 'YYYY_MM_DD',
+        notifyNewFollower: true,
+        notifyRecipeLiked: true,
+        notifyRecipeCommented: true,
+        notifyFollowedUserPosted: true,
+        notifyMentionedInComment: false,
+      },
+      recipeCount: 0,
+      followerCount: 0,
+      followingCount: 0,
+    };
+    const result = SelfUserOutputSchema.safeParse(wire(payload));
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.preferences!.notifyMentionedInComment).toBe(false);
+      expect(result.data).toEqual(wire(payload));
+    }
   });
 
   it('accepts null preferences (no preferences row)', () => {

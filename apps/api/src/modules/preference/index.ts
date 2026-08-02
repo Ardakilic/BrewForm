@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute, resolver } from 'hono-openapi';
-import { UserPreferencesSchema } from '@brewform/shared/schemas';
+import { UserPreferencesPatchSchema } from '@brewform/shared/schemas';
 import {
   ErrorEnvelopeSchema,
   successEnvelope,
@@ -64,7 +64,7 @@ preference.patch(
     summary: 'Update preferences',
     description: "Updates the authenticated user's preferences.",
     security: [{ bearerAuth: [] }],
-    requestBody: jsonRequestBody(UserPreferencesSchema),
+    requestBody: jsonRequestBody(UserPreferencesPatchSchema),
     responses: {
       200: {
         description: 'Updated user preferences',
@@ -79,11 +79,17 @@ preference.patch(
     },
   }),
   authMiddleware,
-  zValidator('json', UserPreferencesSchema),
+  zValidator('json', UserPreferencesPatchSchema),
   async (c) => {
     const userId = c.get('userId') as string;
     const body = c.req.valid('json');
 
+    // F05: flat `notify*` field identity-copy from the PATCH-only schema.
+    // `UserPreferencesPatchSchema` makes every field optional with NO defaults,
+    // so omitted fields parse to `undefined` and the `!== undefined` guards
+    // below skip them — omitted preferences remain unchanged. The earlier
+    // `UserPreferencesSchema` (with `.default(true)` on booleans) would fill
+    // omitted fields to `true` and silently overwrite stored values.
     const flatData: PreferenceUpdate = {};
     if (body.unitSystem !== undefined) flatData.unitSystem = body.unitSystem;
     if (body.temperatureUnit !== undefined) flatData.temperatureUnit = body.temperatureUnit;
@@ -91,12 +97,16 @@ preference.patch(
     if (body.locale !== undefined) flatData.locale = body.locale;
     if (body.timezone !== undefined) flatData.timezone = body.timezone;
     if (body.dateFormat !== undefined) flatData.dateFormat = body.dateFormat;
-    if (body.emailNotifications !== undefined) {
-      flatData.newFollower = body.emailNotifications.newFollower;
-      flatData.recipeLiked = body.emailNotifications.recipeLiked;
-      flatData.recipeCommented = body.emailNotifications.recipeCommented;
-      flatData.followedUserPosted = body.emailNotifications.followedUserPosted;
-      flatData.mentionedInComment = body.emailNotifications.mentionedInComment;
+    if (body.notifyNewFollower !== undefined) flatData.notifyNewFollower = body.notifyNewFollower;
+    if (body.notifyRecipeLiked !== undefined) flatData.notifyRecipeLiked = body.notifyRecipeLiked;
+    if (body.notifyRecipeCommented !== undefined) {
+      flatData.notifyRecipeCommented = body.notifyRecipeCommented;
+    }
+    if (body.notifyFollowedUserPosted !== undefined) {
+      flatData.notifyFollowedUserPosted = body.notifyFollowedUserPosted;
+    }
+    if (body.notifyMentionedInComment !== undefined) {
+      flatData.notifyMentionedInComment = body.notifyMentionedInComment;
     }
 
     const prefs = await service.updatePreferences(userId, flatData);

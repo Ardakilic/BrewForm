@@ -113,11 +113,15 @@ export const userPreferences = pgTable('user_preferences', {
   locale: varchar('locale', { length: 10 }).notNull().default('en'),
   timezone: varchar('timezone', { length: 50 }).notNull().default('UTC'),
   dateFormat: dateFormatEnum('date_format').notNull().default('YYYY_MM_DD'),
-  newFollower: boolean('new_follower').notNull().default(true),
-  recipeLiked: boolean('recipe_liked').notNull().default(true),
-  recipeCommented: boolean('recipe_commented').notNull().default(true),
-  followedUserPosted: boolean('followed_user_posted').notNull().default(true),
-  mentionedInComment: boolean('mentioned_in_comment').notNull().default(true),
+  // F05 rename: was new_follower / recipe_liked / recipe_commented /
+  // followed_user_posted / mentioned_in_comment. Renamed with `notify_`
+  // prefix so the columns visually group in `\d user_preferences` and the
+  // names match the flat `notify*` shared-schema fields end-to-end.
+  notifyNewFollower: boolean('notify_new_follower').notNull().default(true),
+  notifyRecipeLiked: boolean('notify_recipe_liked').notNull().default(true),
+  notifyRecipeCommented: boolean('notify_recipe_commented').notNull().default(true),
+  notifyFollowedUserPosted: boolean('notify_followed_user_posted').notNull().default(true),
+  notifyMentionedInComment: boolean('notify_mentioned_in_comment').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -936,13 +940,23 @@ export const collectionItems = pgTable(
 );
 
 /**
- * Notification type enum. F04 (@mention notifications) ships only `'mention'`;
- * F05 (notification center) extends this with the remaining types.
+ * Notification type enum (single source of truth for the `notifications.type`
+ * column). F04 introduced `mention`; F05 extends with `follow` / `like` /
+ * `comment`. `badge` and `system` are NOT added by F05 — there are no fan-out
+ * call sites today (badge awards do not even email yet; system notifications
+ * would require an admin broadcast UI that does not exist). Add values as their
+ * creators land; remember `ALTER TYPE … ADD VALUE` is non-reversible.
  *
- * Values are declared inline (not sourced from `@brewform/shared/constants`
- * like the other enums) because F04 does not touch the shared package.
+ * Values are declared inline (not sourced from `@brewform/shared/constants`)
+ * because the notification module pre-dates the shared-constants convention
+ * and the enum is private to the notifications feature.
  */
-export const notificationTypeEnum = pgEnum('notification_type', ['mention']);
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'mention',
+  'follow',
+  'like',
+  'comment',
+]);
 
 /**
  * Notifications — per-user in-app notification feed.

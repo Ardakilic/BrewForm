@@ -1,5 +1,9 @@
 # F05 — In-App Notification Center
 
+> **✅ Shipped via OpenSpec change `f05-in-app-notifications` (2026-08-02).**
+>
+> The implemented shape is **Option C — flat top-level `notify*` schema fields + `notify_`-prefixed DB columns** (the 11-point What Changes in the OpenSpec `proposal.md` is the source of truth; the validation preface below is preserved as the historical 2026-07-13 audit context).
+>
 > **Validation status (2026-07-13): ⚠️ Outdated — F04 shipped the substrate; scope shrinks to extension**
 >
 > Supersedes the 2026-07-04 ✅ (which assumed F04 was unbuilt). F04 has landed (uncommitted) in this tree via migration `0010_clever_wilson_fisk.sql`, building most of this plan's foundation — but with a different shape than proposed, so several sections here are now stale.

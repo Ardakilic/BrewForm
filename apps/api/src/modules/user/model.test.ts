@@ -27,10 +27,11 @@ describe('User Model', { sanitizeOps: false, sanitizeResources: false }, () => {
           locale: 'tr',
           timezone: 'Europe/Istanbul',
           dateFormat: 'DD_MM_YYYY',
-          newFollower: false,
-          recipeLiked: false,
-          recipeCommented: false,
-          followedUserPosted: false,
+          notifyNewFollower: false,
+          notifyRecipeLiked: false,
+          notifyRecipeCommented: false,
+          notifyFollowedUserPosted: false,
+          notifyMentionedInComment: false,
         });
       });
 
@@ -53,10 +54,11 @@ describe('User Model', { sanitizeOps: false, sanitizeResources: false }, () => {
         expect(result!.preferences!.locale).toBe('tr');
         expect(result!.preferences!.timezone).toBe('Europe/Istanbul');
         expect(result!.preferences!.dateFormat).toBe('DD_MM_YYYY');
-        expect(result!.preferences!.emailNotifications.newFollower).toBe(false);
-        expect(result!.preferences!.emailNotifications.recipeLiked).toBe(false);
-        expect(result!.preferences!.emailNotifications.recipeCommented).toBe(false);
-        expect(result!.preferences!.emailNotifications.followedUserPosted).toBe(false);
+        expect(result!.preferences!.notifyNewFollower).toBe(false);
+        expect(result!.preferences!.notifyRecipeLiked).toBe(false);
+        expect(result!.preferences!.notifyRecipeCommented).toBe(false);
+        expect(result!.preferences!.notifyFollowedUserPosted).toBe(false);
+        expect(result!.preferences!.notifyMentionedInComment).toBe(false);
       });
     });
 

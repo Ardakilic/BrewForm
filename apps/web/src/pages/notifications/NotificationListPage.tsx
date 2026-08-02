@@ -29,9 +29,10 @@ export const loader = async (
   log.debug({}, 'NotificationListPage loader started');
   const url = new URL(request.url);
   const page = Number(url.searchParams.get('page')) || 1;
+  const unreadOnly = url.searchParams.get('unreadOnly') === 'true';
   try {
-    const notificationsResponse = await notificationApi.list(page);
-    log.debug({}, 'NotificationListPage loader completed');
+    const notificationsResponse = await notificationApi.list(page, unreadOnly);
+    log.debug({ page, unreadOnly }, 'NotificationListPage loader completed');
     return { notificationsResponse };
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) throw redirect('/login');
@@ -74,6 +75,26 @@ export function NotificationListPage() {
     setSearchParams(next);
   }
 
+  /**
+   * F05: `All` / `Unread` filter state, derived from `?unreadOnly=true` in
+   * the URL so it round-trips through the loader (peeling a fresh fetch on
+   * every filter change) and survives page reloads.
+   */
+  const filter: 'all' | 'unread' = searchParams.get('unreadOnly') === 'true' ? 'unread' : 'all';
+
+  // F05: filter change updates the URL → loader re-fetches with the new
+  // `unreadOnly` arg. Resets `page` to 1 (narrowing likely shrinks the set).
+  function handleFilterChange(next: 'all' | 'unread') {
+    const nextParams = new URLSearchParams(searchParams);
+    if (next === 'all') {
+      nextParams.delete('unreadOnly');
+    } else {
+      nextParams.set('unreadOnly', 'true');
+    }
+    nextParams.set('page', '1');
+    setSearchParams(nextParams);
+  }
+
   function handleItemRead(id: string) {
     const readAt = new Date().toISOString();
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, readAt } : n)));
@@ -107,6 +128,26 @@ export function NotificationListPage() {
             {t('notifications.markAllRead')}
           </button>
         )}
+      </div>
+
+      {/* F05: All / Unread filter */}
+      <div className='mb-4 flex gap-2' role='group' aria-label={t('notifications.filterLabel')}>
+        <button
+          type='button'
+          onClick={() => handleFilterChange('all')}
+          className={`btn-secondary text-sm ${filter === 'all' ? 'font-bold' : ''}`}
+          aria-pressed={filter === 'all'}
+        >
+          {t('notifications.all')}
+        </button>
+        <button
+          type='button'
+          onClick={() => handleFilterChange('unread')}
+          className={`btn-secondary text-sm ${filter === 'unread' ? 'font-bold' : ''}`}
+          aria-pressed={filter === 'unread'}
+        >
+          {t('notifications.unread')}
+        </button>
       </div>
 
       {items.length === 0

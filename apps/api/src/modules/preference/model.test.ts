@@ -123,4 +123,20 @@ describe('upsert', { sanitizeOps: false, sanitizeResources: false }, () => {
       .where(eq(userPreferences.userId, userId));
     expect(row.userId).toBe(userId);
   });
+
+  it('toggles notifyMentionedInComment via upsert and round-trips through findByUserId', async () => {
+    const inserted = await model.upsert(userId, { notifyMentionedInComment: false });
+    expect(inserted.notifyMentionedInComment).toBe(false);
+
+    const refetched = await model.findByUserId(userId);
+    expect(refetched).not.toBeNull();
+    expect(refetched!.notifyMentionedInComment).toBe(false);
+
+    const updated = await model.upsert(userId, { notifyMentionedInComment: true });
+    expect(updated.notifyMentionedInComment).toBe(true);
+
+    const refetchedAgain = await model.findByUserId(userId);
+    expect(refetchedAgain).not.toBeNull();
+    expect(refetchedAgain!.notifyMentionedInComment).toBe(true);
+  });
 });

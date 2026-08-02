@@ -38,6 +38,13 @@ export type TemperatureUnit = _TemperatureUnit;
  * These control display behaviour (units, theme, locale) and email
  * notification settings.
  */
+/**
+ * User preferences shape (units, theme, locale, notification toggles).
+ *
+ * F05: flat `notify*` flags (was nested `emailNotifications` object). The
+ * flatten fixes the F04 latent bug where `notifyMentionedInComment` was
+ * absent from this interface.
+ */
 export interface UserPreferences {
   unitSystem: UnitSystem;
   temperatureUnit: TemperatureUnit;
@@ -45,12 +52,11 @@ export interface UserPreferences {
   locale: string;
   timezone: string;
   dateFormat: DateFormat;
-  emailNotifications: {
-    newFollower: boolean;
-    recipeLiked: boolean;
-    recipeCommented: boolean;
-    followedUserPosted: boolean;
-  };
+  notifyNewFollower: boolean;
+  notifyRecipeLiked: boolean;
+  notifyRecipeCommented: boolean;
+  notifyFollowedUserPosted: boolean;
+  notifyMentionedInComment: boolean;
 }
 
 /**

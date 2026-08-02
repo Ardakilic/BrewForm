@@ -8,10 +8,16 @@ import { formatDate } from '../../utils/format.ts';
 
 const log = createLogger('NotificationItem');
 
-/** Mention-notification metadata payload (`{recipeSlug, recipeTitle}` JSON string). */
-interface MentionMetadata {
+/**
+ * Notification metadata payload (JSON string). Each notification type stores
+ * a different shape: mention/like/comment carry `{ recipeSlug, recipeTitle }`;
+ * follow carries `{ followerUsername }` (though the actor's username is also
+ * available directly on `notification.actorUsername`).
+ */
+interface NotificationMetadata {
   recipeSlug?: string;
   recipeTitle?: string;
+  followerUsername?: string;
 }
 
 /**
@@ -19,15 +25,16 @@ interface MentionMetadata {
  * Malformed or non-object payloads yield `{}` so the item falls back
  * to the generic mention text instead of crashing.
  */
-function parseMetadata(metadata: string | null): MentionMetadata {
+function parseMetadata(metadata: string | null): NotificationMetadata {
   if (!metadata) return {};
   try {
     const parsed: unknown = JSON.parse(metadata);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const { recipeSlug, recipeTitle } = parsed as Record<string, unknown>;
+      const { recipeSlug, recipeTitle, followerUsername } = parsed as Record<string, unknown>;
       return {
         recipeSlug: typeof recipeSlug === 'string' ? recipeSlug : undefined,
         recipeTitle: typeof recipeTitle === 'string' ? recipeTitle : undefined,
+        followerUsername: typeof followerUsername === 'string' ? followerUsername : undefined,
       };
     }
   } catch {
@@ -58,11 +65,45 @@ export function NotificationItem({ notification, onRead, onNavigate }: Notificat
   const username = notification.actorUsername ?? '';
   const isUnread = !notification.readAt;
 
-  const text = notification.type === 'mention' && meta.recipeTitle
-    ? t('notifications.mention')
-      .replace('{username}', username)
-      .replace('{recipeTitle}', meta.recipeTitle)
-    : t('notifications.mentionGeneric').replace('{username}', username);
+  // F05: per-type text pattern. `follow` / `like` / `comment` use the
+  // matching i18n key; mention and unknown types fall back to mentionGeneric.
+  const text = (() => {
+    switch (notification.type) {
+      case 'follow':
+        return t('notifications.follow').replace('{actorUsername}', username);
+      case 'like':
+        return meta.recipeTitle
+          ? t('notifications.like')
+            .replace('{actorUsername}', username)
+            .replace('{recipeTitle}', meta.recipeTitle)
+          : t('notifications.mentionGeneric').replace('{username}', username);
+      case 'comment':
+        return meta.recipeTitle
+          ? t('notifications.comment')
+            .replace('{actorUsername}', username)
+            .replace('{recipeTitle}', meta.recipeTitle)
+          : t('notifications.mentionGeneric').replace('{username}', username);
+      case 'mention':
+        return meta.recipeTitle
+          ? t('notifications.mention')
+            .replace('{username}', username)
+            .replace('{recipeTitle}', meta.recipeTitle)
+          : t('notifications.mentionGeneric').replace('{username}', username);
+      default:
+        return t('notifications.mentionGeneric').replace('{username}', username);
+    }
+  })();
+
+  // F05: per-type link target. Follow links to the actor's profile;
+  // comment links to the recipe with `#commentId` anchor; like / mention
+  // link to the recipe; missing slug renders a `<button>` (no nav).
+  const linkTo: string | null = (() => {
+    if (notification.type === 'follow') return username ? `/u/${username}` : null;
+    if (notification.type === 'comment' && meta.recipeSlug && notification.referenceId) {
+      return `/recipes/${meta.recipeSlug}#${notification.referenceId}`;
+    }
+    return meta.recipeSlug ? `/recipes/${meta.recipeSlug}` : null;
+  })();
 
   function markRead() {
     if (!isUnread) return;
@@ -110,10 +151,10 @@ export function NotificationItem({ notification, onRead, onNavigate }: Notificat
 
   return (
     <div className='flex items-start gap-1'>
-      {meta.recipeSlug
+      {linkTo
         ? (
           <Link
-            to={`/recipes/${meta.recipeSlug}`}
+            to={linkTo}
             onClick={handleActivate}
             className={interactiveClass}
           >

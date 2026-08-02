@@ -663,9 +663,12 @@ describe('deleteComment — edge cases', () => {
 //
 // Exercises the REAL runCommentNotificationSideEffects exported by service.ts
 // via the service-layer `deps` proxy (same idiom as notification/service.test.ts):
-// model lookups and the two notification functions are replaced with in-memory
-// recorders and restored after each test. Verifies:
-//   - notifyRecipeCommented remains gated on recipe.authorId !== userId
+// model lookups and the notification functions are replaced with in-memory
+// recorders and restored after each test. As of the comment/notification
+// ownership refactor, createCommentNotification is the SOLE owner of both the
+// in-app comment record AND the recipe-commented email; notifyRecipeCommented
+// is no longer called from the comment service. Verifies:
+//   - createCommentNotification is gated on recipe.authorId !== userId
 //   - the mention scan ALWAYS runs (even when the commenter IS the recipe
 //     author) on the effective content, forwarding recipeAuthorId
 //   - each notification call has independent error handling: a rejection in
@@ -673,12 +676,12 @@ describe('deleteComment — edge cases', () => {
 // ---------------------------------------------------------------------------
 
 type ModelDeps = typeof deps.model;
-type NotifyRecipeCommentedParams = Parameters<typeof deps.notifyRecipeCommented>[0];
 type MentionNotificationParams = Parameters<typeof deps.createMentionNotifications>[0];
+type CommentNotificationParams = Parameters<typeof deps.createCommentNotification>[0];
 
 const originalModel = deps.model;
-const originalNotifyRecipeCommented = deps.notifyRecipeCommented;
 const originalCreateMentionNotifications = deps.createMentionNotifications;
+const originalCreateCommentNotification = deps.createCommentNotification;
 
 describe('createComment — notification side-effects (F04 mention flow)', () => {
   const recipe = {
@@ -688,8 +691,8 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
     authorId: 'author-1',
   };
 
-  let notifyCalls: NotifyRecipeCommentedParams[];
   let mentionCalls: MentionNotificationParams[];
+  let commentCalls: CommentNotificationParams[];
 
   /** Replace deps with in-memory recorders; pass null to simulate a missing recipe. */
   function stubDeps(recipeResult: typeof recipe | null) {
@@ -702,25 +705,25 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       getCommenterById: (userId: string) => Promise.resolve({ id: userId, username: 'commenter' }),
     };
     deps.model = modelStub;
-    deps.notifyRecipeCommented = (params) => {
-      notifyCalls.push(params);
-      return Promise.resolve();
-    };
     deps.createMentionNotifications = (params) => {
       mentionCalls.push(params);
+      return Promise.resolve();
+    };
+    deps.createCommentNotification = (params) => {
+      commentCalls.push(params);
       return Promise.resolve();
     };
   }
 
   beforeEach(() => {
-    notifyCalls = [];
     mentionCalls = [];
+    commentCalls = [];
   });
 
   afterEach(() => {
     deps.model = originalModel;
-    deps.notifyRecipeCommented = originalNotifyRecipeCommented;
     deps.createMentionNotifications = originalCreateMentionNotifications;
+    deps.createCommentNotification = originalCreateCommentNotification;
   });
 
   it('sends recipe-commented AND triggers the mention flow when the commenter is not the author', async () => {
@@ -731,8 +734,16 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       commentId: 'comment-1',
       effectiveContent: 'Nice one @alice and @bob-2!',
     });
-    expect(notifyCalls.length).toBe(1);
-    expect(notifyCalls[0].recipeAuthorId).toBe('author-1');
+    expect(commentCalls.length).toBe(1);
+    expect(commentCalls[0]).toEqual({
+      commenterId: 'commenter-1',
+      commenterUsername: 'commenter',
+      recipeAuthorId: 'author-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'recipe-slug',
+      recipeTitle: 'Recipe Title',
+      commentId: 'comment-1',
+    });
     expect(mentionCalls.length).toBe(1);
     expect(mentionCalls[0].mentions).toEqual(['alice', 'bob-2']);
     expect(mentionCalls[0].commentId).toBe('comment-1');
@@ -749,7 +760,7 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       commentId: 'comment-2',
       effectiveContent: 'Thanks @alice for the tip',
     });
-    expect(notifyCalls.length).toBe(0); // gated: author commenting on own recipe
+    expect(commentCalls.length).toBe(0); // gated: author commenting on own recipe
     expect(mentionCalls.length).toBe(1); // mention scan must NOT be skipped
     expect(mentionCalls[0].mentions).toEqual(['alice']);
     expect(mentionCalls[0].recipeAuthorId).toBe('author-1');
@@ -775,7 +786,7 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       commentId: 'comment-4',
       effectiveContent: 'no mentions here',
     });
-    expect(notifyCalls.length).toBe(1);
+    expect(commentCalls.length).toBe(1);
     expect(mentionCalls.length).toBe(1);
     expect(mentionCalls[0].mentions).toEqual([]);
   });
@@ -788,13 +799,13 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       commentId: 'comment-5',
       effectiveContent: 'hello @alice',
     });
-    expect(notifyCalls.length).toBe(0);
+    expect(commentCalls.length).toBe(0);
     expect(mentionCalls.length).toBe(0);
   });
 
-  it('still runs the mention flow when notifyRecipeCommented rejects', async () => {
+  it('still runs the mention flow when createCommentNotification rejects', async () => {
     stubDeps(recipe);
-    deps.notifyRecipeCommented = () => Promise.reject(new Error('smtp down'));
+    deps.createCommentNotification = () => Promise.reject(new Error('db down'));
     await runCommentNotificationSideEffects({
       userId: 'commenter-1',
       recipeId: 'recipe-1',
@@ -814,8 +825,70 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       commentId: 'comment-7',
       effectiveContent: 'cc @alice',
     });
-    expect(notifyCalls.length).toBe(1);
-    expect(notifyCalls[0].recipeAuthorId).toBe('author-1');
+    expect(commentCalls.length).toBe(1);
+    expect(commentCalls[0]).toEqual({
+      commenterId: 'commenter-1',
+      commenterUsername: 'commenter',
+      recipeAuthorId: 'author-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'recipe-slug',
+      recipeTitle: 'Recipe Title',
+      commentId: 'comment-7',
+    });
+  });
+
+  // F05 — single-recipient comment fan-out (createCommentNotification) is
+  // gated on commenter != recipe author. The F04 mention flow is independent
+  // of that gate and must keep firing for @mentioned users regardless of the
+  // commenter/author relationship (regression guard).
+
+  it('createCommentNotification invoked when commenter != recipe author', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-8',
+      effectiveContent: 'nice recipe',
+    });
+    expect(commentCalls.length).toBe(1);
+    expect(commentCalls[0]).toEqual({
+      commenterId: 'commenter-1',
+      commenterUsername: 'commenter',
+      recipeAuthorId: 'author-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'recipe-slug',
+      recipeTitle: 'Recipe Title',
+      commentId: 'comment-8',
+    });
+  });
+
+  it('createCommentNotification NOT invoked when commenter === recipe author (self-comment)', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'author-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-9',
+      effectiveContent: 'thanks for the tips',
+    });
+    expect(commentCalls.length).toBe(0);
+    // The mention flow (F04) is NOT gated on the commenter/author relationship.
+    expect(mentionCalls.length).toBe(1);
+  });
+
+  it('createMentionNotifications STILL fires for @mentioned users (F04 regression)', async () => {
+    stubDeps(recipe);
+    await runCommentNotificationSideEffects({
+      userId: 'commenter-1',
+      recipeId: 'recipe-1',
+      commentId: 'comment-10',
+      effectiveContent: 'cc @alice agree',
+    });
+    // F05 comment fan-out fires (non-author commenter) ...
+    expect(commentCalls.length).toBe(1);
+    // ... AND the F04 mention fan-out still fires for the @mentioned user.
+    expect(mentionCalls.length).toBe(1);
+    expect(mentionCalls[0].mentions).toEqual(['alice']);
+    expect(mentionCalls[0].recipeAuthorId).toBe('author-1');
   });
 });
 
@@ -839,7 +912,6 @@ type GateRecipeModelDeps = typeof deps.recipeModel;
 
 const gateOriginalModel = deps.model;
 const gateOriginalRecipeModel = deps.recipeModel;
-const gateOriginalNotify = deps.notifyRecipeCommented;
 const gateOriginalMentions = deps.createMentionNotifications;
 const gateOriginalBadges = deps.evaluateBadges;
 
@@ -857,7 +929,6 @@ describe('D99.9 — comment visibility gate', () => {
   let createCalls: unknown[];
   let incrementCalls: unknown[];
   let findByRecipeCalls: unknown[];
-  let notifyCalls: unknown[];
   let mentionCalls: unknown[];
 
   /** Replace deps with in-memory recorders over `fixture` (null = missing recipe). */
@@ -885,10 +956,6 @@ describe('D99.9 — comment visibility gate', () => {
         return Promise.resolve();
       },
     } as GateRecipeModelDeps;
-    deps.notifyRecipeCommented = (params) => {
-      notifyCalls.push(params);
-      return Promise.resolve();
-    };
     deps.createMentionNotifications = (params) => {
       mentionCalls.push(params);
       return Promise.resolve();
@@ -905,14 +972,12 @@ describe('D99.9 — comment visibility gate', () => {
     createCalls = [];
     incrementCalls = [];
     findByRecipeCalls = [];
-    notifyCalls = [];
     mentionCalls = [];
   });
 
   afterEach(() => {
     deps.model = gateOriginalModel;
     deps.recipeModel = gateOriginalRecipeModel;
-    deps.notifyRecipeCommented = gateOriginalNotify;
     deps.createMentionNotifications = gateOriginalMentions;
     deps.evaluateBadges = gateOriginalBadges;
   });
@@ -920,7 +985,6 @@ describe('D99.9 — comment visibility gate', () => {
   function expectZeroSideEffects() {
     expect(createCalls.length).toBe(0);
     expect(incrementCalls.length).toBe(0);
-    expect(notifyCalls.length).toBe(0);
     expect(mentionCalls.length).toBe(0);
   }
 

@@ -21,7 +21,8 @@ import {
 import type { RecipeMerge } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger/index.ts';
 import { decodeCursor } from '@brewform/shared/utils';
-import { notifyFollowersOfNewRecipe, notifyRecipeLiked } from '../../utils/notify/index.ts';
+import { notifyFollowersOfNewRecipe } from '../../utils/notify/index.ts';
+import { createLikeNotification } from '../notification/service.ts';
 import { evaluateBadges } from '../badge/service.ts';
 import type { BrewMethod } from '@brewform/shared/types';
 
@@ -562,7 +563,9 @@ export async function listStarredRecipes(
  * Toggle a user's like on a recipe.
  *
  * Returns the new liked state. When liking (not un-liking) a recipe by a
- * different author, fires an asynchronous `notifyRecipeLiked` side effect.
+ * different author, fires `createLikeNotification` (F05), which owns BOTH
+ * the in-app `like` notification record AND the recipe-liked email (gated
+ * on `notifyRecipeLiked` prefs — single flag gates both channels).
  */
 export async function toggleLike(userId: string, recipeId: string) {
   logger.debug({ userId, recipeId }, 'toggleLike started');
@@ -574,13 +577,19 @@ export async function toggleLike(userId: string, recipeId: string) {
     (async () => {
       const liker = await model.getUserById(userId);
       if (!liker?.username) return;
-      await notifyRecipeLiked({
-        recipeAuthorId: recipe.authorId,
+      // F05: createLikeNotification owns BOTH the in-app `like` record AND
+      // the recipe-liked email (gated on `notifyRecipeLiked` prefs — single
+      // flag gates both). No direct notifyRecipeLiked call here — that would
+      // double-send and bypass the preference gate.
+      await createLikeNotification({
+        likerId: userId,
         likerUsername: liker.username,
-        recipeTitle: recipe.title,
+        recipeAuthorId: recipe.authorId,
+        recipeId,
         recipeSlug: recipe.slug,
+        recipeTitle: recipe.title,
       });
-    })().catch((err) => logger.error({ err }, 'notifyRecipeLiked failed'));
+    })().catch((err) => logger.error({ err, recipeId }, 'createLikeNotification failed'));
   }
 
   logger.debug({ userId, recipeId }, 'toggleLike completed');
