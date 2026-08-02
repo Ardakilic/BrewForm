@@ -4977,7 +4977,10 @@
       "name": "notification_type",
       "schema": "public",
       "values": [
-        "mention"
+        "mention",
+        "follow",
+        "like",
+        "comment"
       ]
     },
     "public.report_status": {

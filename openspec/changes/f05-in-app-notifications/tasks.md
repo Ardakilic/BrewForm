@@ -215,7 +215,7 @@
   - Prepend a banner at the top: `> **⚠️ Forward-compat note (F05, 2026-MM-DD):** The \`emailNotifications\` namespace was flattened and renamed by the F05 \`f05-in-app-notifications\` OpenSpec change. References to "add \`weeklyDigest\` to \`emailNotifications\`" below should be read as "add a flat top-level \`notifyWeeklyDigest\` boolean column on \`user_preferences\` (per the F05 pattern)." Do NOT introduce a new nested namespace; align with F05's flat \`notify*\` convention.`
   - Do NOT rewrite the body of F29 — just the banner at the top.
 
-- [ ] **T49**: Final commit — `git status` / `git diff` inspection; stage only the intended files (the OpenSpec change artifacts, the source edits, the tests, the updated plans/F05 and F29 docs). Commit message format per repo style (`feat: F05 in-app notification center — follow/like/comment fan-out, flat notify* preference rename`). Do NOT push unless explicitly asked.
+- [x] **T49**: Final commit — `git status` / `git diff` inspection; stage only the intended files (the OpenSpec change artifacts, the source edits, the tests, the updated plans/F05 and F29 docs). Commit message format per repo style (`feat: F05 in-app notification center — follow/like/comment fan-out, flat notify* preference rename`). Do NOT push unless explicitly asked.
 
 ---
 
