@@ -735,7 +735,15 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       effectiveContent: 'Nice one @alice and @bob-2!',
     });
     expect(commentCalls.length).toBe(1);
-    expect(commentCalls[0].recipeAuthorId).toBe('author-1');
+    expect(commentCalls[0]).toEqual({
+      commenterId: 'commenter-1',
+      commenterUsername: 'commenter',
+      recipeAuthorId: 'author-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'recipe-slug',
+      recipeTitle: 'Recipe Title',
+      commentId: 'comment-1',
+    });
     expect(mentionCalls.length).toBe(1);
     expect(mentionCalls[0].mentions).toEqual(['alice', 'bob-2']);
     expect(mentionCalls[0].commentId).toBe('comment-1');
@@ -818,7 +826,15 @@ describe('createComment — notification side-effects (F04 mention flow)', () =>
       effectiveContent: 'cc @alice',
     });
     expect(commentCalls.length).toBe(1);
-    expect(commentCalls[0].recipeAuthorId).toBe('author-1');
+    expect(commentCalls[0]).toEqual({
+      commenterId: 'commenter-1',
+      commenterUsername: 'commenter',
+      recipeAuthorId: 'author-1',
+      recipeId: 'recipe-1',
+      recipeSlug: 'recipe-slug',
+      recipeTitle: 'Recipe Title',
+      commentId: 'comment-7',
+    });
   });
 
   // F05 — single-recipient comment fan-out (createCommentNotification) is
