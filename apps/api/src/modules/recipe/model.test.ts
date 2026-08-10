@@ -23,10 +23,11 @@
 
 import { describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
+import { rankRecipes } from './service.ts';
 
 type MockCondition = {
   type: string;
-  column?: string;
+  column?: string | MockCondition;
   value?: unknown;
   conditions?: MockCondition[];
 };
@@ -47,10 +48,32 @@ function or(...conditions: MockCondition[]): MockCondition {
   return { type: 'or', conditions };
 }
 
+function gte(column: string | MockCondition, value: unknown): MockCondition {
+  return { type: 'gte', column, value };
+}
+
+function lte(column: string | MockCondition, value: unknown): MockCondition {
+  return { type: 'lte', column, value };
+}
+
+function avg(column: string): MockCondition {
+  return { type: 'avg', column };
+}
+
+function and(...conditions: (MockCondition | undefined)[]): MockCondition | undefined {
+  const filtered = conditions.filter((c) => c !== undefined) as MockCondition[];
+  if (filtered.length === 0) return undefined;
+  if (filtered.length === 1) return filtered[0];
+  return { type: 'and', conditions: filtered };
+}
+
 const recipes = {
   id: 'recipes.id',
   currentVersionId: 'recipes.currentVersionId',
   title: 'recipes.title',
+  createdAt: 'recipes.createdAt',
+  authorId: 'recipes.authorId',
+  featured: 'recipes.featured',
 };
 
 const recipeVersions = {
@@ -60,6 +83,8 @@ const recipeVersions = {
   productName: 'recipeVersions.productName',
   brewerDetails: 'recipeVersions.brewerDetails',
   coffeeVarietyId: 'recipeVersions.coffeeVarietyId',
+  personalNotes: 'recipeVersions.personalNotes',
+  id: 'recipeVersions.id',
 };
 
 const recipeEquipment = {
@@ -72,11 +97,25 @@ const recipeTasteNotes = {
   tasteNoteId: 'recipeTasteNotes.tasteNoteId',
 };
 
+const users = {
+  id: 'users.id',
+  username: 'users.username',
+  displayName: 'users.displayName',
+};
+
+const userRecipeRatings = {
+  recipeId: 'userRecipeRatings.recipeId',
+  rating: 'userRecipeRatings.rating',
+};
+
 // deno-lint-ignore no-explicit-any -- test mock parameter
 const db: any = {
   select: (projection: unknown) => ({
     from: (table: unknown) => ({
       where: (cond: unknown) => ({ projection, table, where: cond }),
+      groupBy: (..._cols: unknown[]) => ({
+        having: (cond: unknown) => ({ projection, table, having: cond }),
+      }),
     }),
   }),
 };
@@ -90,6 +129,11 @@ interface RecipeFilterCriteria {
   tasteNoteId?: string;
   mainBrewer?: string;
   coffeeVarietyId?: string;
+  author?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  minRating?: number;
+  maxRating?: number;
 }
 
 function recipeCoffeeVarietyCondition(coffeeVarietyId: string): MockCondition {
@@ -134,9 +178,13 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
         ilike(recipes.title, searchTerm),
         inArray(
           recipes.id,
-          db.select({ id: recipeVersions.recipeId })
-            .from(recipeVersions)
-            .where(ilike(recipeVersions.productName, searchTerm)),
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+            or(
+              ilike(recipeVersions.productName, searchTerm),
+              // F11: personalNotes added to search scope (weight 1)
+              ilike(recipeVersions.personalNotes, searchTerm),
+            ),
+          ),
         ),
       );
       if (searchCondition) conditions.push(searchCondition);
@@ -153,6 +201,55 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
           db.select({ id: recipeVersions.recipeId })
             .from(recipeVersions)
             .where(ilike(recipeVersions.brewerDetails, searchTerm)),
+        ),
+      );
+    }
+  }
+
+  // F11: author username/displayName substring filter
+  if (filters.author) {
+    const sanitized = filters.author.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        inArray(
+          recipes.authorId,
+          db.select({ id: users.id }).from(users).where(
+            or(
+              ilike(users.username, searchTerm),
+              ilike(users.displayName, searchTerm),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  // F11: date range filter on recipes.createdAt
+  if (filters.dateFrom) {
+    conditions.push(gte(recipes.createdAt, filters.dateFrom));
+  }
+  if (filters.dateTo) {
+    conditions.push(lte(recipes.createdAt, filters.dateTo));
+  }
+
+  // F11: rating range filter via avg(userRecipeRatings.rating) subquery
+  if (filters.minRating || filters.maxRating) {
+    const minCondition = filters.minRating
+      ? gte(avg(userRecipeRatings.rating), filters.minRating)
+      : undefined;
+    const maxCondition = filters.maxRating
+      ? lte(avg(userRecipeRatings.rating), filters.maxRating)
+      : undefined;
+    const havingClause = and(minCondition, maxCondition);
+    if (havingClause) {
+      conditions.push(
+        inArray(
+          recipes.id,
+          db.select({ recipeId: userRecipeRatings.recipeId })
+            .from(userRecipeRatings)
+            .groupBy(userRecipeRatings.recipeId)
+            .having(havingClause),
         ),
       );
     }
@@ -300,5 +397,148 @@ describe('buildRecipeFilters', () => {
     });
     expect(ids).toEqual(['a', 'b']);
     expect(ids).not.toContain('c');
+  });
+
+  // --- F11: author filter ---
+  it('buildRecipeFilters: author generates users subquery condition', () => {
+    const conditions = buildRecipeFilters({ author: 'alice' });
+    expect(conditions).toHaveLength(1);
+    expect(conditions[0].type).toBe('inArray');
+    expect(conditions[0].column).toBe(recipes.authorId);
+  });
+
+  it('buildRecipeFilters: empty author generates no condition', () => {
+    const conditions = buildRecipeFilters({ author: '' });
+    expect(conditions).toHaveLength(0);
+  });
+
+  it('buildRecipeFilters: author with wildcards stripped', () => {
+    const conditions = buildRecipeFilters({ author: '%alice%' });
+    expect(conditions).toHaveLength(1);
+    const sub = conditions[0].value as { where: MockCondition };
+    const orCond = sub.where;
+    expect(orCond.type).toBe('or');
+    const orConds = orCond.conditions!;
+    expect(orConds[0]).toEqual(ilike(users.username, '%alice%'));
+    expect(orConds[1]).toEqual(ilike(users.displayName, '%alice%'));
+  });
+
+  // --- F11: date range filter ---
+  it('buildRecipeFilters: dateFrom generates gte condition', () => {
+    const date = new Date('2025-01-01');
+    const conditions = buildRecipeFilters({ dateFrom: date });
+    expect(conditions).toHaveLength(1);
+    expect(conditions[0].type).toBe('gte');
+    expect(conditions[0].column).toBe(recipes.createdAt);
+    expect(conditions[0].value).toBe(date);
+  });
+
+  it('buildRecipeFilters: dateTo generates lte condition', () => {
+    const date = new Date('2025-12-01');
+    const conditions = buildRecipeFilters({ dateTo: date });
+    expect(conditions).toHaveLength(1);
+    expect(conditions[0].type).toBe('lte');
+    expect(conditions[0].column).toBe(recipes.createdAt);
+    expect(conditions[0].value).toBe(date);
+  });
+
+  it('buildRecipeFilters: both dateFrom and dateTo generate two conditions', () => {
+    const conditions = buildRecipeFilters({
+      dateFrom: new Date('2025-01-01'),
+      dateTo: new Date('2025-12-01'),
+    });
+    expect(conditions).toHaveLength(2);
+  });
+
+  // --- F11: rating range filter ---
+  it('buildRecipeFilters: minRating generates having-gte subquery', () => {
+    const conditions = buildRecipeFilters({ minRating: 7 });
+    expect(conditions).toHaveLength(1);
+    expect(conditions[0].type).toBe('inArray');
+    expect(conditions[0].column).toBe(recipes.id);
+  });
+
+  it('buildRecipeFilters: maxRating generates having-lte subquery', () => {
+    const conditions = buildRecipeFilters({ maxRating: 9 });
+    expect(conditions).toHaveLength(1);
+    expect(conditions[0].type).toBe('inArray');
+    expect(conditions[0].column).toBe(recipes.id);
+  });
+
+  it('buildRecipeFilters: both minRating and maxRating generate one subquery with two having conditions', () => {
+    const conditions = buildRecipeFilters({ minRating: 5, maxRating: 9 });
+    expect(conditions).toHaveLength(1); // single inArray with both having clauses
+    const sub = conditions[0].value as { having: MockCondition };
+    expect(sub.having.type).toBe('and');
+    expect(sub.having.conditions).toHaveLength(2);
+  });
+
+  // --- F11: search personalNotes ---
+  it('buildRecipeFilters: search includes personalNotes in or() condition', () => {
+    const conditions = buildRecipeFilters({ search: 'V60' });
+    expect(conditions).toHaveLength(1);
+    expect(conditions[0].type).toBe('or');
+    // The inner inArray subquery's where should be an or() with productName + personalNotes
+    const subs = conditions[0].conditions!;
+    expect(subs[1].type).toBe('inArray');
+    const innerWhere = (subs[1].value as { where: MockCondition }).where;
+    expect(innerWhere.type).toBe('or');
+    expect(innerWhere.conditions).toHaveLength(2);
+    expect(innerWhere.conditions![0]).toEqual(ilike(recipeVersions.productName, '%V60%'));
+    expect(innerWhere.conditions![1]).toEqual(ilike(recipeVersions.personalNotes, '%V60%'));
+  });
+});
+
+describe('rankRecipes', () => {
+  it('title match scores higher than productName match', () => {
+    const recipes = [
+      {
+        title: 'Untitled',
+        currentVersionId: 'v2',
+        versions: [{ id: 'v2', productName: 'Espresso Blend', personalNotes: null }],
+      },
+      {
+        title: 'Espresso',
+        currentVersionId: 'v1',
+        versions: [{ id: 'v1', productName: 'Generic', personalNotes: null }],
+      },
+    ];
+    const ranked = rankRecipes(recipes, 'espresso');
+    expect(ranked[0].title).toBe('Espresso'); // score 3 > score 2
+  });
+
+  it('equal scores preserve DB order (stable sort)', () => {
+    const recipes = [
+      {
+        title: 'Match A',
+        currentVersionId: 'v1',
+        versions: [{ id: 'v1', productName: null, personalNotes: null }],
+      },
+      {
+        title: 'Match B',
+        currentVersionId: 'v2',
+        versions: [{ id: 'v2', productName: null, personalNotes: null }],
+      },
+    ];
+    const ranked = rankRecipes(recipes, 'match');
+    expect(ranked[0].title).toBe('Match A'); // original order preserved
+    expect(ranked[1].title).toBe('Match B');
+  });
+
+  it('personalNotes match scores lowest', () => {
+    const recipes = [
+      {
+        title: 'Untitled',
+        currentVersionId: 'v1',
+        versions: [{ id: 'v1', productName: null, personalNotes: 'Try V60' }],
+      },
+      {
+        title: 'V60 Recipe',
+        currentVersionId: 'v2',
+        versions: [{ id: 'v2', productName: null, personalNotes: null }],
+      },
+    ];
+    const ranked = rankRecipes(recipes, 'v60');
+    expect(ranked[0].title).toBe('V60 Recipe'); // score 3 > score 1
   });
 });

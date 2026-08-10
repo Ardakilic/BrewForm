@@ -13,6 +13,11 @@ export interface ListFilterParams {
   mainBrewer?: string;
   tasteNoteIds?: string;
   coffeeVarietyId?: string;
+  author?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  minRating?: string;
+  maxRating?: string;
 }
 
 /**
@@ -43,6 +48,11 @@ export function extractListParams(sp: URLSearchParams): Record<string, string> {
     mainBrewer: sp.get('mainBrewer') ?? undefined,
     tasteNoteIds: sp.get('tasteNoteIds') ?? undefined,
     coffeeVarietyId: sp.get('coffeeVarietyId') ?? undefined,
+    author: sp.get('author') ?? undefined,
+    dateFrom: sp.get('dateFrom') ?? undefined,
+    dateTo: sp.get('dateTo') ?? undefined,
+    minRating: sp.get('minRating') ?? undefined,
+    maxRating: sp.get('maxRating') ?? undefined,
   };
   for (const [k, v] of Object.entries(map)) {
     if (v && v.length > 0) {

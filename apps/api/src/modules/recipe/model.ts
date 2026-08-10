@@ -30,9 +30,11 @@ import {
   count,
   desc,
   eq,
+  gte,
   ilike,
   inArray,
   isNull,
+  lte,
   not,
   or,
   SQL,
@@ -79,6 +81,16 @@ export interface RecipeFilterCriteria {
   tasteNoteId?: string;
   mainBrewer?: string;
   coffeeVarietyId?: string;
+  /** NEW F11: author username/displayName substring filter. */
+  author?: string;
+  /** NEW F11: recipes created on or after this date (inclusive). */
+  dateFrom?: Date;
+  /** NEW F11: recipes created on or before this date (inclusive). */
+  dateTo?: Date;
+  /** NEW F11: minimum average rating (1-10). */
+  minRating?: number;
+  /** NEW F11: maximum average rating (1-10). */
+  maxRating?: number;
 }
 
 /**
@@ -118,9 +130,13 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
         ilike(recipes.title, searchTerm),
         inArray(
           recipes.id,
-          db.select({ id: recipeVersions.recipeId })
-            .from(recipeVersions)
-            .where(ilike(recipeVersions.productName, searchTerm)),
+          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
+            or(
+              ilike(recipeVersions.productName, searchTerm),
+              // F11: personalNotes added to search scope (weight 1)
+              ilike(recipeVersions.personalNotes, searchTerm),
+            ),
+          ),
         ),
       );
       if (searchCondition) conditions.push(searchCondition);
@@ -137,6 +153,55 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
           db.select({ id: recipeVersions.recipeId })
             .from(recipeVersions)
             .where(ilike(recipeVersions.brewerDetails, searchTerm)),
+        ),
+      );
+    }
+  }
+
+  // F11: author username/displayName substring filter
+  if (filters.author) {
+    const sanitized = filters.author.replace(/[%_]/g, '');
+    if (sanitized) {
+      const searchTerm = `%${sanitized}%`;
+      conditions.push(
+        inArray(
+          recipes.authorId,
+          db.select({ id: users.id }).from(users).where(
+            or(
+              ilike(users.username, searchTerm),
+              ilike(users.displayName, searchTerm),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  // F11: date range filter on recipes.createdAt
+  if (filters.dateFrom) {
+    conditions.push(gte(recipes.createdAt, filters.dateFrom));
+  }
+  if (filters.dateTo) {
+    conditions.push(lte(recipes.createdAt, filters.dateTo));
+  }
+
+  // F11: rating range filter via avg(userRecipeRatings.rating) subquery
+  if (filters.minRating || filters.maxRating) {
+    const minCondition = filters.minRating
+      ? gte(avg(userRecipeRatings.rating), filters.minRating)
+      : undefined;
+    const maxCondition = filters.maxRating
+      ? lte(avg(userRecipeRatings.rating), filters.maxRating)
+      : undefined;
+    const havingClause = and(minCondition, maxCondition);
+    if (havingClause) {
+      conditions.push(
+        inArray(
+          recipes.id,
+          db.select({ recipeId: userRecipeRatings.recipeId })
+            .from(userRecipeRatings)
+            .groupBy(userRecipeRatings.recipeId)
+            .having(havingClause),
         ),
       );
     }
@@ -310,6 +375,8 @@ export async function findMany(
       offset: (page - 1) * perPage,
       with: {
         author: { columns: { id: true, username: true, displayName: true } },
+        // F11: versions loaded for application-level relevance ranking (rankRecipes)
+        versions: { columns: { id: true, productName: true, personalNotes: true } },
       },
     }),
     db.select({ count: count() }).from(recipes).where(finalWhere),
@@ -1017,15 +1084,7 @@ export function getFeed(
  */
 export async function findStarred(
   userId: string,
-  filters: {
-    brewMethod?: BrewMethod;
-    drinkType?: DrinkType;
-    search?: string;
-    equipmentId?: string;
-    tasteNoteIds?: string;
-    tasteNoteId?: string;
-    mainBrewer?: string;
-    coffeeVarietyId?: string;
+  filters: RecipeFilterCriteria & {
     sortBy?: string;
     sortOrder?: string;
   },

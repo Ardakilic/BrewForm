@@ -402,6 +402,48 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
   return forked;
 }
 
+/** Minimal shape required by {@link rankRecipes} — title, current version pointer, and version fields. */
+interface RankableRecipe {
+  title: string | null;
+  currentVersionId: string | null;
+  versions?: { id: string; productName: string | null; personalNotes: string | null }[];
+}
+
+/**
+ * Rank recipes by weighted relevance score against a search term.
+ *
+ * Score weights:
+ * - title match: 3 (highest — title is the most prominent field)
+ * - productName match: 2 (coffee name is the second most visible)
+ * - personalNotes match: 1 (lowest — free-text notes are least prominent)
+ *
+ * The sort is STABLE: recipes with equal scores preserve their original
+ * DB-query order (sortBy/sortOrder from the model query). This ensures
+ * ranking does not re-shuffle equally-relevant items.
+ *
+ * Ranking SHALL NOT be applied when `search` is absent — the DB-level
+ * `sortBy` / `sortOrder` ordering is the sole ordering in that case.
+ *
+ * @param recipes - Fetched recipe rows with their current version's fields.
+ * @param searchTerm - The raw search string (lowercased internally).
+ * @returns A new array sorted by rank DESC (original order preserved for ties).
+ */
+export function rankRecipes<T extends RankableRecipe>(recipes: T[], searchTerm: string): T[] {
+  const searchLower = searchTerm.toLowerCase();
+  const scored = recipes.map((recipe, index) => {
+    const currentVersion = recipe.versions?.find((v) => v.id === recipe.currentVersionId) ??
+      recipe.versions?.[0];
+    let score = 0;
+    if (recipe.title?.toLowerCase().includes(searchLower)) score += 3;
+    if (currentVersion?.productName?.toLowerCase().includes(searchLower)) score += 2;
+    if (currentVersion?.personalNotes?.toLowerCase().includes(searchLower)) score += 1;
+    return { recipe, score, index };
+  });
+  // Stable sort: by score DESC, then by original index ASC (preserves DB order for ties)
+  scored.sort((a, b) => b.score - a.score || a.index - b.index);
+  return scored.map((s) => s.recipe);
+}
+
 /**
  * Cursor-aware recipe listing.
  *
@@ -441,6 +483,9 @@ export async function listRecipes(
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
 
+  // F11: search-active detection — non-empty after sanitization
+  const hasSearch = filters.search != null && filters.search.replace(/[%_]/g, '').length > 0;
+
   const deprecations: { tasteNoteId?: boolean } = {};
   if (!filters.tasteNoteIds && filters.tasteNoteId) {
     deprecations.tasteNoteId = true;
@@ -455,7 +500,8 @@ export async function listRecipes(
       ? { ...result, deprecations }
       : (result as T & { deprecations?: { tasteNoteId?: boolean } });
 
-  if (filters.cursor) {
+  // F11: search active → skip cursor path (ranking reorders, keyset cursor non-deterministic)
+  if (filters.cursor && !hasSearch) {
     if (page > 1) {
       logger.debug(
         { userId: _requestingUserId, page, perPage },
@@ -509,7 +555,24 @@ export async function listRecipes(
     return withDeprecations(result);
   }
 
+  // F11: search + cursor → offset fallback (ranking reorders, keyset cursor non-deterministic)
+  if (filters.cursor && hasSearch) {
+    logger.debug(
+      { search: filters.search },
+      'Search active, falling back to offset pagination for ranking',
+    );
+  }
+
   const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
+
+  // F11: apply ranking after fetch when search is active
+  if (hasSearch && result.recipes.length > 0) {
+    result.recipes = rankRecipes(
+      result.recipes as unknown as RankableRecipe[],
+      filters.search!,
+    ) as unknown as typeof result.recipes;
+  }
+
   logger.debug(
     { userId: _requestingUserId, page, perPage, resultCount: result.total },
     'listRecipes completed',

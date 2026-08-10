@@ -156,10 +156,34 @@ export const RecipeFilterSchema = z.object({
    * @deprecated Use `tasteNoteIds` instead. See D28.
    */
   tasteNoteId: z.uuid().optional().meta({ deprecated: true }),
-  grinder: z.string().optional(),
   mainBrewer: z.string().max(200).optional(),
   coffeeVarietyId: z.uuid().optional(),
   search: z.string().optional(),
+  /**
+   * Author username or displayName substring filter (case-insensitive ilike).
+   * Unlike `authorId` (exact UUID match), this is a free-text search on the
+   * author's username or displayName. NEW in F11.
+   */
+  author: z.string().max(100).optional(),
+  /**
+   * Filter to recipes created on or after this date (inclusive).
+   * Coerced from ISO 8601 date string. NEW in F11.
+   */
+  dateFrom: z.coerce.date().optional(),
+  /**
+   * Filter to recipes created on or before this date (inclusive).
+   * Coerced from ISO 8601 date string. NEW in F11.
+   */
+  dateTo: z.coerce.date().optional(),
+  /**
+   * Minimum average rating (1-10 inclusive). Recipes with zero ratings
+   * are excluded (NULL average fails gte). NEW in F11.
+   */
+  minRating: z.coerce.number().int().min(1).max(10).optional(),
+  /**
+   * Maximum average rating (1-10 inclusive). NEW in F11.
+   */
+  maxRating: z.coerce.number().int().min(1).max(10).optional(),
   page: z.coerce.number().int().positive().default(1),
   perPage: z.coerce.number().int().positive().max(100).default(20),
   sortBy: z.enum(['createdAt', 'likeCount', 'rating']).default('createdAt'),

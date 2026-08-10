@@ -230,6 +230,103 @@ describe(
 );
 
 describe(
+  {
+    name: 'Recipe routes — F11 advanced search params',
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  () => {
+    let author: typeof users.$inferSelect;
+    const createdRecipes: string[] = [];
+
+    beforeAll(async () => {
+      author = await createUser('f11-search');
+    });
+
+    afterEach(async () => {
+      if (createdRecipes.length) {
+        await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+        createdRecipes.length = 0;
+      }
+    });
+
+    afterAll(async () => {
+      if (createdRecipes.length) {
+        await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+      }
+      await db.delete(users).where(eq(users.id, author.id));
+    });
+
+    it('accepts author param', async () => {
+      const app = createTestApp(author.id);
+      const res = await app.request('/api/v1/recipes?author=alice');
+      expect(res.status).toBe(200);
+    });
+
+    it('accepts dateFrom param', async () => {
+      const app = createTestApp(author.id);
+      const res = await app.request('/api/v1/recipes?dateFrom=2025-01-01');
+      expect(res.status).toBe(200);
+    });
+
+    it('accepts dateTo param', async () => {
+      const app = createTestApp(author.id);
+      const res = await app.request('/api/v1/recipes?dateTo=2025-12-01');
+      expect(res.status).toBe(200);
+    });
+
+    it('accepts minRating param', async () => {
+      const app = createTestApp(author.id);
+      const res = await app.request('/api/v1/recipes?minRating=7');
+      expect(res.status).toBe(200);
+    });
+
+    it('accepts maxRating param', async () => {
+      const app = createTestApp(author.id);
+      const res = await app.request('/api/v1/recipes?maxRating=9');
+      expect(res.status).toBe(200);
+    });
+
+    it('rejects minRating=0 as 400', async () => {
+      const app = createTestApp(author.id);
+      const res = await app.request('/api/v1/recipes?minRating=0');
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects maxRating=11 as 400', async () => {
+      const app = createTestApp(author.id);
+      const res = await app.request('/api/v1/recipes?maxRating=11');
+      expect(res.status).toBe(400);
+    });
+
+    it('silently drops grinder (removed field) as 200', async () => {
+      const app = createTestApp(author.id);
+      const res = await app.request('/api/v1/recipes?grinder=Niche');
+      expect(res.status).toBe(200);
+    });
+
+    it('search + cursor falls back to offset pagination', async () => {
+      const r = await createRecipe(
+        author.id,
+        'Espresso Test',
+        new Date('2026-11-01T00:00:00.000Z'),
+      );
+      createdRecipes.push(r.id);
+
+      const app = createTestApp(author.id);
+      const cursor = encodeCursor({ createdAt: r.createdAt.toISOString(), id: r.id });
+      const res = await app.request(`/api/v1/recipes?search=espresso&cursor=${cursor}`);
+      // deno-lint-ignore no-explicit-any -- test assertion cast
+      const body = await res.json() as any;
+
+      expect(res.status).toBe(200);
+      expect(body.meta.pagination).toBeDefined();
+      expect(body.meta.cursor).toBeUndefined();
+    });
+  },
+);
+
+describe(
   { name: 'POST /api/v1/recipes — create', sanitizeResources: false, sanitizeOps: false },
   () => {
     let user: typeof users.$inferSelect;

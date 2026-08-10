@@ -21,6 +21,11 @@ export interface UseRecipeFiltersResult {
   mainBrewer: string;
   tasteNoteIds: string[];
   coffeeVarietyId: string;
+  author: string;
+  dateFrom: string;
+  dateTo: string;
+  minRating: string;
+  maxRating: string;
   updateFilter: (key: string, value: string | string[]) => void;
   clearAllFilters: () => void;
 }
@@ -53,6 +58,11 @@ export function useRecipeFilters(): UseRecipeFiltersResult {
   const equipmentId = searchParams.get('equipmentId') ?? '';
   const mainBrewer = searchParams.get('mainBrewer') ?? '';
   const coffeeVarietyId = searchParams.get('coffeeVarietyId') ?? '';
+  const author = searchParams.get('author') ?? '';
+  const dateFrom = searchParams.get('dateFrom') ?? '';
+  const dateTo = searchParams.get('dateTo') ?? '';
+  const minRating = searchParams.get('minRating') ?? '';
+  const maxRating = searchParams.get('maxRating') ?? '';
 
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') ?? '';
   const tasteNoteIds = tasteNoteIdsParam
@@ -102,6 +112,11 @@ export function useRecipeFilters(): UseRecipeFiltersResult {
     mainBrewer,
     tasteNoteIds,
     coffeeVarietyId,
+    author,
+    dateFrom,
+    dateTo,
+    minRating,
+    maxRating,
     updateFilter,
     clearAllFilters,
   };

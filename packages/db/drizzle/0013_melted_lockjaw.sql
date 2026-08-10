@@ -1,0 +1,1 @@
+CREATE INDEX "recipe_visibility_featured_idx" ON "recipe" USING btree ("visibility","featured");

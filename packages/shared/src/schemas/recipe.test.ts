@@ -289,6 +289,33 @@ describe('RecipeFilterSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts author filter', () => {
+    const result = RecipeFilterSchema.safeParse({ author: 'alice' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts dateFrom as ISO string and coerces to Date', () => {
+    const result = RecipeFilterSchema.safeParse({ dateFrom: '2025-01-01' });
+    expect(result.success).toBe(true);
+    expect(result.data?.dateFrom).toBeInstanceOf(Date);
+  });
+
+  it('rejects minRating below 1', () => {
+    const result = RecipeFilterSchema.safeParse({ minRating: 0 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects maxRating above 10', () => {
+    const result = RecipeFilterSchema.safeParse({ maxRating: 11 });
+    expect(result.success).toBe(false);
+  });
+
+  it('silently drops grinder (removed field)', () => {
+    const result = RecipeFilterSchema.safeParse({ grinder: 'Niche' });
+    expect(result.success).toBe(true);
+    expect((result.data as Record<string, unknown>).grinder).toBeUndefined();
+  });
 });
 
 /**

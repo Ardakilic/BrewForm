@@ -1,5 +1,8 @@
 # F11 — Advanced Search with Faceted Filters
 
+> ✅ Shipped via OpenSpec change `f11-advanced-search` (2026-08-02).
+> Implemented per the rebased spec: cursor pagination shipped via D27, equipment facet via D12, this change adds author/date/rating filters + relevance ranking + OpenAPI fix.
+
 > **Validation status (2026-07-13): ⚠️ Outdated — corrections below (some scope already shipped)**
 >
 > - Cursor pagination shipped (D27). The real cursor is a base64 `(createdAt, id)` composite (`encodeCursor`), decoded in `findCursor` (apps/api/src/modules/recipe/model.ts:920) via `buildCursorWhere` (model.ts:884). Plan's `cursor: z.string().uuid()` + `findManyCursor` using `lt(recipes.id, cursor)` is wrong — drop `findManyCursor`, reuse `findCursor`.

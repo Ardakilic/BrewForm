@@ -98,6 +98,28 @@ describe('extractListParams', () => {
     expect(params.coffeeVarietyId).toBeUndefined();
   });
 
+  it('preserves the author filter when provided', () => {
+    const params = extractListParams(new URLSearchParams('author=alice'));
+    expect(params.author).toBe('alice');
+  });
+
+  it('preserves the dateFrom filter when provided', () => {
+    const params = extractListParams(new URLSearchParams('dateFrom=2024-01-01'));
+    expect(params.dateFrom).toBe('2024-01-01');
+  });
+
+  it('preserves the minRating filter when provided', () => {
+    const params = extractListParams(new URLSearchParams('minRating=7'));
+    expect(params.minRating).toBe('7');
+  });
+
+  it('drops empty author/dateFrom/minRating filter values', () => {
+    const params = extractListParams(new URLSearchParams('author=&dateFrom=&minRating='));
+    expect(params.author).toBeUndefined();
+    expect(params.dateFrom).toBeUndefined();
+    expect(params.minRating).toBeUndefined();
+  });
+
   it('round-trips a full filter set through URLSearchParams → extractListParams', () => {
     const uuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
     const original = new URLSearchParams({
