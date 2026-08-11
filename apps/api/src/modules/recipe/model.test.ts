@@ -108,6 +108,10 @@ const userRecipeRatings = {
   rating: 'userRecipeRatings.rating',
 };
 
+// The db mock needs an `any` type because the real Drizzle db has a deeply
+// chained query builder (select → from → where/groupBy/having) whose exact
+// return types are not exported. The mock returns plain objects that satisfy
+// the shape buildRecipeFilters builds, so any is the pragmatic choice here.
 // deno-lint-ignore no-explicit-any -- test mock parameter
 const db: any = {
   select: (projection: unknown) => ({
@@ -540,5 +544,45 @@ describe('rankRecipes', () => {
     ];
     const ranked = rankRecipes(recipes, 'v60');
     expect(ranked[0].title).toBe('V60 Recipe'); // score 3 > score 1
+  });
+
+  it('scores best matching version across ALL versions, not just currentVersionId', () => {
+    const recipes = [
+      {
+        title: 'Untitled',
+        currentVersionId: 'v1',
+        versions: [
+          { id: 'v1', productName: null, personalNotes: null },
+          { id: 'v2', productName: 'Espresso Blend', personalNotes: null },
+        ],
+      },
+      {
+        title: 'Other',
+        currentVersionId: 'v3',
+        versions: [{ id: 'v3', productName: null, personalNotes: 'weak match' }],
+      },
+    ];
+    const ranked = rankRecipes(recipes, 'espresso');
+    // Recipe 0: productName match on v2 (non-current) → score 2
+    // Recipe 1: no match → score 0
+    expect(ranked[0].title).toBe('Untitled');
+  });
+
+  it('sanitizes wildcard characters in search term before scoring', () => {
+    const recipes = [
+      {
+        title: 'Espresso',
+        currentVersionId: 'v1',
+        versions: [{ id: 'v1', productName: null, personalNotes: null }],
+      },
+      {
+        title: 'Other',
+        currentVersionId: 'v2',
+        versions: [{ id: 'v2', productName: null, personalNotes: null }],
+      },
+    ];
+    // %espresso% should be sanitized to "espresso" and still match
+    const ranked = rankRecipes(recipes, '%espresso%');
+    expect(ranked[0].title).toBe('Espresso');
   });
 });

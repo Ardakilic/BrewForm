@@ -1044,6 +1044,43 @@ describe(
         expect(r1Index).toBeGreaterThanOrEqual(0);
         expect(r2Index).toBeLessThan(r1Index);
       });
+
+      it('global ranking: title match on page 2 ranks before productName match on page 1', async () => {
+        // Create 3 recipes: two productName matches (score 2) and one title match (score 3).
+        // With perPage=2, the title match would naturally land on page 2 by createdAt DESC
+        // (it's the oldest). Global ranking should surface it on page 1.
+        const _titleMatch = await makeRecipe(author.id, 'Espresso Title Match', 'public');
+        const pn1 = await makeRecipe(author.id, 'Recipe One', 'public');
+        const pn2 = await makeRecipe(author.id, 'Recipe Two', 'public');
+
+        // Set productName to contain "espresso" on the two non-title-match recipes
+        for (const r of [pn1, pn2]) {
+          const v = await db.query.recipeVersions.findFirst({
+            where: eq(recipeVersions.recipeId, r.id),
+          });
+          if (v) {
+            await db.update(recipeVersions).set({ productName: 'Espresso Blend' }).where(
+              eq(recipeVersions.id, v.id),
+            );
+            await db.update(recipes).set({ currentVersionId: v.id }).where(eq(recipes.id, r.id));
+          }
+        }
+
+        // Sort by createdAt DESC: pn2 (newest), pn1, titleMatch (oldest)
+        // With perPage=2, page 1 without ranking would be [pn2, pn1]
+        // With global ranking: titleMatch (score 3) should be first
+        const filters = RecipeFilterSchema.parse({
+          search: 'espresso',
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
+        const result = await service.listRecipes(filters, 1, 2, null, false);
+        // deno-lint-ignore no-explicit-any -- test assertion cast
+        const recipesList = (result as any).recipes as { title: string }[];
+        expect(recipesList.length).toBe(2);
+        // Title match (score 3) should be first despite being oldest by createdAt
+        expect(recipesList[0].title).toBe('Espresso Title Match');
+      });
     });
   },
 );

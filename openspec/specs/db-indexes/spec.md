@@ -330,5 +330,5 @@ The `recipes` table SHALL define a composite index `recipe_visibility_featured_i
 #### Scenario: Migration creates the index
 
 - When `make db-generate && make db-migrate` runs
-- Then the generated migration SQL contains `CREATE INDEX recipe_visibility_featured_idx ON recipes (visibility, featured)`
+- Then a migration SHALL create an index named `recipe_visibility_featured_idx` on table `recipes` with column order `(visibility, featured)`
 

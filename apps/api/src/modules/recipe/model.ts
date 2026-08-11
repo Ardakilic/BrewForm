@@ -385,6 +385,42 @@ export async function findMany(
   return { recipes: data, total: totalResult[0].count };
 }
 
+/**
+ * Fetch ALL matching recipes (no LIMIT/OFFSET) for application-level ranking.
+ *
+ * Used by `listRecipes` when `search` is active: the full filtered result set
+ * is fetched, ranked in JS by `rankRecipes`, then sliced to the requested
+ * page. This ensures relevance ranking is global, not page-local.
+ *
+ * @param where     - Optional Drizzle SQL WHERE clause for additional filtering
+ * @param sortBy    - Column to sort by: `'createdAt'` (default) or `'likeCount'`
+ * @param sortOrder - Sort direction: `'desc'` (default) or `'asc'`
+ * @returns All matching recipes (with versions for ranking) and total count
+ */
+export async function findAllForRanking(
+  where: SQL | undefined,
+  sortBy: string = 'createdAt',
+  sortOrder: string = 'desc',
+): Promise<{ recipes: Record<string, unknown>[]; total: number }> {
+  const orderByColumn = sortBy === 'likeCount' ? recipes.likeCount : recipes.createdAt;
+  const orderBy = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
+  const finalWhere = where ? and(isNull(recipes.deletedAt), where) : isNull(recipes.deletedAt);
+
+  const [data, totalResult] = await Promise.all([
+    db.query.recipes.findMany({
+      where: finalWhere,
+      orderBy,
+      with: {
+        author: { columns: { id: true, username: true, displayName: true } },
+        versions: { columns: { id: true, productName: true, personalNotes: true } },
+      },
+    }),
+    db.select({ count: count() }).from(recipes).where(finalWhere),
+  ]);
+
+  return { recipes: data, total: totalResult[0].count };
+}
+
 /** Patch a recipe row with partial data, identified by UUID. Returns the updated row or null. */
 export async function update(id: string, data: Partial<typeof recipes.$inferInsert>) {
   const [result] = await db.update(recipes).set(data).where(eq(recipes.id, id)).returning();

@@ -298,7 +298,9 @@ describe('RecipeFilterSchema', () => {
   it('accepts dateFrom as ISO string and coerces to Date', () => {
     const result = RecipeFilterSchema.safeParse({ dateFrom: '2025-01-01' });
     expect(result.success).toBe(true);
-    expect(result.data?.dateFrom).toBeInstanceOf(Date);
+    if (result.success) {
+      expect(result.data.dateFrom).toBeInstanceOf(Date);
+    }
   });
 
   it('rejects minRating below 1', () => {

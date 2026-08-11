@@ -1,7 +1,9 @@
 # advanced-search Specification
 
 ## Purpose
-TBD - created by archiving change f11-advanced-search. Update Purpose after archive.
+
+Extends the recipe listing with author / date-range / rating-range faceted filters, widened text-search scope (title + productName + personalNotes), and application-level relevance ranking. Introduces the search-active offset-fallback rule: cursor pagination SHALL fall back to offset when `search` is active, because rank ordering is non-deterministic from a `(createdAt, id)` keyset.
+
 ## Requirements
 ### Requirement: Author filter by username substring
 
@@ -36,7 +38,7 @@ The `RecipeFilterSchema` SHALL include an optional `author` string field (max 10
 
 #### Scenario: Author filter with wildcards stripped
 
-- When the client sends `GET /api/v1/recipes?author=%coffee%`
+- When the client sends `GET /api/v1/recipes?author=%25coffee%25`
 - Then the sanitized term is `coffee` (wildcards stripped) and the ilike pattern is `%coffee%`
 
 ### Requirement: Date range filter
@@ -134,11 +136,12 @@ The `search` filter in `buildRecipeFilters` SHALL match against three columns: `
 
 ### Requirement: Application-level relevance ranking
 
-When `search` is active and results are returned, the service layer SHALL sort the results in JavaScript by a weighted relevance score BEFORE returning them to the route handler.
+When `search` is active and results are returned, the service layer SHALL sort the FULL filtered result set in JavaScript by a weighted relevance score BEFORE applying page/perPage slicing and BEFORE returning them to the route handler. This ensures ranking is global — a high-scoring title match on page 2 is returned before a lower-scoring productName match on page 1.
 
-- The score SHALL be computed as: `titleMatch * 3 + productNameMatch * 2 + personalNotesMatch * 1`, where each match is a boolean (1 or 0) determined by whether the lowercase search term appears in the lowercase field value.
+- The score SHALL be computed as: `titleMatch * 3 + productNameMatch * 2 + personalNotesMatch * 1`, where each match is a boolean (1 or 0) determined by whether the sanitized, lowercased search term appears in the lowercased field value.
+- The search term SHALL be sanitized (stripping `%` and `_` wildcard characters) and lowercased once before both DB-level `ilike` filtering and JS-level scoring, ensuring consistency.
 - Title match is checked against `recipe.title`.
-- ProductName and personalNotes matches are checked against the recipe's CURRENT version's fields. The current version SHALL be fetched via the `currentVersionId` relation or an explicit join — NOT via `recipe.currentVersion?.productName` (no such relation exists in `recipesRelations`).
+- ProductName and personalNotes matches are checked against ALL loaded recipe versions (the DB search matches any version via the `inArray` subquery, not just `currentVersionId`). The score reflects the BEST matching version.
 - When two recipes have the same rank score, the existing sort order (from the DB query: `sortBy` / `sortOrder`) SHALL be preserved as a stable secondary sort (i.e., the ranking sort SHALL be stable and not re-shuffle equally-ranked items).
 - Ranking SHALL NOT be applied when `search` is absent — the DB-level `sortBy` / `sortOrder` ordering is the sole ordering in that case.
 
@@ -163,7 +166,7 @@ When `search` is active and results are returned, the service layer SHALL sort t
 
 When `search` is active AND `cursor` is provided, the system SHALL fall back to offset-based pagination using `page` and `perPage`. This extends the existing cursor-fallback rule (which currently falls back when `sortBy` is not `createdAt`).
 
-- The system SHALL log a debug-level message: `log.debug({ search: filters.search }, 'Search active, falling back to offset pagination for ranking')`.
+- The system SHALL log a debug-level message with non-sensitive metadata only (e.g., `requestId`, `hasSearch: true`, `searchLength`): `log.debug({ requestId, hasSearch: true, searchLength: <number> }, 'Search active, falling back to offset pagination for ranking')`. The raw search string SHALL NOT be logged.
 - When `search` is active and `cursor` is absent, offset pagination SHALL be used (the default).
 - When `search` is absent, cursor pagination SHALL be used if `cursor` is provided and `sortBy` is `createdAt` (unchanged from D27).
 - The response SHALL use `meta.pagination` (not `meta.cursor`) when the fallback is active.
@@ -300,6 +303,7 @@ Existing tests SHALL continue to pass — offset pagination, cursor pagination, 
 
 - When `make test` runs
 - Then all tests pass, including new filter and ranking tests
+- Note: a pre-existing failure in `admin/model.test.ts` (`getTopUsers`) is unrelated to this spec and tracked separately
 
 #### Scenario: TypeScript compiles
 

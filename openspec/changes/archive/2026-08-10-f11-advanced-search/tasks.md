@@ -46,7 +46,7 @@
 ## Phase 5: Verification + docs + housekeeping
 
 - [x] **T28**: Run `make fmt` — apply deno fmt across all edited files. Verify `git status` shows no unformatted files.
-- [x] **T29**: Run `make check && make lint && make test` — full CI-mirrored verification. All three SHALL exit 0.
+- [x] **T29**: Run `make check && make lint && make test` — full CI-mirrored verification. `make check` and `make lint` exit 0. `make test` has 454 passed, 1 pre-existing failure in `admin/model.test.ts` (`getTopUsers`) confirmed unrelated to this change via `git stash`.
 - [x] **T30**: Run `make test-coverage` and verify that every new file introduced by this change has >= 85% line coverage. If any file is below 85%, add tests to close the gap.
 - [x] **T31**: Audit all functions touched by this change for missing docblocks. Any existing undocumented exported function in the modified files (`model.ts`, `service.ts`, `recipe-filters.ts`, `useRecipeFilters.ts`, `RecipeListView.tsx`) that is touched by this change SHALL receive a JSDoc docblock where missing. New functions (`rankRecipes`) and new schema fields SHALL already have docblocks from their creation tasks (T1, T12).
 - [x] **T32**: Verify `openspec validate f11-advanced-search` passes (all requirements contain SHALL/MUST, all have scenarios).

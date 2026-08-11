@@ -417,6 +417,15 @@ interface RankableRecipe {
  * - productName match: 2 (coffee name is the second most visible)
  * - personalNotes match: 1 (lowest — free-text notes are least prominent)
  *
+ * The search term is sanitized (stripping `%` and `_` wildcards) and
+ * lowercased once before scoring, matching the sanitization applied in
+ * `buildRecipeFilters` for the DB-level `ilike` conditions.
+ *
+ * The DB search matches ANY version's productName/personalNotes (via the
+ * `inArray` subquery in `buildRecipeFilters`), not just the current version.
+ * To keep ranking consistent with filtering, this function scores the BEST
+ * matching version across all loaded versions — not just `currentVersionId`.
+ *
  * The sort is STABLE: recipes with equal scores preserve their original
  * DB-query order (sortBy/sortOrder from the model query). This ensures
  * ranking does not re-shuffle equally-relevant items.
@@ -424,19 +433,26 @@ interface RankableRecipe {
  * Ranking SHALL NOT be applied when `search` is absent — the DB-level
  * `sortBy` / `sortOrder` ordering is the sole ordering in that case.
  *
- * @param recipes - Fetched recipe rows with their current version's fields.
- * @param searchTerm - The raw search string (lowercased internally).
+ * @param recipes - Fetched recipe rows with their version fields.
+ * @param searchTerm - The raw search string (sanitized + lowercased internally).
  * @returns A new array sorted by rank DESC (original order preserved for ties).
  */
 export function rankRecipes<T extends RankableRecipe>(recipes: T[], searchTerm: string): T[] {
-  const searchLower = searchTerm.toLowerCase();
+  const searchLower = searchTerm.replace(/[%_]/g, '').toLowerCase();
   const scored = recipes.map((recipe, index) => {
-    const currentVersion = recipe.versions?.find((v) => v.id === recipe.currentVersionId) ??
-      recipe.versions?.[0];
     let score = 0;
     if (recipe.title?.toLowerCase().includes(searchLower)) score += 3;
-    if (currentVersion?.productName?.toLowerCase().includes(searchLower)) score += 2;
-    if (currentVersion?.personalNotes?.toLowerCase().includes(searchLower)) score += 1;
+    // Score the best matching version across ALL loaded versions
+    // (DB search matches any version, not just currentVersionId)
+    const versions = recipe.versions ?? [];
+    const hasProductMatch = versions.some((v) =>
+      v.productName?.toLowerCase().includes(searchLower)
+    );
+    const hasNotesMatch = versions.some((v) =>
+      v.personalNotes?.toLowerCase().includes(searchLower)
+    );
+    if (hasProductMatch) score += 2;
+    if (hasNotesMatch) score += 1;
     return { recipe, score, index };
   });
   // Stable sort: by score DESC, then by original index ASC (preserves DB order for ties)
@@ -474,17 +490,17 @@ export async function listRecipes(
   isAdmin: boolean = false,
   requestId?: string,
 ) {
-  logger.debug(
-    { userId: _requestingUserId, page, perPage, filters: JSON.stringify(filters) },
-    'listRecipes started',
-  );
-
   const where = model.buildListRecipesWhere(filters, isAdmin);
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
 
   // F11: search-active detection — non-empty after sanitization
   const hasSearch = filters.search != null && filters.search.replace(/[%_]/g, '').length > 0;
+
+  logger.debug(
+    { userId: _requestingUserId, page, perPage, requestId, hasSearch },
+    'listRecipes started',
+  );
 
   const deprecations: { tasteNoteId?: boolean } = {};
   if (!filters.tasteNoteIds && filters.tasteNoteId) {
@@ -558,21 +574,31 @@ export async function listRecipes(
   // F11: search + cursor → offset fallback (ranking reorders, keyset cursor non-deterministic)
   if (filters.cursor && hasSearch) {
     logger.debug(
-      { search: filters.search },
+      { requestId, hasSearch: true, searchLength: filters.search?.length ?? 0 },
       'Search active, falling back to offset pagination for ranking',
     );
   }
 
-  const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
-
-  // F11: apply ranking after fetch when search is active
-  if (hasSearch && result.recipes.length > 0) {
-    result.recipes = rankRecipes(
-      result.recipes as unknown as RankableRecipe[],
+  // F11: global ranking — fetch ALL matching recipes, rank in JS, then slice for the page.
+  // This ensures relevance ranking is global, not page-local: a high-scoring title match
+  // on page 2 is returned before a lower-scoring productName match on page 1.
+  if (hasSearch) {
+    const allResults = await model.findAllForRanking(where, sortBy, sortOrder);
+    const ranked = rankRecipes(
+      allResults.recipes as unknown as RankableRecipe[],
       filters.search!,
-    ) as unknown as typeof result.recipes;
+    ) as unknown as typeof allResults.recipes;
+    const start = (page - 1) * perPage;
+    const paged = ranked.slice(start, start + perPage);
+    const result = { recipes: paged, total: allResults.total };
+    logger.debug(
+      { userId: _requestingUserId, page, perPage, resultCount: result.total },
+      'listRecipes completed',
+    );
+    return withDeprecations(result);
   }
 
+  const result = await model.findMany(where, page, perPage, sortBy, sortOrder);
   logger.debug(
     { userId: _requestingUserId, page, perPage, resultCount: result.total },
     'listRecipes completed',

@@ -142,9 +142,11 @@ fall back to offset-based pagination using `page` and `perPage` (defaults: `page
 
 **F11 extension:** When `cursor` is provided but `search` is active (non-empty after sanitization), the system SHALL fall back to offset-based pagination. This is because relevance ranking (applied when `search` is active) reorders results in application code, making a `(createdAt, id)` keyset cursor non-deterministic — a keyset page boundary would skip high-rank items.
 
-The system SHALL log a debug-level message when the search-active fallback occurs: `log.debug({ search: filters.search }, 'Search active, falling back to offset pagination for ranking')`.
+The system SHALL log a debug-level message with non-sensitive metadata only when the search-active fallback occurs: `log.debug({ requestId, hasSearch: true, searchLength: <number> }, 'Search active, falling back to offset pagination for ranking')`. The raw search string SHALL NOT be logged.
 
 The system SHALL log a warning when the `sortBy`-incompatible fallback occurs: `log.warn({ sortBy }, 'Cursor pagination incompatible with sortBy, falling back to offset')`.
+
+When BOTH `search` is active AND `sortBy` is incompatible (not `createdAt`), the search-active debug message SHALL take precedence (the search fallback is evaluated first). Only one message SHALL be emitted.
 
 When `cursor` is provided, `search` is absent, and `sortBy` is `createdAt`, cursor-based query SHALL be used.
 
