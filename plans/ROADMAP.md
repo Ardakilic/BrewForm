@@ -29,7 +29,7 @@ Status reflects each F-plan's 2026-07-13 validation verdict.
 | **P0** | Recipe comparison improvements (F08) | Medium | High | ✅ Shipped (2026-07-28) | [`F08`](F08-recipe-comparison-improvements.md) |
 | **P0** | Recipe version diff (F09) | Medium | High | ✅ Shipped (2026-07-28) | [`F09`](F09-version-diff.md) |
 | **P1** | In-app notification center (F05) | High | High | ✅ Shipped (2026-08-02) | [`F05`](F05-in-app-notifications.md) |
-| **P1** | Advanced search w/ facets (F11) | Medium | High | ⚠️ Outdated — rebase on shipped D27 cursor pagination | [`F11`](F11-advanced-search.md) |
+| **P1** | Advanced search w/ facets (F11) | Medium | High | ✅ Shipped (2026-08-02) | [`F11`](F11-advanced-search.md) |
 | **P1** | Image optimisation (F23) | Medium | Medium | 🔧 Rough — needs design decisions | [`F23`](F23-image-optimisation.md) |
 | **P2** | Brew journal / "brew again" (F02) | Medium | Medium | ⚠️ Outdated — unblocks F03 / F20 / F25-sync | [`F02`](F02-brew-journal.md) |
 | **P2** | Recipe templates (F06) | Low | Medium | ⚠️ Outdated | [`F06`](F06-recipe-templates.md) |
@@ -54,10 +54,9 @@ Status reflects each F-plan's 2026-07-13 validation verdict.
 
 ## Next candidates
 
-Per the 2026-07-13 priority matrix refresh:
+Per the 2026-07-13 priority matrix refresh (updated 2026-08-02):
 
-1. **F11** (P1) — rebase the plan on shipped D27 cursor pagination, then build faceted search.
-2. **F02** (P2) — unblocks F03, F20, and F25's brew-log sync; high leverage despite P2.
+1. **F02** (P2) — unblocks F03, F20, and F25's brew-log sync; high leverage despite P2.
 
 **Optional quick wins** (no plan refresh needed):
 
@@ -75,4 +74,4 @@ Per the 2026-07-13 priority matrix refresh:
   `remaining-debt-clearance` OpenSpec change. The D99 ledger is now fully closed.
 - **Features shipped:** F01 (recipe collections, 2026-07-09), F04 (mention notifications,
   2026-07-13), F08 (recipe comparison improvements, 2026-07-28), F09 (recipe version diff,
-  2026-07-28), F05 (in-app notification center, 2026-08-02).
+  2026-07-28), F05 (in-app notification center, 2026-08-02), F11 (advanced search, 2026-08-02).

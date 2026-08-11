@@ -17,7 +17,7 @@ import * as model from './model.ts';
 import * as service from './service.ts';
 import { canViewRecipe } from './service.ts';
 import { computeBrewRatio, computeExtractionYield, computeFlowRate } from '@brewform/shared/utils';
-import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
+import { encodeCursor, ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import {
   RecipeCreateObjectSchema,
   RecipeCreateSchema,
@@ -947,6 +947,139 @@ describe(
         );
         expect(result.deprecations?.tasteNoteId).toBe(true);
         expect(result.recipes.length).toBe(0);
+      });
+    });
+
+    // --- F11: search-active offset fallback + ranking ---
+    describe('listRecipes — F11 search/ranking', () => {
+      it('search + cursor falls back to offset (total, not nextCursor)', async () => {
+        const r = await makeRecipe(author.id, 'Search Cursor Test', 'public');
+        const cursor = encodeCursor({
+          createdAt: r.createdAt.toISOString(),
+          id: r.id,
+        });
+        const filters = RecipeFilterSchema.parse({
+          search: 'Search',
+          cursor,
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
+        const result = await service.listRecipes(filters, 1, 20, null, false);
+        // Offset mode returns { recipes, total } — no hasMore/nextCursor
+        expect((result as { total?: number }).total).toBeDefined();
+        expect((result as { hasMore?: boolean }).hasMore).toBeUndefined();
+        expect((result as { nextCursor?: string }).nextCursor).toBeUndefined();
+      });
+
+      it('search without cursor uses offset pagination', async () => {
+        await makeRecipe(author.id, 'Search NoCursor Test', 'public');
+        const filters = RecipeFilterSchema.parse({
+          search: 'NoCursor',
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
+        const result = await service.listRecipes(filters, 1, 20, null, false);
+        expect((result as { total?: number }).total).toBeDefined();
+        expect((result as { nextCursor?: string }).nextCursor).toBeUndefined();
+      });
+
+      it('no search + cursor + sortBy=createdAt uses cursor pagination', async () => {
+        const r = await makeRecipe(author.id, 'Cursor No Search Test', 'public');
+        const cursor = encodeCursor({
+          createdAt: r.createdAt.toISOString(),
+          id: r.id,
+        });
+        const filters = RecipeFilterSchema.parse({
+          cursor,
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
+        const result = await service.listRecipes(filters, 1, 20, null, false);
+        expect((result as { nextCursor?: string }).nextCursor !== undefined).toBe(true);
+      });
+
+      it('ranking applied when search active (title match ranks first)', async () => {
+        await makeRecipe(author.id, 'Espresso Champion', 'public');
+        const r2 = await makeRecipe(author.id, 'Other Recipe', 'public');
+        // Update r2's version productName to contain "espresso"
+        const r2Version = await db.query.recipeVersions.findFirst({
+          where: eq(recipeVersions.recipeId, r2.id),
+        });
+        if (r2Version) {
+          await db.update(recipeVersions).set({ productName: 'Espresso Blend' }).where(
+            eq(recipeVersions.id, r2Version.id),
+          );
+          await db.update(recipes).set({ currentVersionId: r2Version.id }).where(
+            eq(recipes.id, r2.id),
+          );
+        }
+
+        const filters = RecipeFilterSchema.parse({
+          search: 'espresso',
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
+        const result = await service.listRecipes(filters, 1, 20, null, false);
+        // deno-lint-ignore no-explicit-any -- test assertion cast
+        const recipesList = (result as any).recipes as { title: string }[];
+        expect(recipesList.length).toBeGreaterThanOrEqual(2);
+        // Title match (score 3) should rank before productName match (score 2)
+        expect(recipesList[0].title).toBe('Espresso Champion');
+      });
+
+      it('no ranking when search absent (DB order preserved)', async () => {
+        const r1 = await makeRecipe(author.id, 'Alpha No Search', 'public');
+        const r2 = await makeRecipe(author.id, 'Beta No Search', 'public');
+        const filters = RecipeFilterSchema.parse({
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
+        const result = await service.listRecipes(filters, 1, 20, null, false);
+        // deno-lint-ignore no-explicit-any -- test assertion cast
+        const recipesList = (result as any).recipes as { id: string }[];
+        // Most recent first (DESC by createdAt) — r2 was created after r1
+        const r2Index = recipesList.findIndex((r) => r.id === r2.id);
+        const r1Index = recipesList.findIndex((r) => r.id === r1.id);
+        expect(r2Index).toBeGreaterThanOrEqual(0);
+        expect(r1Index).toBeGreaterThanOrEqual(0);
+        expect(r2Index).toBeLessThan(r1Index);
+      });
+
+      it('global ranking: title match on page 2 ranks before productName match on page 1', async () => {
+        // Create 3 recipes: two productName matches (score 2) and one title match (score 3).
+        // With perPage=2, the title match would naturally land on page 2 by createdAt DESC
+        // (it's the oldest). Global ranking should surface it on page 1.
+        const _titleMatch = await makeRecipe(author.id, 'Espresso Title Match', 'public');
+        const pn1 = await makeRecipe(author.id, 'Recipe One', 'public');
+        const pn2 = await makeRecipe(author.id, 'Recipe Two', 'public');
+
+        // Set productName to contain "espresso" on the two non-title-match recipes
+        for (const r of [pn1, pn2]) {
+          const v = await db.query.recipeVersions.findFirst({
+            where: eq(recipeVersions.recipeId, r.id),
+          });
+          if (v) {
+            await db.update(recipeVersions).set({ productName: 'Espresso Blend' }).where(
+              eq(recipeVersions.id, v.id),
+            );
+            await db.update(recipes).set({ currentVersionId: v.id }).where(eq(recipes.id, r.id));
+          }
+        }
+
+        // Sort by createdAt DESC: pn2 (newest), pn1, titleMatch (oldest)
+        // With perPage=2, page 1 without ranking would be [pn2, pn1]
+        // With global ranking: titleMatch (score 3) should be first
+        const filters = RecipeFilterSchema.parse({
+          search: 'espresso',
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        });
+        const result = await service.listRecipes(filters, 1, 2, null, false);
+        // deno-lint-ignore no-explicit-any -- test assertion cast
+        const recipesList = (result as any).recipes as { title: string }[];
+        expect(recipesList.length).toBe(2);
+        // Title match (score 3) should be first despite being oldest by createdAt
+        expect(recipesList[0].title).toBe('Espresso Title Match');
       });
     });
   },

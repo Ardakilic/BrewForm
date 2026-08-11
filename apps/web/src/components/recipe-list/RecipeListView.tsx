@@ -94,6 +94,11 @@ export function RecipeListView({
     mainBrewer,
     tasteNoteIds,
     coffeeVarietyId,
+    author,
+    dateFrom,
+    dateTo,
+    minRating,
+    maxRating,
     updateFilter,
     clearAllFilters,
   } = useRecipeFilters();
@@ -131,7 +136,12 @@ export function RecipeListView({
     mainBrewer ||
     tasteNoteIds.length > 0 ||
     (coffeeVarietyId && UUID_RE.test(coffeeVarietyId)) ||
-    search
+    search ||
+    author ||
+    dateFrom ||
+    dateTo ||
+    minRating ||
+    maxRating
   );
   const allTasteNotesWithDepth: TasteNoteFlat[] = useMemo(
     () =>
@@ -221,6 +231,41 @@ export function RecipeListView({
                 onRemove={handleClearCoffeeVariety}
               />
             )}
+            {author && (
+              <ActiveFilterBadge
+                label={t('recipe.filter.author')}
+                value={author}
+                onRemove={() => updateFilter('author', '')}
+              />
+            )}
+            {dateFrom && (
+              <ActiveFilterBadge
+                label={t('recipe.filter.dateFrom')}
+                value={dateFrom}
+                onRemove={() => updateFilter('dateFrom', '')}
+              />
+            )}
+            {dateTo && (
+              <ActiveFilterBadge
+                label={t('recipe.filter.dateTo')}
+                value={dateTo}
+                onRemove={() => updateFilter('dateTo', '')}
+              />
+            )}
+            {minRating && (
+              <ActiveFilterBadge
+                label={t('recipe.filter.minRating')}
+                value={minRating}
+                onRemove={() => updateFilter('minRating', '')}
+              />
+            )}
+            {maxRating && (
+              <ActiveFilterBadge
+                label={t('recipe.filter.maxRating')}
+                value={maxRating}
+                onRemove={() => updateFilter('maxRating', '')}
+              />
+            )}
             <Field label={t('recipe.list.search')}>
               <input
                 type='text'
@@ -298,6 +343,51 @@ export function RecipeListView({
               </Field>
             )}
             {coffeeVarietyFilterSlot}
+            <Field label={t('recipe.filter.author')}>
+              <input
+                type='text'
+                placeholder={t('recipe.filter.authorPlaceholder')}
+                value={author}
+                onChange={(e) => updateFilter('author', e.target.value)}
+                className='input-field text-sm'
+              />
+            </Field>
+            <Field label={t('recipe.filter.dateFrom')}>
+              <input
+                type='date'
+                value={dateFrom}
+                onChange={(e) => updateFilter('dateFrom', e.target.value)}
+                className='input-field text-sm'
+              />
+            </Field>
+            <Field label={t('recipe.filter.dateTo')}>
+              <input
+                type='date'
+                value={dateTo}
+                onChange={(e) => updateFilter('dateTo', e.target.value)}
+                className='input-field text-sm'
+              />
+            </Field>
+            <Field label={t('recipe.filter.minRating')}>
+              <input
+                type='number'
+                min={1}
+                max={10}
+                value={minRating}
+                onChange={(e) => updateFilter('minRating', e.target.value)}
+                className='input-field text-sm'
+              />
+            </Field>
+            <Field label={t('recipe.filter.maxRating')}>
+              <input
+                type='number'
+                min={1}
+                max={10}
+                value={maxRating}
+                onChange={(e) => updateFilter('maxRating', e.target.value)}
+                className='input-field text-sm'
+              />
+            </Field>
             <Field label={t('recipe.list.sortBy')}>
               <select
                 value={sortBy}

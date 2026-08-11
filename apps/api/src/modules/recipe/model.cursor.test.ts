@@ -563,7 +563,8 @@ describe(
       const match = await createRecipeWithVersion(author.id, 'Zesty Citrus Bloom');
       await createRecipeWithVersion(author.id, 'Plain Brew');
 
-      const where = model.buildListRecipesWhere({ search: 'Citrus' }, false);
+      // F11: scope by authorId to isolate from seeded data (search now also matches personalNotes)
+      const where = model.buildListRecipesWhere({ search: 'Citrus', authorId: author.id }, false);
       const result = await model.findMany(where, 1, 100);
       const ids = result.recipes.map((r) => r.id);
       expect(ids).toContain(match.recipe.id);

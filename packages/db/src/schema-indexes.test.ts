@@ -115,6 +115,13 @@ describe('Recipe table composite indexes', () => {
     expect(idx!.isUnique).toBe(false);
   });
 
+  it('has recipe_visibility_featured_idx on (visibility, featured)', () => {
+    const idx = indexes.find((i) => i.name === 'recipe_visibility_featured_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['visibility', 'featured']);
+    expect(idx!.isUnique).toBe(false);
+  });
+
   it('has recipe_created_at_id_idx on (createdAt, id)', () => {
     const idx = indexes.find((i) => i.name === 'recipe_created_at_id_idx');
     expect(idx).toBeDefined();

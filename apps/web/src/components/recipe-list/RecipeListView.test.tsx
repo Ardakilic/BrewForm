@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import type { EquipmentOutput, RecipeListItemOutput } from '@brewform/shared/schemas';
@@ -94,6 +94,13 @@ const enT = (key: string) => {
     'recipe.list.tasteNoteFilterActive': 'Taste note filter active',
     'recipe.list.coffeeVarietyFilter': 'Coffee Variety',
     'recipe.list.coffeeVarietyActive': 'Coffee variety filter active',
+    'recipe.filter.author': 'Author',
+    'recipe.filter.authorPlaceholder': 'Search by author...',
+    'recipe.filter.dateFrom': 'From date',
+    'recipe.filter.dateTo': 'To date',
+    'recipe.filter.minRating': 'Min rating',
+    'recipe.filter.maxRating': 'Max rating',
+    'a11y.filter.remove': 'Remove {label} filter',
     'common.loading': 'Loading...',
     'common.previous': 'Previous',
     'common.next': 'Next',
@@ -279,5 +286,51 @@ describe('RecipeListView', () => {
     mockUseSearchParams.mockReturnValue(makeSearchParams({ mainBrewer: 'James Hoffmann' }));
     renderView({ recipesResponse: { data: [], meta: {} } });
     expect(screen.getByText('James Hoffmann')).toBeInTheDocument();
+  });
+
+  it('should render the author filter input', () => {
+    renderView({ recipesResponse: { data: [], meta: {} } });
+    expect(screen.getByPlaceholderText('Search by author...')).toBeInTheDocument();
+  });
+
+  it('should render the date range filter inputs', () => {
+    renderView({ recipesResponse: { data: [], meta: {} } });
+    expect(screen.getByLabelText('From date')).toBeInTheDocument();
+    expect(screen.getByLabelText('To date')).toBeInTheDocument();
+  });
+
+  it('should render the rating range filter inputs', () => {
+    renderView({ recipesResponse: { data: [], meta: {} } });
+    expect(screen.getByLabelText('Min rating')).toBeInTheDocument();
+    expect(screen.getByLabelText('Max rating')).toBeInTheDocument();
+  });
+
+  it('should update the URL when typing in the author input', () => {
+    const setSearchParams = vi.fn();
+    mockUseSearchParams.mockReturnValue(
+      [new URLSearchParams(), setSearchParams] as ReturnType<typeof useSearchParams>,
+    );
+    renderView({ recipesResponse: { data: [], meta: {} } });
+    fireEvent.change(screen.getByPlaceholderText('Search by author...'), {
+      target: { value: 'alice' },
+    });
+    expect(setSearchParams).toHaveBeenCalledTimes(1);
+    const passed = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(passed.get('author')).toBe('alice');
+  });
+
+  it('should render and clear an active author filter badge', () => {
+    const setSearchParams = vi.fn();
+    mockUseSearchParams.mockReturnValue(
+      [new URLSearchParams({ author: 'Alice' }), setSearchParams] as ReturnType<
+        typeof useSearchParams
+      >,
+    );
+    renderView({ recipesResponse: { data: [], meta: {} } });
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Author filter' }));
+    expect(setSearchParams).toHaveBeenCalledTimes(1);
+    const passed = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(passed.get('author')).toBeNull();
   });
 });

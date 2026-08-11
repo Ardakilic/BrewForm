@@ -184,6 +184,12 @@ export const recipes = pgTable(
      */
     index('recipe_visibility_like_count_idx').on(table.visibility, table.likeCount),
     /**
+     * Composite index covering "featured public recipes" queries
+     * (WHERE visibility = 'public' AND featured = true).
+     * Added by F11 — powers future trending/explore page.
+     */
+    index('recipe_visibility_featured_idx').on(table.visibility, table.featured),
+    /**
      * Cursor-based pagination: supports (createdAt DESC, id) < (cursor) queries.
      * Both columns are DESC because the most common query is "newest first" feed.
      * Postgres can scan this index backward for ASC queries.
