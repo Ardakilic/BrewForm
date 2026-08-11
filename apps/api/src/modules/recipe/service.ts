@@ -423,8 +423,9 @@ interface RankableRecipe {
  *
  * The DB search matches ANY version's productName/personalNotes (via the
  * `inArray` subquery in `buildRecipeFilters`), not just the current version.
- * To keep ranking consistent with filtering, this function scores the BEST
- * matching version across all loaded versions — not just `currentVersionId`.
+ * To keep ranking consistent with filtering, this function scores each version
+ * independently (productName=2 + personalNotes=1 on the SAME version) and adds
+ * the maximum per-version score to the title score.
  *
  * The sort is STABLE: recipes with equal scores preserve their original
  * DB-query order (sortBy/sortOrder from the model query). This ensures
@@ -442,17 +443,17 @@ export function rankRecipes<T extends RankableRecipe>(recipes: T[], searchTerm: 
   const scored = recipes.map((recipe, index) => {
     let score = 0;
     if (recipe.title?.toLowerCase().includes(searchLower)) score += 3;
-    // Score the best matching version across ALL loaded versions
-    // (DB search matches any version, not just currentVersionId)
+    // Score the best matching version: compute per-version weighted score
+    // (productName=2 + personalNotes=1 on the SAME version), then add the max.
+    // This prevents combining matches across different versions.
     const versions = recipe.versions ?? [];
-    const hasProductMatch = versions.some((v) =>
-      v.productName?.toLowerCase().includes(searchLower)
-    );
-    const hasNotesMatch = versions.some((v) =>
-      v.personalNotes?.toLowerCase().includes(searchLower)
-    );
-    if (hasProductMatch) score += 2;
-    if (hasNotesMatch) score += 1;
+    const maxVersionScore = versions.reduce((max, v) => {
+      let vScore = 0;
+      if (v.productName?.toLowerCase().includes(searchLower)) vScore += 2;
+      if (v.personalNotes?.toLowerCase().includes(searchLower)) vScore += 1;
+      return Math.max(max, vScore);
+    }, 0);
+    score += maxVersionScore;
     return { recipe, score, index };
   });
   // Stable sort: by score DESC, then by original index ASC (preserves DB order for ties)
