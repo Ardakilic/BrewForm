@@ -52,6 +52,15 @@ describe('BrewLogOutputSchema', () => {
     const result = BrewLogOutputSchema.safeParse(rest);
     expect(result.success).toBe(false);
   });
+
+  it('rejects malformed timestamps', () => {
+    for (const field of ['brewedAt', 'createdAt', 'updatedAt'] as const) {
+      for (const bad of ['not-a-date', '2024-06-01', '06/01/2024 08:30', '2024-06-01T08:30:00']) {
+        const result = BrewLogOutputSchema.safeParse({ ...brewLogRow, [field]: bad });
+        expect(result.success).toBe(false);
+      }
+    }
+  });
 });
 
 describe('BrewLogListItemOutputSchema', () => {
@@ -105,6 +114,30 @@ describe('UserBrewStatsOutputSchema', () => {
     };
     const result = UserBrewStatsOutputSchema.safeParse(payload);
     expect(result.success).toBe(false);
+  });
+
+  it('rejects malformed brewedAt bounds but still accepts null', () => {
+    const base = { totalBrews: 1, last30Days: 1, distinctRecipeCount: 1 };
+    for (const bad of ['yesterday', '2024-01-01', '2024-01-01T00:00:00']) {
+      expect(
+        UserBrewStatsOutputSchema.safeParse({
+          ...base,
+          firstBrewedAt: bad,
+          lastBrewedAt: '2024-06-01T08:30:00.000Z',
+        }).success,
+      ).toBe(false);
+      expect(
+        UserBrewStatsOutputSchema.safeParse({ ...base, firstBrewedAt: null, lastBrewedAt: bad })
+          .success,
+      ).toBe(false);
+    }
+    expect(
+      UserBrewStatsOutputSchema.safeParse({
+        ...base,
+        firstBrewedAt: null,
+        lastBrewedAt: '2024-06-01T08:30:00.000Z',
+      }).success,
+    ).toBe(true);
   });
 });
 

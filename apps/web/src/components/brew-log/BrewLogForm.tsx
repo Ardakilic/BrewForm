@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { Field } from '../form/Field.tsx';
 
@@ -33,26 +33,45 @@ function toNumberOrNull(raw: string): number | null {
   return Number(trimmed);
 }
 
+/** Input-ready string state derived from {@link BrewLogFormValues}. */
+function toFieldState(values: BrewLogFormValues) {
+  return {
+    brewedAt: toLocalInputValue(values.brewedAt),
+    yieldActual: values.yieldActual !== null ? String(values.yieldActual) : '',
+    doseActual: values.doseActual !== null ? String(values.doseActual) : '',
+    notes: values.notes ?? '',
+    personalRating: values.personalRating !== null ? String(values.personalRating) : '',
+  };
+}
+
 /**
  * Controlled brew-log form shared by create and edit modes. Client validation
  * mirrors `BrewLogCreateSchema`/`BrewLogUpdateSchema` bounds: required
  * `brewedAt`, positive yield/dose, integer rating 1–10, notes ≤ 5000 chars.
+ * Field state resets whenever `initialValues` changes (e.g. switching the
+ * edited log); parents should pass a stable (memoized) reference so typing
+ * does not trigger resets.
  */
 export function BrewLogForm({ initialValues, onSubmit, submitLabel }: BrewLogFormProps) {
   const { t } = useTranslation();
-  const [brewedAt, setBrewedAt] = useState(toLocalInputValue(initialValues.brewedAt));
-  const [yieldActual, setYieldActual] = useState(
-    initialValues.yieldActual !== null ? String(initialValues.yieldActual) : '',
-  );
-  const [doseActual, setDoseActual] = useState(
-    initialValues.doseActual !== null ? String(initialValues.doseActual) : '',
-  );
-  const [notes, setNotes] = useState(initialValues.notes ?? '');
-  const [personalRating, setPersonalRating] = useState(
-    initialValues.personalRating !== null ? String(initialValues.personalRating) : '',
-  );
+  const initial = toFieldState(initialValues);
+  const [brewedAt, setBrewedAt] = useState(initial.brewedAt);
+  const [yieldActual, setYieldActual] = useState(initial.yieldActual);
+  const [doseActual, setDoseActual] = useState(initial.doseActual);
+  const [notes, setNotes] = useState(initial.notes);
+  const [personalRating, setPersonalRating] = useState(initial.personalRating);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const next = toFieldState(initialValues);
+    setBrewedAt(next.brewedAt);
+    setYieldActual(next.yieldActual);
+    setDoseActual(next.doseActual);
+    setNotes(next.notes);
+    setPersonalRating(next.personalRating);
+    setErrors({});
+  }, [initialValues]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -136,4 +136,28 @@ describe('BrewLogForm', () => {
 
     expect(screen.getByLabelText('Brewed At *')).toBeRequired();
   });
+
+  it('resets all fields when initialValues change', async () => {
+    const onSubmit = vi.fn<(values: BrewLogFormValues) => Promise<void>>();
+    const { rerender } = render(
+      <BrewLogForm initialValues={initialValues} onSubmit={onSubmit} submitLabel='Save' />,
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Notes'), ' and more');
+
+    const next: BrewLogFormValues = {
+      brewedAt: '2026-04-01T12:00:00Z',
+      yieldActual: 40,
+      doseActual: 20,
+      notes: 'Bitter',
+      personalRating: 5,
+    };
+    rerender(<BrewLogForm initialValues={next} onSubmit={onSubmit} submitLabel='Save' />);
+
+    expect((screen.getByLabelText('Yield (g)') as HTMLInputElement).value).toBe('40');
+    expect((screen.getByLabelText('Dose (g)') as HTMLInputElement).value).toBe('20');
+    expect((screen.getByLabelText('Notes') as HTMLTextAreaElement).value).toBe('Bitter');
+    expect((screen.getByLabelText('Personal Rating') as HTMLInputElement).value).toBe('5');
+    expect((screen.getByLabelText('Brewed At *') as HTMLInputElement).value).toMatch(/2026-04-01T/);
+  });
 });

@@ -8,19 +8,19 @@ import { z } from 'zod';
  * `apps/api/src/modules/brew-log/{service,model}.ts`.
  */
 
-/** Base brew-log row as returned by the API (wire format — timestamps are ISO strings). */
+/** Base brew-log row as returned by the API (wire format — timestamps are ISO-8601 strings). */
 export const BrewLogOutputSchema = z.object({
   id: z.string(),
   userId: z.string(),
   recipeId: z.string(),
   recipeVersionId: z.string().nullable(),
-  brewedAt: z.string(),
+  brewedAt: z.iso.datetime(),
   yieldActual: z.number().nullable(),
   doseActual: z.number().nullable(),
   notes: z.string().nullable(),
   personalRating: z.number().int().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
 });
 /** Inferred type of {@link BrewLogOutputSchema}. */
 export type BrewLogOutput = z.infer<typeof BrewLogOutputSchema>;
@@ -38,8 +38,8 @@ export const UserBrewStatsOutputSchema = z.object({
   totalBrews: z.number().int(),
   last30Days: z.number().int(),
   distinctRecipeCount: z.number().int(),
-  firstBrewedAt: z.string().nullable(),
-  lastBrewedAt: z.string().nullable(),
+  firstBrewedAt: z.iso.datetime().nullable(),
+  lastBrewedAt: z.iso.datetime().nullable(),
 });
 /** Inferred type of {@link UserBrewStatsOutputSchema}. */
 export type UserBrewStatsOutput = z.infer<typeof UserBrewStatsOutputSchema>;

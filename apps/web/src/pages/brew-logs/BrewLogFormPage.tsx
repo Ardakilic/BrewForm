@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { redirect, useLoaderData, useNavigate } from 'react-router';
 import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
 import type {
@@ -90,28 +90,30 @@ export function BrewLogFormPage() {
     };
   }, [mode, logId]);
 
-  let initialValues: BrewLogFormValues;
-  if (mode === 'edit' && editLog) {
-    initialValues = {
-      brewedAt: editLog.brewedAt,
-      yieldActual: editLog.yieldActual,
-      doseActual: editLog.doseActual,
-      notes: editLog.notes,
-      personalRating: editLog.personalRating,
-    };
-  } else {
+  // Memoized so the form's initialValues-reset effect only fires when the
+  // loaded data (edit log / recipe / version) actually changes.
+  const initialValues = useMemo<BrewLogFormValues>(() => {
+    if (mode === 'edit' && editLog) {
+      return {
+        brewedAt: editLog.brewedAt,
+        yieldActual: editLog.yieldActual,
+        doseActual: editLog.doseActual,
+        notes: editLog.notes,
+        personalRating: editLog.personalRating,
+      };
+    }
     // ponytail: extractionVolumeMl (ml) prefills yieldActual (g) — close enough for water-based brews
     const version = recipeVersionId
       ? recipe?.versions.find((v) => v.id === recipeVersionId)
       : recipe?.currentVersion;
-    initialValues = {
+    return {
       brewedAt: new Date().toISOString(),
       yieldActual: version?.extractionVolumeMl ?? null,
       doseActual: version?.groundWeightGrams ?? null,
       notes: null,
       personalRating: null,
     };
-  }
+  }, [mode, editLog, recipe, recipeVersionId]);
 
   const handleSubmit = async (values: BrewLogFormValues) => {
     try {
@@ -151,7 +153,6 @@ export function BrewLogFormPage() {
         {mode === 'edit' ? t('brewLog.form.titleEdit') : t('brewLog.form.titleCreate')}
       </h1>
       <BrewLogForm
-        key={mode === 'edit' ? logId : `new-${recipeId}`}
         initialValues={initialValues}
         onSubmit={handleSubmit}
         submitLabel={mode === 'edit'
