@@ -1,5 +1,23 @@
 # F02 — Brew Journal / "Brew Again" Workflow
 
+> **Validation status (2026-08-13): refreshed — corrections below (core design valid, net-new scope confirmed)**
+>
+> **Note:** The body below this line (including the 2026-07-13 banner) is the pre-refresh draft; treat the corrections below as authoritative. Verified against the codebase as of 2026-08-13.
+>
+> - Still net-new: no `brew_log` table, no `apps/api/src/modules/brew-log/`, no brew-log schemas anywhere. The proposed Drizzle snippet conforms — varchar(36) ids with `crypto.randomUUID()`, timestamptz columns, `real()` amounts, `check(...)` via `sql` template, `deletedAt` + `brew_log_deleted_at_idx` (parity with every soft-delete table). No JSONB/UUID columns, no raw SQL — conventions respected.
+> - Line refs in the 2026-07-13 banner drifted again: `recipeVersions.rating` column is packages/db/src/schema.ts:236 with `recipe_version_rating_check` at :263 (not :238); `user_recipe_rating` table at schema.ts:706 with its 1–10 CHECK at :719 (not :664/:677). Relation targets: `usersRelations` schema.ts:1024, `recipesRelations` :1057, `recipeVersionsRelations` :1076 — extend these additively.
+> - Schema gap: the table has PATCH routes but no `updatedAt` column — every soft-deletable mutable entity carries `createdAt`/`updatedAt` (see `collections` schema.ts:900-913). Add `updatedAt` to `brewLogs`.
+> - Indexes: D23 convention is composite indexes serving the actual list queries — prefer `(userId, brewedAt)` and `(recipeId, brewedAt)` composites (pattern: `bean_user_created_idx`, `notification_user_created_idx`) over the plan's separate single-column `user_id`/`recipe_id`/`brewed_at` indexes.
+> - OpenAPI is now mandatory (missing entirely from the plan's route snippet): every route needs `describeRoute()` + `resolver()` responses, request bodies via `jsonRequestBody()` (apps/api/src/utils/openapi/index.ts:18); add `BrewLogOutputSchema` + brew-stats output schemas to packages/shared/src/schemas/responses/ and the responses/index.ts barrel; register the new tag in apps/api/src/routes/openapi.ts. Coverage is enforced by apps/api/src/routes/openapi.coverage.test.ts. Pattern to copy: apps/api/src/modules/collection/index.ts.
+> - D42 (typed web boundary) unchanged since last refresh: `apps/web/src/api/types.ts` still deleted; add a typed `brewLogApi` to apps/web/src/api/index.ts using `z.infer` from `@brewform/shared/schemas` and `api.getWithMeta<PaginatedResponse<T>>` (client.ts:126; `PaginatedResponse` at packages/shared/src/schemas/response.ts:74).
+> - D40 (i18n) unchanged: every UI string in BOTH packages/shared/src/i18n/en.json and tr.json; parity enforced by packages/shared/src/i18n/i18n.test.ts.
+> - Web routing confirmed: loader pattern is now pervasive — `profileLoader` (apps/web/src/router.tsx:38,207-208), `detailLoader` (:17,129-130), `RequireAuth` (:3). The plan's `element:`-only route snippets should attach a `loader:` too. Logger convention `createLogger('brew-log-service')` matches (collection/service.ts:9).
+> - Pagination: offset `paginated()` (apps/api/src/utils/response/index.ts:39) + `PaginationSchema` (packages/shared/src/schemas/common.ts:4) remains correct for these lists; cursor pagination (D27, `cursorPaginated()` :72) exists but is not required here.
+> - Naming collision risk: `RecipeDetailOutputSchema` already exposes `avgRating`/`ratingCount` (community rating from `user_recipe_rating`, D21 — packages/shared/src/schemas/responses/recipe.ts:282-283). The brew-log "average personal rating" is a DIFFERENT metric — name it distinctly (e.g. `brewCount`/`avgBrewRating`) when extending that schema.
+> - No scope overlap with shipped F01/F04/F05/F08/F09/F11 or D27/D12/D23/D21/D42/D28 — none touch brew logs. F05's notification fan-out does not include brews (`notificationTypeEnum` is mention/follow/like/comment only); no notification work needed here.
+> - Still a prerequisite for F03, F20, and F25's brew-log sync (plans/ROADMAP.md:34,47).
+>
+
 > **Validation status (2026-07-13): ⚠️ Outdated — corrections below (core design valid)**
 >
 > - Core still sound: `brew_log` is net-new (no brew-log module/table exists). The 1–10 `personalRating` CHECK matches the D21 scale; line refs drifted — `recipeVersions.rating` CHECK is now schema.ts:238, the `user_recipe_rating` table + 1–10 CHECK at schema.ts:664/677. Offset helpers `paginated` + `PaginationSchema`, `optionalAuthMiddleware`, and `success/error/paginated/isEmailVerified` all exist as assumed (utils/response/index.ts).

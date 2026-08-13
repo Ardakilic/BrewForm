@@ -1,5 +1,22 @@
 # F07 — Batch / Scale Recipe Calculator
 
+> **Validation status (2026-08-13): refreshed — corrections below**
+>
+> **Note:** The body below this line is the pre-refresh draft (including the older 2026-07-13 banner, whose corrections all still hold); treat the corrections below as authoritative. Design is still valid: pure client-side, no tables, no endpoints, and NO part of it has shipped — no `BatchCalculator` or `scaleRecipe` exists anywhere in the codebase, and no active OpenSpec change covers it (`openspec/changes/` holds only `archive/`). No scope overlap with F01/F04/F05/F08/F09/F11 or debts D21/D42.
+>
+> - Core dependencies re-verified current: `useUnitSystem` (apps/web/src/hooks/useUnitSystem.ts:20), `formatWeight`/`formatVolume`/`formatTemperature` (packages/shared/src/utils/conversion.ts:34/42/50), `computeBrewRatio` (packages/shared/src/utils/metrics.ts:2), `convertGramsToOunces`/`convertOuncesToGrams`/`convertMlToFlOz`/`convertFlOzToMl` (conversion.ts:4/9/14/19). `scaleRecipe`/`suggestGrindAdjustment`/`scaleExtractionTime` remain net-new.
+> - Barrel still required: new functions must be added to the metrics export block in `packages/shared/src/utils/index.ts` (currently :18-23) — `@brewform/shared/utils` resolves through the barrel via the Vite alias (apps/web/vite.config.ts:61).
+> - Test style correction still applies: write tests as `describe/it` + `expect` per packages/shared/src/utils/metrics.test.ts:1-3; the body's `Deno.test` + `assertEquals`-from-bdd snippet is wrong. `*.test.ts` naming in the body is correct.
+> - i18n is now shipped (D40) and is a hard convention: every user-visible string in `BatchCalculator` must go through `t()` from `useTranslation()` (apps/web/src/contexts/I18nContext.tsx:55), with keys added to BOTH packages/shared/src/i18n/en.json and tr.json (key parity enforced by packages/shared/src/i18n/i18n.test.ts:7). `suggestGrindAdjustment` must return a key/enum, not English sentences. Both integration pages already use `t()` (RecipeDetailPage.tsx:330, RecipeCreatePage.tsx:30).
+> - RecipeDetailPage integration snippet is unsafe as written: `v` is `recipe.currentVersion` and may be undefined (apps/web/src/pages/recipes/RecipeDetailPage.tsx:121) — use `v?.groundWeightGrams` etc. and guard. Sidebar location still valid: sidebar at :317, rating card at :326-386 (note ShareSection now tops the sidebar, and social-actions/collections cards follow the rating card).
+> - Version columns verified on `recipeVersions`: `groundWeightGrams` real, `extractionTimeSeconds` integer, `extractionVolumeMl` real, `brewRatio` real (packages/db/src/schema.ts:221-226). There are no `waterAmount`/`coffeeAmount` columns — the body's field mapping is correct.
+> - RecipeCreatePage state names verified exactly as the body assumes: `groundWeightGrams`/`extractionTimeSeconds`/`extractionVolumeMl` string states with matching setters (apps/web/src/pages/recipes/RecipeCreatePage.tsx:44-46).
+> - CSS classes verified: `.card`, `.btn-primary`, `.input-field` all exist in apps/web/src/styles/globals.css:123/139/184.
+> - Minor: the imperial placeholder hardcodes `currentYield * 0.0338` — use `convertMlToFlOz` (conversion.ts:14) instead.
+> - Scope gap to decide: apps/web/src/pages/recipes/RecipeEditPage.tsx edits the same fields but is not covered by the plan's integration list.
+>
+> ---
+>
 > **Validation status (2026-07-13): ⚠️ Outdated — minor corrections below (design valid)**
 >
 > - Core still valid: pure client-side. `useUnitSystem` (hooks/useUnitSystem.ts:20), `formatWeight`/`formatVolume`/`formatTemperature` (conversion.ts:34/42/50), `computeBrewRatio` (metrics.ts:2), `convertGramsToOunces`/`convertMlToFlOz` all exist. `scaleRecipe`/`suggestGrindAdjustment`/`scaleExtractionTime` are net-new as intended.
