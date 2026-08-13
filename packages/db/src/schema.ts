@@ -946,6 +946,41 @@ export const collectionItems = pgTable(
 );
 
 /**
+ * Brew logs — user journal entries recording actual brews of recipes.
+ *
+ * Soft-deletable main entity linking a user, a recipe, and optionally the
+ * specific recipe version brewed. Actual yield/dose and a personal rating
+ * (1–10) capture per-brew outcomes distinct from the recipe's target values.
+ */
+export const brewLogs = pgTable(
+  'brew_log',
+  {
+    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    recipeVersionId: varchar('recipe_version_id', { length: 36 }).references(
+      () => recipeVersions.id,
+    ),
+    brewedAt: timestamp('brewed_at', { withTimezone: true }).notNull().defaultNow(),
+    yieldActual: real('yield_actual'),
+    doseActual: real('dose_actual'),
+    notes: text('notes'),
+    personalRating: integer('personal_rating'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('brew_log_user_brewed_idx').on(table.userId, table.brewedAt),
+    index('brew_log_recipe_brewed_idx').on(table.recipeId, table.brewedAt),
+    index('brew_log_deleted_at_idx').on(table.deletedAt),
+    check('brew_log_personal_rating_check', sql`${table.personalRating} BETWEEN 1 AND 10`),
+    check('brew_log_yield_actual_check', sql`${table.yieldActual} > 0`),
+    check('brew_log_dose_actual_check', sql`${table.doseActual} > 0`),
+  ],
+);
+
+/**
  * Notification type enum (single source of truth for the `notifications.type`
  * column). F04 introduced `mention`; F05 extends with `follow` / `like` /
  * `comment`. `badge` and `system` are NOT added by F05 — there are no fan-out
@@ -1020,7 +1055,7 @@ export const notifications = pgTable(
 // Relations
 // ============================================================
 
-/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections, notifications. */
+/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections, notifications, brew logs. */
 export const usersRelations = relations(users, ({ one, many }) => ({
   preferences: one(userPreferences, {
     fields: [users.id],
@@ -1043,6 +1078,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   emailVerificationTokens: many(emailVerificationTokens),
   reports: many(reports),
   notifications: many(notifications, { relationName: 'NotificationRecipient' }),
+  brewLogs: many(brewLogs),
 }));
 
 /** Drizzle relations for user_preferences: owning user. */
@@ -1053,7 +1089,7 @@ export const userPreferencesRelations = relations(userPreferences, ({ one }) => 
   }),
 }));
 
-/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, and fork lineage (forkedFrom/forks), and collection items. */
+/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, and fork lineage (forkedFrom/forks), collection items, and brew logs. */
 export const recipesRelations = relations(recipes, ({ one, many }) => ({
   author: one(users, {
     fields: [recipes.authorId],
@@ -1065,6 +1101,7 @@ export const recipesRelations = relations(recipes, ({ one, many }) => ({
   likes: many(userRecipeLikes),
   favourites: many(userRecipeFavourites),
   collectionItems: many(collectionItems),
+  brewLogs: many(brewLogs),
   forkedFrom: one(recipes, {
     fields: [recipes.forkedFromId],
     references: [recipes.id],
@@ -1072,7 +1109,7 @@ export const recipesRelations = relations(recipes, ({ one, many }) => ({
   forks: many(recipes, { relationName: 'RecipeFork' }),
 }));
 
-/** Drizzle relations for recipe_versions: parent recipe, vendor, bean, coffee variety, taste notes, equipment, additional preparations, version photos. */
+/** Drizzle relations for recipe_versions: parent recipe, vendor, bean, coffee variety, taste notes, equipment, additional preparations, version photos, brew logs. */
 export const recipeVersionsRelations = relations(recipeVersions, ({ one, many }) => ({
   recipe: one(recipes, {
     fields: [recipeVersions.recipeId],
@@ -1095,6 +1132,17 @@ export const recipeVersionsRelations = relations(recipeVersions, ({ one, many })
   equipment: many(recipeEquipment),
   additionalPreparations: many(recipeAdditionalPreparations),
   versionPhotos: many(recipeVersionPhotos),
+  brewLogs: many(brewLogs),
+}));
+
+/** Drizzle relations for brew_log: owning user, recipe, and optional recipe version. */
+export const brewLogsRelations = relations(brewLogs, ({ one }) => ({
+  user: one(users, { fields: [brewLogs.userId], references: [users.id] }),
+  recipe: one(recipes, { fields: [brewLogs.recipeId], references: [recipes.id] }),
+  recipeVersion: one(recipeVersions, {
+    fields: [brewLogs.recipeVersionId],
+    references: [recipeVersions.id],
+  }),
 }));
 
 /** Drizzle relations for the recipe_taste_notes join table: recipe version and taste note. */

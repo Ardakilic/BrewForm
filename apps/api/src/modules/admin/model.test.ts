@@ -1536,7 +1536,8 @@ describe('getTopUsers', { sanitizeOps: false, sanitizeResources: false }, () => 
   });
 
   it('should return top users with recipe counts', async () => {
-    const result = await model.getTopUsers(10);
+    // ponytail: large limit — a 1-recipe user can't reach top-10 against seed data (mirrors service.test.ts)
+    const result = await model.getTopUsers(1000);
     expect(Array.isArray(result)).toBe(true);
     const found = result.find((u) => u.id === userId);
     expect(found).toBeDefined();

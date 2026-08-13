@@ -69,6 +69,8 @@ export {
   CollectionUpdateSchema,
 } from './collection.ts';
 export type { CollectionCreate, CollectionUpdate } from './collection.ts';
+export { BrewLogCreateSchema, BrewLogUpdateSchema } from './brew-log.ts';
+export type { BrewLogCreate, BrewLogUpdate } from './brew-log.ts';
 export { BadgeCreateSchema, BadgeUpdateSchema } from './badge.ts';
 export {
   AdminBanUserSchema,
@@ -157,3 +159,9 @@ export type {
   RecipeCollectionListItemOutput,
   RecipeCollectionsOutput,
 } from './responses/collection.ts';
+export type {
+  BrewLogListItemOutput,
+  BrewLogOutput,
+  RecipeBrewStatsOutput,
+  UserBrewStatsOutput,
+} from './responses/brew-log.ts';

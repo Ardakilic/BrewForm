@@ -65,6 +65,10 @@ export function registerOpenApi(app: Hono<AppEnv>): void {
         { name: 'Beans', description: 'Coffee bean inventory owned by users' },
         { name: 'Badges', description: 'Achievement badges and per-user awards' },
         {
+          name: 'Brew Logs',
+          description: 'Personal brew journal entries and brew stats',
+        },
+        {
           name: 'Coffee Varieties',
           description: 'Coffee cultivar reference data and recipes using a variety',
         },

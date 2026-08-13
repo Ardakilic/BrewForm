@@ -59,6 +59,7 @@ const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'
 const IN_SCOPE_BASE_PATHS = [
   '/api/v1/beans',
   '/api/v1/badges',
+  '/api/v1/brew-logs',
   '/api/v1/coffee-varieties',
   '/api/v1/collections',
   '/api/v1/comments',

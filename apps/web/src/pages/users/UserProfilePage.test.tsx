@@ -88,6 +88,12 @@ const enT = (key: string) => {
     'user.noCollections': 'No collections yet.',
     'collection.detail.recipes': 'recipes',
     'a11y.userAvatar': "{name}'s avatar",
+    'brewLog.tab': 'Brew Journal',
+    'brewLog.list.empty': 'No brews logged yet.',
+    'brewLog.card.rating': 'Rating',
+    'brewLog.card.notes': 'Notes',
+    'brewLog.card.yieldActual': 'Yield',
+    'brewLog.card.doseActual': 'Dose',
   };
   return map[key] ?? key;
 };
@@ -276,5 +282,98 @@ describe('UserProfilePage — shared cards', () => {
     expect(screen.getByText('🔒')).toBeInTheDocument();
     expect(screen.getByText('My favorite recipes')).toBeInTheDocument();
     expect(screen.getByText(/3 recipes/)).toBeInTheDocument();
+  });
+});
+
+describe('UserProfilePage — brews tab (F02)', () => {
+  const selfAuth = {
+    ...defaultAuth,
+    user: {
+      id: 'profile-user-id',
+      email: 'diana@example.com',
+      emailVerifiedAt: null,
+      username: 'diana',
+      displayName: 'Diana',
+      avatarUrl: null,
+      isAdmin: false,
+      onboardingCompleted: true,
+    },
+    isAuthenticated: true,
+  };
+
+  const mockBrewLog = {
+    id: 'bl1',
+    userId: 'profile-user-id',
+    recipeId: 'r1',
+    recipeVersionId: null,
+    brewedAt: '2026-03-15T09:30:00Z',
+    yieldActual: 36,
+    doseActual: 18,
+    notes: null,
+    personalRating: 8,
+    createdAt: '2026-03-15T09:30:00Z',
+    updatedAt: '2026-03-15T09:30:00Z',
+    recipeTitle: 'My Espresso',
+    recipeSlug: 'my-espresso',
+  };
+
+  it('shows the brews tab and renders brew logs on the own profile', async () => {
+    mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'brews' }));
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [mockBrewLog],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 1, totalPages: 1 } },
+    });
+
+    renderProfilePage('diana', 'brews');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Brew Journal' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('My Espresso')).toBeInTheDocument();
+    expect(screen.getByText('Rating: 8/10')).toBeInTheDocument();
+  });
+
+  it('shows the empty state when the own journal has no brews', async () => {
+    mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
+    mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'brews' }));
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 0, totalPages: 0 } },
+    });
+
+    renderProfilePage('diana', 'brews');
+
+    await waitFor(() => {
+      expect(screen.getByText('No brews logged yet.')).toBeInTheDocument();
+    });
+  });
+
+  it("hides the brews tab on another user's profile", async () => {
+    mockUseAuth.mockReturnValue({
+      ...defaultAuth,
+      user: {
+        id: 'current-user',
+        email: 'alice@example.com',
+        emailVerifiedAt: null,
+        username: 'alice',
+        displayName: null,
+        avatarUrl: null,
+        isAdmin: false,
+        onboardingCompleted: true,
+      },
+      isAuthenticated: true,
+    } as ReturnType<typeof useAuth>);
+
+    renderProfilePage('diana', 'brews');
+
+    await waitFor(() => {
+      expect(screen.getByText('Diana')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Brew Journal' })).not.toBeInTheDocument();
   });
 });

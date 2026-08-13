@@ -31,7 +31,7 @@ Status reflects each F-plan's 2026-07-13 validation verdict, plus the 2026-08-13
 | **P1** | In-app notification center (F05) | High | High | ✅ Shipped (2026-08-02) | [`F05`](F05-in-app-notifications.md) |
 | **P1** | Advanced search w/ facets (F11) | Medium | High | ✅ Shipped (2026-08-02) | [`F11`](F11-advanced-search.md) |
 | **P1** | Image optimisation (F23) | Medium | Medium | 🔧 Rough — needs design decisions | [`F23`](F23-image-optimisation.md) |
-| **P2** | Brew journal / "brew again" (F02) | Medium | Medium | ✅ Refreshed (2026-08-13) — unblocks F03 / F20 / F25-sync | [`F02`](F02-brew-journal.md) |
+| **P2** | Brew journal / "brew again" (F02) | Medium | Medium | ✅ Shipped (2026-08-13) | [`F02`](F02-brew-journal.md) |
 | **P2** | Recipe templates (F06) | Low | Medium | ✅ Refreshed (2026-08-13) | [`F06`](F06-recipe-templates.md) |
 | **P2** | Batch/scale calculator (F07) | Low | Medium | ✅ Refreshed (2026-08-13) | [`F07`](F07-batch-calculator.md) |
 | **P2** | Similar recipes (F12) | Medium | Medium | ✅ Refreshed (2026-08-13) | [`F12`](F12-similar-recipes.md) |
@@ -39,12 +39,12 @@ Status reflects each F-plan's 2026-07-13 validation verdict, plus the 2026-08-13
 | **P3** | Brew method landing pages (F14) | Medium | Low | 🔧 Rough — SEO stack undecided | [`F14`](F14-brew-method-pages.md) |
 | **P3** | Recipe export/import (F10) | Medium | Medium | ✅ Refreshed (2026-08-13) | [`F10`](F10-recipe-export-import.md) |
 | **P3** | Admin analytics (F17) | Medium | Low | ✅ Refreshed (2026-08-13) | [`F17`](F17-admin-analytics.md) |
-| **P3** | PWA / offline (F25) | High | Medium | ✅ Refreshed (2026-08-13) — PWA shell valid; brew-log sync blocked on F02 | [`F25`](F25-pwa-offline.md) |
+| **P3** | PWA / offline (F25) | High | Medium | ✅ Refreshed (2026-08-13) — PWA shell valid; brew-log sync unblocked by F02 (2026-08-13) | [`F25`](F25-pwa-offline.md) |
 | **P3** | Public API v2 (F21) | High | Medium | ✅ Valid | [`F21`](F21-public-api.md) |
 
 **Not in matrix (2026-07-13 re-validation):**
 
-- ❌ Invalid / blocked: F03 (blocked by F02), F20 (blocked by F02), F26
+- ❌ Invalid / blocked: F26 (F03 and F20 were blocked by F02 — unblocked by its shipment 2026-08-13, plans need a refresh pass)
 - ✅ Refreshed (2026-08-13, validated twice): F13, F15, F16, F18, F19
 - ✅ Shipped (2026-07-28): F08 (recipe comparison improvements — diff highlighting + merge endpoint)
 - 🔧 Rough: F22 webhooks
@@ -54,9 +54,10 @@ Status reflects each F-plan's 2026-07-13 validation verdict, plus the 2026-08-13
 
 ## Next candidates
 
-Per the 2026-07-13 priority matrix refresh (updated 2026-08-02):
+Per the 2026-07-13 priority matrix refresh (updated 2026-08-13):
 
-1. **F02** (P2) — unblocks F03, F20, and F25's brew-log sync; high leverage despite P2. Plan refreshed 2026-08-13, ready for pickup.
+1. **F03** (user profile stats) — unblocked by F02's shipment (2026-08-13); its `brewLogs`
+   dependency now exists. Plan needs a refresh pass against the current codebase first.
 
 **Optional quick wins** (no plan refresh needed):
 
@@ -74,7 +75,8 @@ Per the 2026-07-13 priority matrix refresh (updated 2026-08-02):
   `remaining-debt-clearance` OpenSpec change. The D99 ledger is now fully closed.
 - **Features shipped:** F01 (recipe collections, 2026-07-09), F04 (mention notifications,
   2026-07-13), F08 (recipe comparison improvements, 2026-07-28), F09 (recipe version diff,
-  2026-07-28), F05 (in-app notification center, 2026-08-02), F11 (advanced search, 2026-08-02).
+  2026-07-28), F05 (in-app notification center, 2026-08-02), F11 (advanced search, 2026-08-02),
+  F02 (brew journal / "brew again", 2026-08-13).
 - **Plan refresh pass** (2026-08-13): all 12 outdated plans (F02, F06, F07, F10, F12, F13, F15,
   F16, F17, F18, F19, F25) re-validated against the current codebase with correction banners
   (F11 convention), each independently validated twice. No ⚠️ Outdated items remain.

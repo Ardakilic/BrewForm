@@ -32,6 +32,14 @@ import {
   CollectionsBrowsePage,
   loader as collectionsBrowseLoader,
 } from './pages/collections/CollectionsBrowsePage.tsx';
+import {
+  BrewLogListPage,
+  loader as brewLogListLoader,
+} from './pages/brew-logs/BrewLogListPage.tsx';
+import {
+  BrewLogFormPage,
+  loader as brewLogFormLoader,
+} from './pages/brew-logs/BrewLogFormPage.tsx';
 import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
 import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
 import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
@@ -169,6 +177,36 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
         loader: collectionEditLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'brew-logs',
+        element: (
+          <RequireAuth>
+            <BrewLogListPage />
+          </RequireAuth>
+        ),
+        loader: brewLogListLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'brew-logs/new',
+        element: (
+          <RequireAuth>
+            <BrewLogFormPage />
+          </RequireAuth>
+        ),
+        loader: brewLogFormLoader,
+        errorElement: <RootErrorBoundary />,
+      },
+      {
+        path: 'brew-logs/:id/edit',
+        element: (
+          <RequireAuth>
+            <BrewLogFormPage />
+          </RequireAuth>
+        ),
+        loader: brewLogFormLoader,
         errorElement: <RootErrorBoundary />,
       },
       { path: 'recipes/:slug/focus', element: <RecipeFocusModePage /> },

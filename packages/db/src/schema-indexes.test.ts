@@ -21,6 +21,7 @@ import { getTableConfig } from 'drizzle-orm/pg-core';
 import type { IndexedColumn, PgTableWithColumns } from 'drizzle-orm/pg-core';
 import {
   beans,
+  brewLogs,
   coffeeVarieties,
   collectionItems,
   collections,
@@ -371,5 +372,34 @@ describe('Collection items table indexes', () => {
     const uc = uniques.find((u) => u.name === 'collection_item_collection_id_recipe_id_unique');
     expect(uc).toBeDefined();
     expect(uc!.columns).toEqual(['collection_id', 'recipe_id']);
+  });
+});
+
+describe('Brew logs table indexes', () => {
+  let indexes: ReturnType<typeof getTableIndexes>;
+
+  beforeAll(() => {
+    indexes = getTableIndexes(brewLogs);
+  });
+
+  it('has brew_log_user_brewed_idx on (userId, brewedAt)', () => {
+    const idx = indexes.find((i) => i.name === 'brew_log_user_brewed_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['user_id', 'brewed_at']);
+    expect(idx!.isUnique).toBe(false);
+  });
+
+  it('has brew_log_recipe_brewed_idx on (recipeId, brewedAt)', () => {
+    const idx = indexes.find((i) => i.name === 'brew_log_recipe_brewed_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['recipe_id', 'brewed_at']);
+    expect(idx!.isUnique).toBe(false);
+  });
+
+  it('has brew_log_deleted_at_idx on (deletedAt)', () => {
+    const idx = indexes.find((i) => i.name === 'brew_log_deleted_at_idx');
+    expect(idx).toBeDefined();
+    expect(idx!.columns).toEqual(['deleted_at']);
+    expect(idx!.isUnique).toBe(false);
   });
 });
