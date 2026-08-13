@@ -3,6 +3,7 @@ import { expect } from 'jsr:@std/expect';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { db } from './index.ts';
 import {
+  brewLogs,
   recipes,
   recipeTasteNotes,
   recipeVersions,
@@ -70,6 +71,7 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
    * Deletes in dependency order (child tables first) to avoid FK violations.
    */
   afterEach(async () => {
+    await db.delete(brewLogs).where(eq(brewLogs.userId, userId));
     await db.delete(recipeTasteNotes).where(eq(recipeTasteNotes.recipeVersionId, recipeVersionId));
     await db.delete(userRecipeRatings).where(eq(userRecipeRatings.recipeId, recipeId));
     await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNoteId));
@@ -218,6 +220,84 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
         db.update(recipeVersions)
           .set({ rating: null })
           .where(eq(recipeVersions.id, recipeVersionId)),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('brew_log_personal_rating_check', () => {
+    it('should reject personalRating = 0', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, personalRating: 0 }),
+      ).rejects.toThrow();
+    });
+
+    it('should reject personalRating = 11', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, personalRating: 11 }),
+      ).rejects.toThrow();
+    });
+
+    it('should accept personalRating = 1', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, personalRating: 1 }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept personalRating = 10', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, personalRating: 10 }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept personalRating = NULL', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId }),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('brew_log_yield_actual_check', () => {
+    it('should reject yieldActual = 0', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, yieldActual: 0 }),
+      ).rejects.toThrow();
+    });
+
+    it('should reject yieldActual = -1', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, yieldActual: -1 }),
+      ).rejects.toThrow();
+    });
+
+    it('should accept yieldActual = 36.5', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, yieldActual: 36.5 }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept yieldActual = NULL', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId }),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('brew_log_dose_actual_check', () => {
+    it('should reject doseActual = 0', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, doseActual: 0 }),
+      ).rejects.toThrow();
+    });
+
+    it('should accept doseActual = 18.5', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId, doseActual: 18.5 }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept doseActual = NULL', async () => {
+      await expect(
+        db.insert(brewLogs).values({ userId, recipeId }),
       ).resolves.toBeDefined();
     });
   });

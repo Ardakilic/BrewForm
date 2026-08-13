@@ -59,3 +59,9 @@ export {
   RecipeCollectionListItemOutputSchema,
   RecipeCollectionsOutputSchema,
 } from './collection.ts';
+export {
+  BrewLogListItemOutputSchema,
+  BrewLogOutputSchema,
+  RecipeBrewStatsOutputSchema,
+  UserBrewStatsOutputSchema,
+} from './brew-log.ts';

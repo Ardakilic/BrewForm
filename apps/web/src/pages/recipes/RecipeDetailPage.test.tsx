@@ -109,6 +109,14 @@ vi.mock(
   '../../components/recipe/RecipeNotesSection.tsx',
   () => ({ RecipeNotesSection: () => <div data-testid='recipe-notes-section' /> }),
 );
+vi.mock(
+  '../../components/brew-log/RecipeBrewStats.tsx',
+  () => ({ RecipeBrewStats: () => <div data-testid='recipe-brew-stats' /> }),
+);
+vi.mock(
+  '../../components/brew-log/BrewHistorySection.tsx',
+  () => ({ BrewHistorySection: () => <div data-testid='brew-history-section' /> }),
+);
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
@@ -792,6 +800,36 @@ describe('RecipeDetailPage — Print layout hiding', () => {
 
     const commentWrapper = screen.getByTestId('comment-section-wrapper');
     expect(commentWrapper.classList.contains('no-print')).toBe(true);
+  });
+});
+
+describe('RecipeDetailPage — brew journal (F02)', () => {
+  it('renders RecipeBrewStats for all visitors, including guests', async () => {
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-brew-stats')).toBeInTheDocument();
+    });
+  });
+
+  it('renders BrewHistorySection for authenticated users', async () => {
+    mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
+
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('brew-history-section')).toBeInTheDocument();
+    });
+  });
+
+  it('hides BrewHistorySection for guests', async () => {
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recipe-brew-stats')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('brew-history-section')).toBeNull();
   });
 });
 

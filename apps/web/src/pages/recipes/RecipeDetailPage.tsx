@@ -31,6 +31,8 @@ import { MetadataBadges } from '../../components/recipe/MetadataBadges.tsx';
 import { StatCards } from '../../components/recipe/StatCards.tsx';
 import { BeanSection } from '../../components/recipe/BeanSection.tsx';
 import { BrewTimeline } from '../../components/recipe/BrewTimeline.tsx';
+import { BrewHistorySection } from '../../components/brew-log/BrewHistorySection.tsx';
+import { RecipeBrewStats } from '../../components/brew-log/RecipeBrewStats.tsx';
 import { EquipmentSection } from '../../components/recipe/EquipmentSection.tsx';
 import { TastingNotesSection } from '../../components/recipe/TastingNotesSection.tsx';
 import { RecipeNotesSection } from '../../components/recipe/RecipeNotesSection.tsx';
@@ -276,6 +278,13 @@ export function RecipeDetailPage() {
               flowRate={v?.flowRate}
             />
 
+            {isAuthenticated && (
+              <BrewHistorySection
+                recipeId={recipe.id}
+                currentVersionId={recipe.currentVersionId}
+              />
+            )}
+
             <EquipmentSection
               items={equipment}
               brewMethod={v?.brewMethod ?? undefined}
@@ -350,6 +359,10 @@ export function RecipeDetailPage() {
                   count={recipe.ratingCount ?? 0}
                   interactive={false}
                 />
+              </div>
+
+              <div className='mb-3'>
+                <RecipeBrewStats recipeId={recipe.id} />
               </div>
 
               {isAuthenticated && (

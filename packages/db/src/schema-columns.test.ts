@@ -22,6 +22,7 @@ import { expect } from 'jsr:@std/expect';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import type { PgTableWithColumns } from 'drizzle-orm/pg-core';
 import {
+  brewLogs,
   collectionItems,
   notifications,
   recipeEquipment,
@@ -188,20 +189,73 @@ describe('notifications table columns (F04)', () => {
   });
 });
 
-describe('userPreferences mentionedInComment column (F04)', () => {
-  it('has a mentionedInComment column', () => {
-    const column = getColumnConfig(userPreferences, 'mentioned_in_comment');
+describe('brewLogs table columns (F02)', () => {
+  it('has a notNull brewedAt column with a default expression (now())', () => {
+    const column = getColumnConfig(brewLogs, 'brewed_at');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(true);
+    expect(column!.default).toBeDefined();
+  });
+
+  it('has a nullable yieldActual column', () => {
+    const column = getColumnConfig(brewLogs, 'yield_actual');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a nullable doseActual column', () => {
+    const column = getColumnConfig(brewLogs, 'dose_actual');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a nullable notes column', () => {
+    const column = getColumnConfig(brewLogs, 'notes');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a nullable personalRating column', () => {
+    const column = getColumnConfig(brewLogs, 'personal_rating');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+
+  it('has a notNull createdAt column with a default expression (now())', () => {
+    const column = getColumnConfig(brewLogs, 'created_at');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(true);
+    expect(column!.default).toBeDefined();
+  });
+
+  it('has a notNull updatedAt column with a default expression (now())', () => {
+    const column = getColumnConfig(brewLogs, 'updated_at');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(true);
+    expect(column!.default).toBeDefined();
+  });
+
+  it('has a nullable deletedAt (soft-delete) column', () => {
+    const column = getColumnConfig(brewLogs, 'deleted_at');
+    expect(column).toBeDefined();
+    expect(column!.notNull).toBe(false);
+  });
+});
+
+describe('userPreferences notifyMentionedInComment column (F04)', () => {
+  it('has a notifyMentionedInComment column', () => {
+    const column = getColumnConfig(userPreferences, 'notify_mentioned_in_comment');
     expect(column).toBeDefined();
   });
 
-  it('mentionedInComment is notNull', () => {
-    const column = getColumnConfig(userPreferences, 'mentioned_in_comment');
+  it('notifyMentionedInComment is notNull', () => {
+    const column = getColumnConfig(userPreferences, 'notify_mentioned_in_comment');
     expect(column).toBeDefined();
     expect(column!.notNull).toBe(true);
   });
 
-  it('mentionedInComment has a default expression', () => {
-    const column = getColumnConfig(userPreferences, 'mentioned_in_comment');
+  it('notifyMentionedInComment has a default expression', () => {
+    const column = getColumnConfig(userPreferences, 'notify_mentioned_in_comment');
     expect(column).toBeDefined();
     expect(column!.default).toBeDefined();
   });

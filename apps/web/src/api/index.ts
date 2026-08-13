@@ -3,6 +3,10 @@ import type {
   BeanCreate,
   BeanOutput,
   BeanUpdate,
+  BrewLogCreate,
+  BrewLogListItemOutput,
+  BrewLogOutput,
+  BrewLogUpdate,
   CollectionCreate,
   CollectionDetailOutput,
   CollectionListItemOutput,
@@ -19,6 +23,7 @@ import type {
   PaginatedResponse,
   PublicCollectionListItemOutput,
   PublicUserOutput,
+  RecipeBrewStatsOutput,
   RecipeCollectionsOutput,
   RecipeCreate,
   RecipeDetailOutput,
@@ -33,6 +38,7 @@ import type {
   TasteNoteNodeOutput,
   TasteNoteOutput,
   UnreadCountOutput,
+  UserBrewStatsOutput,
   UserProfileUpdate,
   VersionDiffOutput,
 } from '@brewform/shared/schemas';
@@ -296,6 +302,36 @@ export const collectionApi = {
   },
   listByRecipe: (recipeIdOrSlug: string) =>
     api.get<RecipeCollectionsOutput>(`/recipes/${recipeIdOrSlug}/collections`),
+};
+
+/** Builds the optional `?page=&perPage=` query string for brew-log list endpoints. */
+function brewLogQuery(params?: { page?: number; perPage?: number }): string {
+  if (!params) return '';
+  const search = new URLSearchParams();
+  if (params.page !== undefined) search.set('page', String(params.page));
+  if (params.perPage !== undefined) search.set('perPage', String(params.perPage));
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
+}
+
+/**
+ * Brew-log API client — the user's brew journal: paginated lists (own / per-recipe),
+ * CRUD, and user-/recipe-scoped brew stats (F02 brew journal).
+ */
+export const brewLogApi = {
+  list: (params?: { page?: number; perPage?: number }) =>
+    api.getWithMeta<PaginatedResponse<BrewLogListItemOutput>>(`/brew-logs${brewLogQuery(params)}`),
+  listForRecipe: (recipeId: string, params?: { page?: number; perPage?: number }) =>
+    api.getWithMeta<PaginatedResponse<BrewLogListItemOutput>>(
+      `/brew-logs/recipe/${recipeId}${brewLogQuery(params)}`,
+    ),
+  getUserStats: () => api.get<UserBrewStatsOutput>('/brew-logs/stats/user'),
+  getRecipeStats: (recipeId: string) =>
+    api.get<RecipeBrewStatsOutput>(`/brew-logs/stats/recipe/${recipeId}`),
+  get: (id: string) => api.get<BrewLogOutput>(`/brew-logs/${id}`),
+  create: (data: BrewLogCreate) => api.post<BrewLogOutput>('/brew-logs', data),
+  update: (id: string, data: BrewLogUpdate) => api.patch<BrewLogOutput>(`/brew-logs/${id}`, data),
+  remove: (id: string) => api.delete<{ message: string }>(`/brew-logs/${id}`),
 };
 
 /** Admin user-list row — the core account fields surfaced in the admin users table. */

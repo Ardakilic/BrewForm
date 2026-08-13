@@ -7,10 +7,11 @@
  * existence checks for tables without them. Invoked on first container boot (when the users table is
  * empty) and via `make db-seed`.
  */
-import { and, eq, ilike, isNull } from 'drizzle-orm';
+import { and, count, eq, ilike, inArray, isNull } from 'drizzle-orm';
 import {
   badges,
   beans,
+  brewLogs,
   brewMethodEnum,
   brewMethodEquipmentRules,
   coffeeVarieties,
@@ -927,6 +928,112 @@ async function seedCollections(
   }
 }
 
+/**
+ * Seed brew logs for demo users idempotently.
+ *
+ * The `brew_log` table has no unique constraint, so duplicates are avoided
+ * by counting existing rows owned by the seeded users before inserting.
+ * Inserts a handful of logs with varied brew dates (some recent, some
+ * older), actuals, notes, and ratings, leaving one log unrated so the
+ * null-average case exists in dev data.
+ *
+ * @param tx              - The transaction client.
+ * @param createdUsers    - Map of username → user row from `seedUsers`.
+ * @param createdRecipes  - Map of slug → recipe row from `seedRecipes`.
+ * @param createdVersions - Map of slug → recipe_version row from `seedRecipes`.
+ */
+async function seedBrewLogs(
+  tx: SeedTX,
+  createdUsers: Record<string, typeof users.$inferSelect>,
+  createdRecipes: Record<string, typeof recipes.$inferSelect>,
+  createdVersions: Record<string, typeof recipeVersions.$inferSelect>,
+) {
+  const userIds = Object.values(createdUsers).map((u) => u.id);
+  const [{ value: existing }] = await tx.select({ value: count() }).from(brewLogs).where(
+    inArray(brewLogs.userId, userIds),
+  );
+  if (existing > 0) return;
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const daysAgo = (n: number) => new Date(Date.now() - n * dayMs);
+
+  const defs: {
+    user: string;
+    recipe: string;
+    withVersion?: boolean;
+    brewedDaysAgo: number;
+    yieldActual: number;
+    doseActual: number;
+    notes: string;
+    personalRating: number | null;
+  }[] = [
+    {
+      user: 'alice',
+      recipe: 'alices-signature-espresso',
+      withVersion: true,
+      brewedDaysAgo: 3,
+      yieldActual: 38.5,
+      doseActual: 18.2,
+      notes: 'Dialed in nicely this morning; sweet syrupy body with a hint of orange.',
+      personalRating: 9,
+    },
+    {
+      user: 'alice',
+      recipe: 'bobs-morning-v60',
+      brewedDaysAgo: 12,
+      yieldActual: 260,
+      doseActual: 15.5,
+      notes: "Tried Bob's V60 recipe on my Hario. Slightly sour, will grind finer next time.",
+      personalRating: 7,
+    },
+    {
+      user: 'bob',
+      recipe: 'bobs-morning-v60',
+      withVersion: true,
+      brewedDaysAgo: 45,
+      yieldActual: 255,
+      doseActual: 15,
+      notes: 'Repeat brew of the house recipe. Consistent as always.',
+      personalRating: null,
+    },
+    {
+      user: 'charlie',
+      recipe: 'charlies-french-press-classic',
+      brewedDaysAgo: 90,
+      yieldActual: 500,
+      doseActual: 30,
+      notes: 'Steeped a minute too long; noticeably bitter.',
+      personalRating: 5,
+    },
+    {
+      user: 'diana',
+      recipe: 'dianas-turkish-delight',
+      brewedDaysAgo: 20,
+      yieldActual: 70,
+      doseActual: 7.5,
+      notes: 'Perfect foam on top. Served with lokum.',
+      personalRating: 8,
+    },
+  ];
+
+  for (const def of defs) {
+    const userId = createdUsers[def.user]?.id;
+    const recipeId = createdRecipes[def.recipe]?.id;
+    if (!userId || !recipeId) continue;
+
+    await tx.insert(brewLogs).values({
+      userId,
+      recipeId,
+      recipeVersionId: def.withVersion ? createdVersions[def.recipe]?.id ?? null : null,
+      brewedAt: daysAgo(def.brewedDaysAgo),
+      yieldActual: def.yieldActual,
+      doseActual: def.doseActual,
+      notes: def.notes,
+      personalRating: def.personalRating,
+    });
+  }
+}
+
 /** Seed entrypoint: provisions all demo data inside a single transaction. */
 export async function main() {
   const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
@@ -964,6 +1071,7 @@ export async function main() {
     await seedTasteNotes(tx, scaaData.data);
     await seedRecipeTasteNotes(tx, createdVersions);
     await seedCollections(tx, createdUsers, createdRecipes, createdVersions);
+    await seedBrewLogs(tx, createdUsers, createdRecipes, createdVersions);
   });
 
   console.log('Seeding complete!');

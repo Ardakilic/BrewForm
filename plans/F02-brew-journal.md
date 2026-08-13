@@ -1,5 +1,10 @@
 # F02 — Brew Journal / "Brew Again" Workflow
 
+> ✅ Shipped via OpenSpec change `f02-brew-journal` (2026-08-13).
+> Implemented per the OpenSpec proposal/design/specs: `brew_log` table with composite indexes and `updatedAt`, owner-private CRUD (8 routes incl. an owner-scoped single get added during implementation), dedicated user/recipe stats endpoints (`brewCount`/`avgBrewRating`, distinct from the community `avgRating`), full OpenAPI documentation, i18n parity, and web journal pages + recipe-page brew stats/history.
+>
+> **Note:** The body below this line is the original pre-implementation draft plan (with its 2026-07-13 and 2026-08-13 validation banners), kept as historical context. Where it differs from what shipped (single-column indexes, optional auth on the per-recipe log list, no `GET /brew-logs/:id`, five web components), the OpenSpec change `f02-brew-journal` design and specs are the shipped contract — see `openspec/specs/brew-journal/`.
+>
 > **Validation status (2026-08-13): refreshed — corrections below (core design valid, net-new scope confirmed)**
 >
 > **Note:** The body below this line (including the 2026-07-13 banner) is the pre-refresh draft; treat the corrections below as authoritative. Verified against the codebase as of 2026-08-13.
