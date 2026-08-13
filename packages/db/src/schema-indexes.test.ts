@@ -389,10 +389,10 @@ describe('Brew logs table indexes', () => {
     expect(idx!.isUnique).toBe(false);
   });
 
-  it('has brew_log_recipe_brewed_idx on (recipeId, brewedAt)', () => {
+  it('has brew_log_recipe_brewed_idx on (recipeId, userId, brewedAt)', () => {
     const idx = indexes.find((i) => i.name === 'brew_log_recipe_brewed_idx');
     expect(idx).toBeDefined();
-    expect(idx!.columns).toEqual(['recipe_id', 'brewed_at']);
+    expect(idx!.columns).toEqual(['recipe_id', 'user_id', 'brewed_at']);
     expect(idx!.isUnique).toBe(false);
   });
 

@@ -1,7 +1,13 @@
 # brew-journal Specification
 
 ## Purpose
-TBD - created by archiving change f02-brew-journal. Update Purpose after archive.
+
+Owner-private brew event logging ("brew journal"): users record each time they brew a recipe with
+actual measurements (yield, dose), free-text notes, and a 1–10 personal rating. Brew logs are
+soft-deletable and visible only to their owner. Aggregate stats are computed per user (own,
+authenticated) and per recipe (public). A "Brew Again" flow on the recipe detail page pre-fills
+the log form from the recipe's current version.
+
 ## Requirements
 ### Requirement: Database table for brew logs
 
@@ -28,7 +34,7 @@ export const brewLogs = pgTable(
   },
   (table) => [
     index('brew_log_user_brewed_idx').on(table.userId, table.brewedAt),
-    index('brew_log_recipe_brewed_idx').on(table.recipeId, table.brewedAt),
+    index('brew_log_recipe_brewed_idx').on(table.recipeId, table.userId, table.brewedAt),
     index('brew_log_deleted_at_idx').on(table.deletedAt),
     check('brew_log_personal_rating_check', sql`${table.personalRating} BETWEEN 1 AND 10`),
     check('brew_log_yield_actual_check', sql`${table.yieldActual} > 0`),
@@ -56,7 +62,7 @@ query filters by it).
 - **WHEN** `make test-specific filter=schema-indexes.test.ts`,
   `filter=schema-columns.test.ts`, and `filter=schema-constraints.test.ts` run
 - **THEN** assertions for `brew_log_user_brewed_idx` (columns `['user_id','brewed_at']`),
-  `brew_log_recipe_brewed_idx` (columns `['recipe_id','brewed_at']`), and
+  `brew_log_recipe_brewed_idx` (columns `['recipe_id','user_id','brewed_at']`), and
   `brew_log_deleted_at_idx` pass
 - **AND** `brewLogs.createdAt`/`updatedAt` are asserted defined, `notNull`, with default
   expressions, and `deletedAt` nullable
@@ -156,11 +162,14 @@ be re-exported from `packages/shared/src/schemas/responses/index.ts` and the sch
 
 The system SHALL add `apps/api/src/modules/brew-log/model.ts` containing pure Drizzle data-access
 functions (no business logic). All read queries SHALL filter `isNull(brewLogs.deletedAt)`.
-Functions: `findById(id)`, `findByUserId(userId, page, perPage)` returning
+Functions: `findById(id)` (which SHALL also exclude logs whose recipe is soft-deleted),
+`findByUserId(userId, page, perPage)` returning
 `{ brewLogs, total }` ordered `brewedAt DESC` with joined recipe title/slug,
 `findByRecipeIdAndUser(recipeId, userId, page, perPage)` with the same shape,
-`create(data: typeof brewLogs.$inferInsert)`, `update(id, data)` (which SHALL set
-`updatedAt: new Date()`), `softDelete(id)` (sets `deletedAt`), `getRecipeBrewStats(recipeId)`
+`create(data: typeof brewLogs.$inferInsert)`, `update(id, userId, data)` (which SHALL set
+`updatedAt: new Date()` and apply the owner + active-row predicates in the UPDATE itself),
+`softDelete(id, userId)` (sets `deletedAt`, same atomic predicates),
+`getRecipeBrewStats(recipeId)`
 (count + average of non-null `personalRating`), and `getUserBrewStats(userId)` (total, last-30-days
 count, distinct recipe count, first/last `brewedAt`). List queries SHALL join `recipes` and filter
 `isNull(recipes.deletedAt)`. Stats SHALL exclude brews of soft-deleted recipes.
@@ -172,8 +181,10 @@ count, distinct recipe count, first/last `brewedAt`). List queries SHALL join `r
 
 #### Scenario: Logs of soft-deleted recipes are excluded
 
-- **WHEN** the recipe of a brew log is soft-deleted and `findByUserId` or `getRecipeBrewStats` runs
-- **THEN** that brew log is absent from the list and excluded from `brewCount`/`avgBrewRating`
+- **WHEN** the recipe of a brew log is soft-deleted and `findByUserId`, `findById`, or
+  `getRecipeBrewStats` runs
+- **THEN** that brew log is absent from the list, not returned by `findById`, and excluded from
+  `brewCount`/`avgBrewRating`
 
 ---
 
@@ -224,6 +235,11 @@ proxy pattern, `zValidator(..., zodValidationHook)`, and the shared response hel
   log; maps `'BREW_LOG_NOT_FOUND'` → 404.
 - `DELETE /brew-logs/:id` (auth required) — soft-deletes, returns `success`; maps
   `'BREW_LOG_NOT_FOUND'` → 404.
+
+All five routes that accept an `:id` or `:recipeId` path parameter SHALL validate it as a UUID via
+`zValidator('param', ...)` with the shared `UuidSchema` before invoking the service, returning a
+400 validation error for malformed input; the corresponding OpenAPI path parameters SHALL be
+documented as UUID-formatted strings.
 
 #### Scenario: Authenticated user creates a brew log
 

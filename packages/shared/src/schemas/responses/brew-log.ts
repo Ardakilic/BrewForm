@@ -45,10 +45,11 @@ export const UserBrewStatsOutputSchema = z.object({
 export type UserBrewStatsOutput = z.infer<typeof UserBrewStatsOutputSchema>;
 
 /**
- * Per-recipe brew statistics for the owner's brew journal.
+ * Per-recipe brew statistics — PUBLIC aggregates across ALL users' brew logs.
  *
- * `brewCount` and `avgBrewRating` are the owner's PRIVATE brew-log metrics and
- * are DISTINCT from the community `avgRating` metric on
+ * `brewCount` and `avgBrewRating` aggregate every user's non-deleted brews of
+ * the recipe (individual brew logs and their ratings remain owner-private).
+ * They are DISTINCT from the community `avgRating` metric on
  * {@link RecipeDetailOutputSchema} — never conflate the two.
  */
 export const RecipeBrewStatsOutputSchema = z.object({

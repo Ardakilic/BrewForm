@@ -66,12 +66,16 @@ async function list(
 }
 
 /**
- * Fetch a single brew log by UUID, excluding soft-deleted rows.
+ * Fetch a single brew log by UUID, excluding soft-deleted rows and logs whose
+ * recipe has been soft-deleted.
  */
-export function findById(id: string) {
-  return db.query.brewLogs.findFirst({
-    where: and(eq(brewLogs.id, id), isNull(brewLogs.deletedAt)),
-  });
+export async function findById(id: string) {
+  const [row] = await db
+    .select({ log: brewLogs })
+    .from(brewLogs)
+    .innerJoin(recipes, and(eq(brewLogs.recipeId, recipes.id), isNull(recipes.deletedAt)))
+    .where(and(eq(brewLogs.id, id), isNull(brewLogs.deletedAt)));
+  return row?.log;
 }
 
 /**
@@ -120,22 +124,36 @@ export async function create(data: typeof brewLogs.$inferInsert) {
   return row;
 }
 
-/** Patch a brew log row with partial data. Returns the updated row or null. */
-export async function update(id: string, data: Partial<typeof brewLogs.$inferInsert>) {
+/**
+ * Patch an active brew log owned by `userId` with partial data. Ownership and
+ * active-row predicates are applied in the UPDATE itself (atomic — no separate
+ * read-then-write). Returns the updated row, or null when no matching active
+ * row exists.
+ */
+export async function update(
+  id: string,
+  userId: string,
+  data: Partial<typeof brewLogs.$inferInsert>,
+) {
   const [row] = await db
     .update(brewLogs)
     .set({ ...data, updatedAt: new Date() })
-    .where(and(eq(brewLogs.id, id), isNull(brewLogs.deletedAt)))
+    .where(and(eq(brewLogs.id, id), eq(brewLogs.userId, userId), isNull(brewLogs.deletedAt)))
     .returning();
   return row ?? null;
 }
 
-/** Soft-delete a brew log by setting deletedAt. Returns the updated row or null. */
-export async function softDelete(id: string) {
+/**
+ * Soft-delete an active brew log owned by `userId` by setting deletedAt.
+ * Ownership and active-row predicates are applied in the UPDATE itself
+ * (atomic). Returns the updated row, or null when no matching active row
+ * exists.
+ */
+export async function softDelete(id: string, userId: string) {
   const [row] = await db
     .update(brewLogs)
     .set({ deletedAt: new Date() })
-    .where(and(eq(brewLogs.id, id), isNull(brewLogs.deletedAt)))
+    .where(and(eq(brewLogs.id, id), eq(brewLogs.userId, userId), isNull(brewLogs.deletedAt)))
     .returning();
   return row ?? null;
 }

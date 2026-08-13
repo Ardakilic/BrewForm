@@ -972,7 +972,7 @@ export const brewLogs = pgTable(
   },
   (table) => [
     index('brew_log_user_brewed_idx').on(table.userId, table.brewedAt),
-    index('brew_log_recipe_brewed_idx').on(table.recipeId, table.brewedAt),
+    index('brew_log_recipe_brewed_idx').on(table.recipeId, table.userId, table.brewedAt),
     index('brew_log_deleted_at_idx').on(table.deletedAt),
     check('brew_log_personal_rating_check', sql`${table.personalRating} BETWEEN 1 AND 10`),
     check('brew_log_yield_actual_check', sql`${table.yieldActual} > 0`),

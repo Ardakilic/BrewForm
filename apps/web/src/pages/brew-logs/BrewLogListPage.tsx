@@ -19,12 +19,15 @@ export interface BrewLogListLoaderData {
 /**
  * React Router data loader for `/brew-logs` — fetches the authenticated
  * user's brew journal for the requested `?page` (newest first, paginated).
+ * Only positive finite integers are accepted as a page; anything else
+ * (negative, fractional, infinite, zero, missing, non-numeric) defaults to 1.
  * Redirects to `/login` on a 401.
  */
 export const loader = async (
   { request }: { request: Request },
 ): Promise<BrewLogListLoaderData> => {
-  const page = Number(new URL(request.url).searchParams.get('page')) || 1;
+  const rawPage = Number(new URL(request.url).searchParams.get('page'));
+  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
   log.debug({ page }, 'BrewLogListPage loader started');
   try {
     const logsResponse = await brewLogApi.list({ page });

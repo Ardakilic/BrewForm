@@ -19,6 +19,7 @@ import { db } from '@brewform/db';
 import { brewLogs, recipes, recipeVersions, users } from '@brewform/db/schema';
 import { inArray } from 'drizzle-orm';
 import brewLogRouter, { deps } from './index.ts';
+import { createBrewLogRow, createRecipe, createUser } from './test-helpers.ts';
 
 const stubAuth = async (_c: Context, next: Next): Promise<undefined> => {
   await next();
@@ -64,33 +65,6 @@ function createUnauthorizedApp() {
   return app;
 }
 
-async function createUser(prefix: string) {
-  const id = crypto.randomUUID();
-  const [user] = await db.insert(users).values({
-    id,
-    email: `${prefix}-${id}@example.com`,
-    username: `${prefix}-${id.slice(0, 8)}`,
-    passwordHash: 'hash',
-  }).returning();
-  return user;
-}
-
-async function createRecipe(
-  authorId: string,
-  visibility: 'draft' | 'private' | 'unlisted' | 'public' = 'public',
-) {
-  const id = crypto.randomUUID();
-  const [recipe] = await db.insert(recipes).values({
-    id,
-    slug: `slug-${id.slice(0, 8)}`,
-    title: `Recipe ${id.slice(0, 4)}`,
-    authorId,
-    visibility,
-    createdAt: new Date(),
-  }).returning();
-  return recipe;
-}
-
 async function createRecipeVersion(recipeId: string) {
   const [version] = await db.insert(recipeVersions).values({
     recipeId,
@@ -102,15 +76,7 @@ async function createRecipeVersion(recipeId: string) {
   return version;
 }
 
-async function createBrewLogRow(
-  userId: string,
-  recipeId: string,
-  overrides: Partial<typeof brewLogs.$inferInsert> = {},
-) {
-  const [row] = await db.insert(brewLogs).values({ userId, recipeId, ...overrides }).returning();
-  return row;
-}
-
+/** Cascade cleanup for router tests: a user's brew logs, owned recipes/versions, then the user. */
 async function cleanupUsers(userIds: string[]) {
   if (userIds.length === 0) return;
   await db.delete(brewLogs).where(inArray(brewLogs.userId, userIds));
@@ -666,6 +632,35 @@ describe(
       expect(res.status).toBe(404);
       expect(body.success).toBe(false);
       expect(body.error.code).toBe('NOT_FOUND');
+    });
+  },
+);
+
+describe(
+  {
+    name: 'brew-log routes — UUID path param validation',
+    sanitizeResources: false,
+    sanitizeOps: false,
+  },
+  () => {
+    afterAll(() => {
+      deps.authMiddleware = originalAuthMiddleware;
+      deps.optionalAuthMiddleware = originalOptionalAuthMiddleware;
+    });
+
+    it('rejects malformed :id and :recipeId params with 400', async () => {
+      const app = createTestApp(crypto.randomUUID());
+      const cases: Array<[string, string]> = [
+        ['GET', '/api/v1/brew-logs/not-a-uuid'],
+        ['GET', '/api/v1/brew-logs/recipe/not-a-uuid'],
+        ['GET', '/api/v1/brew-logs/stats/recipe/not-a-uuid'],
+        ['PATCH', '/api/v1/brew-logs/not-a-uuid'],
+        ['DELETE', '/api/v1/brew-logs/not-a-uuid'],
+      ];
+      for (const [method, path] of cases) {
+        const res = await app.request(path, { method });
+        expect(res.status).toBe(400);
+      }
     });
   },
 );

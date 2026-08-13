@@ -28,7 +28,7 @@ F03 (profile stats), F20, F25's offline brew-log sync, and F28's guided-brew com
 - **New API module** `apps/api/src/modules/brew-log/` following the 3-layer pattern: `model.ts`
   (pure Drizzle data-access, `isNull(deletedAt)` everywhere) → `service.ts` (ownership checks,
   recipe/version existence validation, structured logging, string-error throws) → `index.ts`
-  (7 Hono routes, each with `describeRoute()` OpenAPI metadata, `zValidator`, `zodValidationHook`).
+  (8 Hono routes, each with `describeRoute()` OpenAPI metadata, `zValidator`, `zodValidationHook`).
 - **Route registration** in `apps/api/src/routes/index.ts`: `routes.route('/api/v1/brew-logs', brewLog)`.
 - **New `Brew Logs` OpenAPI tag** registered in `apps/api/src/routes/openapi.ts`; `/api/v1/brew-logs`
   added to `IN_SCOPE_BASE_PATHS` in `openapi.coverage.test.ts`.

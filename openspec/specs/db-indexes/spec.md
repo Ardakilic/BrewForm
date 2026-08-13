@@ -341,7 +341,7 @@ third-argument extra configurator array:
 | # | Index Name | Columns | Drizzle Syntax |
 |---|-----------|---------|---------------|
 | 1 | `brew_log_user_brewed_idx` | `(userId, brewedAt)` | `index('brew_log_user_brewed_idx').on(table.userId, table.brewedAt)` |
-| 2 | `brew_log_recipe_brewed_idx` | `(recipeId, brewedAt)` | `index('brew_log_recipe_brewed_idx').on(table.recipeId, table.brewedAt)` |
+| 2 | `brew_log_recipe_brewed_idx` | `(recipeId, userId, brewedAt)` | `index('brew_log_recipe_brewed_idx').on(table.recipeId, table.userId, table.brewedAt)` |
 | 3 | `brew_log_deleted_at_idx` | `(deletedAt)` | `index('brew_log_deleted_at_idx').on(table.deletedAt)` |
 
 No index SHALL be added on `recipeVersionId` because no query filters by it.
@@ -356,13 +356,14 @@ No index SHALL be added on `recipeVersionId` because no query filters by it.
 
 - **WHEN** `findByRecipeIdAndUser` executes
   `WHERE recipe_id = ? AND user_id = ? AND deleted_at IS NULL ORDER BY brewed_at DESC`
-- **THEN** PostgreSQL SHALL be able to use `brew_log_recipe_brewed_idx` for an index seek on
-  `recipe_id` with a `user_id` filter and presorted `brewed_at` output
+- **THEN** PostgreSQL SHALL be able to use `brew_log_recipe_brewed_idx` for an exact index seek
+  on `(recipe_id, user_id)` followed by a presorted scan on `brewed_at` without a separate sort
+  step or per-row `user_id` filter
 
 #### Scenario: Index assertions pass
 
 - **WHEN** `make test-specific filter=schema-indexes.test.ts` runs
 - **THEN** assertions for `brew_log_user_brewed_idx` (columns `['user_id','brewed_at']`,
-  `isUnique: false`), `brew_log_recipe_brewed_idx` (columns `['recipe_id','brewed_at']`,
+  `isUnique: false`), `brew_log_recipe_brewed_idx` (columns `['recipe_id','user_id','brewed_at']`,
   `isUnique: false`), and `brew_log_deleted_at_idx` pass
 

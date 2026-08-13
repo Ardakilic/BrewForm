@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute, resolver } from 'hono-openapi';
 import {
   BrewLogCreateSchema,
   BrewLogUpdateSchema,
   PaginationSchema,
+  UuidSchema,
 } from '@brewform/shared/schemas';
 import {
   BrewLogListItemOutputSchema,
@@ -38,6 +40,12 @@ function optionalAuthGuard(c: Context<AppEnv>, next: Next) {
 
 /** Hono sub-router for brew-log endpoints, mounted at `/api/v1/brew-logs`. */
 const brewLog = new Hono<AppEnv>();
+
+/** Validates a `:recipeId` path param as a UUID (400 on malformed input). */
+const recipeIdParam = zValidator('param', z.object({ recipeId: UuidSchema }), zodValidationHook);
+
+/** Validates an `:id` path param as a UUID (400 on malformed input). */
+const idParam = zValidator('param', z.object({ id: UuidSchema }), zodValidationHook);
 
 // GET / — List my brew logs
 brewLog.get(
@@ -128,9 +136,14 @@ brewLog.get(
     tags: ['Brew Logs'],
     summary: 'Get recipe brew stats',
     description:
-      "Aggregate brew stats for one recipe: brew count and average personal rating from the owner's brew logs. Public — no authentication required.",
+      "Aggregate brew stats for one recipe: brew count and average personal rating across all users' brew logs. Public — no authentication required.",
     parameters: [
-      { name: 'recipeId', in: 'path', required: true, schema: { type: 'string' } },
+      {
+        name: 'recipeId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
     ],
     responses: {
       200: {
@@ -139,9 +152,14 @@ brewLog.get(
           'application/json': { schema: resolver(successEnvelope(RecipeBrewStatsOutputSchema)) },
         },
       },
+      400: {
+        description: 'Validation error',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
+      },
     },
   }),
   optionalAuthGuard,
+  recipeIdParam,
   async (c) => {
     const recipeId = c.req.param('recipeId')!;
     const stats = await service.getRecipeBrewStats(recipeId);
@@ -159,7 +177,12 @@ brewLog.get(
       "Paginated list of the authenticated user's brew logs for one recipe, newest brews first.",
     security: [{ bearerAuth: [] }],
     parameters: [
-      { name: 'recipeId', in: 'path', required: true, schema: { type: 'string' } },
+      {
+        name: 'recipeId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
       { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } },
       {
         name: 'perPage',
@@ -188,6 +211,7 @@ brewLog.get(
     },
   }),
   authGuard,
+  recipeIdParam,
   zValidator('query', PaginationSchema, zodValidationHook),
   async (c) => {
     const userId = c.get('userId') as string;
@@ -263,7 +287,7 @@ brewLog.get(
       'Fetch a single brew log by id. Only the owner can read it; a missing or foreign log returns 404.',
     security: [{ bearerAuth: [] }],
     parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+      { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
     ],
     responses: {
       200: {
@@ -271,6 +295,10 @@ brewLog.get(
         content: {
           'application/json': { schema: resolver(successEnvelope(BrewLogOutputSchema)) },
         },
+      },
+      400: {
+        description: 'Validation error',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       401: {
         description: 'Unauthorized',
@@ -283,6 +311,7 @@ brewLog.get(
     },
   }),
   authGuard,
+  idParam,
   async (c) => {
     const id = c.req.param('id')!;
     const userId = c.get('userId') as string;
@@ -309,7 +338,7 @@ brewLog.patch(
       "Update a brew log's brewedAt, yieldActual, doseActual, notes, or personalRating. Only the owner can update; explicit nulls clear fields.",
     security: [{ bearerAuth: [] }],
     parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+      { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
     ],
     requestBody: jsonRequestBody(BrewLogUpdateSchema),
     responses: {
@@ -334,6 +363,7 @@ brewLog.patch(
     },
   }),
   authGuard,
+  idParam,
   zValidator('json', BrewLogUpdateSchema, zodValidationHook),
   async (c) => {
     const id = c.req.param('id')!;
@@ -361,7 +391,7 @@ brewLog.delete(
     description: 'Soft-delete a brew log. Only the owner can delete.',
     security: [{ bearerAuth: [] }],
     parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+      { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
     ],
     responses: {
       200: {
@@ -369,6 +399,10 @@ brewLog.delete(
         content: {
           'application/json': { schema: resolver(successEnvelope(MessageResponseSchema)) },
         },
+      },
+      400: {
+        description: 'Validation error',
+        content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       401: {
         description: 'Unauthorized',
@@ -381,6 +415,7 @@ brewLog.delete(
     },
   }),
   authGuard,
+  idParam,
   async (c) => {
     const id = c.req.param('id')!;
     const userId = c.get('userId') as string;

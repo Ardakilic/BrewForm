@@ -10,66 +10,18 @@ import '../../test-setup.ts';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
 import { expect } from 'jsr:@std/expect';
 import { db } from '@brewform/db';
-import { brewLogs, recipes, users } from '@brewform/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { recipes, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
 import * as model from './model.ts';
-
-async function createUser(prefix: string) {
-  const id = crypto.randomUUID();
-  const [user] = await db.insert(users).values({
-    id,
-    email: `${prefix}-${id}@example.com`,
-    username: `${prefix}-${id.slice(0, 8)}`,
-    passwordHash: 'hash',
-  }).returning();
-  return user;
-}
-
-async function createRecipe(
-  authorId: string,
-  visibility: 'private' | 'public' | 'draft' | 'unlisted' = 'public',
-) {
-  const id = crypto.randomUUID();
-  const [recipe] = await db.insert(recipes).values({
-    id,
-    slug: `slug-${id.slice(0, 8)}`,
-    title: `Recipe ${id.slice(0, 4)}`,
-    authorId,
-    visibility,
-    createdAt: new Date(),
-  }).returning();
-  return recipe;
-}
-
-async function createBrewLogRow(
-  userId: string,
-  recipeId: string,
-  overrides: Partial<typeof brewLogs.$inferInsert> = {},
-) {
-  const [row] = await db.insert(brewLogs).values({
-    userId,
-    recipeId,
-    ...overrides,
-  }).returning();
-  return row;
-}
-
-async function cleanupBrewLogs(userIds: string[], recipeIds: string[]) {
-  if (userIds.length) await db.delete(brewLogs).where(inArray(brewLogs.userId, userIds));
-  if (recipeIds.length) await db.delete(brewLogs).where(inArray(brewLogs.recipeId, recipeIds));
-}
-
-async function cleanupRecipes(recipeIds: string[]) {
-  if (recipeIds.length === 0) return;
-  await db.delete(recipes).where(inArray(recipes.id, recipeIds));
-}
-
-async function cleanupUsers(userIds: string[]) {
-  if (userIds.length === 0) return;
-  await db.delete(users).where(inArray(users.id, userIds));
-}
-
-const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+import {
+  cleanupBrewLogs,
+  cleanupRecipes,
+  cleanupUsers,
+  createBrewLogRow,
+  createRecipe,
+  createUser,
+  daysAgo,
+} from './test-helpers.ts';
 
 describe(
   { name: 'brew-log model — create/findById', sanitizeResources: false, sanitizeOps: false },
@@ -117,7 +69,7 @@ describe(
     it('findById excludes soft-deleted logs', async () => {
       const row = await model.create({ userId: user.id, recipeId: recipe.id });
       logIds.push(row.id);
-      await model.softDelete(row.id);
+      await model.softDelete(row.id, user.id);
       const found = await model.findById(row.id);
       expect(found).toBeUndefined();
     });
@@ -177,7 +129,7 @@ describe(
       recipe = await createRecipe(user.id);
       await createBrewLogRow(user.id, recipe.id, { notes: 'kept' });
       const doomed = await createBrewLogRow(user.id, recipe.id, { notes: 'doomed' });
-      await model.softDelete(doomed.id);
+      await model.softDelete(doomed.id, user.id);
     });
 
     afterAll(async () => {
@@ -205,13 +157,18 @@ describe(
     let user: typeof users.$inferSelect;
     let alive: typeof recipes.$inferSelect;
     let dead: typeof recipes.$inferSelect;
+    let hiddenLogId: string;
 
     beforeAll(async () => {
       user = await createUser('bl-deadrecipe');
       alive = await createRecipe(user.id);
       dead = await createRecipe(user.id);
       await createBrewLogRow(user.id, alive.id, { notes: 'visible' });
-      await createBrewLogRow(user.id, dead.id, { notes: 'hidden', personalRating: 7 });
+      const hidden = await createBrewLogRow(user.id, dead.id, {
+        notes: 'hidden',
+        personalRating: 7,
+      });
+      hiddenLogId = hidden.id;
       await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, dead.id));
     });
 
@@ -231,6 +188,11 @@ describe(
       const stats = await model.getRecipeBrewStats(dead.id);
       expect(stats.brewCount).toBe(0);
       expect(stats.avgBrewRating).toBeNull();
+    });
+
+    it('excludes logs of soft-deleted recipes from findById', async () => {
+      const found = await model.findById(hiddenLogId);
+      expect(found).toBeUndefined();
     });
   },
 );

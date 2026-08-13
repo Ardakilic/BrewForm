@@ -33,7 +33,7 @@ export const brewLogs = pgTable(
   },
   (table) => [
     index('brew_log_user_brewed_idx').on(table.userId, table.brewedAt),
-    index('brew_log_recipe_brewed_idx').on(table.recipeId, table.brewedAt),
+    index('brew_log_recipe_brewed_idx').on(table.recipeId, table.userId, table.brewedAt),
     index('brew_log_deleted_at_idx').on(table.deletedAt),
     check('brew_log_personal_rating_check', sql`${table.personalRating} BETWEEN 1 AND 10`),
     check('brew_log_yield_actual_check', sql`${table.yieldActual} > 0`),
@@ -61,7 +61,7 @@ query filters by it).
 - **WHEN** `make test-specific filter=schema-indexes.test.ts`,
   `filter=schema-columns.test.ts`, and `filter=schema-constraints.test.ts` run
 - **THEN** assertions for `brew_log_user_brewed_idx` (columns `['user_id','brewed_at']`),
-  `brew_log_recipe_brewed_idx` (columns `['recipe_id','brewed_at']`), and
+  `brew_log_recipe_brewed_idx` (columns `['recipe_id','user_id','brewed_at']`), and
   `brew_log_deleted_at_idx` pass
 - **AND** `brewLogs.createdAt`/`updatedAt` are asserted defined, `notNull`, with default
   expressions, and `deletedAt` nullable

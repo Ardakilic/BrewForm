@@ -169,3 +169,25 @@ describe('BrewLogListPage', () => {
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
   });
 });
+
+describe('BrewLogListPage — loader page parsing', () => {
+  it('defaults negative, fractional, infinite, zero, and non-numeric pages to 1', async () => {
+    for (const bad of ['-2', '1.5', 'Infinity', '0', 'abc']) {
+      mockList.mockClear();
+      await loader({ request: new Request(`http://localhost/brew-logs?page=${bad}`) });
+      expect(mockList).toHaveBeenCalledWith({ page: 1 });
+    }
+  });
+
+  it('defaults a missing page param to 1', async () => {
+    mockList.mockClear();
+    await loader({ request: new Request('http://localhost/brew-logs') });
+    expect(mockList).toHaveBeenCalledWith({ page: 1 });
+  });
+
+  it('passes a valid positive integer page through', async () => {
+    mockList.mockClear();
+    await loader({ request: new Request('http://localhost/brew-logs?page=4') });
+    expect(mockList).toHaveBeenCalledWith({ page: 4 });
+  });
+});

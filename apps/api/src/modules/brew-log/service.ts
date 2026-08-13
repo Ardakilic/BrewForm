@@ -86,12 +86,11 @@ export async function getBrewLog(userId: string, id: string) {
 export async function updateBrewLog(userId: string, id: string, data: BrewLogUpdate) {
   logger.debug({ userId, id }, 'updateBrewLog started');
   try {
-    const log = await model.findById(id);
-    if (!log || log.userId !== userId) throw new Error('BREW_LOG_NOT_FOUND');
-    const updated = await model.update(id, {
+    const updated = await model.update(id, userId, {
       ...data,
       brewedAt: data.brewedAt !== undefined ? new Date(data.brewedAt) : undefined,
     });
+    if (!updated) throw new Error('BREW_LOG_NOT_FOUND');
     logger.debug({ userId, id }, 'updateBrewLog completed');
     return updated;
   } catch (err) {
@@ -112,9 +111,8 @@ export async function updateBrewLog(userId: string, id: string, data: BrewLogUpd
 export async function deleteBrewLog(userId: string, id: string) {
   logger.debug({ userId, id }, 'deleteBrewLog started');
   try {
-    const log = await model.findById(id);
-    if (!log || log.userId !== userId) throw new Error('BREW_LOG_NOT_FOUND');
-    const deleted = await model.softDelete(id);
+    const deleted = await model.softDelete(id, userId);
+    if (!deleted) throw new Error('BREW_LOG_NOT_FOUND');
     logger.debug({ userId, id }, 'deleteBrewLog completed');
     return deleted;
   } catch (err) {

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { redirect, useLoaderData, useNavigate } from 'react-router';
-import { brewLogApi, recipeApi } from '../../api/index.ts';
+import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
 import type {
   BrewLogCreate,
   BrewLogOutput,
@@ -29,8 +29,8 @@ export interface BrewLogFormLoaderData {
  * React Router data loader for `/brew-logs/new` and `/brew-logs/:id/edit`.
  * Create mode requires `?recipeId` (redirects to `/brew-logs` without it) and
  * fetches the recipe to prefill dose/yield from the version. Edit mode fetches
- * the existing log (the API rejects non-owners with 404) and redirects to
- * `/brew-logs` when it is missing.
+ * the existing log (the API rejects non-owners with 404); a 401/404 ApiError
+ * redirects to `/brew-logs`, any other error propagates to the error boundary.
  */
 export const loader = async (
   { params, request }: { params: Record<string, string | undefined>; request: Request },
@@ -42,8 +42,15 @@ export const loader = async (
       log.debug({ logId: params.id }, 'BrewLogFormPage edit loader completed');
       return { mode: 'edit', logId: params.id, editLog };
     } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 404)) {
+        log.debug(
+          { logId: params.id, status: err.status },
+          'BrewLogFormPage edit loader redirecting',
+        );
+        throw redirect('/brew-logs');
+      }
       log.error({ err, logId: params.id }, 'BrewLogFormPage edit loader failed');
-      throw redirect('/brew-logs');
+      throw err;
     }
   }
   const url = new URL(request.url);
@@ -144,6 +151,7 @@ export function BrewLogFormPage() {
         {mode === 'edit' ? t('brewLog.form.titleEdit') : t('brewLog.form.titleCreate')}
       </h1>
       <BrewLogForm
+        key={mode === 'edit' ? logId : `new-${recipeId}`}
         initialValues={initialValues}
         onSubmit={handleSubmit}
         submitLabel={mode === 'edit'

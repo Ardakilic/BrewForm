@@ -11,8 +11,9 @@ vi.mock('../../api/index.ts', () => ({
   recipeApi: { get: vi.fn() },
   ApiError: class extends Error {
     status: number;
-    constructor(status: number) {
-      super('api error');
+    constructor(code: string, message: string, _details?: unknown, status: number = 500) {
+      super(message);
+      this.name = code;
       this.status = status;
     }
   },
@@ -36,7 +37,7 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { brewLogApi, recipeApi } from '../../api/index.ts';
+import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
 import type { BrewLogOutput, RecipeDetailOutput } from '@brewform/shared/schemas';
 import { ToastProvider } from '../../components/ui/Toast.tsx';
 import { BrewLogFormPage, loader } from './BrewLogFormPage.tsx';
@@ -172,8 +173,8 @@ describe('BrewLogFormPage — loader', () => {
     expect(mockRecipeGet).not.toHaveBeenCalled();
   });
 
-  it('redirects to /brew-logs when the edit log fetch fails', async () => {
-    mockGetLog.mockRejectedValue(new Error('404'));
+  it('redirects to /brew-logs when the edit log fetch fails with 401/404', async () => {
+    mockGetLog.mockRejectedValue(new ApiError('NOT_FOUND', 'not found', undefined, 404));
 
     await expect(
       loader({
@@ -181,6 +182,18 @@ describe('BrewLogFormPage — loader', () => {
         request: new Request('http://localhost/brew-logs/missing/edit'),
       }),
     ).rejects.toMatchObject({ status: 302 });
+  });
+
+  it('rethrows unexpected edit loader errors for the error boundary', async () => {
+    const boom = new ApiError('INTERNAL', 'server error', undefined, 500);
+    mockGetLog.mockRejectedValue(boom);
+
+    await expect(
+      loader({
+        params: { id: 'bl1' },
+        request: new Request('http://localhost/brew-logs/bl1/edit'),
+      }),
+    ).rejects.toBe(boom);
   });
 });
 
@@ -261,8 +274,8 @@ describe('BrewLogFormPage — edit mode', () => {
     expect(patch.brewedAt).toBeTypeOf('string');
   });
 
-  it('redirects to /brew-logs when the log fetch fails', async () => {
-    mockGetLog.mockRejectedValue(new Error('404'));
+  it('redirects to /brew-logs when the log fetch fails with 404', async () => {
+    mockGetLog.mockRejectedValue(new ApiError('NOT_FOUND', 'not found', undefined, 404));
     renderEditPage();
 
     await waitFor(() => {

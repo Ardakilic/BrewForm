@@ -10,36 +10,16 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'jsr:@s
 import { expect } from 'jsr:@std/expect';
 import { db } from '@brewform/db';
 import { brewLogs, recipes, recipeVersions, users } from '@brewform/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as service from './service.ts';
 import * as model from './model.ts';
-
-async function createUser(prefix: string) {
-  const id = crypto.randomUUID();
-  const [user] = await db.insert(users).values({
-    id,
-    email: `${prefix}-${id}@example.com`,
-    username: `${prefix}-${id.slice(0, 8)}`,
-    passwordHash: 'hash',
-  }).returning();
-  return user;
-}
-
-async function createRecipe(
-  authorId: string,
-  visibility: 'private' | 'public' | 'draft' | 'unlisted' = 'public',
-) {
-  const id = crypto.randomUUID();
-  const [recipe] = await db.insert(recipes).values({
-    id,
-    slug: `slug-${id.slice(0, 8)}`,
-    title: `Recipe ${id.slice(0, 4)}`,
-    authorId,
-    visibility,
-    createdAt: new Date(),
-  }).returning();
-  return recipe;
-}
+import {
+  cleanupBrewLogs,
+  cleanupRecipes,
+  cleanupUsers,
+  createRecipe,
+  createUser,
+} from './test-helpers.ts';
 
 async function createVersion(recipeId: string) {
   const id = crypto.randomUUID();
@@ -52,21 +32,6 @@ async function createVersion(recipeId: string) {
     preparationNotes: 'test version',
   }).returning();
   return version;
-}
-
-async function cleanupBrewLogs(userIds: string[], recipeIds: string[]) {
-  if (userIds.length) await db.delete(brewLogs).where(inArray(brewLogs.userId, userIds));
-  if (recipeIds.length) await db.delete(brewLogs).where(inArray(brewLogs.recipeId, recipeIds));
-}
-
-async function cleanupRecipes(recipeIds: string[]) {
-  if (recipeIds.length === 0) return;
-  await db.delete(recipes).where(inArray(recipes.id, recipeIds));
-}
-
-async function cleanupUsers(userIds: string[]) {
-  if (userIds.length === 0) return;
-  await db.delete(users).where(inArray(users.id, userIds));
 }
 
 describe(

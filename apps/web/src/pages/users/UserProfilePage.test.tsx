@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
@@ -28,10 +29,10 @@ vi.mock('../../api/client.ts', () => ({
   ApiError: class extends Error {
     code: string;
     status: number;
-    constructor(code: string, message: string) {
+    constructor(code: string, message: string, _details?: unknown, status: number = 500) {
       super(message);
       this.code = code;
-      this.status = 500;
+      this.status = status;
     }
   },
 }));
@@ -60,7 +61,7 @@ vi.mock('@/utils/logger.ts', () => ({
 import { useSearchParams } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { api } from '../../api/client.ts';
+import { api, ApiError } from '../../api/client.ts';
 import { loader, UserProfilePage } from './UserProfilePage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
@@ -162,12 +163,23 @@ function renderProfilePage(username = 'diana', tab = 'recipes') {
 
 // ── Setup ──────────────────────────────────────────────────────────────────
 
+/** Viewer identity returned by the mocked `GET /users/me` (null = logged out). */
+let meUser: { username: string } | null = null;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  meUser = null;
   mockUseSearchParams.mockReturnValue(makeSearchParams());
   mockUseTranslation.mockReturnValue(defaultTranslation);
   mockUseAuth.mockReturnValue(defaultAuth as ReturnType<typeof useAuth>);
-  mockApiGet.mockResolvedValue(mockProfile);
+  mockApiGet.mockImplementation((url: string) => {
+    if (url === '/users/me') {
+      return meUser
+        ? Promise.resolve(meUser)
+        : Promise.reject(new ApiError('UNAUTHORIZED', 'no token', undefined, 401));
+    }
+    return Promise.resolve(mockProfile);
+  });
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -318,6 +330,7 @@ describe('UserProfilePage — brews tab (F02)', () => {
   };
 
   it('shows the brews tab and renders brew logs on the own profile', async () => {
+    meUser = { username: 'diana' };
     mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
     mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'brews' }));
     mockApiGetWithMeta.mockResolvedValue({
@@ -337,6 +350,7 @@ describe('UserProfilePage — brews tab (F02)', () => {
   });
 
   it('shows the empty state when the own journal has no brews', async () => {
+    meUser = { username: 'diana' };
     mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
     mockUseSearchParams.mockReturnValue(makeSearchParams({ tab: 'brews' }));
     mockApiGetWithMeta.mockResolvedValue({
@@ -352,7 +366,35 @@ describe('UserProfilePage — brews tab (F02)', () => {
     });
   });
 
+  it('renders pagination and sets brewsPage when the history spans pages', async () => {
+    meUser = { username: 'diana' };
+    mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
+    const setParams = vi.fn();
+    mockUseSearchParams.mockReturnValue(
+      [new URLSearchParams({ tab: 'brews' }), setParams] as ReturnType<typeof useSearchParams>,
+    );
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [mockBrewLog],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 40, totalPages: 2 } },
+    });
+
+    renderProfilePage('diana', 'brews');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'common.next' })).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'common.next' }));
+
+    expect(setParams).toHaveBeenCalledTimes(1);
+    const next = setParams.mock.calls[0][0] as URLSearchParams;
+    expect(next.get('brewsPage')).toBe('2');
+    expect(next.get('tab')).toBe('brews');
+  });
+
   it("hides the brews tab on another user's profile", async () => {
+    meUser = { username: 'alice' };
     mockUseAuth.mockReturnValue({
       ...defaultAuth,
       user: {
@@ -375,5 +417,66 @@ describe('UserProfilePage — brews tab (F02)', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Brew Journal' })).not.toBeInTheDocument();
+  });
+});
+
+describe('UserProfilePage — brews loader (F02)', () => {
+  const loaderArgs = (url: string) => ({
+    params: { username: 'diana' },
+    request: new Request(url),
+  });
+
+  it('passes a valid ?brewsPage through when the viewer owns the profile', async () => {
+    meUser = { username: 'diana' };
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 2, perPage: 20, total: 0, totalPages: 0 } },
+    });
+
+    await loader(loaderArgs('http://localhost/u/diana?tab=brews&brewsPage=2'));
+
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=2');
+  });
+
+  it('defaults an invalid ?brewsPage to 1', async () => {
+    meUser = { username: 'diana' };
+    mockApiGetWithMeta.mockResolvedValue({
+      success: true,
+      data: [],
+      meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total: 0, totalPages: 0 } },
+    });
+
+    await loader(loaderArgs('http://localhost/u/diana?tab=brews&brewsPage=-3'));
+
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1');
+  });
+
+  it('skips the brew-log fetch when logged out (brewsData stays null)', async () => {
+    meUser = null;
+
+    const data = await loader(loaderArgs('http://localhost/u/diana?tab=brews'));
+
+    expect(mockApiGetWithMeta).not.toHaveBeenCalled();
+    expect(data.brewsData).toBeNull();
+  });
+
+  it("skips the brew-log fetch on a URL-forced brews tab for another user's profile", async () => {
+    meUser = { username: 'alice' };
+
+    const data = await loader(loaderArgs('http://localhost/u/diana?tab=brews'));
+
+    expect(mockApiGetWithMeta).not.toHaveBeenCalled();
+    expect(data.brewsData).toBeNull();
+  });
+
+  it('propagates brew-log fetch errors once ownership is established', async () => {
+    meUser = { username: 'diana' };
+    const serverError = new ApiError('INTERNAL', 'boom');
+    mockApiGetWithMeta.mockRejectedValue(serverError);
+
+    await expect(loader(loaderArgs('http://localhost/u/diana?tab=brews'))).rejects.toBe(
+      serverError,
+    );
   });
 });
