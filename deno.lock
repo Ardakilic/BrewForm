@@ -26,7 +26,7 @@
     "npm:@types/react-dom@^19.2.3": "19.2.3_@types+react@19.2.17",
     "npm:@types/react@^19.2.17": "19.2.17",
     "npm:@vitejs/plugin-react@^6.0.3": "6.0.3_vite@8.1.5",
-    "npm:@vitest/coverage-v8@^4.1.10": "4.1.10_vitest@4.1.10_jsdom@29.1.1_vite@8.1.5",
+    "npm:@vitest/coverage-v8@^4.1.10": "4.1.10_vitest@4.1.10_jsdom@30.0.1",
     "npm:bcryptjs@^3.0.3": "3.0.3",
     "npm:drizzle-kit@*": "0.31.10",
     "npm:drizzle-kit@0.31": "0.31.10",
@@ -36,7 +36,7 @@
     "npm:fast-check@^4.9.0": "4.9.0",
     "npm:hono-openapi@^1.3.1": "1.3.1_@hono+standard-validator@0.2.3__@standard-schema+spec@1.1.0__hono@4.12.32_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_@standard-community+standard-openapi@0.2.9__@standard-community+standard-json@0.3.5___@standard-schema+spec@1.1.0___@types+json-schema@7.0.15___quansync@0.2.11___zod@4.4.3__@standard-schema+spec@1.1.0__openapi-types@12.1.3__zod@4.4.3__zod-openapi@6.0.0___zod@4.4.3__@types+json-schema@7.0.15__quansync@0.2.11_@types+json-schema@7.0.15_hono@4.12.32_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@4.4.3_zod-openapi@6.0.0__zod@4.4.3",
     "npm:hono@^4.12.30": "4.12.32",
-    "npm:jsdom@^29.1.1": "29.1.1",
+    "npm:jsdom@30": "30.0.1",
     "npm:mjml@*": "5.4.0_typescript@7.0.2",
     "npm:mjml@^5.4.0": "5.4.0_typescript@7.0.2",
     "npm:nodemailer@*": "9.0.3",
@@ -53,8 +53,8 @@
     "npm:typescript@*": "7.0.2",
     "npm:typescript@^7.0.2": "7.0.2",
     "npm:vite@^8.1.5": "8.1.5",
-    "npm:vitest@*": "4.1.10_@vitest+coverage-v8@4.1.10_jsdom@29.1.1_vite@8.1.5",
-    "npm:vitest@^4.1.10": "4.1.10_@vitest+coverage-v8@4.1.10_jsdom@29.1.1_vite@8.1.5",
+    "npm:vitest@*": "4.1.10_@vitest+coverage-v8@4.1.10_jsdom@30.0.1_vite@8.1.5",
+    "npm:vitest@^4.1.10": "4.1.10_@vitest+coverage-v8@4.1.10_jsdom@30.0.1_vite@8.1.5",
     "npm:zod-openapi@6": "6.0.0_zod@4.4.3",
     "npm:zod-openapi@6.0.0": "6.0.0_zod@4.4.3",
     "npm:zod@^4.4.3": "4.4.3"
@@ -105,31 +105,24 @@
     "@adobe/css-tools@4.5.0": {
       "integrity": "sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q=="
     },
-    "@asamuzakjp/css-color@5.1.11": {
-      "integrity": "sha512-KVw6qIiCTUQhByfTd78h2yD1/00waTmm9uy/R7Ck/ctUyAPj+AEDLkQIdJW0T8+qGgj3j5bpNKK7Q3G+LedJWg==",
+    "@asamuzakjp/css-color@6.0.7": {
+      "integrity": "sha512-vC/bk1Lz7Tn/EfU9/apOTBk80/8dyGyWMowPoV1tJ52muDGsDqt2HPT2klrFUiY60MQmQv9q8yIht15JnBgDGw==",
       "dependencies": [
-        "@asamuzakjp/generational-cache",
         "@csstools/css-calc",
         "@csstools/css-color-parser",
         "@csstools/css-parser-algorithms",
-        "@csstools/css-tokenizer"
+        "@csstools/css-tokenizer",
+        "lru-cache@11.5.2"
       ]
     },
-    "@asamuzakjp/dom-selector@7.1.1": {
-      "integrity": "sha512-67RZDnYRc8H/8MLDgQCDE//zoqVFwajkepHZgmXrbwybzXOEwOWGPYGmALYl9J2DOLfFPPs6kKCqmbzV895hTQ==",
+    "@asamuzakjp/dom-selector@8.3.2": {
+      "integrity": "sha512-93Z1N+BQNXysodoicpOIyNh2drHfz/CTf9nnT0FEx72GJcIiwgydD7tGAr78j41LsYn3hlRn+LdGPuBLn1Bl8Q==",
       "dependencies": [
-        "@asamuzakjp/generational-cache",
-        "@asamuzakjp/nwsapi",
         "bidi-js",
         "css-tree@3.2.1",
-        "is-potential-custom-element-name"
+        "is-potential-custom-element-name",
+        "lru-cache@11.5.2"
       ]
-    },
-    "@asamuzakjp/generational-cache@1.0.1": {
-      "integrity": "sha512-wajfB8KqzMCN2KGNFdLkReeHncd0AslUSrvHVvvYWuU8ghncRJoA50kT3zP9MVL0+9g4/67H+cdvBskj9THPzg=="
-    },
-    "@asamuzakjp/nwsapi@2.3.9": {
-      "integrity": "sha512-n8GuYSrI9bF7FFZ/SjhwevlHc8xaVlb/7HmHelnc/PZXBD2ZR49NnN9sMMuDdEGPeeRQ5d0hqlSlEpgCX3Wl0Q=="
     },
     "@babel/code-frame@7.29.0": {
       "integrity": "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==",
@@ -209,15 +202,15 @@
     "@csstools/color-helpers@6.1.0": {
       "integrity": "sha512-064IFJdjTfUqnjpCVpMOdbr8FLQBhinbZj6yRv2An2E41O/pLEXqfFRWqGq/SxlE5PEUYTlvWsG2r8MswAVvkg=="
     },
-    "@csstools/css-calc@3.2.1_@csstools+css-parser-algorithms@4.0.0__@csstools+css-tokenizer@4.0.0_@csstools+css-tokenizer@4.0.0": {
-      "integrity": "sha512-DtdHlgXh5ZkA43cwBcAm+huzgJiwx3ZTWVjBs94kwz2xKqSimDA3lBgCjphYgwgVUMWatSM0pDd8TILB1yrVVg==",
+    "@csstools/css-calc@3.3.0_@csstools+css-parser-algorithms@4.0.0__@csstools+css-tokenizer@4.0.0_@csstools+css-tokenizer@4.0.0": {
+      "integrity": "sha512-c5ihYsPkdG6JCkU2zTMm4+k6r7RXuGxtWYhu5DHMIiF1FHzrfmHL5so11AoFpUv/tu61xfcmT4AmKoFfMPoqdQ==",
       "dependencies": [
         "@csstools/css-parser-algorithms",
         "@csstools/css-tokenizer"
       ]
     },
-    "@csstools/css-color-parser@4.1.9_@csstools+css-parser-algorithms@4.0.0__@csstools+css-tokenizer@4.0.0_@csstools+css-tokenizer@4.0.0": {
-      "integrity": "sha512-paQcIaOO53Rk5+YrBaBjm/SgrV4INImjo2BT1DtQRYr+XeTRbeAYlS+jxXp9drqvKmtFnWRJKIalDLhZZDu42A==",
+    "@csstools/css-color-parser@4.1.10_@csstools+css-parser-algorithms@4.0.0__@csstools+css-tokenizer@4.0.0_@csstools+css-tokenizer@4.0.0": {
+      "integrity": "sha512-UZhQLIUyJaaMepqehrCODwCg2KW25vFvLWBmqYFaPclYvvxzj/sG8LBOhBFCp11i9uE7t1EyS+RAoV9tztPFyw==",
       "dependencies": [
         "@csstools/color-helpers",
         "@csstools/css-calc",
@@ -231,8 +224,8 @@
         "@csstools/css-tokenizer"
       ]
     },
-    "@csstools/css-syntax-patches-for-csstree@1.1.5_css-tree@3.2.1": {
-      "integrity": "sha512-oNjBvzLq2GPZtJphCjLqXow/cHySHSgtxvKZb7OqSZ/xHgw6NWNhfad+6AB9cLeVm6eA9d/qMll3JdEHjy6M+A==",
+    "@csstools/css-syntax-patches-for-csstree@1.1.7_css-tree@3.2.1": {
+      "integrity": "sha512-fQ+05118eQS1cofO3aJpB5efgpBZMvIzwr/sbC8kDLVA5XLG8q1kJV5yzrUAI1f7lvhPnm8fgIjzFB8/O/5Dig==",
       "dependencies": [
         "css-tree@3.2.1"
       ],
@@ -1346,7 +1339,7 @@
         "vite"
       ]
     },
-    "@vitest/coverage-v8@4.1.10_vitest@4.1.10_jsdom@29.1.1_vite@8.1.5": {
+    "@vitest/coverage-v8@4.1.10_vitest@4.1.10_jsdom@30.0.1": {
       "integrity": "sha512-IM49HmthevbgAO4anp1hwtoT9wYe59w0LR00gr+eagHE+ZJ5lK4sLPeO0ubgoJcwLk6dehU3R24N+FbEEKDc8g==",
       "dependencies": [
         "@bcoe/v8-coverage",
@@ -1755,7 +1748,7 @@
       "integrity": "sha512-23XHcCF+coGYevirZceTVD7NdJOqVn+49IHyxgszm+JIiHLoB2TkmPtsYkNWT1pvRSGkc35L6NHs0yHkN2SumA==",
       "dependencies": [
         "whatwg-mimetype@5.0.0",
-        "whatwg-url"
+        "whatwg-url@16.0.1"
       ]
     },
     "dateformat@4.6.3": {
@@ -2280,8 +2273,8 @@
       ],
       "bin": true
     },
-    "jsdom@29.1.1": {
-      "integrity": "sha512-ECi4Fi2f7BdJtUKTflYRTiaMxIB0O6zfR1fX0GXpUrf6flp8QIYn1UT20YQqdSOfk2dfkCwS8LAFoJDEppNK5Q==",
+    "jsdom@30.0.1": {
+      "integrity": "sha512-52v7mUVUfNQVYYqE1lcdaymWL0njO7lTLUog6ZvW2U5KsbiLk/GnZlVJ+qx0xfNJZ6Gn+KSpPNE52vurbxZwrA==",
       "dependencies": [
         "@asamuzakjp/css-color",
         "@asamuzakjp/dom-selector",
@@ -2293,16 +2286,16 @@
         "decimal.js",
         "html-encoding-sniffer",
         "is-potential-custom-element-name",
-        "lru-cache@11.5.1",
+        "lru-cache@11.5.2",
         "parse5@8.0.1",
         "saxes",
         "symbol-tree",
         "tough-cookie",
-        "undici@7.28.0",
+        "undici@8.10.0",
         "w3c-xmlserializer",
         "webidl-conversions",
         "whatwg-mimetype@5.0.0",
-        "whatwg-url",
+        "whatwg-url@17.1.0",
         "xml-name-validator"
       ]
     },
@@ -2419,8 +2412,8 @@
     "lru-cache@10.4.3": {
       "integrity": "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="
     },
-    "lru-cache@11.5.1": {
-      "integrity": "sha512-RPimw/7aMdv2oqRrxKwvZXcPfwBrn/JZ2xYcY9Hus/6LaS3VOAKVWKWgNLCFSiOm1ESXinjsDlidVU7JlnCN2A=="
+    "lru-cache@11.5.2": {
+      "integrity": "sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g=="
     },
     "lz-string@1.5.0": {
       "integrity": "sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==",
@@ -2883,7 +2876,7 @@
     "path-scurry@2.0.2": {
       "integrity": "sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg==",
       "dependencies": [
-        "lru-cache@11.5.1",
+        "lru-cache@11.5.2",
         "minipass"
       ]
     },
@@ -3493,8 +3486,8 @@
       ],
       "bin": true
     },
-    "tough-cookie@6.0.1": {
-      "integrity": "sha512-LktZQb3IeoUWB9lqR5EWTHgW/VTITCXg4D21M+lvybRVdylLrRMnqaIONLVb5mav8vM19m44HIcGq4qASeu2Qw==",
+    "tough-cookie@6.0.2": {
+      "integrity": "sha512-exgYmnmL/sJpR3upZfXG5PoatXQii55xAiXGXzY+sROLZ/Y+SLcp9PgJNI9Vz37HpQ74WvDcLT8eqm+kV3FzrA==",
       "dependencies": [
         "tldts"
       ]
@@ -3555,8 +3548,8 @@
     "undici@6.28.0": {
       "integrity": "sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA=="
     },
-    "undici@7.28.0": {
-      "integrity": "sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA=="
+    "undici@8.10.0": {
+      "integrity": "sha512-HvltHd7avK13QIw/oLe4qoOLyoVSoafqJ2jYOrtMRBkbYT31eiBQ8O0ehRKZiEZCMEyLFQNIADpgCWC5fALvYQ=="
     },
     "update-browserslist-db@1.2.3_browserslist@4.28.7": {
       "integrity": "sha512-Js0m9cx+qOgDxo0eMiFGEueWztz+d4+M3rGlmKPT+T4IS/jP4ylw3Nwpu6cpTTP8R1MAC1kF4VbdLt3ARf209w==",
@@ -3593,7 +3586,7 @@
       ],
       "bin": true
     },
-    "vitest@4.1.10_@vitest+coverage-v8@4.1.10_jsdom@29.1.1_vite@8.1.5": {
+    "vitest@4.1.10_@vitest+coverage-v8@4.1.10_jsdom@30.0.1_vite@8.1.5": {
       "integrity": "sha512-R9jUTe5S4Qb0HCd4TNqpC7oGcrMssMRGXLW80ubjWsW9VH5GF8y1Y0SFLY9AbqSk6nt0PnOx4H4WNJYZ13GUPw==",
       "dependencies": [
         "@vitest/coverage-v8",
@@ -3659,6 +3652,14 @@
     },
     "whatwg-url@16.0.1": {
       "integrity": "sha512-1to4zXBxmXHV3IiSSEInrreIlu02vUOvrhxJJH5vcxYTBDAx51cqZiKdyTxlecdKNSjj8EcxGBxNf6Vg+945gw==",
+      "dependencies": [
+        "@exodus/bytes",
+        "tr46",
+        "webidl-conversions"
+      ]
+    },
+    "whatwg-url@17.1.0": {
+      "integrity": "sha512-3GeworPmc2ZfEEHP7lEbUfBX/L75wdEsi0rLNhXcXxnoN5jyq0SL5gCy06SGW2cyTIZdTvWIDQNQoza++vKeaw==",
       "dependencies": [
         "@exodus/bytes",
         "tr46",
@@ -3813,7 +3814,7 @@
             "npm:@vitejs/plugin-react@^6.0.3",
             "npm:@vitest/coverage-v8@^4.1.10",
             "npm:fast-check@^4.9.0",
-            "npm:jsdom@^29.1.1",
+            "npm:jsdom@30",
             "npm:react-dom@^19.2.7",
             "npm:react-router@^8.2.0",
             "npm:react@^19.2.7",
