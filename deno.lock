@@ -12,7 +12,7 @@
     "jsr:@std/testing@*": "1.0.19",
     "npm:@base-ui/react@^1.6.0": "1.6.0_@types+react@19.2.17_react@19.2.7_react-dom@19.2.7__react@19.2.7",
     "npm:@deno/vite-plugin@^2.0.2": "2.0.2_vite@8.1.5",
-    "npm:@hono/standard-validator@~0.2.3": "0.2.3_@standard-schema+spec@1.1.0_hono@4.12.32",
+    "npm:@hono/standard-validator@0.4": "0.4.0_@standard-schema+spec@1.1.0_hono@4.12.32",
     "npm:@hono/zod-validator@0.9": "0.9.0_hono@4.12.32_zod@4.4.3",
     "npm:@jsr/std__expect@^1.0.20": "1.0.20",
     "npm:@jsr/std__testing@^1.0.19": "1.0.19",
@@ -688,6 +688,13 @@
     },
     "@hono/standard-validator@0.2.3_@standard-schema+spec@1.1.0_hono@4.12.32": {
       "integrity": "sha512-bp9vHu6Va6SfMHC3D4ZLBbT/woi+AZ9CRdTXQu3kLJuLh2W/Gb9UO4hijS+BQAGFXi4EGpXdetxpzwTAawSVeg==",
+      "dependencies": [
+        "@standard-schema/spec",
+        "hono"
+      ]
+    },
+    "@hono/standard-validator@0.4.0_@standard-schema+spec@1.1.0_hono@4.12.32": {
+      "integrity": "sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw==",
       "dependencies": [
         "@standard-schema/spec",
         "hono"
@@ -2120,7 +2127,7 @@
     "hono-openapi@1.3.1_@hono+standard-validator@0.2.3__@standard-schema+spec@1.1.0__hono@4.12.32_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_@standard-community+standard-openapi@0.2.9__@standard-community+standard-json@0.3.5___@standard-schema+spec@1.1.0___@types+json-schema@7.0.15___quansync@0.2.11___zod@4.4.3__@standard-schema+spec@1.1.0__openapi-types@12.1.3__zod@4.4.3__zod-openapi@6.0.0___zod@4.4.3__@types+json-schema@7.0.15__quansync@0.2.11_@types+json-schema@7.0.15_hono@4.12.32_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@4.4.3_zod-openapi@6.0.0__zod@4.4.3": {
       "integrity": "sha512-NLVeVkhKZ3drmQNEIPac8HX8Y54uf1hJAgIM/7MfDsaeVVmB+QILWQxx5x3R3NvRHgedcbEbOCGY2uR7WQYyMw==",
       "dependencies": [
-        "@hono/standard-validator",
+        "@hono/standard-validator@0.2.3_@standard-schema+spec@1.1.0_hono@4.12.32",
         "@standard-community/standard-json",
         "@standard-community/standard-openapi",
         "@types/json-schema",
@@ -2128,7 +2135,7 @@
         "openapi-types"
       ],
       "optionalPeers": [
-        "@hono/standard-validator",
+        "@hono/standard-validator@0.2.3_@standard-schema+spec@1.1.0_hono@4.12.32",
         "hono"
       ]
     },
@@ -3780,7 +3787,7 @@
       "apps/api": {
         "packageJson": {
           "dependencies": [
-            "npm:@hono/standard-validator@~0.2.3",
+            "npm:@hono/standard-validator@0.4",
             "npm:@hono/zod-validator@0.9",
             "npm:@jsr/std__expect@^1.0.20",
             "npm:@jsr/std__testing@^1.0.19",
