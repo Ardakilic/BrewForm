@@ -7,7 +7,7 @@
   "catalog": {
     "drizzle-orm": "^0.45.2",
     "bcryptjs": "^3.0.3",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "tasks": {
     "dev": "deno task dev:api & deno task dev:web",
