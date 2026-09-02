@@ -10,16 +10,16 @@
     "jsr:@std/path@*": "1.1.4",
     "jsr:@std/path@^1.1.4": "1.1.4",
     "jsr:@std/testing@*": "1.0.19",
-    "npm:@base-ui/react@^1.6.0": "1.6.0_@types+react@19.2.17_react@19.2.7_react-dom@19.2.7__react@19.2.7",
+    "npm:@base-ui/react@^1.6.0": "1.6.0_@types+react@19.2.17_react@19.2.7_react-dom@19.2.7",
     "npm:@deno/vite-plugin@^2.0.2": "2.0.2_vite@8.1.5",
-    "npm:@hono/standard-validator@~0.2.3": "0.2.3_@standard-schema+spec@1.1.0_hono@4.12.32",
+    "npm:@hono/standard-validator@0.4": "0.4.0_@standard-schema+spec@1.1.0_hono@4.12.32",
     "npm:@hono/zod-validator@0.9": "0.9.0_hono@4.12.32_zod@4.4.3",
     "npm:@jsr/std__expect@^1.0.20": "1.0.20",
     "npm:@jsr/std__testing@^1.0.19": "1.0.19",
     "npm:@resvg/resvg-js@^2.6.2": "2.6.2",
     "npm:@tailwindcss/vite@^4.3.3": "4.3.3_vite@8.1.5",
     "npm:@testing-library/jest-dom@^6.9.1": "6.9.1",
-    "npm:@testing-library/react@^16.3.2": "16.3.2_@testing-library+dom@10.4.1_@types+react@19.2.17_@types+react-dom@19.2.3__@types+react@19.2.17_react@19.2.7_react-dom@19.2.7__react@19.2.7",
+    "npm:@testing-library/react@^16.3.2": "16.3.2_@testing-library+dom@10.4.1_@types+react@19.2.17_@types+react-dom@19.2.3_react@19.2.7_react-dom@19.2.7",
     "npm:@testing-library/user-event@^14.6.1": "14.6.1_@testing-library+dom@10.4.1",
     "npm:@types/nodemailer@^8.0.1": "8.0.1",
     "npm:@types/qrcode@^1.5.6": "1.5.6",
@@ -34,7 +34,7 @@
     "npm:drizzle-orm@~0.45.2": "0.45.2_postgres@3.4.9",
     "npm:fast-check@*": "4.9.0",
     "npm:fast-check@^4.9.0": "4.9.0",
-    "npm:hono-openapi@^1.3.1": "1.3.1_@hono+standard-validator@0.2.3__@standard-schema+spec@1.1.0__hono@4.12.32_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_@standard-community+standard-openapi@0.2.9__@standard-community+standard-json@0.3.5___@standard-schema+spec@1.1.0___@types+json-schema@7.0.15___quansync@0.2.11___zod@4.4.3__@standard-schema+spec@1.1.0__openapi-types@12.1.3__zod@4.4.3__zod-openapi@6.0.0___zod@4.4.3__@types+json-schema@7.0.15__quansync@0.2.11_@types+json-schema@7.0.15_hono@4.12.32_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@4.4.3_zod-openapi@6.0.0__zod@4.4.3",
+    "npm:hono-openapi@^1.3.1": "1.3.1_@hono+standard-validator@0.2.3_@standard-community+standard-json@0.3.5_@standard-community+standard-openapi@0.2.9_@types+json-schema@7.0.15_hono@4.12.32_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@4.4.3_zod-openapi@6.0.0",
     "npm:hono@^4.12.30": "4.12.32",
     "npm:jsdom@^29.1.1": "29.1.1",
     "npm:mjml@*": "5.4.0_typescript@7.0.2",
@@ -46,7 +46,7 @@
     "npm:postgres@^3.4.9": "3.4.9",
     "npm:qrcode@^1.5.4": "1.5.4",
     "npm:react-dom@^19.2.7": "19.2.7_react@19.2.7",
-    "npm:react-router@^8.2.0": "8.3.0_react@19.2.7_react-dom@19.2.7__react@19.2.7",
+    "npm:react-router@^8.2.0": "8.3.0_react@19.2.7_react-dom@19.2.7",
     "npm:react@^19.2.7": "19.2.7",
     "npm:tailwindcss@^4.3.3": "4.3.3",
     "npm:tsc@*": "2.0.4",
@@ -162,7 +162,7 @@
         "@babel/helper-validator-identifier"
       ]
     },
-    "@base-ui/react@1.6.0_@types+react@19.2.17_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
+    "@base-ui/react@1.6.0_@types+react@19.2.17_react@19.2.7_react-dom@19.2.7": {
       "integrity": "sha512-/jzjTWJYXhRFO45Bev9lc3cHbmjzCMpUqbMZ2AgKy/z25mY9B6shGSNcXcjQar9n5doM0KYW1W8fcFv2jZBuMw==",
       "dependencies": [
         "@babel/runtime",
@@ -178,7 +178,7 @@
         "@types/react"
       ]
     },
-    "@base-ui/utils@0.3.1_@types+react@19.2.17_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
+    "@base-ui/utils@0.3.1_@types+react@19.2.17_react@19.2.7_react-dom@19.2.7": {
       "integrity": "sha512-gFFiltORVmW/N6IILTGxizP3PBpVpysqML1ALY5Vk0mH+7faVkCknOU31goYHN5Aoek2dkjxva1XOD2Ce9WuIg==",
       "dependencies": [
         "@babel/runtime",
@@ -209,14 +209,14 @@
     "@csstools/color-helpers@6.1.0": {
       "integrity": "sha512-064IFJdjTfUqnjpCVpMOdbr8FLQBhinbZj6yRv2An2E41O/pLEXqfFRWqGq/SxlE5PEUYTlvWsG2r8MswAVvkg=="
     },
-    "@csstools/css-calc@3.2.1_@csstools+css-parser-algorithms@4.0.0__@csstools+css-tokenizer@4.0.0_@csstools+css-tokenizer@4.0.0": {
+    "@csstools/css-calc@3.2.1_@csstools+css-parser-algorithms@4.0.0_@csstools+css-tokenizer@4.0.0": {
       "integrity": "sha512-DtdHlgXh5ZkA43cwBcAm+huzgJiwx3ZTWVjBs94kwz2xKqSimDA3lBgCjphYgwgVUMWatSM0pDd8TILB1yrVVg==",
       "dependencies": [
         "@csstools/css-parser-algorithms",
         "@csstools/css-tokenizer"
       ]
     },
-    "@csstools/css-color-parser@4.1.9_@csstools+css-parser-algorithms@4.0.0__@csstools+css-tokenizer@4.0.0_@csstools+css-tokenizer@4.0.0": {
+    "@csstools/css-color-parser@4.1.9_@csstools+css-parser-algorithms@4.0.0_@csstools+css-tokenizer@4.0.0": {
       "integrity": "sha512-paQcIaOO53Rk5+YrBaBjm/SgrV4INImjo2BT1DtQRYr+XeTRbeAYlS+jxXp9drqvKmtFnWRJKIalDLhZZDu42A==",
       "dependencies": [
         "@csstools/color-helpers",
@@ -675,7 +675,7 @@
         "@floating-ui/utils"
       ]
     },
-    "@floating-ui/react-dom@2.1.8_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
+    "@floating-ui/react-dom@2.1.8_react@19.2.7_react-dom@19.2.7": {
       "integrity": "sha512-cC52bHwM/n/CxS87FH0yWdngEZrjdtLW/qVruo68qg+prK7ZQ4YGdut2GyDVpoGeAYe/h899rVeOVm6Oi40k2A==",
       "dependencies": [
         "@floating-ui/dom",
@@ -688,6 +688,13 @@
     },
     "@hono/standard-validator@0.2.3_@standard-schema+spec@1.1.0_hono@4.12.32": {
       "integrity": "sha512-bp9vHu6Va6SfMHC3D4ZLBbT/woi+AZ9CRdTXQu3kLJuLh2W/Gb9UO4hijS+BQAGFXi4EGpXdetxpzwTAawSVeg==",
+      "dependencies": [
+        "@standard-schema/spec",
+        "hono"
+      ]
+    },
+    "@hono/standard-validator@0.4.0_@standard-schema+spec@1.1.0_hono@4.12.32": {
+      "integrity": "sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw==",
       "dependencies": [
         "@standard-schema/spec",
         "hono"
@@ -1022,7 +1029,7 @@
         "zod"
       ]
     },
-    "@standard-community/standard-openapi@0.2.9_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_@standard-schema+spec@1.1.0_openapi-types@12.1.3_zod@4.4.3_zod-openapi@6.0.0__zod@4.4.3_@types+json-schema@7.0.15_quansync@0.2.11": {
+    "@standard-community/standard-openapi@0.2.9_@standard-community+standard-json@0.3.5_@standard-schema+spec@1.1.0_openapi-types@12.1.3_zod@4.4.3_zod-openapi@6.0.0_@types+json-schema@7.0.15_quansync@0.2.11": {
       "integrity": "sha512-htj+yldvN1XncyZi4rehbf9kLbu8os2Ke/rfqoZHCMHuw34kiF3LP/yQPdA0tQ940y8nDq3Iou8R3wG+AGGyvg==",
       "dependencies": [
         "@standard-community/standard-json",
@@ -1160,7 +1167,7 @@
         "redent"
       ]
     },
-    "@testing-library/react@16.3.2_@testing-library+dom@10.4.1_@types+react@19.2.17_@types+react-dom@19.2.3__@types+react@19.2.17_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
+    "@testing-library/react@16.3.2_@testing-library+dom@10.4.1_@types+react@19.2.17_@types+react-dom@19.2.3_react@19.2.7_react-dom@19.2.7": {
       "integrity": "sha512-XU5/SytQM+ykqMnAnvB2umaJNIOsLF3PVv//1Ew4CTcpz0/BRyy/af40qqrt7SjKpDdT1saBMc42CUok5gaw+g==",
       "dependencies": [
         "@babel/runtime",
@@ -2117,10 +2124,10 @@
     "help-me@5.0.0": {
       "integrity": "sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg=="
     },
-    "hono-openapi@1.3.1_@hono+standard-validator@0.2.3__@standard-schema+spec@1.1.0__hono@4.12.32_@standard-community+standard-json@0.3.5__@standard-schema+spec@1.1.0__@types+json-schema@7.0.15__quansync@0.2.11__zod@4.4.3_@standard-community+standard-openapi@0.2.9__@standard-community+standard-json@0.3.5___@standard-schema+spec@1.1.0___@types+json-schema@7.0.15___quansync@0.2.11___zod@4.4.3__@standard-schema+spec@1.1.0__openapi-types@12.1.3__zod@4.4.3__zod-openapi@6.0.0___zod@4.4.3__@types+json-schema@7.0.15__quansync@0.2.11_@types+json-schema@7.0.15_hono@4.12.32_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@4.4.3_zod-openapi@6.0.0__zod@4.4.3": {
+    "hono-openapi@1.3.1_@hono+standard-validator@0.2.3_@standard-community+standard-json@0.3.5_@standard-community+standard-openapi@0.2.9_@types+json-schema@7.0.15_hono@4.12.32_openapi-types@12.1.3_@standard-schema+spec@1.1.0_quansync@0.2.11_zod@4.4.3_zod-openapi@6.0.0": {
       "integrity": "sha512-NLVeVkhKZ3drmQNEIPac8HX8Y54uf1hJAgIM/7MfDsaeVVmB+QILWQxx5x3R3NvRHgedcbEbOCGY2uR7WQYyMw==",
       "dependencies": [
-        "@hono/standard-validator",
+        "@hono/standard-validator@0.2.3_@standard-schema+spec@1.1.0_hono@4.12.32",
         "@standard-community/standard-json",
         "@standard-community/standard-openapi",
         "@types/json-schema",
@@ -2128,7 +2135,7 @@
         "openapi-types"
       ],
       "optionalPeers": [
-        "@hono/standard-validator",
+        "@hono/standard-validator@0.2.3_@standard-schema+spec@1.1.0_hono@4.12.32",
         "hono"
       ]
     },
@@ -2144,7 +2151,7 @@
     "html-escaper@2.0.2": {
       "integrity": "sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg=="
     },
-    "htmlnano@3.4.0_cssnano@7.1.9__postcss@8.5.23_postcss@8.5.23_typescript@7.0.2": {
+    "htmlnano@3.4.0_cssnano@7.1.9_postcss@8.5.23_typescript@7.0.2": {
       "integrity": "sha512-5rgW9c/830dlDiWLlsT3ZLBs52UAupymGwkwr4rn2yyuzrNY0RZwgr6F4q2AkUqrRuuHb3kPelqYsUgtzQDtQw==",
       "dependencies": [
         "@types/relateurl",
@@ -3241,7 +3248,7 @@
     "react-is@17.0.2": {
       "integrity": "sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w=="
     },
-    "react-router@8.3.0_react@19.2.7_react-dom@19.2.7__react@19.2.7": {
+    "react-router@8.3.0_react@19.2.7_react-dom@19.2.7": {
       "integrity": "sha512-qyPMvW83jGIct3yiieisxdk9M745anqhpIMKN5m1t6yBMfgVPpt77aHOqs5fUlEJRMCGffg9BaQLH9oPVOL7xQ==",
       "dependencies": [
         "cookie-es",
@@ -3780,7 +3787,7 @@
       "apps/api": {
         "packageJson": {
           "dependencies": [
-            "npm:@hono/standard-validator@~0.2.3",
+            "npm:@hono/standard-validator@0.4",
             "npm:@hono/zod-validator@0.9",
             "npm:@jsr/std__expect@^1.0.20",
             "npm:@jsr/std__testing@^1.0.19",
