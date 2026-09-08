@@ -178,7 +178,7 @@ services:
         condition: service_healthy
 
   garage:
-    image: dxflrs/garage:v2.3.0
+    image: dxflrs/garage:v2.4.1
     ports:
       - "3900:3900"  # S3 API
       - "3902:3902"  # Web gateway
