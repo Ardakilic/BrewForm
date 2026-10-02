@@ -46,7 +46,7 @@ RUN deno task --cwd apps/web build
 #
 # Pinned to a specific Caddy patch for reproducible builds. To track the latest
 # 2.x patch automatically instead, swap the line below for: FROM caddy:2-alpine
-FROM caddy:2.11.4-alpine AS runner
+FROM caddy:2.11.6-alpine AS runner
 COPY --from=builder /app/apps/web/dist /usr/share/caddy
 # Production Caddyfile on :80 (the repo-root Caddyfile is the :8080 preview one).
 COPY apps/web/Caddyfile /etc/caddy/Caddyfile
