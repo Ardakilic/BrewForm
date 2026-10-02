@@ -213,7 +213,7 @@ services:
   # Serves the built React SPA on :8080 alongside app-preview on :8000.
   # Start with: make preview  (builds the web app first, then starts both)
   web:
-    image: caddy:2.11.4-alpine
+    image: caddy:2.11.6-alpine
     ports:
       - "8080:8080"
     volumes:
