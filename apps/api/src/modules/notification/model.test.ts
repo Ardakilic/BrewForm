@@ -1,9 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq, inArray } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { notifications, userPreferences, users } from '@brewform/db/schema';
+import { eq, inArray } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /** Helper: insert a user and return its ID (email/username unique via UUID). */
@@ -36,7 +35,7 @@ async function insertNotification(
 /**
  * create — Insert a single notification row and return it.
  */
-describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('create', () => {
   let userId: string;
   let actorId: string;
   let createdId: string | null = null;
@@ -79,7 +78,7 @@ describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
  * findByUserId — Paginated per-user feed, newest first, actor username joined.
  * Supports the unreadOnly filter and excludes soft-deleted rows.
  */
-describe('findByUserId', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findByUserId', () => {
   let userId: string;
   let actorId: string;
   let otherUserId: string;
@@ -121,9 +120,9 @@ describe('findByUserId', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 
   afterEach(async () => {
-    await db.delete(notifications).where(
-      inArray(notifications.id, [oldestId, middleId, newestId, deletedId, otherUsersId]),
-    );
+    await db
+      .delete(notifications)
+      .where(inArray(notifications.id, [oldestId, middleId, newestId, deletedId, otherUsersId]));
     await db.delete(users).where(inArray(users.id, [userId, actorId, otherUserId]));
   });
 
@@ -172,7 +171,7 @@ describe('findByUserId', { sanitizeOps: false, sanitizeResources: false }, () =>
  * findByUserId ordering tie-breaker — rows sharing the same `createdAt` are
  * ordered by `id` descending so pagination stays deterministic.
  */
-describe('findByUserId tie-breaker', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findByUserId tie-breaker', () => {
   let userId: string;
   const lowerId = 'tie-break-aaa';
   const higherId = 'tie-break-bbb';
@@ -201,7 +200,7 @@ describe('findByUserId tie-breaker', { sanitizeOps: false, sanitizeResources: fa
  * markAsRead — Sets readAt on an unread, non-deleted row; returns undefined
  * when the row is missing, already read, or soft-deleted.
  */
-describe('markAsRead', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('markAsRead', () => {
   let userId: string;
   let notificationId: string;
   let deletedId: string;
@@ -229,8 +228,7 @@ describe('markAsRead', { sanitizeOps: false, sanitizeResources: false }, () => {
     const firstReadAt = first!.readAt!.getTime();
     const second = await model.markAsRead(notificationId);
     expect(second).toBeUndefined();
-    const [row] = await db.select().from(notifications)
-      .where(eq(notifications.id, notificationId));
+    const [row] = await db.select().from(notifications).where(eq(notifications.id, notificationId));
     expect(row.readAt!.getTime()).toBe(firstReadAt);
   });
 
@@ -249,7 +247,7 @@ describe('markAsRead', { sanitizeOps: false, sanitizeResources: false }, () => {
  * markAllAsRead — Bulk-marks a user's unread, non-deleted rows as read.
  * Returns the number of rows updated; other users' rows are untouched.
  */
-describe('markAllAsRead', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('markAllAsRead', () => {
   let userId: string;
   let otherUserId: string;
   let unreadA: string;
@@ -269,26 +267,32 @@ describe('markAllAsRead', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 
   afterEach(async () => {
-    await db.delete(notifications).where(
-      inArray(notifications.id, [unreadA, unreadB, alreadyReadId, deletedId, otherUsersId]),
-    );
+    await db
+      .delete(notifications)
+      .where(inArray(notifications.id, [unreadA, unreadB, alreadyReadId, deletedId, otherUsersId]));
     await db.delete(users).where(inArray(users.id, [userId, otherUserId]));
   });
 
   it('should mark only the user unread rows and return the count', async () => {
     const marked = await model.markAllAsRead(userId);
     expect(marked).toBe(2);
-    const rows = await db.select().from(notifications)
+    const rows = await db
+      .select()
+      .from(notifications)
       .where(inArray(notifications.id, [unreadA, unreadB]));
     expect(rows.every((r) => r.readAt !== null)).toBe(true);
   });
 
   it('should not touch soft-deleted rows or other users rows', async () => {
     await model.markAllAsRead(userId);
-    const [deletedRow] = await db.select().from(notifications)
+    const [deletedRow] = await db
+      .select()
+      .from(notifications)
       .where(eq(notifications.id, deletedId));
     expect(deletedRow.readAt).toBeNull();
-    const [otherRow] = await db.select().from(notifications)
+    const [otherRow] = await db
+      .select()
+      .from(notifications)
       .where(eq(notifications.id, otherUsersId));
     expect(otherRow.readAt).toBeNull();
   });
@@ -303,7 +307,7 @@ describe('markAllAsRead', { sanitizeOps: false, sanitizeResources: false }, () =
 /**
  * getUnreadCount — Counts unread, non-deleted rows for a user.
  */
-describe('getUnreadCount', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getUnreadCount', () => {
   let userId: string;
   let unreadId: string;
   let readId: string;
@@ -317,9 +321,7 @@ describe('getUnreadCount', { sanitizeOps: false, sanitizeResources: false }, () 
   });
 
   afterEach(async () => {
-    await db.delete(notifications).where(
-      inArray(notifications.id, [unreadId, readId, deletedId]),
-    );
+    await db.delete(notifications).where(inArray(notifications.id, [unreadId, readId, deletedId]));
     await db.delete(users).where(eq(users.id, userId));
   });
 
@@ -337,7 +339,7 @@ describe('getUnreadCount', { sanitizeOps: false, sanitizeResources: false }, () 
 /**
  * findById — Single row with actor joined; soft-deleted rows are missing.
  */
-describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findById', () => {
   let userId: string;
   let actorId: string;
   let deletedActorId: string;
@@ -355,9 +357,9 @@ describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 
   afterEach(async () => {
-    await db.delete(notifications).where(
-      inArray(notifications.id, [notificationId, deletedId, deletedActorNotificationId]),
-    );
+    await db
+      .delete(notifications)
+      .where(inArray(notifications.id, [notificationId, deletedId, deletedActorNotificationId]));
     await db.delete(users).where(inArray(users.id, [userId, actorId, deletedActorId]));
   });
 
@@ -393,7 +395,7 @@ describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
  * findMentionTargets — Resolves usernames to active users with the
  * preferences row left-joined; empty input short-circuits.
  */
-describe('findMentionTargets', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findMentionTargets', () => {
   let optedOutUserId: string;
   let noPrefsUserId: string;
   let deletedUserId: string;
@@ -415,9 +417,9 @@ describe('findMentionTargets', { sanitizeOps: false, sanitizeResources: false },
 
   afterEach(async () => {
     await db.delete(userPreferences).where(eq(userPreferences.id, prefsId));
-    await db.delete(users).where(
-      inArray(users.id, [optedOutUserId, noPrefsUserId, deletedUserId, bannedUserId]),
-    );
+    await db
+      .delete(users)
+      .where(inArray(users.id, [optedOutUserId, noPrefsUserId, deletedUserId, bannedUserId]));
   });
 
   it('should resolve existing usernames with prefs joined', async () => {
@@ -465,7 +467,7 @@ describe('findMentionTargets', { sanitizeOps: false, sanitizeResources: false },
  * when the user does not exist, is soft-deleted, or is banned; Drizzle
  * collapses the nested `prefs` object to null when no preferences row matched.
  */
-describe('findNotifyTarget', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findNotifyTarget', () => {
   let withPrefsUserId: string;
   let noPrefsUserId: string;
   let deletedUserId: string;
@@ -487,9 +489,9 @@ describe('findNotifyTarget', { sanitizeOps: false, sanitizeResources: false }, (
 
   afterEach(async () => {
     await db.delete(userPreferences).where(eq(userPreferences.id, prefsId));
-    await db.delete(users).where(
-      inArray(users.id, [withPrefsUserId, noPrefsUserId, deletedUserId, bannedUserId]),
-    );
+    await db
+      .delete(users)
+      .where(inArray(users.id, [withPrefsUserId, noPrefsUserId, deletedUserId, bannedUserId]));
   });
 
   it('should resolve a user with prefs joined when user exists and has preferences row', async () => {

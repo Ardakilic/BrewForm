@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { Field } from './Field.tsx';
 
 describe('Field', () => {
   it('renders the label and children', () => {
     render(
-      <Field label='Name'>
-        <input type='text' />
+      <Field label="Name">
+        <input type="text" />
       </Field>,
     );
     expect(screen.getByText('Name')).toBeInTheDocument();
@@ -15,8 +15,8 @@ describe('Field', () => {
 
   it('associates the label with the wrapped control implicitly', () => {
     render(
-      <Field label='Name'>
-        <input type='text' />
+      <Field label="Name">
+        <input type="text" />
       </Field>,
     );
     expect(screen.getByLabelText('Name')).toBeInstanceOf(HTMLInputElement);
@@ -24,8 +24,8 @@ describe('Field', () => {
 
   it('appends the required marker when required', () => {
     render(
-      <Field label='Name' required>
-        <input type='text' />
+      <Field label="Name" required>
+        <input type="text" />
       </Field>,
     );
     expect(screen.getByLabelText('Name *')).toBeInTheDocument();
@@ -33,8 +33,8 @@ describe('Field', () => {
 
   it('supports explicit htmlFor/id association', () => {
     render(
-      <Field label='Email' htmlFor='email'>
-        <input id='email' type='email' />
+      <Field label="Email" htmlFor="email">
+        <input id="email" type="email" />
       </Field>,
     );
     const label = screen.getByText('Email').closest('label');
@@ -44,8 +44,8 @@ describe('Field', () => {
 
   it('renders error text with the error color', () => {
     const { container } = render(
-      <Field label='Email' error='Invalid email'>
-        <input type='email' />
+      <Field label="Email" error="Invalid email">
+        <input type="email" />
       </Field>,
     );
     const error = screen.getByText('Invalid email');
@@ -57,8 +57,8 @@ describe('Field', () => {
 
   it('renders help text with tertiary color', () => {
     render(
-      <Field label='Password' help='At least 8 characters'>
-        <input type='password' />
+      <Field label="Password" help="At least 8 characters">
+        <input type="password" />
       </Field>,
     );
     const help = screen.getByText('At least 8 characters');
@@ -68,8 +68,8 @@ describe('Field', () => {
 
   it('renders no error/help nodes when the props are absent', () => {
     const { container } = render(
-      <Field label='Name'>
-        <input type='text' />
+      <Field label="Name">
+        <input type="text" />
       </Field>,
     );
     expect(container.querySelectorAll('label > span').length).toBe(1);

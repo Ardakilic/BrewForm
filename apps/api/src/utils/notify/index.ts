@@ -13,16 +13,16 @@
  */
 import { db } from '@brewform/db';
 import { userFollows, userPreferences, users } from '@brewform/db/schema';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
-import nodemailer from 'npm:nodemailer';
-import { config } from '../../config/index.ts';
-import { createLogger } from '../logger/index.ts';
 import { escapeHtml } from '@brewform/shared/utils';
-import { template as newFollowerTemplate } from '../../templates/email/generated/new-follower.ts';
-import { template as recipeLikedTemplate } from '../../templates/email/generated/recipe-liked.ts';
-import { template as recipeCommentedTemplate } from '../../templates/email/generated/recipe-commented.ts';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import nodemailer from 'nodemailer';
+import { config } from '../../config/index.ts';
 import { template as followedUserPostedTemplate } from '../../templates/email/generated/followed-user-posted.ts';
 import { template as mentionedInCommentTemplate } from '../../templates/email/generated/mentioned-in-comment.ts';
+import { template as newFollowerTemplate } from '../../templates/email/generated/new-follower.ts';
+import { template as recipeCommentedTemplate } from '../../templates/email/generated/recipe-commented.ts';
+import { template as recipeLikedTemplate } from '../../templates/email/generated/recipe-liked.ts';
+import { createLogger } from '../logger/index.ts';
 
 /** A resolved notification recipient with their flat preference row. */
 interface NotifyRecipient {
@@ -96,8 +96,10 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
  * otherwise the production domain or the local Vite dev server.
  */
 export function appBaseUrl(): string {
-  return config.PUBLIC_APP_URL ||
-    (config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173');
+  return (
+    config.PUBLIC_APP_URL ||
+    (config.APP_ENV === 'production' ? 'https://brewform.cc' : 'http://localhost:5173')
+  );
 }
 
 /**
@@ -106,7 +108,8 @@ export function appBaseUrl(): string {
  * email address.
  */
 async function loadRecipient(userId: string): Promise<NotifyRecipient | null> {
-  const result = await db.select()
+  const result = await db
+    .select()
     .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
     .where(and(eq(users.id, userId), isNull(users.deletedAt)))
@@ -225,24 +228,28 @@ export async function notifyFollowersOfNewRecipe(params: {
   recipeTitle: string;
   recipeSlug: string;
 }): Promise<void> {
-  const follows = await db.select({ followerId: userFollows.followerId })
+  const follows = await db
+    .select({ followerId: userFollows.followerId })
     .from(userFollows)
     .where(eq(userFollows.followingId, params.authorId));
   if (follows.length === 0) return;
 
   const followerIds = follows.map((f) => f.followerId);
-  const userResults = await db.select()
+  const userResults = await db
+    .select()
     .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
     .where(and(inArray(users.id, followerIds), isNull(users.deletedAt)));
 
   const recipients: NotifyRecipient[] = userResults
     .filter((u) => u.user.email)
-    .map((u): NotifyRecipient => ({
-      email: u.user.email,
-      username: u.user.username,
-      prefs: u.user_preferences ?? {},
-    }))
+    .map(
+      (u): NotifyRecipient => ({
+        email: u.user.email,
+        username: u.user.username,
+        prefs: u.user_preferences ?? {},
+      }),
+    )
     .filter((r) => r.prefs.notifyFollowedUserPosted !== false);
 
   if (recipients.length === 0) return;

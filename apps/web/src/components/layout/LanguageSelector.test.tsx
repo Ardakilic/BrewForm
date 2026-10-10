@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageSelector } from './LanguageSelector.tsx';
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -13,13 +13,7 @@ describe('LanguageSelector', () => {
   });
 
   it('renders flag emoji + language name for each locale option', async () => {
-    render(
-      <LanguageSelector
-        locale='en'
-        setLocale={setLocale}
-        availableLocales={['en', 'tr']}
-      />,
-    );
+    render(<LanguageSelector locale="en" setLocale={setLocale} availableLocales={['en', 'tr']} />);
 
     const trigger = screen.getByRole('combobox');
     await userEvent.click(trigger);
@@ -29,13 +23,7 @@ describe('LanguageSelector', () => {
   });
 
   it('calls setLocale when a different language is selected', async () => {
-    render(
-      <LanguageSelector
-        locale='en'
-        setLocale={setLocale}
-        availableLocales={['en', 'tr']}
-      />,
-    );
+    render(<LanguageSelector locale="en" setLocale={setLocale} availableLocales={['en', 'tr']} />);
 
     const trigger = screen.getByRole('combobox');
     await userEvent.click(trigger);
@@ -48,24 +36,14 @@ describe('LanguageSelector', () => {
 
   it('renders nothing when availableLocales is empty', () => {
     const { container } = render(
-      <LanguageSelector
-        locale='en'
-        setLocale={setLocale}
-        availableLocales={[]}
-      />,
+      <LanguageSelector locale="en" setLocale={setLocale} availableLocales={[]} />,
     );
 
     expect(container.firstChild).toBeNull();
   });
 
   it('displays currently active locale in trigger', () => {
-    render(
-      <LanguageSelector
-        locale='tr'
-        setLocale={setLocale}
-        availableLocales={['en', 'tr']}
-      />,
-    );
+    render(<LanguageSelector locale="tr" setLocale={setLocale} availableLocales={['en', 'tr']} />);
 
     const trigger = screen.getByRole('combobox');
     expect(trigger).toHaveTextContent('🇹🇷 Türkçe');

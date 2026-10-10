@@ -1,13 +1,13 @@
+import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, redirect, useLoaderData, useSearchParams } from 'react-router';
 import { ApiError, brewLogApi } from '../../api/index.ts';
-import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { createLogger } from '../../utils/logger.ts';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('BrewLogListPage');
 
@@ -23,9 +23,7 @@ export interface BrewLogListLoaderData {
  * (negative, fractional, infinite, zero, missing, non-numeric) defaults to 1.
  * Redirects to `/login` on a 401.
  */
-export const loader = async (
-  { request }: { request: Request },
-): Promise<BrewLogListLoaderData> => {
+export const loader = async ({ request }: { request: Request }): Promise<BrewLogListLoaderData> => {
   const rawPage = Number(new URL(request.url).searchParams.get('page'));
   const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
   log.debug({ page }, 'BrewLogListPage loader started');
@@ -66,29 +64,28 @@ export function BrewLogListPage() {
   }
 
   return (
-    <PageContainer width='4xl'>
-      <div className='mb-6'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+    <PageContainer width="4xl">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('brewLog.list.title')}
         </h1>
-        <p className='text-sm mt-1' style={{ color: 'var(--text-tertiary)' }}>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
           {t('brewLog.list.newHint')}{' '}
-          <Link
-            to='/recipes'
-            className='text-[color:var(--accent-primary)] hover:underline'
-          >
+          <Link to="/recipes" className="text-[color:var(--accent-primary)] hover:underline">
             {t('brewLog.list.new')}
           </Link>
         </p>
       </div>
 
-      {logsResponse.data.length === 0
-        ? <EmptyState message={t('brewLog.list.empty')} />
-        : (
-          <div className='space-y-4'>
-            {logsResponse.data.map((entry) => <BrewLogCard key={entry.id} log={entry} />)}
-          </div>
-        )}
+      {logsResponse.data.length === 0 ? (
+        <EmptyState message={t('brewLog.list.empty')} />
+      ) : (
+        <div className="space-y-4">
+          {logsResponse.data.map((entry) => (
+            <BrewLogCard key={entry.id} log={entry} />
+          ))}
+        </div>
+      )}
 
       {totalPages > 1 && (
         <PaginationControls page={page} totalPages={totalPages} onPageChange={handlePageChange} />

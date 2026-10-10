@@ -5,8 +5,9 @@
  * piece of equipment. The shape mirrors the database `brew_method_equipment`
  * table (one row per method/equipment combination).
  */
-import type { EquipmentType } from './equipment-types.ts';
+
 import type { BrewMethodValue } from './brew-methods.ts';
+import type { EquipmentType } from './equipment-types.ts';
 
 /** A single brew-method × equipment-type compatibility rule. */
 export interface BrewMethodEquipmentRuleDef {

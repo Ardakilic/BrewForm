@@ -1,7 +1,6 @@
 import '../test-setup.ts';
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
+import { describe, expect, it } from 'vitest';
 import share, { deps, OG_TEMPLATE, RECIPE_NOT_FOUND_HTML } from '../routes/share.ts';
 
 describe('Share Route', () => {
@@ -37,9 +36,7 @@ describe('Share Route', () => {
         slug: 'foo</script>bar',
       };
       const html = OG_TEMPLATE(maliciousMeta);
-      const scriptMatch = html.match(
-        /window\.location\.replace\('\/recipes\/\' \+ "([^"]+)"\)/,
-      );
+      const scriptMatch = html.match(/window\.location\.replace\('\/recipes\/' \+ "([^"]+)"\)/);
       expect(scriptMatch).not.toBeNull();
       expect(scriptMatch![1]).toContain('<\\/script>');
       expect(scriptMatch![1]).not.toContain('</script>');
@@ -72,18 +69,17 @@ describe('Share Route', () => {
     const originalGetRecipeMeta = deps.getRecipeMeta;
 
     it('returns 404 with RECIPE_NOT_FOUND_HTML when visibility is not public', async () => {
-      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => ({
         id: '1',
         title: 'Private Recipe',
         slug: 'private-recipe',
-        author: { username: 'chef', displayName: 'Chef' },
+        author: { id: 'user-1', username: 'chef', displayName: 'Chef', avatarUrl: null },
         visibility: 'private',
         likeCount: 0,
         commentCount: 0,
         createdAt: new Date(),
         productName: null,
-        brewMethod: null,
+        brewMethod: 'v60',
         photoUrl: null,
       });
 
@@ -96,7 +92,6 @@ describe('Share Route', () => {
     });
 
     it('returns 404 with RECIPE_NOT_FOUND_HTML when getRecipeMeta throws RECIPE_NOT_FOUND', async () => {
-      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => {
         throw new Error('RECIPE_NOT_FOUND');
       };
@@ -110,18 +105,18 @@ describe('Share Route', () => {
     });
 
     it('uses productName in description when present', async () => {
-      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => ({
         id: '1',
         title: 'V60 Recipe',
         slug: 'v60-recipe',
-        author: { username: 'barista', displayName: 'Barista' },
+        author: { id: 'user-1', username: 'barista', displayName: 'Barista', avatarUrl: null },
         visibility: 'public',
         likeCount: 0,
         commentCount: 0,
         createdAt: new Date(),
         productName: 'Ethiopian Yirgacheffe',
-        brewMethod: 'Pour Over',
+        // Display string outside the BrewMethod slug union; `as never` keeps the runtime value.
+        brewMethod: 'Pour Over' as never,
         photoUrl: null,
       });
 
@@ -135,18 +130,18 @@ describe('Share Route', () => {
     });
 
     it('falls back to author name when productName is absent', async () => {
-      // deno-lint-ignore require-await -- test mock async signature
       deps.getRecipeMeta = async (_slug: string) => ({
         id: '1',
         title: 'Espresso Recipe',
         slug: 'espresso-recipe',
-        author: { username: 'barista', displayName: 'Pro Barista' },
+        author: { id: 'user-1', username: 'barista', displayName: 'Pro Barista', avatarUrl: null },
         visibility: 'public',
         likeCount: 0,
         commentCount: 0,
         createdAt: new Date(),
         productName: null,
-        brewMethod: 'Espresso',
+        // Display string outside the BrewMethod slug union; `as never` keeps the runtime value.
+        brewMethod: 'Espresso' as never,
         photoUrl: null,
       });
 
@@ -159,8 +154,9 @@ describe('Share Route', () => {
     });
 
     it('falls back to generic user when productName and author are absent', async () => {
-      // deno-lint-ignore require-await -- test mock async signature
-      deps.getRecipeMeta = async (_slug: string) => ({
+      // Null author exercises the defensive fallback path, which the static
+      // getRecipeMeta return type does not cover — hence the cast.
+      deps.getRecipeMeta = (async (_slug: string) => ({
         id: '1',
         title: 'Cold Brew',
         slug: 'cold-brew',
@@ -172,7 +168,7 @@ describe('Share Route', () => {
         productName: null,
         brewMethod: null,
         photoUrl: null,
-      });
+      })) as unknown as typeof deps.getRecipeMeta;
 
       const res = await app.request('/share/cold-brew');
       expect(res.status).toBe(200);

@@ -1,20 +1,20 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { UserProfileUpdateSchema } from '@brewform/shared/schemas';
-import { describeRoute, resolver } from 'hono-openapi';
 import {
   ErrorEnvelopeSchema,
   MessageResponseSchema,
   PublicUserOutputSchema,
   SelfUserOutputSchema,
   successEnvelope,
+  UserProfileUpdateSchema,
   UserRowOutputSchema,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, success } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, success } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for user endpoints, mounted at `/api/v1/users`. */
 const user = new Hono<AppEnv>();
@@ -124,9 +124,7 @@ user.get(
     summary: 'Get a public user profile',
     description:
       'Returns the public profile for a username, including stats, recipes, badges, and follow status.',
-    parameters: [
-      { name: 'username', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'username', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Public user profile',

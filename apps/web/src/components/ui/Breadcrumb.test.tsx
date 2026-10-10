@@ -1,11 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { Breadcrumb } from './Breadcrumb.tsx';
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -14,7 +20,7 @@ vi.mock('react-router', () => ({
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: () => ({
-    t: (key: string) => key === 'a11y.breadcrumb' ? 'Breadcrumb' : key,
+    t: (key: string) => (key === 'a11y.breadcrumb' ? 'Breadcrumb' : key),
     locale: 'en',
   }),
 }));
@@ -52,9 +58,7 @@ describe('Breadcrumb', () => {
 
   it('renders a separator between items but not before the first', () => {
     const { container } = render(
-      <Breadcrumb
-        items={[{ label: 'A', to: '/a' }, { label: 'B', to: '/b' }, { label: 'C' }]}
-      />,
+      <Breadcrumb items={[{ label: 'A', to: '/a' }, { label: 'B', to: '/b' }, { label: 'C' }]} />,
     );
     const separators = container.querySelectorAll('li[aria-hidden="true"]');
     expect(separators.length).toBe(2);

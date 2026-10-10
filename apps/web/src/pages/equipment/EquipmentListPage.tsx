@@ -1,16 +1,16 @@
+import type { EquipmentOutput } from '@brewform/shared/schemas';
+import type { EquipmentType } from '@brewform/shared/types';
 import { useEffect, useState } from 'react';
 import { equipmentApi } from '../../api/index.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
-import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { Field } from '../../components/form/Field.tsx';
-import { OwnedItemCard } from '../../components/ui/OwnedItemCard.tsx';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { LoadingState } from '../../components/ui/LoadingState.tsx';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useConfirm } from '../../components/ui/Modal.tsx';
-import type { EquipmentOutput } from '@brewform/shared/schemas';
-import type { EquipmentType } from '@brewform/shared/types';
+import { OwnedItemCard } from '../../components/ui/OwnedItemCard.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('EquipmentListPage');
@@ -36,13 +36,16 @@ export function EquipmentListPage() {
   }, []);
 
   useEffect(() => {
-    equipmentApi.list().then((data) => {
-      setEquipment(data);
-      setStatus('ready');
-    }).catch((err) => {
-      log.error({ err }, 'equipment list fetch failed');
-      setStatus('error');
-    });
+    equipmentApi
+      .list()
+      .then((data) => {
+        setEquipment(data);
+        setStatus('ready');
+      })
+      .catch((err) => {
+        log.error({ err }, 'equipment list fetch failed');
+        setStatus('error');
+      });
   }, []);
 
   /**
@@ -79,12 +82,13 @@ export function EquipmentListPage() {
    */
   async function handleDelete(id: string) {
     if (
-      !await confirm({
+      !(await confirm({
         titleKey: 'common.confirmDelete',
         bodyKey: 'equipment.deleteConfirm',
         danger: true,
-      })
-    ) return;
+      }))
+    )
+      return;
     log.debug({ equipmentId: id }, 'handleDelete started');
     try {
       await equipmentApi.delete(id);
@@ -97,92 +101,92 @@ export function EquipmentListPage() {
   }
 
   if (status === 'loading') {
-    return <LoadingState className='mx-auto max-w-4xl px-6' />;
+    return <LoadingState className="mx-auto max-w-4xl px-6" />;
   }
 
   return (
-    <div className='mx-auto max-w-4xl px-6 py-8'>
+    <div className="mx-auto max-w-4xl px-6 py-8">
       <SEOHead title={t('equipment.title')} />
-      <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('equipment.title')}
         </h1>
-        <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
+        <button type="button" onClick={() => setShowForm(!showForm)} className="btn-primary">
           {showForm ? t('common.cancel') : t('equipment.addEquipment')}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className='card mb-6'>
-          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+        <form onSubmit={handleCreate} className="card mb-6">
+          <h2 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             {t('equipment.addEquipmentTitle')}
           </h2>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label={t('equipment.name')} required>
               <input
-                type='text'
+                type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className='input-field'
+                className="input-field"
                 required
               />
             </Field>
             <Field label={t('equipment.type')} required>
               <input
-                type='text'
+                type="text"
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className='input-field'
+                className="input-field"
                 placeholder={t('equipment.type.placeholder')}
                 required
               />
             </Field>
             <Field label={t('equipment.brand')}>
               <input
-                type='text'
+                type="text"
                 value={form.brand}
                 onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                className='input-field'
+                className="input-field"
               />
             </Field>
             <Field label={t('equipment.model')}>
               <input
-                type='text'
+                type="text"
                 value={form.model}
                 onChange={(e) => setForm({ ...form, model: e.target.value })}
-                className='input-field'
+                className="input-field"
               />
             </Field>
           </div>
-          <button type='submit' className='btn-primary mt-4' disabled={saving}>
+          <button type="submit" className="btn-primary mt-4" disabled={saving}>
             {saving ? t('equipment.adding') : t('equipment.addEquipmentTitle')}
           </button>
         </form>
       )}
 
-      {status === 'error'
-        ? <ErrorState message={t('equipment.error.loadFailed')} />
-        : equipment.length === 0
-        ? <EmptyState message={t('equipment.noEquipment')} />
-        : (
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            {equipment.map((eq) => (
-              <OwnedItemCard
-                key={eq.id}
-                title={eq.name}
-                meta={
-                  <>
-                    <span className='badge'>{eq.type}</span>
-                    {eq.brand && <span>{eq.brand}</span>}
-                    {eq.model && <span>{eq.model}</span>}
-                  </>
-                }
-                onDelete={() => handleDelete(eq.id)}
-                deleteLabel={t('common.delete')}
-              />
-            ))}
-          </div>
-        )}
+      {status === 'error' ? (
+        <ErrorState message={t('equipment.error.loadFailed')} />
+      ) : equipment.length === 0 ? (
+        <EmptyState message={t('equipment.noEquipment')} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {equipment.map((eq) => (
+            <OwnedItemCard
+              key={eq.id}
+              title={eq.name}
+              meta={
+                <>
+                  <span className="badge">{eq.type}</span>
+                  {eq.brand && <span>{eq.brand}</span>}
+                  {eq.model && <span>{eq.model}</span>}
+                </>
+              }
+              onDelete={() => handleDelete(eq.id)}
+              deleteLabel={t('common.delete')}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

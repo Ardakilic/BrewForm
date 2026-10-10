@@ -1,9 +1,9 @@
-import * as model from './model.ts';
 import type { CollectionCreate, CollectionUpdate } from '@brewform/shared/schemas';
 import type { Visibility } from '@brewform/shared/types';
+import { cacheProvider } from '../../utils/cache/singleton.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import * as recipeModel from '../recipe/model.ts';
-import { cacheProvider } from '../../utils/cache/singleton.ts';
+import * as model from './model.ts';
 
 /** Module logger (exported for test spies — mirrors coffee-variety/service.ts). */
 export const logger = createLogger('collection-service');
@@ -35,21 +35,24 @@ function toDetailOutput(collection: CollectionWithRelations) {
     name: collection.name,
     description: collection.description,
     visibility: collection.visibility,
-    createdAt: collection.createdAt instanceof Date
-      ? collection.createdAt.toISOString()
-      : collection.createdAt,
-    updatedAt: collection.updatedAt instanceof Date
-      ? collection.updatedAt.toISOString()
-      : collection.updatedAt,
-    deletedAt: collection.deletedAt instanceof Date
-      ? collection.deletedAt.toISOString()
-      : collection.deletedAt ?? null,
+    createdAt:
+      collection.createdAt instanceof Date
+        ? collection.createdAt.toISOString()
+        : collection.createdAt,
+    updatedAt:
+      collection.updatedAt instanceof Date
+        ? collection.updatedAt.toISOString()
+        : collection.updatedAt,
+    deletedAt:
+      collection.deletedAt instanceof Date
+        ? collection.deletedAt.toISOString()
+        : (collection.deletedAt ?? null),
     author: collection.user
       ? {
-        username: collection.user.username,
-        displayName: collection.user.displayName,
-        avatarUrl: collection.user.avatarUrl,
-      }
+          username: collection.user.username,
+          displayName: collection.user.displayName,
+          avatarUrl: collection.user.avatarUrl,
+        }
       : { username: '', displayName: null, avatarUrl: null },
     items: (collection.items ?? []).map((item) => ({
       id: item.id,
@@ -59,38 +62,41 @@ function toDetailOutput(collection: CollectionWithRelations) {
       createdAt: item.createdAt instanceof Date ? item.createdAt.toISOString() : item.createdAt,
       recipe: item.recipe
         ? {
-          id: item.recipe.id,
-          slug: item.recipe.slug,
-          title: item.recipe.title,
-          authorId: item.recipe.authorId,
-          visibility: item.recipe.visibility,
-          currentVersionId: item.recipe.currentVersionId,
-          likeCount: item.recipe.likeCount,
-          commentCount: item.recipe.commentCount,
-          forkCount: item.recipe.forkCount,
-          forkedFromId: item.recipe.forkedFromId,
-          featured: item.recipe.featured,
-          createdAt: item.recipe.createdAt instanceof Date
-            ? item.recipe.createdAt.toISOString()
-            : item.recipe.createdAt,
-          updatedAt: item.recipe.updatedAt instanceof Date
-            ? item.recipe.updatedAt.toISOString()
-            : item.recipe.updatedAt,
-          deletedAt: item.recipe.deletedAt instanceof Date
-            ? item.recipe.deletedAt.toISOString()
-            : item.recipe.deletedAt ?? null,
-          author: item.recipe.author
-            ? {
-              id: item.recipe.author.id,
-              username: item.recipe.author.username,
-              displayName: item.recipe.author.displayName,
-            }
-            : { id: '', username: '', displayName: null },
-          // Projected from the latest recipe version (versions is limited to 1
-          // in the model query). Null when the recipe has no versions yet.
-          brewMethod: item.recipe?.versions?.[0]?.brewMethod ?? null,
-          drinkType: item.recipe?.versions?.[0]?.drinkType ?? null,
-        }
+            id: item.recipe.id,
+            slug: item.recipe.slug,
+            title: item.recipe.title,
+            authorId: item.recipe.authorId,
+            visibility: item.recipe.visibility,
+            currentVersionId: item.recipe.currentVersionId,
+            likeCount: item.recipe.likeCount,
+            commentCount: item.recipe.commentCount,
+            forkCount: item.recipe.forkCount,
+            forkedFromId: item.recipe.forkedFromId,
+            featured: item.recipe.featured,
+            createdAt:
+              item.recipe.createdAt instanceof Date
+                ? item.recipe.createdAt.toISOString()
+                : item.recipe.createdAt,
+            updatedAt:
+              item.recipe.updatedAt instanceof Date
+                ? item.recipe.updatedAt.toISOString()
+                : item.recipe.updatedAt,
+            deletedAt:
+              item.recipe.deletedAt instanceof Date
+                ? item.recipe.deletedAt.toISOString()
+                : (item.recipe.deletedAt ?? null),
+            author: item.recipe.author
+              ? {
+                  id: item.recipe.author.id,
+                  username: item.recipe.author.username,
+                  displayName: item.recipe.author.displayName,
+                }
+              : { id: '', username: '', displayName: null },
+            // Projected from the latest recipe version (versions is limited to 1
+            // in the model query). Null when the recipe has no versions yet.
+            brewMethod: item.recipe?.versions?.[0]?.brewMethod ?? null,
+            drinkType: item.recipe?.versions?.[0]?.drinkType ?? null,
+          }
         : null,
     })),
     recipeCount: collection.items?.length ?? 0,
@@ -113,14 +119,14 @@ function toPublicListItemOutput(c: PublicCollectionRow) {
     visibility: c.visibility,
     createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
     updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
-    deletedAt: c.deletedAt instanceof Date ? c.deletedAt.toISOString() : c.deletedAt ?? null,
+    deletedAt: c.deletedAt instanceof Date ? c.deletedAt.toISOString() : (c.deletedAt ?? null),
     recipeCount: c.recipeCount,
     author: c.user
       ? {
-        username: c.user.username,
-        displayName: c.user.displayName,
-        avatarUrl: c.user.avatarUrl,
-      }
+          username: c.user.username,
+          displayName: c.user.displayName,
+          avatarUrl: c.user.avatarUrl,
+        }
       : { username: '', displayName: null, avatarUrl: null },
   };
 }
@@ -131,7 +137,12 @@ function toPublicListItemOutput(c: PublicCollectionRow) {
  * @param data   - Collection creation payload (name, description, visibility).
  * @returns The created collection with author, items, and recipeCount.
  */
-export async function createCollection(userId: string, data: CollectionCreate) {
+export async function createCollection(
+  userId: string,
+  // Visibility is optional here: omitted values fall through to the DB column
+  // default ('private'). CollectionCreate (zod output) marks it required.
+  data: Partial<CollectionCreate> & Pick<CollectionCreate, 'name'>,
+) {
   logger.debug({ userId }, 'createCollection started');
   const created = await model.create({ userId, ...data });
   const collection = await model.findById(created.id);
@@ -285,9 +296,8 @@ export async function listMyCollections(
 export async function listPublicCollections(userId: string, page: number, perPage: number) {
   logger.debug({ userId, page, perPage }, 'listPublicCollections started');
   const key = [...COLLECTION_LIST_PREFIX, 'user', userId, String(page), String(perPage)];
-  const cached = await cacheProvider?.get<Awaited<ReturnType<typeof model.findPublicByUserId>>>(
-    key,
-  );
+  const cached =
+    await cacheProvider?.get<Awaited<ReturnType<typeof model.findPublicByUserId>>>(key);
   if (cached) {
     logger.debug({ userId }, 'listPublicCollections cache hit');
     return cached;
@@ -384,9 +394,8 @@ export async function addRecipeToCollection(
     await model.addItem(collectionId, recipeId, sortOrder);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const causeMessage = err instanceof Error && err.cause instanceof Error
-      ? err.cause.message
-      : '';
+    const causeMessage =
+      err instanceof Error && err.cause instanceof Error ? err.cause.message : '';
     if (
       message.includes('unique') ||
       message.includes('duplicate') ||
@@ -437,11 +446,7 @@ export async function removeRecipeFromCollection(
  * @throws 'FORBIDDEN' if the user is not the collection owner.
  * @throws 'REORDER_MISMATCH' if the item IDs do not match the collection's items.
  */
-export async function reorderCollection(
-  userId: string,
-  collectionId: string,
-  itemIds: string[],
-) {
+export async function reorderCollection(userId: string, collectionId: string, itemIds: string[]) {
   logger.debug({ userId, collectionId, itemCount: itemIds.length }, 'reorderCollection started');
   const collection = await model.findById(collectionId);
   if (!collection) throw new Error('COLLECTION_NOT_FOUND');

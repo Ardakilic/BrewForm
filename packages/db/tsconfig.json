@@ -1,14 +1,12 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "types": ["node"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  // check-users-empty.test.ts imports scripts/check-users-empty.ts, which lives
+  // outside rootDir (TS6059). Excluded from tsc only — vitest still runs it.
+  "exclude": ["node_modules", "dist", "src/check-users-empty.test.ts"]
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { api, ApiError } from './client.ts';
 import { sessionId } from '../utils/sessionId.ts';
+import { ApiError, api } from './client.ts';
 
 describe('ApiError', () => {
   it('should construct with structured error format', () => {
@@ -29,9 +29,9 @@ describe('ApiError', () => {
 
 describe('api client', () => {
   it('should send X-Request-ID header with sessionId', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ data: { ok: true } }), { status: 200 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ data: { ok: true } }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     await api.get('/test');

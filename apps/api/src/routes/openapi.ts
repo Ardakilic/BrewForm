@@ -44,9 +44,7 @@ export function registerOpenApi(app: Hono<AppEnv>): void {
         version: '1.0.0',
         description: 'Coffee brewing recipe sharing and discovery platform',
       },
-      servers: [
-        { url: 'http://localhost:8000', description: 'Development' },
-      ],
+      servers: [{ url: 'http://localhost:8000', description: 'Development' }],
       components: {
         securitySchemes: {
           bearerAuth: {

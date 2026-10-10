@@ -1,7 +1,7 @@
 import { db } from '@brewform/db';
 import { collectionItems, collections, recipeVersions } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, inArray, isNull, max, or, type SQL } from 'drizzle-orm';
 import type { Visibility } from '@brewform/shared/types';
+import { and, asc, count, desc, eq, inArray, isNull, max, or, type SQL } from 'drizzle-orm';
 
 /**
  * Fetch a single collection by UUID, excluding soft-deleted rows.
@@ -50,10 +50,10 @@ export async function findByUserId(
 ): Promise<{ collections: Record<string, unknown>[]; total: number }> {
   const where: SQL | undefined = visibility
     ? and(
-      eq(collections.userId, userId),
-      isNull(collections.deletedAt),
-      eq(collections.visibility, visibility),
-    )
+        eq(collections.userId, userId),
+        isNull(collections.deletedAt),
+        eq(collections.visibility, visibility),
+      )
     : and(eq(collections.userId, userId), isNull(collections.deletedAt));
 
   const [data, totalResult] = await Promise.all([
@@ -70,26 +70,27 @@ export async function findByUserId(
   const collectionIds = data.map((c) => c.id);
   const countRows = collectionIds.length
     ? await db
-      .select({ collectionId: collectionItems.collectionId, count: count() })
-      .from(collectionItems)
-      .where(inArray(collectionItems.collectionId, collectionIds))
-      .groupBy(collectionItems.collectionId)
+        .select({ collectionId: collectionItems.collectionId, count: count() })
+        .from(collectionItems)
+        .where(inArray(collectionItems.collectionId, collectionIds))
+        .groupBy(collectionItems.collectionId)
     : [];
   const countMap = new Map(countRows.map((r) => [r.collectionId, r.count]));
 
   // When a recipe context is given, batch-query which of these collections
   // already contain that recipe so callers can flag membership per row.
-  const membershipRows = recipeId && collectionIds.length
-    ? await db
-      .select({ collectionId: collectionItems.collectionId })
-      .from(collectionItems)
-      .where(
-        and(
-          eq(collectionItems.recipeId, recipeId),
-          inArray(collectionItems.collectionId, collectionIds),
-        ),
-      )
-    : [];
+  const membershipRows =
+    recipeId && collectionIds.length
+      ? await db
+          .select({ collectionId: collectionItems.collectionId })
+          .from(collectionItems)
+          .where(
+            and(
+              eq(collectionItems.recipeId, recipeId),
+              inArray(collectionItems.collectionId, collectionIds),
+            ),
+          )
+      : [];
   const membershipSet = new Set(membershipRows.map((r) => r.collectionId));
 
   const collectionsWithCount = data.map((c) => ({
@@ -157,10 +158,10 @@ export async function findAllPublic(
   const collectionIds = data.map((c) => c.id);
   const countRows = collectionIds.length
     ? await db
-      .select({ collectionId: collectionItems.collectionId, count: count() })
-      .from(collectionItems)
-      .where(inArray(collectionItems.collectionId, collectionIds))
-      .groupBy(collectionItems.collectionId)
+        .select({ collectionId: collectionItems.collectionId, count: count() })
+        .from(collectionItems)
+        .where(inArray(collectionItems.collectionId, collectionIds))
+        .groupBy(collectionItems.collectionId)
     : [];
   const countMap = new Map(countRows.map((r) => [r.collectionId, r.count]));
 
@@ -248,10 +249,7 @@ export async function reorderItems(collectionId: string, itemIds: string[]) {
         .update(collectionItems)
         .set({ sortOrder: i })
         .where(
-          and(
-            eq(collectionItems.collectionId, collectionId),
-            eq(collectionItems.id, itemIds[i]),
-          ),
+          and(eq(collectionItems.collectionId, collectionId), eq(collectionItems.id, itemIds[i])),
         );
     }
   });

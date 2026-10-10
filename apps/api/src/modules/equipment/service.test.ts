@@ -1,7 +1,4 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq, inArray } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import {
   equipment,
@@ -11,11 +8,13 @@ import {
   recipeVersions,
   users,
 } from '@brewform/db/schema';
-import * as service from './service.ts';
-import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
+import { eq, inArray } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type CacheProvider, InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
+import * as service from './service.ts';
 
-describe('Equipment Service', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Equipment Service', () => {
   let userId: string;
   let otherUserId: string;
   let originalCache: CacheProvider;
@@ -53,9 +52,9 @@ describe('Equipment Service', { sanitizeOps: false, sanitizeResources: false }, 
     setCacheProvider(originalCache);
     if (equipmentIds.length > 0) {
       await db.delete(recipeEquipment).where(inArray(recipeEquipment.equipmentId, equipmentIds));
-      await db.delete(equipmentDeleteRequests).where(
-        inArray(equipmentDeleteRequests.equipmentId, equipmentIds),
-      );
+      await db
+        .delete(equipmentDeleteRequests)
+        .where(inArray(equipmentDeleteRequests.equipmentId, equipmentIds));
     }
     if (versionIds.length > 0) {
       await db.delete(recipeVersions).where(inArray(recipeVersions.id, versionIds));
@@ -72,14 +71,17 @@ describe('Equipment Service', { sanitizeOps: false, sanitizeResources: false }, 
   async function insertEquipmentRow(data: Partial<typeof equipment.$inferInsert> = {}) {
     const id = crypto.randomUUID();
     equipmentIds.push(id);
-    const [row] = await db.insert(equipment).values({
-      id,
-      name: `Test Equipment ${id.slice(0, 8)}`,
-      type: 'grinder',
-      isSystem: false,
-      createdBy: userId,
-      ...data,
-    }).returning();
+    const [row] = await db
+      .insert(equipment)
+      .values({
+        id,
+        name: `Test Equipment ${id.slice(0, 8)}`,
+        type: 'grinder',
+        isSystem: false,
+        createdBy: userId,
+        ...data,
+      })
+      .returning();
     return row;
   }
 
@@ -413,9 +415,9 @@ describe('Equipment Service', { sanitizeOps: false, sanitizeResources: false }, 
     });
 
     it('should throw EQUIPMENT_NOT_FOUND when the equipment does not exist', async () => {
-      await expect(
-        service.requestEquipmentDeletion(crypto.randomUUID(), userId),
-      ).rejects.toThrow('EQUIPMENT_NOT_FOUND');
+      await expect(service.requestEquipmentDeletion(crypto.randomUUID(), userId)).rejects.toThrow(
+        'EQUIPMENT_NOT_FOUND',
+      );
     });
   });
 

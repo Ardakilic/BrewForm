@@ -1,8 +1,7 @@
 import '../../test-setup.ts';
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
 import equipmentRouter, { deps } from './index.ts';
 
@@ -11,33 +10,92 @@ deps.authMiddleware = async (_c: Context, next: Next) => {
 };
 
 const mockService = {
-  listEquipmentWithFilters: (
-    _params: { type?: string; search?: string; page: number; perPage: number },
-  ) => Promise.resolve({ items: [], total: 0 }),
+  listEquipmentWithFilters: (_params: {
+    type?: string;
+    search?: string;
+    page: number;
+    perPage: number;
+  }) => Promise.resolve({ items: [], total: 0 }),
   searchEquipment: (q: string) => {
-    const results = q.length >= 2
-      ? [{ id: 'eq-1', name: 'Fellow Stagg', type: 'kettle', brand: 'Fellow', model: 'Stagg EKG' }]
-      : [];
+    const results =
+      q.length >= 2
+        ? [
+            {
+              id: 'eq-1',
+              name: 'Fellow Stagg',
+              type: 'kettle' as const,
+              brand: 'Fellow',
+              model: 'Stagg EKG',
+              description: null,
+              createdBy: null,
+              isSystem: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              deletedAt: null,
+            },
+          ]
+        : [];
     return Promise.resolve(results);
   },
-  createEquipment: (_userId: string, data: Record<string, unknown>) => Promise.resolve(data),
+  createEquipment: (_userId: string, _data: Record<string, unknown>) =>
+    Promise.resolve({
+      id: 'eq-new',
+      name: 'Fellow Stagg',
+      type: 'kettle' as const,
+      brand: 'Fellow',
+      model: 'Stagg EKG',
+      description: null,
+      createdBy: 'test-user-id',
+      isSystem: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    }),
   getEquipment: (id: string) => {
     if (id === 'nonexistent') return Promise.reject(new Error('EQUIPMENT_NOT_FOUND'));
     return Promise.resolve({
       id,
       name: 'Fellow Stagg',
-      type: 'kettle',
+      type: 'kettle' as const,
       brand: 'Fellow',
       model: 'Stagg EKG',
+      description: null,
+      createdBy: null,
+      isSystem: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
     });
   },
-  updateEquipment: (_userId: string, id: string, data: Record<string, unknown>) =>
-    Promise.resolve({ id, ...data }),
+  updateEquipment: (_userId: string, id: string, _data: Record<string, unknown>) =>
+    Promise.resolve({
+      id,
+      name: 'Updated Kettle',
+      type: 'kettle' as const,
+      brand: 'Fellow',
+      model: 'Stagg EKG',
+      description: null,
+      createdBy: 'test-user-id',
+      isSystem: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    }),
   deleteEquipment: () => Promise.resolve(),
   getRecipesForEquipment: () => Promise.resolve({ data: [], total: 0 }),
-  requestEquipmentDeletion: (equipmentId: string, _userId: string, reason?: string) => {
+  requestEquipmentDeletion: (equipmentId: string, userId: string, reason?: string) => {
     if (equipmentId === 'nonexistent') return Promise.reject(new Error('EQUIPMENT_NOT_FOUND'));
-    return Promise.resolve({ equipmentId, reason: reason ?? null });
+    return Promise.resolve({
+      id: 'req-1',
+      equipmentId,
+      requestedById: userId,
+      reason: reason ?? null,
+      status: 'pending' as const,
+      reviewedById: null,
+      reviewedAt: null,
+      createdAt: new Date(),
+      deletedAt: null,
+    });
   },
 };
 
@@ -49,7 +107,7 @@ function createTestApp() {
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID());
     c.set('userId', 'test-user-id');
-    // deno-lint-ignore no-explicit-any -- test cast
+    // biome-ignore lint/suspicious/noExplicitAny: test cast
     c.set('user', { id: 'test-user-id', isAdmin: false } as any);
     await next();
   });

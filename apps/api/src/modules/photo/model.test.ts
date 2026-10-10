@@ -1,9 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { photos, recipes, recipeVersions, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -23,14 +22,17 @@ async function insertRecipeFixture(userId: string): Promise<{
     authorId: userId,
     visibility: 'public',
   });
-  const [version] = await db.insert(recipeVersions).values({
-    id: versionId,
-    recipeId,
-    versionNumber: 1,
-    brewMethod: 'v60',
-    drinkType: 'pour_over',
-    preparationNotes: '',
-  }).returning();
+  const [version] = await db
+    .insert(recipeVersions)
+    .values({
+      id: versionId,
+      recipeId,
+      versionNumber: 1,
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: '',
+    })
+    .returning();
   await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipeId));
   return { recipeId, versionId };
 }
@@ -39,7 +41,7 @@ async function insertRecipeFixture(userId: string): Promise<{
  * findById — Find a photo by ID. Returns null if the photo has been soft-deleted
  * (deletedAt set) or if no photo with the given ID exists.
  */
-describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findById', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -95,7 +97,7 @@ describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
  * findByRecipe — List all non-deleted photos for a recipe, ordered by sortOrder
  * ascending.
  */
-describe('findByRecipe', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findByRecipe', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -151,7 +153,7 @@ describe('findByRecipe', { sanitizeOps: false, sanitizeResources: false }, () =>
 /**
  * create — Insert a new photo record and return it.
  */
-describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('create', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -200,7 +202,7 @@ describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
  * affects non-deleted photos (isNull(deletedAt) guard). Returns null if the
  * photo is already deleted or does not exist.
  */
-describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('softDelete', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;

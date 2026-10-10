@@ -15,13 +15,12 @@
  *   `error` state is never set — it remains `null` after the rejected call.
  *
  * Testing approach:
- *   Since this is a Deno environment without a DOM renderer, the toggle logic is extracted
+ *   Since this is a Node environment without a DOM renderer, the toggle logic is extracted
  *   into a pure state-machine function that mirrors the UNFIXED and FIXED FollowButton
  *   implementations. This lets us test the state transitions directly without React/DOM.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // State machine types — mirrors the React state in FollowButton
@@ -154,250 +153,211 @@ const networkError = new Error('Network request failed');
 
 describe('Bug 2 Exploration — FollowButton silently swallows errors', () => {
   describe('BUGGY toggle (unfixed code)', () => {
-    it(
-      '[EXPECTED TO FAIL] clicking Follow with a 409 response should set a non-null error state',
-      async () => {
-        // Bug condition: API rejects with 409 CONFLICT (e.g., already following)
-        // On unfixed code this FAILS because catch {} is empty and error state is never set.
-        const initialState: FollowButtonState = {
-          following: false,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(conflict409);
+    it('[EXPECTED TO FAIL] clicking Follow with a 409 response should set a non-null error state', async () => {
+      // Bug condition: API rejects with 409 CONFLICT (e.g., already following)
+      // On unfixed code this FAILS because catch {} is empty and error state is never set.
+      const initialState: FollowButtonState = {
+        following: false,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(conflict409);
 
-        const resultState = await toggle_buggy(initialState, 'user-xyz', api);
+      const resultState = await toggle_buggy(initialState, 'user-xyz', api);
 
-        // This assertion FAILS on unfixed code:
-        // resultState.error is null (never set) but we expect a non-null error message.
-        expect(resultState.error).not.toBeNull();
-      },
-    );
+      // This assertion FAILS on unfixed code:
+      // resultState.error is null (never set) but we expect a non-null error message.
+      expect(resultState.error).not.toBeNull();
+    });
 
-    it(
-      '[EXPECTED TO FAIL] clicking Unfollow with a 404 response should set a non-null error state',
-      async () => {
-        // Bug condition: API rejects with 404 NOT_FOUND during unfollow
-        const initialState: FollowButtonState = {
-          following: true,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(notFound404);
+    it('[EXPECTED TO FAIL] clicking Unfollow with a 404 response should set a non-null error state', async () => {
+      // Bug condition: API rejects with 404 NOT_FOUND during unfollow
+      const initialState: FollowButtonState = {
+        following: true,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(notFound404);
 
-        const resultState = await toggle_buggy(initialState, 'user-xyz', api);
+      const resultState = await toggle_buggy(initialState, 'user-xyz', api);
 
-        // This assertion FAILS on unfixed code:
-        // resultState.error is null (never set) but we expect a non-null error message.
-        expect(resultState.error).not.toBeNull();
-      },
-    );
+      // This assertion FAILS on unfixed code:
+      // resultState.error is null (never set) but we expect a non-null error message.
+      expect(resultState.error).not.toBeNull();
+    });
 
-    it(
-      '[EXPECTED TO FAIL] clicking Follow with a network error should set a non-null error state',
-      async () => {
-        // Bug condition: API rejects with a network error
-        const initialState: FollowButtonState = {
-          following: false,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(networkError);
+    it('[EXPECTED TO FAIL] clicking Follow with a network error should set a non-null error state', async () => {
+      // Bug condition: API rejects with a network error
+      const initialState: FollowButtonState = {
+        following: false,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(networkError);
 
-        const resultState = await toggle_buggy(initialState, 'user-xyz', api);
+      const resultState = await toggle_buggy(initialState, 'user-xyz', api);
 
-        // This assertion FAILS on unfixed code:
-        // resultState.error is null (never set) but we expect a non-null error message.
-        expect(resultState.error).not.toBeNull();
-      },
-    );
+      // This assertion FAILS on unfixed code:
+      // resultState.error is null (never set) but we expect a non-null error message.
+      expect(resultState.error).not.toBeNull();
+    });
 
-    it(
-      '[EXPECTED TO FAIL] after a 409 error, the following state should remain unchanged (false)',
-      async () => {
-        // Bug condition: on error, the following state must NOT be toggled.
-        // On unfixed code, the setFollowing(!following) is inside try{} so it won't run on error —
-        // this part actually works correctly. But the error state is still not set.
-        // We include this to document the full expected post-error state.
-        const initialState: FollowButtonState = {
-          following: false,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(conflict409);
+    it('[EXPECTED TO FAIL] after a 409 error, the following state should remain unchanged (false)', async () => {
+      // Bug condition: on error, the following state must NOT be toggled.
+      // On unfixed code, the setFollowing(!following) is inside try{} so it won't run on error —
+      // this part actually works correctly. But the error state is still not set.
+      // We include this to document the full expected post-error state.
+      const initialState: FollowButtonState = {
+        following: false,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(conflict409);
 
-        const resultState = await toggle_buggy(initialState, 'user-xyz', api);
+      const resultState = await toggle_buggy(initialState, 'user-xyz', api);
 
-        // following should remain false (not toggled on error) — this PASSES on unfixed code
-        expect(resultState.following).toBe(false);
+      // following should remain false (not toggled on error) — this PASSES on unfixed code
+      expect(resultState.following).toBe(false);
 
-        // But error should be non-null — this FAILS on unfixed code
-        expect(resultState.error).not.toBeNull();
-      },
-    );
+      // But error should be non-null — this FAILS on unfixed code
+      expect(resultState.error).not.toBeNull();
+    });
   });
 
   describe('FIXED toggle (documents expected correct behaviour)', () => {
-    it(
-      'clicking Follow with a 409 response sets a non-null error message',
-      async () => {
-        const initialState: FollowButtonState = {
-          following: false,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(conflict409);
+    it('clicking Follow with a 409 response sets a non-null error message', async () => {
+      const initialState: FollowButtonState = {
+        following: false,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(conflict409);
 
-        const resultState = await toggle_fixed(initialState, 'user-xyz', api);
+      const resultState = await toggle_fixed(initialState, 'user-xyz', api);
 
-        expect(resultState.error).not.toBeNull();
-        expect(typeof resultState.error).toBe('string');
-        expect((resultState.error as string).length).toBeGreaterThan(0);
-      },
-    );
+      expect(resultState.error).not.toBeNull();
+      expect(typeof resultState.error).toBe('string');
+      expect((resultState.error as string).length).toBeGreaterThan(0);
+    });
 
-    it(
-      'clicking Unfollow with a 404 response sets a non-null error message',
-      async () => {
-        const initialState: FollowButtonState = {
-          following: true,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(notFound404);
+    it('clicking Unfollow with a 404 response sets a non-null error message', async () => {
+      const initialState: FollowButtonState = {
+        following: true,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(notFound404);
 
-        const resultState = await toggle_fixed(initialState, 'user-xyz', api);
+      const resultState = await toggle_fixed(initialState, 'user-xyz', api);
 
-        expect(resultState.error).not.toBeNull();
-        expect(typeof resultState.error).toBe('string');
-      },
-    );
+      expect(resultState.error).not.toBeNull();
+      expect(typeof resultState.error).toBe('string');
+    });
 
-    it(
-      'clicking Follow with a network error sets a non-null error message',
-      async () => {
-        const initialState: FollowButtonState = {
-          following: false,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(networkError);
+    it('clicking Follow with a network error sets a non-null error message', async () => {
+      const initialState: FollowButtonState = {
+        following: false,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(networkError);
 
-        const resultState = await toggle_fixed(initialState, 'user-xyz', api);
+      const resultState = await toggle_fixed(initialState, 'user-xyz', api);
 
-        expect(resultState.error).not.toBeNull();
-      },
-    );
+      expect(resultState.error).not.toBeNull();
+    });
 
-    it(
-      'after a 409 error, the following state remains unchanged (false) — Requirement 2.3.2',
-      async () => {
-        const initialState: FollowButtonState = {
-          following: false,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(conflict409);
+    it('after a 409 error, the following state remains unchanged (false) — Requirement 2.3.2', async () => {
+      const initialState: FollowButtonState = {
+        following: false,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(conflict409);
 
-        const resultState = await toggle_fixed(initialState, 'user-xyz', api);
+      const resultState = await toggle_fixed(initialState, 'user-xyz', api);
 
-        // following must NOT be toggled on error
-        expect(resultState.following).toBe(false);
-        expect(resultState.error).not.toBeNull();
-      },
-    );
+      // following must NOT be toggled on error
+      expect(resultState.following).toBe(false);
+      expect(resultState.error).not.toBeNull();
+    });
 
-    it(
-      'after an unfollow error, the following state remains unchanged (true) — Requirement 2.3.2',
-      async () => {
-        const initialState: FollowButtonState = {
-          following: true,
-          loading: false,
-          error: null,
-        };
-        const api = createRejectingApiClient(notFound404);
+    it('after an unfollow error, the following state remains unchanged (true) — Requirement 2.3.2', async () => {
+      const initialState: FollowButtonState = {
+        following: true,
+        loading: false,
+        error: null,
+      };
+      const api = createRejectingApiClient(notFound404);
 
-        const resultState = await toggle_fixed(initialState, 'user-xyz', api);
+      const resultState = await toggle_fixed(initialState, 'user-xyz', api);
 
-        // following must NOT be toggled on error
-        expect(resultState.following).toBe(true);
-        expect(resultState.error).not.toBeNull();
-      },
-    );
+      // following must NOT be toggled on error
+      expect(resultState.following).toBe(true);
+      expect(resultState.error).not.toBeNull();
+    });
 
-    it(
-      'error is cleared at the start of a retry click — Requirement 2.3.3',
-      async () => {
-        // First click: fails with 409
-        const initialState: FollowButtonState = {
-          following: false,
-          loading: false,
-          error: null,
-        };
-        const failingApi = createRejectingApiClient(conflict409);
-        const stateAfterError = await toggle_fixed(initialState, 'user-xyz', failingApi);
-        expect(stateAfterError.error).not.toBeNull();
+    it('error is cleared at the start of a retry click — Requirement 2.3.3', async () => {
+      // First click: fails with 409
+      const initialState: FollowButtonState = {
+        following: false,
+        loading: false,
+        error: null,
+      };
+      const failingApi = createRejectingApiClient(conflict409);
+      const stateAfterError = await toggle_fixed(initialState, 'user-xyz', failingApi);
+      expect(stateAfterError.error).not.toBeNull();
 
-        // Second click: succeeds — error should be cleared
-        const succeedingApi = createSucceedingApiClient();
-        const stateAfterSuccess = await toggle_fixed(stateAfterError, 'user-xyz', succeedingApi);
-        expect(stateAfterSuccess.error).toBeNull();
-        expect(stateAfterSuccess.following).toBe(true);
-      },
-    );
+      // Second click: succeeds — error should be cleared
+      const succeedingApi = createSucceedingApiClient();
+      const stateAfterSuccess = await toggle_fixed(stateAfterError, 'user-xyz', succeedingApi);
+      expect(stateAfterSuccess.error).toBeNull();
+      expect(stateAfterSuccess.following).toBe(true);
+    });
 
-    it(
-      'successful follow call sets no error and toggles following to true — Requirement 3.2 (preservation)',
-      async () => {
-        const initialState: FollowButtonState = {
-          following: false,
-          loading: false,
-          error: null,
-        };
-        const api = createSucceedingApiClient();
+    it('successful follow call sets no error and toggles following to true — Requirement 3.2 (preservation)', async () => {
+      const initialState: FollowButtonState = {
+        following: false,
+        loading: false,
+        error: null,
+      };
+      const api = createSucceedingApiClient();
 
-        const resultState = await toggle_fixed(initialState, 'user-xyz', api);
+      const resultState = await toggle_fixed(initialState, 'user-xyz', api);
 
-        expect(resultState.error).toBeNull();
-        expect(resultState.following).toBe(true);
-        expect(resultState.loading).toBe(false);
-      },
-    );
+      expect(resultState.error).toBeNull();
+      expect(resultState.following).toBe(true);
+      expect(resultState.loading).toBe(false);
+    });
 
-    it(
-      'successful unfollow call sets no error and toggles following to false — Requirement 3.2 (preservation)',
-      async () => {
-        const initialState: FollowButtonState = {
-          following: true,
-          loading: false,
-          error: null,
-        };
-        const api = createSucceedingApiClient();
+    it('successful unfollow call sets no error and toggles following to false — Requirement 3.2 (preservation)', async () => {
+      const initialState: FollowButtonState = {
+        following: true,
+        loading: false,
+        error: null,
+      };
+      const api = createSucceedingApiClient();
 
-        const resultState = await toggle_fixed(initialState, 'user-xyz', api);
+      const resultState = await toggle_fixed(initialState, 'user-xyz', api);
 
-        expect(resultState.error).toBeNull();
-        expect(resultState.following).toBe(false);
-        expect(resultState.loading).toBe(false);
-      },
-    );
+      expect(resultState.error).toBeNull();
+      expect(resultState.following).toBe(false);
+      expect(resultState.loading).toBe(false);
+    });
 
-    it(
-      'duplicate click while loading is ignored — Requirement 3.5 (preservation)',
-      async () => {
-        // When loading is true, toggle returns the same state unchanged
-        const loadingState: FollowButtonState = {
-          following: false,
-          loading: true,
-          error: null,
-        };
-        const api = createSucceedingApiClient();
+    it('duplicate click while loading is ignored — Requirement 3.5 (preservation)', async () => {
+      // When loading is true, toggle returns the same state unchanged
+      const loadingState: FollowButtonState = {
+        following: false,
+        loading: true,
+        error: null,
+      };
+      const api = createSucceedingApiClient();
 
-        const resultState = await toggle_fixed(loadingState, 'user-xyz', api);
+      const resultState = await toggle_fixed(loadingState, 'user-xyz', api);
 
-        // State must be unchanged — the call was ignored
-        expect(resultState).toEqual(loadingState);
-      },
-    );
+      // State must be unchanged — the call was ignored
+      expect(resultState).toEqual(loadingState);
+    });
   });
 });

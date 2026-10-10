@@ -19,42 +19,46 @@ import {
   equipment,
   equipmentDeleteRequests,
   equipmentTypeEnum,
+  type RecipeVisibility,
   recipes,
   recipeVersions,
-  type RecipeVisibility,
   reports,
   userPreferences,
   users,
   vendors,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, gte, isNull, like, ne, or, sql } from 'drizzle-orm';
 import { hashSync } from 'bcryptjs';
+import { and, asc, count, desc, eq, gte, isNull, like, ne, or, type SQL, sql } from 'drizzle-orm';
 
 /** Fetch a paginated list of non-deleted users, optionally filtered by email, username, or display name. */
 export async function listUsers(page: number, perPage: number, query?: string) {
   const where = query
     ? and(
-      isNull(users.deletedAt),
-      or(
-        like(users.email, `%${query}%`),
-        like(users.username, `%${query}%`),
-        like(users.displayName, `%${query}%`),
-      ),
-    )
+        isNull(users.deletedAt),
+        or(
+          like(users.email, `%${query}%`),
+          like(users.username, `%${query}%`),
+          like(users.displayName, `%${query}%`),
+        ),
+      )
     : isNull(users.deletedAt);
   const [data, totalResult] = await Promise.all([
-    db.select({
-      id: users.id,
-      email: users.email,
-      username: users.username,
-      displayName: users.displayName,
-      avatarUrl: users.avatarUrl,
-      isAdmin: users.isAdmin,
-      isBanned: users.isBanned,
-      createdAt: users.createdAt,
-    }).from(users).where(where).orderBy(desc(users.createdAt), asc(users.id)).limit(perPage).offset(
-      (page - 1) * perPage,
-    ),
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        username: users.username,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+        isAdmin: users.isAdmin,
+        isBanned: users.isBanned,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(where)
+      .orderBy(desc(users.createdAt), asc(users.id))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };
@@ -64,7 +68,11 @@ export async function listUsers(page: number, perPage: number, query?: string) {
 export async function isEmailTaken(email: string, excludeId?: string) {
   const conditions = [eq(users.email, email), isNull(users.deletedAt)];
   if (excludeId) conditions.push(ne(users.id, excludeId));
-  const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
+  const [result] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(...conditions))
+    .limit(1);
   return !!result;
 }
 
@@ -72,51 +80,63 @@ export async function isEmailTaken(email: string, excludeId?: string) {
 export async function isUsernameTaken(username: string, excludeId?: string) {
   const conditions = [eq(users.username, username), isNull(users.deletedAt)];
   if (excludeId) conditions.push(ne(users.id, excludeId));
-  const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
+  const [result] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(...conditions))
+    .limit(1);
   return !!result;
 }
 
 /** Fetch a single non-deleted user by ID. Returns null if not found. */
 export async function getUserById(id: string) {
-  const result = await db.select({
-    id: users.id,
-    email: users.email,
-    username: users.username,
-    displayName: users.displayName,
-    avatarUrl: users.avatarUrl,
-    bio: users.bio,
-    isAdmin: users.isAdmin,
-    isBanned: users.isBanned,
-    onboardingCompleted: users.onboardingCompleted,
-    createdAt: users.createdAt,
-    updatedAt: users.updatedAt,
-  }).from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1);
+  const result = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      username: users.username,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
+      bio: users.bio,
+      isAdmin: users.isAdmin,
+      isBanned: users.isBanned,
+      onboardingCompleted: users.onboardingCompleted,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .where(and(eq(users.id, id), isNull(users.deletedAt)))
+    .limit(1);
   return result[0] ?? null;
 }
 
 /** Ban an active (non-deleted) user by setting `isBanned = true`. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function banUser(userId: string) {
-  const [result] = await db.update(users).set({ isBanned: true }).where(
-    and(eq(users.id, userId), isNull(users.deletedAt)),
-  )
+  const [result] = await db
+    .update(users)
+    .set({ isBanned: true })
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
     .returning();
   return result ?? null;
 }
 
 /** Unban an active (non-deleted) user by setting `isBanned = false`. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function unbanUser(userId: string) {
-  const [result] = await db.update(users).set({ isBanned: false }).where(
-    and(eq(users.id, userId), isNull(users.deletedAt)),
-  )
+  const [result] = await db
+    .update(users)
+    .set({ isBanned: false })
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
     .returning();
   return result ?? null;
 }
 
 /** Set or clear the admin role on an active (non-deleted) user. Returns the updated user, or null if the user is soft-deleted or not found. */
 export async function setUserAdminRole(userId: string, isAdmin: boolean) {
-  const [result] = await db.update(users).set({ isAdmin }).where(
-    and(eq(users.id, userId), isNull(users.deletedAt)),
-  ).returning();
+  const [result] = await db
+    .update(users)
+    .set({ isAdmin })
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+    .returning();
   return result ?? null;
 }
 
@@ -132,8 +152,8 @@ export function throwIfUniqueViolation(err: unknown): void {
   const wrapped = err as {
     cause?: { name?: string; code?: string; constraint_name?: string };
   };
-  const pgErr = wrapped.cause ??
-    (err as { name?: string; code?: string; constraint_name?: string });
+  const pgErr =
+    wrapped.cause ?? (err as { name?: string; code?: string; constraint_name?: string });
   if (pgErr.name === 'PostgresError' && pgErr.code === '23505') {
     if (pgErr.constraint_name?.includes('email')) throw new Error('EMAIL_ALREADY_EXISTS');
     if (pgErr.constraint_name?.includes('username')) throw new Error('USERNAME_ALREADY_EXISTS');
@@ -156,15 +176,18 @@ export async function adminCreateUser(data: {
   const passwordHash = hashSync(data.password, 10);
   try {
     return await db.transaction(async (tx) => {
-      const [user] = await tx.insert(users).values({
-        email: data.email,
-        username: data.username,
-        passwordHash,
-        displayName: data.displayName || null,
-        bio: data.bio || null,
-        isAdmin: data.isAdmin || false,
-        isBanned: data.isBanned || false,
-      }).returning();
+      const [user] = await tx
+        .insert(users)
+        .values({
+          email: data.email,
+          username: data.username,
+          passwordHash,
+          displayName: data.displayName || null,
+          bio: data.bio || null,
+          isAdmin: data.isAdmin || false,
+          isBanned: data.isBanned || false,
+        })
+        .returning();
       await tx.insert(userPreferences).values({ userId: user.id });
       return user;
     });
@@ -202,9 +225,11 @@ export async function adminUpdateUser(
   if (Object.keys(updateData).length === 0) return null;
 
   try {
-    const [result] = await db.update(users).set(updateData).where(
-      and(eq(users.id, id), isNull(users.deletedAt)),
-    ).returning();
+    const [result] = await db
+      .update(users)
+      .set(updateData)
+      .where(and(eq(users.id, id), isNull(users.deletedAt)))
+      .returning();
     return result ?? null;
   } catch (err) {
     throwIfUniqueViolation(err);
@@ -214,9 +239,10 @@ export async function adminUpdateUser(
 
 /** Soft-delete a user by setting `deletedAt`. Returns the updated user or null. */
 export async function softDeleteUser(userId: string) {
-  const [result] = await db.update(users).set({ deletedAt: new Date() }).where(
-    and(eq(users.id, userId), isNull(users.deletedAt)),
-  )
+  const [result] = await db
+    .update(users)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)))
     .returning();
   return result ?? null;
 }
@@ -230,13 +256,18 @@ function isValidVisibility(v: string): v is RecipeVisibility {
 
 /** List all non-deleted recipes with optional visibility filter, ordered by newest first. */
 export async function listAllRecipes(page: number, perPage: number, visibility?: string) {
-  const where = visibility && isValidVisibility(visibility)
-    ? and(isNull(recipes.deletedAt), eq(recipes.visibility, visibility))
-    : isNull(recipes.deletedAt);
+  const where =
+    visibility && isValidVisibility(visibility)
+      ? and(isNull(recipes.deletedAt), eq(recipes.visibility, visibility))
+      : isNull(recipes.deletedAt);
   const [data, totalResult] = await Promise.all([
-    db.select().from(recipes).where(where).orderBy(desc(recipes.createdAt), asc(recipes.id)).limit(
-      perPage,
-    ).offset((page - 1) * perPage),
+    db
+      .select()
+      .from(recipes)
+      .where(where)
+      .orderBy(desc(recipes.createdAt), asc(recipes.id))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
     db.select({ count: count() }).from(recipes).where(where),
   ]);
   return { recipes: data, total: totalResult[0].count };
@@ -247,17 +278,21 @@ export async function updateRecipeVisibility(recipeId: string, visibility: strin
   if (!isValidVisibility(visibility)) {
     return null;
   }
-  const [result] = await db.update(recipes).set({ visibility }).where(
-    and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)),
-  ).returning();
+  const [result] = await db
+    .update(recipes)
+    .set({ visibility })
+    .where(and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)))
+    .returning();
   return result ?? null;
 }
 
 /** Soft-delete a recipe by setting `deletedAt`. Returns the updated recipe or null. */
 export async function softDeleteRecipe(recipeId: string) {
-  const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(
-    and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)),
-  ).returning();
+  const [result] = await db
+    .update(recipes)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(recipes.id, recipeId), isNull(recipes.deletedAt)))
+    .returning();
   return result ?? null;
 }
 
@@ -265,23 +300,36 @@ export async function softDeleteRecipe(recipeId: string) {
 export async function listEquipment(page: number, perPage: number) {
   const where = isNull(equipment.deletedAt);
   const [data, totalResult] = await Promise.all([
-    db.select().from(equipment).where(where).orderBy(desc(equipment.createdAt), asc(equipment.id))
-      .limit(perPage).offset((page - 1) * perPage),
+    db
+      .select()
+      .from(equipment)
+      .where(where)
+      .orderBy(desc(equipment.createdAt), asc(equipment.id))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
     db.select({ count: count() }).from(equipment).where(where),
   ]);
   return { equipment: data, total: totalResult[0].count };
 }
 
 /** Create a new equipment record. Throws if the type is not a valid equipment type enum value. */
-export async function createEquipment(
-  data: { name: string; type: string; brand?: string; model?: string; description?: string },
-) {
+export async function createEquipment(data: {
+  name: string;
+  type: string;
+  brand?: string;
+  model?: string;
+  description?: string;
+}) {
   if (
-    !equipmentTypeEnum.enumValues.includes(data.type as typeof equipmentTypeEnum.enumValues[number])
+    !equipmentTypeEnum.enumValues.includes(
+      data.type as (typeof equipmentTypeEnum.enumValues)[number],
+    )
   ) {
     throw new Error('Invalid equipment type');
   }
-  const [result] = await db.insert(equipment).values(data as typeof equipment.$inferInsert)
+  const [result] = await db
+    .insert(equipment)
+    .values(data as typeof equipment.$inferInsert)
     .returning();
   return result;
 }
@@ -304,18 +352,21 @@ export async function updateEquipment(
   if (data.model !== undefined) sanitized.model = data.model;
   if (data.description !== undefined) sanitized.description = data.description;
 
-  const [result] = await db.update(equipment).set(sanitized).where(
-    and(eq(equipment.id, id), isNull(equipment.deletedAt)),
-  )
+  const [result] = await db
+    .update(equipment)
+    .set(sanitized)
+    .where(and(eq(equipment.id, id), isNull(equipment.deletedAt)))
     .returning();
   return result ?? null;
 }
 
 /** Soft-delete an equipment record by setting `deletedAt`. Returns the updated record or null. */
 export async function deleteEquipment(id: string) {
-  const [result] = await db.update(equipment).set({ deletedAt: new Date() }).where(
-    and(eq(equipment.id, id), isNull(equipment.deletedAt)),
-  ).returning();
+  const [result] = await db
+    .update(equipment)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(equipment.id, id), isNull(equipment.deletedAt)))
+    .returning();
   return result ?? null;
 }
 
@@ -323,18 +374,25 @@ export async function deleteEquipment(id: string) {
 export async function listVendors(page: number, perPage: number) {
   const where = isNull(vendors.deletedAt);
   const [data, totalResult] = await Promise.all([
-    db.select().from(vendors).where(where).orderBy(desc(vendors.createdAt), asc(vendors.id)).limit(
-      perPage,
-    ).offset((page - 1) * perPage),
+    db
+      .select()
+      .from(vendors)
+      .where(where)
+      .orderBy(desc(vendors.createdAt), asc(vendors.id))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
     db.select({ count: count() }).from(vendors).where(where),
   ]);
   return { vendors: data, total: totalResult[0].count };
 }
 
 /** Create a new vendor. */
-export async function createVendor(
-  data: { name: string; website?: string; description?: string; createdBy?: string | null },
-) {
+export async function createVendor(data: {
+  name: string;
+  website?: string;
+  description?: string;
+  createdBy?: string | null;
+}) {
   const [result] = await db.insert(vendors).values(data).returning();
   return result;
 }
@@ -350,55 +408,66 @@ export async function updateVendor(
   if (data.website !== undefined) sanitized.website = data.website;
   if (data.description !== undefined) sanitized.description = data.description;
 
-  const [result] = await db.update(vendors).set(sanitized).where(
-    and(eq(vendors.id, id), isNull(vendors.deletedAt)),
-  ).returning();
+  const [result] = await db
+    .update(vendors)
+    .set(sanitized)
+    .where(and(eq(vendors.id, id), isNull(vendors.deletedAt)))
+    .returning();
   return result ?? null;
 }
 
 /** Soft-delete a vendor by setting `deletedAt`. Returns the updated vendor or null. */
 export async function deleteVendor(id: string) {
-  const [result] = await db.update(vendors).set({ deletedAt: new Date() }).where(
-    and(eq(vendors.id, id), isNull(vendors.deletedAt)),
-  ).returning();
+  const [result] = await db
+    .update(vendors)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(vendors.id, id), isNull(vendors.deletedAt)))
+    .returning();
   return result ?? null;
 }
 
 /** List all brew method ↔ equipment type compatibility rules. */
 export function listCompatibilityRules() {
-  return db.select().from(brewMethodEquipmentRules).orderBy(
-    asc(brewMethodEquipmentRules.brewMethod),
-    asc(brewMethodEquipmentRules.equipmentType),
-  );
+  return db
+    .select()
+    .from(brewMethodEquipmentRules)
+    .orderBy(asc(brewMethodEquipmentRules.brewMethod), asc(brewMethodEquipmentRules.equipmentType));
 }
 
 /** Update the compatible flag on a brew method ↔ equipment type rule. */
 export async function updateCompatibilityRule(id: string, compatible: boolean) {
-  const [result] = await db.update(brewMethodEquipmentRules).set({ compatible }).where(
-    eq(brewMethodEquipmentRules.id, id),
-  ).returning();
+  const [result] = await db
+    .update(brewMethodEquipmentRules)
+    .set({ compatible })
+    .where(eq(brewMethodEquipmentRules.id, id))
+    .returning();
   return result ?? null;
 }
 
 /** Create a compatibility rule. Throws if the brew method or equipment type is not a valid enum value. */
-export async function createCompatibilityRule(
-  data: { brewMethod: string; equipmentType: string; compatible: boolean },
-) {
+export async function createCompatibilityRule(data: {
+  brewMethod: string;
+  equipmentType: string;
+  compatible: boolean;
+}) {
   if (
-    !brewMethodEnum.enumValues.includes(data.brewMethod as typeof brewMethodEnum.enumValues[number])
+    !brewMethodEnum.enumValues.includes(
+      data.brewMethod as (typeof brewMethodEnum.enumValues)[number],
+    )
   ) {
     throw new Error('Invalid brew method');
   }
   if (
     !equipmentTypeEnum.enumValues.includes(
-      data.equipmentType as typeof equipmentTypeEnum.enumValues[number],
+      data.equipmentType as (typeof equipmentTypeEnum.enumValues)[number],
     )
   ) {
     throw new Error('Invalid equipment type');
   }
-  const [result] = await db.insert(brewMethodEquipmentRules).values(
-    data as typeof brewMethodEquipmentRules.$inferInsert,
-  ).returning();
+  const [result] = await db
+    .insert(brewMethodEquipmentRules)
+    .values(data as typeof brewMethodEquipmentRules.$inferInsert)
+    .returning();
   return result;
 }
 
@@ -414,7 +483,7 @@ export async function listReports(
   status?: string,
   entityType?: string,
 ) {
-  let where = undefined;
+  let where: SQL | undefined;
   if (status) where = eq(reports.status, status as typeof reports.status._.data);
   if (entityType) {
     where = where
@@ -422,9 +491,13 @@ export async function listReports(
       : eq(reports.entityType, entityType);
   }
   const [data, totalResult] = await Promise.all([
-    db.select().from(reports).where(where).orderBy(desc(reports.createdAt)).limit(perPage).offset(
-      (page - 1) * perPage,
-    ),
+    db
+      .select()
+      .from(reports)
+      .where(where)
+      .orderBy(desc(reports.createdAt))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
     db.select({ count: count() }).from(reports).where(where),
   ]);
   return { reports: data, total: totalResult[0].count };
@@ -432,7 +505,8 @@ export async function listReports(
 
 /** Mark a report as resolved, recording who resolved it and when. */
 export async function resolveReport(id: string, resolvedBy: string) {
-  const [result] = await db.update(reports)
+  const [result] = await db
+    .update(reports)
     .set({ status: 'resolved', resolvedBy, resolvedAt: new Date() })
     .where(eq(reports.id, id))
     .returning();
@@ -441,7 +515,8 @@ export async function resolveReport(id: string, resolvedBy: string) {
 
 /** Mark a report as dismissed, recording who dismissed it and when. */
 export async function dismissReport(id: string, resolvedBy: string) {
-  const [result] = await db.update(reports)
+  const [result] = await db
+    .update(reports)
     .set({ status: 'dismissed', resolvedBy, resolvedAt: new Date() })
     .where(eq(reports.id, id))
     .returning();
@@ -456,17 +531,24 @@ export async function createAuditLog(
   entityId?: string,
   details?: string,
 ) {
-  const [result] = await db.insert(auditLogs).values({ adminId, action, entity, entityId, details })
+  const [result] = await db
+    .insert(auditLogs)
+    .values({ adminId, action, entity, entityId, details })
     .returning();
   return result;
 }
 
 /** List audit log entries with optional entity filter, paginated newest first. */
 export async function listAuditLogs(page: number, perPage: number, entity?: string) {
-  let where = undefined;
+  let where: SQL | undefined;
   if (entity) where = eq(auditLogs.entity, entity);
   const [data, totalResult] = await Promise.all([
-    db.select().from(auditLogs).where(where).orderBy(desc(auditLogs.createdAt)).limit(perPage)
+    db
+      .select()
+      .from(auditLogs)
+      .where(where)
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(perPage)
       .offset((page - 1) * perPage),
     db.select({ count: count() }).from(auditLogs).where(where),
   ]);
@@ -495,12 +577,14 @@ export async function getDashboardStats() {
     db.select({ count: count() }).from(comments).where(isNull(comments.deletedAt)),
     db.select({ count: count() }).from(reports),
     db.select({ count: count() }).from(reports).where(eq(reports.status, 'pending')),
-    db.select({ count: count() }).from(users).where(
-      and(isNull(users.deletedAt), gte(users.createdAt, today)),
-    ),
-    db.select({ count: count() }).from(recipes).where(
-      and(isNull(recipes.deletedAt), gte(recipes.createdAt, today)),
-    ),
+    db
+      .select({ count: count() })
+      .from(users)
+      .where(and(isNull(users.deletedAt), gte(users.createdAt, today))),
+    db
+      .select({ count: count() })
+      .from(recipes)
+      .where(and(isNull(recipes.deletedAt), gte(recipes.createdAt, today))),
   ]);
 
   return {
@@ -518,7 +602,8 @@ export async function getDashboardStats() {
 export async function getUserGrowth(days: number) {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const data = await db.select({ createdAt: users.createdAt })
+  const data = await db
+    .select({ createdAt: users.createdAt })
     .from(users)
     .where(and(isNull(users.deletedAt), gte(users.createdAt, since)))
     .orderBy(asc(users.createdAt));
@@ -529,7 +614,8 @@ export async function getUserGrowth(days: number) {
 export async function getRecipeGrowth(days: number) {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const data = await db.select({ createdAt: recipes.createdAt })
+  const data = await db
+    .select({ createdAt: recipes.createdAt })
     .from(recipes)
     .where(and(isNull(recipes.deletedAt), gte(recipes.createdAt, since)))
     .orderBy(asc(recipes.createdAt));
@@ -538,7 +624,9 @@ export async function getRecipeGrowth(days: number) {
 
 /** Fetch the top public recipes ordered by like count, limited to N results. */
 export function getTopRecipes(limit: number) {
-  return db.select().from(recipes)
+  return db
+    .select()
+    .from(recipes)
     .where(and(isNull(recipes.deletedAt), eq(recipes.visibility, 'public')))
     .orderBy(desc(recipes.likeCount))
     .limit(limit);
@@ -546,13 +634,14 @@ export function getTopRecipes(limit: number) {
 
 /** Fetch the top users ranked by recipe count, limited to N results. */
 export async function getTopUsers(limit: number) {
-  const result = await db.select({
-    id: users.id,
-    username: users.username,
-    displayName: users.displayName,
-    avatarUrl: users.avatarUrl,
-    recipeCount: count(recipes.id),
-  })
+  const result = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
+      recipeCount: count(recipes.id),
+    })
     .from(users)
     .leftJoin(recipes, and(eq(users.id, recipes.authorId), isNull(recipes.deletedAt)))
     .where(isNull(users.deletedAt))
@@ -600,9 +689,13 @@ export async function listCoffeeVarieties(
   const offset = (page - 1) * perPage;
 
   const [data, countResult] = await Promise.all([
-    db.select().from(coffeeVarieties).where(where)
+    db
+      .select()
+      .from(coffeeVarieties)
+      .where(where)
       .orderBy(asc(coffeeVarieties.name))
-      .limit(perPage).offset(offset),
+      .limit(perPage)
+      .offset(offset),
     db.select({ count: count() }).from(coffeeVarieties).where(where),
   ]);
 
@@ -620,7 +713,8 @@ export async function updateCoffeeVariety(
   id: string,
   data: Partial<typeof coffeeVarieties.$inferInsert>,
 ) {
-  const [result] = await db.update(coffeeVarieties)
+  const [result] = await db
+    .update(coffeeVarieties)
     .set({ ...data, updatedAt: new Date() })
     .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
     .returning();
@@ -629,7 +723,8 @@ export async function updateCoffeeVariety(
 
 /** Soft-delete a coffee variety by setting `deletedAt`. Returns the updated variety or null. */
 export async function deleteCoffeeVariety(id: string) {
-  const [result] = await db.update(coffeeVarieties)
+  const [result] = await db
+    .update(coffeeVarieties)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
     .returning();
@@ -638,26 +733,18 @@ export async function deleteCoffeeVariety(id: string) {
 
 /** Count distinct non-deleted recipes whose current version uses the given coffee variety. */
 export async function getVarietyRecipeCount(varietyId: string) {
-  const [result] = await db.select({ count: sql<number>`count(distinct ${recipes.id})` })
+  const [result] = await db
+    .select({ count: sql<number>`count(distinct ${recipes.id})` })
     .from(recipes)
     .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
-    .where(
-      and(
-        eq(recipeVersions.coffeeVarietyId, varietyId),
-        isNull(recipes.deletedAt),
-      ),
-    );
+    .where(and(eq(recipeVersions.coffeeVarietyId, varietyId), isNull(recipes.deletedAt)));
   return Number(result?.count ?? 0);
 }
 
 // --- Equipment Delete Requests ---
 
 /** List equipment delete requests with optional status filter, including equipment and requester/reviewer relations, paginated newest first. */
-export async function listEquipmentDeleteRequests(
-  page: number,
-  perPage: number,
-  status?: string,
-) {
+export async function listEquipmentDeleteRequests(page: number, perPage: number, status?: string) {
   const conditions = [];
   if (status) {
     conditions.push(
@@ -689,13 +776,15 @@ export async function listEquipmentDeleteRequests(
 /** Approve an equipment delete request and soft-delete its equipment within a single transaction. Returns the updated request or null. */
 export async function approveEquipmentDeleteRequest(id: string, adminId: string) {
   return await db.transaction(async (tx) => {
-    const [request] = await tx.update(equipmentDeleteRequests)
+    const [request] = await tx
+      .update(equipmentDeleteRequests)
       .set({ status: 'approved', reviewedById: adminId, reviewedAt: new Date() })
       .where(eq(equipmentDeleteRequests.id, id))
       .returning();
     if (!request) return null;
 
-    await tx.update(equipment)
+    await tx
+      .update(equipment)
       .set({ deletedAt: new Date() })
       .where(and(eq(equipment.id, request.equipmentId), isNull(equipment.deletedAt)));
 
@@ -705,7 +794,8 @@ export async function approveEquipmentDeleteRequest(id: string, adminId: string)
 
 /** Reject an equipment delete request, recording the reviewing admin and timestamp. Returns the updated request or null. */
 export async function rejectEquipmentDeleteRequest(id: string, adminId: string) {
-  const [request] = await db.update(equipmentDeleteRequests)
+  const [request] = await db
+    .update(equipmentDeleteRequests)
     .set({ status: 'rejected', reviewedById: adminId, reviewedAt: new Date() })
     .where(eq(equipmentDeleteRequests.id, id))
     .returning();

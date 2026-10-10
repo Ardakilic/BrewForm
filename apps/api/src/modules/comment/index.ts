@@ -1,22 +1,23 @@
-import { Hono } from 'hono';
-import type { Context, Next } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { CommentCreateSchema, PaginationSchema } from '@brewform/shared/schemas';
 import {
+  CommentCreateSchema,
   CommentOutputSchema,
   CommentWithRepliesOutputSchema,
   ErrorEnvelopeSchema,
   MessageResponseSchema,
+  PaginationSchema,
   paginatedEnvelope,
   successEnvelope,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
 import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
-import * as service from './service.ts';
-import { error, isEmailVerified, paginated, success } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, isEmailVerified, paginated, success } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Dependency-injection proxy for auth middleware (test stubbing seam). */
 export const deps = { authMiddleware, optionalAuthMiddleware };
@@ -49,14 +50,11 @@ comment.post(
   describeRoute({
     tags: ['Comments'],
     summary: 'Create a comment on a recipe',
-    description:
-      `Creates a comment (or reply) on a recipe. Requires a verified email. Rate-limited to ${COMMENT_RATE_LIMIT_MAX_REQUESTS} requests per ${
-        COMMENT_RATE_LIMIT_WINDOW_MS / 60_000
-      } minute per IP.`,
+    description: `Creates a comment (or reply) on a recipe. Requires a verified email. Rate-limited to ${COMMENT_RATE_LIMIT_MAX_REQUESTS} requests per ${
+      COMMENT_RATE_LIMIT_WINDOW_MS / 60_000
+    } minute per IP.`,
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'recipeId', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'recipeId', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(CommentCreateSchema),
     responses: {
       201: {
@@ -113,28 +111,13 @@ comment.post(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') {
-        return error(
-          c,
-          'NOT_FOUND',
-          'Recipe not found',
-          404,
-        );
+        return error(c, 'NOT_FOUND', 'Recipe not found', 404);
       }
       if (message === 'COMMENT_NOT_FOUND') {
-        return error(
-          c,
-          'NOT_FOUND',
-          'Parent comment not found',
-          404,
-        );
+        return error(c, 'NOT_FOUND', 'Parent comment not found', 404);
       }
       if (message === 'FORBIDDEN') {
-        return error(
-          c,
-          'FORBIDDEN',
-          'Only the recipe author can reply to comments',
-          403,
-        );
+        return error(c, 'FORBIDDEN', 'Only the recipe author can reply to comments', 403);
       }
       if (message === 'COMMENT_DEPTH_EXCEEDED') {
         return error(c, 'BAD_REQUEST', 'Comment thread depth limit exceeded', 400);
@@ -203,9 +186,7 @@ comment.delete(
     summary: 'Delete a comment',
     description: 'Deletes a comment owned by the authenticated user (or by an admin).',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Comment deleted',

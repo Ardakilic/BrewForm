@@ -1,19 +1,20 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { ReportCreateSchema, ReportFilterSchema } from '@brewform/shared/schemas';
 import {
   ErrorEnvelopeSchema,
   paginatedEnvelope,
+  ReportCreateSchema,
+  ReportFilterSchema,
   ReportOutputSchema,
   successEnvelope,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
-import * as service from './service.ts';
-import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for report endpoints, mounted at `/api/v1/reports`. */
 const report = new Hono<AppEnv>();
@@ -33,10 +34,9 @@ report.post(
   describeRoute({
     tags: ['Reports'],
     summary: 'Create a report',
-    description:
-      `Submits a moderation report against a recipe or comment. Rate-limited to ${REPORT_RATE_LIMIT_MAX_REQUESTS} requests per ${
-        REPORT_RATE_LIMIT_WINDOW_MS / 60_000
-      } minutes per IP.`,
+    description: `Submits a moderation report against a recipe or comment. Rate-limited to ${REPORT_RATE_LIMIT_MAX_REQUESTS} requests per ${
+      REPORT_RATE_LIMIT_WINDOW_MS / 60_000
+    } minutes per IP.`,
     security: [{ bearerAuth: [] }],
     requestBody: jsonRequestBody(ReportCreateSchema),
     responses: {
@@ -121,9 +121,7 @@ report.patch(
     summary: 'Resolve a report',
     description: 'Marks a moderation report as resolved. Admin only.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Report resolved',

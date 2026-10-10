@@ -6,13 +6,15 @@ import {
   recipes,
   recipeVersions,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, isNull, like, or, SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNull, like, or, type SQL, sql } from 'drizzle-orm';
 
 /** Find an equipment item by ID. Returns null if deleted or not found. */
 export async function findById(id: string) {
-  const result = await db.select().from(equipment).where(
-    and(eq(equipment.id, id), isNull(equipment.deletedAt)),
-  ).limit(1);
+  const result = await db
+    .select()
+    .from(equipment)
+    .where(and(eq(equipment.id, id), isNull(equipment.deletedAt)))
+    .limit(1);
   return result[0] ?? null;
 }
 
@@ -23,7 +25,12 @@ export async function findById(id: string) {
 export async function findMany(where: SQL | undefined, page: number, perPage: number) {
   const finalWhere = where ? and(where, isNull(equipment.deletedAt)) : isNull(equipment.deletedAt);
   const [items, totalResult] = await Promise.all([
-    db.select().from(equipment).where(finalWhere).orderBy(asc(equipment.name)).limit(perPage)
+    db
+      .select()
+      .from(equipment)
+      .where(finalWhere)
+      .orderBy(asc(equipment.name))
+      .limit(perPage)
       .offset((page - 1) * perPage),
     db.select({ count: count() }).from(equipment).where(finalWhere),
   ]);
@@ -32,15 +39,19 @@ export async function findMany(where: SQL | undefined, page: number, perPage: nu
 
 /** Search non-deleted equipment by name, brand, or model (LIKE match), limited to 10 results. */
 export function search(query: string) {
-  return db.select().from(equipment)
-    .where(and(
-      isNull(equipment.deletedAt),
-      or(
-        like(equipment.name, `%${query}%`),
-        like(equipment.brand, `%${query}%`),
-        like(equipment.model, `%${query}%`),
+  return db
+    .select()
+    .from(equipment)
+    .where(
+      and(
+        isNull(equipment.deletedAt),
+        or(
+          like(equipment.name, `%${query}%`),
+          like(equipment.brand, `%${query}%`),
+          like(equipment.model, `%${query}%`),
+        ),
       ),
-    ))
+    )
     .orderBy(asc(equipment.name))
     .limit(10);
 }
@@ -59,9 +70,11 @@ export async function update(id: string, data: Partial<typeof equipment.$inferIn
 
 /** Soft-delete an equipment item by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(equipment).set({ deletedAt: new Date() }).where(
-    and(eq(equipment.id, id), isNull(equipment.deletedAt)),
-  ).returning();
+  const [result] = await db
+    .update(equipment)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(equipment.id, id), isNull(equipment.deletedAt)))
+    .returning();
   return result ?? null;
 }
 
@@ -92,7 +105,12 @@ export async function findManyWithFilters(params: {
   const where = and(...conditions)!;
   const offset = (params.page - 1) * params.perPage;
   const [items, totalResult] = await Promise.all([
-    db.select().from(equipment).where(where).orderBy(asc(equipment.name)).limit(params.perPage)
+    db
+      .select()
+      .from(equipment)
+      .where(where)
+      .orderBy(asc(equipment.name))
+      .limit(params.perPage)
       .offset(offset),
     db.select({ count: count() }).from(equipment).where(where),
   ]);
@@ -103,16 +121,9 @@ export async function findManyWithFilters(params: {
  * List public, non-deleted recipes whose current version uses the given
  * equipment item, paginated with total count and author relation joined.
  */
-export async function getRecipesUsingEquipment(
-  equipmentId: string,
-  page: number,
-  perPage: number,
-) {
+export async function getRecipesUsingEquipment(equipmentId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
-  const recipeConditions = and(
-    eq(recipes.visibility, 'public'),
-    isNull(recipes.deletedAt),
-  );
+  const recipeConditions = and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt));
   // NOTE: Drizzle's `exists()` combinator generates a subquery that references
   // the physical table name ("recipe_equipment"."recipe_version_id"), but the
   // relational `db.query.recipes.findMany` API aliases the outer table as
@@ -122,8 +133,7 @@ export async function getRecipesUsingEquipment(
   // resolves `${recipes.currentVersionId}` against the outer aliased query,
   // producing a correct correlated EXISTS clause. This is the same finding
   // documented in design Decision 1 of the Wave 2 proposal.
-  const equipmentExists =
-    sql`exists (select 1 from ${recipeEquipment} re where re.equipment_id = ${equipmentId} and re.recipe_version_id = ${recipes.currentVersionId})`;
+  const equipmentExists = sql`exists (select 1 from ${recipeEquipment} re where re.equipment_id = ${equipmentId} and re.recipe_version_id = ${recipes.currentVersionId})`;
   const [data, countResult] = await Promise.all([
     db.query.recipes.findMany({
       with: {
@@ -134,24 +144,18 @@ export async function getRecipesUsingEquipment(
       limit: perPage,
       offset,
     }),
-    db.select({ count: sql<number>`count(distinct ${recipes.id})` })
+    db
+      .select({ count: sql<number>`count(distinct ${recipes.id})` })
       .from(recipes)
       .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
       .innerJoin(recipeEquipment, eq(recipeVersions.id, recipeEquipment.recipeVersionId))
-      .where(
-        and(
-          eq(recipeEquipment.equipmentId, equipmentId),
-          recipeConditions,
-        ),
-      ),
+      .where(and(eq(recipeEquipment.equipmentId, equipmentId), recipeConditions)),
   ]);
   return { data, total: Number(countResult[0]?.count ?? 0) };
 }
 
 /** Insert an equipment delete request for admin review. */
-export async function createDeleteRequest(
-  data: typeof equipmentDeleteRequests.$inferInsert,
-) {
+export async function createDeleteRequest(data: typeof equipmentDeleteRequests.$inferInsert) {
   const [result] = await db.insert(equipmentDeleteRequests).values(data).returning();
   return result;
 }

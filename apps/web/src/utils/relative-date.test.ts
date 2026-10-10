@@ -6,8 +6,8 @@
  *
  * Covers: same-day, 1-day, and multi-day differences for all three label functions.
  */
-import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import {
   daysBetween,
   grindDateResult,
@@ -144,7 +144,8 @@ describe('grindDateResult', () => {
  * positive integer.
  */
 describe('Property 3: Relative date calculation (PBT)', () => {
-  const dateArb = fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+  const dateArb = fc
+    .date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
     .filter((d) => !isNaN(d.getTime()));
 
   /**
@@ -169,32 +170,25 @@ describe('Property 3: Relative date calculation (PBT)', () => {
     // Generate two dates that land on different calendar days by using two
     // independent date arbitraries and filtering out same-day pairs.
     fc.assert(
-      fc.property(
-        dateArb,
-        dateArb,
-        fc.context(),
-        (dateA, dateB, ctx) => {
-          const a = toMidnightUTC(dateA);
-          const b = toMidnightUTC(dateB);
-          // Skip same-day pairs — they are covered by the same-day property.
-          fc.pre(a.getTime() !== b.getTime());
+      fc.property(dateArb, dateArb, fc.context(), (dateA, dateB, ctx) => {
+        const a = toMidnightUTC(dateA);
+        const b = toMidnightUTC(dateB);
+        // Skip same-day pairs — they are covered by the same-day property.
+        fc.pre(a.getTime() !== b.getTime());
 
-          ctx.log(`dateA=${a.toISOString()}, dateB=${b.toISOString()}`);
+        ctx.log(`dateA=${a.toISOString()}, dateB=${b.toISOString()}`);
 
-          for (
-            const result of [
-              roastDateResult(dateA, dateB),
-              packageOpenDateResult(dateA, dateB),
-              grindDateResult(dateA, dateB),
-            ]
-          ) {
-            expect(result.type).not.toBe('today');
-            if (result.type === 'today') return;
-            expect(Number.isInteger(result.days)).toBe(true);
-            expect(result.days).toBeGreaterThan(0);
-          }
-        },
-      ),
+        for (const result of [
+          roastDateResult(dateA, dateB),
+          packageOpenDateResult(dateA, dateB),
+          grindDateResult(dateA, dateB),
+        ]) {
+          expect(result.type).not.toBe('today');
+          if (result.type === 'today') return;
+          expect(Number.isInteger(result.days)).toBe(true);
+          expect(result.days).toBeGreaterThan(0);
+        }
+      }),
     );
   });
 

@@ -1,6 +1,3 @@
-import { Hono } from 'hono';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
 import {
   BadgeOutputSchema,
   ErrorEnvelopeSchema,
@@ -8,10 +5,13 @@ import {
   successEnvelope,
   UserBadgeOutputSchema,
 } from '@brewform/shared/schemas';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { success } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for badge endpoints, mounted at `/api/v1/badges`. */
 const badge = new Hono<AppEnv>();
@@ -45,9 +45,7 @@ badge.get(
     tags: ['Badges'],
     summary: "List a user's badges",
     description: 'Returns the badges awarded to the given user.',
-    parameters: [
-      { name: 'userId', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'List of user badges',
@@ -73,9 +71,7 @@ badge.post(
     summary: "Evaluate a user's badges",
     description: 'Admin-only: re-evaluates and awards badges for the given user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'userId', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Badge evaluation completed',

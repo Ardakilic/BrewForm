@@ -1,18 +1,18 @@
-import { useEffect } from 'react';
-import { useLoaderData } from 'react-router';
-import { recipeApi } from '../../api/index.ts';
-import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
 import type {
   EquipmentOutput,
   PaginatedResponse,
   RecipeListItemOutput,
   TasteNoteOutput,
 } from '@brewform/shared/schemas';
-import { extractListParams } from '../../utils/recipe-filters.ts';
+import { useEffect } from 'react';
+import { useLoaderData } from 'react-router';
+import { recipeApi } from '../../api/index.ts';
+import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
+import { RecipeListView } from '../../components/recipe-list/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import { RecipeListView } from '../../components/recipe-list/index.ts';
+import { extractListParams } from '../../utils/recipe-filters.ts';
 import { useCoffeeVarietyFilter } from './useCoffeeVarietyFilter.tsx';
 
 const log = createLogger('RecipeListPage');
@@ -60,7 +60,7 @@ export function RecipeListPage() {
 
   return (
     <RecipeListView
-      source='all'
+      source="all"
       recipesResponse={recipesResponse}
       equipment={equipment}
       tasteNotes={tasteNotes}
@@ -69,7 +69,7 @@ export function RecipeListPage() {
       selectedCoffeeVarietyName={coffeeVariety.selectedName}
       onClearCoffeeVariety={coffeeVariety.clear}
       pageTitle={t('recipe.list.title')}
-      seoDescription='Browse and discover coffee brewing recipes on BrewForm.'
+      seoDescription="Browse and discover coffee brewing recipes on BrewForm."
     />
   );
 }

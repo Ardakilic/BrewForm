@@ -1,13 +1,12 @@
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import deno from '@deno/vite-plugin';
 import { join, resolve } from 'node:path';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
 
 const monorepoRoot = resolve(import.meta.dirname!, '../..');
 const sharedSrc = join(monorepoRoot, 'packages/shared/src');
 
 export default defineConfig({
-  plugins: [deno(), react()],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname!, './src'),
@@ -24,7 +23,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
-    // Exclude Deno-native test files that use jsr: imports (not compatible with Vitest).
+    // Exclude legacy test files that use non-Vitest imports.
     // NOTE: `__tests__/*.integration.test.ts` is intentionally NOT excluded — the
     // recipe-coffee-dates integration test was converted to Vitest imports so it
     // runs in CI (it was previously invisible because of that exclude pattern).

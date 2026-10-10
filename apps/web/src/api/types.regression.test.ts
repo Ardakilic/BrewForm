@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import type { RecipeDetailOutput } from '@brewform/shared/schemas';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Type-level regression test: locks that `RecipeDetailOutput` is a real,

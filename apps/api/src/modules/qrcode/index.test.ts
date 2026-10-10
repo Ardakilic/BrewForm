@@ -1,11 +1,10 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { setCacheProvider } from '../../utils/cache/singleton.ts';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import qrcodeRouter from './index.ts';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
+import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import qrcodeRouter from './index.ts';
 
 /**
  * Pre-auth route tests for the qrcode router (`/api/v1/qrcode`).
@@ -28,45 +27,41 @@ function createTestApp() {
   return app;
 }
 
-describe(
-  'QR-Code Routes — pre-auth & validation',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    beforeEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
+describe('QR-Code Routes — pre-auth & validation', () => {
+  beforeEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  describe('GET /api/v1/qrcode/recipe/:filename', () => {
+    it('returns 400 for an invalid filename (missing extension)', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/qrcode/recipe/just-a-slug');
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    afterEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
+    it('returns 400 for an invalid filename (unsupported extension)', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/qrcode/recipe/my-recipe.jpg');
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    describe('GET /api/v1/qrcode/recipe/:filename', () => {
-      it('returns 400 for an invalid filename (missing extension)', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/qrcode/recipe/just-a-slug');
-        expect(res.status).toBe(400);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('VALIDATION_ERROR');
-      });
-
-      it('returns 400 for an invalid filename (unsupported extension)', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/qrcode/recipe/my-recipe.jpg');
-        expect(res.status).toBe(400);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('VALIDATION_ERROR');
-      });
-
-      it('returns 404 for a valid filename whose slug does not exist', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/qrcode/recipe/definitely-no-such-recipe.png');
-        expect(res.status).toBe(404);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('NOT_FOUND');
-      });
+    it('returns 404 for a valid filename whose slug does not exist', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/qrcode/recipe/definitely-no-such-recipe.png');
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('NOT_FOUND');
     });
-  },
-);
+  });
+});

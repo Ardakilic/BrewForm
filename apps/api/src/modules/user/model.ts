@@ -17,7 +17,9 @@ import { and, asc, count, desc, eq, gt, isNull, like, or } from 'drizzle-orm';
  * `user_preferences` row (null if the user has no preferences record).
  */
 export async function findById(id: string) {
-  const result = await db.select().from(users)
+  const result = await db
+    .select()
+    .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
     .where(and(eq(users.id, id), isNull(users.deletedAt)))
     .limit(1);
@@ -27,30 +29,32 @@ export async function findById(id: string) {
     ...result[0].user,
     preferences: prefsRow
       ? {
-        unitSystem: prefsRow.unitSystem,
-        temperatureUnit: prefsRow.temperatureUnit,
-        theme: prefsRow.theme,
-        locale: prefsRow.locale,
-        timezone: prefsRow.timezone,
-        dateFormat: prefsRow.dateFormat,
-        // F05: flat `notify*` fields — `/me` and `/preferences` now share the
-        // same shape. The F04 latent `mentionedInComment` omission (the 4-flag
-        // nest here forgot it) is structurally fixed by the flatten.
-        notifyNewFollower: prefsRow.notifyNewFollower,
-        notifyRecipeLiked: prefsRow.notifyRecipeLiked,
-        notifyRecipeCommented: prefsRow.notifyRecipeCommented,
-        notifyFollowedUserPosted: prefsRow.notifyFollowedUserPosted,
-        notifyMentionedInComment: prefsRow.notifyMentionedInComment,
-      }
+          unitSystem: prefsRow.unitSystem,
+          temperatureUnit: prefsRow.temperatureUnit,
+          theme: prefsRow.theme,
+          locale: prefsRow.locale,
+          timezone: prefsRow.timezone,
+          dateFormat: prefsRow.dateFormat,
+          // F05: flat `notify*` fields — `/me` and `/preferences` now share the
+          // same shape. The F04 latent `mentionedInComment` omission (the 4-flag
+          // nest here forgot it) is structurally fixed by the flatten.
+          notifyNewFollower: prefsRow.notifyNewFollower,
+          notifyRecipeLiked: prefsRow.notifyRecipeLiked,
+          notifyRecipeCommented: prefsRow.notifyRecipeCommented,
+          notifyFollowedUserPosted: prefsRow.notifyFollowedUserPosted,
+          notifyMentionedInComment: prefsRow.notifyMentionedInComment,
+        }
       : null,
   };
 }
 
 /** Find a user by username. Returns null if deleted or not found. */
 export async function findByUsername(username: string) {
-  const result = await db.select().from(users).where(
-    and(eq(users.username, username), isNull(users.deletedAt)),
-  ).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.username, username), isNull(users.deletedAt)))
+    .limit(1);
   return result[0] ?? null;
 }
 
@@ -59,15 +63,20 @@ export async function updateProfile(
   id: string,
   data: { displayName?: string; bio?: string; avatarUrl?: string },
 ) {
-  const [result] = await db.update(users).set(data).where(
-    and(eq(users.id, id), isNull(users.deletedAt)),
-  ).returning();
+  const [result] = await db
+    .update(users)
+    .set(data)
+    .where(and(eq(users.id, id), isNull(users.deletedAt)))
+    .returning();
   return result ?? null;
 }
 
 /** Soft-delete a user by setting their deletedAt timestamp. */
 export async function deleteUser(id: string) {
-  const [result] = await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, id))
+  const [result] = await db
+    .update(users)
+    .set({ deletedAt: new Date() })
+    .where(eq(users.id, id))
     .returning();
   return result ?? null;
 }
@@ -79,9 +88,12 @@ export async function deleteUser(id: string) {
  */
 export async function getUserStats(id: string) {
   const [recipeCountResult, followerCountResult, followingCountResult] = await Promise.all([
-    db.select({ count: count() }).from(recipes).where(
-      and(eq(recipes.authorId, id), isNull(recipes.deletedAt), eq(recipes.visibility, 'public')),
-    ),
+    db
+      .select({ count: count() })
+      .from(recipes)
+      .where(
+        and(eq(recipes.authorId, id), isNull(recipes.deletedAt), eq(recipes.visibility, 'public')),
+      ),
     db.select({ count: count() }).from(userFollows).where(eq(userFollows.followingId, id)),
     db.select({ count: count() }).from(userFollows).where(eq(userFollows.followerId, id)),
   ]);
@@ -144,16 +156,20 @@ export async function searchUsers(query: string, page: number, perPage: number) 
     or(like(users.username, `%${query}%`), like(users.displayName, `%${query}%`)),
   );
   const [data, totalResult] = await Promise.all([
-    db.select({
-      id: users.id,
-      username: users.username,
-      displayName: users.displayName,
-      avatarUrl: users.avatarUrl,
-      bio: users.bio,
-      createdAt: users.createdAt,
-    }).from(users).where(where).orderBy(desc(users.createdAt), asc(users.id)).limit(perPage).offset(
-      (page - 1) * perPage,
-    ),
+    db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+        bio: users.bio,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(where)
+      .orderBy(desc(users.createdAt), asc(users.id))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
     db.select({ count: count() }).from(users).where(where),
   ]);
   return { users: data, total: totalResult[0].count };
@@ -164,10 +180,7 @@ export async function searchUsers(query: string, page: number, perPage: number) 
  * @param afterId - Return IDs strictly greater than this value; null starts from the beginning.
  * @param limit - Maximum number of IDs to return.
  */
-export async function listActiveUserIds(
-  afterId: string | null,
-  limit: number,
-): Promise<string[]> {
+export async function listActiveUserIds(afterId: string | null, limit: number): Promise<string[]> {
   const where = afterId
     ? and(isNull(users.deletedAt), gt(users.id, afterId))
     : isNull(users.deletedAt);

@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CollectionItemOutput } from '@brewform/shared/schemas';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import type { CollectionItemOutput } from '@brewform/shared/schemas';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CollectionRecipeList } from './CollectionRecipeList.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -38,8 +38,8 @@ vi.mock('@brewform/shared/constants', () => ({
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { collectionApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockReorder = vi.mocked(collectionApi.reorder);
@@ -165,9 +165,7 @@ describe('CollectionRecipeList', () => {
       }),
     ];
 
-    renderWithRouter(
-      <CollectionRecipeList collectionId='c1' items={items} isOwner={false} />,
-    );
+    renderWithRouter(<CollectionRecipeList collectionId="c1" items={items} isOwner={false} />);
 
     // Headings for each group (V60 and Espresso Machine in BREW_METHODS_LIST order, then Other)
     expect(screen.getByRole('heading', { name: 'V60' })).toBeInTheDocument();
@@ -194,9 +192,7 @@ describe('CollectionRecipeList', () => {
       }),
     ];
 
-    renderWithRouter(
-      <CollectionRecipeList collectionId='c1' items={items} isOwner={false} />,
-    );
+    renderWithRouter(<CollectionRecipeList collectionId="c1" items={items} isOwner={false} />);
 
     const title = screen.getByText('V60 Brew');
     const link = title.closest('a');
@@ -217,9 +213,7 @@ describe('CollectionRecipeList', () => {
       }),
     ];
 
-    renderWithRouter(
-      <CollectionRecipeList collectionId='c1' items={items} isOwner />,
-    );
+    renderWithRouter(<CollectionRecipeList collectionId="c1" items={items} isOwner />);
 
     expect(screen.getByLabelText('Move up')).toBeInTheDocument();
     expect(screen.getByLabelText('Move down')).toBeInTheDocument();
@@ -239,9 +233,7 @@ describe('CollectionRecipeList', () => {
       }),
     ];
 
-    renderWithRouter(
-      <CollectionRecipeList collectionId='c1' items={items} isOwner={false} />,
-    );
+    renderWithRouter(<CollectionRecipeList collectionId="c1" items={items} isOwner={false} />);
 
     expect(screen.queryByLabelText('Move up')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Move down')).not.toBeInTheDocument();
@@ -273,9 +265,7 @@ describe('CollectionRecipeList', () => {
       }),
     ];
 
-    renderWithRouter(
-      <CollectionRecipeList collectionId='c1' items={items} isOwner />,
-    );
+    renderWithRouter(<CollectionRecipeList collectionId="c1" items={items} isOwner />);
 
     const user = userEvent.setup();
     // Two items each render a "Move down" button; click the first item's
@@ -299,9 +289,7 @@ describe('CollectionRecipeList', () => {
       }),
     ];
 
-    renderWithRouter(
-      <CollectionRecipeList collectionId='c1' items={items} isOwner />,
-    );
+    renderWithRouter(<CollectionRecipeList collectionId="c1" items={items} isOwner />);
 
     const user = userEvent.setup();
     const removeBtn = screen.getByLabelText('Remove from collection');

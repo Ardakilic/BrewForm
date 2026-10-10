@@ -2,36 +2,37 @@
  * BrewForm API — Hono server entry point.
  *
  * Startup sequence:
- *   1. Initialize cache driver (Deno KV or in-memory)
- *   2. Register Deno.cron jobs (badge evaluation, cache refresh)
- *   3. Bind HTTP server (auto-detect Deno Deploy for port)
- *   4. Register SIGTERM/SIGINT handlers for graceful shutdown (local only)
+ *   1. Initialize cache driver (in-memory)
+ *   2. Register node-cron jobs (badge evaluation, cache refresh)
+ *   3. Bind HTTP server via @hono/node-server
+ *   4. Register SIGTERM/SIGINT handlers for graceful shutdown
  *
  * Shutdown sequence (on SIGTERM/SIGINT):
- *   1. Deno.cron jobs terminate with process
- *   2. Shut down HTTP server
- *   3. Close Deno KV connection
- *   4. Close postgres-js client
- *   5. Exit cleanly
+ *   1. Shut down HTTP server
+ *   2. Close postgres-js client
+ *   3. Exit cleanly
  *
  * Middleware stack (applied in order):
  *   cors → requestId → secureHeaders → rateLimit(100/min) → bodyLimit(1MB, excl. /api/v1/photos) → cache injection → crawler → routes
  */
+import 'dotenv/config';
+import { readFile } from 'node:fs/promises';
+import * as path from 'node:path';
+import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
-import * as path from 'jsr:@std/path';
+import { secureHeaders } from 'hono/secure-headers';
 import { config } from './config/index.ts';
+import { bodyLimitMiddleware } from './middleware/bodyLimit.ts';
 import { corsMiddleware } from './middleware/cors.ts';
-import { requestIdMiddleware } from './middleware/requestId.ts';
+import { crawlerMiddleware } from './middleware/crawler.ts';
 import { errorHandler } from './middleware/errorHandler.ts';
 import { rateLimitMiddleware } from './middleware/rateLimit.ts';
-import { secureHeaders } from 'hono/secure-headers';
-import { createCacheProvider } from './utils/cache/index.ts';
-import type { AppEnv } from './types/hono.ts';
-import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
+import { requestIdMiddleware } from './middleware/requestId.ts';
 import routes from './routes/index.ts';
+import type { AppEnv } from './types/hono.ts';
+import { createCacheProvider } from './utils/cache/index.ts';
+import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import { createLogger } from './utils/logger/index.ts';
-import { crawlerMiddleware } from './middleware/crawler.ts';
-import { bodyLimitMiddleware } from './middleware/bodyLimit.ts';
 import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
@@ -92,30 +93,31 @@ if (config.STORAGE_DRIVER === 'local') {
     if (
       path.isAbsolute(userPath) ||
       userPath.includes('..') ||
-      !filepath.startsWith(resolvedUploadDir + path.SEPARATOR)
+      !filepath.startsWith(resolvedUploadDir + path.sep)
     ) {
       return c.text('Forbidden', 403);
     }
 
-    let file: Deno.FsFile | undefined;
+    let data: Buffer;
     try {
-      file = await Deno.open(filepath, { read: true });
-      const stat = await file.stat();
-      const ext = filepath.split('.').pop() || '';
-      const contentType = {
+      data = await readFile(filepath);
+      const ext = filepath.split('.').pop() ?? '';
+      const contentTypes: Record<string, string> = {
         jpg: 'image/jpeg',
         jpeg: 'image/jpeg',
         png: 'image/png',
         webp: 'image/webp',
-      }[ext.toLowerCase()] || 'application/octet-stream';
-      return new Response(file.readable, {
+      };
+      const contentType = contentTypes[ext.toLowerCase()] ?? 'application/octet-stream';
+      // Copy out of the (possibly pooled) Buffer so the body is exactly this file.
+      const body = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+      return new Response(body as ArrayBuffer, {
         headers: {
           'content-type': contentType,
-          'content-length': String(stat.size),
+          'content-length': String(data.byteLength),
         },
       });
     } catch {
-      file?.close();
       return c.notFound();
     }
   });
@@ -123,41 +125,23 @@ if (config.STORAGE_DRIVER === 'local') {
 
 app.route('/', routes);
 
-let kv: Deno.Kv | null = null;
-
 async function startup() {
   logger.info('Starting BrewForm API...');
 
-  if (config.CACHE_DRIVER === 'deno-kv') {
-    const kvUrl = config.DENO_KV_URL ?? 'http://denokv:4512';
-    logger.info({ url: kvUrl }, 'Deno KV cache connecting to remote server');
-    kv = await Deno.openKv(kvUrl);
-    setCacheProvider(createCacheProvider('deno-kv', kv));
-    logger.info('Deno KV cache initialized (remote)');
-  } else {
-    setCacheProvider(createCacheProvider('memory'));
-    logger.info('In-memory cache initialized');
-  }
+  setCacheProvider(createCacheProvider(config.CACHE_DRIVER));
+  logger.info('In-memory cache initialized');
 
   // Cron jobs are registered at module top-level via import above
 
-  const server = Deno.env.get('DENO_DEPLOY')
-    ? Deno.serve(app.fetch)
-    : Deno.serve({ port: config.APP_PORT }, app.fetch);
-
-  if (!Deno.env.get('DENO_DEPLOY')) {
-    logger.info(`BrewForm API running on http://localhost:${config.APP_PORT}`);
-  }
+  const server = serve({ fetch: app.fetch, port: config.APP_PORT });
+  logger.info(`BrewForm API running on http://localhost:${config.APP_PORT}`);
 
   const shutdown = async () => {
     logger.info('Shutting down gracefully...');
 
-    await server.shutdown();
-
-    if (kv) {
-      kv.close();
-      logger.info('Deno KV connection closed');
-    }
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
 
     const { client } = await import('@brewform/db');
     await client.end();
@@ -168,19 +152,17 @@ async function startup() {
     logger.info('Email transporter closed');
 
     logger.info('Graceful shutdown complete');
-    Deno.exit(0);
+    process.exit(0);
   };
 
-  if (!Deno.env.get('DENO_DEPLOY')) {
-    Deno.addSignalListener('SIGTERM', shutdown);
-    Deno.addSignalListener('SIGINT', shutdown);
-  }
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 if (import.meta.main) {
   startup().catch((err) => {
     logger.error({ err }, 'Failed to start server');
-    Deno.exit(1);
+    process.exit(1);
   });
 }
 

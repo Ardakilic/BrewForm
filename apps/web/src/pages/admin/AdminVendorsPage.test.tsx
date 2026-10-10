@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../components/ui/Toast.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -82,9 +82,7 @@ describe('AdminVendorsPage — tr locale spot-check', () => {
   });
 
   it('shows an error toast when delete fails', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'v1', name: 'Onyx', website: null, description: null },
-    ]);
+    mockApi.get.mockResolvedValue([{ id: 'v1', name: 'Onyx', website: null, description: null }]);
     mockApi.delete.mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('confirm', () => true);
 

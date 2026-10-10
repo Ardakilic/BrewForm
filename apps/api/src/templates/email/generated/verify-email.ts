@@ -1,5 +1,5 @@
 // Auto-generated from verify-email.mjml
-// Do not edit manually. Run: deno run -A apps/api/scripts/build-email-templates.ts
+// Do not edit manually. Run: pnpm run email-build
 
 export const template = `<!doctype html>
 <html lang="und" dir="auto" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">

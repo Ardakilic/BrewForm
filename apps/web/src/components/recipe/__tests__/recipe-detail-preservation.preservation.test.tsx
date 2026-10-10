@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
 import * as fc from 'fast-check';
+import { MemoryRouter } from 'react-router';
+import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../../../contexts/I18nContext.tsx';
-import { EquipmentSection } from '../EquipmentSection.tsx';
-import { BrewTimeline } from '../BrewTimeline.tsx';
 import { BeanSection } from '../BeanSection.tsx';
-import { TastingNotesSection } from '../TastingNotesSection.tsx';
+import { BrewTimeline } from '../BrewTimeline.tsx';
+import { EquipmentSection } from '../EquipmentSection.tsx';
 import { ShareSection } from '../ShareSection.tsx';
+import { TastingNotesSection } from '../TastingNotesSection.tsx';
 
 /**
  * Preservation tests — Property 2: Preservation
@@ -214,7 +214,7 @@ describe('Preservation - BeanSection graceful hiding', () => {
   it('renders when productName is provided', () => {
     const { container } = render(
       <I18nProvider>
-        <BeanSection productName='Heart Ethiopia' />
+        <BeanSection productName="Heart Ethiopia" />
       </I18nProvider>,
     );
     expect(container.firstChild).not.toBeNull();
@@ -252,7 +252,7 @@ describe('Preservation - TastingNotesSection empty state', () => {
 
   it('shows personal notes blockquote when personalNotes is provided', () => {
     render(
-      withProviders(<TastingNotesSection tasteNotes={[]} personalNotes='Beautiful sweet shot' />),
+      withProviders(<TastingNotesSection tasteNotes={[]} personalNotes="Beautiful sweet shot" />),
     );
     expect(screen.getByText('Beautiful sweet shot')).toBeTruthy();
   });
@@ -270,7 +270,7 @@ describe('Preservation - ShareSection visibility gating', () => {
     fc.assert(
       fc.property(fc.constantFrom('private', 'draft'), (visibility) => {
         const { container, unmount } = render(
-          withProviders(<ShareSection slug='test' title='Test' visibility={visibility} />),
+          withProviders(<ShareSection slug="test" title="Test" visibility={visibility} />),
         );
         const isNull = container.firstChild === null;
         unmount();
@@ -282,21 +282,21 @@ describe('Preservation - ShareSection visibility gating', () => {
 
   it('returns null for private visibility', () => {
     const { container } = render(
-      withProviders(<ShareSection slug='test' title='Test' visibility='private' />),
+      withProviders(<ShareSection slug="test" title="Test" visibility="private" />),
     );
     expect(container.firstChild).toBeNull();
   });
 
   it('returns null for draft visibility', () => {
     const { container } = render(
-      withProviders(<ShareSection slug='test' title='Test' visibility='draft' />),
+      withProviders(<ShareSection slug="test" title="Test" visibility="draft" />),
     );
     expect(container.firstChild).toBeNull();
   });
 
   it('renders for public visibility', () => {
     const { container } = render(
-      withProviders(<ShareSection slug='test' title='Test' visibility='public' />),
+      withProviders(<ShareSection slug="test" title="Test" visibility="public" />),
     );
     expect(container.firstChild).not.toBeNull();
   });

@@ -30,10 +30,7 @@
           "body": "Light–Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low",
           "yield": "Low",
           "plant_size": "Tall",
@@ -50,20 +47,11 @@
           "body": "Full",
           "acidity": "Medium–High",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural",
-            "Honey"
-          ],
+          "processing_compatibility": ["Washed", "Natural", "Honey"],
           "disease_resistance": "Low",
           "yield": "Medium (20–30% more than Typica)",
           "plant_size": "Tall",
-          "sub_varieties": [
-            "Red Bourbon",
-            "Yellow Bourbon",
-            "Orange Bourbon",
-            "Pink Bourbon"
-          ],
+          "sub_varieties": ["Red Bourbon", "Yellow Bourbon", "Orange Bourbon", "Pink Bourbon"],
           "notes": "One of the most important Arabica varieties globally; parent of Caturra, Pacas, and many Brazilian cultivars.",
           "_source": "v0"
         },
@@ -77,10 +65,7 @@
           "body": "Medium–Full",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -97,10 +82,7 @@
           "body": "Medium",
           "acidity": "Low–Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Natural",
-            "Washed"
-          ],
+          "processing_compatibility": ["Natural", "Washed"],
           "disease_resistance": "Low",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -117,10 +99,7 @@
           "body": "Medium",
           "acidity": "High",
           "caffeine_pct": "1.2–1.4",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -137,11 +116,7 @@
           "body": "Light–Medium",
           "acidity": "High",
           "caffeine_pct": "1.2–1.4",
-          "processing_compatibility": [
-            "Washed",
-            "Natural",
-            "Anaerobic"
-          ],
+          "processing_compatibility": ["Washed", "Natural", "Anaerobic"],
           "disease_resistance": "Low",
           "yield": "Low",
           "plant_size": "Tall",
@@ -158,20 +133,11 @@
           "body": "Light–Silky",
           "acidity": "Vibrant, tea-like",
           "caffeine_pct": "0.9–1.2",
-          "processing_compatibility": [
-            "Washed",
-            "Natural",
-            "Anaerobic",
-            "Honey"
-          ],
+          "processing_compatibility": ["Washed", "Natural", "Anaerobic", "Honey"],
           "disease_resistance": "Low",
           "yield": "Very Low",
           "plant_size": "Tall, elongated leaves",
-          "notable_farms": [
-            "Hacienda La Esmeralda (Panama)",
-            "Ninety Plus",
-            "Finca Deborah"
-          ],
+          "notable_farms": ["Hacienda La Esmeralda (Panama)", "Ninety Plus", "Finca Deborah"],
           "notes": "Most celebrated specialty variety in the world. Panama Gesha holds auction records over $10,000/kg. Ethiopian Gesha and Panamanian Gesha are distinct genetics despite the name.",
           "_source": "v0"
         },
@@ -185,10 +151,7 @@
           "body": "Varies",
           "acidity": "Varies",
           "caffeine_pct": "1.0–1.5",
-          "processing_compatibility": [
-            "Natural",
-            "Washed"
-          ],
+          "processing_compatibility": ["Natural", "Washed"],
           "disease_resistance": "Medium",
           "yield": "Medium",
           "plant_size": "Varies",
@@ -214,9 +177,7 @@
           "body": "Medium",
           "acidity": "High",
           "caffeine_pct": "0.7–1.0",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Low",
           "yield": "Very Low",
           "plant_size": "Medium",
@@ -233,9 +194,7 @@
           "body": "Full",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Natural (dry)"
-          ],
+          "processing_compatibility": ["Natural (dry)"],
           "disease_resistance": "Low",
           "yield": "Very Low",
           "plant_size": "Dwarf",
@@ -252,9 +211,7 @@
           "body": "Light",
           "acidity": "Low–Medium",
           "caffeine_pct": "0.6–0.8",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Very Low",
           "yield": "Very Low",
           "plant_size": "Medium",
@@ -272,10 +229,7 @@
           "body": "Light–Medium",
           "acidity": "Vibrant, tea-like",
           "caffeine_pct": "1.0–1.4",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Medium",
           "yield": "Medium",
           "plant_size": "Medium–Tall",
@@ -293,10 +247,7 @@
           "body": "Medium",
           "acidity": "Bright",
           "caffeine_pct": "1.0–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Medium",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -314,10 +265,7 @@
           "body": "Medium–Full",
           "acidity": "Medium",
           "caffeine_pct": "1.0–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Medium",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -335,11 +283,7 @@
           "body": "Light–Medium",
           "acidity": "Vibrant, complex",
           "caffeine_pct": "1.0–1.4",
-          "processing_compatibility": [
-            "Washed",
-            "Natural",
-            "Anaerobic"
-          ],
+          "processing_compatibility": ["Washed", "Natural", "Anaerobic"],
           "disease_resistance": "Low–Medium",
           "yield": "Medium",
           "plant_size": "Medium–Tall",
@@ -357,10 +301,7 @@
           "body": "Light–Medium",
           "acidity": "Vibrant, tea-like",
           "caffeine_pct": "1.0–1.4",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low",
           "yield": "Low",
           "plant_size": "Medium–Tall",
@@ -384,17 +325,11 @@
           "body": "Light–Medium",
           "acidity": "High",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low (susceptible to leaf rust)",
           "yield": "Medium–High",
           "plant_size": "Compact dwarf",
-          "sub_varieties": [
-            "Red Caturra",
-            "Yellow Caturra"
-          ],
+          "sub_varieties": ["Red Caturra", "Yellow Caturra"],
           "notes": "First compact Arabica cultivar; enabled higher-density planting. Still widely grown in Colombia and Central America despite vulnerability to leaf rust.",
           "_source": "v0"
         },
@@ -408,17 +343,11 @@
           "body": "Medium",
           "acidity": "Low–Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low",
           "yield": "High",
           "plant_size": "Compact dwarf",
-          "sub_varieties": [
-            "Red Catuaí",
-            "Yellow Catuaí"
-          ],
+          "sub_varieties": ["Red Catuaí", "Yellow Catuaí"],
           "notes": "One of the most planted varieties in Brazil. Strong branch structure resists fruit drop. Less complex than Bourbon or Typica but reliable.",
           "_source": "v0"
         },
@@ -432,10 +361,7 @@
           "body": "Medium–Full",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Natural",
-            "Washed"
-          ],
+          "processing_compatibility": ["Natural", "Washed"],
           "disease_resistance": "Low–Medium",
           "yield": "High",
           "plant_size": "Tall",
@@ -452,9 +378,7 @@
           "body": "Full",
           "acidity": "Very High",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Low",
           "yield": "Low–Medium",
           "plant_size": "Tall",
@@ -471,9 +395,7 @@
           "body": "Medium–Full",
           "acidity": "High",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Low",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -490,9 +412,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Low",
           "yield": "Medium",
           "plant_size": "Medium–Tall",
@@ -509,9 +429,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "High (CBD and leaf rust resistant)",
           "yield": "Very High",
           "plant_size": "Compact dwarf",
@@ -528,9 +446,7 @@
           "body": "Medium–Full",
           "acidity": "Medium–High",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "High",
           "yield": "High",
           "plant_size": "Medium",
@@ -547,10 +463,7 @@
           "body": "Light–Medium",
           "acidity": "Low",
           "caffeine_pct": "1.0–1.3",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Very Low",
           "yield": "Very Low",
           "plant_size": "Very Tall",
@@ -567,10 +480,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low",
           "yield": "Medium–High",
           "plant_size": "Compact dwarf",
@@ -587,11 +497,7 @@
           "body": "Full",
           "acidity": "Bright",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural",
-            "Honey"
-          ],
+          "processing_compatibility": ["Washed", "Natural", "Honey"],
           "disease_resistance": "Low",
           "yield": "Low–Medium",
           "plant_size": "Large",
@@ -608,10 +514,7 @@
           "body": "Medium",
           "acidity": "High",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Honey"
-          ],
+          "processing_compatibility": ["Washed", "Honey"],
           "disease_resistance": "Low",
           "yield": "Medium",
           "plant_size": "Compact dwarf",
@@ -628,10 +531,7 @@
           "body": "Medium",
           "acidity": "Low",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Dry"
-          ],
+          "processing_compatibility": ["Washed", "Dry"],
           "disease_resistance": "Medium (historically good, now somewhat overcome)",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -648,10 +548,7 @@
           "body": "Medium",
           "acidity": "Low–Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Dry"
-          ],
+          "processing_compatibility": ["Washed", "Dry"],
           "disease_resistance": "Medium–High",
           "yield": "Medium–High",
           "plant_size": "Tall",
@@ -668,9 +565,7 @@
           "body": "Medium",
           "acidity": "Low–Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Low",
           "yield": "Low",
           "plant_size": "Tall",
@@ -687,9 +582,7 @@
           "body": "Medium",
           "acidity": "Low–Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Low",
           "yield": "Low",
           "plant_size": "Tall",
@@ -706,10 +599,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low",
           "yield": "Medium",
           "plant_size": "Large",
@@ -726,9 +616,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "High (leaf rust)",
           "yield": "High",
           "plant_size": "Compact",
@@ -752,9 +640,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "High",
           "yield": "High",
           "plant_size": "Compact",
@@ -771,10 +657,7 @@
           "body": "Medium–Full",
           "acidity": "Bright",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "High",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -791,10 +674,7 @@
           "body": "Full",
           "acidity": "Low",
           "caffeine_pct": "1.3–1.7",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Very High",
           "yield": "Very High",
           "plant_size": "Compact",
@@ -811,10 +691,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.6",
-          "processing_compatibility": [
-            "Washed",
-            "Honey"
-          ],
+          "processing_compatibility": ["Washed", "Honey"],
           "disease_resistance": "Very High",
           "yield": "High",
           "plant_size": "Compact",
@@ -831,9 +708,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "High",
           "yield": "High",
           "plant_size": "Compact",
@@ -850,9 +725,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "High",
           "yield": "High",
           "plant_size": "Compact",
@@ -869,9 +742,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "High",
           "yield": "Very High",
           "plant_size": "Compact",
@@ -888,10 +759,7 @@
           "body": "Light–Medium",
           "acidity": "High",
           "caffeine_pct": "0.9–1.2",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "High",
           "yield": "Medium",
           "plant_size": "Medium–Tall",
@@ -908,10 +776,7 @@
           "body": "Medium",
           "acidity": "Low–Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Natural",
-            "Washed"
-          ],
+          "processing_compatibility": ["Natural", "Washed"],
           "disease_resistance": "High",
           "yield": "High",
           "plant_size": "Compact",
@@ -928,9 +793,7 @@
           "body": "Medium",
           "acidity": "Low",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Natural"
-          ],
+          "processing_compatibility": ["Natural"],
           "disease_resistance": "High",
           "yield": "Very High",
           "plant_size": "Compact",
@@ -947,9 +810,7 @@
           "body": "Light–Medium",
           "acidity": "Bright",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Low",
           "yield": "Low",
           "plant_size": "Tall",
@@ -966,10 +827,7 @@
           "body": "Medium",
           "acidity": "High",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Low",
           "yield": "Low",
           "plant_size": "Tall",
@@ -987,10 +845,7 @@
           "body": "Light–Medium",
           "acidity": "Bright",
           "caffeine_pct": "1.0–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Medium",
           "yield": "Medium",
           "plant_size": "Medium",
@@ -1008,10 +863,7 @@
           "body": "Medium",
           "acidity": "Medium–High",
           "caffeine_pct": "1.0–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Medium",
           "yield": "Medium",
           "plant_size": "Medium",
@@ -1029,10 +881,7 @@
           "body": "Medium–Full",
           "acidity": "Medium",
           "caffeine_pct": "1.0–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Medium",
           "yield": "Medium",
           "plant_size": "Medium",
@@ -1050,10 +899,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.2–1.5",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Very High",
           "yield": "Very High",
           "plant_size": "Compact",
@@ -1071,10 +917,7 @@
           "body": "Medium",
           "acidity": "High",
           "caffeine_pct": "1.0–1.4",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "High",
           "yield": "Very High",
           "plant_size": "Medium–Tall",
@@ -1092,9 +935,7 @@
           "body": "Medium",
           "acidity": "Medium",
           "caffeine_pct": "1.0–1.5",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "High",
           "yield": "Very High",
           "plant_size": "Compact",
@@ -1112,12 +953,7 @@
           "body": "Medium",
           "acidity": "Very High",
           "caffeine_pct": "1.0–1.4",
-          "processing_compatibility": [
-            "Washed",
-            "Natural",
-            "Anaerobic",
-            "Honey"
-          ],
+          "processing_compatibility": ["Washed", "Natural", "Anaerobic", "Honey"],
           "disease_resistance": "Low–Medium",
           "yield": "Medium",
           "plant_size": "Tall",
@@ -1141,10 +977,7 @@
           "body": "Very Full",
           "acidity": "Very Low",
           "caffeine_pct": "2.0–2.7",
-          "processing_compatibility": [
-            "Washed",
-            "Natural"
-          ],
+          "processing_compatibility": ["Washed", "Natural"],
           "disease_resistance": "Very High",
           "yield": "Very High",
           "plant_size": "Large shrub / small tree",
@@ -1162,9 +995,7 @@
           "body": "Very Full",
           "acidity": "Very Low",
           "caffeine_pct": "2.0–3.0",
-          "processing_compatibility": [
-            "Natural"
-          ],
+          "processing_compatibility": ["Natural"],
           "disease_resistance": "Very High",
           "yield": "Medium",
           "plant_size": "Spreading shrub",
@@ -1181,10 +1012,7 @@
           "body": "Full",
           "acidity": "Low",
           "caffeine_pct": "1.8–2.5",
-          "processing_compatibility": [
-            "Natural",
-            "Washed"
-          ],
+          "processing_compatibility": ["Natural", "Washed"],
           "disease_resistance": "High",
           "yield": "Very High",
           "plant_size": "Large",
@@ -1201,10 +1029,7 @@
           "body": "Full",
           "acidity": "Low–Medium",
           "caffeine_pct": "1.8–2.3",
-          "processing_compatibility": [
-            "Washed",
-            "Honey"
-          ],
+          "processing_compatibility": ["Washed", "Honey"],
           "disease_resistance": "High",
           "yield": "High",
           "plant_size": "Medium–Large",
@@ -1221,9 +1046,7 @@
           "body": "Full",
           "acidity": "Low",
           "caffeine_pct": "1.5–2.0",
-          "processing_compatibility": [
-            "Washed"
-          ],
+          "processing_compatibility": ["Washed"],
           "disease_resistance": "Very High (carries Robusta resistance genes)",
           "yield": "Medium",
           "plant_size": "Medium–Large",
@@ -1240,9 +1063,7 @@
           "body": "Very Full",
           "acidity": "Very Low",
           "caffeine_pct": "2.0–2.5",
-          "processing_compatibility": [
-            "Natural"
-          ],
+          "processing_compatibility": ["Natural"],
           "disease_resistance": "High",
           "yield": "Very High",
           "plant_size": "Large",
@@ -1266,10 +1087,7 @@
           "body": "Full–Heavy",
           "acidity": "Low",
           "caffeine_pct": "1.2–1.7",
-          "processing_compatibility": [
-            "Natural",
-            "Washed"
-          ],
+          "processing_compatibility": ["Natural", "Washed"],
           "disease_resistance": "High (leaf rust resistant historically)",
           "yield": "Medium",
           "plant_size": "Very Large tree (up to 9m)",
@@ -1286,9 +1104,7 @@
           "body": "Light–Medium",
           "acidity": "High",
           "caffeine_pct": "1.0–1.5",
-          "processing_compatibility": [
-            "Natural"
-          ],
+          "processing_compatibility": ["Natural"],
           "disease_resistance": "High",
           "yield": "Medium",
           "plant_size": "Large",
@@ -1305,10 +1121,7 @@
           "body": "Light–Medium",
           "acidity": "Medium",
           "caffeine_pct": "0.6–1.0",
-          "processing_compatibility": [
-            "Natural",
-            "Washed (experimental)"
-          ],
+          "processing_compatibility": ["Natural", "Washed (experimental)"],
           "disease_resistance": "Medium",
           "yield": "Low",
           "plant_size": "Small tree",
@@ -1325,9 +1138,7 @@
           "body": "Very Light",
           "acidity": "Low",
           "caffeine_pct": "0.2–0.4",
-          "processing_compatibility": [
-            "Natural"
-          ],
+          "processing_compatibility": ["Natural"],
           "disease_resistance": "High",
           "yield": "Low",
           "plant_size": "Small shrub",
@@ -1344,9 +1155,7 @@
           "body": "Light",
           "acidity": "Low",
           "caffeine_pct": "0.2–0.3",
-          "processing_compatibility": [
-            "Washed (experimental)"
-          ],
+          "processing_compatibility": ["Washed (experimental)"],
           "disease_resistance": "Unknown",
           "yield": "Very Low",
           "plant_size": "Small",
@@ -1380,9 +1189,7 @@
           "body": "Full",
           "acidity": "Low",
           "caffeine_pct": "1.5–2.0",
-          "processing_compatibility": [
-            "Natural"
-          ],
+          "processing_compatibility": ["Natural"],
           "disease_resistance": "Very High",
           "yield": "High",
           "plant_size": "Large",
@@ -1400,9 +1207,7 @@
           "body": "Light",
           "acidity": "Low",
           "caffeine_pct": "0.8–1.2",
-          "processing_compatibility": [
-            "Natural (experimental)"
-          ],
+          "processing_compatibility": ["Natural (experimental)"],
           "disease_resistance": "High (flood-tolerant)",
           "yield": "Low",
           "plant_size": "Medium shrub",

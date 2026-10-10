@@ -5,8 +5,7 @@
  * rejection, non-positive threshold rejection, empty/partial update
  * acceptance, and rejection of unknown rules.
  */
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { BADGE_RULE_VALUES } from '../constants/badges.ts';
 import { BadgeCreateSchema, BadgeUpdateSchema } from './badge.ts';
 

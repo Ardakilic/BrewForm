@@ -10,9 +10,10 @@
  * - The user has no preferences record
  * - `unitSystem` is undefined
  */
-import { useAuth } from '../contexts/AuthContext.tsx';
-import { createLogger } from '@/utils/logger.ts';
+
 import type { UnitSystem } from '@brewform/shared/types';
+import { createLogger } from '@/utils/logger.ts';
+import { useAuth } from '../contexts/AuthContext.tsx';
 
 const log = createLogger('useUnitSystem');
 

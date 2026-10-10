@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminTasteNotesPage } from './AdminTasteNotesPage.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -74,9 +74,7 @@ afterEach(() => {
 
 describe('AdminTasteNotesPage', () => {
   it('renders the taste notes list after initial fetch', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'tn-1', name: 'Fruity', depth: 0, parentId: null },
-    ]);
+    mockApi.get.mockResolvedValue([{ id: 'tn-1', name: 'Fruity', depth: 0, parentId: null }]);
 
     render(<AdminTasteNotesPage />);
 
@@ -109,9 +107,7 @@ describe('AdminTasteNotesPage', () => {
   });
 
   it('delete flow: confirm, api.delete + invalidateStaticCache called once', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'tn-1', name: 'Fruity', depth: 0, parentId: null },
-    ]);
+    mockApi.get.mockResolvedValue([{ id: 'tn-1', name: 'Fruity', depth: 0, parentId: null }]);
     mockApi.delete.mockResolvedValue({});
     vi.stubGlobal('confirm', () => true);
 
@@ -149,9 +145,7 @@ describe('AdminTasteNotesPage', () => {
   });
 
   it('failed delete does NOT call invalidateStaticCache', async () => {
-    mockApi.get.mockResolvedValue([
-      { id: 'tn-1', name: 'Fruity', depth: 0, parentId: null },
-    ]);
+    mockApi.get.mockResolvedValue([{ id: 'tn-1', name: 'Fruity', depth: 0, parentId: null }]);
     mockApi.delete.mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('confirm', () => true);
 

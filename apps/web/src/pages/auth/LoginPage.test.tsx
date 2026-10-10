@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { LoginPage } from './LoginPage.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { LoginPage } from './LoginPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -171,9 +171,7 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
 
     await waitFor(() => {
-      expect(loginMock).toHaveBeenCalledWith(
-        expect.objectContaining({ rememberMe: true }),
-      );
+      expect(loginMock).toHaveBeenCalledWith(expect.objectContaining({ rememberMe: true }));
     });
   });
 
@@ -225,9 +223,7 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /log in/i }));
 
     await waitFor(() => {
-      expect(loginMock).toHaveBeenCalledWith(
-        expect.objectContaining({ rememberMe: false }),
-      );
+      expect(loginMock).toHaveBeenCalledWith(expect.objectContaining({ rememberMe: false }));
     });
   });
 
@@ -270,9 +266,12 @@ describe('LoginPage', () => {
   it('should display structured error message from ApiError on login failure', async () => {
     const { ApiError: MockApiError } = await import('../../api/index.ts');
     vi.mocked(authApi.login).mockRejectedValue(
-      new MockApiError('VALIDATION_ERROR', 'Validation failed', [
-        { field: 'email', message: 'Invalid format' },
-      ], 400),
+      new MockApiError(
+        'VALIDATION_ERROR',
+        'Validation failed',
+        [{ field: 'email', message: 'Invalid format' }],
+        400,
+      ),
     );
     await renderLoginPage();
     await userEvent.type(screen.getByLabelText(/email/i), 'bad@test');

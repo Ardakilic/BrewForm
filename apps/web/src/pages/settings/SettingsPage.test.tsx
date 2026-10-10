@@ -33,16 +33,16 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 
 // ── Imports (after all vi.mock calls) ──
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type React from 'react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { api } from '../../api/client.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
-import { api } from '../../api/client.ts';
 import { loader, SettingsPage } from './SettingsPage.tsx';
 
 // ── Typed mock references ──
@@ -156,7 +156,7 @@ function renderSettingsPage(
     [
       {
         path: '/',
-        element: <div data-testid='home-page'>Home Page</div>,
+        element: <div data-testid="home-page">Home Page</div>,
       },
       {
         path: '/settings',
@@ -288,7 +288,8 @@ describe('SettingsPage', () => {
       await user.click(screen.getByText('Hesabı Sil'));
 
       await waitFor(() => {
-        const banner = screen.getByText('Hesap silinemedi.')
+        const banner = screen
+          .getByText('Hesap silinemedi.')
           .closest('[role="alert"]') as HTMLElement | null;
         expect(banner).toBeInTheDocument();
         expect(banner!.style.backgroundColor).toBe('var(--error-bg)');
@@ -333,7 +334,8 @@ describe('SettingsPage', () => {
       await user.click(screen.getByText('Tercihleri Kaydet'));
 
       await waitFor(() => {
-        const banner = screen.getByText('Tercihler kaydedilemedi.')
+        const banner = screen
+          .getByText('Tercihler kaydedilemedi.')
           .closest('[role="alert"]') as HTMLElement | null;
         expect(banner).toBeInTheDocument();
         expect(banner!.style.backgroundColor).toBe('var(--error-bg)');
@@ -384,7 +386,8 @@ describe('SettingsPage', () => {
       await user.click(screen.getByText('Delete Account'));
 
       await waitFor(() => {
-        const banner = screen.getByText('Account deletion failed.')
+        const banner = screen
+          .getByText('Account deletion failed.')
           .closest('[role="alert"]') as HTMLElement | null;
         expect(banner).toBeInTheDocument();
         expect(banner!.style.backgroundColor).toBe('var(--error-bg)');

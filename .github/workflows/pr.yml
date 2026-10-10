@@ -10,30 +10,36 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: denoland/setup-deno@v2
+      - uses: pnpm/action-setup@v4
         with:
-          deno-version-file: .deno-version
+          version: 12.10.1
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: deno ci
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Drizzle migration
-        run: deno task db:generate
+        run: pnpm run db:generate
 
       - name: Build email templates
-        run: deno task email-build
+        run: pnpm run email-build
 
       - name: Format check
-        run: deno fmt --check
+        run: pnpm run fmt-check
 
       - name: Lint
-        run: deno lint apps/ packages/
+        run: pnpm run lint
 
       - name: Type check
-        run: deno task check
+        run: pnpm run check
 
       - name: Build web
-        run: deno task build:web
+        run: pnpm run build:web
 
   test-unit:
     runs-on: ubuntu-latest
@@ -41,21 +47,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: denoland/setup-deno@v2
+      - uses: pnpm/action-setup@v4
         with:
-          deno-version-file: .deno-version
+          version: 12.10.1
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: deno ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run shared package tests
-        run: >
-          deno test
-          --allow-env
-          --allow-read
-          --allow-write
-          --allow-net
-          packages/shared/src/
+        run: pnpm --filter @brewform/shared run test
 
   test-api:
     runs-on: ubuntu-latest
@@ -91,46 +97,42 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: denoland/setup-deno@v2
+      - uses: pnpm/action-setup@v4
         with:
-          deno-version-file: .deno-version
+          version: 12.10.1
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: deno ci
+        run: pnpm install --frozen-lockfile
 
       - name: Assert no uncommitted migrations
         run: |
-          deno task db:generate
+          pnpm run db:generate
           git diff --exit-code
 
       - name: Build email templates
-        run: deno task email-build
+        run: pnpm run email-build
 
       - name: Run database migrations
-        run: deno task db:migrate
+        run: pnpm run db:migrate
 
       - name: Seed test database
-        run: deno run --allow-all packages/db/src/seed.ts
+        run: pnpm --filter @brewform/db run seed
 
       - name: Run API tests
-        run: >
-          deno test
-          --no-check
-          --coverage=coverage
-          --allow-env
-          --allow-read
-          --allow-write
-          --allow-net
-          --allow-sys
-          --allow-ffi
-          apps/api/src/
+        run: pnpm --filter @brewform/api run test -- --coverage
 
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: coverage-api-pr
-          path: coverage/
+          path: apps/api/coverage/
           retention-days: 7
 
   test-web:
@@ -139,12 +141,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: denoland/setup-deno@v2
+      - uses: pnpm/action-setup@v4
         with:
-          deno-version-file: .deno-version
+          version: 12.10.1
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: deno ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run web tests
-        run: deno task --cwd apps/web test
+        run: pnpm --filter @brewform/web run test

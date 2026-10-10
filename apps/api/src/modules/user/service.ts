@@ -5,10 +5,11 @@
  * enrichment (stats, recipes, follow status), profile updates with input
  * sanitization, and account soft-deletion.
  */
-import { sanitizeName, sanitizeText } from '../../utils/sanitize.ts';
-import * as model from './model.ts';
-import * as followModel from '../follow/model.ts';
+
 import { createLogger } from '../../utils/logger/index.ts';
+import { sanitizeName, sanitizeText } from '../../utils/sanitize.ts';
+import * as followModel from '../follow/model.ts';
+import * as model from './model.ts';
 
 /**
  * User service.

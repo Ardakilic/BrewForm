@@ -1,11 +1,10 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { setCacheProvider } from '../../utils/cache/singleton.ts';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import report from './index.ts';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
+import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import report from './index.ts';
 
 /**
  * Rate-limit route tests for `POST /api/v1/reports`.
@@ -34,61 +33,57 @@ function createTestApp() {
   return app;
 }
 
-describe(
-  'POST /api/v1/reports — rate limit',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    beforeEach(() => {
-      // Fresh cache per test so the rate-limit counter does not leak between tests
-      // (pattern from rateLimit.test.ts:11-13).
-      setCacheProvider(new InMemoryCacheProvider());
-    });
+describe('POST /api/v1/reports — rate limit', () => {
+  beforeEach(() => {
+    // Fresh cache per test so the rate-limit counter does not leak between tests
+    // (pattern from rateLimit.test.ts:11-13).
+    setCacheProvider(new InMemoryCacheProvider());
+  });
 
-    afterEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
-    });
+  afterEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
 
-    it('returns 429 on the 4th POST within the rate-limit window', async () => {
-      const app = createTestApp();
-      // The first 3 POSTs are processed by the limiter (they may 401/400 because
-      // auth/body are invalid, but the limiter counter increments regardless —
-      // it runs before authMiddleware and zValidator).
-      for (let i = 0; i < 3; i++) {
-        await app.request('/api/v1/reports', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recipeId: crypto.randomUUID(), reason: 'spam' }),
-        });
-      }
-      // The 4th POST in the same 15-minute window from the same IP returns 429.
-      const res = await app.request('/api/v1/reports', {
+  it('returns 429 on the 4th POST within the rate-limit window', async () => {
+    const app = createTestApp();
+    // The first 3 POSTs are processed by the limiter (they may 401/400 because
+    // auth/body are invalid, but the limiter counter increments regardless —
+    // it runs before authMiddleware and zValidator).
+    for (let i = 0; i < 3; i++) {
+      await app.request('/api/v1/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeId: crypto.randomUUID(), reason: 'spam' }),
       });
-      expect(res.status).toBe(429);
-      const body = await res.json();
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('RATE_LIMITED');
+    }
+    // The 4th POST in the same 15-minute window from the same IP returns 429.
+    const res = await app.request('/api/v1/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: crypto.randomUUID(), reason: 'spam' }),
     });
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('RATE_LIMITED');
+  });
 
-    it('does not throttle admin GET routes (report limiter is POST-only)', async () => {
-      const app = createTestApp();
-      // Exhaust the POST budget first.
-      for (let i = 0; i < 3; i++) {
-        await app.request('/api/v1/reports', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recipeId: crypto.randomUUID(), reason: 'spam' }),
-        });
-      }
-      // A 4th POST would be 429 — but a GET on the same router must NOT be 429
-      // (the report-specific limiter is applied to POST only, not via
-      // `report.use('*', ...)`). The GET may return 401 (no auth) or 403 (not
-      // admin), but the assertion is that it is not throttled by the report
-      // limiter.
-      const res = await app.request('/api/v1/reports', { method: 'GET' });
-      expect(res.status).not.toBe(429);
-    });
-  },
-);
+  it('does not throttle admin GET routes (report limiter is POST-only)', async () => {
+    const app = createTestApp();
+    // Exhaust the POST budget first.
+    for (let i = 0; i < 3; i++) {
+      await app.request('/api/v1/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipeId: crypto.randomUUID(), reason: 'spam' }),
+      });
+    }
+    // A 4th POST would be 429 — but a GET on the same router must NOT be 429
+    // (the report-specific limiter is applied to POST only, not via
+    // `report.use('*', ...)`). The GET may return 401 (no auth) or 403 (not
+    // admin), but the assertion is that it is not throttled by the report
+    // limiter.
+    const res = await app.request('/api/v1/reports', { method: 'GET' });
+    expect(res.status).not.toBe(429);
+  });
+});

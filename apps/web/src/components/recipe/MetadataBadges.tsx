@@ -41,22 +41,18 @@ export function MetadataBadges({
   const priorVersions = versionCount - 1;
 
   return (
-    <div className='flex flex-wrap items-center gap-2 text-[color:var(--text-secondary)]'>
+    <div className="flex flex-wrap items-center gap-2 text-[color:var(--text-secondary)]">
       {/* Author badge */}
       {author != null && (
         <Link
           to={`/u/${author.username}`}
-          className='inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]'
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]"
         >
           {author.displayName ?? author.username}
         </Link>
       )}
 
-      {author != null && (
-        <span className='text-xs text-[color:var(--text-tertiary)]'>
-          •
-        </span>
-      )}
+      {author != null && <span className="text-xs text-[color:var(--text-tertiary)]">•</span>}
 
       {/* Visibility badge — draft gets a dashed border */}
       <span
@@ -65,9 +61,9 @@ export function MetadataBadges({
         }`}
       >
         <span
-          className='inline-block rounded-full w-2 h-2 shrink-0'
+          className="inline-block rounded-full w-2 h-2 shrink-0"
           style={{ backgroundColor: dotColor }}
-          aria-hidden='true'
+          aria-hidden="true"
         />
         {visibility.charAt(0).toUpperCase() + visibility.slice(1)}
       </span>
@@ -75,10 +71,8 @@ export function MetadataBadges({
       {/* Brew method badge */}
       {brewMethod != null && (
         <>
-          <span className='text-xs text-[color:var(--text-tertiary)]'>
-            •
-          </span>
-          <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]'>
+          <span className="text-xs text-[color:var(--text-tertiary)]">•</span>
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]">
             {toTitleCase(brewMethod)}
           </span>
         </>
@@ -87,27 +81,23 @@ export function MetadataBadges({
       {/* Version info — only shown when there are multiple versions */}
       {versionCount > 1 && (
         <>
-          <span className='text-xs text-[color:var(--text-tertiary)]'>
-            •
-          </span>
-          <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-tertiary)] text-[color:var(--text-secondary)]'>
+          <span className="text-xs text-[color:var(--text-tertiary)]">•</span>
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-tertiary)] text-[color:var(--text-secondary)]">
             v{versionNumber}
           </span>
-          {onVersionHistoryClick != null
-            ? (
-              <button
-                type='button'
-                onClick={onVersionHistoryClick}
-                className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--accent-primary)] cursor-pointer border-none'
-              >
-                {priorVersions} prior {priorVersions === 1 ? 'version' : 'versions'}
-              </button>
-            )
-            : (
-              <span className='inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]'>
-                {priorVersions} prior {priorVersions === 1 ? 'version' : 'versions'}
-              </span>
-            )}
+          {onVersionHistoryClick != null ? (
+            <button
+              type="button"
+              onClick={onVersionHistoryClick}
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--accent-primary)] cursor-pointer border-none"
+            >
+              {priorVersions} prior {priorVersions === 1 ? 'version' : 'versions'}
+            </button>
+          ) : (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[color:var(--bg-secondary)] text-[color:var(--text-secondary)]">
+              {priorVersions} prior {priorVersions === 1 ? 'version' : 'versions'}
+            </span>
+          )}
         </>
       )}
     </div>

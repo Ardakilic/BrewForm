@@ -5,9 +5,10 @@
  * and private recipes. Appends `?from=qr` query param so the frontend can
  * display a dedicated "no longer available" page for delisted recipes.
  */
-import * as model from './model.ts';
-import { generateQRCodePng, generateQRCodeSvg } from '../../utils/qrcode/index.ts';
+
 import { createLogger } from '../../utils/logger/index.ts';
+import { generateQRCodePng, generateQRCodeSvg } from '../../utils/qrcode/index.ts';
+import * as model from './model.ts';
 
 /**
  * QR code service.

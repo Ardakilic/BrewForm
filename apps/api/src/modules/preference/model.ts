@@ -14,7 +14,10 @@ export type PreferenceUpdate = Partial<typeof userPreferences.$inferInsert>;
 
 /** Find preferences for a user. Returns null if none exist. */
 export async function findByUserId(userId: string) {
-  const result = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId))
+  const result = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
     .limit(1);
   return result[0] ?? null;
 }

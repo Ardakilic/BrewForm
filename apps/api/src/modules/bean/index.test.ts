@@ -1,11 +1,10 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { setCacheProvider } from '../../utils/cache/singleton.ts';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import beanRouter from './index.ts';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
+import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import beanRouter from './index.ts';
 
 /**
  * Pre-auth route tests for the beans router (`/api/v1/beans`).
@@ -35,94 +34,90 @@ function createTestApp() {
   return app;
 }
 
-describe(
-  'Bean Routes — pre-auth & validation',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    beforeEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
+describe('Bean Routes — pre-auth & validation', () => {
+  beforeEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  describe('GET /api/v1/beans/:id', () => {
+    it('returns 404 for a valid UUID that does not match any bean', async () => {
+      const app = createTestApp();
+      const res = await app.request(`/api/v1/beans/${crypto.randomUUID()}`);
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('NOT_FOUND');
     });
 
-    afterEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
+    it('returns 404 for an invalid UUID (DB query yields no rows, service throws BEAN_NOT_FOUND)', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/beans/not-a-uuid');
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('NOT_FOUND');
+    });
+  });
+
+  describe('GET /api/v1/beans', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/beans');
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
+    });
+  });
+
+  describe('POST /api/v1/beans', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/beans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Test Bean' }),
+      });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
 
-    describe('GET /api/v1/beans/:id', () => {
-      it('returns 404 for a valid UUID that does not match any bean', async () => {
-        const app = createTestApp();
-        const res = await app.request(`/api/v1/beans/${crypto.randomUUID()}`);
-        expect(res.status).toBe(404);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('NOT_FOUND');
+    it('returns 401 (auth gate) when the body is invalid AND no token is present', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/beans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '' }),
       });
-
-      it('returns 404 for an invalid UUID (DB query yields no rows, service throws BEAN_NOT_FOUND)', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/beans/not-a-uuid');
-        expect(res.status).toBe(404);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('NOT_FOUND');
-      });
+      expect(res.status).toBe(401);
     });
+  });
 
-    describe('GET /api/v1/beans', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/beans');
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
+  describe('PATCH /api/v1/beans/:id', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request(`/api/v1/beans/${crypto.randomUUID()}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Updated' }),
       });
+      expect(res.status).toBe(401);
     });
+  });
 
-    describe('POST /api/v1/beans', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/beans', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Test Bean' }),
-        });
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
+  describe('DELETE /api/v1/beans/:id', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request(`/api/v1/beans/${crypto.randomUUID()}`, {
+        method: 'DELETE',
       });
-
-      it('returns 401 (auth gate) when the body is invalid AND no token is present', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/beans', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: '' }),
-        });
-        expect(res.status).toBe(401);
-      });
+      expect(res.status).toBe(401);
     });
-
-    describe('PATCH /api/v1/beans/:id', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request(`/api/v1/beans/${crypto.randomUUID()}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Updated' }),
-        });
-        expect(res.status).toBe(401);
-      });
-    });
-
-    describe('DELETE /api/v1/beans/:id', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request(`/api/v1/beans/${crypto.randomUUID()}`, {
-          method: 'DELETE',
-        });
-        expect(res.status).toBe(401);
-      });
-    });
-  },
-);
+  });
+});

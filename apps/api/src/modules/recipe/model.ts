@@ -23,6 +23,14 @@ import {
   userRecipeRatings,
   users,
 } from '@brewform/db/schema';
+import type {
+  AdditionalPreparationCategory,
+  BrewMethod,
+  DrinkType,
+  EmojiTag,
+  Visibility,
+} from '@brewform/shared/types';
+import { encodeCursor } from '@brewform/shared/utils';
 import {
   and,
   asc,
@@ -37,17 +45,9 @@ import {
   lte,
   not,
   or,
-  SQL,
+  type SQL,
   sql,
 } from 'drizzle-orm';
-import { encodeCursor } from '@brewform/shared/utils';
-import type {
-  AdditionalPreparationCategory,
-  BrewMethod,
-  DrinkType,
-  EmojiTag,
-  Visibility,
-} from '@brewform/shared/types';
 import { createLogger } from '../../utils/logger/index.ts';
 
 const modelLog = createLogger('recipe-model');
@@ -56,9 +56,10 @@ const modelLog = createLogger('recipe-model');
 export function recipeCoffeeVarietyCondition(coffeeVarietyId: string) {
   return inArray(
     recipes.id,
-    db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-      eq(recipeVersions.coffeeVarietyId, coffeeVarietyId),
-    ),
+    db
+      .select({ id: recipeVersions.recipeId })
+      .from(recipeVersions)
+      .where(eq(recipeVersions.coffeeVarietyId, coffeeVarietyId)),
   );
 }
 
@@ -104,7 +105,8 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
     conditions.push(
       inArray(
         recipes.id,
-        db.select({ id: recipeVersions.recipeId })
+        db
+          .select({ id: recipeVersions.recipeId })
           .from(recipeVersions)
           .where(eq(recipeVersions.brewMethod, filters.brewMethod)),
       ),
@@ -115,7 +117,8 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
     conditions.push(
       inArray(
         recipes.id,
-        db.select({ id: recipeVersions.recipeId })
+        db
+          .select({ id: recipeVersions.recipeId })
           .from(recipeVersions)
           .where(eq(recipeVersions.drinkType, filters.drinkType)),
       ),
@@ -130,13 +133,16 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
         ilike(recipes.title, searchTerm),
         inArray(
           recipes.id,
-          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-            or(
-              ilike(recipeVersions.productName, searchTerm),
-              // F11: personalNotes added to search scope (weight 1)
-              ilike(recipeVersions.personalNotes, searchTerm),
+          db
+            .select({ id: recipeVersions.recipeId })
+            .from(recipeVersions)
+            .where(
+              or(
+                ilike(recipeVersions.productName, searchTerm),
+                // F11: personalNotes added to search scope (weight 1)
+                ilike(recipeVersions.personalNotes, searchTerm),
+              ),
             ),
-          ),
         ),
       );
       if (searchCondition) conditions.push(searchCondition);
@@ -150,7 +156,8 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
       conditions.push(
         inArray(
           recipes.id,
-          db.select({ id: recipeVersions.recipeId })
+          db
+            .select({ id: recipeVersions.recipeId })
             .from(recipeVersions)
             .where(ilike(recipeVersions.brewerDetails, searchTerm)),
         ),
@@ -166,12 +173,10 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
       conditions.push(
         inArray(
           recipes.authorId,
-          db.select({ id: users.id }).from(users).where(
-            or(
-              ilike(users.username, searchTerm),
-              ilike(users.displayName, searchTerm),
-            ),
-          ),
+          db
+            .select({ id: users.id })
+            .from(users)
+            .where(or(ilike(users.username, searchTerm), ilike(users.displayName, searchTerm))),
         ),
       );
     }
@@ -198,7 +203,8 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
       conditions.push(
         inArray(
           recipes.id,
-          db.select({ recipeId: userRecipeRatings.recipeId })
+          db
+            .select({ recipeId: userRecipeRatings.recipeId })
             .from(userRecipeRatings)
             .groupBy(userRecipeRatings.recipeId)
             .having(havingClause),
@@ -215,7 +221,8 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
     conditions.push(
       inArray(
         recipes.currentVersionId,
-        db.select({ id: recipeEquipment.recipeVersionId })
+        db
+          .select({ id: recipeEquipment.recipeVersionId })
           .from(recipeEquipment)
           .where(eq(recipeEquipment.equipmentId, filters.equipmentId)),
       ),
@@ -228,7 +235,8 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
       conditions.push(
         inArray(
           recipes.currentVersionId,
-          db.select({ id: recipeTasteNotes.recipeVersionId })
+          db
+            .select({ id: recipeTasteNotes.recipeVersionId })
             .from(recipeTasteNotes)
             .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
         ),
@@ -238,7 +246,8 @@ export function buildRecipeFilters(filters: RecipeFilterCriteria): SQL[] {
     conditions.push(
       inArray(
         recipes.currentVersionId,
-        db.select({ id: recipeTasteNotes.recipeVersionId })
+        db
+          .select({ id: recipeTasteNotes.recipeVersionId })
           .from(recipeTasteNotes)
           .where(eq(recipeTasteNotes.tasteNoteId, filters.tasteNoteId)),
       ),
@@ -277,9 +286,10 @@ export function buildListRecipesWhere(
   filters: RecipeListFilters,
   isAdmin: boolean,
 ): SQL | undefined {
-  const visibilityCondition = isAdmin && filters.visibility
-    ? eq(recipes.visibility, filters.visibility)
-    : eq(recipes.visibility, 'public');
+  const visibilityCondition =
+    isAdmin && filters.visibility
+      ? eq(recipes.visibility, filters.visibility)
+      : eq(recipes.visibility, 'public');
   const filterConditions = buildRecipeFilters(filters);
   const conditions: SQL[] = [visibilityCondition, ...filterConditions];
   if (filters.authorId) conditions.push(eq(recipes.authorId, filters.authorId));
@@ -429,9 +439,10 @@ export async function update(id: string, data: Partial<typeof recipes.$inferInse
 
 /** Soft-delete a recipe by setting its `deletedAt` timestamp. Returns the updated row or null. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(recipes).set({ deletedAt: new Date() }).where(
-    and(eq(recipes.id, id), isNull(recipes.deletedAt)),
-  )
+  const [result] = await db
+    .update(recipes)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(recipes.id, id), isNull(recipes.deletedAt)))
     .returning();
   return result ?? null;
 }
@@ -465,117 +476,147 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
   if (!latestVersion) throw new Error('RECIPE_NO_VERSIONS');
 
   return db.transaction(async (tx) => {
-    const [newRecipe] = await tx.insert(recipes).values({
-      slug,
-      title,
-      authorId,
-      visibility: 'draft',
-      forkedFromId: sourceId,
-    }).returning();
+    const [newRecipe] = await tx
+      .insert(recipes)
+      .values({
+        slug,
+        title,
+        authorId,
+        visibility: 'draft',
+        forkedFromId: sourceId,
+      })
+      .returning();
 
-    const [newVersion] = await tx.insert(recipeVersions).values({
-      recipeId: newRecipe.id,
-      versionNumber: 1,
-      productName: latestVersion.productName,
-      coffeeBrand: latestVersion.coffeeBrand,
-      coffeeProcessing: latestVersion.coffeeProcessing,
-      vendorId: latestVersion.vendorId,
-      roastDate: latestVersion.roastDate,
-      packageOpenDate: latestVersion.packageOpenDate,
-      grindDate: latestVersion.grindDate,
-      brewDate: new Date(),
-      brewMethod: latestVersion.brewMethod,
-      drinkType: latestVersion.drinkType,
-      brewerDetails: latestVersion.brewerDetails,
-      grinder: latestVersion.grinder,
-      grindSize: latestVersion.grindSize,
-      groundWeightGrams: latestVersion.groundWeightGrams,
-      extractionTimeSeconds: latestVersion.extractionTimeSeconds,
-      extractionVolumeMl: latestVersion.extractionVolumeMl,
-      temperatureCelsius: latestVersion.temperatureCelsius,
-      brewRatio: latestVersion.brewRatio,
-      flowRate: latestVersion.flowRate,
-      preInfusionTimeSeconds: latestVersion.preInfusionTimeSeconds,
-      beanId: latestVersion.beanId,
-      personalNotes: latestVersion.personalNotes,
-      preparationNotes: latestVersion.preparationNotes,
-      isFavourite: false,
-    }).returning();
+    const [newVersion] = await tx
+      .insert(recipeVersions)
+      .values({
+        recipeId: newRecipe.id,
+        versionNumber: 1,
+        productName: latestVersion.productName,
+        coffeeBrand: latestVersion.coffeeBrand,
+        coffeeProcessing: latestVersion.coffeeProcessing,
+        vendorId: latestVersion.vendorId,
+        roastDate: latestVersion.roastDate,
+        packageOpenDate: latestVersion.packageOpenDate,
+        grindDate: latestVersion.grindDate,
+        brewDate: new Date(),
+        brewMethod: latestVersion.brewMethod,
+        drinkType: latestVersion.drinkType,
+        brewerDetails: latestVersion.brewerDetails,
+        grinder: latestVersion.grinder,
+        grindSize: latestVersion.grindSize,
+        groundWeightGrams: latestVersion.groundWeightGrams,
+        extractionTimeSeconds: latestVersion.extractionTimeSeconds,
+        extractionVolumeMl: latestVersion.extractionVolumeMl,
+        temperatureCelsius: latestVersion.temperatureCelsius,
+        brewRatio: latestVersion.brewRatio,
+        flowRate: latestVersion.flowRate,
+        preInfusionTimeSeconds: latestVersion.preInfusionTimeSeconds,
+        beanId: latestVersion.beanId,
+        personalNotes: latestVersion.personalNotes,
+        preparationNotes: latestVersion.preparationNotes,
+        isFavourite: false,
+      })
+      .returning();
 
-    const sourceTasteNotes = await tx.select().from(recipeTasteNotes)
+    const sourceTasteNotes = await tx
+      .select()
+      .from(recipeTasteNotes)
       .where(eq(recipeTasteNotes.recipeVersionId, latestVersion.id));
     const insertedTasteNotes = sourceTasteNotes.length
-      ? await tx.insert(recipeTasteNotes).values(
-        sourceTasteNotes.map((tn) => ({
-          recipeVersionId: newVersion.id,
-          tasteNoteId: tn.tasteNoteId,
-          intensity: tn.intensity,
-        })),
-      ).returning()
+      ? await tx
+          .insert(recipeTasteNotes)
+          .values(
+            sourceTasteNotes.map((tn) => ({
+              recipeVersionId: newVersion.id,
+              tasteNoteId: tn.tasteNoteId,
+              intensity: tn.intensity,
+            })),
+          )
+          .returning()
       : [];
 
-    const sourceEquipment = await tx.select().from(recipeEquipment)
+    const sourceEquipment = await tx
+      .select()
+      .from(recipeEquipment)
       .where(eq(recipeEquipment.recipeVersionId, latestVersion.id));
     const insertedEquipment = sourceEquipment.length
-      ? await tx.insert(recipeEquipment).values(
-        sourceEquipment.map((eq) => ({
-          recipeVersionId: newVersion.id,
-          equipmentId: eq.equipmentId,
-        })),
-      ).returning()
+      ? await tx
+          .insert(recipeEquipment)
+          .values(
+            sourceEquipment.map((eq) => ({
+              recipeVersionId: newVersion.id,
+              equipmentId: eq.equipmentId,
+            })),
+          )
+          .returning()
       : [];
 
-    const sourcePreparations = await tx.select().from(recipeAdditionalPreparations)
+    const sourcePreparations = await tx
+      .select()
+      .from(recipeAdditionalPreparations)
       .where(eq(recipeAdditionalPreparations.recipeVersionId, latestVersion.id));
     const insertedPreparations = sourcePreparations.length
-      ? await tx.insert(recipeAdditionalPreparations).values(
-        sourcePreparations.map((p) => ({
-          recipeVersionId: newVersion.id,
-          name: p.name,
-          type: p.type,
-          inputAmount: p.inputAmount,
-          preparationType: p.preparationType,
-          sortOrder: p.sortOrder,
-        })),
-      ).returning()
+      ? await tx
+          .insert(recipeAdditionalPreparations)
+          .values(
+            sourcePreparations.map((p) => ({
+              recipeVersionId: newVersion.id,
+              name: p.name,
+              type: p.type,
+              inputAmount: p.inputAmount,
+              preparationType: p.preparationType,
+              sortOrder: p.sortOrder,
+            })),
+          )
+          .returning()
       : [];
 
-    const sourceVersionPhotos = await tx.select().from(recipeVersionPhotos)
+    const sourceVersionPhotos = await tx
+      .select()
+      .from(recipeVersionPhotos)
       .where(eq(recipeVersionPhotos.recipeVersionId, latestVersion.id));
     const insertedVersionPhotos = sourceVersionPhotos.length
-      ? await tx.insert(recipeVersionPhotos).values(
-        sourceVersionPhotos.map((vp) => ({
-          recipeVersionId: newVersion.id,
-          photoId: vp.photoId,
-          sortOrder: vp.sortOrder,
-        })),
-      ).returning()
+      ? await tx
+          .insert(recipeVersionPhotos)
+          .values(
+            sourceVersionPhotos.map((vp) => ({
+              recipeVersionId: newVersion.id,
+              photoId: vp.photoId,
+              sortOrder: vp.sortOrder,
+            })),
+          )
+          .returning()
       : [];
 
-    await tx.update(recipes).set({ currentVersionId: newVersion.id }).where(
-      eq(recipes.id, newRecipe.id),
-    );
-    await tx.update(recipes).set({ forkCount: sql`${recipes.forkCount} + 1` }).where(
-      eq(recipes.id, sourceId),
-    );
+    await tx
+      .update(recipes)
+      .set({ currentVersionId: newVersion.id })
+      .where(eq(recipes.id, newRecipe.id));
+    await tx
+      .update(recipes)
+      .set({ forkCount: sql`${recipes.forkCount} + 1` })
+      .where(eq(recipes.id, sourceId));
 
     return {
       ...newRecipe,
-      versions: [{
-        ...newVersion,
-        tasteNotes: insertedTasteNotes.map((tn) => ({
-          ...tn,
-          tasteNote: latestVersion.tasteNotes?.find((ltn) => ltn.tasteNoteId === tn.tasteNoteId)
-            ?.tasteNote,
-        })),
-        equipment: insertedEquipment.map((eq) => ({
-          ...eq,
-          equipment: latestVersion.equipment?.find((leq) => leq.equipmentId === eq.equipmentId)
-            ?.equipment,
-        })),
-        additionalPreparations: insertedPreparations,
-        versionPhotos: insertedVersionPhotos,
-      }],
+      versions: [
+        {
+          ...newVersion,
+          tasteNotes: insertedTasteNotes.map((tn) => ({
+            ...tn,
+            tasteNote: latestVersion.tasteNotes?.find((ltn) => ltn.tasteNoteId === tn.tasteNoteId)
+              ?.tasteNote,
+          })),
+          equipment: insertedEquipment.map((eq) => ({
+            ...eq,
+            equipment: latestVersion.equipment?.find((leq) => leq.equipmentId === eq.equipmentId)
+              ?.equipment,
+          })),
+          additionalPreparations: insertedPreparations,
+          versionPhotos: insertedVersionPhotos,
+        },
+      ],
     };
   });
 }
@@ -647,50 +688,54 @@ export interface CreateRecipeWithRelationsInput {
  *          relations), photos, and forkedFrom — identical to
  *          {@link findById}'s shape.
  */
-export async function createRecipeWithRelations(
-  input: CreateRecipeWithRelationsInput,
-) {
+export async function createRecipeWithRelations(input: CreateRecipeWithRelationsInput) {
   modelLog.debug({ authorId: input.authorId }, 'createRecipeWithRelations started');
 
   const { id } = await db.transaction(async (tx) => {
-    const [r] = await tx.insert(recipes).values({
-      slug: input.slug,
-      title: input.title,
-      authorId: input.authorId,
-      visibility: input.visibility,
-      currentVersionId: null,
-    }).returning();
+    const [r] = await tx
+      .insert(recipes)
+      .values({
+        slug: input.slug,
+        title: input.title,
+        authorId: input.authorId,
+        visibility: input.visibility,
+        currentVersionId: null,
+      })
+      .returning();
 
-    const [version] = await tx.insert(recipeVersions).values({
-      recipeId: r.id,
-      versionNumber: 1,
-      productName: input.productName,
-      coffeeBrand: input.coffeeBrand,
-      coffeeProcessing: input.coffeeProcessing,
-      vendorId: input.vendorId,
-      roastDate: input.roastDate,
-      packageOpenDate: input.packageOpenDate,
-      grindDate: input.grindDate,
-      brewDate: input.brewDate,
-      brewMethod: input.brewMethod,
-      drinkType: input.drinkType,
-      brewerDetails: input.brewerDetails,
-      grinder: input.grinder,
-      grindSize: input.grindSize,
-      groundWeightGrams: input.groundWeightGrams,
-      extractionTimeSeconds: input.extractionTimeSeconds,
-      extractionVolumeMl: input.extractionVolumeMl,
-      temperatureCelsius: input.temperatureCelsius,
-      brewRatio: input.brewRatio,
-      flowRate: input.flowRate,
-      personalNotes: input.personalNotes,
-      preparationNotes: input.preparationNotes,
-      isFavourite: input.isFavourite,
-      rating: input.rating,
-      emojiTag: input.emojiTag,
-      preInfusionTimeSeconds: input.preInfusionTimeSeconds,
-      beanId: input.beanId,
-    }).returning();
+    const [version] = await tx
+      .insert(recipeVersions)
+      .values({
+        recipeId: r.id,
+        versionNumber: 1,
+        productName: input.productName,
+        coffeeBrand: input.coffeeBrand,
+        coffeeProcessing: input.coffeeProcessing,
+        vendorId: input.vendorId,
+        roastDate: input.roastDate,
+        packageOpenDate: input.packageOpenDate,
+        grindDate: input.grindDate,
+        brewDate: input.brewDate,
+        brewMethod: input.brewMethod,
+        drinkType: input.drinkType,
+        brewerDetails: input.brewerDetails,
+        grinder: input.grinder,
+        grindSize: input.grindSize,
+        groundWeightGrams: input.groundWeightGrams,
+        extractionTimeSeconds: input.extractionTimeSeconds,
+        extractionVolumeMl: input.extractionVolumeMl,
+        temperatureCelsius: input.temperatureCelsius,
+        brewRatio: input.brewRatio,
+        flowRate: input.flowRate,
+        personalNotes: input.personalNotes,
+        preparationNotes: input.preparationNotes,
+        isFavourite: input.isFavourite,
+        rating: input.rating,
+        emojiTag: input.emojiTag,
+        preInfusionTimeSeconds: input.preInfusionTimeSeconds,
+        beanId: input.beanId,
+      })
+      .returning();
 
     if (input.tasteNoteIds?.length) {
       await tx.insert(recipeTasteNotes).values(
@@ -734,8 +779,7 @@ export async function createRecipeWithRelations(
       );
     }
 
-    await tx.update(recipes).set({ currentVersionId: version.id })
-      .where(eq(recipes.id, r.id));
+    await tx.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, r.id));
 
     return r;
   });
@@ -746,31 +790,41 @@ export async function createRecipeWithRelations(
 
 /** Atomically increment a recipe's `likeCount` by 1. Returns the updated row or null. */
 export async function incrementLikes(id: string) {
-  const [result] = await db.update(recipes).set({ likeCount: sql`${recipes.likeCount} + 1` }).where(
-    eq(recipes.id, id),
-  ).returning();
+  const [result] = await db
+    .update(recipes)
+    .set({ likeCount: sql`${recipes.likeCount} + 1` })
+    .where(eq(recipes.id, id))
+    .returning();
   return result ?? null;
 }
 
 /** Atomically decrement a recipe's `likeCount` by 1. Returns the updated row or null. */
 export async function decrementLikes(id: string) {
-  const [result] = await db.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
-    eq(recipes.id, id),
-  ).returning();
+  const [result] = await db
+    .update(recipes)
+    .set({ likeCount: sql`${recipes.likeCount} - 1` })
+    .where(eq(recipes.id, id))
+    .returning();
   return result ?? null;
 }
 
 /** Atomically increment a recipe's `commentCount` by 1. Returns the updated row or null. */
 export async function incrementComments(id: string) {
-  const [result] = await db.update(recipes).set({ commentCount: sql`${recipes.commentCount} + 1` })
-    .where(eq(recipes.id, id)).returning();
+  const [result] = await db
+    .update(recipes)
+    .set({ commentCount: sql`${recipes.commentCount} + 1` })
+    .where(eq(recipes.id, id))
+    .returning();
   return result ?? null;
 }
 
 /** Atomically decrement a recipe's `commentCount` by 1. Returns the updated row or null. */
 export async function decrementComments(id: string) {
-  const [result] = await db.update(recipes).set({ commentCount: sql`${recipes.commentCount} - 1` })
-    .where(eq(recipes.id, id)).returning();
+  const [result] = await db
+    .update(recipes)
+    .set({ commentCount: sql`${recipes.commentCount} - 1` })
+    .where(eq(recipes.id, id))
+    .returning();
   return result ?? null;
 }
 
@@ -786,13 +840,15 @@ export async function decrementComments(id: string) {
  * @returns An object containing the persisted rating value
  */
 export async function upsertUserRating(userId: string, recipeId: string, rating: number) {
-  const existing = await db.select({ id: userRecipeRatings.id })
+  const existing = await db
+    .select({ id: userRecipeRatings.id })
     .from(userRecipeRatings)
     .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)))
     .limit(1);
 
   if (existing.length > 0) {
-    await db.update(userRecipeRatings)
+    await db
+      .update(userRecipeRatings)
       .set({ rating, updatedAt: new Date() })
       .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)));
   } else {
@@ -808,10 +864,11 @@ export async function upsertUserRating(userId: string, recipeId: string, rating:
  *          and `ratingCount` (0 if no ratings exist)
  */
 export async function getRecipeRatingStats(recipeId: string) {
-  const [result] = await db.select({
-    avgRating: avg(userRecipeRatings.rating),
-    ratingCount: count(userRecipeRatings.id),
-  })
+  const [result] = await db
+    .select({
+      avgRating: avg(userRecipeRatings.rating),
+      ratingCount: count(userRecipeRatings.id),
+    })
     .from(userRecipeRatings)
     .where(eq(userRecipeRatings.recipeId, recipeId));
   return {
@@ -822,7 +879,8 @@ export async function getRecipeRatingStats(recipeId: string) {
 
 /** Fetch a specific user's rating for a recipe, or null if they haven't rated it. */
 export async function getUserRating(userId: string, recipeId: string): Promise<number | null> {
-  const [result] = await db.select({ rating: userRecipeRatings.rating })
+  const [result] = await db
+    .select({ rating: userRecipeRatings.rating })
     .from(userRecipeRatings)
     .where(and(eq(userRecipeRatings.userId, userId), eq(userRecipeRatings.recipeId, recipeId)))
     .limit(1);
@@ -831,7 +889,8 @@ export async function getUserRating(userId: string, recipeId: string): Promise<n
 
 /** Count the total number of users who have favourited a recipe. */
 export async function getFavouriteCount(recipeId: string): Promise<number> {
-  const [result] = await db.select({ count: count() })
+  const [result] = await db
+    .select({ count: count() })
     .from(userRecipeFavourites)
     .where(eq(userRecipeFavourites.recipeId, recipeId));
   return result?.count ?? 0;
@@ -844,11 +903,13 @@ export async function getFavouriteCount(recipeId: string): Promise<number> {
  */
 export async function getUserLikeStatus(userId: string, recipeId: string) {
   const [[like], [fav]] = await Promise.all([
-    db.select({ id: userRecipeLikes.userId })
+    db
+      .select({ id: userRecipeLikes.userId })
       .from(userRecipeLikes)
       .where(and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)))
       .limit(1),
-    db.select({ id: userRecipeFavourites.userId })
+    db
+      .select({ id: userRecipeFavourites.userId })
       .from(userRecipeFavourites)
       .where(
         and(eq(userRecipeFavourites.userId, userId), eq(userRecipeFavourites.recipeId, recipeId)),
@@ -869,26 +930,30 @@ export async function getUserLikeStatus(userId: string, recipeId: string) {
  */
 export function toggleLike(userId: string, recipeId: string) {
   return db.transaction(async (tx) => {
-    const inserted = await tx.insert(userRecipeLikes)
+    const inserted = await tx
+      .insert(userRecipeLikes)
       .values({ userId, recipeId })
       .onConflictDoNothing({ target: [userRecipeLikes.userId, userRecipeLikes.recipeId] })
       .returning();
 
     if (inserted.length > 0) {
-      await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} + 1` }).where(
-        eq(recipes.id, recipeId),
-      );
+      await tx
+        .update(recipes)
+        .set({ likeCount: sql`${recipes.likeCount} + 1` })
+        .where(eq(recipes.id, recipeId));
       return { liked: true };
     }
 
-    const deleted = await tx.delete(userRecipeLikes).where(
-      and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)),
-    ).returning();
+    const deleted = await tx
+      .delete(userRecipeLikes)
+      .where(and(eq(userRecipeLikes.userId, userId), eq(userRecipeLikes.recipeId, recipeId)))
+      .returning();
 
     if (deleted.length > 0) {
-      await tx.update(recipes).set({ likeCount: sql`${recipes.likeCount} - 1` }).where(
-        eq(recipes.id, recipeId),
-      );
+      await tx
+        .update(recipes)
+        .set({ likeCount: sql`${recipes.likeCount} - 1` })
+        .where(eq(recipes.id, recipeId));
     }
     return { liked: false };
   });
@@ -903,15 +968,18 @@ export function toggleLike(userId: string, recipeId: string) {
  * @returns `{ favourited: true }` if the favourite was added, `{ favourited: false }` if removed
  */
 export async function toggleFavourite(userId: string, recipeId: string) {
-  const inserted = await db.insert(userRecipeFavourites)
+  const inserted = await db
+    .insert(userRecipeFavourites)
     .values({ userId, recipeId })
     .onConflictDoNothing({ target: [userRecipeFavourites.userId, userRecipeFavourites.recipeId] })
     .returning();
 
   if (inserted.length === 0) {
-    await db.delete(userRecipeFavourites).where(
-      and(eq(userRecipeFavourites.userId, userId), eq(userRecipeFavourites.recipeId, recipeId)),
-    );
+    await db
+      .delete(userRecipeFavourites)
+      .where(
+        and(eq(userRecipeFavourites.userId, userId), eq(userRecipeFavourites.recipeId, recipeId)),
+      );
     return { favourited: false };
   }
 
@@ -928,7 +996,8 @@ export async function toggleFavourite(userId: string, recipeId: string) {
  * @returns `{ featured: boolean }` — the new featured state
  */
 export async function toggleFeature(id: string) {
-  const [recipe] = await db.update(recipes)
+  const [recipe] = await db
+    .update(recipes)
     .set({ featured: not(recipes.featured) })
     .where(eq(recipes.id, id))
     .returning();
@@ -959,7 +1028,8 @@ export function getVersionsByRecipeId(recipeId: string) {
 
 /** Update the `personalNotes` field on a specific recipe version. */
 export async function updateVersionNotes(versionId: string, notes: string) {
-  await db.update(recipeVersions)
+  await db
+    .update(recipeVersions)
     .set({ personalNotes: notes })
     .where(eq(recipeVersions.id, versionId));
 }
@@ -1031,9 +1101,10 @@ export async function findCursor(
     ? and(where, isNull(recipes.deletedAt), buildCursorWhere(cursor, sortOrder))
     : and(isNull(recipes.deletedAt), buildCursorWhere(cursor, sortOrder));
 
-  const orderBy = sortOrder === 'asc'
-    ? [asc(recipes.createdAt), asc(recipes.id)]
-    : [desc(recipes.createdAt), desc(recipes.id)];
+  const orderBy =
+    sortOrder === 'asc'
+      ? [asc(recipes.createdAt), asc(recipes.id)]
+      : [desc(recipes.createdAt), desc(recipes.id)];
 
   const [rows, totalResult] = await Promise.all([
     db.query.recipes.findMany({
@@ -1045,9 +1116,10 @@ export async function findCursor(
       },
     }),
     includeTotal
-      ? db.select({ count: count() }).from(recipes).where(
-        where ? and(where, isNull(recipes.deletedAt)) : isNull(recipes.deletedAt),
-      )
+      ? db
+          .select({ count: count() })
+          .from(recipes)
+          .where(where ? and(where, isNull(recipes.deletedAt)) : isNull(recipes.deletedAt))
       : Promise.resolve([{ count: 0 }]),
   ]);
 
@@ -1055,9 +1127,9 @@ export async function findCursor(
   const recipesPage = rows.slice(0, perPage);
   const nextCursor = hasMore
     ? encodeCursor({
-      createdAt: (recipesPage[recipesPage.length - 1].createdAt as Date).toISOString(),
-      id: recipesPage[recipesPage.length - 1].id as string,
-    })
+        createdAt: (recipesPage[recipesPage.length - 1].createdAt as Date).toISOString(),
+        id: recipesPage[recipesPage.length - 1].id as string,
+      })
     : null;
 
   const result: CursorResult<Record<string, unknown>> = {
@@ -1093,10 +1165,7 @@ export function getFeed(
 ): Promise<
   { recipes: Record<string, unknown>[]; total: number } | CursorResult<Record<string, unknown>>
 > {
-  const where = and(
-    inArray(recipes.authorId, authorIds),
-    eq(recipes.visibility, 'public'),
-  );
+  const where = and(inArray(recipes.authorId, authorIds), eq(recipes.visibility, 'public'));
   if (cursor) {
     return findCursor(where, cursor, perPage, 'desc');
   }
@@ -1131,15 +1200,12 @@ export async function findStarred(
   const conditions: SQL[] = [eq(recipes.visibility, 'public'), ...filterConditions];
   const where = conditions.length > 1 ? and(...conditions) : conditions[0];
 
-  const starredSubquery = db.select({ recipeId: userRecipeFavourites.recipeId })
+  const starredSubquery = db
+    .select({ recipeId: userRecipeFavourites.recipeId })
     .from(userRecipeFavourites)
     .where(eq(userRecipeFavourites.userId, userId));
 
-  const finalWhere = and(
-    where,
-    inArray(recipes.id, starredSubquery),
-    isNull(recipes.deletedAt),
-  );
+  const finalWhere = and(where, inArray(recipes.id, starredSubquery), isNull(recipes.deletedAt));
 
   const sortBy = filters.sortBy || 'createdAt';
   const sortOrder = filters.sortOrder || 'desc';
@@ -1180,10 +1246,10 @@ export function getBrewMethodEquipmentRules(brewMethod: BrewMethod) {
 
 /** Fetch a user's setup by ID, checking ownership and non-deleted status. */
 export async function getUserSetup(setupId: string, userId: string) {
-  const result = await db.select().from(setups)
-    .where(
-      and(eq(setups.id, setupId), eq(setups.userId, userId), isNull(setups.deletedAt)),
-    )
+  const result = await db
+    .select()
+    .from(setups)
+    .where(and(eq(setups.id, setupId), eq(setups.userId, userId), isNull(setups.deletedAt)))
     .limit(1);
   return result[0] ?? null;
 }
@@ -1195,10 +1261,7 @@ export async function getUserById(userId: string) {
 }
 
 /** Batch-insert version-photo relations. */
-export async function insertVersionPhotos(
-  versionId: string,
-  photoIds: string[],
-) {
+export async function insertVersionPhotos(versionId: string, photoIds: string[]) {
   await db.insert(recipeVersionPhotos).values(
     photoIds.map((photoId, i) => ({
       recipeVersionId: versionId,

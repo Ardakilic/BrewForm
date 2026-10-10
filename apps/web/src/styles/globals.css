@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /*
  * Heading scale convention (wave-5 T4.7):
@@ -8,8 +8,8 @@
  */
 
 @theme {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --animate-slide-in-right: slide-in-right 200ms ease-out both;
 
@@ -117,7 +117,9 @@
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font-sans);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
   }
 
   .card {
@@ -262,7 +264,7 @@
   .btn-danger,
   .no-print,
   .print-hidden,
-  button[type='button'] {
+  button[type="button"] {
     display: none !important;
   }
 

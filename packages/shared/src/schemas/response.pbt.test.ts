@@ -7,10 +7,9 @@
 // errors — including when PaginationMeta carries any valid in-bounds values.
 //
 // Validates: Requirements 6.1, 6.2, 6.3, 6.4, 12.3
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import fc from 'npm:fast-check';
 import { ErrorEnvelopeSchema, paginatedEnvelope, successEnvelope } from './response.ts';
 
 // ---------------------------------------------------------------------------
@@ -20,15 +19,16 @@ import { ErrorEnvelopeSchema, paginatedEnvelope, successEnvelope } from './respo
 
 /** Mirrors error(c, code, message, status, details?). */
 function errorEnvelopeArb(): fc.Arbitrary<unknown> {
-  return fc.record({
-    code: fc.string(),
-    message: fc.string(),
-    requestId: fc.string(),
-    details: fc.option(
-      fc.array(fc.record({ field: fc.string(), message: fc.string() })),
-      { nil: undefined },
-    ),
-  }).map((error) => ({ success: false as const, error }));
+  return fc
+    .record({
+      code: fc.string(),
+      message: fc.string(),
+      requestId: fc.string(),
+      details: fc.option(fc.array(fc.record({ field: fc.string(), message: fc.string() })), {
+        nil: undefined,
+      }),
+    })
+    .map((error) => ({ success: false as const, error }));
 }
 
 /** Arbitrary JSON-serializable data payload. */
@@ -38,20 +38,25 @@ function dataArb(): fc.Arbitrary<unknown> {
 
 /** Mirrors success(c, data) → { success:true, data, meta:{ requestId } }. */
 function successEnvelopeArb(): fc.Arbitrary<unknown> {
-  return fc.record({
-    data: dataArb(),
-    requestId: fc.string(),
-  }).map(({ data, requestId }) => ({
-    success: true as const,
-    data,
-    meta: { requestId },
-  }));
+  return fc
+    .record({
+      data: dataArb(),
+      requestId: fc.string(),
+    })
+    .map(({ data, requestId }) => ({
+      success: true as const,
+      data,
+      meta: { requestId },
+    }));
 }
 
 /** Valid in-bounds PaginationMeta (page≥1, perPage≥1, total≥0, totalPages≥0). */
-function paginationMetaArb(): fc.Arbitrary<
-  { page: number; perPage: number; total: number; totalPages: number }
-> {
+function paginationMetaArb(): fc.Arbitrary<{
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+}> {
   return fc.record({
     page: fc.integer({ min: 1, max: 1_000_000 }),
     perPage: fc.integer({ min: 1, max: 1_000_000 }),
@@ -62,15 +67,17 @@ function paginationMetaArb(): fc.Arbitrary<
 
 /** Mirrors paginated(c, items, pagination). */
 function paginatedEnvelopeArb(): fc.Arbitrary<unknown> {
-  return fc.record({
-    data: fc.array(dataArb()),
-    requestId: fc.string(),
-    pagination: paginationMetaArb(),
-  }).map(({ data, requestId, pagination }) => ({
-    success: true as const,
-    data,
-    meta: { requestId, pagination },
-  }));
+  return fc
+    .record({
+      data: fc.array(dataArb()),
+      requestId: fc.string(),
+      pagination: paginationMetaArb(),
+    })
+    .map(({ data, requestId, pagination }) => ({
+      success: true as const,
+      data,
+      meta: { requestId, pagination },
+    }));
 }
 
 describe('Property 8: response-helper output validates against its envelope schema', () => {

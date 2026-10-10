@@ -30,15 +30,15 @@ export function LikeButton({ recipeId, initialLiked, initialCount }: Props) {
 
   return (
     <fetcher.Form
-      method='post'
+      method="post"
       action={`/recipes/${recipeId}/like`}
       onSubmit={() => log.debug({ recipeId }, 'submit started')}
     >
-      <input type='hidden' name='liked' value={String(!liked)} />
+      <input type="hidden" name="liked" value={String(!liked)} />
       <button
-        type='submit'
+        type="submit"
         disabled={fetcher.state !== 'idle'}
-        className='flex items-center gap-1 rounded px-3 py-1 text-sm transition-opacity hover:opacity-80'
+        className="flex items-center gap-1 rounded px-3 py-1 text-sm transition-opacity hover:opacity-80"
         style={{
           backgroundColor: liked ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
           color: liked ? 'var(--bg-primary)' : 'var(--text-primary)',

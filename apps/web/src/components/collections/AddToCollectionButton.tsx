@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { AddToCollectionModal } from './AddToCollectionModal.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import { AddToCollectionModal } from './AddToCollectionModal.tsx';
 
 const log = createLogger('AddToCollectionButton');
 
@@ -23,9 +23,9 @@ export function AddToCollectionButton({ recipeId }: AddToCollectionButtonProps) 
   return (
     <>
       <button
-        type='button'
+        type="button"
         onClick={() => setOpen(true)}
-        className='btn-secondary text-sm min-h-11 px-3'
+        className="btn-secondary text-sm min-h-11 px-3"
         aria-label={t('collection.modal.add')}
       >
         {t('collection.modal.add')}

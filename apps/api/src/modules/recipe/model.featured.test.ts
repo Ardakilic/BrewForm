@@ -1,9 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { recipes, recipeVersions, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -12,7 +11,7 @@ import * as model from './model.ts';
  * the flag true -> false -> true, asserting both the returned value and the
  * persisted column after each toggle.
  */
-describe('toggleFeature', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('toggleFeature', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -34,14 +33,17 @@ describe('toggleFeature', { sanitizeOps: false, sanitizeResources: false }, () =
       authorId: userId,
       visibility: 'public',
     });
-    const [version] = await db.insert(recipeVersions).values({
-      id: versionId,
-      recipeId,
-      versionNumber: 1,
-      brewMethod: 'v60',
-      drinkType: 'pour_over',
-      preparationNotes: '',
-    }).returning();
+    const [version] = await db
+      .insert(recipeVersions)
+      .values({
+        id: versionId,
+        recipeId,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: '',
+      })
+      .returning();
     await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipeId));
   });
 
@@ -52,7 +54,9 @@ describe('toggleFeature', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 
   async function persistedFeatured(): Promise<boolean> {
-    const [row] = await db.select({ featured: recipes.featured }).from(recipes)
+    const [row] = await db
+      .select({ featured: recipes.featured })
+      .from(recipes)
       .where(eq(recipes.id, recipeId));
     return row.featured;
   }

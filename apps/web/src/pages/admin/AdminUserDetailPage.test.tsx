@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../components/ui/Toast.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -15,7 +15,7 @@ vi.mock('@/utils/logger.ts', () => ({
 }));
 
 vi.mock('../../components/ui/Skeleton.tsx', () => ({
-  Skeleton: () => <div data-testid='skeleton' />,
+  Skeleton: () => <div data-testid="skeleton" />,
 }));
 
 vi.mock('../../components/admin/BanDialog.tsx', () => ({

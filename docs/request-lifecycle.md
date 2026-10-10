@@ -9,7 +9,7 @@ Use this as a map when debugging unexpected behaviour or deciding where to add n
 Client (web SPA)
   │  fetch with Authorization: Bearer <accessToken>
   ▼
-Deno.serve / Hono app  (apps/api/src/main.ts)
+@hono/node-server / Hono app  (apps/api/src/main.ts)
   │
   ▼  Global middleware (apps/api/src/main.ts)
   ├─ corsMiddleware           ← reject disallowed origins early
@@ -162,13 +162,12 @@ wrapped in a try/catch so a failing job never tears down the scheduler.
 
 `SIGTERM`/`SIGINT` triggers, in order:
 
-1. `stopJobs()` — clears all interval timers
-2. `server.shutdown()` — drains in-flight requests
-3. `kv.close()` — if the Deno KV provider is in use
-4. `postgres-js client end` — closes the connection pool
-5. `Deno.exit(0)`
+1. `server.close()` — drains in-flight requests
+2. `postgres-js client end` — closes the connection pool
+3. `closeTransporter()` — closes the email transporter
+4. `process.exit(0)`
 
-Anything that times out past the host's grace window (Deno Deploy or container orchestrator) is
+Anything that times out past the host's grace window (container orchestrator) is
 terminated forcibly — keep job intervals comfortably below that window.
 
 ## Quick reference: where to put new logic

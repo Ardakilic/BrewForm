@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from 'react-router';
-import { followApi } from '../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
+import { followApi } from '../api/index.ts';
 
 const logger = createLogger('follow');
 

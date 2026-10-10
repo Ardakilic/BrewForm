@@ -18,7 +18,7 @@ export function RequireAuth({ children, requireAdmin }: Props) {
   if (isLoading) {
     return <PageSkeleton />;
   }
-  if (!isAuthenticated) return <Navigate to='/login' />;
-  if (requireAdmin && !user?.isAdmin) return <Navigate to='/' />;
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (requireAdmin && !user?.isAdmin) return <Navigate to="/" />;
   return <>{children}</>;
 }

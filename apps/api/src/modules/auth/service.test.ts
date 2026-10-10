@@ -1,10 +1,4 @@
 import '../../test-setup.ts';
-import { afterAll, beforeAll, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { config, reloadConfig } from '../../config/env.ts';
-import * as service from './service.ts';
-import { register, toAuthUser } from './service.ts';
-import { signAccessToken, signRefreshToken, verifyJwt } from './jwt.ts';
 import { db } from '@brewform/db';
 import {
   emailVerificationTokens,
@@ -13,7 +7,12 @@ import {
   users,
 } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { config, reloadConfig } from '../../config/env.ts';
+import { signAccessToken, signRefreshToken, verifyJwt } from './jwt.ts';
 import * as model from './model.ts';
+import * as service from './service.ts';
+import { register, toAuthUser } from './service.ts';
 
 describe('Auth Service Logic', () => {
   describe('Registration validation', () => {
@@ -79,7 +78,6 @@ describe('Auth Service Logic', () => {
   });
 
   describe('Password reset', () => {
-    // deno-lint-ignore require-await -- test callback signature
     it('should silently succeed for non-existent email (security)', async () => {
       const _email = 'nonexistent@test.com';
       const found = false;
@@ -116,21 +114,23 @@ describe('Auth Service Logic', () => {
 
   describe('Registration toggle', () => {
     it('should throw REGISTRATION_DISABLED when config disables registration', async () => {
-      const original = Deno.env.get('ENABLE_REGISTRATION');
+      const original = process.env.ENABLE_REGISTRATION;
       try {
-        Deno.env.set('ENABLE_REGISTRATION', 'false');
+        process.env.ENABLE_REGISTRATION = 'false';
         reloadConfig();
 
-        await expect(register({
-          email: 'test@test.com',
-          username: 'testuser',
-          password: 'Test12345!',
-        })).rejects.toThrow('REGISTRATION_DISABLED');
+        await expect(
+          register({
+            email: 'test@test.com',
+            username: 'testuser',
+            password: 'Test12345!',
+          }),
+        ).rejects.toThrow('REGISTRATION_DISABLED');
       } finally {
         if (original === undefined) {
-          Deno.env.delete('ENABLE_REGISTRATION');
+          delete process.env.ENABLE_REGISTRATION;
         } else {
-          Deno.env.set('ENABLE_REGISTRATION', original);
+          process.env.ENABLE_REGISTRATION = original;
         }
         reloadConfig();
       }
@@ -143,16 +143,14 @@ describe('Auth Service Logic', () => {
       password: string,
       rememberMe: boolean,
       mockModel: {
-        findUserByEmail: (email: string) => Promise<
-          {
-            id: string;
-            email: string;
-            username: string;
-            passwordHash: string;
-            isAdmin: boolean;
-            isBanned: boolean;
-          } | null
-        >;
+        findUserByEmail: (email: string) => Promise<{
+          id: string;
+          email: string;
+          username: string;
+          passwordHash: string;
+          isAdmin: boolean;
+          isBanned: boolean;
+        } | null>;
         verifyPassword: (plain: string, hashed: string) => boolean;
       },
     ) {
@@ -189,8 +187,8 @@ describe('Auth Service Logic', () => {
       });
       const decoded = await verifyJwt(refreshToken);
       const now = Math.floor(Date.now() / 1000);
-      const expectedExp = now + (180 * 86400);
-      expect(decoded.exp).toBeGreaterThanOrEqual(now + (179 * 86400));
+      const expectedExp = now + 180 * 86400;
+      expect(decoded.exp).toBeGreaterThanOrEqual(now + 179 * 86400);
       expect(decoded.exp).toBeLessThanOrEqual(expectedExp + 5);
     });
 
@@ -209,8 +207,8 @@ describe('Auth Service Logic', () => {
       });
       const decoded = await verifyJwt(refreshToken);
       const now = Math.floor(Date.now() / 1000);
-      const expectedExp = now + (7 * 86400);
-      expect(decoded.exp).toBeGreaterThanOrEqual(now + (6 * 86400));
+      const expectedExp = now + 7 * 86400;
+      expect(decoded.exp).toBeGreaterThanOrEqual(now + 6 * 86400);
       expect(decoded.exp).toBeLessThanOrEqual(expectedExp + 5);
     });
 
@@ -223,17 +221,21 @@ describe('Auth Service Logic', () => {
         isAdmin: false,
         isBanned: false,
       };
-      await expect(loginWithRememberMe('a@b.com', 'wrong', false, {
-        findUserByEmail: () => Promise.resolve(user),
-        verifyPassword: () => false,
-      })).rejects.toThrow('INVALID_CREDENTIALS');
+      await expect(
+        loginWithRememberMe('a@b.com', 'wrong', false, {
+          findUserByEmail: () => Promise.resolve(user),
+          verifyPassword: () => false,
+        }),
+      ).rejects.toThrow('INVALID_CREDENTIALS');
     });
 
     it('should throw INVALID_CREDENTIALS when user does not exist', async () => {
-      await expect(loginWithRememberMe('nope@nope.com', 'pw', false, {
-        findUserByEmail: () => Promise.resolve(null),
-        verifyPassword: () => false,
-      })).rejects.toThrow('INVALID_CREDENTIALS');
+      await expect(
+        loginWithRememberMe('nope@nope.com', 'pw', false, {
+          findUserByEmail: () => Promise.resolve(null),
+          verifyPassword: () => false,
+        }),
+      ).rejects.toThrow('INVALID_CREDENTIALS');
     });
 
     it('should throw USER_BANNED for banned user', async () => {
@@ -245,10 +247,12 @@ describe('Auth Service Logic', () => {
         isAdmin: false,
         isBanned: true,
       };
-      await expect(loginWithRememberMe('a@b.com', 'pw', false, {
-        findUserByEmail: () => Promise.resolve(user),
-        verifyPassword: () => true,
-      })).rejects.toThrow('USER_BANNED');
+      await expect(
+        loginWithRememberMe('a@b.com', 'pw', false, {
+          findUserByEmail: () => Promise.resolve(user),
+          verifyPassword: () => true,
+        }),
+      ).rejects.toThrow('USER_BANNED');
     });
   });
 
@@ -257,16 +261,14 @@ describe('Auth Service Logic', () => {
       token: string,
       rememberMe: boolean,
       mockModel: {
-        findUserById: (id: string) => Promise<
-          {
-            id: string;
-            email: string;
-            username: string;
-            passwordHash: string;
-            isAdmin: boolean;
-            isBanned: boolean;
-          } | null
-        >;
+        findUserById: (id: string) => Promise<{
+          id: string;
+          email: string;
+          username: string;
+          passwordHash: string;
+          isAdmin: boolean;
+          isBanned: boolean;
+        } | null>;
       },
       mockVerifyJwt: (t: string) => Promise<{ sub: string; type: string }>,
     ) {
@@ -304,8 +306,8 @@ describe('Auth Service Logic', () => {
       );
       const decoded = await verifyJwt(refreshToken);
       const now = Math.floor(Date.now() / 1000);
-      expect(decoded.exp).toBeGreaterThanOrEqual(now + (179 * 86400));
-      expect(decoded.exp).toBeLessThanOrEqual(now + (180 * 86400) + 5);
+      expect(decoded.exp).toBeGreaterThanOrEqual(now + 179 * 86400);
+      expect(decoded.exp).toBeLessThanOrEqual(now + 180 * 86400 + 5);
     });
 
     it('should produce default-lived refresh token when rememberMe is false', async () => {
@@ -325,8 +327,8 @@ describe('Auth Service Logic', () => {
       );
       const decoded = await verifyJwt(refreshToken);
       const now = Math.floor(Date.now() / 1000);
-      expect(decoded.exp).toBeGreaterThanOrEqual(now + (6 * 86400));
-      expect(decoded.exp).toBeLessThanOrEqual(now + (7 * 86400) + 5);
+      expect(decoded.exp).toBeGreaterThanOrEqual(now + 6 * 86400);
+      expect(decoded.exp).toBeLessThanOrEqual(now + 7 * 86400 + 5);
     });
 
     it('should throw INVALID_TOKEN_TYPE for access token', async () => {
@@ -338,21 +340,25 @@ describe('Auth Service Logic', () => {
         isAdmin: false,
         isBanned: false,
       };
-      await expect(refreshWithRememberMe(
-        'access-token',
-        false,
-        { findUserById: () => Promise.resolve(user) },
-        () => Promise.resolve({ sub: 'user-1', type: 'access' }),
-      )).rejects.toThrow('INVALID_TOKEN_TYPE');
+      await expect(
+        refreshWithRememberMe(
+          'access-token',
+          false,
+          { findUserById: () => Promise.resolve(user) },
+          () => Promise.resolve({ sub: 'user-1', type: 'access' }),
+        ),
+      ).rejects.toThrow('INVALID_TOKEN_TYPE');
     });
 
     it('should throw USER_NOT_FOUND for non-existent user', async () => {
-      await expect(refreshWithRememberMe(
-        'some-token',
-        false,
-        { findUserById: () => Promise.resolve(null) },
-        () => Promise.resolve({ sub: 'no-user', type: 'refresh' }),
-      )).rejects.toThrow('USER_NOT_FOUND');
+      await expect(
+        refreshWithRememberMe(
+          'some-token',
+          false,
+          { findUserById: () => Promise.resolve(null) },
+          () => Promise.resolve({ sub: 'no-user', type: 'refresh' }),
+        ),
+      ).rejects.toThrow('USER_NOT_FOUND');
     });
 
     it('should throw USER_NOT_FOUND for banned user', async () => {
@@ -364,12 +370,14 @@ describe('Auth Service Logic', () => {
         isAdmin: false,
         isBanned: true,
       };
-      await expect(refreshWithRememberMe(
-        'some-token',
-        false,
-        { findUserById: () => Promise.resolve(user) },
-        () => Promise.resolve({ sub: 'user-1', type: 'refresh' }),
-      )).rejects.toThrow('USER_NOT_FOUND');
+      await expect(
+        refreshWithRememberMe(
+          'some-token',
+          false,
+          { findUserById: () => Promise.resolve(user) },
+          () => Promise.resolve({ sub: 'user-1', type: 'refresh' }),
+        ),
+      ).rejects.toThrow('USER_NOT_FOUND');
     });
   });
 
@@ -433,7 +441,7 @@ describe('Auth Service Logic', () => {
  * `test` for the suite so outbound email is a no-op (see `email.ts`),
  * making the password-reset and verification flows deterministic.
  */
-describe('Auth Service — DB integration', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Auth Service — DB integration', () => {
   const createdUsers: string[] = [];
   let originalAppEnv: string | undefined;
 
@@ -450,24 +458,24 @@ describe('Auth Service — DB integration', { sanitizeOps: false, sanitizeResour
   }
 
   beforeAll(() => {
-    originalAppEnv = Deno.env.get('APP_ENV');
-    Deno.env.set('APP_ENV', 'test');
+    originalAppEnv = process.env.APP_ENV;
+    process.env.APP_ENV = 'test';
     reloadConfig();
   });
 
   afterAll(async () => {
     if (originalAppEnv === undefined) {
-      Deno.env.delete('APP_ENV');
+      delete process.env.APP_ENV;
     } else {
-      Deno.env.set('APP_ENV', originalAppEnv);
+      process.env.APP_ENV = originalAppEnv;
     }
     reloadConfig();
 
     if (createdUsers.length) {
       await db.delete(passwordResets).where(inArray(passwordResets.userId, createdUsers));
-      await db.delete(emailVerificationTokens).where(
-        inArray(emailVerificationTokens.userId, createdUsers),
-      );
+      await db
+        .delete(emailVerificationTokens)
+        .where(inArray(emailVerificationTokens.userId, createdUsers));
       await db.delete(userPreferences).where(inArray(userPreferences.userId, createdUsers));
       await db.delete(users).where(inArray(users.id, createdUsers));
     }
@@ -544,7 +552,7 @@ describe('Auth Service — DB integration', { sanitizeOps: false, sanitizeResour
       const result = await service.login(user.email, password, true);
       const decoded = await verifyJwt(result.refreshToken);
       const now = Math.floor(Date.now() / 1000);
-      expect(decoded.exp).toBeGreaterThanOrEqual(now + (179 * 86400));
+      expect(decoded.exp).toBeGreaterThanOrEqual(now + 179 * 86400);
     });
   });
 
@@ -591,16 +599,15 @@ describe('Auth Service — DB integration', { sanitizeOps: false, sanitizeResour
 
   describe('requestPasswordReset', () => {
     it('should silently succeed for a non-existent email', async () => {
-      await expect(service.requestPasswordReset('ghost@nowhere.example.com')).resolves
-        .toBeUndefined();
+      await expect(
+        service.requestPasswordReset('ghost@nowhere.example.com'),
+      ).resolves.toBeUndefined();
     });
 
     it('should persist a reset token for an existing user', async () => {
       const { user } = await makeUser('reset-request');
       await service.requestPasswordReset(user.email);
-      const rows = await db.select().from(passwordResets).where(
-        eq(passwordResets.userId, user.id),
-      );
+      const rows = await db.select().from(passwordResets).where(eq(passwordResets.userId, user.id));
       expect(rows.length).toBeGreaterThan(0);
     });
   });
@@ -671,9 +678,10 @@ describe('Auth Service — DB integration', { sanitizeOps: false, sanitizeResour
     it('should persist a verification token for the user', async () => {
       const { user } = await makeUser('send-verify');
       await service.sendVerificationToken(user.id, user.email, user.username);
-      const rows = await db.select().from(emailVerificationTokens).where(
-        eq(emailVerificationTokens.userId, user.id),
-      );
+      const rows = await db
+        .select()
+        .from(emailVerificationTokens)
+        .where(eq(emailVerificationTokens.userId, user.id));
       expect(rows.length).toBeGreaterThan(0);
     });
   });

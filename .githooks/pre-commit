@@ -1,6 +1,7 @@
 #!/bin/sh
 # BrewForm pre-commit hook
-# Runs Deno format check and lint before each commit.
+# Runs Biome format check and per-workspace lint before each commit.
+# (Mirrors the root `fmt-check` and `lint` scripts: api + web + db + shared.)
 #
 # Install once after cloning:
 #   make setup-hooks
@@ -10,7 +11,7 @@
 set -e
 
 echo "Pre-commit: checking formatting..."
-deno fmt --check
+pnpm run fmt-check
 
 echo "Pre-commit: linting..."
-deno lint apps/ packages/
+pnpm run lint

@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -138,9 +138,6 @@ describe('RecipeVersionsPage', () => {
     fireEvent.click(checkboxes[0]);
     fireEvent.click(checkboxes[1]);
     const link = screen.getByText('versionDiff.compareSelected').closest('a');
-    expect(link).toHaveAttribute(
-      'href',
-      '/recipes/test-recipe/versions/diff?v1=v1-id&v2=v2-id',
-    );
+    expect(link).toHaveAttribute('href', '/recipes/test-recipe/versions/diff?v1=v1-id&v2=v2-id');
   });
 });

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { adminApi, type AdminUser } from '../../api/index.ts';
+import { type AdminUser, adminApi } from '../../api/index.ts';
 import { BanDialog } from '../../components/admin/BanDialog.tsx';
-import { useBanUser } from '../../hooks/useBanUser.ts';
-import { createLogger } from '../../utils/logger.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { Skeleton } from '../../components/ui/Skeleton.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useBanUser } from '../../hooks/useBanUser.ts';
 import { formatDate } from '../../utils/format.ts';
+import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminUsersPage');
 
@@ -41,7 +41,7 @@ export function AdminUsersPage() {
     unban,
     closeDialog,
   } = useBanUser((userId, isBanned) => {
-    setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, isBanned } : u));
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isBanned } : u)));
   });
 
   useEffect(() => {
@@ -56,20 +56,24 @@ export function AdminUsersPage() {
     setError('');
     const params: Record<string, string> = { page: String(page), perPage: '20' };
     if (q) params.q = q;
-    adminApi.getUsers(params).then((data) => {
-      setUsers(data.users);
-      setPagination((prev) => ({
-        ...prev,
-        page,
-        total: data.total,
-        totalPages: Math.ceil(data.total / prev.perPage),
-      }));
-    }).catch((err) => {
-      log.error({ err }, 'AdminUsersPage fetchUsers failed');
-      setError((err as { message?: string })?.message || t('admin.users.loadError'));
-      setUsers([]);
-      setPagination((prev) => ({ ...prev, page: 1, total: 0, totalPages: 0 }));
-    }).finally(() => setLoading(false));
+    adminApi
+      .getUsers(params)
+      .then((data) => {
+        setUsers(data.users);
+        setPagination((prev) => ({
+          ...prev,
+          page,
+          total: data.total,
+          totalPages: Math.ceil(data.total / prev.perPage),
+        }));
+      })
+      .catch((err) => {
+        log.error({ err }, 'AdminUsersPage fetchUsers failed');
+        setError((err as { message?: string })?.message || t('admin.users.loadError'));
+        setUsers([]);
+        setPagination((prev) => ({ ...prev, page: 1, total: 0, totalPages: 0 }));
+      })
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
@@ -83,216 +87,218 @@ export function AdminUsersPage() {
 
   return (
     <div>
-      <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('admin.users.management')}
         </h1>
-        <Link to='/admin/users/new' className='btn-primary'>
+        <Link to="/admin/users/new" className="btn-primary">
           {t('admin.users.new')}
         </Link>
       </div>
 
-      {error && <ErrorState message={error} className='mb-4' />}
+      {error && <ErrorState message={error} className="mb-4" />}
 
-      {banError && <ErrorState message={t(banError)} className='mb-4' />}
+      {banError && <ErrorState message={t(banError)} className="mb-4" />}
 
-      <form onSubmit={handleSearch} className='mb-4 flex gap-2'>
+      <form onSubmit={handleSearch} className="mb-4 flex gap-2">
         <input
-          type='text'
+          type="text"
           placeholder={t('admin.users.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className='input-field flex-1'
+          className="input-field flex-1"
         />
-        <button type='submit' className='btn-secondary'>
+        <button type="submit" className="btn-secondary">
           {t('common.search')}
         </button>
       </form>
 
-      {loading
-        ? (
-          <div className='space-y-4'>
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height='3rem' />)}
-          </div>
-        )
-        : users.length === 0
-        ? (
-          <EmptyState
-            message={search ? t('admin.users.noSearchResults') : t('admin.users.noUsers')}
-          />
-        )
-        : (
-          <div className='overflow-x-auto'>
-            <table className='w-full text-sm'>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    {t('auth.username')}
-                  </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    {t('auth.email')}
-                  </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    {t('admin.users.role')}
-                  </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    {t('admin.users.status')}
-                  </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    {t('admin.users.joined')}
-                  </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                    {t('common.actions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                    <td className='py-2 px-3' style={{ color: 'var(--text-primary)' }}>
+      {loading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} height="3rem" />
+          ))}
+        </div>
+      ) : users.length === 0 ? (
+        <EmptyState
+          message={search ? t('admin.users.noSearchResults') : t('admin.users.noUsers')}
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
+                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                  {t('auth.username')}
+                </th>
+                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                  {t('auth.email')}
+                </th>
+                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                  {t('admin.users.role')}
+                </th>
+                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                  {t('admin.users.status')}
+                </th>
+                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                  {t('admin.users.joined')}
+                </th>
+                <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                  {t('common.actions')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
+                  <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
+                    <Link
+                      to={`/admin/users/${user.id}`}
+                      style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}
+                    >
+                      {user.displayName || user.username}
+                    </Link>
+                  </td>
+                  <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
+                    {user.email}
+                  </td>
+                  <td className="py-2 px-3">
+                    {user.isAdmin ? (
+                      <span className="badge">{t('admin.users.adminBadge')}</span>
+                    ) : (
+                      t('admin.users.userRole')
+                    )}
+                  </td>
+                  <td className="py-2 px-3">
+                    {user.isBanned ? (
+                      <span style={{ color: 'var(--error)' }}>{t('admin.users.banned')}</span>
+                    ) : (
+                      t('admin.users.active')
+                    )}
+                  </td>
+                  <td className="py-2 px-3" style={{ color: 'var(--text-tertiary)' }}>
+                    {formatDate(user.createdAt, locale)}
+                  </td>
+                  <td className="py-2 px-3">
+                    <div className="flex gap-2">
                       <Link
                         to={`/admin/users/${user.id}`}
-                        style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}
+                        className="text-xs"
+                        style={{ color: 'var(--accent-primary)' }}
                       >
-                        {user.displayName || user.username}
+                        {t('common.view')}
                       </Link>
-                    </td>
-                    <td className='py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
-                      {user.email}
-                    </td>
-                    <td className='py-2 px-3'>
-                      {user.isAdmin
-                        ? <span className='badge'>{t('admin.users.adminBadge')}</span>
-                        : t('admin.users.userRole')}
-                    </td>
-                    <td className='py-2 px-3'>
-                      {user.isBanned
-                        ? <span style={{ color: 'var(--error)' }}>{t('admin.users.banned')}</span>
-                        : t('admin.users.active')}
-                    </td>
-                    <td className='py-2 px-3' style={{ color: 'var(--text-tertiary)' }}>
-                      {formatDate(user.createdAt, locale)}
-                    </td>
-                    <td className='py-2 px-3'>
-                      <div className='flex gap-2'>
-                        <Link
-                          to={`/admin/users/${user.id}`}
-                          className='text-xs'
+                      <Link
+                        to={`/admin/users/${user.id}/edit`}
+                        className="text-xs"
+                        style={{ color: 'var(--accent-primary)' }}
+                      >
+                        {t('common.edit')}
+                      </Link>
+                      {user.isBanned ? (
+                        <button
+                          type="button"
+                          onClick={() => unban(user.id)}
+                          className="text-xs"
+                          style={{ color: 'var(--success)' }}
+                        >
+                          {t('admin.users.unban')}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openBanDialog(user)}
+                          className="btn-danger-text text-xs"
+                        >
+                          {t('admin.users.ban')}
+                        </button>
+                      )}
+                      {user.isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await adminApi.toggleAdmin(user.id, false);
+                              setUsers((prev) =>
+                                prev.map((u) => (u.id === user.id ? { ...u, isAdmin: false } : u)),
+                              );
+                            } catch (err) {
+                              setError(
+                                (err as { message?: string })?.message ||
+                                  t('admin.users.removeAdminError'),
+                              );
+                            }
+                          }}
+                          className="text-xs"
+                          style={{ color: 'var(--warning)' }}
+                        >
+                          {t('admin.users.removeAdmin')}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await adminApi.toggleAdmin(user.id, true);
+                              setUsers((prev) =>
+                                prev.map((u) => (u.id === user.id ? { ...u, isAdmin: true } : u)),
+                              );
+                            } catch (err) {
+                              setError(
+                                (err as { message?: string })?.message ||
+                                  t('admin.users.makeAdminError'),
+                              );
+                            }
+                          }}
+                          className="text-xs"
                           style={{ color: 'var(--accent-primary)' }}
                         >
-                          {t('common.view')}
-                        </Link>
-                        <Link
-                          to={`/admin/users/${user.id}/edit`}
-                          className='text-xs'
-                          style={{ color: 'var(--accent-primary)' }}
-                        >
-                          {t('common.edit')}
-                        </Link>
-                        {user.isBanned
-                          ? (
-                            <button
-                              type='button'
-                              onClick={() => unban(user.id)}
-                              className='text-xs'
-                              style={{ color: 'var(--success)' }}
-                            >
-                              {t('admin.users.unban')}
-                            </button>
-                          )
-                          : (
-                            <button
-                              type='button'
-                              onClick={() => openBanDialog(user)}
-                              className='btn-danger-text text-xs'
-                            >
-                              {t('admin.users.ban')}
-                            </button>
-                          )}
-                        {user.isAdmin
-                          ? (
-                            <button
-                              type='button'
-                              onClick={async () => {
-                                try {
-                                  await adminApi.toggleAdmin(user.id, false);
-                                  setUsers((prev) =>
-                                    prev.map((u) => u.id === user.id ? { ...u, isAdmin: false } : u)
-                                  );
-                                } catch (err) {
-                                  setError(
-                                    (err as { message?: string })?.message ||
-                                      t('admin.users.removeAdminError'),
-                                  );
-                                }
-                              }}
-                              className='text-xs'
-                              style={{ color: 'var(--warning)' }}
-                            >
-                              {t('admin.users.removeAdmin')}
-                            </button>
-                          )
-                          : (
-                            <button
-                              type='button'
-                              onClick={async () => {
-                                try {
-                                  await adminApi.toggleAdmin(user.id, true);
-                                  setUsers((prev) =>
-                                    prev.map((u) => u.id === user.id ? { ...u, isAdmin: true } : u)
-                                  );
-                                } catch (err) {
-                                  setError(
-                                    (err as { message?: string })?.message ||
-                                      t('admin.users.makeAdminError'),
-                                  );
-                                }
-                              }}
-                              className='text-xs'
-                              style={{ color: 'var(--accent-primary)' }}
-                            >
-                              {t('admin.users.makeAdmin')}
-                            </button>
-                          )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                          {t('admin.users.makeAdmin')}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {pagination.totalPages > 1 && (
-        <div className='flex items-center justify-center gap-2 mt-6'>
+        <div className="flex items-center justify-center gap-2 mt-6">
           <button
-            type='button'
+            type="button"
             onClick={() => fetchUsers(pagination.page - 1, search)}
             disabled={pagination.page <= 1}
-            className='btn-secondary'
+            className="btn-secondary"
           >
             {t('common.previous')}
           </button>
           {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
             <button
               key={pageNum}
-              type='button'
+              type="button"
               onClick={() => fetchUsers(pageNum, search)}
               className={pageNum === pagination.page ? 'btn-primary' : 'btn-secondary'}
-              style={pageNum === pagination.page ? {} : {
-                backgroundColor: 'var(--bg-tertiary)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-primary)',
-              }}
+              style={
+                pageNum === pagination.page
+                  ? {}
+                  : {
+                      backgroundColor: 'var(--bg-tertiary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-primary)',
+                    }
+              }
             >
               {pageNum}
             </button>
           ))}
           <button
-            type='button'
+            type="button"
             onClick={() => fetchUsers(pagination.page + 1, search)}
             disabled={pagination.page >= pagination.totalPages}
-            className='btn-secondary'
+            className="btn-secondary"
           >
             {t('common.next')}
           </button>

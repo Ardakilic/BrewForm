@@ -1,8 +1,3 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
-import { PaginationSchema } from '@brewform/shared/schemas';
 import {
   cursorEnvelope,
   ErrorEnvelopeSchema,
@@ -11,11 +6,17 @@ import {
   FollowingListItemOutputSchema,
   FollowOutputSchema,
   MessageResponseSchema,
+  PaginationSchema,
   paginatedEnvelope,
   successEnvelope,
 } from '@brewform/shared/schemas';
+import { decodeCursor } from '@brewform/shared/utils';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
+import type { AppEnv } from '../../types/hono.ts';
 import {
   cursorPaginated,
   error,
@@ -23,8 +24,7 @@ import {
   paginated,
   success,
 } from '../../utils/response/index.ts';
-import { decodeCursor } from '@brewform/shared/utils';
-import type { AppEnv } from '../../types/hono.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for follow endpoints, mounted at `/api/v1/follow`. */
 const follow = new Hono<AppEnv>();
@@ -36,9 +36,7 @@ follow.post(
     summary: 'Follow a user',
     description: 'Creates a follow relationship from the authenticated user to the target user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'userId', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       201: {
         description: 'Follow created',
@@ -87,9 +85,7 @@ follow.delete(
     summary: 'Unfollow a user',
     description: 'Removes the follow relationship from the authenticated user to the target user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'userId', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Unfollowed',

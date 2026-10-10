@@ -115,9 +115,8 @@ class ConsoleLogger implements ChildLogger {
 
   /** Create a child logger with additional bindings. Returns a new ConsoleLogger. */
   child(bindings: Record<string, unknown>): Logger {
-    const childModule = typeof bindings.module === 'string'
-      ? `${this.#module}:${bindings.module}`
-      : this.#module;
+    const childModule =
+      typeof bindings.module === 'string' ? `${this.#module}:${bindings.module}` : this.#module;
     return new ConsoleLogger(childModule, logLevel);
   }
 }

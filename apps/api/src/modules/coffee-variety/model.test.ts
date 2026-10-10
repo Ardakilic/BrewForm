@@ -1,12 +1,11 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
-describe('Coffee Variety Model', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Coffee Variety Model', () => {
   describe('findMany pagination', () => {
     let userId: string;
     const varietyIds: string[] = [];
@@ -156,7 +155,8 @@ describe('Coffee Variety Model', { sanitizeOps: false, sanitizeResources: false 
     });
 
     it('should return null for soft-deleted records', async () => {
-      await db.update(coffeeVarieties)
+      await db
+        .update(coffeeVarieties)
         .set({ deletedAt: new Date() })
         .where(eq(coffeeVarieties.id, varietyId));
 
@@ -278,7 +278,8 @@ describe('Coffee Variety Model', { sanitizeOps: false, sanitizeResources: false 
     });
 
     it('should not update soft-deleted records', async () => {
-      await db.update(coffeeVarieties)
+      await db
+        .update(coffeeVarieties)
         .set({ deletedAt: new Date() })
         .where(eq(coffeeVarieties.id, varietyId));
 
@@ -332,9 +333,7 @@ describe('Coffee Variety Model', { sanitizeOps: false, sanitizeResources: false 
         coffeeVarietyId: varietyId,
       });
 
-      await db.update(recipes)
-        .set({ currentVersionId: versionId })
-        .where(eq(recipes.id, recipeId));
+      await db.update(recipes).set({ currentVersionId: versionId }).where(eq(recipes.id, recipeId));
     });
 
     afterEach(async () => {
@@ -369,9 +368,7 @@ describe('Coffee Variety Model', { sanitizeOps: false, sanitizeResources: false 
     });
 
     it('should not include soft-deleted recipes', async () => {
-      await db.update(recipes)
-        .set({ deletedAt: new Date() })
-        .where(eq(recipes.id, recipeId));
+      await db.update(recipes).set({ deletedAt: new Date() }).where(eq(recipes.id, recipeId));
 
       const result = await model.getRecipesUsingVariety(varietyId, 1, 10);
       expect(result.total).toBe(0);
@@ -379,9 +376,7 @@ describe('Coffee Variety Model', { sanitizeOps: false, sanitizeResources: false 
     });
 
     it('should not include non-public recipes', async () => {
-      await db.update(recipes)
-        .set({ visibility: 'private' })
-        .where(eq(recipes.id, recipeId));
+      await db.update(recipes).set({ visibility: 'private' }).where(eq(recipes.id, recipeId));
 
       const result = await model.getRecipesUsingVariety(varietyId, 1, 10);
       expect(result.total).toBe(0);

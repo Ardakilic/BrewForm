@@ -1,5 +1,11 @@
 # Deployment
 
+> **Superseded.** This document describes the retired **Deno Deploy** target (two Deploy
+> projects, `deno.json` deploy configs, Deno KV quotas). Production now deploys via GHCR
+> images to self-hosted **Coolify** — see [`deployment_coolify.md`](deployment_coolify.md) (as-built)
+> and [`../coolify_deployment_plan.md`](../coolify_deployment_plan.md) (long-form). Retained for
+> historical reference; the `deno task` command blocks below are stale (use `pnpm run …`).
+
 ## Architecture Overview
 
 ```
@@ -227,7 +233,7 @@ Triggers on pull requests:
 ```bash
 cp .env.example .env
 make up          # Start infrastructure services
-make install     # Cache Deno dependencies
+make install     # Install pnpm dependencies
 make dev         # Full-stack dev (API :8000 + web :5173 with HMR)
 ```
 
@@ -253,21 +259,21 @@ make dev         # Full-stack dev (API :8000 + web :5173 with HMR)
 ### Useful Commands
 
 ```bash
-deno task dev              # Both API + web with hot reload
-deno task dev:api          # API with hot reload
-deno task dev:web          # Vite dev server
-deno task build            # Build all workspaces
-deno task build:web        # Build React SPA only
-deno task check            # Type-check all workspaces
-deno task check:api        # Type-check API only
-deno task check:web        # Lint web frontend
-deno task db:generate      # Generate Drizzle migration
-deno task db:migrate       # Run migrations
-deno task db:seed          # Seed data
-deno task email-build      # Compile email templates
-deno task lint             # Lint
-deno task fmt              # Format
-deno task test             # Run tests
+pnpm run dev              # Both API + web with hot reload
+pnpm run dev:api          # API with hot reload
+pnpm run dev:web          # Vite dev server
+pnpm run build            # Build all workspaces
+pnpm run build:web        # Build React SPA only
+pnpm run check            # Type-check all workspaces
+pnpm run check:api        # Type-check API only
+pnpm run check:web        # Lint web frontend
+pnpm run db:generate      # Generate Drizzle migration
+pnpm run db:migrate       # Run migrations
+pnpm run db:seed          # Seed data
+pnpm run email-build      # Compile email templates
+pnpm run lint             # Lint
+pnpm run fmt              # Format
+pnpm run test             # Run tests (Vitest)
 ```
 
 ## PWA

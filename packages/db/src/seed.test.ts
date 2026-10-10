@@ -1,5 +1,7 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
+import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
 import {
   badgeSeedData,
   beanSeedData,
@@ -12,13 +14,11 @@ import {
   userSeedData,
   vendorSeedData,
 } from './seed-users-recipes.ts';
-import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
-import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 
 const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
-const scaaData = JSON.parse(await Deno.readTextFile(scaaPath));
+const scaaData = JSON.parse(readFileSync(scaaPath, 'utf8'));
 
-// deno-lint-ignore no-explicit-any -- test mock array
+// biome-ignore lint/suspicious/noExplicitAny: test mock array
 function collectScaaNames(data: any[]): Set<string> {
   const names = new Set<string>();
   for (const item of data) {
@@ -394,7 +394,7 @@ describe('Seed Data Integrity', () => {
     it('should reference valid badge rules', () => {
       const validRules = new Set(badgeSeedData.map((b) => b.rule));
       for (const badge of socialSeedData.badges) {
-        // deno-lint-ignore no-explicit-any -- test cast
+        // biome-ignore lint/suspicious/noExplicitAny: test cast
         expect(validRules.has(badge.badgeRule as any)).toBe(true);
       }
     });

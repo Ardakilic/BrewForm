@@ -1,11 +1,10 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { setCacheProvider } from '../../utils/cache/singleton.ts';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import tasteRouter from './index.ts';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
+import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import tasteRouter from './index.ts';
 
 /**
  * Pre-auth route tests for the taste-notes router (`/api/v1/taste-notes`).
@@ -28,100 +27,96 @@ function createTestApp() {
   return app;
 }
 
-describe(
-  'Taste-Note Routes — pre-auth & validation',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    beforeEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
+describe('Taste-Note Routes — pre-auth & validation', () => {
+  beforeEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  describe('GET /api/v1/taste-notes/hierarchy', () => {
+    it('returns 200 with the taste-note hierarchy array', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/taste-notes/hierarchy');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+    });
+  });
+
+  describe('GET /api/v1/taste-notes/search', () => {
+    it('returns 200 with a flat list when no search query is supplied', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/taste-notes/search');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
     });
 
-    afterEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
+    it('returns 400 when the search query is shorter than 3 characters', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/taste-notes/search?search=ab');
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.success).toBe(false);
     });
+  });
 
-    describe('GET /api/v1/taste-notes/hierarchy', () => {
-      it('returns 200 with the taste-note hierarchy array', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/taste-notes/hierarchy');
-        expect(res.status).toBe(200);
-        const body = await res.json();
-        expect(body.success).toBe(true);
-        expect(Array.isArray(body.data)).toBe(true);
+  describe('GET /api/v1/taste-notes/flat', () => {
+    it('returns 200 with a flat list of taste notes', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/taste-notes/flat');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+    });
+  });
+
+  describe('POST /api/v1/taste-notes', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/taste-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Fruity', depth: 0 }),
       });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
+  });
 
-    describe('GET /api/v1/taste-notes/search', () => {
-      it('returns 200 with a flat list when no search query is supplied', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/taste-notes/search');
-        expect(res.status).toBe(200);
-        const body = await res.json();
-        expect(body.success).toBe(true);
-        expect(Array.isArray(body.data)).toBe(true);
+  describe('PATCH /api/v1/taste-notes/:id', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request(`/api/v1/taste-notes/${crypto.randomUUID()}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Updated' }),
       });
-
-      it('returns 400 when the search query is shorter than 3 characters', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/taste-notes/search?search=ab');
-        expect(res.status).toBe(400);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-      });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
+  });
 
-    describe('GET /api/v1/taste-notes/flat', () => {
-      it('returns 200 with a flat list of taste notes', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/taste-notes/flat');
-        expect(res.status).toBe(200);
-        const body = await res.json();
-        expect(body.success).toBe(true);
-        expect(Array.isArray(body.data)).toBe(true);
+  describe('DELETE /api/v1/taste-notes/:id', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request(`/api/v1/taste-notes/${crypto.randomUUID()}`, {
+        method: 'DELETE',
       });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
-
-    describe('POST /api/v1/taste-notes', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/taste-notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Fruity', depth: 0 }),
-        });
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
-      });
-    });
-
-    describe('PATCH /api/v1/taste-notes/:id', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request(`/api/v1/taste-notes/${crypto.randomUUID()}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Updated' }),
-        });
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
-      });
-    });
-
-    describe('DELETE /api/v1/taste-notes/:id', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request(`/api/v1/taste-notes/${crypto.randomUUID()}`, {
-          method: 'DELETE',
-        });
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
-      });
-    });
-  },
-);
+  });
+});

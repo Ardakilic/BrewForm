@@ -12,32 +12,38 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: denoland/setup-deno@v2
+      - uses: pnpm/action-setup@v4
         with:
-          deno-version-file: .deno-version
+          version: 12.10.1
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: deno ci
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Drizzle migration
         run: |
-          deno task db:generate
+          pnpm run db:generate
           git diff --exit-code
 
       - name: Build email templates
-        run: deno run -A apps/api/scripts/build-email-templates.ts
+        run: pnpm run email-build
 
       - name: Format check
-        run: deno fmt --check
+        run: pnpm run fmt-check
 
       - name: Lint
-        run: deno lint apps/ packages/
+        run: pnpm run lint
 
       - name: Type check
-        run: deno task check
+        run: pnpm run check
 
       - name: Build
-        run: deno task build
+        run: pnpm run build
 
   test:
     runs-on: ubuntu-latest
@@ -71,44 +77,51 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: denoland/setup-deno@v2
+      - uses: pnpm/action-setup@v4
         with:
-          deno-version-file: .deno-version
+          version: 12.10.1
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: deno ci
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Drizzle migration
         run: |
-          deno task db:generate
+          pnpm run db:generate
           git diff --exit-code
 
       - name: Build email templates
-        run: deno run -A apps/api/scripts/build-email-templates.ts
+        run: pnpm run email-build
 
       - name: Run migrations
-        run: deno task db:migrate
+        run: pnpm run db:migrate
 
       - name: Seed database
-        run: deno run --allow-all packages/db/src/seed.ts
+        run: pnpm --filter @brewform/db run seed
 
       - name: Run tests with coverage
-        run: deno task test-coverage
+        run: pnpm run test-coverage
 
       - name: Generate coverage report
-        run: deno coverage coverage/
-
-      - name: Generate lcov report
-        run: deno coverage coverage/ --lcov > coverage/lcov.info
+        run: pnpm run coverage-report
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
-          path: coverage/
+          path: |
+            apps/api/coverage/
+            packages/shared/coverage/
+            packages/db/coverage/
+            apps/web/coverage/
 
-      - name: Coverage gate (>=85% line coverage, deno scope)
-        run: deno run -A scripts/coverage-gate.ts
+      - name: Coverage gate (>=85% line coverage, vitest scope)
+        run: pnpm --filter @brewform/api exec tsx ../../scripts/coverage-gate.ts
 
-  # Deno Deploy handles deployment automatically via GitHub integration.
+  # Images are deployed to GHCR via the Release workflow; Coolify pulls from there.
   # No manual deploy steps needed in CI.

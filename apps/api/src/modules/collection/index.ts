@@ -1,28 +1,26 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
 import {
   CollectionAddRecipeSchema,
   CollectionCreateSchema,
+  CollectionDetailOutputSchema,
   CollectionListFilterSchema,
+  CollectionListItemOutputSchema,
   CollectionReorderSchema,
   CollectionUpdateSchema,
-} from '@brewform/shared/schemas';
-import {
-  CollectionDetailOutputSchema,
-  CollectionListItemOutputSchema,
   ErrorEnvelopeSchema,
   MessageResponseSchema,
-  paginatedEnvelope,
   PublicCollectionListItemOutputSchema,
+  paginatedEnvelope,
   successEnvelope,
 } from '@brewform/shared/schemas';
-import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
-import type { AppEnv } from '../../types/hono.ts';
+import { zValidator } from '@hono/zod-validator';
 import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
+import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Dependency-injection proxy for test stubbing (auth middleware). */
 export const deps = { authMiddleware, optionalAuthMiddleware };
@@ -164,9 +162,7 @@ collection.get(
     summary: 'Get a collection',
     description:
       'Fetch a single collection by ID. Public/unlisted collections are visible to all; private/draft only to the owner.',
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Collection detail',
@@ -247,9 +243,7 @@ collection.patch(
     description:
       "Update a collection's name, description, or visibility. Only the owner can update.",
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(CollectionUpdateSchema),
     responses: {
       200: {
@@ -304,9 +298,7 @@ collection.delete(
     summary: 'Delete a collection',
     description: 'Soft-delete a collection. Only the owner can delete.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Collection deleted',
@@ -355,9 +347,7 @@ collection.post(
     description:
       'Add a recipe to a collection. Only public recipes can be added by non-owners; any recipe can be added by its author.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(CollectionAddRecipeSchema),
     responses: {
       201: {
@@ -475,9 +465,7 @@ collection.patch(
     description:
       'Reorder recipes by providing the full ordered list of item IDs. The service assigns sortOrder = array index.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(CollectionReorderSchema),
     responses: {
       200: {

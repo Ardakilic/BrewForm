@@ -44,7 +44,7 @@ export function SkeletonText({ lines = 3, className = '' }: SkeletonTextProps) {
       {Array.from({ length: lines }, (_, i) => (
         <Skeleton
           key={i}
-          height='0.75rem'
+          height="0.75rem"
           width={i === lines - 1 ? widths[Math.min(i, widths.length - 1)] : '100%'}
         />
       ))}
@@ -59,18 +59,18 @@ export function SkeletonText({ lines = 3, className = '' }: SkeletonTextProps) {
 /** Placeholder matching a recipe card's title, author, and badge rows. */
 export function RecipeCardSkeleton() {
   return (
-    <div className='card space-y-3'>
-      <Skeleton height='1.25rem' width='70%' />
-      <Skeleton height='0.875rem' width='40%' />
-      <div className='flex gap-2'>
-        <Skeleton height='0.75rem' width='4rem' />
-        <Skeleton height='0.75rem' width='4rem' />
-        <Skeleton height='0.75rem' width='3rem' />
+    <div className="card space-y-3">
+      <Skeleton height="1.25rem" width="70%" />
+      <Skeleton height="0.875rem" width="40%" />
+      <div className="flex gap-2">
+        <Skeleton height="0.75rem" width="4rem" />
+        <Skeleton height="0.75rem" width="4rem" />
+        <Skeleton height="0.75rem" width="3rem" />
       </div>
-      <div className='flex gap-3'>
-        <Skeleton height='0.75rem' width='2rem' />
-        <Skeleton height='0.75rem' width='2rem' />
-        <Skeleton height='0.75rem' width='2rem' />
+      <div className="flex gap-3">
+        <Skeleton height="0.75rem" width="2rem" />
+        <Skeleton height="0.75rem" width="2rem" />
+        <Skeleton height="0.75rem" width="2rem" />
       </div>
     </div>
   );
@@ -83,14 +83,14 @@ export function RecipeCardSkeleton() {
 /** Placeholder matching a catalog card's title row, type pill, and body lines. */
 export function CatalogCardSkeleton() {
   return (
-    <div className='card space-y-3'>
-      <div className='flex gap-2'>
-        <Skeleton height='1.25rem' width='60%' />
-        <Skeleton height='1.25rem' width='4rem' className='rounded-full' />
+    <div className="card space-y-3">
+      <div className="flex gap-2">
+        <Skeleton height="1.25rem" width="60%" />
+        <Skeleton height="1.25rem" width="4rem" className="rounded-full" />
       </div>
-      <Skeleton height='0.875rem' width='40%' />
-      <Skeleton height='0.875rem' width='80%' />
-      <Skeleton height='2.5rem' />
+      <Skeleton height="0.875rem" width="40%" />
+      <Skeleton height="0.875rem" width="80%" />
+      <Skeleton height="2.5rem" />
     </div>
   );
 }
@@ -110,13 +110,15 @@ interface CardSkeletonGridProps {
  * the variety/equipment catalog cards.
  */
 export function CardSkeletonGrid({ count = 6, variant = 'recipe' }: CardSkeletonGridProps) {
-  const gridClass = variant === 'catalog'
-    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
-    : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+  const gridClass =
+    variant === 'catalog'
+      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+      : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
   return (
     <div className={gridClass}>
       {Array.from({ length: count }, (_, i) =>
-        variant === 'catalog' ? <CatalogCardSkeleton key={i} /> : <RecipeCardSkeleton key={i} />)}
+        variant === 'catalog' ? <CatalogCardSkeleton key={i} /> : <RecipeCardSkeleton key={i} />,
+      )}
     </div>
   );
 }
@@ -131,7 +133,7 @@ interface RecipeCardSkeletonGridProps {
 
 /** Responsive grid of `count` recipe-card skeletons. */
 export function RecipeCardSkeletonGrid({ count = 6 }: RecipeCardSkeletonGridProps) {
-  return <CardSkeletonGrid count={count} variant='recipe' />;
+  return <CardSkeletonGrid count={count} variant="recipe" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,35 +143,37 @@ export function RecipeCardSkeletonGrid({ count = 6 }: RecipeCardSkeletonGridProp
 /** Full-page placeholder mirroring the recipe detail layout. */
 export function RecipeDetailSkeleton() {
   return (
-    <div className='mx-auto max-w-4xl px-6 py-8 space-y-6'>
-      <Skeleton height='0.875rem' width='12rem' />
+    <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
+      <Skeleton height="0.875rem" width="12rem" />
 
-      <div className='space-y-3'>
-        <Skeleton height='2rem' width='60%' />
-        <div className='flex gap-2'>
-          <Skeleton height='1.5rem' width='5rem' className='rounded-full' />
-          <Skeleton height='1.5rem' width='5rem' className='rounded-full' />
+      <div className="space-y-3">
+        <Skeleton height="2rem" width="60%" />
+        <div className="flex gap-2">
+          <Skeleton height="1.5rem" width="5rem" className="rounded-full" />
+          <Skeleton height="1.5rem" width="5rem" className="rounded-full" />
         </div>
       </div>
 
-      <div className='grid grid-cols-2 gap-4 sm:grid-cols-4'>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className='card space-y-2'>
-            <Skeleton height='0.75rem' width='3rem' />
-            <Skeleton height='1.5rem' width='4rem' />
+          <div key={i} className="card space-y-2">
+            <Skeleton height="0.75rem" width="3rem" />
+            <Skeleton height="1.5rem" width="4rem" />
           </div>
         ))}
       </div>
 
-      <div className='card space-y-3'>
-        <Skeleton height='1.25rem' width='8rem' />
-        <div className='space-y-2'>
-          {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} height='2.5rem' />)}
+      <div className="card space-y-3">
+        <Skeleton height="1.25rem" width="8rem" />
+        <div className="space-y-2">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} height="2.5rem" />
+          ))}
         </div>
       </div>
 
-      <div className='card space-y-3'>
-        <Skeleton height='1.25rem' width='6rem' />
+      <div className="card space-y-3">
+        <Skeleton height="1.25rem" width="6rem" />
         <SkeletonText lines={3} />
       </div>
     </div>
@@ -183,12 +187,12 @@ export function RecipeDetailSkeleton() {
 /** Placeholder for a single comment (avatar plus text lines). */
 export function CommentSkeleton() {
   return (
-    <div className='flex gap-3 py-3'>
-      <Skeleton circle width='2.5rem' height='2.5rem' />
-      <div className='flex-1 space-y-2'>
-        <div className='flex items-center gap-2'>
-          <Skeleton height='0.875rem' width='6rem' />
-          <Skeleton height='0.75rem' width='4rem' />
+    <div className="flex gap-3 py-3">
+      <Skeleton circle width="2.5rem" height="2.5rem" />
+      <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-2">
+          <Skeleton height="0.875rem" width="6rem" />
+          <Skeleton height="0.75rem" width="4rem" />
         </div>
         <SkeletonText lines={2} />
       </div>
@@ -207,8 +211,10 @@ interface CommentSectionSkeletonProps {
 /** Divided list of `count` comment skeletons. */
 export function CommentSectionSkeleton({ count = 3 }: CommentSectionSkeletonProps) {
   return (
-    <div className='divide-y' style={{ borderColor: 'var(--border-primary)' }}>
-      {Array.from({ length: count }, (_, i) => <CommentSkeleton key={i} />)}
+    <div className="divide-y" style={{ borderColor: 'var(--border-primary)' }}>
+      {Array.from({ length: count }, (_, i) => (
+        <CommentSkeleton key={i} />
+      ))}
     </div>
   );
 }
@@ -220,13 +226,13 @@ export function CommentSectionSkeleton({ count = 3 }: CommentSectionSkeletonProp
 /** Generic full-page placeholder used as a Suspense fallback. */
 export function PageSkeleton() {
   return (
-    <div className='mx-auto max-w-4xl px-6 py-12 space-y-6'>
-      <Skeleton height='2rem' width='50%' />
-      <Skeleton height='1rem' width='30%' />
-      <div className='space-y-4'>
-        <Skeleton height='8rem' />
-        <Skeleton height='8rem' />
-        <Skeleton height='4rem' />
+    <div className="mx-auto max-w-4xl px-6 py-12 space-y-6">
+      <Skeleton height="2rem" width="50%" />
+      <Skeleton height="1rem" width="30%" />
+      <div className="space-y-4">
+        <Skeleton height="8rem" />
+        <Skeleton height="8rem" />
+        <Skeleton height="4rem" />
       </div>
     </div>
   );
@@ -239,12 +245,12 @@ export function PageSkeleton() {
 /** Placeholder mirroring the user profile header and recipe grid. */
 export function UserProfileSkeleton() {
   return (
-    <div className='mx-auto max-w-4xl px-6 py-8 space-y-6'>
-      <div className='flex items-center gap-4'>
-        <Skeleton circle width='4rem' height='4rem' />
-        <div className='space-y-2'>
-          <Skeleton height='1.5rem' width='10rem' />
-          <Skeleton height='0.875rem' width='6rem' />
+    <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
+      <div className="flex items-center gap-4">
+        <Skeleton circle width="4rem" height="4rem" />
+        <div className="space-y-2">
+          <Skeleton height="1.5rem" width="10rem" />
+          <Skeleton height="0.875rem" width="6rem" />
         </div>
       </div>
       <SkeletonText lines={2} />

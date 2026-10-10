@@ -1,7 +1,4 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { and, eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import {
   equipment,
@@ -11,9 +8,11 @@ import {
   recipeVersions,
   users,
 } from '@brewform/db/schema';
+import { and, eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
-describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findById', () => {
   let userId: string;
   let equipmentId: string;
 
@@ -59,7 +58,7 @@ describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('findMany', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findMany', () => {
   let userId: string;
   let equipmentIds: string[];
 
@@ -129,7 +128,7 @@ describe('findMany', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('findManyWithFilters', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findManyWithFilters', () => {
   let userId: string;
   let equipmentIds: string[];
 
@@ -212,7 +211,7 @@ describe('findManyWithFilters', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('search', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('search', () => {
   let userId: string;
   let equipmentIds: string[];
 
@@ -312,7 +311,7 @@ describe('search', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('create', () => {
   let userId: string;
   let equipmentId: string;
 
@@ -349,7 +348,7 @@ describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('update', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('update', () => {
   let userId: string;
   let equipmentId: string;
 
@@ -397,7 +396,7 @@ describe('update', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('softDelete', () => {
   let userId: string;
   let equipmentId: string;
 
@@ -450,7 +449,7 @@ describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('createDeleteRequest', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createDeleteRequest', () => {
   let userId: string;
   let equipmentId: string;
 
@@ -473,9 +472,9 @@ describe('createDeleteRequest', { sanitizeOps: false, sanitizeResources: false }
   });
 
   afterEach(async () => {
-    await db.delete(equipmentDeleteRequests).where(
-      eq(equipmentDeleteRequests.equipmentId, equipmentId),
-    );
+    await db
+      .delete(equipmentDeleteRequests)
+      .where(eq(equipmentDeleteRequests.equipmentId, equipmentId));
     await db.delete(equipment).where(eq(equipment.id, equipmentId));
     await db.delete(users).where(eq(users.id, userId));
   });
@@ -491,7 +490,7 @@ describe('createDeleteRequest', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('getRecipesUsingEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getRecipesUsingEquipment', () => {
   let userId: string;
   let equipmentId: string;
   let recipeIds: string[];
@@ -542,21 +541,27 @@ describe('getRecipesUsingEquipment', { sanitizeOps: false, sanitizeResources: fa
     const versionId = crypto.randomUUID();
     recipeIds.push(recipeId);
     versionIds.push(versionId);
-    const [recipe] = await db.insert(recipes).values({
-      id: recipeId,
-      slug: `test-recipe-${recipeId}`,
-      title: `Test Recipe ${recipeId.slice(0, 8)}`,
-      authorId: userId,
-      visibility,
-    }).returning();
-    const [version] = await db.insert(recipeVersions).values({
-      id: versionId,
-      recipeId: recipe.id,
-      versionNumber: 1,
-      brewMethod: 'v60',
-      drinkType: 'pour_over',
-      preparationNotes: '',
-    }).returning();
+    const [recipe] = await db
+      .insert(recipes)
+      .values({
+        id: recipeId,
+        slug: `test-recipe-${recipeId}`,
+        title: `Test Recipe ${recipeId.slice(0, 8)}`,
+        authorId: userId,
+        visibility,
+      })
+      .returning();
+    const [version] = await db
+      .insert(recipeVersions)
+      .values({
+        id: versionId,
+        recipeId: recipe.id,
+        versionNumber: 1,
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: '',
+      })
+      .returning();
     await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
     if (linkEquipment) {
       await db.insert(recipeEquipment).values({ recipeVersionId: version.id, equipmentId });

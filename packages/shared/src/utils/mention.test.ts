@@ -1,6 +1,5 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check';
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import { MAX_MENTIONS, parseMentions } from './mention.ts';
 
 const USERNAME_RE = /^[a-zA-Z0-9_-]{3,30}$/;

@@ -1,5 +1,4 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { AuthorRefSchema, MessageResponseSchema, RecipeAuthorMiniSchema } from './_shared.ts';
 
 /** Normalize a payload to its JSON wire shape (Dates → ISO strings). */

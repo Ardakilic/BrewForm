@@ -1,7 +1,6 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { describe, expect, it } from 'vitest';
 
 describe('CORS Middleware', () => {
   it('should set CORS headers on preflight requests', async () => {
@@ -21,7 +20,7 @@ describe('CORS Middleware', () => {
     const res = await app.request('/test', {
       method: 'GET',
       headers: {
-        'Origin': 'http://localhost:5173',
+        Origin: 'http://localhost:5173',
       },
     });
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
@@ -41,7 +40,7 @@ describe('CORS Middleware', () => {
     const res = await app.request('/test', {
       method: 'OPTIONS',
       headers: {
-        'Origin': 'http://localhost:5173',
+        Origin: 'http://localhost:5173',
         'Access-Control-Request-Method': 'POST',
       },
     });

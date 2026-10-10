@@ -1,6 +1,5 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
+import { describe, expect, it } from 'vitest';
 
 describe('QR Code Utils — Integration', () => {
   describe('Slug generation for QR codes', () => {

@@ -16,7 +16,7 @@ export const SCAA_CATEGORIES = [
 ] as const;
 
 /** Union of the 9 SCAA top-level flavor-wheel category names. */
-export type ScaaCategory = typeof SCAA_CATEGORIES[number];
+export type ScaaCategory = (typeof SCAA_CATEGORIES)[number];
 
 /** A taste note flattened for radar-chart aggregation, with its resolved root category. */
 export interface TasteNoteForChart {
@@ -41,11 +41,7 @@ export function mapToScaaCategory(rootName: string): ScaaCategory {
   if (normalized === 'floral') return 'Floral';
   if (normalized === 'fruity') return 'Fruity';
   if (normalized === 'sweet') return 'Sweet';
-  if (
-    normalized === 'nutty/cocoa' ||
-    normalized === 'nutty' ||
-    normalized === 'cocoa'
-  ) {
+  if (normalized === 'nutty/cocoa' || normalized === 'nutty' || normalized === 'cocoa') {
     return 'Nutty/Cocoa';
   }
   if (normalized === 'spices') return 'Spices';
@@ -53,11 +49,7 @@ export function mapToScaaCategory(rootName: string): ScaaCategory {
   if (normalized === 'green/vegetative' || normalized === 'green') {
     return 'Green/Vegetative';
   }
-  if (
-    normalized === 'sour/fermented' ||
-    normalized === 'sour' ||
-    normalized === 'fermented'
-  ) {
+  if (normalized === 'sour/fermented' || normalized === 'sour' || normalized === 'fermented') {
     return 'Sour/Fermented';
   }
   if (normalized === 'other') return 'Other';
@@ -73,12 +65,14 @@ export function mapToScaaCategory(rootName: string): ScaaCategory {
  * @param notes - Array of taste notes with hierarchy info (rootCategoryName must be set)
  * @returns Object with category sums and a flag indicating if all notes were resolved
  */
-export function aggregateByCategory(
-  notes: TasteNoteForChart[],
-): { values: Record<ScaaCategory, number>; allResolved: boolean } {
-  const result = Object.fromEntries(
-    SCAA_CATEGORIES.map((cat) => [cat, 0]),
-  ) as Record<ScaaCategory, number>;
+export function aggregateByCategory(notes: TasteNoteForChart[]): {
+  values: Record<ScaaCategory, number>;
+  allResolved: boolean;
+} {
+  const result = Object.fromEntries(SCAA_CATEGORIES.map((cat) => [cat, 0])) as Record<
+    ScaaCategory,
+    number
+  >;
 
   let unresolvedCount = 0;
   for (const note of notes) {

@@ -1,29 +1,27 @@
 import '../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
-import { eq } from 'drizzle-orm';
-import { Hono } from 'hono';
 import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signAccessToken, signRefreshToken } from '../modules/auth/jwt.ts';
 import { adminMiddleware, authMiddleware, log, optionalAuthMiddleware } from './auth.ts';
 
-describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Auth Middleware', () => {
   let createdUserIds: string[] = [];
 
   function setupSpies() {
     return {
-      debug: spy(log, 'debug'),
-      warn: spy(log, 'warn'),
-      error: spy(log, 'error'),
+      debug: vi.spyOn(log, 'debug'),
+      warn: vi.spyOn(log, 'warn'),
+      error: vi.spyOn(log, 'error'),
     };
   }
 
   function restoreSpies(spies: ReturnType<typeof setupSpies>) {
-    spies.debug.restore();
-    spies.warn.restore();
-    spies.error.restore();
+    spies.debug.mockRestore();
+    spies.warn.mockRestore();
+    spies.error.mockRestore();
   }
 
   async function createUser(options: { isAdmin?: boolean; isBanned?: boolean } = {}) {
@@ -75,13 +73,14 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
 
         expect(res.status).toBe(401);
         expect(body.success).toBe(false);
-        assertSpyCalls(spies.debug, 1);
-        assertSpyCallArgs(spies.debug, 0, [
+        expect(spies.debug).toHaveBeenCalledTimes(1);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          1,
           {},
           'authMiddleware no token found in Authorization header',
-        ]);
-        assertSpyCalls(spies.error, 0);
-        assertSpyCalls(spies.warn, 0);
+        );
+        expect(spies.error).toHaveBeenCalledTimes(0);
+        expect(spies.warn).toHaveBeenCalledTimes(0);
       } finally {
         restoreSpies(spies);
       }
@@ -95,9 +94,9 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
         });
 
         expect(res.status).toBe(401);
-        assertSpyCalls(spies.error, 1);
-        expect(spies.error.calls[0].args[0].err).toBeInstanceOf(Error);
-        expect(spies.error.calls[0].args[1]).toContain('token verification failed');
+        expect(spies.error).toHaveBeenCalledTimes(1);
+        expect(spies.error.mock.calls[0][0].err).toBeInstanceOf(Error);
+        expect(spies.error.mock.calls[0][1]).toContain('token verification failed');
       } finally {
         restoreSpies(spies);
       }
@@ -113,11 +112,11 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
         });
 
         expect(res.status).toBe(401);
-        assertSpyCalls(spies.warn, 1);
-        const warnArg = spies.warn.calls[0].args[0] as { hasSub: boolean; type: string };
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        const warnArg = spies.warn.mock.calls[0][0] as { hasSub: boolean; type: string };
         expect(warnArg.hasSub).toBe(true);
         expect(warnArg.type).toBe('refresh');
-        expect(spies.warn.calls[0].args[1]).toBe('authMiddleware invalid token payload');
+        expect(spies.warn.mock.calls[0][1]).toBe('authMiddleware invalid token payload');
       } finally {
         restoreSpies(spies);
       }
@@ -133,11 +132,12 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
         });
 
         expect(res.status).toBe(401);
-        assertSpyCalls(spies.warn, 1);
-        assertSpyCallArgs(spies.warn, 0, [
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        expect(spies.warn).toHaveBeenNthCalledWith(
+          1,
           { userId: missingUserId },
           'authMiddleware user not found for valid token',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }
@@ -153,11 +153,12 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
         });
 
         expect(res.status).toBe(401);
-        assertSpyCalls(spies.warn, 1);
-        assertSpyCallArgs(spies.warn, 0, [
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        expect(spies.warn).toHaveBeenNthCalledWith(
+          1,
           { userId },
           'authMiddleware access denied: user is banned',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }
@@ -175,11 +176,12 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
 
         expect(res.status).toBe(200);
         expect(body.userId).toBe(userId);
-        assertSpyCalls(spies.debug, 1);
-        assertSpyCallArgs(spies.debug, 0, [
+        expect(spies.debug).toHaveBeenCalledTimes(1);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          1,
           { userId },
           'authMiddleware authentication successful',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }
@@ -202,13 +204,14 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
 
         expect(res.status).toBe(200);
         expect(body.userId).toBeNull();
-        assertSpyCalls(spies.debug, 1);
-        assertSpyCallArgs(spies.debug, 0, [
+        expect(spies.debug).toHaveBeenCalledTimes(1);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          1,
           {},
           'optionalAuthMiddleware no auth token supplied (proceeding unauthenticated)',
-        ]);
-        assertSpyCalls(spies.error, 0);
-        assertSpyCalls(spies.warn, 0);
+        );
+        expect(spies.error).toHaveBeenCalledTimes(0);
+        expect(spies.warn).toHaveBeenCalledTimes(0);
       } finally {
         restoreSpies(spies);
       }
@@ -226,11 +229,12 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
 
         expect(res.status).toBe(200);
         expect(body.userId).toBe(userId);
-        assertSpyCalls(spies.debug, 1);
-        assertSpyCallArgs(spies.debug, 0, [
+        expect(spies.debug).toHaveBeenCalledTimes(1);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          1,
           { userId },
           'optionalAuthMiddleware authenticated user',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }
@@ -246,13 +250,14 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
 
         expect(res.status).toBe(200);
         expect(body.userId).toBeNull();
-        assertSpyCalls(spies.debug, 1);
-        assertSpyCallArgs(spies.debug, 0, [
+        expect(spies.debug).toHaveBeenCalledTimes(1);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          1,
           {},
           'optionalAuthMiddleware token verification failed (proceeding unauthenticated)',
-        ]);
-        assertSpyCalls(spies.error, 0);
-        assertSpyCalls(spies.warn, 0);
+        );
+        expect(spies.error).toHaveBeenCalledTimes(0);
+        expect(spies.warn).toHaveBeenCalledTimes(0);
       } finally {
         restoreSpies(spies);
       }
@@ -277,11 +282,12 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
         });
 
         expect(res.status).toBe(403);
-        assertSpyCalls(spies.warn, 1);
-        assertSpyCallArgs(spies.warn, 0, [
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        expect(spies.warn).toHaveBeenNthCalledWith(
+          1,
           { userId, role: 'user' },
           'adminMiddleware access denied: non-admin user',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }
@@ -297,11 +303,12 @@ describe('Auth Middleware', { sanitizeOps: false, sanitizeResources: false }, ()
         });
 
         expect(res.status).toBe(200);
-        assertSpyCalls(spies.debug, 2);
-        assertSpyCallArgs(spies.debug, 1, [
+        expect(spies.debug).toHaveBeenCalledTimes(2);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          2,
           { userId },
           'adminMiddleware admin access granted',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }

@@ -6,14 +6,13 @@
  * the one-time database seed:
  *
  * ```sh
- * USER_COUNT=$(deno run --allow-env --allow-net --allow-read \
- *   /app/scripts/check-users-empty.ts)
- * [ "$USER_COUNT" = "0" ] && deno run --allow-all /app/packages/db/src/seed.ts
+ * USER_COUNT=$(pnpm --filter @brewform/api exec tsx /app/scripts/check-users-empty.ts)
+ * [ "$USER_COUNT" = "0" ] && pnpm --filter @brewform/db run seed
  * ```
  *
  * The admin account is the first row the seed inserts, so an empty `users` table
  * means the database has never been seeded. Using the existing `@brewform/db`
- * client (instead of `psql`) keeps the Deno runtime image free of a Postgres
+ * client (instead of `psql`) keeps the runtime image free of a Postgres
  * client dependency.
  *
  * Output contract (load-bearing — the entrypoint captures stdout verbatim):
@@ -21,12 +20,11 @@
  *   - stderr: any incidental diagnostics (none are emitted on the happy path).
  *
  * Failure behaviour: if the count query fails (DB unreachable, bad
- * `DATABASE_URL`, ...) the rejected promise propagates, Deno exits non-zero, and
+ * `DATABASE_URL`, ...) the rejected promise propagates, tsx exits non-zero, and
  * the entrypoint's `set -e` aborts the boot. The check NEVER masks an error to
  * `0`, which would otherwise re-seed an already-populated database on every boot.
  *
- * Required permissions: `--allow-env` + `--allow-net` (reach Postgres via
- * `DATABASE_URL`) and `--allow-read` (Deno workspace / module resolution).
+ * Required env: `DATABASE_URL` (reach Postgres).
  *
  * @module
  */

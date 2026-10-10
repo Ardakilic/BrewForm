@@ -1,9 +1,8 @@
 import '../test-setup.ts';
-import { afterEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import sitemap, { buildXml, deps, SITEMAP_CACHE_KEY } from './sitemap.ts';
+import { afterEach, describe, expect, it } from 'vitest';
 import { cacheProvider } from '../utils/cache/singleton.ts';
+import sitemap, { buildXml, deps, SITEMAP_CACHE_KEY } from './sitemap.ts';
 
 describe('Sitemap Route', () => {
   const app = new Hono();
@@ -23,14 +22,10 @@ describe('Sitemap Route', () => {
     { slug: 'french-press-blend', updatedAt: new Date('2025-05-15') },
   ];
 
-  const mockUsers = [
-    { username: 'barista', updatedAt: new Date('2025-06-01') },
-  ];
+  const mockUsers = [{ username: 'barista', updatedAt: new Date('2025-06-01') }];
 
   it('returns valid XML with correct content type', async () => {
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => mockRecipes;
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => mockUsers;
 
     const res = await app.request('/api/v1/sitemap.xml');
@@ -44,9 +39,7 @@ describe('Sitemap Route', () => {
   });
 
   it('includes static pages', async () => {
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => [];
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => [];
 
     const res = await app.request('/api/v1/sitemap.xml');
@@ -58,9 +51,7 @@ describe('Sitemap Route', () => {
   });
 
   it('sets cache-control header', async () => {
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => [];
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => [];
 
     const res = await app.request('/api/v1/sitemap.xml');
@@ -68,9 +59,7 @@ describe('Sitemap Route', () => {
   });
 
   it('does not include authenticated-only paths', async () => {
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => [];
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => [];
 
     const res = await app.request('/api/v1/sitemap.xml');
@@ -81,9 +70,7 @@ describe('Sitemap Route', () => {
   });
 
   it('includes recipe pages with lastmod dates', async () => {
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => mockRecipes;
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => [];
 
     const res = await app.request('/api/v1/sitemap.xml');
@@ -95,9 +82,7 @@ describe('Sitemap Route', () => {
   });
 
   it('includes user profile pages', async () => {
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => [];
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => mockUsers;
 
     const res = await app.request('/api/v1/sitemap.xml');
@@ -113,12 +98,10 @@ describe('Sitemap Route', () => {
 
     let getPublicRecipesCalled = false;
     let getActiveUsersCalled = false;
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => {
       getPublicRecipesCalled = true;
       return [];
     };
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => {
       getActiveUsersCalled = true;
       return [];
@@ -132,9 +115,7 @@ describe('Sitemap Route', () => {
   });
 
   it('caches generated XML after a cache miss', async () => {
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => [];
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => [];
 
     const res = await app.request('/api/v1/sitemap.xml');
@@ -148,12 +129,10 @@ describe('Sitemap Route', () => {
 
   it('second request returns cached data without querying DB deps', async () => {
     let callCount = 0;
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getPublicRecipes = async () => {
       callCount++;
       return [{ slug: 'only-recipe', updatedAt: new Date('2025-01-01') }];
     };
-    // deno-lint-ignore require-await -- test mock async signature
     deps.getActiveUsers = async () => [];
 
     const res1 = await app.request('/api/v1/sitemap.xml');

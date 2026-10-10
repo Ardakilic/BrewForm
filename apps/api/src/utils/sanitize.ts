@@ -14,6 +14,7 @@ function stripHtmlTags(text: string): string {
 
 /** Remove zero-width and other invisible Unicode characters */
 function stripZeroWidthChars(text: string): string {
+  // biome-ignore lint/suspicious/noMisleadingCharacterClass: class intentionally matches single invisible code points (ZWJ included); tests pin per-char stripping
   return text.replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD]/g, '');
 }
 
@@ -48,6 +49,9 @@ export function sanitizeText(input: string | null | undefined): string {
 export function sanitizeName(input: string | null | undefined): string {
   if (!input) return '';
   let text = sanitizeText(input);
-  text = text.replace(/\n/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  text = text
+    .replace(/\n/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
   return text;
 }

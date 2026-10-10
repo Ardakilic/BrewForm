@@ -38,23 +38,23 @@ export function AdminCachePage() {
 
   return (
     <div>
-      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
         {t('admin.cache.management')}
       </h1>
 
-      <div className='card'>
-        <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+      <div className="card">
+        <h2 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           {t('admin.flushCache')}
         </h2>
-        <p className='text-sm mb-4' style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
           {t('admin.cache.flushDescription')}
         </p>
-        <button type='button' onClick={flushAll} className='btn-primary' disabled={flushing}>
+        <button type="button" onClick={flushAll} className="btn-primary" disabled={flushing}>
           {flushing ? t('common.flushing') : t('admin.flushCache')}
         </button>
         {message && (
           <p
-            className='mt-3 text-sm'
+            className="mt-3 text-sm"
             style={{ color: status === 'error' ? 'var(--error)' : 'var(--success)' }}
           >
             {message}
@@ -62,16 +62,16 @@ export function AdminCachePage() {
         )}
       </div>
 
-      <div className='card mt-4'>
-        <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+      <div className="card mt-4">
+        <h2 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
           {t('admin.cache.infoTitle')}
         </h2>
-        <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           {t('admin.cache.kvDescription')}
         </p>
-        <div className='mt-3 text-sm' style={{ color: 'var(--text-tertiary)' }}>
+        <div className="mt-3 text-sm" style={{ color: 'var(--text-tertiary)' }}>
           <p>{t('admin.cache.prefixes')}</p>
-          <ul className='list-disc list-inside mt-1'>
+          <ul className="list-disc list-inside mt-1">
             <li>
               <code>taste:</code> — Taste note hierarchy and search results
             </li>

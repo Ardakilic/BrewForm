@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import type { RecipeListItemOutput } from '@brewform/shared/schemas';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecipeCard, type RecipeCardRecipe } from './RecipeCard.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({

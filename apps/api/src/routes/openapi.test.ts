@@ -6,10 +6,9 @@
  * `paths` map. Confirms the dependency is installed and wired correctly,
  * without requiring a database or a running server.
  */
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
 import { describeRoute, openAPIRouteHandler } from 'hono-openapi';
+import { describe, expect, it } from 'vitest';
 
 describe('OpenAPI integration', () => {
   it('produces a non-empty paths object from describeRoute decorations', async () => {
@@ -46,7 +45,7 @@ describe('OpenAPI integration', () => {
     const res = await app.request('/openapi.json');
     expect(res.status).toBe(200);
 
-    const spec = await res.json() as {
+    const spec = (await res.json()) as {
       openapi?: string;
       paths?: Record<string, Record<string, unknown>>;
     };

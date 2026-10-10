@@ -1,6 +1,6 @@
 # Logging
 
-BrewForm uses structured logging across both the API (Deno/Hono) and web (React/Vite) applications with a shared Logger interface for consistency.
+BrewForm uses structured logging across both the API (Node/Hono) and web (React/Vite) applications with a shared Logger interface for consistency.
 
 ## Architecture
 

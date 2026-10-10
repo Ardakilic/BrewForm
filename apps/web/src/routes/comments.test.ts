@@ -103,9 +103,7 @@ describe('listCommentsLoader', () => {
 
   it('throws 400 when recipeId path param is an empty string', async () => {
     await expect(
-      listCommentsLoader(
-        makeArgs('', makeRequest('https://example.test/comments/recipe/?page=1')),
-      ),
+      listCommentsLoader(makeArgs('', makeRequest('https://example.test/comments/recipe/?page=1'))),
     ).rejects.toMatchObject({ status: 400 });
     expect(mockList).not.toHaveBeenCalled();
   });

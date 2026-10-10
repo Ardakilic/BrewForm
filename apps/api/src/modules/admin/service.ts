@@ -9,17 +9,18 @@
  * This is the middle layer of the 3-layer admin module:
  * controllers -> service.ts (this file) -> model.ts
  */
-import type { z } from 'zod';
-import * as model from './model.ts';
-import type { CacheProvider } from '../../utils/cache/index.ts';
-import { sendWelcomeEmail } from '../auth/email.ts';
-import { createLogger } from '../../utils/logger/index.ts';
-import { coffeeVarieties } from '@brewform/db/schema';
-import {
+
+import type { coffeeVarieties } from '@brewform/db/schema';
+import type {
   BrewMethodCompatibilityCreateSchema,
   EquipmentUpdateSchema,
   VendorUpdateSchema,
 } from '@brewform/shared/schemas';
+import type { z } from 'zod';
+import type { CacheProvider } from '../../utils/cache/index.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+import { sendWelcomeEmail } from '../auth/email.ts';
+import * as model from './model.ts';
 
 const logger = createLogger('admin-service');
 
@@ -90,15 +91,18 @@ export async function setUserAdminRole(adminId: string, userId: string, isAdmin:
  * Admin-created user account with hashed password.
  * Logs the action, sends a welcome email (best-effort), and handles unique constraint errors.
  */
-export async function adminCreateUser(adminId: string, data: {
-  email: string;
-  username: string;
-  password: string;
-  displayName?: string;
-  bio?: string;
-  isAdmin?: boolean;
-  isBanned?: boolean;
-}) {
+export async function adminCreateUser(
+  adminId: string,
+  data: {
+    email: string;
+    username: string;
+    password: string;
+    displayName?: string;
+    bio?: string;
+    isAdmin?: boolean;
+    isBanned?: boolean;
+  },
+) {
   logger.debug({ adminId }, 'adminCreateUser started');
   const user = await model.adminCreateUser(data);
   await model.createAuditLog(
@@ -124,15 +128,19 @@ export async function adminCreateUser(adminId: string, data: {
  * Logs each changed field and re-hashes password if provided.
  * Throws SELF_EDIT_FORBIDDEN or USER_NOT_FOUND.
  */
-export async function adminUpdateUser(adminId: string, targetUserId: string, data: {
-  email?: string;
-  username?: string;
-  password?: string;
-  displayName?: string;
-  bio?: string;
-  isAdmin?: boolean;
-  isBanned?: boolean;
-}) {
+export async function adminUpdateUser(
+  adminId: string,
+  targetUserId: string,
+  data: {
+    email?: string;
+    username?: string;
+    password?: string;
+    displayName?: string;
+    bio?: string;
+    isAdmin?: boolean;
+    isBanned?: boolean;
+  },
+) {
   if (adminId === targetUserId) {
     throw new Error('SELF_EDIT_FORBIDDEN');
   }

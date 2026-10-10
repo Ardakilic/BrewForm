@@ -22,7 +22,9 @@ export function FavouriteButton({ recipeId, initialFavourited, initialCount }: P
     : null;
   const favourited = optimisticFavourited ?? initialFavourited;
   const pendingDelta = fetcher.formData
-    ? (fetcher.formData.get('favourited') === 'true' ? 1 : -1)
+    ? fetcher.formData.get('favourited') === 'true'
+      ? 1
+      : -1
     : 0;
   const count = (initialCount ?? 0) + pendingDelta;
 
@@ -32,15 +34,15 @@ export function FavouriteButton({ recipeId, initialFavourited, initialCount }: P
 
   return (
     <fetcher.Form
-      method='post'
+      method="post"
       action={`/recipes/${recipeId}/favourite`}
       onSubmit={() => log.debug({ recipeId }, 'submit started')}
     >
-      <input type='hidden' name='favourited' value={String(!favourited)} />
+      <input type="hidden" name="favourited" value={String(!favourited)} />
       <button
-        type='submit'
+        type="submit"
         disabled={fetcher.state !== 'idle'}
-        className='flex items-center gap-1 rounded px-3 py-1 text-sm transition-opacity hover:opacity-80'
+        className="flex items-center gap-1 rounded px-3 py-1 text-sm transition-opacity hover:opacity-80"
         style={{
           backgroundColor: favourited ? 'var(--warning)' : 'var(--bg-tertiary)',
           color: favourited ? 'var(--bg-primary)' : 'var(--text-primary)',

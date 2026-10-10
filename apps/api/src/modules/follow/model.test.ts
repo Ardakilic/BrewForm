@@ -1,9 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { and, eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { userFollows, users } from '@brewform/db/schema';
+import { and, eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -11,7 +10,7 @@ import * as model from './model.ts';
  * user_follows row if one exists, or null if the follower is not following
  * the target user.
  */
-describe('findFollow', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findFollow', () => {
   let followerId: string;
   let followingId: string;
   let followId: string;
@@ -64,7 +63,7 @@ describe('findFollow', { sanitizeOps: false, sanitizeResources: false }, () => {
  * createFollow — Insert a new follow relationship between two users and return
  * the inserted row.
  */
-describe('createFollow', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createFollow', () => {
   let followerId: string;
   let followingId: string;
 
@@ -88,9 +87,9 @@ describe('createFollow', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 
   afterEach(async () => {
-    await db.delete(userFollows).where(
-      and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)),
-    );
+    await db
+      .delete(userFollows)
+      .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)));
     await db.delete(users).where(eq(users.id, followerId));
     await db.delete(users).where(eq(users.id, followingId));
   });
@@ -101,9 +100,10 @@ describe('createFollow', { sanitizeOps: false, sanitizeResources: false }, () =>
     expect(result.followerId).toBe(followerId);
     expect(result.followingId).toBe(followingId);
     expect(result.createdAt).toBeDefined();
-    const [row] = await db.select().from(userFollows).where(
-      and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)),
-    );
+    const [row] = await db
+      .select()
+      .from(userFollows)
+      .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)));
     expect(row).toBeDefined();
   });
 });
@@ -112,7 +112,7 @@ describe('createFollow', { sanitizeOps: false, sanitizeResources: false }, () =>
  * deleteFollow — Delete a follow relationship. Throws FOLLOW_NOT_FOUND if the
  * follower is not following the target user.
  */
-describe('deleteFollow', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteFollow', () => {
   let followerId: string;
   let followingId: string;
 
@@ -137,26 +137,25 @@ describe('deleteFollow', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 
   afterEach(async () => {
-    await db.delete(userFollows).where(
-      and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)),
-    );
+    await db
+      .delete(userFollows)
+      .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)));
     await db.delete(users).where(eq(users.id, followerId));
     await db.delete(users).where(eq(users.id, followingId));
   });
 
   it('should delete an existing follow relationship', async () => {
     await model.deleteFollow(followerId, followingId);
-    const [row] = await db.select().from(userFollows).where(
-      and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)),
-    );
+    const [row] = await db
+      .select()
+      .from(userFollows)
+      .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)));
     expect(row).toBeUndefined();
   });
 
   it('should throw FOLLOW_NOT_FOUND when no relationship exists', async () => {
     // Reverse direction has no follow row.
-    await expect(model.deleteFollow(followingId, followerId)).rejects.toThrow(
-      'FOLLOW_NOT_FOUND',
-    );
+    await expect(model.deleteFollow(followingId, followerId)).rejects.toThrow('FOLLOW_NOT_FOUND');
   });
 });
 
@@ -165,7 +164,7 @@ describe('deleteFollow', { sanitizeOps: false, sanitizeResources: false }, () =>
  * Returns `{ followers, total }`. Only counts followers whose user profile has
  * not been soft-deleted (inner join on users with isNull(deletedAt)).
  */
-describe('getFollowers', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getFollowers', () => {
   let followingId: string;
   let followerIds: string[];
   let followIds: string[];
@@ -225,10 +224,9 @@ describe('getFollowers', { sanitizeOps: false, sanitizeResources: false }, () =>
       expect(f.follower.username).toBeDefined();
     }
     const usernames = result.followers.map((f) => f.follower.username).sort();
-    expect(usernames).toEqual([
-      `follower0-${followerIds[0]}`,
-      `follower1-${followerIds[1]}`,
-    ].sort());
+    expect(usernames).toEqual(
+      [`follower0-${followerIds[0]}`, `follower1-${followerIds[1]}`].sort(),
+    );
   });
 
   it('should return { followers, total } shape', async () => {
@@ -242,7 +240,7 @@ describe('getFollowers', { sanitizeOps: false, sanitizeResources: false }, () =>
  * profile data. Returns `{ following, total }`. Only counts followed users
  * whose profile has not been soft-deleted.
  */
-describe('getFollowing', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getFollowing', () => {
   let followerId: string;
   let followingIds: string[];
   let followIds: string[];
@@ -313,7 +311,7 @@ describe('getFollowing', { sanitizeOps: false, sanitizeResources: false }, () =>
  * isFollowing — Check whether a follow relationship exists between two users.
  * Returns a boolean.
  */
-describe('isFollowing', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('isFollowing', () => {
   let followerId: string;
   let followingId: string;
   let followId: string;

@@ -1,5 +1,4 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { ReportCreateSchema, ReportFilterSchema } from './report.ts';
 
 describe('ReportCreateSchema', () => {
@@ -95,8 +94,8 @@ describe('ReportCreateSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(
-        result.error.issues.some((i) =>
-          i.path.includes('recipeId') || i.path.includes('commentId')
+        result.error.issues.some(
+          (i) => i.path.includes('recipeId') || i.path.includes('commentId'),
         ),
       ).toBe(true);
     }

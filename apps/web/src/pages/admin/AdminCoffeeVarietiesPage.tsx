@@ -1,13 +1,13 @@
+import type { CoffeeVarietyOutput, CoffeeVarietyUpdate } from '@brewform/shared/schemas';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useConfirm } from '../../components/ui/Modal.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
-import { useToast } from '../../components/ui/Toast.tsx';
-import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { Field } from '../../components/form/Field.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
+import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import type { CoffeeVarietyOutput, CoffeeVarietyUpdate } from '@brewform/shared/schemas';
 
 const log = createLogger('AdminCoffeeVarietiesPage');
 
@@ -111,7 +111,10 @@ function arrToString(arr: string[] | null | undefined): string {
 function stringToArr(s: string): string[] {
   const trimmed = s.trim();
   if (!trimmed) return [];
-  return trimmed.split(',').map((v) => v.trim()).filter(Boolean);
+  return trimmed
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
 }
 
 /** Admin page: paginated, searchable coffee-variety CRUD with category filter and inline form. */
@@ -120,9 +123,12 @@ export function AdminCoffeeVarietiesPage() {
   const { confirm } = useConfirm();
   const toast = useToast();
 
-  const categoryLabel = useCallback((cat: Category): string => {
-    return t(CATEGORY_LABELS[cat]);
-  }, [t]);
+  const categoryLabel = useCallback(
+    (cat: Category): string => {
+      return t(CATEGORY_LABELS[cat]);
+    },
+    [t],
+  );
   const [items, setItems] = useState<CoffeeVarietyOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -150,11 +156,11 @@ export function AdminCoffeeVarietiesPage() {
       if (categoryFilter) params.set('category', categoryFilter);
       if (search.trim()) params.set('search', search.trim());
 
-      const res = await api.getWithMeta<
-        { success: boolean; data: CoffeeVarietyOutput[]; total: number }
-      >(
-        `/admin/coffee-varieties?${params.toString()}`,
-      );
+      const res = await api.getWithMeta<{
+        success: boolean;
+        data: CoffeeVarietyOutput[];
+        total: number;
+      }>(`/admin/coffee-varieties?${params.toString()}`);
       setItems(res.data);
       setTotal(res.total);
     } catch (err) {
@@ -195,10 +201,7 @@ export function AdminCoffeeVarietiesPage() {
 
     try {
       if (editId) {
-        await api.patch<CoffeeVarietyOutput>(
-          `/admin/coffee-varieties/${editId}`,
-          body,
-        );
+        await api.patch<CoffeeVarietyOutput>(`/admin/coffee-varieties/${editId}`, body);
       } else {
         await api.post<CoffeeVarietyOutput>('/admin/coffee-varieties', body);
       }
@@ -214,12 +217,13 @@ export function AdminCoffeeVarietiesPage() {
 
   async function handleDelete(id: string) {
     if (
-      !await confirm({
+      !(await confirm({
         titleKey: 'common.confirmDelete',
         bodyKey: 'admin.coffeeVarieties.deleteConfirm',
         danger: true,
-      })
-    ) return;
+      }))
+    )
+      return;
     try {
       await api.delete(`/admin/coffee-varieties/${id}`);
       await fetchData();
@@ -355,52 +359,52 @@ export function AdminCoffeeVarietiesPage() {
 
   return (
     <div>
-      <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('coffeeVarieties.title')}
         </h1>
-        <div className='flex gap-2'>
-          <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setShowForm(!showForm)} className="btn-primary">
             {showForm ? t('common.cancel') : t('admin.coffeeVarieties.add')}
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className='flex flex-wrap gap-3 mb-4'>
+      <div className="flex flex-wrap gap-3 mb-4">
         <select
           value={categoryFilter}
           onChange={(e) => {
             setCategoryFilter(e.target.value);
             setPage(1);
           }}
-          className='input-field'
+          className="input-field"
           style={{ width: '180px' }}
         >
-          <option value=''>{t('admin.coffeeVarieties.allCategories')}</option>
-          <option value='variety'>{t('admin.coffeeVarieties.catVariety')}</option>
-          <option value='processing'>{t('admin.coffeeVarieties.catProcessing')}</option>
-          <option value='market_name'>{t('admin.coffeeVarieties.catMarketName')}</option>
+          <option value="">{t('admin.coffeeVarieties.allCategories')}</option>
+          <option value="variety">{t('admin.coffeeVarieties.catVariety')}</option>
+          <option value="processing">{t('admin.coffeeVarieties.catProcessing')}</option>
+          <option value="market_name">{t('admin.coffeeVarieties.catMarketName')}</option>
         </select>
         <input
-          type='text'
+          type="text"
           placeholder={t('admin.coffeeVarieties.searchPlaceholder')}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
-          className='input-field'
+          className="input-field"
           style={{ width: '250px' }}
         />
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className='card mb-6'>
-          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+        <form onSubmit={handleSubmit} className="card mb-6">
+          <h2 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             {editId ? t('admin.coffeeVarieties.editTitle') : t('admin.coffeeVarieties.addTitle')}
           </h2>
-          <div className='grid grid-cols-2 gap-4'>
+          <div className="grid grid-cols-2 gap-4">
             {fieldKeys.map((field) => {
               if (!isFieldVisible(field)) return null;
 
@@ -411,14 +415,14 @@ export function AdminCoffeeVarietiesPage() {
                       <select
                         value={form.category}
                         onChange={(e) => setForm({ ...form, category: e.target.value as Category })}
-                        className='input-field'
+                        className="input-field"
                         required
                       >
-                        <option value='variety'>{t('admin.coffeeVarieties.catVariety')}</option>
-                        <option value='processing'>
+                        <option value="variety">{t('admin.coffeeVarieties.catVariety')}</option>
+                        <option value="processing">
                           {t('admin.coffeeVarieties.catProcessing')}
                         </option>
-                        <option value='market_name'>
+                        <option value="market_name">
                           {t('admin.coffeeVarieties.catMarketName')}
                         </option>
                       </select>
@@ -429,12 +433,12 @@ export function AdminCoffeeVarietiesPage() {
 
               if (field === 'notes' || field === 'cupProfile' || field === 'spread') {
                 return (
-                  <div key={field} className='col-span-2'>
+                  <div key={field} className="col-span-2">
                     <Field label={fieldLabel(field)}>
                       <textarea
                         value={(form as unknown as Record<string, string>)[field]}
                         onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                        className='input-field'
+                        className="input-field"
                         rows={3}
                         placeholder={fieldPlaceholder(field)}
                       />
@@ -448,10 +452,10 @@ export function AdminCoffeeVarietiesPage() {
                 <div key={field}>
                   <Field label={fieldLabel(field)} required={required}>
                     <input
-                      type='text'
+                      type="text"
                       value={(form as unknown as Record<string, string>)[field]}
                       onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                      className='input-field'
+                      className="input-field"
                       required={required}
                       placeholder={fieldPlaceholder(field)}
                     />
@@ -460,12 +464,12 @@ export function AdminCoffeeVarietiesPage() {
               );
             })}
           </div>
-          <div className='flex gap-2 mt-4'>
-            <button type='submit' className='btn-primary' disabled={saving}>
+          <div className="flex gap-2 mt-4">
+            <button type="submit" className="btn-primary" disabled={saving}>
               {saving ? t('common.saving') : t('common.save')}
             </button>
             {editId && (
-              <button type='button' onClick={resetForm} className='btn-secondary'>
+              <button type="button" onClick={resetForm} className="btn-secondary">
                 {t('common.cancelEdit')}
               </button>
             )}
@@ -473,28 +477,30 @@ export function AdminCoffeeVarietiesPage() {
         </form>
       )}
 
-      {loading ? <LoadingState /> : (
+      {loading ? (
+        <LoadingState />
+      ) : (
         <>
-          <div className='overflow-x-auto'>
-            <table className='w-full text-sm'>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-primary)' }}>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                  <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
                     {t('common.name')}
                   </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                  <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
                     {t('common.category')}
                   </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                  <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
                     {t('admin.coffeeVarieties.species')}
                   </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                  <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
                     {t('coffeeVarieties.fields.origin')}
                   </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                  <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
                     {t('admin.coffeeVarieties.system')}
                   </th>
-                  <th className='text-left py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                  <th className="text-left py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
                     {t('common.actions')}
                   </th>
                 </tr>
@@ -502,12 +508,12 @@ export function AdminCoffeeVarietiesPage() {
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                    <td className='py-2 px-3' style={{ color: 'var(--text-primary)' }}>
+                    <td className="py-2 px-3" style={{ color: 'var(--text-primary)' }}>
                       {item.name}
                     </td>
-                    <td className='py-2 px-3'>
+                    <td className="py-2 px-3">
                       <span
-                        className='badge'
+                        className="badge"
                         style={{
                           backgroundColor: CATEGORY_BADGE_COLORS[toCategory(item.category)],
                           color: '#fff',
@@ -516,48 +522,47 @@ export function AdminCoffeeVarietiesPage() {
                         {categoryLabel(toCategory(item.category))}
                       </span>
                     </td>
-                    <td className='py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                    <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
                       {item.species || '-'}
                     </td>
-                    <td className='py-2 px-3' style={{ color: 'var(--text-secondary)' }}>
+                    <td className="py-2 px-3" style={{ color: 'var(--text-secondary)' }}>
                       {item.origin
-                        ? item.origin.length > 40 ? `${item.origin.slice(0, 40)}...` : item.origin
+                        ? item.origin.length > 40
+                          ? `${item.origin.slice(0, 40)}...`
+                          : item.origin
                         : '-'}
                     </td>
-                    <td className='py-2 px-3'>
-                      {item.isSystem
-                        ? (
-                          <span
-                            className='badge'
-                            style={{ backgroundColor: 'var(--warning)', color: '#000' }}
-                          >
-                            {t('admin.coffeeVarieties.system')}
-                          </span>
-                        )
-                        : (
-                          <span
-                            className='badge'
-                            style={{ backgroundColor: 'var(--success)', color: '#fff' }}
-                          >
-                            {t('admin.coffeeVarieties.custom')}
-                          </span>
-                        )}
+                    <td className="py-2 px-3">
+                      {item.isSystem ? (
+                        <span
+                          className="badge"
+                          style={{ backgroundColor: 'var(--warning)', color: '#000' }}
+                        >
+                          {t('admin.coffeeVarieties.system')}
+                        </span>
+                      ) : (
+                        <span
+                          className="badge"
+                          style={{ backgroundColor: 'var(--success)', color: '#fff' }}
+                        >
+                          {t('admin.coffeeVarieties.custom')}
+                        </span>
+                      )}
                     </td>
-                    <td className='py-2 px-3 flex gap-2'>
+                    <td className="py-2 px-3 flex gap-2">
                       <button
-                        type='button'
-                        onClick={() =>
-                          startEdit(item)}
-                        className='text-xs'
+                        type="button"
+                        onClick={() => startEdit(item)}
+                        className="text-xs"
                         style={{ color: 'var(--accent-primary)' }}
                       >
                         {t('common.edit')}
                       </button>
                       {!item.isSystem && (
                         <button
-                          type='button'
+                          type="button"
                           onClick={() => handleDelete(item.id)}
-                          className='btn-danger-text text-xs'
+                          className="btn-danger-text text-xs"
                         >
                           {t('common.delete')}
                         </button>
@@ -574,7 +579,7 @@ export function AdminCoffeeVarietiesPage() {
               page={page}
               totalPages={Math.ceil(total / 20)}
               onPageChange={setPage}
-              variant='disable'
+              variant="disable"
             />
           )}
         </>

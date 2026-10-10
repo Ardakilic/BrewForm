@@ -22,31 +22,31 @@ export function MergeSelector({ fields, onMerge }: MergeSelectorProps) {
   }
 
   return (
-    <div className='card space-y-3'>
-      <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
+    <div className="card space-y-3">
+      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
         {t('merge.selectParams')}
       </h3>
       {fields.map((f) => (
-        <div key={f.key} className='flex items-center gap-3 text-sm'>
-          <span className='w-40' style={{ color: 'var(--text-secondary)' }}>
+        <div key={f.key} className="flex items-center gap-3 text-sm">
+          <span className="w-40" style={{ color: 'var(--text-secondary)' }}>
             {t(f.labelKey)}
           </span>
-          <div className='flex gap-2 flex-1'>
-            <label className='flex items-center gap-1 cursor-pointer'>
+          <div className="flex gap-2 flex-1">
+            <label className="flex items-center gap-1 cursor-pointer">
               <input
-                type='radio'
+                type="radio"
                 name={f.key}
-                value='v1'
+                value="v1"
                 checked={selections[f.key] === 'v1'}
                 onChange={() => handleSelect(f.key, 'v1')}
               />
               <span style={{ color: 'var(--accent-primary)' }}>{f.value1 ?? '-'}</span>
             </label>
-            <label className='flex items-center gap-1 cursor-pointer'>
+            <label className="flex items-center gap-1 cursor-pointer">
               <input
-                type='radio'
+                type="radio"
                 name={f.key}
-                value='v2'
+                value="v2"
                 checked={selections[f.key] === 'v2'}
                 onChange={() => handleSelect(f.key, 'v2')}
               />
@@ -56,9 +56,9 @@ export function MergeSelector({ fields, onMerge }: MergeSelectorProps) {
         </div>
       ))}
       <button
-        type='button'
+        type="button"
         onClick={() => onMerge(selections as Record<string, 'v1' | 'v2'>)}
-        className='btn-primary w-full'
+        className="btn-primary w-full"
       >
         {t('merge.create')}
       </button>

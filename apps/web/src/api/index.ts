@@ -1,4 +1,3 @@
-import type { AuthUser } from '@brewform/shared/types';
 import type {
   BeanCreate,
   BeanOutput,
@@ -42,10 +41,11 @@ import type {
   UserProfileUpdate,
   VersionDiffOutput,
 } from '@brewform/shared/schemas';
-import { api, ApiError } from './client.ts';
+import type { AuthUser } from '@brewform/shared/types';
 import { createLogger } from '@/utils/logger.ts';
+import { ApiError, api } from './client.ts';
 
-export { api, ApiError };
+export { ApiError, api };
 
 const notificationLog = createLogger('notificationApi');
 
@@ -177,15 +177,18 @@ export const adminApi = {
     isAdmin?: boolean;
     isBanned?: boolean;
   }) => api.post<AdminUserDetail>('/admin/users', data),
-  updateUser: (id: string, data: {
-    email?: string;
-    username?: string;
-    password?: string;
-    displayName?: string;
-    bio?: string;
-    isAdmin?: boolean;
-    isBanned?: boolean;
-  }) => api.patch<AdminUserDetail>(`/admin/users/${id}`, data),
+  updateUser: (
+    id: string,
+    data: {
+      email?: string;
+      username?: string;
+      password?: string;
+      displayName?: string;
+      bio?: string;
+      isAdmin?: boolean;
+      isBanned?: boolean;
+    },
+  ) => api.patch<AdminUserDetail>(`/admin/users/${id}`, data),
   banUser: (userId: string, reason: string) =>
     api.post<AdminUserDetail>(`/admin/users/${userId}/ban`, { userId, banned: true, reason }),
   unbanUser: (userId: string) =>

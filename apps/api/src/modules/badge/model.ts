@@ -14,8 +14,8 @@ import {
   userBadges,
   userFollows,
 } from '@brewform/db/schema';
-import { and, asc, count, desc, eq, isNotNull, isNull, max } from 'drizzle-orm';
 import type { BadgeRule } from '@brewform/shared/types';
+import { and, asc, count, desc, eq, isNotNull, isNull, max } from 'drizzle-orm';
 
 /** List all available badge definitions ordered by threshold ascending. */
 export function listBadges() {
@@ -24,20 +24,21 @@ export function listBadges() {
 
 /** Get all badges awarded to a user, with badge definition joined. */
 export function getUserBadges(userId: string) {
-  return db.select({
-    id: userBadges.id,
-    userId: userBadges.userId,
-    badgeId: userBadges.badgeId,
-    awardedAt: userBadges.awardedAt,
-    badge: {
-      id: badges.id,
-      name: badges.name,
-      icon: badges.icon,
-      description: badges.description,
-      rule: badges.rule,
-      threshold: badges.threshold,
-    },
-  })
+  return db
+    .select({
+      id: userBadges.id,
+      userId: userBadges.userId,
+      badgeId: userBadges.badgeId,
+      awardedAt: userBadges.awardedAt,
+      badge: {
+        id: badges.id,
+        name: badges.name,
+        icon: badges.icon,
+        description: badges.description,
+        rule: badges.rule,
+        threshold: badges.threshold,
+      },
+    })
     .from(userBadges)
     .leftJoin(badges, eq(userBadges.badgeId, badges.id))
     .where(eq(userBadges.userId, userId))
@@ -52,35 +53,42 @@ export function getUserBadges(userId: string) {
  * Uses onConflictDoNothing to avoid duplicate awards.
  */
 export async function evaluateBadges(userId: string) {
-  const userRecipesResult = await db.select({ count: count() }).from(recipes)
+  const userRecipesResult = await db
+    .select({ count: count() })
+    .from(recipes)
     .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
   const userRecipes = userRecipesResult[0].count;
 
-  const userCommentsResult = await db.select({ count: count() }).from(comments)
+  const userCommentsResult = await db
+    .select({ count: count() })
+    .from(comments)
     .where(and(eq(comments.authorId, userId), isNull(comments.deletedAt)));
   const userComments = userCommentsResult[0].count;
 
-  const userForksResult = await db.select({ count: count() }).from(recipes)
+  const userForksResult = await db
+    .select({ count: count() })
+    .from(recipes)
     .where(
-      and(
-        eq(recipes.authorId, userId),
-        isNull(recipes.deletedAt),
-        isNotNull(recipes.forkedFromId),
-      ),
+      and(eq(recipes.authorId, userId), isNull(recipes.deletedAt), isNotNull(recipes.forkedFromId)),
     );
   const userForks = userForksResult[0].count;
 
-  const userFollowersResult = await db.select({ count: count() }).from(userFollows)
+  const userFollowersResult = await db
+    .select({ count: count() })
+    .from(userFollows)
     .where(eq(userFollows.followingId, userId));
   const userFollowers = userFollowersResult[0].count;
 
-  const maxLikesResult = await db.select({
-    maxLikes: max(recipes.likeCount),
-  }).from(recipes)
+  const maxLikesResult = await db
+    .select({
+      maxLikes: max(recipes.likeCount),
+    })
+    .from(recipes)
     .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
   const maxLikes = maxLikesResult[0].maxLikes ?? 0;
 
-  const distinctMethodsResult = await db.selectDistinct({ brewMethod: recipeVersions.brewMethod })
+  const distinctMethodsResult = await db
+    .selectDistinct({ brewMethod: recipeVersions.brewMethod })
     .from(recipeVersions)
     .innerJoin(recipes, eq(recipeVersions.recipeId, recipes.id))
     .where(
@@ -92,26 +100,29 @@ export async function evaluateBadges(userId: string) {
     );
   const distinctMethods = distinctMethodsResult;
 
-  const userVersions = await db.select({
-    groundWeightGrams: recipeVersions.groundWeightGrams,
-    extractionTimeSeconds: recipeVersions.extractionTimeSeconds,
-    extractionVolumeMl: recipeVersions.extractionVolumeMl,
-    temperatureCelsius: recipeVersions.temperatureCelsius,
-    brewRatio: recipeVersions.brewRatio,
-    flowRate: recipeVersions.flowRate,
-  })
+  const userVersions = await db
+    .select({
+      groundWeightGrams: recipeVersions.groundWeightGrams,
+      extractionTimeSeconds: recipeVersions.extractionTimeSeconds,
+      extractionVolumeMl: recipeVersions.extractionVolumeMl,
+      temperatureCelsius: recipeVersions.temperatureCelsius,
+      brewRatio: recipeVersions.brewRatio,
+      flowRate: recipeVersions.flowRate,
+    })
     .from(recipeVersions)
     .innerJoin(recipes, eq(recipeVersions.recipeId, recipes.id))
     .where(and(eq(recipes.authorId, userId), isNull(recipes.deletedAt)));
 
-  const precisionBrewerMet = userVersions.length >= 1 &&
-    userVersions.every((v) =>
-      v.groundWeightGrams !== null &&
-      v.extractionTimeSeconds !== null &&
-      v.extractionVolumeMl !== null &&
-      v.temperatureCelsius !== null &&
-      v.brewRatio !== null &&
-      v.flowRate !== null
+  const precisionBrewerMet =
+    userVersions.length >= 1 &&
+    userVersions.every(
+      (v) =>
+        v.groundWeightGrams !== null &&
+        v.extractionTimeSeconds !== null &&
+        v.extractionVolumeMl !== null &&
+        v.temperatureCelsius !== null &&
+        v.brewRatio !== null &&
+        v.flowRate !== null,
     );
 
   const checks: Array<{ rule: BadgeRule; met: boolean }> = [
@@ -129,11 +140,15 @@ export async function evaluateBadges(userId: string) {
 
   for (const check of checks) {
     if (check.met) {
-      const badgeResult = await db.select().from(badges).where(eq(badges.rule, check.rule))
+      const badgeResult = await db
+        .select()
+        .from(badges)
+        .where(eq(badges.rule, check.rule))
         .limit(1);
       if (badgeResult.length > 0) {
         const badge = badgeResult[0];
-        await db.insert(userBadges)
+        await db
+          .insert(userBadges)
           .values({ userId, badgeId: badge.id })
           .onConflictDoNothing({ target: [userBadges.userId, userBadges.badgeId] });
       }

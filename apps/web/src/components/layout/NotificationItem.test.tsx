@@ -1,14 +1,21 @@
 // ── Module-level mocks (hoisted by Vitest — MUST come before imports) ──
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, onClick, ...props }: {
-      to: string;
-      children: React.ReactNode;
-      onClick?: () => void;
-      [key: string]: unknown;
-    },
-  ) => <a href={to} onClick={onClick} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    onClick,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    onClick?: () => void;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} onClick={onClick} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
@@ -34,13 +41,13 @@ vi.mock('../../utils/notification-events.ts', () => ({
 
 // ── Imports (after all vi.mock calls) ──
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import React from 'react';
+import type { NotificationOutput } from '@brewform/shared/schemas';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { NotificationOutput } from '@brewform/shared/schemas';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import type React from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { notificationApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
 import { NotificationItem } from './NotificationItem.tsx';
 
@@ -170,9 +177,7 @@ describe('NotificationItem', () => {
 
   it('falls back to mentionGeneric for an unknown notification type', () => {
     // ponytail: `as never` deliberately crosses the type union for forward-compat testing.
-    render(
-      <NotificationItem notification={baseNotification({ type: 'futureType' as never })} />,
-    );
+    render(<NotificationItem notification={baseNotification({ type: 'futureType' as never })} />);
     expect(screen.getByText('alice mentioned you in a comment')).toBeInTheDocument();
   });
 });

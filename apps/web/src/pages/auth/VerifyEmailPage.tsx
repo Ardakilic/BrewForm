@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
+import { createLogger } from '@/utils/logger.ts';
+import { authApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { authApi } from '../../api/index.ts';
-import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('VerifyEmailPage');
 
@@ -44,35 +44,35 @@ export function VerifyEmailPage() {
         setStatus('error');
         setErrorMessage(t('verifyEmail.failed'));
       });
-  }, [token, refreshUser]);
+  }, [token, refreshUser, t]);
 
   return (
-    <div className='flex min-h-[60vh] flex-col items-center justify-center px-6 text-center'>
+    <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
       {status === 'loading' && (
         <p style={{ color: 'var(--text-secondary)' }}>{t('verifyEmail.verifying')}</p>
       )}
       {status === 'success' && (
         <>
-          <h1 className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>
             {t('verifyEmail.successTitle')}
           </h1>
-          <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
+          <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>
             {t('verifyEmail.successMessage')}
           </p>
-          <Link to='/' className='btn-primary mt-6'>
+          <Link to="/" className="btn-primary mt-6">
             {t('common.goHome')}
           </Link>
         </>
       )}
       {status === 'error' && (
         <>
-          <h1 className='text-2xl font-bold' style={{ color: 'var(--accent-primary)' }}>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--accent-primary)' }}>
             {t('verifyEmail.errorTitle')}
           </h1>
-          <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
+          <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>
             {errorMessage}
           </p>
-          <Link to='/' className='btn-primary mt-6'>
+          <Link to="/" className="btn-primary mt-6">
             {t('common.goHome')}
           </Link>
         </>

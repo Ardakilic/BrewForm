@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -32,8 +32,8 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
-import { recipeApi } from '../../api/index.ts';
 import type { VersionDiffOutput } from '@brewform/shared/schemas';
+import { recipeApi } from '../../api/index.ts';
 import { VersionDiffPage } from './VersionDiffPage.tsx';
 
 const mockRecipeApi = vi.mocked(recipeApi);

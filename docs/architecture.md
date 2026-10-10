@@ -3,19 +3,19 @@
 This document is the reference for _how_ the system is structured. Two companion docs cover the
 _why_ and the _flow_:
 
-- [`decisions.md`](decisions.md) — architectural decision records (Hono, JWT, Drizzle ORM, Deno KV,
+- [`decisions.md`](decisions.md) — architectural decision records (Hono, JWT, Drizzle ORM, caching,
   module pattern, etc.)
 - [`request-lifecycle.md`](request-lifecycle.md) — end-to-end trace of a request from the edge to
   the response, including middleware order, validation, error path, and side-effect path
 
 ## Monorepo Structure
 
-BrewForm uses a Deno workspaces monorepo (`deno.json`). Four packages:
+BrewForm uses a pnpm workspaces monorepo (`pnpm-workspace.yaml`). Four packages:
 
 | Package           | Purpose                                       | Runtime                |
 | ----------------- | --------------------------------------------- | ---------------------- |
-| `apps/api`        | Hono backend API                              | Deno Deploy            |
-| `apps/web`        | React SPA frontend                            | Browser (GitHub Pages) |
+| `apps/api`        | Hono backend API                              | Node 24 (tsx)          |
+| `apps/web`        | React SPA frontend                            | Browser (static SPA)   |
 | `packages/shared` | Types, Zod schemas, constants, utils, i18n    | Shared (api + web)     |
 | `packages/db`     | Drizzle schema, migrations, seed data, client | Server (api only)      |
 
@@ -36,7 +36,7 @@ The frontend **never** imports from `@brewform/db`. All type sharing happens thr
 - `@brewform/shared` — types, schemas, constants, utils, i18n
 - `@brewform/db` — Drizzle client, schema, migrations
 
-Both are configured as Deno workspace members in the root `deno.json` (`workspace.members`).
+Both are configured as pnpm workspace members in `pnpm-workspace.yaml` (`packages: ['apps/*', 'packages/*']`).
 
 Among the utilities in `@brewform/shared` is `generateUniqueUsername(baseUsername)`, which appends a suffix to produce a unique username when the base is already taken. Username and email uniqueness is enforced consistently via `isUsernameTaken` and `isEmailTaken` helpers, both of which apply a `deletedAt IS NULL` filter.
 
@@ -58,7 +58,7 @@ modules/
 - **Models use Drizzle relational queries and typed builders** for all database access
 - **Controllers validate with shared Zod schemas** — `@brewform/shared/schemas`
 - **File-level lint suppressions**: modules use
-  `// deno-lint-ignore-file no-explicit-any require-await`
+  `// biome-ignore lint/suspicious/noExplicitAny: <reason>`
 
 ### Hono Context Variables
 
@@ -75,8 +75,8 @@ const router = new Hono<AppEnv>();
 
 ## Cache Architecture
 
-All caching goes through the `CacheProvider` interface — services never call `Deno.openKv()`
-directly:
+All caching goes through the `CacheProvider` interface — services never construct a cache
+backend directly:
 
 ```typescript
 interface CacheProvider {
@@ -89,11 +89,12 @@ interface CacheProvider {
 
 Two implementations:
 
-- **`DenoKVCacheProvider`** — production, uses Deno KV with TTL support
-- **`InMemoryCacheProvider`** — testing, uses an in-process Map
+- **`InMemoryCacheProvider`** — default (and test), uses an in-process Map with TTL support.
+  Cache does not survive restarts.
 
-The active provider is chosen at startup based on `CACHE_DRIVER` env variable and injected into Hono
-context.
+The active provider is chosen at startup based on `CACHE_DRIVER` env variable (default
+`memory`) and injected into Hono context. The interface keeps a Redis/Valkey-backed provider
+a localized follow-up that touches no consumers.
 
 ## Validation
 
@@ -246,17 +247,15 @@ The server handles SIGTERM and SIGINT by:
 
 1. Stopping background jobs
 2. Shutting down the HTTP server
-3. Closing Deno KV connection
-4. Closing postgres-js client (`client.end()`)
-5. Calling `Deno.exit(0)`
+3. Closing postgres-js client (`client.end()`)
+4. Calling `process.exit(0)`
 
 ## Testing
 
-Tests use the Deno test runner with BDD-style syntax from JSR:
+Tests use Vitest with BDD-style syntax:
 
 ```typescript
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 ```
 
 Commands:
@@ -266,46 +265,45 @@ Commands:
 - `make test-shared` — shared package tests only
 - `make test-specific filter=path/to/test.ts` — single test file
 
-Tests run with `--no-check` (type checking done separately via `make check`).
+Tests run without type-checking (type checking done separately via `pnpm run check`).
 All barrel file imports use explicit `.ts` extensions.
 
 ## Code Style & Formatting
 
-BrewForm uses `deno fmt` as the single source of truth for code formatting. The formatter config
-lives in the root `deno.json` (`fmt` key): `lineWidth: 100`, `indentWidth: 2`, `singleQuote`,
-`semiColons: true`.
+BrewForm uses Biome as the single source of truth for code formatting and linting. The config
+lives in `biome.json`: `lineWidth: 100`, `indentWidth: 2`, single quotes, semicolons always.
 
 ### Mandatory `make fmt` before commit
 
 **Run `make fmt` after every batch of edits, before committing or pushing.** Symbolic edits and
 regex replacements (whether from an agent, an IDE, or a manual refactor) preserve logic but may not
-match Deno's exact whitespace rules — trailing commas, line wrapping, indentation, and semicolon
-insertion are all normalised by `deno fmt` in ways that are easy to miss by eye.
+match Biome's exact whitespace rules — trailing commas, line wrapping, indentation, and semicolon
+insertion are all normalised by `biome check --write` in ways that are easy to miss by eye.
 
-CI enforces `deno fmt --check` in both the `ci.yml` quality job and the `pr.yml` check job, and
+CI enforces `pnpm run fmt-check` in both the `ci.yml` quality job and the `pr.yml` check job, and
 **fails the build on any formatting diff**. The pre-commit hook (`.githooks/pre-commit`, enabled via
-`make setup-hooks`) also runs `deno fmt --check` locally, but do not rely on the hook alone — run
+`make setup-hooks`) also runs `pnpm run fmt-check` locally, but do not rely on the hook alone — run
 `make fmt` proactively after each batch of edits, not just at commit time.
 
 ### Commands
 
 | Command | Purpose |
 |---------|---------|
-| `make fmt` | Apply `deno fmt` to all files (in-place) |
+| `make fmt` | Apply `biome check --write` to all files (in-place) |
 | `make fmt-check` | Check formatting without changes (CI uses this) |
-| `make lint` | Run `deno lint` across all workspaces |
-| `make check` | Type-check all workspaces (`deno check`) |
+| `make lint` | Run `biome check` across all workspaces |
+| `make check` | Type-check all workspaces (`tsc --noEmit`) |
 | `make ci` | Full pipeline: `fmt-check` → `lint` → `check` → `build` → `test` |
 
 ### Lint exclusions
 
-The following rules are excluded repo-wide (configured in each workspace's `deno.json`):
-`no-explicit-any`, `require-await`, `no-empty`, `no-import-prefix`, `no-unversioned-import`. Module
-files that need `any` for Drizzle row types or test fixtures use a single file-level directive:
-`// deno-lint-ignore-file no-explicit-any require-await` on line 1.
+The following rules are excluded repo-wide (configured in `biome.json`): see
+`openspec/specs/lint-style/spec.md`. Module files that need `any` for Drizzle row types or test
+fixtures use a single line-level directive:
+`// biome-ignore lint/suspicious/noExplicitAny: <reason>` on the preceding line.
 
 ### Import conventions
 
 - All imports use explicit file extensions (`.ts`, `.tsx`) — no sloppy imports.
-- All npm/JSR specifiers are versioned (e.g. `hono@4.6.14`, `jsr:@std/testing@1.0.10`) — see
-  `deno.json` `imports` and each workspace's `deno.json`.
+- Shared dependency versions are pinned in the `pnpm-workspace.yaml` `catalog` and each
+  workspace's `package.json`.

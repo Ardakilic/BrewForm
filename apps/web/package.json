@@ -1,28 +1,37 @@
 {
   "name": "@brewform/web",
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "preview": "vite preview",
+    "lint": "biome check src/",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "@brewform/shared": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router": "^8.2.0",
-    "@base-ui/react": "^1.6.0"
+    "react-router": "^8.2.0"
   },
   "devDependencies": {
-    "vite": "^8.1.5",
-    "@deno/vite-plugin": "^2.0.2",
-    "@vitejs/plugin-react": "^6.0.3",
-    "tailwindcss": "^4.3.3",
+    "@biomejs/biome": "2.5.15",
     "@tailwindcss/vite": "^4.3.3",
-    "typescript": "^7.0.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "vitest": "^4.1.10",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.10",
+    "fast-check": "^4.9.0",
     "jsdom": "^29.1.1",
-    "fast-check": "^4.9.0"
+    "tailwindcss": "^4.3.3",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "^4.1.10"
   }
 }

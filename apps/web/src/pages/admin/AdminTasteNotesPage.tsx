@@ -1,13 +1,13 @@
+import type { TasteNoteOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useConfirm } from '../../components/ui/Modal.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { createLogger } from '../../utils/logger.ts';
 import { Field } from '../../components/form/Field.tsx';
-import type { TasteNoteOutput } from '@brewform/shared/schemas';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { useConfirm } from '../../components/ui/Modal.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminTasteNotesPage');
 
@@ -29,13 +29,16 @@ export function AdminTasteNotesPage() {
   }, []);
 
   useEffect(() => {
-    api.get<TasteNoteOutput[]>('/taste-notes/flat').then((data) => {
-      setNotes(data);
-      setStatus('ready');
-    }).catch((err) => {
-      log.error({ err }, 'taste notes fetch failed');
-      setStatus('error');
-    });
+    api
+      .get<TasteNoteOutput[]>('/taste-notes/flat')
+      .then((data) => {
+        setNotes(data);
+        setStatus('ready');
+      })
+      .catch((err) => {
+        log.error({ err }, 'taste notes fetch failed');
+        setStatus('error');
+      });
   }, []);
 
   /**
@@ -70,12 +73,13 @@ export function AdminTasteNotesPage() {
    */
   async function handleDelete(id: string) {
     if (
-      !await confirm({
+      !(await confirm({
         titleKey: 'common.confirmDelete',
         bodyKey: 'admin.tasteNotes.deleteConfirm',
         danger: true,
-      })
-    ) return;
+      }))
+    )
+      return;
     log.debug({ tasteNoteId: id }, 'handleDelete started');
     try {
       await api.delete(`/admin/taste-notes/${id}`);
@@ -89,27 +93,27 @@ export function AdminTasteNotesPage() {
 
   return (
     <div>
-      <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('admin.tasteNotes')}
         </h1>
-        <button type='button' onClick={() => setShowForm(!showForm)} className='btn-primary'>
+        <button type="button" onClick={() => setShowForm(!showForm)} className="btn-primary">
           {showForm ? t('common.cancel') : t('admin.tasteNotes.add')}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className='card mb-6'>
-          <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+        <form onSubmit={handleCreate} className="card mb-6">
+          <h2 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             {t('admin.tasteNotes.addTitle')}
           </h2>
-          <div className='space-y-3'>
+          <div className="space-y-3">
             <Field label={`${t('common.name')} *`}>
               <input
-                type='text'
+                type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className='input-field'
+                className="input-field"
                 required
               />
             </Field>
@@ -117,48 +121,52 @@ export function AdminTasteNotesPage() {
               <select
                 value={form.parentId}
                 onChange={(e) => setForm({ ...form, parentId: e.target.value })}
-                className='input-field'
+                className="input-field"
               >
-                <option value=''>{t('admin.tasteNotes.noneTopLevel')}</option>
-                {notes.filter((n) => n.depth === 0).map((n) => (
-                  <option key={n.id} value={n.id}>{n.name}</option>
-                ))}
+                <option value="">{t('admin.tasteNotes.noneTopLevel')}</option>
+                {notes
+                  .filter((n) => n.depth === 0)
+                  .map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name}
+                    </option>
+                  ))}
               </select>
             </Field>
           </div>
-          <button type='submit' className='btn-primary mt-4' disabled={saving}>
+          <button type="submit" className="btn-primary mt-4" disabled={saving}>
             {saving ? t('common.creating') : t('common.create')}
           </button>
-          <p className='mt-2 text-xs' style={{ color: 'var(--warning)' }}>
+          <p className="mt-2 text-xs" style={{ color: 'var(--warning)' }}>
             {t('admin.tasteNotes.cacheWarning')}
           </p>
         </form>
       )}
 
-      {status === 'loading'
-        ? <LoadingState />
-        : status === 'error'
-        ? <ErrorState message={t('admin.tasteNotes.loadError')} />
-        : (
-          <div className='space-y-1'>
-            {notes.map((note) => (
-              <div
-                key={note.id}
-                className='flex items-center justify-between py-2 px-3 rounded hover:opacity-80'
-                style={{ paddingLeft: `${note.depth * 1.5 + 0.75}rem` }}
+      {status === 'loading' ? (
+        <LoadingState />
+      ) : status === 'error' ? (
+        <ErrorState message={t('admin.tasteNotes.loadError')} />
+      ) : (
+        <div className="space-y-1">
+          {notes.map((note) => (
+            <div
+              key={note.id}
+              className="flex items-center justify-between py-2 px-3 rounded hover:opacity-80"
+              style={{ paddingLeft: `${note.depth * 1.5 + 0.75}rem` }}
+            >
+              <span style={{ color: 'var(--text-primary)' }}>{note.name}</span>
+              <button
+                type="button"
+                onClick={() => handleDelete(note.id)}
+                className="btn-danger-text text-xs"
               >
-                <span style={{ color: 'var(--text-primary)' }}>{note.name}</span>
-                <button
-                  type='button'
-                  onClick={() => handleDelete(note.id)}
-                  className='btn-danger-text text-xs'
-                >
-                  {t('common.delete')}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+                {t('common.delete')}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

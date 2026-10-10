@@ -1,5 +1,4 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -9,9 +8,7 @@ const envSchema = z.object({
   LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
   DATABASE_URL: z.string().min(1),
   DATABASE_PROVIDER: z.enum(['postgresql', 'mysql', 'sqlite']).default('postgresql'),
-  CACHE_DRIVER: z.enum(['deno-kv', 'memory']).default('deno-kv'),
-  DENO_KV_URL: z.string().optional(),
-  DENO_KV_ACCESS_TOKEN: z.string().optional(),
+  CACHE_DRIVER: z.enum(['memory']).default('memory'),
   JWT_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
@@ -24,7 +21,10 @@ const envSchema = z.object({
   SMTP_SECURE: z.coerce.boolean().default(false),
   EMAIL_FROM: z.string().default('noreply@brewform.local'),
   OPENAPI_ENABLED: z.coerce.boolean().default(true),
-  ENABLE_REGISTRATION: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
+  ENABLE_REGISTRATION: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   UPLOAD_DIR: z.string().default('./uploads'),
   UPLOAD_MAX_SIZE_BYTES: z.coerce.number().default(10 * 1024 * 1024),
   UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
@@ -44,7 +44,7 @@ describe('Environment Config Schema', () => {
     if (result.success) {
       expect(result.data.APP_PORT).toBe(8000);
       expect(result.data.APP_ENV).toBe('development');
-      expect(result.data.CACHE_DRIVER).toBe('deno-kv');
+      expect(result.data.CACHE_DRIVER).toBe('memory');
       expect(result.data.DATABASE_PROVIDER).toBe('postgresql');
       expect(result.data.JWT_ACCESS_EXPIRY).toBe('15m');
       expect(result.data.JWT_REFRESH_EXPIRY).toBe('7d');
@@ -105,7 +105,7 @@ describe('Environment Config Schema', () => {
   });
 
   it('should accept all valid cache drivers', () => {
-    for (const driver of ['deno-kv', 'memory'] as const) {
+    for (const driver of ['memory'] as const) {
       const result = envSchema.safeParse({
         DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
         JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
@@ -258,60 +258,13 @@ describe('JWT_REMEMBER_ME_EXPIRY', () => {
   });
 });
 
-describe('DENO_KV_URL / DENO_KV_ACCESS_TOKEN', () => {
-  const base = {
-    DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
-    JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
-  };
-
-  it('should be optional (schema parses without them)', () => {
-    const result = envSchema.safeParse({ ...base, CACHE_DRIVER: 'deno-kv' });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.DENO_KV_URL).toBeUndefined();
-      expect(result.data.DENO_KV_ACCESS_TOKEN).toBeUndefined();
-    }
-  });
-
-  it('should parse for memory driver without KV vars', () => {
-    const result = envSchema.safeParse({ ...base, CACHE_DRIVER: 'memory' });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.DENO_KV_URL).toBeUndefined();
-      expect(result.data.DENO_KV_ACCESS_TOKEN).toBeUndefined();
-    }
-  });
-
-  it('should accept DENO_KV_URL and DENO_KV_ACCESS_TOKEN when present', () => {
+describe('CACHE_DRIVER', () => {
+  it('should reject the removed deno-kv driver', () => {
     const result = envSchema.safeParse({
-      ...base,
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
       CACHE_DRIVER: 'deno-kv',
-      DENO_KV_URL: 'http://10.0.0.5:4512',
-      DENO_KV_ACCESS_TOKEN: 'abc123',
     });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.DENO_KV_URL).toBe('http://10.0.0.5:4512');
-      expect(result.data.DENO_KV_ACCESS_TOKEN).toBe('abc123');
-    }
-  });
-
-  it('should infer both fields as `string | undefined`', () => {
-    type Env = z.infer<typeof envSchema>;
-    // Compile-time assertions (verified by `deno check`):
-    //  - `undefined` is assignable to each field  → the field includes `undefined`
-    //  - a `string` is assignable to each field    → the field includes `string`
-    //  - each field is assignable to `string | undefined` → it is no wider than that
-    const urlUndefined: Env['DENO_KV_URL'] = undefined;
-    const urlString: Env['DENO_KV_URL'] = 'http://denokv:4512';
-    const tokenUndefined: Env['DENO_KV_ACCESS_TOKEN'] = undefined;
-    const tokenString: Env['DENO_KV_ACCESS_TOKEN'] = 'token';
-    const urlNarrowed: string | undefined = urlString;
-    const tokenNarrowed: string | undefined = tokenString;
-
-    expect(urlUndefined).toBeUndefined();
-    expect(tokenUndefined).toBeUndefined();
-    expect(urlNarrowed).toBe('http://denokv:4512');
-    expect(tokenNarrowed).toBe('token');
+    expect(result.success).toBe(false);
   });
 });

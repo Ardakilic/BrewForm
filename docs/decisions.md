@@ -10,27 +10,29 @@ For the _what_ (file layout, schema, middleware order), see `architecture.md` an
 
 ---
 
-## ADR-001 — Deno + Deno workspaces (instead of Node + pnpm)
+## ADR-001 — Node 24 + pnpm workspaces (instead of Deno)
 
-**Decision.** Run on the Deno runtime, manage the monorepo with native Deno workspaces
-(`deno.json` `workspace.members`), and keep a `package.json` only for npm dependency declarations
-(Drizzle Kit, type declarations, test runners).
+> Supersedes the original Deno decision below (see `openspec/changes/remove-deno-node24-pnpm/`
+> for the migration). Retained verbatim for history.
 
-**Why.** Deno gives us first-class TypeScript without a build step, fetch/Web-Standards APIs,
-built-in test runner / linter / formatter, and Deno Deploy as a free hosting target. Native Deno
-workspaces let us share packages (`@brewform/shared`, `@brewform/db`) without a Node.js runtime or
-a separate package manager binary. The `package.json` files serve as dependency manifests that both
-Deno's npm compatibility layer and Renovate understand. Task orchestration uses `deno task` with
-explicit `--cwd`-based sub-tasks (e.g. `check:api`, `build:web`, `dev:api`) that compose into
-aggregate `check`, `build`, and `dev` tasks — no external task runner needed.
+**Decision.** Run on the Node 24 LTS runtime, manage the monorepo with pnpm workspaces
+(`pnpm-workspace.yaml` `packages: ['apps/*', 'packages/*']`), with shared version pins in the
+pnpm `catalog:`.
 
-**Trade-off.** A single toolchain simplifies the monorepo. `deno task` handles all build, test,
-lint, and dev workflows. All relative imports use explicit `.ts` extensions — no
-`--unstable-sloppy-imports` flag needed. The Dockerfile uses only Deno; the seed script is
-TypeScript and runs via `deno run --allow-all`.
+**Why.** Node is the boring, hireable stack: Coolify/Nixpacks defaults assume it, every hire
+knows it, and the full toolchain (`tsc`, Vitest, Biome, `tsx`) runs on it. pnpm's strict
+`node_modules` fails on phantom imports, and its `catalog:` maps 1:1 from the old Deno catalog.
+Task orchestration uses root `package.json` `scripts` with per-workspace sub-scripts composed
+via `pnpm --filter` — no external task runner needed.
 
-**Excluded.** Import maps in `deno.json`. All imports use explicit npm/JSR specifiers — see
-`deno.json`.
+**Trade-off.** A `tsc` type-check step and `tsx` for TS execution instead of run-direct; slower
+dev loop, but type-safe and free of strip-types limits. All relative imports use explicit `.ts`
+extensions. The Dockerfile uses only `node:24-bookworm-slim`; the seed script is TypeScript and
+runs via `tsx`.
+
+**Original Deno decision (historical).** Run on the Deno runtime, manage the monorepo with native
+Deno workspaces (`deno.json` `workspace.members`), and keep a `package.json` only for npm
+dependency declarations (Drizzle Kit, type declarations, test runners).
 
 ---
 
@@ -38,8 +40,8 @@ TypeScript and runs via `deno run --allow-all`.
 
 **Decision.** Use Hono as the HTTP framework.
 
-**Why.** Hono is built on Web Standards (`Request`/`Response`), runs unmodified on Deno, Bun, Node,
-and Cloudflare Workers, and ships a tiny, typed core. Its sub-router model (`new Hono<AppEnv>()`)
+**Why.** Hono is built on Web Standards (`Request`/`Response`), runs unmodified on Node,
+Bun, and Cloudflare Workers, and ships a tiny, typed core. Its sub-router model (`new Hono<AppEnv>()`)
 gives us isolated, typed contexts per module without DI machinery.
 
 **Trade-off.** Smaller ecosystem than Express. We accept this because (a) the surface area we need
@@ -53,10 +55,9 @@ need.
 **Decision.** Stateless JWTs. Access token (15 min) used for every request. Refresh token (7 days)
 exchanged for a new access token at the dedicated `/auth/refresh` endpoint.
 
-**Why.** The frontend is a static SPA on a different origin (GitHub Pages) from the API (Deno
-Deploy). Cookies across these origins require `SameSite=None; Secure` plus careful CORS config and
+**Why.** The frontend is a static SPA on a different origin from the API. Cookies across these origins require `SameSite=None; Secure` plus careful CORS config and
 add no real benefit when both tokens are bearer-presented anyway. Stateless JWTs avoid a server-side
-session store and keep the API horizontally scalable on Deno Deploy without sticky routing.
+session store and keep the API horizontally scalable without sticky routing.
 
 **Trade-off.** No server-side revocation: a leaked access token is valid until expiry. Mitigations:
 short access lifetime (15 min), `type: 'access' | 'refresh'` discriminator on the payload to prevent
@@ -106,18 +107,19 @@ can hit the service without HTTP, (b) the model boundary is the only place we to
 
 ---
 
-## ADR-006 — Deno KV behind a `CacheProvider` interface (instead of Redis)
+## ADR-006 — In-memory cache behind a `CacheProvider` interface (Redis/Valkey later)
 
-**Decision.** Use Deno KV for caching, but route every cache call through `CacheProvider`
-(`get`/`set`/`delete`/`deleteByPrefix`). No code is allowed to call `Deno.openKv()` directly.
+**Decision.** Cache in memory by default (`CACHE_DRIVER=memory`), but route every cache call
+through `CacheProvider` (`get`/`set`/`delete`/`deleteByPrefix`). No code is allowed to construct
+a cache backend directly.
 
-**Why.** Deno KV is built into Deno Deploy with no extra service to provision. The interface lets us
-swap to Redis or Valkey later without touching consumers — the rate limiter, taste-note cache, and
-compatibility-matrix cache all see the same API.
+**Why.** No sidecar to provision — the API runs anywhere with zero extra services. The interface
+lets us swap to Redis or Valkey later without touching consumers — the rate limiter,
+taste-note cache, and compatibility-matrix cache all see the same API.
 
-**Trade-off.** Deno KV is per-region, eventually consistent, and limited in expressiveness compared
-to Redis. We avoid relying on advanced Redis features (pub/sub, scripting) precisely so the swap
-stays cheap.
+**Trade-off.** The in-memory cache is per-process and does not survive restarts. We avoid relying
+on advanced Redis features (pub/sub, scripting) precisely so the swap stays cheap. A
+Redis/Valkey-backed provider is an explicit follow-up, not this change.
 
 ---
 
@@ -132,7 +134,7 @@ the single source of truth for both the API validator and the frontend form. Sam
 `BrewMethod`, etc.
 
 **Trade-off.** The shared package is reachable from the browser, so it can't import anything
-Deno-only or Node-only. The split between "shared (browser-safe)" and "db (server-only)" is enforced
+server-only. The split between "shared (browser-safe)" and "db (server-only)" is enforced
 by import discipline — the dependency graph in `architecture.md` is the contract.
 
 ---
@@ -157,7 +159,7 @@ record.
 **Decision.** Thumbnails are produced in the browser via `<canvas>` (max 600 px, JPEG q=0.85) and
 uploaded alongside the original. The server stores the bytes; it does not resize.
 
-**Why.** Avoids dragging a WASM image library (`@imagemagick/magick-wasm` or similar) into the Deno
+**Why.** Avoids dragging a WASM image library (`@imagemagick/magick-wasm` or similar) into the server
 runtime, which would inflate cold-start time and the Docker image. The browser already has the
 original file in memory and a free `<canvas>` resize.
 

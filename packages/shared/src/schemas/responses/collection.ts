@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { VISIBILITY_VALUES } from '../../constants/index.ts';
-import { RecipeListItemOutputSchema } from './recipe.ts';
 import { RecipeAuthorMiniSchema } from './_shared.ts';
+import { RecipeListItemOutputSchema } from './recipe.ts';
 
 /**
  * Collection Output Schemas — mirrors the shapes returned by
@@ -85,9 +85,7 @@ export const PublicCollectionListItemOutputSchema = CollectionListItemOutputSche
   author: RecipeAuthorMiniSchema,
 });
 /** Inferred type of {@link PublicCollectionListItemOutputSchema}. */
-export type PublicCollectionListItemOutput = z.infer<
-  typeof PublicCollectionListItemOutputSchema
->;
+export type PublicCollectionListItemOutput = z.infer<typeof PublicCollectionListItemOutputSchema>;
 
 /**
  * Collections-containing-recipe list item (US-9/D99.5) — the minimal shape

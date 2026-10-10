@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EquipmentOutput, RecipeListItemOutput } from '@brewform/shared/schemas';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import type { EquipmentOutput, RecipeListItemOutput } from '@brewform/shared/schemas';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type RecipeListResponse, RecipeListView } from './RecipeListView.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -15,10 +15,28 @@ vi.mock('react-router', async (importOriginal) => {
   };
 });
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useTranslation: vi.fn(),
-}));
+vi.mock('../../contexts/I18nContext.tsx', async () => {
+  const { createContext } = await import('react');
+  const { t: fallbackT } = await import('@brewform/shared/i18n');
+  const useTranslation = vi.fn();
+  return {
+    I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    useTranslation,
+    // `useSafeT()` reads `I18nContext` directly (not via `useTranslation`), so the
+    // mocked context delegates to the mocked hook — per-test `mockReturnValue`
+    // setups apply to both translation paths.
+    I18nContext: createContext({
+      get locale() {
+        return useTranslation()?.locale ?? 'en';
+      },
+      setLocale: () => undefined,
+      get t() {
+        return useTranslation()?.t ?? fallbackT;
+      },
+      availableLocales: ['en', 'tr'],
+    }),
+  };
+});
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
   SEOHead: () => null,
@@ -179,20 +197,22 @@ function renderView(
     ...rest
   } = props;
   const router = createMemoryRouter(
-    [{
-      path: '/',
-      element: (
-        <RecipeListView
-          source={source}
-          recipesResponse={recipesResponse}
-          equipment={equipment}
-          tasteNotes={tasteNotes}
-          pageTitle={pageTitle}
-          seoDescription={seoDescription}
-          {...rest}
-        />
-      ),
-    }],
+    [
+      {
+        path: '/',
+        element: (
+          <RecipeListView
+            source={source}
+            recipesResponse={recipesResponse}
+            equipment={equipment}
+            tasteNotes={tasteNotes}
+            pageTitle={pageTitle}
+            seoDescription={seoDescription}
+            {...rest}
+          />
+        ),
+      },
+    ],
     { initialEntries },
   );
   return render(<RouterProvider router={router} />);
@@ -307,9 +327,9 @@ describe('RecipeListView', () => {
 
   it('should update the URL when typing in the author input', () => {
     const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue(
-      [new URLSearchParams(), setSearchParams] as ReturnType<typeof useSearchParams>,
-    );
+    mockUseSearchParams.mockReturnValue([new URLSearchParams(), setSearchParams] as ReturnType<
+      typeof useSearchParams
+    >);
     renderView({ recipesResponse: { data: [], meta: {} } });
     fireEvent.change(screen.getByPlaceholderText('Search by author...'), {
       target: { value: 'alice' },
@@ -321,11 +341,10 @@ describe('RecipeListView', () => {
 
   it('should render and clear an active author filter badge', () => {
     const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue(
-      [new URLSearchParams({ author: 'Alice' }), setSearchParams] as ReturnType<
-        typeof useSearchParams
-      >,
-    );
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ author: 'Alice' }),
+      setSearchParams,
+    ] as ReturnType<typeof useSearchParams>);
     renderView({ recipesResponse: { data: [], meta: {} } });
     expect(screen.getByText('Alice')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Author filter' }));
