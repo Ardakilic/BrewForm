@@ -153,10 +153,12 @@ still surface in production logs.
 
 ## Background jobs
 
-Long-running and periodic work (badge evaluation, cache refresh) is registered with
-`registerJob({ name, intervalMs, handler })` in `apps/api/src/utils/jobs/index.ts`. `startJobs()` is
-called once at server boot; `stopJobs()` is called from the shutdown handler. Each invocation is
-wrapped in a try/catch so a failing job never tears down the scheduler.
+Periodic work (badge evaluation) is a `node-cron` schedule registered at module
+top-level in `apps/api/src/utils/jobs/cron.ts` (`0 * * * *`, named
+`evaluate-badges`). Importing `main.ts` registers it; there is no
+start/stop API. Each invocation is wrapped in a try/catch so a failing job
+never tears down the scheduler. Shutdown does not cancel the schedule —
+`process.exit(0)` ends the process.
 
 ## Graceful shutdown
 
@@ -179,4 +181,4 @@ terminated forcibly — keep job intervals comfortably below that window.
 | Add a new DB query                 | the module's `model.ts` only — services never import `drizzle-orm`                                   |
 | Add cross-cutting behaviour        | a new middleware in `apps/api/src/middleware/`, registered in `main.ts` or the relevant sub-router      |
 | Send an email after a social event | a new template in `apps/api/src/templates/email/` plus a helper in `apps/api/src/utils/notify/index.ts` |
-| Schedule periodic work             | `registerJob({...})` in a new file under `apps/api/src/utils/jobs/`                                     |
+| Schedule periodic work             | a `cron.schedule(...)` call in `apps/api/src/utils/jobs/cron.ts` (imported by `main.ts`)                |

@@ -230,24 +230,25 @@ Calls are fire-and-forget so SMTP failures never block social actions. See
 
 ## Background Jobs
 
-Simple interval-based job scheduler:
+Hourly badge evaluation runs as a `node-cron` schedule:
 
 ```typescript
-registerJob('badge-evaluation', 3600000, evaluateBadges);
-startJobs(); // Called on server startup
-stopJobs(); // Called on graceful shutdown
+// apps/api/src/utils/jobs/cron.ts — registered by importing main.ts.
+// No start/stop API; the schedule lives as long as the process.
+cron.schedule('0 * * * *', evaluateAllBadges, { name: 'evaluate-badges' });
 ```
 
-Jobs are registered with a name, interval (ms), and handler function. The scheduler is
-started/stopped with the server lifecycle.
+The handler is wrapped in a try/catch so a failing run never tears down the
+scheduler. Shutdown does not cancel the schedule — `process.exit(0)` ends it
+with the process.
 
 ## Graceful Shutdown
 
 The server handles SIGTERM and SIGINT by:
 
-1. Stopping background jobs
-2. Shutting down the HTTP server
-3. Closing postgres-js client (`client.end()`)
+1. Shutting down the HTTP server
+2. Closing postgres-js client (`client.end()`)
+3. Closing the email transporter
 4. Calling `process.exit(0)`
 
 ## Testing

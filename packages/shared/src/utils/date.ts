@@ -26,7 +26,9 @@ function toPlainDate(date: Date | string): PlainYMD {
   if (Number.isNaN(date.getTime())) {
     throw new RangeError('Invalid Date');
   }
-  return { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() };
+  // Date objects are read in UTC so the calendar day never depends on the
+  // machine's time zone (matches the TZ-independent string branch above).
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
 }
 
 function formatPlainDate(d: PlainYMD, fmt: string): string {

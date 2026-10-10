@@ -3,7 +3,7 @@
  *
  * Startup sequence:
  *   1. Initialize cache driver (in-memory)
- *   2. Register node-cron jobs (badge evaluation, cache refresh)
+ *   2. Register node-cron jobs (hourly badge evaluation)
  *   3. Bind HTTP server via @hono/node-server
  *   4. Register SIGTERM/SIGINT handlers for graceful shutdown
  *
