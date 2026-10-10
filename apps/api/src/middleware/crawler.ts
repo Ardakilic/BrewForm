@@ -1,7 +1,7 @@
-import type { Context, Next } from 'hono';
-import { getRecipeMeta } from '../modules/recipe/service.ts';
 import { escapeHtml, escapeHtmlAttr } from '@brewform/shared/utils';
+import type { Context, Next } from 'hono';
 import { config } from '../config/index.ts';
+import { getRecipeMeta } from '../modules/recipe/service.ts';
 import { createLogger } from '../utils/logger/index.ts';
 
 const log = createLogger('crawler');
@@ -41,8 +41,8 @@ export async function crawlerMiddleware(c: Context, next: Next) {
     const description = meta.productName
       ? `${meta.brewMethod || 'Coffee'} recipe using ${meta.productName}`
       : `${meta.brewMethod || 'Coffee'} recipe by ${
-        meta.author?.displayName || meta.author?.username || 'BrewForm user'
-      }`;
+          meta.author?.displayName || meta.author?.username || 'BrewForm user'
+        }`;
 
     const imageTag = meta.photoUrl
       ? `

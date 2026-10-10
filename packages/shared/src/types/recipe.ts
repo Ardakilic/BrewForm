@@ -9,11 +9,12 @@
  * every downstream consumer continues to compile unchanged while the source
  * of truth lives in one place.
  */
+
+import type { AdditionalPreparationCategory as _AdditionalPreparationCategory } from '../constants/additional-preparation-types.ts';
 import type { BrewMethodValue } from '../constants/brew-methods.ts';
 import type { DrinkTypeValue } from '../constants/drink-types.ts';
 import type { EmojiTagKey } from '../constants/emoji-tags.ts';
 import type { VisibilityValue } from '../constants/visibility.ts';
-import type { AdditionalPreparationCategory as _AdditionalPreparationCategory } from '../constants/additional-preparation-types.ts';
 
 /** Visibility state for a recipe. Drafts are only visible to the author. */
 export type Visibility = VisibilityValue;

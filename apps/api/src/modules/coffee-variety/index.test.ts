@@ -1,8 +1,7 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
 import coffeeVarietyRouter, { deps } from './index.ts';
 
@@ -53,7 +52,7 @@ function createTestApp() {
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID());
     c.set('userId', 'test-user-id');
-    // deno-lint-ignore no-explicit-any -- test cast
+    // biome-ignore lint/suspicious/noExplicitAny: test cast
     c.set('user', { id: 'test-user-id', isAdmin: false } as any);
     await next();
   });

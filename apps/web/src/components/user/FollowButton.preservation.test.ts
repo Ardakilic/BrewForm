@@ -11,13 +11,12 @@
  *   The empty `catch {}` block is never reached on a 2xx response, so no error state is set.
  *
  * Testing approach:
- *   Since this is a Deno environment without a DOM renderer, the toggle logic is extracted
+ *   Since this is a Node environment without a DOM renderer, the toggle logic is extracted
  *   into a pure state-machine function that mirrors the UNFIXED FollowButton implementation.
  *   This lets us test the state transitions directly without React/DOM.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // State machine types — mirrors the React state in FollowButton
@@ -84,21 +83,22 @@ function createSucceedingApiClient(statusCode: number = 200): MockApiClient {
  * Creates a mock API client that counts how many times each method is called.
  * The API resolves after a configurable delay so we can interleave calls.
  */
-function createCountingApiClient(
-  delayMs: number = 0,
-): { client: MockApiClient; callCount: () => number } {
+function createCountingApiClient(delayMs: number = 0): {
+  client: MockApiClient;
+  callCount: () => number;
+} {
   let count = 0;
   const client: MockApiClient = {
     post: (_endpoint: string, _body: unknown) => {
       count++;
       return new Promise((resolve) =>
-        setTimeout(() => resolve({ status: 200, success: true }), delayMs)
+        setTimeout(() => resolve({ status: 200, success: true }), delayMs),
       );
     },
     delete: (_endpoint: string) => {
       count++;
       return new Promise((resolve) =>
-        setTimeout(() => resolve({ status: 200, success: true }), delayMs)
+        setTimeout(() => resolve({ status: 200, success: true }), delayMs),
       );
     },
   };
@@ -110,85 +110,73 @@ function createCountingApiClient(
 // ---------------------------------------------------------------------------
 
 describe('Preservation 2.4 — FollowButton successful toggle preserves state without error', () => {
-  it(
-    'mock API returns 201 for follow → following becomes true and no error state is set',
-    async () => {
-      // Preservation: when the API succeeds (201 Created), the button should flip to following=true
-      // and no error should be set. This must PASS on unfixed code.
-      const initialState: FollowButtonState = {
-        following: false,
-        loading: false,
-        error: null,
-      };
-      const api = createSucceedingApiClient(201);
+  it('mock API returns 201 for follow → following becomes true and no error state is set', async () => {
+    // Preservation: when the API succeeds (201 Created), the button should flip to following=true
+    // and no error should be set. This must PASS on unfixed code.
+    const initialState: FollowButtonState = {
+      following: false,
+      loading: false,
+      error: null,
+    };
+    const api = createSucceedingApiClient(201);
 
-      const resultState = await toggle_buggy(initialState, 'user-xyz', api);
+    const resultState = await toggle_buggy(initialState, 'user-xyz', api);
 
-      // following must be toggled to true
-      expect(resultState.following).toBe(true);
-      // no error state should be set (the catch block is never reached on success)
-      expect(resultState.error).toBeNull();
-      // loading must be reset to false
-      expect(resultState.loading).toBe(false);
-    },
-  );
+    // following must be toggled to true
+    expect(resultState.following).toBe(true);
+    // no error state should be set (the catch block is never reached on success)
+    expect(resultState.error).toBeNull();
+    // loading must be reset to false
+    expect(resultState.loading).toBe(false);
+  });
 
-  it(
-    'mock API returns 200 for unfollow → following becomes false and no error state is set',
-    async () => {
-      // Preservation: when the API succeeds (200 OK), the button should flip to following=false
-      // and no error should be set. This must PASS on unfixed code.
-      const initialState: FollowButtonState = {
-        following: true,
-        loading: false,
-        error: null,
-      };
-      const api = createSucceedingApiClient(200);
+  it('mock API returns 200 for unfollow → following becomes false and no error state is set', async () => {
+    // Preservation: when the API succeeds (200 OK), the button should flip to following=false
+    // and no error should be set. This must PASS on unfixed code.
+    const initialState: FollowButtonState = {
+      following: true,
+      loading: false,
+      error: null,
+    };
+    const api = createSucceedingApiClient(200);
 
-      const resultState = await toggle_buggy(initialState, 'user-xyz', api);
+    const resultState = await toggle_buggy(initialState, 'user-xyz', api);
 
-      // following must be toggled to false
-      expect(resultState.following).toBe(false);
-      // no error state should be set (the catch block is never reached on success)
-      expect(resultState.error).toBeNull();
-      // loading must be reset to false
-      expect(resultState.loading).toBe(false);
-    },
-  );
+    // following must be toggled to false
+    expect(resultState.following).toBe(false);
+    // no error state should be set (the catch block is never reached on success)
+    expect(resultState.error).toBeNull();
+    // loading must be reset to false
+    expect(resultState.loading).toBe(false);
+  });
 
-  it(
-    'successful follow call leaves loading as false after completion',
-    async () => {
-      // Preservation: after a successful API call, the loading state must be reset.
-      const initialState: FollowButtonState = {
-        following: false,
-        loading: false,
-        error: null,
-      };
-      const api = createSucceedingApiClient(201);
+  it('successful follow call leaves loading as false after completion', async () => {
+    // Preservation: after a successful API call, the loading state must be reset.
+    const initialState: FollowButtonState = {
+      following: false,
+      loading: false,
+      error: null,
+    };
+    const api = createSucceedingApiClient(201);
 
-      const resultState = await toggle_buggy(initialState, 'user-abc', api);
+    const resultState = await toggle_buggy(initialState, 'user-abc', api);
 
-      expect(resultState.loading).toBe(false);
-    },
-  );
+    expect(resultState.loading).toBe(false);
+  });
 
-  it(
-    'successful unfollow call leaves loading as false after completion',
-    async () => {
-      // Preservation: after a successful API call, the loading state must be reset.
-      const initialState: FollowButtonState = {
-        following: true,
-        loading: false,
-        error: null,
-      };
-      const api = createSucceedingApiClient(200);
+  it('successful unfollow call leaves loading as false after completion', async () => {
+    // Preservation: after a successful API call, the loading state must be reset.
+    const initialState: FollowButtonState = {
+      following: true,
+      loading: false,
+      error: null,
+    };
+    const api = createSucceedingApiClient(200);
 
-      const resultState = await toggle_buggy(initialState, 'user-abc', api);
+    const resultState = await toggle_buggy(initialState, 'user-abc', api);
 
-      expect(resultState.loading).toBe(false);
-    },
-  );
+    expect(resultState.loading).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -215,86 +203,77 @@ describe('Preservation 2.5 — duplicate click while request in flight is ignore
    *   The second call must return early without touching the API client.
    */
 
-  it(
-    'second toggle call with loading=true returns early and does not call the API',
-    async () => {
-      // Arrange: a counting API client so we can verify call count
-      const { client, callCount } = createCountingApiClient(10);
+  it('second toggle call with loading=true returns early and does not call the API', async () => {
+    // Arrange: a counting API client so we can verify call count
+    const { client, callCount } = createCountingApiClient(10);
 
-      const initialState: FollowButtonState = {
-        following: false,
-        loading: false,
-        error: null,
-      };
+    const initialState: FollowButtonState = {
+      following: false,
+      loading: false,
+      error: null,
+    };
 
-      // Act: first click — starts the request, sets loading=true internally
-      const firstCallPromise = toggle_buggy(initialState, 'user-dup', client);
+    // Act: first click — starts the request, sets loading=true internally
+    const firstCallPromise = toggle_buggy(initialState, 'user-dup', client);
 
-      // Simulate the in-flight state that React would expose after setLoading(true)
-      const inFlightState: FollowButtonState = { ...initialState, loading: true };
+    // Simulate the in-flight state that React would expose after setLoading(true)
+    const inFlightState: FollowButtonState = { ...initialState, loading: true };
 
-      // Second click arrives while the first is still in flight
-      const secondResult = await toggle_buggy(inFlightState, 'user-dup', client);
+    // Second click arrives while the first is still in flight
+    const secondResult = await toggle_buggy(inFlightState, 'user-dup', client);
 
-      // Wait for the first call to complete
-      await firstCallPromise;
+    // Wait for the first call to complete
+    await firstCallPromise;
 
-      // Assert: the API was called exactly once (the second toggle was a no-op)
-      expect(callCount()).toBe(1);
+    // Assert: the API was called exactly once (the second toggle was a no-op)
+    expect(callCount()).toBe(1);
 
-      // Assert: the second call returned the in-flight state unchanged
-      expect(secondResult).toEqual(inFlightState);
-    },
-  );
+    // Assert: the second call returned the in-flight state unchanged
+    expect(secondResult).toEqual(inFlightState);
+  });
 
-  it(
-    'three rapid clicks result in exactly one API call',
-    async () => {
-      // Arrange
-      const { client, callCount } = createCountingApiClient(10);
+  it('three rapid clicks result in exactly one API call', async () => {
+    // Arrange
+    const { client, callCount } = createCountingApiClient(10);
 
-      const initialState: FollowButtonState = {
-        following: false,
-        loading: false,
-        error: null,
-      };
+    const initialState: FollowButtonState = {
+      following: false,
+      loading: false,
+      error: null,
+    };
 
-      // Act: first click fires the real request
-      const firstCallPromise = toggle_buggy(initialState, 'user-triple', client);
+    // Act: first click fires the real request
+    const firstCallPromise = toggle_buggy(initialState, 'user-triple', client);
 
-      // Second and third clicks arrive while loading=true
-      const inFlightState: FollowButtonState = { ...initialState, loading: true };
-      const secondResult = await toggle_buggy(inFlightState, 'user-triple', client);
-      const thirdResult = await toggle_buggy(inFlightState, 'user-triple', client);
+    // Second and third clicks arrive while loading=true
+    const inFlightState: FollowButtonState = { ...initialState, loading: true };
+    const secondResult = await toggle_buggy(inFlightState, 'user-triple', client);
+    const thirdResult = await toggle_buggy(inFlightState, 'user-triple', client);
 
-      await firstCallPromise;
+    await firstCallPromise;
 
-      // Only one API call should have been made
-      expect(callCount()).toBe(1);
+    // Only one API call should have been made
+    expect(callCount()).toBe(1);
 
-      // Both duplicate calls returned the in-flight state unchanged
-      expect(secondResult).toEqual(inFlightState);
-      expect(thirdResult).toEqual(inFlightState);
-    },
-  );
+    // Both duplicate calls returned the in-flight state unchanged
+    expect(secondResult).toEqual(inFlightState);
+    expect(thirdResult).toEqual(inFlightState);
+  });
 
-  it(
-    'toggle with loading=true returns the exact same state object (no mutation)',
-    async () => {
-      // Arrange
-      const { client } = createCountingApiClient();
+  it('toggle with loading=true returns the exact same state object (no mutation)', async () => {
+    // Arrange
+    const { client } = createCountingApiClient();
 
-      const inFlightState: FollowButtonState = {
-        following: true,
-        loading: true,
-        error: null,
-      };
+    const inFlightState: FollowButtonState = {
+      following: true,
+      loading: true,
+      error: null,
+    };
 
-      // Act: call toggle while already loading
-      const result = await toggle_buggy(inFlightState, 'user-noop', client);
+    // Act: call toggle while already loading
+    const result = await toggle_buggy(inFlightState, 'user-noop', client);
 
-      // Assert: the returned state is identical to the input (early return)
-      expect(result).toBe(inFlightState); // same reference — no new object created
-    },
-  );
+    // Assert: the returned state is identical to the input (early return)
+    expect(result).toBe(inFlightState); // same reference — no new object created
+  });
 });

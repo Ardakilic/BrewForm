@@ -1,8 +1,8 @@
-import { bodyLimit } from 'hono/body-limit';
 import type { MiddlewareHandler } from 'hono';
-import { error } from '../utils/response/index.ts';
-import { createLogger } from '../utils/logger/index.ts';
+import { bodyLimit } from 'hono/body-limit';
 import type { AppEnv } from '../types/hono.ts';
+import { createLogger } from '../utils/logger/index.ts';
+import { error } from '../utils/response/index.ts';
 
 const log = createLogger('bodyLimit');
 
@@ -29,14 +29,17 @@ const PHOTOS_ROUTE_RE = /^\/api\/v1\/photos(?:\/|$)/;
 const jsonBodyLimit = bodyLimit({
   maxSize: 1024 * 1024, // 1 MB
   onError: (c) => {
-    log.warn({
-      event: 'payload_too_large',
-      status: 413,
-      requestId: c.get('requestId'),
-      path: c.req.path,
-      method: c.req.method,
-      contentLength: c.req.header('content-length'),
-    }, 'Request body exceeds 1 MB limit');
+    log.warn(
+      {
+        event: 'payload_too_large',
+        status: 413,
+        requestId: c.get('requestId'),
+        path: c.req.path,
+        method: c.req.method,
+        contentLength: c.req.header('content-length'),
+      },
+      'Request body exceeds 1 MB limit',
+    );
     return error(c, 'PAYLOAD_TOO_LARGE', 'Request body too large', 413);
   },
 });

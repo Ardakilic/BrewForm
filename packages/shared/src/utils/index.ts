@@ -13,7 +13,11 @@ export {
   formatVolume,
   formatWeight,
 } from './conversion.ts';
-
+export type { PaginationCursor } from './cursor.ts';
+export { decodeCursor, encodeCursor } from './cursor.ts';
+export { formatDate, isDateBefore } from './date.ts';
+export { escapeHtml, escapeHtmlAttr } from './html.ts';
+export { MAX_MENTIONS, parseMentions } from './mention.ts';
 /** Coffee brewing metrics: brew ratio, extraction yield, flow rate. */
 export {
   computeBrewRatio,
@@ -21,16 +25,11 @@ export {
   computeExtractionYieldFromTds,
   computeFlowRate,
 } from './metrics.ts';
+export { ensureUniqueSlug, generateSlug } from './slug.ts';
+export { generateUniqueUsername } from './username.ts';
 /** Recipe validation: hard (blocks save) and soft (warnings only) checks. */
 export {
   validateBrewMethodCompatibility,
   validateGrindDateNotBeforeRoastDate,
   validateSoftWarnings,
 } from './validation.ts';
-export { formatDate, isDateBefore } from './date.ts';
-export { ensureUniqueSlug, generateSlug } from './slug.ts';
-export { escapeHtml, escapeHtmlAttr } from './html.ts';
-export { generateUniqueUsername } from './username.ts';
-export { MAX_MENTIONS, parseMentions } from './mention.ts';
-export { decodeCursor, encodeCursor } from './cursor.ts';
-export type { PaginationCursor } from './cursor.ts';

@@ -1,7 +1,4 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq, inArray } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import {
   equipment,
@@ -15,9 +12,11 @@ import {
   tasteNotes,
   users,
 } from '@brewform/db/schema';
+import { eq, inArray } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
-describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createRecipeWithRelations', () => {
   let user: { id: string };
   let tasteNote: { id: string };
   let equipmentRow: { id: string };
@@ -55,27 +54,26 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
 
   afterEach(async () => {
     for (const recipeId of createdRecipeIds) {
-      const versionRows = await db.select({ id: recipeVersions.id })
+      const versionRows = await db
+        .select({ id: recipeVersions.id })
         .from(recipeVersions)
         .where(eq(recipeVersions.recipeId, recipeId));
       const versionIds = versionRows.map((v) => v.id);
 
       if (versionIds.length) {
-        await db.delete(recipeTasteNotes).where(
-          inArray(recipeTasteNotes.recipeVersionId, versionIds),
-        );
-        await db.delete(recipeEquipment).where(
-          inArray(recipeEquipment.recipeVersionId, versionIds),
-        );
-        await db.delete(recipeAdditionalPreparations).where(
-          inArray(recipeAdditionalPreparations.recipeVersionId, versionIds),
-        );
-        await db.delete(recipeVersionPhotos).where(
-          inArray(recipeVersionPhotos.recipeVersionId, versionIds),
-        );
-        await db.delete(recipeVersions).where(
-          inArray(recipeVersions.id, versionIds),
-        );
+        await db
+          .delete(recipeTasteNotes)
+          .where(inArray(recipeTasteNotes.recipeVersionId, versionIds));
+        await db
+          .delete(recipeEquipment)
+          .where(inArray(recipeEquipment.recipeVersionId, versionIds));
+        await db
+          .delete(recipeAdditionalPreparations)
+          .where(inArray(recipeAdditionalPreparations.recipeVersionId, versionIds));
+        await db
+          .delete(recipeVersionPhotos)
+          .where(inArray(recipeVersionPhotos.recipeVersionId, versionIds));
+        await db.delete(recipeVersions).where(inArray(recipeVersions.id, versionIds));
       }
       await db.delete(photos).where(eq(photos.recipeId, recipeId));
       await db.delete(recipes).where(eq(recipes.id, recipeId));
@@ -139,9 +137,10 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     expect(recipeRow.visibility).toBe(input.visibility);
     expect(recipeRow.currentVersionId).not.toBeNull();
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
     expect(recipeRow.currentVersionId).toBe(versionRow.id);
     expect(recipeRow.likeCount).toBe(0);
     expect(recipeRow.commentCount).toBe(0);
@@ -167,9 +166,10 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
     expect(versionRow).toBeDefined();
     expect(versionRow.versionNumber).toBe(1);
     expect(versionRow.productName).toBe('Test Beans');
@@ -194,12 +194,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const tasteNoteRows = await db.select().from(recipeTasteNotes).where(
-      eq(recipeTasteNotes.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const tasteNoteRows = await db
+      .select()
+      .from(recipeTasteNotes)
+      .where(eq(recipeTasteNotes.recipeVersionId, versionRow.id));
     expect(tasteNoteRows.length).toBe(1);
     expect(tasteNoteRows[0].recipeVersionId).toBe(versionRow.id);
     expect(tasteNoteRows[0].tasteNoteId).toBe(tasteNote.id);
@@ -214,12 +216,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const tasteNoteRows = await db.select().from(recipeTasteNotes).where(
-      eq(recipeTasteNotes.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const tasteNoteRows = await db
+      .select()
+      .from(recipeTasteNotes)
+      .where(eq(recipeTasteNotes.recipeVersionId, versionRow.id));
     expect(tasteNoteRows.length).toBe(1);
     expect(tasteNoteRows[0].createdAt).toBeInstanceOf(Date);
     expect(tasteNoteRows[0].createdAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
@@ -230,12 +234,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const equipmentRows = await db.select().from(recipeEquipment).where(
-      eq(recipeEquipment.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const equipmentRows = await db
+      .select()
+      .from(recipeEquipment)
+      .where(eq(recipeEquipment.recipeVersionId, versionRow.id));
     expect(equipmentRows.length).toBe(1);
     expect(equipmentRows[0].createdAt).toBeInstanceOf(Date);
     expect(equipmentRows[0].createdAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
@@ -273,12 +279,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const photoRows = await db.select().from(recipeVersionPhotos).where(
-      eq(recipeVersionPhotos.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const photoRows = await db
+      .select()
+      .from(recipeVersionPhotos)
+      .where(eq(recipeVersionPhotos.recipeVersionId, versionRow.id));
     expect(photoRows.length).toBe(1);
     expect(photoRows[0].createdAt).toBeInstanceOf(Date);
     expect(photoRows[0].createdAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
@@ -291,12 +299,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const tasteNoteRows = await db.select().from(recipeTasteNotes).where(
-      eq(recipeTasteNotes.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const tasteNoteRows = await db
+      .select()
+      .from(recipeTasteNotes)
+      .where(eq(recipeTasteNotes.recipeVersionId, versionRow.id));
     expect(tasteNoteRows.length).toBe(1);
     expect(tasteNoteRows[0].intensity).toBe(1);
   });
@@ -306,12 +316,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const tasteNoteRows = await db.select().from(recipeTasteNotes).where(
-      eq(recipeTasteNotes.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const tasteNoteRows = await db
+      .select()
+      .from(recipeTasteNotes)
+      .where(eq(recipeTasteNotes.recipeVersionId, versionRow.id));
     expect(tasteNoteRows.length).toBe(0);
   });
 
@@ -320,12 +332,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const tasteNoteRows = await db.select().from(recipeTasteNotes).where(
-      eq(recipeTasteNotes.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const tasteNoteRows = await db
+      .select()
+      .from(recipeTasteNotes)
+      .where(eq(recipeTasteNotes.recipeVersionId, versionRow.id));
     expect(tasteNoteRows.length).toBe(0);
   });
 
@@ -334,12 +348,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const equipmentRows = await db.select().from(recipeEquipment).where(
-      eq(recipeEquipment.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const equipmentRows = await db
+      .select()
+      .from(recipeEquipment)
+      .where(eq(recipeEquipment.recipeVersionId, versionRow.id));
     expect(equipmentRows.length).toBe(1);
     expect(equipmentRows[0].recipeVersionId).toBe(versionRow.id);
     expect(equipmentRows[0].equipmentId).toBe(equipmentRow.id);
@@ -355,12 +371,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const prepRows = await db.select().from(recipeAdditionalPreparations).where(
-      eq(recipeAdditionalPreparations.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const prepRows = await db
+      .select()
+      .from(recipeAdditionalPreparations)
+      .where(eq(recipeAdditionalPreparations.recipeVersionId, versionRow.id));
     expect(prepRows.length).toBe(2);
 
     const milk = prepRows.find((p) => p.name === 'Milk');
@@ -409,12 +427,14 @@ describe('createRecipeWithRelations', { sanitizeOps: false, sanitizeResources: f
     const result = await model.createRecipeWithRelations(input);
     createdRecipeIds.push(result!.id);
 
-    const [versionRow] = await db.select().from(recipeVersions).where(
-      eq(recipeVersions.recipeId, result!.id),
-    );
-    const photoRows = await db.select().from(recipeVersionPhotos).where(
-      eq(recipeVersionPhotos.recipeVersionId, versionRow.id),
-    );
+    const [versionRow] = await db
+      .select()
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    const photoRows = await db
+      .select()
+      .from(recipeVersionPhotos)
+      .where(eq(recipeVersionPhotos.recipeVersionId, versionRow.id));
     expect(photoRows.length).toBe(1);
     expect(photoRows[0].recipeVersionId).toBe(versionRow.id);
     expect(photoRows[0].photoId).toBe(photoId);

@@ -1,5 +1,4 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { BeanOutputSchema } from './bean.ts';
 
 /** Normalize to JSON wire shape (Dates → ISO strings) before parsing. */

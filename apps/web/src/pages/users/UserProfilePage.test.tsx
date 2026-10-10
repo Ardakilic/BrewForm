@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
@@ -59,9 +59,9 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { useSearchParams } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { ApiError, api } from '../../api/client.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
-import { api, ApiError } from '../../api/client.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { loader, UserProfilePage } from './UserProfilePage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
@@ -370,9 +370,10 @@ describe('UserProfilePage — brews tab (F02)', () => {
     meUser = { username: 'diana' };
     mockUseAuth.mockReturnValue(selfAuth as ReturnType<typeof useAuth>);
     const setParams = vi.fn();
-    mockUseSearchParams.mockReturnValue(
-      [new URLSearchParams({ tab: 'brews' }), setParams] as ReturnType<typeof useSearchParams>,
-    );
+    mockUseSearchParams.mockReturnValue([
+      new URLSearchParams({ tab: 'brews' }),
+      setParams,
+    ] as ReturnType<typeof useSearchParams>);
     mockApiGetWithMeta.mockResolvedValue({
       success: true,
       data: [mockBrewLog],

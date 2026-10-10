@@ -1,6 +1,5 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check';
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import enJson from './en.json' with { type: 'json' };
 import trJson from './tr.json' with { type: 'json' };
 
@@ -24,13 +23,10 @@ describe('i18n key parity', () => {
     const enKeys = Object.keys(enJson);
 
     fc.assert(
-      fc.property(
-        fc.integer({ min: 0, max: enKeys.length - 1 }),
-        (index) => {
-          const key = enKeys[index];
-          expect(trJson[key as keyof typeof trJson]).toBeDefined();
-        },
-      ),
+      fc.property(fc.integer({ min: 0, max: enKeys.length - 1 }), (index) => {
+        const key = enKeys[index];
+        expect(trJson[key as keyof typeof trJson]).toBeDefined();
+      }),
       { numRuns: 100 },
     );
   });

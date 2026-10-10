@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { BrewLogListItemOutput } from '@brewform/shared/schemas';
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import type { BrewLogListItemOutput } from '@brewform/shared/schemas';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BrewLogCard } from './BrewLogCard.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -57,10 +57,9 @@ function makeLog(overrides: Partial<BrewLogListItemOutput> = {}): BrewLogListIte
 }
 
 function renderCard(props: Parameters<typeof BrewLogCard>[0]) {
-  const router = createMemoryRouter(
-    [{ path: '/', element: <BrewLogCard {...props} /> }],
-    { initialEntries: ['/'] },
-  );
+  const router = createMemoryRouter([{ path: '/', element: <BrewLogCard {...props} /> }], {
+    initialEntries: ['/'],
+  });
   return render(<RouterProvider router={router} />);
 }
 

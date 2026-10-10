@@ -1,12 +1,12 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { createLogger } from '@/utils/logger.ts';
+import { authApi } from '../../api/index.ts';
+import { Field } from '../../components/form/Field.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { authApi } from '../../api/index.ts';
-import { createLogger } from '@/utils/logger.ts';
-import { Field } from '../../components/form/Field.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
 
 const log = createLogger('RegisterPage');
 
@@ -79,28 +79,28 @@ export function RegisterPage() {
   }
 
   if (statusLoading) {
-    return <LoadingState className='mx-auto max-w-md px-6' />;
+    return <LoadingState className="mx-auto max-w-md px-6" />;
   }
 
   if (!registrationEnabled) {
     return (
-      <div className='mx-auto max-w-md px-6 py-12'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="mx-auto max-w-md px-6 py-12">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('auth.register.title')}
         </h1>
         <div
-          className='mt-6 rounded p-6'
+          className="mt-6 rounded p-6"
           style={{
             backgroundColor: 'var(--bg-secondary)',
             border: '1px solid var(--border-primary)',
           }}
         >
-          <p className='text-base' style={{ color: 'var(--text-primary)' }}>
+          <p className="text-base" style={{ color: 'var(--text-primary)' }}>
             {t('auth.register.registrationClosed')}
           </p>
-          <p className='mt-3 text-sm' style={{ color: 'var(--text-secondary)' }}>
+          <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
             {t('auth.register.hasAccount')}{' '}
-            <Link to='/login' style={{ color: 'var(--accent-primary)' }}>
+            <Link to="/login" style={{ color: 'var(--accent-primary)' }}>
               {t('auth.register.logIn')}
             </Link>
           </p>
@@ -110,37 +110,35 @@ export function RegisterPage() {
   }
 
   return (
-    <div className='mx-auto max-w-md px-6 py-12'>
-      <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+    <div className="mx-auto max-w-md px-6 py-12">
+      <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
         {t('auth.register.title')}
       </h1>
-      {error && <ErrorState message={error} className='mt-4' />}
-      <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
-        <Field label={t('auth.email')} htmlFor='email'>
-          {
-            /*
+      {error && <ErrorState message={error} className="mt-4" />}
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        <Field label={t('auth.email')} htmlFor="email">
+          {/*
             D40: 'you@example.com' (and 'coffee_lover' for username) are locale-neutral
             example values, not prose, so they are intentionally left untranslated.
-          */
-          }
+          */}
           <input
-            id='email'
-            type='email'
+            id="email"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder='you@example.com'
-            className='input-field'
+            placeholder="you@example.com"
+            className="input-field"
             required
           />
         </Field>
-        <Field label={t('auth.username')} htmlFor='username'>
+        <Field label={t('auth.username')} htmlFor="username">
           <input
-            id='username'
-            type='text'
+            id="username"
+            type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder='coffee_lover'
-            className='input-field'
+            placeholder="coffee_lover"
+            className="input-field"
             required
           />
         </Field>
@@ -151,38 +149,39 @@ export function RegisterPage() {
               <span style={{ color: 'var(--text-tertiary)' }}>({t('common.optional')})</span>
             </>
           }
-          htmlFor='displayName'
+          htmlFor="displayName"
         >
           <input
-            id='displayName'
-            type='text'
+            id="displayName"
+            type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder={t('auth.register.displayName.placeholder')}
-            className='input-field'
+            className="input-field"
           />
         </Field>
         <div>
-          <Field label={t('auth.password')} htmlFor='password'>
+          <Field label={t('auth.password')} htmlFor="password">
             <input
-              id='password'
-              type='password'
+              id="password"
+              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('auth.password.placeholder')}
-              className='input-field'
+              className="input-field"
               required
               minLength={8}
               maxLength={128}
             />
           </Field>
           {password.length > 0 && (
-            <ul className='mt-1 text-xs space-y-0.5' style={{ color: 'var(--text-tertiary)' }}>
+            <ul className="mt-1 text-xs space-y-0.5" style={{ color: 'var(--text-tertiary)' }}>
               <li
                 style={{
-                  color: password.length >= 8 && password.length <= 128
-                    ? 'var(--success)'
-                    : 'var(--text-tertiary)',
+                  color:
+                    password.length >= 8 && password.length <= 128
+                      ? 'var(--success)'
+                      : 'var(--text-tertiary)',
                 }}
               >
                 {password.length >= 8 && password.length <= 128 ? '\u2713' : '\u25CB'}{' '}
@@ -220,24 +219,24 @@ export function RegisterPage() {
             </ul>
           )}
         </div>
-        <Field label={t('auth.confirmPassword')} htmlFor='confirmPassword'>
+        <Field label={t('auth.confirmPassword')} htmlFor="confirmPassword">
           <input
-            id='confirmPassword'
-            type='password'
+            id="confirmPassword"
+            type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder={t('auth.register.confirmPassword.placeholder')}
-            className='input-field'
+            className="input-field"
             required
           />
         </Field>
-        <button type='submit' className='btn-primary' disabled={loading}>
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? t('auth.register.creating') : t('nav.register')}
         </button>
       </form>
-      <p className='mt-4 text-sm' style={{ color: 'var(--text-secondary)' }}>
+      <p className="mt-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
         {t('auth.register.hasAccount')}{' '}
-        <Link to='/login' style={{ color: 'var(--accent-primary)' }}>
+        <Link to="/login" style={{ color: 'var(--accent-primary)' }}>
           {t('auth.register.logIn')}
         </Link>
       </p>

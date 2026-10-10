@@ -24,16 +24,16 @@ vi.mock('../../utils/notification-events.ts', () => ({
 
 // Stub the dropdown so bell tests stay focused on the badge + toggle.
 vi.mock('./NotificationDropdown.tsx', () => ({
-  NotificationDropdown: () => <div data-testid='dropdown' />,
+  NotificationDropdown: () => <div data-testid="dropdown" />,
 }));
 
 // ── Imports (after all vi.mock calls) ──
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { notificationApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { NOTIFICATIONS_CHANGED_EVENT } from '../../utils/notification-events.ts';
 import { NotificationBell } from './NotificationBell.tsx';
 
@@ -101,7 +101,6 @@ describe('NotificationBell', () => {
     expect(mockUnreadCount).toHaveBeenCalledTimes(1);
 
     mockUnreadCount.mockResolvedValue({ count: 5 });
-    // deno-lint-ignore require-await -- act() requires async wrapper
     await act(async () => {
       globalThis.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     });

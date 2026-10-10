@@ -34,12 +34,7 @@ function axisAngle(i: number): number {
 /**
  * Compute the (x, y) point on a given axis at a given radius from center.
  */
-function axisPoint(
-  cx: number,
-  cy: number,
-  radius: number,
-  i: number,
-): [number, number] {
+function axisPoint(cx: number, cy: number, radius: number, i: number): [number, number] {
   const angle = axisAngle(i);
   return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
 }
@@ -69,10 +64,7 @@ function textAnchor(x: number, cx: number): 'start' | 'middle' | 'end' {
  * Determine the dominant-baseline for a label based on its y position
  * relative to the center.
  */
-function dominantBaseline(
-  y: number,
-  cy: number,
-): 'auto' | 'middle' | 'hanging' {
+function dominantBaseline(y: number, cy: number): 'auto' | 'middle' | 'hanging' {
   const delta = y - cy;
   if (delta > 2) return 'hanging';
   if (delta < -2) return 'auto';
@@ -84,11 +76,7 @@ function dominantBaseline(
  * guide polygons and positioned labels; scale auto-fits to the max
  * value (minimum 3) unless `maxValue` is given.
  */
-export function ScaaRadarChart({
-  categoryValues,
-  maxValue,
-  size = 300,
-}: ScaaRadarChartProps) {
+export function ScaaRadarChart({ categoryValues, maxValue, size = 300 }: ScaaRadarChartProps) {
   const t = useSafeT();
   const cx = size / 2;
   const cy = size / 2;
@@ -107,30 +95,28 @@ export function ScaaRadarChart({
     const r = (value / effectiveMax) * maxRadius;
     return axisPoint(cx, cy, r, i);
   });
-  const dataPolygonPoints = dataPoints
-    .map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`)
-    .join(' ');
+  const dataPolygonPoints = dataPoints.map(([x, y]) => `${x.toFixed(3)},${y.toFixed(3)}`).join(' ');
 
   return (
     <svg
       viewBox={`0 0 ${size} ${size}`}
       width={size}
       height={size}
-      role='img'
+      role="img"
       aria-label={t('a11y.scaaRadarChart')}
       style={{ display: 'block', overflow: 'visible' }}
     >
       {/* Axis lines from center to each vertex */}
-      {SCAA_CATEGORIES.map((_, i) => {
+      {SCAA_CATEGORIES.map((cat, i) => {
         const [x, y] = axisPoint(cx, cy, maxRadius, i);
         return (
           <line
-            key={`axis-${i}`}
+            key={`axis-${cat}`}
             x1={cx}
             y1={cy}
             x2={x}
             y2={y}
-            stroke='var(--border-secondary)'
+            stroke="var(--border-secondary)"
             strokeWidth={1}
           />
         );
@@ -141,8 +127,8 @@ export function ScaaRadarChart({
         <polygon
           key={`guide-${fraction}`}
           points={polygonPoints(cx, cy, maxRadius * fraction)}
-          fill='none'
-          stroke='var(--border-primary)'
+          fill="none"
+          stroke="var(--border-primary)"
           strokeWidth={1}
         />
       ))}
@@ -150,9 +136,9 @@ export function ScaaRadarChart({
       {/* Data polygon */}
       <polygon
         points={dataPolygonPoints}
-        fill='var(--accent-primary)'
+        fill="var(--accent-primary)"
         fillOpacity={0.3}
-        stroke='var(--accent-primary)'
+        stroke="var(--accent-primary)"
         strokeWidth={2}
       />
 
@@ -162,11 +148,11 @@ export function ScaaRadarChart({
         const [lx, ly] = axisPoint(cx, cy, labelRadius, i);
         return (
           <text
-            key={`label-${i}`}
+            key={`label-${cat}`}
             x={lx.toFixed(3)}
             y={ly.toFixed(3)}
             fontSize={10}
-            fill='var(--text-secondary)'
+            fill="var(--text-secondary)"
             textAnchor={textAnchor(lx, cx)}
             dominantBaseline={dominantBaseline(ly, cy)}
           >

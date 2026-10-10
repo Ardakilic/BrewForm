@@ -1,9 +1,9 @@
+import type { CollectionListItemOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
 import { ApiError, collectionApi } from '../../api/index.ts';
-import type { CollectionListItemOutput } from '@brewform/shared/schemas';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { Modal } from '../ui/Modal.tsx';
 import { createLogger } from '../../utils/logger.ts';
+import { Modal } from '../ui/Modal.tsx';
 import { CollectionVisibilityBadge } from './CollectionVisibilityBadge.tsx';
 
 const log = createLogger('AddToCollectionModal');
@@ -35,7 +35,8 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
     if (!open) return;
     log.debug({ recipeId }, 'AddToCollectionModal opened');
     setLoading(true);
-    collectionApi.list({ recipeId })
+    collectionApi
+      .list({ recipeId })
       .then((res) => setCollections(res.data))
       .catch((err) => log.error({ err }, 'Failed to load collections'))
       .finally(() => setLoading(false));
@@ -47,12 +48,12 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
       prev.map((c) =>
         c.id === collectionId
           ? {
-            ...c,
-            containsRecipe: contains,
-            recipeCount: Math.max(0, c.recipeCount + (contains ? 1 : -1)),
-          }
-          : c
-      )
+              ...c,
+              containsRecipe: contains,
+              recipeCount: Math.max(0, c.recipeCount + (contains ? 1 : -1)),
+            }
+          : c,
+      ),
     );
   };
 
@@ -78,10 +79,7 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
         // the collection, so interpret the toggle as a removal instead.
         try {
           await collectionApi.removeRecipe(collection.id, recipeId);
-          log.debug(
-            { collectionId: collection.id, recipeId },
-            'Recipe removed from collection',
-          );
+          log.debug({ collectionId: collection.id, recipeId }, 'Recipe removed from collection');
           applyMembership(collection.id, false);
         } catch (removeErr) {
           log.error({ err: removeErr }, 'Failed to toggle recipe in collection');
@@ -129,97 +127,91 @@ export function AddToCollectionModal({ recipeId, open, onClose }: AddToCollectio
       open={open}
       onClose={onClose}
       ariaLabel={t('collection.modal.title')}
-      panelClassName='max-w-md p-6 max-h-[80vh] overflow-y-auto'
+      panelClassName="max-w-md p-6 max-h-[80vh] overflow-y-auto"
     >
-      <div className='flex items-center justify-between mb-4'>
-        <h2 className='text-lg font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('collection.modal.title')}
         </h2>
-        <button
-          type='button'
-          onClick={onClose}
-          className='text-xl'
-          aria-label={t('common.close')}
-        >
+        <button type="button" onClick={onClose} className="text-xl" aria-label={t('common.close')}>
           ×
         </button>
       </div>
 
-      {loading
-        ? <p style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</p>
-        : (
-          <div className='space-y-2 mb-4'>
-            {collections.length === 0
-              ? (
-                <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
-                  {t('collection.modal.selectCollection')}
-                </p>
-              )
-              : (
-                collections.map((col) => (
-                  <button
-                    key={col.id}
-                    type='button'
-                    onClick={() => handleToggle(col)}
-                    disabled={toggleLoading === col.id}
-                    className='w-full flex items-center justify-between p-3 rounded border text-left hover:bg-black/5 disabled:opacity-50'
-                    style={{ borderColor: 'var(--border-primary)' }}
-                  >
-                    <div>
-                      <span className='font-medium' style={{ color: 'var(--text-primary)' }}>
-                        {col.name}
-                      </span>
-                      <CollectionVisibilityBadge
-                        visibility={col.visibility}
-                        className='ml-2 text-xs'
-                        style={{ color: 'var(--text-tertiary)' }}
-                      />
-                    </div>
-                    <span className='flex items-center gap-2'>
-                      {col.containsRecipe === true && (
-                        <span
-                          aria-label={t('collection.modal.alreadyIn')}
-                          title={t('collection.modal.alreadyIn')}
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          ✓
-                        </span>
-                      )}
-                      <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
-                        {col.recipeCount}
-                      </span>
+      {loading ? (
+        <p style={{ color: 'var(--text-secondary)' }}>{t('common.loading')}</p>
+      ) : (
+        <div className="space-y-2 mb-4">
+          {collections.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {t('collection.modal.selectCollection')}
+            </p>
+          ) : (
+            collections.map((col) => (
+              <button
+                key={col.id}
+                type="button"
+                onClick={() => handleToggle(col)}
+                disabled={toggleLoading === col.id}
+                className="w-full flex items-center justify-between p-3 rounded border text-left hover:bg-black/5 disabled:opacity-50"
+                style={{ borderColor: 'var(--border-primary)' }}
+              >
+                <div>
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {col.name}
+                  </span>
+                  <CollectionVisibilityBadge
+                    visibility={col.visibility}
+                    className="ml-2 text-xs"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  />
+                </div>
+                <span className="flex items-center gap-2">
+                  {col.containsRecipe === true && (
+                    <span
+                      role="img"
+                      aria-label={t('collection.modal.alreadyIn')}
+                      title={t('collection.modal.alreadyIn')}
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      ✓
                     </span>
-                  </button>
-                ))
-              )}
-          </div>
-        )}
+                  )}
+                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    {col.recipeCount}
+                  </span>
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
 
-      <div className='border-t pt-4' style={{ borderColor: 'var(--border-primary)' }}>
-        <h3 className='text-sm font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
+      <div className="border-t pt-4" style={{ borderColor: 'var(--border-primary)' }}>
+        <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
           {t('collection.modal.createNew')}
         </h3>
         <input
-          type='text'
+          type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t('collection.create.name')}
-          className='input text-sm w-full mb-2'
+          className="input text-sm w-full mb-2"
         />
         <select
           value={newVisibility}
           onChange={(e) => setNewVisibility(e.target.value)}
-          className='input text-sm w-full mb-2'
+          className="input text-sm w-full mb-2"
         >
-          <option value='private'>{t('collection.visibility.private')}</option>
-          <option value='unlisted'>{t('collection.visibility.unlisted')}</option>
-          <option value='public'>{t('collection.visibility.public')}</option>
+          <option value="private">{t('collection.visibility.private')}</option>
+          <option value="unlisted">{t('collection.visibility.unlisted')}</option>
+          <option value="public">{t('collection.visibility.public')}</option>
         </select>
         <button
-          type='button'
+          type="button"
           onClick={handleCreate}
           disabled={creating || !newName.trim()}
-          className='btn-primary text-sm w-full min-h-11'
+          className="btn-primary text-sm w-full min-h-11"
         >
           {creating ? t('collection.create.creating') : t('collection.create.submit')}
         </button>

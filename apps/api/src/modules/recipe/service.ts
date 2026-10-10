@@ -8,23 +8,28 @@
  *
  * All DB access is delegated to `model.ts` — no Drizzle calls from this module.
  */
-import type { z } from 'zod';
-import { sanitizeText } from '../../utils/sanitize.ts';
-import * as model from './model.ts';
-import { computeBrewRatio, computeFlowRate } from '@brewform/shared/utils';
-import { ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
-import {
+
+import type {
   RecipeCreateSchema,
   RecipeFilterSchema,
+  RecipeMerge,
   RecipeUpdateSchema,
 } from '@brewform/shared/schemas';
-import type { RecipeMerge } from '@brewform/shared/schemas';
-import { createLogger } from '../../utils/logger/index.ts';
-import { decodeCursor } from '@brewform/shared/utils';
-import { notifyFollowersOfNewRecipe } from '../../utils/notify/index.ts';
-import { createLikeNotification } from '../notification/service.ts';
-import { evaluateBadges } from '../badge/service.ts';
 import type { BrewMethod } from '@brewform/shared/types';
+import {
+  computeBrewRatio,
+  computeFlowRate,
+  decodeCursor,
+  ensureUniqueSlug,
+  generateSlug,
+} from '@brewform/shared/utils';
+import type { z } from 'zod';
+import { createLogger } from '../../utils/logger/index.ts';
+import { notifyFollowersOfNewRecipe } from '../../utils/notify/index.ts';
+import { sanitizeText } from '../../utils/sanitize.ts';
+import { evaluateBadges } from '../badge/service.ts';
+import { createLikeNotification } from '../notification/service.ts';
+import * as model from './model.ts';
 
 /** Type alias for the result returned by model.findById / model.findBySlug (rich relational query). */
 type RecipeWithRelations = NonNullable<Awaited<ReturnType<typeof model.findById>>> | undefined;
@@ -109,9 +114,7 @@ export function checkEquipmentCompatibility(
 ): string[] {
   const incompatible: string[] = [];
   for (const eqItem of equipmentItems) {
-    const rule = rules.find(
-      (r) => r.brewMethod === brewMethod && r.equipmentType === eqItem.type,
-    );
+    const rule = rules.find((r) => r.brewMethod === brewMethod && r.equipmentType === eqItem.type);
     if (rule && !rule.compatible) {
       incompatible.push(`${eqItem.type} is not compatible with ${brewMethod}`);
     }
@@ -136,10 +139,10 @@ async function validateEquipmentCompatibility(
   );
 
   if (incompatible.length) {
-    throw Object.assign(
-      new Error('EQUIPMENT_INCOMPATIBLE'),
-      { code: 'EQUIPMENT_INCOMPATIBLE', details: incompatible },
-    );
+    throw Object.assign(new Error('EQUIPMENT_INCOMPATIBLE'), {
+      code: 'EQUIPMENT_INCOMPATIBLE',
+      details: incompatible,
+    });
   }
 }
 
@@ -161,10 +164,7 @@ async function validateEquipmentCompatibility(
  * @param data     - Creation payload (validated Zod schema from `@brewform/shared`).
  * @returns The complete recipe object with version, relations, and author summary.
  */
-export async function createRecipe(
-  authorId: string,
-  data: RecipeCreateInput,
-) {
+export async function createRecipe(authorId: string, data: RecipeCreateInput) {
   logger.debug({ authorId }, 'createRecipe started');
   await validateEquipmentCompatibility(data.brewMethod, data.equipmentIds ?? []);
 
@@ -182,12 +182,14 @@ export async function createRecipe(
     }
   }
 
-  const brewRatio = data.groundWeightGrams && data.extractionVolumeMl
-    ? computeBrewRatio(data.groundWeightGrams, data.extractionVolumeMl)
-    : null;
-  const flowRate = data.extractionVolumeMl && data.extractionTimeSeconds
-    ? computeFlowRate(data.extractionVolumeMl, data.extractionTimeSeconds)
-    : null;
+  const brewRatio =
+    data.groundWeightGrams && data.extractionVolumeMl
+      ? computeBrewRatio(data.groundWeightGrams, data.extractionVolumeMl)
+      : null;
+  const flowRate =
+    data.extractionVolumeMl && data.extractionTimeSeconds
+      ? computeFlowRate(data.extractionVolumeMl, data.extractionTimeSeconds)
+      : null;
 
   const finalRecipe = await model.createRecipeWithRelations({
     authorId,
@@ -260,11 +262,7 @@ export async function createRecipe(
  * @throws `RECIPE_NOT_FOUND` if the recipe does not exist.
  * @throws `FORBIDDEN` if the requesting user is not the recipe author.
  */
-export async function updateRecipe(
-  recipeId: string,
-  authorId: string,
-  data: RecipeUpdateInput,
-) {
+export async function updateRecipe(recipeId: string, authorId: string, data: RecipeUpdateInput) {
   logger.debug({ recipeId, authorId }, 'updateRecipe started');
   const recipe = await model.findById(recipeId);
   if (!recipe) throw new Error('RECIPE_NOT_FOUND');
@@ -283,18 +281,20 @@ export async function updateRecipe(
       );
     }
 
-    const brewRatio = data.groundWeightGrams || data.extractionVolumeMl
-      ? computeBrewRatio(
-        data.groundWeightGrams ?? latestVersion.groundWeightGrams ?? 0,
-        data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
-      )
-      : latestVersion.brewRatio;
-    const flowRate = data.extractionVolumeMl || data.extractionTimeSeconds
-      ? computeFlowRate(
-        data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
-        data.extractionTimeSeconds ?? latestVersion.extractionTimeSeconds ?? 0,
-      )
-      : latestVersion.flowRate;
+    const brewRatio =
+      data.groundWeightGrams || data.extractionVolumeMl
+        ? computeBrewRatio(
+            data.groundWeightGrams ?? latestVersion.groundWeightGrams ?? 0,
+            data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
+          )
+        : latestVersion.brewRatio;
+    const flowRate =
+      data.extractionVolumeMl || data.extractionTimeSeconds
+        ? computeFlowRate(
+            data.extractionVolumeMl ?? latestVersion.extractionVolumeMl ?? 0,
+            data.extractionTimeSeconds ?? latestVersion.extractionTimeSeconds ?? 0,
+          )
+        : latestVersion.flowRate;
 
     const version = await model.createVersion({
       recipeId: recipe.id,
@@ -337,7 +337,10 @@ export async function updateRecipe(
     } else {
       const previousPhotos = await model.getVersionPhotos(latestVersion.id);
       if (previousPhotos.length) {
-        await model.insertVersionPhotos(version.id, previousPhotos.map((vp) => vp.photoId));
+        await model.insertVersionPhotos(
+          version.id,
+          previousPhotos.map((vp) => vp.photoId),
+        );
       }
     }
 
@@ -549,7 +552,7 @@ export async function listRecipes(
       throw new Error('VALIDATION_ERROR: INVALID_CURSOR');
     }
 
-    let result;
+    let result: Awaited<ReturnType<typeof model.findCursor>>;
     try {
       result = await model.findCursor(where, cursor, perPage, sortOrder, filters.includeTotal);
     } catch (err) {
@@ -635,10 +638,7 @@ export async function listStarredRecipes(
   const deprecations: { tasteNoteId?: boolean } = {};
   if (!filters.tasteNoteIds && filters.tasteNoteId) {
     deprecations.tasteNoteId = true;
-    logger.warn(
-      { filter: 'tasteNoteId', userId, requestId },
-      'Deprecated query parameter used',
-    );
+    logger.warn({ filter: 'tasteNoteId', userId, requestId }, 'Deprecated query parameter used');
   }
 
   const result = await model.findStarred(userId, filters, page, perPage);
@@ -818,8 +818,12 @@ export function getMergedIds(
   if (choice === 'v1') return (list1 ?? []).map((x) => x[idField] as string);
   if (choice === 'v2') return (list2 ?? []).map((x) => x[idField] as string);
   const ids = new Set<string>();
-  (list1 ?? []).forEach((x) => ids.add(x[idField] as string));
-  (list2 ?? []).forEach((x) => ids.add(x[idField] as string));
+  (list1 ?? []).forEach((x) => {
+    ids.add(x[idField] as string);
+  });
+  (list2 ?? []).forEach((x) => {
+    ids.add(x[idField] as string);
+  });
   return Array.from(ids);
 }
 

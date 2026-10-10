@@ -7,8 +7,8 @@
  * **Validates: Requirements 8.1, 8.2**
  */
 
-import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import {
   aggregateByCategory,
   mapToScaaCategory,
@@ -22,11 +22,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Build a minimal TasteNoteForChart with the given category and intensity. */
-function makeNote(
-  rootCategoryName: string,
-  intensity: number,
-  id = 'note-1',
-): TasteNoteForChart {
+function makeNote(rootCategoryName: string, intensity: number, id = 'note-1'): TasteNoteForChart {
   return {
     tasteNoteId: id,
     intensity,
@@ -101,10 +97,7 @@ describe('aggregateByCategory — unit tests', () => {
   });
 
   it('two notes in Fruity with intensities 1 and 3 → Fruity=4', () => {
-    const notes = [
-      makeNote('Fruity', 1, 'note-1'),
-      makeNote('Fruity', 3, 'note-2'),
-    ];
+    const notes = [makeNote('Fruity', 1, 'note-1'), makeNote('Fruity', 3, 'note-2')];
     const result = aggregateByCategory(notes);
 
     expect(result.values['Fruity']).toBe(4);
@@ -229,18 +222,15 @@ describe('aggregateByCategory — Property 7: Radar chart category aggregation',
    */
   it('always returns exactly 9 keys for any input', () => {
     fc.assert(
-      fc.property(
-        fc.array(tasteNoteArbitrary, { minLength: 0, maxLength: 30 }),
-        (notes) => {
-          const result = aggregateByCategory(notes);
-          const keys = Object.keys(result.values);
+      fc.property(fc.array(tasteNoteArbitrary, { minLength: 0, maxLength: 30 }), (notes) => {
+        const result = aggregateByCategory(notes);
+        const keys = Object.keys(result.values);
 
-          expect(keys).toHaveLength(9);
-          for (const cat of SCAA_CATEGORIES) {
-            expect(keys).toContain(cat);
-          }
-        },
-      ),
+        expect(keys).toHaveLength(9);
+        for (const cat of SCAA_CATEGORIES) {
+          expect(keys).toContain(cat);
+        }
+      }),
       { numRuns: 100 },
     );
   });
@@ -252,23 +242,14 @@ describe('aggregateByCategory — Property 7: Radar chart category aggregation',
    */
   it('sum of all category values equals sum of all note intensities', () => {
     fc.assert(
-      fc.property(
-        fc.array(tasteNoteArbitrary, { minLength: 0, maxLength: 30 }),
-        (notes) => {
-          const result = aggregateByCategory(notes);
+      fc.property(fc.array(tasteNoteArbitrary, { minLength: 0, maxLength: 30 }), (notes) => {
+        const result = aggregateByCategory(notes);
 
-          const totalCategorySum = SCAA_CATEGORIES.reduce(
-            (acc, cat) => acc + result.values[cat],
-            0,
-          );
-          const totalIntensitySum = notes.reduce(
-            (acc, note) => acc + note.intensity,
-            0,
-          );
+        const totalCategorySum = SCAA_CATEGORIES.reduce((acc, cat) => acc + result.values[cat], 0);
+        const totalIntensitySum = notes.reduce((acc, note) => acc + note.intensity, 0);
 
-          expect(totalCategorySum).toBe(totalIntensitySum);
-        },
-      ),
+        expect(totalCategorySum).toBe(totalIntensitySum);
+      }),
       { numRuns: 100 },
     );
   });
@@ -280,16 +261,13 @@ describe('aggregateByCategory — Property 7: Radar chart category aggregation',
    */
   it('all category values are non-negative', () => {
     fc.assert(
-      fc.property(
-        fc.array(tasteNoteArbitrary, { minLength: 0, maxLength: 30 }),
-        (notes) => {
-          const result = aggregateByCategory(notes);
+      fc.property(fc.array(tasteNoteArbitrary, { minLength: 0, maxLength: 30 }), (notes) => {
+        const result = aggregateByCategory(notes);
 
-          for (const cat of SCAA_CATEGORIES) {
-            expect(result.values[cat]).toBeGreaterThanOrEqual(0);
-          }
-        },
-      ),
+        for (const cat of SCAA_CATEGORIES) {
+          expect(result.values[cat]).toBeGreaterThanOrEqual(0);
+        }
+      }),
       { numRuns: 100 },
     );
   });

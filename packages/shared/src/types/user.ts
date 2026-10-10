@@ -97,16 +97,10 @@ export interface User {
  * `apps/api/src/modules/auth/service.ts`, which extends `User` with
  * `passwordHash` and uses `Date` for timestamps.
  */
-export interface AuthUser extends
-  Pick<
+export interface AuthUser
+  extends Pick<
     User,
-    | 'id'
-    | 'email'
-    | 'username'
-    | 'displayName'
-    | 'avatarUrl'
-    | 'isAdmin'
-    | 'onboardingCompleted'
+    'id' | 'email' | 'username' | 'displayName' | 'avatarUrl' | 'isAdmin' | 'onboardingCompleted'
   > {
   /** ISO 8601 string or null — `Date | null` serialised to string by the API */
   emailVerifiedAt: string | null;

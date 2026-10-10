@@ -1,5 +1,4 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { EQUIPMENT_TYPE_VALUES } from '../constants/equipment-types.ts';
 import {
   EquipmentCreateSchema,

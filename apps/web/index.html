@@ -46,7 +46,7 @@
 
     <!-- Resource hints: preconnect to API origin (adjust domain for production) -->
     <!--
-      If the API is on the same origin (e.g., Deno Deploy serving both SPA and API),
+      If the API is on the same origin (e.g., a single-origin deployment serving both SPA and API),
       these hints are unnecessary and can be removed. Add them when the API is on a
       separate domain (e.g., api.brewform.com).
     -->
@@ -60,8 +60,8 @@
   </head>
   <body>
     <script>
-    if (sessionStorage.redirect) {
-      var redirect = sessionStorage.redirect;
+    var redirect = sessionStorage.redirect;
+    if (redirect) {
       delete sessionStorage.redirect;
       if (
         typeof redirect === 'string' &&

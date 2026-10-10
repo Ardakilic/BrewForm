@@ -34,11 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     log.debug({ theme: newTheme }, 'ThemeContext theme changed');
   }, []);
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 }
 
 /** Accesses the theme context; throws when used outside {@link ThemeProvider}. */

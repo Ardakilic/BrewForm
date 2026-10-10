@@ -23,32 +23,29 @@ encountered during the production rollout to `brewform.cc`.
         │                                                     │          ▼
         │  ┌───────────────┐   ┌───────────────┐              │   Cloudflare R2
         │  │ web (Docker    │   │ api (Docker    │             │   bucket: brewform-uploads
-        │  │ Image, Caddy   │   │ Image, Deno)   │─── S3 ──────┼──▶ (custom domain cdn.*)
-        │  │ :80)           │   │ :8000          │             │
-        │  └───────────────┘   └──┬─────────┬───┘             │
-        │                          │         │                 │
-        │            ┌─────────────┘         └──────────┐      │
-        │            ▼                                  ▼      │
-        │  ┌───────────────────┐            ┌───────────────┐ │
-        │  │ PostgreSQL         │            │ denokv         │ │
-        │  │ (Coolify-managed)  │            │ (Docker Compose│ │
-        │  │ postgresql-<uuid>  │            │  sidecar)      │ │
-        │  └───────────────────┘            │ denokv-<uuid>  │ │
-        │                                    │ :4512, /data   │ │
-        │                                    └───────────────┘ │
+        │  │ Image, Caddy   │   │ Image, Node /  │─── S3 ──────┼──▶ (custom domain cdn.*)
+        │  │ :80)           │   │ tsx) :8000     │             │
+        │  └───────────────┘   └──┬──────────────┘             │
+        │                          │                            │
+        │            ┌─────────────┘                            │
+        │            ▼                                          │
+        │  ┌───────────────────┐                                │
+        │  │ PostgreSQL         │                                │
+        │  │ (Coolify-managed)  │                                │
+        │  │ postgresql-<uuid>  │                                │
+        │  └───────────────────┘                                │
         └─────────────────────────────────────────────────────┘
                                    │ SMTP
                                    ▼
                           Mailtrap (live sending)
 ```
 
-**Four Coolify resources** + two external services:
+**Three Coolify resources** + two external services:
 
 | Resource | Type | Purpose | Internal name |
 |---|---|---|---|
 | `brewform-db` | Managed Database (PostgreSQL) | app data | `postgresql-<uuid>` |
-| `denokv` | **Docker Compose** | remote Deno KV cache | `denokv-<uuid>` |
-| `brewform-api` | Docker Image | the Hono/Deno API | (n/a, has FQDN) |
+| `brewform-api` | Docker Image | the Hono/Node API | (n/a, has FQDN) |
 | `brewform-web` | Docker Image | the React SPA (Caddy) | (n/a, has FQDN) |
 
 External: **Cloudflare R2** (uploads, served via `cdn.brewform.cc`), **Mailtrap** (email).
@@ -56,9 +53,10 @@ External: **Cloudflare R2** (uploads, served via `cdn.brewform.cc`), **Mailtrap*
 **Why these choices:**
 - **Images are pulled from GHCR, not built by Coolify.** GitHub Actions (`release.yml`)
   builds + pushes `ghcr.io/ardakilic/brewform-{api,web}` on every `main` push; Coolify only
-  pulls. The heavy Deno/Vite build stays on GitHub runners.
-- **denokv runs as a Docker Compose resource, not a Docker Image resource** — see
-  [§5](#5-step-2--denokv-cache-docker-compose).
+  pulls. The heavy Node/Vite build stays on GitHub runners.
+- **The API cache is in-memory (`CACHE_DRIVER=memory`) — no sidecar.** The cache is not a
+  source of truth (Postgres is), so losing it on restart is non-catastrophic. A
+  Redis/Valkey-backed provider is an explicit follow-up, not this change.
 - **The API holds no uploads on disk** — `STORAGE_DRIVER=s3` → R2.
 
 ---
@@ -70,15 +68,13 @@ server/destination" is **not** enough for containers to resolve each other by na
 
 - **Managed databases** and **standalone Docker Image apps** are attached to the shared
   **`coolify`** network automatically, so the API (Docker Image) reaches Postgres
-  (`postgresql-<uuid>`) out of the box.
-- **Docker Compose resources get their own isolated network.** To let the API reach the
-  `denokv` compose service, the compose resource must enable **"Connect to Predefined
-  Network"** — that joins it to `coolify`, and you then address it as `denokv-<uuid>`.
+  (`postgresql-<uuid>`) out of the box. There is no cache sidecar, so no cross-resource
+  networking beyond the database is needed.
 
 Find a resource's real internal hostname on the server:
 
 ```bash
-docker ps --format '{{.Names}}' | grep -i denokv     # e.g. denokv-ojbuh8rspbp8my0dn0gav7fw
+docker ps --format '{{.Names}}' | grep -i postgres   # e.g. postgresql-ojbuh8rspbp8my0dn0gav7fw
 ```
 
 ---
@@ -108,7 +104,6 @@ docker ps --format '{{.Names}}' | grep -i denokv     # e.g. denokv-ojbuh8rspbp8m
 
   ```bash
   openssl rand -hex 32   # JWT_SECRET
-  openssl rand -hex 32   # denokv access token (>= 12 chars required)
   ```
 
 - **Architecture caveat:** the published GHCR images are **amd64-only**. On an ARM64 host they
@@ -131,41 +126,14 @@ accepts both `postgres://` and `postgresql://`.
 
 ---
 
-## 5. Step 2 — denokv cache (Docker Compose)
+## 5. Step 2 — Cache (in-memory default, no sidecar)
 
-> **Why Compose and not a Docker Image resource?** In Coolify v4.1.2 a *Docker Image* resource
-> has **no field to pass a container command with arguments**. `denokv`'s entrypoint is just
-> the `denokv` binary, so with no `serve` subcommand it prints help and **exits**. A *Docker
-> Compose* resource supports `command:`, which is what denokv needs.
+There is **no cache resource to create**. The API runs with `CACHE_DRIVER=memory` (see
+[§6](#6-step-3--api-docker-image)): an in-process Map with TTL support. Cache is lost on
+restart, which is acceptable because the cache is never a source of truth — Postgres is.
 
-1. **+ New → Docker Compose Empty**, name `denokv`. Paste (token from §3):
-
-   ```yaml
-   services:
-     denokv:
-       image: ghcr.io/denoland/denokv:0.14.0
-       restart: unless-stopped
-       command: ["--sqlite-path", "/data/denokv.sqlite", "serve", "--access-token", "<DENOKV_TOKEN>"]
-       volumes:
-         - denokv-data:/data
-   volumes:
-     denokv-data:
-   ```
-
-   Notes: **list form** for `command` (exact args; `--sqlite-path` is a global flag **before**
-   `serve`, `--access-token` comes **after**). No `ports:` / no domain → internal only. The
-   named volume persists `/data/denokv.sqlite`. **No healthcheck** (denokv has no `GET /`
-   route; a default HTTP check would flap — the API fail-fasts if denokv is down).
-2. **Enable "Connect to Predefined Network"** on the resource (mandatory — see [§2](#2-networking-model-read-this--its-the-1-source-of-failures)).
-3. **Deploy.** Logs should show `Listening on http://0.0.0.0:4512`.
-4. Get the internal hostname: `docker ps --format '{{.Names}}' | grep -i denokv` →
-   `denokv-<uuid>`. Used as `DENO_KV_URL=http://denokv-<uuid>:4512`.
-
-> **Lighter alternative (single API instance):** skip the sidecar and use an **embedded local
-> Deno KV** — set `CACHE_DRIVER=deno-kv` and `DENO_KV_URL=/data/denokv.sqlite` (a *path*, not a
-> URL) on the API plus a `/data` volume. `Deno.openKv()` opens a local SQLite KV; no sidecar,
-> no networking. The remote sidecar is only needed to share one cache across **multiple** API
-> replicas.
+> A Redis/Valkey-backed `CacheProvider` is an explicit follow-up, not this change. When it
+> lands, this step will describe provisioning it; until then, do not add a sidecar.
 
 ---
 
@@ -176,7 +144,7 @@ accepts both `postgres://` and `postgresql://`.
 3. **Domain** `https://api.brewform.cc`.
 4. **Healthcheck** → Path `/health` · Port `8000` · Status `200`. Use `/health` (liveness, no
    DB check), **not** `/ready` (which also probes the DB).
-5. **Persistent Storage:** none (denokv holds its own data; uploads go to R2).
+5. **Persistent Storage:** none (the cache is in-memory; uploads go to R2).
 6. **Environment Variables** (Developer view). Key values + nuances:
 
    ```env
@@ -188,9 +156,7 @@ accepts both `postgres://` and `postgresql://`.
    DATABASE_URL=postgresql://postgres:<pw>@postgresql-<uuid>:5432/postgres
    DATABASE_PROVIDER=postgresql
 
-   CACHE_DRIVER=deno-kv
-   DENO_KV_URL=http://denokv-<uuid>:4512
-   DENO_KV_ACCESS_TOKEN=<DENOKV_TOKEN>  # Deno KV Connect reads this automatically for auth
+   CACHE_DRIVER=memory
 
    JWT_SECRET=<openssl-rand-hex-32>     # >= 16 chars (Zod-enforced)
    JWT_ACCESS_EXPIRY=15m
@@ -244,7 +210,7 @@ accepts both `postgres://` and `postgresql://`.
    Database is empty, running seed...
    Seeding complete.
    Starting BrewForm API...
-   Deno KV cache initialized (remote)         ← proves the API reached denokv over the network
+   In-memory cache initialized
    BrewForm API running on http://localhost:8000
    ```
 
@@ -374,8 +340,8 @@ endpoint, which pulls `:latest` and recreates each container — no server-side 
   to a known-good `:<sha>` and Redeploy.
 - **Change the API URL** the SPA calls: set `VITE_API_URL` as a runtime env on the **web**
   resource and redeploy — no rebuild ([§7](#7-step-4--web-spa-docker-image)).
-- **Backups:** Postgres via Coolify's Database → Backups. denokv's `/data` volume is just cache
-  (rebuildable). R2 has its own durability.
+- **Backups:** Postgres via Coolify's Database → Backups. The API cache is in-memory
+  (rebuildable, nothing to back up). R2 has its own durability.
 
 ---
 
@@ -383,9 +349,8 @@ endpoint, which pulls `:latest` and recreates each container — no server-side 
 
 | Symptom | Cause → Fix |
 |---|---|
-| denokv resource shows `Exited` immediately | Deployed as a *Docker Image* resource (no command field) → use a **Docker Compose** resource ([§5](#5-step-2--denokv-cache-docker-compose)). |
 | API: "Invalid environment variables" on boot | Zod validation. Common: `JWT_SECRET` < 16, bad `DATABASE_URL`, or `S3_*` placeholders while `STORAGE_DRIVER=s3`. |
-| API can't reach DB/cache (refused/timeout) | Resources not on the same Docker network. Managed DB + Docker Image apps share `coolify`; the **compose** denokv needs **"Connect to Predefined Network"** ([§2](#2-networking-model-read-this--its-the-1-source-of-failures)). |
+| API can't reach DB (refused/timeout) | Resources not on the same Docker network. Managed DB + Docker Image apps share `coolify` ([§2](#2-networking-model-read-this--its-the-1-source-of-failures)). |
 | Uploads 403 `SignatureMismatch` / 404 | `S3_ENDPOINT` includes the bucket name → double bucket. Use the **account endpoint only**. |
 | `ERR_TOO_MANY_REDIRECTS` after enabling Cloudflare | Cloudflare SSL mode is `Flexible` → set **`Full (Strict)`** ([§9](#9-cloudflare-proxy-orange-cloud)). |
 | CORS errors in browser | `CORS_ALLOWED_ORIGINS` must exactly match the frontend origin(s); restart API after changes. |
@@ -397,5 +362,5 @@ endpoint, which pulls `:latest` and recreates each container — no server-side 
 ## See also
 
 - [`coolify_deployment_plan.md`](../coolify_deployment_plan.md) — long-form operator reference.
-- [`docs/deployment.md`](deployment.md) — Deno Deploy / build-context env reference.
+- [`docs/deployment.md`](deployment.md) — legacy Deno Deploy reference (superseded; retained for history).
 - [`docs/docker.md`](docker.md) — local Docker dev environment.

@@ -18,11 +18,11 @@
 3. [Prerequisites (Coolify server)](#3-prerequisites-coolify-server)
 4. [Step 0 — Pre-flight (before any Coolify work)](#step-0--pre-flight-before-any-coolify-work)
 5. [Step 1 — Create the Coolify-managed PostgreSQL database](#step-1--create-the-coolify-managed-postgresql-database)
-6. [Step 2 — Deploy the `denokv` cache sidecar](#step-2--deploy-the-denokv-cache-sidecar)
+6. [Step 2 — Cache: in-memory default (no sidecar)](#step-2--cache-in-memory-default-no-sidecar)
 7. [Step 3 — Deploy the API (Docker Image resource)](#step-3--deploy-the-api-docker-image-resource)
 8. [Step 4 — Deploy the Web SPA (Docker Image resource)](#step-4--deploy-the-web-spa-docker-image-resource)
 9. [Step 5 — Domains, TLS, and CORS](#step-5--domains-tls-and-cors)
-10. [Step 6 — Persistent storage for denokv](#step-6--persistent-storage-for-denokv)
+10. [Step 6 — Persistent storage (uploads only; cache needs none)](#step-6--persistent-storage-uploads-only-cache-needs-none)
 11. [Step 7 — First deploy: migrations & seed](#step-7--first-deploy-migrations--seed)
 12. [Step 8 — Cloudflare R2 for uploads](#step-8--cloudflare-r2-for-uploads)
 13. [Step 9 — Email (SMTP)](#step-9--email-smtp)
@@ -61,10 +61,7 @@
                           │ │ env: DATABASE_URL│         │ env: (none;      │  │
                           │ │  JWT_SECRET      │         │  VITE_* baked in) │  │
                           │ │  CACHE_DRIVER=   │         │                  │  │
-                          │ │   deno-kv        │         │ domain:           │  │
-                          │ │  DENO_KV_URL=    │         │  brewform.example │  │
-                          │ │   http://denokv  │         │  .com             │  │
-                          │ │   :4512          │         │                  │  │
+                          │ │   memory         │         │ domain:           │  │
                           │ │  S3_* → R2       │         └──────────────────┘  │
                           │ │  SMTP_* → real   │                                │
                           │ │  CORS_ALLOWED_   │                                │
@@ -76,18 +73,6 @@
                           │ │  api.brewform.   │                                │
                           │ │   example.com    │                                │
                           │ └────────┬─────────┘                                │
-                          │          │                                          │
-                          │          ▼ depends_on (same destination network)  │
-                          │ ┌──────────────────┐                                │
-                          │ │ Docker Image res  │  ← denokv cache sidecar     │
-                          │ │ denokv            │                                │
-                          │ │ image:            │                                │
-                          │ │ ghcr.io/denoland  │                                │
-                          │ │  /denokv:0.14.0   │                                │
-                          │ │ port: 4512       │                                │
-                          │ │ volume: /data     │                                │
-                          │ │ (SQLite persists)│                                │
-                          │ └──────────────────┘                                │
                           └────────────────────────────────────────────────────┘
                                           │
                            ┌──────────────┴──────────────┐
@@ -109,7 +94,8 @@
 **Key points:**
 - **Two Docker Image resources** in Coolify (API + web), each with its own env and domain.
 - **One Coolify-managed PostgreSQL**, shared via the internal Docker network.
-- **One `denokv` sidecar** (Docker Image resource) for the remote Deno KV cache.
+- **No cache sidecar** — the API runs with `CACHE_DRIVER=memory` (in-process). A
+  Redis/Valkey-backed provider is an explicit follow-up, not this change.
 - **Cloudflare R2** for uploads (S3-compatible) — nothing stored on the Coolify server's disk.
 - **GitHub Actions** publishes images to GHCR; Coolify just pulls.
 
@@ -124,21 +110,21 @@ merged to `main` *before* you start any Coolify step (see
 the **Status** column marks which files are already committed versus which still need to be
 written.
 
-> **Install command:** the Docker `deps` stages and CI install dependencies with `deno ci`
-> (a frozen, lockfile-strict install — `rm -rf node_modules && deno install --frozen`), not
-> `deno install`. `deno ci` fails fast if `deno.lock` is missing or out of date.
+> **Install command:** the Docker `deps` stages and CI install dependencies with
+> `pnpm install --frozen-lockfile` (via `pnpm fetch` + offline install in Docker), not
+> `pnpm install`. The frozen install fails fast if `pnpm-lock.yaml` is missing or out of date.
 
 | # | Change | File(s) | Status |
 |---|--------|---------|--------|
-| 1 | API Dockerfile: `builder` stage now runs `deno task email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL); `runner` stage uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]` instead of `CMD`, runs with `--unstable-cron --unstable-kv` | `Dockerfile`, `docker-entrypoint.sh` | Done (shipped in D30/D31) |
-| 2 | `docker-entrypoint.sh`: runs `drizzle-kit migrate` (always), checks `SELECT count(*) FROM users` and runs seed only if empty (first boot), then `exec`s the API server | `docker-entrypoint.sh` | Done (shipped in D30/D31) |
-| 3 | Web Dockerfile: 3-stage build (deps → vite build with `VITE_*` ARGs → `caddy:2.11.4-alpine` serving `dist/` on port 80) | `Dockerfile.web` | Done (shipped in D30/D31) |
-| 4 | `compose.yml` `prod` profile (`app-prod`, `web-prod` referencing GHCR images) + `denokv` sidecar service (shared across profiles, pinned to `0.14.0`) | `compose.yml` | Done (shipped in D30/D31) |
-| 5 | `Deno.openKv(DENO_KV_URL ?? 'http://denokv:4512')` in `main.ts` and `flush-cache.ts`; `--allow-net` added to `make flush-cache` | `apps/api/src/main.ts`, `apps/api/scripts/flush-cache.ts`, `Makefile` | Done (shipped in D30/D31) |
-| 6 | `DENO_KV_URL` + `DENO_KV_ACCESS_TOKEN` added to Zod env schema (both `z.string().optional()`) | `apps/api/src/config/env.ts` | Done (shipped in D30/D31) |
+| 1 | API Dockerfile: `node:24-bookworm-slim` stages (`pnpm fetch` + frozen offline install); `builder` runs `pnpm run email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL) with a `tsc` gate; `runner` keeps the full install (tsx, drizzle-kit) and uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]`, which execs `tsx src/main.ts` via pnpm (no `dist/` — root `noEmit:true`, api `build` = email-templates only) | `Dockerfile`, `docker-entrypoint.sh` | Done |
+| 2 | `docker-entrypoint.sh`: runs `drizzle-kit migrate` (always), checks `users` row count via a tsx script and runs seed only if empty (first boot), then `exec`s the API server | `docker-entrypoint.sh` | Done |
+| 3 | Web Dockerfile: 3-stage build (node deps → vite build with `VITE_*` ARGs → `caddy:2.11.4-alpine` serving `dist/` on port 80) | `Dockerfile.web` | Done |
+| 4 | `compose.yml` `prod` profile (`app-prod`, `web-prod` referencing GHCR images); no cache sidecar (`CACHE_DRIVER=memory`) | `compose.yml` | Done |
+| 5 | In-memory `CacheProvider` default in `main.ts`; in-process `node-cron` badge evaluation | `apps/api/src/main.ts`, `apps/api/src/utils/jobs/` | Done |
+| 6 | `CACHE_DRIVER=memory` pinned in `.env.example` files (no cache sidecar to configure) | `.env.example`, `apps/api/.env.example` | Already committed (on disk) |
 | 7 | `.env.example` split into three files: root (local-dev infra), `apps/api/.env.example` (API runtime for Coolify), `apps/web/.env.example` (web build-time for GitHub Secrets) | `.env.example`, `apps/api/.env.example`, `apps/web/.env.example` | Already committed (on disk) |
-| 8 | `release.yml` workflow (build + push to GHCR on `main`/tags, with `cache-from/to: type=gha`, optional Coolify webhook deploy job) | `.github/workflows/release.yml` | Done (shipped in D30/D31) |
-| 9 | Makefile targets (`images`, `images-push`, `prod-up`, `prod-up-build`, `prod-down`, `release`) | `Makefile` | Done (shipped in D30/D31) |
+| 8 | `release.yml` workflow (build + push to GHCR on `main`/tags, with `cache-from/to: type=gha`, optional Coolify webhook deploy job) | `.github/workflows/release.yml` | Done |
+| 9 | Makefile targets (`images`, `images-push`, `prod-up`, `prod-up-build`, `prod-down`, `release`) | `Makefile` | Done |
 | 10 | This document | `coolify_deployment_plan.md` | Already committed (on disk) |
 
 **Health endpoints** (verified in `apps/api/src/routes/health.ts`):
@@ -186,9 +172,10 @@ default to **private**, flip them to **public** once:
 
 ## Step 0 — Pre-flight (before any Coolify work)
 
-> **Pinned runtime:** BrewForm runs on **Deno 2.9.0**. Both images build from
-> `denoland/deno:debian-2.9.0` (API `Dockerfile`, web `Dockerfile.web`), and CI pins
-> `deno-version: v2.9.0`. If you fork or rebuild an image, keep the base tag on `2.9.0`.
+> **Pinned runtime:** BrewForm runs on **Node 24 LTS**. Both images build from
+> `node:24-bookworm-slim` (API `Dockerfile`, web `Dockerfile.web` deps/builder stages),
+> `.nvmrc` pins `24`, and CI installs pnpm via `pnpm/action-setup`. If you fork or rebuild
+> an image, keep the base on a pinned `node:24.x-bookworm-slim` tag.
 
 Do all of this **before** you touch the Coolify panel. The web image bakes its config at build
 time, so getting these wrong means rebuilding and republishing images later.
@@ -224,13 +211,7 @@ time, so getting these wrong means rebuilding and republishing images later.
    first workflow run completes, flip both GHCR packages to **Public** (GitHub → Packages →
    `brewform-api` / `brewform-web` → Package settings → Change visibility → Public).
 
-5. **Generate the denokv access token** (reused in Steps 2 & 3):
-   ```bash
-   openssl rand -hex 32
-   ```
-   This produces 64 hex chars, well above denokv's **12-character minimum**.
-
-6. **Verify DNS + firewall.** Confirm both records resolve to the server and inbound ports 80/443
+5. **Verify DNS + firewall.** Confirm both records resolve to the server and inbound ports 80/443
    are open (Let's Encrypt's HTTP-01 challenge needs them):
    ```bash
    dig +short brewform.example.com
@@ -258,67 +239,16 @@ time, so getting these wrong means rebuilding and republishing images later.
 
 ---
 
-## Step 2 — Deploy the `denokv` cache sidecar
+## Step 2 — Cache: in-memory default (no sidecar)
 
-The `denokv` container runs the remote Deno KV server that the API uses for caching when
-`CACHE_DRIVER=deno-kv`.
+There is **no cache resource to create**. The API runs with `CACHE_DRIVER=memory`: an
+in-process Map with TTL support, wired at startup with no extra service to provision.
 
-1. **Generate an access token** locally:
-   ```bash
-   openssl rand -hex 32
-   ```
-   Save this token — you'll set it in both the `denokv` container and the API's env. denokv's
-   `serve` enforces a **minimum 12-character** access token; `openssl rand -hex 32` (64 chars)
-   satisfies it. (If you already generated this in [Step 0](#step-0--pre-flight-before-any-coolify-work),
-   reuse the same value.)
-
-2. In Coolify: **New Resource → Docker Image** (no git connection needed).
-3. **Image:** `ghcr.io/denoland/denokv:0.14.0` (pinned; do NOT use `:latest` — `denokv` is
-   pre-1.0 and CLI/protocol may change between versions).
-4. **Port exposes:** `4512`
-5. **Custom Command / Entrypoint:**
-   ```
-   --sqlite-path /data/denokv.sqlite serve --access-token <PASTE-YOUR-TOKEN-HERE>
-   ```
-   Note the flag order: `--sqlite-path <path>` comes **before** the `serve` subcommand, and
-   `--access-token <token>` comes **after** `serve`. The denokv CLI syntax is
-   `denokv [--sqlite-path <path>] <subcommand> [--flag <value>]`. (This tells denokv to write
-   its SQLite file to `/data` and require the bearer token.)
-
-   > **Coolify field semantics:** this string is the container **command/arguments**, appended
-   > to the image's `denokv` entrypoint. If your Coolify version's field **replaces** the
-   > entrypoint instead of appending, prefix it with `denokv` (i.e.
-   > `denokv --sqlite-path /data/denokv.sqlite serve --access-token <token>`). Not all Coolify
-   > versions expose a command field — if yours doesn't, bake the args into a forked image or
-   > deploy denokv via `compose.yml`.
-6. **Persistent Storage** tab:
-   - Add a **Volume** with Name `denokv_data` and Destination Path `/data`.
-   - This ensures the SQLite file (`/data/denokv.sqlite`) survives container restarts and
-     upgrades. Without this volume, the cache is wiped on every restart.
-7. **Environment Variables:** none required at the container level (the token is in the
-   command). If Coolify requires at least one env var, add a dummy `DENOKV=1`.
-8. **Healthcheck:** **Do not** configure a Coolify HTTP healthcheck on `/`. denokv's router only
-   serves `POST /` and `POST /v2/*`; a plain HTTP `GET /` returns **404**, so an HTTP healthcheck
-   flaps. denokv also has **no** `ping`/health subcommand (only `serve`). Options:
-   - **Recommended — leave the healthcheck off** and rely on the API's fail-fast: if `denokv` is
-     unreachable, `Deno.openKv()` errors on boot and the container restarts. This is the
-     simplest, most reliable approach.
-   - **Optional TCP check:** the image is `gcr.io/distroless/cc-debian12:debug` (the **:debug**
-     variant), which **does** include a busybox shell and `nc`/`wget` (but no `curl`). If you want
-     an explicit probe, a TCP check works: `["CMD","/busybox/nc","-z","localhost","4512"]`.
-     Omitting it is still recommended.
-9. **Assign to the same destination** as the Postgres database (so the API container, when
-   deployed next, can reach `denokv` by container name over the Docker network).
-10. **Deploy.** Verify it starts: check the container logs for a line indicating it's listening
-    on `0.0.0.0:4512`.
-11. **Note the container's internal hostname** — Coolify names it `denokv-<uuid>` (or whatever
-    you named the resource + a UUID). You'll use this in the API's `DENO_KV_URL`. Check the
-    resource's **General** tab or run `docker ps` on the server to confirm the exact name.
-
-> **Why a sidecar?** Local dev and prod now share the same topology — the API always talks to
-> `http://<denokv-host>:4512`. If you later want to scale the API to >1 replica, all replicas
-> share one KV. The `CacheProvider` abstraction means switching backends later is a one-line
-> change.
+- Nothing to deploy, no internal hostname, no access token, no volume.
+- Cache is lost on every API restart. This is acceptable because the cache is never a source
+  of truth — Postgres is; entries rebuild on access.
+- A Redis/Valkey-backed `CacheProvider` is an explicit follow-up, not this change. When it
+  lands, this step will describe provisioning it; until then, do not add a sidecar.
 
 ---
 
@@ -327,8 +257,8 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
 1. In Coolify: **New Resource → Docker Image**.
 2. **Image:** `ghcr.io/ardakilic/brewform-api:latest`
 3. **Port exposes:** `8000`
-4. **Assign to the same destination** as the Postgres and `denokv` resources (critical — this
-   is how the API reaches the DB and the cache over the internal Docker network).
+4. **Assign to the same destination** as the Postgres resource (critical — this
+   is how the API reaches the DB over the internal Docker network).
 5. **Environment Variables** — go to the **Environment Variables** tab and add each of the
    following. Use the Developer view (plain `.env` editor) to paste the whole block, then
    adjust the values. The `apps/api/.env.example` file in the repo is the canonical reference
@@ -353,10 +283,8 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    DATABASE_URL=postgresql://postgres:<DB_PASSWORD>@postgresql-<uuid>:5432/brewform
    DATABASE_PROVIDER=postgresql
 
-   # Cache — remote denokv sidecar
-   CACHE_DRIVER=deno-kv
-   DENO_KV_URL=http://denokv-<uuid>:4512
-   DENO_KV_ACCESS_TOKEN=<THE-TOKEN-YOU-GENERATED-IN-STEP-2>
+   # Cache — in-memory default (no sidecar; Redis/Valkey is a follow-up)
+   CACHE_DRIVER=memory
 
    # Auth — generate a strong secret
    JWT_SECRET=<openssl-rand-hex-32-min-16-chars>
@@ -399,13 +327,11 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    **Replace every `<...>` placeholder** with your real values. Pay special attention to:
    - `DATABASE_URL` — must use the **internal hostname** (`postgresql-<uuid>`) and the password
      from the Postgres Connection tab.
-   - `DENO_KV_URL` — must use the **internal hostname** of the `denokv` resource
-     (`denokv-<uuid>`), and the token from Step 2.
    - `JWT_SECRET` — at least 16 characters (Zod enforces this); use `openssl rand -hex 32`.
    - `CORS_ALLOWED_ORIGINS` — the web SPA's public origin (no trailing slash).
 
-6. **Persistent Storage:** The API container needs **no** persistent volume for uploads
-   (uploads go to R2). It also needs no volume for denokv (the sidecar has its own). Leave
+6. **Persistent Storage:** The API container needs **no** persistent volume (the cache is
+   in-memory; uploads go to R2). Leave
    this empty unless you want to persist logs to a volume (not required — Coolify captures
    container stdout).
 
@@ -430,8 +356,7 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
    Starting BrewForm API...
    ```
    followed by the API's own structured logs (JSON or pretty per `LOG_FORMAT`). The
-   `BrewForm API running on http://localhost:8000` line appears only when `DENO_DEPLOY` env is
-   NOT set (in Coolify it's not set, so this line appears in the API's own logs).
+   `BrewForm API running on http://localhost:8000` line is logged unconditionally on boot.
 
    On subsequent boots (database already seeded), you'll see:
    ```
@@ -443,7 +368,6 @@ The `denokv` container runs the remote Deno KV server that the API uses for cach
 
 9. **If the API fails to start**, check:
    - `DATABASE_URL` hostname is correct and the DB container is on the same destination.
-   - `DENO_KV_URL` hostname is correct and `denokv` is healthy.
    - `JWT_SECRET` is at least 16 characters.
    - The migration SQL files are present in the image (they are, if the image built correctly).
 
@@ -518,42 +442,39 @@ If you see a CORS error in the browser console, double-check:
 
 ---
 
-## Step 6 — Persistent storage for denokv
+## Step 6 — Persistent storage (uploads only; cache needs none)
 
-This was set in Step 2, but to reiterate: the `denokv` resource **must** have a persistent
-volume at `/data`, otherwise the SQLite file is lost on every container restart and your cache
-is wiped.
+Neither the API nor the web container needs a Coolify volume:
 
-To verify:
-1. Go to the `denokv` resource → **Persistent Storage** tab.
-2. Confirm there's a volume with Destination Path `/data`.
-3. Restart the `denokv` container (via Coolify's Restart button) and confirm the API still gets
-   cache hits (the KV data survived).
+- Uploads go to R2 (`STORAGE_DRIVER=s3`), not to container disk.
+- The API cache is in-memory and rebuilds on access — there is no cache volume to persist.
+
+To verify nothing depends on container disk, restart the API resource and confirm uploads
+(still served from R2) and login still work.
 
 ---
 
 ## Step 7 — First deploy: migrations & seed
 
-> **Workspace layout:** this is a native Deno workspace (root `deno.json`
-> `workspace.members = ["apps/*", "packages/*"]`; not Turborepo). The migrate/seed commands below
-> run from the repo root and reference `packages/db/` paths; the `cd packages/db && deno run -A
-> npm:drizzle-kit@0.31 …` form is equivalent and also correct.
+> **Workspace layout:** this is a pnpm workspace (root `pnpm-workspace.yaml`
+> `packages: ['apps/*', 'packages/*']`). The migrate/seed commands below run from the repo
+> root via root scripts (`pnpm run db:migrate`, `pnpm run db:seed`); the
+> `pnpm --filter @brewform/db run …` form is equivalent and also correct.
 
 The API's `docker-entrypoint.sh` handles this automatically. Here's what happens on the first
 deploy (Step 3 above):
 
 1. **Container starts** → `docker-entrypoint.sh` runs.
-2. **Migrations:** `deno run -A npm:drizzle-kit@0.31 migrate` runs against `DATABASE_URL`.
+2. **Migrations:** `pnpm --filter @brewform/db run migrate` runs against `DATABASE_URL`.
    Drizzle applies any pending migration SQL files in `packages/db/drizzle/`. This creates all
    tables.
-3. **Seed check:** The script runs `SELECT count(*) FROM users`. If the count is `0`:
-   - `deno run --allow-all packages/db/src/seed.ts` runs, inserting the admin user, badges,
+3. **Seed check:** The script runs a `users` row-count check via tsx. If the count is `0`:
+   - `pnpm --filter @brewform/db run seed` runs, inserting the admin user, badges,
      equipment catalog, coffee varieties, seed users/recipes, and social data.
    - The admin credentials are logged once.
-4. **API starts:** `exec deno run --unstable-cron --unstable-kv apps/api/src/main.ts`.
-
-   > The `--unstable-cron` and `--unstable-kv` flags are still **required on Deno 2.9** — `Deno.cron`
-   > and Deno KV remain unstable APIs. Do not remove them.
+4. **API starts:** `exec pnpm --filter @brewform/api exec tsx src/main.ts` (TypeScript run
+   directly — no `dist/` build; badge evaluation runs in-process via `node-cron`, so no
+   extra runtime flags are needed).
 
 On subsequent restarts/redeploys:
 - Migrations run again (no-op if nothing pending).
@@ -562,7 +483,7 @@ On subsequent restarts/redeploys:
 
 > **If you ever need to re-seed** (e.g., to reset to a clean state), you can:
 > 1. `docker exec` into the running API container (Coolify's Terminal tab).
-> 2. Run: `deno run --allow-all packages/db/src/seed.ts` — the seed is idempotent
+> 2. Run: `pnpm --filter @brewform/db run seed` — the seed is idempotent
 >    (`onConflictDoNothing` on all inserts), so it won't overwrite or delete existing data.
 > 3. To start completely fresh: drop the database in Coolify, recreate it, and restart the API
 >    container (the entrypoint will re-migrate and re-seed).
@@ -571,12 +492,10 @@ On subsequent restarts/redeploys:
 > first-boot seed fails **partway** — after the admin row is inserted but before the rest — that
 > sentinel will be `>0` on the next boot and the seed is **skipped**, leaving a partially-seeded
 > DB. To recover, either drop & recreate the database before a successful first boot, or manually
-> re-run the (idempotent) seed: `deno run --allow-all packages/db/src/seed.ts`.
+> re-run the (idempotent) seed: `pnpm --filter @brewform/db run seed`.
 
 > **Secrets hygiene:** the seed logs the admin email/password to stdout once, and Coolify retains
-> container logs — **change the admin password in-app after first login**. Likewise, the denokv
-> access token is passed as a CLI argument, so it's visible via `docker inspect` and the Coolify
-> UI. This is acceptable on a single-host private network, but be aware of it.
+> container logs — **change the admin password in-app after first login**.
 
 ---
 
@@ -685,9 +604,6 @@ images, configure deploy webhooks.
 Run through this after completing Steps 1–9.
 
 - [ ] **Postgres** resource is healthy in Coolify.
-- [ ] **denokv** resource is healthy; `/data/denokv.sqlite` exists on its volume (verify via
-      `docker exec <denokv-container> ls /data/` on the server, or check the container logs for
-      a "listening on 0.0.0.0:4512" message).
 - [ ] **API** container logs show: "Migrations complete." and either "Seeding complete!" or
       "Seed skipped — database already contains data (N users)."
 - [ ] `https://api.brewform.example.com/health` returns `200 { status: 'ok' }` (liveness).
@@ -699,9 +615,9 @@ Run through this after completing Steps 1–9.
 - [ ] `https://brewform.example.com` loads the SPA (HTML, JS, CSS).
 - [ ] **Login works:** log in as the admin user (credentials from the seed log or your
       `ADMIN_*` env).
-- [ ] **Cache works:** perform an action that hits the cache (e.g. load the recipe list twice),
-      then restart the API container and confirm the second load is still fast (cache survived
-      via denokv).
+- [ ] **Cache works:** load the recipe list twice and confirm the second load is fast (served
+      from the in-memory cache). Note the cache does NOT survive an API restart — that is
+      expected with `CACHE_DRIVER=memory`.
 - [ ] **CORS works:** open the browser dev tools on `https://brewform.example.com`, log in,
       and confirm no CORS errors in the console. The API responses should include
       `access-control-allow-origin: https://brewform.example.com`.
@@ -721,7 +637,7 @@ The Zod env schema in `apps/api/src/config/env.ts` validates all env vars at sta
 missing or invalid required var causes an immediate exit with the field errors logged.
 - **Fix:** Check the API resource's Environment Variables tab for missing/empty values.
   Common culprits: `DATABASE_URL` (must be a valid postgresql:// URL), `JWT_SECRET` (min 16
-  chars), `CACHE_DRIVER` (must be `deno-kv` or `memory`).
+  chars), `CACHE_DRIVER` (must be `memory`).
 
 ### API can't reach the database: connection refused / timeout
 - **Cause:** The API and Postgres are not on the same Docker destination, or the
@@ -729,14 +645,6 @@ missing or invalid required var causes an immediate exit with the field errors l
 - **Fix:** In Coolify, ensure both resources are assigned to the **same destination** (Docker
   network). Use the exact internal hostname from the Postgres Connection tab (e.g.
   `postgresql-<uuid>`, not `localhost` or `postgres`).
-
-### API can't reach denokv: connection refused
-- **Cause:** `DENO_KV_URL` hostname doesn't match the `denokv` resource's internal name, or
-  they're on different destinations.
-- **Fix:** Confirm the `denokv` resource's container name (via `docker ps` on the server or
-  the Coolify General tab) and set `DENO_KV_URL=http://<that-name>:4512`.
-- **Workaround:** If you can't get the sidecar working, set `CACHE_DRIVER=memory` on the API.
-  The app works (cache is not a source of truth), but cache is lost on restart.
 
 ### CORS errors in the browser
 - **Symptom:** `Access to fetch at 'https://api...' from origin 'https://brewform...' has been
@@ -760,8 +668,7 @@ missing or invalid required var causes an immediate exit with the field errors l
 - **Symptom:** Container logs show a Drizzle migration error and exits.
 - **Cause:** Usually a DB connectivity issue, or a migration file is missing from the image.
 - **Fix:** Verify `DATABASE_URL` is correct and the DB is reachable. If the image is missing
-  migration files, the `Dockerfile` builder stage didn't run
-  `cd packages/db && deno run -A npm:drizzle-kit@0.31 generate` — rebuild and repush the
+  migration files, the `Dockerfile` builder stage didn't run `drizzle-kit generate` — rebuild and repush the
   image.
 
 ### Seed runs on every restart (not just first boot)
@@ -776,13 +683,8 @@ missing or invalid required var causes an immediate exit with the field errors l
   the next boot **skips** the seed, leaving a partially-seeded database.
 - **Fix:** Either drop & recreate the database and let the API re-seed on a clean first boot, or
   manually re-run the idempotent seed from the API container's Terminal:
-  `deno run --allow-all packages/db/src/seed.ts` (see
+  `pnpm --filter @brewform/db run seed` (see
   [Step 7](#step-7--first-deploy-migrations--seed)).
-
-### denokv data is lost after restart
-- **Cause:** No persistent volume mounted at `/data`.
-- **Fix:** Go to the `denokv` resource → Persistent Storage → add a Volume with Destination
-  Path `/data`.
 
 ### GHCR pull fails: "image not found"
 - **Cause:** The `release.yml` workflow hasn't run yet, or the images are private and the
@@ -813,22 +715,17 @@ alongside `:latest`. To roll back:
 2. **Redeploy** — Coolify pulls the pinned image.
 3. Once a fix ships, switch the tag back to `:latest`.
 
-### Upgrading `denokv`
-- `denokv` is pinned to `0.14.0`. To upgrade:
-  1. Check the [denokv releases](https://github.com/denoland/denokv/releases) for breaking
-     changes.
-  2. Update the image tag in the Coolify `denokv` resource (or in `compose.yml` locally, then
-     `make images-push` if you maintain a forked image).
-  3. Redeploy the `denokv` resource. The `/data` volume preserves the SQLite file.
-  4. Restart the API so it reconnects.
+### Cache backend follow-up
+
+The API cache is in-memory (`CACHE_DRIVER=memory`) and needs no maintenance. If a
+Redis/Valkey-backed `CacheProvider` lands as a follow-up, this section will describe
+provisioning and upgrading it.
 
 ### Backing up data
 - **Postgres:** Coolify has built-in backup for databases (Database resource → Backups tab).
   Schedule daily backups to an S3 bucket or local path.
-- **denokv:** The SQLite file at `/data/denokv.sqlite` is on a named volume. To back it up,
-  `docker cp <denokv-container>:/data/denokv.sqlite ./backup.sqlite` from the server, or use
-  Coolify's volume backup if available. Since the cache is not a source of truth (Postgres
-  is), losing denokv data is non-catastrophic — the cache rebuilds on access.
+- **Cache:** in-memory only — nothing to back up. Since the cache is not a source of truth
+  (Postgres is), losing it on restart is non-catastrophic — it rebuilds on access.
 - **R2:** Cloudflare R2 has its own durability; no backup action needed for uploads unless
   you want cross-region replication.
 

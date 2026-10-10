@@ -4,9 +4,10 @@
  * Orchestrates bean CRUD with ownership verification — only the bean owner
  * may update or delete a record.
  */
-import * as model from './model.ts';
-import { createLogger } from '../../utils/logger/index.ts';
+
 import type { BeanCreate, BeanUpdate } from '@brewform/shared/schemas';
+import { createLogger } from '../../utils/logger/index.ts';
+import * as model from './model.ts';
 
 /**
  * Bean service.

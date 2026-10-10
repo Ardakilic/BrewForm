@@ -4,10 +4,11 @@
  * Orchestrates vendor CRUD with search support. Update and delete operations
  * verify the record exists before mutating.
  */
+
+import type { VendorCreateSchema, VendorUpdateSchema } from '@brewform/shared/schemas';
 import type { z } from 'zod';
-import * as model from './model.ts';
-import { VendorCreateSchema, VendorUpdateSchema } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger/index.ts';
+import * as model from './model.ts';
 
 /**
  * Vendor service.
@@ -51,10 +52,7 @@ export async function getVendor(id: string) {
  * @param userId - The ID of the user creating the vendor
  * @param data   - Vendor fields (name, website, description)
  */
-export async function createVendor(
-  userId: string,
-  data: z.infer<typeof VendorCreateSchema>,
-) {
+export async function createVendor(userId: string, data: z.infer<typeof VendorCreateSchema>) {
   log.debug({ userId }, 'createVendor started');
   const result = await model.create({ ...data, createdBy: userId });
   log.debug({ userId, vendorId: result.id }, 'createVendor completed');

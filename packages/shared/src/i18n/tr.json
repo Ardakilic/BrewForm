@@ -765,7 +765,7 @@
   "admin.audit.entityTasteNotes": "Tat Notları",
   "admin.audit.entityReports": "Raporlar",
   "admin.cache.flushDescription": "Bu, tat notu hiyerarşileri, uyumluluk matrisleri ve arama sonuçları dahil tüm önbelleğe alınmış verileri temizler.",
-  "admin.cache.kvDescription": "Uygulama, sık erişilen verileri önbelleğe almak için Deno KV kullanır. Temel veriler değiştiğinde önbellek otomatik olarak yenilenir, ancak buradan manuel olarak temizleyebilirsiniz.",
+  "admin.cache.kvDescription": "Uygulama, sık erişilen verileri bellek içi önbellekte tutar. Temel veriler değiştiğinde önbellek otomatik olarak yenilenir, ancak buradan manuel olarak temizleyebilirsiniz.",
   "admin.cache.management": "Önbellek Yönetimi",
   "admin.cache.flushSuccess": "Önbellek başarıyla temizlendi!",
   "admin.cache.flushError": "Önbellek temizlenemedi.",

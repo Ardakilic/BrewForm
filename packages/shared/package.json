@@ -2,15 +2,51 @@
   "name": "@brewform/shared",
   "type": "module",
   "exports": {
-    "./types": { "types": "./src/types/index.ts", "default": "./src/types/index.ts" },
-    "./schemas": { "types": "./src/schemas/index.ts", "default": "./src/schemas/index.ts" },
-    "./constants": { "types": "./src/constants/index.ts", "default": "./src/constants/index.ts" },
-    "./utils": { "types": "./src/utils/index.ts", "default": "./src/utils/index.ts" },
-    "./i18n": { "types": "./src/i18n/index.ts", "default": "./src/i18n/index.ts" }
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./logger": {
+      "types": "./src/logger/index.ts",
+      "default": "./src/logger/index.ts"
+    },
+    "./types": {
+      "types": "./src/types/index.ts",
+      "default": "./src/types/index.ts"
+    },
+    "./schemas": {
+      "types": "./src/schemas/index.ts",
+      "default": "./src/schemas/index.ts"
+    },
+    "./constants": {
+      "types": "./src/constants/index.ts",
+      "default": "./src/constants/index.ts"
+    },
+    "./utils": {
+      "types": "./src/utils/index.ts",
+      "default": "./src/utils/index.ts"
+    },
+    "./i18n": {
+      "types": "./src/i18n/index.ts",
+      "default": "./src/i18n/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "check": "tsc --noEmit",
+    "lint": "biome check src/",
+    "test": "vitest run"
   },
   "dependencies": {
     "zod": "catalog:",
     "zod-openapi": "^6.0.0"
   },
-  "scripts": {}
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "^24",
+    "@vitest/coverage-v8": "4.1.10",
+    "fast-check": "^4.10.2",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
 }

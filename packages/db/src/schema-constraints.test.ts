@@ -1,6 +1,5 @@
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { eq, inArray, sql } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from './index.ts';
 import {
   brewLogs,
@@ -19,7 +18,7 @@ import {
  * rating ranges) are enforced at the database level, rejecting invalid values
  * and accepting valid ones.
  */
-describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Schema CHECK constraints', () => {
   let userId: string;
   let recipeId: string;
   let recipeVersionId: string;
@@ -55,9 +54,10 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
       preparationNotes: 'Test notes',
     });
 
-    await db.update(recipes).set({ currentVersionId: recipeVersionId }).where(
-      eq(recipes.id, recipeId),
-    );
+    await db
+      .update(recipes)
+      .set({ currentVersionId: recipeVersionId })
+      .where(eq(recipes.id, recipeId));
 
     await db.insert(tasteNotes).values({
       id: tasteNoteId,
@@ -167,49 +167,37 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
   describe('recipe_version rating check', () => {
     it('should reject rating = 0', async () => {
       await expect(
-        db.update(recipeVersions)
-          .set({ rating: 0 })
-          .where(eq(recipeVersions.id, recipeVersionId)),
+        db.update(recipeVersions).set({ rating: 0 }).where(eq(recipeVersions.id, recipeVersionId)),
       ).rejects.toThrow();
     });
 
     it('should reject rating = 11', async () => {
       await expect(
-        db.update(recipeVersions)
-          .set({ rating: 11 })
-          .where(eq(recipeVersions.id, recipeVersionId)),
+        db.update(recipeVersions).set({ rating: 11 }).where(eq(recipeVersions.id, recipeVersionId)),
       ).rejects.toThrow();
     });
 
     it('should reject rating = -1', async () => {
       await expect(
-        db.update(recipeVersions)
-          .set({ rating: -1 })
-          .where(eq(recipeVersions.id, recipeVersionId)),
+        db.update(recipeVersions).set({ rating: -1 }).where(eq(recipeVersions.id, recipeVersionId)),
       ).rejects.toThrow();
     });
 
     it('should accept rating = 1', async () => {
       await expect(
-        db.update(recipeVersions)
-          .set({ rating: 1 })
-          .where(eq(recipeVersions.id, recipeVersionId)),
+        db.update(recipeVersions).set({ rating: 1 }).where(eq(recipeVersions.id, recipeVersionId)),
       ).resolves.toBeDefined();
     });
 
     it('should accept rating = 5', async () => {
       await expect(
-        db.update(recipeVersions)
-          .set({ rating: 5 })
-          .where(eq(recipeVersions.id, recipeVersionId)),
+        db.update(recipeVersions).set({ rating: 5 }).where(eq(recipeVersions.id, recipeVersionId)),
       ).resolves.toBeDefined();
     });
 
     it('should accept rating = 10', async () => {
       await expect(
-        db.update(recipeVersions)
-          .set({ rating: 10 })
-          .where(eq(recipeVersions.id, recipeVersionId)),
+        db.update(recipeVersions).set({ rating: 10 }).where(eq(recipeVersions.id, recipeVersionId)),
       ).resolves.toBeDefined();
     });
 
@@ -217,7 +205,8 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
       // Previous accept test may have set rating to a non-null value.
       // Update back to null; this must succeed since column is nullable.
       await expect(
-        db.update(recipeVersions)
+        db
+          .update(recipeVersions)
           .set({ rating: null })
           .where(eq(recipeVersions.id, recipeVersionId)),
       ).resolves.toBeDefined();
@@ -250,9 +239,7 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
     });
 
     it('should accept personalRating = NULL', async () => {
-      await expect(
-        db.insert(brewLogs).values({ userId, recipeId }),
-      ).resolves.toBeDefined();
+      await expect(db.insert(brewLogs).values({ userId, recipeId })).resolves.toBeDefined();
     });
   });
 
@@ -276,9 +263,7 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
     });
 
     it('should accept yieldActual = NULL', async () => {
-      await expect(
-        db.insert(brewLogs).values({ userId, recipeId }),
-      ).resolves.toBeDefined();
+      await expect(db.insert(brewLogs).values({ userId, recipeId })).resolves.toBeDefined();
     });
   });
 
@@ -296,9 +281,7 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
     });
 
     it('should accept doseActual = NULL', async () => {
-      await expect(
-        db.insert(brewLogs).values({ userId, recipeId }),
-      ).resolves.toBeDefined();
+      await expect(db.insert(brewLogs).values({ userId, recipeId })).resolves.toBeDefined();
     });
   });
 });
@@ -308,7 +291,7 @@ describe('Schema CHECK constraints', { sanitizeOps: false, sanitizeResources: fa
  * Verifies that only valid enum values are accepted at the database level,
  * and that invalid values are rejected even when bypassing the application layer.
  */
-describe('Schema enum constraints', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Schema enum constraints', () => {
   const reporterIds: string[] = [];
 
   /**

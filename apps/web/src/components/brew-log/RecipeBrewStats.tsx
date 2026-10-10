@@ -1,6 +1,6 @@
+import type { RecipeBrewStatsOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
 import { brewLogApi } from '../../api/index.ts';
-import type { RecipeBrewStatsOutput } from '@brewform/shared/schemas';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 /** Props for {@link RecipeBrewStats}. */
@@ -19,7 +19,8 @@ export function RecipeBrewStats({ recipeId }: RecipeBrewStatsProps) {
 
   useEffect(() => {
     let cancelled = false;
-    brewLogApi.getRecipeStats(recipeId)
+    brewLogApi
+      .getRecipeStats(recipeId)
       .then((result) => {
         if (!cancelled) setStats(result);
       })
@@ -34,19 +35,19 @@ export function RecipeBrewStats({ recipeId }: RecipeBrewStatsProps) {
   if (!stats || stats.brewCount === 0) return null;
 
   return (
-    <div data-testid='recipe-brew-stats'>
-      <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
+    <div data-testid="recipe-brew-stats">
+      <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
         {t('brewLog.stats.totalBrews')}
       </p>
-      <p className='text-sm font-medium mb-2' style={{ color: 'var(--text-primary)' }}>
+      <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
         {stats.brewCount}
       </p>
       {stats.avgBrewRating !== null && (
         <>
-          <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
+          <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
             {t('brewLog.stats.avgRating')}
           </p>
-          <p className='text-sm font-medium' style={{ color: 'var(--text-primary)' }}>
+          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
             {stats.avgBrewRating.toFixed(1)}/10
           </p>
         </>

@@ -1,5 +1,5 @@
-import { Link } from 'react-router';
 import type { BrewLogListItemOutput } from '@brewform/shared/schemas';
+import { Link } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { formatDate } from '../../utils/format.ts';
 
@@ -19,29 +19,30 @@ interface BrewLogCardProps {
 export function BrewLogCard({ log, showRecipe = true }: BrewLogCardProps) {
   const { t, locale } = useTranslation();
 
-  const excerpt = log.notes && log.notes.length > NOTES_EXCERPT_LENGTH
-    ? `${log.notes.slice(0, NOTES_EXCERPT_LENGTH)}…`
-    : log.notes;
+  const excerpt =
+    log.notes && log.notes.length > NOTES_EXCERPT_LENGTH
+      ? `${log.notes.slice(0, NOTES_EXCERPT_LENGTH)}…`
+      : log.notes;
 
   return (
-    <div className='card p-4'>
-      <div className='flex items-center justify-between gap-2 mb-2'>
+    <div className="card p-4">
+      <div className="flex items-center justify-between gap-2 mb-2">
         {showRecipe && (
           <Link
             to={`/recipes/${log.recipeSlug}`}
-            className='font-semibold truncate hover:underline'
+            className="font-semibold truncate hover:underline"
             style={{ color: 'var(--text-primary)' }}
           >
             {log.recipeTitle}
           </Link>
         )}
-        <span className='flex items-center gap-3 shrink-0'>
-          <span className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
+        <span className="flex items-center gap-3 shrink-0">
+          <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
             {formatDate(log.brewedAt, locale)}
           </span>
           <Link
             to={`/brew-logs/${log.id}/edit`}
-            className='text-sm hover:underline'
+            className="text-sm hover:underline"
             style={{ color: 'var(--accent-primary)' }}
           >
             {t('brewLog.card.edit')}
@@ -49,7 +50,7 @@ export function BrewLogCard({ log, showRecipe = true }: BrewLogCardProps) {
         </span>
       </div>
       <div
-        className='flex flex-wrap gap-x-4 gap-y-1 text-sm'
+        className="flex flex-wrap gap-x-4 gap-y-1 text-sm"
         style={{ color: 'var(--text-secondary)' }}
       >
         {log.yieldActual !== null && (
@@ -69,8 +70,8 @@ export function BrewLogCard({ log, showRecipe = true }: BrewLogCardProps) {
         )}
       </div>
       {excerpt && (
-        <p className='text-sm mt-2' style={{ color: 'var(--text-secondary)' }}>
-          <span className='font-medium'>{t('brewLog.card.notes')}:</span> {excerpt}
+        <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
+          <span className="font-medium">{t('brewLog.card.notes')}:</span> {excerpt}
         </p>
       )}
     </div>

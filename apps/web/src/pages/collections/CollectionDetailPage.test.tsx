@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
@@ -46,15 +46,15 @@ vi.mock('@/utils/logger.ts', () => ({
 }));
 
 vi.mock('../../components/collections/CollectionRecipeList.tsx', () => ({
-  CollectionRecipeList: () => <div data-testid='recipe-list' />,
+  CollectionRecipeList: () => <div data-testid="recipe-list" />,
 }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useAuth } from '../../contexts/AuthContext.tsx';
-import { collectionApi } from '../../api/index.ts';
 import type { CollectionDetailOutput } from '@brewform/shared/schemas';
+import { collectionApi } from '../../api/index.ts';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { CollectionDetailPage, loader } from './CollectionDetailPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);

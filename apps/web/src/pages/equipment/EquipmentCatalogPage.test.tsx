@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EquipmentCatalogPage } from './EquipmentCatalogPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -10,9 +10,19 @@ vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 // ── External deps ──────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
   useSearchParams: vi.fn(),
 }));
 
@@ -35,9 +45,9 @@ vi.mock('../../hooks/useDebounce.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { useSearchParams } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { api } from '../../api/client.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -147,11 +157,11 @@ describe('EquipmentCatalogPage', () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     const { unmount } = render(<EquipmentCatalogPage />);
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage mounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage mounted'),
     );
     unmount();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage unmounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentCatalogPage unmounted'),
     );
   });
 
@@ -177,24 +187,29 @@ describe('EquipmentCatalogPage', () => {
   });
 
   it('renders equipment items from API', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'eq-1',
-        name: 'Fellow Stagg',
-        brand: 'Fellow',
-        model: 'Stagg EKG',
-        type: 'kettle',
-        description: 'Electric pour-over kettle',
-      },
-      {
-        id: 'eq-2',
-        name: 'Acaia Lunar',
-        brand: 'Acaia',
-        model: 'Lunar',
-        type: 'scale_accessory',
-        description: 'Precision scale',
-      },
-    ], 2));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'eq-1',
+            name: 'Fellow Stagg',
+            brand: 'Fellow',
+            model: 'Stagg EKG',
+            type: 'kettle',
+            description: 'Electric pour-over kettle',
+          },
+          {
+            id: 'eq-2',
+            name: 'Acaia Lunar',
+            brand: 'Acaia',
+            model: 'Lunar',
+            type: 'scale_accessory',
+            description: 'Precision scale',
+          },
+        ],
+        2,
+      ),
+    );
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -346,9 +361,7 @@ describe('EquipmentCatalogPage', () => {
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('search=Stagg'),
-    );
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=Stagg'));
   });
 
   it('calls API with both type and search filters', async () => {
@@ -358,23 +371,26 @@ describe('EquipmentCatalogPage', () => {
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('type=kettle'),
-    );
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('search=Fellow'),
-    );
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('type=kettle'));
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=Fellow'));
   });
 
   it('shows pagination when multiple pages exist', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([{
-      id: 'eq-1',
-      name: 'Test',
-      brand: null,
-      model: null,
-      type: 'kettle',
-      description: null,
-    }], 25));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'eq-1',
+            name: 'Test',
+            brand: null,
+            model: null,
+            type: 'kettle',
+            description: null,
+          },
+        ],
+        25,
+      ),
+    );
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -385,14 +401,21 @@ describe('EquipmentCatalogPage', () => {
 
   it('shows pagination in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([{
-      id: 'eq-1',
-      name: 'Test',
-      brand: null,
-      model: null,
-      type: 'kettle',
-      description: null,
-    }], 25));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'eq-1',
+            name: 'Test',
+            brand: null,
+            model: null,
+            type: 'kettle',
+            description: null,
+          },
+        ],
+        25,
+      ),
+    );
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -405,18 +428,22 @@ describe('EquipmentCatalogPage', () => {
     const setSearchParams = vi.fn();
     mockUseSearchParams.mockReturnValue(makeSearchParams({ page: '1' }));
     // Override the second element of the tuple to capture calls
-    mockUseSearchParams.mockReturnValue([
-      new URLSearchParams({ page: '1' }),
-      setSearchParams,
-    ]);
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([{
-      id: 'eq-1',
-      name: 'Test',
-      brand: null,
-      model: null,
-      type: 'kettle',
-      description: null,
-    }], 25));
+    mockUseSearchParams.mockReturnValue([new URLSearchParams({ page: '1' }), setSearchParams]);
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'eq-1',
+            name: 'Test',
+            brand: null,
+            model: null,
+            type: 'kettle',
+            description: null,
+          },
+        ],
+        25,
+      ),
+    );
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -431,18 +458,22 @@ describe('EquipmentCatalogPage', () => {
 
   it('navigates to previous page when Previous is clicked', async () => {
     const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([
-      new URLSearchParams({ page: '3' }),
-      setSearchParams,
-    ]);
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([{
-      id: 'eq-1',
-      name: 'Test',
-      brand: null,
-      model: null,
-      type: 'kettle',
-      description: null,
-    }], 25));
+    mockUseSearchParams.mockReturnValue([new URLSearchParams({ page: '3' }), setSearchParams]);
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'eq-1',
+            name: 'Test',
+            brand: null,
+            model: null,
+            type: 'kettle',
+            description: null,
+          },
+        ],
+        25,
+      ),
+    );
     render(<EquipmentCatalogPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -461,9 +492,7 @@ describe('EquipmentCatalogPage', () => {
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('page=1'),
-    );
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('page=1'));
   });
 
   it('floors non-integer page to integer', async () => {
@@ -473,9 +502,7 @@ describe('EquipmentCatalogPage', () => {
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('page=2'),
-    );
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('page=2'));
   });
 
   it('retries fetch when retry button is clicked', async () => {

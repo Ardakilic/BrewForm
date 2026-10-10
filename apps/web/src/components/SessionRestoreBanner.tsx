@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext.tsx';
 import { createLogger } from '@/utils/logger.ts';
+import { useAuth } from '../contexts/AuthContext.tsx';
 
 const log = createLogger('SessionRestoreBanner');
 
@@ -36,30 +36,27 @@ export function SessionRestoreBanner() {
     }
   };
 
-  const message = sessionError === 'network'
-    ? "Couldn't reach the server. Check your connection and retry."
-    : "Couldn't restore your session — the server had an error. Retry?";
+  const message =
+    sessionError === 'network'
+      ? "Couldn't reach the server. Check your connection and retry."
+      : "Couldn't restore your session — the server had an error. Retry?";
 
   return (
     <div
-      role='alert'
-      className='flex items-center justify-center gap-2 px-4 py-2 text-sm'
+      role="alert"
+      className="flex items-center justify-center gap-2 px-4 py-2 text-sm"
       style={{ backgroundColor: 'var(--error)', color: 'white' }}
     >
       <span>{message}</span>
       <button
-        type='button'
+        type="button"
         onClick={handleRetry}
         disabled={retrying}
-        className='underline font-medium'
+        className="underline font-medium"
       >
         {retrying ? 'Retrying...' : 'Retry'}
       </button>
-      <button
-        type='button'
-        onClick={clearSessionError}
-        className='underline font-medium'
-      >
+      <button type="button" onClick={clearSessionError} className="underline font-medium">
         Dismiss
       </button>
     </div>

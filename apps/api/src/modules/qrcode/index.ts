@@ -1,12 +1,12 @@
-import { Hono } from 'hono';
+import { ErrorEnvelopeSchema, QrCodeFilenameSchema } from '@brewform/shared/schemas';
 import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
 import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
 import { config } from '../../config/index.ts';
-import * as service from './service.ts';
-import { ErrorEnvelopeSchema, QrCodeFilenameSchema } from '@brewform/shared/schemas';
-import { error, zodValidationHook } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { error, zodValidationHook } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for QR code endpoints, mounted at `/api/v1/qrcode`. */
 const qrcode = new Hono<AppEnv>();

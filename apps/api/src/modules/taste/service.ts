@@ -5,9 +5,10 @@
  * with a 30-day TTL. Supports full-text search with sibling expansion,
  * and CRUD operations that flush the cache on mutation.
  */
-import * as model from './model.ts';
+
 import type { CacheProvider } from '../../utils/cache/index.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import * as model from './model.ts';
 
 /**
  * Taste note service.
@@ -77,15 +78,10 @@ export async function searchTasteNotes(query: string, _cache: CacheProvider) {
     }
   }
 
-  const uniqueNotes = Array.from(
-    new Map(flat.map((n) => [n.id, n])).values(),
-  );
+  const uniqueNotes = Array.from(new Map(flat.map((n) => [n.id, n])).values());
   uniqueNotes.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
 
-  log.debug(
-    { queryLength: query.length, count: uniqueNotes.length },
-    'searchTasteNotes completed',
-  );
+  log.debug({ queryLength: query.length, count: uniqueNotes.length }, 'searchTasteNotes completed');
   return uniqueNotes;
 }
 

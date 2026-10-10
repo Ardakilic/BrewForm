@@ -8,8 +8,7 @@
  * database harness is not readily available.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 
 import { countUsers } from '../../../scripts/check-users-empty.ts';
 

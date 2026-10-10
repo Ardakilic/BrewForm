@@ -1,6 +1,3 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
 import {
   ErrorEnvelopeSchema,
   MessageResponseSchema,
@@ -10,11 +7,14 @@ import {
   successEnvelope,
   UnreadCountOutputSchema,
 } from '@brewform/shared/schemas';
-import { authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
-import type { AppEnv } from '../../types/hono.ts';
+import { zValidator } from '@hono/zod-validator';
 import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { authMiddleware } from '../../middleware/auth.ts';
+import type { AppEnv } from '../../types/hono.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Dependency-injection proxy for test stubbing (auth middleware + service). */
 export const deps = { authMiddleware, service };
@@ -157,9 +157,7 @@ notification.patch(
     description:
       'Marks a single notification owned by the authenticated user as read. Idempotent for already-read notifications.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Notification marked as read',

@@ -1,9 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { reports, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -11,7 +10,7 @@ import * as model from './model.ts';
  * a status field (default 'pending') that transitions to 'resolved' via
  * `resolve`.
  */
-describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('create', () => {
   let reporterId: string;
   let reportId: string;
 
@@ -32,12 +31,7 @@ describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 
   it('should insert a report row and return it', async () => {
-    const result = await model.create(
-      reporterId,
-      'recipe',
-      'some-entity-id',
-      'Spam content',
-    );
+    const result = await model.create(reporterId, 'recipe', 'some-entity-id', 'Spam content');
     reportId = result.id;
     expect(result).not.toBeNull();
     expect(result.reporterId).toBe(reporterId);
@@ -55,7 +49,7 @@ describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
  * findById — Find a report by ID. Returns null if no report with the given ID
  * exists. Reports have no soft-delete, so no deletedAt filter is applied.
  */
-describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findById', () => {
   let reporterId: string;
   let reportId: string;
 
@@ -102,7 +96,7 @@ describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
  * findMany — List reports with an optional status filter and pagination.
  * Returns `{ reports, total }`. Ordered by createdAt desc.
  */
-describe('findMany', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findMany', () => {
   let reporterId: string;
   let reportIds: string[];
 
@@ -194,7 +188,7 @@ describe('findMany', { sanitizeOps: false, sanitizeResources: false }, () => {
  * resolver's user ID and a resolvedAt timestamp. Returns the updated row, or
  * null if no report with the given ID exists.
  */
-describe('resolve', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('resolve', () => {
   let reporterId: string;
   let resolverId: string;
   let reportId: string;

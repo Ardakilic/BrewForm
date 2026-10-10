@@ -1,6 +1,6 @@
 # Docker Development Environment
 
-BrewForm runs entirely inside Docker containers. No local Deno installation is required.
+BrewForm runs entirely inside Docker containers. No local Node/pnpm installation is required.
 
 ## Volume Strategy
 
@@ -10,23 +10,19 @@ The `compose.yml` uses a **dual-volume strategy** for dev containers (`app` and 
 
 Mounts the entire project directory from the host into the container. This enables:
 
-- **Hot reload** — file changes on the host are picked up immediately by `deno run --watch` and Vite HMR.
+- **Hot reload** — file changes on the host are picked up immediately by `tsx --watch` and Vite HMR.
 - **IDE integration** — breakpoints, git operations, and file searches work against the host filesystem.
 
 ### Named Volume (`node_modules:/app/node_modules`)
 
 Overlays the container's own `node_modules` directory, **hiding** the host's `node_modules` from the container's view. This is critical because:
 
-- **Native bindings are platform-specific.** When you run `deno install` on macOS, it downloads `@rolldown/binding-darwin-arm64`. The Docker container (Linux) needs `@rolldown/binding-linux-arm64-gnu`.
+- **Native bindings are platform-specific.** When you run `pnpm install` on macOS, it downloads `@rolldown/binding-darwin-arm64`. The Docker container (Linux) needs `@rolldown/binding-linux-arm64-gnu`.
 - Without the named volume, the host's macOS bindings would shadow the container's Linux bindings, causing runtime errors like:
 
 ```text
 Error: Cannot find module '@rolldown/binding-linux-arm64-gnu'
 ```
-
-### Deno Cache Volume (`deno_cache:/deno-dir`)
-
-A persistent named volume for the global Deno cache. The `denoland/deno:debian` image sets `DENO_DIR=/deno-dir`, so the cache is mounted there. This avoids re-downloading JSR and npm packages on every container restart.
 
 ### Volume Resolution Order
 
@@ -36,7 +32,7 @@ Inside the container, the filesystem looks like this:
 /app
 ├── apps/              ← from bind mount (host)
 ├── packages/          ← from bind mount (host)
-├── deno.json          ← from bind mount (host)
+├── package.json       ← from bind mount (host)
 ├── node_modules/      ← from named volume (container image)
 └── ...
 ```
@@ -45,7 +41,7 @@ The named `node_modules` volume takes precedence over the bind mount for that si
 
 ## Rebuilding After Dependency Changes
 
-If you add or update dependencies in `deno.json` or any `package.json`:
+If you add or update dependencies in any `package.json` or the `pnpm-workspace.yaml` catalog:
 
 1. Update the lockfile:
    ```bash
@@ -66,7 +62,7 @@ If you add or update dependencies in `deno.json` or any `package.json`:
 
 | Service      | Profile | Purpose                                          | Port  |
 |--------------|---------|--------------------------------------------------|-------|
-| `app`        | `dev`   | Hono API with hot reload (`deno run --watch`)    | 8000  |
+| `app`        | `dev`   | Hono API with hot reload (`tsx --watch`)      | 8000  |
 | `web-dev`    | `dev`   | Vite dev server with HMR                         | 5173  |
 | `app-preview`| `preview` | Production-like API (built image, no reload)     | 8000  |
 | `web`        | `preview` | Caddy static file server (built SPA)             | 8080  |
@@ -74,14 +70,12 @@ If you add or update dependencies in `deno.json` or any `package.json`:
 | `mailpit`    | —       | SMTP capture + web UI                              | 1025  |
 | `garage`     | —       | S3-compatible object storage                       | 3900  |
 | `pgadmin`    | —       | PostgreSQL admin UI                                | 5050  |
-| `serena`     | `serena`| Semantic code retrieval MCP server                 | 10122 |
 
 Profiles are used to prevent accidental service startup:
 
 - `make up` — starts only infrastructure (`postgres`, `mailpit`, `pgadmin`, `garage`)
 - `make dev` — starts infrastructure + `app` + `web-dev`
 - `make preview` — starts infrastructure + `app-preview` + `web`
-- `make serena-up` — starts `serena` only
 
 ## Troubleshooting
 
@@ -101,7 +95,7 @@ If the error persists, rebuild the image to pull the correct Linux bindings:
 make build && make down && make dev
 ```
 
-### Stale Dependencies After `deno install`
+### Stale Dependencies After `pnpm install`
 
 **Cause:** The `node_modules` named volume is pinned to an older image layer.
 

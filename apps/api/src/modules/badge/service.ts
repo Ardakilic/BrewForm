@@ -5,9 +5,10 @@
  * (triggered by activity hooks), and a batch evaluator for all non-deleted
  * users. Batch evaluation processes users in cursor-paginated batches of 100.
  */
-import * as model from './model.ts';
-import * as userModel from '../user/model.ts';
+
 import { createLogger } from '../../utils/logger/index.ts';
+import * as userModel from '../user/model.ts';
+import * as model from './model.ts';
 
 const logger = createLogger('badge-service');
 

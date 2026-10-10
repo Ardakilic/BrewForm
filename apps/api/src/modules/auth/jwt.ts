@@ -39,9 +39,12 @@ export interface RefreshPayload {
 export type JwtPayload = AccessPayload | RefreshPayload;
 
 /** Sign a new access token with full user claims. */
-export async function signAccessToken(
-  user: { id: string; email: string; username: string; isAdmin: boolean },
-): Promise<string> {
+export async function signAccessToken(user: {
+  id: string;
+  email: string;
+  username: string;
+  isAdmin: boolean;
+}): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: user.id,
@@ -58,10 +61,7 @@ export async function signAccessToken(
 /** Sign a new refresh token with subject only (no identity claims).
  *  When customExpiry is provided (e.g. for "remember me"), it overrides
  *  the default JWT_REFRESH_EXPIRY. */
-export async function signRefreshToken(
-  userId: string,
-  customExpiry?: string,
-): Promise<string> {
+export async function signRefreshToken(userId: string, customExpiry?: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const expirySeconds = parseExpiry(customExpiry ?? REFRESH_EXPIRY);
   const payload = {

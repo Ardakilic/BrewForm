@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -113,10 +113,9 @@ describe('AdminUsersPage — ban/unban flow', () => {
   ];
 
   function renderPage() {
-    const router = createMemoryRouter(
-      [{ path: '/admin/users', element: <AdminUsersPage /> }],
-      { initialEntries: ['/admin/users'] },
-    );
+    const router = createMemoryRouter([{ path: '/admin/users', element: <AdminUsersPage /> }], {
+      initialEntries: ['/admin/users'],
+    });
     return render(<RouterProvider router={router} />);
   }
 
@@ -132,9 +131,7 @@ describe('AdminUsersPage — ban/unban flow', () => {
     fireEvent.click(screen.getByText('Yasakla'));
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Kullanıcıyı Yasakla: alice'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Kullanıcıyı Yasakla: alice')).toBeInTheDocument();
     });
   });
 

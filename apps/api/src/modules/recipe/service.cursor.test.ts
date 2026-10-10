@@ -11,22 +11,24 @@
  */
 
 import '../../test-setup.ts';
-import { afterAll, beforeAll, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { db } from '@brewform/db';
 import { recipes, users } from '@brewform/db/schema';
-import { inArray } from 'drizzle-orm';
-import * as service from './service.ts';
 import { encodeCursor } from '@brewform/shared/utils';
+import { inArray } from 'drizzle-orm';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import * as service from './service.ts';
 
 async function createTestUser(prefix: string) {
   const id = crypto.randomUUID();
-  const [user] = await db.insert(users).values({
-    id,
-    email: `${prefix}-${id}@example.com`,
-    username: `${prefix}-${id.slice(0, 8)}`,
-    passwordHash: 'hash',
-  }).returning();
+  const [user] = await db
+    .insert(users)
+    .values({
+      id,
+      email: `${prefix}-${id}@example.com`,
+      username: `${prefix}-${id.slice(0, 8)}`,
+      passwordHash: 'hash',
+    })
+    .returning();
   return user;
 }
 
@@ -36,23 +38,22 @@ async function createTestRecipe(
   overrides: Partial<typeof recipes.$inferInsert> = {},
 ) {
   const id = crypto.randomUUID();
-  const [recipe] = await db.insert(recipes).values({
-    id,
-    slug: `slug-${id.slice(0, 8)}`,
-    title,
-    authorId,
-    visibility: 'public',
-    createdAt: overrides.createdAt ?? new Date(),
-    ...overrides,
-  }).returning();
+  const [recipe] = await db
+    .insert(recipes)
+    .values({
+      id,
+      slug: `slug-${id.slice(0, 8)}`,
+      title,
+      authorId,
+      visibility: 'public',
+      createdAt: overrides.createdAt ?? new Date(),
+      ...overrides,
+    })
+    .returning();
   return recipe;
 }
 
-describe({
-  name: 'Recipe service — cursor pagination routing',
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, () => {
+describe('Recipe service — cursor pagination routing', () => {
   let author: typeof users.$inferSelect;
   const recipesToClean: string[] = [];
   const usersToClean: string[] = [];
@@ -76,7 +77,7 @@ describe({
     recipesToClean.push(r.id);
 
     const result = await service.listRecipes(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       { sortBy: 'createdAt', sortOrder: 'desc' } as any,
       1,
       10,
@@ -96,7 +97,7 @@ describe({
     recipesToClean.push(r1.id, r2.id);
 
     const firstPage = await service.listRecipes(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       { sortBy: 'createdAt', sortOrder: 'desc', perPage: 1 } as any,
       1,
       1,
@@ -105,7 +106,7 @@ describe({
 
     const cursor = encodeCursor({ createdAt: r2.createdAt.toISOString(), id: r2.id });
     const result = await service.listRecipes(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       { sortBy: 'createdAt', sortOrder: 'desc', cursor } as any,
       1,
       10,
@@ -113,9 +114,9 @@ describe({
 
     expect('hasMore' in result).toBe(true);
     expect(result.recipes.length).toBe(1);
-    // deno-lint-ignore no-explicit-any -- test assertion cast
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     expect((result as any).recipes[0].id).toBe(r1.id);
-    // deno-lint-ignore no-explicit-any -- test assertion cast
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     expect((result as any).hasMore).toBe(false);
   });
 
@@ -124,7 +125,7 @@ describe({
     recipesToClean.push(r.id);
 
     const cursor = encodeCursor({ createdAt: r.createdAt.toISOString(), id: r.id });
-    // deno-lint-ignore no-explicit-any -- test assertion cast
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     const result = await service.listRecipes({ sortBy: 'likeCount', cursor } as any, 1, 10);
 
     expect('total' in result).toBe(true);
@@ -133,7 +134,7 @@ describe({
 
   it('throws INVALID_CURSOR when cursor cannot be decoded', async () => {
     await expect(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       service.listRecipes({ sortBy: 'createdAt', cursor: '!!!invalid!!!' } as any, 1, 10),
     ).rejects.toThrow('VALIDATION_ERROR: INVALID_CURSOR');
   });
@@ -149,16 +150,16 @@ describe({
 
     const descCursor = encodeCursor({ createdAt: r1.createdAt.toISOString(), id: r1.id });
     const ascResult = await service.listRecipes(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       { sortBy: 'createdAt', sortOrder: 'asc', cursor: descCursor } as any,
       1,
       10,
     );
 
     expect('hasMore' in ascResult).toBe(true);
-    // deno-lint-ignore no-explicit-any -- test assertion cast
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     expect((ascResult as any).recipes.some((recipe: any) => recipe.id === r2.id)).toBe(true);
-    // deno-lint-ignore no-explicit-any -- test assertion cast
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     expect((ascResult as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(false);
   });
 
@@ -175,16 +176,16 @@ describe({
     // Using it with DESC should return recipes OLDER than r2 (i.e. r1).
     const ascCursor = encodeCursor({ createdAt: r2.createdAt.toISOString(), id: r2.id });
     const descResult = await service.listRecipes(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       { sortBy: 'createdAt', sortOrder: 'desc', cursor: ascCursor } as any,
       1,
       10,
     );
 
     expect('hasMore' in descResult).toBe(true);
-    // deno-lint-ignore no-explicit-any -- test assertion cast
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     expect((descResult as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(true);
-    // deno-lint-ignore no-explicit-any -- test assertion cast
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     expect((descResult as any).recipes.some((recipe: any) => recipe.id === r2.id)).toBe(false);
   });
 
@@ -200,14 +201,14 @@ describe({
     // Pass both cursor and page=5 — cursor must win, page is ignored.
     const cursor = encodeCursor({ createdAt: r2.createdAt.toISOString(), id: r2.id });
     const result = await service.listRecipes(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       { sortBy: 'createdAt', sortOrder: 'desc', cursor } as any,
       5,
       10,
     );
 
     expect('hasMore' in result).toBe(true);
-    // deno-lint-ignore no-explicit-any -- test assertion cast
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
     expect((result as any).recipes.some((recipe: any) => recipe.id === r1.id)).toBe(true);
   });
 
@@ -218,12 +219,9 @@ describe({
       createdAt: 'not-a-date',
       id: '550e8400-e29b-41d4-a716-446655440000',
     });
-    const badCursor = btoa(payload)
-      .replaceAll('+', '-')
-      .replaceAll('/', '_')
-      .replaceAll('=', '');
+    const badCursor = btoa(payload).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
     await expect(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       service.listRecipes({ sortBy: 'createdAt', cursor: badCursor } as any, 1, 10),
     ).rejects.toThrow('VALIDATION_ERROR: INVALID_CURSOR');
   });
@@ -237,7 +235,7 @@ describe({
       id: r.id,
     });
     const result = await service.listRecipes(
-      // deno-lint-ignore no-explicit-any -- test cast
+      // biome-ignore lint/suspicious/noExplicitAny: test cast
       { sortBy: 'createdAt', cursor: futureCursor, includeTotal: true } as any,
       1,
       10,

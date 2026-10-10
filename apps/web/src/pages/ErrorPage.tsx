@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router';
-import { useTranslation } from '../contexts/I18nContext.tsx';
-import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { createLogger } from '@/utils/logger.ts';
+import { SEOHead } from '../components/seo/SEOHead.tsx';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const log = createLogger('ErrorPage');
 
@@ -20,14 +20,18 @@ function ErrorPage({ statusCode, message, illustration }: Props) {
   const { t } = useTranslation();
 
   return (
-    <div className='flex min-h-[60vh] flex-col items-center justify-center px-6 text-center'>
+    <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
       <SEOHead title={String(statusCode)} noIndex />
-      <div className='text-8xl'>{illustration}</div>
-      <h1 className='mt-4 text-4xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="text-8xl">{illustration}</div>
+      <h1 className="mt-4 text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>
         {statusCode}
       </h1>
-      <p className='mt-2 text-lg' style={{ color: 'var(--text-secondary)' }}>{message}</p>
-      <Link to='/' className='btn-primary mt-6'>{t('common.goHome')}</Link>
+      <p className="mt-2 text-lg" style={{ color: 'var(--text-secondary)' }}>
+        {message}
+      </p>
+      <Link to="/" className="btn-primary mt-6">
+        {t('common.goHome')}
+      </Link>
     </div>
   );
 }
@@ -43,13 +47,7 @@ export function NotFoundPage() {
     };
   }, []);
 
-  return (
-    <ErrorPage
-      statusCode={404}
-      message={t('error.404')}
-      illustration='🫥'
-    />
-  );
+  return <ErrorPage statusCode={404} message={t('error.404')} illustration="🫥" />;
 }
 
 /** 500 page (noindex); rendered by the router's `RootErrorBoundary` for 5xx route errors. */
@@ -63,11 +61,5 @@ export function ServerErrorPage() {
     };
   }, []);
 
-  return (
-    <ErrorPage
-      statusCode={500}
-      message={t('error.500')}
-      illustration='💔'
-    />
-  );
+  return <ErrorPage statusCode={500} message={t('error.500')} illustration="💔" />;
 }

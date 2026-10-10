@@ -12,12 +12,14 @@ import {
   userPreferences,
   users,
 } from '@brewform/db/schema';
-import { and, eq, isNull, ne } from 'drizzle-orm';
 import { compareSync, hashSync } from 'bcryptjs';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 
 /** Find a non-deleted user by email, including preferences. */
 export async function findUserByEmail(email: string) {
-  const result = await db.select().from(users)
+  const result = await db
+    .select()
+    .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
     .where(and(eq(users.email, email), isNull(users.deletedAt)))
     .limit(1);
@@ -27,7 +29,9 @@ export async function findUserByEmail(email: string) {
 
 /** Find a non-deleted user by username. Preferences not included. */
 export async function findUserByUsername(username: string) {
-  const result = await db.select().from(users)
+  const result = await db
+    .select()
+    .from(users)
     .where(and(eq(users.username, username), isNull(users.deletedAt)))
     .limit(1);
   return result[0] ?? null;
@@ -35,7 +39,9 @@ export async function findUserByUsername(username: string) {
 
 /** Find a non-deleted user by UUID, including preferences. */
 export async function findUserById(id: string) {
-  const result = await db.select().from(users)
+  const result = await db
+    .select()
+    .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
     .where(and(eq(users.id, id), isNull(users.deletedAt)))
     .limit(1);
@@ -63,12 +69,15 @@ export function createUser(data: {
 }) {
   const passwordHash = hashSync(data.password, 10);
   return db.transaction(async (tx) => {
-    const [user] = await tx.insert(users).values({
-      email: data.email,
-      username: data.username,
-      passwordHash,
-      displayName: data.displayName || null,
-    }).returning();
+    const [user] = await tx
+      .insert(users)
+      .values({
+        email: data.email,
+        username: data.username,
+        passwordHash,
+        displayName: data.displayName || null,
+      })
+      .returning();
     await tx.insert(userPreferences).values({ userId: user.id });
     return user;
   });
@@ -82,7 +91,10 @@ export function verifyPassword(plainPassword: string, hashedPassword: string): b
 /** Hash and persist a new password for the given user. */
 export async function updateUserPassword(userId: string, newPassword: string) {
   const passwordHash = hashSync(newPassword, 10);
-  const [result] = await db.update(users).set({ passwordHash }).where(eq(users.id, userId))
+  const [result] = await db
+    .update(users)
+    .set({ passwordHash })
+    .where(eq(users.id, userId))
     .returning();
   return result ?? null;
 }
@@ -95,7 +107,9 @@ export async function createPasswordReset(userId: string, token: string, expires
 
 /** Look up a password reset record by its raw token, including the associated user. */
 export async function findPasswordResetByToken(token: string) {
-  const result = await db.select().from(passwordResets)
+  const result = await db
+    .select()
+    .from(passwordResets)
     .leftJoin(users, eq(passwordResets.userId, users.id))
     .where(eq(passwordResets.token, token))
     .limit(1);
@@ -105,17 +119,21 @@ export async function findPasswordResetByToken(token: string) {
 
 /** Mark a password reset record as used (sets `usedAt` to now). */
 export async function markPasswordResetUsed(id: string) {
-  const [result] = await db.update(passwordResets).set({ usedAt: new Date() }).where(
-    eq(passwordResets.id, id),
-  ).returning();
+  const [result] = await db
+    .update(passwordResets)
+    .set({ usedAt: new Date() })
+    .where(eq(passwordResets.id, id))
+    .returning();
   return result ?? null;
 }
 
 /** Set `onboardingCompleted = true` for the given user. */
 export async function markOnboardingComplete(userId: string) {
-  const [result] = await db.update(users).set({ onboardingCompleted: true }).where(
-    eq(users.id, userId),
-  ).returning();
+  const [result] = await db
+    .update(users)
+    .set({ onboardingCompleted: true })
+    .where(eq(users.id, userId))
+    .returning();
   return result ?? null;
 }
 
@@ -124,7 +142,11 @@ export async function markOnboardingComplete(userId: string) {
 export async function isEmailTaken(email: string, excludeId?: string) {
   const conditions = [eq(users.email, email), isNull(users.deletedAt)];
   if (excludeId) conditions.push(ne(users.id, excludeId));
-  const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
+  const [result] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(...conditions))
+    .limit(1);
   return !!result;
 }
 
@@ -133,29 +155,34 @@ export async function isEmailTaken(email: string, excludeId?: string) {
 export async function isUsernameTaken(username: string, excludeId?: string) {
   const conditions = [eq(users.username, username), isNull(users.deletedAt)];
   if (excludeId) conditions.push(ne(users.id, excludeId));
-  const [result] = await db.select({ id: users.id }).from(users).where(and(...conditions)).limit(1);
+  const [result] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(...conditions))
+    .limit(1);
   return !!result;
 }
 
 /** SHA-256 hash a raw token string for secure storage (one-way). */
 async function hashToken(raw: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /** Store a SHA-256 hashed email verification token. The raw token is
  *  never persisted — only the hash is stored for later comparison. */
-export async function createEmailVerificationToken(
-  userId: string,
-  token: string,
-  expiresAt: Date,
-) {
+export async function createEmailVerificationToken(userId: string, token: string, expiresAt: Date) {
   const hashed = await hashToken(token);
-  const [result] = await db.insert(emailVerificationTokens).values({
-    userId,
-    token: hashed,
-    expiresAt,
-  }).returning();
+  const [result] = await db
+    .insert(emailVerificationTokens)
+    .values({
+      userId,
+      token: hashed,
+      expiresAt,
+    })
+    .returning();
   return result;
 }
 
@@ -163,7 +190,9 @@ export async function createEmailVerificationToken(
  *  comparing against stored hashes. */
 export async function findEmailVerificationByToken(token: string) {
   const hashed = await hashToken(token);
-  const result = await db.select().from(emailVerificationTokens)
+  const result = await db
+    .select()
+    .from(emailVerificationTokens)
     .where(eq(emailVerificationTokens.token, hashed))
     .limit(1);
   return result[0] ?? null;
@@ -180,15 +209,14 @@ export async function findEmailVerificationByToken(token: string) {
  */
 export async function markEmailVerified(userId: string, tokenId: string) {
   await db.transaction(async (tx) => {
-    const [consumed] = await tx.update(emailVerificationTokens)
+    const [consumed] = await tx
+      .update(emailVerificationTokens)
       .set({ usedAt: new Date() })
       .where(and(eq(emailVerificationTokens.id, tokenId), isNull(emailVerificationTokens.usedAt)))
       .returning({ id: emailVerificationTokens.id });
     if (!consumed) {
       throw new Error('TOKEN_ALREADY_USED');
     }
-    await tx.update(users)
-      .set({ emailVerifiedAt: new Date() })
-      .where(eq(users.id, userId));
+    await tx.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
   });
 }

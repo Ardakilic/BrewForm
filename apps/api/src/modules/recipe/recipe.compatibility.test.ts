@@ -5,15 +5,14 @@
  * the compatibility validation logic works correctly.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
+import { describe, expect, it } from 'vitest';
+import { errorHandler } from '../../middleware/errorHandler.ts';
 import {
-  checkEquipmentCompatibility,
   type CompatibilityCheckItem,
   type CompatibilityRule,
+  checkEquipmentCompatibility,
 } from './service.ts';
-import { errorHandler } from '../../middleware/errorHandler.ts';
 
 // ---------------------------------------------------------------------------
 // Hono app that uses the real error handler for EQUIPMENT_INCOMPATIBLE
@@ -75,7 +74,7 @@ describe('Brew Method Compatibility Validation', () => {
 
     it('should return empty array when brewMethod is empty', () => {
       const items: CompatibilityCheckItem[] = [{ id: '1', type: 'portafilter' }];
-      const result = checkEquipmentCompatibility(items, '', rules);
+      const result = checkEquipmentCompatibility(items, '' as never, rules);
       expect(result).toHaveLength(0);
     });
 
@@ -108,9 +107,7 @@ describe('Brew Method Compatibility Validation', () => {
 
   describe('Error handler — EQUIPMENT_INCOMPATIBLE', () => {
     it('should return 422 with VALIDATION_ERROR code', async () => {
-      const app = createCompatibilityErrorApp([
-        'cezve is not compatible with espresso_machine',
-      ]);
+      const app = createCompatibilityErrorApp(['cezve is not compatible with espresso_machine']);
 
       const res = await app.request('/recipes', {
         method: 'POST',
@@ -119,15 +116,13 @@ describe('Brew Method Compatibility Validation', () => {
       });
 
       expect(res.status).toBe(422);
-      const body = await res.json() as {
+      const body = (await res.json()) as {
         success: boolean;
         error: { code: string; message: string; details: unknown[] };
       };
       expect(body.success).toBe(false);
       expect(body.error.code).toBe('VALIDATION_ERROR');
-      expect(body.error.message).toBe(
-        'Equipment is not compatible with the selected brew method',
-      );
+      expect(body.error.message).toBe('Equipment is not compatible with the selected brew method');
     });
 
     it('should include details in the error response', async () => {
@@ -144,7 +139,7 @@ describe('Brew Method Compatibility Validation', () => {
       });
 
       expect(res.status).toBe(422);
-      const body = await res.json() as {
+      const body = (await res.json()) as {
         success: boolean;
         error: { details: Array<{ field: string; message: string }> };
       };
@@ -165,7 +160,7 @@ describe('Brew Method Compatibility Validation', () => {
       });
 
       expect(res.status).toBe(422);
-      const body = await res.json() as {
+      const body = (await res.json()) as {
         success: boolean;
         error: { details: unknown[] };
       };

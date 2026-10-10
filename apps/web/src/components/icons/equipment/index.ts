@@ -1,28 +1,28 @@
 import type React from 'react';
 
-export { PortafilterIcon } from './PortafilterIcon.tsx';
 export { BasketIcon } from './BasketIcon.tsx';
-export { PuckScreenIcon } from './PuckScreenIcon.tsx';
-export { PaperFilterIcon } from './PaperFilterIcon.tsx';
-export { TamperIcon } from './TamperIcon.tsx';
+export { CezveIcon } from './CezveIcon.tsx';
 export { GooseneckKettleIcon } from './GooseneckKettleIcon.tsx';
 export { MeshFilterIcon } from './MeshFilterIcon.tsx';
-export { CezveIcon } from './CezveIcon.tsx';
-export { ScaleIcon } from './ScaleIcon.tsx';
-export { ThermometerIcon } from './ThermometerIcon.tsx';
 export { OtherIcon } from './OtherIcon.tsx';
+export { PaperFilterIcon } from './PaperFilterIcon.tsx';
+export { PortafilterIcon } from './PortafilterIcon.tsx';
+export { PuckScreenIcon } from './PuckScreenIcon.tsx';
+export { ScaleIcon } from './ScaleIcon.tsx';
+export { TamperIcon } from './TamperIcon.tsx';
+export { ThermometerIcon } from './ThermometerIcon.tsx';
 
-import { PortafilterIcon } from './PortafilterIcon.tsx';
 import { BasketIcon } from './BasketIcon.tsx';
-import { PuckScreenIcon } from './PuckScreenIcon.tsx';
-import { PaperFilterIcon } from './PaperFilterIcon.tsx';
-import { TamperIcon } from './TamperIcon.tsx';
+import { CezveIcon } from './CezveIcon.tsx';
 import { GooseneckKettleIcon } from './GooseneckKettleIcon.tsx';
 import { MeshFilterIcon } from './MeshFilterIcon.tsx';
-import { CezveIcon } from './CezveIcon.tsx';
-import { ScaleIcon } from './ScaleIcon.tsx';
-import { ThermometerIcon } from './ThermometerIcon.tsx';
 import { OtherIcon } from './OtherIcon.tsx';
+import { PaperFilterIcon } from './PaperFilterIcon.tsx';
+import { PortafilterIcon } from './PortafilterIcon.tsx';
+import { PuckScreenIcon } from './PuckScreenIcon.tsx';
+import { ScaleIcon } from './ScaleIcon.tsx';
+import { TamperIcon } from './TamperIcon.tsx';
+import { ThermometerIcon } from './ThermometerIcon.tsx';
 
 interface IconProps {
   size?: number;

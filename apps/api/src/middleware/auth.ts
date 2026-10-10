@@ -13,14 +13,15 @@
  *   - `c.set('userId', user.id)`
  *   - `c.set('user', user)` (the full user row, which includes `.isAdmin`)
  */
-import type { Context, Next } from 'hono';
-import { getCookie } from 'hono/cookie';
-import { verifyJwt } from '../modules/auth/jwt.ts';
+
 import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
-import { forbidden, unauthorized } from '../utils/response/index.ts';
+import type { Context, Next } from 'hono';
+import { getCookie } from 'hono/cookie';
+import { verifyJwt } from '../modules/auth/jwt.ts';
 import { createLogger } from '../utils/logger/index.ts';
+import { forbidden, unauthorized } from '../utils/response/index.ts';
 
 /** Module-scoped structured logger for the JWT auth middleware. */
 export const log = createLogger('auth-middleware');
@@ -73,7 +74,9 @@ export async function authMiddleware(c: Context, next: Next) {
       return unauthorized(c, 'Invalid token payload');
     }
 
-    const result = await db.select().from(users)
+    const result = await db
+      .select()
+      .from(users)
       .where(and(eq(users.id, payload.sub), isNull(users.deletedAt)))
       .limit(1);
     const user = result[0];
@@ -129,7 +132,9 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
     const payload = await verifyJwt(token);
     if (payload.sub && payload.type === 'access') {
       log.debug({ userId: payload.sub }, 'optionalAuthMiddleware authenticated user');
-      const result = await db.select().from(users)
+      const result = await db
+        .select()
+        .from(users)
         .where(and(eq(users.id, payload.sub), isNull(users.deletedAt)))
         .limit(1);
       const user = result[0];

@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BanDialog } from './BanDialog.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -44,12 +44,7 @@ describe('BanDialog', () => {
   });
 
   it('renders username in title when displayName is null', () => {
-    render(
-      <BanDialog
-        {...defaultProps}
-        user={{ id: 'u1', username: 'bob', displayName: null }}
-      />,
-    );
+    render(<BanDialog {...defaultProps} user={{ id: 'u1', username: 'bob', displayName: null }} />);
     expect(screen.getByText(/admin\.users\.banDialogTitle: bob/)).toBeInTheDocument();
   });
 

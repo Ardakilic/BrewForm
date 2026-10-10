@@ -28,10 +28,7 @@ export interface PaginationCursor {
  *          accept back as a query parameter.
  */
 export function encodeCursor(cursor: PaginationCursor): string {
-  return btoa(JSON.stringify(cursor))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replaceAll('=', '');
+  return btoa(JSON.stringify(cursor)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 
 /**

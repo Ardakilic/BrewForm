@@ -1,8 +1,3 @@
-import { Hono } from 'hono';
-import type { Context, Next } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
 import {
   cursorEnvelope,
   ErrorEnvelopeSchema,
@@ -20,12 +15,15 @@ import {
   successEnvelope,
   VersionDiffOutputSchema,
 } from '@brewform/shared/schemas';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { zValidator } from '@hono/zod-validator';
+import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import * as collectionService from '../collection/service.ts';
-import * as tasteService from '../taste/service.ts';
+import type { AppEnv } from '../../types/hono.ts';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import {
   cursorPaginated,
   error,
@@ -35,7 +33,9 @@ import {
   success,
   zodValidationHook,
 } from '../../utils/response/index.ts';
-import type { AppEnv } from '../../types/hono.ts';
+import * as collectionService from '../collection/service.ts';
+import * as tasteService from '../taste/service.ts';
+import * as service from './service.ts';
 
 /** Dependency-injection proxy for test stubbing (auth + optional-auth middleware). */
 export const deps = { authMiddleware, optionalAuthMiddleware };
@@ -214,9 +214,10 @@ recipe.get(
         requestId,
       );
 
-      const depHeaders = result.deprecations?.tasteNoteId === true
-        ? { headers: { Deprecation: 'true' } }
-        : undefined;
+      const depHeaders =
+        result.deprecations?.tasteNoteId === true
+          ? { headers: { Deprecation: 'true' } }
+          : undefined;
 
       if ('hasMore' in result) {
         return cursorPaginated(
@@ -485,9 +486,7 @@ recipe.get(
     summary: 'List collections containing a recipe',
     description:
       "Returns the collections containing the recipe, visibility-filtered for the caller: public collections for anyone, plus the caller's own collections of any visibility (US-9/D99.5).",
-    parameters: [
-      { name: 'slugOrId', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'slugOrId', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Collections containing the recipe',
@@ -563,16 +562,18 @@ recipe.get(
       const payload = {
         ...r,
         currentVersion,
-        tasteNotes: currentVersion?.tasteNotes?.map((t) => ({
-          ...t.tasteNote,
-          tasteNoteId: t.tasteNote?.id,
-          rootCategoryName: rootMap[t.tasteNote?.id] ?? t.tasteNote?.name,
-          intensity: t.intensity ?? 1,
-        })) ?? [],
-        equipment: currentVersion?.equipment?.map((e) => ({
-          ...e.equipment,
-          equipmentId: e.equipmentId,
-        })) ?? [],
+        tasteNotes:
+          currentVersion?.tasteNotes?.map((t) => ({
+            ...t.tasteNote,
+            tasteNoteId: t.tasteNote?.id,
+            rootCategoryName: rootMap[t.tasteNote?.id] ?? t.tasteNote?.name,
+            intensity: t.intensity ?? 1,
+          })) ?? [],
+        equipment:
+          currentVersion?.equipment?.map((e) => ({
+            ...e.equipment,
+            equipmentId: e.equipmentId,
+          })) ?? [],
         bean: currentVersion?.bean ?? null,
         versionCount: r.versions?.length ?? 1,
         forkedFromSlug: r.forkedFrom?.slug ?? null,

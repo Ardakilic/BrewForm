@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
 import { Select } from '@base-ui/react/select';
+import { useCallback, useMemo, useState } from 'react';
 import { useSafeT } from '../../utils/safe-translation.ts';
 
 /** A flattened taste-note node (id, name, depth, parent) used to build the filter tree. */
@@ -53,78 +53,86 @@ export function TasteNotesFilter({
 
   const noteById = useMemo(() => new Map(allTasteNotes.map((n) => [n.id, n])), [allTasteNotes]);
 
-  function getRootId(note: TasteNoteFlat): string | null {
-    if (note.depth === 0) return note.id;
-    if (!note.parentId) return null;
-    const parent = noteById.get(note.parentId);
-    if (!parent) return null;
-    return getRootId(parent);
-  }
+  const getRootId = useCallback(
+    (note: TasteNoteFlat): string | null => {
+      if (note.depth === 0) return note.id;
+      if (!note.parentId) return null;
+      const parent = noteById.get(note.parentId);
+      if (!parent) return null;
+      return getRootId(parent);
+    },
+    [noteById],
+  );
 
-  function hasChildren(note: TasteNoteFlat): boolean {
-    return allTasteNotes.some((n) => n.parentId === note.id);
-  }
+  const hasChildren = useCallback(
+    (note: TasteNoteFlat): boolean => {
+      return allTasteNotes.some((n) => n.parentId === note.id);
+    },
+    [allTasteNotes],
+  );
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const visibleRoots = useMemo(() => {
     const roots = allTasteNotes.filter((n) => n.depth === 0);
 
-    const rootGroups = roots.map((root) => {
-      const subGroups: SubGroup[] = [];
-      const orphanItems: TasteNoteFlat[] = [];
+    const rootGroups = roots
+      .map((root) => {
+        const subGroups: SubGroup[] = [];
+        const orphanItems: TasteNoteFlat[] = [];
 
-      const items = allTasteNotes.filter((n) => {
-        if (n.depth < 1) return false;
-        const rootId = getRootId(n);
-        return rootId === root.id;
-      });
+        const items = allTasteNotes.filter((n) => {
+          if (n.depth < 1) return false;
+          const rootId = getRootId(n);
+          return rootId === root.id;
+        });
 
-      const filtered = normalizedQuery
-        ? items.filter((item) => item.name.toLowerCase().includes(normalizedQuery))
-        : items;
+        const filtered = normalizedQuery
+          ? items.filter((item) => item.name.toLowerCase().includes(normalizedQuery))
+          : items;
 
-      for (const item of filtered) {
-        const itemHasChildren = hasChildren(item);
+        for (const item of filtered) {
+          const itemHasChildren = hasChildren(item);
 
-        if (item.depth === 1 && itemHasChildren) {
-          const existing = subGroups.find((sg) => sg.parent.id === item.id);
-          if (!existing) {
-            subGroups.push({ parent: item, children: [] });
-          }
-        } else if (item.depth === 2) {
-          const depth1Parent = item.parentId ? noteById.get(item.parentId) : null;
-          if (depth1Parent && depth1Parent.depth === 1 && hasChildren(depth1Parent)) {
-            let subGroup = subGroups.find((sg) => sg.parent.id === item.parentId);
-            if (!subGroup) {
-              subGroup = { parent: depth1Parent, children: [] };
-              subGroups.push(subGroup);
+          if (item.depth === 1 && itemHasChildren) {
+            const existing = subGroups.find((sg) => sg.parent.id === item.id);
+            if (!existing) {
+              subGroups.push({ parent: item, children: [] });
             }
-            subGroup.children.push(item);
+          } else if (item.depth === 2) {
+            const depth1Parent = item.parentId ? noteById.get(item.parentId) : null;
+            if (depth1Parent && depth1Parent.depth === 1 && hasChildren(depth1Parent)) {
+              let subGroup = subGroups.find((sg) => sg.parent.id === item.parentId);
+              if (!subGroup) {
+                subGroup = { parent: depth1Parent, children: [] };
+                subGroups.push(subGroup);
+              }
+              subGroup.children.push(item);
+            } else {
+              orphanItems.push(item);
+            }
           } else {
             orphanItems.push(item);
           }
-        } else {
-          orphanItems.push(item);
         }
-      }
 
-      subGroups.sort((a, b) => a.parent.name.localeCompare(b.parent.name));
-      for (const sg of subGroups) {
-        sg.children.sort((a, b) => a.name.localeCompare(b.name));
-      }
-      orphanItems.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
+        subGroups.sort((a, b) => a.parent.name.localeCompare(b.parent.name));
+        for (const sg of subGroups) {
+          sg.children.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        orphanItems.sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
 
-      return {
-        root,
-        subGroups,
-        orphanItems,
-      };
-    }).filter((g) => g.subGroups.length > 0 || g.orphanItems.length > 0);
+        return {
+          root,
+          subGroups,
+          orphanItems,
+        };
+      })
+      .filter((g) => g.subGroups.length > 0 || g.orphanItems.length > 0);
 
     rootGroups.sort((a, b) => a.root.name.localeCompare(b.root.name));
     return rootGroups;
-  }, [allTasteNotes, normalizedQuery, noteById]);
+  }, [allTasteNotes, normalizedQuery, noteById, getRootId, hasChildren]);
 
   const hasVisibleItems = visibleRoots.length > 0;
 
@@ -151,19 +159,19 @@ export function TasteNotesFilter({
         ].join(' ')}
       >
         <Select.Value>{valueText}</Select.Value>
-        <Select.Icon className='flex items-center text-[color:var(--text-secondary)]'>
+        <Select.Icon className="flex items-center text-[color:var(--text-secondary)]">
           <svg
-            width='10'
-            height='6'
-            viewBox='0 0 10 6'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='1.5'
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            aria-hidden='true'
+            width="10"
+            height="6"
+            viewBox="0 0 10 6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
           >
-            <path d='M1 1l4 4 4-4' />
+            <path d="M1 1l4 4 4-4" />
           </svg>
         </Select.Icon>
       </Select.Trigger>
@@ -172,7 +180,7 @@ export function TasteNotesFilter({
         <Select.Positioner
           alignItemWithTrigger={false}
           sideOffset={8}
-          className='z-50 outline-none select-none'
+          className="z-50 outline-none select-none"
         >
           <Select.Popup
             className={[
@@ -187,9 +195,9 @@ export function TasteNotesFilter({
             ].join(' ')}
           >
             {/* Search input */}
-            <div className='px-3 py-2 sticky top-0 bg-[color:var(--bg-tertiary)] z-10 border-b border-[color:var(--border-primary)]'>
+            <div className="px-3 py-2 sticky top-0 bg-[color:var(--bg-tertiary)] z-10 border-b border-[color:var(--border-primary)]">
               <input
-                type='text'
+                type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('taste.searchPlaceholder')}
@@ -210,123 +218,123 @@ export function TasteNotesFilter({
             </div>
 
             <Select.ScrollUpArrow
-              className='flex items-center justify-center py-1 text-[color:var(--text-tertiary)] cursor-default'
+              className="flex items-center justify-center py-1 text-[color:var(--text-tertiary)] cursor-default"
               keepMounted={false}
             >
               <svg
-                width='10'
-                height='6'
-                viewBox='0 0 10 6'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='1.5'
+                aria-hidden="true"
+                width="10"
+                height="6"
+                viewBox="0 0 10 6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
               >
-                <path d='M1 5l4-4 4 4' />
+                <path d="M1 5l4-4 4 4" />
               </svg>
             </Select.ScrollUpArrow>
 
             <Select.List>
-              {hasVisibleItems
-                ? (
-                  visibleRoots.map(({ root, subGroups, orphanItems }) => (
-                    <Select.Group key={root.id}>
-                      <Select.GroupLabel className='px-3 py-1.5 text-xs font-semibold text-[color:var(--text-tertiary)] cursor-default select-none'>
-                        {root.name}
-                      </Select.GroupLabel>
-                      {subGroups.map((sg) => (
-                        <div key={sg.parent.id}>
-                          <div
-                            className='px-3 py-1 text-xs font-semibold text-[color:var(--text-tertiary)] select-none'
-                            style={{ paddingLeft: '1.25rem' }}
-                            aria-hidden='true'
-                          >
-                            {root.name} &gt; {sg.parent.name}
-                          </div>
-                          {sg.children.map((item) => (
-                            <Select.Item
-                              key={item.id}
-                              value={item.id}
-                              className={[
-                                'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
-                                'text-sm text-[color:var(--text-primary)] cursor-default',
-                                'outline-none select-none',
-                                'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
-                                'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
-                              ].join(' ')}
-                            >
-                              <Select.ItemIndicator className='col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]'>
-                                <svg
-                                  width='12'
-                                  height='12'
-                                  viewBox='0 0 12 12'
-                                  fill='none'
-                                  stroke='currentColor'
-                                  strokeWidth='2'
-                                  strokeLinecap='round'
-                                  strokeLinejoin='round'
-                                  aria-hidden='true'
-                                >
-                                  <path d='M2 6l3 3 5-5' />
-                                </svg>
-                              </Select.ItemIndicator>
-                              <Select.ItemText className='col-start-2'>{item.name}</Select.ItemText>
-                            </Select.Item>
-                          ))}
-                        </div>
-                      ))}
-                      {orphanItems.map((item) => (
-                        <Select.Item
-                          key={item.id}
-                          value={item.id}
-                          className={[
-                            'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
-                            'text-sm text-[color:var(--text-primary)] cursor-default',
-                            'outline-none select-none',
-                            'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
-                            'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
-                          ].join(' ')}
+              {hasVisibleItems ? (
+                visibleRoots.map(({ root, subGroups, orphanItems }) => (
+                  <Select.Group key={root.id}>
+                    <Select.GroupLabel className="px-3 py-1.5 text-xs font-semibold text-[color:var(--text-tertiary)] cursor-default select-none">
+                      {root.name}
+                    </Select.GroupLabel>
+                    {subGroups.map((sg) => (
+                      <div key={sg.parent.id}>
+                        <div
+                          className="px-3 py-1 text-xs font-semibold text-[color:var(--text-tertiary)] select-none"
+                          style={{ paddingLeft: '1.25rem' }}
+                          aria-hidden="true"
                         >
-                          <Select.ItemIndicator className='col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]'>
-                            <svg
-                              width='12'
-                              height='12'
-                              viewBox='0 0 12 12'
-                              fill='none'
-                              stroke='currentColor'
-                              strokeWidth='2'
-                              strokeLinecap='round'
-                              strokeLinejoin='round'
-                              aria-hidden='true'
-                            >
-                              <path d='M2 6l3 3 5-5' />
-                            </svg>
-                          </Select.ItemIndicator>
-                          <Select.ItemText className='col-start-2'>{item.name}</Select.ItemText>
-                        </Select.Item>
-                      ))}
-                    </Select.Group>
-                  ))
-                )
-                : (
-                  <div className='px-3 py-4 text-sm text-center text-[color:var(--text-tertiary)]'>
-                    No taste notes found.
-                  </div>
-                )}
+                          {root.name} &gt; {sg.parent.name}
+                        </div>
+                        {sg.children.map((item) => (
+                          <Select.Item
+                            key={item.id}
+                            value={item.id}
+                            className={[
+                              'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
+                              'text-sm text-[color:var(--text-primary)] cursor-default',
+                              'outline-none select-none',
+                              'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
+                              'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
+                            ].join(' ')}
+                          >
+                            <Select.ItemIndicator className="col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]">
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 12 12"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <path d="M2 6l3 3 5-5" />
+                              </svg>
+                            </Select.ItemIndicator>
+                            <Select.ItemText className="col-start-2">{item.name}</Select.ItemText>
+                          </Select.Item>
+                        ))}
+                      </div>
+                    ))}
+                    {orphanItems.map((item) => (
+                      <Select.Item
+                        key={item.id}
+                        value={item.id}
+                        className={[
+                          'grid grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2',
+                          'text-sm text-[color:var(--text-primary)] cursor-default',
+                          'outline-none select-none',
+                          'data-[highlighted]:bg-[color:var(--bg-secondary)] data-[highlighted]:text-[color:var(--text-primary)]',
+                          'transition-colors duration-150 ease-in-out motion-reduce:duration-0',
+                        ].join(' ')}
+                      >
+                        <Select.ItemIndicator className="col-start-1 flex items-center justify-center text-[color:var(--accent-primary)]">
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M2 6l3 3 5-5" />
+                          </svg>
+                        </Select.ItemIndicator>
+                        <Select.ItemText className="col-start-2">{item.name}</Select.ItemText>
+                      </Select.Item>
+                    ))}
+                  </Select.Group>
+                ))
+              ) : (
+                <div className="px-3 py-4 text-sm text-center text-[color:var(--text-tertiary)]">
+                  No taste notes found.
+                </div>
+              )}
             </Select.List>
 
             <Select.ScrollDownArrow
-              className='flex items-center justify-center py-1 text-[color:var(--text-tertiary)] cursor-default'
+              className="flex items-center justify-center py-1 text-[color:var(--text-tertiary)] cursor-default"
               keepMounted={false}
             >
               <svg
-                width='10'
-                height='6'
-                viewBox='0 0 10 6'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='1.5'
+                aria-hidden="true"
+                width="10"
+                height="6"
+                viewBox="0 0 10 6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
               >
-                <path d='M1 1l4 4 4-4' />
+                <path d="M1 1l4 4 4-4" />
               </svg>
             </Select.ScrollDownArrow>
           </Select.Popup>

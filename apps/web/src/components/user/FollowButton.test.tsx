@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FollowButton } from './FollowButton.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -42,19 +42,19 @@ beforeEach(() => {
 
 describe('FollowButton — initial state rendering', () => {
   it('renders "Follow" when initialFollowing=false', () => {
-    renderWithRouter(<FollowButton userId='user-1' initialFollowing={false} />);
+    renderWithRouter(<FollowButton userId="user-1" initialFollowing={false} />);
     const button = screen.getByRole('button');
     expect(button.textContent).toBe('Follow');
   });
 
   it('renders "Following" when initialFollowing=true', () => {
-    renderWithRouter(<FollowButton userId='user-1' initialFollowing />);
+    renderWithRouter(<FollowButton userId="user-1" initialFollowing />);
     const button = screen.getByRole('button');
     expect(button.textContent).toBe('Following');
   });
 
   it('button is not disabled when idle', () => {
-    renderWithRouter(<FollowButton userId='user-1' initialFollowing={false} />);
+    renderWithRouter(<FollowButton userId="user-1" initialFollowing={false} />);
     const button = screen.getByRole('button');
     expect(button).not.toBeDisabled();
   });
@@ -62,19 +62,19 @@ describe('FollowButton — initial state rendering', () => {
 
 describe('FollowButton — styling', () => {
   it('does not have accent background when not following', () => {
-    renderWithRouter(<FollowButton userId='user-1' initialFollowing={false} />);
+    renderWithRouter(<FollowButton userId="user-1" initialFollowing={false} />);
     const button = screen.getByRole('button');
     expect(button.style.backgroundColor).toBeFalsy();
   });
 
   it('has accent background when following', () => {
-    renderWithRouter(<FollowButton userId='user-1' initialFollowing />);
+    renderWithRouter(<FollowButton userId="user-1" initialFollowing />);
     const button = screen.getByRole('button');
     expect(button.style.backgroundColor).toBeTruthy();
   });
 
   it('renders as button with type button', () => {
-    renderWithRouter(<FollowButton userId='user-1' initialFollowing={false} />);
+    renderWithRouter(<FollowButton userId="user-1" initialFollowing={false} />);
     const button = screen.getByRole('button');
     expect(button.getAttribute('type')).toBe('button');
   });
@@ -83,7 +83,7 @@ describe('FollowButton — styling', () => {
 describe('FollowButton — click interaction', () => {
   it('clicking the button shows optimistic state and disables while pending', async () => {
     const user = userEvent.setup();
-    renderWithRouter(<FollowButton userId='user-1' initialFollowing={false} />);
+    renderWithRouter(<FollowButton userId="user-1" initialFollowing={false} />);
     const button = screen.getByRole('button');
     expect(button.textContent).toBe('Follow');
     expect(button).not.toBeDisabled();
@@ -103,7 +103,7 @@ describe('FollowButton — action failure rollback', () => {
       [
         {
           path: '/',
-          element: <FollowButton userId='user-1' initialFollowing={false} />,
+          element: <FollowButton userId="user-1" initialFollowing={false} />,
           children: [
             {
               path: 'follow/:userId',
@@ -132,7 +132,7 @@ describe('FollowButton — action failure rollback', () => {
       [
         {
           path: '/',
-          element: <FollowButton userId='user-1' initialFollowing={false} />,
+          element: <FollowButton userId="user-1" initialFollowing={false} />,
           children: [
             {
               path: 'follow/:userId',
@@ -167,7 +167,7 @@ describe('FollowButton — callback contracts', () => {
           path: '/',
           element: (
             <FollowButton
-              userId='user-1'
+              userId="user-1"
               initialFollowing={false}
               onToggle={onToggle}
               onToggleRollback={onToggleRollback}
@@ -206,7 +206,7 @@ describe('FollowButton — callback contracts', () => {
           path: '/',
           element: (
             <FollowButton
-              userId='user-1'
+              userId="user-1"
               initialFollowing
               onToggle={onToggle}
               onToggleRollback={onToggleRollback}
@@ -246,7 +246,7 @@ describe('FollowButton — callback contracts', () => {
           path: '/',
           element: (
             <FollowButton
-              userId='user-1'
+              userId="user-1"
               initialFollowing={false}
               onToggle={onToggle}
               onToggleRollback={onToggleRollback}
@@ -286,7 +286,7 @@ describe('FollowButton — callback contracts', () => {
       [
         {
           path: '/',
-          element: <FollowButton userId='user-1' initialFollowing={false} />,
+          element: <FollowButton userId="user-1" initialFollowing={false} />,
           children: [
             {
               path: 'follow/:userId',

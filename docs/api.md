@@ -669,7 +669,7 @@ Response `429` — rate limit exceeded.
 | Method | Endpoint             | Description                                       |
 | ------ | -------------------- | ------------------------------------------------- |
 | GET    | `/admin/audit-log`   | List audit logs (filterable by entity, paginated) |
-| POST   | `/admin/cache/flush` | Flush Deno KV cache (optionally by key prefix)    |
+| POST   | `/admin/cache/flush` | Flush API cache (optionally by key prefix)    |
 
 All admin mutations create an `AuditLog` entry tracking the admin user, action, entity, and details.
 

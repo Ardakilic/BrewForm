@@ -1,12 +1,11 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
-  cursorEnvelope,
   CursorPaginationMetaSchema,
+  cursorEnvelope,
   ErrorEnvelopeSchema,
-  paginatedEnvelope,
   PaginationMetaSchema,
+  paginatedEnvelope,
   successEnvelope,
 } from './response.ts';
 

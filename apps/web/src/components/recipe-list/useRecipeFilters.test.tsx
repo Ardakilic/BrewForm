@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRecipeFilters } from './useRecipeFilters.ts';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -35,53 +35,47 @@ function TestConsumer({
   const f = useRecipeFilters();
   return (
     <div>
-      <span data-testid='page'>{f.page}</span>
-      <span data-testid='sortBy'>{f.sortBy}</span>
-      <span data-testid='brewMethod'>{f.brewMethod}</span>
-      <span data-testid='drinkType'>{f.drinkType}</span>
-      <span data-testid='visibility'>{f.visibility}</span>
-      <span data-testid='search'>{f.search}</span>
-      <span data-testid='equipmentId'>{f.equipmentId}</span>
-      <span data-testid='mainBrewer'>{f.mainBrewer}</span>
-      <span data-testid='coffeeVarietyId'>{f.coffeeVarietyId}</span>
-      <span data-testid='tasteNoteIds'>{f.tasteNoteIds.join(',')}</span>
+      <span data-testid="page">{f.page}</span>
+      <span data-testid="sortBy">{f.sortBy}</span>
+      <span data-testid="brewMethod">{f.brewMethod}</span>
+      <span data-testid="drinkType">{f.drinkType}</span>
+      <span data-testid="visibility">{f.visibility}</span>
+      <span data-testid="search">{f.search}</span>
+      <span data-testid="equipmentId">{f.equipmentId}</span>
+      <span data-testid="mainBrewer">{f.mainBrewer}</span>
+      <span data-testid="coffeeVarietyId">{f.coffeeVarietyId}</span>
+      <span data-testid="tasteNoteIds">{f.tasteNoteIds.join(',')}</span>
       <button
-        type='button'
-        data-testid='setBrewMethod'
+        type="button"
+        data-testid="setBrewMethod"
         onClick={() => f.updateFilter('brewMethod', 'v60')}
       >
         setBrewMethod
       </button>
       <button
-        type='button'
-        data-testid='clearBrewMethod'
+        type="button"
+        data-testid="clearBrewMethod"
         onClick={() => f.updateFilter('brewMethod', '')}
       >
         clearBrewMethod
       </button>
       <button
-        type='button'
-        data-testid='setTasteNoteIds'
+        type="button"
+        data-testid="setTasteNoteIds"
         onClick={() => f.updateFilter('tasteNoteIds', [UUID_A, UUID_B])}
       >
         setTasteNoteIds
       </button>
-      <button
-        type='button'
-        data-testid='setPage'
-        onClick={() => f.updateFilter('page', '3')}
-      >
+      <button type="button" data-testid="setPage" onClick={() => f.updateFilter('page', '3')}>
         setPage
       </button>
-      <button
-        type='button'
-        data-testid='clearAll'
-        onClick={() => f.clearAllFilters()}
-      >
+      <button type="button" data-testid="clearAll" onClick={() => f.clearAllFilters()}>
         clearAll
       </button>
       {onAction && (
-        <button type='button' data-testid='custom' onClick={() => onAction(f)}>custom</button>
+        <button type="button" data-testid="custom" onClick={() => onAction(f)}>
+          custom
+        </button>
       )}
     </div>
   );

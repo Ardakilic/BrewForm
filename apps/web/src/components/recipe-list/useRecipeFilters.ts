@@ -8,9 +8,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  */
 export interface UseRecipeFiltersResult {
   searchParams: URLSearchParams;
-  setSearchParams: (
-    next: URLSearchParams | ((prev: URLSearchParams) => URLSearchParams),
-  ) => void;
+  setSearchParams: (next: URLSearchParams | ((prev: URLSearchParams) => URLSearchParams)) => void;
   page: number;
   brewMethod: string;
   drinkType: string;
@@ -67,9 +65,9 @@ export function useRecipeFilters(): UseRecipeFiltersResult {
   const tasteNoteIdsParam = searchParams.get('tasteNoteIds') ?? '';
   const tasteNoteIds = tasteNoteIdsParam
     ? tasteNoteIdsParam
-      .split(',')
-      .map((id) => id.trim())
-      .filter((id) => UUID_RE.test(id))
+        .split(',')
+        .map((id) => id.trim())
+        .filter((id) => UUID_RE.test(id))
     : [];
 
   /**

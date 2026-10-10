@@ -1,12 +1,11 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq, inArray } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { photos, recipes, users } from '@brewform/db/schema';
+import { eq, inArray } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as service from './service.ts';
 
-describe('Photo Service', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Photo Service', () => {
   let authorId: string;
   let otherUserId: string;
   let recipeId: string;
@@ -56,13 +55,16 @@ describe('Photo Service', { sanitizeOps: false, sanitizeResources: false }, () =
 
   async function insertPhotoRow(data: Partial<typeof photos.$inferInsert> = {}) {
     const id = crypto.randomUUID();
-    const [row] = await db.insert(photos).values({
-      id,
-      recipeId,
-      url: `https://example.com/${id}.jpg`,
-      sortOrder: 0,
-      ...data,
-    }).returning();
+    const [row] = await db
+      .insert(photos)
+      .values({
+        id,
+        recipeId,
+        url: `https://example.com/${id}.jpg`,
+        sortOrder: 0,
+        ...data,
+      })
+      .returning();
     return row;
   }
 
@@ -86,9 +88,9 @@ describe('Photo Service', { sanitizeOps: false, sanitizeResources: false }, () =
     });
 
     it('should throw FORBIDDEN when the user is not the recipe author', async () => {
-      await expect(
-        service.uploadPhoto(otherUserId, recipeId, makeFile(), null),
-      ).rejects.toThrow('FORBIDDEN');
+      await expect(service.uploadPhoto(otherUserId, recipeId, makeFile(), null)).rejects.toThrow(
+        'FORBIDDEN',
+      );
     });
 
     it('should reject unsupported file types', async () => {
@@ -102,9 +104,9 @@ describe('Photo Service', { sanitizeOps: false, sanitizeResources: false }, () =
     it('should reject a file exceeding the maximum size', async () => {
       const tooLarge = makeFile({ size: 10 * 1024 * 1024 + 1 });
 
-      await expect(
-        service.uploadPhoto(authorId, recipeId, tooLarge, null),
-      ).rejects.toThrow('File too large');
+      await expect(service.uploadPhoto(authorId, recipeId, tooLarge, null)).rejects.toThrow(
+        'File too large',
+      );
     });
 
     it('should accept every allowed image type', async () => {

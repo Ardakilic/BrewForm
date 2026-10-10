@@ -1,10 +1,10 @@
 # ============================================================
 # BrewForm — Makefile
-# All commands run through Docker. No local Deno installation required.
+# All commands run through Docker. No local Node.js/pnpm installation required.
 #
 # Development workflow:
 #   make up        → start infrastructure (postgres, mailpit, pgadmin, garage)
-#   make install   → cache Deno dependencies
+#   make install   → install pnpm workspace dependencies
 #   make dev       → start API (:8000) + Vite dev server (:5173) with hot reload
 #
 # The `app` and `web-dev` services use Docker Compose profiles so they are
@@ -20,10 +20,10 @@ help: ## Show this help
 # Start infrastructure services only (postgres, mailpit, pgadmin, garage).
 # Does NOT start the API or web dev server — run `make dev` for that.
 up: ## Start infrastructure services (postgres, mailpit, pgadmin, garage)
-	docker compose up -d postgres mailpit pgadmin garage denokv
+	docker compose up -d postgres mailpit pgadmin garage
 
 down: ## Stop all services
-	docker compose --profile dev --profile preview --profile serena down
+	docker compose --profile dev --profile preview down
 
 build: ## Build all Docker images
 	docker compose build
@@ -38,59 +38,59 @@ restart: ## Restart the app service
 
 setup-hooks: ## Configure git to use .githooks/ for pre-commit checks
 	git config core.hooksPath .githooks
-	@echo "Git hooks configured. Pre-commit runs 'deno fmt --check' and 'deno lint'."
+	@echo "Git hooks configured. Pre-commit runs 'biome check' (fmt) and per-workspace lint."
 
 # --- Dependencies ---
 
-# Cache Deno dependencies inside the container (uses deno_cache volume).
-install: ## Cache Deno dependencies
-	docker compose run --rm --no-deps app deno install --frozen
+# Install pnpm workspace dependencies inside the container.
+install: ## Install pnpm workspace dependencies
+	docker compose run --rm --no-deps app pnpm install --frozen-lockfile
 
-# Regenerate deno.lock inside Docker (use after adding/updating dependencies).
-lockfile-update: ## Regenerate deno.lock inside Docker
-	docker compose run --rm --no-deps app deno install
+# Regenerate pnpm-lock.yaml inside Docker (use after adding/updating dependencies).
+lockfile-update: ## Regenerate pnpm-lock.yaml inside Docker
+	docker compose run --rm --no-deps app pnpm install
 
 # --- Email Templates ---
 
 email-build: ## Build email templates
-	docker compose run --rm --no-deps app deno task email-build
+	docker compose run --rm --no-deps app pnpm run email-build
 
 # --- Code Quality ---
 
 lint: ## Lint all apps and packages
-	docker compose run --rm --no-deps app deno lint apps/ packages/
+	docker compose run --rm --no-deps app pnpm run lint
 
 fmt: ## Format all code
-	docker compose run --rm --no-deps app deno fmt
+	docker compose run --rm --no-deps app pnpm run fmt
 
 fmt-check: ## Check formatting without changes
-	docker compose run --rm --no-deps app deno fmt --check
+	docker compose run --rm --no-deps app pnpm run fmt-check
 
 check: ## Type-check all workspaces (api, web, db, shared)
-	docker compose run --rm --no-deps app deno task check
+	docker compose run --rm --no-deps app pnpm run check
 
 check-api: ## Type-check API only
-	docker compose run --rm --no-deps app deno task check:api
+	docker compose run --rm --no-deps app pnpm run check:api
 
 check-web: ## Lint web frontend
-	docker compose run --rm --no-deps app deno task check:web
+	docker compose run --rm --no-deps app pnpm run check:web
 
 check-db: ## Type-check database package
-	docker compose run --rm --no-deps app deno task check:db
+	docker compose run --rm --no-deps app pnpm run check:db
 
 check-shared: ## Type-check shared package
-	docker compose run --rm --no-deps app deno task check:shared
+	docker compose run --rm --no-deps app pnpm run check:shared
 
 # --- Build ---
 
 build-api: ## Build API (email templates)
-	docker compose run --rm --no-deps app deno task build:api
+	docker compose run --rm --no-deps app pnpm run build:api
 
 build-web: ## Build React SPA (outputs to apps/web/dist/)
-	docker compose run --rm --no-deps app deno task build:web
+	docker compose run --rm --no-deps app pnpm run build:web
 
 build-shared: ## Type-check shared package as build artifact
-	docker compose run --rm --no-deps app deno task build:shared
+	docker compose run --rm --no-deps app pnpm run build:shared
 
 # --- Testing ---
 
@@ -101,7 +101,8 @@ build-shared: ## Type-check shared package as build artifact
 TEST_DATABASE_URL := postgresql://brewform:brewform@postgres:5432/brewform_test
 
 check-tests: ## Type-check test files
-	docker compose run --rm --no-deps app deno check apps/api/src/ packages/shared/src/
+	docker compose run --rm --no-deps app pnpm --filter @brewform/api run check && \
+	docker compose run --rm --no-deps app pnpm --filter @brewform/shared run check
 
 # Create + migrate + seed the brewform_test database (safe to re-run; the seed is
 # idempotent via on-conflict handling — but note it cannot remove stray rows left
@@ -112,55 +113,58 @@ test-db-provision: up ## Provision the brewform_test database (create + migrate 
 	  "SELECT 1 FROM pg_database WHERE datname='brewform_test'" | grep -q 1 || \
 	docker compose exec -T postgres psql -U brewform -d postgres -c "CREATE DATABASE brewform_test;"
 	docker compose run --rm --no-deps -e DATABASE_URL=$(TEST_DATABASE_URL) app \
-	  sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
+	  pnpm --filter @brewform/db run migrate
 	docker compose run --rm --no-deps -e DATABASE_URL=$(TEST_DATABASE_URL) app \
-	  deno run --allow-all packages/db/src/seed.ts
+	  pnpm --filter @brewform/db run seed
 
-test: up ## Run all tests (API + shared + web)
-	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/ packages/shared/src/ && \
-	docker compose run --rm --no-deps app deno task --cwd apps/web test
+test: up ## Run all tests (API + shared + db + web)
+	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app pnpm run test
 
 test-coverage: up ## Run all tests with coverage
-	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi --coverage=coverage/ apps/api/src/ packages/shared/src/
+	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app pnpm run test-coverage
 
 test-api: up ## Run API tests only
-	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi apps/api/src/
+	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app pnpm run test:api
 
 test-shared: ## Run shared package tests only
-	docker compose run --rm --no-deps app deno test --allow-env --allow-read --allow-write --allow-net packages/shared/src/
+	docker compose run --rm --no-deps app pnpm run test:shared
 
 test-web: ## Run web (Vitest) tests
-	docker compose run --rm --no-deps app deno task --cwd apps/web test
+	docker compose run --rm --no-deps app pnpm --filter @brewform/web run test
 
+# Run a specific test file in every backend workspace (use filter=, matched as a
+# substring — e.g. filter=schema-indexes.test.ts or filter=apps/api/src/modules/auth).
+# Workspaces without a match exit 0 via --passWithNoTests so one filter covers all.
 test-specific: up ## Run specific test (use filter=)
-	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app deno test --no-check --allow-env --allow-read --allow-write --allow-net --allow-sys --allow-ffi $(filter)
+	docker compose run --rm -e DATABASE_URL=$(TEST_DATABASE_URL) app sh -c \
+	  "pnpm --filter @brewform/api exec vitest run --passWithNoTests $(filter) && \
+	   pnpm --filter @brewform/db exec vitest run --passWithNoTests $(filter) && \
+	   pnpm --filter @brewform/shared exec vitest run --passWithNoTests $(filter)"
 
 # --- Database ---
 
-DRIZZLE_KIT := npm:drizzle-kit@0.31
-
 db-migrate: up ## Run database migrations
-	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) migrate"
+	docker compose run --rm app pnpm --filter @brewform/db run migrate
 
 db-generate: up ## Generate database migrations
-	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) generate"
+	docker compose run --rm app pnpm --filter @brewform/db run generate
 
 db-push: up ## Push schema changes
-	docker compose run --rm app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) push"
+	docker compose run --rm app pnpm --filter @brewform/db run push
 
 db-seed: up ## Seed the database
-	docker compose run --rm app deno run --allow-all packages/db/src/seed.ts
+	docker compose run --rm app pnpm --filter @brewform/db run seed
 
 db-studio: up ## Open Drizzle Studio
-	docker compose run --rm -p 5555:5555 app sh -c "cd packages/db && deno run -A $(DRIZZLE_KIT) studio --host=0.0.0.0 --port=5555"
+	docker compose run --rm -p 5555:5555 app pnpm --filter @brewform/db run studio
 
 flush-db: up ## Truncate all database tables
-	docker compose run --rm app deno run --allow-env --allow-net apps/api/scripts/flush-db.ts
+	docker compose run --rm app pnpm --filter @brewform/api exec tsx scripts/flush-db.ts
 
-flush-cache: up ## Clear Deno KV cache
-	docker compose run --rm app deno run --allow-env --allow-net --allow-read --allow-write apps/api/scripts/flush-cache.ts
+flush-cache: up ## Clear the API cache
+	docker compose run --rm app pnpm --filter @brewform/api exec tsx scripts/flush-cache.ts
 
-flush-contents: flush-db flush-cache ## Truncate all database tables and clear Deno KV cache
+flush-contents: flush-db flush-cache ## Truncate all database tables and clear the API cache
 
 db-reset: ## Full reset: recreate DB, push schema, seed, flush cache
 	docker compose up -d postgres
@@ -174,7 +178,7 @@ db-reset: ## Full reset: recreate DB, push schema, seed, flush cache
 # --- Admin Setup ---
 
 setup: up ## Run admin setup
-	docker compose run --rm app deno run --allow-all apps/api/src/setup.ts
+	docker compose run --rm app pnpm --filter @brewform/api exec tsx src/setup.ts
 
 # --- Development ---
 
@@ -216,24 +220,7 @@ ci: fmt-check lint check build-web check-tests test-coverage test-web ## Run ful
 
 generate-icons: ## Generate PNG icons from favicon.svg
 	docker compose run --rm --no-deps app \
-	  deno run --allow-read --allow-write --allow-ffi scripts/generate-icons.ts
-
-# ── Serena MCP ──────────────────────────────────────────────────────────
-
-serena-up: ## Start Serena MCP service
-	docker compose --profile serena up serena -d
-
-serena-down: ## Down Serena MCP service (removes container)
-	docker compose --profile serena down serena
-
-serena-logs: ## Follow Serena logs
-	docker compose logs -f serena
-
-serena-index: ## Index project with Serena
-	docker compose --profile serena exec serena serena project index /workspace/brewform
-
-serena-health: ## Check Serena health
-	@curl -sf --max-time 5 --connect-timeout 2 http://localhost:10122/sse > /dev/null 2>&1 && echo "✓ Serena is healthy" || echo "✗ Serena is not responding"
+	  pnpm --filter @brewform/api exec tsx /app/scripts/generate-icons.ts
 
 # --- Production Images & Deploy ---
 
@@ -259,4 +246,4 @@ prod-down: ## Stop production profile
 
 release: images images-push ## Build and push both images (local CI equivalent)
 
-.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons serena-up serena-down serena-logs serena-index serena-health images images-push prod-up prod-up-build prod-down release
+.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons images images-push prod-up prod-up-build prod-down release

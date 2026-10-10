@@ -1,22 +1,53 @@
 {
+  "name": "@brewform/root",
   "private": true,
+  "packageManager": "pnpm@12.10.1",
+  "engines": {
+    "node": "24"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.10.1",
+      "onFail": "download"
+    }
+  },
   "scripts": {
-    "dev": "deno task dev",
-    "build": "deno task build",
-    "lint": "deno task lint",
-    "test": "deno task test",
-    "check": "deno task check",
-    "db:generate": "deno task db:generate",
-    "db:migrate": "deno task db:migrate",
-    "db:push": "deno task db:push",
-    "db:studio": "deno task db:studio",
-    "db:seed": "deno task db:seed",
-    "email-build": "deno task email-build",
-    "fmt": "deno task fmt",
-    "fmt-check": "deno task fmt-check",
-    "ci": "deno task ci"
+    "dev": "pnpm --filter @brewform/api run dev & pnpm --filter @brewform/web run dev",
+    "dev:api": "pnpm --filter @brewform/api run dev",
+    "dev:web": "pnpm --filter @brewform/web run dev",
+    "check": "pnpm --filter @brewform/api run check && pnpm --filter @brewform/web run check && pnpm --filter @brewform/db run check && pnpm --filter @brewform/shared run check",
+    "check:api": "pnpm --filter @brewform/api run check",
+    "check:web": "pnpm --filter @brewform/web run check",
+    "check:db": "pnpm --filter @brewform/db run check",
+    "check:shared": "pnpm --filter @brewform/shared run check",
+    "build": "pnpm --filter @brewform/api run build && pnpm --filter @brewform/web run build && pnpm --filter @brewform/shared run build",
+    "build:api": "pnpm --filter @brewform/api run build",
+    "build:web": "pnpm --filter @brewform/web run build",
+    "build:shared": "pnpm --filter @brewform/shared run build",
+    "lint": "pnpm --filter @brewform/api run lint && pnpm --filter @brewform/web run lint && pnpm --filter @brewform/db run lint && pnpm --filter @brewform/shared run lint",
+    "fmt": "biome check --write .",
+    "fmt-check": "biome check .",
+    "test": "pnpm --filter @brewform/api run test && pnpm --filter @brewform/shared run test && pnpm --filter @brewform/db run test && pnpm --filter @brewform/web run test",
+    "test:api": "pnpm --filter @brewform/api run test",
+    "test:shared": "pnpm --filter @brewform/shared run test",
+    "test:db": "pnpm --filter @brewform/db run test",
+    "test-coverage": "pnpm --filter @brewform/api run test -- --coverage && pnpm --filter @brewform/shared run test -- --coverage && pnpm --filter @brewform/db run test -- --coverage && pnpm --filter @brewform/web run test -- --coverage",
+    "coverage-report": "pnpm --filter @brewform/api run test -- --coverage --coverage.reporter=text && pnpm --filter @brewform/shared run test -- --coverage --coverage.reporter=text && pnpm --filter @brewform/db run test -- --coverage --coverage.reporter=text && pnpm --filter @brewform/web run test -- --coverage --coverage.reporter=text",
+    "db:generate": "pnpm --filter @brewform/db run generate",
+    "db:migrate": "pnpm --filter @brewform/db run migrate",
+    "db:push": "pnpm --filter @brewform/db run push",
+    "db:studio": "pnpm --filter @brewform/db run studio",
+    "db:seed": "pnpm --filter @brewform/db run seed",
+    "email-build": "pnpm --filter @brewform/api run email-build",
+    "ci": "pnpm run fmt-check && pnpm run lint && pnpm run check && pnpm run build && pnpm run test-coverage && pnpm run test:db && pnpm --filter @brewform/web run test"
   },
   "devDependencies": {
-    "@resvg/resvg-js": "^2.6.2"
+    "@resvg/resvg-js": "^2.6.2",
+    "@biomejs/biome": "2.5.15"
   }
 }

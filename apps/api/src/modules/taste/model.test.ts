@@ -1,5 +1,4 @@
-import { beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
 
 describe('Taste Model — Cache Provider Integration', () => {

@@ -1,18 +1,18 @@
-import { useEffect } from 'react';
-import { redirect, useLoaderData } from 'react-router';
-import { ApiError, recipeApi } from '../../api/index.ts';
-import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
 import type {
   EquipmentOutput,
   PaginatedResponse,
   RecipeListItemOutput,
   TasteNoteOutput,
 } from '@brewform/shared/schemas';
-import { extractListParams } from '../../utils/recipe-filters.ts';
+import { useEffect } from 'react';
+import { redirect, useLoaderData } from 'react-router';
+import { ApiError, recipeApi } from '../../api/index.ts';
+import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
+import { RecipeListView } from '../../components/recipe-list/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import { RecipeListView } from '../../components/recipe-list/index.ts';
+import { extractListParams } from '../../utils/recipe-filters.ts';
 
 const log = createLogger('StarredRecipesPage');
 
@@ -26,9 +26,11 @@ export interface StarredRecipesLoaderData {
 /** React Router data loader for `/recipes/starred` — fetches the
  *  authenticated user's starred recipes plus cached lookups. Redirects
  *  to `/login` on a 401. */
-export const loader = async (
-  { request }: { request: Request },
-): Promise<StarredRecipesLoaderData> => {
+export const loader = async ({
+  request,
+}: {
+  request: Request;
+}): Promise<StarredRecipesLoaderData> => {
   const url = new URL(request.url);
   const params = extractListParams(url.searchParams);
   try {
@@ -63,8 +65,8 @@ export function StarredRecipesPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className='mx-auto max-w-6xl px-6 py-8'>
-        <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        <div className="text-center py-12" style={{ color: 'var(--text-tertiary)' }}>
           {t('recipe.starred.loginRequired')}
         </div>
       </div>
@@ -73,13 +75,13 @@ export function StarredRecipesPage() {
 
   return (
     <RecipeListView
-      source='starred'
+      source="starred"
       recipesResponse={recipesResponse}
       equipment={equipment}
       tasteNotes={tasteNotes}
-      emptyMessageKey='recipe.starred.noResults'
+      emptyMessageKey="recipe.starred.noResults"
       pageTitle={t('recipe.starred.title')}
-      seoDescription='Your starred coffee brewing recipes on BrewForm.'
+      seoDescription="Your starred coffee brewing recipes on BrewForm."
     />
   );
 }

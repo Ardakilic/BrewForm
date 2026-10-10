@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { BeanListPage } from './BeanListPage.tsx';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ToastProvider } from '../../components/ui/Toast.tsx';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { BeanListPage } from './BeanListPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -165,7 +165,7 @@ describe('BeanListPage', () => {
     await waitFor(() => expect(mockLogger.debug).toHaveBeenCalledWith({}, 'BeanListPage mounted'));
     unmount();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'BeanListPage unmounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'BeanListPage unmounted'),
     );
   });
 });

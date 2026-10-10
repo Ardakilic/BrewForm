@@ -1,17 +1,16 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-import deno from '@deno/vite-plugin';
 import { join, resolve } from 'node:path';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 // When running inside Docker Compose, the API is reachable via the service name
-// "app" (http://app:8000). Outside Docker (bare Deno), it's localhost:8000.
+// "app" (http://app:8000). Outside Docker (local pnpm), it's localhost:8000.
 // The compose.yml web-dev service sets VITE_API_PROXY_TARGET=http://app:8000.
-const apiProxyTarget = Deno.env.get('VITE_API_PROXY_TARGET') || 'http://localhost:8000';
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000';
 
 // Validate VITE_PUBLIC_APP_URL to ensure %VITE_PUBLIC_APP_URL% in index.html always resolves.
 // For production, the deploy pipeline must set this env var before running vite build.
-const vitePublicAppUrl = (Deno.env.get('VITE_PUBLIC_APP_URL') || '').replace(/\/+$/, '');
+const vitePublicAppUrl = (process.env.VITE_PUBLIC_APP_URL || '').replace(/\/+$/, '');
 
 // Resolve the monorepo root relative to this file's location.
 // vite.config.ts lives at apps/web/, so the root is two levels up.
@@ -20,7 +19,6 @@ const sharedSrc = join(monorepoRoot, 'packages/shared/src');
 
 export default defineConfig({
   plugins: [
-    deno(),
     react(),
     tailwindcss(),
     {
@@ -80,9 +78,7 @@ Sitemap: ${sitemapUrl}
     chunkSizeWarningLimit: 800,
   },
   define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify(
-      Deno.env.get('VITE_API_URL') || '/api/v1',
-    ),
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || '/api/v1'),
     'import.meta.env.VITE_PUBLIC_APP_URL': JSON.stringify(
       vitePublicAppUrl || 'http://localhost:5173',
     ),

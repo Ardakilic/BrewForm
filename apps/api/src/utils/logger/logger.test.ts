@@ -1,9 +1,7 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import pino from 'pino';
-
-import { createLogger, logger } from './index.ts';
+import { describe, expect, it } from 'vitest';
 import { config } from '../../config/index.ts';
+import { createLogger, logger } from './index.ts';
 
 const REDACT_PATHS = [
   '*.passwordHash',
@@ -56,7 +54,7 @@ describe('Logger', () => {
     });
 
     it('LOG_LEVEL defaults to info when not explicitly set', () => {
-      expect(config.LOG_LEVEL).toBe(Deno.env.get('LOG_LEVEL') || 'info');
+      expect(config.LOG_LEVEL).toBe(process.env.LOG_LEVEL || 'info');
     });
   });
 
@@ -127,10 +125,7 @@ describe('Logger', () => {
     it('redacts multiple sensitive fields in one log entry', async () => {
       const { stream, getOutput } = captureOutput();
       const l = pino({ redact: REDACT_PATHS }, stream);
-      l.info(
-        { user: { password: 'pass', token: 'tok', apiKey: 'key' } },
-        'test',
-      );
+      l.info({ user: { password: 'pass', token: 'tok', apiKey: 'key' } }, 'test');
       await new Promise((r) => setTimeout(r, 50));
       const output = getOutput();
       expect(output).not.toContain('"pass"');

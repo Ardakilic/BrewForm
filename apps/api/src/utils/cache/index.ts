@@ -1,9 +1,9 @@
 /**
- * Abstraction over Deno KV / in-memory caching.
- * Services never call Deno.openKv() directly — they receive a CacheProvider
+ * Abstraction over process-local key-value caching.
+ * Services never construct a cache backend directly — they receive a CacheProvider
  * via Hono context injection. This ensures testability and DB portability (§6.2).
  *
- * Keys are string arrays (Deno KV atomic keys) for hierarchical namespacing,
+ * Keys are string arrays for hierarchical namespacing,
  * e.g. ["taste-notes", "hierarchy"] or ["taste-notes", "search", "fruit"].
  */
 export interface CacheProvider {
@@ -15,38 +15,6 @@ export interface CacheProvider {
   delete(key: string[]): Promise<void>;
   /** Delete all entries whose key starts with the given prefix. */
   deleteByPrefix(prefix: string[]): Promise<void>;
-}
-
-/**
- * CacheProvider backed by Deno KV. TTLs are enforced natively via KV's
- * `expireIn`; prefix deletion iterates and deletes matching entries one by one.
- */
-export class DenoKVCacheProvider implements CacheProvider {
-  private kv: Deno.Kv;
-
-  constructor(kv: Deno.Kv) {
-    this.kv = kv;
-  }
-
-  async get<T>(key: string[]): Promise<T | null> {
-    const result = await this.kv.get(key);
-    return result.value as T | null;
-  }
-
-  async set<T>(key: string[], value: T, options?: { ttlMs?: number }): Promise<void> {
-    await this.kv.set(key, value, options?.ttlMs ? { expireIn: options.ttlMs } : {});
-  }
-
-  async delete(key: string[]): Promise<void> {
-    await this.kv.delete(key);
-  }
-
-  async deleteByPrefix(prefix: string[]): Promise<void> {
-    const entries = this.kv.list({ prefix });
-    for await (const entry of entries) {
-      await this.kv.delete(entry.key);
-    }
-  }
 }
 
 /**
@@ -93,14 +61,11 @@ export class InMemoryCacheProvider implements CacheProvider {
 }
 
 /**
- * Factory selecting a CacheProvider by driver name ('deno-kv' or 'memory').
- * Throws if the driver is unknown or 'deno-kv' is requested without a Kv instance.
+ * Factory selecting a CacheProvider by driver name ('memory').
+ * Throws if the driver is unknown. Add new drivers here (e.g. redis).
  */
-export function createCacheProvider(driver: string, kv?: Deno.Kv): CacheProvider {
+export function createCacheProvider(driver: string): CacheProvider {
   switch (driver) {
-    case 'deno-kv':
-      if (!kv) throw new Error('Deno.Kv instance required for deno-kv cache driver');
-      return new DenoKVCacheProvider(kv);
     case 'memory':
       return new InMemoryCacheProvider();
     default:

@@ -14,7 +14,7 @@ describe('sessionId', () => {
   });
 
   it('is a valid UUID when crypto.randomUUID is available', () => {
-    // jsdom provides crypto.randomUUID in modern Node/Deno environments;
+    // jsdom provides crypto.randomUUID in modern Node environments;
     // if so, the generated id matches the canonical 8-4-4-4-12 format.
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (typeof globalThis.crypto?.randomUUID === 'function') {

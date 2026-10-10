@@ -61,8 +61,9 @@ describe('rateAction', () => {
   });
 
   it('throws a 400 Response when the rating is non-numeric', async () => {
-    await expect(rateAction(makeArgs('recipe-1', makeRequest('not-a-number')))).rejects
-      .toMatchObject({ status: 400 });
+    await expect(
+      rateAction(makeArgs('recipe-1', makeRequest('not-a-number'))),
+    ).rejects.toMatchObject({ status: 400 });
     expect(mockRate).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EquipmentListPage } from './EquipmentListPage.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -34,9 +34,9 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { api } from '../../api/index.ts';
 import { invalidateStaticCache } from '../../api/static-cache.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockApi = vi.mocked(api);

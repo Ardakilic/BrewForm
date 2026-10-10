@@ -1,16 +1,15 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { setups, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
  * findById — Find a setup by ID. Returns null if the setup has been soft-deleted
  * (deletedAt set) or if no setup with the given ID exists.
  */
-describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findById', () => {
   let userId: string;
   let setupId: string;
 
@@ -59,7 +58,7 @@ describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
  * setups. Returns `{ setups, total }` with total reflecting the count of
  * non-deleted setups matching the userId filter.
  */
-describe('findByUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findByUser', () => {
   let userId: string;
   let setupIds: string[];
 
@@ -118,7 +117,7 @@ describe('findByUser', { sanitizeOps: false, sanitizeResources: false }, () => {
 /**
  * create — Insert a new setup row and return the inserted record.
  */
-describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('create', () => {
   let userId: string;
   let setupId: string;
 
@@ -163,7 +162,7 @@ describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
  * isNull(deletedAt) guard — it will happily mutate a soft-deleted setup. This
  * is documented as a regression baseline below.
  */
-describe('update', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('update', () => {
   let userId: string;
   let setupId: string;
 
@@ -221,7 +220,7 @@ describe('update', { sanitizeOps: false, sanitizeResources: false }, () => {
  * affects non-deleted setups (isNull(deletedAt) guard). Returns null if the
  * setup is already deleted or does not exist.
  */
-describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('softDelete', () => {
   let userId: string;
   let setupId: string;
 

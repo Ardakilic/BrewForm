@@ -11,15 +11,30 @@
       "default": "./src/schema.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "push": "drizzle-kit push",
+    "studio": "drizzle-kit studio --host=0.0.0.0 --port=5555",
+    "seed": "tsx src/seed.ts",
+    "build": "drizzle-kit generate",
+    "check": "tsc --noEmit",
+    "lint": "biome check src/",
+    "test": "vitest run"
+  },
   "dependencies": {
+    "@brewform/shared": "workspace:*",
+    "bcryptjs": "catalog:",
     "drizzle-orm": "catalog:",
-    "postgres": "^3.4.9",
-    "bcryptjs": "catalog:"
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.10",
-    "@std/testing": "jsr:@std/testing@^1.0.19",
-    "@std/expect": "jsr:@std/expect@^1.0.20"
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "^24.19.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "drizzle-kit": "catalog:",
+    "tsx": "4.23.15",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

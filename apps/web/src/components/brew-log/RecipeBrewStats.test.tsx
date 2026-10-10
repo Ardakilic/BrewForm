@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
@@ -13,8 +13,8 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { brewLogApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { RecipeBrewStats } from './RecipeBrewStats.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -50,7 +50,7 @@ describe('RecipeBrewStats', () => {
   it('renders brew count and average rating to one decimal', async () => {
     mockGetRecipeStats.mockResolvedValue({ recipeId: 'r1', brewCount: 7, avgBrewRating: 8.25 });
 
-    render(<RecipeBrewStats recipeId='r1' />);
+    render(<RecipeBrewStats recipeId="r1" />);
 
     await waitFor(() => {
       expect(screen.getByTestId('recipe-brew-stats')).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe('RecipeBrewStats', () => {
   it('renders only the count when avgBrewRating is null', async () => {
     mockGetRecipeStats.mockResolvedValue({ recipeId: 'r1', brewCount: 3, avgBrewRating: null });
 
-    render(<RecipeBrewStats recipeId='r1' />);
+    render(<RecipeBrewStats recipeId="r1" />);
 
     await waitFor(() => {
       expect(screen.getByText('3')).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('RecipeBrewStats', () => {
   it('renders nothing when brewCount is zero', async () => {
     mockGetRecipeStats.mockResolvedValue({ recipeId: 'r1', brewCount: 0, avgBrewRating: null });
 
-    render(<RecipeBrewStats recipeId='r1' />);
+    render(<RecipeBrewStats recipeId="r1" />);
 
     await waitFor(() => {
       expect(mockGetRecipeStats).toHaveBeenCalled();
@@ -87,7 +87,7 @@ describe('RecipeBrewStats', () => {
   it('renders nothing when the stats request fails', async () => {
     mockGetRecipeStats.mockRejectedValue(new Error('boom'));
 
-    render(<RecipeBrewStats recipeId='r1' />);
+    render(<RecipeBrewStats recipeId="r1" />);
 
     await waitFor(() => {
       expect(mockGetRecipeStats).toHaveBeenCalled();

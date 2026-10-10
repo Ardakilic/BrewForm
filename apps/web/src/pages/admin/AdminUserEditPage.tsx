@@ -1,13 +1,13 @@
+import { type AdminUpdateUser, AdminUpdateUserSchema } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext.tsx';
-import { adminApi, type AdminUserDetail } from '../../api/index.ts';
-import { createLogger } from '../../utils/logger.ts';
-import { type AdminUpdateUser, AdminUpdateUserSchema } from '@brewform/shared/schemas';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { type AdminUserDetail, adminApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
-import { Skeleton } from '../../components/ui/Skeleton.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { Skeleton } from '../../components/ui/Skeleton.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminUserEditPage');
 
@@ -53,29 +53,33 @@ export function AdminUserEditPage() {
       });
       return;
     }
-    adminApi.getUserDetail(id).then((data) => {
-      setUser(data);
-      setForm({
-        email: data.email,
-        username: data.username,
-        password: '',
-        displayName: data.displayName || '',
-        bio: data.bio || '',
-        isAdmin: data.isAdmin,
-        isBanned: data.isBanned,
-      });
-    }).catch((err) => {
-      log.error({ err }, 'AdminUserEditPage loadData failed');
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 404) {
-        setNotFound(true);
-      } else {
-        setServerError(
-          (err as { message?: string })?.message || t('admin.users.loadDetailError'),
-        );
-      }
-    }).finally(() => setLoading(false));
-  }, [id, currentUser, navigate]);
+    adminApi
+      .getUserDetail(id)
+      .then((data) => {
+        setUser(data);
+        setForm({
+          email: data.email,
+          username: data.username,
+          password: '',
+          displayName: data.displayName || '',
+          bio: data.bio || '',
+          isAdmin: data.isAdmin,
+          isBanned: data.isBanned,
+        });
+      })
+      .catch((err) => {
+        log.error({ err }, 'AdminUserEditPage loadData failed');
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          setNotFound(true);
+        } else {
+          setServerError(
+            (err as { message?: string })?.message || t('admin.users.loadDetailError'),
+          );
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [id, currentUser, navigate, t]);
 
   function getDiff(): AdminUpdateUser | null {
     if (!user) return null;
@@ -136,23 +140,23 @@ export function AdminUserEditPage() {
 
   if (loading) {
     return (
-      <div className='space-y-4'>
-        <Skeleton height='2rem' width='12rem' />
-        <Skeleton height='16rem' />
+      <div className="space-y-4">
+        <Skeleton height="2rem" width="12rem" />
+        <Skeleton height="16rem" />
       </div>
     );
   }
 
   if (notFound) {
     return (
-      <div className='text-center py-12'>
-        <h2 className='text-xl font-semibold' style={{ color: 'var(--text-primary)' }}>
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           {t('admin.users.notFoundTitle')}
         </h2>
-        <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
           {t('admin.users.notFoundMessage')}
         </p>
-        <Link to='/admin/users' className='btn-primary mt-4 inline-block'>
+        <Link to="/admin/users" className="btn-primary mt-4 inline-block">
           {t('admin.users.backToUsers')}
         </Link>
       </div>
@@ -161,12 +165,14 @@ export function AdminUserEditPage() {
 
   if (success) {
     return (
-      <div className='text-center py-12'>
-        <div className='text-4xl mb-4' style={{ color: 'var(--success)' }}>&#10003;</div>
-        <h2 className='text-xl font-semibold' style={{ color: 'var(--text-primary)' }}>
+      <div className="text-center py-12">
+        <div className="text-4xl mb-4" style={{ color: 'var(--success)' }}>
+          &#10003;
+        </div>
+        <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           {t('admin.users.updateSuccess')}
         </h2>
-        <p className='mt-2' style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>
           {t('admin.users.redirecting')}
         </p>
       </div>
@@ -175,107 +181,103 @@ export function AdminUserEditPage() {
 
   return (
     <div>
-      <div className='flex items-center gap-4 mb-6'>
+      <div className="flex items-center gap-4 mb-6">
         <Link to={`/admin/users/${id}`} style={{ color: 'var(--accent-primary)' }}>
           {t('admin.users.backToUser')}
         </Link>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('admin.users.editUserTitle')} {user?.displayName || user?.username}
         </h1>
       </div>
 
-      {serverError && <ErrorState message={serverError} className='mb-4' />}
+      {serverError && <ErrorState message={serverError} className="mb-4" />}
 
-      <form onSubmit={handleSubmit} className='card max-w-lg'>
-        <p className='text-xs mb-4' style={{ color: 'var(--text-tertiary)' }}>
+      <form onSubmit={handleSubmit} className="card max-w-lg">
+        <p className="text-xs mb-4" style={{ color: 'var(--text-tertiary)' }}>
           {t('admin.users.passwordHint')}
         </p>
 
-        <div className='space-y-4'>
-          <Field label={t('auth.email')} htmlFor='email' error={errors.email}>
+        <div className="space-y-4">
+          <Field label={t('auth.email')} htmlFor="email" error={errors.email}>
             <input
-              id='email'
-              type='email'
+              id="email"
+              type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className='input-field'
+              className="input-field"
             />
           </Field>
 
-          <Field label={t('auth.username')} htmlFor='username' error={errors.username}>
+          <Field label={t('auth.username')} htmlFor="username" error={errors.username}>
             <input
-              id='username'
-              type='text'
+              id="username"
+              type="text"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
-              className='input-field'
+              className="input-field"
             />
           </Field>
 
-          <Field label={t('admin.users.newPassword')} htmlFor='password' error={errors.password}>
+          <Field label={t('admin.users.newPassword')} htmlFor="password" error={errors.password}>
             <input
-              id='password'
-              type='password'
+              id="password"
+              type="password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className='input-field'
+              className="input-field"
               placeholder={t('admin.users.passwordPlaceholder')}
             />
           </Field>
 
-          <Field
-            label={t('settings.displayName')}
-            htmlFor='displayName'
-            error={errors.displayName}
-          >
+          <Field label={t('settings.displayName')} htmlFor="displayName" error={errors.displayName}>
             <input
-              id='displayName'
-              type='text'
+              id="displayName"
+              type="text"
               value={form.displayName}
               onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-              className='input-field'
+              className="input-field"
             />
           </Field>
 
-          <Field label={t('common.bio')} htmlFor='bio' error={errors.bio}>
+          <Field label={t('common.bio')} htmlFor="bio" error={errors.bio}>
             <textarea
-              id='bio'
+              id="bio"
               value={form.bio}
               onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              className='input-field'
+              className="input-field"
               rows={3}
             />
           </Field>
 
-          <div className='flex gap-6'>
-            <label className='flex items-center gap-2'>
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2">
               <input
-                type='checkbox'
+                type="checkbox"
                 checked={form.isAdmin}
                 onChange={(e) => setForm({ ...form, isAdmin: e.target.checked })}
               />
-              <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
+              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                 {t('admin.users.adminBadge')}
               </span>
             </label>
-            <label className='flex items-center gap-2'>
+            <label className="flex items-center gap-2">
               <input
-                type='checkbox'
+                type="checkbox"
                 checked={form.isBanned}
                 onChange={(e) => setForm({ ...form, isBanned: e.target.checked })}
               />
-              <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
+              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                 {t('admin.users.banned')}
               </span>
             </label>
           </div>
         </div>
 
-        <div className='flex gap-2 mt-6'>
-          <button type='submit' className='btn-primary' disabled={saving}>
+        <div className="flex gap-2 mt-6">
+          <button type="submit" className="btn-primary" disabled={saving}>
             {saving ? t('common.saving') : t('common.saveChanges')}
           </button>
-          <Link to={`/admin/users/${id}`} className='btn-secondary'>
+          <Link to={`/admin/users/${id}`} className="btn-secondary">
             {t('common.cancel')}
           </Link>
         </div>

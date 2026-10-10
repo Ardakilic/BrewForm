@@ -1,25 +1,23 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { recipes, users } from '@brewform/db/schema';
 import { generateSlug } from '@brewform/shared/utils';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getRecipeQRCode, log } from './service.ts';
 
-describe('QR Code Service Logic', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('QR Code Service Logic', () => {
   let userId: string;
-  let debugSpy: ReturnType<typeof spy>;
-  let errorSpy: ReturnType<typeof spy>;
-  let warnSpy: ReturnType<typeof spy>;
+  let debugSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     userId = crypto.randomUUID();
 
-    debugSpy = spy(log, 'debug');
-    errorSpy = spy(log, 'error');
-    warnSpy = spy(log, 'warn');
+    debugSpy = vi.spyOn(log, 'debug');
+    errorSpy = vi.spyOn(log, 'error');
+    warnSpy = vi.spyOn(log, 'warn');
 
     await db.insert(users).values({
       id: userId,
@@ -30,9 +28,9 @@ describe('QR Code Service Logic', { sanitizeOps: false, sanitizeResources: false
   });
 
   afterEach(async () => {
-    debugSpy.restore();
-    errorSpy.restore();
-    warnSpy.restore();
+    debugSpy.mockRestore();
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
 
     await db.delete(recipes).where(eq(recipes.authorId, userId));
     await db.delete(users).where(eq(users.id, userId));
@@ -67,9 +65,17 @@ describe('QR Code Service Logic', { sanitizeOps: false, sanitizeResources: false
 
       expect(result.contentType).toBe('image/png');
       expect(result.data).toBeDefined();
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ slug, format: 'png' }, 'getRecipeQRCode started']);
-      assertSpyCallArgs(debugSpy, 1, [{ slug, format: 'png' }, 'getRecipeQRCode completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
+        { slug, format: 'png' },
+        'getRecipeQRCode started',
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { slug, format: 'png' },
+        'getRecipeQRCode completed',
+      );
     });
 
     it('should log entry/exit and return an SVG for a public recipe', async () => {
@@ -85,9 +91,17 @@ describe('QR Code Service Logic', { sanitizeOps: false, sanitizeResources: false
 
       expect(result.contentType).toBe('image/svg+xml');
       expect(typeof result.data).toBe('string');
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ slug, format: 'svg' }, 'getRecipeQRCode started']);
-      assertSpyCallArgs(debugSpy, 1, [{ slug, format: 'svg' }, 'getRecipeQRCode completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
+        { slug, format: 'svg' },
+        'getRecipeQRCode started',
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { slug, format: 'svg' },
+        'getRecipeQRCode completed',
+      );
     });
 
     it('should log error and throw RECIPE_NOT_FOUND for missing recipe', async () => {
@@ -97,14 +111,18 @@ describe('QR Code Service Logic', { sanitizeOps: false, sanitizeResources: false
         'RECIPE_NOT_FOUND',
       );
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; slug: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; slug: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('RECIPE_NOT_FOUND');
       expect(errArg.slug).toBe(slug);
-      expect(errorSpy.calls[0].args[1]).toBe('getRecipeQRCode failed: recipe not found');
-      assertSpyCalls(debugSpy, 1);
-      assertSpyCallArgs(debugSpy, 0, [{ slug, format: 'png' }, 'getRecipeQRCode started']);
+      expect(errorSpy.mock.calls[0][1]).toBe('getRecipeQRCode failed: recipe not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
+        { slug, format: 'png' },
+        'getRecipeQRCode started',
+      );
     });
 
     it('should log warn and throw RECIPE_NOT_AVAILABLE for a draft recipe', async () => {
@@ -120,12 +138,13 @@ describe('QR Code Service Logic', { sanitizeOps: false, sanitizeResources: false
         'RECIPE_NOT_AVAILABLE',
       );
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { slug, visibility: 'draft' },
         'getRecipeQRCode failed: recipe not available',
-      ]);
-      assertSpyCalls(debugSpy, 1);
+      );
+      expect(debugSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should log warn and throw RECIPE_NOT_AVAILABLE for a private recipe', async () => {
@@ -141,11 +160,12 @@ describe('QR Code Service Logic', { sanitizeOps: false, sanitizeResources: false
         'RECIPE_NOT_AVAILABLE',
       );
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { slug, visibility: 'private' },
         'getRecipeQRCode failed: recipe not available',
-      ]);
+      );
     });
   });
 });

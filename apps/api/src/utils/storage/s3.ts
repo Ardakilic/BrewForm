@@ -99,12 +99,14 @@ export class S3StorageDriver implements StorageDriver {
     headers.set('x-amz-content-sha256', payloadHash);
     headers.set('x-amz-date', timeStamp);
 
-    const signedHeaders = contentLength !== undefined
-      ? 'content-length;host;x-amz-content-sha256;x-amz-date'
-      : 'host;x-amz-content-sha256;x-amz-date';
-    const canonicalHeaders = contentLength !== undefined
-      ? `content-length:${contentLength}\nhost:${parsedUrl.host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timeStamp}\n`
-      : `host:${parsedUrl.host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timeStamp}\n`;
+    const signedHeaders =
+      contentLength !== undefined
+        ? 'content-length;host;x-amz-content-sha256;x-amz-date'
+        : 'host;x-amz-content-sha256;x-amz-date';
+    const canonicalHeaders =
+      contentLength !== undefined
+        ? `content-length:${contentLength}\nhost:${parsedUrl.host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timeStamp}\n`
+        : `host:${parsedUrl.host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${timeStamp}\n`;
 
     const canonicalRequest = [
       method,
@@ -136,12 +138,16 @@ export class S3StorageDriver implements StorageDriver {
 
   private async sha256Hex(data: Uint8Array): Promise<string> {
     const hash = await crypto.subtle.digest('SHA-256', data as BufferSource);
-    return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   private async hmacHex(key: CryptoKey, data: Uint8Array): Promise<string> {
     const sig = await crypto.subtle.sign('HMAC', key, data as BufferSource);
-    return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(new Uint8Array(sig))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   private async getSigningKey(dateStamp: string): Promise<CryptoKey> {
@@ -157,9 +163,7 @@ export class S3StorageDriver implements StorageDriver {
       kSigning as BufferSource,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
-      [
-        'sign',
-      ],
+      ['sign'],
     );
   }
 

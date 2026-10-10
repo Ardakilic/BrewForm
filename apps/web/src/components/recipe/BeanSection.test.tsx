@@ -11,12 +11,12 @@
  * fields with non-null values SHALL be displayed.
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import fc from 'fast-check';
-import { BeanSection } from './BeanSection.tsx';
-import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import type { ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { BeanSection } from './BeanSection.tsx';
 
 function withI18n(ui: ReactNode) {
   return <I18nProvider>{ui}</I18nProvider>;
@@ -105,17 +105,17 @@ describe('BeanSection — conditional rendering unit tests', () => {
   });
 
   it('shows product name when present', () => {
-    render(withI18n(<BeanSection productName='Ethiopia Yirgacheffe' />));
+    render(withI18n(<BeanSection productName="Ethiopia Yirgacheffe" />));
     expect(screen.getByText('Ethiopia Yirgacheffe')).toBeInTheDocument();
   });
 
   it('does NOT show product name when null', () => {
-    render(withI18n(<BeanSection coffeeBrand='Blue Bottle' productName={null} />));
+    render(withI18n(<BeanSection coffeeBrand="Blue Bottle" productName={null} />));
     expect(screen.queryByText('Ethiopia Yirgacheffe')).toBeNull();
   });
 
   it('shows relative date label for roast date', () => {
-    render(withI18n(<BeanSection roastDate='2024-01-01' />));
+    render(withI18n(<BeanSection roastDate="2024-01-01" />));
     // The mocked roastDateResult returns { type: 'daysPostRoast', days: 7 } which t() renders as '7 days post-roast'
     // The label appears in both the section header and the date field
     const labels = screen.getAllByText('7 days post-roast');
@@ -140,7 +140,8 @@ describe('BeanSection — conditional rendering unit tests', () => {
  */
 const nullableString = fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: null });
 const nullableDateString = fc.option(
-  fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+  fc
+    .date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
     .filter((d) => !isNaN(d.getTime()))
     .map((d) => d.toISOString()),
   { nil: null },
@@ -213,15 +214,17 @@ describe('BeanSection — Property 12: Bean section conditional rendering', () =
   it('for any combination where at least one field is non-null, renders something', () => {
     fc.assert(
       fc.property(
-        fc.record({
-          productName: nullableString,
-          coffeeBrand: nullableString,
-          coffeeProcessing: nullableString,
-          roastDate: nullableDateString,
-          packageOpenDate: nullableDateString,
-          grindDate: nullableDateString,
-          bean: beanArb,
-        }).filter((props) => shouldRender(props)),
+        fc
+          .record({
+            productName: nullableString,
+            coffeeBrand: nullableString,
+            coffeeProcessing: nullableString,
+            roastDate: nullableDateString,
+            packageOpenDate: nullableDateString,
+            grindDate: nullableDateString,
+            bean: beanArb,
+          })
+          .filter((props) => shouldRender(props)),
         (props) => {
           const node = renderBeanSection(props);
           expect(node).not.toBeNull();

@@ -1,7 +1,6 @@
 import '../../test-setup.ts';
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
+import { describe, expect, it } from 'vitest';
 import contact from './index.ts';
 
 function createTestApp() {

@@ -1,6 +1,5 @@
 import '../../test-setup.ts';
-import { afterEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { afterEach, describe, expect, it } from 'vitest';
 import { closeTransporter, getTransporter } from './index.ts';
 
 describe('getTransporter', () => {

@@ -1,28 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import { useLocation, useNavigation } from 'react-router';
 import {
   BREW_METHODS_LIST,
   DRINK_TYPES_LIST,
   VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
-import { RecipeCardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
-import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import type {
   EquipmentOutput,
   RecipeListItemOutput,
   TasteNoteOutput,
 } from '@brewform/shared/schemas';
+import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigation } from 'react-router';
 import { type TasteNoteFlat, TasteNotesFilter } from '../../components/recipe/TasteNotesFilter.tsx';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
+import { RecipeCardSkeletonGrid } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import { useRecipeFilters } from './useRecipeFilters.ts';
-import { EQUIPMENT_FILTER_TYPES, EQUIPMENT_TYPE_LABELS } from './constants.ts';
-import { ActiveFilterBadge } from './ActiveFilterBadge.tsx';
 import { Field } from '../form/Field.tsx';
 import { PaginationControls } from '../ui/PaginationControls.tsx';
+import { ActiveFilterBadge } from './ActiveFilterBadge.tsx';
+import { EQUIPMENT_FILTER_TYPES, EQUIPMENT_TYPE_LABELS } from './constants.ts';
 import { RecipeCard } from './RecipeCard.tsx';
+import { useRecipeFilters } from './useRecipeFilters.ts';
 
 const log = createLogger('RecipeListView');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -110,12 +110,13 @@ export function RecipeListView({
     };
   }, [source]);
   const recipes = recipesResponse.data;
-  const total = source === 'all'
-    ? (recipesResponse.meta.pagination?.total ?? recipes.length)
-    : (recipesResponse.meta.pagination?.total ?? 0);
+  const total =
+    source === 'all'
+      ? (recipesResponse.meta.pagination?.total ?? recipes.length)
+      : (recipesResponse.meta.pagination?.total ?? 0);
   const totalPages = Math.ceil(total / PER_PAGE);
-  const loading = navigation.state === 'loading' &&
-    navigation.location?.pathname === location.pathname;
+  const loading =
+    navigation.state === 'loading' && navigation.location?.pathname === location.pathname;
   const equipmentByType = useMemo(
     () =>
       EQUIPMENT_FILTER_TYPES.reduce<Record<string, EquipmentOutput[]>>(
@@ -158,47 +159,43 @@ export function RecipeListView({
       }),
     [tasteNotes],
   );
-  const showCoffeeVarietyBadge = coffeeVarietyFilterSlot != null &&
-    !!coffeeVarietyId && UUID_RE.test(coffeeVarietyId);
-  const handleClearCoffeeVariety = onClearCoffeeVariety ??
-    (() => updateFilter('coffeeVarietyId', ''));
+  const showCoffeeVarietyBadge =
+    coffeeVarietyFilterSlot != null && !!coffeeVarietyId && UUID_RE.test(coffeeVarietyId);
+  const handleClearCoffeeVariety =
+    onClearCoffeeVariety ?? (() => updateFilter('coffeeVarietyId', ''));
 
   return (
-    <div className='mx-auto max-w-6xl px-6 py-8'>
+    <div className="mx-auto max-w-6xl px-6 py-8">
       <SEOHead title={pageTitle} description={seoDescription} />
-      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
         {pageTitle}
       </h1>
-      <div className='flex flex-col lg:flex-row gap-6'>
-        <aside className='w-full lg:w-64 flex-shrink-0'>
+      <div className="flex flex-col lg:flex-row gap-6">
+        <aside className="w-full lg:w-64 flex-shrink-0">
           <button
-            type='button'
+            type="button"
             onClick={() => setIsSidebarOpen((prev) => !prev)}
             aria-expanded={isSidebarOpen}
-            aria-controls='filter-sidebar'
-            className='lg:hidden flex items-center justify-center min-h-11 min-w-11 rounded-md mb-2 border border-[color:var(--border-primary)] bg-[color:var(--bg-tertiary)] text-[color:var(--text-primary)] text-sm select-none'
+            aria-controls="filter-sidebar"
+            className="lg:hidden flex items-center justify-center min-h-11 min-w-11 rounded-md mb-2 border border-[color:var(--border-primary)] bg-[color:var(--bg-tertiary)] text-[color:var(--text-primary)] text-sm select-none"
           >
             {t('recipe.list.filters')}
           </button>
           <div
-            id='filter-sidebar'
+            id="filter-sidebar"
             className={`card space-y-3 ${isSidebarOpen ? 'block' : 'hidden'} lg:block`}
           >
-            <div className='flex items-center justify-between'>
-              <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {t('recipe.list.filters')}
               </h3>
               {hasActiveFilters && (
-                <button
-                  type='button'
-                  onClick={clearAllFilters}
-                  className='btn-secondary text-sm'
-                >
+                <button type="button" onClick={clearAllFilters} className="btn-secondary text-sm">
                   {t('recipe.list.clearFilters')}
                 </button>
               )}
             </div>
-            {(equipmentId && UUID_RE.test(equipmentId)) && (
+            {equipmentId && UUID_RE.test(equipmentId) && (
               <ActiveFilterBadge
                 label={t('recipe.list.equipmentFilter')}
                 value={activeEquipmentName || t('recipe.list.equipmentFilterActive')}
@@ -220,7 +217,11 @@ export function RecipeListView({
                   label={t('recipe.list.tasteNotesFilter')}
                   value={note?.name || t('recipe.list.tasteNoteFilterActive')}
                   onRemove={() =>
-                    updateFilter('tasteNoteIds', tasteNoteIds.filter((tid) => tid !== id))}
+                    updateFilter(
+                      'tasteNoteIds',
+                      tasteNoteIds.filter((tid) => tid !== id),
+                    )
+                  }
                 />
               );
             })}
@@ -268,22 +269,24 @@ export function RecipeListView({
             )}
             <Field label={t('recipe.list.search')}>
               <input
-                type='text'
+                type="text"
                 placeholder={t('recipe.list.searchPlaceholder')}
                 value={search}
                 onChange={(e) => updateFilter('search', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               />
             </Field>
             <Field label={t('recipe.brewMethod')}>
               <select
                 value={brewMethod}
                 onChange={(e) => updateFilter('brewMethod', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               >
-                <option value=''>{t('recipe.list.all')}</option>
+                <option value="">{t('recipe.list.all')}</option>
                 {BREW_METHODS_LIST.map((m) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -291,11 +294,13 @@ export function RecipeListView({
               <select
                 value={drinkType}
                 onChange={(e) => updateFilter('drinkType', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               >
-                <option value=''>{t('recipe.list.all')}</option>
+                <option value="">{t('recipe.list.all')}</option>
                 {DRINK_TYPES_LIST.map((d) => (
-                  <option key={d.value} value={d.value}>{d.label}</option>
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -304,11 +309,13 @@ export function RecipeListView({
                 <select
                   value={visibility}
                   onChange={(e) => updateFilter('visibility', e.target.value)}
-                  className='input-field text-sm'
+                  className="input-field text-sm"
                 >
-                  <option value=''>{t('recipe.list.all')}</option>
+                  <option value="">{t('recipe.list.all')}</option>
                   {VISIBILITY_STATES_LIST.map((v) => (
-                    <option key={v.value} value={v.value}>{v.label}</option>
+                    <option key={v.value} value={v.value}>
+                      {v.label}
+                    </option>
                   ))}
                 </select>
               </Field>
@@ -323,11 +330,15 @@ export function RecipeListView({
                   <select
                     value={selectedItem ? equipmentId : ''}
                     onChange={(e) => updateFilter('equipmentId', e.target.value)}
-                    className='input-field text-sm'
+                    className="input-field text-sm"
                     aria-label={t('a11y.filterBy').replace('{label}', label)}
                   >
-                    <option value=''>{t('recipe.list.all')}</option>
-                    {items.map((eq) => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
+                    <option value="">{t('recipe.list.all')}</option>
+                    {items.map((eq) => (
+                      <option key={eq.id} value={eq.id}>
+                        {eq.name}
+                      </option>
+                    ))}
                   </select>
                 </Field>
               );
@@ -345,82 +356,84 @@ export function RecipeListView({
             {coffeeVarietyFilterSlot}
             <Field label={t('recipe.filter.author')}>
               <input
-                type='text'
+                type="text"
                 placeholder={t('recipe.filter.authorPlaceholder')}
                 value={author}
                 onChange={(e) => updateFilter('author', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               />
             </Field>
             <Field label={t('recipe.filter.dateFrom')}>
               <input
-                type='date'
+                type="date"
                 value={dateFrom}
                 onChange={(e) => updateFilter('dateFrom', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               />
             </Field>
             <Field label={t('recipe.filter.dateTo')}>
               <input
-                type='date'
+                type="date"
                 value={dateTo}
                 onChange={(e) => updateFilter('dateTo', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               />
             </Field>
             <Field label={t('recipe.filter.minRating')}>
               <input
-                type='number'
+                type="number"
                 min={1}
                 max={10}
                 value={minRating}
                 onChange={(e) => updateFilter('minRating', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               />
             </Field>
             <Field label={t('recipe.filter.maxRating')}>
               <input
-                type='number'
+                type="number"
                 min={1}
                 max={10}
                 value={maxRating}
                 onChange={(e) => updateFilter('maxRating', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               />
             </Field>
             <Field label={t('recipe.list.sortBy')}>
               <select
                 value={sortBy}
                 onChange={(e) => updateFilter('sortBy', e.target.value)}
-                className='input-field text-sm'
+                className="input-field text-sm"
               >
-                <option value='createdAt'>{t('recipe.list.newest')}</option>
-                <option value='likeCount'>{t('recipe.list.mostLiked')}</option>
-                <option value='rating'>{t('recipe.list.topRated')}</option>
+                <option value="createdAt">{t('recipe.list.newest')}</option>
+                <option value="likeCount">{t('recipe.list.mostLiked')}</option>
+                <option value="rating">{t('recipe.list.topRated')}</option>
               </select>
             </Field>
           </div>
         </aside>
-        <main className='flex-1'>
-          {loading
-            ? <RecipeCardSkeletonGrid />
-            : recipes.length === 0
-            ? <EmptyState message={t(emptyMessageKey)} />
-            : (
-              <>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                  {recipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
-                </div>
-                {total > PER_PAGE && (
-                  <PaginationControls
-                    page={page}
-                    totalPages={totalPages}
-                    onPageChange={(p) => updateFilter('page', String(p))}
-                    pageLabel={t('recipe.list.page')}
-                  />
-                )}
-              </>
-            )}
+        <main className="flex-1">
+          {loading ? (
+            <RecipeCardSkeletonGrid />
+          ) : recipes.length === 0 ? (
+            <EmptyState message={t(emptyMessageKey)} />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {recipes.map((r) => (
+                  <RecipeCard key={r.id} recipe={r} />
+                ))}
+              </div>
+              {total > PER_PAGE && (
+                <PaginationControls
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={(p) => updateFilter('page', String(p))}
+                  pageLabel={t('recipe.list.page')}
+                />
+              )}
+            </>
+          )}
         </main>
       </div>
     </div>

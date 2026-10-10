@@ -14,15 +14,16 @@ export function IntensityDots({ intensity, className }: IntensityDotsProps) {
   return (
     <div
       className={className}
+      role="img"
       style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}
       aria-label={t('a11y.intensity').replace('{intensity}', String(intensity))}
     >
-      {Array.from({ length: 3 }, (_, i) => {
-        const filled = i < intensity;
+      {[0, 1, 2].map((slot) => {
+        const filled = slot < intensity;
         return (
           <span
-            key={i}
-            aria-hidden='true'
+            key={slot}
+            aria-hidden="true"
             style={{
               display: 'inline-block',
               width: '6px',

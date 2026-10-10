@@ -22,9 +22,9 @@ interface BrewLogFormProps {
 function toLocalInputValue(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${
-    pad(d.getMinutes())
-  }`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+    d.getMinutes(),
+  )}`;
 }
 
 function toNumberOrNull(raw: string): number | null {
@@ -109,79 +109,79 @@ export function BrewLogForm({ initialValues, onSubmit, submitLabel }: BrewLogFor
   };
 
   return (
-    <form onSubmit={handleSubmit} className='space-y-4'>
-      <Field label={t('brewLog.form.brewedAt')} htmlFor='brew-log-brewed-at' required>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Field label={t('brewLog.form.brewedAt')} htmlFor="brew-log-brewed-at" required>
         <input
-          id='brew-log-brewed-at'
-          type='datetime-local'
+          id="brew-log-brewed-at"
+          type="datetime-local"
           value={brewedAt}
           onChange={(e) => setBrewedAt(e.target.value)}
-          className='input w-full'
+          className="input w-full"
           required
         />
       </Field>
       <Field
         label={t('brewLog.form.yieldActual')}
-        htmlFor='brew-log-yield-actual'
+        htmlFor="brew-log-yield-actual"
         error={errors.yieldActual}
       >
         <input
-          id='brew-log-yield-actual'
-          type='number'
-          inputMode='decimal'
+          id="brew-log-yield-actual"
+          type="number"
+          inputMode="decimal"
           min={0}
-          step='any'
+          step="any"
           placeholder={t('brewLog.form.yieldActual.placeholder')}
           value={yieldActual}
           onChange={(e) => setYieldActual(e.target.value)}
-          className='input w-full'
+          className="input w-full"
         />
       </Field>
       <Field
         label={t('brewLog.form.doseActual')}
-        htmlFor='brew-log-dose-actual'
+        htmlFor="brew-log-dose-actual"
         error={errors.doseActual}
       >
         <input
-          id='brew-log-dose-actual'
-          type='number'
-          inputMode='decimal'
+          id="brew-log-dose-actual"
+          type="number"
+          inputMode="decimal"
           min={0}
-          step='any'
+          step="any"
           placeholder={t('brewLog.form.doseActual.placeholder')}
           value={doseActual}
           onChange={(e) => setDoseActual(e.target.value)}
-          className='input w-full'
+          className="input w-full"
         />
       </Field>
-      <Field label={t('brewLog.form.notes')} htmlFor='brew-log-notes'>
+      <Field label={t('brewLog.form.notes')} htmlFor="brew-log-notes">
         <textarea
-          id='brew-log-notes'
+          id="brew-log-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder={t('brewLog.form.notes.placeholder')}
-          className='input w-full'
+          className="input w-full"
           rows={4}
           maxLength={5000}
         />
       </Field>
       <Field
         label={t('brewLog.form.personalRating')}
-        htmlFor='brew-log-personal-rating'
+        htmlFor="brew-log-personal-rating"
         error={errors.personalRating}
       >
         <input
-          id='brew-log-personal-rating'
-          type='number'
+          id="brew-log-personal-rating"
+          type="number"
           min={1}
           max={10}
           step={1}
           value={personalRating}
           onChange={(e) => setPersonalRating(e.target.value)}
-          className='input w-full'
+          className="input w-full"
         />
       </Field>
-      <button type='submit' disabled={submitting} className='btn-primary'>
+      <button type="submit" disabled={submitting} className="btn-primary">
         {submitLabel}
       </button>
     </form>

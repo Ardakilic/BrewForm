@@ -24,30 +24,26 @@ function Star({ index, activeValue }: { index: number; activeValue: number }) {
 
   return (
     <svg
-      viewBox='0 0 24 24'
-      width='28'
-      height='28'
-      className='block overflow-visible'
+      viewBox="0 0 24 24"
+      width="28"
+      height="28"
+      className="block overflow-visible"
+      aria-hidden="true"
     >
       {/* Empty / outline */}
       <path
         d={STAR_PATH}
-        fill='var(--bg-tertiary)'
-        stroke='var(--text-tertiary)'
-        strokeWidth='1.2'
-        strokeLinejoin='round'
+        fill="var(--bg-tertiary)"
+        stroke="var(--text-tertiary)"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
       />
       {/* Half fill — clip right half */}
       {isHalf && (
-        <path
-          d={STAR_PATH}
-          fill='#f5a623'
-          stroke='none'
-          style={{ clipPath: 'inset(0 50% 0 0)' }}
-        />
+        <path d={STAR_PATH} fill="#f5a623" stroke="none" style={{ clipPath: 'inset(0 50% 0 0)' }} />
       )}
       {/* Full fill */}
-      {isFull && <path d={STAR_PATH} fill='#f5a623' stroke='none' />}
+      {isFull && <path d={STAR_PATH} fill="#f5a623" stroke="none" />}
     </svg>
   );
 }
@@ -62,7 +58,7 @@ export function StarRating({ value, count, onRate, interactive = true }: Props) 
   const { t } = useTranslation();
 
   /** Compute the 1–10 value from a mouse event over a star element */
-  function valueFromEvent(e: React.MouseEvent<HTMLDivElement>, starIndex: number): number {
+  function valueFromEvent(e: React.MouseEvent<HTMLButtonElement>, starIndex: number): number {
     const rect = e.currentTarget.getBoundingClientRect();
     const isLeftHalf = e.clientX - rect.left < rect.width / 2;
     return isLeftHalf ? starIndex * 2 - 1 : starIndex * 2;
@@ -85,25 +81,28 @@ export function StarRating({ value, count, onRate, interactive = true }: Props) 
         onMouseLeave={() => interactive && setHovered(0)}
       >
         {Array.from({ length: STARS }, (_, i) => i + 1).map((starIndex) => (
-          <div
+          <button
+            type="button"
             key={starIndex}
-            className='leading-[0]'
+            disabled={!interactive}
+            className="leading-[0] bg-transparent border-0 p-0"
+            aria-label={label(starIndex * 2)}
             onMouseMove={(e) => interactive && setHovered(valueFromEvent(e, starIndex))}
             onClick={(e) => interactive && onRate?.(valueFromEvent(e, starIndex))}
           >
             <Star index={starIndex} activeValue={displayValue} />
-          </div>
+          </button>
         ))}
 
         {/* Numeric label */}
-        <span className='ml-1 text-sm font-medium tabular-nums text-[color:var(--text-secondary)] min-w-[2.5rem]'>
+        <span className="ml-1 text-sm font-medium tabular-nums text-[color:var(--text-secondary)] min-w-[2.5rem]">
           {hovered > 0 ? label(hovered) : value ? label(value) : interactive ? '' : '—'}
         </span>
       </div>
 
       {/* Community count — always shown when prop is provided */}
       {count !== undefined && (
-        <p className='text-xs mt-0.5 text-[color:var(--text-tertiary)]'>
+        <p className="text-xs mt-0.5 text-[color:var(--text-tertiary)]">
           {count === 0
             ? t('recipe.rating.noVotes')
             : t('recipe.rating.voteCount').replace('{count}', String(count))}

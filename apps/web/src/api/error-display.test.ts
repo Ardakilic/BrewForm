@@ -12,10 +12,15 @@ function formatApiError(err: unknown): string {
 
 describe('error display pattern (RecipeCreatePage / RecipeEditPage)', () => {
   it('should format structured validation errors with field: message', () => {
-    const err = new ApiError('VALIDATION_ERROR', 'Validation failed', [
-      { field: 'title', message: 'Required' },
-      { field: 'brewMethod', message: 'Invalid method' },
-    ], 400);
+    const err = new ApiError(
+      'VALIDATION_ERROR',
+      'Validation failed',
+      [
+        { field: 'title', message: 'Required' },
+        { field: 'brewMethod', message: 'Invalid method' },
+      ],
+      400,
+    );
 
     const result = formatApiError(err);
     expect(result).toBe('title: Required\nbrewMethod: Invalid method');

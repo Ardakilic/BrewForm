@@ -5,13 +5,14 @@
  * async new-follower notifications, badge evaluation, and feed aggregation from
  * followed users' public recipes.
  */
-import * as model from './model.ts';
+
+import { createLogger } from '../../utils/logger/index.ts';
+import { evaluateBadges } from '../badge/service.ts';
+import { createFollowNotification } from '../notification/service.ts';
 import type { CursorResult } from '../recipe/model.ts';
 import * as recipeModel from '../recipe/model.ts';
 import * as userModel from '../user/model.ts';
-import { createLogger } from '../../utils/logger/index.ts';
-import { createFollowNotification } from '../notification/service.ts';
-import { evaluateBadges } from '../badge/service.ts';
+import * as model from './model.ts';
 
 const logger = createLogger('follow-service');
 
@@ -44,7 +45,7 @@ export async function followUser(followerId: string, followingId: string) {
       followingId,
     });
   })().catch((err) =>
-    logger.error({ err, followerId, followingId }, 'createFollowNotification failed')
+    logger.error({ err, followerId, followingId }, 'createFollowNotification failed'),
   );
 
   evaluateBadges(followerId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));

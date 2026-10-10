@@ -29,12 +29,12 @@ vi.mock('./NotificationItem.tsx', () => ({
 
 // ── Imports (after all vi.mock calls) ──
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { notificationApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
 import { NotificationDropdown } from './NotificationDropdown.tsx';
 
@@ -131,7 +131,7 @@ describe('NotificationDropdown', () => {
     expect(mockMarkAllRead).toHaveBeenCalledTimes(1);
     expect(mockNotifyChanged).toHaveBeenCalledTimes(1);
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Mark all read' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Mark all read' })).not.toBeInTheDocument(),
     );
   });
 

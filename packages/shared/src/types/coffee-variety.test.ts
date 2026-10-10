@@ -5,8 +5,7 @@
  * runtime, serving as a regression guard against accidental reversion to
  * `string`.
  */
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import type { CoffeeVariety } from './coffee-variety.ts';
 
 describe('CoffeeVariety type consistency', () => {

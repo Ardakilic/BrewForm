@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EquipmentDetailPage } from './EquipmentDetailPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -8,9 +8,19 @@ const { mockLogger } = vi.hoisted(() => ({
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
   useParams: vi.fn(),
   useNavigate: vi.fn(() => vi.fn()),
 }));
@@ -28,9 +38,9 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 }));
 
 import { useParams } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { api } from '../../api/client.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseParams = vi.mocked(useParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -119,11 +129,11 @@ describe('EquipmentDetailPage', () => {
   it('logs mount and unmount', async () => {
     const { unmount } = render(<EquipmentDetailPage />);
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage mounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage mounted'),
     );
     unmount();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage unmounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'EquipmentDetailPage unmounted'),
     );
   });
 
@@ -140,12 +150,13 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
 
     expect(screen.getAllByText('Fellow').length).toBe(1);
-    expect(screen.getByText('Electric pour-over kettle with temperature control'))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText('Electric pour-over kettle with temperature control'),
+    ).toBeInTheDocument();
     expect(screen.getByText('kettle')).toBeInTheDocument();
   });
 
@@ -153,7 +164,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
 
     expect(screen.getAllByText('Fellow').length).toBeGreaterThan(0);
@@ -167,7 +178,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
   });
 
@@ -218,7 +229,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByText('Recipes using this equipment')).toBeInTheDocument()
+      expect(screen.getByText('Recipes using this equipment')).toBeInTheDocument(),
     );
     expect(screen.getByText('My Espresso')).toBeInTheDocument();
   });
@@ -245,7 +256,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByText('No recipes use this equipment yet.')).toBeInTheDocument()
+      expect(screen.getByText('No recipes use this equipment yet.')).toBeInTheDocument(),
     );
   });
 
@@ -253,7 +264,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
 
     const calls = mockSEOHead.mock.calls;
@@ -269,7 +280,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
 
     const calls = mockSEOHead.mock.calls;
@@ -281,7 +292,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
 
     const calls = mockSEOHead.mock.calls;
@@ -297,7 +308,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
 
     const calls = mockSEOHead.mock.calls;
@@ -309,7 +320,7 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
 
     expect(screen.getByRole('link', { name: 'Coffee Equipment' })).toHaveAttribute(
@@ -326,10 +337,11 @@ describe('EquipmentDetailPage', () => {
     render(<EquipmentDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Stagg EKG' })).toBeInTheDocument(),
     );
 
-    expect(screen.queryByText('Electric pour-over kettle with temperature control')).not
-      .toBeInTheDocument();
+    expect(
+      screen.queryByText('Electric pour-over kettle with temperature control'),
+    ).not.toBeInTheDocument();
   });
 });

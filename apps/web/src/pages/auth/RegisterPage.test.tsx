@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { RegisterPage } from './RegisterPage.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { authApi, userApi } from '../../api/index.ts';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
-import { authApi, userApi } from '../../api/index.ts';
+import { RegisterPage } from './RegisterPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -73,7 +73,7 @@ describe('RegisterPage', () => {
     await waitFor(() => expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RegisterPage mounted'));
     unmount();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RegisterPage unmounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'RegisterPage unmounted'),
     );
   });
 
@@ -126,9 +126,12 @@ describe('RegisterPage', () => {
     vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: true });
     const { ApiError: MockApiError } = await import('../../api/index.ts');
     vi.mocked(authApi.register).mockRejectedValue(
-      new MockApiError('VALIDATION_ERROR', 'Validation failed', [
-        { field: 'email', message: 'Already taken' },
-      ], 400),
+      new MockApiError(
+        'VALIDATION_ERROR',
+        'Validation failed',
+        [{ field: 'email', message: 'Already taken' }],
+        400,
+      ),
     );
     renderRegisterPage();
     await waitFor(() => {

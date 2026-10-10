@@ -1,8 +1,3 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute } from 'hono-openapi';
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import type { Context } from 'hono';
 import {
   AuthLoginSchema,
   AuthRefreshSchema,
@@ -10,15 +5,20 @@ import {
   PasswordResetConfirmSchema,
   PasswordResetSchema,
 } from '@brewform/shared/schemas';
-import { z } from 'zod';
-import * as authService from './service.ts';
-import { error, success } from '../../utils/response/index.ts';
-import { config } from '../../config/env.ts';
-import { createLogger } from '../../utils/logger/index.ts';
-import { authRateLimitMiddleware } from '../../middleware/rateLimit.ts';
-import { authMiddleware } from '../../middleware/auth.ts';
-import type { AppEnv } from '../../types/hono.ts';
 import type { User } from '@brewform/shared/types';
+import { zValidator } from '@hono/zod-validator';
+import type { Context } from 'hono';
+import { Hono } from 'hono';
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { describeRoute } from 'hono-openapi';
+import { z } from 'zod';
+import { config } from '../../config/env.ts';
+import { authMiddleware } from '../../middleware/auth.ts';
+import { authRateLimitMiddleware } from '../../middleware/rateLimit.ts';
+import type { AppEnv } from '../../types/hono.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+import { error, success } from '../../utils/response/index.ts';
+import * as authService from './service.ts';
 
 const log = createLogger('auth');
 
@@ -26,12 +26,7 @@ const log = createLogger('auth');
 const auth = new Hono<AppEnv>();
 const authRateLimit = authRateLimitMiddleware({ windowMs: 15 * 60_000, maxAttempts: 5 });
 
-function setAuthCookies(
-  c: Context,
-  accessToken: string,
-  refreshToken: string,
-  rememberMe = false,
-) {
+function setAuthCookies(c: Context, accessToken: string, refreshToken: string, rememberMe = false) {
   const isProduction = config.APP_ENV === 'production';
 
   setCookie(c, 'brewform_access_token', accessToken, {
@@ -71,7 +66,8 @@ auth.post(
   describeRoute({
     tags: ['Auth'],
     summary: 'Register a new account',
-    description: 'Creates a new user account and returns access + refresh tokens. ' +
+    description:
+      'Creates a new user account and returns access + refresh tokens. ' +
       'Email and username are checked for uniqueness.',
     responses: {
       201: { description: 'Account created; tokens issued' },
@@ -85,9 +81,13 @@ auth.post(
     try {
       const result = await authService.register(body);
       setAuthCookies(c, result.accessToken, result.refreshToken);
-      return success(c, {
-        user: sanitizeUser(result.user),
-      }, 201);
+      return success(
+        c,
+        {
+          user: sanitizeUser(result.user),
+        },
+        201,
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'REGISTRATION_DISABLED') {
@@ -119,7 +119,8 @@ auth.post(
   describeRoute({
     tags: ['Auth'],
     summary: 'Log in with email and password',
-    description: 'Returns access + refresh tokens on success. ' +
+    description:
+      'Returns access + refresh tokens on success. ' +
       'Set rememberMe to true for a long-lived refresh token (6 months by default).',
     responses: {
       200: { description: 'Login succeeded; tokens issued' },
@@ -154,7 +155,8 @@ auth.post(
   describeRoute({
     tags: ['Auth'],
     summary: 'Exchange a refresh token for a new access token',
-    description: 'Exchange a refresh token for a new access token. ' +
+    description:
+      'Exchange a refresh token for a new access token. ' +
       'The refresh token can be provided in the request body or via httpOnly cookie.',
     responses: {
       200: { description: 'New access + refresh tokens issued' },
@@ -201,7 +203,8 @@ auth.post(
   describeRoute({
     tags: ['Auth'],
     summary: 'Request a password reset email',
-    description: 'Always returns 200 to avoid leaking which emails are registered. ' +
+    description:
+      'Always returns 200 to avoid leaking which emails are registered. ' +
       'A token is emailed if the address matches an account.',
     responses: {
       200: { description: 'Acknowledged (a reset email was sent if the account exists)' },
@@ -255,7 +258,8 @@ auth.get(
   describeRoute({
     tags: ['Auth'],
     summary: 'Check if new user registration is enabled',
-    description: 'Returns whether the server currently accepts new account registrations. ' +
+    description:
+      'Returns whether the server currently accepts new account registrations. ' +
       'Public endpoint — no authentication required.',
     responses: {
       200: { description: 'Registration status returned' },

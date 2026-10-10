@@ -1,26 +1,24 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { beans, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBean, deleteBean, getBean, listBeans, log, updateBean } from './service.ts';
 
-describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Bean Service Logic', () => {
   let userId: string;
   let otherUserId: string;
-  let debugSpy: ReturnType<typeof spy>;
-  let errorSpy: ReturnType<typeof spy>;
-  let warnSpy: ReturnType<typeof spy>;
+  let debugSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     userId = crypto.randomUUID();
     otherUserId = crypto.randomUUID();
 
-    debugSpy = spy(log, 'debug');
-    errorSpy = spy(log, 'error');
-    warnSpy = spy(log, 'warn');
+    debugSpy = vi.spyOn(log, 'debug');
+    errorSpy = vi.spyOn(log, 'error');
+    warnSpy = vi.spyOn(log, 'warn');
 
     await db.insert(users).values({
       id: userId,
@@ -37,9 +35,9 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
   });
 
   afterEach(async () => {
-    debugSpy.restore();
-    errorSpy.restore();
-    warnSpy.restore();
+    debugSpy.mockRestore();
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
 
     await db.delete(beans).where(eq(beans.userId, userId));
     await db.delete(beans).where(eq(beans.userId, otherUserId));
@@ -58,12 +56,17 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
 
       expect(result.beans).toHaveLength(1);
       expect(result.total).toBe(1);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId, page: 1, perPage: 10 }, 'listBeans started']);
-      assertSpyCallArgs(debugSpy, 1, [
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
+        { userId, page: 1, perPage: 10 },
+        'listBeans started',
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
         { userId, page: 1, perPage: 10, total: 1 },
         'listBeans completed',
-      ]);
+      );
     });
   });
 
@@ -74,9 +77,9 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
       const result = await getBean(bean.id);
 
       expect(result.id).toBe(bean.id);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ id: bean.id }, 'getBean started']);
-      assertSpyCallArgs(debugSpy, 1, [{ id: bean.id }, 'getBean completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { id: bean.id }, 'getBean started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { id: bean.id }, 'getBean completed');
     });
 
     it('should log error and throw BEAN_NOT_FOUND when bean does not exist', async () => {
@@ -84,14 +87,14 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
 
       await expect(getBean(missingId)).rejects.toThrow('BEAN_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('BEAN_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
-      expect(errorSpy.calls[0].args[1]).toBe('getBean failed: bean not found');
-      assertSpyCalls(debugSpy, 1);
-      assertSpyCallArgs(debugSpy, 0, [{ id: missingId }, 'getBean started']);
+      expect(errorSpy.mock.calls[0][1]).toBe('getBean failed: bean not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { id: missingId }, 'getBean started');
     });
   });
 
@@ -101,12 +104,13 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
 
       expect(result.name).toBe('New Bean');
       expect(result.userId).toBe(userId);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId }, 'createBean started']);
-      assertSpyCallArgs(debugSpy, 1, [
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId }, 'createBean started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
         { userId, beanId: result.id },
         'createBean completed',
-      ]);
+      );
     });
   });
 
@@ -117,9 +121,9 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
       const result = await updateBean(userId, bean.id, { name: 'Updated Bean' });
 
       expect(result.name).toBe('Updated Bean');
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId, id: bean.id }, 'updateBean started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId, id: bean.id }, 'updateBean completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId, id: bean.id }, 'updateBean started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { userId, id: bean.id }, 'updateBean completed');
     });
 
     it('should log error and throw BEAN_NOT_FOUND when bean does not exist', async () => {
@@ -127,14 +131,14 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
 
       await expect(updateBean(userId, missingId, { name: 'X' })).rejects.toThrow('BEAN_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string; userId: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('BEAN_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
       expect(errArg.userId).toBe(userId);
-      expect(errorSpy.calls[0].args[1]).toBe('updateBean failed: bean not found');
-      assertSpyCalls(debugSpy, 1);
+      expect(errorSpy.mock.calls[0][1]).toBe('updateBean failed: bean not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should log warn and throw FORBIDDEN when user does not own the bean', async () => {
@@ -144,11 +148,12 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
         'FORBIDDEN',
       );
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { id: bean.id, userId: otherUserId, ownerId: userId },
         'updateBean failed: forbidden',
-      ]);
+      );
     });
   });
 
@@ -158,13 +163,14 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
 
       await deleteBean(userId, bean.id);
 
-      const [row] = await db.select({ deletedAt: beans.deletedAt }).from(beans).where(
-        eq(beans.id, bean.id),
-      );
+      const [row] = await db
+        .select({ deletedAt: beans.deletedAt })
+        .from(beans)
+        .where(eq(beans.id, bean.id));
       expect(row.deletedAt).not.toBeNull();
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId, id: bean.id }, 'deleteBean started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId, id: bean.id }, 'deleteBean completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId, id: bean.id }, 'deleteBean started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { userId, id: bean.id }, 'deleteBean completed');
     });
 
     it('should log error and throw BEAN_NOT_FOUND when bean does not exist', async () => {
@@ -172,14 +178,14 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
 
       await expect(deleteBean(userId, missingId)).rejects.toThrow('BEAN_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string; userId: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('BEAN_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
       expect(errArg.userId).toBe(userId);
-      expect(errorSpy.calls[0].args[1]).toBe('deleteBean failed: bean not found');
-      assertSpyCalls(debugSpy, 1);
+      expect(errorSpy.mock.calls[0][1]).toBe('deleteBean failed: bean not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should log warn and throw FORBIDDEN when user does not own the bean', async () => {
@@ -187,11 +193,12 @@ describe('Bean Service Logic', { sanitizeOps: false, sanitizeResources: false },
 
       await expect(deleteBean(otherUserId, bean.id)).rejects.toThrow('FORBIDDEN');
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { id: bean.id, userId: otherUserId, ownerId: userId },
         'deleteBean failed: forbidden',
-      ]);
+      );
     });
   });
 });
