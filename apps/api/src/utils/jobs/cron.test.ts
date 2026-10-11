@@ -1,14 +1,15 @@
 import '../../test-setup.ts';
-import cron from 'node-cron';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
 vi.mock('node-cron', () => ({
   default: { schedule: vi.fn() },
 }));
 
 // The node-cron mock above replaces the real scheduler: registrations are
-// captured without scheduling anything.
-const scheduleMock = vi.mocked(cron.schedule);
+// captured without scheduling anything. The handle is re-grabbed after every
+// `vi.resetModules()` because resetting re-runs the mock factory, producing a
+// fresh `schedule` mock for the re-executed module body.
+let scheduleMock: MockInstance;
 
 type ScheduleCall = (typeof scheduleMock.mock.calls)[number];
 
@@ -27,6 +28,15 @@ function findJobCall(name: string): ScheduleCall {
 }
 
 describe('cron job registration', () => {
+  // Vitest 5 clears mock call history before each test (`clearMocks: true`
+  // default), so every test re-executes the module body for a fresh
+  // registration instead of relying on calls leaked from earlier tests.
+  beforeEach(async () => {
+    vi.resetModules();
+    scheduleMock = vi.mocked((await import('node-cron')).default.schedule);
+    await import('./cron.ts');
+  });
+
   it('should register evaluate-badges cron job with hourly schedule', async () => {
     await import('./cron.ts');
     expect(scheduleMock.mock.calls.length).toBeGreaterThanOrEqual(1);
