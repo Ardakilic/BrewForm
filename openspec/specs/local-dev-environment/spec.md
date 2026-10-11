@@ -28,21 +28,21 @@ override is introduced; the image default remains the single source of truth, ma
 ### Requirement: Compose image references are version-pinned for reproducibility
 
 The Compose preview `web` service SHALL pin its Caddy image to the same version the published web
-image uses (`caddy:2.11.4-alpine`, matching `Dockerfile.web`), rather than a floating
+image uses (`caddy:2.11.7-alpine`, matching `Dockerfile.web`), rather than a floating
 `caddy:2-alpine` tag, so `make preview` exercises the same Caddy as production.
 
 #### Scenario: Preview Caddy matches the production pin
 
 - **WHEN** the preview `web` service image in `compose.yml` is compared with the `Dockerfile.web`
   runner base image
-- **THEN** both reference `caddy:2.11.4-alpine`
+- **THEN** both reference `caddy:2.11.7-alpine`
 - **AND** the preview service does not use a floating `caddy:2-alpine` tag
 
 ### Requirement: Compose configuration drift is covered by a test
 
 A test SHALL assert the local-dev compose invariants so they cannot silently regress: the dev
 `deno_cache` volume mounts at `/deno-dir`, the old `/root/.cache/deno` mount is absent, and the
-preview Caddy image is pinned to `caddy:2.11.4-alpine`. The test SHALL be hermetic and
+preview Caddy image is pinned to `caddy:2.11.7-alpine`. The test SHALL be hermetic and
 dependency-free (text-based assertions over the `compose.yml` contents, not a YAML parser), SHALL
 resolve `compose.yml` from `import.meta.url` so it passes regardless of the test working directory,
 and SHALL follow the repo's BDD convention (`jsr:@std/testing/bdd` + `jsr:@std/expect`). It SHALL

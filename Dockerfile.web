@@ -14,7 +14,7 @@
 FROM node:24.21.0-bookworm-slim AS deps
 WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable && corepack prepare pnpm@12.10.1 --activate
+RUN corepack enable && corepack prepare pnpm@12.11.2 --activate
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
@@ -47,7 +47,7 @@ RUN pnpm --filter @brewform/web run build
 #
 # Pinned to a specific Caddy patch for reproducible builds. To track the latest
 # 2.x patch automatically instead, swap the line below for: FROM caddy:2-alpine
-FROM caddy:2.11.4-alpine AS runner
+FROM caddy:2.11.7-alpine AS runner
 COPY --from=builder /app/apps/web/dist /usr/share/caddy
 # Production Caddyfile on :80 (the repo-root Caddyfile is the :8080 preview one).
 COPY apps/web/Caddyfile /etc/caddy/Caddyfile

@@ -76,13 +76,13 @@ implemented/done status.
 
 ### Requirement: Guide aligns the Caddy image pin
 
-The deployment guide SHALL reference the web image's Caddy base as `caddy:2.11.4-alpine`, matching
+The deployment guide SHALL reference the web image's Caddy base as `caddy:2.11.7-alpine`, matching
 `Dockerfile.web` and the pinned compose preview service, rather than a floating `caddy:2-alpine`
 tag.
 
 #### Scenario: Caddy reference matches the pinned base
 
 - **WHEN** an operator reads the §2 web-Dockerfile prerequisite row
-- **THEN** it references `caddy:2.11.4-alpine`
+- **THEN** it references `caddy:2.11.7-alpine`
 - **AND** it does not reference a floating `caddy:2-alpine` tag
 

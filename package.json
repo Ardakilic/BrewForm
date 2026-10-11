@@ -1,7 +1,7 @@
 {
   "name": "@brewform/root",
   "private": true,
-  "packageManager": "pnpm@12.10.1",
+  "packageManager": "pnpm@12.11.2",
   "engines": {
     "node": "24"
   },
@@ -12,7 +12,7 @@
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "12.10.1",
+      "version": "12.11.2",
       "onFail": "download"
     }
   },
@@ -49,6 +49,6 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
     "@resvg/resvg-js": "^2.6.2",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   }
 }

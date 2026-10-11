@@ -163,7 +163,7 @@ services:
         condition: service_healthy
 
   garage:
-    image: dxflrs/garage:v2.3.0
+    image: dxflrs/garage:v2.4.1
     ports:
       - "3900:3900"  # S3 API
       - "3902:3902"  # Web gateway
@@ -184,7 +184,7 @@ services:
   # Serves the built React SPA on :8080 alongside app-preview on :8000.
   # Start with: make preview  (builds the web app first, then starts both)
   web:
-    image: caddy:2.11.4-alpine
+    image: caddy:2.11.7-alpine
     ports:
       - "8080:8080"
     volumes:

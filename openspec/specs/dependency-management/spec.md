@@ -127,7 +127,7 @@ pinned surfaces together.
 ### Requirement: Deployment pins are decoupled from application-dependency refreshes
 
 A routine application-dependency refresh SHALL NOT alter the versions pinned by the deployment surface —
-the Deno runtime (2.9.0), `drizzle-kit@0.31`, `denokv:0.14.0`, `caddy:2.11.4-alpine`, `postgres:18`, the
+the Deno runtime (2.9.0), `drizzle-kit@0.31`, `denokv:0.14.0`, `caddy:2.11.7-alpine`, `postgres:18`, the
 `--unstable-cron`/`--unstable-kv` flags, and the `OPENAPI_ENABLED`/`openapi.json` contract. Consequently
 this change SHALL make no edits to `coolify_deployment_plan.md` or the `deployment-guide` spec. Any future
 refresh that *does* need to touch a deployment-pinned version SHALL be raised as (or coordinated with) a
@@ -138,7 +138,7 @@ deployment-focused change, not folded silently into a dependency bump.
 - **WHEN** the dependency refresh lands
 - **THEN** `coolify_deployment_plan.md` and the `deployment-guide` spec are byte-unchanged
 - **AND** every version they pin still matches the codebase (Deno 2.9.0, `drizzle-kit@0.31`,
-  `denokv:0.14.0`, `caddy:2.11.4-alpine`, `postgres:18`)
+  `denokv:0.14.0`, `caddy:2.11.7-alpine`, `postgres:18`)
 
 ### Requirement: Dependency-currency consistency is covered by a test
 
