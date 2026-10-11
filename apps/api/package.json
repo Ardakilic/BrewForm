@@ -13,7 +13,7 @@
     "@brewform/db": "workspace:*",
     "@brewform/shared": "workspace:*",
     "@hono/node-server": "2.1.4",
-    "@hono/standard-validator": "^0.2.3",
+    "@hono/standard-validator": "^0.4.0",
     "@hono/zod-validator": "^0.9.0",
     "bcryptjs": "catalog:",
     "dotenv": "18.0.6",
