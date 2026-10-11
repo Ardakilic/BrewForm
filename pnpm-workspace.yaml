@@ -6,7 +6,7 @@ packages:
 # Consumers reference these as `"dep": "catalog:"` in their package.json.
 # Exact pins resolved from deno.lock at time of writing.
 catalog:
-  drizzle-orm: 0.45.2
+  drizzle-orm: 0.45.4
   bcryptjs: 3.0.3
   zod: 4.4.3
   vite: 8.1.5

@@ -171,8 +171,8 @@ catalogs:
       specifier: 0.31.10
       version: 0.31.10
     drizzle-orm:
-      specifier: 0.45.2
-      version: 0.45.2
+      specifier: 0.45.4
+      version: 0.45.4
     typescript:
       specifier: 7.0.2
       version: 7.0.2
@@ -225,7 +225,7 @@ importers:
         version: 18.0.6
       drizzle-orm:
         specifier: 'catalog:'
-        version: 0.45.2(postgres@3.4.9)
+        version: 0.45.4(postgres@3.4.9)
       hono:
         specifier: ^4.12.30
         version: 4.13.13
@@ -356,7 +356,7 @@ importers:
         version: 3.0.3
       drizzle-orm:
         specifier: 'catalog:'
-        version: 0.45.2(postgres@3.4.9)
+        version: 0.45.4(postgres@3.4.9)
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
@@ -1998,8 +1998,8 @@ packages:
     resolution: {integrity: sha512-7OZcmQUrdGI+DUNNsKBn1aW8qSoKuTH7d0mYgSP8bAzdFzKoovxEFnoGQp2dVs82EOJeYycqRtciopszwUf8bw==}
     hasBin: true
 
-  drizzle-orm@0.45.2:
-    resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
+  drizzle-orm@0.45.4:
+    resolution: {integrity: sha512-NiM1YZpJ2UxyeE67DpDDZ+Tsw4YLX3trSlkNT7Tm9eKoUNb1LvaAaQzXgYQsWs+AQ9TUmmwMmBOCXuqqxUWKKQ==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -2007,6 +2007,7 @@ packages:
       '@libsql/client': '>=0.10.0'
       '@libsql/client-wasm': '>=0.10.0'
       '@neondatabase/serverless': '>=0.10.0'
+      '@netlify/db': '>=0.4.0'
       '@op-engineering/op-sqlite': '>=2'
       '@opentelemetry/api': ^1.4.1
       '@planetscale/database': '>=1.13'
@@ -2042,6 +2043,8 @@ packages:
       '@libsql/client-wasm':
         optional: true
       '@neondatabase/serverless':
+        optional: true
+      '@netlify/db':
         optional: true
       '@op-engineering/op-sqlite':
         optional: true
@@ -4581,7 +4584,7 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.2(postgres@3.4.9):
+  drizzle-orm@0.45.4(postgres@3.4.9):
     optionalDependencies:
       postgres: 3.4.9
 
