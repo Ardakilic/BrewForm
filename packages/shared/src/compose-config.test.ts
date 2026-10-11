@@ -57,7 +57,7 @@ describe('compose.yml local-dev invariants', () => {
 
   it('pins the preview Caddy image to match Dockerfile.web', async () => {
     const compose = await readComposeFile();
-    expect(compose).toContain('caddy:2.11.4-alpine');
+    expect(compose).toContain('caddy:2.11.7-alpine');
     expect(compose).not.toContain('image: caddy:2-alpine');
   });
 });

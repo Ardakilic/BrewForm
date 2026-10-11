@@ -17,7 +17,7 @@
 FROM node:24.21.0-bookworm-slim AS deps
 WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable && corepack prepare pnpm@12.10.1 --activate
+RUN corepack enable && corepack prepare pnpm@12.11.2 --activate
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
@@ -49,7 +49,7 @@ FROM node:24.21.0-bookworm-slim AS runner
 WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
   NODE_ENV=production
-RUN corepack enable && corepack prepare pnpm@12.10.1 --activate
+RUN corepack enable && corepack prepare pnpm@12.11.2 --activate
 COPY --from=builder /app /app
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
