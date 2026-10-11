@@ -15,10 +15,9 @@
  *    single-column parity index on tasteNotes.deletedAt
  */
 
-import { beforeAll, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { getTableConfig } from 'drizzle-orm/pg-core';
 import type { IndexedColumn, PgTableWithColumns } from 'drizzle-orm/pg-core';
+import { getTableConfig } from 'drizzle-orm/pg-core';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   beans,
   brewLogs,
@@ -46,7 +45,7 @@ import {
  * @param table - A Drizzle `pgTable` instance (e.g., `recipes`, `comments`)
  * @returns Array of `{ name, columns, isUnique }` for each defined index
  */
-// deno-lint-ignore no-explicit-any -- test any usage
+// biome-ignore lint/suspicious/noExplicitAny: test any usage
 function getTableIndexes(table: PgTableWithColumns<any>): {
   name: string;
   columns: (string | null)[];
@@ -73,7 +72,7 @@ function getTableIndexes(table: PgTableWithColumns<any>): {
  * @param table - A Drizzle `pgTable` instance
  * @returns Array of `{ name, columns }` for each defined unique constraint
  */
-// deno-lint-ignore no-explicit-any -- test any usage
+// biome-ignore lint/suspicious/noExplicitAny: test any usage
 function getTableUniqueConstraints(table: PgTableWithColumns<any>): {
   name: string;
   columns: (string | null)[];

@@ -120,14 +120,14 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
     ...(instructions.length ? { recipeInstructions: instructions } : {}),
     ...(avgRating && ratingCount && ratingCount > 0
       ? {
-        aggregateRating: {
-          '@type': 'AggregateRating',
-          ratingValue: avgRating,
-          ratingCount,
-          bestRating: 10,
-          worstRating: 1,
-        },
-      }
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: avgRating,
+            ratingCount,
+            bestRating: 10,
+            worstRating: 1,
+          },
+        }
       : {}),
   };
 
@@ -149,25 +149,25 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
       },
       ...(brewMethod
         ? [
-          {
-            '@type': 'ListItem',
-            position: 3,
-            name: formatBrewMethod(brewMethod),
-            item: `${globalThis.location.origin}/recipes?brewMethod=${brewMethod}`,
-          },
-          {
-            '@type': 'ListItem',
-            position: 4,
-            name: title,
-          },
-        ]
+            {
+              '@type': 'ListItem',
+              position: 3,
+              name: formatBrewMethod(brewMethod),
+              item: `${globalThis.location.origin}/recipes?brewMethod=${brewMethod}`,
+            },
+            {
+              '@type': 'ListItem',
+              position: 4,
+              name: title,
+            },
+          ]
         : [
-          {
-            '@type': 'ListItem',
-            position: 3,
-            name: title,
-          },
-        ]),
+            {
+              '@type': 'ListItem',
+              position: 3,
+              name: title,
+            },
+          ]),
     ],
   };
 
@@ -180,11 +180,11 @@ export function RecipeJsonLd(props: RecipeJsonLdProps) {
   return (
     <>
       <script
-        type='application/ld+json'
+        type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: sanitizeJsonLd(recipeJsonLd) }}
       />
       <script
-        type='application/ld+json'
+        type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: sanitizeJsonLd(breadcrumbJsonLd) }}
       />
     </>

@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { RecipeQRCode } from './RecipeQRCode.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { RecipeQRCode } from './RecipeQRCode.tsx';
 
 function renderQR(ui: ReactElement) {
   return render(<ToastProvider>{ui}</ToastProvider>);
@@ -42,17 +42,17 @@ beforeEach(() => {
  */
 describe('RecipeQRCode', () => {
   it('renders no QR card when visibility is "private"', () => {
-    renderQR(<RecipeQRCode slug='my-espresso' visibility='private' />);
+    renderQR(<RecipeQRCode slug="my-espresso" visibility="private" />);
     expect(screen.queryByText('QR Code')).not.toBeInTheDocument();
   });
 
   it('renders no QR card when visibility is "draft"', () => {
-    renderQR(<RecipeQRCode slug='my-espresso' visibility='draft' />);
+    renderQR(<RecipeQRCode slug="my-espresso" visibility="draft" />);
     expect(screen.queryByText('QR Code')).not.toBeInTheDocument();
   });
 
   it('renders the QR card with title and image when visibility is "public"', () => {
-    renderQR(<RecipeQRCode slug='my-espresso' visibility='public' />);
+    renderQR(<RecipeQRCode slug="my-espresso" visibility="public" />);
     expect(screen.getByText('QR Code')).toBeInTheDocument();
     const img = screen.getByAltText('Recipe QR Code') as HTMLImageElement;
     expect(img).toBeInTheDocument();
@@ -60,18 +60,18 @@ describe('RecipeQRCode', () => {
   });
 
   it('renders when visibility is "unlisted"', () => {
-    renderQR(<RecipeQRCode slug='my-espresso' visibility='unlisted' />);
+    renderQR(<RecipeQRCode slug="my-espresso" visibility="unlisted" />);
     expect(screen.getByText('QR Code')).toBeInTheDocument();
   });
 
   it('builds the image src from the slug prop', () => {
-    renderQR(<RecipeQRCode slug='cold-brew-42' visibility='public' />);
+    renderQR(<RecipeQRCode slug="cold-brew-42" visibility="public" />);
     const img = screen.getByAltText('Recipe QR Code') as HTMLImageElement;
     expect(img.src).toContain('/api/v1/qrcode/recipe/cold-brew-42.svg');
   });
 
   it('shows a "Download QR Code" button that is enabled initially', () => {
-    renderQR(<RecipeQRCode slug='my-espresso' visibility='public' />);
+    renderQR(<RecipeQRCode slug="my-espresso" visibility="public" />);
     const button = screen.getByRole('button', { name: /Download QR Code/i });
     expect(button).toBeInTheDocument();
     expect(button).not.toBeDisabled();
@@ -101,7 +101,7 @@ describe('RecipeQRCode', () => {
 
     try {
       const user = userEvent.setup();
-      renderQR(<RecipeQRCode slug='my-espresso' visibility='public' />);
+      renderQR(<RecipeQRCode slug="my-espresso" visibility="public" />);
       const button = screen.getByRole('button', { name: /Download QR Code/i });
       await user.click(button);
       expect(await screen.findByRole('button', { name: /Downloading/i })).toBeDisabled();

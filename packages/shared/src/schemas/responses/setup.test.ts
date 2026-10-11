@@ -1,5 +1,4 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { SetupOutputSchema } from './setup.ts';
 
 function wire<T>(payload: T): unknown {

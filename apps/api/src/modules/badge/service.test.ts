@@ -1,9 +1,7 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 
 describe('Badge Service Logic', () => {
   describe('Badge evaluation triggers', () => {
-    // deno-lint-ignore require-await -- test callback signature
     it('should list all available badges', async () => {
       const badges = [
         {
@@ -39,8 +37,8 @@ describe('Badge Service Logic', () => {
         productName: 'Ethiopia Yirgacheffe',
         coffeeBrand: 'Blue Bottle',
       };
-      const hasAllFields = Object.values(allOptionalFieldsFilled).every((v) =>
-        v !== null && v !== undefined
+      const hasAllFields = Object.values(allOptionalFieldsFilled).every(
+        (v) => v !== null && v !== undefined,
       );
       expect(hasAllFields).toBe(true);
     });

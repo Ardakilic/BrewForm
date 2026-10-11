@@ -1,16 +1,16 @@
-import { z } from 'zod';
-import { Hono } from 'hono';
-import { describeRoute, resolver } from 'hono-openapi';
 import {
   ErrorEnvelopeSchema,
   MessageResponseSchema,
   PhotoOutputSchema,
   successEnvelope,
 } from '@brewform/shared/schemas';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, success } from '../../utils/response/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { error, success } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for photo endpoints, mounted at `/api/v1/photos`. */
 const photo = new Hono<AppEnv>();
@@ -104,9 +104,10 @@ photo.post(
     const { recipeId, alt, sortOrder } = parsed.data;
 
     const data = new Uint8Array(await fileField.arrayBuffer());
-    const thumbnail = thumbnailField instanceof File && thumbnailField.size > 0
-      ? new Uint8Array(await thumbnailField.arrayBuffer())
-      : null;
+    const thumbnail =
+      thumbnailField instanceof File && thumbnailField.size > 0
+        ? new Uint8Array(await thumbnailField.arrayBuffer())
+        : null;
 
     try {
       const result = await service.uploadPhoto(
@@ -138,9 +139,7 @@ photo.get(
     tags: ['Photos'],
     summary: 'List photos for a recipe',
     description: 'Returns all photos attached to the given recipe.',
-    parameters: [
-      { name: 'recipeId', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'recipeId', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'List of photos',
@@ -166,9 +165,7 @@ photo.delete(
     summary: 'Delete a photo',
     description: 'Deletes a photo owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Photo deleted',

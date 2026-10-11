@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import { HomePage, loader } from './HomePage.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../contexts/I18nContext.tsx';
-import type { RecipeListItemOutput } from '@brewform/shared/schemas';
+import { HomePage, loader } from './HomePage.tsx';
 
 vi.mock('../api/index.ts', () => ({
   recipeApi: {
@@ -46,10 +46,9 @@ function makeRecipe(overrides: Partial<RecipeListItemOutput> = {}): RecipeListIt
 }
 
 function renderHomePage() {
-  const router = createMemoryRouter(
-    [{ path: '/', element: <HomePage />, loader }],
-    { initialEntries: ['/'] },
-  );
+  const router = createMemoryRouter([{ path: '/', element: <HomePage />, loader }], {
+    initialEntries: ['/'],
+  });
   return render(
     <I18nProvider>
       <RouterProvider router={router} />

@@ -1,25 +1,23 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
-import {
-  PaginationSchema,
-  SearchQuerySchema,
-  VendorCreateSchema,
-  VendorUpdateSchema,
-} from '@brewform/shared/schemas';
 import {
   ErrorEnvelopeSchema,
   MessageResponseSchema,
+  PaginationSchema,
   paginatedEnvelope,
+  SearchQuerySchema,
   successEnvelope,
+  VendorCreateSchema,
   VendorOutputSchema,
+  VendorUpdateSchema,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for vendor endpoints, mounted at `/api/v1/vendors`. */
 const vendor = new Hono<AppEnv>();
@@ -62,9 +60,7 @@ vendor.get(
     tags: ['Vendors'],
     summary: 'Search vendors',
     description: 'Returns vendors matching the search query.',
-    parameters: [
-      { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'q', in: 'query', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'List of matching vendors',
@@ -121,9 +117,7 @@ vendor.get(
     tags: ['Vendors'],
     summary: 'Get a vendor by id',
     description: 'Returns a single coffee vendor/roaster by its id.',
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Vendor payload',
@@ -157,9 +151,7 @@ vendor.patch(
     summary: 'Update a vendor',
     description: 'Updates a coffee vendor/roaster. Owner or admin only.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(VendorUpdateSchema),
     responses: {
       200: {
@@ -209,9 +201,7 @@ vendor.delete(
     summary: 'Delete a vendor',
     description: 'Deletes a coffee vendor/roaster. Admin only.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Vendor deleted',

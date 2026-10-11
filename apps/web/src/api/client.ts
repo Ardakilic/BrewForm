@@ -1,5 +1,5 @@
-import { sessionId } from '../utils/sessionId.ts';
 import { createLogger } from '@/utils/logger.ts';
+import { sessionId } from '../utils/sessionId.ts';
 
 const log = createLogger('api-client');
 
@@ -9,8 +9,8 @@ const log = createLogger('api-client');
 //      Lets one prebuilt image be retargeted at deploy time with no rebuild.
 //   2. Build-time `import.meta.env.VITE_API_URL`, inlined into the bundle by Vite.
 //   3. Same-origin `/api/v1` fallback.
-const runtimeConfig =
-  (globalThis as { __BREWFORM_CONFIG__?: { apiUrl?: string } }).__BREWFORM_CONFIG__;
+const runtimeConfig = (globalThis as { __BREWFORM_CONFIG__?: { apiUrl?: string } })
+  .__BREWFORM_CONFIG__;
 const API_BASE = runtimeConfig?.apiUrl || import.meta.env.VITE_API_URL || '/api/v1';
 
 /**

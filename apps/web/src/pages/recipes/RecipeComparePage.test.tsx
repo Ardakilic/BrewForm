@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -46,8 +46,8 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
-import { recipeApi } from '../../api/index.ts';
 import type { RecipeDetailOutput } from '@brewform/shared/schemas';
+import { recipeApi } from '../../api/index.ts';
 import { RecipeComparePage } from './RecipeComparePage.tsx';
 
 const mockRecipeApi = vi.mocked(recipeApi);
@@ -104,13 +104,13 @@ beforeEach(() => {
       slug === 'recipe-1'
         ? makeRecipe({ id: 'r1', versionId: 'ver-1', title: 'Recipe One', grams: 18 })
         : makeRecipe({
-          id: 'r2',
-          slug: 'recipe-2',
-          versionId: 'ver-2',
-          title: 'Recipe Two',
-          grams: 20,
-        }),
-    )
+            id: 'r2',
+            slug: 'recipe-2',
+            versionId: 'ver-2',
+            title: 'Recipe Two',
+            grams: 20,
+          }),
+    ),
   );
 });
 
@@ -141,12 +141,10 @@ describe('RecipeComparePage', () => {
   });
 
   it('hides the merge button when a recipe fails to load', async () => {
-    mockRecipeApi.get.mockImplementation(
-      ((slug: string) =>
-        slug === 'recipe-1'
-          ? Promise.resolve(makeRecipe({}))
-          : Promise.resolve(null)) as typeof mockRecipeApi.get,
-    );
+    mockRecipeApi.get.mockImplementation(((slug: string) =>
+      slug === 'recipe-1'
+        ? Promise.resolve(makeRecipe({}))
+        : Promise.resolve(null)) as typeof mockRecipeApi.get);
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('Bir veya iki tarif bulunamadı.')).toBeInTheDocument();

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ vi.mock('../../api/static-cache.ts', () => ({
 }));
 
 vi.mock('../../utils/recipe-filters.ts', async (importOriginal) => {
-  const actual = await importOriginal() as {
+  const actual = (await importOriginal()) as {
     extractListParams: (sp: URLSearchParams) => Record<string, string>;
   };
   return {
@@ -88,12 +88,12 @@ vi.mock('@brewform/shared/constants', () => ({
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
+import type { PaginatedResponse, RecipeListItemOutput } from '@brewform/shared/schemas';
 import { useSearchParams } from 'react-router';
-import { I18nProvider, useTranslation } from '../../contexts/I18nContext.tsx';
-import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
 import { recipeApi } from '../../api/index.ts';
 import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
-import type { PaginatedResponse, RecipeListItemOutput } from '@brewform/shared/schemas';
+import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
+import { I18nProvider, useTranslation } from '../../contexts/I18nContext.tsx';
 
 /** Builds an empty `PaginatedResponse<RecipeListItemOutput>` for starred-list mocks. */
 function makeEmptyStarredResponse(): PaginatedResponse<RecipeListItemOutput> {
@@ -103,6 +103,7 @@ function makeEmptyStarredResponse(): PaginatedResponse<RecipeListItemOutput> {
     meta: { requestId: 'test', pagination: { page: 1, perPage: 12, total: 0, totalPages: 0 } },
   };
 }
+
 import { loader, StarredRecipesPage } from './StarredRecipesPage.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
@@ -244,9 +245,7 @@ describe('StarredRecipesPage', () => {
     renderStarredPage();
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Please log in to view your starred recipes.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Please log in to view your starred recipes.')).toBeInTheDocument();
     });
   });
 
@@ -254,9 +253,7 @@ describe('StarredRecipesPage', () => {
     renderStarredPage();
 
     await waitFor(() => {
-      expect(
-        screen.getByText("You haven't starred any recipes yet."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("You haven't starred any recipes yet.")).toBeInTheDocument();
     });
   });
 
@@ -317,16 +314,12 @@ describe('StarredRecipesPage', () => {
     renderStarredPage();
 
     // HydrateFallback renders null; component is not yet present
-    expect(
-      screen.queryByRole('heading', { name: 'Starred Recipes' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Starred Recipes' })).not.toBeInTheDocument();
 
     resolveLoader!(makeEmptyStarredResponse());
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('heading', { name: 'Starred Recipes' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Starred Recipes' })).toBeInTheDocument();
     });
   });
 });

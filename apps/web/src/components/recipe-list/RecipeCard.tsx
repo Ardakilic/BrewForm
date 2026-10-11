@@ -69,16 +69,18 @@ export function RecipeCard({ recipe, hideAuthor, version }: RecipeCardProps) {
   const { t } = useTranslation();
   const { author } = recipe;
   return (
-    <Link to={`/recipes/${recipe.slug}`} className='card hover:shadow-lg transition-shadow'>
-      <h3 className='font-semibold' style={{ color: 'var(--text-primary)' }}>{recipe.title}</h3>
+    <Link to={`/recipes/${recipe.slug}`} className="card hover:shadow-lg transition-shadow">
+      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+        {recipe.title}
+      </h3>
       {!hideAuthor && (
-        <p className='mt-1 text-sm' style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {t('recipe.card.by')} {author ? <AuthorButton author={author} /> : 'unknown'}
         </p>
       )}
       {version && (
         <div
-          className='mt-1 flex flex-wrap gap-1 text-xs'
+          className="mt-1 flex flex-wrap gap-1 text-xs"
           style={{ color: 'var(--text-tertiary)' }}
         >
           <span>{version.brewMethod.replace(/_/g, ' ')}</span>
@@ -88,7 +90,7 @@ export function RecipeCard({ recipe, hideAuthor, version }: RecipeCardProps) {
         </div>
       )}
       <div
-        className='mt-2 flex items-center gap-2 text-xs'
+        className="mt-2 flex items-center gap-2 text-xs"
         style={{ color: 'var(--text-tertiary)' }}
       >
         <span>❤️ {recipe.likeCount}</span>

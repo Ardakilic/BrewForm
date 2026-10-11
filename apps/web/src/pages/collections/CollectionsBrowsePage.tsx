@@ -1,12 +1,12 @@
+import type { PaginatedResponse, PublicCollectionListItemOutput } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { useLoaderData } from 'react-router';
-import type { PaginatedResponse, PublicCollectionListItemOutput } from '@brewform/shared/schemas';
 import { collectionApi } from '../../api/index.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { createLogger } from '../../utils/logger.ts';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('CollectionsBrowsePage');
 
@@ -48,20 +48,20 @@ export function CollectionsBrowsePage() {
   }, []);
 
   return (
-    <PageContainer width='6xl'>
-      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+    <PageContainer width="6xl">
+      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
         {t('collection.browse.title')}
       </h1>
 
-      {collectionsResponse.data.length === 0
-        ? <EmptyState message={t('collection.browse.noResults')} />
-        : (
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
-            {collectionsResponse.data.map((collection) => (
-              <CollectionCard key={collection.id} collection={collection} showAuthor />
-            ))}
-          </div>
-        )}
+      {collectionsResponse.data.length === 0 ? (
+        <EmptyState message={t('collection.browse.noResults')} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {collectionsResponse.data.map((collection) => (
+            <CollectionCard key={collection.id} collection={collection} showAuthor />
+          ))}
+        </div>
+      )}
     </PageContainer>
   );
 }

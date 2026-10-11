@@ -7,9 +7,6 @@
  */
 
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq, inArray } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import {
   equipment,
@@ -20,9 +17,11 @@ import {
   tasteNotes,
   users,
 } from '@brewform/db/schema';
+import { eq, inArray } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { diffVersions } from './service.ts';
 
-describe('diffVersions', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('diffVersions', () => {
   let userId: string;
   let recipeId: string;
   let otherRecipeId: string;
@@ -135,12 +134,8 @@ describe('diffVersions', { sanitizeOps: false, sanitizeResources: false }, () =>
 
   afterEach(async () => {
     const versionIds = [v1Id, v2Id, otherVersionId];
-    await db.delete(recipeTasteNotes).where(
-      inArray(recipeTasteNotes.recipeVersionId, versionIds),
-    );
-    await db.delete(recipeEquipment).where(
-      inArray(recipeEquipment.recipeVersionId, versionIds),
-    );
+    await db.delete(recipeTasteNotes).where(inArray(recipeTasteNotes.recipeVersionId, versionIds));
+    await db.delete(recipeEquipment).where(inArray(recipeEquipment.recipeVersionId, versionIds));
     await db.delete(recipeVersions).where(inArray(recipeVersions.id, versionIds));
     await db.delete(recipes).where(inArray(recipes.id, [recipeId, otherRecipeId]));
     await db.delete(tasteNotes).where(inArray(tasteNotes.id, [tnA, tnB, tnC]));
@@ -170,9 +165,7 @@ describe('diffVersions', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 
   it('throws VERSION_NOT_FOUND when version belongs to a different recipe', async () => {
-    await expect(diffVersions(recipeId, v1Id, otherVersionId)).rejects.toThrow(
-      'VERSION_NOT_FOUND',
-    );
+    await expect(diffVersions(recipeId, v1Id, otherVersionId)).rejects.toThrow('VERSION_NOT_FOUND');
   });
 
   it('marks fields as unchanged when both versions have null', async () => {
@@ -186,15 +179,15 @@ describe('diffVersions', { sanitizeOps: false, sanitizeResources: false }, () =>
 
   it('computes taste note set diffs', async () => {
     const result = await diffVersions(recipeId, v1Id, v2Id);
-    const nameA = (await db.select({ name: tasteNotes.name }).from(tasteNotes).where(
-      eq(tasteNotes.id, tnA),
-    ))[0].name;
-    const nameB = (await db.select({ name: tasteNotes.name }).from(tasteNotes).where(
-      eq(tasteNotes.id, tnB),
-    ))[0].name;
-    const nameC = (await db.select({ name: tasteNotes.name }).from(tasteNotes).where(
-      eq(tasteNotes.id, tnC),
-    ))[0].name;
+    const nameA = (
+      await db.select({ name: tasteNotes.name }).from(tasteNotes).where(eq(tasteNotes.id, tnA))
+    )[0].name;
+    const nameB = (
+      await db.select({ name: tasteNotes.name }).from(tasteNotes).where(eq(tasteNotes.id, tnB))
+    )[0].name;
+    const nameC = (
+      await db.select({ name: tasteNotes.name }).from(tasteNotes).where(eq(tasteNotes.id, tnC))
+    )[0].name;
 
     expect(result.tasteNotes.added).toEqual([nameC]);
     expect(result.tasteNotes.removed).toEqual([nameA]);
@@ -203,12 +196,12 @@ describe('diffVersions', { sanitizeOps: false, sanitizeResources: false }, () =>
 
   it('computes equipment set diffs', async () => {
     const result = await diffVersions(recipeId, v1Id, v2Id);
-    const nameA = (await db.select({ name: equipment.name }).from(equipment).where(
-      eq(equipment.id, eqA),
-    ))[0].name;
-    const nameB = (await db.select({ name: equipment.name }).from(equipment).where(
-      eq(equipment.id, eqB),
-    ))[0].name;
+    const nameA = (
+      await db.select({ name: equipment.name }).from(equipment).where(eq(equipment.id, eqA))
+    )[0].name;
+    const nameB = (
+      await db.select({ name: equipment.name }).from(equipment).where(eq(equipment.id, eqB))
+    )[0].name;
 
     expect(result.equipment.added).toEqual([nameB]);
     expect(result.equipment.removed).toEqual([]);

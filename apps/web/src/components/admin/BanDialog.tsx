@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
+import { createLogger } from '@/utils/logger.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { Field } from '../form/Field.tsx';
 import { Modal } from '../ui/Modal.tsx';
-import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('BanDialog');
 
@@ -33,7 +33,7 @@ export function BanDialog({ user, open, onClose, onConfirm, processing }: BanDia
 
   useEffect(() => {
     log.debug({ userId: user.id, open }, 'BanDialog render');
-  }, [open]);
+  }, [open, user.id]);
 
   // `reason` is locally owned by the dialog: reset it whenever the dialog
   // closes or the targeted user changes, so a stale reason never leaks
@@ -44,12 +44,12 @@ export function BanDialog({ user, open, onClose, onConfirm, processing }: BanDia
 
   return (
     <Modal open={open} onClose={onClose} ariaLabel={t('admin.users.banDialogTitle')}>
-      <h3 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>
+      <h3 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
         {`${t('admin.users.banDialogTitle')}: ${user.displayName || user.username}`}
       </h3>
       <Field label={t('admin.users.banReason')}>
         <textarea
-          className='input-field'
+          className="input-field"
           rows={3}
           placeholder={t('admin.users.banReasonPlaceholder')}
           autoFocus
@@ -57,20 +57,15 @@ export function BanDialog({ user, open, onClose, onConfirm, processing }: BanDia
           onChange={(e) => setReason(e.target.value)}
         />
       </Field>
-      <div className='flex gap-2 justify-end'>
-        <button
-          type='button'
-          onClick={onClose}
-          className='btn-secondary'
-          disabled={processing}
-        >
+      <div className="flex gap-2 justify-end">
+        <button type="button" onClick={onClose} className="btn-secondary" disabled={processing}>
           {t('common.cancel')}
         </button>
         <button
-          type='button'
+          type="button"
           onClick={() => onConfirm(reason)}
           disabled={processing || !reason.trim()}
-          className='btn-primary'
+          className="btn-primary"
           style={{ backgroundColor: 'var(--error)' }}
         >
           {processing ? t('admin.users.banning') : t('admin.users.confirmBan')}

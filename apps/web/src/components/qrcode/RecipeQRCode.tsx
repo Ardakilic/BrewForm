@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useToast } from '../../components/ui/Toast.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('RecipeQRCode');
@@ -47,19 +47,21 @@ export function RecipeQRCode({ slug, visibility }: Props) {
   }
 
   return (
-    <div className='card'>
-      <h4 className='font-semibold mb-3' style={{ color: 'var(--text-primary)' }}>QR Code</h4>
-      <div className='flex items-center gap-3'>
-        <button type='button' onClick={download} className='btn-primary text-sm' disabled={loading}>
+    <div className="card">
+      <h4 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+        QR Code
+      </h4>
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={download} className="btn-primary text-sm" disabled={loading}>
           {loading ? t('qrcode.downloading') : t('qrcode.download')}
         </button>
       </div>
-      <div className='mt-3'>
+      <div className="mt-3">
         <img
           src={getQRUrl()}
           alt={t('qrcode.alt')}
-          className='w-32 h-32'
-          loading='lazy'
+          className="w-32 h-32"
+          loading="lazy"
           width={128}
           height={128}
         />

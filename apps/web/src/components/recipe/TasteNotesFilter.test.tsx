@@ -5,10 +5,10 @@
  * Property 2: Trigger label reflects selection count
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
+import { describe, expect, it, vi } from 'vitest';
 import { type TasteNoteFlat, TasteNotesFilter } from './TasteNotesFilter.tsx';
 
 // ---------------------------------------------------------------------------
@@ -45,34 +45,32 @@ function tasteNotesTreeArb(minRoots = 1, maxRoots = 5, maxTotal = 30) {
         parentId: fc.uuid(),
       });
 
-      return fc
-        .array(childArb, { maxLength: maxTotal - rootNotes.length })
-        .map((rawChildren) => {
-          const validChildren: TasteNoteFlat[] = rawChildren
-            .map((c) => {
-              // Ensure parentId is a valid root or another child that traces back to a root
-              let parentId = c.parentId;
-              if (!rootIds.includes(parentId)) {
-                // pick a random root as parent
-                parentId = rootIds[Math.floor(Math.random() * rootIds.length)];
-              }
-              // For depth 2, parentId could be another child, but to keep it simple
-              // and valid per the component's getRootId, we ensure parentId is a root
-              // when depth is 2 as well (the component walks up the chain).
-              return {
-                id: c.id,
-                name: c.name,
-                depth: c.depth,
-                parentId,
-              };
-            })
-            // Remove duplicate IDs
-            .filter((c, idx, arr) => arr.findIndex((x) => x.id === c.id) === idx)
-            // Ensure child IDs don't clash with root IDs
-            .filter((c) => !rootIds.includes(c.id));
+      return fc.array(childArb, { maxLength: maxTotal - rootNotes.length }).map((rawChildren) => {
+        const validChildren: TasteNoteFlat[] = rawChildren
+          .map((c) => {
+            // Ensure parentId is a valid root or another child that traces back to a root
+            let parentId = c.parentId;
+            if (!rootIds.includes(parentId)) {
+              // pick a random root as parent
+              parentId = rootIds[Math.floor(Math.random() * rootIds.length)];
+            }
+            // For depth 2, parentId could be another child, but to keep it simple
+            // and valid per the component's getRootId, we ensure parentId is a root
+            // when depth is 2 as well (the component walks up the chain).
+            return {
+              id: c.id,
+              name: c.name,
+              depth: c.depth,
+              parentId,
+            };
+          })
+          // Remove duplicate IDs
+          .filter((c, idx, arr) => arr.findIndex((x) => x.id === c.id) === idx)
+          // Ensure child IDs don't clash with root IDs
+          .filter((c) => !rootIds.includes(c.id));
 
-          return [...rootNotes, ...validChildren];
-        });
+        return [...rootNotes, ...validChildren];
+      });
     });
 }
 
@@ -81,66 +79,62 @@ function tasteNotesTreeArb(minRoots = 1, maxRoots = 5, maxTotal = 30) {
 // ---------------------------------------------------------------------------
 
 describe('TasteNotesFilter — Property 1: Taste note hierarchy rendering', () => {
-  it(
-    'depth-0 nodes render as group role, depth-1/2 as option role, and no depth-0 appears as option',
-    async () => {
-      await fc.assert(
-        fc.asyncProperty(tasteNotesTreeArb(), async (allTasteNotes) => {
-          const user = userEvent.setup();
-          const onChange = vi.fn();
-          const placeholder = 'Select taste notes';
+  it('depth-0 nodes render as group role, depth-1/2 as option role, and no depth-0 appears as option', async () => {
+    await fc.assert(
+      fc.asyncProperty(tasteNotesTreeArb(), async (allTasteNotes) => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        const placeholder = 'Select taste notes';
 
-          const { unmount } = render(
-            <TasteNotesFilter
-              allTasteNotes={allTasteNotes}
-              selectedIds={[]}
-              onChange={onChange}
-              placeholder={placeholder}
-            />,
-          );
+        const { unmount } = render(
+          <TasteNotesFilter
+            allTasteNotes={allTasteNotes}
+            selectedIds={[]}
+            onChange={onChange}
+            placeholder={placeholder}
+          />,
+        );
 
-          try {
-            const noteById = new Map(allTasteNotes.map((n) => [n.id, n]));
-            const getRootId = (note: TasteNoteFlat): string | null => {
-              if (note.depth === 0) return note.id;
-              if (!note.parentId) return null;
-              const parent = noteById.get(note.parentId);
-              if (!parent) return null;
-              return getRootId(parent);
-            };
+        try {
+          const noteById = new Map(allTasteNotes.map((n) => [n.id, n]));
+          const getRootId = (note: TasteNoteFlat): string | null => {
+            if (note.depth === 0) return note.id;
+            if (!note.parentId) return null;
+            const parent = noteById.get(note.parentId);
+            if (!parent) return null;
+            return getRootId(parent);
+          };
 
-            const roots = allTasteNotes.filter((n) => n.depth === 0);
-            const rootIds = new Set(roots.map((r) => r.id));
-            const children = allTasteNotes.filter((n) => n.depth === 1 || n.depth === 2);
-            const validChildren = children.filter((c) => {
-              const rootId = getRootId(c);
-              return rootId !== null && rootIds.has(rootId);
-            });
+          const roots = allTasteNotes.filter((n) => n.depth === 0);
+          const rootIds = new Set(roots.map((r) => r.id));
+          const children = allTasteNotes.filter((n) => n.depth === 1 || n.depth === 2);
+          const validChildren = children.filter((c) => {
+            const rootId = getRootId(c);
+            return rootId !== null && rootIds.has(rootId);
+          });
 
-            if (validChildren.length > 0) {
-              // Open the popup by clicking the trigger
-              const trigger = screen.getByRole('combobox');
-              await user.click(trigger);
+          if (validChildren.length > 0) {
+            // Open the popup by clicking the trigger
+            const trigger = screen.getByRole('combobox');
+            await user.click(trigger);
 
-              // Wait for portal content to appear in the DOM
-              const options = await screen.findAllByRole('option', undefined, { timeout: 2000 });
-              expect(options.length).toBe(validChildren.length);
+            // Wait for portal content to appear in the DOM
+            const options = await screen.findAllByRole('option', undefined, { timeout: 2000 });
+            expect(options.length).toBe(validChildren.length);
 
-              // No depth-0 node name appears inside an option
-              for (const root of roots) {
-                const rootAsOption = options.find((opt) => opt.textContent?.includes(root.name));
-                expect(rootAsOption).toBeUndefined();
-              }
+            // No depth-0 node name appears inside an option
+            for (const root of roots) {
+              const rootAsOption = options.find((opt) => opt.textContent?.includes(root.name));
+              expect(rootAsOption).toBeUndefined();
             }
-          } finally {
-            unmount();
           }
-        }),
-        { numRuns: 30, interruptAfterTimeLimit: 5000 },
-      );
-    },
-    30000,
-  );
+        } finally {
+          unmount();
+        }
+      }),
+      { numRuns: 30, interruptAfterTimeLimit: 5000 },
+    );
+  }, 30000);
 });
 
 // ---------------------------------------------------------------------------
@@ -148,65 +142,62 @@ describe('TasteNotesFilter — Property 1: Taste note hierarchy rendering', () =
 // ---------------------------------------------------------------------------
 
 describe('TasteNotesFilter — Property 2: Trigger label reflects selection count', () => {
-  it(
-    'trigger text shows placeholder when N=0, otherwise shows "{N} selected"',
-    () => {
-      fc.assert(
-        fc.property(
-          fc.array(
-            fc.record({
-              id: fc.uuid(),
-              name: fc.string({ minLength: 1, maxLength: 20 }).filter((s) => s.trim().length > 0),
-            }),
-            { minLength: 1, maxLength: 15 },
-          ),
-          fc.integer({ min: 0, max: 10 }),
-          (notes, nSelected) => {
-            const allTasteNotes: TasteNoteFlat[] = notes.map((n) => ({
-              id: n.id,
-              name: n.name,
-              depth: 0,
-              parentId: null,
-            }));
-
-            // Pick N random IDs (distinct)
-            const shuffled = [...allTasteNotes].sort(() => Math.random() - 0.5);
-            const selectedIds = shuffled.slice(0, Math.min(nSelected, allTasteNotes.length)).map((
-              n,
-            ) => n.id);
-
-            const onChange = vi.fn();
-            const placeholder = 'Select taste notes';
-
-            const { container, unmount } = render(
-              <TasteNotesFilter
-                allTasteNotes={allTasteNotes}
-                selectedIds={selectedIds}
-                onChange={onChange}
-                placeholder={placeholder}
-              />,
-            );
-
-            try {
-              const trigger = container.querySelector('[role="combobox"]');
-              expect(trigger).toBeTruthy();
-
-              const triggerText = trigger?.textContent ?? '';
-
-              if (selectedIds.length === 0) {
-                expect(triggerText).toContain(placeholder);
-              } else {
-                expect(triggerText).toContain(`${selectedIds.length} selected`);
-              }
-            } finally {
-              unmount();
-            }
-          },
+  it('trigger text shows placeholder when N=0, otherwise shows "{N} selected"', () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.record({
+            id: fc.uuid(),
+            name: fc.string({ minLength: 1, maxLength: 20 }).filter((s) => s.trim().length > 0),
+          }),
+          { minLength: 1, maxLength: 15 },
         ),
-        { numRuns: 30, interruptAfterTimeLimit: 5000 },
-      );
-    },
-  );
+        fc.integer({ min: 0, max: 10 }),
+        (notes, nSelected) => {
+          const allTasteNotes: TasteNoteFlat[] = notes.map((n) => ({
+            id: n.id,
+            name: n.name,
+            depth: 0,
+            parentId: null,
+          }));
+
+          // Pick N random IDs (distinct)
+          const shuffled = [...allTasteNotes].sort(() => Math.random() - 0.5);
+          const selectedIds = shuffled
+            .slice(0, Math.min(nSelected, allTasteNotes.length))
+            .map((n) => n.id);
+
+          const onChange = vi.fn();
+          const placeholder = 'Select taste notes';
+
+          const { container, unmount } = render(
+            <TasteNotesFilter
+              allTasteNotes={allTasteNotes}
+              selectedIds={selectedIds}
+              onChange={onChange}
+              placeholder={placeholder}
+            />,
+          );
+
+          try {
+            const trigger = container.querySelector('[role="combobox"]');
+            expect(trigger).toBeTruthy();
+
+            const triggerText = trigger?.textContent ?? '';
+
+            if (selectedIds.length === 0) {
+              expect(triggerText).toContain(placeholder);
+            } else {
+              expect(triggerText).toContain(`${selectedIds.length} selected`);
+            }
+          } finally {
+            unmount();
+          }
+        },
+      ),
+      { numRuns: 30, interruptAfterTimeLimit: 5000 },
+    );
+  });
 });
 
 describe('TasteNotesFilter — styling consistency', () => {
@@ -221,7 +212,7 @@ describe('TasteNotesFilter — styling consistency', () => {
         allTasteNotes={allTasteNotes}
         selectedIds={[]}
         onChange={vi.fn()}
-        placeholder='Select taste notes'
+        placeholder="Select taste notes"
       />,
     );
 
@@ -251,7 +242,7 @@ describe('TasteNotesFilter — styling consistency', () => {
         allTasteNotes={allTasteNotes}
         selectedIds={[]}
         onChange={vi.fn()}
-        placeholder='Select taste notes'
+        placeholder="Select taste notes"
       />,
     );
 
@@ -286,7 +277,7 @@ describe('TasteNotesFilter — styling consistency', () => {
         allTasteNotes={allTasteNotes}
         selectedIds={[]}
         onChange={vi.fn()}
-        placeholder='Select taste notes'
+        placeholder="Select taste notes"
       />,
     );
 
@@ -318,7 +309,7 @@ describe('TasteNotesFilter — search', () => {
         allTasteNotes={allTasteNotes}
         selectedIds={[]}
         onChange={vi.fn()}
-        placeholder='Select taste notes'
+        placeholder="Select taste notes"
       />,
     );
 
@@ -343,7 +334,7 @@ describe('TasteNotesFilter — search', () => {
         allTasteNotes={allTasteNotes}
         selectedIds={[]}
         onChange={vi.fn()}
-        placeholder='Select taste notes'
+        placeholder="Select taste notes"
       />,
     );
 
@@ -379,7 +370,7 @@ describe('TasteNotesFilter — search', () => {
         allTasteNotes={allTasteNotes}
         selectedIds={[]}
         onChange={vi.fn()}
-        placeholder='Select taste notes'
+        placeholder="Select taste notes"
       />,
     );
 
@@ -408,7 +399,7 @@ describe('TasteNotesFilter — search', () => {
         allTasteNotes={allTasteNotes}
         selectedIds={[]}
         onChange={vi.fn()}
-        placeholder='Select taste notes'
+        placeholder="Select taste notes"
       />,
     );
 

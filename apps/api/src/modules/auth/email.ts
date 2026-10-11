@@ -1,10 +1,10 @@
-import { config } from '../../config/index.ts';
-import { createLogger } from '../../utils/logger/index.ts';
-import { appBaseUrl, getTransporter } from '../../utils/notify/index.ts';
 import { escapeHtml } from '@brewform/shared/utils';
-import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
+import { config } from '../../config/index.ts';
 import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
 import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
+import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+import { appBaseUrl, getTransporter } from '../../utils/notify/index.ts';
 
 const logger = createLogger('auth-email');
 

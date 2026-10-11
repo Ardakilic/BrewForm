@@ -36,27 +36,31 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 
 // Stub NotificationItem + PaginationControls so this test targets the page shell.
 vi.mock('../../components/layout/NotificationItem.tsx', () => ({
-  NotificationItem: (
-    { notification }: { notification: { id: string; actorUsername: string | null } },
-  ) => <div data-testid='notif-item'>{notification.actorUsername}</div>,
+  NotificationItem: ({
+    notification,
+  }: {
+    notification: { id: string; actorUsername: string | null };
+  }) => <div data-testid="notif-item">{notification.actorUsername}</div>,
 }));
 
 vi.mock('../../components/recipe-list/index.ts', () => ({
   PaginationControls: ({ page, totalPages }: { page: number; totalPages: number }) => (
-    <nav data-testid='pagination'>page {page}/{totalPages}</nav>
+    <nav data-testid="pagination">
+      page {page}/{totalPages}
+    </nav>
   ),
 }));
 
 // ── Imports (after all vi.mock calls) ──
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { NotificationOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import type { NotificationOutput, PaginatedResponse } from '@brewform/shared/schemas';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { notificationApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { loader, NotificationListPage } from './NotificationListPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);

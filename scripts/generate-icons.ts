@@ -3,11 +3,13 @@
  * Generates raster PNG app icons from `apps/web/public/favicon.svg` using resvg. Run via
  * `make generate-icons`; writes the sized PNGs into the web public assets directory.
  */
-import { Resvg } from 'npm:@resvg/resvg-js';
-import { join } from 'jsr:@std/path';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { Resvg } from '@resvg/resvg-js';
 
-const svgData = await Deno.readTextFile(
+const svgData = await readFile(
   join(import.meta.dirname!, '..', 'apps', 'web', 'public', 'favicon.svg'),
+  'utf8',
 );
 const outDir = join(import.meta.dirname!, '..', 'apps', 'web', 'public');
 
@@ -20,6 +22,6 @@ const sizes: [number, string][] = [
 
 for (const [size, name] of sizes) {
   const resvg = new Resvg(svgData, { fitTo: { mode: 'width', value: size } });
-  await Deno.writeFile(join(outDir, name), resvg.render().asPng());
+  await writeFile(join(outDir, name), resvg.render().asPng());
   console.log(`Generated ${name} (${size}x${size})`);
 }

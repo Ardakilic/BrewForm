@@ -1,17 +1,16 @@
 import '../../test-setup.ts';
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { escapeHtml } from '@brewform/shared/utils';
+import { describe, expect, it } from 'vitest';
+import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
+import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
+import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
+import { appBaseUrl } from '../../utils/notify/index.ts';
 import {
   renderTemplate,
   sendPasswordResetEmail,
   sendVerificationEmail,
   sendWelcomeEmail,
 } from './email.ts';
-import { template as welcomeTemplate } from '../../templates/email/generated/welcome.ts';
-import { template as resetPasswordTemplate } from '../../templates/email/generated/reset-password.ts';
-import { template as verifyEmailTemplate } from '../../templates/email/generated/verify-email.ts';
-import { appBaseUrl } from '../../utils/notify/index.ts';
-import { escapeHtml } from '@brewform/shared/utils';
 
 describe('renderTemplate', () => {
   it('should substitute placeholders with provided values', () => {

@@ -1,0 +1,20 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Shared version pins (Deno `catalog:` equivalent).
+# Consumers reference these as `"dep": "catalog:"` in their package.json.
+# Exact pins resolved from deno.lock at time of writing.
+catalog:
+  drizzle-orm: 0.45.2
+  bcryptjs: 3.0.3
+  zod: 4.4.3
+  vite: 8.1.5
+  vitest: 4.1.10
+  drizzle-kit: 0.31.10
+  typescript: 7.0.2
+
+# Packages allowed to run postinstall build scripts (replaces
+# onlyBuiltDependencies). Committed so CI installs non-interactively.
+allowBuilds:
+  esbuild: true

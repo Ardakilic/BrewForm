@@ -1,26 +1,24 @@
-import { Hono } from 'hono';
-import type { Context, Next } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
-import type { AppEnv } from '../../types/hono.ts';
-import { authMiddleware } from '../../middleware/auth.ts';
 import {
   CoffeeVarietyCreateSchema,
   CoffeeVarietyFilterSchema,
-  CoffeeVarietyUpdateSchema,
-  SearchQuerySchema,
-} from '@brewform/shared/schemas';
-import {
   CoffeeVarietyOutputSchema,
+  CoffeeVarietyUpdateSchema,
   ErrorEnvelopeSchema,
   paginatedEnvelope,
   RecipeWithVersionsOutputSchema,
+  SearchQuerySchema,
   successEnvelope,
 } from '@brewform/shared/schemas';
-import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
+import { zValidator } from '@hono/zod-validator';
+import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
+import { authMiddleware } from '../../middleware/auth.ts';
+import type { AppEnv } from '../../types/hono.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Dependency-injection proxy for test stubbing (auth middleware + service). */
 export const deps = { authMiddleware, service };
@@ -74,9 +72,7 @@ router.get(
     tags: ['Coffee Varieties'],
     summary: 'Search coffee varieties',
     description: 'Returns coffee varieties matching the search query.',
-    parameters: [
-      { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'q', in: 'query', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'List of matching coffee varieties',
@@ -141,9 +137,7 @@ router.get(
     tags: ['Coffee Varieties'],
     summary: 'Get a coffee variety by id',
     description: 'Returns a single coffee variety by its id.',
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Coffee variety payload',
@@ -173,9 +167,7 @@ router.patch(
     summary: 'Update a coffee variety',
     description: 'Updates a coffee variety owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(CoffeeVarietyUpdateSchema),
     responses: {
       200: {
@@ -239,9 +231,7 @@ router.delete(
     summary: 'Delete a coffee variety',
     description: 'Deletes a coffee variety owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Coffee variety deleted',
@@ -321,11 +311,7 @@ router.get(
     const query = c.req.valid('query');
     const page = query.page;
     const perPage = query.perPage;
-    const result = await deps.service.getRecipesForVariety(
-      c.req.param('id'),
-      page,
-      perPage,
-    );
+    const result = await deps.service.getRecipesForVariety(c.req.param('id'), page, perPage);
     return paginated(c, result.data, {
       page,
       perPage,

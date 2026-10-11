@@ -1,19 +1,21 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { PaginationSchema, SetupCreateSchema, SetupUpdateSchema } from '@brewform/shared/schemas';
 import {
   ErrorEnvelopeSchema,
   MessageResponseSchema,
+  PaginationSchema,
   paginatedEnvelope,
+  SetupCreateSchema,
   SetupOutputSchema,
+  SetupUpdateSchema,
   successEnvelope,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
 import { authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for setup endpoints, mounted at `/api/v1/setups`. */
 const setup = new Hono<AppEnv>();
@@ -94,9 +96,7 @@ setup.get(
     tags: ['Setups'],
     summary: 'Get a setup by id',
     description: 'Returns a single brewing-equipment setup by its id.',
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Setup payload',
@@ -130,9 +130,7 @@ setup.patch(
     summary: 'Update a setup',
     description: 'Updates a brewing-equipment setup owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(SetupUpdateSchema),
     responses: {
       200: {
@@ -180,9 +178,7 @@ setup.delete(
     summary: 'Delete a setup',
     description: 'Deletes a brewing-equipment setup owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Setup deleted',
@@ -227,9 +223,7 @@ setup.post(
     summary: 'Set a setup as default',
     description: "Marks the given setup as the authenticated user's default setup.",
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Setup marked as default',

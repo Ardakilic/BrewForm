@@ -1,7 +1,4 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import {
   auditLogs,
@@ -16,9 +13,11 @@ import {
   users,
   vendors,
 } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
-describe('deleteEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteEquipment', () => {
   let userId: string;
   let equipmentId: string;
 
@@ -71,7 +70,7 @@ describe('deleteEquipment', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('deleteVendor', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteVendor', () => {
   let userId: string;
   let vendorId: string;
 
@@ -119,7 +118,7 @@ describe('deleteVendor', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 });
 
-describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteCoffeeVariety', () => {
   let userId: string;
   let varietyId: string;
 
@@ -166,9 +165,7 @@ describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
     await new Promise((r) => setTimeout(r, 10));
     await model.deleteCoffeeVariety(varietyId);
     // Re-read from DB
-    const [row] = await db.select().from(coffeeVarieties).where(
-      eq(coffeeVarieties.id, varietyId),
-    );
+    const [row] = await db.select().from(coffeeVarieties).where(eq(coffeeVarieties.id, varietyId));
     expect(row.updatedAt.getTime()).toBe(firstUpdatedAt);
   });
 
@@ -181,87 +178,84 @@ describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe(
-  'approveEquipmentDeleteRequest guard',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    let adminUserId: string;
-    let requesterUserId: string;
-    let equipmentId: string;
-    let requestId: string;
+describe('approveEquipmentDeleteRequest guard', () => {
+  let adminUserId: string;
+  let requesterUserId: string;
+  let equipmentId: string;
+  let requestId: string;
 
-    beforeEach(async () => {
-      adminUserId = crypto.randomUUID();
-      requesterUserId = crypto.randomUUID();
-      equipmentId = crypto.randomUUID();
-      requestId = crypto.randomUUID();
+  beforeEach(async () => {
+    adminUserId = crypto.randomUUID();
+    requesterUserId = crypto.randomUUID();
+    equipmentId = crypto.randomUUID();
+    requestId = crypto.randomUUID();
 
-      // Create admin user
-      await db.insert(users).values({
-        id: adminUserId,
-        email: `admin-${adminUserId}@example.com`,
-        username: `admin-${adminUserId}`,
-        passwordHash: 'hash',
-      });
-      // Create requester user
-      await db.insert(users).values({
-        id: requesterUserId,
-        email: `requester-${requesterUserId}@example.com`,
-        username: `requester-${requesterUserId}`,
-        passwordHash: 'hash',
-      });
-
-      await db.insert(equipment).values({
-        id: equipmentId,
-        name: 'Test Equipment',
-        type: 'grinder',
-        isSystem: false,
-        createdBy: requesterUserId,
-      });
-
-      await db.insert(equipmentDeleteRequests).values({
-        id: requestId,
-        equipmentId,
-        requestedById: requesterUserId,
-        status: 'pending',
-        reason: 'Test deletion request',
-      });
+    // Create admin user
+    await db.insert(users).values({
+      id: adminUserId,
+      email: `admin-${adminUserId}@example.com`,
+      username: `admin-${adminUserId}`,
+      passwordHash: 'hash',
+    });
+    // Create requester user
+    await db.insert(users).values({
+      id: requesterUserId,
+      email: `requester-${requesterUserId}@example.com`,
+      username: `requester-${requesterUserId}`,
+      passwordHash: 'hash',
     });
 
-    afterEach(async () => {
-      // Cleanup order: child tables first, then parents
-      await db.delete(equipmentDeleteRequests).where(eq(equipmentDeleteRequests.id, requestId));
-      await db.delete(equipment).where(eq(equipment.id, equipmentId));
-      await db.delete(users).where(eq(users.id, adminUserId));
-      await db.delete(users).where(eq(users.id, requesterUserId));
+    await db.insert(equipment).values({
+      id: equipmentId,
+      name: 'Test Equipment',
+      type: 'grinder',
+      isSystem: false,
+      createdBy: requesterUserId,
     });
 
-    it('should soft-delete equipment on approval', async () => {
-      const result = await model.approveEquipmentDeleteRequest(requestId, adminUserId);
-      expect(result).toBeDefined();
-      // The transaction updates the request status AND soft-deletes the equipment
-      const [eqRow] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
-      expect(eqRow.deletedAt).not.toBeNull();
+    await db.insert(equipmentDeleteRequests).values({
+      id: requestId,
+      equipmentId,
+      requestedById: requesterUserId,
+      status: 'pending',
+      reason: 'Test deletion request',
     });
+  });
 
-    it('should not overwrite deletedAt when equipment was already soft-deleted', async () => {
-      // Pre-delete the equipment independently (simulating it was deleted via deleteEquipment)
-      const preDeleteTime = new Date();
-      await db.update(equipment)
-        .set({ deletedAt: preDeleteTime })
-        .where(eq(equipment.id, equipmentId));
+  afterEach(async () => {
+    // Cleanup order: child tables first, then parents
+    await db.delete(equipmentDeleteRequests).where(eq(equipmentDeleteRequests.id, requestId));
+    await db.delete(equipment).where(eq(equipment.id, equipmentId));
+    await db.delete(users).where(eq(users.id, adminUserId));
+    await db.delete(users).where(eq(users.id, requesterUserId));
+  });
 
-      // Now approve the delete request — guard should prevent overwrite
-      await model.approveEquipmentDeleteRequest(requestId, adminUserId);
+  it('should soft-delete equipment on approval', async () => {
+    const result = await model.approveEquipmentDeleteRequest(requestId, adminUserId);
+    expect(result).toBeDefined();
+    // The transaction updates the request status AND soft-deletes the equipment
+    const [eqRow] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
+    expect(eqRow.deletedAt).not.toBeNull();
+  });
 
-      const [eqRow] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
-      // deletedAt should match the pre-set timestamp, not a newer one
-      expect(eqRow.deletedAt!.getTime()).toBe(preDeleteTime.getTime());
-    });
-  },
-);
+  it('should not overwrite deletedAt when equipment was already soft-deleted', async () => {
+    // Pre-delete the equipment independently (simulating it was deleted via deleteEquipment)
+    const preDeleteTime = new Date();
+    await db
+      .update(equipment)
+      .set({ deletedAt: preDeleteTime })
+      .where(eq(equipment.id, equipmentId));
 
-describe('banUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+    // Now approve the delete request — guard should prevent overwrite
+    await model.approveEquipmentDeleteRequest(requestId, adminUserId);
+
+    const [eqRow] = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
+    // deletedAt should match the pre-set timestamp, not a newer one
+    expect(eqRow.deletedAt!.getTime()).toBe(preDeleteTime.getTime());
+  });
+});
+
+describe('banUser', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -302,7 +296,7 @@ describe('banUser', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('unbanUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('unbanUser', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -335,7 +329,7 @@ describe('unbanUser', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('setUserAdminRole', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('setUserAdminRole', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -374,7 +368,7 @@ describe('setUserAdminRole', { sanitizeOps: false, sanitizeResources: false }, (
   });
 });
 
-describe('updateRecipeVisibility', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateRecipeVisibility', () => {
   let userId: string;
   let recipeId: string;
 
@@ -415,7 +409,7 @@ describe('updateRecipeVisibility', { sanitizeOps: false, sanitizeResources: fals
   });
 });
 
-describe('updateEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateEquipment', () => {
   let userId: string;
   let equipmentId: string;
 
@@ -457,7 +451,7 @@ describe('updateEquipment', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('updateVendor', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateVendor', () => {
   let userId: string;
   let vendorId: string;
 
@@ -497,7 +491,7 @@ describe('updateVendor', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 });
 
-describe('listUsers', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listUsers', () => {
   const userIds: string[] = [];
 
   beforeEach(async () => {
@@ -558,7 +552,7 @@ describe('listUsers', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('isEmailTaken', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('isEmailTaken', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -597,7 +591,7 @@ describe('isEmailTaken', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 });
 
-describe('isUsernameTaken', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('isUsernameTaken', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -630,7 +624,7 @@ describe('isUsernameTaken', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('getUserById', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getUserById', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -701,7 +695,7 @@ describe('throwIfUniqueViolation', () => {
   });
 });
 
-describe('adminCreateUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('adminCreateUser', () => {
   const createdIds: string[] = [];
 
   afterEach(async () => {
@@ -724,9 +718,10 @@ describe('adminCreateUser', { sanitizeOps: false, sanitizeResources: false }, ()
     expect(user.email).toContain('@example.com');
     expect(user.isAdmin).toBe(true);
     expect(user.passwordHash).not.toBe('password123');
-    const [prefs] = await db.select().from(userPreferences).where(
-      eq(userPreferences.userId, user.id),
-    );
+    const [prefs] = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, user.id));
     expect(prefs).toBeDefined();
   });
 
@@ -771,7 +766,7 @@ describe('adminCreateUser', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('adminUpdateUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('adminUpdateUser', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -834,7 +829,7 @@ describe('adminUpdateUser', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('softDeleteUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('softDeleteUser', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -869,7 +864,7 @@ describe('softDeleteUser', { sanitizeOps: false, sanitizeResources: false }, () 
   });
 });
 
-describe('listAllRecipes', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listAllRecipes', () => {
   let userId: string;
   const recipeIds: string[] = [];
 
@@ -929,7 +924,7 @@ describe('listAllRecipes', { sanitizeOps: false, sanitizeResources: false }, () 
   });
 });
 
-describe('softDeleteRecipe', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('softDeleteRecipe', () => {
   let userId: string;
   let recipeId: string;
 
@@ -968,7 +963,7 @@ describe('softDeleteRecipe', { sanitizeOps: false, sanitizeResources: false }, (
   });
 });
 
-describe('listEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listEquipment', () => {
   let userId: string;
   const eqIds: string[] = [];
 
@@ -1015,7 +1010,7 @@ describe('listEquipment', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 });
 
-describe('createEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createEquipment', () => {
   let userId: string;
   const createdIds: string[] = [];
 
@@ -1058,7 +1053,7 @@ describe('createEquipment', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('listVendors', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listVendors', () => {
   let userId: string;
   const vendorIds: string[] = [];
 
@@ -1098,7 +1093,7 @@ describe('listVendors', { sanitizeOps: false, sanitizeResources: false }, () => 
   });
 });
 
-describe('createVendor', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createVendor', () => {
   let userId: string;
   const createdIds: string[] = [];
 
@@ -1132,7 +1127,7 @@ describe('createVendor', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 });
 
-describe('compatibility rules', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('compatibility rules', () => {
   const ruleIds: string[] = [];
 
   afterEach(async () => {
@@ -1214,7 +1209,7 @@ describe('compatibility rules', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('reports', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('reports', () => {
   let userId: string;
   const reportIds: string[] = [];
 
@@ -1314,7 +1309,7 @@ describe('reports', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('audit logs', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('audit logs', () => {
   let adminId: string;
   const logIds: string[] = [];
 
@@ -1372,7 +1367,7 @@ describe('audit logs', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('getDashboardStats', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getDashboardStats', () => {
   it('should return aggregate stats with numeric fields', async () => {
     const stats = await model.getDashboardStats();
     expect(typeof stats.totalUsers).toBe('number');
@@ -1385,7 +1380,7 @@ describe('getDashboardStats', { sanitizeOps: false, sanitizeResources: false }, 
   });
 });
 
-describe('getUserGrowth', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getUserGrowth', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -1416,7 +1411,7 @@ describe('getUserGrowth', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 });
 
-describe('getRecipeGrowth', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getRecipeGrowth', () => {
   let userId: string;
   let recipeId: string;
 
@@ -1450,7 +1445,7 @@ describe('getRecipeGrowth', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('getTopRecipes', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getTopRecipes', () => {
   let userId: string;
   const recipeIds: string[] = [];
 
@@ -1509,7 +1504,7 @@ describe('getTopRecipes', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 });
 
-describe('getTopUsers', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getTopUsers', () => {
   let userId: string;
   let recipeId: string;
 
@@ -1545,7 +1540,7 @@ describe('getTopUsers', { sanitizeOps: false, sanitizeResources: false }, () => 
   });
 });
 
-describe('listCoffeeVarieties', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listCoffeeVarieties', () => {
   let userId: string;
   const varietyIds: string[] = [];
   const uniqueTag = crypto.randomUUID().slice(0, 8);
@@ -1608,15 +1603,16 @@ describe('listCoffeeVarieties', { sanitizeOps: false, sanitizeResources: false }
   });
 
   it('should exclude soft-deleted varieties', async () => {
-    await db.update(coffeeVarieties).set({ deletedAt: new Date() }).where(
-      eq(coffeeVarieties.id, varietyIds[0]),
-    );
+    await db
+      .update(coffeeVarieties)
+      .set({ deletedAt: new Date() })
+      .where(eq(coffeeVarieties.id, varietyIds[0]));
     const result = await model.listCoffeeVarieties(1, 50, undefined, `Alpha${uniqueTag}`);
     expect(result.total).toBe(0);
   });
 });
 
-describe('createCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createCoffeeVariety', () => {
   let userId: string;
   const createdIds: string[] = [];
 
@@ -1653,7 +1649,7 @@ describe('createCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('updateCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateCoffeeVariety', () => {
   let userId: string;
   let varietyId: string;
 
@@ -1692,7 +1688,7 @@ describe('updateCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('getVarietyRecipeCount', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getVarietyRecipeCount', () => {
   let userId: string;
   let varietyId: string;
   let recipeId: string;
@@ -1754,7 +1750,7 @@ describe('getVarietyRecipeCount', { sanitizeOps: false, sanitizeResources: false
   });
 });
 
-describe('listEquipmentDeleteRequests', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listEquipmentDeleteRequests', () => {
   let userId: string;
   let equipmentId: string;
   const requestIds: string[] = [];
@@ -1820,7 +1816,7 @@ describe('listEquipmentDeleteRequests', { sanitizeOps: false, sanitizeResources:
   });
 });
 
-describe('rejectEquipmentDeleteRequest', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('rejectEquipmentDeleteRequest', () => {
   let adminId: string;
   let requesterId: string;
   let equipmentId: string;
@@ -1886,10 +1882,7 @@ describe('rejectEquipmentDeleteRequest', { sanitizeOps: false, sanitizeResources
   });
 });
 
-describe('approveEquipmentDeleteRequest null guard', {
-  sanitizeOps: false,
-  sanitizeResources: false,
-}, () => {
+describe('approveEquipmentDeleteRequest null guard', () => {
   it('should return null for a non-existing request', async () => {
     const result = await model.approveEquipmentDeleteRequest(
       crypto.randomUUID(),

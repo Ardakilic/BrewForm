@@ -6,8 +6,8 @@
  *
  * Covers: all combinations of null/present values for the 5 stat card fields.
  */
-import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import { buildStatCards } from './stat-cards.ts';
 
 // ─── Unit Tests ───────────────────────────────────────────────────────────────

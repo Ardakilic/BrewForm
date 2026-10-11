@@ -1,11 +1,10 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { setCacheProvider } from '../../utils/cache/singleton.ts';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import photoRouter from './index.ts';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
+import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import photoRouter from './index.ts';
 
 /**
  * Pre-auth route tests for the photos router (`/api/v1/photos`).
@@ -28,71 +27,64 @@ function createTestApp() {
   return app;
 }
 
-describe(
-  'Photo Routes — pre-auth & validation',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    beforeEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
+describe('Photo Routes — pre-auth & validation', () => {
+  beforeEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  afterEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
+
+  describe('GET /api/v1/photos/recipe/:recipeId', () => {
+    it('returns 200 with an empty array for a valid UUID with no photos', async () => {
+      const app = createTestApp();
+      const res = await app.request(`/api/v1/photos/recipe/${crypto.randomUUID()}`);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data).toHaveLength(0);
     });
 
-    afterEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
+    it('returns 200 with an empty array for an invalid UUID (DB query yields no rows)', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/photos/recipe/not-a-uuid');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.success).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data).toHaveLength(0);
     });
+  });
 
-    describe('GET /api/v1/photos/recipe/:recipeId', () => {
-      it('returns 200 with an empty array for a valid UUID with no photos', async () => {
-        const app = createTestApp();
-        const res = await app.request(`/api/v1/photos/recipe/${crypto.randomUUID()}`);
-        expect(res.status).toBe(200);
-        const body = await res.json();
-        expect(body.success).toBe(true);
-        expect(Array.isArray(body.data)).toBe(true);
-        expect(body.data).toHaveLength(0);
+  describe('POST /api/v1/photos', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const form = new FormData();
+      form.append('recipeId', crypto.randomUUID());
+      form.append('file', new File([new Uint8Array([1, 2, 3])], 'test.png', { type: 'image/png' }));
+      const res = await app.request('/api/v1/photos', {
+        method: 'POST',
+        body: form,
       });
-
-      it('returns 200 with an empty array for an invalid UUID (DB query yields no rows)', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/photos/recipe/not-a-uuid');
-        expect(res.status).toBe(200);
-        const body = await res.json();
-        expect(body.success).toBe(true);
-        expect(Array.isArray(body.data)).toBe(true);
-        expect(body.data).toHaveLength(0);
-      });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
+  });
 
-    describe('POST /api/v1/photos', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const form = new FormData();
-        form.append('recipeId', crypto.randomUUID());
-        form.append(
-          'file',
-          new File([new Uint8Array([1, 2, 3])], 'test.png', { type: 'image/png' }),
-        );
-        const res = await app.request('/api/v1/photos', {
-          method: 'POST',
-          body: form,
-        });
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
+  describe('DELETE /api/v1/photos/:id', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request(`/api/v1/photos/${crypto.randomUUID()}`, {
+        method: 'DELETE',
       });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
-
-    describe('DELETE /api/v1/photos/:id', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request(`/api/v1/photos/${crypto.randomUUID()}`, {
-          method: 'DELETE',
-        });
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
-      });
-    });
-  },
-);
+  });
+});

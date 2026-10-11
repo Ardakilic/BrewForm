@@ -1,7 +1,7 @@
 import { db } from '@brewform/db';
 import { userPreferences, users } from '@brewform/db/schema';
-import { count, eq } from 'drizzle-orm';
 import { hashSync } from 'bcryptjs';
+import { count, eq } from 'drizzle-orm';
 import { createLogger } from './utils/logger/index.ts';
 
 const logger = createLogger('setup');
@@ -9,9 +9,10 @@ const logger = createLogger('setup');
 async function main() {
   logger.info('BrewForm Admin Setup');
 
-  const adminCountResult = await db.select({ count: count() }).from(users).where(
-    eq(users.isAdmin, true),
-  );
+  const adminCountResult = await db
+    .select({ count: count() })
+    .from(users)
+    .where(eq(users.isAdmin, true));
   const adminCount = adminCountResult[0].count;
 
   if (adminCount > 0) {
@@ -19,13 +20,13 @@ async function main() {
     return;
   }
 
-  const email = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
-  const username = Deno.env.get('ADMIN_USERNAME') || 'admin';
-  const password = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';
+  const email = process.env.ADMIN_EMAIL || 'admin@brewform.local';
+  const username = process.env.ADMIN_USERNAME || 'admin';
+  const password = process.env.ADMIN_PASSWORD || 'admin123456';
 
   logger.info('Creating admin user');
   logger.info(
-    Deno.env.get('ADMIN_PASSWORD')
+    process.env.ADMIN_PASSWORD
       ? 'Admin password configured from environment'
       : 'Admin password using default (should be changed immediately)',
   );
@@ -33,14 +34,17 @@ async function main() {
   const passwordHash = hashSync(password, 10);
 
   const user = await db.transaction(async (tx) => {
-    const [insertedUser] = await tx.insert(users).values({
-      email,
-      username,
-      passwordHash,
-      isAdmin: true,
-      isBanned: false,
-      onboardingCompleted: true,
-    }).returning();
+    const [insertedUser] = await tx
+      .insert(users)
+      .values({
+        email,
+        username,
+        passwordHash,
+        isAdmin: true,
+        isBanned: false,
+        onboardingCompleted: true,
+      })
+      .returning();
 
     await tx.insert(userPreferences).values({ userId: insertedUser.id });
 
@@ -52,5 +56,5 @@ async function main() {
 
 main().catch((err) => {
   logger.error({ err }, 'Setup failed');
-  Deno.exit(1);
+  process.exit(1);
 });

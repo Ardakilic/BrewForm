@@ -1,28 +1,26 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteAccount, getProfile, getPublicProfile, log, updateProfile } from './service.ts';
 
-describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('User Service', () => {
   let userId: string;
   let username: string;
-  let debugSpy: ReturnType<typeof spy>;
-  let errorSpy: ReturnType<typeof spy>;
-  let warnSpy: ReturnType<typeof spy>;
-  let infoSpy: ReturnType<typeof spy>;
+  let debugSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let infoSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     userId = crypto.randomUUID();
     username = `testuser-${userId}`;
 
-    debugSpy = spy(log, 'debug');
-    errorSpy = spy(log, 'error');
-    warnSpy = spy(log, 'warn');
-    infoSpy = spy(log, 'info');
+    debugSpy = vi.spyOn(log, 'debug');
+    errorSpy = vi.spyOn(log, 'error');
+    warnSpy = vi.spyOn(log, 'warn');
+    infoSpy = vi.spyOn(log, 'info');
 
     await db.insert(users).values({
       id: userId,
@@ -33,10 +31,10 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 
   afterEach(async () => {
-    debugSpy.restore();
-    errorSpy.restore();
-    warnSpy.restore();
-    infoSpy.restore();
+    debugSpy.mockRestore();
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+    infoSpy.mockRestore();
 
     await db.delete(users).where(eq(users.id, userId));
   });
@@ -47,9 +45,9 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
 
       expect(result.id).toBe(userId);
       expect(result.username).toBe(username);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId }, 'getProfile started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId }, 'getProfile completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId }, 'getProfile started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { userId }, 'getProfile completed');
     });
 
     it('should log error and throw USER_NOT_FOUND when user does not exist', async () => {
@@ -57,14 +55,14 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
 
       await expect(getProfile(missingId)).rejects.toThrow('USER_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; userId: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; userId: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('USER_NOT_FOUND');
       expect(errArg.userId).toBe(missingId);
-      expect(errorSpy.calls[0].args[1]).toBe('getProfile failed: user not found');
-      assertSpyCalls(debugSpy, 1);
-      assertSpyCallArgs(debugSpy, 0, [{ userId: missingId }, 'getProfile started']);
+      expect(errorSpy.mock.calls[0][1]).toBe('getProfile failed: user not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId: missingId }, 'getProfile started');
     });
   });
 
@@ -74,29 +72,33 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
 
       expect(result.username).toBe(username);
       expect(result.isFollowing).toBe(false);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
         { username, requesterId: undefined },
         'getPublicProfile started',
-      ]);
-      assertSpyCallArgs(debugSpy, 1, [
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
         { username, requesterId: undefined },
         'getPublicProfile completed',
-      ]);
+      );
     });
 
     it('should include requesterId in logs when provided', async () => {
       const result = await getPublicProfile(username, userId);
 
       expect(result.isFollowing).toBe(false);
-      assertSpyCallArgs(debugSpy, 0, [
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
         { username, requesterId: userId },
         'getPublicProfile started',
-      ]);
-      assertSpyCallArgs(debugSpy, 1, [
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
         { username, requesterId: userId },
         'getPublicProfile completed',
-      ]);
+      );
     });
 
     it('should log error and throw USER_NOT_FOUND when username does not exist', async () => {
@@ -104,17 +106,18 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
 
       await expect(getPublicProfile(missingUsername)).rejects.toThrow('USER_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; username: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; username: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('USER_NOT_FOUND');
       expect(errArg.username).toBe(missingUsername);
-      expect(errorSpy.calls[0].args[1]).toBe('getPublicProfile failed: user not found');
-      assertSpyCalls(debugSpy, 1);
-      assertSpyCallArgs(debugSpy, 0, [
+      expect(errorSpy.mock.calls[0][1]).toBe('getPublicProfile failed: user not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
         { username: missingUsername, requesterId: undefined },
         'getPublicProfile started',
-      ]);
+      );
     });
   });
 
@@ -123,9 +126,9 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
       const result = await updateProfile(userId, { displayName: 'Updated Name' });
 
       expect(result.displayName).toBe('Updated Name');
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId }, 'updateProfile started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId }, 'updateProfile completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId }, 'updateProfile started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { userId }, 'updateProfile completed');
     });
 
     it('should log error and throw USER_NOT_FOUND when user does not exist', async () => {
@@ -135,14 +138,14 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
         'USER_NOT_FOUND',
       );
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; userId: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; userId: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('USER_NOT_FOUND');
       expect(errArg.userId).toBe(missingId);
-      expect(errorSpy.calls[0].args[1]).toBe('updateProfile failed: user not found');
-      assertSpyCalls(debugSpy, 1);
-      assertSpyCallArgs(debugSpy, 0, [{ userId: missingId }, 'updateProfile started']);
+      expect(errorSpy.mock.calls[0][1]).toBe('updateProfile failed: user not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId: missingId }, 'updateProfile started');
     });
   });
 
@@ -150,13 +153,14 @@ describe('User Service', { sanitizeOps: false, sanitizeResources: false }, () =>
     it('should log entry/exit when account is soft-deleted', async () => {
       await deleteAccount(userId);
 
-      const [row] = await db.select({ deletedAt: users.deletedAt }).from(users).where(
-        eq(users.id, userId),
-      );
+      const [row] = await db
+        .select({ deletedAt: users.deletedAt })
+        .from(users)
+        .where(eq(users.id, userId));
       expect(row.deletedAt).not.toBeNull();
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId }, 'deleteAccount started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId }, 'deleteAccount completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId }, 'deleteAccount started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { userId }, 'deleteAccount completed');
     });
   });
 });

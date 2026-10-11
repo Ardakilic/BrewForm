@@ -921,11 +921,7 @@ export const recipeSeedData = [
       rating: 8,
       emojiTag: 'rocket',
     },
-    equipmentNames: [
-      'Bialetti Moka Express (6-cup)',
-      'Acaia Pearl S',
-      '1Zpresso JX-Pro S',
-    ],
+    equipmentNames: ['Bialetti Moka Express (6-cup)', 'Acaia Pearl S', '1Zpresso JX-Pro S'],
     tasteNotes: [
       { name: 'Jasmine', intensity: 3 },
       { name: 'Peach', intensity: 2 },
@@ -1260,11 +1256,7 @@ export const recipeSeedData = [
       rating: 9,
       emojiTag: 'fire',
     },
-    equipmentNames: [
-      'Hario Syphon 5-cup',
-      'Acaia Pearl S',
-      'Fellow Stagg EKG (standard)',
-    ],
+    equipmentNames: ['Hario Syphon 5-cup', 'Acaia Pearl S', 'Fellow Stagg EKG (standard)'],
     tasteNotes: [
       { name: 'Floral', intensity: 3 },
       { name: 'Jasmine', intensity: 2 },
@@ -1316,11 +1308,7 @@ export const recipeSeedData = [
       rating: 9,
       emojiTag: 'fire',
     },
-    equipmentNames: [
-      'Demmex Copper Cezve',
-      'Hario Drip Scale',
-      'Comandante C40 MK4',
-    ],
+    equipmentNames: ['Demmex Copper Cezve', 'Hario Drip Scale', 'Comandante C40 MK4'],
     tasteNotes: [
       { name: 'Spices', intensity: 3 },
       { name: 'Chocolate', intensity: 2 },
@@ -1629,9 +1617,7 @@ export const socialSeedData = {
       recipeSlug: 'alices-signature-espresso',
       authorUsername: 'bob',
       content: 'Amazing shot! What grinder setting are you using?',
-      replies: [
-        { authorUsername: 'alice', content: 'Thanks! Setting 12 on the Lelit Fred.' },
-      ],
+      replies: [{ authorUsername: 'alice', content: 'Thanks! Setting 12 on the Lelit Fred.' }],
     },
     {
       recipeSlug: 'charlies-french-press-classic',

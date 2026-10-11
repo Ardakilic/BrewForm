@@ -1,10 +1,10 @@
-import type { CoffeeVarietyCategory } from '@brewform/shared';
-import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { coffeeVarieties, recipes, recipeVersions } from '@brewform/db/schema';
+import type { CoffeeVarietyCategory } from '@brewform/shared';
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 
 /** Find a non-deleted coffee variety by ID. */
-export function findById(id: string) {
+export async function findById(id: string) {
   return db.query.coffeeVarieties.findFirst({
     where: and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)),
   });
@@ -40,9 +40,13 @@ export async function findMany(params: {
   const offset = (params.page - 1) * params.perPage;
 
   const [data, countResult] = await Promise.all([
-    db.select().from(coffeeVarieties).where(where)
+    db
+      .select()
+      .from(coffeeVarieties)
+      .where(where)
       .orderBy(asc(coffeeVarieties.name))
-      .limit(params.perPage).offset(offset),
+      .limit(params.perPage)
+      .offset(offset),
     db.select({ count: count() }).from(coffeeVarieties).where(where),
   ]);
 
@@ -57,7 +61,8 @@ export async function create(data: typeof coffeeVarieties.$inferInsert) {
 
 /** Update a non-deleted coffee variety, bumping updatedAt. */
 export async function update(id: string, data: Partial<typeof coffeeVarieties.$inferInsert>) {
-  const [result] = await db.update(coffeeVarieties)
+  const [result] = await db
+    .update(coffeeVarieties)
     .set({ ...data, updatedAt: new Date() })
     .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
     .returning();
@@ -66,7 +71,8 @@ export async function update(id: string, data: Partial<typeof coffeeVarieties.$i
 
 /** Soft-delete a coffee variety by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(coffeeVarieties)
+  const [result] = await db
+    .update(coffeeVarieties)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(coffeeVarieties.id, id), isNull(coffeeVarieties.deletedAt)))
     .returning();
@@ -77,11 +83,7 @@ export async function softDelete(id: string) {
  * List public, non-deleted recipes whose current version uses the given
  * variety, paginated with total count and author/photo relations joined.
  */
-export async function getRecipesUsingVariety(
-  varietyId: string,
-  page: number,
-  perPage: number,
-) {
+export async function getRecipesUsingVariety(varietyId: string, page: number, perPage: number) {
   const offset = (page - 1) * perPage;
 
   const [data, countResult] = await Promise.all([
@@ -98,16 +100,18 @@ export async function getRecipesUsingVariety(
         isNull(recipes.deletedAt),
         inArray(
           recipes.currentVersionId,
-          db.select({ id: recipeVersions.id }).from(recipeVersions).where(
-            eq(recipeVersions.coffeeVarietyId, varietyId),
-          ),
+          db
+            .select({ id: recipeVersions.id })
+            .from(recipeVersions)
+            .where(eq(recipeVersions.coffeeVarietyId, varietyId)),
         ),
       ),
       orderBy: desc(recipes.createdAt),
       limit: perPage,
       offset,
     }),
-    db.select({ count: sql<number>`count(distinct ${recipes.id})` })
+    db
+      .select({ count: sql<number>`count(distinct ${recipes.id})` })
       .from(recipes)
       .innerJoin(recipeVersions, eq(recipes.currentVersionId, recipeVersions.id))
       .where(

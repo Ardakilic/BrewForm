@@ -1,9 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { badges, recipes, recipeVersions, userBadges, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -22,14 +21,17 @@ async function insertRecipeFixture(
     authorId: userId,
     visibility: 'public',
   });
-  const [version] = await db.insert(recipeVersions).values({
-    id: versionId,
-    recipeId,
-    versionNumber: 1,
-    brewMethod: 'v60',
-    drinkType: 'pour_over',
-    preparationNotes: '',
-  }).returning();
+  const [version] = await db
+    .insert(recipeVersions)
+    .values({
+      id: versionId,
+      recipeId,
+      versionNumber: 1,
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: '',
+    })
+    .returning();
   await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipeId));
   return { recipeId, versionId };
 }
@@ -39,7 +41,7 @@ async function insertRecipeFixture(
  * ascending. The CI/seed DB always has badge rows, so this asserts the call
  * returns a non-empty array.
  */
-describe('listBadges', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listBadges', () => {
   it('should return badges ordered by threshold ascending', async () => {
     const result = await model.listBadges();
     expect(result.length).toBeGreaterThan(0);
@@ -58,7 +60,7 @@ describe('listBadges', { sanitizeOps: false, sanitizeResources: false }, () => {
  * its ID for the user_badge award row. A badge definition is only inserted if
  * the seed lookup misses (defensive fallback).
  */
-describe('getUserBadges', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getUserBadges', () => {
   let userId: string;
   let badgeId: string;
   let userBadgeId: string;
@@ -141,7 +143,7 @@ describe('getUserBadges', { sanitizeOps: false, sanitizeResources: false }, () =
  * recipe earns the 'first_brew' badge (seed badge rule), while a user with zero
  * recipes earns no badges.
  */
-describe('evaluateBadges', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('evaluateBadges', () => {
   let userId: string;
   let badgeId: string;
   let insertedBadge: boolean;

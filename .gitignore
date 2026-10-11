@@ -59,7 +59,3 @@ apps/web/dist/**/*.map
 
 # Turbo
 .turbo/
-
-# Serena MCP
-.serena/cache/
-.serena/project.local.yml

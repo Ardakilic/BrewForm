@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { CardSkeletonGrid, CatalogCardSkeleton } from './Skeleton.tsx';
 
 describe('CatalogCardSkeleton', () => {
@@ -33,7 +33,7 @@ describe('CardSkeletonGrid', () => {
   });
 
   it('uses the catalog grid columns and catalog cards for the catalog variant', () => {
-    const { container } = render(<CardSkeletonGrid count={3} variant='catalog' />);
+    const { container } = render(<CardSkeletonGrid count={3} variant="catalog" />);
     const grid = container.querySelector('.grid');
     expect(grid?.classList.contains('md:grid-cols-2')).toBe(true);
     expect(grid?.classList.contains('lg:grid-cols-3')).toBe(true);

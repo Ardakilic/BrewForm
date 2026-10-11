@@ -1,10 +1,10 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { authApi } from '../../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { authApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const log = createLogger('ResetPasswordPage');
 
@@ -58,14 +58,14 @@ export function ResetPasswordPage() {
 
   if (success) {
     return (
-      <div className='mx-auto max-w-md px-6 py-12'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="mx-auto max-w-md px-6 py-12">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('auth.resetPassword.success')}
         </h1>
-        <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>
           {t('auth.resetPassword.successDesc')}
         </p>
-        <Link to='/login' className='btn-primary mt-6 inline-block'>
+        <Link to="/login" className="btn-primary mt-6 inline-block">
           {t('auth.login.title')}
         </Link>
       </div>
@@ -74,14 +74,14 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className='mx-auto max-w-md px-6 py-12'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="mx-auto max-w-md px-6 py-12">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('auth.resetPassword.invalidLink')}
         </h1>
-        <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>
           {t('auth.resetPassword.invalidLinkDesc')}
         </p>
-        <Link to='/forgot-password' className='btn-primary mt-6 inline-block'>
+        <Link to="/forgot-password" className="btn-primary mt-6 inline-block">
           {t('auth.resetPassword.requestNew')}
         </Link>
       </div>
@@ -89,36 +89,36 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className='mx-auto max-w-md px-6 py-12'>
-      <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+    <div className="mx-auto max-w-md px-6 py-12">
+      <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
         {t('auth.resetPassword.title')}
       </h1>
-      {error && <ErrorState message={error} className='mt-4' />}
-      <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
-        <Field label={t('auth.resetPassword.newPassword')} htmlFor='newPassword'>
+      {error && <ErrorState message={error} className="mt-4" />}
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        <Field label={t('auth.resetPassword.newPassword')} htmlFor="newPassword">
           <input
-            id='newPassword'
-            type='password'
+            id="newPassword"
+            type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder={t('auth.password.placeholder')}
-            className='input-field'
+            className="input-field"
             required
             minLength={8}
           />
         </Field>
-        <Field label={t('auth.resetPassword.confirmNew')} htmlFor='confirmPassword'>
+        <Field label={t('auth.resetPassword.confirmNew')} htmlFor="confirmPassword">
           <input
-            id='confirmPassword'
-            type='password'
+            id="confirmPassword"
+            type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder={t('auth.resetPassword.confirmNew.placeholder')}
-            className='input-field'
+            className="input-field"
             required
           />
         </Field>
-        <button type='submit' className='btn-primary' disabled={loading}>
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? t('auth.resetPassword.resetting') : t('auth.resetPassword.reset')}
         </button>
       </form>

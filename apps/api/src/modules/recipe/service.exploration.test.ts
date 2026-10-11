@@ -2,15 +2,14 @@
  * Exploration tests for new starred recipes and personal notes features.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 
 // Minimal Drizzle-like mocks
 function eq(column: string, value: unknown) {
   return { type: 'eq', column, value };
 }
 
-// deno-lint-ignore no-explicit-any -- test mock array
+// biome-ignore lint/suspicious/noExplicitAny: test mock array
 function and(...conditions: any[]) {
   return { type: 'and', conditions };
 }
@@ -55,7 +54,7 @@ describe('Starred recipes filtering', () => {
   });
 
   it('should handle empty filters gracefully', () => {
-    // deno-lint-ignore no-explicit-any -- test mock array
+    // biome-ignore lint/suspicious/noExplicitAny: test mock array
     const conditions: any[] = [eq('recipes.visibility', 'public')];
     expect(conditions).toHaveLength(1);
     expect(conditions[0].type).toBe('eq');

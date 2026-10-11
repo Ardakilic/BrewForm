@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { MetadataBadges } from './MetadataBadges.tsx';
 
 vi.mock('react-router', () => ({
@@ -8,7 +8,11 @@ vi.mock('react-router', () => ({
     to,
     children,
     ...props
-  }: { to: string; children: React.ReactNode; [key: string]: unknown }) => (
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -32,12 +36,7 @@ describe('MetadataBadges — author badge (Req 2.1)', () => {
   });
 
   it('falls back to username when displayName is null', () => {
-    render(
-      <MetadataBadges
-        {...baseProps}
-        author={{ username: 'jdoe', displayName: null }}
-      />,
-    );
+    render(<MetadataBadges {...baseProps} author={{ username: 'jdoe', displayName: null }} />);
     expect(screen.getByRole('link', { name: 'jdoe' })).toBeInTheDocument();
   });
 
@@ -69,12 +68,12 @@ describe('MetadataBadges — visibility badge (Req 2.2)', () => {
   });
 
   it('displays the visibility label in title case', () => {
-    render(<MetadataBadges {...baseProps} visibility='unlisted' />);
+    render(<MetadataBadges {...baseProps} visibility="unlisted" />);
     expect(screen.getByText('Unlisted')).toBeInTheDocument();
   });
 
   it('renders draft badge with dashed border', () => {
-    render(<MetadataBadges {...baseProps} visibility='draft' />);
+    render(<MetadataBadges {...baseProps} visibility="draft" />);
     const draftText = screen.getByText('Draft');
     const badge = draftText.closest('span');
     expect(badge).not.toBeNull();
@@ -82,7 +81,7 @@ describe('MetadataBadges — visibility badge (Req 2.2)', () => {
   });
 
   it('does not render dashed border for non-draft visibility', () => {
-    render(<MetadataBadges {...baseProps} visibility='public' />);
+    render(<MetadataBadges {...baseProps} visibility="public" />);
     const publicText = screen.getByText('Public');
     const badge = publicText.closest('span');
     expect(badge).not.toBeNull();
@@ -94,12 +93,12 @@ describe('MetadataBadges — visibility badge (Req 2.2)', () => {
 
 describe('MetadataBadges — brew method badge (Req 2.3)', () => {
   it('converts underscores to spaces and applies title case', () => {
-    render(<MetadataBadges {...baseProps} brewMethod='espresso_machine' />);
+    render(<MetadataBadges {...baseProps} brewMethod="espresso_machine" />);
     expect(screen.getByText('Espresso Machine')).toBeInTheDocument();
   });
 
   it('handles single-word brew method', () => {
-    render(<MetadataBadges {...baseProps} brewMethod='aeropress' />);
+    render(<MetadataBadges {...baseProps} brewMethod="aeropress" />);
     expect(screen.getByText('Aeropress')).toBeInTheDocument();
   });
 

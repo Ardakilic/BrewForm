@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
@@ -15,8 +15,8 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { brewLogApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { BrewHistorySection } from './BrewHistorySection.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -82,10 +82,9 @@ function renderSection(
     currentVersionId: 'v1',
   },
 ) {
-  const router = createMemoryRouter(
-    [{ path: '/', element: <BrewHistorySection {...props} /> }],
-    { initialEntries: ['/'] },
-  );
+  const router = createMemoryRouter([{ path: '/', element: <BrewHistorySection {...props} /> }], {
+    initialEntries: ['/'],
+  });
   return render(<RouterProvider router={router} />);
 }
 
@@ -148,9 +147,7 @@ describe('BrewHistorySection', () => {
     renderSection();
 
     await waitFor(() => {
-      expect(
-        screen.getByText('No brews logged for this recipe yet.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('No brews logged for this recipe yet.')).toBeInTheDocument();
     });
   });
 
@@ -163,8 +160,6 @@ describe('BrewHistorySection', () => {
       expect(mockListForRecipe).toHaveBeenCalled();
     });
 
-    expect(
-      screen.queryByText('No brews logged for this recipe yet.'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('No brews logged for this recipe yet.')).not.toBeInTheDocument();
   });
 });

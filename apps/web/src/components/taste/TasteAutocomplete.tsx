@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api/index.ts';
-import { IntensityDots } from '../recipe/IntensityDots.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { useSafeT } from '../../utils/safe-translation.ts';
+import { IntensityDots } from '../recipe/IntensityDots.tsx';
 
 const log = createLogger('TasteAutocomplete');
 
@@ -39,11 +39,14 @@ export function TasteAutocomplete({
   const itemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
 
   useEffect(() => {
-    api.get<TasteNote[]>('/taste-notes/flat').then((data) => {
-      setAllNotes(data as TasteNote[]);
-    }).catch((err) => {
-      log.error({ err }, 'Failed to fetch taste notes list');
-    });
+    api
+      .get<TasteNote[]>('/taste-notes/flat')
+      .then((data) => {
+        setAllNotes(data as TasteNote[]);
+      })
+      .catch((err) => {
+        log.error({ err }, 'Failed to fetch taste notes list');
+      });
   }, []);
 
   useEffect(() => {
@@ -76,11 +79,14 @@ export function TasteAutocomplete({
       return filtered.some((n) => n.parentId === note.id);
     }
 
-    const groups = new Map<string, {
-      root: TasteNote;
-      subGroups: { parent: TasteNote; children: TasteNote[] }[];
-      orphanItems: TasteNote[];
-    }>();
+    const groups = new Map<
+      string,
+      {
+        root: TasteNote;
+        subGroups: { parent: TasteNote; children: TasteNote[] }[];
+        orphanItems: TasteNote[];
+      }
+    >();
 
     for (const item of filtered) {
       const rootId = getRootId(item);
@@ -116,7 +122,7 @@ export function TasteAutocomplete({
     }
 
     const sorted = Array.from(groups.values()).sort((a, b) =>
-      a.root.name.localeCompare(b.root.name)
+      a.root.name.localeCompare(b.root.name),
     );
 
     for (const group of sorted) {
@@ -147,7 +153,7 @@ export function TasteAutocomplete({
 
   useEffect(() => {
     if (isOpen && selectableIds.length > 0) {
-      setHighlightedId((prev) => prev && selectableIds.includes(prev) ? prev : selectableIds[0]);
+      setHighlightedId((prev) => (prev && selectableIds.includes(prev) ? prev : selectableIds[0]));
     } else {
       setHighlightedId(null);
     }
@@ -227,16 +233,16 @@ export function TasteAutocomplete({
   const selectedNotes = allNotes.filter((n) => selectedIds.includes(n.id));
 
   return (
-    <div ref={wrapperRef} className='relative'>
+    <div ref={wrapperRef} className="relative">
       {/* Selected chips with intensity controls */}
       {selectedNotes.length > 0 && (
-        <div className='flex flex-wrap gap-2 mb-3'>
+        <div className="flex flex-wrap gap-2 mb-3">
           {selectedNotes.map((note) => {
             const intensity = intensities[note.id] ?? 2;
             return (
               <div
                 key={note.id}
-                className='inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium'
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"
                 style={{
                   backgroundColor: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-primary)',
@@ -246,7 +252,7 @@ export function TasteAutocomplete({
                 <span>{note.name}</span>
                 {/* Clickable intensity dots — cycles 1→2→3→1 */}
                 <button
-                  type='button'
+                  type="button"
                   onClick={() => cycleIntensity(note.id)}
                   title={`Intensity ${intensity}/3 — click to change`}
                   style={{
@@ -262,7 +268,7 @@ export function TasteAutocomplete({
                 </button>
                 {/* Remove button */}
                 <button
-                  type='button'
+                  type="button"
                   onClick={() => toggleNote(note.id)}
                   style={{
                     lineHeight: 0,
@@ -284,7 +290,7 @@ export function TasteAutocomplete({
       )}
 
       <input
-        type='text'
+        type="text"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -293,133 +299,118 @@ export function TasteAutocomplete({
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder={t('taste.autocomplete.placeholder')}
-        className='input-field'
+        className="input-field"
       />
 
       {isOpen && (
         <ul
-          className='absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded border'
+          className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded border"
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
         >
-          {allNotes.length === 0
-            ? (
-              <li
-                className='px-3 py-4 text-sm text-center'
-                style={{ color: 'var(--text-tertiary)' }}
-              >
-                Loading taste notes...
-              </li>
-            )
-            : groupedResults.length > 0
-            ? (
-              groupedResults.map((group) => (
-                <Fragment key={group.root.id}>
-                  <li
-                    className='px-3 py-1.5 text-xs font-semibold select-none cursor-default'
-                    style={{ color: 'var(--text-tertiary)' }}
-                    aria-hidden='true'
-                  >
-                    {group.root.name}
-                  </li>
-                  {group.subGroups.map((sg) => (
-                    <Fragment key={sg.parent.id}>
-                      <li
-                        className='px-3 py-1.5 text-xs font-semibold select-none cursor-default'
-                        style={{
-                          color: 'var(--text-tertiary)',
-                          paddingLeft: '1.25rem',
-                        }}
-                        aria-hidden='true'
-                      >
-                        {group.root.name} &gt; {sg.parent.name}
-                      </li>
-                      {sg.children.map((item) => (
-                        <li
-                          key={item.id}
-                          ref={(el) => {
-                            if (el) {
-                              itemRefs.current.set(item.id, el);
-                            } else {
-                              itemRefs.current.delete(item.id);
-                            }
-                          }}
-                          className='cursor-pointer px-3 py-2 flex items-center justify-between'
-                          style={{
-                            paddingLeft: `${item.depth * 0.75 + 1.5}rem`,
-                            color: 'var(--text-primary)',
-                            backgroundColor: highlightedId === item.id
-                              ? 'var(--bg-secondary)'
-                              : undefined,
-                          }}
-                          onClick={() => toggleNote(item.id)}
-                          onMouseEnter={() => setHighlightedId(item.id)}
-                          role='option'
-                          aria-selected={selectedIds.includes(item.id)}
-                        >
-                          {selectedIds.includes(item.id) && (
-                            <span
-                              className='mr-1 text-xs'
-                              style={{ color: 'var(--accent-primary)' }}
-                            >
-                              ✓
-                            </span>
-                          )}
-                          <span>{item.name}</span>
-                        </li>
-                      ))}
-                    </Fragment>
-                  ))}
-                  {group.orphanItems.map((item) => (
+          {allNotes.length === 0 ? (
+            <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
+              Loading taste notes...
+            </li>
+          ) : groupedResults.length > 0 ? (
+            groupedResults.map((group) => (
+              <Fragment key={group.root.id}>
+                <li
+                  className="px-3 py-1.5 text-xs font-semibold select-none cursor-default"
+                  style={{ color: 'var(--text-tertiary)' }}
+                  aria-hidden="true"
+                >
+                  {group.root.name}
+                </li>
+                {group.subGroups.map((sg) => (
+                  <Fragment key={sg.parent.id}>
                     <li
-                      key={item.id}
-                      ref={(el) => {
-                        if (el) {
-                          itemRefs.current.set(item.id, el);
-                        } else {
-                          itemRefs.current.delete(item.id);
-                        }
-                      }}
-                      className='cursor-pointer px-3 py-2 flex items-center justify-between'
+                      className="px-3 py-1.5 text-xs font-semibold select-none cursor-default"
                       style={{
-                        paddingLeft: `${item.depth * 1.5 + 0.75}rem`,
-                        color: 'var(--text-primary)',
-                        backgroundColor: highlightedId === item.id
-                          ? 'var(--bg-secondary)'
-                          : undefined,
+                        color: 'var(--text-tertiary)',
+                        paddingLeft: '1.25rem',
                       }}
-                      onClick={() => toggleNote(item.id)}
-                      onMouseEnter={() => setHighlightedId(item.id)}
-                      role='option'
-                      aria-selected={selectedIds.includes(item.id)}
+                      aria-hidden="true"
                     >
-                      {selectedIds.includes(item.id) && (
-                        <span className='mr-1 text-xs' style={{ color: 'var(--accent-primary)' }}>
-                          ✓
-                        </span>
-                      )}
-                      <span>{item.name}</span>
+                      {group.root.name} &gt; {sg.parent.name}
                     </li>
-                  ))}
-                </Fragment>
-              ))
-            )
-            : (
-              <li
-                className='px-3 py-4 text-sm text-center'
-                style={{ color: 'var(--text-tertiary)' }}
-              >
-                No taste notes found.
-              </li>
-            )}
+                    {sg.children.map((item) => (
+                      <li
+                        key={item.id}
+                        ref={(el) => {
+                          if (el) {
+                            itemRefs.current.set(item.id, el);
+                          } else {
+                            itemRefs.current.delete(item.id);
+                          }
+                        }}
+                        className="cursor-pointer px-3 py-2 flex items-center justify-between"
+                        style={{
+                          paddingLeft: `${item.depth * 0.75 + 1.5}rem`,
+                          color: 'var(--text-primary)',
+                          backgroundColor:
+                            highlightedId === item.id ? 'var(--bg-secondary)' : undefined,
+                        }}
+                        onClick={() => toggleNote(item.id)}
+                        onMouseEnter={() => setHighlightedId(item.id)}
+                        role="option"
+                        aria-selected={selectedIds.includes(item.id)}
+                      >
+                        {selectedIds.includes(item.id) && (
+                          <span className="mr-1 text-xs" style={{ color: 'var(--accent-primary)' }}>
+                            ✓
+                          </span>
+                        )}
+                        <span>{item.name}</span>
+                      </li>
+                    ))}
+                  </Fragment>
+                ))}
+                {group.orphanItems.map((item) => (
+                  <li
+                    key={item.id}
+                    ref={(el) => {
+                      if (el) {
+                        itemRefs.current.set(item.id, el);
+                      } else {
+                        itemRefs.current.delete(item.id);
+                      }
+                    }}
+                    className="cursor-pointer px-3 py-2 flex items-center justify-between"
+                    style={{
+                      paddingLeft: `${item.depth * 1.5 + 0.75}rem`,
+                      color: 'var(--text-primary)',
+                      backgroundColor:
+                        highlightedId === item.id ? 'var(--bg-secondary)' : undefined,
+                    }}
+                    onClick={() => toggleNote(item.id)}
+                    onMouseEnter={() => setHighlightedId(item.id)}
+                    role="option"
+                    aria-selected={selectedIds.includes(item.id)}
+                  >
+                    {selectedIds.includes(item.id) && (
+                      <span className="mr-1 text-xs" style={{ color: 'var(--accent-primary)' }}>
+                        ✓
+                      </span>
+                    )}
+                    <span>{item.name}</span>
+                  </li>
+                ))}
+              </Fragment>
+            ))
+          ) : (
+            <li className="px-3 py-4 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
+              No taste notes found.
+            </li>
+          )}
         </ul>
       )}
 
-      <p className='mt-1 text-xs' style={{ color: 'var(--text-tertiary)' }}>
+      <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
         Click intensity dots on selected notes to adjust (1–3).{' '}
         <a
-          href='https://notbadcoffee.com/flavor-wheel-en/'
-          target='_blank'
-          rel='noopener noreferrer'
+          href="https://notbadcoffee.com/flavor-wheel-en/"
+          target="_blank"
+          rel="noopener noreferrer"
           style={{ color: 'var(--accent-primary)' }}
         >
           SCAA Flavor Wheel Reference

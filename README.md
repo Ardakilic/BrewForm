@@ -26,22 +26,22 @@ notes.
 
 | Layer      | Technology                                  |
 | ---------- | ------------------------------------------- |
-| Runtime    | Deno 2.9                                    |
-| Monorepo   | Deno workspaces                             |
+| Runtime    | Node 24 LTS                                   |
+| Monorepo   | pnpm workspaces                               |
 | Backend    | Hono                                        |
 | Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |
 | ORM        | Drizzle ORM (postgres-js driver)            |
 | Database   | PostgreSQL                                  |
-| Cache      | Deno KV                                     |
+| Cache      | In-memory (Redis/Valkey planned follow-up)   |
 | Storage    | Local filesystem or S3-compatible (Garage)  |
 | Email      | MJML (pre-compiled at build time)           |
 | Validation | Zod (shared between frontend and backend)   |
-| Testing    | Deno test runner + BDD (`@std/testing/bdd`) |
-| CI/CD      | GitHub Actions → Deno Deploy + GitHub Pages |
+| Testing    | Vitest                                        |
+| CI/CD      | GitHub Actions → GHCR images (Coolify)        |
 
 ## Quick Start
 
-All commands run through Docker. No local Deno installation required.
+All commands run through Docker. No local Node/pnpm installation required.
 
 ```bash
 # Clone the repository
@@ -54,7 +54,7 @@ cp .env.example .env
 # Start infrastructure services (postgres, mailpit, pgadmin, garage)
 make up
 
-# Cache Deno dependencies
+# Install pnpm dependencies
 make install
 
 # Build email templates (required before running the API)
@@ -102,8 +102,8 @@ make fmt            # Format the codebase
 make fmt-check      # Check formatting without changes
 
 # Dependencies
-make install          # Cache Deno dependencies (frozen lockfile)
-make lockfile-update  # Regenerate deno.lock inside Docker (after dep changes)
+make install          # Install pnpm dependencies (frozen lockfile)
+make lockfile-update  # Regenerate pnpm-lock.yaml inside Docker (after dep changes)
 
 # Testing
 make test           # Run all tests
@@ -116,49 +116,6 @@ make check-tests    # Type-check test files
 make ci             # Full CI pipeline (fmt, lint, check, build, test)
 ```
 
-## Serena MCP
-
-BrewForm includes [Serena](https://github.com/oraios/serena) — a semantic code retrieval MCP server that gives AI coding tools (Claude Code, OpenCode, VS Code/Cursor) deep understanding of the codebase through symbol indexing and type-aware search. Serena indexes all 4 Deno workspace members for cross-package symbol resolution.
-
-### Quick Start
-
-```bash
-make serena-up     # Start Serena MCP service
-make serena-health  # Verify it's healthy
-```
-
-Access the Serena dashboard at http://localhost:34283.
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `make serena-up` | Start Serena MCP service |
-| `make serena-down` | Down Serena MCP service (removes container) |
-| `make serena-logs` | View Serena logs |
-| `make serena-index` | Re-index the project workspace |
-| `make serena-health` | Health check |
-
-### Ports
-
-| Service | Port |
-|---------|------|
-| SSE (MCP endpoint) | 10122 |
-| Dashboard | 34283 |
-
-### Connecting AI Clients
-
-**Claude Code:**
-```bash
-claude mcp add serena --transport sse --url http://localhost:10122/sse
-```
-
-**VS Code / Cursor / Windsurf** — `.mcp.json` is pre-configured in the project root.
-
-**OpenCode** — configure `opencode.jsonc` with the SSE endpoint.
-
-See [docs/serena-mcp.md](docs/serena-mcp.md) for detailed setup, architecture, and troubleshooting.
-
 > **Why `make up` does not start the app?**
 > `make up` only starts infrastructure (database, mail, storage, etc.). The API and web dev server
 > are started on-demand via `make dev`. This prevents a "port already allocated" error that would
@@ -170,12 +127,12 @@ See [docs/serena-mcp.md](docs/serena-mcp.md) for detailed setup, architecture, a
 > rather than the host's macOS binaries. See [`docs/docker.md`](docs/docker.md) for details and
 > troubleshooting.
 
-> **Why `deno task` instead of a task runner?**
-> Deno's built-in task runner with `--cwd` (run in a specific directory) and explicit per-workspace
-> sub-tasks covers all orchestration needs. Granular tasks like `check:api`, `build:web`, and
-> `dev:api` compose into aggregate `check`, `build`, and `dev` tasks. No external task runner
-> required — the `deno.json` `tasks` field is the single source of truth for all build, test, lint,
-> and dev workflows.
+> **Why `pnpm run` instead of a task runner?**
+> The root `package.json` `scripts` field with per-workspace sub-scripts (run via
+> `pnpm --filter`) covers all orchestration needs. Granular scripts like `check:api`,
+> `build:web`, and `dev:api` compose into aggregate `check`, `build`, and `dev` scripts.
+> No external task runner required — the `package.json` `scripts` are the single source of
+> truth for all build, test, lint, and dev workflows.
 
 ## Database
 
@@ -186,8 +143,8 @@ make db-migrate      # Apply pending migrations
 make db-seed         # Seed sample data (378 equipment + 98 varieties + 6 recipes)
 make db-studio       # Open Drizzle Studio (GUI)
 make flush-db        # Truncate all database tables
-make flush-cache     # Clear Deno KV cache
-make flush-contents  # Truncate all tables + clear Deno KV cache
+make flush-cache     # Clear API cache
+make flush-contents  # Truncate all tables + clear API cache
 make db-reset        # Full reset: recreate DB, push schema, re-seed, flush cache
 ```
 
@@ -200,8 +157,8 @@ apps/api ──┬──→ packages/shared
            └──→ packages/db ──→ packages/shared
 ```
 
-- **`apps/api/`** — Hono backend API (Deno Deploy)
-- **`apps/web/`** — React SPA frontend (GitHub Pages)
+- **`apps/api/`** — Hono backend API (Node 24 + tsx)
+- **`apps/web/`** — React SPA frontend (static build served by Caddy)
 - **`packages/shared/`** — Types, Zod schemas, constants, utils, i18n
 - **`packages/db/`** — Drizzle schema, migrations, seed data, client
 
@@ -241,7 +198,9 @@ brewform/
 ├── compose.yml
 ├── Dockerfile
 ├── Makefile
-└── deno.json
+├── package.json
+├── pnpm-workspace.yaml
+└── biome.json
 ```
 
 ## Services
@@ -257,8 +216,6 @@ brewform/
 | pgAdmin         | http://localhost:5050     | Database GUI                     |
 | Garage S3 API   | http://localhost:3900     | S3-compatible object storage     |
 | Garage Web      | http://localhost:3902     | Garage web gateway               |
-| Serena SSE      | http://localhost:10122    | Semantic code retrieval for AI   |
-| Serena Dashboard| http://localhost:34283    | Serena web UI for inspection     |
 
 ## API
 
@@ -276,13 +233,12 @@ The API is versioned at `/api/v1/`. See [docs/api.md](docs/api.md) for the full 
 | [docs/coffee-equipments.md](docs/coffee-equipments.md) | Equipment catalog reference (378 items, 17 types)           |
 | [docs/taste-notes.md](docs/taste-notes.md)             | SCAA Flavor Wheel integration and autocomplete              |
 | [docs/notifications.md](docs/notifications.md)         | Email categories, triggers, and delivery model              |
-| [docs/deployment.md](docs/deployment.md)               | Production deployment guide (Deno Deploy / build context)   |
+| [docs/deployment.md](docs/deployment.md)               | Production deployment guide (legacy Deno Deploy target, superseded by Coolify) |
 | [docs/deployment_coolify.md](docs/deployment_coolify.md) | Coolify self-hosted deployment (as-built, GHCR, nuances)    |
 | [docs/architecture.md](docs/architecture.md)           | Monorepo structure, module pattern, conventions             |
 | [docs/request-lifecycle.md](docs/request-lifecycle.md) | End-to-end trace of an HTTP request through the API         |
 | [docs/decisions.md](docs/decisions.md)                 | Architectural decision records (the _why_ behind the stack) |
 | [docs/docker.md](docs/docker.md)                       | Docker development environment, volume strategy, troubleshooting |
-| [docs/serena-mcp.md](docs/serena-mcp.md)               | Serena MCP setup, architecture, and troubleshooting        |
 
 ## Container images
 

@@ -1,18 +1,18 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { UserPreferencesPatchSchema } from '@brewform/shared/schemas';
 import {
   ErrorEnvelopeSchema,
   successEnvelope,
   UserPreferencesOutputSchema,
+  UserPreferencesPatchSchema,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
 import { authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import type { PreferenceUpdate } from './model.ts';
-import { error, success } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, success } from '../../utils/response/index.ts';
+import type { PreferenceUpdate } from './model.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for preference endpoints, mounted at `/api/v1/preferences`. */
 const preference = new Hono<AppEnv>();

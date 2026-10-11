@@ -62,16 +62,15 @@ export const RecipeCreateObjectSchema = z.object({
  * Validates recipe-creation payloads, adding cross-field refinements (date ordering, pre-infusion vs extraction time).
  * Used by POST /api/v1/recipes.
  */
-export const RecipeCreateSchema = RecipeCreateObjectSchema
-  .refine(
-    (data) => {
-      if (data.grindDate && data.roastDate) {
-        return data.grindDate >= data.roastDate;
-      }
-      return true;
-    },
-    { message: 'Grind date cannot be earlier than roast date', path: ['grindDate'] },
-  )
+export const RecipeCreateSchema = RecipeCreateObjectSchema.refine(
+  (data) => {
+    if (data.grindDate && data.roastDate) {
+      return data.grindDate >= data.roastDate;
+    }
+    return true;
+  },
+  { message: 'Grind date cannot be earlier than roast date', path: ['grindDate'] },
+)
   .refine(
     (data) => {
       if (data.packageOpenDate && data.roastDate) {
@@ -133,17 +132,20 @@ export const RecipeFilterSchema = z.object({
   visibility: VisibilityEnum.optional(),
   authorId: z.uuid().optional(),
   equipmentId: z.uuid().optional(),
-  tasteNoteIds: z.string().optional().refine(
-    (val) => {
-      if (!val) return true;
-      const ids = val.split(',');
-      if (ids.length > 10) return false;
-      return ids.every((id) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim())
-      );
-    },
-    { message: 'tasteNoteIds must be at most 10 comma-separated UUIDs' },
-  ),
+  tasteNoteIds: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const ids = val.split(',');
+        if (ids.length > 10) return false;
+        return ids.every((id) =>
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id.trim()),
+        );
+      },
+      { message: 'tasteNoteIds must be at most 10 comma-separated UUIDs' },
+    ),
   /**
    * Deprecated single-taste-note UUID filter. Use the plural `tasteNoteIds`
    * (comma-separated, AND logic, max 10) instead. The API still applies this
@@ -189,14 +191,11 @@ export const RecipeFilterSchema = z.object({
   sortBy: z.enum(['createdAt', 'likeCount', 'rating']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   cursor: z.string().optional(),
-  includeTotal: z.preprocess(
-    (val) => {
-      if (val === true || val === 'true' || val === '1' || val === 'yes') return true;
-      if (val === false || val === 'false' || val === '0' || val === 'no') return false;
-      return val;
-    },
-    z.boolean().optional().default(false),
-  ),
+  includeTotal: z.preprocess((val) => {
+    if (val === true || val === 'true' || val === '1' || val === 'yes') return true;
+    if (val === false || val === 'false' || val === '0' || val === 'no') return false;
+    return val;
+  }, z.boolean().optional().default(false)),
 });
 
 /**
@@ -223,30 +222,34 @@ export const RecipeForkSchema = z.object({
   title: z.string().max(200).optional(),
 });
 
-export const RecipeMergeSchema = z.object({
-  recipeVersionId1: z.uuid(),
-  recipeVersionId2: z.uuid(),
-  title: z.string().min(1).max(200),
-  selections: z.object({
-    brewMethod: z.enum(['v1', 'v2']).optional(),
-    drinkType: z.enum(['v1', 'v2']).optional(),
-    grindSize: z.enum(['v1', 'v2']).optional(),
-    groundWeightGrams: z.enum(['v1', 'v2']).optional(),
-    extractionTimeSeconds: z.enum(['v1', 'v2']).optional(),
-    extractionVolumeMl: z.enum(['v1', 'v2']).optional(),
-    temperatureCelsius: z.enum(['v1', 'v2']).optional(),
-    brewerDetails: z.enum(['v1', 'v2']).optional(),
-    grinder: z.enum(['v1', 'v2']).optional(),
-    preparationNotes: z.enum(['v1', 'v2']).optional(),
-    personalNotes: z.enum(['v1', 'v2']).optional(),
-    tasteNotes: z.enum(['v1', 'v2', 'both', 'none']).optional(),
-    equipment: z.enum(['v1', 'v2', 'both', 'none']).optional(),
-    additionalPreparations: z.enum(['v1', 'v2', 'both', 'none']).optional(),
-  }).default({}),
-}).refine(
-  (data) => data.recipeVersionId1 !== data.recipeVersionId2,
-  { message: 'Cannot merge a version with itself', path: ['recipeVersionId2'] },
-);
+export const RecipeMergeSchema = z
+  .object({
+    recipeVersionId1: z.uuid(),
+    recipeVersionId2: z.uuid(),
+    title: z.string().min(1).max(200),
+    selections: z
+      .object({
+        brewMethod: z.enum(['v1', 'v2']).optional(),
+        drinkType: z.enum(['v1', 'v2']).optional(),
+        grindSize: z.enum(['v1', 'v2']).optional(),
+        groundWeightGrams: z.enum(['v1', 'v2']).optional(),
+        extractionTimeSeconds: z.enum(['v1', 'v2']).optional(),
+        extractionVolumeMl: z.enum(['v1', 'v2']).optional(),
+        temperatureCelsius: z.enum(['v1', 'v2']).optional(),
+        brewerDetails: z.enum(['v1', 'v2']).optional(),
+        grinder: z.enum(['v1', 'v2']).optional(),
+        preparationNotes: z.enum(['v1', 'v2']).optional(),
+        personalNotes: z.enum(['v1', 'v2']).optional(),
+        tasteNotes: z.enum(['v1', 'v2', 'both', 'none']).optional(),
+        equipment: z.enum(['v1', 'v2', 'both', 'none']).optional(),
+        additionalPreparations: z.enum(['v1', 'v2', 'both', 'none']).optional(),
+      })
+      .default({}),
+  })
+  .refine((data) => data.recipeVersionId1 !== data.recipeVersionId2, {
+    message: 'Cannot merge a version with itself',
+    path: ['recipeVersionId2'],
+  });
 
 /** Inferred type of {@link RecipeCreateSchema}. */
 export type RecipeCreate = z.infer<typeof RecipeCreateSchema>;

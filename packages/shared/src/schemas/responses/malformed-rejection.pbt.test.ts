@@ -5,9 +5,8 @@
 // its bounds (e.g. page < 1, total < 0) is reported as invalid.
 //
 // Validates: Requirements 6.6, 8.5, 12.5
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check';
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import { PaginationMetaSchema } from '../response.ts';
 import { BeanOutputSchema } from './bean.ts';
 
@@ -44,17 +43,13 @@ const wrongTypeArb = fc.oneof(
 describe('Property 10: malformed payloads are rejected', () => {
   it('rejects a payload with a dropped required field', () => {
     fc.assert(
-      fc.property(
-        validBeanArb,
-        fc.nat(),
-        (bean, idx) => {
-          const keys = Object.keys(bean);
-          const keyToDrop = keys[idx % keys.length];
-          const corrupted = { ...bean } as Record<string, unknown>;
-          delete corrupted[keyToDrop];
-          expect(BeanOutputSchema.safeParse(corrupted).success).toBe(false);
-        },
-      ),
+      fc.property(validBeanArb, fc.nat(), (bean, idx) => {
+        const keys = Object.keys(bean);
+        const keyToDrop = keys[idx % keys.length];
+        const corrupted = { ...bean } as Record<string, unknown>;
+        delete corrupted[keyToDrop];
+        expect(BeanOutputSchema.safeParse(corrupted).success).toBe(false);
+      }),
       { numRuns: 100 },
     );
   });

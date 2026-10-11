@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { CACHE_BUST_KEY, invalidateStaticCache } from '../api/static-cache.ts';
 import { createLogger } from '@/utils/logger.ts';
+import { CACHE_BUST_KEY, invalidateStaticCache } from '../api/static-cache.ts';
 
 const log = createLogger('useStaticCacheSync');
 

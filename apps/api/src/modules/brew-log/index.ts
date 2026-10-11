@@ -1,29 +1,27 @@
-import { Hono } from 'hono';
-import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
 import {
   BrewLogCreateSchema,
-  BrewLogUpdateSchema,
-  PaginationSchema,
-  UuidSchema,
-} from '@brewform/shared/schemas';
-import {
   BrewLogListItemOutputSchema,
   BrewLogOutputSchema,
+  BrewLogUpdateSchema,
   ErrorEnvelopeSchema,
   MessageResponseSchema,
+  PaginationSchema,
   paginatedEnvelope,
   RecipeBrewStatsOutputSchema,
   successEnvelope,
   UserBrewStatsOutputSchema,
+  UuidSchema,
 } from '@brewform/shared/schemas';
-import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
-import type { AppEnv } from '../../types/hono.ts';
+import { zValidator } from '@hono/zod-validator';
 import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
+import { authMiddleware, optionalAuthMiddleware } from '../../middleware/auth.ts';
+import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Dependency-injection proxy for test stubbing (auth middleware). */
 export const deps = { authMiddleware, optionalAuthMiddleware };

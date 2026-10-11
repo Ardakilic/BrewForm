@@ -2,19 +2,18 @@
  * Unit tests for the coverage-gate parser and decision logic (wave-5 task 8.6).
  *
  * These are hermetic: they feed a fixture lcov string to the pure functions in
- * `coverage-gate.ts` and never spawn `deno coverage`. The fixture mixes in-scope
+ * `coverage-gate.ts` and never spawn the coverage subprocess. The fixture mixes in-scope
  * files (apps/api/src, packages/shared/src) with an out-of-scope file
  * (apps/web/src) to prove the scope filter, and uses `file://` URLs (the form
- * `deno coverage --lcov` emits) to prove URL handling.
+ * coverage reporters emit) to prove URL handling.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 
 import {
   computeLineCoverage,
   DEFAULT_THRESHOLD,
-  isInDenoScope,
+  isInScope,
   parseLcovRecords,
   passes,
   resolveThreshold,
@@ -45,13 +44,21 @@ describe('parseLcovRecords', () => {
   it('extracts one record per source file with LF/LH', () => {
     const records = parseLcovRecords(FIXTURE_LCOV);
     expect(records).toHaveLength(3);
-    expect(records[0]).toEqual({ file: 'file:///app/apps/api/src/a.ts', linesFound: 100, linesHit: 90 });
+    expect(records[0]).toEqual({
+      file: 'file:///app/apps/api/src/a.ts',
+      linesFound: 100,
+      linesHit: 90,
+    });
     expect(records[1]).toEqual({
       file: 'file:///app/packages/shared/src/b.ts',
       linesFound: 50,
       linesHit: 40,
     });
-    expect(records[2]).toEqual({ file: 'file:///app/apps/web/src/c.ts', linesFound: 10, linesHit: 10 });
+    expect(records[2]).toEqual({
+      file: 'file:///app/apps/web/src/c.ts',
+      linesFound: 10,
+      linesHit: 10,
+    });
   });
 
   it('returns an empty list for empty input', () => {
@@ -64,21 +71,21 @@ describe('parseLcovRecords', () => {
   });
 });
 
-describe('isInDenoScope', () => {
+describe('isInScope', () => {
   it('accepts apps/api/src and packages/shared/src (file:// URLs)', () => {
-    expect(isInDenoScope('file:///app/apps/api/src/a.ts')).toBe(true);
-    expect(isInDenoScope('file:///app/packages/shared/src/b.ts')).toBe(true);
+    expect(isInScope('file:///app/apps/api/src/a.ts')).toBe(true);
+    expect(isInScope('file:///app/packages/shared/src/b.ts')).toBe(true);
   });
 
   it('accepts plain absolute paths', () => {
-    expect(isInDenoScope('/app/apps/api/src/deep/x.ts')).toBe(true);
-    expect(isInDenoScope('/app/packages/shared/src/y.ts')).toBe(true);
+    expect(isInScope('/app/apps/api/src/deep/x.ts')).toBe(true);
+    expect(isInScope('/app/packages/shared/src/y.ts')).toBe(true);
   });
 
-  it('rejects files outside the deno scope', () => {
-    expect(isInDenoScope('file:///app/apps/web/src/c.ts')).toBe(false);
-    expect(isInDenoScope('file:///app/packages/db/src/index.ts')).toBe(false);
-    expect(isInDenoScope('https://deno.land/std/foo.ts')).toBe(false);
+  it('rejects files outside the coverage scope', () => {
+    expect(isInScope('file:///app/apps/web/src/c.ts')).toBe(false);
+    expect(isInScope('file:///app/packages/db/src/index.ts')).toBe(false);
+    expect(isInScope('https://example.com/std/foo.ts')).toBe(false);
   });
 });
 
@@ -101,7 +108,7 @@ describe('summarize', () => {
 });
 
 describe('computeLineCoverage', () => {
-  it('aggregates only the deno scope', () => {
+  it('aggregates only the coverage scope', () => {
     const summary = computeLineCoverage(FIXTURE_LCOV);
     // apps/web/src/c.ts (10/10) is excluded; api (90/100) + shared (40/50).
     expect(summary.files).toBe(2);

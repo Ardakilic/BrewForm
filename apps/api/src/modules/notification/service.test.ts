@@ -6,8 +6,7 @@
  * run without a database or SMTP. Originals are restored after each test.
  */
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as service from './service.ts';
 import { deps } from './service.ts';
 
@@ -103,15 +102,13 @@ function makeModel(overrides: Partial<ModelDeps>, calls: Calls): ModelDeps {
     },
     create: (data: CreateData) => {
       calls.create.push(data);
-      return Promise.resolve(
-        {
-          id: 'created-1',
-          ...data,
-          readAt: null,
-          createdAt: new Date(),
-          deletedAt: null,
-        } as Awaited<ReturnType<ModelDeps['create']>>,
-      );
+      return Promise.resolve({
+        id: 'created-1',
+        ...data,
+        readAt: null,
+        createdAt: new Date(),
+        deletedAt: null,
+      } as Awaited<ReturnType<ModelDeps['create']>>);
     },
     findByUserId: unexpected('findByUserId'),
     markAsRead: unexpected('markAsRead'),
@@ -185,12 +182,15 @@ describe('createMentionNotifications', () => {
   });
 
   it('creates a record and sends an email for an opted-in non-author target', async () => {
-    deps.model = makeModel({
-      findMentionTargets: (usernames) => {
-        calls.findMentionTargets.push(usernames);
-        return Promise.resolve([makeTarget()]);
+    deps.model = makeModel(
+      {
+        findMentionTargets: (usernames) => {
+          calls.findMentionTargets.push(usernames);
+          return Promise.resolve([makeTarget()]);
+        },
       },
-    }, calls);
+      calls,
+    );
     await service.createMentionNotifications(mentionParams());
     expect(calls.findMentionTargets).toEqual([['target']]);
     expect(calls.create.length).toBe(1);
@@ -202,46 +202,60 @@ describe('createMentionNotifications', () => {
       referenceType: 'comment',
       metadata: JSON.stringify({ recipeSlug: 'slug-1', recipeTitle: 'Title 1' }),
     });
-    expect(calls.notifyMentioned).toEqual([{
-      mentionedUserId: 'target-1',
-      mentionerUsername: 'mentioner',
-      recipeTitle: 'Title 1',
-      recipeSlug: 'slug-1',
-    }]);
+    expect(calls.notifyMentioned).toEqual([
+      {
+        mentionedUserId: 'target-1',
+        mentionerUsername: 'mentioner',
+        recipeTitle: 'Title 1',
+        recipeSlug: 'slug-1',
+      },
+    ]);
   });
 
   it('drops self-mentions (no record, no email)', async () => {
-    deps.model = makeModel({
-      findMentionTargets: () => Promise.resolve([makeTarget({ id: 'mentioner-1' })]),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findMentionTargets: () => Promise.resolve([makeTarget({ id: 'mentioner-1' })]),
+      },
+      calls,
+    );
     await service.createMentionNotifications(mentionParams());
     expect(calls.create).toEqual([]);
     expect(calls.notifyMentioned).toEqual([]);
   });
 
   it('skips record AND email when notifyMentionedInComment preference is false', async () => {
-    deps.model = makeModel({
-      findMentionTargets: () =>
-        Promise.resolve([makeTarget({ prefs: { notifyMentionedInComment: false } })]),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findMentionTargets: () =>
+          Promise.resolve([makeTarget({ prefs: { notifyMentionedInComment: false } })]),
+      },
+      calls,
+    );
     await service.createMentionNotifications(mentionParams());
     expect(calls.create).toEqual([]);
     expect(calls.notifyMentioned).toEqual([]);
   });
 
   it('treats a missing preferences row (prefs null) as opted in', async () => {
-    deps.model = makeModel({
-      findMentionTargets: () => Promise.resolve([makeTarget({ prefs: null })]),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findMentionTargets: () => Promise.resolve([makeTarget({ prefs: null })]),
+      },
+      calls,
+    );
     await service.createMentionNotifications(mentionParams());
     expect(calls.create.length).toBe(1);
     expect(calls.notifyMentioned.length).toBe(1);
   });
 
   it('creates a record but skips the email when the target is the recipe author', async () => {
-    deps.model = makeModel({
-      findMentionTargets: () => Promise.resolve([makeTarget({ id: 'author-1' })]),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findMentionTargets: () => Promise.resolve([makeTarget({ id: 'author-1' })]),
+      },
+      calls,
+    );
     await service.createMentionNotifications(mentionParams());
     expect(calls.create.length).toBe(1);
     expect(calls.create[0].userId).toBe('author-1');
@@ -257,22 +271,27 @@ describe('createMentionNotifications', () => {
   });
 
   it('fans out to multiple targets applying each gate independently', async () => {
-    deps.model = makeModel({
-      findMentionTargets: () =>
-        Promise.resolve([
-          makeTarget({ id: 'mentioner-1', username: 'self' }),
-          makeTarget({
-            id: 'opted-out',
-            username: 'quiet',
-            prefs: { notifyMentionedInComment: false },
-          }),
-          makeTarget({ id: 'author-1', username: 'author' }),
-          makeTarget({ id: 'plain-1', username: 'plain' }),
-        ]),
-    }, calls);
-    await service.createMentionNotifications(mentionParams({
-      mentions: ['self', 'quiet', 'author', 'plain'],
-    }));
+    deps.model = makeModel(
+      {
+        findMentionTargets: () =>
+          Promise.resolve([
+            makeTarget({ id: 'mentioner-1', username: 'self' }),
+            makeTarget({
+              id: 'opted-out',
+              username: 'quiet',
+              prefs: { notifyMentionedInComment: false },
+            }),
+            makeTarget({ id: 'author-1', username: 'author' }),
+            makeTarget({ id: 'plain-1', username: 'plain' }),
+          ]),
+      },
+      calls,
+    );
+    await service.createMentionNotifications(
+      mentionParams({
+        mentions: ['self', 'quiet', 'author', 'plain'],
+      }),
+    );
     expect(calls.create.map((c) => c.userId)).toEqual(['author-1', 'plain-1']);
     expect(calls.notifyMentioned.map((n) => n.mentionedUserId)).toEqual(['plain-1']);
   });
@@ -281,16 +300,16 @@ describe('createMentionNotifications', () => {
 describe('listNotifications', () => {
   it('maps rows to the wire shape (ISO timestamps, flattened actorUsername)', async () => {
     const readAt = new Date('2026-07-02T08:30:00.000Z');
-    deps.model = makeModel({
-      findByUserId: (_userId, _page, _perPage, _unreadOnly) =>
-        Promise.resolve({
-          notifications: [
-            makeRow(),
-            makeRow({ id: 'n-2', actorId: null, actor: null, readAt }),
-          ],
-          total: 2,
-        }),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findByUserId: (_userId, _page, _perPage, _unreadOnly) =>
+          Promise.resolve({
+            notifications: [makeRow(), makeRow({ id: 'n-2', actorId: null, actor: null, readAt })],
+            total: 2,
+          }),
+      },
+      calls,
+    );
     const result = await service.listNotifications('user-1', 1, 20, false);
     expect(result.total).toBe(2);
     expect(result.notifications[0]).toEqual({
@@ -311,12 +330,15 @@ describe('listNotifications', () => {
 
   it('forwards pagination arguments to the model', async () => {
     let seen: unknown[] = [];
-    deps.model = makeModel({
-      findByUserId: (userId, page, perPage, unreadOnly) => {
-        seen = [userId, page, perPage, unreadOnly];
-        return Promise.resolve({ notifications: [], total: 0 });
+    deps.model = makeModel(
+      {
+        findByUserId: (userId, page, perPage, unreadOnly) => {
+          seen = [userId, page, perPage, unreadOnly];
+          return Promise.resolve({ notifications: [], total: 0 });
+        },
       },
-    }, calls);
+      calls,
+    );
     await service.listNotifications('user-9', 3, 5, true);
     expect(seen).toEqual(['user-9', 3, 5, true]);
   });
@@ -325,27 +347,29 @@ describe('listNotifications', () => {
 describe('markAsRead', () => {
   it('throws NOTIFICATION_NOT_FOUND for a missing/deleted row', async () => {
     deps.model = makeModel({ findById: () => Promise.resolve(null) }, calls);
-    await expect(service.markAsRead('user-1', 'missing')).rejects.toThrow(
-      'NOTIFICATION_NOT_FOUND',
-    );
+    await expect(service.markAsRead('user-1', 'missing')).rejects.toThrow('NOTIFICATION_NOT_FOUND');
   });
 
   it('throws FORBIDDEN when the row belongs to another user', async () => {
-    deps.model = makeModel({
-      findById: () => Promise.resolve(makeRow({ userId: 'someone-else' })),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findById: () => Promise.resolve(makeRow({ userId: 'someone-else' })),
+      },
+      calls,
+    );
     await expect(service.markAsRead('user-1', 'n-1')).rejects.toThrow('FORBIDDEN');
   });
 
   it('marks an unread notification and returns the updated wire row', async () => {
     const readAt = new Date('2026-07-03T12:00:00.000Z');
-    deps.model = makeModel({
-      findById: () => Promise.resolve(makeRow()),
-      markAsRead: (_id) =>
-        Promise.resolve(
-          { readAt } as unknown as Awaited<ReturnType<ModelDeps['markAsRead']>>,
-        ),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findById: () => Promise.resolve(makeRow()),
+        markAsRead: (_id) =>
+          Promise.resolve({ readAt } as unknown as Awaited<ReturnType<ModelDeps['markAsRead']>>),
+      },
+      calls,
+    );
     const result = await service.markAsRead('user-1', 'n-1');
     expect(result.readAt).toBe('2026-07-03T12:00:00.000Z');
     expect(result.actorUsername).toBe('actor');
@@ -353,10 +377,13 @@ describe('markAsRead', () => {
 
   it('is idempotent: an already-read row is returned as-is', async () => {
     const alreadyReadAt = new Date('2026-07-01T11:00:00.000Z');
-    deps.model = makeModel({
-      findById: () => Promise.resolve(makeRow({ readAt: alreadyReadAt })),
-      markAsRead: () => Promise.resolve(undefined), // model guard: already read
-    }, calls);
+    deps.model = makeModel(
+      {
+        findById: () => Promise.resolve(makeRow({ readAt: alreadyReadAt })),
+        markAsRead: () => Promise.resolve(undefined), // model guard: already read
+      },
+      calls,
+    );
     const result = await service.markAsRead('user-1', 'n-1');
     expect(result.readAt).toBe('2026-07-01T11:00:00.000Z');
   });
@@ -364,16 +391,22 @@ describe('markAsRead', () => {
 
 describe('markAllAsRead / getUnreadCount', () => {
   it('markAllAsRead returns the number of rows marked', async () => {
-    deps.model = makeModel({
-      markAllAsRead: (userId) => Promise.resolve(userId === 'user-1' ? 4 : 0),
-    }, calls);
+    deps.model = makeModel(
+      {
+        markAllAsRead: (userId) => Promise.resolve(userId === 'user-1' ? 4 : 0),
+      },
+      calls,
+    );
     expect(await service.markAllAsRead('user-1')).toBe(4);
   });
 
   it('getUnreadCount returns the model count', async () => {
-    deps.model = makeModel({
-      getUnreadCount: (userId) => Promise.resolve(userId === 'user-1' ? 7 : 0),
-    }, calls);
+    deps.model = makeModel(
+      {
+        getUnreadCount: (userId) => Promise.resolve(userId === 'user-1' ? 7 : 0),
+      },
+      calls,
+    );
     expect(await service.getUnreadCount('user-1')).toBe(7);
   });
 });
@@ -401,14 +434,17 @@ describe('createFollowNotification', () => {
   }
 
   it('skips record and email when notifyNewFollower preference is false', async () => {
-    deps.model = makeModel({
-      findNotifyTarget: (userId: string) => {
-        calls.findNotifyTarget.push(userId);
-        return Promise.resolve(
-          makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyNewFollower: false } }),
-        );
+    deps.model = makeModel(
+      {
+        findNotifyTarget: (userId: string) => {
+          calls.findNotifyTarget.push(userId);
+          return Promise.resolve(
+            makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyNewFollower: false } }),
+          );
+        },
       },
-    }, calls);
+      calls,
+    );
     await service.createFollowNotification(followerParams());
     expect(calls.findNotifyTarget).toEqual(['target-1']);
     expect(calls.create).toEqual([]);
@@ -416,9 +452,12 @@ describe('createFollowNotification', () => {
   });
 
   it('treats missing preferences row (prefs null) as opted in', async () => {
-    deps.model = makeModel({
-      findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
+      },
+      calls,
+    );
     await service.createFollowNotification(followerParams());
     expect(calls.create.length).toBe(1);
     expect(calls.notifyNewFollower.length).toBe(1);
@@ -426,10 +465,12 @@ describe('createFollowNotification', () => {
 
   it('skips self-follow (no record, no email)', async () => {
     deps.model = makeModel({}, calls);
-    await service.createFollowNotification(followerParams({
-      followerId: 'self-1',
-      followingId: 'self-1',
-    }));
+    await service.createFollowNotification(
+      followerParams({
+        followerId: 'self-1',
+        followingId: 'self-1',
+      }),
+    );
     expect(calls.findNotifyTarget).toEqual([]);
     expect(calls.create).toEqual([]);
     expect(calls.notifyNewFollower).toEqual([]);
@@ -455,10 +496,12 @@ describe('createFollowNotification', () => {
       referenceType: 'actor',
       metadata: JSON.stringify({ followerUsername: 'follower-username' }),
     });
-    expect(calls.notifyNewFollower).toEqual([{
-      followingId: 'target-1',
-      followerUsername: 'follower-username',
-    }]);
+    expect(calls.notifyNewFollower).toEqual([
+      {
+        followingId: 'target-1',
+        followerUsername: 'follower-username',
+      },
+    ]);
   });
 
   it('creates record but logs error if email send throws', async () => {
@@ -505,14 +548,17 @@ describe('createLikeNotification', () => {
   }
 
   it('skips record and email when notifyRecipeLiked preference is false', async () => {
-    deps.model = makeModel({
-      findNotifyTarget: (userId: string) => {
-        calls.findNotifyTarget.push(userId);
-        return Promise.resolve(
-          makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyRecipeLiked: false } }),
-        );
+    deps.model = makeModel(
+      {
+        findNotifyTarget: (userId: string) => {
+          calls.findNotifyTarget.push(userId);
+          return Promise.resolve(
+            makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyRecipeLiked: false } }),
+          );
+        },
       },
-    }, calls);
+      calls,
+    );
     await service.createLikeNotification(likeParams());
     expect(calls.findNotifyTarget).toEqual(['target-1']);
     expect(calls.create).toEqual([]);
@@ -520,9 +566,12 @@ describe('createLikeNotification', () => {
   });
 
   it('treats missing preferences row (prefs null) as opted in', async () => {
-    deps.model = makeModel({
-      findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
+      },
+      calls,
+    );
     await service.createLikeNotification(likeParams());
     expect(calls.create.length).toBe(1);
     expect(calls.notifyRecipeLiked.length).toBe(1);
@@ -530,10 +579,12 @@ describe('createLikeNotification', () => {
 
   it('skips self-like (no record, no email)', async () => {
     deps.model = makeModel({}, calls);
-    await service.createLikeNotification(likeParams({
-      likerId: 'self-1',
-      recipeAuthorId: 'self-1',
-    }));
+    await service.createLikeNotification(
+      likeParams({
+        likerId: 'self-1',
+        recipeAuthorId: 'self-1',
+      }),
+    );
     expect(calls.findNotifyTarget).toEqual([]);
     expect(calls.create).toEqual([]);
     expect(calls.notifyRecipeLiked).toEqual([]);
@@ -559,12 +610,14 @@ describe('createLikeNotification', () => {
       referenceType: 'recipe',
       metadata: JSON.stringify({ recipeSlug: 'slug-1', recipeTitle: 'Title 1' }),
     });
-    expect(calls.notifyRecipeLiked).toEqual([{
-      recipeAuthorId: 'target-1',
-      likerUsername: 'liker-username',
-      recipeTitle: 'Title 1',
-      recipeSlug: 'slug-1',
-    }]);
+    expect(calls.notifyRecipeLiked).toEqual([
+      {
+        recipeAuthorId: 'target-1',
+        likerUsername: 'liker-username',
+        recipeTitle: 'Title 1',
+        recipeSlug: 'slug-1',
+      },
+    ]);
   });
 
   it('creates record but logs error if email send throws', async () => {
@@ -611,14 +664,17 @@ describe('createCommentNotification', () => {
   }
 
   it('skips record and email when notifyRecipeCommented preference is false', async () => {
-    deps.model = makeModel({
-      findNotifyTarget: (userId: string) => {
-        calls.findNotifyTarget.push(userId);
-        return Promise.resolve(
-          makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyRecipeCommented: false } }),
-        );
+    deps.model = makeModel(
+      {
+        findNotifyTarget: (userId: string) => {
+          calls.findNotifyTarget.push(userId);
+          return Promise.resolve(
+            makeNotifyTarget({ prefs: { ...ALL_NOTIFY_PREFS_TRUE, notifyRecipeCommented: false } }),
+          );
+        },
       },
-    }, calls);
+      calls,
+    );
     await service.createCommentNotification(commentParams());
     expect(calls.findNotifyTarget).toEqual(['target-1']);
     expect(calls.create).toEqual([]);
@@ -626,9 +682,12 @@ describe('createCommentNotification', () => {
   });
 
   it('treats missing preferences row (prefs null) as opted in', async () => {
-    deps.model = makeModel({
-      findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
-    }, calls);
+    deps.model = makeModel(
+      {
+        findNotifyTarget: () => Promise.resolve(makeNotifyTarget({ prefs: null })),
+      },
+      calls,
+    );
     await service.createCommentNotification(commentParams());
     expect(calls.create.length).toBe(1);
     expect(calls.notifyRecipeCommented.length).toBe(1);
@@ -636,10 +695,12 @@ describe('createCommentNotification', () => {
 
   it('skips self-comment (no record, no email)', async () => {
     deps.model = makeModel({}, calls);
-    await service.createCommentNotification(commentParams({
-      commenterId: 'self-1',
-      recipeAuthorId: 'self-1',
-    }));
+    await service.createCommentNotification(
+      commentParams({
+        commenterId: 'self-1',
+        recipeAuthorId: 'self-1',
+      }),
+    );
     expect(calls.findNotifyTarget).toEqual([]);
     expect(calls.create).toEqual([]);
     expect(calls.notifyRecipeCommented).toEqual([]);
@@ -665,12 +726,14 @@ describe('createCommentNotification', () => {
       referenceType: 'comment',
       metadata: JSON.stringify({ recipeSlug: 'slug-1', recipeTitle: 'Title 1' }),
     });
-    expect(calls.notifyRecipeCommented).toEqual([{
-      recipeAuthorId: 'target-1',
-      commenterUsername: 'commenter-username',
-      recipeTitle: 'Title 1',
-      recipeSlug: 'slug-1',
-    }]);
+    expect(calls.notifyRecipeCommented).toEqual([
+      {
+        recipeAuthorId: 'target-1',
+        commenterUsername: 'commenter-username',
+        recipeTitle: 'Title 1',
+        recipeSlug: 'slug-1',
+      },
+    ]);
   });
 
   it('creates record but logs error if email send throws', async () => {

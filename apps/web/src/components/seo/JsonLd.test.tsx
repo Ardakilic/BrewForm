@@ -23,9 +23,7 @@ describe('RecipeJsonLd', () => {
   });
 
   it('includes cookTime (but NOT totalTime) when extractionTimeSeconds provided', () => {
-    const { container } = render(
-      <RecipeJsonLd {...baseProps} extractionTimeSeconds={150} />,
-    );
+    const { container } = render(<RecipeJsonLd {...baseProps} extractionTimeSeconds={150} />);
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');
     const recipe = JSON.parse(scripts[0].textContent || '');
     expect(recipe.cookTime).toBe('PT2M30S');
@@ -33,9 +31,7 @@ describe('RecipeJsonLd', () => {
   });
 
   it('includes recipeYield from extractionVolumeMl', () => {
-    const { container } = render(
-      <RecipeJsonLd {...baseProps} extractionVolumeMl={36} />,
-    );
+    const { container } = render(<RecipeJsonLd {...baseProps} extractionVolumeMl={36} />);
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');
     const recipe = JSON.parse(scripts[0].textContent || '');
     expect(recipe.recipeYield).toBe('36ml');
@@ -45,9 +41,9 @@ describe('RecipeJsonLd', () => {
     const { container } = render(
       <RecipeJsonLd
         {...baseProps}
-        productName='Ethiopian Yirgacheffe'
+        productName="Ethiopian Yirgacheffe"
         groundWeightGrams={18}
-        grindSize='fine'
+        grindSize="fine"
         extractionVolumeMl={250}
       />,
     );
@@ -60,9 +56,7 @@ describe('RecipeJsonLd', () => {
   });
 
   it('includes aggregateRating when available', () => {
-    const { container } = render(
-      <RecipeJsonLd {...baseProps} avgRating={8.5} ratingCount={12} />,
-    );
+    const { container } = render(<RecipeJsonLd {...baseProps} avgRating={8.5} ratingCount={12} />);
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');
     const recipe = JSON.parse(scripts[0].textContent || '');
     expect(recipe.aggregateRating['@type']).toBe('AggregateRating');
@@ -72,9 +66,7 @@ describe('RecipeJsonLd', () => {
   });
 
   it('renders BreadcrumbList JSON-LD', () => {
-    const { container } = render(
-      <RecipeJsonLd {...baseProps} brewMethod='v60' />,
-    );
+    const { container } = render(<RecipeJsonLd {...baseProps} brewMethod="v60" />);
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');
     const breadcrumb = JSON.parse(scripts[1].textContent || '');
     expect(breadcrumb['@type']).toBe('BreadcrumbList');
@@ -87,8 +79,8 @@ describe('RecipeJsonLd', () => {
     const { container } = render(
       <RecipeJsonLd
         {...baseProps}
-        brewMethod='v60'
-        drinkType='pour_over'
+        brewMethod="v60"
+        drinkType="pour_over"
         tasteNoteNames={['Chocolate', 'Berry']}
       />,
     );
@@ -101,9 +93,7 @@ describe('RecipeJsonLd', () => {
   });
 
   it('omits aggregateRating when ratingCount is zero', () => {
-    const { container } = render(
-      <RecipeJsonLd {...baseProps} avgRating={null} ratingCount={0} />,
-    );
+    const { container } = render(<RecipeJsonLd {...baseProps} avgRating={null} ratingCount={0} />);
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');
     const recipe = JSON.parse(scripts[0].textContent || '');
     expect(recipe.aggregateRating).toBeUndefined();
@@ -113,11 +103,11 @@ describe('RecipeJsonLd', () => {
     const { container } = render(
       <RecipeJsonLd
         {...baseProps}
-        productName='</script><script>alert(1)</script>'
-        authorName='</script><script>alert(2)</script>'
+        productName="</script><script>alert(1)</script>"
+        authorName="</script><script>alert(2)</script>"
         tasteNoteNames={['<script>alert(3)</script>', '</script>']}
-        brewMethod='<script>alert(4)</script>'
-        drinkType='</script><script>alert(5)</script>'
+        brewMethod="<script>alert(4)</script>"
+        drinkType="</script><script>alert(5)</script>"
       />,
     );
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');

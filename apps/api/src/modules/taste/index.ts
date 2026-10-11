@@ -1,25 +1,23 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
-import {
-  TasteNoteCreateSchema,
-  TasteNoteFilterSchema,
-  TasteNoteUpdateSchema,
-} from '@brewform/shared/schemas';
 import {
   ErrorEnvelopeSchema,
   MessageResponseSchema,
   successEnvelope,
+  TasteNoteCreateSchema,
+  TasteNoteFilterSchema,
   TasteNoteNodeOutputSchema,
   TasteNoteOutputSchema,
+  TasteNoteUpdateSchema,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, success, zodValidationHook } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
-import { cacheProvider } from '../../utils/cache/singleton.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { cacheProvider } from '../../utils/cache/singleton.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, success, zodValidationHook } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for taste-note endpoints, mounted at `/api/v1/taste-notes`. */
 const taste = new Hono<AppEnv>();
@@ -54,9 +52,7 @@ taste.get(
     summary: 'Search taste notes',
     description:
       'Returns a flat list of taste notes matching the search query. With no query, returns the full flat list.',
-    parameters: [
-      { name: 'search', in: 'query', required: false, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'search', in: 'query', required: false, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'List of matching taste notes',
@@ -157,9 +153,7 @@ taste.patch(
     summary: 'Update a taste note',
     description: 'Updates a taste note. Admin only.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(TasteNoteUpdateSchema),
     responses: {
       200: {
@@ -196,9 +190,7 @@ taste.delete(
     summary: 'Delete a taste note',
     description: 'Deletes a taste note. Admin only.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Taste note deleted',

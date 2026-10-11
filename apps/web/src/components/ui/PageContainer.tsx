@@ -25,8 +25,6 @@ interface PageContainerProps {
  */
 export function PageContainer({ width = '4xl', className = '', children }: PageContainerProps) {
   return (
-    <div className={`mx-auto ${widthClasses[width]} px-6 py-8 ${className}`.trim()}>
-      {children}
-    </div>
+    <div className={`mx-auto ${widthClasses[width]} px-6 py-8 ${className}`.trim()}>{children}</div>
   );
 }

@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BrewLogForm, type BrewLogFormValues } from './BrewLogForm.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -52,7 +52,7 @@ const initialValues: BrewLogFormValues = {
 
 function renderForm() {
   const onSubmit = vi.fn<(values: BrewLogFormValues) => Promise<void>>();
-  render(<BrewLogForm initialValues={initialValues} onSubmit={onSubmit} submitLabel='Save' />);
+  render(<BrewLogForm initialValues={initialValues} onSubmit={onSubmit} submitLabel="Save" />);
   return onSubmit;
 }
 
@@ -73,9 +73,7 @@ describe('BrewLogForm', () => {
     expect((screen.getByLabelText('Dose (g)') as HTMLInputElement).value).toBe('18');
     expect((screen.getByLabelText('Notes') as HTMLTextAreaElement).value).toBe('Sweet');
     expect((screen.getByLabelText('Personal Rating') as HTMLInputElement).value).toBe('8');
-    expect((screen.getByLabelText('Brewed At *') as HTMLInputElement).value).toMatch(
-      /2026-03-15T/,
-    );
+    expect((screen.getByLabelText('Brewed At *') as HTMLInputElement).value).toMatch(/2026-03-15T/);
   });
 
   it('submits parsed values with brewedAt as an ISO string', async () => {
@@ -140,7 +138,7 @@ describe('BrewLogForm', () => {
   it('resets all fields when initialValues change', async () => {
     const onSubmit = vi.fn<(values: BrewLogFormValues) => Promise<void>>();
     const { rerender } = render(
-      <BrewLogForm initialValues={initialValues} onSubmit={onSubmit} submitLabel='Save' />,
+      <BrewLogForm initialValues={initialValues} onSubmit={onSubmit} submitLabel="Save" />,
     );
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Notes'), ' and more');
@@ -152,7 +150,7 @@ describe('BrewLogForm', () => {
       notes: 'Bitter',
       personalRating: 5,
     };
-    rerender(<BrewLogForm initialValues={next} onSubmit={onSubmit} submitLabel='Save' />);
+    rerender(<BrewLogForm initialValues={next} onSubmit={onSubmit} submitLabel="Save" />);
 
     expect((screen.getByLabelText('Yield (g)') as HTMLInputElement).value).toBe('40');
     expect((screen.getByLabelText('Dose (g)') as HTMLInputElement).value).toBe('20');

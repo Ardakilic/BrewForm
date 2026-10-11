@@ -1,9 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { comments, recipes, recipeVersions, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -22,14 +21,17 @@ async function insertRecipeFixture(
     authorId: userId,
     visibility: 'public',
   });
-  const [version] = await db.insert(recipeVersions).values({
-    id: versionId,
-    recipeId,
-    versionNumber: 1,
-    brewMethod: 'v60',
-    drinkType: 'pour_over',
-    preparationNotes: '',
-  }).returning();
+  const [version] = await db
+    .insert(recipeVersions)
+    .values({
+      id: versionId,
+      recipeId,
+      versionNumber: 1,
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: '',
+    })
+    .returning();
   await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipeId));
   return { recipeId, versionId };
 }
@@ -38,7 +40,7 @@ async function insertRecipeFixture(
  * findById — Find a single comment by ID with the author profile joined.
  * Returns null if the comment has been soft-deleted or does not exist.
  */
-describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findById', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -99,7 +101,7 @@ describe('findById', { sanitizeOps: false, sanitizeResources: false }, () => {
  * replies joined. Returns `{ comments, total }` where each top-level comment
  * has a `replies` array (possibly empty). Excludes soft-deleted comments.
  */
-describe('findByRecipe', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findByRecipe', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -187,7 +189,7 @@ describe('findByRecipe', { sanitizeOps: false, sanitizeResources: false }, () =>
 /**
  * create — Insert a new comment and return the inserted row.
  */
-describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('create', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -237,7 +239,7 @@ describe('create', { sanitizeOps: false, sanitizeResources: false }, () => {
  * affects non-deleted comments (isNull(deletedAt) guard). Returns null if the
  * comment is already deleted or does not exist.
  */
-describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('softDelete', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -297,7 +299,7 @@ describe('softDelete', { sanitizeOps: false, sanitizeResources: false }, () => {
  * getRecipeAuthorId — Get the author ID of a recipe (used for permission
  * checks). Returns null if the recipe does not exist.
  */
-describe('getRecipeAuthorId', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getRecipeAuthorId', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;
@@ -337,7 +339,7 @@ describe('getRecipeAuthorId', { sanitizeOps: false, sanitizeResources: false }, 
  * visibility gate (D99.9). Excludes soft-deleted recipes; returns null when
  * the recipe does not exist.
  */
-describe('getRecipeForAccessCheck', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getRecipeForAccessCheck', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;

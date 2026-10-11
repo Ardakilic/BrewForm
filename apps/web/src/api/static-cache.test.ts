@@ -57,7 +57,8 @@ describe('static-cache', () => {
   });
 
   it('invalidateStaticCache re-arms the equipment fetch', async () => {
-    const spy = vi.spyOn(equipmentApi, 'list')
+    const spy = vi
+      .spyOn(equipmentApi, 'list')
       .mockResolvedValueOnce([
         {
           id: '1',
@@ -112,7 +113,8 @@ describe('static-cache', () => {
   });
 
   it('invalidateStaticCache re-arms the taste-notes fetch', async () => {
-    const spy = vi.spyOn(tasteApi, 'flat')
+    const spy = vi
+      .spyOn(tasteApi, 'flat')
       .mockResolvedValueOnce([
         {
           id: '1',

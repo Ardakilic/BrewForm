@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type React from 'react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
-import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FavouriteButton } from './FavouriteButton.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -44,14 +44,14 @@ beforeEach(() => {
 describe('FavouriteButton — Property 2 (no w-full class)', () => {
   it('button does not have w-full class when initialFavourited=false, initialCount=0', () => {
     renderWithRouter(
-      <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={0} />,
+      <FavouriteButton recipeId="recipe-1" initialFavourited={false} initialCount={0} />,
     );
     const button = screen.getByRole('button');
     expect(button.classList.contains('w-full')).toBe(false);
   });
 
   it('button does not have w-full class when initialFavourited=true, initialCount=3', () => {
-    renderWithRouter(<FavouriteButton recipeId='recipe-1' initialFavourited initialCount={3} />);
+    renderWithRouter(<FavouriteButton recipeId="recipe-1" initialFavourited initialCount={3} />);
     const button = screen.getByRole('button');
     expect(button.classList.contains('w-full')).toBe(false);
   });
@@ -60,7 +60,7 @@ describe('FavouriteButton — Property 2 (no w-full class)', () => {
 describe('FavouriteButton — Requirement 1.5 (count display)', () => {
   it('renders "0" when initialCount=0', () => {
     renderWithRouter(
-      <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={0} />,
+      <FavouriteButton recipeId="recipe-1" initialFavourited={false} initialCount={0} />,
     );
     const button = screen.getByRole('button');
     expect(button.textContent).toContain('0');
@@ -68,7 +68,7 @@ describe('FavouriteButton — Requirement 1.5 (count display)', () => {
 
   it('renders "4" when initialCount=4', () => {
     renderWithRouter(
-      <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={4} />,
+      <FavouriteButton recipeId="recipe-1" initialFavourited={false} initialCount={4} />,
     );
     const button = screen.getByRole('button');
     expect(button.textContent).toContain('4');
@@ -79,7 +79,7 @@ describe('FavouriteButton — click interaction', () => {
   it('clicking the button triggers optimistic count update and disables while pending', async () => {
     const user = userEvent.setup();
     renderWithRouter(
-      <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />,
+      <FavouriteButton recipeId="recipe-1" initialFavourited={false} initialCount={5} />,
     );
     const button = screen.getByRole('button');
     expect(button.textContent).toContain('5');
@@ -101,7 +101,7 @@ describe('FavouriteButton — action failure rollback', () => {
         {
           path: '/',
           element: (
-            <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />
+            <FavouriteButton recipeId="recipe-1" initialFavourited={false} initialCount={5} />
           ),
           children: [
             {
@@ -132,7 +132,7 @@ describe('FavouriteButton — action failure rollback', () => {
         {
           path: '/',
           element: (
-            <FavouriteButton recipeId='recipe-1' initialFavourited={false} initialCount={5} />
+            <FavouriteButton recipeId="recipe-1" initialFavourited={false} initialCount={5} />
           ),
           children: [
             {

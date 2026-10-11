@@ -1,11 +1,11 @@
-import { Hono } from 'hono';
-import { describeRoute } from 'hono-openapi';
+import type { db as DbType } from '@brewform/db';
 import { recipes, users } from '@brewform/db/schema';
 import { and, desc, eq, isNull } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { describeRoute } from 'hono-openapi';
 import { config } from '../config/index.ts';
 import type { AppEnv } from '../types/hono.ts';
 import { cacheProvider } from '../utils/cache/singleton.ts';
-import type { db as DbType } from '@brewform/db';
 
 /** Hono router for the XML sitemap, mounted at `/api/v1/sitemap.xml` in `routes/index.ts`. */
 const sitemap = new Hono<AppEnv>();
@@ -52,9 +52,7 @@ export const deps = {
         updatedAt: recipes.updatedAt,
       })
       .from(recipes)
-      .where(
-        and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt)),
-      )
+      .where(and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt)))
       .orderBy(desc(recipes.updatedAt));
   },
   getActiveUsers: async () => {
@@ -66,9 +64,7 @@ export const deps = {
       })
       .from(users)
       .innerJoin(recipes, eq(recipes.authorId, users.id))
-      .where(
-        and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt)),
-      );
+      .where(and(eq(recipes.visibility, 'public'), isNull(recipes.deletedAt)));
   },
 };
 
@@ -167,13 +163,14 @@ sitemap.get(
     }
 
     if (inFlightSitemapBuildPromise) {
-      return inFlightSitemapBuildPromise.then((xml) =>
-        new Response(xml, {
-          headers: {
-            'Content-Type': 'application/xml; charset=utf-8',
-            'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-          },
-        })
+      return inFlightSitemapBuildPromise.then(
+        (xml) =>
+          new Response(xml, {
+            headers: {
+              'Content-Type': 'application/xml; charset=utf-8',
+              'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+            },
+          }),
       );
     }
 

@@ -12,8 +12,10 @@ interface SectionProps {
  */
 export function Section({ title, children }: SectionProps) {
   return (
-    <div className='card'>
-      <h2 className='font-semibold mb-4' style={{ color: 'var(--text-primary)' }}>{title}</h2>
+    <div className="card">
+      <h2 className="font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+        {title}
+      </h2>
       {children}
     </div>
   );

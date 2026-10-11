@@ -1,11 +1,10 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import { Hono } from 'hono';
-import { setCacheProvider } from '../../utils/cache/singleton.ts';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import userRouter from './index.ts';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
+import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import userRouter from './index.ts';
 
 /**
  * Pre-auth route tests for the users router (`/api/v1/users`).
@@ -26,76 +25,72 @@ function createTestApp() {
   return app;
 }
 
-describe(
-  'User Routes — pre-auth & validation',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    beforeEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
-    });
+describe('User Routes — pre-auth & validation', () => {
+  beforeEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
 
-    afterEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
-    });
+  afterEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
 
-    describe('GET /api/v1/users/me', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/users/me');
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
+  describe('GET /api/v1/users/me', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/users/me');
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
+    });
+  });
+
+  describe('PATCH /api/v1/users/me', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: 'New Name' }),
       });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
 
-    describe('PATCH /api/v1/users/me', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/users/me', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ displayName: 'New Name' }),
-        });
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
+    it('returns 401 (auth gate) when the body is invalid AND no token is present', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarUrl: 'not-a-url' }),
       });
-
-      it('returns 401 (auth gate) when the body is invalid AND no token is present', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/users/me', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ avatarUrl: 'not-a-url' }),
-        });
-        expect(res.status).toBe(401);
-      });
+      expect(res.status).toBe(401);
     });
+  });
 
-    describe('DELETE /api/v1/users/me', () => {
-      it('returns 401 when no Authorization header is present', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/users/me', {
-          method: 'DELETE',
-        });
-        expect(res.status).toBe(401);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('UNAUTHORIZED');
+  describe('DELETE /api/v1/users/me', () => {
+    it('returns 401 when no Authorization header is present', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/users/me', {
+        method: 'DELETE',
       });
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('UNAUTHORIZED');
     });
+  });
 
-    describe('GET /api/v1/users/:username', () => {
-      it('returns 404 for a username that does not exist', async () => {
-        const app = createTestApp();
-        const res = await app.request('/api/v1/users/definitely-no-such-user-xyz');
-        expect(res.status).toBe(404);
-        const body = await res.json();
-        expect(body.success).toBe(false);
-        expect(body.error.code).toBe('NOT_FOUND');
-      });
+  describe('GET /api/v1/users/:username', () => {
+    it('returns 404 for a username that does not exist', async () => {
+      const app = createTestApp();
+      const res = await app.request('/api/v1/users/definitely-no-such-user-xyz');
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('NOT_FOUND');
     });
-  },
-);
+  });
+});

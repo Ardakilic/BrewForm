@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CollectionListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { CollectionListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddToCollectionModal } from './AddToCollectionModal.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────

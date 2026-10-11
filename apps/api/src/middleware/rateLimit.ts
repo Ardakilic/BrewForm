@@ -26,11 +26,9 @@ interface RateLimitEntry {
  * @param options.keyPrefix - Optional prefix for the cache key.
  * @returns Hono middleware that returns 429 when the limit is exceeded.
  */
-export function rateLimitMiddleware(options: {
-  windowMs?: number;
-  maxRequests?: number;
-  keyPrefix?: string;
-} = {}) {
+export function rateLimitMiddleware(
+  options: { windowMs?: number; maxRequests?: number; keyPrefix?: string } = {},
+) {
   const windowMs = options.windowMs || 60_000;
   const maxRequests = options.maxRequests || 100;
   const keyPrefix = options.keyPrefix || 'rate-limit';
@@ -58,14 +56,17 @@ export function rateLimitMiddleware(options: {
 
     if (current.count > maxRequests) {
       log.warn({ limit: maxRequests }, 'rateLimitMiddleware rate limit exceeded');
-      return c.json({
-        success: false,
-        error: {
-          code: 'RATE_LIMITED',
-          message: 'Too many requests, please try again later',
-          requestId: c.get('requestId'),
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'RATE_LIMITED',
+            message: 'Too many requests, please try again later',
+            requestId: c.get('requestId'),
+          },
         },
-      }, 429);
+        429,
+      );
     }
 
     await next();
@@ -80,10 +81,7 @@ export function rateLimitMiddleware(options: {
  * @param options.keyPrefix - Optional prefix for the cache key.
  * @returns Hono middleware that returns 429 when the attempt limit is exceeded.
  */
-export function authRateLimitMiddleware(options: {
-  windowMs?: number;
-  maxAttempts?: number;
-} = {}) {
+export function authRateLimitMiddleware(options: { windowMs?: number; maxAttempts?: number } = {}) {
   const windowMs = options.windowMs || 15 * 60_000;
   const maxAttempts = options.maxAttempts || 5;
 
@@ -111,14 +109,17 @@ export function authRateLimitMiddleware(options: {
     if (current.count > maxAttempts) {
       const userId = c.get('userId');
       log.warn({ userId, limit: maxAttempts }, 'authRateLimitMiddleware rate limit exceeded');
-      return c.json({
-        success: false,
-        error: {
-          code: 'RATE_LIMITED',
-          message: 'Too many login attempts, please try again later',
-          requestId: c.get('requestId'),
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'RATE_LIMITED',
+            message: 'Too many login attempts, please try again later',
+            requestId: c.get('requestId'),
+          },
         },
-      }, 429);
+        429,
+      );
     }
 
     await next();

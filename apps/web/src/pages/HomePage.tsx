@@ -1,12 +1,12 @@
+import type { RecipeListItemOutput } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData, useNavigation } from 'react-router';
+import { createLogger } from '@/utils/logger.ts';
 import { recipeApi } from '../api/index.ts';
-import type { RecipeListItemOutput } from '@brewform/shared/schemas';
-import { useTranslation } from '../contexts/I18nContext.tsx';
+import { RecipeCard } from '../components/recipe-list/index.ts';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { RecipeCardSkeletonGrid } from '../components/ui/Skeleton.tsx';
-import { RecipeCard } from '../components/recipe-list/index.ts';
-import { createLogger } from '@/utils/logger.ts';
+import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const log = createLogger('HomePage');
 
@@ -52,43 +52,51 @@ export function HomePage() {
   return (
     <div>
       <SEOHead title={t('seo.home.title')} />
-      <section className='mx-auto max-w-6xl px-6 py-12 text-center'>
-        <h1 className='text-4xl font-bold' style={{ color: 'var(--accent-primary)' }}>
+      <section className="mx-auto max-w-6xl px-6 py-12 text-center">
+        <h1 className="text-4xl font-bold" style={{ color: 'var(--accent-primary)' }}>
           ☕ {t('app.name')}
         </h1>
-        <p className='mt-4 text-lg' style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-4 text-lg" style={{ color: 'var(--text-secondary)' }}>
           {t('app.tagline')}
         </p>
-        <div className='mt-6 flex justify-center gap-4'>
-          <Link to='/recipes' className='btn-primary'>{t('common.browseRecipes')}</Link>
-          <Link to='/register' className='btn-secondary'>{t('nav.register')}</Link>
+        <div className="mt-6 flex justify-center gap-4">
+          <Link to="/recipes" className="btn-primary">
+            {t('common.browseRecipes')}
+          </Link>
+          <Link to="/register" className="btn-secondary">
+            {t('nav.register')}
+          </Link>
         </div>
       </section>
 
-      <section className='mx-auto max-w-6xl px-6 py-8'>
-        <h2 className='mb-4 text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <section className="mx-auto max-w-6xl px-6 py-8">
+        <h2 className="mb-4 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('home.latestRecipes')}
         </h2>
-        {loading
-          ? <RecipeCardSkeletonGrid count={6} />
-          : (
-            <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
-              {latestRecipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
-            </div>
-          )}
+        {loading ? (
+          <RecipeCardSkeletonGrid count={6} />
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {latestRecipes.map((r) => (
+              <RecipeCard key={r.id} recipe={r} />
+            ))}
+          </div>
+        )}
       </section>
 
-      <section className='mx-auto max-w-6xl px-6 py-8'>
-        <h2 className='mb-4 text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <section className="mx-auto max-w-6xl px-6 py-8">
+        <h2 className="mb-4 text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('home.popularRecipes')}
         </h2>
-        {loading
-          ? <RecipeCardSkeletonGrid count={6} />
-          : (
-            <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
-              {popularRecipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
-            </div>
-          )}
+        {loading ? (
+          <RecipeCardSkeletonGrid count={6} />
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {popularRecipes.map((r) => (
+              <RecipeCard key={r.id} recipe={r} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

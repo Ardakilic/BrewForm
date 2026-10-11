@@ -1,7 +1,7 @@
-import { equipment } from '@brewform/db/schema';
-import * as model from './model.ts';
-import { createLogger } from '../../utils/logger/index.ts';
+import type { equipment } from '@brewform/db/schema';
 import { cacheProvider } from '../../utils/cache/singleton.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+import * as model from './model.ts';
 
 /**
  * Equipment service.
@@ -74,10 +74,7 @@ export async function searchEquipment(query: string) {
 /**
  * Create a new equipment record owned by the given user.
  */
-export async function createEquipment(
-  userId: string,
-  data: typeof equipment.$inferInsert,
-) {
+export async function createEquipment(userId: string, data: typeof equipment.$inferInsert) {
   log.debug({ userId }, 'createEquipment started');
   const result = await model.create({
     ...data,
@@ -155,11 +152,7 @@ export async function requestEquipmentDeletion(
 /**
  * Get recipes that use the given equipment, paginated.
  */
-export async function getRecipesForEquipment(
-  equipmentId: string,
-  page: number,
-  perPage: number,
-) {
+export async function getRecipesForEquipment(equipmentId: string, page: number, perPage: number) {
   log.debug({ equipmentId, page, perPage }, 'getRecipesForEquipment started');
   const result = await model.getRecipesUsingEquipment(equipmentId, page, perPage);
   log.debug({ equipmentId }, 'getRecipesForEquipment completed');

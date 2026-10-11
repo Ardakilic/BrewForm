@@ -1,7 +1,7 @@
+import type { BrewLogListItemOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { brewLogApi } from '../../api/index.ts';
-import type { BrewLogListItemOutput } from '@brewform/shared/schemas';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { BrewLogCard } from './BrewLogCard.tsx';
 
@@ -24,7 +24,8 @@ export function BrewHistorySection({ recipeId, currentVersionId }: BrewHistorySe
 
   useEffect(() => {
     let cancelled = false;
-    brewLogApi.listForRecipe(recipeId, { page: 1, perPage: HISTORY_PER_PAGE })
+    brewLogApi
+      .listForRecipe(recipeId, { page: 1, perPage: HISTORY_PER_PAGE })
       .then((response) => {
         if (!cancelled) setLogs(response.data);
       })
@@ -41,28 +42,25 @@ export function BrewHistorySection({ recipeId, currentVersionId }: BrewHistorySe
     : `recipeId=${recipeId}`;
 
   return (
-    <section className='card' data-testid='brew-history-section'>
-      <div className='flex items-center justify-between mb-4'>
-        <h2 className='text-lg font-semibold' style={{ color: 'var(--text-primary)' }}>
+    <section className="card" data-testid="brew-history-section">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
           {t('brewLog.history.title')}
         </h2>
-        <Link
-          to={`/brew-logs/new?${brewAgainQuery}`}
-          className='btn-secondary text-sm'
-        >
+        <Link to={`/brew-logs/new?${brewAgainQuery}`} className="btn-secondary text-sm">
           {t('brewLog.history.brewAgain')}
         </Link>
       </div>
 
-      {logs === null
-        ? null
-        : logs.length === 0
-        ? <p style={{ color: 'var(--text-tertiary)' }}>{t('brewLog.history.empty')}</p>
-        : (
-          <div className='space-y-3'>
-            {logs.map((entry) => <BrewLogCard key={entry.id} log={entry} showRecipe={false} />)}
-          </div>
-        )}
+      {logs === null ? null : logs.length === 0 ? (
+        <p style={{ color: 'var(--text-tertiary)' }}>{t('brewLog.history.empty')}</p>
+      ) : (
+        <div className="space-y-3">
+          {logs.map((entry) => (
+            <BrewLogCard key={entry.id} log={entry} showRecipe={false} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

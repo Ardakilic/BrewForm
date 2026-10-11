@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider, useTheme } from './ThemeContext.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -21,14 +21,14 @@ function TestConsumer() {
   const { theme, setTheme } = useTheme();
   return (
     <div>
-      <span data-testid='theme'>{theme}</span>
-      <button type='button' onClick={() => setTheme('dark')} data-testid='switch-dark'>
+      <span data-testid="theme">{theme}</span>
+      <button type="button" onClick={() => setTheme('dark')} data-testid="switch-dark">
         Switch to Dark
       </button>
-      <button type='button' onClick={() => setTheme('coffee')} data-testid='switch-coffee'>
+      <button type="button" onClick={() => setTheme('coffee')} data-testid="switch-coffee">
         Switch to Coffee
       </button>
-      <button type='button' onClick={() => setTheme('light')} data-testid='switch-light'>
+      <button type="button" onClick={() => setTheme('light')} data-testid="switch-light">
         Switch to Light
       </button>
     </div>

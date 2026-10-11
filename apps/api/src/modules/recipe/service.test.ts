@@ -1,7 +1,4 @@
 import '../../test-setup.ts';
-import { afterAll, afterEach, beforeAll, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check';
 import { db } from '@brewform/db';
 import {
   notifications,
@@ -12,17 +9,25 @@ import {
   userRecipeLikes,
   users,
 } from '@brewform/db/schema';
-import { and, eq, inArray } from 'drizzle-orm';
-import * as model from './model.ts';
-import * as service from './service.ts';
-import { canViewRecipe } from './service.ts';
-import { computeBrewRatio, computeExtractionYield, computeFlowRate } from '@brewform/shared/utils';
-import { encodeCursor, ensureUniqueSlug, generateSlug } from '@brewform/shared/utils';
 import {
   RecipeCreateObjectSchema,
   RecipeCreateSchema,
   RecipeFilterSchema,
 } from '@brewform/shared/schemas';
+import {
+  computeBrewRatio,
+  computeExtractionYield,
+  computeFlowRate,
+  encodeCursor,
+  ensureUniqueSlug,
+  generateSlug,
+} from '@brewform/shared/utils';
+import { and, eq, inArray } from 'drizzle-orm';
+import fc from 'fast-check';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import * as model from './model.ts';
+import * as service from './service.ts';
+import { canViewRecipe } from './service.ts';
 
 describe('Recipe Service Logic', () => {
   describe('Slug generation', () => {
@@ -77,7 +82,9 @@ describe('Recipe Service Logic', () => {
     it('should prevent forking of private recipes by non-authors', () => {
       const recipe = { visibility: 'private', authorId: 'user-1' };
       const currentUserId = 'user-2';
-      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' ||
+      const canFork =
+        recipe.visibility === 'public' ||
+        recipe.visibility === 'unlisted' ||
         recipe.authorId === currentUserId;
       expect(canFork).toBe(false);
     });
@@ -85,7 +92,9 @@ describe('Recipe Service Logic', () => {
     it('should allow forking of public recipes by anyone', () => {
       const recipe = { visibility: 'public', authorId: 'user-1' };
       const currentUserId = 'user-2';
-      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' ||
+      const canFork =
+        recipe.visibility === 'public' ||
+        recipe.visibility === 'unlisted' ||
         recipe.authorId === currentUserId;
       expect(canFork).toBe(true);
     });
@@ -93,7 +102,9 @@ describe('Recipe Service Logic', () => {
     it('should allow author to fork their own private recipe', () => {
       const recipe = { visibility: 'private', authorId: 'user-1' };
       const currentUserId = 'user-1';
-      const canFork = recipe.visibility === 'public' || recipe.visibility === 'unlisted' ||
+      const canFork =
+        recipe.visibility === 'public' ||
+        recipe.visibility === 'unlisted' ||
         recipe.authorId === currentUserId;
       expect(canFork).toBe(true);
     });
@@ -405,19 +416,19 @@ describe('tasteNoteIds AND logic filtering', () => {
     tasteNoteId: 'recipeTasteNotes.tasteNoteId',
   };
 
-  // deno-lint-ignore no-explicit-any -- test mock parameter
+  // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
   const db: any = {
     select: () => ({
-      // deno-lint-ignore no-explicit-any -- test mock parameter
+      // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
       from: (_table: any) => ({
         where: (cond: unknown) => cond,
       }),
     }),
   };
 
-  // deno-lint-ignore no-explicit-any require-await -- test mock parameter
+  // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
   async function listRecipes_withTasteNoteFilters(filters: any, page: number, perPage: number) {
-    // deno-lint-ignore no-explicit-any -- test mock array
+    // biome-ignore lint/suspicious/noExplicitAny: test mock array
     const conditions: any[] = [eq(recipes.visibility, 'public')];
 
     if (filters.tasteNoteIds) {
@@ -427,7 +438,8 @@ describe('tasteNoteIds AND logic filtering', () => {
         conditions.push(
           inArray(
             recipes.currentVersionId,
-            db.select({ id: recipeTasteNotes.recipeVersionId })
+            db
+              .select({ id: recipeTasteNotes.recipeVersionId })
               .from(recipeTasteNotes)
               .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
           ),
@@ -441,33 +453,30 @@ describe('tasteNoteIds AND logic filtering', () => {
 
   it('PBT: for any subset of 1–10 taste note IDs, parsing splits correctly and generates the right number of conditions', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }),
-        async (ids) => {
-          capturedConditions = [];
-          const tasteNoteIds = ids.join(',');
-          await listRecipes_withTasteNoteFilters({ tasteNoteIds }, 1, 20);
+      fc.asyncProperty(fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }), async (ids) => {
+        capturedConditions = [];
+        const tasteNoteIds = ids.join(',');
+        await listRecipes_withTasteNoteFilters({ tasteNoteIds }, 1, 20);
 
-          // First condition is visibility eq
-          expect(capturedConditions.length).toBe(1 + ids.length);
+        // First condition is visibility eq
+        expect(capturedConditions.length).toBe(1 + ids.length);
 
-          const tasteNoteConditions = capturedConditions.filter(
-            (c) => c.type === 'inArray' && c.column === 'recipes.currentVersionId',
+        const tasteNoteConditions = capturedConditions.filter(
+          (c) => c.type === 'inArray' && c.column === 'recipes.currentVersionId',
+        );
+        expect(tasteNoteConditions.length).toBe(ids.length);
+
+        // Verify each ID appears in exactly one condition
+        ids.forEach((noteId) => {
+          const matching = tasteNoteConditions.filter(
+            (c) =>
+              (c.value as Condition).type === 'eq' &&
+              (c.value as Condition).column === 'recipeTasteNotes.tasteNoteId' &&
+              (c.value as Condition).value === noteId,
           );
-          expect(tasteNoteConditions.length).toBe(ids.length);
-
-          // Verify each ID appears in exactly one condition
-          ids.forEach((noteId) => {
-            const matching = tasteNoteConditions.filter(
-              (c) =>
-                (c.value as Condition).type === 'eq' &&
-                (c.value as Condition).column === 'recipeTasteNotes.tasteNoteId' &&
-                (c.value as Condition).value === noteId,
-            );
-            expect(matching.length).toBe(1);
-          });
-        },
-      ),
+          expect(matching.length).toBe(1);
+        });
+      }),
       { numRuns: 100 },
     );
   });
@@ -548,539 +557,569 @@ describe('canViewRecipe', () => {
  * lookup (slug vs id), authorization errors (FORBIDDEN / RECIPE_NOT_FOUND),
  * the like/favourite/feature toggles, notes, metadata, forking, and updates.
  */
-describe(
-  'Recipe Service — DB integration',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    let author: typeof users.$inferSelect;
-    let other: typeof users.$inferSelect;
-    const createdRecipes: string[] = [];
-    const createdUsers: string[] = [];
+describe('Recipe Service — DB integration', () => {
+  let author: typeof users.$inferSelect;
+  let other: typeof users.$inferSelect;
+  const createdRecipes: string[] = [];
+  const createdUsers: string[] = [];
 
-    async function makeUser(prefix: string) {
-      const id = crypto.randomUUID();
-      const [user] = await db.insert(users).values({
+  async function makeUser(prefix: string) {
+    const id = crypto.randomUUID();
+    const [user] = await db
+      .insert(users)
+      .values({
         id,
         email: `${prefix}-${id}@example.com`,
         username: `${prefix}-${id.slice(0, 8)}`,
         passwordHash: 'hash',
-      }).returning();
-      createdUsers.push(user.id);
-      return user;
-    }
+      })
+      .returning();
+    createdUsers.push(user.id);
+    return user;
+  }
 
-    /** Insert a recipe + first version, linking `currentVersionId`. */
-    async function makeRecipe(
-      authorId: string,
-      title: string,
-      visibility: 'public' | 'draft' | 'private' | 'unlisted' = 'public',
-    ) {
-      const recipeId = crypto.randomUUID();
-      const [recipe] = await db.insert(recipes).values({
+  /** Insert a recipe + first version, linking `currentVersionId`. */
+  async function makeRecipe(
+    authorId: string,
+    title: string,
+    visibility: 'public' | 'draft' | 'private' | 'unlisted' = 'public',
+  ) {
+    const recipeId = crypto.randomUUID();
+    const [recipe] = await db
+      .insert(recipes)
+      .values({
         id: recipeId,
         slug: `slug-${recipeId.slice(0, 8)}`,
         title,
         authorId,
         visibility,
-      }).returning();
-      createdRecipes.push(recipe.id);
-      const [version] = await db.insert(recipeVersions).values({
+      })
+      .returning();
+    createdRecipes.push(recipe.id);
+    const [version] = await db
+      .insert(recipeVersions)
+      .values({
         recipeId: recipe.id,
         versionNumber: 1,
         brewMethod: 'v60',
         drinkType: 'pour_over',
         preparationNotes: 'test preparation',
-      }).returning();
-      await db.update(recipes).set({ currentVersionId: version.id }).where(
-        eq(recipes.id, recipe.id),
-      );
-      return recipe;
-    }
+      })
+      .returning();
+    await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
+    return recipe;
+  }
 
-    /** Insert a recipe with no version (currentVersionId stays null). */
-    async function makeBareRecipe(authorId: string, title: string) {
-      const recipeId = crypto.randomUUID();
-      const [recipe] = await db.insert(recipes).values({
+  /** Insert a recipe with no version (currentVersionId stays null). */
+  async function makeBareRecipe(authorId: string, title: string) {
+    const recipeId = crypto.randomUUID();
+    const [recipe] = await db
+      .insert(recipes)
+      .values({
         id: recipeId,
         slug: `slug-${recipeId.slice(0, 8)}`,
         title,
         authorId,
         visibility: 'public',
-      }).returning();
-      createdRecipes.push(recipe.id);
-      return recipe;
-    }
+      })
+      .returning();
+    createdRecipes.push(recipe.id);
+    return recipe;
+  }
 
-    /** Delete a user, draining the fire-and-forget badge-evaluation race. */
-    async function deleteUserWithBadges(userId: string) {
-      for (let attempt = 0;; attempt++) {
-        await db.delete(userBadges).where(eq(userBadges.userId, userId));
-        try {
-          await db.delete(users).where(eq(users.id, userId));
-          return;
-        } catch (err) {
-          if (attempt >= 9) throw err;
-          await new Promise((resolve) => setTimeout(resolve, 20));
-        }
+  /** Delete a user, draining the fire-and-forget badge-evaluation race. */
+  async function deleteUserWithBadges(userId: string) {
+    for (let attempt = 0; ; attempt++) {
+      await db.delete(userBadges).where(eq(userBadges.userId, userId));
+      try {
+        await db.delete(users).where(eq(users.id, userId));
+        return;
+      } catch (err) {
+        if (attempt >= 9) throw err;
+        await new Promise((resolve) => setTimeout(resolve, 20));
       }
     }
+  }
 
-    beforeAll(async () => {
-      author = await makeUser('svc-author');
-      other = await makeUser('svc-other');
+  beforeAll(async () => {
+    author = await makeUser('svc-author');
+    other = await makeUser('svc-other');
+  });
+
+  afterEach(async () => {
+    // F05 fan-out: toggleLike may leave a `like` notification row for the author.
+    // Clean these between tests so the polling assertions below stay isolated
+    // (userId cascades on user delete in afterAll; this just prevents leakage).
+    await db.delete(notifications).where(inArray(notifications.userId, [author.id, other.id]));
+    if (createdRecipes.length) {
+      await db.delete(userRecipeLikes).where(inArray(userRecipeLikes.recipeId, createdRecipes));
+      await db
+        .delete(userRecipeFavourites)
+        .where(inArray(userRecipeFavourites.recipeId, createdRecipes));
+      await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipes));
+      await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+      createdRecipes.length = 0;
+    }
+  });
+
+  afterAll(async () => {
+    if (createdRecipes.length) {
+      await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipes));
+      await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
+    }
+    for (const userId of createdUsers) {
+      await deleteUserWithBadges(userId);
+    }
+  });
+
+  describe('getRecipe', () => {
+    it('should resolve a recipe by id', async () => {
+      const recipe = await makeRecipe(author.id, 'Get By Id');
+      const found = await service.getRecipe(recipe.id);
+      expect(found.id).toBe(recipe.id);
     });
 
-    afterEach(async () => {
-      // F05 fan-out: toggleLike may leave a `like` notification row for the author.
-      // Clean these between tests so the polling assertions below stay isolated
-      // (userId cascades on user delete in afterAll; this just prevents leakage).
-      await db.delete(notifications).where(inArray(notifications.userId, [author.id, other.id]));
-      if (createdRecipes.length) {
-        await db.delete(userRecipeLikes).where(inArray(userRecipeLikes.recipeId, createdRecipes));
-        await db.delete(userRecipeFavourites).where(
-          inArray(userRecipeFavourites.recipeId, createdRecipes),
-        );
-        await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipes));
-        await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
-        createdRecipes.length = 0;
+    it('should resolve a recipe by slug', async () => {
+      const recipe = await makeRecipe(author.id, 'Get By Slug');
+      const found = await service.getRecipe(recipe.slug);
+      expect(found.id).toBe(recipe.id);
+    });
+
+    it('should throw RECIPE_NOT_FOUND for an unknown slug', async () => {
+      await expect(service.getRecipe('no-such-slug')).rejects.toThrow('RECIPE_NOT_FOUND');
+    });
+  });
+
+  describe('deleteRecipe', () => {
+    it('should soft-delete the recipe for its author', async () => {
+      const recipe = await makeRecipe(author.id, 'Delete Mine');
+      await service.deleteRecipe(recipe.id, author.id);
+      const found = await model.findById(recipe.id);
+      expect(found).toBeUndefined();
+    });
+
+    it('should throw FORBIDDEN for a non-author', async () => {
+      const recipe = await makeRecipe(author.id, 'Delete Forbidden');
+      await expect(service.deleteRecipe(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
+    });
+
+    it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+      await expect(service.deleteRecipe(crypto.randomUUID(), author.id)).rejects.toThrow(
+        'RECIPE_NOT_FOUND',
+      );
+    });
+  });
+
+  describe('toggleLike', () => {
+    it('should like then unlike a recipe', async () => {
+      const recipe = await makeRecipe(author.id, 'Like Toggle');
+      const first = await service.toggleLike(author.id, recipe.id);
+      expect(first.liked).toBe(true);
+      const second = await service.toggleLike(author.id, recipe.id);
+      expect(second.liked).toBe(false);
+    });
+
+    it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+      await expect(service.toggleLike(author.id, crypto.randomUUID())).rejects.toThrow(
+        'RECIPE_NOT_FOUND',
+      );
+    });
+
+    // F05 fan-out polling helper: toggleLike fires createLikeNotification via
+    // a fire-and-forget IIFE. Returns true if the `like` notification row
+    // appears within ~1.5s.
+    async function likeNotificationAppeared(
+      authorId: string,
+      likerId: string,
+      recipeId: string,
+      timeoutMs = 1500,
+    ): Promise<boolean> {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        const rows = await db
+          .select()
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.userId, authorId),
+              eq(notifications.actorId, likerId),
+              eq(notifications.type, 'like'),
+              eq(notifications.referenceId, recipeId),
+            ),
+          );
+        if (rows.length > 0) return true;
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
+      return false;
+    }
+
+    it('createLikeNotification invoked when like toggles ON and liker != author', async () => {
+      const recipe = await makeRecipe(author.id, 'Like Notify Fanout');
+      await service.toggleLike(other.id, recipe.id);
+      expect(await likeNotificationAppeared(author.id, other.id, recipe.id)).toBe(true);
     });
 
-    afterAll(async () => {
-      if (createdRecipes.length) {
-        await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipes));
-        await db.delete(recipes).where(inArray(recipes.id, createdRecipes));
-      }
-      for (const userId of createdUsers) {
-        await deleteUserWithBadges(userId);
-      }
-    });
-
-    describe('getRecipe', () => {
-      it('should resolve a recipe by id', async () => {
-        const recipe = await makeRecipe(author.id, 'Get By Id');
-        const found = await service.getRecipe(recipe.id);
-        expect(found.id).toBe(recipe.id);
-      });
-
-      it('should resolve a recipe by slug', async () => {
-        const recipe = await makeRecipe(author.id, 'Get By Slug');
-        const found = await service.getRecipe(recipe.slug);
-        expect(found.id).toBe(recipe.id);
-      });
-
-      it('should throw RECIPE_NOT_FOUND for an unknown slug', async () => {
-        await expect(service.getRecipe('no-such-slug')).rejects.toThrow('RECIPE_NOT_FOUND');
-      });
-    });
-
-    describe('deleteRecipe', () => {
-      it('should soft-delete the recipe for its author', async () => {
-        const recipe = await makeRecipe(author.id, 'Delete Mine');
-        await service.deleteRecipe(recipe.id, author.id);
-        const found = await model.findById(recipe.id);
-        expect(found).toBeUndefined();
-      });
-
-      it('should throw FORBIDDEN for a non-author', async () => {
-        const recipe = await makeRecipe(author.id, 'Delete Forbidden');
-        await expect(service.deleteRecipe(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
-      });
-
-      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
-        await expect(service.deleteRecipe(crypto.randomUUID(), author.id)).rejects.toThrow(
-          'RECIPE_NOT_FOUND',
-        );
-      });
-    });
-
-    describe('toggleLike', () => {
-      it('should like then unlike a recipe', async () => {
-        const recipe = await makeRecipe(author.id, 'Like Toggle');
-        const first = await service.toggleLike(author.id, recipe.id);
-        expect(first.liked).toBe(true);
-        const second = await service.toggleLike(author.id, recipe.id);
-        expect(second.liked).toBe(false);
-      });
-
-      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
-        await expect(service.toggleLike(author.id, crypto.randomUUID())).rejects.toThrow(
-          'RECIPE_NOT_FOUND',
-        );
-      });
-
-      // F05 fan-out polling helper: toggleLike fires createLikeNotification via
-      // a fire-and-forget IIFE. Returns true if the `like` notification row
-      // appears within ~1.5s.
-      async function likeNotificationAppeared(
-        authorId: string,
-        likerId: string,
-        recipeId: string,
-        timeoutMs = 1500,
-      ): Promise<boolean> {
-        const start = Date.now();
-        while (Date.now() - start < timeoutMs) {
-          const rows = await db.select().from(notifications).where(and(
-            eq(notifications.userId, authorId),
-            eq(notifications.actorId, likerId),
+    it('createLikeNotification NOT invoked when like toggles OFF', async () => {
+      const recipe = await makeRecipe(author.id, 'Like Off No Notify');
+      // First toggle ON creates a like + notification; drain the fan-out.
+      await service.toggleLike(other.id, recipe.id);
+      await likeNotificationAppeared(author.id, other.id, recipe.id);
+      const before = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, author.id),
+            eq(notifications.actorId, other.id),
             eq(notifications.type, 'like'),
-            eq(notifications.referenceId, recipeId),
-          ));
-          if (rows.length > 0) return true;
-          await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-        return false;
-      }
-
-      it('createLikeNotification invoked when like toggles ON and liker != author', async () => {
-        const recipe = await makeRecipe(author.id, 'Like Notify Fanout');
-        await service.toggleLike(other.id, recipe.id);
-        expect(await likeNotificationAppeared(author.id, other.id, recipe.id)).toBe(true);
-      });
-
-      it('createLikeNotification NOT invoked when like toggles OFF', async () => {
-        const recipe = await makeRecipe(author.id, 'Like Off No Notify');
-        // First toggle ON creates a like + notification; drain the fan-out.
-        await service.toggleLike(other.id, recipe.id);
-        await likeNotificationAppeared(author.id, other.id, recipe.id);
-        const before = await db.select().from(notifications).where(and(
-          eq(notifications.userId, author.id),
-          eq(notifications.actorId, other.id),
-          eq(notifications.type, 'like'),
-          eq(notifications.referenceId, recipe.id),
-        ));
-        // Toggle OFF — `result.liked` is false, the notification IIFE is not spawned.
-        await service.toggleLike(other.id, recipe.id);
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        const after = await db.select().from(notifications).where(and(
-          eq(notifications.userId, author.id),
-          eq(notifications.actorId, other.id),
-          eq(notifications.type, 'like'),
-          eq(notifications.referenceId, recipe.id),
-        ));
-        expect(after.length).toBe(before.length);
-      });
-
-      it('createLikeNotification NOT invoked when liker === recipe author (self-like)', async () => {
-        const recipe = await makeRecipe(author.id, 'Self Like No Notify');
-        await service.toggleLike(author.id, recipe.id);
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        const rows = await db.select().from(notifications).where(and(
-          eq(notifications.userId, author.id),
-          eq(notifications.actorId, author.id),
-          eq(notifications.type, 'like'),
-        ));
-        expect(rows.length).toBe(0);
-      });
-    });
-
-    describe('toggleFavourite', () => {
-      it('should favourite then unfavourite a recipe', async () => {
-        const recipe = await makeRecipe(author.id, 'Fav Toggle');
-        const first = await service.toggleFavourite(author.id, recipe.id);
-        expect(first.favourited).toBe(true);
-        const second = await service.toggleFavourite(author.id, recipe.id);
-        expect(second.favourited).toBe(false);
-      });
-
-      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
-        await expect(service.toggleFavourite(author.id, crypto.randomUUID())).rejects.toThrow(
-          'RECIPE_NOT_FOUND',
+            eq(notifications.referenceId, recipe.id),
+          ),
         );
-      });
-    });
-
-    describe('toggleFeature', () => {
-      it('should toggle the featured flag for the author', async () => {
-        const recipe = await makeRecipe(author.id, 'Feature Toggle');
-        const result = await service.toggleFeature(recipe.id, author.id);
-        expect(typeof result.featured).toBe('boolean');
-      });
-
-      it('should throw FORBIDDEN for a non-author', async () => {
-        const recipe = await makeRecipe(author.id, 'Feature Forbidden');
-        await expect(service.toggleFeature(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
-      });
-
-      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
-        await expect(service.toggleFeature(crypto.randomUUID(), author.id)).rejects.toThrow(
-          'RECIPE_NOT_FOUND',
+      // Toggle OFF — `result.liked` is false, the notification IIFE is not spawned.
+      await service.toggleLike(other.id, recipe.id);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const after = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, author.id),
+            eq(notifications.actorId, other.id),
+            eq(notifications.type, 'like'),
+            eq(notifications.referenceId, recipe.id),
+          ),
         );
-      });
+      expect(after.length).toBe(before.length);
     });
 
-    describe('saveNotes', () => {
-      it('should save notes on the current version', async () => {
-        const recipe = await makeRecipe(author.id, 'Notes OK');
-        await service.saveNotes(recipe.id, 'My personal notes');
-        const reloaded = await model.findById(recipe.id);
-        expect(reloaded?.versions?.[0]?.personalNotes).toBe('My personal notes');
-      });
-
-      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
-        await expect(service.saveNotes(crypto.randomUUID(), 'x')).rejects.toThrow(
-          'RECIPE_NOT_FOUND',
+    it('createLikeNotification NOT invoked when liker === recipe author (self-like)', async () => {
+      const recipe = await makeRecipe(author.id, 'Self Like No Notify');
+      await service.toggleLike(author.id, recipe.id);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const rows = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, author.id),
+            eq(notifications.actorId, author.id),
+            eq(notifications.type, 'like'),
+          ),
         );
-      });
+      expect(rows.length).toBe(0);
+    });
+  });
 
-      it('should throw RECIPE_NOT_FOUND when there is no current version', async () => {
-        const recipe = await makeBareRecipe(author.id, 'Notes No Version');
-        await expect(service.saveNotes(recipe.id, 'x')).rejects.toThrow('RECIPE_NOT_FOUND');
-      });
+  describe('toggleFavourite', () => {
+    it('should favourite then unfavourite a recipe', async () => {
+      const recipe = await makeRecipe(author.id, 'Fav Toggle');
+      const first = await service.toggleFavourite(author.id, recipe.id);
+      expect(first.favourited).toBe(true);
+      const second = await service.toggleFavourite(author.id, recipe.id);
+      expect(second.favourited).toBe(false);
     });
 
-    describe('getRecipeMeta', () => {
-      it('should return lightweight metadata for a slug', async () => {
-        const recipe = await makeRecipe(author.id, 'Meta Recipe');
-        const meta = await service.getRecipeMeta(recipe.slug);
-        expect(meta.id).toBe(recipe.id);
-        expect(meta.slug).toBe(recipe.slug);
-        expect(meta.title).toBe('Meta Recipe');
-        expect(meta.brewMethod).toBe('v60');
-      });
+    it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+      await expect(service.toggleFavourite(author.id, crypto.randomUUID())).rejects.toThrow(
+        'RECIPE_NOT_FOUND',
+      );
+    });
+  });
 
-      it('should throw RECIPE_NOT_FOUND for an unknown slug', async () => {
-        await expect(service.getRecipeMeta('no-such-slug')).rejects.toThrow('RECIPE_NOT_FOUND');
-      });
+  describe('toggleFeature', () => {
+    it('should toggle the featured flag for the author', async () => {
+      const recipe = await makeRecipe(author.id, 'Feature Toggle');
+      const result = await service.toggleFeature(recipe.id, author.id);
+      expect(typeof result.featured).toBe('boolean');
     });
 
-    describe('checkEquipmentCompatibility', () => {
-      it('should return no messages when all equipment is compatible', () => {
-        const messages = service.checkEquipmentCompatibility(
-          [{ id: 'e1', type: 'paper_filter' }],
-          'v60' as never,
-          [{ brewMethod: 'v60' as never, equipmentType: 'paper_filter', compatible: true }],
-        );
-        expect(messages).toEqual([]);
-      });
+    it('should throw FORBIDDEN for a non-author', async () => {
+      const recipe = await makeRecipe(author.id, 'Feature Forbidden');
+      await expect(service.toggleFeature(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
+    });
 
-      it('should report incompatible equipment', () => {
-        const messages = service.checkEquipmentCompatibility(
-          [{ id: 'e1', type: 'french_press' }],
-          'espresso_machine' as never,
-          [{
+    it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+      await expect(service.toggleFeature(crypto.randomUUID(), author.id)).rejects.toThrow(
+        'RECIPE_NOT_FOUND',
+      );
+    });
+  });
+
+  describe('saveNotes', () => {
+    it('should save notes on the current version', async () => {
+      const recipe = await makeRecipe(author.id, 'Notes OK');
+      await service.saveNotes(recipe.id, 'My personal notes');
+      const reloaded = await model.findById(recipe.id);
+      expect(reloaded?.versions?.[0]?.personalNotes).toBe('My personal notes');
+    });
+
+    it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+      await expect(service.saveNotes(crypto.randomUUID(), 'x')).rejects.toThrow('RECIPE_NOT_FOUND');
+    });
+
+    it('should throw RECIPE_NOT_FOUND when there is no current version', async () => {
+      const recipe = await makeBareRecipe(author.id, 'Notes No Version');
+      await expect(service.saveNotes(recipe.id, 'x')).rejects.toThrow('RECIPE_NOT_FOUND');
+    });
+  });
+
+  describe('getRecipeMeta', () => {
+    it('should return lightweight metadata for a slug', async () => {
+      const recipe = await makeRecipe(author.id, 'Meta Recipe');
+      const meta = await service.getRecipeMeta(recipe.slug);
+      expect(meta.id).toBe(recipe.id);
+      expect(meta.slug).toBe(recipe.slug);
+      expect(meta.title).toBe('Meta Recipe');
+      expect(meta.brewMethod).toBe('v60');
+    });
+
+    it('should throw RECIPE_NOT_FOUND for an unknown slug', async () => {
+      await expect(service.getRecipeMeta('no-such-slug')).rejects.toThrow('RECIPE_NOT_FOUND');
+    });
+  });
+
+  describe('checkEquipmentCompatibility', () => {
+    it('should return no messages when all equipment is compatible', () => {
+      const messages = service.checkEquipmentCompatibility(
+        [{ id: 'e1', type: 'paper_filter' }],
+        'v60' as never,
+        [{ brewMethod: 'v60' as never, equipmentType: 'paper_filter', compatible: true }],
+      );
+      expect(messages).toEqual([]);
+    });
+
+    it('should report incompatible equipment', () => {
+      const messages = service.checkEquipmentCompatibility(
+        [{ id: 'e1', type: 'french_press' }],
+        'espresso_machine' as never,
+        [
+          {
             brewMethod: 'espresso_machine' as never,
             equipmentType: 'french_press',
             compatible: false,
-          }],
-        );
-        expect(messages).toEqual(['french_press is not compatible with espresso_machine']);
-      });
-
-      it('should ignore equipment with no matching rule', () => {
-        const messages = service.checkEquipmentCompatibility(
-          [{ id: 'e1', type: 'unknown_thing' }],
-          'v60' as never,
-          [{ brewMethod: 'v60' as never, equipmentType: 'paper_filter', compatible: false }],
-        );
-        expect(messages).toEqual([]);
-      });
+          },
+        ],
+      );
+      expect(messages).toEqual(['french_press is not compatible with espresso_machine']);
     });
 
-    describe('forkRecipe', () => {
-      it('should throw RECIPE_NOT_FOUND for an unknown source', async () => {
-        await expect(service.forkRecipe(crypto.randomUUID(), author.id)).rejects.toThrow(
-          'RECIPE_NOT_FOUND',
-        );
-      });
+    it('should ignore equipment with no matching rule', () => {
+      const messages = service.checkEquipmentCompatibility(
+        [{ id: 'e1', type: 'unknown_thing' }],
+        'v60' as never,
+        [{ brewMethod: 'v60' as never, equipmentType: 'paper_filter', compatible: false }],
+      );
+      expect(messages).toEqual([]);
+    });
+  });
 
-      it('should throw FORBIDDEN when a non-author forks a draft', async () => {
-        const recipe = await makeRecipe(author.id, 'Fork Draft', 'draft');
-        await expect(service.forkRecipe(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
-      });
-
-      it('should fork a public recipe into a new draft', async () => {
-        const source = await makeRecipe(author.id, 'Fork Public Source', 'public');
-        const forked = await service.forkRecipe(source.id, other.id);
-        createdRecipes.push(forked.id);
-        expect(forked.authorId).toBe(other.id);
-        expect(forked.visibility).toBe('draft');
-        expect(forked.forkedFromId).toBe(source.id);
-      });
+  describe('forkRecipe', () => {
+    it('should throw RECIPE_NOT_FOUND for an unknown source', async () => {
+      await expect(service.forkRecipe(crypto.randomUUID(), author.id)).rejects.toThrow(
+        'RECIPE_NOT_FOUND',
+      );
     });
 
-    describe('updateRecipe', () => {
-      it('should update top-level fields without bumping the version', async () => {
-        const recipe = await makeRecipe(author.id, 'Update Title');
-        const updated = await service.updateRecipe(recipe.id, author.id, {
-          bumpVersion: false,
-          title: 'Updated Title',
-          visibility: 'unlisted',
-        });
-        expect(updated?.title).toBe('Updated Title');
-        expect(updated?.visibility).toBe('unlisted');
-        expect(updated?.versions?.length).toBe(1);
-      });
-
-      it('should create a new version when bumpVersion is set', async () => {
-        const recipe = await makeRecipe(author.id, 'Update Bump');
-        const updated = await service.updateRecipe(recipe.id, author.id, {
-          bumpVersion: true,
-          productName: 'New Bean',
-        });
-        expect(updated?.versions?.length).toBe(2);
-        expect(updated?.versions?.[0]?.versionNumber).toBe(2);
-      });
-
-      it('should throw FORBIDDEN for a non-author', async () => {
-        const recipe = await makeRecipe(author.id, 'Update Forbidden');
-        await expect(service.updateRecipe(recipe.id, other.id, { bumpVersion: false, title: 'X' }))
-          .rejects.toThrow('FORBIDDEN');
-      });
-
-      it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
-        await expect(
-          service.updateRecipe(crypto.randomUUID(), author.id, { bumpVersion: false, title: 'X' }),
-        ).rejects.toThrow('RECIPE_NOT_FOUND');
-      });
+    it('should throw FORBIDDEN when a non-author forks a draft', async () => {
+      const recipe = await makeRecipe(author.id, 'Fork Draft', 'draft');
+      await expect(service.forkRecipe(recipe.id, other.id)).rejects.toThrow('FORBIDDEN');
     });
 
-    describe('listStarredRecipes', () => {
-      it('should flag the deprecated tasteNoteId param and ignore cursor', async () => {
-        const viewer = await makeUser('svc-starred');
-        const result = await service.listStarredRecipes(
-          // deno-lint-ignore no-explicit-any -- test cast
-          { tasteNoteId: crypto.randomUUID(), cursor: 'ignored' } as any,
-          1,
-          10,
-          viewer.id,
-        );
-        expect(result.deprecations?.tasteNoteId).toBe(true);
-        expect(result.recipes.length).toBe(0);
+    it('should fork a public recipe into a new draft', async () => {
+      const source = await makeRecipe(author.id, 'Fork Public Source', 'public');
+      const forked = await service.forkRecipe(source.id, other.id);
+      createdRecipes.push(forked.id);
+      expect(forked.authorId).toBe(other.id);
+      expect(forked.visibility).toBe('draft');
+      expect(forked.forkedFromId).toBe(source.id);
+    });
+  });
+
+  describe('updateRecipe', () => {
+    it('should update top-level fields without bumping the version', async () => {
+      const recipe = await makeRecipe(author.id, 'Update Title');
+      const updated = await service.updateRecipe(recipe.id, author.id, {
+        bumpVersion: false,
+        title: 'Updated Title',
+        visibility: 'unlisted',
       });
+      expect(updated?.title).toBe('Updated Title');
+      expect(updated?.visibility).toBe('unlisted');
+      expect(updated?.versions?.length).toBe(1);
     });
 
-    // --- F11: search-active offset fallback + ranking ---
-    describe('listRecipes — F11 search/ranking', () => {
-      it('search + cursor falls back to offset (total, not nextCursor)', async () => {
-        const r = await makeRecipe(author.id, 'Search Cursor Test', 'public');
-        const cursor = encodeCursor({
-          createdAt: r.createdAt.toISOString(),
-          id: r.id,
-        });
-        const filters = RecipeFilterSchema.parse({
-          search: 'Search',
-          cursor,
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-        });
-        const result = await service.listRecipes(filters, 1, 20, null, false);
-        // Offset mode returns { recipes, total } — no hasMore/nextCursor
-        expect((result as { total?: number }).total).toBeDefined();
-        expect((result as { hasMore?: boolean }).hasMore).toBeUndefined();
-        expect((result as { nextCursor?: string }).nextCursor).toBeUndefined();
+    it('should create a new version when bumpVersion is set', async () => {
+      const recipe = await makeRecipe(author.id, 'Update Bump');
+      const updated = await service.updateRecipe(recipe.id, author.id, {
+        bumpVersion: true,
+        productName: 'New Bean',
       });
+      expect(updated?.versions?.length).toBe(2);
+      expect(updated?.versions?.[0]?.versionNumber).toBe(2);
+    });
 
-      it('search without cursor uses offset pagination', async () => {
-        await makeRecipe(author.id, 'Search NoCursor Test', 'public');
-        const filters = RecipeFilterSchema.parse({
-          search: 'NoCursor',
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-        });
-        const result = await service.listRecipes(filters, 1, 20, null, false);
-        expect((result as { total?: number }).total).toBeDefined();
-        expect((result as { nextCursor?: string }).nextCursor).toBeUndefined();
+    it('should throw FORBIDDEN for a non-author', async () => {
+      const recipe = await makeRecipe(author.id, 'Update Forbidden');
+      await expect(
+        service.updateRecipe(recipe.id, other.id, { bumpVersion: false, title: 'X' }),
+      ).rejects.toThrow('FORBIDDEN');
+    });
+
+    it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
+      await expect(
+        service.updateRecipe(crypto.randomUUID(), author.id, { bumpVersion: false, title: 'X' }),
+      ).rejects.toThrow('RECIPE_NOT_FOUND');
+    });
+  });
+
+  describe('listStarredRecipes', () => {
+    it('should flag the deprecated tasteNoteId param and ignore cursor', async () => {
+      const viewer = await makeUser('svc-starred');
+      const result = await service.listStarredRecipes(
+        // biome-ignore lint/suspicious/noExplicitAny: test cast
+        { tasteNoteId: crypto.randomUUID(), cursor: 'ignored' } as any,
+        1,
+        10,
+        viewer.id,
+      );
+      expect(result.deprecations?.tasteNoteId).toBe(true);
+      expect(result.recipes.length).toBe(0);
+    });
+  });
+
+  // --- F11: search-active offset fallback + ranking ---
+  describe('listRecipes — F11 search/ranking', () => {
+    it('search + cursor falls back to offset (total, not nextCursor)', async () => {
+      const r = await makeRecipe(author.id, 'Search Cursor Test', 'public');
+      const cursor = encodeCursor({
+        createdAt: r.createdAt.toISOString(),
+        id: r.id,
       });
-
-      it('no search + cursor + sortBy=createdAt uses cursor pagination', async () => {
-        const r = await makeRecipe(author.id, 'Cursor No Search Test', 'public');
-        const cursor = encodeCursor({
-          createdAt: r.createdAt.toISOString(),
-          id: r.id,
-        });
-        const filters = RecipeFilterSchema.parse({
-          cursor,
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-        });
-        const result = await service.listRecipes(filters, 1, 20, null, false);
-        expect((result as { nextCursor?: string }).nextCursor !== undefined).toBe(true);
+      const filters = RecipeFilterSchema.parse({
+        search: 'Search',
+        cursor,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
       });
+      const result = await service.listRecipes(filters, 1, 20, null, false);
+      // Offset mode returns { recipes, total } — no hasMore/nextCursor
+      expect((result as { total?: number }).total).toBeDefined();
+      expect((result as { hasMore?: boolean }).hasMore).toBeUndefined();
+      expect((result as { nextCursor?: string }).nextCursor).toBeUndefined();
+    });
 
-      it('ranking applied when search active (title match ranks first)', async () => {
-        await makeRecipe(author.id, 'Espresso Champion', 'public');
-        const r2 = await makeRecipe(author.id, 'Other Recipe', 'public');
-        // Update r2's version productName to contain "espresso"
-        const r2Version = await db.query.recipeVersions.findFirst({
-          where: eq(recipeVersions.recipeId, r2.id),
+    it('search without cursor uses offset pagination', async () => {
+      await makeRecipe(author.id, 'Search NoCursor Test', 'public');
+      const filters = RecipeFilterSchema.parse({
+        search: 'NoCursor',
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
+      const result = await service.listRecipes(filters, 1, 20, null, false);
+      expect((result as { total?: number }).total).toBeDefined();
+      expect((result as { nextCursor?: string }).nextCursor).toBeUndefined();
+    });
+
+    it('no search + cursor + sortBy=createdAt uses cursor pagination', async () => {
+      const r = await makeRecipe(author.id, 'Cursor No Search Test', 'public');
+      const cursor = encodeCursor({
+        createdAt: r.createdAt.toISOString(),
+        id: r.id,
+      });
+      const filters = RecipeFilterSchema.parse({
+        cursor,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
+      const result = await service.listRecipes(filters, 1, 20, null, false);
+      expect((result as { nextCursor?: string }).nextCursor !== undefined).toBe(true);
+    });
+
+    it('ranking applied when search active (title match ranks first)', async () => {
+      await makeRecipe(author.id, 'Espresso Champion', 'public');
+      const r2 = await makeRecipe(author.id, 'Other Recipe', 'public');
+      // Update r2's version productName to contain "espresso"
+      const r2Version = await db.query.recipeVersions.findFirst({
+        where: eq(recipeVersions.recipeId, r2.id),
+      });
+      if (r2Version) {
+        await db
+          .update(recipeVersions)
+          .set({ productName: 'Espresso Blend' })
+          .where(eq(recipeVersions.id, r2Version.id));
+        await db
+          .update(recipes)
+          .set({ currentVersionId: r2Version.id })
+          .where(eq(recipes.id, r2.id));
+      }
+
+      const filters = RecipeFilterSchema.parse({
+        search: 'espresso',
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
+      const result = await service.listRecipes(filters, 1, 20, null, false);
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+      const recipesList = (result as any).recipes as { title: string }[];
+      expect(recipesList.length).toBeGreaterThanOrEqual(2);
+      // Title match (score 3) should rank before productName match (score 2)
+      expect(recipesList[0].title).toBe('Espresso Champion');
+    });
+
+    it('no ranking when search absent (DB order preserved)', async () => {
+      const r1 = await makeRecipe(author.id, 'Alpha No Search', 'public');
+      const r2 = await makeRecipe(author.id, 'Beta No Search', 'public');
+      const filters = RecipeFilterSchema.parse({
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
+      const result = await service.listRecipes(filters, 1, 20, null, false);
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+      const recipesList = (result as any).recipes as { id: string }[];
+      // Most recent first (DESC by createdAt) — r2 was created after r1
+      const r2Index = recipesList.findIndex((r) => r.id === r2.id);
+      const r1Index = recipesList.findIndex((r) => r.id === r1.id);
+      expect(r2Index).toBeGreaterThanOrEqual(0);
+      expect(r1Index).toBeGreaterThanOrEqual(0);
+      expect(r2Index).toBeLessThan(r1Index);
+    });
+
+    it('global ranking: title match on page 2 ranks before productName match on page 1', async () => {
+      // Create 3 recipes: two productName matches (score 2) and one title match (score 3).
+      // With perPage=2, the title match would naturally land on page 2 by createdAt DESC
+      // (it's the oldest). Global ranking should surface it on page 1.
+      const _titleMatch = await makeRecipe(author.id, 'Espresso Title Match', 'public');
+      const pn1 = await makeRecipe(author.id, 'Recipe One', 'public');
+      const pn2 = await makeRecipe(author.id, 'Recipe Two', 'public');
+
+      // Set productName to contain "espresso" on the two non-title-match recipes
+      for (const r of [pn1, pn2]) {
+        const v = await db.query.recipeVersions.findFirst({
+          where: eq(recipeVersions.recipeId, r.id),
         });
-        if (r2Version) {
-          await db.update(recipeVersions).set({ productName: 'Espresso Blend' }).where(
-            eq(recipeVersions.id, r2Version.id),
-          );
-          await db.update(recipes).set({ currentVersionId: r2Version.id }).where(
-            eq(recipes.id, r2.id),
-          );
+        if (v) {
+          await db
+            .update(recipeVersions)
+            .set({ productName: 'Espresso Blend' })
+            .where(eq(recipeVersions.id, v.id));
+          await db.update(recipes).set({ currentVersionId: v.id }).where(eq(recipes.id, r.id));
         }
+      }
 
-        const filters = RecipeFilterSchema.parse({
-          search: 'espresso',
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-        });
-        const result = await service.listRecipes(filters, 1, 20, null, false);
-        // deno-lint-ignore no-explicit-any -- test assertion cast
-        const recipesList = (result as any).recipes as { title: string }[];
-        expect(recipesList.length).toBeGreaterThanOrEqual(2);
-        // Title match (score 3) should rank before productName match (score 2)
-        expect(recipesList[0].title).toBe('Espresso Champion');
+      // Sort by createdAt DESC: pn2 (newest), pn1, titleMatch (oldest)
+      // With perPage=2, page 1 without ranking would be [pn2, pn1]
+      // With global ranking: titleMatch (score 3) should be first
+      const filters = RecipeFilterSchema.parse({
+        search: 'espresso',
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
       });
-
-      it('no ranking when search absent (DB order preserved)', async () => {
-        const r1 = await makeRecipe(author.id, 'Alpha No Search', 'public');
-        const r2 = await makeRecipe(author.id, 'Beta No Search', 'public');
-        const filters = RecipeFilterSchema.parse({
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-        });
-        const result = await service.listRecipes(filters, 1, 20, null, false);
-        // deno-lint-ignore no-explicit-any -- test assertion cast
-        const recipesList = (result as any).recipes as { id: string }[];
-        // Most recent first (DESC by createdAt) — r2 was created after r1
-        const r2Index = recipesList.findIndex((r) => r.id === r2.id);
-        const r1Index = recipesList.findIndex((r) => r.id === r1.id);
-        expect(r2Index).toBeGreaterThanOrEqual(0);
-        expect(r1Index).toBeGreaterThanOrEqual(0);
-        expect(r2Index).toBeLessThan(r1Index);
-      });
-
-      it('global ranking: title match on page 2 ranks before productName match on page 1', async () => {
-        // Create 3 recipes: two productName matches (score 2) and one title match (score 3).
-        // With perPage=2, the title match would naturally land on page 2 by createdAt DESC
-        // (it's the oldest). Global ranking should surface it on page 1.
-        const _titleMatch = await makeRecipe(author.id, 'Espresso Title Match', 'public');
-        const pn1 = await makeRecipe(author.id, 'Recipe One', 'public');
-        const pn2 = await makeRecipe(author.id, 'Recipe Two', 'public');
-
-        // Set productName to contain "espresso" on the two non-title-match recipes
-        for (const r of [pn1, pn2]) {
-          const v = await db.query.recipeVersions.findFirst({
-            where: eq(recipeVersions.recipeId, r.id),
-          });
-          if (v) {
-            await db.update(recipeVersions).set({ productName: 'Espresso Blend' }).where(
-              eq(recipeVersions.id, v.id),
-            );
-            await db.update(recipes).set({ currentVersionId: v.id }).where(eq(recipes.id, r.id));
-          }
-        }
-
-        // Sort by createdAt DESC: pn2 (newest), pn1, titleMatch (oldest)
-        // With perPage=2, page 1 without ranking would be [pn2, pn1]
-        // With global ranking: titleMatch (score 3) should be first
-        const filters = RecipeFilterSchema.parse({
-          search: 'espresso',
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-        });
-        const result = await service.listRecipes(filters, 1, 2, null, false);
-        // deno-lint-ignore no-explicit-any -- test assertion cast
-        const recipesList = (result as any).recipes as { title: string }[];
-        expect(recipesList.length).toBe(2);
-        // Title match (score 3) should be first despite being oldest by createdAt
-        expect(recipesList[0].title).toBe('Espresso Title Match');
-      });
+      const result = await service.listRecipes(filters, 1, 2, null, false);
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+      const recipesList = (result as any).recipes as { title: string }[];
+      expect(recipesList.length).toBe(2);
+      // Title match (score 3) should be first despite being oldest by createdAt
+      expect(recipesList[0].title).toBe('Espresso Title Match');
     });
-  },
-);
+  });
+});

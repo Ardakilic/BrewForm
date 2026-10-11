@@ -4,9 +4,10 @@
  * Orchestrates setup CRUD with ownership checks, automatic default-flag
  * management (only one default per user), and a dedicated setDefault operation.
  */
-import * as model from './model.ts';
-import { createLogger } from '../../utils/logger/index.ts';
+
 import type { SetupCreate } from '@brewform/shared/schemas';
+import { createLogger } from '../../utils/logger/index.ts';
+import * as model from './model.ts';
 
 /**
  * Setup service.

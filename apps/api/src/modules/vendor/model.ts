@@ -10,9 +10,11 @@ import { and, asc, count, eq, isNull, like } from 'drizzle-orm';
 
 /** Find a vendor by ID. Returns null if deleted or not found. */
 export async function findById(id: string) {
-  const result = await db.select().from(vendors).where(
-    and(eq(vendors.id, id), isNull(vendors.deletedAt)),
-  ).limit(1);
+  const result = await db
+    .select()
+    .from(vendors)
+    .where(and(eq(vendors.id, id), isNull(vendors.deletedAt)))
+    .limit(1);
   return result[0] ?? null;
 }
 
@@ -24,9 +26,13 @@ export async function findById(id: string) {
 export async function findMany(page: number, perPage: number) {
   const where = isNull(vendors.deletedAt);
   const [data, totalResult] = await Promise.all([
-    db.select().from(vendors).where(where).orderBy(asc(vendors.name)).limit(perPage).offset(
-      (page - 1) * perPage,
-    ),
+    db
+      .select()
+      .from(vendors)
+      .where(where)
+      .orderBy(asc(vendors.name))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
     db.select({ count: count() }).from(vendors).where(where),
   ]);
   return { vendors: data, total: totalResult[0].count };
@@ -34,7 +40,9 @@ export async function findMany(page: number, perPage: number) {
 
 /** Search non-deleted vendors by name (LIKE match), limited to 10 results. */
 export function search(query: string) {
-  return db.select().from(vendors)
+  return db
+    .select()
+    .from(vendors)
     .where(and(isNull(vendors.deletedAt), like(vendors.name, `%${query}%`)))
     .orderBy(asc(vendors.name))
     .limit(10);
@@ -54,9 +62,10 @@ export async function update(id: string, data: Partial<typeof vendors.$inferInse
 
 /** Soft-delete a vendor by setting its deletedAt timestamp. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(vendors).set({ deletedAt: new Date() }).where(
-    and(eq(vendors.id, id), isNull(vendors.deletedAt)),
-  )
+  const [result] = await db
+    .update(vendors)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(vendors.id, id), isNull(vendors.deletedAt)))
     .returning();
   return result ?? null;
 }

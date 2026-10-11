@@ -1,5 +1,5 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { getAvailableLocales, t as translate } from '@brewform/shared/i18n';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { createLogger } from '@/utils/logger.ts';
 
 type Locale = 'en' | 'tr';
@@ -13,7 +13,7 @@ interface I18nContextType {
   availableLocales: string[];
 }
 
-const I18nContext = createContext<I18nContextType | null>(null);
+export const I18nContext = createContext<I18nContextType | null>(null);
 
 const LOCALE_DIR: Record<Locale, 'ltr' | 'rtl'> = {
   en: 'ltr',

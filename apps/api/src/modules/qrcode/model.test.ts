@@ -1,9 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { recipes, recipeVersions, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
@@ -24,14 +23,17 @@ async function insertRecipeFixture(
     authorId: userId,
     visibility,
   });
-  const [version] = await db.insert(recipeVersions).values({
-    id: versionId,
-    recipeId,
-    versionNumber: 1,
-    brewMethod: 'v60',
-    drinkType: 'pour_over',
-    preparationNotes: '',
-  }).returning();
+  const [version] = await db
+    .insert(recipeVersions)
+    .values({
+      id: versionId,
+      recipeId,
+      versionNumber: 1,
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: '',
+    })
+    .returning();
   await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipeId));
   return { recipeId, versionId };
 }
@@ -41,7 +43,7 @@ async function insertRecipeFixture(
  * fields needed to gate QR-code-driven public access. Returns null if the
  * recipe has been soft-deleted or no recipe with the slug exists.
  */
-describe('findBySlug', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findBySlug', () => {
   let userId: string;
   let recipeId: string;
   let versionId: string;

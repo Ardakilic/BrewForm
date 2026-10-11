@@ -1,8 +1,8 @@
+import { escapeHtml, escapeHtmlAttr } from '@brewform/shared/utils';
 import { Hono } from 'hono';
 import { describeRoute } from 'hono-openapi';
-import { escapeHtml, escapeHtmlAttr } from '@brewform/shared/utils';
-import { getRecipeMeta } from '../modules/recipe/service.ts';
 import { config } from '../config/index.ts';
+import { getRecipeMeta } from '../modules/recipe/service.ts';
 import type { AppEnv } from '../types/hono.ts';
 
 /** Hono router for recipe share/OG preview pages, mounted at `/share` in `routes/index.ts`. */
@@ -59,9 +59,7 @@ share.get(
     description:
       'Returns a server-rendered HTML page with Open Graph/Twitter meta tags for a public recipe, ' +
       'redirecting browsers to the recipe page. Responds with HTML, not a JSON envelope.',
-    parameters: [
-      { name: 'slug', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Share preview HTML page',
@@ -85,8 +83,8 @@ share.get(
       const description = meta.productName
         ? `${meta.brewMethod || 'Coffee'} recipe using ${meta.productName}`
         : `${meta.brewMethod || 'Coffee'} recipe by ${
-          meta.author?.displayName || meta.author?.username || 'BrewForm user'
-        }`;
+            meta.author?.displayName || meta.author?.username || 'BrewForm user'
+          }`;
 
       const html = OG_TEMPLATE({
         title: meta.title,

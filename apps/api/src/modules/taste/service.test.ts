@@ -1,10 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { tasteNotes } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import {
   createTasteNote,
@@ -21,22 +19,22 @@ const TASTE_CACHE_KEY = ['cache', 'taste-notes'];
 const TASTE_FLAT_CACHE_KEY = ['cache', 'taste-notes-flat'];
 const TASTE_ROOT_MAP_CACHE_KEY = ['cache', 'taste-notes-root-map'];
 
-describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Taste Service', () => {
   let cache: InMemoryCacheProvider;
-  let debugSpy: ReturnType<typeof spy>;
-  let warnSpy: ReturnType<typeof spy>;
+  let debugSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
   const createdNoteIds: string[] = [];
 
   beforeEach(() => {
     cache = new InMemoryCacheProvider();
-    debugSpy = spy(log, 'debug');
-    warnSpy = spy(log, 'warn');
+    debugSpy = vi.spyOn(log, 'debug');
+    warnSpy = vi.spyOn(log, 'warn');
     createdNoteIds.length = 0;
   });
 
   afterEach(async () => {
-    debugSpy.restore();
-    warnSpy.restore();
+    debugSpy.mockRestore();
+    warnSpy.mockRestore();
 
     for (let i = createdNoteIds.length - 1; i >= 0; i--) {
       await db.delete(tasteNotes).where(eq(tasteNotes.id, createdNoteIds[i]));
@@ -59,11 +57,14 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
     });
 
     it('should cache and retrieve flat list data', async () => {
-      const flatData = [{ id: '1', name: 'Fruity', parentId: null }, {
-        id: '2',
-        name: 'Berry',
-        parentId: '1',
-      }];
+      const flatData = [
+        { id: '1', name: 'Fruity', parentId: null },
+        {
+          id: '2',
+          name: 'Berry',
+          parentId: '1',
+        },
+      ];
       await cache.set(TASTE_FLAT_CACHE_KEY, flatData, { ttlMs: 86400000 });
 
       const cached = await cache.get<typeof flatData>(TASTE_FLAT_CACHE_KEY);
@@ -130,8 +131,8 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
     });
 
     it('should not overwrite root map for different taste note ids', async () => {
-      const map1: Record<string, string> = { 'a': 'Fruity' };
-      const map2: Record<string, string> = { 'b': 'Sour/Fermented', 'c': 'Fruity' };
+      const map1: Record<string, string> = { a: 'Fruity' };
+      const map2: Record<string, string> = { b: 'Sour/Fermented', c: 'Fruity' };
       await cache.set(TASTE_ROOT_MAP_CACHE_KEY, map1);
       await cache.set(TASTE_ROOT_MAP_CACHE_KEY, map2);
 
@@ -170,18 +171,18 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
       const result = await getHierarchy(cache);
 
       expect(result.length).toBeGreaterThanOrEqual(1);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{}, 'getHierarchy started']);
-      assertSpyCallArgs(debugSpy, 1, [{ cached: false }, 'getHierarchy completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, {}, 'getHierarchy started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { cached: false }, 'getHierarchy completed');
 
       const cached = await cache.get(TASTE_CACHE_KEY);
       expect(cached).toEqual(result);
 
       const second = await getHierarchy(cache);
       expect(second).toEqual(result);
-      assertSpyCalls(debugSpy, 4);
-      assertSpyCallArgs(debugSpy, 2, [{}, 'getHierarchy started']);
-      assertSpyCallArgs(debugSpy, 3, [{ cached: true }, 'getHierarchy completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(4);
+      expect(debugSpy).toHaveBeenNthCalledWith(3, {}, 'getHierarchy started');
+      expect(debugSpy).toHaveBeenNthCalledWith(4, { cached: true }, 'getHierarchy completed');
     });
   });
 
@@ -192,11 +193,11 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
 
       const result = await getFlatList(cache);
 
-      // deno-lint-ignore no-explicit-any -- test mock parameter
+      // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
       expect(result.map((n: any) => n.name)).toContain('Berry');
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{}, 'getFlatList started']);
-      assertSpyCallArgs(debugSpy, 1, [{ cached: false }, 'getFlatList completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, {}, 'getFlatList started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { cached: false }, 'getFlatList completed');
 
       const cached = await cache.get(TASTE_FLAT_CACHE_KEY);
       expect(cached).toEqual(result);
@@ -206,21 +207,28 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
   describe('getTasteNoteRootMap', () => {
     it('should log entry/exit and build a root category map', async () => {
       const [root] = await db.insert(tasteNotes).values({ name: 'Fruity', depth: 0 }).returning();
-      const [child] = await db.insert(tasteNotes).values({
-        name: 'Berry',
-        depth: 1,
-        parentId: root.id,
-      }).returning();
+      const [child] = await db
+        .insert(tasteNotes)
+        .values({
+          name: 'Berry',
+          depth: 1,
+          parentId: root.id,
+        })
+        .returning();
       createdNoteIds.push(root.id, child.id);
 
       const result = await getTasteNoteRootMap(cache);
 
       expect(result[child.id]).toBe('Fruity');
-      assertSpyCalls(debugSpy, 4);
-      assertSpyCallArgs(debugSpy, 0, [{}, 'getTasteNoteRootMap started']);
-      assertSpyCallArgs(debugSpy, 1, [{}, 'getFlatList started']);
-      assertSpyCallArgs(debugSpy, 2, [{ cached: false }, 'getFlatList completed']);
-      assertSpyCallArgs(debugSpy, 3, [{ cached: false }, 'getTasteNoteRootMap completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(4);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, {}, 'getTasteNoteRootMap started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, {}, 'getFlatList started');
+      expect(debugSpy).toHaveBeenNthCalledWith(3, { cached: false }, 'getFlatList completed');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        4,
+        { cached: false },
+        'getTasteNoteRootMap completed',
+      );
     });
   });
 
@@ -228,16 +236,14 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
     it('should log warn and throw QUERY_TOO_SHORT when query is too short', async () => {
       await expect(searchTasteNotes('ab', cache)).rejects.toThrow('QUERY_TOO_SHORT');
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { queryLength: 2 },
         'searchTasteNotes failed: query too short',
-      ]);
-      assertSpyCalls(debugSpy, 1);
-      assertSpyCallArgs(debugSpy, 0, [
-        { queryLength: 2 },
-        'searchTasteNotes started',
-      ]);
+      );
+      expect(debugSpy).toHaveBeenCalledTimes(1);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { queryLength: 2 }, 'searchTasteNotes started');
     });
 
     it('should log entry/exit and return matching notes', async () => {
@@ -246,17 +252,15 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
 
       const result = await searchTasteNotes('Zes', cache);
 
-      // deno-lint-ignore no-explicit-any -- test mock parameter
+      // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
       expect(result.map((n: any) => n.id)).toContain(note.id);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [
-        { queryLength: 3 },
-        'searchTasteNotes started',
-      ]);
-      assertSpyCallArgs(debugSpy, 1, [
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { queryLength: 3 }, 'searchTasteNotes started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
         { queryLength: 3, count: 1 },
         'searchTasteNotes completed',
-      ]);
+      );
     });
   });
 
@@ -269,21 +273,24 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
 
       expect(result.name).toBe('New Note');
       expect(await cache.get(TASTE_CACHE_KEY)).toBeNull();
-      assertSpyCalls(debugSpy, 5);
-      assertSpyCallArgs(debugSpy, 0, [
+      expect(debugSpy).toHaveBeenCalledTimes(5);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
         { name: 'New Note', depth: 0 },
         'createTasteNote started',
-      ]);
-      assertSpyCallArgs(debugSpy, 1, [
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
         { name: 'New Note' },
         'flushing taste note cache after create',
-      ]);
-      assertSpyCallArgs(debugSpy, 2, [{}, 'flushCache started']);
-      assertSpyCallArgs(debugSpy, 3, [{}, 'flushCache completed']);
-      assertSpyCallArgs(debugSpy, 4, [
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(3, {}, 'flushCache started');
+      expect(debugSpy).toHaveBeenNthCalledWith(4, {}, 'flushCache completed');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        5,
         { name: 'New Note', id: result.id },
         'createTasteNote completed',
-      ]);
+      );
     });
   });
 
@@ -297,35 +304,46 @@ describe('Taste Service', { sanitizeOps: false, sanitizeResources: false }, () =
 
       expect(result!.name).toBe('New Name');
       expect(await cache.get(TASTE_CACHE_KEY)).toBeNull();
-      assertSpyCalls(debugSpy, 5);
-      assertSpyCallArgs(debugSpy, 0, [{ id: note.id }, 'updateTasteNote started']);
-      assertSpyCallArgs(debugSpy, 1, [{ id: note.id }, 'flushing taste note cache after update']);
-      assertSpyCallArgs(debugSpy, 2, [{}, 'flushCache started']);
-      assertSpyCallArgs(debugSpy, 3, [{}, 'flushCache completed']);
-      assertSpyCallArgs(debugSpy, 4, [{ id: note.id }, 'updateTasteNote completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(5);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { id: note.id }, 'updateTasteNote started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { id: note.id },
+        'flushing taste note cache after update',
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(3, {}, 'flushCache started');
+      expect(debugSpy).toHaveBeenNthCalledWith(4, {}, 'flushCache completed');
+      expect(debugSpy).toHaveBeenNthCalledWith(5, { id: note.id }, 'updateTasteNote completed');
     });
   });
 
   describe('deleteTasteNote', () => {
     it('should log entry/exit and flush cache after delete', async () => {
-      const [note] = await db.insert(tasteNotes).values({ name: 'To Delete', depth: 0 })
+      const [note] = await db
+        .insert(tasteNotes)
+        .values({ name: 'To Delete', depth: 0 })
         .returning();
       createdNoteIds.push(note.id);
       await cache.set(TASTE_CACHE_KEY, [{ id: note.id, name: 'To Delete' }]);
 
       await deleteTasteNote(note.id, cache);
 
-      const [row] = await db.select({ deletedAt: tasteNotes.deletedAt }).from(tasteNotes).where(
-        eq(tasteNotes.id, note.id),
-      );
+      const [row] = await db
+        .select({ deletedAt: tasteNotes.deletedAt })
+        .from(tasteNotes)
+        .where(eq(tasteNotes.id, note.id));
       expect(row.deletedAt).not.toBeNull();
       expect(await cache.get(TASTE_CACHE_KEY)).toBeNull();
-      assertSpyCalls(debugSpy, 5);
-      assertSpyCallArgs(debugSpy, 0, [{ id: note.id }, 'deleteTasteNote started']);
-      assertSpyCallArgs(debugSpy, 1, [{ id: note.id }, 'flushing taste note cache after delete']);
-      assertSpyCallArgs(debugSpy, 2, [{}, 'flushCache started']);
-      assertSpyCallArgs(debugSpy, 3, [{}, 'flushCache completed']);
-      assertSpyCallArgs(debugSpy, 4, [{ id: note.id }, 'deleteTasteNote completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(5);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { id: note.id }, 'deleteTasteNote started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { id: note.id },
+        'flushing taste note cache after delete',
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(3, {}, 'flushCache started');
+      expect(debugSpy).toHaveBeenNthCalledWith(4, {}, 'flushCache completed');
+      expect(debugSpy).toHaveBeenNthCalledWith(5, { id: note.id }, 'deleteTasteNote completed');
     });
   });
 });

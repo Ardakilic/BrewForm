@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecipeForkPage } from './RecipeForkPage.tsx';
 
 const mockNavigateFn = vi.fn();
@@ -22,11 +22,11 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
   SEOHead: vi.fn(() => null),
 }));
 
-import { useParams } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { recipeApi } from '../../api/index.ts';
 import type { RecipeDetailOutput } from '@brewform/shared/schemas';
+import { useParams } from 'react-router';
+import { recipeApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseParams = vi.mocked(useParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -162,10 +162,7 @@ describe('RecipeForkPage — fork submission', () => {
     await user.click(screen.getByRole('button', { name: 'Create Fork' }));
 
     await waitFor(() => {
-      expect(mockRecipeApi.fork).toHaveBeenCalledWith(
-        'recipe-99',
-        'Fork of Classic Espresso',
-      );
+      expect(mockRecipeApi.fork).toHaveBeenCalledWith('recipe-99', 'Fork of Classic Espresso');
     });
   });
 
@@ -369,7 +366,8 @@ describe('RecipeForkPage — title error container', () => {
     render(<RecipeForkPage />);
 
     await waitFor(() => {
-      const errorDiv = screen.getByText('Failed to load recipe')
+      const errorDiv = screen
+        .getByText('Failed to load recipe')
         .closest('[role="alert"]') as HTMLElement | null;
       expect(errorDiv).toBeInTheDocument();
       expect(errorDiv!.style.backgroundColor).toBe('var(--error-bg)');

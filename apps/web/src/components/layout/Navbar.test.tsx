@@ -1,7 +1,7 @@
-import fc from 'fast-check';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import fc from 'fast-check';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Navbar } from './Navbar.tsx';
 
 // Use vi.hoisted so the mockActivePath variable is available inside the vi.mock factory
@@ -12,9 +12,19 @@ const { mockNavState } = vi.hoisted(() => {
 });
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
   NavLink: ({
     to,
     children,
@@ -87,10 +97,10 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useAuth } from '../../contexts/AuthContext.tsx';
-import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { authApi } from '../../api/index.ts';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useTheme } from '../../contexts/ThemeContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);
@@ -675,11 +685,13 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    expect(await screen.findByRole('option', { name: enTranslations['theme.light'] }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: enTranslations['theme.light'] }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: enTranslations['theme.dark'] })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: enTranslations['theme.coffee'] }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: enTranslations['theme.coffee'] }),
+    ).toBeInTheDocument();
   });
 
   // ── i18n option labels — Turkish ───────────────────────────────────────────
@@ -696,11 +708,13 @@ describe('Navbar — ThemeSwitcher (task 2.2)', () => {
     const triggers = screen.getAllByRole('combobox');
     await userEvent.click(triggers[0]);
 
-    expect(await screen.findByRole('option', { name: trTranslations['theme.light'] }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: trTranslations['theme.light'] }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: trTranslations['theme.dark'] })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: trTranslations['theme.coffee'] }))
-      .toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: trTranslations['theme.coffee'] }),
+    ).toBeInTheDocument();
   });
 
   it('selecting "coffee" theme in Turkish calls setTheme with "coffee"', async () => {
@@ -1051,59 +1065,56 @@ describe('Navbar — ThemeSwitcher PBT (task 6.2)', () => {
     },
   };
 
-  it(
-    'for any theme value and locale, trigger displays translated label and popup options are translated',
-    async () => {
-      // The cartesian product is 3 themes × 2 locales = 6 cases. We run
-      // multiple cycles so fast-check exercises each combination repeatedly
-      // and shrinks on failure. The per-iteration timeout bounds a hung
-      // render/cleanup so one slow iteration can't blow the whole budget.
-      await fc.assert(
-        fc.asyncProperty(
-          fc.constantFrom('light', 'dark', 'coffee'),
-          fc.constantFrom('en', 'tr'),
-          async (theme, locale) => {
-            const user = userEvent.setup({ delay: null });
-            const translations = allThemeTranslations[locale];
-            const t = (key: string) => translations[key] ?? key;
+  it('for any theme value and locale, trigger displays translated label and popup options are translated', async () => {
+    // The cartesian product is 3 themes × 2 locales = 6 cases. We run
+    // multiple cycles so fast-check exercises each combination repeatedly
+    // and shrinks on failure. The per-iteration timeout bounds a hung
+    // render/cleanup so one slow iteration can't blow the whole budget.
+    await fc.assert(
+      fc.asyncProperty(
+        fc.constantFrom('light', 'dark', 'coffee'),
+        fc.constantFrom('en', 'tr'),
+        async (theme, locale) => {
+          const user = userEvent.setup({ delay: null });
+          const translations = allThemeTranslations[locale];
+          const t = (key: string) => translations[key] ?? key;
 
-            mockUseTheme.mockReturnValue(
-              { theme, setTheme: vi.fn() } as ReturnType<typeof useTheme>,
-            );
-            mockUseTranslation.mockReturnValue({
-              ...defaultTranslation,
-              locale,
-              t,
-              availableLocales: ['en', 'tr'],
-            });
+          mockUseTheme.mockReturnValue({ theme, setTheme: vi.fn() } as ReturnType<typeof useTheme>);
+          mockUseTranslation.mockReturnValue({
+            ...defaultTranslation,
+            locale,
+            t,
+            availableLocales: ['en', 'tr'],
+          });
 
-            const { unmount } = render(<Navbar />);
+          const { unmount } = render(<Navbar />);
 
-            try {
-              const triggers = screen.getAllByRole('combobox');
+          try {
+            const triggers = screen.getAllByRole('combobox');
 
-              // Verify trigger shows the translated label for the selected theme
-              const expectedTriggerLabel = translations[`theme.${theme}`];
-              expect(triggers[0]).toHaveTextContent(expectedTriggerLabel);
+            // Verify trigger shows the translated label for the selected theme
+            const expectedTriggerLabel = translations[`theme.${theme}`];
+            expect(triggers[0]).toHaveTextContent(expectedTriggerLabel);
 
-              // Open the popup
-              await user.click(triggers[0]);
+            // Open the popup
+            await user.click(triggers[0]);
 
-              // All options in popup should have translated names
-              expect(await screen.findByRole('option', { name: translations['theme.light'] }))
-                .toBeInTheDocument();
-              expect(screen.getByRole('option', { name: translations['theme.dark'] }))
-                .toBeInTheDocument();
-              expect(screen.getByRole('option', { name: translations['theme.coffee'] }))
-                .toBeInTheDocument();
-            } finally {
-              unmount();
-            }
-          },
-        ),
-        { numRuns: 30, interruptAfterTimeLimit: 5000 },
-      );
-    },
-    15000,
-  );
+            // All options in popup should have translated names
+            expect(
+              await screen.findByRole('option', { name: translations['theme.light'] }),
+            ).toBeInTheDocument();
+            expect(
+              screen.getByRole('option', { name: translations['theme.dark'] }),
+            ).toBeInTheDocument();
+            expect(
+              screen.getByRole('option', { name: translations['theme.coffee'] }),
+            ).toBeInTheDocument();
+          } finally {
+            unmount();
+          }
+        },
+      ),
+      { numRuns: 30, interruptAfterTimeLimit: 5000 },
+    );
+  }, 15000);
 });

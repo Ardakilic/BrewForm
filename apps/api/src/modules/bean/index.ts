@@ -1,19 +1,21 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { BeanCreateSchema, BeanUpdateSchema, PaginationSchema } from '@brewform/shared/schemas';
 import {
+  BeanCreateSchema,
   BeanOutputSchema,
+  BeanUpdateSchema,
   ErrorEnvelopeSchema,
   MessageResponseSchema,
+  PaginationSchema,
   paginatedEnvelope,
   successEnvelope,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
 import { authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, paginated, success } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Hono sub-router for bean endpoints, mounted at `/api/v1/beans`. */
 const bean = new Hono<AppEnv>();
@@ -63,9 +65,7 @@ bean.get(
     tags: ['Beans'],
     summary: 'Get a bean by id',
     description: 'Returns a single coffee bean by its id.',
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Bean payload',
@@ -126,9 +126,7 @@ bean.patch(
     summary: 'Update a bean',
     description: 'Updates a coffee bean owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(BeanUpdateSchema),
     responses: {
       200: {
@@ -174,9 +172,7 @@ bean.delete(
     summary: 'Delete a bean',
     description: 'Deletes a coffee bean owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Bean deleted',

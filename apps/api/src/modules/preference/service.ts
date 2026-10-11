@@ -4,9 +4,10 @@
  * Provides retrieval (with explicit not-found error) and update/upsert of
  * per-user preference records.
  */
-import * as model from './model.ts';
-import type { PreferenceUpdate } from './model.ts';
+
 import { createLogger } from '../../utils/logger/index.ts';
+import type { PreferenceUpdate } from './model.ts';
+import * as model from './model.ts';
 
 /**
  * Preference service.

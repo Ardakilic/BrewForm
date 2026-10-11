@@ -10,14 +10,15 @@
  * matching `notify*` helper), plus the read-state operations behind the
  * notification endpoints (list, unread count, mark read, mark all read).
  */
-import * as model from './model.ts';
+
+import { createLogger } from '../../utils/logger/index.ts';
 import {
   notifyMentioned,
   notifyNewFollower,
   notifyRecipeCommented,
   notifyRecipeLiked,
 } from '../../utils/notify/index.ts';
-import { createLogger } from '../../utils/logger/index.ts';
+import * as model from './model.ts';
 
 const logger = createLogger('notification-service');
 
@@ -200,10 +201,7 @@ export async function createFollowNotification(params: {
       return;
     }
     if (target.prefs?.notifyNewFollower === false) {
-      logger.debug(
-        { followingId, created: 0 },
-        'createFollowNotification completed (opted out)',
-      );
+      logger.debug({ followingId, created: 0 }, 'createFollowNotification completed (opted out)');
       return;
     }
 
@@ -271,10 +269,7 @@ export async function createLikeNotification(params: {
       return;
     }
     if (target.prefs?.notifyRecipeLiked === false) {
-      logger.debug(
-        { recipeAuthorId, created: 0 },
-        'createLikeNotification completed (opted out)',
-      );
+      logger.debug({ recipeAuthorId, created: 0 }, 'createLikeNotification completed (opted out)');
       return;
     }
 
@@ -290,10 +285,7 @@ export async function createLikeNotification(params: {
       });
       created++;
     } catch (err) {
-      logger.error(
-        { err, likerId, recipeId, recipeAuthorId },
-        'like notification create failed',
-      );
+      logger.error({ err, likerId, recipeId, recipeAuthorId }, 'like notification create failed');
     }
 
     try {
@@ -309,10 +301,7 @@ export async function createLikeNotification(params: {
 
     logger.debug({ recipeAuthorId, created }, 'createLikeNotification completed');
   } catch (err) {
-    logger.error(
-      { err, likerId, recipeId, recipeAuthorId },
-      'createLikeNotification failed',
-    );
+    logger.error({ err, likerId, recipeId, recipeAuthorId }, 'createLikeNotification failed');
     throw err;
   }
 }
@@ -347,10 +336,7 @@ export async function createCommentNotification(params: {
     recipeTitle,
     commentId,
   } = params;
-  logger.debug(
-    { commenterId, recipeId, recipeAuthorId },
-    'createCommentNotification started',
-  );
+  logger.debug({ commenterId, recipeId, recipeAuthorId }, 'createCommentNotification started');
   if (commenterId === recipeAuthorId) {
     logger.debug(
       { commenterId, recipeId, created: 0 },

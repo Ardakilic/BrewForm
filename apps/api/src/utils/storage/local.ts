@@ -1,6 +1,7 @@
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import * as path from 'node:path';
 import { config } from '../../config/index.ts';
 import type { StorageDriver } from './types.ts';
-import * as path from 'jsr:@std/path';
 
 /**
  * StorageDriver that writes files to UPLOAD_DIR on local disk and serves them
@@ -10,15 +11,15 @@ import * as path from 'jsr:@std/path';
 export class LocalStorageDriver implements StorageDriver {
   async save(data: Uint8Array, filename: string): Promise<string> {
     const targetPath = this._resolvePath(filename);
-    await Deno.mkdir(config.UPLOAD_DIR, { recursive: true });
-    await Deno.writeFile(targetPath, data);
+    await mkdir(config.UPLOAD_DIR, { recursive: true });
+    await writeFile(targetPath, data);
     return `/uploads/${filename}`;
   }
 
   async delete(filename: string): Promise<void> {
     const targetPath = this._resolvePath(filename);
     try {
-      await Deno.remove(targetPath);
+      await rm(targetPath, { force: true });
     } catch {
       // ignore
     }
@@ -30,7 +31,7 @@ export class LocalStorageDriver implements StorageDriver {
     }
     const resolvedUploadDir = path.resolve(config.UPLOAD_DIR);
     const targetPath = path.resolve(path.join(resolvedUploadDir, filename));
-    if (!targetPath.startsWith(resolvedUploadDir + path.SEPARATOR)) {
+    if (!targetPath.startsWith(resolvedUploadDir + path.sep)) {
       throw new Error('Invalid filename');
     }
     return targetPath;

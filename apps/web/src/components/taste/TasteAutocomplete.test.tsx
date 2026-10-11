@@ -1,13 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock(
-  '@/utils/logger.ts',
-  () => ({
-    createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
-  }),
-);
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+}));
 
 import { TasteAutocomplete } from './TasteAutocomplete.tsx';
 
@@ -18,6 +15,7 @@ vi.mock('../../api/index.ts', () => ({
 }));
 
 import { api } from '../../api/index.ts';
+
 const mockApiGet = vi.mocked(api.get);
 
 // ── Taste note fixtures ────────────────────────────────────────────────────
@@ -134,12 +132,7 @@ describe('TasteAutocomplete', () => {
 
     // Clicking a category should not trigger selection
     const onSelectionChange = vi.fn();
-    render(
-      <TasteAutocomplete
-        selectedIds={[]}
-        onSelectionChange={onSelectionChange}
-      />,
-    );
+    render(<TasteAutocomplete selectedIds={[]} onSelectionChange={onSelectionChange} />);
 
     const input2 = screen.getAllByPlaceholderText('Search SCAA taste notes...')[1];
     await user.click(input2);

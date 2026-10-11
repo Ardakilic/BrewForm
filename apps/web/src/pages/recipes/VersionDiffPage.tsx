@@ -1,18 +1,18 @@
+import type { VersionDiffOutput } from '@brewform/shared/schemas';
+import { formatTemperature, formatVolume, formatWeight } from '@brewform/shared/utils';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { recipeApi } from '../../api/index.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { DiffHighlighter } from '../../components/recipe/DiffHighlighter.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';
-import { PageContainer } from '../../components/ui/PageContainer.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { DiffHighlighter } from '../../components/recipe/DiffHighlighter.tsx';
+import { LoadingState } from '../../components/ui/LoadingState.tsx';
+import { PageContainer } from '../../components/ui/PageContainer.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
-import { createLogger } from '../../utils/logger.ts';
-import { formatTemperature, formatVolume, formatWeight } from '@brewform/shared/utils';
 import { formatDate } from '../../utils/format.ts';
-import type { VersionDiffOutput } from '@brewform/shared/schemas';
+import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('VersionDiffPage');
 
@@ -39,20 +39,23 @@ const FIELD_LABELS: Record<string, string> = {
   emojiTag: 'recipe.emojiTag',
 };
 
-function DiffTagList({ items, label }: {
+function DiffTagList({
+  items,
+  label,
+}: {
   items: { added: string[]; removed: string[]; unchanged: string[] };
   label: string;
 }) {
   return (
-    <div className='mt-4'>
-      <h3 className='mb-2 text-sm font-medium' style={{ color: 'var(--text-secondary)' }}>
+    <div className="mt-4">
+      <h3 className="mb-2 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
         {label}
       </h3>
-      <div className='flex flex-wrap gap-2'>
+      <div className="flex flex-wrap gap-2">
         {items.added.map((item) => (
           <span
             key={item}
-            className='rounded px-2 py-0.5 text-xs'
+            className="rounded px-2 py-0.5 text-xs"
             style={{ color: 'var(--diff-added-text)', backgroundColor: 'var(--diff-added-bg)' }}
           >
             + {item}
@@ -61,7 +64,7 @@ function DiffTagList({ items, label }: {
         {items.removed.map((item) => (
           <span
             key={item}
-            className='rounded px-2 py-0.5 text-xs'
+            className="rounded px-2 py-0.5 text-xs"
             style={{ color: 'var(--diff-removed-text)', backgroundColor: 'var(--diff-removed-bg)' }}
           >
             - {item}
@@ -70,7 +73,7 @@ function DiffTagList({ items, label }: {
         {items.unchanged.map((item) => (
           <span
             key={item}
-            className='rounded px-2 py-0.5 text-xs'
+            className="rounded px-2 py-0.5 text-xs"
             style={{ color: 'var(--text-secondary)' }}
           >
             {item}
@@ -109,7 +112,8 @@ export function VersionDiffPage() {
     }
     setLoading(true);
     setData(null);
-    recipeApi.diffVersions(slug, v1, v2)
+    recipeApi
+      .diffVersions(slug, v1, v2)
       .then(setData)
       .catch((err) => {
         log.error({ err, slug }, 'VersionDiffPage loadDiff failed');
@@ -120,10 +124,10 @@ export function VersionDiffPage() {
 
   const getFormatter = (field: string) => {
     if (field === 'groundWeightGrams') {
-      return (v: string | number | null) => v != null ? formatWeight(Number(v), unitSystem) : '-';
+      return (v: string | number | null) => (v != null ? formatWeight(Number(v), unitSystem) : '-');
     }
     if (field === 'extractionVolumeMl') {
-      return (v: string | number | null) => v != null ? formatVolume(Number(v), unitSystem) : '-';
+      return (v: string | number | null) => (v != null ? formatVolume(Number(v), unitSystem) : '-');
     }
     if (field === 'temperatureCelsius') {
       return (v: string | number | null) =>
@@ -132,14 +136,14 @@ export function VersionDiffPage() {
           : '-';
     }
     if (field === 'extractionTimeSeconds' || field === 'preInfusionTimeSeconds') {
-      return (v: string | number | null) => v != null ? `${v}s` : '-';
+      return (v: string | number | null) => (v != null ? `${v}s` : '-');
     }
     return undefined;
   };
 
   if (loading) {
     return (
-      <PageContainer width='4xl'>
+      <PageContainer width="4xl">
         <LoadingState />
       </PageContainer>
     );
@@ -147,7 +151,7 @@ export function VersionDiffPage() {
 
   if (!data) {
     return (
-      <PageContainer width='4xl'>
+      <PageContainer width="4xl">
         <EmptyState message={t('common.noResults')} />
       </PageContainer>
     );
@@ -156,8 +160,8 @@ export function VersionDiffPage() {
   return (
     <>
       <SEOHead title={`${slug} – ${t('versionDiff.title')}`} />
-      <PageContainer width='4xl'>
-        <div className='mb-6'>
+      <PageContainer width="4xl">
+        <div className="mb-6">
           <Breadcrumb
             items={[
               { label: t('recipe.list.title'), to: '/recipes' },
@@ -167,9 +171,9 @@ export function VersionDiffPage() {
           />
         </div>
 
-        <h1 className='mb-4 text-2xl font-bold'>{t('versionDiff.title')}</h1>
+        <h1 className="mb-4 text-2xl font-bold">{t('versionDiff.title')}</h1>
 
-        <div className='mb-6 flex gap-8 text-sm' style={{ color: 'var(--text-secondary)' }}>
+        <div className="mb-6 flex gap-8 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>
             v{data.version1.versionNumber} — {formatDate(data.version1.brewDate, locale)}
           </span>
@@ -178,8 +182,8 @@ export function VersionDiffPage() {
           </span>
         </div>
 
-        <h2 className='mb-2 text-lg font-semibold'>{t('versionDiff.parameters')}</h2>
-        <div className='mb-6'>
+        <h2 className="mb-2 text-lg font-semibold">{t('versionDiff.parameters')}</h2>
+        <div className="mb-6">
           {data.fields.map((f) => (
             <DiffHighlighter
               key={f.field}

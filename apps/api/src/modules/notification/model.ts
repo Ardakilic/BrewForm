@@ -68,7 +68,8 @@ export async function findByUserId(
   const where = and(...conditions);
 
   const [data, totalResult] = await Promise.all([
-    db.select(notificationSelection)
+    db
+      .select(notificationSelection)
       .from(notifications)
       .leftJoin(users, and(eq(notifications.actorId, users.id), isNull(users.deletedAt)))
       .where(where)
@@ -90,13 +91,12 @@ export async function findByUserId(
  *          or already read (idempotence is decided by the service layer).
  */
 export async function markAsRead(id: string) {
-  const result = await db.update(notifications)
+  const result = await db
+    .update(notifications)
     .set({ readAt: new Date() })
-    .where(and(
-      eq(notifications.id, id),
-      isNull(notifications.readAt),
-      isNull(notifications.deletedAt),
-    ))
+    .where(
+      and(eq(notifications.id, id), isNull(notifications.readAt), isNull(notifications.deletedAt)),
+    )
     .returning();
   return result.at(0);
 }
@@ -109,13 +109,16 @@ export async function markAsRead(id: string) {
  * @returns The number of rows that were marked read.
  */
 export async function markAllAsRead(userId: string) {
-  const result = await db.update(notifications)
+  const result = await db
+    .update(notifications)
     .set({ readAt: new Date() })
-    .where(and(
-      eq(notifications.userId, userId),
-      isNull(notifications.readAt),
-      isNull(notifications.deletedAt),
-    ))
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        isNull(notifications.readAt),
+        isNull(notifications.deletedAt),
+      ),
+    )
     .returning({ id: notifications.id });
   return result.length;
 }
@@ -127,13 +130,16 @@ export async function markAllAsRead(userId: string) {
  * @returns The unread notification count.
  */
 export async function getUnreadCount(userId: string) {
-  const [result] = await db.select({ count: count() })
+  const [result] = await db
+    .select({ count: count() })
     .from(notifications)
-    .where(and(
-      eq(notifications.userId, userId),
-      isNull(notifications.readAt),
-      isNull(notifications.deletedAt),
-    ));
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        isNull(notifications.readAt),
+        isNull(notifications.deletedAt),
+      ),
+    );
   return result.count;
 }
 
@@ -146,7 +152,8 @@ export async function getUnreadCount(userId: string) {
  * @returns The notification row (with `actor`), or null if missing/deleted.
  */
 export async function findById(id: string) {
-  const result = await db.select(notificationSelection)
+  const result = await db
+    .select(notificationSelection)
     .from(notifications)
     .leftJoin(users, and(eq(notifications.actorId, users.id), isNull(users.deletedAt)))
     .where(and(eq(notifications.id, id), isNull(notifications.deletedAt)))
@@ -170,20 +177,19 @@ export async function findById(id: string) {
  */
 export async function findMentionTargets(usernames: string[]) {
   if (usernames.length === 0) return [];
-  return await db.select({
-    id: users.id,
-    username: users.username,
-    prefs: {
-      notifyMentionedInComment: userPreferences.notifyMentionedInComment,
-    },
-  })
+  return await db
+    .select({
+      id: users.id,
+      username: users.username,
+      prefs: {
+        notifyMentionedInComment: userPreferences.notifyMentionedInComment,
+      },
+    })
     .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
-    .where(and(
-      inArray(users.username, usernames),
-      isNull(users.deletedAt),
-      eq(users.isBanned, false),
-    ));
+    .where(
+      and(inArray(users.username, usernames), isNull(users.deletedAt), eq(users.isBanned, false)),
+    );
 }
 
 /**
@@ -198,24 +204,21 @@ export async function findMentionTargets(usernames: string[]) {
  * @returns The `{ id, username, prefs }` row, or `null` if not found.
  */
 export async function findNotifyTarget(userId: string) {
-  const rows = await db.select({
-    id: users.id,
-    username: users.username,
-    prefs: {
-      notifyNewFollower: userPreferences.notifyNewFollower,
-      notifyRecipeLiked: userPreferences.notifyRecipeLiked,
-      notifyRecipeCommented: userPreferences.notifyRecipeCommented,
-      notifyFollowedUserPosted: userPreferences.notifyFollowedUserPosted,
-      notifyMentionedInComment: userPreferences.notifyMentionedInComment,
-    },
-  })
+  const rows = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      prefs: {
+        notifyNewFollower: userPreferences.notifyNewFollower,
+        notifyRecipeLiked: userPreferences.notifyRecipeLiked,
+        notifyRecipeCommented: userPreferences.notifyRecipeCommented,
+        notifyFollowedUserPosted: userPreferences.notifyFollowedUserPosted,
+        notifyMentionedInComment: userPreferences.notifyMentionedInComment,
+      },
+    })
     .from(users)
     .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
-    .where(and(
-      eq(users.id, userId),
-      isNull(users.deletedAt),
-      eq(users.isBanned, false),
-    ))
+    .where(and(eq(users.id, userId), isNull(users.deletedAt), eq(users.isBanned, false)))
     .limit(1);
   return rows[0] ?? null;
 }

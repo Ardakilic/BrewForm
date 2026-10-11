@@ -1,6 +1,6 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TasteNotesPage } from './TasteNotesPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -9,9 +9,19 @@ const { mockLogger } = vi.hoisted(() => ({
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock('@base-ui/react/popover', () => {
@@ -25,16 +35,17 @@ vi.mock('@base-ui/react/popover', () => {
       >
         {React.Children.map(children, (child) => {
           if (
-            // deno-lint-ignore no-explicit-any -- test cast
-            React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverTrigger'
+            // biome-ignore lint/suspicious/noExplicitAny: test cast
+            React.isValidElement(child) &&
+            (child.type as any)?.displayName === 'PopoverTrigger'
           ) {
-            // deno-lint-ignore no-explicit-any -- test any usage
+            // biome-ignore lint/suspicious/noExplicitAny: test any usage
             return React.cloneElement(child as React.ReactElement<any>, {
               onClick: () => setOpen((prev: boolean) => !prev),
               'data-open': open,
             });
           }
-          // deno-lint-ignore no-explicit-any -- test cast
+          // biome-ignore lint/suspicious/noExplicitAny: test cast
           if (React.isValidElement(child) && (child.type as any)?.displayName === 'PopoverPortal') {
             return open ? child : null;
           }
@@ -45,30 +56,38 @@ vi.mock('@base-ui/react/popover', () => {
   };
 
   const PopoverTrigger = (
-    // deno-lint-ignore no-explicit-any -- test mock component props
+    // biome-ignore lint/suspicious/noExplicitAny: test mock component props
     { children, openOnHover: _openOnHover, delay: _delay, ...props }: any,
   ) => {
-    // deno-lint-ignore no-explicit-any -- test cast
+    // biome-ignore lint/suspicious/noExplicitAny: test cast
     const Comp = 'span' as any;
-    return <Comp data-popover-trigger {...props}>{children}</Comp>;
+    return (
+      <Comp data-popover-trigger {...props}>
+        {children}
+      </Comp>
+    );
   };
   PopoverTrigger.displayName = 'PopoverTrigger';
 
-  // deno-lint-ignore no-explicit-any -- test mock component props
+  // biome-ignore lint/suspicious/noExplicitAny: test mock component props
   const PopoverPortal = ({ children }: any) => <>{children}</>;
   PopoverPortal.displayName = 'PopoverPortal';
 
-  // deno-lint-ignore no-explicit-any -- test mock component props
+  // biome-ignore lint/suspicious/noExplicitAny: test mock component props
   const PopoverPositioner = ({ children }: any) => <div data-popover-positioner>{children}</div>;
-  // deno-lint-ignore no-explicit-any -- test mock component props
+  // biome-ignore lint/suspicious/noExplicitAny: test mock component props
   const PopoverPopup = ({ children, className, ...props }: any) => (
-    <div className={className} data-popover-popup {...props}>{children}</div>
+    <div className={className} data-popover-popup {...props}>
+      {children}
+    </div>
   );
-  // deno-lint-ignore no-explicit-any -- test mock parameter
+  // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
   const PopoverArrow = ({ className }: any) => <div className={className} data-popover-arrow />;
-  // deno-lint-ignore no-explicit-any -- test mock component props
+  // biome-ignore lint/suspicious/noExplicitAny: test mock component props
   const PopoverDescription = ({ children, className, ...props }: any) => (
-    <div className={className} data-popover-description {...props}>{children}</div>
+    <div className={className} data-popover-description {...props}>
+      {children}
+    </div>
   );
 
   return {
@@ -86,7 +105,7 @@ vi.mock('@base-ui/react/popover', () => {
 
 vi.mock('../components/seo/SEOHead', () => ({
   SEOHead: ({ title, description }: { title: string; description: string }) => (
-    <div data-testid='seo-head' data-title={title} data-description={description} />
+    <div data-testid="seo-head" data-title={title} data-description={description} />
   ),
 }));
 
@@ -227,11 +246,11 @@ describe('TasteNotesPage — logging', () => {
     mockHierarchyFn.mockResolvedValue(mockHierarchy);
     const { unmount } = render(<TasteNotesPage />);
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'TasteNotesPage mounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'TasteNotesPage mounted'),
     );
     unmount();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'TasteNotesPage unmounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'TasteNotesPage unmounted'),
     );
   });
 });
@@ -463,8 +482,8 @@ describe('TasteNotesPage — info icons for definitions', () => {
     const triggers = document.querySelectorAll('[data-popover-trigger]');
     expect(triggers.length).toBeGreaterThan(0);
 
-    const raspberryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Raspberry'),
+    const raspberryTrigger = Array.from(triggers).find((t) =>
+      t.getAttribute('aria-label')?.includes('Raspberry'),
     );
     expect(raspberryTrigger).toBeTruthy();
   });
@@ -476,13 +495,13 @@ describe('TasteNotesPage — info icons for definitions', () => {
     });
 
     const triggers = document.querySelectorAll('[data-popover-trigger]');
-    const berryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Berry'),
+    const berryTrigger = Array.from(triggers).find((t) =>
+      t.getAttribute('aria-label')?.includes('Berry'),
     );
     expect(berryTrigger).toBeTruthy();
 
-    const citrusTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Citrus Fruit'),
+    const citrusTrigger = Array.from(triggers).find((t) =>
+      t.getAttribute('aria-label')?.includes('Citrus Fruit'),
     );
     expect(citrusTrigger).toBeTruthy();
   });
@@ -504,8 +523,8 @@ describe('TasteNotesPage — info icons for definitions', () => {
       expect(screen.getByText('Fruity')).toBeInTheDocument();
     });
     const triggers = document.querySelectorAll('[data-popover-trigger]');
-    const fruityTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Fruity'),
+    const fruityTrigger = Array.from(triggers).find((t) =>
+      t.getAttribute('aria-label')?.includes('Fruity'),
     );
     expect(fruityTrigger).toBeTruthy();
   });
@@ -519,8 +538,8 @@ describe('TasteNotesPage — definition popover interaction', () => {
     });
 
     const triggers = document.querySelectorAll('[data-popover-trigger]');
-    const raspberryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Raspberry'),
+    const raspberryTrigger = Array.from(triggers).find((t) =>
+      t.getAttribute('aria-label')?.includes('Raspberry'),
     )!;
     expect(raspberryTrigger).toBeTruthy();
 
@@ -538,8 +557,8 @@ describe('TasteNotesPage — definition popover interaction', () => {
     });
 
     const triggers = document.querySelectorAll('[data-popover-trigger]');
-    const raspberryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Raspberry'),
+    const raspberryTrigger = Array.from(triggers).find((t) =>
+      t.getAttribute('aria-label')?.includes('Raspberry'),
     )!;
 
     fireEvent.click(raspberryTrigger);
@@ -568,8 +587,8 @@ describe('TasteNotesPage — definition popover interaction', () => {
     });
 
     const triggers = document.querySelectorAll('[data-popover-trigger]');
-    const berryTrigger = Array.from(triggers).find(
-      (t) => t.getAttribute('aria-label')?.includes('Berry'),
+    const berryTrigger = Array.from(triggers).find((t) =>
+      t.getAttribute('aria-label')?.includes('Berry'),
     )!;
 
     fireEvent.mouseEnter(berryTrigger.closest('[data-popover-root]')!);

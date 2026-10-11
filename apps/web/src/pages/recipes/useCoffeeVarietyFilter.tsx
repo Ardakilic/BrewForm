@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { api, coffeeVarietyApi, type CoffeeVarietySearchResult } from '../../api/index.ts';
+import { api, type CoffeeVarietySearchResult, coffeeVarietyApi } from '../../api/index.ts';
+import { Field } from '../../components/form/Field.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useDebounce } from '../../hooks/useDebounce.ts';
 import { createLogger } from '../../utils/logger.ts';
-import { Field } from '../../components/form/Field.tsx';
 
 const log = createLogger('useCoffeeVarietyFilter');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -40,7 +40,8 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
   useEffect(() => {
     if (debouncedVarietySearch.length >= 2) {
       let cancelled = false;
-      coffeeVarietyApi.search(debouncedVarietySearch)
+      coffeeVarietyApi
+        .search(debouncedVarietySearch)
         .then((data) => {
           if (cancelled) return;
           setVarietyResults(data);
@@ -80,7 +81,8 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
       fetchedVarietyIdRef.current !== coffeeVarietyId
     ) {
       fetchedVarietyIdRef.current = coffeeVarietyId;
-      api.get<CoffeeVarietySearchResult>(`/coffee-varieties/${coffeeVarietyId}`)
+      api
+        .get<CoffeeVarietySearchResult>(`/coffee-varieties/${coffeeVarietyId}`)
         .then((v) => {
           setSelectedVarietyName(v.name);
         })
@@ -113,9 +115,9 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
 
   const slot = (
     <Field label={t('recipe.list.coffeeVarietyFilter')}>
-      <div ref={varietyRef} className='relative'>
+      <div ref={varietyRef} className="relative">
         <input
-          type='text'
+          type="text"
           value={varietySearch}
           onChange={(e) => {
             setVarietySearch(e.target.value);
@@ -128,7 +130,7 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
             if (varietyResults.length > 0) setVarietyDropdownOpen(true);
           }}
           placeholder={t('recipe.list.coffeeVarietyPlaceholder')}
-          className='input-field text-sm'
+          className="input-field text-sm"
         />
         {varietyDropdownOpen && varietyResults.length > 0 && (
           <div
@@ -142,7 +144,7 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
             {varietyResults.map((v) => (
               <button
                 key={v.id}
-                type='button'
+                type="button"
                 onClick={() => select(v)}
                 className={[
                   'flex items-center justify-between gap-2 w-full px-3 py-2',
@@ -152,9 +154,9 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
                   'transition-colors duration-150',
                 ].join(' ')}
               >
-                <span className='truncate'>{v.name}</span>
+                <span className="truncate">{v.name}</span>
                 <span
-                  className='text-xs px-1.5 py-0.5 rounded flex-shrink-0'
+                  className="text-xs px-1.5 py-0.5 rounded flex-shrink-0"
                   style={{ background: 'var(--bg-secondary)', color: 'var(--text-tertiary)' }}
                 >
                   {v.category}
@@ -165,9 +167,9 @@ export function useCoffeeVarietyFilter(): CoffeeVarietyFilterState {
         )}
         {coffeeVarietyId && (
           <button
-            type='button'
+            type="button"
             onClick={clear}
-            className='absolute right-2 top-1/2 -translate-y-1/2 text-xs'
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs"
             style={{ color: 'var(--text-tertiary)' }}
             aria-label={t('a11y.clearVarietyFilter')}
           >

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { IntensityDots } from './IntensityDots.tsx';
 
 // ── Requirement 8.4 — IntensityDots ─────────────────────────────────────────
@@ -84,7 +84,7 @@ describe('IntensityDots', () => {
   });
 
   it('applies optional className to the wrapper', () => {
-    const { container } = render(<IntensityDots intensity={1} className='my-custom-class' />);
+    const { container } = render(<IntensityDots intensity={1} className="my-custom-class" />);
     const wrapper = container.firstChild as HTMLElement;
     expect(wrapper.classList.contains('my-custom-class')).toBe(true);
   });

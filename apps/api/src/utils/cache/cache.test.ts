@@ -1,5 +1,4 @@
-import { beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryCacheProvider } from './index.ts';
 
 describe('CacheProvider', () => {
@@ -90,8 +89,8 @@ describe('createCacheProvider', () => {
     expect(() => createCacheProvider('redis')).toThrow('Unknown cache driver');
   });
 
-  it('should throw for deno-kv without kv instance', async () => {
+  it('should reject the removed deno-kv driver', async () => {
     const { createCacheProvider } = await import('./index.ts');
-    expect(() => createCacheProvider('deno-kv')).toThrow('Deno.Kv instance required');
+    expect(() => createCacheProvider('deno-kv')).toThrow('Unknown cache driver');
   });
 });

@@ -66,15 +66,15 @@ export function Modal({ open, onClose, children, ariaLabel, panelClassName }: Mo
 
   return (
     <div
-      className='fixed inset-0 z-50 flex items-center justify-center'
+      className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
       onClick={onClose}
     >
       <div
         ref={panelRef}
         className={`card w-full mx-4 ${panelClassName ?? 'max-w-md'}`}
-        role='dialog'
-        aria-modal='true'
+        role="dialog"
+        aria-modal="true"
         aria-label={ariaLabel}
         onClick={(e) => e.stopPropagation()}
       >
@@ -127,24 +127,24 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         open={options !== null}
         onClose={() => handleClose(false)}
         ariaLabel={options ? t(options.titleKey) : undefined}
-        panelClassName='max-w-sm'
+        panelClassName="max-w-sm"
       >
         {options && (
           <>
-            <h3 className='font-semibold mb-2' style={{ color: 'var(--text-primary)' }}>
+            <h3 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
               {t(options.titleKey)}
             </h3>
-            <p className='text-sm mb-4' style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
               {t(options.bodyKey)}
             </p>
-            <div className='flex justify-end gap-2'>
-              <button type='button' onClick={() => handleClose(false)} className='btn-secondary'>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => handleClose(false)} className="btn-secondary">
                 {t('common.cancel')}
               </button>
               <button
-                type='button'
+                type="button"
                 onClick={() => handleClose(true)}
-                className='btn-primary'
+                className="btn-primary"
                 style={options.danger ? { background: 'var(--error)' } : undefined}
               >
                 {t(options.confirmLabelKey ?? 'common.delete')}
@@ -163,7 +163,6 @@ export function useConfirm(): ConfirmContextValue {
   if (!ctx) {
     return {
       // Native confirm is the documented fallback when used outside a ConfirmProvider (e.g. unit tests).
-      // deno-lint-ignore no-window
       confirm: (opts: ConfirmOptions) => Promise.resolve(window.confirm(opts.bodyKey)),
     };
   }

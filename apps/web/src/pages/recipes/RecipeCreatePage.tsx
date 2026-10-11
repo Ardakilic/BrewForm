@@ -1,26 +1,26 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { ApiError } from '../../api/client.ts';
-import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index.ts';
-import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
-import { Field, Section } from '../../components/form/index.ts';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { createLogger } from '../../utils/logger.ts';
 import {
   BREW_METHODS_LIST,
   DRINK_TYPES_LIST,
   EMOJI_TAGS_LIST,
   VISIBILITY_STATES_LIST,
 } from '@brewform/shared/constants';
-import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 import type {
   EquipmentOutput,
   RecipeCreate,
   RecipeDetailOutput,
   SetupOutput,
 } from '@brewform/shared/schemas';
+import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { ApiError } from '../../api/client.ts';
+import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index.ts';
+import { Field, Section } from '../../components/form/index.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { TasteAutocomplete } from '../../components/taste/TasteAutocomplete.tsx';
+import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('RecipeCreatePage');
 
@@ -73,38 +73,47 @@ export function RecipeCreatePage() {
 
   useEffect(() => {
     Promise.all([
-      equipmentApi.list().then((data) => {
-        if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
-          setEquipmentList(data);
-        } else {
-          setEquipError(t('recipe.form.equipmentLoadError'));
-        }
-      }).catch(() => setEquipError(t('recipe.form.equipmentLoadError'))),
-      setupApi.list().then((data) => {
-        if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
-          setSetupList(data);
-        } else {
-          setEquipError(t('recipe.createPage.setupLoadError'));
-        }
-      }).catch(() => setEquipError(t('recipe.createPage.setupLoadError'))),
+      equipmentApi
+        .list()
+        .then((data) => {
+          if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
+            setEquipmentList(data);
+          } else {
+            setEquipError(t('recipe.form.equipmentLoadError'));
+          }
+        })
+        .catch(() => setEquipError(t('recipe.form.equipmentLoadError'))),
+      setupApi
+        .list()
+        .then((data) => {
+          if (Array.isArray(data) && data.every((item) => typeof item.id === 'string')) {
+            setSetupList(data);
+          } else {
+            setEquipError(t('recipe.createPage.setupLoadError'));
+          }
+        })
+        .catch(() => setEquipError(t('recipe.createPage.setupLoadError'))),
     ]).finally(() => setEquipLoading(false));
-  }, []);
+  }, [t]);
 
   // Pre-fill bean info from URL param
   useEffect(() => {
     const beanId = searchParams.get('beanId');
     if (!beanId) return;
-    beanApi.get(beanId).then((data) => {
-      if (data && typeof data === 'object') {
-        if (data.name) setProductName(data.name);
-        if (data.brand) setCoffeeBrand(data.brand);
-        else if (data.roaster) setCoffeeBrand(data.roaster);
-        if (data.processing) setCoffeeProcessing(data.processing);
-      }
-    }).catch((err) => {
-      log.error({ err, beanId }, 'Failed to pre-fill bean info from URL param');
-    });
-  }, []);
+    beanApi
+      .get(beanId)
+      .then((data) => {
+        if (data && typeof data === 'object') {
+          if (data.name) setProductName(data.name);
+          if (data.brand) setCoffeeBrand(data.brand);
+          else if (data.roaster) setCoffeeBrand(data.roaster);
+          if (data.processing) setCoffeeProcessing(data.processing);
+        }
+      })
+      .catch((err) => {
+        log.error({ err, beanId }, 'Failed to pre-fill bean info from URL param');
+      });
+  }, [searchParams]);
 
   // Auto-fill grinder and brewerDetails when setup changes
   useEffect(() => {
@@ -113,34 +122,24 @@ export function RecipeCreatePage() {
     if (!setup) return;
     if (setup.grinder) setGrinder(setup.grinder);
     if (setup.brewerDetails) {
-      setBrewerDetailsFromSetup(setup.brewerDetails);
+      setBrewerDetails(setup.brewerDetails);
     }
   }, [selectedSetupId, setupList]);
 
   const compatibleDrinks = DRINK_TYPES_LIST.filter((d) => d.compatibleMethods.includes(brewMethod));
 
   useEffect(() => {
-    if (!compatibleDrinks.some((d) => d.value === drinkType)) {
-      setDrinkType(compatibleDrinks[0]?.value || 'espresso');
+    const compatible = DRINK_TYPES_LIST.filter((d) => d.compatibleMethods.includes(brewMethod));
+    if (!compatible.some((d) => d.value === drinkType)) {
+      setDrinkType(compatible[0]?.value || 'espresso');
     }
-  }, [brewMethod]);
+  }, [brewMethod, drinkType]);
 
   /** Toggles an equipment item in the selected equipment set. */
   function toggleEquipment(id: string) {
     setSelectedEquipmentIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
-  }
-
-  /** Applies brewer details from the selected setup to the form state. */
-  function setBrewerDetailsFromSetup(value: string) {
-    // brewerDetails is not a separate state field in the form —
-    // it's part of the Brew Parameters section as a free-text input.
-    // We'll store it alongside grinder for now; the parameter card
-    // on the detail page renders it if present.
-    // Actually, looking at the form, there is NO brewerDetails input.
-    // Let's add one in the Brew Parameters section.
-    setBrewerDetails(value);
   }
 
   const [brewerDetails, setBrewerDetails] = useState('');
@@ -201,22 +200,22 @@ export function RecipeCreatePage() {
   }
 
   return (
-    <div className='mx-auto max-w-2xl px-6 py-8'>
+    <div className="mx-auto max-w-2xl px-6 py-8">
       <SEOHead title={t('recipe.create')} />
-      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
         {t('recipe.createPage.heading')}
       </h1>
 
-      {error && <ErrorState message={error} className='mb-4' />}
+      {error && <ErrorState message={error} className="mb-4" />}
 
-      <form onSubmit={handleSubmit} className='space-y-6'>
+      <form onSubmit={handleSubmit} className="space-y-6">
         <Section title={t('recipe.form.basicInfo')}>
           <Field label={t('recipe.form.title')} required>
             <input
-              type='text'
+              type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className='input-field'
+              className="input-field"
               placeholder={t('recipe.form.titlePlaceholder')}
             />
           </Field>
@@ -224,25 +223,29 @@ export function RecipeCreatePage() {
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as Visibility)}
-              className='input-field'
+              className="input-field"
             >
               {VISIBILITY_STATES_LIST.map((v) => (
-                <option key={v.value} value={v.value}>{v.label} — {v.description}</option>
+                <option key={v.value} value={v.value}>
+                  {v.label} — {v.description}
+                </option>
               ))}
             </select>
           </Field>
         </Section>
 
         <Section title={t('recipe.form.brewConfig')}>
-          <div className='grid grid-cols-2 gap-4'>
+          <div className="grid grid-cols-2 gap-4">
             <Field label={t('recipe.brewMethod')} required>
               <select
                 value={brewMethod}
                 onChange={(e) => setBrewMethod(e.target.value as BrewMethod)}
-                className='input-field'
+                className="input-field"
               >
                 {BREW_METHODS_LIST.map((m) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -250,10 +253,12 @@ export function RecipeCreatePage() {
               <select
                 value={drinkType}
                 onChange={(e) => setDrinkType(e.target.value as DrinkType)}
-                className='input-field'
+                className="input-field"
               >
                 {compatibleDrinks.map((d) => (
-                  <option key={d.value} value={d.value}>{d.label}</option>
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -261,229 +266,229 @@ export function RecipeCreatePage() {
         </Section>
 
         <Section title={t('recipe.form.equipmentSetup')}>
-          {equipLoading
-            ? (
-              <p className='text-sm' style={{ color: 'var(--text-secondary)' }}>
-                {t('recipe.form.loadingEquipment')}
-              </p>
-            )
-            : equipError
-            ? <p className='text-sm' style={{ color: 'var(--error)' }}>{equipError}</p>
-            : (
-              <>
-                <Field label={t('recipe.form.setupAutofill')}>
-                  <select
-                    value={selectedSetupId}
-                    onChange={(e) => setSelectedSetupId(e.target.value)}
-                    className='input-field'
-                  >
-                    <option value=''>{t('recipe.form.none')}</option>
-                    {setupList.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                        {s.isDefault ? ' (default)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+          {equipLoading ? (
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {t('recipe.form.loadingEquipment')}
+            </p>
+          ) : equipError ? (
+            <p className="text-sm" style={{ color: 'var(--error)' }}>
+              {equipError}
+            </p>
+          ) : (
+            <>
+              <Field label={t('recipe.form.setupAutofill')}>
+                <select
+                  value={selectedSetupId}
+                  onChange={(e) => setSelectedSetupId(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">{t('recipe.form.none')}</option>
+                  {setupList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.isDefault ? ' (default)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-                <Field label={t('equipment.title')}>
-                  <div className='space-y-2 mt-1'>
-                    {equipmentList.length === 0
-                      ? (
-                        <p className='text-sm' style={{ color: 'var(--text-tertiary)' }}>
-                          {t('recipe.form.noEquipment')}
-                        </p>
-                      )
-                      : (
-                        equipmentList.map((eq) => (
-                          <label
-                            key={eq.id}
-                            className='flex items-center gap-2 text-sm cursor-pointer'
-                            style={{ color: 'var(--text-secondary)' }}
-                          >
-                            <input
-                              type='checkbox'
-                              checked={selectedEquipmentIds.includes(eq.id)}
-                              onChange={() => toggleEquipment(eq.id)}
-                              className='rounded'
-                            />
-                            <span>{eq.name}</span>
-                            <span className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
-                              ({eq.type})
-                            </span>
-                          </label>
-                        ))
-                      )}
-                  </div>
-                </Field>
-              </>
-            )}
+              <Field label={t('equipment.title')}>
+                <div className="space-y-2 mt-1">
+                  {equipmentList.length === 0 ? (
+                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                      {t('recipe.form.noEquipment')}
+                    </p>
+                  ) : (
+                    equipmentList.map((eq) => (
+                      <label
+                        key={eq.id}
+                        className="flex items-center gap-2 text-sm cursor-pointer"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedEquipmentIds.includes(eq.id)}
+                          onChange={() => toggleEquipment(eq.id)}
+                          className="rounded"
+                        />
+                        <span>{eq.name}</span>
+                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                          ({eq.type})
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </Field>
+            </>
+          )}
         </Section>
 
         <Section title={t('recipe.form.coffeeIdentity')}>
-          <div className='grid grid-cols-2 gap-4'>
+          <div className="grid grid-cols-2 gap-4">
             <Field label={t('recipe.productName')}>
               <input
-                type='text'
+                type="text"
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
-                className='input-field'
+                className="input-field"
               />
             </Field>
             <Field label={t('recipe.coffeeBrand')}>
               <input
-                type='text'
+                type="text"
                 value={coffeeBrand}
                 onChange={(e) => setCoffeeBrand(e.target.value)}
-                className='input-field'
+                className="input-field"
               />
             </Field>
             <Field label={t('bean.processing')}>
               <input
-                type='text'
+                type="text"
                 value={coffeeProcessing}
                 onChange={(e) => setCoffeeProcessing(e.target.value)}
-                className='input-field'
+                className="input-field"
                 placeholder={t('recipe.form.processingPlaceholder')}
               />
             </Field>
           </div>
-          <div className='grid grid-cols-2 gap-4 mt-4'>
+          <div className="grid grid-cols-2 gap-4 mt-4">
             <Field label={t('recipe.roastDate')}>
               <input
-                type='date'
+                type="date"
                 value={roastDate}
                 onChange={(e) => setRoastDate(e.target.value)}
-                className='input-field'
+                className="input-field"
               />
             </Field>
             <Field label={t('recipe.packageOpenDate')}>
               <input
-                type='date'
+                type="date"
                 value={packageOpenDate}
                 onChange={(e) => setPackageOpenDate(e.target.value)}
-                className='input-field'
+                className="input-field"
               />
             </Field>
             <Field label={t('recipe.grindDate')}>
               <input
-                type='date'
+                type="date"
                 value={grindDate}
                 onChange={(e) => setGrindDate(e.target.value)}
-                className='input-field'
+                className="input-field"
               />
             </Field>
           </div>
         </Section>
 
         <Section title={t('recipe.form.brewParams')}>
-          <div className='grid grid-cols-2 gap-4'>
+          <div className="grid grid-cols-2 gap-4">
             <Field label={t('recipe.grinder')}>
               <input
-                type='text'
+                type="text"
                 value={grinder}
                 onChange={(e) => setGrinder(e.target.value)}
-                className='input-field'
+                className="input-field"
               />
             </Field>
             <Field label={t('recipe.grindSize')}>
               <input
-                type='text'
+                type="text"
                 value={grindSize}
                 onChange={(e) => setGrindSize(e.target.value)}
-                className='input-field'
+                className="input-field"
               />
             </Field>
             <Field label={t('recipe.mainBrewer')}>
               <input
-                type='text'
+                type="text"
                 value={brewerDetails}
                 onChange={(e) => setBrewerDetails(e.target.value)}
-                className='input-field'
+                className="input-field"
                 placeholder={t('recipe.form.mainBrewerPlaceholder')}
               />
             </Field>
             <Field label={t('recipe.form.dose')}>
               <input
-                type='number'
+                type="number"
                 value={groundWeightGrams}
                 onChange={(e) => setGroundWeightGrams(e.target.value)}
-                className='input-field'
-                step='0.1'
-                min='0'
+                className="input-field"
+                step="0.1"
+                min="0"
               />
             </Field>
             <Field label={t('recipe.form.extractionTime')}>
               <input
-                type='number'
+                type="number"
                 value={extractionTimeSeconds}
                 onChange={(e) => setExtractionTimeSeconds(e.target.value)}
-                className='input-field'
+                className="input-field"
               />
             </Field>
             <Field label={t('recipe.form.yield')}>
               <input
-                type='number'
+                type="number"
                 value={extractionVolumeMl}
                 onChange={(e) => setExtractionVolumeMl(e.target.value)}
-                className='input-field'
-                step='0.1'
-                min='0'
+                className="input-field"
+                step="0.1"
+                min="0"
               />
             </Field>
             <Field label={t('recipe.form.temperature')}>
               <input
-                type='number'
+                type="number"
                 value={temperatureCelsius}
                 onChange={(e) => setTemperatureCelsius(e.target.value)}
-                className='input-field'
-                step='0.5'
+                className="input-field"
+                step="0.5"
               />
             </Field>
             <Field label={t('recipe.form.tds')}>
               <input
-                type='number'
+                type="number"
                 value={tds}
                 onChange={(e) => setTds(e.target.value)}
-                className='input-field'
+                className="input-field"
                 placeholder={t('recipe.form.tds.placeholder')}
-                step='0.01'
-                min='0'
-                max='25'
+                step="0.01"
+                min="0"
+                max="25"
               />
             </Field>
           </div>
         </Section>
 
         <Section title={t('recipe.form.tasteRating')}>
-          <div className='grid grid-cols-2 gap-4'>
+          <div className="grid grid-cols-2 gap-4">
             <Field label={t('recipe.form.rating')}>
               <input
-                type='number'
+                type="number"
                 value={rating}
                 onChange={(e) => setRating(e.target.value)}
-                className='input-field'
-                min='1'
-                max='10'
+                className="input-field"
+                min="1"
+                max="10"
               />
             </Field>
             <Field label={t('recipe.form.howDidItTaste')}>
               <select
                 value={emojiTag}
                 onChange={(e) => setEmojiTag(e.target.value)}
-                className='input-field'
+                className="input-field"
               >
-                <option value=''>{t('recipe.form.selectPlaceholder')}</option>
+                <option value="">{t('recipe.form.selectPlaceholder')}</option>
                 {EMOJI_TAGS_LIST.map((t) => (
-                  <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
+                  <option key={t.value} value={t.value}>
+                    {t.emoji} {t.label}
+                  </option>
                 ))}
               </select>
             </Field>
           </div>
-          <div className='mt-4'>
+          <div className="mt-4">
             <label
-              className='block text-sm font-medium mb-1'
+              className="block text-sm font-medium mb-1"
               style={{ color: 'var(--text-secondary)' }}
             >
               {t('recipe.tasteNotes')}
@@ -501,7 +506,7 @@ export function RecipeCreatePage() {
           <textarea
             value={preparationNotes}
             onChange={(e) => setPreparationNotes(e.target.value)}
-            className='input-field'
+            className="input-field"
             rows={6}
             placeholder={t('recipe.form.preparationPlaceholder')}
             required
@@ -512,17 +517,17 @@ export function RecipeCreatePage() {
           <textarea
             value={personalNotes}
             onChange={(e) => setPersonalNotes(e.target.value)}
-            className='input-field'
+            className="input-field"
             rows={4}
             placeholder={t('recipe.form.personalNotesPlaceholder')}
           />
         </Section>
 
-        <div className='flex gap-3'>
-          <button type='submit' className='btn-primary' disabled={loading}>
+        <div className="flex gap-3">
+          <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? t('recipe.createPage.creating') : t('recipe.createPage.submit')}
           </button>
-          <button type='button' onClick={() => navigate(-1)} className='btn-secondary'>
+          <button type="button" onClick={() => navigate(-1)} className="btn-secondary">
             {t('common.cancel')}
           </button>
         </div>

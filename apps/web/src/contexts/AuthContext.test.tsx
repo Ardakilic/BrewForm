@@ -1,10 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AuthUser } from '@brewform/shared/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { AuthProvider } from './AuthContext.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../contexts/I18nContext.tsx';
-import type { AuthUser } from '@brewform/shared/types';
-import { useAuth } from './AuthContext.tsx';
+import { AuthProvider, useAuth } from './AuthContext.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -68,9 +67,9 @@ function TestConsumer() {
   const { user, sessionError, isLoading } = useAuth();
   return (
     <div>
-      <span data-testid='user-id'>{user?.id ?? 'none'}</span>
-      <span data-testid='session-error'>{sessionError ?? 'none'}</span>
-      <span data-testid='loading'>{String(isLoading)}</span>
+      <span data-testid="user-id">{user?.id ?? 'none'}</span>
+      <span data-testid="session-error">{sessionError ?? 'none'}</span>
+      <span data-testid="loading">{String(isLoading)}</span>
     </div>
   );
 }

@@ -39,29 +39,24 @@ export function DiffHighlighter({
   const bgColor = s
     ? s.bg
     : differs
-    ? 'var(--diff-highlight, rgba(255, 200, 0, 0.1))'
-    : 'transparent';
+      ? 'var(--diff-highlight, rgba(255, 200, 0, 0.1))'
+      : 'transparent';
   const leftColor = s ? s.text : differs ? 'var(--accent-primary)' : 'var(--text-primary)';
   const rightColor = s ? s.text : differs ? 'var(--accent-secondary)' : 'var(--text-primary)';
 
   return (
     <div
-      className='grid grid-cols-3 gap-2 py-2 text-sm'
+      className="grid grid-cols-3 gap-2 py-2 text-sm"
       style={{
         borderBottom: '1px solid var(--border-primary)',
         backgroundColor: bgColor,
       }}
     >
-      <div style={{ color: leftColor }}>
-        {display1}
-      </div>
-      <div className='text-center font-medium' style={{ color: 'var(--text-secondary)' }}>
+      <div style={{ color: leftColor }}>{display1}</div>
+      <div className="text-center font-medium" style={{ color: 'var(--text-secondary)' }}>
         {t(labelKey)}
       </div>
-      <div
-        className='text-right'
-        style={{ color: rightColor }}
-      >
+      <div className="text-right" style={{ color: rightColor }}>
         {display2}
       </div>
     </div>

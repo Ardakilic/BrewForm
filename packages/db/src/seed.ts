@@ -7,27 +7,29 @@
  * existence checks for tables without them. Invoked on first container boot (when the users table is
  * empty) and via `make db-seed`.
  */
+import { readFile } from 'node:fs/promises';
 import { and, count, eq, ilike, inArray, isNull } from 'drizzle-orm';
+import { db } from './index.ts';
 import {
   badges,
   beans,
   brewLogs,
-  brewMethodEnum,
+  type brewMethodEnum,
   brewMethodEquipmentRules,
   coffeeVarieties,
   collectionItems,
   collections,
   comments,
   equipment,
-  equipmentTypeEnum,
+  type equipmentTypeEnum,
   photos,
+  type RecipeVisibility,
   recipeAdditionalPreparations,
   recipeEquipment,
   recipes,
   recipeTasteNotes,
   recipeVersionPhotos,
   recipeVersions,
-  type RecipeVisibility,
   setups,
   tasteNotes,
   userBadges,
@@ -38,9 +40,10 @@ import {
   userRecipeRatings,
   users,
   vendors,
-  visibilityEnum,
+  type visibilityEnum,
 } from './schema.ts';
-import { db } from './index.ts';
+import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
+import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
 import {
   badgeSeedData,
   beanSeedData,
@@ -54,8 +57,6 @@ import {
   userSeedData,
   vendorSeedData,
 } from './seed-users-recipes.ts';
-import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
-import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 
 type SeedTX = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -95,7 +96,11 @@ async function upsertTasteNote(
       : eq(tasteNotes.parentId, values.parentId!),
     eq(tasteNotes.depth, values.depth ?? 0),
   ];
-  const [existing] = await tx.select().from(tasteNotes).where(and(...conditions)).limit(1);
+  const [existing] = await tx
+    .select()
+    .from(tasteNotes)
+    .where(and(...conditions))
+    .limit(1);
   if (existing) return existing;
 
   const insertValues: typeof tasteNotes.$inferInsert = {
@@ -157,13 +162,16 @@ async function seedTasteNotes(tx: SeedTX, data: ScaaRoot[]) {
  */
 export async function seedBrewMethodCompatibility(tx: SeedTX) {
   for (const rule of brewMethodCompatibilityRules) {
-    await tx.insert(brewMethodEquipmentRules).values({
-      brewMethod: rule.brewMethod as typeof brewMethodEnum.enumValues[number],
-      equipmentType: rule.equipmentType as typeof equipmentTypeEnum.enumValues[number],
-      compatible: rule.compatible,
-    }).onConflictDoNothing({
-      target: [brewMethodEquipmentRules.brewMethod, brewMethodEquipmentRules.equipmentType],
-    });
+    await tx
+      .insert(brewMethodEquipmentRules)
+      .values({
+        brewMethod: rule.brewMethod as (typeof brewMethodEnum.enumValues)[number],
+        equipmentType: rule.equipmentType as (typeof equipmentTypeEnum.enumValues)[number],
+        compatible: rule.compatible,
+      })
+      .onConflictDoNothing({
+        target: [brewMethodEquipmentRules.brewMethod, brewMethodEquipmentRules.equipmentType],
+      });
   }
 }
 
@@ -191,22 +199,26 @@ async function seedBadges(tx: SeedTX) {
  * the unique `userId` column.
  */
 async function seedUsers(tx: SeedTX) {
-  const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
-  const adminUsername = Deno.env.get('ADMIN_USERNAME') || 'admin';
-  const adminPassword = hashPassword(Deno.env.get('ADMIN_PASSWORD') || 'admin123456');
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@brewform.local';
+  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+  const adminPassword = hashPassword(process.env.ADMIN_PASSWORD || 'admin123456');
 
-  const [adminInserted] = await tx.insert(users).values({
-    email: adminEmail,
-    username: adminUsername,
-    passwordHash: adminPassword,
-    displayName: 'BrewForm Admin',
-    isAdmin: true,
-    onboardingCompleted: true,
-    emailVerifiedAt: new Date(),
-  }).onConflictDoNothing({ target: users.email }).returning();
+  const [adminInserted] = await tx
+    .insert(users)
+    .values({
+      email: adminEmail,
+      username: adminUsername,
+      passwordHash: adminPassword,
+      displayName: 'BrewForm Admin',
+      isAdmin: true,
+      onboardingCompleted: true,
+      emailVerifiedAt: new Date(),
+    })
+    .onConflictDoNothing({ target: users.email })
+    .returning();
 
-  const admin = adminInserted ??
-    (await tx.select().from(users).where(eq(users.email, adminEmail)).limit(1))[0];
+  const admin =
+    adminInserted ?? (await tx.select().from(users).where(eq(users.email, adminEmail)).limit(1))[0];
 
   await tx.insert(userPreferences).values({ userId: admin.id }).onConflictDoNothing({
     target: userPreferences.userId,
@@ -215,24 +227,33 @@ async function seedUsers(tx: SeedTX) {
   const createdUsers: Record<string, typeof users.$inferSelect> = { admin };
 
   for (const userData of userSeedData) {
-    const [userInserted] = await tx.insert(users).values({
-      email: userData.email,
-      username: userData.username,
-      passwordHash: hashPassword(defaultPassword),
-      displayName: userData.displayName,
-      bio: userData.bio,
-      onboardingCompleted: userData.onboardingCompleted,
-      emailVerifiedAt: new Date(),
-    }).onConflictDoNothing({ target: users.email }).returning();
+    const [userInserted] = await tx
+      .insert(users)
+      .values({
+        email: userData.email,
+        username: userData.username,
+        passwordHash: hashPassword(defaultPassword),
+        displayName: userData.displayName,
+        bio: userData.bio,
+        onboardingCompleted: userData.onboardingCompleted,
+        emailVerifiedAt: new Date(),
+      })
+      .onConflictDoNothing({ target: users.email })
+      .returning();
 
-    const user = userInserted ??
+    const user =
+      userInserted ??
       (await tx.select().from(users).where(eq(users.email, userData.email)).limit(1))[0];
 
-    await tx.insert(userPreferences).values({
-      userId: user.id,
-      unitSystem: userData.preferences.unitSystem as typeof userPreferences.$inferInsert.unitSystem,
-      theme: userData.preferences.theme as typeof userPreferences.$inferInsert.theme,
-    }).onConflictDoNothing({ target: userPreferences.userId });
+    await tx
+      .insert(userPreferences)
+      .values({
+        userId: user.id,
+        unitSystem: userData.preferences
+          .unitSystem as typeof userPreferences.$inferInsert.unitSystem,
+        theme: userData.preferences.theme as typeof userPreferences.$inferInsert.theme,
+      })
+      .onConflictDoNothing({ target: userPreferences.userId });
 
     createdUsers[userData.username] = user;
   }
@@ -251,9 +272,11 @@ async function seedUsers(tx: SeedTX) {
 async function seedVendors(tx: SeedTX) {
   const createdVendors: Record<string, typeof vendors.$inferSelect> = {};
   for (const vendorData of vendorSeedData) {
-    const [existingByName] = await tx.select().from(vendors).where(
-      eq(vendors.name, vendorData.name),
-    ).limit(1);
+    const [existingByName] = await tx
+      .select()
+      .from(vendors)
+      .where(eq(vendors.name, vendorData.name))
+      .limit(1);
     if (existingByName) {
       createdVendors[vendorData.name] = existingByName;
       continue;
@@ -272,26 +295,28 @@ async function seedVendors(tx: SeedTX) {
  * `equipment` table has no unique constraint on `name`, so conflicts are
  * detected by selecting the existing row first.
  */
-async function seedEquipment(
-  tx: SeedTX,
-  createdUsers: Record<string, typeof users.$inferSelect>,
-) {
+async function seedEquipment(tx: SeedTX, createdUsers: Record<string, typeof users.$inferSelect>) {
   const createdEquipment: Record<string, typeof equipment.$inferSelect> = {};
   for (const equipData of equipmentSeedData) {
-    const [existingByName] = await tx.select().from(equipment).where(
-      eq(equipment.name, equipData.name),
-    ).limit(1);
+    const [existingByName] = await tx
+      .select()
+      .from(equipment)
+      .where(eq(equipment.name, equipData.name))
+      .limit(1);
     if (existingByName) {
       createdEquipment[equipData.name] = existingByName;
       continue;
     }
-    const [equip] = await tx.insert(equipment).values({
-      name: equipData.name,
-      type: equipData.type as typeof equipmentTypeEnum.enumValues[number],
-      brand: equipData.brand,
-      description: equipData.description ?? null,
-      createdBy: createdUsers[equipData.createdByUsername]?.id,
-    }).returning();
+    const [equip] = await tx
+      .insert(equipment)
+      .values({
+        name: equipData.name,
+        type: equipData.type as (typeof equipmentTypeEnum.enumValues)[number],
+        brand: equipData.brand,
+        description: equipData.description ?? null,
+        createdBy: createdUsers[equipData.createdByUsername]?.id,
+      })
+      .returning();
     createdEquipment[equipData.name] = equip;
   }
   return createdEquipment;
@@ -309,22 +334,28 @@ async function seedEquipmentCatalog(
 ): Promise<Record<string, typeof equipment.$inferSelect>> {
   const created: Record<string, typeof equipment.$inferSelect> = {};
   for (const equipData of equipmentCatalogSeedData) {
-    const [equip] = await tx.insert(equipment).values({
-      id: equipData.id,
-      name: equipData.name,
-      type: equipData.type as typeof equipment.$inferInsert['type'],
-      brand: equipData.brand,
-      model: equipData.model,
-      description: equipData.description,
-      isSystem: true,
-    }).onConflictDoNothing().returning();
+    const [equip] = await tx
+      .insert(equipment)
+      .values({
+        id: equipData.id,
+        name: equipData.name,
+        type: equipData.type as (typeof equipment.$inferInsert)['type'],
+        brand: equipData.brand,
+        model: equipData.model,
+        description: equipData.description,
+        isSystem: true,
+      })
+      .onConflictDoNothing()
+      .returning();
     if (equip) {
       created[equip.name] = equip;
       continue;
     }
-    const [existing] = await tx.select().from(equipment).where(
-      eq(equipment.id, equipData.id),
-    ).limit(1);
+    const [existing] = await tx
+      .select()
+      .from(equipment)
+      .where(eq(equipment.id, equipData.id))
+      .limit(1);
     if (existing) created[equipData.name] = existing;
   }
   return created;
@@ -342,44 +373,50 @@ async function seedCoffeeVarietiesCatalogue(
 ): Promise<Record<string, typeof coffeeVarieties.$inferSelect>> {
   const created: Record<string, typeof coffeeVarieties.$inferSelect> = {};
   for (const varietyData of coffeeVarietySeedData) {
-    const [row] = await tx.insert(coffeeVarieties).values({
-      id: varietyData.id,
-      name: varietyData.name,
-      category: varietyData.category as typeof coffeeVarieties.$inferInsert['category'],
-      species: varietyData.species,
-      origin: varietyData.origin,
-      spread: varietyData.spread,
-      altitudeRangeM: varietyData.altitudeRangeM,
-      cupProfile: varietyData.cupProfile,
-      body: varietyData.body,
-      acidity: varietyData.acidity,
-      caffeinePct: varietyData.caffeinePct,
-      processingCompatibility: varietyData.processingCompatibility,
-      diseaseResistance: varietyData.diseaseResistance,
-      yield: varietyData.yield,
-      plantSize: varietyData.plantSize,
-      notes: varietyData.notes,
-      subVarieties: varietyData.subVarieties,
-      fermentation: varietyData.fermentation,
-      dryingTimeDays: varietyData.dryingTimeDays,
-      dryingMethod: varietyData.dryingMethod,
-      mucilageRetentionPct: varietyData.mucilageRetentionPct,
-      priceRange: varietyData.priceRange,
-      processing: varietyData.processing,
-      typeLabel: varietyData.typeLabel,
-      notableFarms: varietyData.notableFarms,
-      notableRegions: varietyData.notableRegions,
-      regionalVariants: varietyData.regionalVariants,
-      globalSharePct: varietyData.globalSharePct,
-      isSystem: true,
-    }).onConflictDoNothing().returning();
+    const [row] = await tx
+      .insert(coffeeVarieties)
+      .values({
+        id: varietyData.id,
+        name: varietyData.name,
+        category: varietyData.category as (typeof coffeeVarieties.$inferInsert)['category'],
+        species: varietyData.species,
+        origin: varietyData.origin,
+        spread: varietyData.spread,
+        altitudeRangeM: varietyData.altitudeRangeM,
+        cupProfile: varietyData.cupProfile,
+        body: varietyData.body,
+        acidity: varietyData.acidity,
+        caffeinePct: varietyData.caffeinePct,
+        processingCompatibility: varietyData.processingCompatibility,
+        diseaseResistance: varietyData.diseaseResistance,
+        yield: varietyData.yield,
+        plantSize: varietyData.plantSize,
+        notes: varietyData.notes,
+        subVarieties: varietyData.subVarieties,
+        fermentation: varietyData.fermentation,
+        dryingTimeDays: varietyData.dryingTimeDays,
+        dryingMethod: varietyData.dryingMethod,
+        mucilageRetentionPct: varietyData.mucilageRetentionPct,
+        priceRange: varietyData.priceRange,
+        processing: varietyData.processing,
+        typeLabel: varietyData.typeLabel,
+        notableFarms: varietyData.notableFarms,
+        notableRegions: varietyData.notableRegions,
+        regionalVariants: varietyData.regionalVariants,
+        globalSharePct: varietyData.globalSharePct,
+        isSystem: true,
+      })
+      .onConflictDoNothing()
+      .returning();
     if (row) {
       created[varietyData.name] = row;
       continue;
     }
-    const [existing] = await tx.select().from(coffeeVarieties).where(
-      eq(coffeeVarieties.id, varietyData.id),
-    ).limit(1);
+    const [existing] = await tx
+      .select()
+      .from(coffeeVarieties)
+      .where(eq(coffeeVarieties.id, varietyData.id))
+      .limit(1);
     if (existing) created[varietyData.name] = existing;
   }
   return created;
@@ -404,7 +441,11 @@ async function seedBeans(
     } else {
       conditions.push(isNull(beans.userId));
     }
-    const [existing] = await tx.select().from(beans).where(and(...conditions)).limit(1);
+    const [existing] = await tx
+      .select()
+      .from(beans)
+      .where(and(...conditions))
+      .limit(1);
     if (existing) continue;
 
     await tx.insert(beans).values({
@@ -444,76 +485,86 @@ async function seedRecipes(
   const createdVersions: Record<string, typeof recipeVersions.$inferSelect> = {};
 
   for (const recipeData of recipeSeedData) {
-    const [recipeInserted] = await tx.insert(recipes).values({
-      slug: recipeData.slug,
-      title: recipeData.title,
-      authorId: createdUsers[recipeData.authorUsername]?.id,
-      visibility: recipeData.visibility as RecipeVisibility,
-      likeCount: recipeData.likeCount,
-      commentCount: recipeData.commentCount,
-      forkCount: recipeData.forkCount,
-      featured: recipeData.featured,
-    }).onConflictDoNothing({ target: recipes.slug }).returning();
+    const [recipeInserted] = await tx
+      .insert(recipes)
+      .values({
+        slug: recipeData.slug,
+        title: recipeData.title,
+        authorId: createdUsers[recipeData.authorUsername]?.id,
+        visibility: recipeData.visibility as RecipeVisibility,
+        likeCount: recipeData.likeCount,
+        commentCount: recipeData.commentCount,
+        forkCount: recipeData.forkCount,
+        featured: recipeData.featured,
+      })
+      .onConflictDoNothing({ target: recipes.slug })
+      .returning();
 
-    const recipe = recipeInserted ??
+    const recipe =
+      recipeInserted ??
       (await tx.select().from(recipes).where(eq(recipes.slug, recipeData.slug)).limit(1))[0];
     if (!recipe) continue;
 
     const version = recipeData.version;
-    const [versionInserted] = await tx.insert(recipeVersions).values({
-      recipeId: recipe.id,
-      versionNumber: 1,
-      productName: version.productName,
-      coffeeBrand: version.coffeeBrand,
-      coffeeProcessing: version.coffeeProcessing,
-      vendorId: createdVendors[version.vendorName]?.id ?? null,
-      roastDate: new Date(version.roastDate),
-      packageOpenDate: new Date(version.packageOpenDate),
-      grindDate: new Date(version.grindDate),
-      brewDate: new Date(version.brewDate),
-      brewMethod: version.brewMethod as typeof brewMethodEnum.enumValues[number],
-      drinkType: version.drinkType as typeof recipeVersions.$inferInsert.drinkType,
-      brewerDetails: version.brewerDetails,
-      grinder: version.grinder,
-      grindSize: version.grindSize,
-      groundWeightGrams: version.groundWeightGrams,
-      extractionTimeSeconds: version.extractionTimeSeconds,
-      extractionVolumeMl: version.extractionVolumeMl,
-      temperatureCelsius: version.temperatureCelsius,
-      tds: version.tds != null ? String(version.tds) : null,
-      brewRatio: version.brewRatio,
-      flowRate: version.flowRate,
-      preInfusionTimeSeconds:
-        (version as { preInfusionTimeSeconds?: number }).preInfusionTimeSeconds ?? null,
-      coffeeVarietyId: (recipeData as { coffeeVarietyName?: string }).coffeeVarietyName
-        ? createdCoffeeVarieties[(recipeData as { coffeeVarietyName?: string }).coffeeVarietyName!]
-          ?.id ?? null
-        : null,
-      coffeeVarietyName: (recipeData as { coffeeVarietyName?: string }).coffeeVarietyName ?? null,
-      personalNotes: version.personalNotes,
-      preparationNotes: version.preparationNotes,
-      isFavourite: version.isFavourite,
-      rating: version.rating,
-      emojiTag: version.emojiTag as typeof recipeVersions.$inferInsert.emojiTag,
-    }).onConflictDoNothing({
-      target: [recipeVersions.recipeId, recipeVersions.versionNumber],
-    }).returning();
+    const [versionInserted] = await tx
+      .insert(recipeVersions)
+      .values({
+        recipeId: recipe.id,
+        versionNumber: 1,
+        productName: version.productName,
+        coffeeBrand: version.coffeeBrand,
+        coffeeProcessing: version.coffeeProcessing,
+        vendorId: createdVendors[version.vendorName]?.id ?? null,
+        roastDate: new Date(version.roastDate),
+        packageOpenDate: new Date(version.packageOpenDate),
+        grindDate: new Date(version.grindDate),
+        brewDate: new Date(version.brewDate),
+        brewMethod: version.brewMethod as (typeof brewMethodEnum.enumValues)[number],
+        drinkType: version.drinkType as typeof recipeVersions.$inferInsert.drinkType,
+        brewerDetails: version.brewerDetails,
+        grinder: version.grinder,
+        grindSize: version.grindSize,
+        groundWeightGrams: version.groundWeightGrams,
+        extractionTimeSeconds: version.extractionTimeSeconds,
+        extractionVolumeMl: version.extractionVolumeMl,
+        temperatureCelsius: version.temperatureCelsius,
+        tds: version.tds != null ? String(version.tds) : null,
+        brewRatio: version.brewRatio,
+        flowRate: version.flowRate,
+        preInfusionTimeSeconds:
+          (version as { preInfusionTimeSeconds?: number }).preInfusionTimeSeconds ?? null,
+        coffeeVarietyId: (recipeData as { coffeeVarietyName?: string }).coffeeVarietyName
+          ? (createdCoffeeVarieties[
+              (recipeData as { coffeeVarietyName?: string }).coffeeVarietyName!
+            ]?.id ?? null)
+          : null,
+        coffeeVarietyName: (recipeData as { coffeeVarietyName?: string }).coffeeVarietyName ?? null,
+        personalNotes: version.personalNotes,
+        preparationNotes: version.preparationNotes,
+        isFavourite: version.isFavourite,
+        rating: version.rating,
+        emojiTag: version.emojiTag as typeof recipeVersions.$inferInsert.emojiTag,
+      })
+      .onConflictDoNothing({
+        target: [recipeVersions.recipeId, recipeVersions.versionNumber],
+      })
+      .returning();
 
     let recipeVersion = versionInserted ?? null;
     if (!recipeVersion) {
-      const [existing] = await tx.select().from(recipeVersions).where(
-        and(
-          eq(recipeVersions.recipeId, recipe.id),
-          eq(recipeVersions.versionNumber, 1),
-        ),
-      ).limit(1);
+      const [existing] = await tx
+        .select()
+        .from(recipeVersions)
+        .where(and(eq(recipeVersions.recipeId, recipe.id), eq(recipeVersions.versionNumber, 1)))
+        .limit(1);
       recipeVersion = existing ?? null;
     }
     if (!recipeVersion) continue;
 
-    await tx.update(recipes).set({ currentVersionId: recipeVersion.id }).where(
-      eq(recipes.id, recipe.id),
-    );
+    await tx
+      .update(recipes)
+      .set({ currentVersionId: recipeVersion.id })
+      .where(eq(recipes.id, recipe.id));
 
     // Equipment associations
     const equipAssociations = recipeData.equipmentNames
@@ -525,26 +576,31 @@ async function seedRecipes(
       .filter(Boolean);
 
     if (equipAssociations.length > 0) {
-      await tx.insert(recipeEquipment).values(
-        equipAssociations as typeof recipeEquipment.$inferInsert[],
-      ).onConflictDoNothing({
-        target: [recipeEquipment.recipeVersionId, recipeEquipment.equipmentId],
-      });
+      await tx
+        .insert(recipeEquipment)
+        .values(equipAssociations as (typeof recipeEquipment.$inferInsert)[])
+        .onConflictDoNothing({
+          target: [recipeEquipment.recipeVersionId, recipeEquipment.equipmentId],
+        });
     }
 
     // Additional preparations
     if (recipeData.additionalPreparations) {
       for (const prep of recipeData.additionalPreparations) {
-        const [existingPrep] = await tx.select().from(recipeAdditionalPreparations).where(
-          and(
-            eq(recipeAdditionalPreparations.recipeVersionId, recipeVersion.id),
-            eq(recipeAdditionalPreparations.name, prep.name),
-            eq(
-              recipeAdditionalPreparations.type,
-              prep.type as typeof recipeAdditionalPreparations.$inferInsert.type,
+        const [existingPrep] = await tx
+          .select()
+          .from(recipeAdditionalPreparations)
+          .where(
+            and(
+              eq(recipeAdditionalPreparations.recipeVersionId, recipeVersion.id),
+              eq(recipeAdditionalPreparations.name, prep.name),
+              eq(
+                recipeAdditionalPreparations.type,
+                prep.type as typeof recipeAdditionalPreparations.$inferInsert.type,
+              ),
             ),
-          ),
-        ).limit(1);
+          )
+          .limit(1);
         if (existingPrep) continue;
 
         await tx.insert(recipeAdditionalPreparations).values({
@@ -561,29 +617,37 @@ async function seedRecipes(
     // Photos
     if (recipeData.photos) {
       for (const photoData of recipeData.photos) {
-        const [existingPhoto] = await tx.select().from(photos).where(
-          and(
-            eq(photos.recipeId, recipe.id),
-            eq(photos.url, photoData.url),
-          ),
-        ).limit(1);
+        const [existingPhoto] = await tx
+          .select()
+          .from(photos)
+          .where(and(eq(photos.recipeId, recipe.id), eq(photos.url, photoData.url)))
+          .limit(1);
 
-        const photo = existingPhoto ??
-          (await tx.insert(photos).values({
-            recipeId: recipe.id,
-            url: photoData.url,
-            alt: photoData.alt ?? null,
-            sortOrder: photoData.sortOrder,
-          }).returning())[0];
+        const photo =
+          existingPhoto ??
+          (
+            await tx
+              .insert(photos)
+              .values({
+                recipeId: recipe.id,
+                url: photoData.url,
+                alt: photoData.alt ?? null,
+                sortOrder: photoData.sortOrder,
+              })
+              .returning()
+          )[0];
         if (!photo) continue;
 
-        await tx.insert(recipeVersionPhotos).values({
-          recipeVersionId: recipeVersion.id,
-          photoId: photo.id,
-          sortOrder: photoData.sortOrder,
-        }).onConflictDoNothing({
-          target: [recipeVersionPhotos.recipeVersionId, recipeVersionPhotos.photoId],
-        });
+        await tx
+          .insert(recipeVersionPhotos)
+          .values({
+            recipeVersionId: recipeVersion.id,
+            photoId: photo.id,
+            sortOrder: photoData.sortOrder,
+          })
+          .onConflictDoNothing({
+            target: [recipeVersionPhotos.recipeVersionId, recipeVersionPhotos.photoId],
+          });
       }
     }
 
@@ -608,11 +672,13 @@ async function seedRecipeTasteNotes(
     const recipeVersion = createdVersions[recipeData.slug];
     if (!recipeVersion || !recipeData.tasteNotes) continue;
 
-    const notesToInsert: typeof recipeTasteNotes.$inferInsert[] = [];
+    const notesToInsert: (typeof recipeTasteNotes.$inferInsert)[] = [];
     for (const note of recipeData.tasteNotes) {
-      const [found] = await tx.select().from(tasteNotes).where(
-        ilike(tasteNotes.name, note.name),
-      ).limit(1);
+      const [found] = await tx
+        .select()
+        .from(tasteNotes)
+        .where(ilike(tasteNotes.name, note.name))
+        .limit(1);
       if (found) {
         notesToInsert.push({
           recipeVersionId: recipeVersion.id,
@@ -623,9 +689,12 @@ async function seedRecipeTasteNotes(
     }
 
     if (notesToInsert.length > 0) {
-      await tx.insert(recipeTasteNotes).values(notesToInsert).onConflictDoNothing({
-        target: [recipeTasteNotes.recipeVersionId, recipeTasteNotes.tasteNoteId],
-      });
+      await tx
+        .insert(recipeTasteNotes)
+        .values(notesToInsert)
+        .onConflictDoNothing({
+          target: [recipeTasteNotes.recipeVersionId, recipeTasteNotes.tasteNoteId],
+        });
     }
   }
 }
@@ -646,43 +715,55 @@ async function seedSocialData(
 ) {
   // Follows
   for (const follow of socialSeedData.follows) {
-    await tx.insert(userFollows).values({
-      followerId: createdUsers[follow.followerUsername]?.id,
-      followingId: createdUsers[follow.followingUsername]?.id,
-    }).onConflictDoNothing({
-      target: [userFollows.followerId, userFollows.followingId],
-    });
+    await tx
+      .insert(userFollows)
+      .values({
+        followerId: createdUsers[follow.followerUsername]?.id,
+        followingId: createdUsers[follow.followingUsername]?.id,
+      })
+      .onConflictDoNothing({
+        target: [userFollows.followerId, userFollows.followingId],
+      });
   }
 
   // Likes
   for (const like of socialSeedData.likes) {
-    await tx.insert(userRecipeLikes).values({
-      userId: createdUsers[like.userUsername]?.id,
-      recipeId: createdRecipes[like.recipeSlug]?.id,
-    }).onConflictDoNothing({
-      target: [userRecipeLikes.userId, userRecipeLikes.recipeId],
-    });
+    await tx
+      .insert(userRecipeLikes)
+      .values({
+        userId: createdUsers[like.userUsername]?.id,
+        recipeId: createdRecipes[like.recipeSlug]?.id,
+      })
+      .onConflictDoNothing({
+        target: [userRecipeLikes.userId, userRecipeLikes.recipeId],
+      });
   }
 
   // Favourites
   for (const fav of socialSeedData.favourites) {
-    await tx.insert(userRecipeFavourites).values({
-      userId: createdUsers[fav.userUsername]?.id,
-      recipeId: createdRecipes[fav.recipeSlug]?.id,
-    }).onConflictDoNothing({
-      target: [userRecipeFavourites.userId, userRecipeFavourites.recipeId],
-    });
+    await tx
+      .insert(userRecipeFavourites)
+      .values({
+        userId: createdUsers[fav.userUsername]?.id,
+        recipeId: createdRecipes[fav.recipeSlug]?.id,
+      })
+      .onConflictDoNothing({
+        target: [userRecipeFavourites.userId, userRecipeFavourites.recipeId],
+      });
   }
 
   // Ratings
   for (const rating of socialSeedData.ratings) {
-    await tx.insert(userRecipeRatings).values({
-      userId: createdUsers[rating.userUsername]?.id,
-      recipeId: createdRecipes[rating.recipeSlug]?.id,
-      rating: rating.rating,
-    }).onConflictDoNothing({
-      target: [userRecipeRatings.userId, userRecipeRatings.recipeId],
-    });
+    await tx
+      .insert(userRecipeRatings)
+      .values({
+        userId: createdUsers[rating.userUsername]?.id,
+        recipeId: createdRecipes[rating.recipeSlug]?.id,
+        rating: rating.rating,
+      })
+      .onConflictDoNothing({
+        target: [userRecipeRatings.userId, userRecipeRatings.recipeId],
+      });
   }
 
   // Comments
@@ -690,33 +771,47 @@ async function seedSocialData(
     const recipeId = createdRecipes[comment.recipeSlug]?.id;
     const authorId = createdUsers[comment.authorUsername]?.id;
 
-    const [existingParent] = await tx.select().from(comments).where(
-      and(
-        eq(comments.recipeId, recipeId),
-        eq(comments.authorId, authorId),
-        eq(comments.content, comment.content),
-        isNull(comments.parentCommentId),
-      ),
-    ).limit(1);
+    const [existingParent] = await tx
+      .select()
+      .from(comments)
+      .where(
+        and(
+          eq(comments.recipeId, recipeId),
+          eq(comments.authorId, authorId),
+          eq(comments.content, comment.content),
+          isNull(comments.parentCommentId),
+        ),
+      )
+      .limit(1);
 
-    const parentComment = existingParent ??
-      (await tx.insert(comments).values({
-        recipeId,
-        authorId,
-        content: comment.content,
-      }).returning())[0];
+    const parentComment =
+      existingParent ??
+      (
+        await tx
+          .insert(comments)
+          .values({
+            recipeId,
+            authorId,
+            content: comment.content,
+          })
+          .returning()
+      )[0];
     if (!parentComment) continue;
 
     for (const reply of comment.replies) {
       const replyAuthorId = createdUsers[reply.authorUsername]?.id;
-      const [existingReply] = await tx.select().from(comments).where(
-        and(
-          eq(comments.recipeId, recipeId),
-          eq(comments.authorId, replyAuthorId),
-          eq(comments.content, reply.content),
-          eq(comments.parentCommentId, parentComment.id),
-        ),
-      ).limit(1);
+      const [existingReply] = await tx
+        .select()
+        .from(comments)
+        .where(
+          and(
+            eq(comments.recipeId, recipeId),
+            eq(comments.authorId, replyAuthorId),
+            eq(comments.content, reply.content),
+            eq(comments.parentCommentId, parentComment.id),
+          ),
+        )
+        .limit(1);
       if (existingReply) continue;
 
       await tx.insert(comments).values({
@@ -730,16 +825,21 @@ async function seedSocialData(
 
   // Badges
   for (const badge of socialSeedData.badges) {
-    const badgeRows = await tx.select().from(badges).where(
-      eq(badges.rule, badge.badgeRule as typeof badges.$inferInsert.rule),
-    ).limit(1);
+    const badgeRows = await tx
+      .select()
+      .from(badges)
+      .where(eq(badges.rule, badge.badgeRule as typeof badges.$inferInsert.rule))
+      .limit(1);
     if (badgeRows.length > 0) {
-      await tx.insert(userBadges).values({
-        userId: createdUsers[badge.userUsername]?.id,
-        badgeId: badgeRows[0].id,
-      }).onConflictDoNothing({
-        target: [userBadges.userId, userBadges.badgeId],
-      });
+      await tx
+        .insert(userBadges)
+        .values({
+          userId: createdUsers[badge.userUsername]?.id,
+          badgeId: badgeRows[0].id,
+        })
+        .onConflictDoNothing({
+          target: [userBadges.userId, userBadges.badgeId],
+        });
     }
   }
 }
@@ -758,12 +858,11 @@ async function seedSetups(
 ) {
   for (const setupData of setupSeedData) {
     const userId = createdUsers[setupData.userUsername]?.id;
-    const [existing] = await tx.select().from(setups).where(
-      and(
-        eq(setups.userId, userId),
-        eq(setups.name, setupData.name),
-      ),
-    ).limit(1);
+    const [existing] = await tx
+      .select()
+      .from(setups)
+      .where(and(eq(setups.userId, userId), eq(setups.name, setupData.name)))
+      .limit(1);
     if (existing) continue;
 
     const equipMap: Record<string, string | undefined> = {};
@@ -847,7 +946,7 @@ async function seedCollections(
     // Create one collection per visibility value to cover all branches.
     const collectionDefs: {
       name: string;
-      visibility: typeof visibilityEnum.enumValues[number];
+      visibility: (typeof visibilityEnum.enumValues)[number];
       description: string;
     }[] = [
       {
@@ -874,21 +973,31 @@ async function seedCollections(
 
     for (const def of collectionDefs) {
       // Select-and-reuse: look up existing collection by userId + name (exclude soft-deleted).
-      const [existing] = await tx.select().from(collections).where(
-        and(
-          eq(collections.userId, user.id),
-          eq(collections.name, def.name),
-          isNull(collections.deletedAt),
-        ),
-      ).limit(1);
+      const [existing] = await tx
+        .select()
+        .from(collections)
+        .where(
+          and(
+            eq(collections.userId, user.id),
+            eq(collections.name, def.name),
+            isNull(collections.deletedAt),
+          ),
+        )
+        .limit(1);
 
-      const collection = existing ??
-        (await tx.insert(collections).values({
-          userId: user.id,
-          name: def.name,
-          description: def.description,
-          visibility: def.visibility,
-        }).returning())[0];
+      const collection =
+        existing ??
+        (
+          await tx
+            .insert(collections)
+            .values({
+              userId: user.id,
+              name: def.name,
+              description: def.description,
+              visibility: def.visibility,
+            })
+            .returning()
+        )[0];
 
       if (!collection) continue;
 
@@ -914,15 +1023,18 @@ async function seedCollections(
         const recipe = createdRecipes[slug];
         if (!recipe) continue;
 
-        await tx.insert(collectionItems).values({
-          collectionId: collection.id,
-          recipeId: recipe.id,
-          sortOrder: collectionSortOrder++,
-        }).onConflictDoUpdate({
-          // Re-seeding a dirty DB also repairs old globally-sequenced rows.
-          target: [collectionItems.collectionId, collectionItems.recipeId],
-          set: { sortOrder: collectionSortOrder - 1 },
-        });
+        await tx
+          .insert(collectionItems)
+          .values({
+            collectionId: collection.id,
+            recipeId: recipe.id,
+            sortOrder: collectionSortOrder++,
+          })
+          .onConflictDoUpdate({
+            // Re-seeding a dirty DB also repairs old globally-sequenced rows.
+            target: [collectionItems.collectionId, collectionItems.recipeId],
+            set: { sortOrder: collectionSortOrder - 1 },
+          });
       }
     }
   }
@@ -949,9 +1061,10 @@ async function seedBrewLogs(
   createdVersions: Record<string, typeof recipeVersions.$inferSelect>,
 ) {
   const userIds = Object.values(createdUsers).map((u) => u.id);
-  const [{ value: existing }] = await tx.select({ value: count() }).from(brewLogs).where(
-    inArray(brewLogs.userId, userIds),
-  );
+  const [{ value: existing }] = await tx
+    .select({ value: count() })
+    .from(brewLogs)
+    .where(inArray(brewLogs.userId, userIds));
   if (existing > 0) return;
 
   const dayMs = 24 * 60 * 60 * 1000;
@@ -1024,7 +1137,7 @@ async function seedBrewLogs(
     await tx.insert(brewLogs).values({
       userId,
       recipeId,
-      recipeVersionId: def.withVersion ? createdVersions[def.recipe]?.id ?? null : null,
+      recipeVersionId: def.withVersion ? (createdVersions[def.recipe]?.id ?? null) : null,
       brewedAt: daysAgo(def.brewedDaysAgo),
       yieldActual: def.yieldActual,
       doseActual: def.doseActual,
@@ -1036,15 +1149,15 @@ async function seedBrewLogs(
 
 /** Seed entrypoint: provisions all demo data inside a single transaction. */
 export async function main() {
-  const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@brewform.local';
-  const adminPassword = Deno.env.get('ADMIN_PASSWORD') || 'admin123456';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@brewform.local';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123456';
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`  Admin: ${adminEmail} / ${adminPassword}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Seeding database...');
 
   const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
-  const scaaData: ScaaFile = JSON.parse(await Deno.readTextFile(scaaPath));
+  const scaaData: ScaaFile = JSON.parse(await readFile(scaaPath, 'utf8'));
 
   await db.transaction(async (tx) => {
     await seedBrewMethodCompatibility(tx);
@@ -1082,7 +1195,7 @@ if (import.meta.main) {
   main()
     .catch((e) => {
       console.error(e);
-      Deno.exit(1);
+      process.exit(1);
     })
     .finally(async () => {
       const { client } = await import('@brewform/db');

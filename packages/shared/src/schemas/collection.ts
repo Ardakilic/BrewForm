@@ -17,17 +17,19 @@ export const CollectionCreateSchema = z.object({
  * Validates partial collection-update payloads.
  * Used by PATCH /api/v1/collections/:id.
  */
-export const CollectionUpdateSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
-  description: z.string().max(2000).optional(),
-  visibility: VisibilityEnum.optional(),
-}).refine(
-  (data) =>
-    data.name !== undefined || data.description !== undefined || data.visibility !== undefined,
-  {
-    message: 'At least one field (name, description, or visibility) must be provided',
-  },
-);
+export const CollectionUpdateSchema = z
+  .object({
+    name: z.string().min(1).max(255).optional(),
+    description: z.string().max(2000).optional(),
+    visibility: VisibilityEnum.optional(),
+  })
+  .refine(
+    (data) =>
+      data.name !== undefined || data.description !== undefined || data.visibility !== undefined,
+    {
+      message: 'At least one field (name, description, or visibility) must be provided',
+    },
+  );
 
 /**
  * Validates "add recipe to collection" payloads.

@@ -1,9 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": [
-    "./AGENTS.md"
-  ],
-  "plugin": [
-    "@dietrichgebert/ponytail"
-  ]
+  "instructions": ["./AGENTS.md"],
+  "plugin": ["@dietrichgebert/ponytail"]
 }

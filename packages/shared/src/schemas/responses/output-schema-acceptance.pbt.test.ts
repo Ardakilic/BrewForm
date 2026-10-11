@@ -9,31 +9,32 @@
 // yields parsed output equal to the input.
 //
 // Validates: Requirements 7.1, 7.2, 7.3, 12.4
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
-import fc from 'npm:fast-check';
 
 import { AuthorRefSchema, MessageResponseSchema, RecipeAuthorMiniSchema } from './_shared.ts';
-import { BeanOutputSchema } from './bean.ts';
 import { BadgeOutputSchema, UserBadgeOutputSchema } from './badge.ts';
-import { VendorOutputSchema } from './vendor.ts';
-import { PhotoOutputSchema } from './photo.ts';
-import { ReportOutputSchema } from './report.ts';
-import { SetupOutputSchema } from './setup.ts';
-import { UserPreferencesOutputSchema } from './preference.ts';
-import {
-  FollowerListItemOutputSchema,
-  FollowingListItemOutputSchema,
-  FollowOutputSchema,
-} from './follow.ts';
+import { BeanOutputSchema } from './bean.ts';
 import { CoffeeVarietyOutputSchema } from './coffee-variety.ts';
+import {
+  CommentOutputSchema,
+  CommentWithAuthorOutputSchema,
+  CommentWithRepliesOutputSchema,
+} from './comment.ts';
 import {
   EquipmentDeleteRequestOutputSchema,
   EquipmentDeleteRequestResponseSchema,
   EquipmentOutputSchema,
   EquipmentRecipesResponseSchema,
 } from './equipment.ts';
+import {
+  FollowerListItemOutputSchema,
+  FollowingListItemOutputSchema,
+  FollowOutputSchema,
+} from './follow.ts';
+import { PhotoOutputSchema } from './photo.ts';
+import { UserPreferencesOutputSchema } from './preference.ts';
 import {
   FeedRecipeOutputSchema,
   RecipeDetailOutputSchema,
@@ -42,13 +43,11 @@ import {
   RecipeWithAuthorOutputSchema,
   RecipeWithVersionsOutputSchema,
 } from './recipe.ts';
-import {
-  CommentOutputSchema,
-  CommentWithAuthorOutputSchema,
-  CommentWithRepliesOutputSchema,
-} from './comment.ts';
+import { ReportOutputSchema } from './report.ts';
+import { SetupOutputSchema } from './setup.ts';
 import { TasteNoteNodeOutputSchema, TasteNoteOutputSchema } from './taste.ts';
 import { PublicUserOutputSchema, SelfUserOutputSchema, UserRowOutputSchema } from './user.ts';
+import { VendorOutputSchema } from './vendor.ts';
 
 // ---------------------------------------------------------------------------
 // Reusable building-block arbitraries — JSON-serializable values matching the
@@ -363,11 +362,11 @@ const recipeVersionArb = fc.record({
 });
 
 const recipeWithVersionsArb = recipeWithAuthorArb.chain((base) =>
-  fc.array(recipeVersionArb).map((versions) => ({ ...base, versions }))
+  fc.array(recipeVersionArb).map((versions) => ({ ...base, versions })),
 );
 
 const feedRecipeArb = recipeRowArb.chain((base) =>
-  fc.record({ id: str, username: str, displayName: nstr }).map((author) => ({ ...base, author }))
+  fc.record({ id: str, username: str, displayName: nstr }).map((author) => ({ ...base, author })),
 );
 
 const authorRefArb = fc.option(
@@ -399,7 +398,7 @@ const commentWithAuthorArb = fc.record({
 });
 
 const commentWithRepliesArb = commentWithAuthorArb.chain((base) =>
-  fc.array(commentWithAuthorArb).map((replies) => ({ ...base, replies }))
+  fc.array(commentWithAuthorArb).map((replies) => ({ ...base, replies })),
 );
 
 const tasteNoteArb = fc.record({
@@ -464,10 +463,9 @@ const detailAdditionalPreparationArb = fc.record({
   sortOrder: int,
 });
 
-const detailBeanArb = fc.option(
-  fc.record({ origin: nstr, roaster: nstr, roastLevel: nstr }),
-  { nil: null },
-);
+const detailBeanArb = fc.option(fc.record({ origin: nstr, roaster: nstr, roastLevel: nstr }), {
+  nil: null,
+});
 
 /** Flattened taste-note item as returned by the GET /:slugOrId route handler. */
 const flatTasteNoteArb = fc.record({
@@ -508,13 +506,10 @@ const detailVersionArb = recipeVersionArb.chain((base) =>
       additionalPreparations: fc.array(detailAdditionalPreparationArb),
       bean: detailBeanArb,
     })
-    .map((extra) => ({ ...base, ...extra }))
+    .map((extra) => ({ ...base, ...extra })),
 );
 
-const forkedFromArb = fc.option(
-  fc.record({ id: str, slug: str, title: str }),
-  { nil: null },
-);
+const forkedFromArb = fc.option(fc.record({ id: str, slug: str, title: str }), { nil: null });
 
 const recipeDetailArb = recipeRowArb.chain((base) =>
   fc
@@ -536,7 +531,7 @@ const recipeDetailArb = recipeRowArb.chain((base) =>
       ratingCount: int,
       userRating: nint,
     })
-    .map((extra) => ({ ...base, ...extra }))
+    .map((extra) => ({ ...base, ...extra })),
 );
 
 const userBaseArb = {
@@ -588,18 +583,17 @@ const publicUserArb = fc.record({
   recipeCount: int,
   followerCount: int,
   followingCount: int,
-  recipes: fc.array(fc.record({
-    id: str,
-    slug: str,
-    title: str,
-    likeCount: int,
-    commentCount: int,
-    createdAt: ts,
-    currentVersion: fc.option(
-      fc.record({ brewMethod: str, drinkType: str }),
-      { nil: null },
-    ),
-  })),
+  recipes: fc.array(
+    fc.record({
+      id: str,
+      slug: str,
+      title: str,
+      likeCount: int,
+      commentCount: int,
+      createdAt: ts,
+      currentVersion: fc.option(fc.record({ brewMethod: str, drinkType: str }), { nil: null }),
+    }),
+  ),
   badges: fc.constant([]),
   isFollowing: bool,
 });
@@ -611,7 +605,7 @@ const recipeAuthorMiniArb = miniAuthorArb;
 // ---------------------------------------------------------------------------
 // Cases — one per Output Schema / distinct variant.
 // ---------------------------------------------------------------------------
-// deno-lint-ignore no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: heterogeneous schema list in PBT cases
 const cases: Array<{ name: string; schema: z.ZodType<any>; arb: fc.Arbitrary<unknown> }> = [
   { name: 'MessageResponseSchema', schema: MessageResponseSchema, arb: messageArb },
   { name: 'AuthorRefSchema', schema: AuthorRefSchema, arb: authorRefCaseArb },

@@ -9,17 +9,18 @@
  * - `you@example.com` / `coffee_lover`: D40 — locale-neutral EXAMPLE values,
  *   not prose (recorded at RegisterPage.tsx).
  */
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-// Vitest runs under `deno run -A npm:vitest` with cwd = apps/web.
-const SRC_ROOT = `${Deno.cwd()}/src`;
+// Vitest runs under vitest with cwd = apps/web.
+const SRC_ROOT = `${process.cwd()}/src`;
 
 /** Recursively collect .tsx files, skipping tests and node_modules. */
 function collectTsxFiles(dir: string): string[] {
   const results: string[] = [];
-  for (const entry of Deno.readDirSync(dir)) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = `${dir}/${entry.name}`;
-    if (entry.isDirectory) {
+    if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || entry.name === '__tests__') continue;
       results.push(...collectTsxFiles(full));
     } else if (entry.name.endsWith('.tsx') && !entry.name.includes('.test.')) {
@@ -39,10 +40,7 @@ interface LiteralMatch {
  * Allowlisted literal attribute values — D40 locale-neutral example values
  * that are deliberately NOT translated (they are format examples, not prose).
  */
-const ALLOWED_PLACEHOLDERS = new Set([
-  'you@example.com',
-  'coffee_lover',
-]);
+const ALLOWED_PLACEHOLDERS = new Set(['you@example.com', 'coffee_lover']);
 
 const LITERAL_ATTR_RE = /(?:placeholder|aria-label|alt|title)='([A-Za-z][^']*)'/g;
 
@@ -55,13 +53,11 @@ describe('i18n literals regression guard', () => {
     const violations: LiteralMatch[] = [];
 
     for (const file of files) {
-      const content = Deno.readTextFileSync(file);
+      const content = readFileSync(file, 'utf8');
       const lines = content.split('\n');
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        let match: RegExpExecArray | null;
-        LITERAL_ATTR_RE.lastIndex = 0;
-        while ((match = LITERAL_ATTR_RE.exec(line)) !== null) {
+        for (const match of line.matchAll(LITERAL_ATTR_RE)) {
           const value = match[1];
           const attr = match[0].split('=')[0];
           if (attr === 'placeholder' && ALLOWED_PLACEHOLDERS.has(value)) continue;
@@ -85,13 +81,11 @@ describe('i18n literals regression guard', () => {
     const violations: LiteralMatch[] = [];
 
     for (const file of files) {
-      const content = Deno.readTextFileSync(file);
+      const content = readFileSync(file, 'utf8');
       const lines = content.split('\n');
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        let match: RegExpExecArray | null;
-        TEMPLATE_ARIA_RE.lastIndex = 0;
-        while ((match = TEMPLATE_ARIA_RE.exec(line)) !== null) {
+        for (const match of line.matchAll(TEMPLATE_ARIA_RE)) {
           // Templates that already call t() are translated — not violations.
           if (match[0].includes('t(')) continue;
           violations.push({

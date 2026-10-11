@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { ForgotPasswordPage } from './ForgotPasswordPage.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { ForgotPasswordPage } from './ForgotPasswordPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -83,11 +83,11 @@ describe('ForgotPasswordPage', () => {
   it('logs mount and unmount', async () => {
     const { unmount } = renderPage();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'ForgotPasswordPage mounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'ForgotPasswordPage mounted'),
     );
     unmount();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'ForgotPasswordPage unmounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'ForgotPasswordPage unmounted'),
     );
   });
 

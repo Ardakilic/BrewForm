@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { adminApi } from '../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
+import { adminApi } from '../api/index.ts';
 
 const log = createLogger('useBanUser');
 
@@ -75,24 +75,27 @@ export function useBanUser(
     setError(null);
   }, []);
 
-  const confirmBan = useCallback(async (reason: string) => {
-    if (!banDialogUser || !reason.trim()) return;
-    const userId = banDialogUser.id;
-    log.debug({ userId }, 'useBanUser confirmBan started');
-    setProcessingBoth(true);
-    try {
-      await adminApi.banUser(banDialogUser.id, reason);
-      onSuccess(banDialogUser.id, true);
-      setBanDialogUser(null);
-      setError(null);
-      setProcessingBoth(false);
-      log.debug({ userId }, 'useBanUser confirmBan completed');
-    } catch (err) {
-      setError(getErrorMessage(err, 'admin.users.banError'));
-      setProcessingBoth(false);
-      log.error({ err, userId }, 'useBanUser confirmBan failed');
-    }
-  }, [banDialogUser, onSuccess, setProcessingBoth]);
+  const confirmBan = useCallback(
+    async (reason: string) => {
+      if (!banDialogUser || !reason.trim()) return;
+      const userId = banDialogUser.id;
+      log.debug({ userId }, 'useBanUser confirmBan started');
+      setProcessingBoth(true);
+      try {
+        await adminApi.banUser(banDialogUser.id, reason);
+        onSuccess(banDialogUser.id, true);
+        setBanDialogUser(null);
+        setError(null);
+        setProcessingBoth(false);
+        log.debug({ userId }, 'useBanUser confirmBan completed');
+      } catch (err) {
+        setError(getErrorMessage(err, 'admin.users.banError'));
+        setProcessingBoth(false);
+        log.error({ err, userId }, 'useBanUser confirmBan failed');
+      }
+    },
+    [banDialogUser, onSuccess, setProcessingBoth],
+  );
 
   const unban = useCallback(
     async (userId: string) => {

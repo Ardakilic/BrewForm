@@ -1,7 +1,7 @@
 import type { AuthUser } from '@brewform/shared/types';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-import { ApiError, authApi, userApi } from '../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
+import { ApiError, authApi, userApi } from '../api/index.ts';
 
 const log = createLogger('AuthContext');
 
@@ -12,9 +12,12 @@ interface AuthContextType {
   /** Why the last session-restore attempt failed: 'network' (client could not reach server), 'server' (5xx), or null (no error / 401 / banned — silent logout is correct). */
   sessionError: 'network' | 'server' | null;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register: (
-    data: { email: string; username: string; password: string; displayName?: string },
-  ) => Promise<void>;
+  register: (data: {
+    email: string;
+    username: string;
+    password: string;
+    displayName?: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   /** Clear `sessionError` to null without retrying — for the banner's dismiss action. */
@@ -22,6 +25,14 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+/** Pure classifier: banned-account failures resolve to a logged-out state. */
+function isBannedError(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    (err.code === 'USER_BANNED' || err.message.toLowerCase().includes('banned'))
+  );
+}
 
 /**
  * Owns the authenticated-user state: restores the session on mount via
@@ -35,11 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Clear `sessionError` to null without retrying — for the banner's dismiss action. */
   const clearSessionError = useCallback(() => setSessionError(null), []);
-
-  function isBannedError(err: unknown): boolean {
-    return err instanceof ApiError &&
-      (err.code === 'USER_BANNED' || err.message.toLowerCase().includes('banned'));
-  }
 
   const refreshUser = useCallback(async () => {
     log.debug({}, 'AuthContext token refresh started');
@@ -95,9 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function register(
-    data: { email: string; username: string; password: string; displayName?: string },
-  ) {
+  async function register(data: {
+    email: string;
+    username: string;
+    password: string;
+    displayName?: string;
+  }) {
     try {
       const response = await authApi.register(data);
       log.info({ userId: response.user.id }, 'AuthContext user registered');

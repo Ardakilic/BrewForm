@@ -12,10 +12,10 @@ vi.mock('@/utils/logger.ts', () => ({
 }));
 
 import { router } from './router.tsx';
-import { likeAction } from './routes/like.ts';
 import { favouriteAction } from './routes/favourite.ts';
-import { rateAction } from './routes/rate.ts';
 import { followAction } from './routes/follow.ts';
+import { likeAction } from './routes/like.ts';
+import { rateAction } from './routes/rate.ts';
 
 /** Minimal view of a react-router route object for config assertions. */
 interface RouteNode {

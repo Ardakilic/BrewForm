@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react';
 import type { Visibility } from '@brewform/shared/types';
+import type { CSSProperties } from 'react';
 
 /**
  * Maps a collection visibility to its badge emoji:
@@ -26,9 +26,12 @@ interface CollectionVisibilityBadgeProps {
 }
 
 /** Renders the visibility emoji badge for a collection. */
-export function CollectionVisibilityBadge(
-  { visibility, className, style, title }: CollectionVisibilityBadgeProps,
-) {
+export function CollectionVisibilityBadge({
+  visibility,
+  className,
+  style,
+  title,
+}: CollectionVisibilityBadgeProps) {
   return (
     <span className={className} style={style} title={title}>
       {visibilityEmoji(visibility)}

@@ -1,11 +1,11 @@
 services:
   # ── API — development (hot reload) ─────────────────────────────────────────
-  # Runs the Hono API with `deno run --watch` for hot reload.
+  # Runs the Hono API with `tsx --watch` for hot reload.
   # Source code is volume-mounted from the host so file changes are picked up
   # immediately without rebuilding the image.
   #
   # node_modules is kept in a named volume so the host directory never shadows
-  # the packages installed by `deno install` inside the container.
+  # the packages installed by `pnpm install` inside the container.
   #
   # Started on-demand via `make dev` or `make dev-api` (profile: dev).
   # NOT started by `make up` to avoid binding port 8000 before `make dev`.
@@ -15,20 +15,17 @@ services:
       dockerfile: Dockerfile
       target: deps
     command:
-      - deno
+      - pnpm
+      - --filter
+      - "@brewform/api"
       - run
-      - --allow-all
-      - --unstable-cron
-      - --watch
-      - apps/api/src/main.ts
+      - dev
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
       - CACHE_DRIVER=memory
-      - DENO_KV_URL=http://denokv:4512
-      - DENO_KV_ACCESS_TOKEN=${DENO_KV_ACCESS_TOKEN}
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -48,7 +45,6 @@ services:
       - ADMIN_PASSWORD=admin123456
     volumes:
       - .:/app
-      - deno_cache:/deno-dir
       - node_modules:/app/node_modules
     depends_on:
       postgres:
@@ -57,8 +53,6 @@ services:
         condition: service_started
       garage:
         condition: service_healthy
-      denokv:
-        condition: service_started
     profiles:
       - dev
 
@@ -72,15 +66,11 @@ services:
       dockerfile: Dockerfile
       target: deps
     command:
-      - deno
+      - pnpm
+      - --filter
+      - "@brewform/web"
       - run
-      - --allow-all
-      - npm:vite
-      - --host
-      - "0.0.0.0"
-      - --port
-      - "5173"
-    working_dir: /app/apps/web
+      - dev
     ports:
       - "5173:5173"
     environment:
@@ -92,7 +82,6 @@ services:
         condition: service_started
     volumes:
       - .:/app
-      - deno_cache:/deno-dir
       - node_modules:/app/node_modules
     profiles:
       - dev
@@ -111,8 +100,6 @@ services:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
       - CACHE_DRIVER=memory
-      - DENO_KV_URL=http://denokv:4512
-      - DENO_KV_ACCESS_TOKEN=${DENO_KV_ACCESS_TOKEN}
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -137,8 +124,6 @@ services:
         condition: service_started
       garage:
         condition: service_healthy
-      denokv:
-        condition: service_started
     profiles:
       - preview
 
@@ -195,20 +180,6 @@ services:
       timeout: 3s
       retries: 5
 
-  # ── denokv — remote Deno KV cache sidecar ───────────────────────────────────
-  # Used by the API when CACHE_DRIVER=deno-kv. Shared across dev and prod profiles,
-  # so it has NO profile constraint — it starts with both `make up` (infra) and
-  # `make prod-up` (prod).
-  # No healthcheck by design: denokv's router serves only POST / and POST /v2/*,
-  # so a plain GET / healthcheck returns 404 and would flap. Consumers depend on
-  # it via `condition: service_started` and rely on the API's fail-fast
-  # Deno.openKv() connection instead.
-  denokv:
-    image: ghcr.io/denoland/denokv:0.14.0
-    command: ["--sqlite-path", "/data/denokv.sqlite", "serve", "--access-token", "${DENO_KV_ACCESS_TOKEN}"]
-    volumes:
-      - denokv_data:/data
-
   # ── Preview — static SPA via Caddy ─────────────────────────────────────────
   # Serves the built React SPA on :8080 alongside app-preview on :8000.
   # Start with: make preview  (builds the web app first, then starts both)
@@ -225,32 +196,6 @@ services:
     profiles:
       - preview
 
-  # ── Serena MCP (semantic code retrieval for AI tools) ────────────────────
-  # Started on-demand via `make serena-up` (profile: serena).
-  # NOT started by `make up` or `make dev`.
-  # Indexes all 4 Deno workspace members: apps/api, apps/web, packages/shared,
-  # packages/db via additional_workspace_folders in .serena/project.yml.
-  serena:
-    image: ghcr.io/oraios/serena:latest
-    container_name: brewform-serena
-    restart: unless-stopped
-    environment:
-      - SERENA_DOCKER=1
-    ports:
-      - "10122:9121"   # SSE endpoint (MCP clients connect here)
-      - "34283:24282"  # Web dashboard
-    volumes:
-      - .:/workspace/brewform
-    command: >
-      serena start-mcp-server
-        --transport sse
-        --port 9121
-        --host 0.0.0.0
-        --context desktop-app
-        --project /workspace/brewform
-    profiles:
-      - serena
-
   # ── API — production (pulls published image) ──────────────────────────────
   # Started via `make prod-up` (profile: prod). Pulls ghcr.io/ardakilic/brewform-api:latest.
   # For local image builds, use `make prod-up-build` (--build overrides the image:).
@@ -266,8 +211,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      denokv:
-        condition: service_started
     profiles:
       - prod
 
@@ -291,7 +234,5 @@ volumes:
   postgres_data:
   garage_data:
   garage_meta:
-  deno_cache:
   node_modules:
-  denokv_data:
 

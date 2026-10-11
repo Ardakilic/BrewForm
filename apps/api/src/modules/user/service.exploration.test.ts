@@ -17,8 +17,7 @@
  * and SHOULD PASS even on unfixed code, confirming the preservation property holds.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Minimal type stubs — mirrors the shape returned by the real model layer
@@ -84,7 +83,7 @@ async function getPublicProfile_buggy(
 ) {
   const user = await userModel.findByUsername(username);
   if (!user) throw new Error('USER_NOT_FOUND');
-  // deno-lint-ignore no-explicit-any -- test cast
+  // biome-ignore lint/suspicious/noExplicitAny: test cast
   const { passwordHash: _passwordHash, email: _email, ...safe } = user as any;
   const [stats, recipes] = await Promise.all([
     userModel.getUserStats(user.id),
@@ -114,7 +113,7 @@ async function getPublicProfile_fixed(
 ) {
   const user = await userModel.findByUsername(username);
   if (!user) throw new Error('USER_NOT_FOUND');
-  // deno-lint-ignore no-explicit-any -- test cast
+  // biome-ignore lint/suspicious/noExplicitAny: test cast
   const { passwordHash: _passwordHash, email: _email, ...safe } = user as any;
   const [stats, recipes] = await Promise.all([
     userModel.getUserStats(user.id),
@@ -158,73 +157,58 @@ const followRelationships = new Set(['userA_id→userB_id']);
 
 describe('Bug 1 Exploration — isFollowing always false from the API', () => {
   describe('BUGGY service (unfixed code)', () => {
-    it(
-      '[BUG CONFIRMED] getPublicProfile("userB", "userA_id") returns isFollowing: false even when userA follows userB (hardcoded bug)',
-      async () => {
-        // Counterexample: userA_id IS following userB_id, so isFollowing should be true.
-        // The buggy code hardcodes isFollowing: false and never calls followModel.isFollowing().
-        const userModel = createMockUserModel(userB);
-        const followModel = createMockFollowModel(followRelationships);
+    it('[BUG CONFIRMED] getPublicProfile("userB", "userA_id") returns isFollowing: false even when userA follows userB (hardcoded bug)', async () => {
+      // Counterexample: userA_id IS following userB_id, so isFollowing should be true.
+      // The buggy code hardcodes isFollowing: false and never calls followModel.isFollowing().
+      const userModel = createMockUserModel(userB);
+      const followModel = createMockFollowModel(followRelationships);
 
-        const result = await getPublicProfile_buggy('userB', userModel, followModel);
+      const result = await getPublicProfile_buggy('userB', userModel, followModel);
 
-        // BUG CONFIRMED: result.isFollowing is false (hardcoded) even though userA follows userB.
-        // This assertion documents the bug condition — it passes because the bug is present.
-        expect(result.isFollowing).toBe(false);
-      },
-    );
+      // BUG CONFIRMED: result.isFollowing is false (hardcoded) even though userA follows userB.
+      // This assertion documents the bug condition — it passes because the bug is present.
+      expect(result.isFollowing).toBe(false);
+    });
 
-    it(
-      '[EXPECTED TO PASS] getPublicProfile("userB", undefined) should return isFollowing: false for unauthenticated path',
-      async () => {
-        // Unauthenticated path: no requesterId → isFollowing must be false.
-        // This PASSES even on unfixed code because the hardcoded false is correct here.
-        const userModel = createMockUserModel(userB);
-        const followModel = createMockFollowModel(followRelationships);
+    it('[EXPECTED TO PASS] getPublicProfile("userB", undefined) should return isFollowing: false for unauthenticated path', async () => {
+      // Unauthenticated path: no requesterId → isFollowing must be false.
+      // This PASSES even on unfixed code because the hardcoded false is correct here.
+      const userModel = createMockUserModel(userB);
+      const followModel = createMockFollowModel(followRelationships);
 
-        const result = await getPublicProfile_buggy('userB', userModel, followModel);
+      const result = await getPublicProfile_buggy('userB', userModel, followModel);
 
-        expect(result.isFollowing).toBe(false);
-      },
-    );
+      expect(result.isFollowing).toBe(false);
+    });
   });
 
   describe('FIXED service (documents expected correct behaviour)', () => {
-    it(
-      'getPublicProfile("userB", "userA_id") returns isFollowing: true when userA follows userB',
-      async () => {
-        const userModel = createMockUserModel(userB);
-        const followModel = createMockFollowModel(followRelationships);
+    it('getPublicProfile("userB", "userA_id") returns isFollowing: true when userA follows userB', async () => {
+      const userModel = createMockUserModel(userB);
+      const followModel = createMockFollowModel(followRelationships);
 
-        const result = await getPublicProfile_fixed('userB', 'userA_id', userModel, followModel);
+      const result = await getPublicProfile_fixed('userB', 'userA_id', userModel, followModel);
 
-        expect(result.isFollowing).toBe(true);
-      },
-    );
+      expect(result.isFollowing).toBe(true);
+    });
 
-    it(
-      'getPublicProfile("userB", undefined) returns isFollowing: false for unauthenticated path',
-      async () => {
-        const userModel = createMockUserModel(userB);
-        const followModel = createMockFollowModel(followRelationships);
+    it('getPublicProfile("userB", undefined) returns isFollowing: false for unauthenticated path', async () => {
+      const userModel = createMockUserModel(userB);
+      const followModel = createMockFollowModel(followRelationships);
 
-        const result = await getPublicProfile_fixed('userB', undefined, userModel, followModel);
+      const result = await getPublicProfile_fixed('userB', undefined, userModel, followModel);
 
-        expect(result.isFollowing).toBe(false);
-      },
-    );
+      expect(result.isFollowing).toBe(false);
+    });
 
-    it(
-      'getPublicProfile("userB", "userC_id") returns isFollowing: false when userC does NOT follow userB',
-      async () => {
-        // userC_id is not in followRelationships, so isFollowing should be false
-        const userModel = createMockUserModel(userB);
-        const followModel = createMockFollowModel(followRelationships);
+    it('getPublicProfile("userB", "userC_id") returns isFollowing: false when userC does NOT follow userB', async () => {
+      // userC_id is not in followRelationships, so isFollowing should be false
+      const userModel = createMockUserModel(userB);
+      const followModel = createMockFollowModel(followRelationships);
 
-        const result = await getPublicProfile_fixed('userB', 'userC_id', userModel, followModel);
+      const result = await getPublicProfile_fixed('userB', 'userC_id', userModel, followModel);
 
-        expect(result.isFollowing).toBe(false);
-      },
-    );
+      expect(result.isFollowing).toBe(false);
+    });
   });
 });

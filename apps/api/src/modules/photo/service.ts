@@ -4,9 +4,9 @@
  * Handles image validation, file persistence via the upload utility, thumbnail
  * generation, and soft-deletion of recipe photos.
  */
-import * as model from './model.ts';
-import * as recipeModel from '../recipe/model.ts';
-import { photos } from '@brewform/db/schema';
+
+import type { photos } from '@brewform/db/schema';
+import { createLogger } from '../../utils/logger/index.ts';
 import {
   generateFilename,
   getPublicUrl,
@@ -14,7 +14,8 @@ import {
   saveUploadedFile,
   validateImageUpload,
 } from '../../utils/upload/index.ts';
-import { createLogger } from '../../utils/logger/index.ts';
+import * as recipeModel from '../recipe/model.ts';
+import * as model from './model.ts';
 
 const logger = createLogger('photo-service');
 
@@ -59,15 +60,13 @@ export async function uploadPhoto(
   const thumbnailUrl = await saveThumbnail(thumbnail, filename, url, 'medium');
   logger.info({ filepath, filename, hasThumbnail: thumbnail !== null }, 'Photo saved');
 
-  const photo = await model.create(
-    {
-      recipeId,
-      url,
-      thumbnailUrl,
-      alt: alt || null,
-      sortOrder: sortOrder ?? 0,
-    } satisfies PhotoInsert,
-  );
+  const photo = await model.create({
+    recipeId,
+    url,
+    thumbnailUrl,
+    alt: alt || null,
+    sortOrder: sortOrder ?? 0,
+  } satisfies PhotoInsert);
 
   return photo;
 }

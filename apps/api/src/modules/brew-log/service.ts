@@ -1,7 +1,7 @@
-import * as model from './model.ts';
 import type { BrewLogCreate, BrewLogUpdate } from '@brewform/shared/schemas';
 import { createLogger } from '../../utils/logger/index.ts';
 import * as recipeModel from '../recipe/model.ts';
+import * as model from './model.ts';
 
 /** Module logger (exported for test spies — mirrors collection/service.ts). */
 export const logger = createLogger('brew-log-service');

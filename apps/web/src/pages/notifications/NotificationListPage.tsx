@@ -1,13 +1,13 @@
+import type { NotificationOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
 import { redirect, useLoaderData, useSearchParams } from 'react-router';
-import type { NotificationOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { ApiError, notificationApi } from '../../api/index.ts';
+import { NotificationItem } from '../../components/layout/NotificationItem.tsx';
+import { PaginationControls } from '../../components/recipe-list/index.ts';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { PaginationControls } from '../../components/recipe-list/index.ts';
-import { EmptyState } from '../../components/ui/EmptyState.tsx';
-import { NotificationItem } from '../../components/layout/NotificationItem.tsx';
 import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
 
 const log = createLogger('NotificationListPage');
@@ -23,9 +23,11 @@ export interface NotificationListLoaderData {
  * Redirects to `/login` on a 401, mirroring the other `RequireAuth`'d
  * paginated list loaders.
  */
-export const loader = async (
-  { request }: { request: Request },
-): Promise<NotificationListLoaderData> => {
+export const loader = async ({
+  request,
+}: {
+  request: Request;
+}): Promise<NotificationListLoaderData> => {
   log.debug({}, 'NotificationListPage loader started');
   const url = new URL(request.url);
   const page = Number(url.searchParams.get('page')) || 1;
@@ -112,28 +114,24 @@ export function NotificationListPage() {
   }
 
   return (
-    <div className='mx-auto max-w-2xl px-6 py-8'>
+    <div className="mx-auto max-w-2xl px-6 py-8">
       <SEOHead title={t('notifications.title')} />
 
-      <div className='mb-6 flex items-center justify-between'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('notifications.title')}
         </h1>
         {hasUnread && (
-          <button
-            type='button'
-            onClick={handleMarkAllRead}
-            className='btn-secondary text-sm'
-          >
+          <button type="button" onClick={handleMarkAllRead} className="btn-secondary text-sm">
             {t('notifications.markAllRead')}
           </button>
         )}
       </div>
 
       {/* F05: All / Unread filter */}
-      <div className='mb-4 flex gap-2' role='group' aria-label={t('notifications.filterLabel')}>
+      <div className="mb-4 flex gap-2" role="group" aria-label={t('notifications.filterLabel')}>
         <button
-          type='button'
+          type="button"
           onClick={() => handleFilterChange('all')}
           className={`btn-secondary text-sm ${filter === 'all' ? 'font-bold' : ''}`}
           aria-pressed={filter === 'all'}
@@ -141,7 +139,7 @@ export function NotificationListPage() {
           {t('notifications.all')}
         </button>
         <button
-          type='button'
+          type="button"
           onClick={() => handleFilterChange('unread')}
           className={`btn-secondary text-sm ${filter === 'unread' ? 'font-bold' : ''}`}
           aria-pressed={filter === 'unread'}
@@ -150,24 +148,20 @@ export function NotificationListPage() {
         </button>
       </div>
 
-      {items.length === 0
-        ? <EmptyState message={t('notifications.empty')} />
-        : (
-          <ul className='m-0 list-none space-y-1 p-0'>
-            {items.map((n) => (
-              <li key={n.id}>
-                <NotificationItem notification={n} onRead={handleItemRead} />
-              </li>
-            ))}
-          </ul>
-        )}
+      {items.length === 0 ? (
+        <EmptyState message={t('notifications.empty')} />
+      ) : (
+        <ul className="m-0 list-none space-y-1 p-0">
+          {items.map((n) => (
+            <li key={n.id}>
+              <NotificationItem notification={n} onRead={handleItemRead} />
+            </li>
+          ))}
+        </ul>
+      )}
 
       {totalPages > 1 && (
-        <PaginationControls
-          page={page}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+        <PaginationControls page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       )}
     </div>
   );

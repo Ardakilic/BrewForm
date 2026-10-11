@@ -4,8 +4,9 @@
  * Orchestrates report creation, paginated listing with optional status filter,
  * and resolution with guard against double-resolving.
  */
-import * as model from './model.ts';
+
 import { createLogger } from '../../utils/logger/index.ts';
+import * as model from './model.ts';
 
 /**
  * Report service.
@@ -23,10 +24,7 @@ export async function createReport(
 ) {
   log.debug({ reporterId, entityType, entityId }, 'createReport started');
   const result = await model.create(reporterId, entityType, entityId, reason);
-  log.debug(
-    { reporterId, entityType, entityId, reportId: result.id },
-    'createReport completed',
-  );
+  log.debug({ reporterId, entityType, entityId, reportId: result.id }, 'createReport completed');
   return result;
 }
 

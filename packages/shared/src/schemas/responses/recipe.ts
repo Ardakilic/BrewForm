@@ -1,8 +1,8 @@
 import { z } from 'zod';
+import { RecipeAuthorMiniSchema } from './_shared.ts';
 import { EquipmentOutputSchema } from './equipment.ts';
 import { PhotoOutputSchema } from './photo.ts';
 import { TasteNoteOutputSchema } from './taste.ts';
-import { RecipeAuthorMiniSchema } from './_shared.ts';
 
 /**
  * Shared recipe Output Schemas returned by equipment, coffee-variety, and feed
@@ -192,26 +192,27 @@ const RecipeDetailBeanMiniSchema = z.object({
  * additional preparations, version photos, and bean), as returned by
  * `recipe/model.ts findById`.
  */
-export const RecipeDetailVersionOutputSchema = RecipeVersionRowSchema.omit({ versionPhotos: true })
-  .extend(
-    {
-      tasteNotes: z.array(RecipeDetailTasteNoteSchema),
-      equipment: z.array(RecipeDetailEquipmentSchema),
-      additionalPreparations: z.array(RecipeDetailAdditionalPreparationSchema),
-      versionPhotos: z.array(RecipeVersionPhotoSchema),
-      bean: RecipeDetailBeanMiniSchema.nullable(),
-    },
-  );
+export const RecipeDetailVersionOutputSchema = RecipeVersionRowSchema.omit({
+  versionPhotos: true,
+}).extend({
+  tasteNotes: z.array(RecipeDetailTasteNoteSchema),
+  equipment: z.array(RecipeDetailEquipmentSchema),
+  additionalPreparations: z.array(RecipeDetailAdditionalPreparationSchema),
+  versionPhotos: z.array(RecipeVersionPhotoSchema),
+  bean: RecipeDetailBeanMiniSchema.nullable(),
+});
 
 /** Inferred type of {@link RecipeDetailVersionOutputSchema}. */
 export type RecipeDetailVersionOutput = z.infer<typeof RecipeDetailVersionOutputSchema>;
 
 /** Forked-from recipe projection (`{ id, slug, title }`) — `null` when not a fork. */
-const RecipeForkedFromMiniSchema = z.object({
-  id: z.string(),
-  slug: z.string(),
-  title: z.string(),
-}).nullable();
+const RecipeForkedFromMiniSchema = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+    title: z.string(),
+  })
+  .nullable();
 
 /**
  * Flattened taste-note item returned by the GET /:slugOrId route handler. The

@@ -11,15 +11,20 @@ interface CatalogEntityCardProps {
   children?: ReactNode;
 }
 
-export function CatalogEntityCard(
-  { to, title, brand, badge, description, children }: CatalogEntityCardProps,
-) {
+export function CatalogEntityCard({
+  to,
+  title,
+  brand,
+  badge,
+  description,
+  children,
+}: CatalogEntityCardProps) {
   return (
-    <Link to={to} className='card hover:shadow-lg transition-shadow'>
-      <div className='flex items-start justify-between mb-1'>
+    <Link to={to} className="card hover:shadow-lg transition-shadow">
+      <div className="flex items-start justify-between mb-1">
         <div>
           {brand && (
-            <p className='font-bold' style={{ color: 'var(--text-primary)' }}>
+            <p className="font-bold" style={{ color: 'var(--text-primary)' }}>
               {brand}
             </p>
           )}
@@ -35,7 +40,7 @@ export function CatalogEntityCard(
       {children}
       {description && (
         <p
-          className='text-xs mt-2'
+          className="text-xs mt-2"
           style={{
             color: 'var(--text-tertiary)',
             display: '-webkit-box',

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoffeeVarietyDetailPage } from '../CoffeeVarietyDetailPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -8,9 +8,19 @@ const { mockLogger } = vi.hoisted(() => ({
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
   useParams: vi.fn(),
   useNavigate: vi.fn(() => vi.fn()),
 }));
@@ -28,9 +38,9 @@ vi.mock('../../../components/seo/SEOHead.tsx', () => ({
 }));
 
 import { useParams } from 'react-router';
-import { useTranslation } from '../../../contexts/I18nContext.tsx';
 import { api } from '../../../api/client.ts';
 import { SEOHead } from '../../../components/seo/SEOHead.tsx';
+import { useTranslation } from '../../../contexts/I18nContext.tsx';
 
 const mockUseParams = vi.mocked(useParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -145,9 +155,7 @@ const mockRecipes = {
       visibility: 'public',
       currentVersionId: 'v1',
       author: { username: 'coffeelover', displayName: 'Coffee Lover', avatarUrl: null },
-      versions: [
-        { brewMethod: 'espresso', drinkType: 'espresso', rating: 4 },
-      ],
+      versions: [{ brewMethod: 'espresso', drinkType: 'espresso', rating: 4 }],
       likeCount: 5,
       commentCount: 2,
       forkCount: 0,
@@ -165,9 +173,7 @@ const mockRecipes = {
       visibility: 'public',
       currentVersionId: 'v2',
       author: { username: 'barista', displayName: null, avatarUrl: null },
-      versions: [
-        { brewMethod: 'v60', drinkType: 'filter', rating: null },
-      ],
+      versions: [{ brewMethod: 'v60', drinkType: 'filter', rating: null }],
       likeCount: 3,
       commentCount: 1,
       forkCount: 0,
@@ -198,11 +204,11 @@ describe('CoffeeVarietyDetailPage', () => {
   it('logs mount and unmount', async () => {
     const { unmount } = render(<CoffeeVarietyDetailPage />);
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietyDetailPage mounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietyDetailPage mounted'),
     );
     unmount();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietyDetailPage unmounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietyDetailPage unmounted'),
     );
   });
 
@@ -219,7 +225,7 @@ describe('CoffeeVarietyDetailPage', () => {
     render(<CoffeeVarietyDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument(),
     );
 
     expect(screen.getByText('Arabica')).toBeInTheDocument();
@@ -316,7 +322,7 @@ describe('CoffeeVarietyDetailPage', () => {
     render(<CoffeeVarietyDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByText('No recipes use this variety yet.')).toBeInTheDocument()
+      expect(screen.getByText('No recipes use this variety yet.')).toBeInTheDocument(),
     );
   });
 
@@ -324,7 +330,7 @@ describe('CoffeeVarietyDetailPage', () => {
     render(<CoffeeVarietyDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument(),
     );
 
     const calls = mockSEOHead.mock.calls;
@@ -341,7 +347,7 @@ describe('CoffeeVarietyDetailPage', () => {
     render(<CoffeeVarietyDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument(),
     );
 
     const calls = mockSEOHead.mock.calls;
@@ -357,7 +363,7 @@ describe('CoffeeVarietyDetailPage', () => {
     render(<CoffeeVarietyDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument(),
     );
 
     const calls = mockSEOHead.mock.calls;
@@ -369,7 +375,7 @@ describe('CoffeeVarietyDetailPage', () => {
     render(<CoffeeVarietyDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Bourbon' })).toBeInTheDocument(),
     );
 
     expect(screen.getByRole('link', { name: 'Coffee Varieties' })).toHaveAttribute(

@@ -1,17 +1,17 @@
-import { useEffect, useMemo } from 'react';
-import { redirect, useLoaderData, useNavigate } from 'react-router';
-import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
 import type {
   BrewLogCreate,
   BrewLogOutput,
   BrewLogUpdate,
   RecipeDetailOutput,
 } from '@brewform/shared/schemas';
+import { useEffect, useMemo } from 'react';
+import { redirect, useLoaderData, useNavigate } from 'react-router';
+import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
+import { BrewLogForm, type BrewLogFormValues } from '../../components/brew-log/BrewLogForm.tsx';
+import { PageContainer } from '../../components/ui/PageContainer.tsx';
+import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
-import { useToast } from '../../components/ui/Toast.tsx';
-import { PageContainer } from '../../components/ui/PageContainer.tsx';
-import { BrewLogForm, type BrewLogFormValues } from '../../components/brew-log/BrewLogForm.tsx';
 
 const log = createLogger('BrewLogFormPage');
 
@@ -32,9 +32,13 @@ export interface BrewLogFormLoaderData {
  * the existing log (the API rejects non-owners with 404); a 401/404 ApiError
  * redirects to `/brew-logs`, any other error propagates to the error boundary.
  */
-export const loader = async (
-  { params, request }: { params: Record<string, string | undefined>; request: Request },
-): Promise<BrewLogFormLoaderData> => {
+export const loader = async ({
+  params,
+  request,
+}: {
+  params: Record<string, string | undefined>;
+  request: Request;
+}): Promise<BrewLogFormLoaderData> => {
   if (params.id) {
     log.debug({ logId: params.id }, 'BrewLogFormPage edit loader started');
     try {
@@ -148,16 +152,16 @@ export function BrewLogFormPage() {
   };
 
   return (
-    <PageContainer width='2xl'>
-      <h1 className='text-2xl font-bold mb-6' style={{ color: 'var(--text-primary)' }}>
+    <PageContainer width="2xl">
+      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>
         {mode === 'edit' ? t('brewLog.form.titleEdit') : t('brewLog.form.titleCreate')}
       </h1>
       <BrewLogForm
         initialValues={initialValues}
         onSubmit={handleSubmit}
-        submitLabel={mode === 'edit'
-          ? t('brewLog.form.submitUpdate')
-          : t('brewLog.form.submitCreate')}
+        submitLabel={
+          mode === 'edit' ? t('brewLog.form.submitUpdate') : t('brewLog.form.submitCreate')
+        }
       />
     </PageContainer>
   );

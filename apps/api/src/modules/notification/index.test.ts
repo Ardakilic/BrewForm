@@ -7,10 +7,9 @@
  * wiring, and service-error → HTTP mapping (404/403).
  */
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { Hono } from 'hono';
 import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
 import notificationRouter, { deps } from './index.ts';
 
@@ -72,7 +71,7 @@ function createTestApp() {
   app.use('*', async (c, next) => {
     c.set('requestId', crypto.randomUUID());
     c.set('userId', 'test-user-id');
-    // deno-lint-ignore no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: test auth context stub
     c.set('user', { id: 'test-user-id', isAdmin: false } as any);
     await next();
   });
@@ -120,9 +119,7 @@ describe('Notification Routes — GET /notifications', () => {
     const app = createTestApp();
     const res = await app.request('/notifications?page=2&perPage=10&unreadOnly=true');
     expect(res.status).toBe(200);
-    expect(listCalls).toEqual([
-      { userId: 'test-user-id', page: 2, perPage: 10, unreadOnly: true },
-    ]);
+    expect(listCalls).toEqual([{ userId: 'test-user-id', page: 2, perPage: 10, unreadOnly: true }]);
   });
 
   it('rejects an invalid page with a 400 validation envelope', async () => {

@@ -63,13 +63,13 @@ export function FollowButton({ userId, initialFollowing, onToggle, onToggleRollb
 
   return (
     <button
-      type='button'
+      type="button"
       onClick={handleClick}
       disabled={isLoading}
-      className='btn-secondary text-sm'
-      style={following
-        ? { backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }
-        : {}}
+      className="btn-secondary text-sm"
+      style={
+        following ? { backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' } : {}
+      }
     >
       {isLoading ? '...' : following ? 'Following' : 'Follow'}
     </button>

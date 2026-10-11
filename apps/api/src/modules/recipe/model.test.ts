@@ -7,7 +7,7 @@
  * filter branch.
  *
  * NOTE: Because the real helper imports `db` and Drizzle operators from
- * modules that cannot be cleanly stubbed in Deno, this file holds a
+ * modules that cannot be cleanly stubbed under Vitest, this file holds a
  * faithful inline copy of `buildRecipeFilters` (and the delegated
  * `recipeCoffeeVarietyCondition`) wired against the local mock surface.
  * Mirror any change to the real implementation here.
@@ -21,8 +21,7 @@
  * be removed in favour of importing the real implementations.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { rankRecipes } from './service.ts';
 
 type MockCondition = {
@@ -112,7 +111,7 @@ const userRecipeRatings = {
 // chained query builder (select → from → where/groupBy/having) whose exact
 // return types are not exported. The mock returns plain objects that satisfy
 // the shape buildRecipeFilters builds, so any is the pragmatic choice here.
-// deno-lint-ignore no-explicit-any -- test mock parameter
+// biome-ignore lint/suspicious/noExplicitAny: test mock parameter
 const db: any = {
   select: (projection: unknown) => ({
     from: (table: unknown) => ({
@@ -143,9 +142,10 @@ interface RecipeFilterCriteria {
 function recipeCoffeeVarietyCondition(coffeeVarietyId: string): MockCondition {
   return inArray(
     recipes.id,
-    db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-      eq(recipeVersions.coffeeVarietyId, coffeeVarietyId),
-    ),
+    db
+      .select({ id: recipeVersions.recipeId })
+      .from(recipeVersions)
+      .where(eq(recipeVersions.coffeeVarietyId, coffeeVarietyId)),
   );
 }
 
@@ -156,7 +156,8 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
     conditions.push(
       inArray(
         recipes.id,
-        db.select({ id: recipeVersions.recipeId })
+        db
+          .select({ id: recipeVersions.recipeId })
           .from(recipeVersions)
           .where(eq(recipeVersions.brewMethod, filters.brewMethod)),
       ),
@@ -167,7 +168,8 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
     conditions.push(
       inArray(
         recipes.id,
-        db.select({ id: recipeVersions.recipeId })
+        db
+          .select({ id: recipeVersions.recipeId })
           .from(recipeVersions)
           .where(eq(recipeVersions.drinkType, filters.drinkType)),
       ),
@@ -182,13 +184,16 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
         ilike(recipes.title, searchTerm),
         inArray(
           recipes.id,
-          db.select({ id: recipeVersions.recipeId }).from(recipeVersions).where(
-            or(
-              ilike(recipeVersions.productName, searchTerm),
-              // F11: personalNotes added to search scope (weight 1)
-              ilike(recipeVersions.personalNotes, searchTerm),
+          db
+            .select({ id: recipeVersions.recipeId })
+            .from(recipeVersions)
+            .where(
+              or(
+                ilike(recipeVersions.productName, searchTerm),
+                // F11: personalNotes added to search scope (weight 1)
+                ilike(recipeVersions.personalNotes, searchTerm),
+              ),
             ),
-          ),
         ),
       );
       if (searchCondition) conditions.push(searchCondition);
@@ -202,7 +207,8 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
       conditions.push(
         inArray(
           recipes.id,
-          db.select({ id: recipeVersions.recipeId })
+          db
+            .select({ id: recipeVersions.recipeId })
             .from(recipeVersions)
             .where(ilike(recipeVersions.brewerDetails, searchTerm)),
         ),
@@ -218,12 +224,10 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
       conditions.push(
         inArray(
           recipes.authorId,
-          db.select({ id: users.id }).from(users).where(
-            or(
-              ilike(users.username, searchTerm),
-              ilike(users.displayName, searchTerm),
-            ),
-          ),
+          db
+            .select({ id: users.id })
+            .from(users)
+            .where(or(ilike(users.username, searchTerm), ilike(users.displayName, searchTerm))),
         ),
       );
     }
@@ -250,7 +254,8 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
       conditions.push(
         inArray(
           recipes.id,
-          db.select({ recipeId: userRecipeRatings.recipeId })
+          db
+            .select({ recipeId: userRecipeRatings.recipeId })
             .from(userRecipeRatings)
             .groupBy(userRecipeRatings.recipeId)
             .having(havingClause),
@@ -267,7 +272,8 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
     conditions.push(
       inArray(
         recipes.currentVersionId,
-        db.select({ id: recipeEquipment.recipeVersionId })
+        db
+          .select({ id: recipeEquipment.recipeVersionId })
           .from(recipeEquipment)
           .where(eq(recipeEquipment.equipmentId, filters.equipmentId)),
       ),
@@ -280,7 +286,8 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
       conditions.push(
         inArray(
           recipes.currentVersionId,
-          db.select({ id: recipeTasteNotes.recipeVersionId })
+          db
+            .select({ id: recipeTasteNotes.recipeVersionId })
             .from(recipeTasteNotes)
             .where(eq(recipeTasteNotes.tasteNoteId, noteId)),
         ),
@@ -290,7 +297,8 @@ function buildRecipeFilters(filters: RecipeFilterCriteria): MockCondition[] {
     conditions.push(
       inArray(
         recipes.currentVersionId,
-        db.select({ id: recipeTasteNotes.recipeVersionId })
+        db
+          .select({ id: recipeTasteNotes.recipeVersionId })
           .from(recipeTasteNotes)
           .where(eq(recipeTasteNotes.tasteNoteId, filters.tasteNoteId)),
       ),

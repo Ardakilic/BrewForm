@@ -1,6 +1,5 @@
 import '../../test-setup.ts';
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { decodeJwt, signAccessToken, signRefreshToken, verifyJwt } from './jwt.ts';
 
 describe('JWT Module', () => {
@@ -90,7 +89,7 @@ describe('JWT Module', () => {
       expect(decoded.sub).toBe('user-123');
       expect(decoded.type).toBe('refresh');
       const now = Math.floor(Date.now() / 1000);
-      const expectedExp = now + (6 * 30 * 86400);
+      const expectedExp = now + 6 * 30 * 86400;
       expect(decoded.exp).toBeGreaterThan(now);
       expect(decoded.exp).toBeLessThanOrEqual(expectedExp + 5);
     });
@@ -103,7 +102,7 @@ describe('JWT Module', () => {
       expect(decoded.sub).toBe('user-123');
       expect(decoded.type).toBe('refresh');
       const now = Math.floor(Date.now() / 1000);
-      const expectedExp = now + (180 * 86400);
+      const expectedExp = now + 180 * 86400;
       expect(decoded.exp).toBeGreaterThan(now);
       expect(decoded.exp).toBeLessThanOrEqual(expectedExp + 5);
     });
@@ -112,7 +111,7 @@ describe('JWT Module', () => {
       const token = await signRefreshToken('user-123');
       const decoded = await verifyJwt(token);
       const now = Math.floor(Date.now() / 1000);
-      const expectedExp = now + (7 * 86400);
+      const expectedExp = now + 7 * 86400;
       expect(decoded.exp).toBeLessThanOrEqual(expectedExp + 5);
     });
 

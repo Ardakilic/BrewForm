@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PhotoUpload } from './PhotoUpload.tsx';
 
 vi.mock('../../api/client.ts', () => ({
@@ -125,7 +125,7 @@ beforeEach(() => {
  */
 describe('PhotoUpload', () => {
   it('renders the drop zone with file input and instructions', () => {
-    const { container } = render(<PhotoUpload recipeId='r1' />);
+    const { container } = render(<PhotoUpload recipeId="r1" />);
     expect(screen.getByText('Drop photos here or click to browse')).toBeInTheDocument();
     expect(screen.getByText(/JPEG, PNG, or WebP — Max 10MB each/i)).toBeInTheDocument();
     const input = container.querySelector('input[type="file"]') as HTMLInputElement | null;
@@ -134,7 +134,7 @@ describe('PhotoUpload', () => {
   });
 
   it('displays an error for unsupported file types and skips upload', async () => {
-    const { container } = render(<PhotoUpload recipeId='r1' />);
+    const { container } = render(<PhotoUpload recipeId="r1" />);
     selectFile(container, makeFile('doc.txt', 'text/plain'));
     await waitFor(() => {
       expect(screen.getByText(/Unsupported file type/i)).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe('PhotoUpload', () => {
   });
 
   it('displays an error when the file exceeds 10MB and skips upload', async () => {
-    const { container } = render(<PhotoUpload recipeId='r1' />);
+    const { container } = render(<PhotoUpload recipeId="r1" />);
     selectFile(container, makeFile('huge.jpg', 'image/jpeg', 11 * 1024 * 1024));
     await waitFor(() => {
       expect(screen.getByText(/File too large/i)).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe('PhotoUpload', () => {
     try {
       const onUploadComplete = vi.fn();
       const { container } = render(
-        <PhotoUpload recipeId='r1' onUploadComplete={onUploadComplete} />,
+        <PhotoUpload recipeId="r1" onUploadComplete={onUploadComplete} />,
       );
       selectFile(container, makeFile('photo.jpg', 'image/jpeg', 2048));
       await waitFor(() => {
@@ -172,7 +172,7 @@ describe('PhotoUpload', () => {
     mockApi.upload.mockRejectedValueOnce(new Error('network'));
     const restore = stubImageAndObjectUrls();
     try {
-      const { container } = render(<PhotoUpload recipeId='r1' />);
+      const { container } = render(<PhotoUpload recipeId="r1" />);
       selectFile(container, makeFile('photo.png', 'image/png', 1024));
       await waitFor(() => {
         expect(screen.getByText(/Failed to upload photo\.png/i)).toBeInTheDocument();

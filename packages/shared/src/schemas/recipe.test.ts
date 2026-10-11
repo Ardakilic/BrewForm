@@ -1,6 +1,5 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check';
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import { EMOJI_TAG_VALUES } from '../constants/emoji-tags.ts';
 import { VISIBILITY_VALUES } from '../constants/visibility.ts';
 import {
@@ -338,30 +337,24 @@ describe('RecipeFilterSchema', () => {
 describe('RecipeFilterSchema.tasteNoteIds', () => {
   it('PBT: for any array of 1–10 valid UUIDs, comma-separated string is accepted', () => {
     fc.assert(
-      fc.property(
-        fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }),
-        (ids) => {
-          const result = RecipeFilterSchema.safeParse({
-            tasteNoteIds: ids.join(','),
-          });
-          expect(result.success).toBe(true);
-        },
-      ),
+      fc.property(fc.array(fc.uuid(), { minLength: 1, maxLength: 10 }), (ids) => {
+        const result = RecipeFilterSchema.safeParse({
+          tasteNoteIds: ids.join(','),
+        });
+        expect(result.success).toBe(true);
+      }),
       { numRuns: 100 },
     );
   });
 
   it('PBT: for any array of >10 valid UUIDs, comma-separated string is rejected', () => {
     fc.assert(
-      fc.property(
-        fc.array(fc.uuid(), { minLength: 11, maxLength: 20 }),
-        (ids) => {
-          const result = RecipeFilterSchema.safeParse({
-            tasteNoteIds: ids.join(','),
-          });
-          expect(result.success).toBe(false);
-        },
-      ),
+      fc.property(fc.array(fc.uuid(), { minLength: 11, maxLength: 20 }), (ids) => {
+        const result = RecipeFilterSchema.safeParse({
+          tasteNoteIds: ids.join(','),
+        });
+        expect(result.success).toBe(false);
+      }),
       { numRuns: 100 },
     );
   });
@@ -465,12 +458,12 @@ describe('Bug Condition exploration', () => {
     fc.assert(
       fc.property(
         // Generate two distinct dates and ensure packageOpenDate < roastDate
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
+        fc
+          .date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
+        fc
+          .date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
         (dateA, dateB) => {
           // Assign so that roastDate > packageOpenDate
           const roastDate = dateA > dateB ? dateA : dateB;
@@ -521,12 +514,12 @@ describe('Bug Condition exploration', () => {
     fc.assert(
       fc.property(
         // Generate two distinct dates and ensure grindDate < packageOpenDate
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
+        fc
+          .date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
+        fc
+          .date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
         (dateA, dateB) => {
           // Assign so that packageOpenDate > grindDate
           const packageOpenDate = dateA > dateB ? dateA : dateB;
@@ -686,15 +679,15 @@ describe('Preservation property tests', () => {
   it('PBT Property 3: for all valid date triples (roastDate <= packageOpenDate <= grindDate), safeParse returns success: true', () => {
     fc.assert(
       fc.property(
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
+        fc
+          .date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
+        fc
+          .date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
+        fc
+          .date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
         (dateA, dateB, dateC) => {
           const sorted = [dateA, dateB, dateC].sort((a, b) => a.getTime() - b.getTime());
           const roastDate = sorted[0].toISOString().slice(0, 10);
@@ -783,12 +776,12 @@ describe('Preservation property tests', () => {
   it('PBT Property 5: for all grindDate < roastDate pairs, safeParse returns success: false (existing rule preserved)', () => {
     fc.assert(
       fc.property(
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
-        fc.date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') }).filter((d) =>
-          !isNaN(d.getTime())
-        ),
+        fc
+          .date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
+        fc
+          .date({ min: new Date('2020-01-02'), max: new Date('2030-12-31') })
+          .filter((d) => !isNaN(d.getTime())),
         (dateA, dateB) => {
           // Assign so that roastDate > grindDate
           const roastDate = dateA > dateB ? dateA : dateB;
@@ -975,24 +968,21 @@ describe('Property 9: Pre-infusion time validation', () => {
    */
   it('PBT Property 9b: for all pairs where preInfusion === extraction (≥ 1), safeParse returns success: false', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 10000 }),
-        (value) => {
-          const result = RecipeCreateSchema.safeParse({
-            ...baseRecipe,
-            preInfusionTimeSeconds: value,
-            extractionTimeSeconds: value,
-            preparationNotes: 'Test notes',
-          });
+      fc.property(fc.integer({ min: 1, max: 10000 }), (value) => {
+        const result = RecipeCreateSchema.safeParse({
+          ...baseRecipe,
+          preInfusionTimeSeconds: value,
+          extractionTimeSeconds: value,
+          preparationNotes: 'Test notes',
+        });
 
-          expect(result.success).toBe(false);
-          if (!result.success) {
-            expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(
-              true,
-            );
-          }
-        },
-      ),
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(
+            true,
+          );
+        }
+      }),
       { numRuns: 100 },
     );
   });
@@ -1038,23 +1028,20 @@ describe('Property 9: Pre-infusion time validation', () => {
    */
   it('PBT Property 9d: for all preInfusion ≥ 1 without extractionTimeSeconds, safeParse returns success: false', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 10000 }),
-        (preInfusion) => {
-          const result = RecipeCreateSchema.safeParse({
-            ...baseRecipe,
-            preInfusionTimeSeconds: preInfusion,
-            preparationNotes: 'Test notes',
-          });
+      fc.property(fc.integer({ min: 1, max: 10000 }), (preInfusion) => {
+        const result = RecipeCreateSchema.safeParse({
+          ...baseRecipe,
+          preInfusionTimeSeconds: preInfusion,
+          preparationNotes: 'Test notes',
+        });
 
-          expect(result.success).toBe(false);
-          if (!result.success) {
-            expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(
-              true,
-            );
-          }
-        },
-      ),
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues.some((i) => i.path.includes('preInfusionTimeSeconds'))).toBe(
+            true,
+          );
+        }
+      }),
       { numRuns: 100 },
     );
   });
@@ -1067,18 +1054,15 @@ describe('Property 9: Pre-infusion time validation', () => {
    */
   it('PBT Property 9e: for all extractionTimeSeconds > 0 without preInfusionTimeSeconds, safeParse returns success: true', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 10000 }),
-        (extraction) => {
-          const result = RecipeCreateSchema.safeParse({
-            ...baseRecipe,
-            extractionTimeSeconds: extraction,
-            preparationNotes: 'Test notes',
-          });
+      fc.property(fc.integer({ min: 1, max: 10000 }), (extraction) => {
+        const result = RecipeCreateSchema.safeParse({
+          ...baseRecipe,
+          extractionTimeSeconds: extraction,
+          preparationNotes: 'Test notes',
+        });
 
-          expect(result.success).toBe(true);
-        },
-      ),
+        expect(result.success).toBe(true);
+      }),
       { numRuns: 100 },
     );
   });
@@ -1195,17 +1179,14 @@ describe('Property 10: Intensity range validation', () => {
    */
   it('PBT Property 10: for all valid intensities (1, 2, 3), safeParse returns success: true', () => {
     fc.assert(
-      fc.property(
-        fc.constantFrom(1, 2, 3),
-        (intensity) => {
-          const result = RecipeCreateObjectSchema.safeParse({
-            ...baseRecipe,
-            tasteNoteIntensities: { [TEST_UUID]: intensity },
-            preparationNotes: 'Test notes',
-          });
-          expect(result.success).toBe(true);
-        },
-      ),
+      fc.property(fc.constantFrom(1, 2, 3), (intensity) => {
+        const result = RecipeCreateObjectSchema.safeParse({
+          ...baseRecipe,
+          tasteNoteIntensities: { [TEST_UUID]: intensity },
+          preparationNotes: 'Test notes',
+        });
+        expect(result.success).toBe(true);
+      }),
       { numRuns: 100 },
     );
   });

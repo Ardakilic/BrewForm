@@ -22,17 +22,14 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
   const { t } = useTranslation();
   return (
     <nav aria-label={t('a11y.breadcrumb')}>
-      <ol className='flex items-center gap-1 flex-wrap text-[color:var(--text-tertiary)] text-xs'>
+      <ol className="flex items-center gap-1 flex-wrap text-[color:var(--text-tertiary)] text-xs">
         {items.map((item, i) => {
           const isLast = i === items.length - 1;
           const isLink = !isLast && !!item.to;
           return (
-            <Fragment key={`${item.label}-${i}`}>
+            <Fragment key={item.to ?? item.label}>
               {i > 0 && (
-                <li
-                  aria-hidden='true'
-                  className='select-none text-[color:var(--text-tertiary)]'
-                >
+                <li aria-hidden="true" className="select-none text-[color:var(--text-tertiary)]">
                   ›
                 </li>
               )}
@@ -40,16 +37,16 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
                 aria-current={isLast ? 'page' : undefined}
                 className={isLast ? 'text-[color:var(--text-secondary)]' : undefined}
               >
-                {isLink
-                  ? (
-                    <Link
-                      to={item.to!}
-                      className='transition-colors text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
-                    >
-                      {item.label}
-                    </Link>
-                  )
-                  : item.label}
+                {isLink ? (
+                  <Link
+                    to={item.to!}
+                    className="transition-colors text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  item.label
+                )}
               </li>
             </Fragment>
           );

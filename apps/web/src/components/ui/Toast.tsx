@@ -17,9 +17,7 @@ interface ToastItem {
   i18nKey: string;
 }
 
-type ToastAction =
-  | { type: 'ADD'; toast: ToastItem }
-  | { type: 'REMOVE'; id: number };
+type ToastAction = { type: 'ADD'; toast: ToastItem } | { type: 'REMOVE'; id: number };
 
 function toastReducer(state: ToastItem[], action: ToastAction): ToastItem[] {
   switch (action.type) {
@@ -55,23 +53,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setTimeout(() => dispatch({ type: 'REMOVE', id }), AUTO_DISMISS_MS);
   }, []);
 
-  const value = useMemo<ToastContextValue>(() => ({
-    success: (key: string) => addToast('success', key),
-    error: (key: string) => addToast('error', key),
-  }), [addToast]);
+  const value = useMemo<ToastContextValue>(
+    () => ({
+      success: (key: string) => addToast('success', key),
+      error: (key: string) => addToast('error', key),
+    }),
+    [addToast],
+  );
 
   return (
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className='fixed bottom-4 right-4 z-[100] flex flex-col gap-2'
-        role='status'
-        aria-live='polite'
+        className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2"
+        role="status"
+        aria-live="polite"
       >
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className='card flex items-center gap-2 px-4 py-3 shadow-lg animate-fade-in'
+            className="card flex items-center gap-2 px-4 py-3 shadow-lg animate-fade-in"
             style={{
               borderLeft: `4px solid var(--${toast.type === 'success' ? 'success' : 'error'})`,
               minWidth: '16rem',
@@ -79,12 +80,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             }}
           >
             <span
-              aria-hidden='true'
+              aria-hidden="true"
               style={{ color: `var(--${toast.type === 'success' ? 'success' : 'error'})` }}
             >
               {toast.type === 'success' ? '✓' : '✕'}
             </span>
-            <span className='text-sm' style={{ color: 'var(--text-primary)' }}>
+            <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
               {t(toast.i18nKey)}
             </span>
           </div>

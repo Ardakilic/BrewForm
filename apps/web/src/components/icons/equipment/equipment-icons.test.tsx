@@ -7,9 +7,9 @@
  * **Validates: Requirements 15.1, 15.2**
  */
 
-import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 import { getEquipmentIcon, OtherIcon } from './index.ts';
 
 // ---------------------------------------------------------------------------
@@ -69,37 +69,34 @@ describe('getEquipmentIcon — all known types return a component', () => {
 // ---------------------------------------------------------------------------
 
 describe('getEquipmentIcon — Property 11: Equipment type icon uniqueness', () => {
-  it(
-    'types with unique icons map to distinct component references',
-    () => {
-      /**
-       * **Validates: Requirements 15.1**
-       *
-       * Feature: recipe-detail-redesign, Property 11: Equipment type icon uniqueness
-       *
-       * Types known to have dedicated icon components must each return a
-       * distinct component reference.
-       */
-      fc.assert(
-        fc.property(
-          fc.integer({ min: 0, max: TYPES_WITH_UNIQUE_ICONS.length - 1 }),
-          fc.integer({ min: 0, max: TYPES_WITH_UNIQUE_ICONS.length - 1 }),
-          (indexA, indexB) => {
-            fc.pre(indexA !== indexB);
+  it('types with unique icons map to distinct component references', () => {
+    /**
+     * **Validates: Requirements 15.1**
+     *
+     * Feature: recipe-detail-redesign, Property 11: Equipment type icon uniqueness
+     *
+     * Types known to have dedicated icon components must each return a
+     * distinct component reference.
+     */
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: TYPES_WITH_UNIQUE_ICONS.length - 1 }),
+        fc.integer({ min: 0, max: TYPES_WITH_UNIQUE_ICONS.length - 1 }),
+        (indexA, indexB) => {
+          fc.pre(indexA !== indexB);
 
-            const typeA = TYPES_WITH_UNIQUE_ICONS[indexA];
-            const typeB = TYPES_WITH_UNIQUE_ICONS[indexB];
+          const typeA = TYPES_WITH_UNIQUE_ICONS[indexA];
+          const typeB = TYPES_WITH_UNIQUE_ICONS[indexB];
 
-            const iconA = getEquipmentIcon(typeA);
-            const iconB = getEquipmentIcon(typeB);
+          const iconA = getEquipmentIcon(typeA);
+          const iconB = getEquipmentIcon(typeB);
 
-            expect(iconA).not.toBe(iconB);
-          },
-        ),
-        { numRuns: 200 },
-      );
-    },
-  );
+          expect(iconA).not.toBe(iconB);
+        },
+      ),
+      { numRuns: 200 },
+    );
+  });
 
   it('all 17 known types return a function and produce a reasonable set of distinct icons', () => {
     const icons = KNOWN_TYPES.map((type) => getEquipmentIcon(type));
@@ -125,33 +122,27 @@ describe('getEquipmentIcon — unknown type fallback', () => {
     expect(icon).toBe(OtherIcon);
   });
 
-  it(
-    'returns the OtherIcon component for any arbitrary string not in the known set',
-    () => {
-      /**
-       * **Validates: Requirements 15.2**
-       *
-       * Feature: recipe-detail-redesign, Property 11: Equipment type icon uniqueness
-       *
-       * For any equipment type string not in the defined set, the mapping
-       * function SHALL return the OtherIcon fallback component.
-       */
-      const knownSet = new Set<string>(KNOWN_TYPES);
+  it('returns the OtherIcon component for any arbitrary string not in the known set', () => {
+    /**
+     * **Validates: Requirements 15.2**
+     *
+     * Feature: recipe-detail-redesign, Property 11: Equipment type icon uniqueness
+     *
+     * For any equipment type string not in the defined set, the mapping
+     * function SHALL return the OtherIcon fallback component.
+     */
+    const knownSet = new Set<string>(KNOWN_TYPES);
 
-      fc.assert(
-        fc.property(
-          fc.string({ minLength: 0, maxLength: 40 }),
-          (unknownType) => {
-            fc.pre(!knownSet.has(unknownType));
+    fc.assert(
+      fc.property(fc.string({ minLength: 0, maxLength: 40 }), (unknownType) => {
+        fc.pre(!knownSet.has(unknownType));
 
-            const icon = getEquipmentIcon(unknownType);
-            expect(icon).toBe(OtherIcon);
-          },
-        ),
-        { numRuns: 200 },
-      );
-    },
-  );
+        const icon = getEquipmentIcon(unknownType);
+        expect(icon).toBe(OtherIcon);
+      }),
+      { numRuns: 200 },
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

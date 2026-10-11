@@ -1,7 +1,7 @@
 import { isRouteErrorResponse, Link, useRouteError } from 'react-router';
-import { NotFoundPage, ServerErrorPage } from '../pages/ErrorPage.tsx';
-import { useTranslation } from '../contexts/I18nContext.tsx';
 import { createLogger } from '@/utils/logger.ts';
+import { useTranslation } from '../contexts/I18nContext.tsx';
+import { NotFoundPage, ServerErrorPage } from '../pages/ErrorPage.tsx';
 
 const log = createLogger('ErrorBoundary');
 
@@ -34,32 +34,28 @@ export function RootErrorBoundary() {
 
   return (
     <div
-      className='flex min-h-screen flex-col items-center justify-center px-6 text-center'
+      className="flex min-h-screen flex-col items-center justify-center px-6 text-center"
       style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
-      <h1 className='text-6xl font-bold' style={{ color: 'var(--accent-primary)' }}>
+      <h1 className="text-6xl font-bold" style={{ color: 'var(--accent-primary)' }}>
         {t('error.boundary.oops')}
       </h1>
-      <p className='mt-4 text-lg' style={{ color: 'var(--text-secondary)' }}>
+      <p className="mt-4 text-lg" style={{ color: 'var(--text-secondary)' }}>
         {message}
       </p>
       {import.meta.env.DEV && error instanceof Error && error.stack && (
         <pre
-          className='mt-4 max-w-2xl overflow-auto rounded-lg p-4 text-left text-xs'
+          className="mt-4 max-w-2xl overflow-auto rounded-lg p-4 text-left text-xs"
           style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
         >
           {error.stack}
         </pre>
       )}
-      <div className='mt-6 flex gap-4'>
-        <Link to='/' className='btn-primary'>
+      <div className="mt-6 flex gap-4">
+        <Link to="/" className="btn-primary">
           {t('common.goHome')}
         </Link>
-        <button
-          type='button'
-          className='btn-primary'
-          onClick={handleReset}
-        >
+        <button type="button" className="btn-primary" onClick={handleReset}>
           {t('error.boundary.reload')}
         </button>
       </div>

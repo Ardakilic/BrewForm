@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react';
+import { api } from '../api/client.ts';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { ErrorState } from '../components/ui/ErrorState.tsx';
-import { api } from '../api/client.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 
 interface ContactFormData {
@@ -48,43 +48,37 @@ export function ContactPage() {
 
   if (sent) {
     return (
-      <div className='mx-auto max-w-md px-6 py-12 text-center'>
+      <div className="mx-auto max-w-md px-6 py-12 text-center">
         <SEOHead title={t('contact.title')} description={t('contact.description')} />
-        <h1 className='text-2xl font-bold text-[color:var(--text-primary)]'>
+        <h1 className="text-2xl font-bold text-[color:var(--text-primary)]">
           {t('contact.success.title')}
         </h1>
-        <p className='mt-4 text-[color:var(--text-secondary)]'>
-          {t('contact.success.message')}
-        </p>
+        <p className="mt-4 text-[color:var(--text-secondary)]">{t('contact.success.message')}</p>
       </div>
     );
   }
 
   return (
-    <div className='mx-auto max-w-2xl px-6 py-8'>
+    <div className="mx-auto max-w-2xl px-6 py-8">
       <SEOHead title={t('contact.title')} description={t('contact.description')} />
-      <h1 className='text-3xl font-bold text-[color:var(--text-primary)]'>
-        {t('contact.title')}
-      </h1>
-      <p className='mt-2 text-[color:var(--text-secondary)]'>
-        {t('contact.description')}
-      </p>
+      <h1 className="text-3xl font-bold text-[color:var(--text-primary)]">{t('contact.title')}</h1>
+      <p className="mt-2 text-[color:var(--text-secondary)]">{t('contact.description')}</p>
 
-      {error && <ErrorState message={error} className='mt-4' />}
+      {error && <ErrorState message={error} className="mt-4" />}
 
-      <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <div>
           <label
-            htmlFor='contact-name'
-            className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'
+            htmlFor="contact-name"
+            className="mb-1 block text-sm font-medium text-[color:var(--text-secondary)]"
           >
             {t('contact.form.name')}
           </label>
           <input
-            type='text'
-            name='name'
-            id='contact-name'
-            className='input-field'
+            type="text"
+            name="name"
+            id="contact-name"
+            className="input-field"
             required
             minLength={1}
             maxLength={100}
@@ -92,32 +86,32 @@ export function ContactPage() {
         </div>
         <div>
           <label
-            htmlFor='contact-email'
-            className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'
+            htmlFor="contact-email"
+            className="mb-1 block text-sm font-medium text-[color:var(--text-secondary)]"
           >
             {t('contact.form.email')}
           </label>
           <input
-            type='email'
-            name='email'
-            id='contact-email'
-            className='input-field'
+            type="email"
+            name="email"
+            id="contact-email"
+            className="input-field"
             required
             maxLength={255}
           />
         </div>
         <div>
           <label
-            htmlFor='contact-subject'
-            className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'
+            htmlFor="contact-subject"
+            className="mb-1 block text-sm font-medium text-[color:var(--text-secondary)]"
           >
             {t('contact.form.subject')}
           </label>
           <input
-            type='text'
-            name='subject'
-            id='contact-subject'
-            className='input-field'
+            type="text"
+            name="subject"
+            id="contact-subject"
+            className="input-field"
             required
             minLength={1}
             maxLength={200}
@@ -125,21 +119,21 @@ export function ContactPage() {
         </div>
         <div>
           <label
-            htmlFor='contact-message'
-            className='mb-1 block text-sm font-medium text-[color:var(--text-secondary)]'
+            htmlFor="contact-message"
+            className="mb-1 block text-sm font-medium text-[color:var(--text-secondary)]"
           >
             {t('contact.form.message')}
           </label>
           <textarea
-            name='message'
-            id='contact-message'
-            className='input-field min-h-[120px]'
+            name="message"
+            id="contact-message"
+            className="input-field min-h-[120px]"
             required
             minLength={10}
             maxLength={5000}
           />
         </div>
-        <button type='submit' className='btn-primary' disabled={loading}>
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? t('contact.form.sending') : t('contact.form.submit')}
         </button>
       </form>

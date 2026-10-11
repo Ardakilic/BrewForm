@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
-import { commentApi } from '../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
+import { commentApi } from '../api/index.ts';
 
 const logger = createLogger('comments');
 
@@ -22,7 +22,6 @@ const logger = createLogger('comments');
  * @throws {Response} 400 with body `'Missing recipe id'` when `params.recipeId`
  *   is not a non-empty string.
  */
-// deno-lint-ignore require-await -- react-router loader; throws must reject (async), not throw synchronously
 export const listCommentsLoader = async ({ params, request }: LoaderFunctionArgs) => {
   const recipeId = params.recipeId;
   if (typeof recipeId !== 'string' || recipeId.length === 0) {
@@ -52,9 +51,8 @@ export const createCommentAction = async ({ params, request }: ActionFunctionArg
     throw new Response('Missing recipe id', { status: 400 });
   }
   const rawParent = form.get('parentCommentId');
-  const parentCommentId = typeof rawParent === 'string' && rawParent.length > 0
-    ? rawParent
-    : undefined;
+  const parentCommentId =
+    typeof rawParent === 'string' && rawParent.length > 0 ? rawParent : undefined;
 
   logger.debug(
     { recipeId, hasParentCommentId: Boolean(parentCommentId) },

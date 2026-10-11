@@ -10,15 +10,21 @@
  * fewer characters, the full title is displayed unchanged.
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import fc from 'fast-check';
+import { describe, expect, it, vi } from 'vitest';
 import { BreadcrumbNav } from './BreadcrumbNav.tsx';
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -92,44 +98,35 @@ describe('BreadcrumbNav — title truncation unit tests', () => {
 describe('BreadcrumbNav — Property 1: Breadcrumb title truncation', () => {
   it('for any string of length ≤ 40, the displayed title equals the original', () => {
     fc.assert(
-      fc.property(
-        fc.string({ maxLength: 40 }),
-        (title) => {
-          const displayed = getLastSegmentText(title);
-          expect(displayed).toBe(title);
-        },
-      ),
+      fc.property(fc.string({ maxLength: 40 }), (title) => {
+        const displayed = getLastSegmentText(title);
+        expect(displayed).toBe(title);
+      }),
       { numRuns: 200 },
     );
   });
 
   it('for any string of length > 40, the displayed title is exactly 38 chars (37 + "…")', () => {
     fc.assert(
-      fc.property(
-        fc.string({ minLength: 41, maxLength: 500 }),
-        (title) => {
-          const displayed = getLastSegmentText(title);
-          // Must end with the ellipsis character
-          expect(displayed.endsWith('…')).toBe(true);
-          // Must be exactly 38 characters (37 content chars + 1 ellipsis)
-          expect(displayed.length).toBe(38);
-          // The first 37 chars must match the original title's first 37 chars
-          expect(displayed.slice(0, 37)).toBe(title.slice(0, 37));
-        },
-      ),
+      fc.property(fc.string({ minLength: 41, maxLength: 500 }), (title) => {
+        const displayed = getLastSegmentText(title);
+        // Must end with the ellipsis character
+        expect(displayed.endsWith('…')).toBe(true);
+        // Must be exactly 38 characters (37 content chars + 1 ellipsis)
+        expect(displayed.length).toBe(38);
+        // The first 37 chars must match the original title's first 37 chars
+        expect(displayed.slice(0, 37)).toBe(title.slice(0, 37));
+      }),
       { numRuns: 200 },
     );
   });
 
   it('for any string, the displayed title is always ≤ 40 chars', () => {
     fc.assert(
-      fc.property(
-        fc.string({ maxLength: 500 }),
-        (title) => {
-          const displayed = getLastSegmentText(title);
-          expect(displayed.length).toBeLessThanOrEqual(40);
-        },
-      ),
+      fc.property(fc.string({ maxLength: 500 }), (title) => {
+        const displayed = getLastSegmentText(title);
+        expect(displayed.length).toBeLessThanOrEqual(40);
+      }),
       { numRuns: 200 },
     );
   });

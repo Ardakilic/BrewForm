@@ -1,8 +1,8 @@
-import * as model from './model.ts';
-import { coffeeVarieties } from '@brewform/db/schema';
-import { cacheProvider } from '../../utils/cache/singleton.ts';
+import type { coffeeVarieties } from '@brewform/db/schema';
 import type { CacheProvider } from '../../utils/cache/index.ts';
+import { cacheProvider } from '../../utils/cache/singleton.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import * as model from './model.ts';
 
 /**
  * Coffee variety service.

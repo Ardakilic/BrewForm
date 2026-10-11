@@ -1,71 +1,69 @@
 import { createBrowserRouter, Navigate } from 'react-router';
-import { Layout } from './components/layout/Layout.tsx';
 import { RequireAuth } from './components/auth/RequireAuth.tsx';
-
-// Eagerly loaded: high-traffic public pages and lightweight auth pages
-import { HomePage, loader as homeLoader } from './pages/HomePage.tsx';
-import { NotFoundPage } from './pages/ErrorPage.tsx';
+import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
+import { Layout } from './components/layout/Layout.tsx';
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard.tsx';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.tsx';
 import { LoginPage } from './pages/auth/LoginPage.tsx';
 import { RegisterPage } from './pages/auth/RegisterPage.tsx';
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.tsx';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage.tsx';
-import { loader as recipeListLoader, RecipeListPage } from './pages/recipes/RecipeListPage.tsx';
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.tsx';
+import { BeanListPage } from './pages/beans/BeanListPage.tsx';
 import {
-  loader as starredLoader,
-  StarredRecipesPage,
-} from './pages/recipes/StarredRecipesPage.tsx';
-import { loader as detailLoader, RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
+  BrewLogFormPage,
+  loader as brewLogFormLoader,
+} from './pages/brew-logs/BrewLogFormPage.tsx';
 import {
-  CollectionListPage,
-  loader as collectionListLoader,
-} from './pages/collections/CollectionListPage.tsx';
+  BrewLogListPage,
+  loader as brewLogListLoader,
+} from './pages/brew-logs/BrewLogListPage.tsx';
+import { ContactPage } from './pages/ContactPage.tsx';
+import { CollectionCreatePage } from './pages/collections/CollectionCreatePage.tsx';
 import {
   CollectionDetailPage,
   loader as collectionDetailLoader,
 } from './pages/collections/CollectionDetailPage.tsx';
-import { CollectionCreatePage } from './pages/collections/CollectionCreatePage.tsx';
 import {
   CollectionEditPage,
   loader as collectionEditLoader,
 } from './pages/collections/CollectionEditPage.tsx';
 import {
+  CollectionListPage,
+  loader as collectionListLoader,
+} from './pages/collections/CollectionListPage.tsx';
+import {
   CollectionsBrowsePage,
   loader as collectionsBrowseLoader,
 } from './pages/collections/CollectionsBrowsePage.tsx';
-import {
-  BrewLogListPage,
-  loader as brewLogListLoader,
-} from './pages/brew-logs/BrewLogListPage.tsx';
-import {
-  BrewLogFormPage,
-  loader as brewLogFormLoader,
-} from './pages/brew-logs/BrewLogFormPage.tsx';
-import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
-import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
-import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
-import { loader as profileLoader, UserProfilePage } from './pages/users/UserProfilePage.tsx';
-import { loader as settingsLoader, SettingsPage } from './pages/settings/SettingsPage.tsx';
-import {
-  loader as notificationListLoader,
-  NotificationListPage,
-} from './pages/notifications/NotificationListPage.tsx';
-import { SetupListPage } from './pages/setups/SetupListPage.tsx';
-import { BeanListPage } from './pages/beans/BeanListPage.tsx';
+import { NotFoundPage } from './pages/ErrorPage.tsx';
 import { EquipmentListPage } from './pages/equipment/EquipmentListPage.tsx';
-import { TasteNotesPage } from './pages/TasteNotesPage.tsx';
-import { OnboardingWizard } from './components/onboarding/OnboardingWizard.tsx';
+// Eagerly loaded: high-traffic public pages and lightweight auth pages
+import { HomePage, loader as homeLoader } from './pages/HomePage.tsx';
+import {
+  NotificationListPage,
+  loader as notificationListLoader,
+} from './pages/notifications/NotificationListPage.tsx';
 import { PrivacyPage } from './pages/PrivacyPage.tsx';
+import { loader as detailLoader, RecipeDetailPage } from './pages/recipes/RecipeDetailPage.tsx';
+import { RecipeFocusModePage } from './pages/recipes/RecipeFocusModePage.tsx';
+import { RecipeListPage, loader as recipeListLoader } from './pages/recipes/RecipeListPage.tsx';
+import { RecipeNotAvailablePage } from './pages/recipes/RecipeNotAvailablePage.tsx';
+import { RecipeVersionsPage } from './pages/recipes/RecipeVersionsPage.tsx';
+import {
+  StarredRecipesPage,
+  loader as starredLoader,
+} from './pages/recipes/StarredRecipesPage.tsx';
+import { SettingsPage, loader as settingsLoader } from './pages/settings/SettingsPage.tsx';
+import { SetupListPage } from './pages/setups/SetupListPage.tsx';
+import { TasteNotesPage } from './pages/TasteNotesPage.tsx';
 import { TermsPage } from './pages/TermsPage.tsx';
-import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
-import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.tsx';
-import { ContactPage } from './pages/ContactPage.tsx';
-
+import { loader as profileLoader, UserProfilePage } from './pages/users/UserProfilePage.tsx';
+import { createCommentAction, deleteCommentAction, listCommentsLoader } from './routes/comments.ts';
+import { favouriteAction } from './routes/favourite.ts';
+import { followAction } from './routes/follow.ts';
 // Resource route actions
 import { likeAction } from './routes/like.ts';
-import { favouriteAction } from './routes/favourite.ts';
 import { rateAction } from './routes/rate.ts';
-import { followAction } from './routes/follow.ts';
-import { createCommentAction, deleteCommentAction, listCommentsLoader } from './routes/comments.ts';
 
 /** Application browser router — declares all routes, loaders, and resource-route actions. */
 export const router = createBrowserRouter([
@@ -301,7 +299,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'equipment/catalog',
-        element: <Navigate to='/equipments' replace />,
+        element: <Navigate to="/equipments" replace />,
       },
       {
         path: 'equipment/:id',

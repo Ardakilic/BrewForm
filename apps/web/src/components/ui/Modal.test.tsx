@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { ConfirmProvider, Modal, useConfirm } from './Modal.tsx';
 
@@ -40,7 +40,7 @@ describe('Modal', () => {
           closed = true;
         }}
       >
-        <button type='button'>btn</button>
+        <button type="button">btn</button>
       </Modal>,
     );
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -56,7 +56,7 @@ describe('Modal', () => {
           closed = true;
         }}
       >
-        <button type='button'>btn</button>
+        <button type="button">btn</button>
       </Modal>,
     );
     const backdrop = document.querySelector('.fixed.inset-0') as HTMLElement;
@@ -73,7 +73,7 @@ describe('Modal', () => {
           closed = true;
         }}
       >
-        <button type='button'>inner-btn</button>
+        <button type="button">inner-btn</button>
       </Modal>,
     );
     fireEvent.click(screen.getByText('inner-btn'));
@@ -83,8 +83,8 @@ describe('Modal', () => {
   it('traps focus: Tab from last element wraps to first', () => {
     render(
       <Modal open onClose={() => {}}>
-        <button type='button'>first</button>
-        <button type='button'>last</button>
+        <button type="button">first</button>
+        <button type="button">last</button>
       </Modal>,
     );
     const last = screen.getByText('last');
@@ -96,8 +96,8 @@ describe('Modal', () => {
   it('traps focus: Shift+Tab from first element wraps to last', () => {
     render(
       <Modal open onClose={() => {}}>
-        <button type='button'>first</button>
-        <button type='button'>last</button>
+        <button type="button">first</button>
+        <button type="button">last</button>
       </Modal>,
     );
     const first = screen.getByText('first');
@@ -112,7 +112,7 @@ describe('useConfirm', () => {
     const { confirm } = useConfirm();
     return (
       <button
-        type='button'
+        type="button"
         onClick={async () => {
           const result = await confirm({
             titleKey: 'common.confirmDelete',

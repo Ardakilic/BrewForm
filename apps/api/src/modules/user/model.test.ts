@@ -1,12 +1,11 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { userPreferences, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
-describe('User Model', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('User Model', () => {
   describe('findById', () => {
     describe('user with preferences', () => {
       let userId: string;

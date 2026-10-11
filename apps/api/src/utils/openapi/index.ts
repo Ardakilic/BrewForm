@@ -25,7 +25,7 @@ export function jsonRequestBody(
     content: {
       [mediaType]: {
         // hono-openapi v1.3.0's requestBody content schema type doesn't accept zod-openapi's JSON Schema output; cast required (D34 P3).
-        // deno-lint-ignore no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: hono-openapi requestBody schema type incompatible with zod-openapi output; cast required
         schema: z.toJSONSchema(schema, { unrepresentable: 'any' }) as any,
       },
     },

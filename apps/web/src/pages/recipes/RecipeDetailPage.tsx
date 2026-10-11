@@ -1,3 +1,11 @@
+import { EMOJI_TAGS_LIST } from '@brewform/shared/constants';
+import type {
+  CommentWithRepliesOutput,
+  PaginatedResponse,
+  RecipeCollectionsOutput,
+  RecipeDetailOutput,
+  TasteNoteOutput,
+} from '@brewform/shared/schemas';
 import { useEffect, useRef } from 'react';
 import {
   Link,
@@ -8,40 +16,32 @@ import {
   useNavigation,
   useParams,
 } from 'react-router';
+import { createLogger } from '@/utils/logger.ts';
 import { ApiError, collectionApi, commentApi, recipeApi } from '../../api/index.ts';
-import type {
-  CommentWithRepliesOutput,
-  PaginatedResponse,
-  RecipeCollectionsOutput,
-  RecipeDetailOutput,
-  TasteNoteOutput,
-} from '@brewform/shared/schemas';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
-import { SEOHead } from '../../components/seo/SEOHead.tsx';
-import { RecipeDetailSkeleton } from '../../components/ui/Skeleton.tsx';
-import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
-import { LikeButton } from '../../components/recipe/LikeButton.tsx';
-import { FavouriteButton } from '../../components/recipe/FavouriteButton.tsx';
-import { ForkCard } from '../../components/recipe/ForkCard.tsx';
-import { AddToCollectionButton } from '../../components/collections/AddToCollectionButton.tsx';
-import { CommentSection } from '../../components/recipe/CommentSection.tsx';
-import { StarRating } from '../../components/recipe/StarRating.tsx';
-import { BreadcrumbNav } from '../../components/recipe/BreadcrumbNav.tsx';
-import { MetadataBadges } from '../../components/recipe/MetadataBadges.tsx';
-import { StatCards } from '../../components/recipe/StatCards.tsx';
-import { BeanSection } from '../../components/recipe/BeanSection.tsx';
-import { BrewTimeline } from '../../components/recipe/BrewTimeline.tsx';
 import { BrewHistorySection } from '../../components/brew-log/BrewHistorySection.tsx';
 import { RecipeBrewStats } from '../../components/brew-log/RecipeBrewStats.tsx';
+import { AddToCollectionButton } from '../../components/collections/AddToCollectionButton.tsx';
+import { BeanSection } from '../../components/recipe/BeanSection.tsx';
+import { BreadcrumbNav } from '../../components/recipe/BreadcrumbNav.tsx';
+import { BrewTimeline } from '../../components/recipe/BrewTimeline.tsx';
+import { CommentSection } from '../../components/recipe/CommentSection.tsx';
 import { EquipmentSection } from '../../components/recipe/EquipmentSection.tsx';
-import { TastingNotesSection } from '../../components/recipe/TastingNotesSection.tsx';
+import { FavouriteButton } from '../../components/recipe/FavouriteButton.tsx';
+import { ForkCard } from '../../components/recipe/ForkCard.tsx';
+import { LikeButton } from '../../components/recipe/LikeButton.tsx';
+import { MetadataBadges } from '../../components/recipe/MetadataBadges.tsx';
 import { RecipeNotesSection } from '../../components/recipe/RecipeNotesSection.tsx';
 import { ShareSection } from '../../components/recipe/ShareSection.tsx';
+import { StarRating } from '../../components/recipe/StarRating.tsx';
+import { StatCards } from '../../components/recipe/StatCards.tsx';
+import { TastingNotesSection } from '../../components/recipe/TastingNotesSection.tsx';
+import { RecipeJsonLd } from '../../components/seo/JsonLd.tsx';
+import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { RecipeDetailSkeleton } from '../../components/ui/Skeleton.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
-import { EMOJI_TAGS_LIST } from '@brewform/shared/constants';
-import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('RecipeDetailPage');
 
@@ -60,9 +60,13 @@ export interface DetailLoaderData {
  * redirect to `/recipes/unavailable`.
  * Returns `{ recipe, tasteNotes, comments, collections }`.
  */
-export const loader = async (
-  { params, request }: { params: Record<string, string | undefined>; request: Request },
-): Promise<DetailLoaderData> => {
+export const loader = async ({
+  params,
+  request,
+}: {
+  params: Record<string, string | undefined>;
+  request: Request;
+}): Promise<DetailLoaderData> => {
   const slug = params.slug;
   if (!slug) throw new Response('Not Found', { status: 404 });
   const fromQr = new URL(request.url).searchParams.get('from') === 'qr';
@@ -93,8 +97,12 @@ export const loader = async (
  * owner-only edit and rating controls.
  */
 export function RecipeDetailPage() {
-  const { recipe, tasteNotes: allTasteNotes, comments: initialComments, collections } =
-    useLoaderData() as DetailLoaderData;
+  const {
+    recipe,
+    tasteNotes: allTasteNotes,
+    comments: initialComments,
+    collections,
+  } = useLoaderData() as DetailLoaderData;
   const { slug } = useParams();
   const navigate = useNavigate();
   const navigation = useNavigation();
@@ -110,10 +118,10 @@ export function RecipeDetailPage() {
     return () => {
       log.debug({ slug }, 'RecipeDetailPage unmounted');
     };
-  }, []);
+  }, [slug]);
 
-  const loading = navigation.state === 'loading' &&
-    navigation.location?.pathname.includes('/recipes/');
+  const loading =
+    navigation.state === 'loading' && navigation.location?.pathname.includes('/recipes/');
 
   if (loading) {
     return <RecipeDetailSkeleton />;
@@ -129,18 +137,22 @@ export function RecipeDetailPage() {
     <article aria-label={recipe.title}>
       <SEOHead
         title={recipe.title}
-        description={v?.personalNotes ||
+        description={
+          v?.personalNotes ||
           `${v?.brewMethod ?? ''} ${v?.drinkType ?? ''} recipe by ${
             recipe.author?.displayName || recipe.author?.username
-          }`}
+          }`
+        }
         image={recipe.photos?.[0]?.url}
         url={`${globalThis.location.origin}/recipes/${recipe.slug}`}
         canonical={`${globalThis.location.origin}/recipes/${recipe.slug}`}
       />
       <RecipeJsonLd
         title={recipe.title}
-        description={v?.personalNotes?.trim() ||
-          [v?.brewMethod, v?.drinkType, 'recipe'].filter(Boolean).join(' ')}
+        description={
+          v?.personalNotes?.trim() ||
+          [v?.brewMethod, v?.drinkType, 'recipe'].filter(Boolean).join(' ')
+        }
         slug={recipe.slug}
         authorName={recipe.author?.displayName || recipe.author?.username || ''}
         authorUsername={recipe.author?.username}
@@ -155,9 +167,7 @@ export function RecipeDetailPage() {
         drinkType={v?.drinkType}
         preparationNotes={v?.preparationNotes}
         temperatureCelsius={v?.temperatureCelsius}
-        tasteNoteNames={tasteNotes
-          .map((tn) => tn.name)
-          .filter((n): n is string => Boolean(n))}
+        tasteNoteNames={tasteNotes.map((tn) => tn.name).filter((n): n is string => Boolean(n))}
         additionalPreparations={v?.additionalPreparations}
         avgRating={recipe.avgRating}
         ratingCount={recipe.ratingCount}
@@ -165,46 +175,48 @@ export function RecipeDetailPage() {
 
       {/* ── Header section ── */}
       <div
-        className='py-6'
+        className="py-6"
         style={{
           backgroundColor: 'var(--bg-secondary)',
           borderBottom: '1px solid var(--border-primary)',
         }}
       >
-        <div className='mx-auto max-w-4xl px-6'>
+        <div className="mx-auto max-w-4xl px-6">
           {/* Breadcrumb */}
-          <div className='mb-3'>
+          <div className="mb-3">
             <BreadcrumbNav brewMethod={v?.brewMethod} recipeTitle={recipe.title} />
           </div>
 
           {/* Recipe title */}
           <h1
-            className='text-3xl font-bold font-serif mb-3'
+            className="text-3xl font-bold font-serif mb-3"
             style={{ color: 'var(--text-primary)' }}
           >
             {recipe.title}
           </h1>
 
           {/* Metadata badges + action buttons row */}
-          <div className='flex flex-wrap items-center justify-between gap-3'>
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <MetadataBadges
               author={recipe.author ?? null}
               visibility={recipe.visibility}
               brewMethod={v?.brewMethod}
               versionNumber={v?.versionNumber ?? 1}
               versionCount={recipe.versionCount ?? 1}
-              onVersionHistoryClick={recipe.versionCount > 1
-                ? () => navigate(`/recipes/${recipe.slug}/versions`)
-                : undefined}
+              onVersionHistoryClick={
+                recipe.versionCount > 1
+                  ? () => navigate(`/recipes/${recipe.slug}/versions`)
+                  : undefined
+              }
             />
 
             {/* Action buttons */}
-            <div className='flex flex-wrap items-center gap-2'>
+            <div className="flex flex-wrap items-center gap-2">
               {/* Print button */}
               <button
-                type='button'
+                type="button"
                 onClick={() => globalThis.print()}
-                className='btn-secondary text-sm min-h-11 px-3'
+                className="btn-secondary text-sm min-h-11 px-3"
                 aria-label={t('recipe.printAriaLabel')}
               >
                 {t('recipe.print')}
@@ -212,9 +224,9 @@ export function RecipeDetailPage() {
 
               {/* Focus button */}
               <button
-                type='button'
+                type="button"
                 onClick={() => navigate(`/recipes/${recipe.slug}/focus`)}
-                className='btn-secondary text-sm min-h-11 px-3'
+                className="btn-secondary text-sm min-h-11 px-3"
                 aria-label={t('recipe.focusModeAriaLabel')}
               >
                 {t('recipe.focusMode')}
@@ -223,9 +235,9 @@ export function RecipeDetailPage() {
               {/* Fork Recipe button — hidden if not authenticated OR is owner */}
               {isAuthenticated && !isOwner && (
                 <button
-                  type='button'
+                  type="button"
                   onClick={() => navigate(`/recipes/${recipe.id}/fork`)}
-                  className='btn-secondary text-sm min-h-11 px-3'
+                  className="btn-secondary text-sm min-h-11 px-3"
                   aria-label={t('recipe.forkAriaLabel')}
                 >
                   {t('recipe.fork')}
@@ -239,7 +251,7 @@ export function RecipeDetailPage() {
               {isOwner && (
                 <Link
                   to={`/recipes/${recipe.id}/edit`}
-                  className='btn-secondary text-sm min-h-11 px-3 inline-flex items-center'
+                  className="btn-secondary text-sm min-h-11 px-3 inline-flex items-center"
                 >
                   {t('common.edit')}
                 </Link>
@@ -250,17 +262,17 @@ export function RecipeDetailPage() {
       </div>
 
       {/* ── Stat Cards (full width below header) ── */}
-      <div className='py-4' style={{ backgroundColor: 'var(--bg-primary)' }}>
-        <div className='mx-auto max-w-4xl px-6'>
+      <div className="py-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
+        <div className="mx-auto max-w-4xl px-6">
           <StatCards version={v} unitSystem={unitSystem} />
         </div>
       </div>
 
       {/* ── Main content grid ── */}
-      <div className='mx-auto max-w-4xl px-6 py-6'>
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+      <div className="mx-auto max-w-4xl px-6 py-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Main column (2/3 width on md+) */}
-          <div className='md:col-span-2 space-y-6'>
+          <div className="md:col-span-2 space-y-6">
             <BeanSection
               productName={v?.productName}
               coffeeBrand={v?.coffeeBrand}
@@ -279,10 +291,7 @@ export function RecipeDetailPage() {
             />
 
             {isAuthenticated && (
-              <BrewHistorySection
-                recipeId={recipe.id}
-                currentVersionId={recipe.currentVersionId}
-              />
+              <BrewHistorySection recipeId={recipe.id} currentVersionId={recipe.currentVersionId} />
             )}
 
             <EquipmentSection
@@ -291,17 +300,17 @@ export function RecipeDetailPage() {
               brewerDetails={v?.brewerDetails}
             />
 
-            <section className='card' aria-label={t('a11y.preparationNotes')}>
-              <div className='flex items-center justify-between mb-4'>
+            <section className="card" aria-label={t('a11y.preparationNotes')}>
+              <div className="flex items-center justify-between mb-4">
                 <span
-                  className='text-xs font-semibold uppercase tracking-widest'
+                  className="text-xs font-semibold uppercase tracking-widest"
                   style={{ color: 'var(--text-tertiary)' }}
                 >
                   {t('recipe.preparationNotes')}
                 </span>
               </div>
               <p
-                className='text-sm'
+                className="text-sm"
                 style={{
                   color: 'var(--text-secondary)',
                   whiteSpace: 'pre-wrap',
@@ -324,34 +333,30 @@ export function RecipeDetailPage() {
           </div>
 
           {/* Sidebar (1/3 width on md+) */}
-          <div className='space-y-4 no-print'>
+          <div className="space-y-4 no-print">
             {/* Share section — at top for reachability */}
-            <ShareSection
-              slug={recipe.slug}
-              title={recipe.title}
-              visibility={recipe.visibility}
-            />
+            <ShareSection slug={recipe.slug} title={recipe.title} visibility={recipe.visibility} />
 
             {/* Rating card */}
-            <div className='card'>
-              <div className='flex items-center justify-between mb-3'>
-                <span className='text-sm font-medium' style={{ color: 'var(--text-secondary)' }}>
+            <div className="card">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   {t('recipe.rating')}
                 </span>
                 {emojiInfo && <span title={emojiInfo.label}>{emojiInfo.emoji}</span>}
               </div>
 
               {v?.rating && (
-                <div className='mb-3'>
-                  <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
+                <div className="mb-3">
+                  <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
                     {t('recipe.authorRating')}
                   </p>
                   <StarRating value={v.rating} interactive={false} />
                 </div>
               )}
 
-              <div className='mb-3'>
-                <p className='text-xs mb-1' style={{ color: 'var(--text-tertiary)' }}>
+              <div className="mb-3">
+                <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
                   {t('recipe.communityAvg')}
                 </p>
                 <StarRating
@@ -361,25 +366,21 @@ export function RecipeDetailPage() {
                 />
               </div>
 
-              <div className='mb-3'>
+              <div className="mb-3">
                 <RecipeBrewStats recipeId={recipe.id} />
               </div>
 
               {isAuthenticated && (
-                <div className='pt-3 border-t' style={{ borderColor: 'var(--border-primary)' }}>
-                  <p className='text-xs mb-2' style={{ color: 'var(--text-tertiary)' }}>
+                <div className="pt-3 border-t" style={{ borderColor: 'var(--border-primary)' }}>
+                  <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
                     {recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
                   </p>
                   <ratingFetcher.Form
                     ref={ratingFormRef}
-                    method='post'
+                    method="post"
                     action={`/recipes/${recipe.id}/rate`}
                   >
-                    <input
-                      type='hidden'
-                      name='rating'
-                      value={recipe.userRating ?? ''}
-                    />
+                    <input type="hidden" name="rating" value={recipe.userRating ?? ''} />
                     <StarRating
                       value={recipe.userRating ?? null}
                       interactive={ratingFetcher.state === 'idle'}
@@ -399,8 +400,8 @@ export function RecipeDetailPage() {
             </div>
 
             {/* Social actions */}
-            <div data-testid='social-actions-card' className='card'>
-              <div className='flex flex-row gap-3'>
+            <div data-testid="social-actions-card" className="card">
+              <div className="flex flex-row gap-3">
                 <LikeButton
                   recipeId={recipe.id}
                   initialLiked={recipe.userLiked}
@@ -419,22 +420,19 @@ export function RecipeDetailPage() {
             {/* In collections — D99.5/US-9: collections containing this recipe; hidden when empty */}
             {collections.length > 0 && (
               <section
-                className='card'
+                className="card"
                 aria-label={t('collection.inCollections')}
-                data-testid='in-collections-card'
+                data-testid="in-collections-card"
               >
-                <p
-                  className='text-sm font-medium mb-3'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
+                <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>
                   {t('collection.inCollections')}
                 </p>
-                <ul className='space-y-1'>
+                <ul className="space-y-1">
                   {collections.map((c) => (
                     <li key={c.id}>
                       <Link
                         to={`/collections/${c.id}`}
-                        className='text-sm text-[color:var(--accent-primary)] hover:underline'
+                        className="text-sm text-[color:var(--accent-primary)] hover:underline"
                       >
                         {c.name}
                       </Link>
@@ -450,7 +448,7 @@ export function RecipeDetailPage() {
         </div>
 
         {/* Comment section (full width below grid) */}
-        <div className='mt-6 no-print' data-testid='comment-section-wrapper'>
+        <div className="mt-6 no-print" data-testid="comment-section-wrapper">
           <CommentSection
             recipeId={recipe.id}
             recipeAuthorId={recipe.authorId}

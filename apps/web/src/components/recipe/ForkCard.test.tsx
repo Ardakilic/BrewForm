@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForkCard } from './ForkCard.tsx';
 
 vi.mock('../../contexts/I18nContext', () => ({
@@ -7,9 +7,19 @@ vi.mock('../../contexts/I18nContext', () => ({
 }));
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -48,33 +58,33 @@ beforeEach(() => {
 
 describe('ForkCard — heading', () => {
   it('renders the "Fork Recipe" heading — English', () => {
-    render(<ForkCard recipeId='recipe-1' />);
+    render(<ForkCard recipeId="recipe-1" />);
     expect(screen.getByRole('heading', { name: 'Fork Recipe' })).toBeInTheDocument();
   });
 
   it('renders the Turkish heading when locale is tr', () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    render(<ForkCard recipeId='recipe-1' />);
+    render(<ForkCard recipeId="recipe-1" />);
     expect(screen.getByRole('heading', { name: 'Tarifi Çatalla' })).toBeInTheDocument();
   });
 });
 
 describe('ForkCard — fork link button', () => {
   it('renders a link with href /recipes/recipe-1/fork for recipeId="recipe-1"', () => {
-    render(<ForkCard recipeId='recipe-1' />);
+    render(<ForkCard recipeId="recipe-1" />);
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/recipes/recipe-1/fork');
   });
 
   it('renders the fork link with the fork emoji and label text', () => {
-    render(<ForkCard recipeId='recipe-1' />);
+    render(<ForkCard recipeId="recipe-1" />);
     const link = screen.getByRole('link');
     expect(link.textContent).toContain('🍴');
     expect(link.textContent).toContain('Fork Recipe');
   });
 
   it('renders the fork link with btn-secondary styling class', () => {
-    render(<ForkCard recipeId='recipe-1' />);
+    render(<ForkCard recipeId="recipe-1" />);
     const link = screen.getByRole('link');
     expect(link.classList.contains('btn-secondary')).toBe(true);
   });
@@ -82,7 +92,7 @@ describe('ForkCard — fork link button', () => {
 
 describe('ForkCard — description', () => {
   it('renders the English fork description via t() — Property 4 (English)', () => {
-    render(<ForkCard recipeId='recipe-1' />);
+    render(<ForkCard recipeId="recipe-1" />);
     expect(
       screen.getByText(
         'Forking creates your own personal copy of this recipe that you can freely modify and build upon.',
@@ -92,7 +102,7 @@ describe('ForkCard — description', () => {
 
   it('renders the Turkish fork description via t() — Property 4 (Turkish)', () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    render(<ForkCard recipeId='recipe-1' />);
+    render(<ForkCard recipeId="recipe-1" />);
     expect(
       screen.getByText(
         'Çatallama, bu tarifin kendi kişisel kopyanızı oluşturur; üzerinde özgürce değişiklik yapabilir ve geliştirebilirsiniz.',

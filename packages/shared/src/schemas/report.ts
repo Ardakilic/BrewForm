@@ -7,32 +7,34 @@ const ReportStatusEnum = z.enum(REPORT_STATUS_VALUES);
  * Validates report creation payloads.
  * Used by POST /api/v1/report.
  */
-export const ReportCreateSchema = z.object({
-  recipeId: z.uuid().optional(),
-  commentId: z.uuid().optional(),
-  reason: z.string().min(1).max(2000),
-  type: z.enum(['spam', 'harassment', 'inappropriate', 'other']),
-}).superRefine((data, ctx) => {
-  if (!data.recipeId && !data.commentId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Either recipeId or commentId is required',
-      path: ['recipeId'],
-    });
-  }
-  if (data.recipeId && data.commentId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Only one of recipeId or commentId should be provided',
-      path: ['recipeId'],
-    });
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Only one of recipeId or commentId should be provided',
-      path: ['commentId'],
-    });
-  }
-});
+export const ReportCreateSchema = z
+  .object({
+    recipeId: z.uuid().optional(),
+    commentId: z.uuid().optional(),
+    reason: z.string().min(1).max(2000),
+    type: z.enum(['spam', 'harassment', 'inappropriate', 'other']),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.recipeId && !data.commentId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Either recipeId or commentId is required',
+        path: ['recipeId'],
+      });
+    }
+    if (data.recipeId && data.commentId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Only one of recipeId or commentId should be provided',
+        path: ['recipeId'],
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Only one of recipeId or commentId should be provided',
+        path: ['commentId'],
+      });
+    }
+  });
 
 /**
  * Validates report listing query parameters.

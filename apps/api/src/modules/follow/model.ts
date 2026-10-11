@@ -11,7 +11,9 @@ import { and, count, desc, eq, isNull } from 'drizzle-orm';
 
 /** Find a follow relationship between two users (returns null if not found). */
 export async function findFollow(followerId: string, followingId: string) {
-  const result = await db.select().from(userFollows)
+  const result = await db
+    .select()
+    .from(userFollows)
     .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)))
     .limit(1);
   return result[0] ?? null;
@@ -41,26 +43,29 @@ export async function deleteFollow(followerId: string, followingId: string) {
 export async function getFollowers(userId: string, page: number, perPage: number) {
   const where = eq(userFollows.followingId, userId);
   const [data, totalResult] = await Promise.all([
-    db.select({
-      id: userFollows.id,
-      followerId: userFollows.followerId,
-      followingId: userFollows.followingId,
-      createdAt: userFollows.createdAt,
-      follower: {
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-        bio: users.bio,
-      },
-    })
+    db
+      .select({
+        id: userFollows.id,
+        followerId: userFollows.followerId,
+        followingId: userFollows.followingId,
+        createdAt: userFollows.createdAt,
+        follower: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          avatarUrl: users.avatarUrl,
+          bio: users.bio,
+        },
+      })
       .from(userFollows)
       .innerJoin(users, and(eq(userFollows.followerId, users.id), isNull(users.deletedAt)))
       .where(and(where, isNull(users.deletedAt)))
       .orderBy(desc(userFollows.createdAt))
       .limit(perPage)
       .offset((page - 1) * perPage),
-    db.select({ count: count() }).from(userFollows)
+    db
+      .select({ count: count() })
+      .from(userFollows)
       .innerJoin(users, and(eq(userFollows.followerId, users.id), isNull(users.deletedAt)))
       .where(where),
   ]);
@@ -78,26 +83,29 @@ export async function getFollowers(userId: string, page: number, perPage: number
 export async function getFollowing(userId: string, page: number, perPage: number) {
   const where = eq(userFollows.followerId, userId);
   const [data, totalResult] = await Promise.all([
-    db.select({
-      id: userFollows.id,
-      followerId: userFollows.followerId,
-      followingId: userFollows.followingId,
-      createdAt: userFollows.createdAt,
-      following: {
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-        bio: users.bio,
-      },
-    })
+    db
+      .select({
+        id: userFollows.id,
+        followerId: userFollows.followerId,
+        followingId: userFollows.followingId,
+        createdAt: userFollows.createdAt,
+        following: {
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          avatarUrl: users.avatarUrl,
+          bio: users.bio,
+        },
+      })
       .from(userFollows)
       .innerJoin(users, and(eq(userFollows.followingId, users.id), isNull(users.deletedAt)))
       .where(and(where, isNull(users.deletedAt)))
       .orderBy(desc(userFollows.createdAt))
       .limit(perPage)
       .offset((page - 1) * perPage),
-    db.select({ count: count() }).from(userFollows)
+    db
+      .select({ count: count() })
+      .from(userFollows)
       .innerJoin(users, and(eq(userFollows.followingId, users.id), isNull(users.deletedAt)))
       .where(where),
   ]);
@@ -106,15 +114,18 @@ export async function getFollowing(userId: string, page: number, perPage: number
 
 /** Get all user IDs that a user follows (for feed filtering). */
 export async function getFollowingIds(userId: string) {
-  const follows = await db.select({ followingId: userFollows.followingId }).from(userFollows).where(
-    eq(userFollows.followerId, userId),
-  );
+  const follows = await db
+    .select({ followingId: userFollows.followingId })
+    .from(userFollows)
+    .where(eq(userFollows.followerId, userId));
   return follows.map((f) => f.followingId);
 }
 
 /** Check if a follow relationship exists between two users. */
 export async function isFollowing(followerId: string, followingId: string) {
-  const result = await db.select({ count: count() }).from(userFollows)
+  const result = await db
+    .select({ count: count() })
+    .from(userFollows)
     .where(and(eq(userFollows.followerId, followerId), eq(userFollows.followingId, followingId)));
   return result[0].count > 0;
 }

@@ -16,20 +16,27 @@ type TasteNoteNode = typeof tasteNotes.$inferSelect & {
 
 /** Get all taste notes ordered by depth then name. */
 export function findAll() {
-  return db.select().from(tasteNotes).where(isNull(tasteNotes.deletedAt))
+  return db
+    .select()
+    .from(tasteNotes)
+    .where(isNull(tasteNotes.deletedAt))
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
 }
 
 /** Get all child taste notes for a given parent, ordered by name. */
 export function findChildren(parentId: string) {
-  return db.select().from(tasteNotes)
+  return db
+    .select()
+    .from(tasteNotes)
     .where(and(eq(tasteNotes.parentId, parentId), isNull(tasteNotes.deletedAt)))
     .orderBy(asc(tasteNotes.name));
 }
 
 /** Search taste notes by name (LIKE match), limited to 50 results. */
 export function searchByName(query: string) {
-  return db.select().from(tasteNotes)
+  return db
+    .select()
+    .from(tasteNotes)
     .where(and(like(tasteNotes.name, `%${query}%`), isNull(tasteNotes.deletedAt)))
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name))
     .limit(50);
@@ -43,7 +50,9 @@ export function searchByName(query: string) {
  * @returns Array of root-level taste notes with nested children
  */
 export async function getHierarchy() {
-  const allNotes = await db.select().from(tasteNotes)
+  const allNotes = await db
+    .select()
+    .from(tasteNotes)
     .where(isNull(tasteNotes.deletedAt))
     .orderBy(asc(tasteNotes.depth), asc(tasteNotes.name));
 
@@ -67,9 +76,11 @@ export async function getHierarchy() {
 
 /** Find a single taste note by ID. */
 export async function findById(id: string) {
-  const result = await db.select().from(tasteNotes).where(
-    and(eq(tasteNotes.id, id), isNull(tasteNotes.deletedAt)),
-  ).limit(1);
+  const result = await db
+    .select()
+    .from(tasteNotes)
+    .where(and(eq(tasteNotes.id, id), isNull(tasteNotes.deletedAt)))
+    .limit(1);
   return result[0] ?? null;
 }
 
@@ -87,7 +98,10 @@ export async function update(id: string, data: Partial<typeof tasteNotes.$inferI
 
 /** Soft-delete a taste note by ID. */
 export async function softDelete(id: string) {
-  const [result] = await db.update(tasteNotes).set({ deletedAt: new Date() })
-    .where(and(eq(tasteNotes.id, id), isNull(tasteNotes.deletedAt))).returning();
+  const [result] = await db
+    .update(tasteNotes)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(tasteNotes.id, id), isNull(tasteNotes.deletedAt)))
+    .returning();
   return result ?? null;
 }

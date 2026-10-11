@@ -12,13 +12,12 @@
  */
 
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check';
+import fc from 'fast-check';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  createComment as realCreateComment,
   deps,
   listComments,
+  createComment as realCreateComment,
   runCommentNotificationSideEffects,
 } from './service.ts';
 
@@ -35,9 +34,12 @@ interface MockComment {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
-  author:
-    | { id: string; username: string; displayName: string | null; avatarUrl: string | null }
-    | null;
+  author: {
+    id: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
 }
 
 interface MockCreatedComment {
@@ -181,58 +183,71 @@ function makeCreatedComment(id: string): MockCreatedComment {
 // ---------------------------------------------------------------------------
 
 describe('Comment Service — Property 1: createComment authorization matrix', () => {
-  it(
-    'PBT: for all (isAdmin, isRecipeOwner, hasParent) combinations, createComment produces the correct outcome',
-    async () => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.record({
-            isAdmin: fc.boolean(),
-            isRecipeOwner: fc.boolean(),
-            hasParent: fc.boolean(),
-          }),
-          async ({ isAdmin, isRecipeOwner, hasParent }) => {
-            const userId = 'user-1';
-            const recipeId = 'recipe-1';
-            const recipeAuthorId = isRecipeOwner ? userId : 'other-author';
-            const parentCommentId = hasParent ? 'parent-comment-1' : undefined;
+  it('PBT: for all (isAdmin, isRecipeOwner, hasParent) combinations, createComment produces the correct outcome', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.record({
+          isAdmin: fc.boolean(),
+          isRecipeOwner: fc.boolean(),
+          hasParent: fc.boolean(),
+        }),
+        async ({ isAdmin, isRecipeOwner, hasParent }) => {
+          const userId = 'user-1';
+          const recipeId = 'recipe-1';
+          const recipeAuthorId = isRecipeOwner ? userId : 'other-author';
+          const parentCommentId = hasParent ? 'parent-comment-1' : undefined;
 
-            // Track calls to model.create
-            let createCallCount = 0;
-            let createCallArgs: Parameters<MockModel['create']>[0] | null = null;
+          // Track calls to model.create
+          let createCallCount = 0;
+          let createCallArgs: Parameters<MockModel['create']>[0] | null = null;
 
-            const model: MockModel = {
-              findById: (_id: string) => Promise.resolve(makeTopLevelComment('parent-comment-1')),
-              getRecipeAuthorId: (_recipeId: string) => Promise.resolve(recipeAuthorId),
-              create: (data) => {
-                createCallCount++;
-                createCallArgs = data;
-                return Promise.resolve(makeCreatedComment('new-comment-1'));
-              },
-              softDelete: (_id: string) => Promise.resolve(null),
-            };
+          const model: MockModel = {
+            findById: (_id: string) => Promise.resolve(makeTopLevelComment('parent-comment-1')),
+            getRecipeAuthorId: (_recipeId: string) => Promise.resolve(recipeAuthorId),
+            create: (data) => {
+              createCallCount++;
+              createCallArgs = data;
+              return Promise.resolve(makeCreatedComment('new-comment-1'));
+            },
+            softDelete: (_id: string) => Promise.resolve(null),
+          };
 
-            const recipeModel: MockRecipeModel = {
-              incrementComments: (_id: string) => Promise.resolve(),
-            };
+          const recipeModel: MockRecipeModel = {
+            incrementComments: (_id: string) => Promise.resolve(),
+          };
 
-            if (!hasParent) {
-              // Top-level comment: always succeeds regardless of role
-              const result = await createComment(
-                userId,
-                recipeId,
-                'some content',
-                isAdmin,
-                undefined,
-                model,
-                recipeModel,
-              );
-              expect(result).toBeDefined();
-              expect(createCallCount).toBe(1);
-              expect(createCallArgs!.parentCommentId).toBeNull();
-            } else if (isAdmin || isRecipeOwner) {
-              // Reply with permission: succeeds
-              const result = await createComment(
+          if (!hasParent) {
+            // Top-level comment: always succeeds regardless of role
+            const result = await createComment(
+              userId,
+              recipeId,
+              'some content',
+              isAdmin,
+              undefined,
+              model,
+              recipeModel,
+            );
+            expect(result).toBeDefined();
+            expect(createCallCount).toBe(1);
+            expect(createCallArgs!.parentCommentId).toBeNull();
+          } else if (isAdmin || isRecipeOwner) {
+            // Reply with permission: succeeds
+            const result = await createComment(
+              userId,
+              recipeId,
+              'some content',
+              isAdmin,
+              parentCommentId,
+              model,
+              recipeModel,
+            );
+            expect(result).toBeDefined();
+            expect(createCallCount).toBe(1);
+          } else {
+            // Reply without permission: throws FORBIDDEN
+            let threw = false;
+            try {
+              await createComment(
                 userId,
                 recipeId,
                 'some content',
@@ -241,35 +256,19 @@ describe('Comment Service — Property 1: createComment authorization matrix', (
                 model,
                 recipeModel,
               );
-              expect(result).toBeDefined();
-              expect(createCallCount).toBe(1);
-            } else {
-              // Reply without permission: throws FORBIDDEN
-              let threw = false;
-              try {
-                await createComment(
-                  userId,
-                  recipeId,
-                  'some content',
-                  isAdmin,
-                  parentCommentId,
-                  model,
-                  recipeModel,
-                );
-              } catch (err) {
-                threw = true;
-                expect((err as Error).message).toBe('FORBIDDEN');
-              }
-              expect(threw).toBe(true);
-              // model.create must NOT have been called
-              expect(createCallCount).toBe(0);
+            } catch (err) {
+              threw = true;
+              expect((err as Error).message).toBe('FORBIDDEN');
             }
-          },
-        ),
-        { numRuns: 100 },
-      );
-    },
-  );
+            expect(threw).toBe(true);
+            // model.create must NOT have been called
+            expect(createCallCount).toBe(0);
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -295,91 +294,85 @@ describe('Comment Service — Property 1: createComment authorization matrix', (
 // ---------------------------------------------------------------------------
 
 describe('Comment Service — Property 2: thread flattening invariant', () => {
-  it(
-    'PBT: persisted parentCommentId always references a Top_Level_Comment for any chain depth 1-99',
-    async () => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.integer({ min: 1, max: 99 }),
-          async (depth) => {
-            // Build a chain of comments:
-            //   chain[0] = topLevel (parentCommentId: null)
-            //   chain[1] = reply1   (parentCommentId: chain[0].id)
-            //   ...
-            //   chain[depth] = replyN (parentCommentId: chain[depth-1].id)
-            const chain: MockComment[] = [];
-            for (let i = 0; i <= depth; i++) {
-              chain.push({
-                id: `comment-${i}`,
-                recipeId: 'recipe-1',
-                authorId: `author-${i}`,
-                content: `content-${i}`,
-                parentCommentId: i === 0 ? null : `comment-${i - 1}`,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                deletedAt: null,
-                author: {
-                  id: `author-${i}`,
-                  username: `user${i}`,
-                  displayName: `User ${i}`,
-                  avatarUrl: null,
-                },
-              });
-            }
+  it('PBT: persisted parentCommentId always references a Top_Level_Comment for any chain depth 1-99', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.integer({ min: 1, max: 99 }), async (depth) => {
+        // Build a chain of comments:
+        //   chain[0] = topLevel (parentCommentId: null)
+        //   chain[1] = reply1   (parentCommentId: chain[0].id)
+        //   ...
+        //   chain[depth] = replyN (parentCommentId: chain[depth-1].id)
+        const chain: MockComment[] = [];
+        for (let i = 0; i <= depth; i++) {
+          chain.push({
+            id: `comment-${i}`,
+            recipeId: 'recipe-1',
+            authorId: `author-${i}`,
+            content: `content-${i}`,
+            parentCommentId: i === 0 ? null : `comment-${i - 1}`,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            deletedAt: null,
+            author: {
+              id: `author-${i}`,
+              username: `user${i}`,
+              displayName: `User ${i}`,
+              avatarUrl: null,
+            },
+          });
+        }
 
-            const topLevelComment = chain[0];
-            const deepestReply = chain[depth];
+        const topLevelComment = chain[0];
+        const deepestReply = chain[depth];
 
-            // Build a lookup map for findById
-            const commentMap = new Map<string, MockComment>(chain.map((c) => [c.id, c]));
+        // Build a lookup map for findById
+        const commentMap = new Map<string, MockComment>(chain.map((c) => [c.id, c]));
 
-            // Capture the args passed to model.create
-            let capturedCreateArgs: Parameters<MockModel['create']>[0] | null = null;
+        // Capture the args passed to model.create
+        let capturedCreateArgs: Parameters<MockModel['create']>[0] | null = null;
 
-            const mockModel: MockModel = {
-              // findById traverses the chain via the lookup map
-              findById: (id: string) => Promise.resolve(commentMap.get(id) ?? null),
-              // getRecipeAuthorId returns the caller's userId so isRecipeOwner=true
-              getRecipeAuthorId: () => Promise.resolve('caller-user'),
-              create: (data) => {
-                capturedCreateArgs = data;
-                return Promise.resolve({
-                  id: 'new-comment',
-                  recipeId: 'recipe-1',
-                  authorId: 'caller-user',
-                  content: data.content,
-                  parentCommentId: data.parentCommentId,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                  deletedAt: null,
-                });
-              },
-              softDelete: (_id: string) => Promise.resolve(null),
-            };
-
-            const mockRecipeModel: MockRecipeModel = {
-              incrementComments: (_id: string) => Promise.resolve(),
-            };
-
-            await createComment(
-              'caller-user',
-              'recipe-1',
-              'reply content',
-              true, // isAdmin=true to bypass auth checks
-              deepestReply.id,
-              mockModel,
-              mockRecipeModel,
-            );
-
-            // Assert model.create was called with parentCommentId === topLevelComment.id
-            expect(capturedCreateArgs).not.toBeNull();
-            expect(capturedCreateArgs!.parentCommentId).toBe(topLevelComment.id);
+        const mockModel: MockModel = {
+          // findById traverses the chain via the lookup map
+          findById: (id: string) => Promise.resolve(commentMap.get(id) ?? null),
+          // getRecipeAuthorId returns the caller's userId so isRecipeOwner=true
+          getRecipeAuthorId: () => Promise.resolve('caller-user'),
+          create: (data) => {
+            capturedCreateArgs = data;
+            return Promise.resolve({
+              id: 'new-comment',
+              recipeId: 'recipe-1',
+              authorId: 'caller-user',
+              content: data.content,
+              parentCommentId: data.parentCommentId,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              deletedAt: null,
+            });
           },
-        ),
-        { numRuns: 100 },
-      );
-    },
-  );
+          softDelete: (_id: string) => Promise.resolve(null),
+        };
+
+        const mockRecipeModel: MockRecipeModel = {
+          incrementComments: (_id: string) => Promise.resolve(),
+        };
+
+        await createComment(
+          'caller-user',
+          'recipe-1',
+          'reply content',
+          true, // isAdmin=true to bypass auth checks
+          deepestReply.id,
+          mockModel,
+          mockRecipeModel,
+        );
+
+        // Assert model.create was called with parentCommentId === topLevelComment.id
+        expect(capturedCreateArgs).not.toBeNull();
+        expect(capturedCreateArgs!.parentCommentId).toBe(topLevelComment.id);
+      }),
+      { numRuns: 100 },
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -398,109 +391,102 @@ describe('Comment Service — Property 2: thread flattening invariant', () => {
  * **Validates: Requirements 2.4, 6.4**
  */
 describe('Comment Service — Property 3: mention prefix transformation', () => {
-  it(
-    'PBT: content passed to model.create is "@username content" when directTarget is a Reply',
-    async () => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.string({ minLength: 1 }),
-          fc.string(),
-          async (username, content) => {
-            const topLevelId = 'top-level-id';
-            const directTargetId = 'direct-target-id';
-            const recipeId = 'recipe-id';
-            const userId = 'user-id';
+  it('PBT: content passed to model.create is "@username content" when directTarget is a Reply', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.string({ minLength: 1 }), fc.string(), async (username, content) => {
+        const topLevelId = 'top-level-id';
+        const directTargetId = 'direct-target-id';
+        const recipeId = 'recipe-id';
+        const userId = 'user-id';
 
-            // 2-level chain:
-            // topLevel: parentCommentId = null  (Top_Level_Comment)
-            // directTarget: parentCommentId = topLevelId  (Reply — triggers flattening)
-            const topLevelComment: MockComment = {
-              id: topLevelId,
-              recipeId,
-              authorId: 'other-user-id',
-              content: 'top level content',
-              parentCommentId: null,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              deletedAt: null,
-              author: {
-                id: 'other-user-id',
-                username: 'topauthor',
-                displayName: null,
-                avatarUrl: null,
-              },
-            };
-
-            const directTargetComment: MockComment = {
-              id: directTargetId,
-              recipeId,
-              authorId: 'reply-author-id',
-              content: 'direct target content',
-              parentCommentId: topLevelId,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              deletedAt: null,
-              author: {
-                id: 'reply-author-id',
-                username,
-                displayName: null,
-                avatarUrl: null,
-              },
-            };
-
-            // findById: first call (directTargetId) → directTarget; second call (topLevelId) → topLevel
-            let findByIdCallCount = 0;
-            let capturedCreateData: Parameters<MockModel['create']>[0] | null = null;
-
-            const mockModel: MockModel = {
-              findById: (_id: string) => {
-                findByIdCallCount++;
-                if (findByIdCallCount === 1) return Promise.resolve(directTargetComment);
-                return Promise.resolve(topLevelComment);
-              },
-              getRecipeAuthorId: () => Promise.resolve('other-author-id'),
-              create: (data) => {
-                capturedCreateData = data;
-                return Promise.resolve({
-                  id: 'new-comment-id',
-                  recipeId,
-                  authorId: userId,
-                  content: data.content,
-                  parentCommentId: data.parentCommentId,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                  deletedAt: null,
-                });
-              },
-              softDelete: (_id: string) => Promise.resolve(null),
-            };
-
-            const mockRecipeModel: MockRecipeModel = {
-              incrementComments: (_id: string) => Promise.resolve(),
-            };
-
-            // isAdmin=true bypasses auth; caller provides directTarget.id as parentCommentId
-            await createComment(
-              userId,
-              recipeId,
-              content,
-              true,
-              directTargetId,
-              mockModel,
-              mockRecipeModel,
-            );
-
-            // Assert: content passed to model.create is "@username content"
-            expect(capturedCreateData).not.toBeNull();
-            expect((capturedCreateData! as { content: string }).content).toBe(
-              `@${username} ${content}`,
-            );
+        // 2-level chain:
+        // topLevel: parentCommentId = null  (Top_Level_Comment)
+        // directTarget: parentCommentId = topLevelId  (Reply — triggers flattening)
+        const topLevelComment: MockComment = {
+          id: topLevelId,
+          recipeId,
+          authorId: 'other-user-id',
+          content: 'top level content',
+          parentCommentId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          author: {
+            id: 'other-user-id',
+            username: 'topauthor',
+            displayName: null,
+            avatarUrl: null,
           },
-        ),
-        { numRuns: 100 },
-      );
-    },
-  );
+        };
+
+        const directTargetComment: MockComment = {
+          id: directTargetId,
+          recipeId,
+          authorId: 'reply-author-id',
+          content: 'direct target content',
+          parentCommentId: topLevelId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          author: {
+            id: 'reply-author-id',
+            username,
+            displayName: null,
+            avatarUrl: null,
+          },
+        };
+
+        // findById: first call (directTargetId) → directTarget; second call (topLevelId) → topLevel
+        let findByIdCallCount = 0;
+        let capturedCreateData: Parameters<MockModel['create']>[0] | null = null;
+
+        const mockModel: MockModel = {
+          findById: (_id: string) => {
+            findByIdCallCount++;
+            if (findByIdCallCount === 1) return Promise.resolve(directTargetComment);
+            return Promise.resolve(topLevelComment);
+          },
+          getRecipeAuthorId: () => Promise.resolve('other-author-id'),
+          create: (data) => {
+            capturedCreateData = data;
+            return Promise.resolve({
+              id: 'new-comment-id',
+              recipeId,
+              authorId: userId,
+              content: data.content,
+              parentCommentId: data.parentCommentId,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              deletedAt: null,
+            });
+          },
+          softDelete: (_id: string) => Promise.resolve(null),
+        };
+
+        const mockRecipeModel: MockRecipeModel = {
+          incrementComments: (_id: string) => Promise.resolve(),
+        };
+
+        // isAdmin=true bypasses auth; caller provides directTarget.id as parentCommentId
+        await createComment(
+          userId,
+          recipeId,
+          content,
+          true,
+          directTargetId,
+          mockModel,
+          mockRecipeModel,
+        );
+
+        // Assert: content passed to model.create is "@username content"
+        expect(capturedCreateData).not.toBeNull();
+        expect((capturedCreateData! as { content: string }).content).toBe(
+          `@${username} ${content}`,
+        );
+      }),
+      { numRuns: 100 },
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -953,7 +939,23 @@ describe('D99.9 — comment visibility gate', () => {
       ...gateOriginalRecipeModel,
       incrementComments: (id: string) => {
         incrementCalls.push(id);
-        return Promise.resolve();
+        // Return value is unused (fire-and-forget); must still be a full recipe row.
+        return Promise.resolve({
+          id,
+          slug: 'test-recipe',
+          title: 'Test Recipe',
+          authorId: AUTHOR,
+          visibility: 'public' as const,
+          currentVersionId: null,
+          likeCount: 0,
+          commentCount: 1,
+          forkCount: 0,
+          forkedFromId: null,
+          featured: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+        });
       },
     } as GateRecipeModelDeps;
     deps.createMentionNotifications = (params) => {

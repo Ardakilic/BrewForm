@@ -1,0 +1,56 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "files": {
+    "includes": ["**", "!**/dist", "!coverage", "!renovate.json", "!files", "!openspec"]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended"
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/web/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noAutofocus": "warn",
+            "noLabelWithoutControl": "warn",
+            "noNoninteractiveElementToInteractiveRole": "warn",
+            "noStaticElementInteractions": "warn",
+            "useFocusableInteractive": "warn",
+            "useKeyWithClickEvents": "warn",
+            "useSemanticElements": "warn"
+          },
+          "correctness": { "useExhaustiveDependencies": "warn" },
+          "security": { "noDangerouslySetInnerHtml": "warn" },
+          "suspicious": { "noArrayIndexKey": "warn" }
+        }
+      }
+    }
+  ]
+}

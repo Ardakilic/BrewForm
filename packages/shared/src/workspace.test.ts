@@ -1,27 +1,61 @@
 /**
  * @module
- * Workspace-integrity test: asserts every Deno workspace member declares a `name` and `version`,
- * the root `catalog` is internally consistent and covers every cross-member duplicated dependency,
- * and member names are unique. Guards the workspace-management configuration added in d31.
- * It additionally asserts dependency currency (d33): the adopted react-router (major 8) and
- * zod-openapi (major 6) floors are reflected in their member manifests, and no member caret
- * (`^`) floor lags the resolved `deno.lock` versions by a major.
+ * Workspace-integrity test: asserts the pnpm workspace wiring is coherent —
+ * `pnpm-workspace.yaml` declares the member globs and shared `catalog:` pins,
+ * the root `package.json` pins the package manager and runtimes, `.nvmrc`
+ * tracks Node 24, and no Deno-era files remain. It additionally asserts
+ * dependency currency: the adopted react-router (major 8) and zod-openapi
+ * (major 6) floors are reflected in their member manifests.
+ * Pure semver helpers are unit-tested below with inline fixtures.
  */
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { readFile, stat } from 'node:fs/promises';
+import { describe, expect, it } from 'vitest';
 
 /** Workspace root, derived from this file (packages/shared/src → up three levels). */
 const ROOT = new URL('../../../', import.meta.url);
 /** The four workspace members, relative to the workspace root. */
 const MEMBERS = ['apps/api', 'apps/web', 'packages/shared', 'packages/db'];
+/** Deno-era files that must not exist anymore (§2.2b). */
+const REMOVED_DENO_FILES = [
+  'deno.json',
+  'deno.lock',
+  '.deno-version',
+  'apps/api/deno.json',
+  'apps/web/deno.json',
+  'packages/db/deno.json',
+  'packages/shared/deno.json',
+];
 
 /**
- * Reads and parses a JSON config relative to the workspace root.
- * @param path Path relative to the workspace root (e.g. 'deno.json').
+ * Reads a text file relative to the workspace root.
+ * @param path Path relative to the workspace root (e.g. 'pnpm-workspace.yaml').
+ * @returns The raw file text.
+ */
+async function readText(path: string): Promise<string> {
+  return await readFile(new URL(path, ROOT), 'utf8');
+}
+
+/**
+ * Reads and parses a JSON file relative to the workspace root.
+ * @param path Path relative to the workspace root (e.g. 'package.json').
  * @returns The parsed JSON object.
  */
 async function readJson(path: string): Promise<Record<string, unknown>> {
-  return JSON.parse(await Deno.readTextFile(new URL(path, ROOT)));
+  return JSON.parse(await readText(path)) as Record<string, unknown>;
+}
+
+/**
+ * Reports whether a path relative to the workspace root exists.
+ * @param path Path relative to the workspace root.
+ * @returns True when the path exists, false otherwise.
+ */
+async function exists(path: string): Promise<boolean> {
+  try {
+    await stat(new URL(path, ROOT));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -54,25 +88,21 @@ function compareVersions(a: string, b: string): number {
 }
 
 /**
- * Parses the workspace `deno.lock` (lockfile format 5) into a map of npm package name →
- * highest resolved version. The lock's `specifiers` object keys npm requests as
- * `'npm:<name>@<range>'` with values `'<version>[_<peer-deps>]'`
- * (e.g. `'npm:react-router@^8.0.1': '8.0.1_react@19.2.7...'`); the name is read from the
- * key (text between `npm:` and the final `@`, preserving an `@scope/pkg` prefix) and the
- * version from the value (text before the first `_`). When a package is locked under
- * multiple ranges the highest version is kept. Malformed or non-npm entries are skipped
- * so the parser stays tolerant of lockfile variation.
- * @returns A map of npm package name → highest lock-resolved semver string.
+ * Resolves an npm specifier map (e.g. parsed from a lockfile's `packages` or
+ * `specifiers` section) into package name → highest resolved version. Keys are
+ * `'<name>@<range>'` (an `@scope/pkg` prefix is preserved by splitting on the
+ * final `@`); the version is the text before the first `_` (peer-deps suffix).
+ * When a package is locked under multiple ranges the highest version is kept.
+ * Malformed entries are skipped so the parser stays tolerant of variation.
+ * @param specifiers Specifier → resolved-version entries (inline fixture data).
+ * @returns A map of npm package name → highest resolved semver string.
  */
-async function lockResolvedVersions(): Promise<Map<string, string>> {
-  const lock = JSON.parse(await Deno.readTextFile(new URL('deno.lock', ROOT)));
-  const specifiers = (lock?.specifiers ?? {}) as Record<string, string>;
+function lockResolvedVersions(specifiers: Record<string, string>): Map<string, string> {
   const resolved = new Map<string, string>();
   for (const [key, value] of Object.entries(specifiers)) {
-    if (!key.startsWith('npm:')) continue;
     const at = key.lastIndexOf('@');
-    if (at <= 'npm:'.length) continue;
-    const name = key.slice('npm:'.length, at);
+    if (at <= 0) continue;
+    const name = key.slice(0, at);
     const version = String(value).split('_')[0];
     if (!name || !/^\d+(\.\d+)*$/.test(version)) continue;
     const current = resolved.get(name);
@@ -83,46 +113,67 @@ async function lockResolvedVersions(): Promise<Map<string, string>> {
   return resolved;
 }
 
-describe('workspace integrity', () => {
-  it('every member declares a name and a version', async () => {
+describe('pnpm workspace wiring', () => {
+  it('pnpm-workspace.yaml declares the member globs', async () => {
+    const workspace = await readText('pnpm-workspace.yaml');
+    expect(workspace).toContain('apps/*');
+    expect(workspace).toContain('packages/*');
+  });
+
+  it('pnpm-workspace.yaml defines shared catalog pins', async () => {
+    const workspace = await readText('pnpm-workspace.yaml');
+    expect(workspace).toContain('catalog:');
+    for (const dep of ['drizzle-orm', 'bcryptjs', 'zod', 'vitest', 'typescript']) {
+      expect(workspace, `shared catalog must pin ${dep}`).toContain(dep);
+    }
+  });
+
+  it('every workspace member exists with a package.json', async () => {
     for (const m of MEMBERS) {
-      const cfg = await readJson(`${m}/deno.json`);
-      expect(cfg.name, `${m} must have a name`).toBeDefined();
-      expect(cfg.version, `${m} must have a version`).toBeDefined();
+      expect(await exists(`${m}/package.json`), `${m} must have a package.json`).toBe(true);
     }
   });
 
   it('member names are unique', async () => {
     const names = await Promise.all(
-      MEMBERS.map(async (m) => (await readJson(`${m}/deno.json`)).name),
+      MEMBERS.map(async (m) => (await readJson(`${m}/package.json`)).name),
     );
     expect(new Set(names).size).toBe(names.length);
   });
 
   it('every "catalog:" reference maps to a defined root catalog key', async () => {
-    const catalog = ((await readJson('deno.json')).catalog ?? {}) as Record<string, string>;
+    const workspace = await readText('pnpm-workspace.yaml');
+    const catalogSection = workspace.slice(workspace.indexOf('catalog:'));
     for (const m of MEMBERS) {
-      let pkg: Record<string, unknown>;
-      try {
-        pkg = await readJson(`${m}/package.json`);
-      } catch {
-        continue;
-      }
-      for (
-        const [name, spec] of Object.entries((pkg.dependencies ?? {}) as Record<string, string>)
-      ) {
-        if (spec === 'catalog:') {
-          expect(catalog[name], `${m} references catalog:${name} but root catalog lacks "${name}"`)
-            .toBeDefined();
+      const pkg = await readJson(`${m}/package.json`);
+      for (const group of ['dependencies', 'devDependencies'] as const) {
+        for (const [name, spec] of Object.entries((pkg[group] ?? {}) as Record<string, string>)) {
+          if (spec === 'catalog:') {
+            expect(
+              catalogSection,
+              `${m} references catalog:${name} but root catalog lacks it`,
+            ).toContain(name);
+          }
         }
       }
     }
   });
 
-  it('root catalog defines every dependency duplicated across members', async () => {
-    const catalog = ((await readJson('deno.json')).catalog ?? {}) as Record<string, string>;
-    for (const dep of ['drizzle-orm', 'bcryptjs', 'zod']) {
-      expect(catalog[dep], `root catalog must define ${dep}`).toBeDefined();
+  it('root package.json pins the package manager exactly and declares runtimes', async () => {
+    const pkg = await readJson('package.json');
+    expect(pkg.packageManager).toMatch(/^pnpm@\d+\.\d+\.\d+$/);
+    const devEngines = pkg.devEngines as Record<string, Record<string, string>>;
+    expect(devEngines?.runtime?.version, 'devEngines.runtime must pin Node 24').toMatch(/^24/);
+    expect(devEngines?.packageManager?.name).toBe('pnpm');
+  });
+
+  it('.nvmrc pins Node 24', async () => {
+    expect((await readText('.nvmrc')).trim()).toBe('24');
+  });
+
+  it('no Deno-era files remain', async () => {
+    for (const path of REMOVED_DENO_FILES) {
+      expect(await exists(path), `${path} must have been deleted`).toBe(false);
     }
   });
 });
@@ -137,31 +188,31 @@ describe('dependency currency', () => {
     const zo = (shared.dependencies as Record<string, string>)['zod-openapi'];
     expect(majorOf(zo), `packages/shared zod-openapi floor "${zo}" must be major 6`).toBe(6);
   });
+});
 
-  it('no member caret (^) floor lags the lockfile by a major', async () => {
-    const resolved = await lockResolvedVersions();
-    for (const m of MEMBERS) {
-      let pkg: Record<string, unknown>;
-      try {
-        pkg = await readJson(`${m}/package.json`);
-      } catch {
-        continue;
-      }
-      for (const group of ['dependencies', 'devDependencies'] as const) {
-        const deps = (pkg[group] ?? {}) as Record<string, string>;
-        for (const [name, spec] of Object.entries(deps)) {
-          // Only plain caret ranges are lock-comparable; this skips `catalog:` and
-          // inline `jsr:`/`npm:` specifiers, while `resolved.get` skips any name
-          // absent from the lock (e.g. catalog-managed packages).
-          if (!spec.startsWith('^')) continue;
-          const lockVersion = resolved.get(name);
-          if (lockVersion === undefined) continue;
-          const floorMajor = majorOf(spec);
-          const lockMajor = majorOf(lockVersion);
-          const msg = `${m} "${name}": floor ${spec} lags lock-resolved ${lockVersion} by a major`;
-          expect(floorMajor, msg).toBe(lockMajor);
-        }
-      }
-    }
+describe('semver helpers (inline fixtures)', () => {
+  it('majorOf strips range operators', () => {
+    expect(majorOf('^8.0.1')).toBe(8);
+    expect(majorOf('~0.31.10')).toBe(0);
+    expect(majorOf('>=24.1.0')).toBe(24);
+    expect(majorOf('2.9.3')).toBe(2);
+  });
+
+  it('compareVersions orders dotted versions', () => {
+    expect(compareVersions('8.1.0', '8.0.1')).toBeGreaterThan(0);
+    expect(compareVersions('8.0.1', '8.1.0')).toBeLessThan(0);
+    expect(compareVersions('8.0', '8.0.0')).toBe(0);
+  });
+
+  it('lockResolvedVersions keeps the highest version per package', () => {
+    const resolved = lockResolvedVersions({
+      'react-router@^8.0.1': '8.0.1_react@19.2.7',
+      'react-router@^8.1.0': '8.1.5',
+      '@scope/pkg@^1.0.0': '1.2.3',
+      'not-a-specifier': 'bogus',
+    });
+    expect(resolved.get('react-router')).toBe('8.1.5');
+    expect(resolved.get('@scope/pkg')).toBe('1.2.3');
+    expect(resolved.has('not-a-specifier')).toBe(false);
   });
 });

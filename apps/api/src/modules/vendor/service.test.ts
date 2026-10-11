@@ -1,29 +1,27 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { users, vendors } from '@brewform/db/schema';
-import { createVendor, deleteVendor, getVendor, log, updateVendor } from './service.ts';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as model from './model.ts';
+import { createVendor, deleteVendor, getVendor, log, updateVendor } from './service.ts';
 
-describe('Vendor Service Logic', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Vendor Service Logic', () => {
   let userId1: string;
   let userId2: string;
-  let debugSpy: ReturnType<typeof spy>;
-  let errorSpy: ReturnType<typeof spy>;
-  let warnSpy: ReturnType<typeof spy>;
-  let infoSpy: ReturnType<typeof spy>;
+  let debugSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let infoSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     userId1 = crypto.randomUUID();
     userId2 = crypto.randomUUID();
 
-    debugSpy = spy(log, 'debug');
-    errorSpy = spy(log, 'error');
-    warnSpy = spy(log, 'warn');
-    infoSpy = spy(log, 'info');
+    debugSpy = vi.spyOn(log, 'debug');
+    errorSpy = vi.spyOn(log, 'error');
+    warnSpy = vi.spyOn(log, 'warn');
+    infoSpy = vi.spyOn(log, 'info');
 
     await db.insert(users).values({
       id: userId1,
@@ -41,10 +39,10 @@ describe('Vendor Service Logic', { sanitizeOps: false, sanitizeResources: false 
   });
 
   afterEach(async () => {
-    debugSpy.restore();
-    errorSpy.restore();
-    warnSpy.restore();
-    infoSpy.restore();
+    debugSpy.mockRestore();
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+    infoSpy.mockRestore();
 
     await db.delete(vendors).where(eq(vendors.createdBy, userId1));
     await db.delete(vendors).where(eq(vendors.createdBy, userId2));
@@ -94,31 +92,32 @@ describe('Vendor Service Logic', { sanitizeOps: false, sanitizeResources: false 
     });
 
     it('should throw FORBIDDEN and log warn for non-owner non-admin user', async () => {
-      await expect(
-        updateVendor(userId2, vendorId, { name: 'Hacked' }, false),
-      ).rejects.toThrow('FORBIDDEN');
+      await expect(updateVendor(userId2, vendorId, { name: 'Hacked' }, false)).rejects.toThrow(
+        'FORBIDDEN',
+      );
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { id: vendorId, userId: userId2 },
         'updateVendor failed: forbidden (not creator and not admin)',
-      ]);
+      );
     });
 
     it('should throw VENDOR_NOT_FOUND and log error when vendor does not exist', async () => {
       const missingId = crypto.randomUUID();
 
-      await expect(
-        updateVendor(userId1, missingId, { name: 'Missing' }, false),
-      ).rejects.toThrow('VENDOR_NOT_FOUND');
+      await expect(updateVendor(userId1, missingId, { name: 'Missing' }, false)).rejects.toThrow(
+        'VENDOR_NOT_FOUND',
+      );
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string; userId: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('VENDOR_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
       expect(errArg.userId).toBe(userId1);
-      expect(errorSpy.calls[0].args[1]).toBe('updateVendor failed: vendor not found');
+      expect(errorSpy.mock.calls[0][1]).toBe('updateVendor failed: vendor not found');
     });
   });
 
@@ -128,12 +127,12 @@ describe('Vendor Service Logic', { sanitizeOps: false, sanitizeResources: false 
 
       await expect(getVendor(missingId)).rejects.toThrow('VENDOR_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('VENDOR_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
-      expect(errorSpy.calls[0].args[1]).toBe('getVendor failed: vendor not found');
+      expect(errorSpy.mock.calls[0][1]).toBe('getVendor failed: vendor not found');
     });
   });
 
@@ -143,12 +142,12 @@ describe('Vendor Service Logic', { sanitizeOps: false, sanitizeResources: false 
 
       await expect(deleteVendor(missingId)).rejects.toThrow('VENDOR_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('VENDOR_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
-      expect(errorSpy.calls[0].args[1]).toBe('deleteVendor failed: vendor not found');
+      expect(errorSpy.mock.calls[0][1]).toBe('deleteVendor failed: vendor not found');
     });
   });
 });

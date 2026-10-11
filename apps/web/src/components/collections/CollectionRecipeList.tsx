@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { CollectionItemOutput } from '@brewform/shared/schemas';
 import { BREW_METHODS_LIST } from '@brewform/shared/constants';
+import type { CollectionItemOutput } from '@brewform/shared/schemas';
+import { useEffect, useMemo, useState } from 'react';
 import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
@@ -99,7 +99,9 @@ export function CollectionRecipeList({ collectionId, items, isOwner }: Collectio
   // Build a flat index lookup so owner buttons can find the item's global index
   // (needed for up/down disabled-state and for the swap target).
   const flatIndex = new Map<string, number>();
-  localItems.forEach((item, index) => flatIndex.set(item.id, index));
+  localItems.forEach((item, index) => {
+    flatIndex.set(item.id, index);
+  });
 
   const moveItem = async (index: number, direction: 'up' | 'down') => {
     if (direction === 'up' && index === 0) return;
@@ -132,45 +134,42 @@ export function CollectionRecipeList({ collectionId, items, isOwner }: Collectio
   };
 
   return (
-    <div className='space-y-8'>
+    <div className="space-y-8">
       {groups.map((group) => (
         <section key={group.brewMethod ?? '__other'} aria-label={group.label}>
-          <h2
-            className='mb-3 text-lg font-semibold'
-            style={{ color: 'var(--text-primary)' }}
-          >
+          <h2 className="mb-3 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
             {group.label}
           </h2>
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {group.items.map((item) => {
               const index = flatIndex.get(item.id)!;
               return (
-                <div key={item.id} className='flex flex-col gap-2'>
+                <div key={item.id} className="flex flex-col gap-2">
                   <RecipeCard recipe={item.recipe} />
                   {isOwner && (
-                    <div className='flex items-center gap-1'>
+                    <div className="flex items-center gap-1">
                       <button
-                        type='button'
+                        type="button"
                         onClick={() => moveItem(index, 'up')}
                         disabled={index === 0}
-                        className='btn-secondary text-xs px-2 py-1 disabled:opacity-30'
+                        className="btn-secondary text-xs px-2 py-1 disabled:opacity-30"
                         aria-label={t('collection.moveUp')}
                       >
                         ↑
                       </button>
                       <button
-                        type='button'
+                        type="button"
                         onClick={() => moveItem(index, 'down')}
                         disabled={index === localItems.length - 1}
-                        className='btn-secondary text-xs px-2 py-1 disabled:opacity-30'
+                        className="btn-secondary text-xs px-2 py-1 disabled:opacity-30"
                         aria-label={t('collection.moveDown')}
                       >
                         ↓
                       </button>
                       <button
-                        type='button'
+                        type="button"
                         onClick={() => handleRemove(item.id, item.recipeId)}
-                        className='btn-secondary text-xs px-2 py-1 text-red-600'
+                        className="btn-secondary text-xs px-2 py-1 text-red-600"
                         aria-label={t('collection.detail.removeFromCollection')}
                       >
                         ×

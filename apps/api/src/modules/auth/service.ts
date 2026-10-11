@@ -6,12 +6,14 @@
  * operations to `jwt.ts`. Email side-effects are fire-and-forget for
  * registration (non-blocking) but blocking for password resets.
  */
+
+import type { User, UserPreferences } from '@brewform/shared/types';
+import { config } from '../../config/env.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+import { sendPasswordResetEmail, sendVerificationEmail } from './email.ts';
 import * as jwt from './jwt.ts';
 import * as model from './model.ts';
-import { sendPasswordResetEmail, sendVerificationEmail } from './email.ts';
-import { createLogger } from '../../utils/logger/index.ts';
-import { config } from '../../config/env.ts';
-import type { User, UserPreferences } from '@brewform/shared/types';
+
 // Standard dedup approach for future OAuth/social login:
 // import { generateUniqueUsername } from '@brewform/shared';
 

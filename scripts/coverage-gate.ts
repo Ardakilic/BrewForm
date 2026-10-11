@@ -1,34 +1,33 @@
 /**
- * Coverage gate for the BrewForm "deno scope" (wave-5 task 8.6).
+ * Coverage gate for the BrewForm coverage scope (wave-5 task 8.6).
  *
- * `deno coverage` can print a report but (for this gate) we need a single,
+ * `vitest run --coverage` produces the profile and this script needs a single,
  * scope-aware LINE-coverage number that fails the build below a threshold. This
- * script runs `deno coverage coverage/ --lcov` (the `coverage/` profile is
- * populated by `deno task test-coverage`), parses the lcov, and computes the
- * aggregate line coverage over the deno scope ONLY:
+ * script runs the vitest coverage command (lcov reporter) in each in-scope
+ * workspace, parses the lcov, and computes the aggregate line coverage over the
+ * coverage scope ONLY:
  *
  *   - apps/api/src/
  *   - packages/shared/src/
  *
- * (NOT apps/web, NOT packages/db — those are outside the deno coverage scope).
- * `deno coverage` already excludes `*test.(ts|js)` files by default, so the
- * number reflects production code. If the percentage is below the threshold the
- * script exits non-zero, failing CI.
+ * (NOT apps/web, NOT packages/db — those are outside the coverage scope).
+ * Test files are excluded from the number, so it reflects production code. If
+ * the percentage is below the threshold the script exits non-zero, failing CI.
  *
  * Usage:
- *   deno task test-coverage
- *   deno run -A scripts/coverage-gate.ts            # threshold defaults to 85
- *   deno run -A scripts/coverage-gate.ts 90         # explicit threshold (arg)
- *   COVERAGE_THRESHOLD=90 deno run -A scripts/coverage-gate.ts   # via env
+ *   pnpm run test-coverage
+ *   tsx scripts/coverage-gate.ts            # threshold defaults to 85
+ *   tsx scripts/coverage-gate.ts 90         # explicit threshold (arg)
+ *   COVERAGE_THRESHOLD=90 tsx scripts/coverage-gate.ts   # via env
  *
  * The parser and decision logic are exported as pure functions so they are
- * unit-tested without spawning `deno coverage` (see coverage-gate.test.ts).
- *
- * Required permissions: `--allow-run` (spawn `deno coverage`), `--allow-read`
- * (read the `coverage/` profile), `--allow-env` (read `COVERAGE_THRESHOLD`).
+ * unit-tested without spawning the coverage command (see coverage-gate.test.ts).
  *
  * @module
  */
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 /** Per-file line-coverage record extracted from an lcov report. */
 export interface FileCoverage {
@@ -47,9 +46,8 @@ export interface CoverageSummary {
   files: number;
 }
 
-/** Path markers identifying the deno coverage scope. */
-export const DENO_SCOPE_MARKERS = ['apps/api/src/', 'packages/shared/src/'] as const;
-
+/** Path markers identifying the coverage scope. */
+export const COVERAGE_SCOPE_MARKERS = ['apps/api/src/', 'packages/shared/src/'] as const;
 /** Coverage threshold applied when none is supplied (arg or env). */
 export const DEFAULT_THRESHOLD = 85;
 
@@ -60,7 +58,7 @@ export const DEFAULT_THRESHOLD = 85;
  * are needed for a line-coverage gate; all other record types (`DA`, `FN`,
  * `BRDA`, …) are ignored. A record is emitted on each `end_of_record`.
  *
- * @param lcov Raw lcov report text (e.g. from `deno coverage --lcov`).
+ * @param lcov Raw lcov report text (e.g. from `vitest --coverage`).
  * @returns One {@linkcode FileCoverage} per source file in the report.
  */
 export function parseLcovRecords(lcov: string): FileCoverage[] {
@@ -91,7 +89,7 @@ export function parseLcovRecords(lcov: string): FileCoverage[] {
 }
 
 /**
- * Reports whether a source-file path belongs to the deno coverage scope.
+ * Reports whether a source-file path belongs to the coverage scope.
  *
  * Handles both plain paths and `file://` URLs (lcov emits the latter), matching
  * on the scope path segment so the absolute prefix is irrelevant.
@@ -99,9 +97,9 @@ export function parseLcovRecords(lcov: string): FileCoverage[] {
  * @param file Source-file path or URL from an lcov `SF` record.
  * @returns `true` when the file is under `apps/api/src/` or `packages/shared/src/`.
  */
-export function isInDenoScope(file: string): boolean {
+export function isInScope(file: string): boolean {
   const normalized = file.replace(/^file:\/\//, '');
-  return DENO_SCOPE_MARKERS.some((marker) => normalized.includes(marker));
+  return COVERAGE_SCOPE_MARKERS.some((marker) => normalized.includes(marker));
 }
 
 /**
@@ -122,13 +120,13 @@ export function summarize(files: FileCoverage[]): CoverageSummary {
 }
 
 /**
- * Computes aggregate line coverage over the deno scope from a raw lcov report.
+ * Computes aggregate line coverage over the coverage scope from a raw lcov report.
  *
- * @param lcov Raw lcov report text (e.g. from `deno coverage --lcov`).
- * @returns The summary restricted to files under the deno scope.
+ * @param lcov Raw lcov report text (e.g. from `vitest --coverage`).
+ * @returns The summary restricted to files under the coverage scope.
  */
 export function computeLineCoverage(lcov: string): CoverageSummary {
-  return summarize(parseLcovRecords(lcov).filter((record) => isInDenoScope(record.file)));
+  return summarize(parseLcovRecords(lcov).filter((record) => isInScope(record.file)));
 }
 
 /**
@@ -151,7 +149,7 @@ export function passes(percent: number, threshold: number): boolean {
  * @returns The resolved threshold percentage (0–100).
  */
 export function resolveThreshold(arg?: string): number {
-  const raw = arg ?? Deno.env.get('COVERAGE_THRESHOLD') ?? String(DEFAULT_THRESHOLD);
+  const raw = arg ?? process.env.COVERAGE_THRESHOLD ?? String(DEFAULT_THRESHOLD);
   const value = Number(raw);
   if (!Number.isFinite(value) || value < 0 || value > 100) {
     return DEFAULT_THRESHOLD;
@@ -160,41 +158,48 @@ export function resolveThreshold(arg?: string): number {
 }
 
 /**
- * Runs `deno coverage coverage/ --lcov` and returns the report text.
+ * Runs the vitest coverage command (lcov reporter) in each in-scope workspace
+ * and returns the concatenated lcov report text.
  *
- * @returns The lcov report for the collected `coverage/` profile.
+ * @returns The lcov report covering the in-scope workspaces.
  */
-async function collectLcov(): Promise<string> {
-  const command = new Deno.Command('deno', {
-    args: ['coverage', 'coverage/', '--lcov'],
-    stdout: 'piped',
-    stderr: 'inherit',
-  });
-  const { success, stdout } = await command.output();
-  if (!success) {
-    console.error('Coverage gate: `deno coverage coverage/ --lcov` failed.');
-    Deno.exit(1);
+function collectLcov(): string {
+  const repoRoot = join(import.meta.dirname!, '..');
+  const reports: string[] = [];
+  const workspaces: Record<string, string> = {
+    '@brewform/api': 'apps/api',
+    '@brewform/shared': 'packages/shared',
+  };
+  for (const [pkg, dir] of Object.entries(workspaces)) {
+    const result = spawnSync(
+      'pnpm',
+      ['--filter', pkg, 'exec', 'vitest', 'run', '--coverage', '--coverage.reporter=lcov'],
+      { cwd: repoRoot, stdio: 'inherit', encoding: 'utf8' },
+    );
+    if (result.status !== 0) {
+      console.error(`Coverage gate: vitest coverage failed for ${pkg}.`);
+      process.exit(1);
+    }
+    reports.push(readFileSync(join(repoRoot, dir, 'coverage', 'lcov.info'), 'utf8'));
   }
-  return new TextDecoder().decode(stdout);
+  return reports.join('\n');
 }
 
 if (import.meta.main) {
-  const threshold = resolveThreshold(Deno.args[0]);
-  const summary = computeLineCoverage(await collectLcov());
+  const threshold = resolveThreshold(process.argv[2]);
+  const summary = computeLineCoverage(collectLcov());
 
   console.log(
     `Coverage gate: line coverage ${summary.percent.toFixed(2)}% ` +
       `(${summary.linesHit}/${summary.linesFound} lines across ${summary.files} files)`,
   );
   console.log(
-    `Coverage gate: threshold ${threshold}% (deno scope: ${DENO_SCOPE_MARKERS.join(', ')})`,
+    `Coverage gate: threshold ${threshold}% (scope: ${COVERAGE_SCOPE_MARKERS.join(', ')})`,
   );
 
   if (!passes(summary.percent, threshold)) {
-    console.error(
-      `Coverage gate FAILED: ${summary.percent.toFixed(2)}% is below ${threshold}%.`,
-    );
-    Deno.exit(1);
+    console.error(`Coverage gate FAILED: ${summary.percent.toFixed(2)}% is below ${threshold}%.`);
+    process.exit(1);
   }
   console.log('Coverage gate passed.');
 }

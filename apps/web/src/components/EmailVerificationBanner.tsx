@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext.tsx';
 import { authApi } from '../api/index.ts';
+import { useAuth } from '../contexts/AuthContext.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 
 /**
@@ -28,19 +28,19 @@ export function EmailVerificationBanner() {
   };
 
   return (
-    <div className='btn-primary flex w-full justify-center gap-2 rounded-none text-sm'>
+    <div className="btn-primary flex w-full justify-center gap-2 rounded-none text-sm">
       <span>{t('emailVerification.banner')}</span>
       <button
-        type='button'
+        type="button"
         onClick={handleResend}
         disabled={sending || sent}
-        className='underline font-medium'
+        className="underline font-medium"
       >
         {sent
           ? t('emailVerification.sent')
           : sending
-          ? t('emailVerification.sending')
-          : t('emailVerification.resend')}
+            ? t('emailVerification.sending')
+            : t('emailVerification.resend')}
       </button>
     </div>
   );

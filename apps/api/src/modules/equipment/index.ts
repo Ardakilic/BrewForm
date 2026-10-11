@@ -1,30 +1,28 @@
-import { Hono } from 'hono';
-import type { Context, Next } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
 import {
   EquipmentCreateSchema,
+  EquipmentDeleteRequestResponseSchema,
   EquipmentDeleteRequestSchema,
   EquipmentFilterSchema,
-  EquipmentUpdateSchema,
-  PaginationSchema,
-  SearchQuerySchema,
-} from '@brewform/shared/schemas';
-import {
-  EquipmentDeleteRequestResponseSchema,
   EquipmentOutputSchema,
   EquipmentRecipesResponseSchema,
+  EquipmentUpdateSchema,
   ErrorEnvelopeSchema,
   MessageResponseSchema,
+  PaginationSchema,
   paginatedEnvelope,
+  SearchQuerySchema,
   successEnvelope,
 } from '@brewform/shared/schemas';
+import { zValidator } from '@hono/zod-validator';
+import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth.ts';
-import * as service from './service.ts';
-import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Dependency-injection proxy for test stubbing (auth middleware + service). */
 export const deps = { authMiddleware, service };
@@ -71,9 +69,7 @@ equipment.get(
     tags: ['Equipment'],
     summary: 'Search equipment',
     description: 'Returns equipment matching the search query.',
-    parameters: [
-      { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'q', in: 'query', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'List of matching equipment',
@@ -209,9 +205,7 @@ equipment.get(
     tags: ['Equipment'],
     summary: 'Get equipment by id',
     description: 'Returns a single piece of equipment by its id.',
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Equipment payload',
@@ -247,9 +241,7 @@ equipment.patch(
     summary: 'Update equipment',
     description: 'Updates a piece of equipment owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     requestBody: jsonRequestBody(EquipmentUpdateSchema),
     responses: {
       200: {
@@ -299,9 +291,7 @@ equipment.delete(
     summary: 'Delete equipment',
     description: 'Deletes a piece of equipment owned by the authenticated user.',
     security: [{ bearerAuth: [] }],
-    parameters: [
-      { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-    ],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
     responses: {
       200: {
         description: 'Equipment deleted',

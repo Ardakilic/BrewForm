@@ -17,22 +17,21 @@
  *
  * The pre-existing `routes/openapi.test.ts` smoke test is left unchanged.
  */
-import { beforeAll, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Test environment — set BEFORE the dynamic import of the router so the
 // config singleton (loaded at module-eval time) sees these values. No DB/KV
 // connection occurs during spec generation.
 // ---------------------------------------------------------------------------
-Deno.env.set('OPENAPI_ENABLED', 'true');
-Deno.env.set('APP_ENV', 'test');
-Deno.env.set('CACHE_DRIVER', 'memory');
-if (!Deno.env.get('DATABASE_URL')) {
-  Deno.env.set('DATABASE_URL', 'postgresql://test:test@localhost:5432/test');
+process.env.OPENAPI_ENABLED = 'true';
+process.env.APP_ENV = 'test';
+process.env.CACHE_DRIVER = 'memory';
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
 }
-if (!Deno.env.get('JWT_SECRET')) {
-  Deno.env.set('JWT_SECRET', 'a-very-long-secret-key-for-testing-12345');
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = 'a-very-long-secret-key-for-testing-12345';
 }
 
 // ---------------------------------------------------------------------------
@@ -90,8 +89,12 @@ let allOps: OpEntry[];
 let declaredTags: Set<string>;
 
 function isNonEmptyObject(value: unknown): boolean {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) &&
-    Object.keys(value as AnyObj).length > 0;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.keys(value as AnyObj).length > 0
+  );
 }
 
 /** A resolved schema is a non-empty object that is not the unresolved zod stub. */
@@ -104,9 +107,7 @@ function isResolvedSchema(value: unknown): boolean {
 
 /** True when an operation path belongs to one of the 20 in-scope groups. */
 function isInScope(path: string): boolean {
-  return IN_SCOPE_BASE_PATHS.some(
-    (base) => path === base || path.startsWith(base + '/'),
-  );
+  return IN_SCOPE_BASE_PATHS.some((base) => path === base || path.startsWith(base + '/'));
 }
 
 beforeAll(async () => {
@@ -219,8 +220,10 @@ describe('OpenAPI coverage — generated spec is well-formed', () => {
       for (const [code, resp] of Object.entries(op.responses ?? {})) {
         const schema = resp.content?.['application/json']?.schema as AnyObj | undefined;
         if (
-          schema && typeof schema === 'object' &&
-          Object.keys(schema).length === 1 && schema.vendor === 'zod'
+          schema &&
+          typeof schema === 'object' &&
+          Object.keys(schema).length === 1 &&
+          schema.vendor === 'zod'
         ) {
           stubs.push(`${method.toUpperCase()} ${path} [${code}]`);
         }

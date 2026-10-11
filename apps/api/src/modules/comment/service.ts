@@ -5,14 +5,15 @@
  * to top-level comments), @mention auto-prepend for nested replies, content
  * sanitization, and async notification + badge evaluation side-effects.
  */
-import { sanitizeText } from '../../utils/sanitize.ts';
+
 import { parseMentions } from '@brewform/shared/utils';
-import * as model from './model.ts';
+import { createLogger } from '../../utils/logger/index.ts';
+import { sanitizeText } from '../../utils/sanitize.ts';
+import { evaluateBadges } from '../badge/service.ts';
+import { createCommentNotification, createMentionNotifications } from '../notification/service.ts';
 import * as recipeModel from '../recipe/model.ts';
 import { canViewRecipe } from '../recipe/service.ts';
-import { createLogger } from '../../utils/logger/index.ts';
-import { createCommentNotification, createMentionNotifications } from '../notification/service.ts';
-import { evaluateBadges } from '../badge/service.ts';
+import * as model from './model.ts';
 
 const logger = createLogger('comment-service');
 
@@ -164,15 +165,17 @@ export async function runCommentNotificationSideEffects(params: {
   // single flag gates both). No direct notifyRecipeCommented call here —
   // that would double-send and bypass the preference gate.
   if (recipe.authorId !== userId) {
-    deps.createCommentNotification({
-      commenterId: userId,
-      commenterUsername: commenter.username,
-      recipeAuthorId: recipe.authorId,
-      recipeId: recipe.id,
-      recipeSlug: recipe.slug,
-      recipeTitle: recipe.title,
-      commentId,
-    }).catch((err) => logger.error({ err, commentId }, 'createCommentNotification failed'));
+    deps
+      .createCommentNotification({
+        commenterId: userId,
+        commenterUsername: commenter.username,
+        recipeAuthorId: recipe.authorId,
+        recipeId: recipe.id,
+        recipeSlug: recipe.slug,
+        recipeTitle: recipe.title,
+        commentId,
+      })
+      .catch((err) => logger.error({ err, commentId }, 'createCommentNotification failed'));
   }
 
   // Mention notifications always run — including when the commenter IS the

@@ -8,11 +8,7 @@
  * directly, but it is exported through the constants barrel for downstream
  * consumers (admin tooling, future status filters, etc.).
  */
-export const EQUIPMENT_DELETE_REQUEST_STATUS_VALUES = [
-  'pending',
-  'approved',
-  'rejected',
-] as const;
+export const EQUIPMENT_DELETE_REQUEST_STATUS_VALUES = ['pending', 'approved', 'rejected'] as const;
 
 /** Lifecycle status of an equipment deletion request submitted by a user. */
-export type EquipmentDeleteRequestStatus = typeof EQUIPMENT_DELETE_REQUEST_STATUS_VALUES[number];
+export type EquipmentDeleteRequestStatus = (typeof EQUIPMENT_DELETE_REQUEST_STATUS_VALUES)[number];

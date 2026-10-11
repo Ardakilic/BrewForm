@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
@@ -14,10 +14,28 @@ vi.mock('react-router', async (importOriginal) => {
   };
 });
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useTranslation: vi.fn(),
-}));
+vi.mock('../../contexts/I18nContext.tsx', async () => {
+  const { createContext } = await import('react');
+  const { t: fallbackT } = await import('@brewform/shared/i18n');
+  const useTranslation = vi.fn();
+  return {
+    I18nProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    useTranslation,
+    // `useSafeT()` reads `I18nContext` directly (not via `useTranslation`), so the
+    // mocked context delegates to the mocked hook — per-test `mockReturnValue`
+    // setups (including `tr` locale cases) apply to both translation paths.
+    I18nContext: createContext({
+      get locale() {
+        return useTranslation()?.locale ?? 'en';
+      },
+      setLocale: () => undefined,
+      get t() {
+        return useTranslation()?.t ?? fallbackT;
+      },
+      availableLocales: ['en', 'tr'],
+    }),
+  };
+});
 
 vi.mock('../../contexts/AuthContext.tsx', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -85,22 +103,22 @@ vi.mock('@brewform/shared/constants', () => ({
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useSearchParams } from 'react-router';
-import { I18nProvider, useTranslation } from '../../contexts/I18nContext.tsx';
-import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
-import { api, coffeeVarietyApi, recipeApi } from '../../api/index.ts';
-import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
 import type {
   EquipmentOutput,
   PaginatedResponse,
   RecipeListItemOutput,
 } from '@brewform/shared/schemas';
 import fc from 'fast-check';
-import { loader, RecipeListPage } from './RecipeListPage.tsx';
+import { useSearchParams } from 'react-router';
+import { api, coffeeVarietyApi, recipeApi } from '../../api/index.ts';
+import { getEquipmentCached, getTasteNotesCached } from '../../api/static-cache.ts';
 import {
   EQUIPMENT_FILTER_TYPES,
   EQUIPMENT_TYPE_LABELS,
 } from '../../components/recipe-list/constants.ts';
+import { AuthProvider, useAuth } from '../../contexts/AuthContext.tsx';
+import { I18nProvider, useTranslation } from '../../contexts/I18nContext.tsx';
+import { loader, RecipeListPage } from './RecipeListPage.tsx';
 
 /** Builds an empty `PaginatedResponse<RecipeListItemOutput>` for list mocks. */
 function makeEmptyListResponse(): PaginatedResponse<RecipeListItemOutput> {
@@ -384,7 +402,6 @@ describe('RecipeListPage — i18n', () => {
     });
   });
 
-  // deno-lint-ignore require-await -- test callback signature
   it('does not show Visibility filter for non-admin users', async () => {
     renderRecipeListPage();
 
@@ -412,23 +429,25 @@ describe('RecipeListPage — i18n', () => {
   it('renders recipe cards with clickable author link when loader returns data', async () => {
     mockRecipeApiList.mockResolvedValue({
       success: true,
-      data: [{
-        id: 'recipe-1',
-        slug: 'test-recipe',
-        title: 'Test Recipe',
-        authorId: 'u1',
-        visibility: 'public',
-        currentVersionId: null,
-        likeCount: 5,
-        commentCount: 2,
-        forkCount: 1,
-        forkedFromId: null,
-        featured: false,
-        createdAt: '2025-01-01T00:00:00Z',
-        updatedAt: '2025-01-01T00:00:00Z',
-        deletedAt: null,
-        author: { id: 'u1', username: 'testuser', displayName: 'Test User' },
-      }],
+      data: [
+        {
+          id: 'recipe-1',
+          slug: 'test-recipe',
+          title: 'Test Recipe',
+          authorId: 'u1',
+          visibility: 'public',
+          currentVersionId: null,
+          likeCount: 5,
+          commentCount: 2,
+          forkCount: 1,
+          forkedFromId: null,
+          featured: false,
+          createdAt: '2025-01-01T00:00:00Z',
+          updatedAt: '2025-01-01T00:00:00Z',
+          deletedAt: null,
+          author: { id: 'u1', username: 'testuser', displayName: 'Test User' },
+        },
+      ],
       meta: { requestId: 'test', pagination: { page: 1, perPage: 12, total: 1, totalPages: 1 } },
     });
 
@@ -518,7 +537,7 @@ describe('RecipeListPage — taste note filter', () => {
     { id: 'root-2', name: 'Floral', depth: 0, parentId: null, category: 'taste' },
     { id: 'mid-2', name: 'Floral', depth: 1, parentId: 'root-2', category: 'taste' },
     { id: 'leaf-2', name: 'Rose', depth: 2, parentId: 'mid-2', category: 'taste' },
-    // deno-lint-ignore no-explicit-any -- test cast
+    // biome-ignore lint/suspicious/noExplicitAny: test cast
   ] as any[];
 
   it('renders taste note dropdown when taste notes are loaded', async () => {
@@ -529,7 +548,6 @@ describe('RecipeListPage — taste note filter', () => {
     await waitFor(() => expect(screen.getByText('Taste Notes')).toBeInTheDocument());
   });
 
-  // deno-lint-ignore require-await -- test callback signature
   it('does NOT render taste note dropdown when no taste notes are loaded', async () => {
     renderRecipeListPage();
 
@@ -542,15 +560,15 @@ describe('RecipeListPage — taste note filter', () => {
     renderRecipeListPage();
 
     await waitFor(() => {
-      const trigger = screen.getAllByRole('combobox').find((el) =>
-        el.textContent?.includes('Select taste notes...')
-      );
+      const trigger = screen
+        .getAllByRole('combobox')
+        .find((el) => el.textContent?.includes('Select taste notes...'));
       expect(trigger).toBeDefined();
     });
 
-    const trigger = screen.getAllByRole('combobox').find((el) =>
-      el.textContent?.includes('Select taste notes...')
-    );
+    const trigger = screen
+      .getAllByRole('combobox')
+      .find((el) => el.textContent?.includes('Select taste notes...'));
     await userEvent.click(trigger!);
 
     expect(await screen.findByRole('option', { name: 'Raspberry' })).toBeInTheDocument();
@@ -564,7 +582,7 @@ describe('RecipeListPage — taste note filter', () => {
     renderRecipeListPage();
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Remove Taste Notes filter')).toBeInTheDocument()
+      expect(screen.getByLabelText('Remove Taste Notes filter')).toBeInTheDocument(),
     );
     expect(screen.getAllByText('Raspberry').length).toBeGreaterThanOrEqual(1);
   });
@@ -589,10 +607,12 @@ describe('RecipeListPage — taste note filter', () => {
   });
 
   it('renders active filter badges after Filters heading and before Search filter', async () => {
-    mockUseSearchParams.mockReturnValue(makeSearchParams({
-      tasteNoteIds: VALID_UUID,
-      equipmentId: '11111111-1111-1111-1111-111111111111',
-    }));
+    mockUseSearchParams.mockReturnValue(
+      makeSearchParams({
+        tasteNoteIds: VALID_UUID,
+        equipmentId: '11111111-1111-1111-1111-111111111111',
+      }),
+    );
     mockGetTasteNotesCached.mockResolvedValue(sampleTasteNotes);
     mockGetEquipmentCached.mockResolvedValue([
       makeEquipment({
@@ -611,15 +631,19 @@ describe('RecipeListPage — taste note filter', () => {
       const badge1 = screen.getByLabelText('Remove Equipment filter');
       const badge2 = screen.getByLabelText('Remove Taste Notes filter');
 
-      expect(filtersHeading.compareDocumentPosition(badge1) & Node.DOCUMENT_POSITION_FOLLOWING)
-        .toBeTruthy();
-      expect(filtersHeading.compareDocumentPosition(badge2) & Node.DOCUMENT_POSITION_FOLLOWING)
-        .toBeTruthy();
+      expect(
+        filtersHeading.compareDocumentPosition(badge1) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        filtersHeading.compareDocumentPosition(badge2) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
 
-      expect(badge1.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING)
-        .toBeTruthy();
-      expect(badge2.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING)
-        .toBeTruthy();
+      expect(
+        badge1.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        badge2.compareDocumentPosition(searchLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
   });
 });
@@ -663,7 +687,7 @@ describe('RecipeListPage — property-based tests', () => {
                 createdAt: '2024-01-01T00:00:00Z',
                 updatedAt: '2024-01-01T00:00:00Z',
                 deletedAt: null,
-              })
+              }),
             ),
           );
 
@@ -711,7 +735,8 @@ describe('RecipeListPage — property-based tests', () => {
           renderRecipeListPage();
 
           await waitFor(() => {
-            const expectedHasActive = active.brewMethod ||
+            const expectedHasActive =
+              active.brewMethod ||
               active.drinkType ||
               active.equipmentId ||
               active.tasteNoteIds ||
@@ -759,7 +784,7 @@ describe('RecipeListPage — coffee variety filter', () => {
     renderRecipeListPage();
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument()
+      expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument(),
     );
     await waitFor(() => expect(screen.getAllByText('Bourbon').length).toBeGreaterThanOrEqual(1));
   });
@@ -771,7 +796,7 @@ describe('RecipeListPage — coffee variety filter', () => {
     renderRecipeListPage();
 
     await waitFor(() =>
-      expect(screen.getByText('Coffee variety filter active')).toBeInTheDocument()
+      expect(screen.getByText('Coffee variety filter active')).toBeInTheDocument(),
     );
   });
 
@@ -786,7 +811,7 @@ describe('RecipeListPage — coffee variety filter', () => {
     renderRecipeListPage();
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument()
+      expect(screen.getByLabelText('Remove Coffee Variety filter')).toBeInTheDocument(),
     );
 
     const removeButton = screen.getByLabelText('Remove Coffee Variety filter');

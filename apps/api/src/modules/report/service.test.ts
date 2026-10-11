@@ -1,33 +1,29 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { reports, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createReport, listReports, log, resolveReport } from './service.ts';
 
-describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Report Service Logic', () => {
   let reporterId: string;
   let resolverId: string;
   let entityId: string;
 
   function setupSpies() {
     return {
-      info: spy(log, 'info'),
-      debug: spy(log, 'debug'),
-      warn: spy(log, 'warn'),
-      error: spy(log, 'error'),
+      info: vi.spyOn(log, 'info'),
+      debug: vi.spyOn(log, 'debug'),
+      warn: vi.spyOn(log, 'warn'),
+      error: vi.spyOn(log, 'error'),
     };
   }
 
-  function restoreSpies(
-    spies: ReturnType<typeof setupSpies>,
-  ) {
-    spies.info.restore();
-    spies.debug.restore();
-    spies.warn.restore();
-    spies.error.restore();
+  function restoreSpies(spies: ReturnType<typeof setupSpies>) {
+    spies.info.mockRestore();
+    spies.debug.mockRestore();
+    spies.warn.mockRestore();
+    spies.error.mockRestore();
   }
 
   function createUser(id: string) {
@@ -63,16 +59,18 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
         expect(result.reporterId).toBe(reporterId);
         expect(result.entityType).toBe('recipe');
 
-        assertSpyCalls(spies.debug, 2);
-        assertSpyCallArgs(spies.debug, 0, [
+        expect(spies.debug).toHaveBeenCalledTimes(2);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          1,
           { reporterId, entityType: 'recipe', entityId },
           'createReport started',
-        ]);
-        assertSpyCallArgs(spies.debug, 1, [
+        );
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          2,
           { reporterId, entityType: 'recipe', entityId, reportId: result.id },
           'createReport completed',
-        ]);
-        assertSpyCalls(spies.info, 0);
+        );
+        expect(spies.info).toHaveBeenCalledTimes(0);
       } finally {
         restoreSpies(spies);
       }
@@ -88,15 +86,17 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
         const result = await listReports('pending', 1, 10);
 
         expect(result.total).toBe(1);
-        assertSpyCalls(spies.debug, 2);
-        assertSpyCallArgs(spies.debug, 0, [
+        expect(spies.debug).toHaveBeenCalledTimes(2);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          1,
           { status: 'pending', page: 1, perPage: 10 },
           'listReports started',
-        ]);
-        assertSpyCallArgs(spies.debug, 1, [
+        );
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          2,
           { status: 'pending', page: 1, perPage: 10, total: 1 },
           'listReports completed',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }
@@ -112,16 +112,18 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
         const result = await resolveReport(report.id, resolverId);
 
         expect(result.status).toBe('resolved');
-        assertSpyCalls(spies.debug, 2);
-        assertSpyCallArgs(spies.debug, 0, [
+        expect(spies.debug).toHaveBeenCalledTimes(2);
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          1,
           { id: report.id, resolvedBy: resolverId },
           'resolveReport started',
-        ]);
-        assertSpyCallArgs(spies.debug, 1, [
+        );
+        expect(spies.debug).toHaveBeenNthCalledWith(
+          2,
           { id: report.id, resolvedBy: resolverId },
           'resolveReport completed',
-        ]);
-        assertSpyCalls(spies.info, 0);
+        );
+        expect(spies.info).toHaveBeenCalledTimes(0);
       } finally {
         restoreSpies(spies);
       }
@@ -133,8 +135,8 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
       try {
         await expect(resolveReport(missingId, resolverId)).rejects.toThrow('REPORT_NOT_FOUND');
 
-        assertSpyCalls(spies.error, 1);
-        const errArg = spies.error.calls[0].args[0] as {
+        expect(spies.error).toHaveBeenCalledTimes(1);
+        const errArg = spies.error.mock.calls[0][0] as {
           err: Error;
           id: string;
           resolvedBy: string;
@@ -143,7 +145,7 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
         expect(errArg.err.message).toBe('REPORT_NOT_FOUND');
         expect(errArg.id).toBe(missingId);
         expect(errArg.resolvedBy).toBe(resolverId);
-        expect(spies.error.calls[0].args[1]).toBe('resolveReport failed: report not found');
+        expect(spies.error.mock.calls[0][1]).toBe('resolveReport failed: report not found');
       } finally {
         restoreSpies(spies);
       }
@@ -159,11 +161,12 @@ describe('Report Service Logic', { sanitizeOps: false, sanitizeResources: false 
           'REPORT_ALREADY_RESOLVED',
         );
 
-        assertSpyCalls(spies.warn, 1);
-        assertSpyCallArgs(spies.warn, 0, [
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        expect(spies.warn).toHaveBeenNthCalledWith(
+          1,
           { id: report.id, resolvedBy: resolverId },
           'resolveReport failed: report already resolved',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }

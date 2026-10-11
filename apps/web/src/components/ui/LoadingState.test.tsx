@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { LoadingState } from './LoadingState.tsx';
+import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { LoadingState } from './LoadingState.tsx';
 
 function renderLoading(props: Parameters<typeof LoadingState>[0] = {}) {
   return render(

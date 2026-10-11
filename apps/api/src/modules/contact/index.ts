@@ -1,19 +1,19 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
 import {
   ErrorEnvelopeSchema,
   MessageResponseSchema,
   successEnvelope,
 } from '@brewform/shared/schemas';
-import type { AppEnv } from '../../types/hono.ts';
-import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
 import { config } from '../../config/index.ts';
-import { getTransporter } from '../../utils/notify/index.ts';
-import { error, success } from '../../utils/response/index.ts';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
+import type { AppEnv } from '../../types/hono.ts';
 import { createLogger } from '../../utils/logger/index.ts';
+import { getTransporter } from '../../utils/notify/index.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, success } from '../../utils/response/index.ts';
 
 const logger = createLogger('contact');
 
@@ -64,10 +64,7 @@ contact.post(
   async (c) => {
     const data = c.req.valid('json');
 
-    logger.info(
-      { subject: data.subject },
-      'Contact form submission',
-    );
+    logger.info({ subject: data.subject }, 'Contact form submission');
 
     if (config.APP_ENV === 'test') {
       logger.info('Email skipped (test environment)');

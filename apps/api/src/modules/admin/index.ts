@@ -1,9 +1,3 @@
-import { Hono } from 'hono';
-import type { Context, Next } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { describeRoute, resolver } from 'hono-openapi';
-import { z } from 'zod';
-import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import {
   AdminBanUserSchema,
   AdminCreateUserSchema,
@@ -28,11 +22,17 @@ import {
   VendorCreateSchema,
   VendorUpdateSchema,
 } from '@brewform/shared/schemas';
-import { jsonRequestBody } from '../../utils/openapi/index.ts';
-import * as service from './service.ts';
-import { cacheProvider } from '../../utils/cache/singleton.ts';
-import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import { zValidator } from '@hono/zod-validator';
+import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { describeRoute, resolver } from 'hono-openapi';
+import { z } from 'zod';
+import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
 import type { AppEnv } from '../../types/hono.ts';
+import { cacheProvider } from '../../utils/cache/singleton.ts';
+import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
+import * as service from './service.ts';
 
 /** Dependency-injection proxy for auth middleware (test stubbing seam). */
 export const deps = { authMiddleware, adminMiddleware };
@@ -154,27 +154,23 @@ admin.get('/users/:id', async (c) => {
   return success(c, user);
 });
 
-admin.post(
-  '/users',
-  zValidator('json', AdminCreateUserSchema),
-  async (c) => {
-    const adminId = c.get('userId') as string;
-    const data = c.req.valid('json');
-    try {
-      const user = await service.adminCreateUser(adminId, data);
-      return success(c, user, 201);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message === 'EMAIL_ALREADY_EXISTS') {
-        return error(c, 'CONFLICT', 'Email is already registered.', 409);
-      }
-      if (message === 'USERNAME_ALREADY_EXISTS') {
-        return error(c, 'CONFLICT', 'Username is already taken.', 409);
-      }
-      throw err;
+admin.post('/users', zValidator('json', AdminCreateUserSchema), async (c) => {
+  const adminId = c.get('userId') as string;
+  const data = c.req.valid('json');
+  try {
+    const user = await service.adminCreateUser(adminId, data);
+    return success(c, user, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'EMAIL_ALREADY_EXISTS') {
+      return error(c, 'CONFLICT', 'Email is already registered.', 409);
     }
-  },
-);
+    if (message === 'USERNAME_ALREADY_EXISTS') {
+      return error(c, 'CONFLICT', 'Username is already taken.', 409);
+    }
+    throw err;
+  }
+});
 
 admin.post(
   '/users/:id/ban',
@@ -223,40 +219,36 @@ admin.post(
   },
 );
 
-admin.patch(
-  '/users/:id',
-  zValidator('json', AdminUpdateUserSchema),
-  async (c) => {
-    const adminId = c.get('userId') as string;
-    const targetUserId = c.req.param('id')!;
-    const data = c.req.valid('json');
+admin.patch('/users/:id', zValidator('json', AdminUpdateUserSchema), async (c) => {
+  const adminId = c.get('userId') as string;
+  const targetUserId = c.req.param('id')!;
+  const data = c.req.valid('json');
 
-    try {
-      const user = await service.adminUpdateUser(adminId, targetUserId, data);
-      return success(c, user);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message === 'SELF_EDIT_FORBIDDEN') {
-        return error(
-          c,
-          'FORBIDDEN',
-          'You cannot edit your own account from the admin panel. Use Profile Settings instead.',
-          403,
-        );
-      }
-      if (message === 'EMAIL_ALREADY_EXISTS') {
-        return error(c, 'CONFLICT', 'Email is already registered by another user.', 409);
-      }
-      if (message === 'USERNAME_ALREADY_EXISTS') {
-        return error(c, 'CONFLICT', 'Username is already taken by another user.', 409);
-      }
-      if (message === 'USER_NOT_FOUND') {
-        return error(c, 'NOT_FOUND', 'User not found.', 404);
-      }
-      throw err;
+  try {
+    const user = await service.adminUpdateUser(adminId, targetUserId, data);
+    return success(c, user);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'SELF_EDIT_FORBIDDEN') {
+      return error(
+        c,
+        'FORBIDDEN',
+        'You cannot edit your own account from the admin panel. Use Profile Settings instead.',
+        403,
+      );
     }
-  },
-);
+    if (message === 'EMAIL_ALREADY_EXISTS') {
+      return error(c, 'CONFLICT', 'Email is already registered by another user.', 409);
+    }
+    if (message === 'USERNAME_ALREADY_EXISTS') {
+      return error(c, 'CONFLICT', 'Username is already taken by another user.', 409);
+    }
+    if (message === 'USER_NOT_FOUND') {
+      return error(c, 'NOT_FOUND', 'User not found.', 404);
+    }
+    throw err;
+  }
+});
 
 admin.patch(
   '/users/:id/admin',
@@ -474,10 +466,7 @@ admin.delete('/taste-notes/:id', async (c) => {
 // --- Reports (admin) ---
 admin.get(
   '/reports',
-  zValidator(
-    'query',
-    ReportFilterSchema.extend({ entityType: z.string().optional() }),
-  ),
+  zValidator('query', ReportFilterSchema.extend({ entityType: z.string().optional() })),
   async (c) => {
     const { page, perPage, status, entityType } = c.req.valid('query');
     const result = await service.listReports(page, perPage, status, entityType, c.get('requestId'));

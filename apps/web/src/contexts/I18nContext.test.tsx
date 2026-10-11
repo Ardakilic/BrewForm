@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider, useTranslation } from './I18nContext.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -21,12 +21,12 @@ function TestConsumer() {
   const { locale, setLocale, availableLocales } = useTranslation();
   return (
     <div>
-      <span data-testid='locale'>{locale}</span>
-      <span data-testid='available'>{availableLocales.join(',')}</span>
-      <button type='button' onClick={() => setLocale('tr')} data-testid='switch-tr'>
+      <span data-testid="locale">{locale}</span>
+      <span data-testid="available">{availableLocales.join(',')}</span>
+      <button type="button" onClick={() => setLocale('tr')} data-testid="switch-tr">
         Switch to TR
       </button>
-      <button type='button' onClick={() => setLocale('en')} data-testid='switch-en'>
+      <button type="button" onClick={() => setLocale('en')} data-testid="switch-en">
         Switch to EN
       </button>
     </div>

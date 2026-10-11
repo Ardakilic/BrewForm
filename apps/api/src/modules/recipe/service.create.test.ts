@@ -1,7 +1,4 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq, inArray } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import {
   equipment,
@@ -16,10 +13,12 @@ import {
   users,
 } from '@brewform/db/schema';
 import { RecipeCreateSchema } from '@brewform/shared/schemas';
-import * as service from './service.ts';
+import { eq, inArray } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { evaluateBadges } from '../badge/service.ts';
+import * as service from './service.ts';
 
-describe('createRecipe (integration)', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createRecipe (integration)', () => {
   let userId: string;
   let tasteNoteId: string;
   let equipmentId: string;
@@ -53,25 +52,24 @@ describe('createRecipe (integration)', { sanitizeOps: false, sanitizeResources: 
 
   afterEach(async () => {
     if (createdRecipeIds.length) {
-      const versionIdsSubquery = db.select({ id: recipeVersions.id }).from(
-        recipeVersions,
-      ).where(inArray(recipeVersions.recipeId, createdRecipeIds));
+      const versionIdsSubquery = db
+        .select({ id: recipeVersions.id })
+        .from(recipeVersions)
+        .where(inArray(recipeVersions.recipeId, createdRecipeIds));
 
-      await db.delete(recipeTasteNotes).where(
-        inArray(recipeTasteNotes.recipeVersionId, versionIdsSubquery),
-      );
-      await db.delete(recipeEquipment).where(
-        inArray(recipeEquipment.recipeVersionId, versionIdsSubquery),
-      );
-      await db.delete(recipeAdditionalPreparations).where(
-        inArray(recipeAdditionalPreparations.recipeVersionId, versionIdsSubquery),
-      );
-      await db.delete(recipeVersionPhotos).where(
-        inArray(recipeVersionPhotos.recipeVersionId, versionIdsSubquery),
-      );
-      await db.delete(recipeVersions).where(
-        inArray(recipeVersions.recipeId, createdRecipeIds),
-      );
+      await db
+        .delete(recipeTasteNotes)
+        .where(inArray(recipeTasteNotes.recipeVersionId, versionIdsSubquery));
+      await db
+        .delete(recipeEquipment)
+        .where(inArray(recipeEquipment.recipeVersionId, versionIdsSubquery));
+      await db
+        .delete(recipeAdditionalPreparations)
+        .where(inArray(recipeAdditionalPreparations.recipeVersionId, versionIdsSubquery));
+      await db
+        .delete(recipeVersionPhotos)
+        .where(inArray(recipeVersionPhotos.recipeVersionId, versionIdsSubquery));
+      await db.delete(recipeVersions).where(inArray(recipeVersions.recipeId, createdRecipeIds));
       await db.delete(recipes).where(inArray(recipes.id, createdRecipeIds));
       createdRecipeIds.length = 0;
     }

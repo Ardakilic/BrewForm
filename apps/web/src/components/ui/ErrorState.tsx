@@ -18,7 +18,7 @@ export function ErrorState({ message, className = '' }: ErrorStateProps) {
   const lines = message.split('\n').filter((line) => line !== '');
   return (
     <div
-      role='alert'
+      role="alert"
       className={`rounded p-3 text-sm ${className}`.trim()}
       style={{
         backgroundColor: 'var(--error-bg)',
@@ -26,13 +26,15 @@ export function ErrorState({ message, className = '' }: ErrorStateProps) {
         border: '1px solid color-mix(in srgb, var(--error) 30%, transparent)',
       }}
     >
-      {lines.length > 1
-        ? (
-          <ul className='list-disc pl-4 space-y-1'>
-            {lines.map((line, i) => <li key={i}>{line}</li>)}
-          </ul>
-        )
-        : message}
+      {lines.length > 1 ? (
+        <ul className="list-disc pl-4 space-y-1">
+          {lines.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      ) : (
+        message
+      )}
     </div>
   );
 }

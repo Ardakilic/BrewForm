@@ -17,10 +17,9 @@
  * for join-table audit columns added by D23).
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { getTableConfig } from 'drizzle-orm/pg-core';
 import type { PgTableWithColumns } from 'drizzle-orm/pg-core';
+import { getTableConfig } from 'drizzle-orm/pg-core';
+import { describe, expect, it } from 'vitest';
 import {
   brewLogs,
   collectionItems,
@@ -42,7 +41,7 @@ import {
  * @returns The column config object, or `undefined` when missing.
  */
 function getColumnConfig(
-  // deno-lint-ignore no-explicit-any -- test any usage
+  // biome-ignore lint/suspicious/noExplicitAny: test any usage
   table: PgTableWithColumns<any>,
   columnName: string,
 ) {

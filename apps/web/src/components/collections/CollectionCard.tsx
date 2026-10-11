@@ -1,5 +1,5 @@
-import { Link } from 'react-router';
 import type { CollectionListItemOutput } from '@brewform/shared/schemas';
+import { Link } from 'react-router';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { AuthorButton } from '../ui/AuthorButton.tsx';
@@ -49,29 +49,29 @@ export function CollectionCard({ collection, showAuthor }: CollectionCardProps) 
   return (
     <Link
       to={`/collections/${collection.id}`}
-      className='card hover:shadow-lg transition-shadow p-4 block'
+      className="card hover:shadow-lg transition-shadow p-4 block"
     >
-      <div className='flex items-center justify-between mb-2'>
-        <h3 className='font-semibold truncate' style={{ color: 'var(--text-primary)' }}>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
           {collection.name}
         </h3>
         <CollectionVisibilityBadge
           visibility={collection.visibility}
-          className='text-lg'
+          className="text-lg"
           title={collection.visibility}
         />
       </div>
       {collection.description && (
-        <p className='text-sm mb-2 line-clamp-2' style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm mb-2 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
           {collection.description}
         </p>
       )}
       {showAuthor && author && (
-        <p className='text-xs mb-2' style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
           {t('common.by')} <AuthorButton author={author} />
         </p>
       )}
-      <p className='text-xs' style={{ color: 'var(--text-tertiary)' }}>
+      <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
         {collection.recipeCount} {t('collection.detail.recipes')}
       </p>
     </Link>

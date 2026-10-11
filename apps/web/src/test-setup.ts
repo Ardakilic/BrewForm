@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 // Hermetic Web Storage per test file.
 //
 // Root cause of flaky i18n failures (e.g. OnboardingWizard rendering in Turkish
-// when the test expects English): under Deno, jsdom's `localStorage` is backed
+// when the test expects English): under Vitest, jsdom's `localStorage` is backed
 // by a single store that is SHARED across test files in the same worker — and,
 // because the backing store is persistent, across PARALLEL worker processes too.
 // A file that writes `brewform_locale`/`brewform_theme` (e.g. HomePage.test.tsx,
@@ -45,9 +45,9 @@ class MemoryStorage implements Storage {
 }
 
 const memoryLocalStorage = new MemoryStorage();
-for (
-  const target of [globalThis, globalThis.window] as Array<Record<string, unknown> | undefined>
-) {
+for (const target of [globalThis, globalThis.window] as Array<
+  Record<string, unknown> | undefined
+>) {
   if (!target) continue;
   try {
     Object.defineProperty(target, 'localStorage', {
@@ -64,14 +64,14 @@ for (
 // Tell React 19 it is running in a test environment so act() warnings work.
 // Note: This only takes effect in ESM module scope. React 19's CJS development
 // bundle uses strict mode, where bare global references (typeof IS_REACT_ACT_ENVIRONMENT)
-// do NOT fall through to globalThis. This is a known Deno CJS compat limitation.
+// do NOT fall through to globalThis. This is a known CJS/ESM interop limitation.
 // The "not configured to support act()" warning may still appear in some test
 // files (e.g., Navbar) where tests explicitly invoke React.act(). This warning
 // is benign — all tests pass correctly.
 (globalThis as unknown as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
-// React 19 calls window.reportError for recoverable errors. In Deno + jsdom
-// this can crash with "parameter 1 is not of type 'Event'" because Deno's
+// React 19 calls window.reportError for recoverable errors. In some jsdom setups
+// this can crash with "parameter 1 is not of type 'Event'" because the
 // web implementation of reportError dispatches through jsdom's EventTarget
 // with a plain object instead of an ErrorEvent instance. Override to log.
 if (typeof globalThis !== 'undefined') {

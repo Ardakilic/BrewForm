@@ -23,11 +23,14 @@ export function computeExtractionYieldFromTds(
   groundWeightGrams: number,
 ): number | null {
   if (
-    typeof tds !== 'number' || typeof extractionVolumeMl !== 'number' ||
-    typeof groundWeightGrams !== 'number' || tds < 0 ||
-    extractionVolumeMl <= 0 || groundWeightGrams <= 0
+    typeof tds !== 'number' ||
+    typeof extractionVolumeMl !== 'number' ||
+    typeof groundWeightGrams !== 'number' ||
+    tds < 0 ||
+    extractionVolumeMl <= 0 ||
+    groundWeightGrams <= 0
   ) {
     return null;
   }
-  return (tds / 100) * extractionVolumeMl / groundWeightGrams * 100;
+  return (((tds / 100) * extractionVolumeMl) / groundWeightGrams) * 100;
 }

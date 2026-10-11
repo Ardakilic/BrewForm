@@ -12,9 +12,8 @@
  * unauthenticated path — this test ensures the fix does not accidentally break that.
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check';
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Minimal type stubs — mirrors the shape returned by the real model layer
@@ -76,7 +75,7 @@ async function getPublicProfile_buggy(
 ) {
   const user = await userModel.findByUsername(username);
   if (!user) throw new Error('USER_NOT_FOUND');
-  // deno-lint-ignore no-explicit-any -- test cast
+  // biome-ignore lint/suspicious/noExplicitAny: test cast
   const { passwordHash: _passwordHash, email: _email, ...safe } = user as any;
   const [stats, recipes] = await Promise.all([
     userModel.getUserStats(user.id),
@@ -106,7 +105,7 @@ async function getPublicProfile_fixed(
 ) {
   const user = await userModel.findByUsername(username);
   if (!user) throw new Error('USER_NOT_FOUND');
-  // deno-lint-ignore no-explicit-any -- test cast
+  // biome-ignore lint/suspicious/noExplicitAny: test cast
   const { passwordHash: _passwordHash, email: _email, ...safe } = user as any;
   const [stats, recipes] = await Promise.all([
     userModel.getUserStats(user.id),
@@ -155,10 +154,12 @@ function mockUserArb(username: string): fc.Arbitrary<MockUser> {
  * Generates a set of follow relationships (arbitrary, may or may not include the profile user).
  * Represented as "followerId→followingId" strings.
  */
-const followRelationshipsArb = fc.array(
-  fc.tuple(fc.uuid(), fc.uuid()).map(([a, b]) => `${a}→${b}`),
-  { minLength: 0, maxLength: 20 },
-).map((pairs) => new Set(pairs));
+const followRelationshipsArb = fc
+  .array(
+    fc.tuple(fc.uuid(), fc.uuid()).map(([a, b]) => `${a}→${b}`),
+    { minLength: 0, maxLength: 20 },
+  )
+  .map((pairs) => new Set(pairs));
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -179,125 +180,113 @@ const followRelationshipsArb = fc.array(
  */
 
 describe('Preservation 2.2 — Unknown username throws USER_NOT_FOUND', () => {
-  it(
-    '[PRESERVATION] getPublicProfile throws USER_NOT_FOUND for any username not in the database',
-    async () => {
-      /**
-       * Property: For any valid username string where the user model returns null
-       * (i.e., the user does not exist), `getPublicProfile` ALWAYS throws an error
-       * whose message is 'USER_NOT_FOUND'.
-       *
-       * This PASSES on unfixed code because the throw is unconditional when user is null.
-       * After the fix, this must still pass — the 404 path must not be affected.
-       *
-       * **Validates: Requirements 3.3**
-       */
-      await fc.assert(
-        fc.asyncProperty(
-          validUsernameArb,
-          followRelationshipsArb,
-          async (username, followRelationships) => {
-            // Model returns null → user does not exist
-            const userModel = createMockUserModel(null);
-            const followModel = createMockFollowModel(followRelationships);
+  it('[PRESERVATION] getPublicProfile throws USER_NOT_FOUND for any username not in the database', async () => {
+    /**
+     * Property: For any valid username string where the user model returns null
+     * (i.e., the user does not exist), `getPublicProfile` ALWAYS throws an error
+     * whose message is 'USER_NOT_FOUND'.
+     *
+     * This PASSES on unfixed code because the throw is unconditional when user is null.
+     * After the fix, this must still pass — the 404 path must not be affected.
+     *
+     * **Validates: Requirements 3.3**
+     */
+    await fc.assert(
+      fc.asyncProperty(
+        validUsernameArb,
+        followRelationshipsArb,
+        async (username, followRelationships) => {
+          // Model returns null → user does not exist
+          const userModel = createMockUserModel(null);
+          const followModel = createMockFollowModel(followRelationships);
 
-            await expect(
-              getPublicProfile_buggy(username, userModel, followModel),
-            ).rejects.toThrow('USER_NOT_FOUND');
-          },
-        ),
-        { numRuns: 100 },
-      );
-    },
-  );
+          await expect(getPublicProfile_buggy(username, userModel, followModel)).rejects.toThrow(
+            'USER_NOT_FOUND',
+          );
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
 
-  it(
-    '[PRESERVATION] getPublicProfile throws USER_NOT_FOUND for the concrete "nonexistent_user_xyz" case',
-    async () => {
-      /**
-       * Concrete example matching the observation in the task description.
-       *
-       * **Validates: Requirements 3.3**
-       */
-      const userModel = createMockUserModel(null);
-      const followModel = createMockFollowModel(new Set());
+  it('[PRESERVATION] getPublicProfile throws USER_NOT_FOUND for the concrete "nonexistent_user_xyz" case', async () => {
+    /**
+     * Concrete example matching the observation in the task description.
+     *
+     * **Validates: Requirements 3.3**
+     */
+    const userModel = createMockUserModel(null);
+    const followModel = createMockFollowModel(new Set());
 
-      await expect(
-        getPublicProfile_buggy('nonexistent_user_xyz', userModel, followModel),
-      ).rejects.toThrow('USER_NOT_FOUND');
-    },
-  );
+    await expect(
+      getPublicProfile_buggy('nonexistent_user_xyz', userModel, followModel),
+    ).rejects.toThrow('USER_NOT_FOUND');
+  });
 });
 
 describe('Preservation 2.1 — Unauthenticated profile fetch always returns isFollowing: false', () => {
-  it(
-    '[PRESERVATION] getPublicProfile(username, undefined) returns isFollowing: false for any valid username',
-    async () => {
-      /**
-       * Property: For any valid username and any follow relationship set,
-       * calling getPublicProfile with no requesterId (unauthenticated path)
-       * ALWAYS returns isFollowing: false.
-       *
-       * This PASSES on unfixed code because the hardcoded false is correct here.
-       * After the fix, this must still pass because requesterId is undefined → false.
-       *
-       * **Validates: Requirements 3.1**
-       */
-      await fc.assert(
-        fc.asyncProperty(
-          validUsernameArb,
-          followRelationshipsArb,
-          async (username, followRelationships) => {
-            const user = await fc.sample(mockUserArb(username), 1)[0];
-            const userModel = createMockUserModel(user);
-            const followModel = createMockFollowModel(followRelationships);
+  it('[PRESERVATION] getPublicProfile(username, undefined) returns isFollowing: false for any valid username', async () => {
+    /**
+     * Property: For any valid username and any follow relationship set,
+     * calling getPublicProfile with no requesterId (unauthenticated path)
+     * ALWAYS returns isFollowing: false.
+     *
+     * This PASSES on unfixed code because the hardcoded false is correct here.
+     * After the fix, this must still pass because requesterId is undefined → false.
+     *
+     * **Validates: Requirements 3.1**
+     */
+    await fc.assert(
+      fc.asyncProperty(
+        validUsernameArb,
+        followRelationshipsArb,
+        async (username, followRelationships) => {
+          const user = await fc.sample(mockUserArb(username), 1)[0];
+          const userModel = createMockUserModel(user);
+          const followModel = createMockFollowModel(followRelationships);
 
-            const result = await getPublicProfile_buggy(username, userModel, followModel);
+          const result = await getPublicProfile_buggy(username, userModel, followModel);
 
-            expect(result.isFollowing).toBe(false);
-          },
-        ),
-        { numRuns: 100 },
-      );
-    },
-  );
+          expect(result.isFollowing).toBe(false);
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
 
-  it(
-    '[PRESERVATION] getPublicProfile(username, undefined) returns isFollowing: false even when follow relationships exist',
-    async () => {
-      /**
-       * Concrete example: even if the follow model has relationships,
-       * the unauthenticated path (no requesterId) must return isFollowing: false.
-       *
-       * **Validates: Requirements 3.1**
-       */
-      const username = 'userB';
-      const user: MockUser = {
-        id: 'userB_id',
-        username: 'userB',
-        displayName: 'User B',
-        bio: null,
-        avatarUrl: null,
-        passwordHash: 'hashed',
-        email: 'userb@example.com',
-        isAdmin: false,
-        isBanned: false,
-        onboardingCompleted: true,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-        deletedAt: null,
-      };
+  it('[PRESERVATION] getPublicProfile(username, undefined) returns isFollowing: false even when follow relationships exist', async () => {
+    /**
+     * Concrete example: even if the follow model has relationships,
+     * the unauthenticated path (no requesterId) must return isFollowing: false.
+     *
+     * **Validates: Requirements 3.1**
+     */
+    const username = 'userB';
+    const user: MockUser = {
+      id: 'userB_id',
+      username: 'userB',
+      displayName: 'User B',
+      bio: null,
+      avatarUrl: null,
+      passwordHash: 'hashed',
+      email: 'userb@example.com',
+      isAdmin: false,
+      isBanned: false,
+      onboardingCompleted: true,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+      deletedAt: null,
+    };
 
-      // userA follows userB — but since there's no requesterId, isFollowing must still be false
-      const followRelationships = new Set(['userA_id→userB_id']);
-      const userModel = createMockUserModel(user);
-      const followModel = createMockFollowModel(followRelationships);
+    // userA follows userB — but since there's no requesterId, isFollowing must still be false
+    const followRelationships = new Set(['userA_id→userB_id']);
+    const userModel = createMockUserModel(user);
+    const followModel = createMockFollowModel(followRelationships);
 
-      const result = await getPublicProfile_buggy(username, userModel, followModel);
+    const result = await getPublicProfile_buggy(username, userModel, followModel);
 
-      expect(result.isFollowing).toBe(false);
-    },
-  );
+    expect(result.isFollowing).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -343,133 +332,127 @@ const requesterIdArb = fc.option(fc.uuid(), { nil: undefined });
  */
 
 describe('Preservation 2.3 — Profile fields unaffected by requesterId addition', () => {
-  it(
-    '[PRESERVATION] all non-isFollowing fields are identical between buggy and fixed implementations for any username',
-    async () => {
-      /**
-       * Property: For any valid username, user record, stats, follow relationships,
-       * and optional requesterId, the non-`isFollowing` fields returned by
-       * `getPublicProfile_buggy` and `getPublicProfile_fixed` are ALWAYS identical.
-       *
-       * The fields checked are: recipeCount, followerCount, followingCount,
-       * recipes, badges, bio, avatarUrl, username, displayName, id,
-       * isAdmin, isBanned, onboardingCompleted, createdAt, updatedAt, deletedAt.
-       *
-       * This PASSES on unfixed code because the buggy implementation computes all
-       * these fields identically to the fixed implementation — only `isFollowing`
-       * differs.
-       *
-       * **Validates: Requirements 3.4**
-       */
-      await fc.assert(
-        fc.asyncProperty(
-          validUsernameArb,
-          mockStatsArb,
-          followRelationshipsArb,
-          requesterIdArb,
-          async (username, stats, followRelationships, requesterId) => {
-            const user = await fc.sample(mockUserArb(username), 1)[0];
+  it('[PRESERVATION] all non-isFollowing fields are identical between buggy and fixed implementations for any username', async () => {
+    /**
+     * Property: For any valid username, user record, stats, follow relationships,
+     * and optional requesterId, the non-`isFollowing` fields returned by
+     * `getPublicProfile_buggy` and `getPublicProfile_fixed` are ALWAYS identical.
+     *
+     * The fields checked are: recipeCount, followerCount, followingCount,
+     * recipes, badges, bio, avatarUrl, username, displayName, id,
+     * isAdmin, isBanned, onboardingCompleted, createdAt, updatedAt, deletedAt.
+     *
+     * This PASSES on unfixed code because the buggy implementation computes all
+     * these fields identically to the fixed implementation — only `isFollowing`
+     * differs.
+     *
+     * **Validates: Requirements 3.4**
+     */
+    await fc.assert(
+      fc.asyncProperty(
+        validUsernameArb,
+        mockStatsArb,
+        followRelationshipsArb,
+        requesterIdArb,
+        async (username, stats, followRelationships, requesterId) => {
+          const user = await fc.sample(mockUserArb(username), 1)[0];
 
-            // Both implementations share the same user model and follow model
-            const userModel = createMockUserModel(user, stats, []);
-            const followModel = createMockFollowModel(followRelationships);
+          // Both implementations share the same user model and follow model
+          const userModel = createMockUserModel(user, stats, []);
+          const followModel = createMockFollowModel(followRelationships);
 
-            const [buggyResult, fixedResult] = await Promise.all([
-              getPublicProfile_buggy(username, userModel, followModel),
-              getPublicProfile_fixed(username, requesterId, userModel, followModel),
-            ]);
+          const [buggyResult, fixedResult] = await Promise.all([
+            getPublicProfile_buggy(username, userModel, followModel),
+            getPublicProfile_fixed(username, requesterId, userModel, followModel),
+          ]);
 
-            // All non-isFollowing fields must be identical
-            const nonFollowingFields = [
-              'recipeCount',
-              'followerCount',
-              'followingCount',
-              'recipes',
-              'badges',
-              'bio',
-              'avatarUrl',
-              'username',
-              'displayName',
-              'id',
-              'isAdmin',
-              'isBanned',
-              'onboardingCompleted',
-              'createdAt',
-              'updatedAt',
-              'deletedAt',
-            ] as const;
+          // All non-isFollowing fields must be identical
+          const nonFollowingFields = [
+            'recipeCount',
+            'followerCount',
+            'followingCount',
+            'recipes',
+            'badges',
+            'bio',
+            'avatarUrl',
+            'username',
+            'displayName',
+            'id',
+            'isAdmin',
+            'isBanned',
+            'onboardingCompleted',
+            'createdAt',
+            'updatedAt',
+            'deletedAt',
+          ] as const;
 
-            for (const field of nonFollowingFields) {
-              expect((buggyResult as Record<string, unknown>)[field]).toEqual(
-                (fixedResult as Record<string, unknown>)[field],
-              );
-            }
-          },
-        ),
-        { numRuns: 100 },
-      );
-    },
-  );
+          for (const field of nonFollowingFields) {
+            expect((buggyResult as Record<string, unknown>)[field]).toEqual(
+              (fixedResult as Record<string, unknown>)[field],
+            );
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
 
-  it(
-    '[PRESERVATION] concrete example — recipeCount, followerCount, followingCount, bio, avatarUrl are unchanged',
-    async () => {
-      /**
-       * Concrete example matching the observation in the task description.
-       * Verifies that the specific fields mentioned in the task are returned
-       * identically by both implementations.
-       *
-       * **Validates: Requirements 3.4**
-       */
-      const username = 'brewmaster';
-      const user: MockUser = {
-        id: 'brewmaster_id',
-        username: 'brewmaster',
-        displayName: 'Brew Master',
-        bio: 'Passionate about craft beer',
-        avatarUrl: 'https://example.com/avatar.jpg',
-        passwordHash: 'hashed_password',
-        email: 'brew@example.com',
-        isAdmin: false,
-        isBanned: false,
-        onboardingCompleted: true,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-06-01'),
-        deletedAt: null,
-      };
-      const stats: MockStats = { recipeCount: 12, followerCount: 42, followingCount: 7 };
+  it('[PRESERVATION] concrete example — recipeCount, followerCount, followingCount, bio, avatarUrl are unchanged', async () => {
+    /**
+     * Concrete example matching the observation in the task description.
+     * Verifies that the specific fields mentioned in the task are returned
+     * identically by both implementations.
+     *
+     * **Validates: Requirements 3.4**
+     */
+    const username = 'brewmaster';
+    const user: MockUser = {
+      id: 'brewmaster_id',
+      username: 'brewmaster',
+      displayName: 'Brew Master',
+      bio: 'Passionate about craft beer',
+      avatarUrl: 'https://example.com/avatar.jpg',
+      passwordHash: 'hashed_password',
+      email: 'brew@example.com',
+      isAdmin: false,
+      isBanned: false,
+      onboardingCompleted: true,
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-06-01'),
+      deletedAt: null,
+    };
+    const stats: MockStats = { recipeCount: 12, followerCount: 42, followingCount: 7 };
 
-      const userModel = createMockUserModel(user, stats, []);
-      const followModel = createMockFollowModel(new Set(['someUser_id→brewmaster_id']));
+    const userModel = createMockUserModel(user, stats, []);
+    const followModel = createMockFollowModel(new Set(['someUser_id→brewmaster_id']));
 
-      const [buggyResult, fixedResult] = await Promise.all([
-        getPublicProfile_buggy(username, userModel, followModel),
-        // Fixed version with a requesterId that IS following — isFollowing will differ, but other fields must not
-        getPublicProfile_fixed(username, 'someUser_id', userModel, followModel),
-      ]);
+    const [buggyResult, fixedResult] = await Promise.all([
+      getPublicProfile_buggy(username, userModel, followModel),
+      // Fixed version with a requesterId that IS following — isFollowing will differ, but other fields must not
+      getPublicProfile_fixed(username, 'someUser_id', userModel, followModel),
+    ]);
 
-      // isFollowing DOES differ (that's the bug being fixed)
-      expect(buggyResult.isFollowing).toBe(false);
-      expect(fixedResult.isFollowing).toBe(true);
+    // isFollowing DOES differ (that's the bug being fixed)
+    expect(buggyResult.isFollowing).toBe(false);
+    expect(fixedResult.isFollowing).toBe(true);
 
-      // All other fields must be identical
-      expect(buggyResult.recipeCount).toBe(fixedResult.recipeCount);
-      expect(buggyResult.followerCount).toBe(fixedResult.followerCount);
-      expect(buggyResult.followingCount).toBe(fixedResult.followingCount);
-      expect(buggyResult.recipes).toEqual(fixedResult.recipes);
-      expect(buggyResult.badges).toEqual(fixedResult.badges);
-      expect((buggyResult as Record<string, unknown>).bio).toBe(
-        (fixedResult as Record<string, unknown>).bio,
-      );
-      expect((buggyResult as Record<string, unknown>).avatarUrl).toBe(
-        (fixedResult as Record<string, unknown>).avatarUrl,
-      );
-      expect((buggyResult as Record<string, unknown>).username).toBe(
-        (fixedResult as Record<string, unknown>).username,
-      );
-      expect((buggyResult as Record<string, unknown>).displayName).toBe(
-        (fixedResult as Record<string, unknown>).displayName,
-      );
-    },
-  );
+    // All other fields must be identical
+    expect(buggyResult.recipeCount).toBe(fixedResult.recipeCount);
+    expect(buggyResult.followerCount).toBe(fixedResult.followerCount);
+    expect(buggyResult.followingCount).toBe(fixedResult.followingCount);
+    expect(buggyResult.recipes).toEqual(fixedResult.recipes);
+    expect(buggyResult.badges).toEqual(fixedResult.badges);
+    expect((buggyResult as Record<string, unknown>).bio).toBe(
+      (fixedResult as Record<string, unknown>).bio,
+    );
+    expect((buggyResult as Record<string, unknown>).avatarUrl).toBe(
+      (fixedResult as Record<string, unknown>).avatarUrl,
+    );
+    expect((buggyResult as Record<string, unknown>).username).toBe(
+      (fixedResult as Record<string, unknown>).username,
+    );
+    expect((buggyResult as Record<string, unknown>).displayName).toBe(
+      (fixedResult as Record<string, unknown>).displayName,
+    );
+  });
 });

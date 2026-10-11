@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PaginationControls } from './PaginationControls.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { PaginationControls } from './PaginationControls.tsx';
 
 function renderControls(props: Parameters<typeof PaginationControls>[0]) {
   return render(

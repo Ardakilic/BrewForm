@@ -11,11 +11,11 @@ interface CategoryTabsProps {
 
 export function CategoryTabs({ tabs, active, onSelect }: CategoryTabsProps) {
   return (
-    <div className='flex flex-wrap gap-2 mb-4'>
+    <div className="flex flex-wrap gap-2 mb-4">
       {tabs.map((tab) => (
         <button
           key={tab.value}
-          type='button'
+          type="button"
           onClick={() => onSelect(tab.value)}
           className={[
             'rounded-full px-3 py-1.5 text-sm transition-colors',

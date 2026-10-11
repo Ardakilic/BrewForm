@@ -36,12 +36,12 @@ export function AuthorButton({ author }: { author: AuthorButtonAuthor }) {
   const navigate = useNavigate();
   return (
     <button
-      type='button'
+      type="button"
       onClick={(e) => {
         e.stopPropagation();
         navigate(`/u/${author.username}`);
       }}
-      className='hover:underline'
+      className="hover:underline"
       style={AUTHOR_BUTTON_STYLE}
     >
       {author.displayName || author.username}

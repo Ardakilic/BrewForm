@@ -1,29 +1,27 @@
 import '../test-setup.ts';
-import { beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
 import { Hono } from 'hono';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryCacheProvider } from '../utils/cache/index.ts';
 import { setCacheProvider } from '../utils/cache/singleton.ts';
 import { authRateLimitMiddleware, log, rateLimitMiddleware } from './rateLimit.ts';
 
-describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Rate Limit Middleware', () => {
   beforeEach(() => {
     setCacheProvider(new InMemoryCacheProvider());
   });
 
   function setupSpies() {
     return {
-      debug: spy(log, 'debug'),
-      warn: spy(log, 'warn'),
-      error: spy(log, 'error'),
+      debug: vi.spyOn(log, 'debug'),
+      warn: vi.spyOn(log, 'warn'),
+      error: vi.spyOn(log, 'error'),
     };
   }
 
   function restoreSpies(spies: ReturnType<typeof setupSpies>) {
-    spies.debug.restore();
-    spies.warn.restore();
-    spies.error.restore();
+    spies.debug.mockRestore();
+    spies.warn.mockRestore();
+    spies.error.mockRestore();
   }
 
   describe('rateLimitMiddleware', () => {
@@ -46,7 +44,7 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
         });
 
         expect(res.status).toBe(200);
-        assertSpyCalls(spies.warn, 0);
+        expect(spies.warn).toHaveBeenCalledTimes(0);
       } finally {
         restoreSpies(spies);
       }
@@ -67,11 +65,12 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
         expect(body.success).toBe(false);
         expect(body.error.code).toBe('RATE_LIMITED');
         expect(body.error.requestId).toBe('req-test-1');
-        assertSpyCalls(spies.warn, 1);
-        assertSpyCallArgs(spies.warn, 0, [
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        expect(spies.warn).toHaveBeenNthCalledWith(
+          1,
           { limit: 2 },
           'rateLimitMiddleware rate limit exceeded',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }
@@ -99,7 +98,7 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
         });
 
         expect(res.status).toBe(200);
-        assertSpyCalls(spies.warn, 0);
+        expect(spies.warn).toHaveBeenCalledTimes(0);
       } finally {
         restoreSpies(spies);
       }
@@ -120,11 +119,12 @@ describe('Rate Limit Middleware', { sanitizeOps: false, sanitizeResources: false
         expect(body.success).toBe(false);
         expect(body.error.code).toBe('RATE_LIMITED');
         expect(body.error.requestId).toBe('req-test-1');
-        assertSpyCalls(spies.warn, 1);
-        assertSpyCallArgs(spies.warn, 0, [
+        expect(spies.warn).toHaveBeenCalledTimes(1);
+        expect(spies.warn).toHaveBeenNthCalledWith(
+          1,
           { userId: 'user-123', limit: 2 },
           'authRateLimitMiddleware rate limit exceeded',
-        ]);
+        );
       } finally {
         restoreSpies(spies);
       }

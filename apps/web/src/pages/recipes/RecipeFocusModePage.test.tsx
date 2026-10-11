@@ -13,8 +13,9 @@
  *  - TastingNotesSection conditional rendering
  *  - SEO canonical + noIndex
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -29,9 +30,19 @@ import { RecipeFocusModePage } from './RecipeFocusModePage.tsx';
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
   useParams: vi.fn(),
 }));
 
@@ -49,30 +60,30 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 }));
 
 vi.mock('../../components/recipe/StatCards.tsx', () => ({
-  StatCards: () => <div data-testid='stat-cards' />,
+  StatCards: () => <div data-testid="stat-cards" />,
 }));
 
 vi.mock('../../components/recipe/BeanSection.tsx', () => ({
-  BeanSection: () => <div data-testid='bean-section' />,
+  BeanSection: () => <div data-testid="bean-section" />,
 }));
 
 vi.mock('../../components/recipe/BrewTimeline.tsx', () => ({
-  BrewTimeline: () => <div data-testid='brew-timeline' />,
+  BrewTimeline: () => <div data-testid="brew-timeline" />,
 }));
 
 vi.mock('../../components/recipe/EquipmentSection.tsx', () => ({
-  EquipmentSection: () => <div data-testid='equipment-section' />,
+  EquipmentSection: () => <div data-testid="equipment-section" />,
 }));
 
 vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({
-  TastingNotesSection: () => <div data-testid='tasting-notes-section' />,
+  TastingNotesSection: () => <div data-testid="tasting-notes-section" />,
 }));
 
-import { useParams } from 'react-router';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { recipeApi, tasteApi } from '../../api/index.ts';
 import type { RecipeDetailOutput } from '@brewform/shared/schemas';
+import { useParams } from 'react-router';
+import { recipeApi, tasteApi } from '../../api/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseParams = vi.mocked(useParams);
 const mockUseTranslation = vi.mocked(useTranslation);

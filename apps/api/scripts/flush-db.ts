@@ -2,16 +2,16 @@
  * Truncate all database tables.
  *
  * Usage:
- *   deno run --allow-env --allow-net apps/api/scripts/flush-db.ts
+ *   pnpm --filter @brewform/api exec tsx scripts/flush-db.ts
  *   make flush-db
  */
 
-import { getTableConfig } from 'drizzle-orm/pg-core';
 import * as schema from '@brewform/db/schema';
+import { getTableConfig } from 'drizzle-orm/pg-core';
 
-if (!Deno.env.get('DATABASE_URL')) {
+if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL environment variable is required.');
-  Deno.exit(1);
+  process.exit(1);
 }
 
 const { client } = await import('@brewform/db');
@@ -27,14 +27,12 @@ for (const value of Object.values(schema)) {
 
 console.log(`Truncating ${TABLE_NAMES.length} database tables...`);
 try {
-  await client.unsafe(
-    `TRUNCATE TABLE ${TABLE_NAMES.join(', ')} RESTART IDENTITY CASCADE`,
-  );
+  await client.unsafe(`TRUNCATE TABLE ${TABLE_NAMES.join(', ')} RESTART IDENTITY CASCADE`);
   console.log(`Truncated ${TABLE_NAMES.length} tables successfully.`);
 } catch (error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`Failed to truncate tables: ${message}`);
-  Deno.exit(1);
+  process.exit(1);
 } finally {
   await client.end();
 }

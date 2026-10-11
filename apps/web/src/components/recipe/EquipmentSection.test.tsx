@@ -7,10 +7,10 @@
  * All user-visible strings use the i18n t() function.
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
+import { describe, expect, it, vi } from 'vitest';
 import { EquipmentSection } from './EquipmentSection.tsx';
 
 // ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ vi.mock('react-router', () => ({
 vi.mock('../icons/equipment/index.ts', () => ({
   getEquipmentIcon: () =>
     function MockIcon({ size }: { size?: number }) {
-      return <svg data-testid='equipment-icon' width={size} height={size} />;
+      return <svg data-testid="equipment-icon" width={size} height={size} />;
     },
 }));
 
@@ -91,10 +91,7 @@ describe('EquipmentSection — unit tests', () => {
   it('does NOT show compatibility status text', () => {
     render(
       <EquipmentSection
-        items={[
-          makeItem({ id: 'a', equipmentId: 'ea' }),
-          makeItem({ id: 'b', equipmentId: 'eb' }),
-        ]}
+        items={[makeItem({ id: 'a', equipmentId: 'ea' }), makeItem({ id: 'b', equipmentId: 'eb' })]}
       />,
     );
     expect(screen.queryByText('all compatible')).not.toBeInTheDocument();
@@ -103,9 +100,7 @@ describe('EquipmentSection — unit tests', () => {
 
   it('clicking an item navigates to /recipes?equipmentId={id}', async () => {
     const user = userEvent.setup();
-    render(
-      <EquipmentSection items={[makeItem({ id: 'item-x', equipmentId: 'equip-abc' })]} />,
-    );
+    render(<EquipmentSection items={[makeItem({ id: 'item-x', equipmentId: 'equip-abc' })]} />);
     const button = screen.getByRole('button', { name: /Test Item/i });
     await user.click(button);
     expect(mockNavigate).toHaveBeenCalledWith('/recipes?equipmentId=equip-abc');
@@ -125,7 +120,7 @@ describe('EquipmentSection — unit tests', () => {
 
   it('renders without crashing when item type is undefined', () => {
     const item = { id: 'x', equipmentId: 'eq-x', name: 'No Type Item', type: undefined };
-    // deno-lint-ignore no-explicit-any -- test cast
+    // biome-ignore lint/suspicious/noExplicitAny: test cast
     const { container } = render(<EquipmentSection items={[item as any]} />);
     expect(container.firstChild).not.toBeNull();
   });
@@ -137,13 +132,13 @@ describe('EquipmentSection — unit tests', () => {
   });
 
   it('renders brewerDetails as a Main Brewer card', () => {
-    render(<EquipmentSection items={[makeItem()]} brewerDetails='V60 02 ceramic' />);
+    render(<EquipmentSection items={[makeItem()]} brewerDetails="V60 02 ceramic" />);
     expect(screen.getByText('V60 02 ceramic')).toBeInTheDocument();
     expect(screen.getByText('Main Brewer')).toBeInTheDocument();
   });
 
   it('renders when items is empty but brewerDetails is provided', () => {
-    const { container } = render(<EquipmentSection items={[]} brewerDetails='Aeropress' />);
+    const { container } = render(<EquipmentSection items={[]} brewerDetails="Aeropress" />);
     expect(container.firstChild).not.toBeNull();
     expect(screen.getByText('Aeropress')).toBeInTheDocument();
     expect(screen.getByText('Main Brewer')).toBeInTheDocument();
@@ -151,12 +146,7 @@ describe('EquipmentSection — unit tests', () => {
 
   it('clicking main brewer navigates to /recipes?mainBrewer={encoded}', async () => {
     const user = userEvent.setup();
-    render(
-      <EquipmentSection
-        items={[]}
-        brewerDetails='V60 02 ceramic'
-      />,
-    );
+    render(<EquipmentSection items={[]} brewerDetails="V60 02 ceramic" />);
     const button = screen.getByRole('button', { name: /V60 02 ceramic/i });
     await user.click(button);
     expect(mockNavigate).toHaveBeenCalledWith('/recipes?mainBrewer=V60%2002%20ceramic');
@@ -164,12 +154,7 @@ describe('EquipmentSection — unit tests', () => {
 
   it('pressing Enter on main brewer navigates to /recipes?mainBrewer={encoded}', async () => {
     const user = userEvent.setup();
-    render(
-      <EquipmentSection
-        items={[]}
-        brewerDetails='V60 02 ceramic'
-      />,
-    );
+    render(<EquipmentSection items={[]} brewerDetails="V60 02 ceramic" />);
     const button = screen.getByRole('button', { name: /V60 02 ceramic/i });
     await user.type(button, '{enter}');
     expect(mockNavigate).toHaveBeenCalledWith('/recipes?mainBrewer=V60%2002%20ceramic');
@@ -195,22 +180,19 @@ describe('EquipmentSection — property tests', () => {
     });
 
     fc.assert(
-      fc.property(
-        fc.array(itemArb, { minLength: 1, maxLength: 10 }),
-        (items) => {
-          const { unmount } = render(<EquipmentSection items={items} />);
+      fc.property(fc.array(itemArb, { minLength: 1, maxLength: 10 }), (items) => {
+        const { unmount } = render(<EquipmentSection items={items} />);
 
-          // Item count is shown
-          const countLabel = items.length === 1 ? '1 item' : `${items.length} items`;
-          expect(screen.getByText(new RegExp(countLabel))).toBeInTheDocument();
+        // Item count is shown
+        const countLabel = items.length === 1 ? '1 item' : `${items.length} items`;
+        expect(screen.getByText(new RegExp(countLabel))).toBeInTheDocument();
 
-          // No compatibility text
-          expect(screen.queryByText('all compatible')).not.toBeInTheDocument();
-          expect(screen.queryByText('incompatible items')).not.toBeInTheDocument();
+        // No compatibility text
+        expect(screen.queryByText('all compatible')).not.toBeInTheDocument();
+        expect(screen.queryByText('incompatible items')).not.toBeInTheDocument();
 
-          unmount();
-        },
-      ),
+        unmount();
+      }),
       { numRuns: 50 },
     );
   });
@@ -227,15 +209,12 @@ describe('EquipmentSection — property tests', () => {
     });
 
     fc.assert(
-      fc.property(
-        fc.array(itemArb, { minLength: 1, maxLength: 10 }),
-        (items) => {
-          const { unmount } = render(<EquipmentSection items={items} />);
-          const buttons = screen.getAllByRole('button');
-          expect(buttons).toHaveLength(items.length);
-          unmount();
-        },
-      ),
+      fc.property(fc.array(itemArb, { minLength: 1, maxLength: 10 }), (items) => {
+        const { unmount } = render(<EquipmentSection items={items} />);
+        const buttons = screen.getAllByRole('button');
+        expect(buttons).toHaveLength(items.length);
+        unmount();
+      }),
       { numRuns: 50 },
     );
   });

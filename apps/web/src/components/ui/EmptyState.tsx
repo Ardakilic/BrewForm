@@ -14,7 +14,7 @@ interface EmptyStateProps {
  */
 export function EmptyState({ message, action }: EmptyStateProps) {
   return (
-    <div className='text-center py-12' style={{ color: 'var(--text-tertiary)' }}>
+    <div className="text-center py-12" style={{ color: 'var(--text-tertiary)' }}>
       <p className={action ? 'mb-2' : undefined}>{message}</p>
       {action}
     </div>

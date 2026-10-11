@@ -1720,11 +1720,7 @@
           "model": "High Uniformity (HU) Burrs",
           "type": "Aftermarket burr upgrade",
           "burr_type": "Flat (various sizes: 64, 80, 98mm)",
-          "compatible_grinders": [
-            "Lagom P64/P100",
-            "Weber EG-1",
-            "Fellow Ode"
-          ],
+          "compatible_grinders": ["Lagom P64/P100", "Weber EG-1", "Fellow Ode"],
           "notable_features": "Taiwanese precision burr manufacturer; most popular aftermarket upgrade burr; transforms many home grinders",
           "approx_price_usd": "100–300",
           "origin": "Taiwan"
@@ -3743,10 +3739,7 @@
           "brand": "Fellow",
           "model": "Atmos Vacuum Canister",
           "type": "Coffee storage",
-          "sizes_liter": [
-            0.7,
-            1.2
-          ],
+          "sizes_liter": [0.7, 1.2],
           "notable_features": "Vacuum seal; glass; matte black or clear",
           "approx_price_usd": "30-45",
           "origin": "USA",

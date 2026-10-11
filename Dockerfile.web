@@ -2,39 +2,40 @@
 # BrewForm — Dockerfile.web (Web SPA image)
 #
 # Stages:
-#   deps    — install / cache Deno dependencies (same as the API Dockerfile)
+#   deps    — install / cache pnpm dependencies (same as the API Dockerfile)
 #   builder — Vite build of apps/web → apps/web/dist (VITE_* baked in at build time)
 #   runner  — Caddy serving the static dist/ on :80
 # ============================================================
 
 # --- Stage 1: Dependencies ---
-# Copies only manifest files and caches all Deno/npm dependencies.
-# Identical to the API Dockerfile's `deps` stage so both images share the same
-# dependency graph and lockfile resolution.
-FROM denoland/deno:debian-2.9.3 AS deps
+# Copies only manifest files, prefetches the pnpm store, then copies the full
+# source and installs offline. Identical to the API Dockerfile's `deps` stage
+# so both images share the same dependency graph and lockfile resolution.
+FROM node:24.21.0-bookworm-slim AS deps
 WORKDIR /app
-COPY deno.json deno.lock package.json ./
-COPY apps/api/package.json apps/api/deno.json ./apps/api/
-COPY apps/web/package.json apps/web/deno.json ./apps/web/
-COPY packages/shared/package.json packages/shared/deno.json ./packages/shared/
-COPY packages/db/package.json packages/db/deno.json ./packages/db/
-RUN deno ci
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable && corepack prepare pnpm@12.10.1 --activate
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/db/package.json ./packages/db/
+RUN pnpm fetch
+COPY . .
+RUN pnpm install --frozen-lockfile --offline
 
 # --- Stage 2: Build (Vite) ---
-# Full source copy + production Vite build. The VITE_* values are passed as
+# Production Vite build of the web workspace. The VITE_* values are passed as
 # build ARGs, promoted to ENV, and inlined into the bundle by Vite's `define`
 # (apps/web/vite.config.ts). The defaults match the dev/local topology.
-FROM denoland/deno:debian-2.9.3 AS builder
+FROM deps AS builder
 WORKDIR /app
-COPY --from=deps /deno-dir /deno-dir
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
 # Build-time args → ENV so Vite's define picks them up
 ARG VITE_API_URL=/api/v1
 ARG VITE_PUBLIC_APP_URL=http://localhost:8080
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_PUBLIC_APP_URL=$VITE_PUBLIC_APP_URL
-RUN deno task --cwd apps/web build
+RUN pnpm --filter @brewform/web run build
 # Output is at apps/web/dist/
 
 # --- Stage 3: Runtime (Caddy) ---

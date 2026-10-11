@@ -25,18 +25,16 @@ interface PaginationControlsProps {
  * props are optional overrides that default to the shared `common.*` i18n
  * strings. `pageLabel` is expanded by substituting `{page}` and `{total}`.
  */
-export function PaginationControls(
-  {
-    page,
-    totalPages,
-    onPageChange,
-    previousLabel,
-    nextLabel,
-    pageLabel,
-    variant = 'hide',
-    showPageLabel = true,
-  }: PaginationControlsProps,
-) {
+export function PaginationControls({
+  page,
+  totalPages,
+  onPageChange,
+  previousLabel,
+  nextLabel,
+  pageLabel,
+  variant = 'hide',
+  showPageLabel = true,
+}: PaginationControlsProps) {
   const { t } = useTranslation();
   const prevLabel = previousLabel ?? t('common.previous');
   const nextLabelText = nextLabel ?? t('common.next');
@@ -48,31 +46,28 @@ export function PaginationControls(
   const showNext = variant === 'disable' || page < totalPages;
 
   return (
-    <div className='flex justify-center gap-2 mt-8'>
+    <div className="flex justify-center gap-2 mt-8">
       {showPrev && (
         <button
-          type='button'
+          type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={variant === 'disable' && page <= 1}
-          className='btn-secondary'
+          className="btn-secondary"
         >
           {prevLabel}
         </button>
       )}
       {showPageLabel && (
-        <span
-          className='py-2 px-4 text-sm'
-          style={{ color: 'var(--text-secondary)' }}
-        >
+        <span className="py-2 px-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {pageText}
         </span>
       )}
       {showNext && (
         <button
-          type='button'
+          type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={variant === 'disable' && page >= totalPages}
-          className='btn-secondary'
+          className="btn-secondary"
         >
           {nextLabelText}
         </button>

@@ -32,10 +32,10 @@ export function RecipeNotesSection({ recipeId, initialNotes = '' }: RecipeNotesS
   };
 
   return (
-    <section className='card' aria-label={t('recipe.personalNotes')}>
-      <div className='flex items-center justify-between mb-4'>
+    <section className="card" aria-label={t('recipe.personalNotes')}>
+      <div className="flex items-center justify-between mb-4">
         <span
-          className='text-xs font-semibold uppercase tracking-widest'
+          className="text-xs font-semibold uppercase tracking-widest"
           style={{ color: 'var(--text-tertiary)' }}
         >
           {t('recipe.personalNotes')}
@@ -45,28 +45,28 @@ export function RecipeNotesSection({ recipeId, initialNotes = '' }: RecipeNotesS
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder={t('recipe.notes.placeholder')}
-        className='input-field text-sm w-full min-h-[120px] resize-y print-hidden'
+        className="input-field text-sm w-full min-h-[120px] resize-y print-hidden"
         maxLength={10000}
         aria-label={t('recipe.personalNotes')}
       />
-      <p className='print-only whitespace-pre-wrap text-sm' style={{ lineHeight: '1.6' }}>
+      <p className="print-only whitespace-pre-wrap text-sm" style={{ lineHeight: '1.6' }}>
         {notes || t('recipe.notes.placeholder')}
       </p>
-      <div className='flex items-center justify-between mt-3'>
-        <span className='text-xs print-hidden' style={{ color: 'var(--text-tertiary)' }}>
+      <div className="flex items-center justify-between mt-3">
+        <span className="text-xs print-hidden" style={{ color: 'var(--text-tertiary)' }}>
           {notes.length} / 10000
         </span>
-        <div className='flex items-center gap-2'>
+        <div className="flex items-center gap-2">
           {saved && (
-            <span className='text-xs' style={{ color: 'var(--accent-primary)' }}>
+            <span className="text-xs" style={{ color: 'var(--accent-primary)' }}>
               {t('recipe.notes.saved')}
             </span>
           )}
           <button
-            type='button'
+            type="button"
             onClick={handleSave}
             disabled={saving}
-            className='btn-primary text-sm min-h-11 px-4'
+            className="btn-primary text-sm min-h-11 px-4"
           >
             {saving ? t('common.loading') : t('common.save')}
           </button>

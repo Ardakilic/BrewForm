@@ -11,13 +11,13 @@
  * intensity value (1, 2, or 3).
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import fc from 'fast-check';
-import { TastingNotesSection } from './TastingNotesSection.tsx';
-import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import type { ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { SCAA_CATEGORIES } from '../../utils/radar-chart-data.ts';
+import { TastingNotesSection } from './TastingNotesSection.tsx';
 
 function withI18n(ui: ReactNode) {
   return <I18nProvider>{ui}</I18nProvider>;
@@ -44,14 +44,14 @@ vi.mock('../../utils/radar-chart-data.ts', async (importOriginal) => {
 // Mock ScaaRadarChart to avoid SVG rendering complexity
 vi.mock('./ScaaRadarChart.tsx', () => ({
   ScaaRadarChart: ({ categoryValues }: { categoryValues: Record<string, number> }) => (
-    <div data-testid='scaa-radar-chart' data-categories={JSON.stringify(categoryValues)} />
+    <div data-testid="scaa-radar-chart" data-categories={JSON.stringify(categoryValues)} />
   ),
 }));
 
 // Mock IntensityDots to a simple div with data-intensity attribute
 vi.mock('./IntensityDots.tsx', () => ({
   IntensityDots: ({ intensity }: { intensity: number }) => (
-    <div data-testid='intensity-dots' data-intensity={intensity} />
+    <div data-testid="intensity-dots" data-intensity={intensity} />
   ),
 }));
 
@@ -95,9 +95,7 @@ describe('TastingNotesSection — unit tests', () => {
   });
 
   it('shows personalNotes blockquote when present even with no taste notes', () => {
-    render(
-      withI18n(<TastingNotesSection tasteNotes={[]} personalNotes='Bright and citrusy.' />),
-    );
+    render(withI18n(<TastingNotesSection tasteNotes={[]} personalNotes="Bright and citrusy." />));
     const blockquote = document.querySelector('blockquote');
     expect(blockquote).not.toBeNull();
     expect(screen.getByText('Bright and citrusy.')).toBeInTheDocument();
@@ -153,7 +151,7 @@ describe('TastingNotesSection — unit tests', () => {
     ];
     render(
       withI18n(
-        <TastingNotesSection tasteNotes={notes} personalNotes='Very floral and delicate.' />,
+        <TastingNotesSection tasteNotes={notes} personalNotes="Very floral and delicate." />,
       ),
     );
     const blockquote = document.querySelector('blockquote');
@@ -199,9 +197,7 @@ describe('TastingNotesSection — Property 8: Taste note grouping and intensity 
   it('each note appears in exactly one group — total intensity-dots equals total notes', () => {
     fc.assert(
       fc.property(tasteNotesArb, (notes) => {
-        const { container } = render(
-          withI18n(<TastingNotesSection tasteNotes={notes} />),
-        );
+        const { container } = render(withI18n(<TastingNotesSection tasteNotes={notes} />));
 
         const intensityDots = container.querySelectorAll('[data-testid="intensity-dots"]');
         // Each note should have exactly one intensity-dots rendered
@@ -220,9 +216,7 @@ describe('TastingNotesSection — Property 8: Taste note grouping and intensity 
   it('each note intensity indicator receives exactly the note intensity value', () => {
     fc.assert(
       fc.property(tasteNotesArb, (notes) => {
-        const { container } = render(
-          withI18n(<TastingNotesSection tasteNotes={notes} />),
-        );
+        const { container } = render(withI18n(<TastingNotesSection tasteNotes={notes} />));
 
         const intensityDots = Array.from(
           container.querySelectorAll('[data-testid="intensity-dots"]'),
@@ -256,9 +250,7 @@ describe('TastingNotesSection — Property 8: Taste note grouping and intensity 
   it('number of rendered category groups equals number of distinct rootCategoryNames', () => {
     fc.assert(
       fc.property(tasteNotesArb, (notes) => {
-        const { container } = render(
-          withI18n(<TastingNotesSection tasteNotes={notes} />),
-        );
+        const { container } = render(withI18n(<TastingNotesSection tasteNotes={notes} />));
 
         const distinctCategories = new Set(notes.map((n) => n.rootCategoryName));
 

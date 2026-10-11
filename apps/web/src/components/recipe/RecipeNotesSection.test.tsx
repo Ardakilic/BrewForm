@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecipeNotesSection } from './RecipeNotesSection.tsx';
 
 vi.mock('../../api/index.ts', () => ({
@@ -44,14 +44,14 @@ beforeEach(() => {
 
 describe('RecipeNotesSection', () => {
   it('renders textarea with initial notes', () => {
-    render(<RecipeNotesSection recipeId='recipe-1' initialNotes='Test notes' />);
+    render(<RecipeNotesSection recipeId="recipe-1" initialNotes="Test notes" />);
 
     expect(screen.getByRole('textbox')).toHaveValue('Test notes');
     expect(screen.getByText('Personal Notes')).toBeInTheDocument();
   });
 
   it('updates textarea value on change', async () => {
-    render(<RecipeNotesSection recipeId='recipe-1' initialNotes='' />);
+    render(<RecipeNotesSection recipeId="recipe-1" initialNotes="" />);
 
     const textarea = screen.getByRole('textbox');
     await userEvent.type(textarea, 'New notes');
@@ -62,7 +62,7 @@ describe('RecipeNotesSection', () => {
   it('calls saveNotes API when save button is clicked', async () => {
     mockRecipeApi.saveNotes.mockResolvedValue({ message: 'Notes saved' });
 
-    render(<RecipeNotesSection recipeId='recipe-1' initialNotes='Notes to save' />);
+    render(<RecipeNotesSection recipeId="recipe-1" initialNotes="Notes to save" />);
 
     const saveButton = screen.getByRole('button', { name: 'Save' });
     await userEvent.click(saveButton);
@@ -75,7 +75,7 @@ describe('RecipeNotesSection', () => {
   it('shows saved message after successful save', async () => {
     mockRecipeApi.saveNotes.mockResolvedValue({ message: 'Notes saved' });
 
-    render(<RecipeNotesSection recipeId='recipe-1' initialNotes='' />);
+    render(<RecipeNotesSection recipeId="recipe-1" initialNotes="" />);
 
     const saveButton = screen.getByRole('button', { name: 'Save' });
     await userEvent.click(saveButton);
@@ -86,11 +86,11 @@ describe('RecipeNotesSection', () => {
   });
 
   it('disables save button while saving', async () => {
-    mockRecipeApi.saveNotes.mockImplementation(() =>
-      new Promise((resolve) => setTimeout(resolve, 100))
+    mockRecipeApi.saveNotes.mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 100)),
     );
 
-    render(<RecipeNotesSection recipeId='recipe-1' initialNotes='' />);
+    render(<RecipeNotesSection recipeId="recipe-1" initialNotes="" />);
 
     const saveButton = screen.getByRole('button', { name: 'Save' });
     await userEvent.click(saveButton);

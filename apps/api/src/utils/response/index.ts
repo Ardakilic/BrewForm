@@ -6,9 +6,10 @@
  * (not StatusCode) — StatusCode includes 1xx codes which aren't valid
  * for JSON responses and cause type narrowing errors.
  */
+
+import type { CursorPaginationMeta, PaginationMeta } from '@brewform/shared/types';
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import type { CursorPaginationMeta, PaginationMeta } from '@brewform/shared/types';
 
 /** Return a success envelope with optional pagination metadata. */
 export function success<T>(
@@ -17,14 +18,17 @@ export function success<T>(
   status: ContentfulStatusCode = 200,
   meta?: { pagination?: PaginationMeta },
 ) {
-  return c.json({
-    success: true as const,
-    data,
-    meta: {
-      requestId: c.get('requestId'),
-      ...(meta?.pagination ? { pagination: meta.pagination } : {}),
+  return c.json(
+    {
+      success: true as const,
+      data,
+      meta: {
+        requestId: c.get('requestId'),
+        ...(meta?.pagination ? { pagination: meta.pagination } : {}),
+      },
     },
-  }, status);
+    status,
+  );
 }
 
 /**
@@ -47,14 +51,17 @@ export function paginated<T>(
       c.header(name, value);
     }
   }
-  return c.json({
-    success: true as const,
-    data,
-    meta: {
-      requestId: c.get('requestId'),
-      pagination,
+  return c.json(
+    {
+      success: true as const,
+      data,
+      meta: {
+        requestId: c.get('requestId'),
+        pagination,
+      },
     },
-  }, 200);
+    200,
+  );
 }
 
 /**
@@ -80,14 +87,17 @@ export function cursorPaginated<T>(
       c.header(name, value);
     }
   }
-  return c.json({
-    success: true as const,
-    data,
-    meta: {
-      requestId: c.get('requestId'),
-      cursor: cursorMeta,
+  return c.json(
+    {
+      success: true as const,
+      data,
+      meta: {
+        requestId: c.get('requestId'),
+        cursor: cursorMeta,
+      },
     },
-  }, 200);
+    200,
+  );
 }
 
 /**
@@ -107,15 +117,18 @@ export function error(
   status: ContentfulStatusCode,
   details?: Array<{ field: string; message: string }>,
 ) {
-  return c.json({
-    success: false as const,
-    error: {
-      code,
-      message,
-      details,
-      requestId: c.get('requestId'),
+  return c.json(
+    {
+      success: false as const,
+      error: {
+        code,
+        message,
+        details,
+        requestId: c.get('requestId'),
+      },
     },
-  }, status);
+    status,
+  );
 }
 
 /** Return a 404 `NOT_FOUND` error envelope for the named resource. */

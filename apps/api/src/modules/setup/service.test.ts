@@ -1,10 +1,8 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { assertSpyCallArgs, assertSpyCalls, spy } from 'jsr:@std/testing/mock';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { setups, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createSetup,
   deleteSetup,
@@ -15,20 +13,20 @@ import {
   updateSetup,
 } from './service.ts';
 
-describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Setup Service Logic', () => {
   let userId: string;
   let otherUserId: string;
-  let debugSpy: ReturnType<typeof spy>;
-  let errorSpy: ReturnType<typeof spy>;
-  let warnSpy: ReturnType<typeof spy>;
+  let debugSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     userId = crypto.randomUUID();
     otherUserId = crypto.randomUUID();
 
-    debugSpy = spy(log, 'debug');
-    errorSpy = spy(log, 'error');
-    warnSpy = spy(log, 'warn');
+    debugSpy = vi.spyOn(log, 'debug');
+    errorSpy = vi.spyOn(log, 'error');
+    warnSpy = vi.spyOn(log, 'warn');
 
     await db.insert(users).values({
       id: userId,
@@ -45,9 +43,9 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
   });
 
   afterEach(async () => {
-    debugSpy.restore();
-    errorSpy.restore();
-    warnSpy.restore();
+    debugSpy.mockRestore();
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
 
     await db.delete(setups).where(eq(setups.userId, userId));
     await db.delete(setups).where(eq(setups.userId, otherUserId));
@@ -63,12 +61,17 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
 
       expect(result.setups).toHaveLength(1);
       expect(result.total).toBe(1);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId, page: 1, perPage: 10 }, 'listSetups started']);
-      assertSpyCallArgs(debugSpy, 1, [
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        1,
+        { userId, page: 1, perPage: 10 },
+        'listSetups started',
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
         { userId, page: 1, perPage: 10, total: 1 },
         'listSetups completed',
-      ]);
+      );
     });
   });
 
@@ -79,9 +82,9 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       const result = await getSetup(setup.id);
 
       expect(result.id).toBe(setup.id);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ id: setup.id }, 'getSetup started']);
-      assertSpyCallArgs(debugSpy, 1, [{ id: setup.id }, 'getSetup completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { id: setup.id }, 'getSetup started');
+      expect(debugSpy).toHaveBeenNthCalledWith(2, { id: setup.id }, 'getSetup completed');
     });
 
     it('should log error and throw SETUP_NOT_FOUND when setup does not exist', async () => {
@@ -89,14 +92,14 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
 
       await expect(getSetup(missingId)).rejects.toThrow('SETUP_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('SETUP_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
-      expect(errorSpy.calls[0].args[1]).toBe('getSetup failed: setup not found');
-      assertSpyCalls(debugSpy, 1);
-      assertSpyCallArgs(debugSpy, 0, [{ id: missingId }, 'getSetup started']);
+      expect(errorSpy.mock.calls[0][1]).toBe('getSetup failed: setup not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { id: missingId }, 'getSetup started');
     });
   });
 
@@ -107,14 +110,23 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       const result = await createSetup(userId, { name: 'New Default', isDefault: true });
 
       expect(result.isDefault).toBe(true);
-      assertSpyCalls(debugSpy, 3);
-      assertSpyCallArgs(debugSpy, 0, [{ userId }, 'createSetup started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId }, 'createSetup clearing defaults for user']);
-      assertSpyCallArgs(debugSpy, 2, [{ userId, setupId: result.id }, 'createSetup completed']);
-
-      const rows = await db.select({ isDefault: setups.isDefault }).from(setups).where(
-        eq(setups.userId, userId),
+      expect(debugSpy).toHaveBeenCalledTimes(3);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId }, 'createSetup started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { userId },
+        'createSetup clearing defaults for user',
       );
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        3,
+        { userId, setupId: result.id },
+        'createSetup completed',
+      );
+
+      const rows = await db
+        .select({ isDefault: setups.isDefault })
+        .from(setups)
+        .where(eq(setups.userId, userId));
       expect(rows.filter((r) => r.isDefault).length).toBe(1);
     });
 
@@ -122,9 +134,13 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       const result = await createSetup(userId, { name: 'Non-Default', isDefault: false });
 
       expect(result.isDefault).toBe(false);
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId }, 'createSetup started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId, setupId: result.id }, 'createSetup completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId }, 'createSetup started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { userId, setupId: result.id },
+        'createSetup completed',
+      );
     });
   });
 
@@ -135,9 +151,13 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       const result = await updateSetup(userId, setup.id, { name: 'Updated Setup' });
 
       expect(result.name).toBe('Updated Setup');
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId, id: setup.id }, 'updateSetup started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId, id: setup.id }, 'updateSetup completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId, id: setup.id }, 'updateSetup started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { userId, id: setup.id },
+        'updateSetup completed',
+      );
     });
 
     it('should log debug clearDefault when promoting setup to default', async () => {
@@ -146,8 +166,12 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
 
       await updateSetup(userId, setup.id, { isDefault: true });
 
-      assertSpyCalls(debugSpy, 3);
-      assertSpyCallArgs(debugSpy, 1, [{ userId }, 'updateSetup clearing defaults for user']);
+      expect(debugSpy).toHaveBeenCalledTimes(3);
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { userId },
+        'updateSetup clearing defaults for user',
+      );
     });
 
     it('should log error and throw SETUP_NOT_FOUND when setup does not exist', async () => {
@@ -157,14 +181,14 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
         'SETUP_NOT_FOUND',
       );
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string; userId: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('SETUP_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
       expect(errArg.userId).toBe(userId);
-      expect(errorSpy.calls[0].args[1]).toBe('updateSetup failed: setup not found');
-      assertSpyCalls(debugSpy, 1);
+      expect(errorSpy.mock.calls[0][1]).toBe('updateSetup failed: setup not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should log warn and throw FORBIDDEN when user does not own the setup', async () => {
@@ -174,11 +198,12 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
         'FORBIDDEN',
       );
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { id: setup.id, userId: otherUserId, ownerId: userId },
         'updateSetup failed: forbidden',
-      ]);
+      );
     });
   });
 
@@ -188,13 +213,18 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
 
       await deleteSetup(userId, setup.id);
 
-      const [row] = await db.select({ deletedAt: setups.deletedAt }).from(setups).where(
-        eq(setups.id, setup.id),
-      );
+      const [row] = await db
+        .select({ deletedAt: setups.deletedAt })
+        .from(setups)
+        .where(eq(setups.id, setup.id));
       expect(row.deletedAt).not.toBeNull();
-      assertSpyCalls(debugSpy, 2);
-      assertSpyCallArgs(debugSpy, 0, [{ userId, id: setup.id }, 'deleteSetup started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId, id: setup.id }, 'deleteSetup completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId, id: setup.id }, 'deleteSetup started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { userId, id: setup.id },
+        'deleteSetup completed',
+      );
     });
 
     it('should log error and throw SETUP_NOT_FOUND when setup does not exist', async () => {
@@ -202,14 +232,14 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
 
       await expect(deleteSetup(userId, missingId)).rejects.toThrow('SETUP_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string; userId: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('SETUP_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
       expect(errArg.userId).toBe(userId);
-      expect(errorSpy.calls[0].args[1]).toBe('deleteSetup failed: setup not found');
-      assertSpyCalls(debugSpy, 1);
+      expect(errorSpy.mock.calls[0][1]).toBe('deleteSetup failed: setup not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should log warn and throw FORBIDDEN when user does not own the setup', async () => {
@@ -217,11 +247,12 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
 
       await expect(deleteSetup(otherUserId, setup.id)).rejects.toThrow('FORBIDDEN');
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { id: setup.id, userId: otherUserId, ownerId: userId },
         'deleteSetup failed: forbidden',
-      ]);
+      );
     });
   });
 
@@ -232,10 +263,14 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
       const result = await setDefault(userId, setup.id);
 
       expect(result!.isDefault).toBe(true);
-      assertSpyCalls(debugSpy, 3);
-      assertSpyCallArgs(debugSpy, 0, [{ userId, id: setup.id }, 'setDefault started']);
-      assertSpyCallArgs(debugSpy, 1, [{ userId }, 'setDefault clearing defaults for user']);
-      assertSpyCallArgs(debugSpy, 2, [{ userId, id: setup.id }, 'setDefault completed']);
+      expect(debugSpy).toHaveBeenCalledTimes(3);
+      expect(debugSpy).toHaveBeenNthCalledWith(1, { userId, id: setup.id }, 'setDefault started');
+      expect(debugSpy).toHaveBeenNthCalledWith(
+        2,
+        { userId },
+        'setDefault clearing defaults for user',
+      );
+      expect(debugSpy).toHaveBeenNthCalledWith(3, { userId, id: setup.id }, 'setDefault completed');
     });
 
     it('should log error and throw SETUP_NOT_FOUND when setup does not exist', async () => {
@@ -243,14 +278,14 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
 
       await expect(setDefault(userId, missingId)).rejects.toThrow('SETUP_NOT_FOUND');
 
-      assertSpyCalls(errorSpy, 1);
-      const errArg = errorSpy.calls[0].args[0] as { err: Error; id: string; userId: string };
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const errArg = errorSpy.mock.calls[0][0] as { err: Error; id: string; userId: string };
       expect(errArg.err).toBeInstanceOf(Error);
       expect(errArg.err.message).toBe('SETUP_NOT_FOUND');
       expect(errArg.id).toBe(missingId);
       expect(errArg.userId).toBe(userId);
-      expect(errorSpy.calls[0].args[1]).toBe('setDefault failed: setup not found');
-      assertSpyCalls(debugSpy, 1);
+      expect(errorSpy.mock.calls[0][1]).toBe('setDefault failed: setup not found');
+      expect(debugSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should log warn and throw FORBIDDEN when user does not own the setup', async () => {
@@ -258,11 +293,12 @@ describe('Setup Service Logic', { sanitizeOps: false, sanitizeResources: false }
 
       await expect(setDefault(otherUserId, setup.id)).rejects.toThrow('FORBIDDEN');
 
-      assertSpyCalls(warnSpy, 1);
-      assertSpyCallArgs(warnSpy, 0, [
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy).toHaveBeenNthCalledWith(
+        1,
         { id: setup.id, userId: otherUserId, ownerId: userId },
         'setDefault failed: forbidden',
-      ]);
+      );
     });
   });
 });

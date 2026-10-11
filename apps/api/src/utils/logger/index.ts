@@ -12,9 +12,10 @@ const logger: Logger = pino({
   serializers: {
     err: pino.stdSerializers.err,
   },
-  transport: config.LOG_FORMAT === 'pretty'
-    ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
-    : undefined,
+  transport:
+    config.LOG_FORMAT === 'pretty'
+      ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
+      : undefined,
 });
 
 /**

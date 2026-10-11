@@ -15,26 +15,32 @@ export type TestVisibility = 'private' | 'public' | 'draft' | 'unlisted';
 /** Create a throwaway user with a unique email/username derived from `prefix`. */
 export async function createUser(prefix: string) {
   const id = crypto.randomUUID();
-  const [user] = await db.insert(users).values({
-    id,
-    email: `${prefix}-${id}@example.com`,
-    username: `${prefix}-${id.slice(0, 8)}`,
-    passwordHash: 'hash',
-  }).returning();
+  const [user] = await db
+    .insert(users)
+    .values({
+      id,
+      email: `${prefix}-${id}@example.com`,
+      username: `${prefix}-${id.slice(0, 8)}`,
+      passwordHash: 'hash',
+    })
+    .returning();
   return user;
 }
 
 /** Create a throwaway recipe owned by `authorId` (default visibility: public). */
 export async function createRecipe(authorId: string, visibility: TestVisibility = 'public') {
   const id = crypto.randomUUID();
-  const [recipe] = await db.insert(recipes).values({
-    id,
-    slug: `slug-${id.slice(0, 8)}`,
-    title: `Recipe ${id.slice(0, 4)}`,
-    authorId,
-    visibility,
-    createdAt: new Date(),
-  }).returning();
+  const [recipe] = await db
+    .insert(recipes)
+    .values({
+      id,
+      slug: `slug-${id.slice(0, 8)}`,
+      title: `Recipe ${id.slice(0, 4)}`,
+      authorId,
+      visibility,
+      createdAt: new Date(),
+    })
+    .returning();
   return recipe;
 }
 
@@ -44,7 +50,10 @@ export async function createBrewLogRow(
   recipeId: string,
   overrides: Partial<typeof brewLogs.$inferInsert> = {},
 ) {
-  const [row] = await db.insert(brewLogs).values({ userId, recipeId, ...overrides }).returning();
+  const [row] = await db
+    .insert(brewLogs)
+    .values({ userId, recipeId, ...overrides })
+    .returning();
   return row;
 }
 

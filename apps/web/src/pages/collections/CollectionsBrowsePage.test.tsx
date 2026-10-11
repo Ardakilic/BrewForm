@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
@@ -38,9 +38,9 @@ vi.mock('@/utils/logger.ts', () => ({
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { collectionApi } from '../../api/index.ts';
 import type { PaginatedResponse, PublicCollectionListItemOutput } from '@brewform/shared/schemas';
+import { collectionApi } from '../../api/index.ts';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { CollectionsBrowsePage, loader } from './CollectionsBrowsePage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);

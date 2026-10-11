@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { MergeSelector } from './MergeSelector.tsx';
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({

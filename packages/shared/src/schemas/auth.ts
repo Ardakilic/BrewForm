@@ -23,7 +23,11 @@ const passwordSchema = z
  */
 export const AuthRegisterSchema = z.object({
   email: z.email(),
-  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_-]+$/),
+  username: z
+    .string()
+    .min(3)
+    .max(30)
+    .regex(/^[a-zA-Z0-9_-]+$/),
   password: passwordSchema,
   displayName: z.string().max(50).optional(),
 });

@@ -5,7 +5,7 @@ interface TypeBadgeProps {
 export function TypeBadge({ label }: TypeBadgeProps) {
   return (
     <span
-      className='text-xs px-2 py-0.5 rounded-full flex-shrink-0 ml-2'
+      className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 ml-2"
       style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
     >
       {label}
@@ -13,10 +13,7 @@ export function TypeBadge({ label }: TypeBadgeProps) {
   );
 }
 
-export function varietyCategoryLabel(
-  t: (key: string) => string,
-  category: string,
-): string {
+export function varietyCategoryLabel(t: (key: string) => string, category: string): string {
   switch (category) {
     case 'variety':
       return t('coffeeVarieties.category.varietyShort');

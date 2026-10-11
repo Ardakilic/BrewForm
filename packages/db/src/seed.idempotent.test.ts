@@ -7,7 +7,7 @@
  *
  * ── Cross-suite isolation (wave-5 task 8.2) ────────────────────────────────
  * The root `test` task runs the API suite BEFORE the db suite against the SAME
- * `brewform_test` database (deno.json: `test:api && … && test:db`). The API
+ * `brewform_test` database (root `test` script: `test:api && … && test:db`). The API
  * tests create and delete users/recipes/etc. and leave stray rows behind, which
  * broke the exact row-count assertions below whenever the db suite ran after the
  * API suite on a shared database.
@@ -30,10 +30,10 @@
  * handling), so truncate → seed reproduces the exact fresh-database counts.
  */
 
-import { beforeAll, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { readFileSync } from 'node:fs';
 import { count } from 'drizzle-orm';
 import { getTableConfig } from 'drizzle-orm/pg-core';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { client, db } from './index.ts';
 import {
   badges,
@@ -62,6 +62,8 @@ import {
   vendors,
 } from './schema.ts';
 import { seedBrewMethodCompatibility } from './seed.ts';
+import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
+import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
 import {
   badgeSeedData,
   beanSeedData,
@@ -73,11 +75,9 @@ import {
   userSeedData,
   vendorSeedData,
 } from './seed-users-recipes.ts';
-import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
-import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 
 const scaaPath = new URL('../../../files/scaa-2.json', import.meta.url);
-const scaaData = JSON.parse(await Deno.readTextFile(scaaPath));
+const scaaData = JSON.parse(readFileSync(scaaPath, 'utf8'));
 
 function collectScaaNames(data: unknown[]): Set<string> {
   const names = new Set<string>();
@@ -125,11 +125,7 @@ async function resetDatabase(): Promise<void> {
  * the resulting row count equals the seed data length. This verifies the
  * helper uses `onConflictDoNothing` correctly.
  */
-describe({
-  name: 'Seed idempotency — brew method compatibility',
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, () => {
+describe('Seed idempotency — brew method compatibility', () => {
   beforeAll(resetDatabase);
 
   it('can run seedBrewMethodCompatibility twice without duplicates', async () => {
@@ -149,11 +145,7 @@ describe({
  * regression test for the duplicate-key crashes that happened when
  * containers were wiped but the Postgres volume persisted.
  */
-describe({
-  name: 'Seed idempotency — full seed',
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, () => {
+describe('Seed idempotency — full seed', () => {
   beforeAll(resetDatabase);
 
   it('can run the full seed twice without throwing and leaves expected counts', async () => {
@@ -184,17 +176,16 @@ describe({
     expect((await db.select({ count: count() }).from(recipeVersions))[0].count).toBe(
       recipeSeedData.length,
     );
-    expect((await db.select({ count: count() }).from(recipeEquipment))[0].count).toBeGreaterThan(
-      0,
-    );
+    expect((await db.select({ count: count() }).from(recipeEquipment))[0].count).toBeGreaterThan(0);
     expect(
       (await db.select({ count: count() }).from(recipeAdditionalPreparations))[0].count,
     ).toBeGreaterThan(0);
     expect((await db.select({ count: count() }).from(photos))[0].count).toBeGreaterThanOrEqual(
       recipeSeedData.length,
     );
-    expect((await db.select({ count: count() }).from(recipeVersionPhotos))[0].count)
-      .toBeGreaterThanOrEqual(recipeSeedData.length);
+    expect(
+      (await db.select({ count: count() }).from(recipeVersionPhotos))[0].count,
+    ).toBeGreaterThanOrEqual(recipeSeedData.length);
     expect((await db.select({ count: count() }).from(tasteNotes))[0].count).toBeGreaterThanOrEqual(
       scaaNames.size,
     );
@@ -218,9 +209,7 @@ describe({
       socialSeedData.ratings.length,
     );
     expect((await db.select({ count: count() }).from(comments))[0].count).toBeGreaterThan(0);
-    expect((await db.select({ count: count() }).from(setups))[0].count).toBe(
-      setupSeedData.length,
-    );
+    expect((await db.select({ count: count() }).from(setups))[0].count).toBe(setupSeedData.length);
     expect((await db.select({ count: count() }).from(brewMethodEquipmentRules))[0].count).toBe(
       brewMethodCompatibilityRules.length,
     );
@@ -233,21 +222,19 @@ describe({
  * e.g. [0,1,2,3,4] for the first collection and [5,6] for the second; the
  * per-collection fix resets to 0 for each collection.
  */
-describe({
-  name: 'Seed idempotency — collection sortOrder (D99.3)',
-  sanitizeResources: false,
-  sanitizeOps: false,
-}, () => {
+describe('Seed idempotency — collection sortOrder (D99.3)', () => {
   beforeAll(resetDatabase);
 
   it('numbers items 0..n-1 per collection, not globally sequenced', async () => {
     const { main } = await import('./seed.ts');
     await main();
 
-    const items = await db.select({
-      collectionId: collectionItems.collectionId,
-      sortOrder: collectionItems.sortOrder,
-    }).from(collectionItems);
+    const items = await db
+      .select({
+        collectionId: collectionItems.collectionId,
+        sortOrder: collectionItems.sortOrder,
+      })
+      .from(collectionItems);
 
     const byCollection = new Map<string, number[]>();
     for (const item of items) {

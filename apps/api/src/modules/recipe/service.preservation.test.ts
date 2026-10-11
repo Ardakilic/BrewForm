@@ -11,9 +11,8 @@
  * Validates: Requirements 3.1, 3.2, 3.3, 3.4
  */
 
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import fc from 'npm:fast-check';
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Minimal Drizzle-ORM-like condition builders (no real DB needed)
@@ -45,7 +44,7 @@ function or(...conditions: Condition[]): { type: 'or'; conditions: Condition[] }
 // Mock DB layer — captures the WHERE condition passed to findMany
 // ---------------------------------------------------------------------------
 
-let capturedWhere: unknown = undefined;
+let capturedWhere: unknown;
 
 const mockModel = {
   findMany: (
@@ -77,10 +76,10 @@ const recipes = {
 };
 
 // Mock db.select() chain for subqueries
-// deno-lint-ignore no-explicit-any -- test mock parameter
+// biome-ignore lint/suspicious/noExplicitAny: test mock parameter
 const db: any = {
   select: () => ({
-    // deno-lint-ignore no-explicit-any -- test mock parameter
+    // biome-ignore lint/suspicious/noExplicitAny: test mock parameter
     from: (_table: any) => ({
       where: (cond: unknown) => cond,
     }),
@@ -96,9 +95,9 @@ const db: any = {
 //   - Has no isAdmin parameter
 // ---------------------------------------------------------------------------
 
-// deno-lint-ignore no-explicit-any require-await -- test mock parameter
+// biome-ignore lint/suspicious/noExplicitAny: test mock parameter
 async function listRecipes_buggy(filters: any, page: number, perPage: number) {
-  // deno-lint-ignore no-explicit-any -- test mock array
+  // biome-ignore lint/suspicious/noExplicitAny: test mock array
   const conditions: any[] = [eq(recipes.visibility, 'public')]; // BUG: hardcoded, ignores filters.visibility
 
   if (filters.authorId) {
@@ -109,9 +108,7 @@ async function listRecipes_buggy(filters: any, page: number, perPage: number) {
     conditions.push(
       inArray(
         recipes.id,
-        db.select().from(recipeVersions).where(
-          eq(recipeVersions.brewMethod, filters.brewMethod),
-        ),
+        db.select().from(recipeVersions).where(eq(recipeVersions.brewMethod, filters.brewMethod)),
       ),
     );
   }
@@ -120,9 +117,7 @@ async function listRecipes_buggy(filters: any, page: number, perPage: number) {
     conditions.push(
       inArray(
         recipes.id,
-        db.select().from(recipeVersions).where(
-          eq(recipeVersions.drinkType, filters.drinkType),
-        ),
+        db.select().from(recipeVersions).where(eq(recipeVersions.drinkType, filters.drinkType)),
       ),
     );
   }
@@ -136,9 +131,7 @@ async function listRecipes_buggy(filters: any, page: number, perPage: number) {
           ilike(recipes.title, searchTerm),
           inArray(
             recipes.id,
-            db.select().from(recipeVersions).where(
-              ilike(recipeVersions.productName, searchTerm),
-            ),
+            db.select().from(recipeVersions).where(ilike(recipeVersions.productName, searchTerm)),
           ),
         ),
       );
@@ -157,7 +150,7 @@ async function listRecipes_buggy(filters: any, page: number, perPage: number) {
 
 function extractVisibilityCondition(where: unknown): Condition | null {
   if (!where) return null;
-  // deno-lint-ignore no-explicit-any -- test cast
+  // biome-ignore lint/suspicious/noExplicitAny: test cast
   const w = where as any;
   // Single condition (no AND)
   if (w.type === 'eq' && w.column === recipes.visibility) {
@@ -179,7 +172,7 @@ function extractVisibilityCondition(where: unknown): Condition | null {
 
 function extractAllConditions(where: unknown): Condition[] {
   if (!where) return [];
-  // deno-lint-ignore no-explicit-any -- test cast
+  // biome-ignore lint/suspicious/noExplicitAny: test cast
   const w = where as any;
   if (w.type === 'and' && Array.isArray(w.conditions)) {
     return w.conditions as Condition[];
@@ -207,10 +200,9 @@ describe('Preservation — Non-Admin and Unauthenticated Requests Always Return 
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          visibility: fc.option(
-            fc.constantFrom('draft', 'private', 'unlisted', 'public'),
-            { nil: undefined },
-          ),
+          visibility: fc.option(fc.constantFrom('draft', 'private', 'unlisted', 'public'), {
+            nil: undefined,
+          }),
         }),
         async (filters) => {
           capturedWhere = undefined;
@@ -241,14 +233,10 @@ describe('Preservation — Non-Admin and Unauthenticated Requests Always Return 
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          brewMethod: fc.option(
-            fc.constantFrom('v60', 'espresso_machine', 'french_press'),
-            { nil: undefined },
-          ),
-          drinkType: fc.option(
-            fc.constantFrom('espresso', 'pour_over'),
-            { nil: undefined },
-          ),
+          brewMethod: fc.option(fc.constantFrom('v60', 'espresso_machine', 'french_press'), {
+            nil: undefined,
+          }),
+          drinkType: fc.option(fc.constantFrom('espresso', 'pour_over'), { nil: undefined }),
         }),
         async (filters) => {
           capturedWhere = undefined;

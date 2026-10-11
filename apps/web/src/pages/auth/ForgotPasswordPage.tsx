@@ -1,10 +1,10 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { authApi } from '../../api/index.ts';
 import { createLogger } from '@/utils/logger.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { authApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const log = createLogger('ForgotPasswordPage');
 
@@ -44,14 +44,14 @@ export function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div className='mx-auto max-w-md px-6 py-12'>
-        <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+      <div className="mx-auto max-w-md px-6 py-12">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('auth.forgotPassword.checkEmail')}
         </h1>
-        <p className='mt-4' style={{ color: 'var(--text-secondary)' }}>
+        <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>
           {t('auth.forgotPassword.checkEmailDesc')}
         </p>
-        <Link to='/login' className='btn-secondary mt-6 inline-block'>
+        <Link to="/login" className="btn-secondary mt-6 inline-block">
           {t('auth.forgotPassword.backToLogin')}
         </Link>
       </div>
@@ -59,33 +59,33 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className='mx-auto max-w-md px-6 py-12'>
-      <h1 className='text-2xl font-bold' style={{ color: 'var(--text-primary)' }}>
+    <div className="mx-auto max-w-md px-6 py-12">
+      <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
         {t('auth.forgotPassword.title')}
       </h1>
-      <p className='mt-2 text-sm' style={{ color: 'var(--text-secondary)' }}>
+      <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
         {t('auth.forgotPassword.desc')}
       </p>
-      {error && <ErrorState message={error} className='mt-4' />}
-      <form onSubmit={handleSubmit} className='mt-6 flex flex-col gap-4'>
-        <Field label={t('auth.email')} htmlFor='email'>
+      {error && <ErrorState message={error} className="mt-4" />}
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        <Field label={t('auth.email')} htmlFor="email">
           <input
-            id='email'
-            type='email'
+            id="email"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder='you@example.com'
-            className='input-field'
+            placeholder="you@example.com"
+            className="input-field"
             required
           />
         </Field>
-        <button type='submit' className='btn-primary' disabled={loading}>
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? t('auth.forgotPassword.sending') : t('auth.forgotPassword.sendLink')}
         </button>
       </form>
-      <p className='mt-4 text-sm' style={{ color: 'var(--text-secondary)' }}>
+      <p className="mt-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
         {t('auth.forgotPassword.rememberPassword')}{' '}
-        <Link to='/login' style={{ color: 'var(--accent-primary)' }}>
+        <Link to="/login" style={{ color: 'var(--accent-primary)' }}>
           {t('auth.login.title')}
         </Link>
       </p>

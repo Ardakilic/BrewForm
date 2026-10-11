@@ -22,21 +22,19 @@ interface FieldProps {
  */
 export function Field({ label, required, htmlFor, error, help, children }: FieldProps) {
   return (
-    <label
-      className='block mb-1'
-      htmlFor={htmlFor}
-      style={{ color: 'var(--text-secondary)' }}
-    >
-      <span className='label-text text-sm font-medium'>
+    <label className="block mb-1" htmlFor={htmlFor} style={{ color: 'var(--text-secondary)' }}>
+      <span className="label-text text-sm font-medium">
         {label}
         {required && ' *'}
       </span>
       {children}
       {error && (
-        <span className='block text-xs mt-1' style={{ color: 'var(--error)' }}>{error}</span>
+        <span className="block text-xs mt-1" style={{ color: 'var(--error)' }}>
+          {error}
+        </span>
       )}
       {help && (
-        <span className='block text-xs mt-1' style={{ color: 'var(--text-tertiary)' }}>
+        <span className="block text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
           {help}
         </span>
       )}

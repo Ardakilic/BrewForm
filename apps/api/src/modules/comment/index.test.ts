@@ -13,17 +13,16 @@
  */
 
 import '../../test-setup.ts';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { Hono } from 'hono';
-import type { Context, Next } from 'hono';
-import { inArray } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { comments, notifications, recipes, userBadges, users } from '@brewform/db/schema';
-import { setCacheProvider } from '../../utils/cache/singleton.ts';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import comment, { deps as routeDeps } from './index.ts';
+import { inArray } from 'drizzle-orm';
+import type { Context, Next } from 'hono';
+import { Hono } from 'hono';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv, ContextUser } from '../../types/hono.ts';
+import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import comment, { deps as routeDeps } from './index.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers — replicate the router's isAdmin extraction logic
@@ -119,7 +118,7 @@ describe('Comment_Router — isAdmin extraction and forwarding', () => {
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json() as { isAdmin: boolean };
+      const body = (await res.json()) as { isAdmin: boolean };
       expect(body.isAdmin).toBe(true);
     });
 
@@ -134,7 +133,7 @@ describe('Comment_Router — isAdmin extraction and forwarding', () => {
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json() as { isAdmin: boolean };
+      const body = (await res.json()) as { isAdmin: boolean };
       expect(body.isAdmin).toBe(false);
     });
 
@@ -151,7 +150,7 @@ describe('Comment_Router — isAdmin extraction and forwarding', () => {
       });
 
       expect(res.status).toBe(400);
-      const body = await res.json() as { success: boolean; error: { code: string } };
+      const body = (await res.json()) as { success: boolean; error: { code: string } };
       expect(body.success).toBe(false);
       expect(body.error.code).toBe('BAD_REQUEST');
     });
@@ -167,7 +166,7 @@ describe('Comment_Router — isAdmin extraction and forwarding', () => {
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json() as { isAdmin: boolean };
+      const body = (await res.json()) as { isAdmin: boolean };
       expect(body.isAdmin).toBe(true);
     });
   });
@@ -218,64 +217,60 @@ function createRateLimitTestApp() {
   return app;
 }
 
-describe(
-  'POST /api/v1/comments/recipe/:recipeId — rate limit',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    beforeEach(() => {
-      // Fresh cache per test so the rate-limit counter does not leak between tests
-      // (pattern from report/index.test.ts:41-49).
-      setCacheProvider(new InMemoryCacheProvider());
-    });
+describe('POST /api/v1/comments/recipe/:recipeId — rate limit', () => {
+  beforeEach(() => {
+    // Fresh cache per test so the rate-limit counter does not leak between tests
+    // (pattern from report/index.test.ts:41-49).
+    setCacheProvider(new InMemoryCacheProvider());
+  });
 
-    afterEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
-    });
+  afterEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
 
-    it('returns 429 on the 6th POST within the rate-limit window', async () => {
-      const app = createRateLimitTestApp();
-      const recipeId = crypto.randomUUID();
-      // The first 5 POSTs are processed by the limiter (they 401 because no auth
-      // header is present, but the limiter counter increments regardless — it
-      // runs before authMiddleware and zValidator).
-      for (let i = 0; i < 5; i++) {
-        await app.request(`/api/v1/comments/recipe/${recipeId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: 'hello' }),
-        });
-      }
-      // The 6th POST in the same 1-minute window from the same IP returns 429.
-      const res = await app.request(`/api/v1/comments/recipe/${recipeId}`, {
+  it('returns 429 on the 6th POST within the rate-limit window', async () => {
+    const app = createRateLimitTestApp();
+    const recipeId = crypto.randomUUID();
+    // The first 5 POSTs are processed by the limiter (they 401 because no auth
+    // header is present, but the limiter counter increments regardless — it
+    // runs before authMiddleware and zValidator).
+    for (let i = 0; i < 5; i++) {
+      await app.request(`/api/v1/comments/recipe/${recipeId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: 'hello' }),
       });
-      expect(res.status).toBe(429);
-      const body = await res.json();
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('RATE_LIMITED');
+    }
+    // The 6th POST in the same 1-minute window from the same IP returns 429.
+    const res = await app.request(`/api/v1/comments/recipe/${recipeId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'hello' }),
     });
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('RATE_LIMITED');
+  });
 
-    it('does not throttle the GET list route (comment limiter is POST-only)', async () => {
-      const app = createRateLimitTestApp();
-      const recipeId = crypto.randomUUID();
-      // Exhaust the POST budget first.
-      for (let i = 0; i < 6; i++) {
-        await app.request(`/api/v1/comments/recipe/${recipeId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: 'hello' }),
-        });
-      }
-      // A GET on the same router must NOT be 429 (the comment-specific limiter is
-      // applied to POST only, not via `comment.use('*', ...)`). The assertion is
-      // simply that the GET is not throttled by the comment limiter.
-      const res = await app.request(`/api/v1/comments/recipe/${recipeId}`, { method: 'GET' });
-      expect(res.status).not.toBe(429);
-    });
-  },
-);
+  it('does not throttle the GET list route (comment limiter is POST-only)', async () => {
+    const app = createRateLimitTestApp();
+    const recipeId = crypto.randomUUID();
+    // Exhaust the POST budget first.
+    for (let i = 0; i < 6; i++) {
+      await app.request(`/api/v1/comments/recipe/${recipeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'hello' }),
+      });
+    }
+    // A GET on the same router must NOT be 429 (the comment-specific limiter is
+    // applied to POST only, not via `comment.use('*', ...)`). The assertion is
+    // simply that the GET is not throttled by the comment limiter.
+    const res = await app.request(`/api/v1/comments/recipe/${recipeId}`, { method: 'GET' });
+    expect(res.status).not.toBe(429);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // D99.9 — comment visibility gate route tests
@@ -320,145 +315,141 @@ function createGateTestApp(user: { id: string; isAdmin: boolean } | null) {
   return app;
 }
 
-describe(
-  'D99.9 — comment visibility gate (routes)',
-  { sanitizeOps: false, sanitizeResources: false },
-  () => {
-    let authorId: string;
-    let strangerId: string;
-    let draftRecipeId: string;
-    let privateRecipeId: string;
-    let publicRecipeId: string;
+describe('D99.9 — comment visibility gate (routes)', () => {
+  let authorId: string;
+  let strangerId: string;
+  let draftRecipeId: string;
+  let privateRecipeId: string;
+  let publicRecipeId: string;
 
-    async function insertUser(prefix: string): Promise<string> {
-      const id = crypto.randomUUID();
-      await db.insert(users).values({
-        id,
-        email: `${prefix}-${id}@example.com`,
-        username: `${prefix}-${id.slice(0, 8)}`,
-        passwordHash: 'hash',
-      });
-      return id;
-    }
-
-    async function insertRecipe(
-      author: string,
-      visibility: 'draft' | 'private' | 'public',
-    ): Promise<string> {
-      const id = crypto.randomUUID();
-      await db.insert(recipes).values({
-        id,
-        slug: `gate-${id}`,
-        title: `Gate Recipe ${id.slice(0, 8)}`,
-        authorId: author,
-        visibility,
-      });
-      return id;
-    }
-
-    beforeAll(async () => {
-      authorId = await insertUser('gate-author');
-      strangerId = await insertUser('gate-stranger');
-      draftRecipeId = await insertRecipe(authorId, 'draft');
-      privateRecipeId = await insertRecipe(authorId, 'private');
-      publicRecipeId = await insertRecipe(authorId, 'public');
+  async function insertUser(prefix: string): Promise<string> {
+    const id = crypto.randomUUID();
+    await db.insert(users).values({
+      id,
+      email: `${prefix}-${id}@example.com`,
+      username: `${prefix}-${id.slice(0, 8)}`,
+      passwordHash: 'hash',
     });
+    return id;
+  }
 
-    beforeEach(() => {
-      // Fresh in-memory cache per test — isolates the POST rate-limit counter.
-      setCacheProvider(new InMemoryCacheProvider());
+  async function insertRecipe(
+    author: string,
+    visibility: 'draft' | 'private' | 'public',
+  ): Promise<string> {
+    const id = crypto.randomUUID();
+    await db.insert(recipes).values({
+      id,
+      slug: `gate-${id}`,
+      title: `Gate Recipe ${id.slice(0, 8)}`,
+      authorId: author,
+      visibility,
     });
+    return id;
+  }
 
-    afterEach(() => {
-      setCacheProvider(new InMemoryCacheProvider());
-    });
+  beforeAll(async () => {
+    authorId = await insertUser('gate-author');
+    strangerId = await insertUser('gate-stranger');
+    draftRecipeId = await insertRecipe(authorId, 'draft');
+    privateRecipeId = await insertRecipe(authorId, 'private');
+    publicRecipeId = await insertRecipe(authorId, 'public');
+  });
 
-    afterAll(async () => {
-      routeDeps.authMiddleware = originalRouteAuthMiddleware;
-      routeDeps.optionalAuthMiddleware = originalRouteOptionalAuthMiddleware;
-      // Let the 201 test's fire-and-forget side-effect chains (badge evaluation,
-      // notifications) land before FK-ordered cleanup, or a late user_badge
-      // insert races the users delete.
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      const recipeIds = [draftRecipeId, privateRecipeId, publicRecipeId];
-      await db.delete(comments).where(inArray(comments.recipeId, recipeIds));
-      await db.delete(notifications).where(inArray(notifications.userId, [authorId, strangerId]));
-      await db.delete(userBadges).where(inArray(userBadges.userId, [authorId, strangerId]));
-      await db.delete(recipes).where(inArray(recipes.id, recipeIds));
-      await db.delete(users).where(inArray(users.id, [authorId, strangerId]));
-    });
+  beforeEach(() => {
+    // Fresh in-memory cache per test — isolates the POST rate-limit counter.
+    setCacheProvider(new InMemoryCacheProvider());
+  });
 
-    it('POST returns the 404 envelope for an invisible recipe (non-owner)', async () => {
-      const app = createGateTestApp({ id: strangerId, isAdmin: false });
-      const res = await app.request(`/api/v1/comments/recipe/${privateRecipeId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: 'should not land' }),
-      });
-      expect(res.status).toBe(404);
-      const body = await res.json();
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('NOT_FOUND');
-      expect(body.error.message).toBe('Recipe not found');
-    });
+  afterEach(() => {
+    setCacheProvider(new InMemoryCacheProvider());
+  });
 
-    it('POST returns the same 404 for a nonexistent recipe (existence-hiding)', async () => {
-      const app = createGateTestApp({ id: strangerId, isAdmin: false });
-      const res = await app.request(`/api/v1/comments/recipe/${crypto.randomUUID()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: 'should not land' }),
-      });
-      expect(res.status).toBe(404);
-      const body = await res.json();
-      expect(body.error.code).toBe('NOT_FOUND');
-      expect(body.error.message).toBe('Recipe not found');
-    });
+  afterAll(async () => {
+    routeDeps.authMiddleware = originalRouteAuthMiddleware;
+    routeDeps.optionalAuthMiddleware = originalRouteOptionalAuthMiddleware;
+    // Let the 201 test's fire-and-forget side-effect chains (badge evaluation,
+    // notifications) land before FK-ordered cleanup, or a late user_badge
+    // insert races the users delete.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const recipeIds = [draftRecipeId, privateRecipeId, publicRecipeId];
+    await db.delete(comments).where(inArray(comments.recipeId, recipeIds));
+    await db.delete(notifications).where(inArray(notifications.userId, [authorId, strangerId]));
+    await db.delete(userBadges).where(inArray(userBadges.userId, [authorId, strangerId]));
+    await db.delete(recipes).where(inArray(recipes.id, recipeIds));
+    await db.delete(users).where(inArray(users.id, [authorId, strangerId]));
+  });
 
-    it('POST returns 201 for the owner on a draft recipe', async () => {
-      const app = createGateTestApp({ id: authorId, isAdmin: false });
-      const res = await app.request(`/api/v1/comments/recipe/${draftRecipeId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: 'owner can comment on own draft' }),
-      });
-      expect(res.status).toBe(201);
-      const body = await res.json();
-      expect(body.success).toBe(true);
+  it('POST returns the 404 envelope for an invisible recipe (non-owner)', async () => {
+    const app = createGateTestApp({ id: strangerId, isAdmin: false });
+    const res = await app.request(`/api/v1/comments/recipe/${privateRecipeId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'should not land' }),
     });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('NOT_FOUND');
+    expect(body.error.message).toBe('Recipe not found');
+  });
 
-    it('GET returns 404 for an invisible recipe when anonymous', async () => {
-      const app = createGateTestApp(null);
-      const res = await app.request(`/api/v1/comments/recipe/${privateRecipeId}`);
-      expect(res.status).toBe(404);
-      const body = await res.json();
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('NOT_FOUND');
-      expect(body.error.message).toBe('Recipe not found');
+  it('POST returns the same 404 for a nonexistent recipe (existence-hiding)', async () => {
+    const app = createGateTestApp({ id: strangerId, isAdmin: false });
+    const res = await app.request(`/api/v1/comments/recipe/${crypto.randomUUID()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'should not land' }),
     });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error.code).toBe('NOT_FOUND');
+    expect(body.error.message).toBe('Recipe not found');
+  });
 
-    it('GET returns 404 for an invisible recipe for a non-owner', async () => {
-      const app = createGateTestApp({ id: strangerId, isAdmin: false });
-      const res = await app.request(`/api/v1/comments/recipe/${draftRecipeId}`);
-      expect(res.status).toBe(404);
-      const body = await res.json();
-      expect(body.error.code).toBe('NOT_FOUND');
+  it('POST returns 201 for the owner on a draft recipe', async () => {
+    const app = createGateTestApp({ id: authorId, isAdmin: false });
+    const res = await app.request(`/api/v1/comments/recipe/${draftRecipeId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: 'owner can comment on own draft' }),
     });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
 
-    it('GET returns 200 for the owner with an auth token on a draft recipe', async () => {
-      const app = createGateTestApp({ id: authorId, isAdmin: false });
-      const res = await app.request(`/api/v1/comments/recipe/${draftRecipeId}`);
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.success).toBe(true);
-    });
+  it('GET returns 404 for an invisible recipe when anonymous', async () => {
+    const app = createGateTestApp(null);
+    const res = await app.request(`/api/v1/comments/recipe/${privateRecipeId}`);
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('NOT_FOUND');
+    expect(body.error.message).toBe('Recipe not found');
+  });
 
-    it('GET remains anonymously listable on a public recipe', async () => {
-      const app = createGateTestApp(null);
-      const res = await app.request(`/api/v1/comments/recipe/${publicRecipeId}`);
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.success).toBe(true);
-    });
-  },
-);
+  it('GET returns 404 for an invisible recipe for a non-owner', async () => {
+    const app = createGateTestApp({ id: strangerId, isAdmin: false });
+    const res = await app.request(`/api/v1/comments/recipe/${draftRecipeId}`);
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('GET returns 200 for the owner with an auth token on a draft recipe', async () => {
+    const app = createGateTestApp({ id: authorId, isAdmin: false });
+    const res = await app.request(`/api/v1/comments/recipe/${draftRecipeId}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+
+  it('GET remains anonymously listable on a public recipe', async () => {
+    const app = createGateTestApp(null);
+    const res = await app.request(`/api/v1/comments/recipe/${publicRecipeId}`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+  });
+});

@@ -7,8 +7,8 @@
  * machines but not with pour-over).
  */
 
-import type { BrewMethod } from './recipe.ts';
 import type { EquipmentType } from './equipment.ts';
+import type { BrewMethod } from './recipe.ts';
 
 /**
  * Compatibility rule linking a brew method to an equipment type.

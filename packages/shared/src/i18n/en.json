@@ -765,7 +765,7 @@
   "admin.audit.entityTasteNotes": "Taste Notes",
   "admin.audit.entityReports": "Reports",
   "admin.cache.flushDescription": "This will clear all cached data including taste note hierarchies, compatibility matrices, and search results.",
-  "admin.cache.kvDescription": "The application uses Deno KV for caching frequently accessed data. Cache is automatically refreshed when underlying data changes, but you can manually flush it here.",
+  "admin.cache.kvDescription": "The application uses in-memory caching for frequently accessed data. Cache is automatically refreshed when underlying data changes, but you can manually flush it here.",
   "admin.cache.management": "Cache Management",
   "admin.cache.flushSuccess": "Cache flushed successfully!",
   "admin.cache.flushError": "Failed to flush cache.",

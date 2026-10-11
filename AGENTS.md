@@ -1,35 +1,31 @@
 ## Implementation workflow
-- Use Serena MCP (`serena_*`) tools for code understanding, navigation, and editing.
-  - Tool prefix: opencode namespaces Serena tools by the MCP server name `"serena"` — the raw server logs show bare names but the agent uses `serena_*`.
-  - Activate with `serena_activate_project` using the project **name** `brewform` (from `.serena/project.yml`), NOT the full path `/Users/arda/projects/BrewForm`.
-- Before editing, use `get_symbols_overview` or `find_symbol` to understand the relevant code structure.
-- Use `search_for_pattern` for cross-file searches and `replace_content` for regex-based edits.
+- Use ripgrep (`grep -r`/`rg`) and the TypeScript LSP for semantic navigation (symbol search, references, diagnostics).
 - **Always use Context7 MCP for library, code, language, and framework documentation.**
 - Delegate separate jobs (research, file edits, etc.) to sub-agents so the main loop context is used more efficiently.
 
 ## Development commands
 
-Everything runs through Docker. No local Deno installation required. Use `make <target>`:
+Everything runs through Docker. No local Node/pnpm installation required. Use `make <target>`:
 
 - `make up` — start infrastructure only (postgres, mailpit, pgadmin, garage); does NOT start app
-- `make install` — cache deno dependencies (required once)
+- `make install` — install pnpm workspace dependencies (required once)
 - `make email-build` — compile MJML → HTML templates (required before API runs)
 - `make db-generate && make db-migrate && make db-seed` — full DB setup
 - `make dev` — start API (:8000) + Vite HMR (:5173)
 - `make check` — type-check all workspaces
 - `make lint` — lint all apps and packages
-- `make test` — run all tests (via Docker, with `--allow-all`)
+- `make test` — run all tests (via Docker, Vitest)
 - `make test-db-provision` — create + migrate + seed the `brewform_test` DB (idempotent; required once before DB-backed tests run, safe to re-run)
 
 Granular targets: `make check-api`, `make check-web`, `make test-api`, `make test-shared`, `make test-specific filter=path/to/test.ts`.
 
-Run a single test file: `deno test --no-check --allow-all apps/api/src/path/to/file_test.ts` (inside Docker: `make test-specific filter=path/to/test.ts`).
+Run a single test file: `pnpm --filter @brewform/api exec vitest run src/path/to/file.test.ts` (inside Docker: `make test-specific filter=path/to/test.ts`).
 
-Type-check + lint + **format** after every edit. Test command order matters: `deno task check` then `deno task test`. After finishing a batch of edits, run `make fmt` to apply `deno fmt` (lineWidth 100, indentWidth 2, singleQuote, semiColons) — the agent's symbolic edits preserve logic but may not match Deno's exact whitespace rules, so a final `make fmt` is mandatory before commit/PR. CI enforces `deno fmt --check` and will fail the build on unformatted code.
+Type-check + lint + **format** after every edit. Test command order matters: `pnpm run check` then `pnpm run test`. After finishing a batch of edits, run `make fmt` to apply `biome check --write` (lineWidth 100, indentWidth 2, single quotes, semicolons) — the agent's symbolic edits preserve logic but may not match Biome's exact whitespace rules, so a final `make fmt` is mandatory before commit/PR. CI enforces `pnpm run fmt-check` and will fail the build on unformatted code.
 
 ## Architecture
 
-Monorepo with 4 Deno workspace members:
+Monorepo with 4 pnpm workspace members (`apps/*`, `packages/*` in `pnpm-workspace.yaml`):
 ```
 apps/web  ───→ @brewform/shared
                     ↑
@@ -88,33 +84,33 @@ stay complete. This is mandatory, like logging — a route without `describeRout
 - **No raw SQL** — Drizzle ORM only. No JSONB/UUID columns. No Postgres-specific operators in application query code (schema-level Postgres features like index ordering and CHECK constraints are permitted).
 - **Soft deletes** on all main entities (`deletedAt`). Queries use `findFirst({ where: eq(t.deletedAt, null) })`, never `findUnique`.
 - Connection pool: `max: 10` via `postgres-js` driver in `packages/db/src/index.ts`.
-- Migrations: `deno task db:generate` (creates SQL) then `deno task db:migrate` (applies); seed is `deno run -A packages/db/src/seed.ts`.
+- Migrations: `pnpm run db:generate` (creates SQL) then `pnpm run db:migrate` (applies); seed is `pnpm run db:seed`.
 - **Schema changes:** All schema changes (tables, columns, indexes, enums, constraints) MUST be made in `packages/db/src/schema.ts` (the Drizzle TypeScript schema). Then run `make db-generate && make db-migrate` to auto-generate and apply the migration. **Never manually edit the generated SQL migration files** — Drizzle's hash-based migration tracking depends on them being unmodified, and manual edits cause silent migration failures. The only exception is `make db-push` for lightweight rename/enum-addition syncs (but it does NOT detect new CHECK constraints or indexes).
 - **`drizzle-kit generate --custom` workaround (TTY-less environments):** Drizzle Kit 0.31's interactive `generate` prompts for column renames require a TTY — non-interactive shells (CI, piped stdin, agents without a PTY) error out with "Interactive prompts require a TTY terminal". The non-interactive pivot is `drizzle-kit generate --custom --name=<tag>` which creates an empty SQL migration shell + a snapshot that is an EXACT COPY of the previous snapshot (NOT regenerated from the current schema). After writing the SQL by hand (per the design's reference template), you MUST also **manually update `meta/<NNNN>_snapshot.json`** to reflect EVERY schema change introduced by the migration — including but not limited to: renamed columns (both the JSON object key AND the `name` value inside), new enum values (under the `enums` section — Drizzle's snapshot stores them as a `values` array), new/dropped columns, new indexes, new constraints. After editing, **run `make db-generate` again and assert it outputs "No schema changes, nothing to migrate 😴"** — if it produces a new migration file, your snapshot is missing a change the schema declares; diff the new migration to find the gap, fold it into the snapshot, delete the stray migration + its snapshot + journal entry, and re-run until clean. CI runs `make db-generate` as a freshness check; a snapshot that doesn't match the schema fails the build. The hand-written SQL in the `.sql` file is NOT cross-checked against the snapshot — both must be authored to agree.
 - **Seed idempotency:** `packages/db/src/seed.ts` must be safe to run repeatedly. All seed helpers that insert into tables with unique constraints MUST use `onConflictDoNothing({ target: [...] })` keyed on those constraints, or select-and-reuse existing rows for tables without usable unique keys. This lets `make db-seed` recover when containers are recreated but the Postgres named volume still holds previous seed data. The seed script entrypoint MUST be guarded with `if (import.meta.main)` so the file can be imported by tests without executing the full seed.
-- **Full DB reset:** `make db-reset` drops and recreates the database, pushes the schema fresh, re-seeds, and flushes the Deno KV cache.
+- **Full DB reset:** `make db-reset` drops and recreates the database, pushes the schema fresh, re-seeds, and flushes the API cache.
 
 ## Testing
 
-- Framework: `jsr:@std/testing/bdd` (`describe`/`it`) + `jsr:@std/expect`.
-- Tests run with `--no-check` (type-checking done separately).
+- Framework: Vitest (`describe`/`it`/`expect` from `vitest`).
+- Tests run without type-checking (type-checking done separately via `pnpm run check`).
 - Test files use `*.test.ts` (or `*.test.tsx`) naming — never `*_test.ts`.
-- Tests need `DATABASE_URL` and `JWT_SECRET` set; `CACHE_DRIVER=memory` and `APP_ENV=test` skip KV and email.
+- Tests need `DATABASE_URL` and `JWT_SECRET` set; `CACHE_DRIVER=memory` and `APP_ENV=test` skip external cache and email.
 - DB-backed tests target the dedicated `brewform_test` database (the `make test*` targets inject `DATABASE_URL` for it) — NEVER the dev `brewform` DB, which tests would pollute. Run `make test-db-provision` once after `make up` (mirrors `.github/workflows/pr.yml` CI provisioning).
 - Email notifications are suppressed when `APP_ENV === 'test'`.
 
 ## Code style
 
-- Formatting: `deno fmt` (lineWidth 100, indentWidth 2, singleQuote, semiColons).
+- Formatting: Biome (`biome check`, config in `biome.json`: lineWidth 100, indentWidth 2, single quotes, semicolons).
 - **Run `make fmt` before every commit.** Symbolic edits and regex replacements preserve logic but
-  may not match Deno's exact whitespace rules (trailing commas, line wrapping, indentation). CI runs
-  `deno fmt --check` and fails the build on any diff. The pre-commit hook (`.githooks/pre-commit`,
+  may not match Biome's exact whitespace rules (trailing commas, line wrapping, indentation). CI runs
+  `pnpm run fmt-check` and fails the build on any diff. The pre-commit hook (`.githooks/pre-commit`,
   enabled via `make setup-hooks`) also enforces this locally, but do not rely on the hook alone —
   run `make fmt` proactively after each batch of edits, not just at commit time.
 - Lint exclusions: `no-import-prefix`, `no-unversioned-import` (`no-explicit-any`, `require-await`, `no-empty` were re-enabled in wave 5; see `openspec/specs/lint-style`).
-- Test files use line-level `// deno-lint-ignore <rule> -- <justification>` directives, each immediately preceded by a comment explaining the rationale. File-level `// deno-lint-ignore-file` directives are not permitted (production or test).
+- Test files use line-level `// biome-ignore <rule>: <justification>` comments, each immediately preceded by a comment explaining the rationale. File-level ignore comments are not permitted (production or test).
 - All imports use explicit file extensions (`.ts`, `.tsx`, etc.) — no sloppy imports.
-- Cache: never call `Deno.openKv()` directly — use `CacheProvider` interface via DI.
+- Cache: never construct a cache backend directly — use the `CacheProvider` interface via DI.
 
 ## Logging
 
@@ -181,7 +177,7 @@ until they also run the command.
 
 ## Other conventions
 
-- Check `/deno.json` `tasks` field for all build/test/lint/dev commands.
-- Serena MCP: `make serena-up` to start (SSE on :10122, dashboard :34283).
+- Discover commands in the root `package.json` `scripts` field (per-workspace scripts in `apps/*/package.json` and `packages/*/package.json`, run via `pnpm --filter <package> run <script>`).
+- Semantic navigation uses ripgrep and the TypeScript LSP.
 - OpenAPI docs: `GET /api/v1/docs` (Scalar UI), `GET /api/v1/openapi.json`; gated by `OPENAPI_ENABLED` env.
-- Self-hosted deployment: `docs/deployment_coolify.md` (Coolify v4.1.x, as-built) and `coolify_deployment_plan.md` (long-form). Images publish to GHCR via `.github/workflows/release.yml`; the web image's API URL is runtime-configurable via `VITE_API_URL` (`docker-web-entrypoint.sh` writes `/config.js`). Key Coolify nuances: denokv runs as a **Docker Compose** resource (Docker Image resources have no command field), cross-stack reachability needs "Connect to Predefined Network", and `S3_ENDPOINT` is the account endpoint only (no bucket path).
+- Self-hosted deployment: `docs/deployment_coolify.md` (Coolify v4.1.x, as-built) and `coolify_deployment_plan.md` (long-form). Images publish to GHCR via `.github/workflows/release.yml`; the web image's API URL is runtime-configurable via `VITE_API_URL` (`docker-web-entrypoint.sh` writes `/config.js`). Key Coolify nuances: the API cache is in-memory (`CACHE_DRIVER=memory`, no sidecar — Redis/Valkey is a planned follow-up), cross-stack reachability needs "Connect to Predefined Network", and `S3_ENDPOINT` is the account endpoint only (no bucket path).

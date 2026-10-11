@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useFetcher } from 'react-router';
-import { useAuth } from '../../contexts/AuthContext.tsx';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
 import type {
   CommentOutput,
   CommentWithAuthorOutput,
   CommentWithRepliesOutput,
 } from '@brewform/shared/schemas';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useFetcher } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { formatDate } from '../../utils/format.ts';
 
 const log = createLogger('CommentSection');
@@ -31,9 +31,8 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
     /(\*\*(.+?)\*\*|__(.+?)__|(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<!_)_(?!_)(.+?)(?<!_)_(?!_))/g;
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
-  let match: RegExpExecArray | null;
 
-  while ((match = pattern.exec(text)) !== null) {
+  for (const match of text.matchAll(pattern)) {
     // Push plain text before this match
     if (match.index > lastIndex) {
       nodes.push(text.slice(lastIndex, match.index));
@@ -105,7 +104,9 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     const snapshot = deleteSnapshotRef.current;
     deleteSnapshotRef.current = null;
     if (
-      deleteFetcher.data && typeof deleteFetcher.data === 'object' && 'error' in deleteFetcher.data
+      deleteFetcher.data &&
+      typeof deleteFetcher.data === 'object' &&
+      'error' in deleteFetcher.data
     ) {
       if (snapshot) {
         log.debug({ recipeId }, 'handleDelete rolled back');
@@ -145,11 +146,11 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
         ...data,
         author: user
           ? {
-            id: user.id,
-            username: user.username,
-            displayName: user.displayName,
-            avatarUrl: user.avatarUrl,
-          }
+              id: user.id,
+              username: user.username,
+              displayName: user.displayName,
+              avatarUrl: user.avatarUrl,
+            }
           : null,
         replies: [],
       };
@@ -163,24 +164,24 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
         ...data,
         author: user
           ? {
-            id: user.id,
-            username: user.username,
-            displayName: user.displayName,
-            avatarUrl: user.avatarUrl,
-          }
+              id: user.id,
+              username: user.username,
+              displayName: user.displayName,
+              avatarUrl: user.avatarUrl,
+            }
           : null,
         replies: [],
       };
       setComments((prev) =>
         prev.map((c) =>
-          c.id === intent.parentCommentId ? { ...c, replies: [...(c.replies ?? []), reply] } : c
-        )
+          c.id === intent.parentCommentId ? { ...c, replies: [...(c.replies ?? []), reply] } : c,
+        ),
       );
       setReplyContent('');
       setReplyingToId(null);
       setStatusMessage(t('comment.replyPosted'));
     }
-  }, [submitFetcher.state, submitFetcher.data]);
+  }, [submitFetcher.state, submitFetcher.data, user, t]);
 
   // Process loadMoreFetcher completion
   useEffect(() => {
@@ -268,7 +269,10 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     return comment.author?.displayName || comment.author?.username || 'Unknown';
   }
 
-  function AuthorLink({ comment, className }: {
+  function AuthorLink({
+    comment,
+    className,
+  }: {
     comment: CommentWithAuthorOutput;
     className?: string;
   }) {
@@ -295,29 +299,29 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
     return (
       <article
         key={comment.id}
-        className='rounded-lg p-4 bg-[color:var(--bg-secondary)] border border-[color:var(--border-primary)]'
+        className="rounded-lg p-4 bg-[color:var(--bg-secondary)] border border-[color:var(--border-primary)]"
         aria-label={`${t('comment.commentBy')} ${getAuthorName(comment)}`}
       >
         {/* Comment header */}
-        <div className='flex items-center gap-2 mb-2'>
-          <AuthorLink comment={comment} className='font-medium text-sm' />
-          {isRecipeAuthor(comment) && <span className='badge text-xs'>{t('comment.op')}</span>}
-          <span className='text-xs text-[color:var(--text-tertiary)]'>
+        <div className="flex items-center gap-2 mb-2">
+          <AuthorLink comment={comment} className="font-medium text-sm" />
+          {isRecipeAuthor(comment) && <span className="badge text-xs">{t('comment.op')}</span>}
+          <span className="text-xs text-[color:var(--text-tertiary)]">
             {formatDate(comment.createdAt, locale)}
           </span>
         </div>
 
         {/* Comment body -- inline markdown */}
-        <p className='text-sm text-[color:var(--text-secondary)]'>
+        <p className="text-sm text-[color:var(--text-secondary)]">
           {renderInlineMarkdown(comment.content)}
         </p>
 
         {/* Reply button on top-level comment */}
         {userCanReply && !isReplyOpen && (
           <button
-            type='button'
+            type="button"
             onClick={() => openReplyForm(comment.id)}
-            className='mt-2 text-xs text-[color:var(--accent-primary)] bg-transparent border-none cursor-pointer p-0'
+            className="mt-2 text-xs text-[color:var(--accent-primary)] bg-transparent border-none cursor-pointer p-0"
           >
             {t('comment.reply')}
           </button>
@@ -326,10 +330,10 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
         {/* Delete button for own comments */}
         {userIsCommentAuthor && (
           <button
-            type='button'
+            type="button"
             onClick={() => handleDelete(comment.id)}
             disabled={deleteFetcher.state !== 'idle'}
-            className='mt-2 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0'
+            className="mt-2 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0"
           >
             {t('common.delete')}
           </button>
@@ -337,32 +341,31 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
 
         {/* Inline reply form */}
         {isReplyOpen && (
-          <form onSubmit={(e) => handleReplySubmit(e, comment.id)} className='mt-3 ml-4'>
-            <label htmlFor={`reply-comment-${comment.id}`} className='sr-only'>
+          <form onSubmit={(e) => handleReplySubmit(e, comment.id)} className="mt-3 ml-4">
+            <label htmlFor={`reply-comment-${comment.id}`} className="sr-only">
               {t('comment.replyLabel')}
             </label>
             <textarea
               id={`reply-comment-${comment.id}`}
               value={replyContent}
-              onChange={(e) =>
-                setReplyContent(e.target.value)}
+              onChange={(e) => setReplyContent(e.target.value)}
               placeholder={t('comment.writeReply')}
-              className='input-field mb-2'
+              className="input-field mb-2"
               rows={2}
-              aria-required='true'
+              aria-required="true"
               ref={textareaRef}
             />
-            <div className='flex gap-2'>
+            <div className="flex gap-2">
               <button
-                type='submit'
-                className='btn-primary text-xs py-1 px-3'
+                type="submit"
+                className="btn-primary text-xs py-1 px-3"
                 disabled={submitFetcher.state !== 'idle' || !replyContent.trim()}
               >
                 {submitFetcher.state !== 'idle' ? t('comment.posting') : t('comment.postReply')}
               </button>
               <button
-                type='button'
-                className='btn-secondary text-xs py-1 px-3'
+                type="button"
+                className="btn-secondary text-xs py-1 px-3"
                 onClick={() => {
                   setReplyingToId(null);
                   setReplyContent('');
@@ -376,37 +379,38 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
 
         {/* Replies */}
         {Array.isArray(comment.replies) && comment.replies.length > 0 && (
-          <div className='mt-3 ml-4 flex flex-col gap-2'>
+          <div className="mt-3 ml-4 flex flex-col gap-2">
             {comment.replies.map((reply) => {
-              const userIsReplyAuthor = isAuthenticated && user != null &&
-                user.id === reply.authorId;
+              const userIsReplyAuthor =
+                isAuthenticated && user != null && user.id === reply.authorId;
 
               return (
                 <article
                   key={reply.id}
-                  className='rounded p-3 bg-[color:var(--bg-tertiary)] border border-[color:var(--border-primary)]'
+                  className="rounded p-3 bg-[color:var(--bg-tertiary)] border border-[color:var(--border-primary)]"
                   aria-label={t('comment.replyBy').replace('{name}', getAuthorName(reply))}
                 >
-                  <div className='flex items-center gap-2 mb-1'>
-                    <AuthorLink comment={reply} className='font-medium text-xs' />
+                  <div className="flex items-center gap-2 mb-1">
+                    <AuthorLink comment={reply} className="font-medium text-xs" />
                     {isRecipeAuthor(reply) && (
-                      <span className='badge text-xs'>{t('comment.op')}</span>
+                      <span className="badge text-xs">{t('comment.op')}</span>
                     )}
-                    <span className='text-xs text-[color:var(--text-tertiary)]'>
+                    <span className="text-xs text-[color:var(--text-tertiary)]">
                       {formatDate(reply.createdAt, locale)}
                     </span>
                   </div>
                   {/* Reply body -- inline markdown */}
-                  <p className='text-xs text-[color:var(--text-secondary)]'>
+                  <p className="text-xs text-[color:var(--text-secondary)]">
                     {renderInlineMarkdown(reply.content)}
                   </p>
                   {/* Reply button on a reply -- opens form on the parent, pre-fills @username */}
                   {userCanReply && !isReplyOpen && (
                     <button
-                      type='button'
+                      type="button"
                       onClick={() =>
-                        openReplyForm(comment.id, getAuthorUsername(reply) ?? undefined)}
-                      className='mt-1 text-xs text-[color:var(--accent-primary)] bg-transparent border-none cursor-pointer p-0'
+                        openReplyForm(comment.id, getAuthorUsername(reply) ?? undefined)
+                      }
+                      className="mt-1 text-xs text-[color:var(--accent-primary)] bg-transparent border-none cursor-pointer p-0"
                     >
                       {t('comment.reply')}
                     </button>
@@ -414,10 +418,10 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
                   {/* Delete button for own replies */}
                   {userIsReplyAuthor && (
                     <button
-                      type='button'
+                      type="button"
                       onClick={() => handleDelete(reply.id)}
                       disabled={deleteFetcher.state !== 'idle'}
-                      className='mt-1 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0'
+                      className="mt-1 ml-2 text-xs text-[color:var(--danger)] bg-transparent border-none cursor-pointer p-0"
                     >
                       {t('common.delete')}
                     </button>
@@ -433,31 +437,31 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
 
   return (
     <section aria-label={t('recipe.comments')}>
-      <h3 className='text-lg font-semibold mb-4 text-[color:var(--text-primary)]'>
+      <h3 className="text-lg font-semibold mb-4 text-[color:var(--text-primary)]">
         {t('comment.count').replace('{count}', String(total))}
       </h3>
 
-      <div aria-live='polite' aria-atomic='true' className='sr-only'>
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
         {statusMessage}
       </div>
 
       {isAuthenticated && (
-        <form onSubmit={handleSubmit} className='mb-6'>
-          <label htmlFor='new-comment' className='sr-only'>
+        <form onSubmit={handleSubmit} className="mb-6">
+          <label htmlFor="new-comment" className="sr-only">
             {t('comment.label')}
           </label>
           <textarea
-            id='new-comment'
+            id="new-comment"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder={t('comment.writeComment')}
-            className='input-field mb-2'
+            className="input-field mb-2"
             rows={3}
-            aria-required='true'
+            aria-required="true"
           />
           <button
-            type='submit'
-            className='btn-primary'
+            type="submit"
+            className="btn-primary"
             disabled={submitFetcher.state !== 'idle' || !newComment.trim()}
           >
             {submitFetcher.state !== 'idle' ? t('comment.posting') : t('comment.postComment')}
@@ -465,19 +469,17 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
         </form>
       )}
 
-      <div className='flex flex-col gap-4'>
-        {comments.map((comment) => renderComment(comment))}
-      </div>
+      <div className="flex flex-col gap-4">{comments.map((comment) => renderComment(comment))}</div>
 
       {total > comments.length && (
-        <div className='mt-4 text-center'>
+        <div className="mt-4 text-center">
           <button
-            type='button'
+            type="button"
             onClick={() => {
               if (loadMoreFetcher.state !== 'idle') return;
               loadMoreFetcher.load(`/comments/recipe/${recipeId}?page=${page + 1}`);
             }}
-            className='btn-secondary'
+            className="btn-secondary"
             disabled={loadMoreFetcher.state !== 'idle'}
           >
             {t('comment.loadMore')}

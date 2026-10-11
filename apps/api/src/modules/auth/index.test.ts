@@ -1,9 +1,4 @@
 import '../../test-setup.ts';
-import { afterAll, beforeAll, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { Hono } from 'hono';
-import auth from './index.ts';
-import { reloadConfig } from '../../config/env.ts';
 import { db } from '@brewform/db';
 import {
   emailVerificationTokens,
@@ -12,8 +7,12 @@ import {
   users,
 } from '@brewform/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import * as model from './model.ts';
+import { Hono } from 'hono';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { reloadConfig } from '../../config/env.ts';
+import auth from './index.ts';
 import { signAccessToken, signRefreshToken } from './jwt.ts';
+import * as model from './model.ts';
 
 function createTestApp() {
   const app = new Hono();
@@ -21,7 +20,7 @@ function createTestApp() {
   return app;
 }
 
-describe('Auth Routes', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Auth Routes', () => {
   describe('GET /auth/registration-status', () => {
     it('should return enabled status', async () => {
       const app = createTestApp();
@@ -117,9 +116,9 @@ describe('Auth Routes', { sanitizeOps: false, sanitizeResources: false }, () => 
     });
 
     it('should return 403 when registration is disabled', async () => {
-      const original = Deno.env.get('ENABLE_REGISTRATION');
+      const original = process.env.ENABLE_REGISTRATION;
       try {
-        Deno.env.set('ENABLE_REGISTRATION', 'false');
+        process.env.ENABLE_REGISTRATION = 'false';
         reloadConfig();
 
         const app = createTestApp();
@@ -138,9 +137,9 @@ describe('Auth Routes', { sanitizeOps: false, sanitizeResources: false }, () => 
         expect(body.error.code).toBe('REGISTRATION_DISABLED');
       } finally {
         if (original === undefined) {
-          Deno.env.delete('ENABLE_REGISTRATION');
+          delete process.env.ENABLE_REGISTRATION;
         } else {
-          Deno.env.set('ENABLE_REGISTRATION', original);
+          process.env.ENABLE_REGISTRATION = original;
         }
         reloadConfig();
       }
@@ -156,7 +155,7 @@ describe('Auth Routes', { sanitizeOps: false, sanitizeResources: false }, () => 
  * outbound email is a no-op (see `email.ts`), keeping the reset/verification
  * routes deterministic.
  */
-describe('Auth Routes — DB integration', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('Auth Routes — DB integration', () => {
   const createdUsers: string[] = [];
   let originalAppEnv: string | undefined;
 
@@ -185,24 +184,24 @@ describe('Auth Routes — DB integration', { sanitizeOps: false, sanitizeResourc
   }
 
   beforeAll(() => {
-    originalAppEnv = Deno.env.get('APP_ENV');
-    Deno.env.set('APP_ENV', 'test');
+    originalAppEnv = process.env.APP_ENV;
+    process.env.APP_ENV = 'test';
     reloadConfig();
   });
 
   afterAll(async () => {
     if (originalAppEnv === undefined) {
-      Deno.env.delete('APP_ENV');
+      delete process.env.APP_ENV;
     } else {
-      Deno.env.set('APP_ENV', originalAppEnv);
+      process.env.APP_ENV = originalAppEnv;
     }
     reloadConfig();
 
     if (createdUsers.length) {
       await db.delete(passwordResets).where(inArray(passwordResets.userId, createdUsers));
-      await db.delete(emailVerificationTokens).where(
-        inArray(emailVerificationTokens.userId, createdUsers),
-      );
+      await db
+        .delete(emailVerificationTokens)
+        .where(inArray(emailVerificationTokens.userId, createdUsers));
       await db.delete(userPreferences).where(inArray(userPreferences.userId, createdUsers));
       await db.delete(users).where(inArray(users.id, createdUsers));
     }
@@ -482,9 +481,14 @@ describe('Auth Routes — DB integration', { sanitizeOps: false, sanitizeResourc
         isAdmin: false,
       });
       const app = createTestApp();
-      const res = await postJson(app, '/auth/send-verification', {}, {
-        Authorization: `Bearer ${accessToken}`,
-      });
+      const res = await postJson(
+        app,
+        '/auth/send-verification',
+        {},
+        {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      );
       const body = await res.json();
       expect(res.status).toBe(200);
       expect(body.data.message).toBe('Email is already verified');
@@ -499,9 +503,14 @@ describe('Auth Routes — DB integration', { sanitizeOps: false, sanitizeResourc
         isAdmin: false,
       });
       const app = createTestApp();
-      const res = await postJson(app, '/auth/send-verification', {}, {
-        Authorization: `Bearer ${accessToken}`,
-      });
+      const res = await postJson(
+        app,
+        '/auth/send-verification',
+        {},
+        {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      );
       const body = await res.json();
       expect(res.status).toBe(200);
       expect(body.data.message).toBe('Verification email sent');
@@ -510,9 +519,9 @@ describe('Auth Routes — DB integration', { sanitizeOps: false, sanitizeResourc
 
   describe('GET /auth/registration-status (disabled)', () => {
     it('should report disabled when registration is turned off', async () => {
-      const original = Deno.env.get('ENABLE_REGISTRATION');
+      const original = process.env.ENABLE_REGISTRATION;
       try {
-        Deno.env.set('ENABLE_REGISTRATION', 'false');
+        process.env.ENABLE_REGISTRATION = 'false';
         reloadConfig();
         const app = createTestApp();
         const res = await app.request('/auth/registration-status');
@@ -521,9 +530,9 @@ describe('Auth Routes — DB integration', { sanitizeOps: false, sanitizeResourc
         expect(body.data.enabled).toBe(false);
       } finally {
         if (original === undefined) {
-          Deno.env.delete('ENABLE_REGISTRATION');
+          delete process.env.ENABLE_REGISTRATION;
         } else {
-          Deno.env.set('ENABLE_REGISTRATION', original);
+          process.env.ENABLE_REGISTRATION = original;
         }
         reloadConfig();
       }

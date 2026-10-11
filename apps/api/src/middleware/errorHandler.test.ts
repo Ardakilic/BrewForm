@@ -1,12 +1,11 @@
 import '../test-setup.ts';
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
 import type { Context } from 'hono';
+import { describe, expect, it } from 'vitest';
 import { errorHandler } from './errorHandler.ts';
 
 function createMockContext(requestId = 'test-req-1'): Context {
   return {
-    get: (key: string) => key === 'requestId' ? requestId : undefined,
+    get: (key: string) => (key === 'requestId' ? requestId : undefined),
     json: (body: unknown, status = 200) =>
       new Response(JSON.stringify(body), {
         status,

@@ -1,20 +1,22 @@
-import { type ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loader, RecipeDetailPage } from './RecipeDetailPage.tsx';
 
 // ── Partial mock of react-router: override only useNavigation ─────────────
 
 const { useNavigationM } = vi.hoisted(() => ({
-  useNavigationM: vi.fn((): {
-    state: 'idle' | 'loading' | 'submitting';
-    location: { pathname: string } | undefined;
-  } => ({
-    state: 'idle',
-    location: undefined,
-  })),
+  useNavigationM: vi.fn(
+    (): {
+      state: 'idle' | 'loading' | 'submitting';
+      location: { pathname: string } | undefined;
+    } => ({
+      state: 'idle',
+      location: undefined,
+    }),
+  ),
 }));
 
 vi.mock('react-router', async (importOriginal) => {
@@ -58,10 +60,9 @@ vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => nul
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
 vi.mock('../../components/recipe/CommentSection.tsx', () => ({ CommentSection: () => null }));
 vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: () => null }));
-vi.mock(
-  '../../components/recipe/ForkCard.tsx',
-  () => ({ ForkCard: () => <div data-testid='fork-card'>ForkCard</div> }),
-);
+vi.mock('../../components/recipe/ForkCard.tsx', () => ({
+  ForkCard: () => <div data-testid="fork-card">ForkCard</div>,
+}));
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
     debug: vi.fn(),
@@ -73,64 +74,53 @@ vi.mock('@/utils/logger.ts', () => ({
 
 vi.mock('@brewform/shared/constants', () => ({ EMOJI_TAGS_LIST: [] }));
 
-vi.mock(
-  '../../components/recipe/BreadcrumbNav.tsx',
-  () => ({ BreadcrumbNav: () => <div data-testid='breadcrumb-nav' /> }),
-);
-vi.mock(
-  '../../components/recipe/MetadataBadges.tsx',
-  () => ({ MetadataBadges: () => <div data-testid='metadata-badges' /> }),
-);
-vi.mock(
-  '../../components/recipe/StatCards.tsx',
-  () => ({ StatCards: () => <div data-testid='stat-cards' /> }),
-);
-vi.mock(
-  '../../components/recipe/BeanSection.tsx',
-  () => ({ BeanSection: () => <div data-testid='bean-section' /> }),
-);
-vi.mock(
-  '../../components/recipe/BrewTimeline.tsx',
-  () => ({ BrewTimeline: () => <div data-testid='brew-timeline' /> }),
-);
-vi.mock(
-  '../../components/recipe/EquipmentSection.tsx',
-  () => ({ EquipmentSection: () => <div data-testid='equipment-section' /> }),
-);
-vi.mock(
-  '../../components/recipe/TastingNotesSection.tsx',
-  () => ({ TastingNotesSection: () => <div data-testid='tasting-notes-section' /> }),
-);
-vi.mock(
-  '../../components/recipe/ShareSection.tsx',
-  () => ({ ShareSection: () => <div data-testid='share-section' /> }),
-);
-vi.mock(
-  '../../components/recipe/RecipeNotesSection.tsx',
-  () => ({ RecipeNotesSection: () => <div data-testid='recipe-notes-section' /> }),
-);
-vi.mock(
-  '../../components/brew-log/RecipeBrewStats.tsx',
-  () => ({ RecipeBrewStats: () => <div data-testid='recipe-brew-stats' /> }),
-);
-vi.mock(
-  '../../components/brew-log/BrewHistorySection.tsx',
-  () => ({ BrewHistorySection: () => <div data-testid='brew-history-section' /> }),
-);
+vi.mock('../../components/recipe/BreadcrumbNav.tsx', () => ({
+  BreadcrumbNav: () => <div data-testid="breadcrumb-nav" />,
+}));
+vi.mock('../../components/recipe/MetadataBadges.tsx', () => ({
+  MetadataBadges: () => <div data-testid="metadata-badges" />,
+}));
+vi.mock('../../components/recipe/StatCards.tsx', () => ({
+  StatCards: () => <div data-testid="stat-cards" />,
+}));
+vi.mock('../../components/recipe/BeanSection.tsx', () => ({
+  BeanSection: () => <div data-testid="bean-section" />,
+}));
+vi.mock('../../components/recipe/BrewTimeline.tsx', () => ({
+  BrewTimeline: () => <div data-testid="brew-timeline" />,
+}));
+vi.mock('../../components/recipe/EquipmentSection.tsx', () => ({
+  EquipmentSection: () => <div data-testid="equipment-section" />,
+}));
+vi.mock('../../components/recipe/TastingNotesSection.tsx', () => ({
+  TastingNotesSection: () => <div data-testid="tasting-notes-section" />,
+}));
+vi.mock('../../components/recipe/ShareSection.tsx', () => ({
+  ShareSection: () => <div data-testid="share-section" />,
+}));
+vi.mock('../../components/recipe/RecipeNotesSection.tsx', () => ({
+  RecipeNotesSection: () => <div data-testid="recipe-notes-section" />,
+}));
+vi.mock('../../components/brew-log/RecipeBrewStats.tsx', () => ({
+  RecipeBrewStats: () => <div data-testid="recipe-brew-stats" />,
+}));
+vi.mock('../../components/brew-log/BrewHistorySection.tsx', () => ({
+  BrewHistorySection: () => <div data-testid="brew-history-section" />,
+}));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { useAuth } from '../../contexts/AuthContext.tsx';
-import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
-import { getTasteNotesCached } from '../../api/static-cache.ts';
 import type {
   CommentWithRepliesOutput,
   PaginatedResponse,
   RecipeCollectionsOutput,
   RecipeDetailOutput,
 } from '@brewform/shared/schemas';
+import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
+import { getTasteNotesCached } from '../../api/static-cache.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
+import { useAuth } from '../../contexts/AuthContext.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseAuth = vi.mocked(useAuth);

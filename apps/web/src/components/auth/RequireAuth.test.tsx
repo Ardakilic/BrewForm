@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AuthUser } from '@brewform/shared/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import type { AuthUser } from '@brewform/shared/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RequireAuth } from './RequireAuth.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -12,7 +12,7 @@ vi.mock('../../contexts/AuthContext.tsx', () => ({
 }));
 
 vi.mock('../ui/Skeleton.tsx', () => ({
-  PageSkeleton: () => <div data-testid='page-skeleton'>Loading...</div>,
+  PageSkeleton: () => <div data-testid="page-skeleton">Loading...</div>,
 }));
 
 // ── Imports after mocks ────────────────────────────────────────────────────
@@ -54,10 +54,7 @@ function makeAuthValue(
   } as ReturnType<typeof useAuth>;
 }
 
-function renderWithRouter(
-  authValue: ReturnType<typeof useAuth>,
-  requireAdmin = false,
-) {
+function renderWithRouter(authValue: ReturnType<typeof useAuth>, requireAdmin = false) {
   mockUseAuth.mockReturnValue(authValue);
   const router = createMemoryRouter(
     [
@@ -65,17 +62,17 @@ function renderWithRouter(
         path: '/protected',
         element: (
           <RequireAuth requireAdmin={requireAdmin}>
-            <div data-testid='protected-content'>Protected</div>
+            <div data-testid="protected-content">Protected</div>
           </RequireAuth>
         ),
       },
       {
         path: '/login',
-        element: <div data-testid='login-page'>Login</div>,
+        element: <div data-testid="login-page">Login</div>,
       },
       {
         path: '/',
-        element: <div data-testid='home-page'>Home</div>,
+        element: <div data-testid="home-page">Home</div>,
       },
     ],
     { initialEntries: ['/protected'] },

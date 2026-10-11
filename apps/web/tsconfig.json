@@ -1,15 +1,17 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "types": ["vite/client", "vitest", "@testing-library/jest-dom"],
+    // Relaxed for bundler resolution: web sources still use
+    // `.ts`-suffixed type-only imports, which the strict root flags reject.
+    "rewriteRelativeImportExtensions": false,
+    "verbatimModuleSyntax": false,
     "jsx": "react-jsx",
+    "types": ["vite/client", "vitest", "@testing-library/jest-dom"],
     "paths": {
       "@/*": ["./src/*"],
       "@brewform/shared": ["../../packages/shared/src/index.ts"],

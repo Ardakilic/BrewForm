@@ -20,9 +20,15 @@ interface Props {
  * Open Graph / Twitter meta tags, robots noindex, and the canonical
  * link with the given props.
  */
-export function SEOHead(
-  { title, description, image, url, type = 'website', noIndex, canonical }: Props,
-) {
+export function SEOHead({
+  title,
+  description,
+  image,
+  url,
+  type = 'website',
+  noIndex,
+  canonical,
+}: Props) {
   useEffect(() => {
     document.title = title ? `${title} | BrewForm` : 'BrewForm — Coffee Brewing Recipes';
     setMeta(
@@ -58,7 +64,8 @@ export function SEOHead(
 }
 
 function setMeta(name: string, content: string) {
-  let el = document.querySelector(`meta[property="${name}"]`) ||
+  let el =
+    document.querySelector(`meta[property="${name}"]`) ||
     document.querySelector(`meta[name="${name}"]`);
   if (!el) {
     el = document.createElement('meta');

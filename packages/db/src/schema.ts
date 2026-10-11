@@ -1,23 +1,3 @@
-import { relations } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
-
-import {
-  AnyPgColumn,
-  boolean,
-  check,
-  decimal,
-  foreignKey,
-  index,
-  integer,
-  pgEnum,
-  pgTable,
-  real,
-  text,
-  timestamp,
-  unique,
-  varchar,
-} from 'drizzle-orm/pg-core';
-
 import {
   ADDITIONAL_PREPARATION_TYPE_VALUES,
   BADGE_RULE_VALUES,
@@ -34,6 +14,23 @@ import {
   UNIT_SYSTEM_VALUES,
   VISIBILITY_VALUES,
 } from '@brewform/shared/constants';
+import { relations, sql } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  decimal,
+  foreignKey,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  real,
+  text,
+  timestamp,
+  unique,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
 /**
  * Enums — values imported from @brewform/shared/constants
@@ -44,7 +41,7 @@ import {
 export const visibilityEnum = pgEnum('visibility', [...VISIBILITY_VALUES]);
 
 /** Union of {@link visibilityEnum} values. */
-export type RecipeVisibility = typeof visibilityEnum.enumValues[number];
+export type RecipeVisibility = (typeof visibilityEnum.enumValues)[number];
 
 /** Postgres enum driven by {@link BREW_METHOD_VALUES}. */
 export const brewMethodEnum = pgEnum('brew_method', [...BREW_METHOD_VALUES]);
@@ -65,10 +62,9 @@ export const themeEnum = pgEnum('theme', [...THEME_VALUES]);
 /** Postgres enum driven by {@link DATE_FORMAT_VALUES}. */
 export const dateFormatEnum = pgEnum('date_format', [...DATE_FORMAT_VALUES]);
 /** Postgres enum driven by {@link ADDITIONAL_PREPARATION_TYPE_VALUES}. */
-export const additionalPreparationTypeEnum = pgEnum(
-  'additional_preparation_type',
-  [...ADDITIONAL_PREPARATION_TYPE_VALUES],
-);
+export const additionalPreparationTypeEnum = pgEnum('additional_preparation_type', [
+  ...ADDITIONAL_PREPARATION_TYPE_VALUES,
+]);
 /** Postgres enum driven by {@link REPORT_STATUS_VALUES}. */
 export const reportStatusEnum = pgEnum('report_status', [...REPORT_STATUS_VALUES]);
 
@@ -78,7 +74,9 @@ export const reportStatusEnum = pgEnum('report_status', [...REPORT_STATUS_VALUES
 export const users = pgTable(
   'user',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     email: varchar('email', { length: 255 }).notNull().unique(),
     emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
     username: varchar('username', { length: 255 }).notNull().unique(),
@@ -103,10 +101,15 @@ export const users = pgTable(
 
 /** Per-user preferences (units, theme, locale, notification toggles); unique on `userId`. */
 export const userPreferences = pgTable('user_preferences', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: varchar('user_id', { length: 36 }).notNull().unique().references(() => users.id, {
-    onDelete: 'cascade',
-  }),
+  id: varchar('id', { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: varchar('user_id', { length: 36 })
+    .notNull()
+    .unique()
+    .references(() => users.id, {
+      onDelete: 'cascade',
+    }),
   unitSystem: unitSystemEnum('unit_system').notNull().default('metric'),
   temperatureUnit: temperatureUnitEnum('temperature_unit').notNull().default('celsius'),
   theme: themeEnum('theme').notNull().default('light'),
@@ -130,10 +133,14 @@ export const userPreferences = pgTable('user_preferences', {
 export const recipes = pgTable(
   'recipe',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     slug: varchar('slug', { length: 255 }).notNull().unique(),
     title: varchar('title', { length: 255 }).notNull(),
-    authorId: varchar('author_id', { length: 36 }).notNull().references(() => users.id),
+    authorId: varchar('author_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     visibility: visibilityEnum('visibility').notNull().default('draft'),
     currentVersionId: varchar('current_version_id', { length: 36 }).references(
       (): AnyPgColumn => recipeVersions.id,
@@ -142,8 +149,8 @@ export const recipes = pgTable(
     likeCount: integer('like_count').notNull().default(0),
     commentCount: integer('comment_count').notNull().default(0),
     forkCount: integer('fork_count').notNull().default(0),
-    forkedFromId: varchar('forked_from_id', { length: 36 }).references((): AnyPgColumn =>
-      recipes.id
+    forkedFromId: varchar('forked_from_id', { length: 36 }).references(
+      (): AnyPgColumn => recipes.id,
     ),
     featured: boolean('featured').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -202,8 +209,12 @@ export const recipes = pgTable(
 export const recipeVersions = pgTable(
   'recipe_version',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
     versionNumber: integer('version_number').notNull(),
     productName: varchar('product_name', { length: 255 }),
     coffeeBrand: varchar('coffee_brand', { length: 255 }),
@@ -227,8 +238,9 @@ export const recipeVersions = pgTable(
     flowRate: real('flow_rate'),
     preInfusionTimeSeconds: integer('pre_infusion_time_seconds'),
     beanId: varchar('bean_id', { length: 36 }).references(() => beans.id),
-    coffeeVarietyId: varchar('coffee_variety_id', { length: 36 })
-      .references((): AnyPgColumn => coffeeVarieties.id),
+    coffeeVarietyId: varchar('coffee_variety_id', { length: 36 }).references(
+      (): AnyPgColumn => coffeeVarieties.id,
+    ),
     coffeeVarietyName: varchar('coffee_variety_name', { length: 255 }),
     personalNotes: text('personal_notes'),
     preparationNotes: text('preparation_notes').notNull(),
@@ -268,12 +280,15 @@ export const recipeVersions = pgTable(
 export const recipeTasteNotes = pgTable(
   'recipe_taste_note',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    recipeVersionId: varchar('recipe_version_id', { length: 36 }).notNull().references(
-      () => recipeVersions.id,
-      { onDelete: 'cascade' },
-    ),
-    tasteNoteId: varchar('taste_note_id', { length: 36 }).notNull().references(() => tasteNotes.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    recipeVersionId: varchar('recipe_version_id', { length: 36 })
+      .notNull()
+      .references(() => recipeVersions.id, { onDelete: 'cascade' }),
+    tasteNoteId: varchar('taste_note_id', { length: 36 })
+      .notNull()
+      .references(() => tasteNotes.id),
     intensity: integer('intensity').notNull().default(1),
     /** Audit timestamp — when the taste note was attached to this recipe version. */
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -293,12 +308,15 @@ export const recipeTasteNotes = pgTable(
 export const recipeEquipment = pgTable(
   'recipe_equipment',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    recipeVersionId: varchar('recipe_version_id', { length: 36 }).notNull().references(
-      () => recipeVersions.id,
-      { onDelete: 'cascade' },
-    ),
-    equipmentId: varchar('equipment_id', { length: 36 }).notNull().references(() => equipment.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    recipeVersionId: varchar('recipe_version_id', { length: 36 })
+      .notNull()
+      .references(() => recipeVersions.id, { onDelete: 'cascade' }),
+    equipmentId: varchar('equipment_id', { length: 36 })
+      .notNull()
+      .references(() => equipment.id),
     /** Audit timestamp — when the equipment was attached to this recipe version. */
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -316,7 +334,9 @@ export const recipeEquipment = pgTable(
 export const recipeAdditionalPreparations = pgTable(
   'recipe_additional_preparation',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     recipeVersionId: varchar('recipe_version_id', { length: 36 }).notNull(),
     name: varchar('name', { length: 255 }).notNull(),
     type: additionalPreparationTypeEnum('type').notNull(),
@@ -338,8 +358,12 @@ export const recipeAdditionalPreparations = pgTable(
 export const photos = pgTable(
   'photo',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
     url: varchar('url', { length: 500 }).notNull(),
     thumbnailUrl: varchar('thumbnail_url', { length: 500 }),
     alt: varchar('alt', { length: 255 }),
@@ -365,12 +389,15 @@ export const photos = pgTable(
 export const recipeVersionPhotos = pgTable(
   'recipe_version_photo',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    recipeVersionId: varchar('recipe_version_id', { length: 36 }).notNull().references(
-      () => recipeVersions.id,
-      { onDelete: 'cascade' },
-    ),
-    photoId: varchar('photo_id', { length: 36 }).notNull().references(() => photos.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    recipeVersionId: varchar('recipe_version_id', { length: 36 })
+      .notNull()
+      .references(() => recipeVersions.id, { onDelete: 'cascade' }),
+    photoId: varchar('photo_id', { length: 36 })
+      .notNull()
+      .references(() => photos.id),
     sortOrder: integer('sort_order').notNull().default(0),
     /** Audit timestamp — when the photo was attached to this recipe version. */
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -389,7 +416,9 @@ export const recipeVersionPhotos = pgTable(
 export const equipment = pgTable(
   'equipment',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: varchar('name', { length: 255 }).notNull(),
     type: equipmentTypeEnum('type').notNull(),
     brand: varchar('brand', { length: 255 }),
@@ -419,7 +448,9 @@ export const equipment = pgTable(
 export const beans = pgTable(
   'bean',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: varchar('name', { length: 255 }).notNull(),
     brand: varchar('brand', { length: 255 }),
     vendorId: varchar('vendor_id', { length: 36 }).references(() => vendors.id),
@@ -427,7 +458,9 @@ export const beans = pgTable(
     roastLevel: varchar('roast_level', { length: 100 }),
     processing: varchar('processing', { length: 100 }),
     origin: varchar('origin', { length: 255 }),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -447,65 +480,72 @@ export const beans = pgTable(
 );
 
 /** Postgres enum driven by {@link COFFEE_VARIETY_CATEGORY_VALUES}. */
-export const coffeeVarietyCategoryEnum = pgEnum(
-  'coffee_variety_category',
-  [...COFFEE_VARIETY_CATEGORY_VALUES],
-);
+export const coffeeVarietyCategoryEnum = pgEnum('coffee_variety_category', [
+  ...COFFEE_VARIETY_CATEGORY_VALUES,
+]);
 
 /** Coffee variety catalogue (system + user-created); soft-deleted via `deletedAt`. */
-export const coffeeVarieties = pgTable('coffee_variety', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: varchar('name', { length: 255 }).notNull(),
-  category: coffeeVarietyCategoryEnum('category').notNull(),
-  species: varchar('species', { length: 255 }),
-  origin: varchar('origin', { length: 500 }),
-  spread: text('spread'),
-  altitudeRangeM: varchar('altitude_range_m', { length: 100 }),
-  cupProfile: text('cup_profile'),
-  body: varchar('body', { length: 100 }),
-  acidity: varchar('acidity', { length: 100 }),
-  caffeinePct: varchar('caffeine_pct', { length: 50 }),
-  processingCompatibility: text('processing_compatibility').array(),
-  diseaseResistance: varchar('disease_resistance', { length: 100 }),
-  yield: varchar('yield', { length: 100 }),
-  plantSize: varchar('plant_size', { length: 100 }),
-  notes: text('notes'),
-  subVarieties: text('sub_varieties').array(),
-  fermentation: text('fermentation'),
-  dryingTimeDays: varchar('drying_time_days', { length: 50 }),
-  dryingMethod: text('drying_method'),
-  mucilageRetentionPct: varchar('mucilage_retention_pct', { length: 50 }),
-  priceRange: varchar('price_range', { length: 100 }),
-  processing: varchar('processing', { length: 255 }),
-  typeLabel: varchar('type_label', { length: 255 }),
-  notableFarms: text('notable_farms').array(),
-  notableRegions: text('notable_regions').array(),
-  regionalVariants: text('regional_variants').array(),
-  globalSharePct: varchar('global_share_pct', { length: 50 }),
-  isSystem: boolean('is_system').notNull().default(true),
-  createdBy: varchar('created_by', { length: 36 }).references(() => users.id),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
-}, (table) => [
-  index('coffee_variety_name_idx').on(table.name),
-  index('coffee_variety_category_idx').on(table.category),
-  index('coffee_variety_deleted_at_idx').on(table.deletedAt),
-  /**
-   * Composite index for coffee varieties filtered by category.
-   *
-   * Serves `findMany` (coffee-variety/model.ts:13) and
-   * `listCoffeeVarieties` (admin/model.ts:551) — filters by category
-   * equality and sorts by name ASC.
-   */
-  index('coffee_variety_category_name_idx').on(table.category, table.name),
-]);
+export const coffeeVarieties = pgTable(
+  'coffee_variety',
+  {
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: varchar('name', { length: 255 }).notNull(),
+    category: coffeeVarietyCategoryEnum('category').notNull(),
+    species: varchar('species', { length: 255 }),
+    origin: varchar('origin', { length: 500 }),
+    spread: text('spread'),
+    altitudeRangeM: varchar('altitude_range_m', { length: 100 }),
+    cupProfile: text('cup_profile'),
+    body: varchar('body', { length: 100 }),
+    acidity: varchar('acidity', { length: 100 }),
+    caffeinePct: varchar('caffeine_pct', { length: 50 }),
+    processingCompatibility: text('processing_compatibility').array(),
+    diseaseResistance: varchar('disease_resistance', { length: 100 }),
+    yield: varchar('yield', { length: 100 }),
+    plantSize: varchar('plant_size', { length: 100 }),
+    notes: text('notes'),
+    subVarieties: text('sub_varieties').array(),
+    fermentation: text('fermentation'),
+    dryingTimeDays: varchar('drying_time_days', { length: 50 }),
+    dryingMethod: text('drying_method'),
+    mucilageRetentionPct: varchar('mucilage_retention_pct', { length: 50 }),
+    priceRange: varchar('price_range', { length: 100 }),
+    processing: varchar('processing', { length: 255 }),
+    typeLabel: varchar('type_label', { length: 255 }),
+    notableFarms: text('notable_farms').array(),
+    notableRegions: text('notable_regions').array(),
+    regionalVariants: text('regional_variants').array(),
+    globalSharePct: varchar('global_share_pct', { length: 50 }),
+    isSystem: boolean('is_system').notNull().default(true),
+    createdBy: varchar('created_by', { length: 36 }).references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('coffee_variety_name_idx').on(table.name),
+    index('coffee_variety_category_idx').on(table.category),
+    index('coffee_variety_deleted_at_idx').on(table.deletedAt),
+    /**
+     * Composite index for coffee varieties filtered by category.
+     *
+     * Serves `findMany` (coffee-variety/model.ts:13) and
+     * `listCoffeeVarieties` (admin/model.ts:551) — filters by category
+     * equality and sorts by name ASC.
+     */
+    index('coffee_variety_category_name_idx').on(table.category, table.name),
+  ],
+);
 
 /** Coffee vendors/roasters; soft-deleted via `deletedAt`. */
 export const vendors = pgTable(
   'vendor',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: varchar('name', { length: 255 }).notNull(),
     website: varchar('website', { length: 500 }),
     description: text('description'),
@@ -524,7 +564,9 @@ export const vendors = pgTable(
 export const tasteNotes = pgTable(
   'taste_note',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: varchar('name', { length: 255 }).notNull(),
     parentId: varchar('parent_id', { length: 36 }).references((): AnyPgColumn => tasteNotes.id),
     color: varchar('color', { length: 50 }),
@@ -564,9 +606,13 @@ export const tasteNotes = pgTable(
 export const setups = pgTable(
   'setup',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: varchar('name', { length: 255 }).notNull(),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     brewerDetails: varchar('brewer_details', { length: 500 }),
     grinder: varchar('grinder', { length: 255 }),
     portafilterId: varchar('portafilter_id', { length: 36 }).references(() => equipment.id),
@@ -597,12 +643,18 @@ export const setups = pgTable(
 export const comments = pgTable(
   'comment',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
-    authorId: varchar('author_id', { length: 36 }).notNull().references(() => users.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
+    authorId: varchar('author_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     content: text('content').notNull(),
-    parentCommentId: varchar('parent_comment_id', { length: 36 }).references((): AnyPgColumn =>
-      comments.id
+    parentCommentId: varchar('parent_comment_id', { length: 36 }).references(
+      (): AnyPgColumn => comments.id,
     ),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -640,9 +692,15 @@ export const comments = pgTable(
 export const userFollows = pgTable(
   'user_follow',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    followerId: varchar('follower_id', { length: 36 }).notNull().references(() => users.id),
-    followingId: varchar('following_id', { length: 36 }).notNull().references(() => users.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    followerId: varchar('follower_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    followingId: varchar('following_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -671,9 +729,15 @@ export const userFollows = pgTable(
 export const userRecipeFavourites = pgTable(
   'user_recipe_favourite',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
-    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -688,9 +752,15 @@ export const userRecipeFavourites = pgTable(
 export const userRecipeLikes = pgTable(
   'user_recipe_like',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
-    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -705,9 +775,15 @@ export const userRecipeLikes = pgTable(
 export const userRecipeRatings = pgTable(
   'user_recipe_rating',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
-    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
     rating: integer('rating').notNull(), // 1–10
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -724,7 +800,9 @@ export const userRecipeRatings = pgTable(
 export const badges = pgTable(
   'badge',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: varchar('name', { length: 255 }).notNull(),
     icon: varchar('icon', { length: 100 }).notNull(),
     description: text('description').notNull(),
@@ -733,19 +811,22 @@ export const badges = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    unique('badge_rule_unique').on(table.rule),
-    index('badge_rule_idx').on(table.rule),
-  ],
+  (table) => [unique('badge_rule_unique').on(table.rule), index('badge_rule_idx').on(table.rule)],
 );
 
 /** Awarded user badges; unique on (`userId`, `badgeId`). */
 export const userBadges = pgTable(
   'user_badge',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
-    badgeId: varchar('badge_id', { length: 36 }).notNull().references(() => badges.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    badgeId: varchar('badge_id', { length: 36 })
+      .notNull()
+      .references(() => badges.id),
     awardedAt: timestamp('awarded_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -759,7 +840,9 @@ export const userBadges = pgTable(
 export const brewMethodEquipmentRules = pgTable(
   'brew_method_equipment_rule',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     brewMethod: brewMethodEnum('brew_method').notNull(),
     equipmentType: equipmentTypeEnum('equipment_type').notNull(),
     compatible: boolean('compatible').notNull().default(true),
@@ -776,36 +859,47 @@ export const brewMethodEquipmentRules = pgTable(
 );
 
 /** Postgres enum driven by {@link EQUIPMENT_DELETE_REQUEST_STATUS_VALUES}. */
-export const equipmentDeleteRequestStatusEnum = pgEnum(
-  'equipment_delete_request_status',
-  [...EQUIPMENT_DELETE_REQUEST_STATUS_VALUES],
-);
+export const equipmentDeleteRequestStatusEnum = pgEnum('equipment_delete_request_status', [
+  ...EQUIPMENT_DELETE_REQUEST_STATUS_VALUES,
+]);
 
 /** Community equipment deletion requests with review workflow; soft-deleted via `deletedAt`. */
-export const equipmentDeleteRequests = pgTable('equipment_delete_request', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  equipmentId: varchar('equipment_id', { length: 36 }).notNull()
-    .references(() => equipment.id, { onDelete: 'cascade' }),
-  requestedById: varchar('requested_by_id', { length: 36 }).notNull()
-    .references(() => users.id),
-  reason: text('reason'),
-  status: equipmentDeleteRequestStatusEnum('status').notNull().default('pending'),
-  reviewedById: varchar('reviewed_by_id', { length: 36 }).references(() => users.id),
-  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
-}, (table) => [
-  index('edr_equipment_id_idx').on(table.equipmentId),
-  index('edr_status_idx').on(table.status),
-  index('edr_deleted_at_idx').on(table.deletedAt),
-]);
+export const equipmentDeleteRequests = pgTable(
+  'equipment_delete_request',
+  {
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    equipmentId: varchar('equipment_id', { length: 36 })
+      .notNull()
+      .references(() => equipment.id, { onDelete: 'cascade' }),
+    requestedById: varchar('requested_by_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    reason: text('reason'),
+    status: equipmentDeleteRequestStatusEnum('status').notNull().default('pending'),
+    reviewedById: varchar('reviewed_by_id', { length: 36 }).references(() => users.id),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('edr_equipment_id_idx').on(table.equipmentId),
+    index('edr_status_idx').on(table.status),
+    index('edr_deleted_at_idx').on(table.deletedAt),
+  ],
+);
 
 /** Admin audit trail (action, entity, details). */
 export const auditLogs = pgTable(
   'audit_log',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    adminId: varchar('admin_id', { length: 36 }).notNull().references(() => users.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    adminId: varchar('admin_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     action: varchar('action', { length: 255 }).notNull(),
     entity: varchar('entity', { length: 255 }).notNull(),
     entityId: varchar('entity_id', { length: 36 }),
@@ -823,8 +917,12 @@ export const auditLogs = pgTable(
 export const passwordResets = pgTable(
   'password_reset',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     token: varchar('token', { length: 255 }).notNull().unique(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     usedAt: timestamp('used_at', { withTimezone: true }),
@@ -841,10 +939,14 @@ export const passwordResets = pgTable(
 export const emailVerificationTokens = pgTable(
   'email_verification_token',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id, {
-      onDelete: 'cascade',
-    }),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'cascade',
+      }),
     token: varchar('token', { length: 255 }).notNull().unique(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     usedAt: timestamp('used_at', { withTimezone: true }),
@@ -860,8 +962,12 @@ export const emailVerificationTokens = pgTable(
 export const reports = pgTable(
   'report',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    reporterId: varchar('reporter_id', { length: 36 }).notNull().references(() => users.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    reporterId: varchar('reporter_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     entityType: varchar('entity_type', { length: 100 }).notNull(),
     entityId: varchar('entity_id', { length: 36 }).notNull(),
     reason: text('reason').notNull(),
@@ -897,8 +1003,12 @@ export const reports = pgTable(
 export const collections = pgTable(
   'collection',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
     visibility: visibilityEnum('visibility').notNull().default('private'),
@@ -925,21 +1035,21 @@ export const collections = pgTable(
 export const collectionItems = pgTable(
   'collection_item',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    collectionId: varchar('collection_id', { length: 36 }).notNull().references(
-      () => collections.id,
-      { onDelete: 'cascade' },
-    ),
-    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    collectionId: varchar('collection_id', { length: 36 })
+      .notNull()
+      .references(() => collections.id, { onDelete: 'cascade' }),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
     sortOrder: integer('sort_order').notNull().default(0),
     /** Audit timestamp — when the recipe was added to this collection. */
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    unique('collection_item_collection_id_recipe_id_unique').on(
-      table.collectionId,
-      table.recipeId,
-    ),
+    unique('collection_item_collection_id_recipe_id_unique').on(table.collectionId, table.recipeId),
     index('collection_item_collection_id_idx').on(table.collectionId),
     index('collection_item_recipe_id_idx').on(table.recipeId),
   ],
@@ -955,9 +1065,15 @@ export const collectionItems = pgTable(
 export const brewLogs = pgTable(
   'brew_log',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
-    recipeId: varchar('recipe_id', { length: 36 }).notNull().references(() => recipes.id),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
     recipeVersionId: varchar('recipe_version_id', { length: 36 }).references(
       () => recipeVersions.id,
     ),
@@ -1016,10 +1132,14 @@ export const notificationTypeEnum = pgEnum('notification_type', [
 export const notifications = pgTable(
   'notification',
   {
-    id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id, {
-      onDelete: 'cascade',
-    }),
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id, {
+        onDelete: 'cascade',
+      }),
     actorId: varchar('actor_id', { length: 36 }).references(() => users.id, {
       onDelete: 'set null',
     }),
@@ -1421,15 +1541,12 @@ export const reportsRelations = relations(reports, ({ one }) => ({
 }));
 
 /** Drizzle relations for email_verification_tokens: owning user. */
-export const emailVerificationTokensRelations = relations(
-  emailVerificationTokens,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [emailVerificationTokens.userId],
-      references: [users.id],
-    }),
+export const emailVerificationTokensRelations = relations(emailVerificationTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [emailVerificationTokens.userId],
+    references: [users.id],
   }),
-);
+}));
 
 /** Drizzle relations for collections: owner user and collection items. */
 export const collectionsRelations = relations(collections, ({ one, many }) => ({

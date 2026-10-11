@@ -18,12 +18,12 @@
  * plus a final marker at extractionTimeSeconds if it's not aligned to the step.
  */
 
-import { describe, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import fc from 'fast-check';
-import { BrewTimeline } from './BrewTimeline.tsx';
-import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import type { ReactNode } from 'react';
+import { describe, expect, it } from 'vitest';
+import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { BrewTimeline } from './BrewTimeline.tsx';
 
 function withI18n(ui: ReactNode) {
   return <I18nProvider>{ui}</I18nProvider>;
@@ -230,10 +230,7 @@ describe('BrewTimeline — Property 4: Timeline segment proportional widths', ()
           expect(preInfusionPct).toBeCloseTo((preInfusion / extraction) * 100, 5);
 
           // Extraction width must equal ((extraction - preInfusion) / extraction) * 100
-          expect(extractionPct).toBeCloseTo(
-            ((extraction - preInfusion) / extraction) * 100,
-            5,
-          );
+          expect(extractionPct).toBeCloseTo(((extraction - preInfusion) / extraction) * 100, 5);
 
           // They must sum to 100
           expect(preInfusionPct + extractionPct).toBeCloseTo(100, 5);
@@ -251,106 +248,88 @@ describe('BrewTimeline — Property 4: Timeline segment proportional widths', ()
 describe('BrewTimeline — Property 5: Timeline axis markers at adaptive intervals', () => {
   it('for any extractionTimeSeconds, markers include 0 and the total', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 300 }),
-        (total) => {
-          const markers = getAxisMarkerValues(total);
-          expect(markers).toContain(0);
-          expect(markers).toContain(total);
-        },
-      ),
+      fc.property(fc.integer({ min: 1, max: 300 }), (total) => {
+        const markers = getAxisMarkerValues(total);
+        expect(markers).toContain(0);
+        expect(markers).toContain(total);
+      }),
       { numRuns: 200 },
     );
   });
 
   it('for any extractionTimeSeconds, all markers except possibly the last are aligned to the step', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 300 }),
-        (total) => {
-          const markers = getAxisMarkerValues(total);
-          const step = total > 120 ? 30 : total > 60 ? 15 : 5;
+      fc.property(fc.integer({ min: 1, max: 300 }), (total) => {
+        const markers = getAxisMarkerValues(total);
+        const step = total > 120 ? 30 : total > 60 ? 15 : 5;
 
-          // All markers except the last must be multiples of the step
-          const allButLast = markers.slice(0, -1);
-          for (const m of allButLast) {
-            expect(m % step).toBe(0);
-          }
+        // All markers except the last must be multiples of the step
+        const allButLast = markers.slice(0, -1);
+        for (const m of allButLast) {
+          expect(m % step).toBe(0);
+        }
 
-          // The last marker is either aligned (when total is) or total itself
-          const last = markers[markers.length - 1];
-          if (total % step === 0) {
-            expect(last % step).toBe(0);
-          } else {
-            expect(last).toBe(total);
-          }
-        },
-      ),
+        // The last marker is either aligned (when total is) or total itself
+        const last = markers[markers.length - 1];
+        if (total % step === 0) {
+          expect(last % step).toBe(0);
+        } else {
+          expect(last).toBe(total);
+        }
+      }),
       { numRuns: 200 },
     );
   });
 
   it('uses 30s intervals for extractionTimeSeconds > 120', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 121, max: 300 }),
-        (total) => {
-          const markers = getAxisMarkerValues(total);
-          const allButLast = markers.slice(0, -1);
-          for (const m of allButLast) {
-            expect(m % 30).toBe(0);
-          }
-          expect(markers.length).toBeLessThanOrEqual(12); // 0,30,60,...,300 + possibly total
-        },
-      ),
+      fc.property(fc.integer({ min: 121, max: 300 }), (total) => {
+        const markers = getAxisMarkerValues(total);
+        const allButLast = markers.slice(0, -1);
+        for (const m of allButLast) {
+          expect(m % 30).toBe(0);
+        }
+        expect(markers.length).toBeLessThanOrEqual(12); // 0,30,60,...,300 + possibly total
+      }),
       { numRuns: 100 },
     );
   });
 
   it('uses 15s intervals for 61s ≤ extractionTimeSeconds ≤ 120s', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 61, max: 120 }),
-        (total) => {
-          const markers = getAxisMarkerValues(total);
-          const allButLast = markers.slice(0, -1);
-          for (const m of allButLast) {
-            expect(m % 15).toBe(0);
-          }
-          expect(markers.length).toBeLessThanOrEqual(10); // 0,15,30,...,120 + possibly total
-        },
-      ),
+      fc.property(fc.integer({ min: 61, max: 120 }), (total) => {
+        const markers = getAxisMarkerValues(total);
+        const allButLast = markers.slice(0, -1);
+        for (const m of allButLast) {
+          expect(m % 15).toBe(0);
+        }
+        expect(markers.length).toBeLessThanOrEqual(10); // 0,15,30,...,120 + possibly total
+      }),
       { numRuns: 100 },
     );
   });
 
   it('uses 5s intervals for extractionTimeSeconds ≤ 60', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 60 }),
-        (total) => {
-          const markers = getAxisMarkerValues(total);
-          const allButLast = markers.slice(0, -1);
-          for (const m of allButLast) {
-            expect(m % 5).toBe(0);
-          }
-        },
-      ),
+      fc.property(fc.integer({ min: 1, max: 60 }), (total) => {
+        const markers = getAxisMarkerValues(total);
+        const allButLast = markers.slice(0, -1);
+        for (const m of allButLast) {
+          expect(m % 5).toBe(0);
+        }
+      }),
       { numRuns: 100 },
     );
   });
 
   it('for any extractionTimeSeconds, markers are in strictly ascending order', () => {
     fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 300 }),
-        (total) => {
-          const markers = getAxisMarkerValues(total);
-          for (let i = 1; i < markers.length; i++) {
-            expect(markers[i]).toBeGreaterThan(markers[i - 1]);
-          }
-        },
-      ),
+      fc.property(fc.integer({ min: 1, max: 300 }), (total) => {
+        const markers = getAxisMarkerValues(total);
+        for (let i = 1; i < markers.length; i++) {
+          expect(markers[i]).toBeGreaterThan(markers[i - 1]);
+        }
+      }),
       { numRuns: 200 },
     );
   });

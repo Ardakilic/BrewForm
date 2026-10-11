@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
-import { ScaaRadarChart } from './ScaaRadarChart.tsx';
+import { describe, expect, it } from 'vitest';
 import { SCAA_CATEGORIES } from '../../utils/radar-chart-data.ts';
+import { ScaaRadarChart } from './ScaaRadarChart.tsx';
 
 /**
  * ScaaRadarChart — pure SVG radar chart for SCAA taste profile
@@ -76,9 +76,7 @@ describe('ScaaRadarChart', () => {
   });
 
   it('respects an explicit maxValue prop for scaling', () => {
-    const { container } = render(
-      <ScaaRadarChart categoryValues={{ Floral: 5 }} maxValue={10} />,
-    );
+    const { container } = render(<ScaaRadarChart categoryValues={{ Floral: 5 }} maxValue={10} />);
     const polygons = Array.from(container.querySelectorAll('svg > polygon'));
     const dataPoly = polygons[polygons.length - 1];
     // With maxValue=10 and Floral=5, the data point sits at half the max radius.

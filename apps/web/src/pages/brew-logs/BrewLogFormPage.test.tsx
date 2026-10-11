@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
 
@@ -36,10 +36,10 @@ vi.mock('@/utils/logger.ts', () => ({
 
 // ── Imports after mocks ────────────────────────────────────────────────────
 
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
 import type { BrewLogOutput, RecipeDetailOutput } from '@brewform/shared/schemas';
+import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
 import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { BrewLogFormPage, loader } from './BrewLogFormPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);

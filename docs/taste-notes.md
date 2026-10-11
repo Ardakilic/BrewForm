@@ -40,7 +40,7 @@ If no query is entered, all leaf notes are shown grouped by root category.
 
 ## Caching
 
-Taste notes rarely change, so the hierarchy is **cached in Deno KV** with a 24-hour TTL:
+Taste notes rarely change, so the hierarchy is **cached in-memory** with a 24-hour TTL:
 
 - `GET /taste-notes/hierarchy` → cached at `["taste-notes", "hierarchy"]`
 - `GET /taste-notes/flat` → cached at `["taste-notes", "flat"]`

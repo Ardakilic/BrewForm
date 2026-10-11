@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RootErrorBoundary } from './ErrorBoundary.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -32,7 +32,7 @@ function renderWithLoader(loader: () => never) {
     [
       {
         path: '/',
-        element: <div data-testid='page-content'>Page</div>,
+        element: <div data-testid="page-content">Page</div>,
         loader,
         errorElement: <RootErrorBoundary />,
       },

@@ -1,16 +1,15 @@
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import { userPreferences, users } from '@brewform/db/schema';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
 /**
  * findByUserId — Find the preferences row for a user. Returns null if the user
  * has no preferences row yet.
  */
-describe('findByUserId', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('findByUserId', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -60,7 +59,7 @@ describe('findByUserId', { sanitizeOps: false, sanitizeResources: false }, () =>
  * the userId unique constraint, so calling upsert twice for the same user
  * updates the existing row rather than inserting a duplicate.
  */
-describe('upsert', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('upsert', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -89,8 +88,7 @@ describe('upsert', { sanitizeOps: false, sanitizeResources: false }, () => {
     expect(result.unitSystem).toBe('imperial');
     expect(result.temperatureUnit).toBe('fahrenheit');
     expect(result.theme).toBe('dark');
-    const [row] = await db.select().from(userPreferences)
-      .where(eq(userPreferences.userId, userId));
+    const [row] = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId));
     expect(row).toBeDefined();
     expect(row.unitSystem).toBe('imperial');
   });
@@ -108,8 +106,7 @@ describe('upsert', { sanitizeOps: false, sanitizeResources: false }, () => {
     expect(result.temperatureUnit).toBe('fahrenheit');
     expect(result.theme).toBe('dark');
     // Only one row should exist for this user (no duplicate insert).
-    const rows = await db.select().from(userPreferences)
-      .where(eq(userPreferences.userId, userId));
+    const rows = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId));
     expect(rows.length).toBe(1);
     expect(rows[0].unitSystem).toBe('imperial');
   });
@@ -119,8 +116,7 @@ describe('upsert', { sanitizeOps: false, sanitizeResources: false }, () => {
     const result = await model.upsert(userId, { theme: 'dark' });
     expect(result).not.toBeNull();
     expect(result.userId).toBe(userId);
-    const [row] = await db.select().from(userPreferences)
-      .where(eq(userPreferences.userId, userId));
+    const [row] = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId));
     expect(row.userId).toBe(userId);
   });
 

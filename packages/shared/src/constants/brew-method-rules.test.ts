@@ -1,5 +1,4 @@
-import { describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
+import { describe, expect, it } from 'vitest';
 import { BREW_METHOD_EQUIPMENT_RULES } from './brew-method-rules.ts';
 import { BREW_METHODS } from './brew-methods.ts';
 import { EQUIPMENT_TYPE_LABELS, EQUIPMENT_TYPES } from './equipment-types.ts';

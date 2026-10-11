@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import {
   CommentSectionSkeleton,
   CommentSkeleton,
@@ -38,7 +38,7 @@ describe('Skeleton', () => {
   });
 
   it('applies width and height as inline style', () => {
-    const { container } = render(<Skeleton width='5rem' height='2rem' />);
+    const { container } = render(<Skeleton width="5rem" height="2rem" />);
     const el = container.querySelector('.animate-pulse') as HTMLElement;
     expect(el.style.width).toBe('5rem');
     expect(el.style.height).toBe('2rem');
@@ -51,7 +51,7 @@ describe('Skeleton', () => {
   });
 
   it('combines custom className with defaults', () => {
-    const { container } = render(<Skeleton className='custom-class' />);
+    const { container } = render(<Skeleton className="custom-class" />);
     const el = container.querySelector('.animate-pulse');
     expect(el).toBeInTheDocument();
     expect(el?.classList.contains('custom-class')).toBe(true);
@@ -84,9 +84,9 @@ describe('SkeletonText', () => {
 
   it('sets a shorter width on the last line', () => {
     const { container } = render(<SkeletonText lines={3} />);
-    const lines = container.querySelectorAll('.space-y-2 > .animate-pulse') as NodeListOf<
-      HTMLElement
-    >;
+    const lines = container.querySelectorAll(
+      '.space-y-2 > .animate-pulse',
+    ) as NodeListOf<HTMLElement>;
     const lastLine = lines[lines.length - 1];
     // Last line should use a width from the widths array (not 100%)
     expect(lastLine.style.width).not.toBe('100%');
@@ -102,7 +102,7 @@ describe('SkeletonText', () => {
   });
 
   it('combines custom className on the wrapper', () => {
-    const { container } = render(<SkeletonText className='extra-spacing' />);
+    const { container } = render(<SkeletonText className="extra-spacing" />);
     const wrapper = container.querySelector('.space-y-2');
     expect(wrapper?.classList.contains('extra-spacing')).toBe(true);
   });
@@ -171,9 +171,7 @@ describe('RecipeDetailSkeleton', () => {
   it('renders breadcrumb skeleton', () => {
     const { container } = render(<RecipeDetailSkeleton />);
     // First direct sibling of max-w-4xl wrapper is the breadcrumb placeholder (12rem width)
-    const breadcrumb = container.querySelector(
-      '.max-w-4xl > .animate-pulse',
-    ) as HTMLElement;
+    const breadcrumb = container.querySelector('.max-w-4xl > .animate-pulse') as HTMLElement;
     expect(breadcrumb).toBeInTheDocument();
     expect(breadcrumb.style.width).toBe('12rem');
   });
@@ -193,9 +191,7 @@ describe('RecipeDetailSkeleton', () => {
   it('renders brew timeline card', () => {
     const { container } = render(<RecipeDetailSkeleton />);
     // Brew timeline is the card with 2.5rem height skeletons
-    const timelineSkeletons = container.querySelectorAll(
-      '.card .animate-pulse[style*="2.5rem"]',
-    );
+    const timelineSkeletons = container.querySelectorAll('.card .animate-pulse[style*="2.5rem"]');
     expect(timelineSkeletons.length).toBeGreaterThanOrEqual(4);
   });
 
@@ -289,9 +285,7 @@ describe('PageSkeleton', () => {
   it('renders 3 content block skeletons', () => {
     const { container } = render(<PageSkeleton />);
     // The wrapper inside has 3 direct skeleton children (8rem, 8rem, 4rem)
-    const contentBlocks = container.querySelectorAll(
-      '.space-y-4 > .animate-pulse',
-    );
+    const contentBlocks = container.querySelectorAll('.space-y-4 > .animate-pulse');
     expect(contentBlocks.length).toBe(3);
   });
 });

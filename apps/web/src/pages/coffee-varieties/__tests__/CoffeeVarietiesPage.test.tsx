@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoffeeVarietiesPage } from '../CoffeeVarietiesPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -8,9 +8,19 @@ const { mockLogger } = vi.hoisted(() => ({
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('react-router', () => ({
-  Link: (
-    { to, children, ...props }: { to: string; children: React.ReactNode; [key: string]: unknown },
-  ) => <a href={to} {...props}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
   useSearchParams: vi.fn(),
 }));
 
@@ -31,9 +41,9 @@ vi.mock('../../../components/seo/SEOHead.tsx', () => ({
 }));
 
 import { useSearchParams } from 'react-router';
-import { useTranslation } from '../../../contexts/I18nContext.tsx';
 import { api } from '../../../api/client.ts';
 import { SEOHead } from '../../../components/seo/SEOHead.tsx';
+import { useTranslation } from '../../../contexts/I18nContext.tsx';
 
 const mockUseSearchParams = vi.mocked(useSearchParams);
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -135,11 +145,11 @@ describe('CoffeeVarietiesPage', () => {
     mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([], 0));
     const { unmount } = render(<CoffeeVarietiesPage />);
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage mounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage mounted'),
     );
     unmount();
     await waitFor(() =>
-      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage unmounted')
+      expect(mockLogger.debug).toHaveBeenCalledWith({}, 'CoffeeVarietiesPage unmounted'),
     );
   });
 
@@ -149,8 +159,9 @@ describe('CoffeeVarietiesPage', () => {
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByRole('heading', { name: 'Coffee Varieties' })).toBeInTheDocument();
-    expect(screen.getByText('Explore different varieties, processing methods, and market names'))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText('Explore different varieties, processing methods, and market names'),
+    ).toBeInTheDocument();
   });
 
   it('renders page title and subtitle — Turkish', async () => {
@@ -161,31 +172,37 @@ describe('CoffeeVarietiesPage', () => {
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
     expect(screen.getByRole('heading', { name: 'Kahve Çeşitleri' })).toBeInTheDocument();
-    expect(screen.getByText('Farklı çeşitleri, işleme yöntemlerini ve pazar adlarını keşfedin'))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText('Farklı çeşitleri, işleme yöntemlerini ve pazar adlarını keşfedin'),
+    ).toBeInTheDocument();
   });
 
   it('renders coffee variety cards when API returns data', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Bourbon',
-        species: 'Arabica',
-        category: 'variety',
-        origin: 'Ethiopia',
-        cupProfile: 'Sweet and fruity',
-        slug: 'bourbon',
-      },
-      {
-        id: 'v2',
-        name: 'Washed',
-        species: 'Arabica',
-        category: 'processing',
-        origin: null,
-        cupProfile: null,
-        slug: 'washed',
-      },
-    ], 2));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Bourbon',
+            species: 'Arabica',
+            category: 'variety',
+            origin: 'Ethiopia',
+            cupProfile: 'Sweet and fruity',
+            slug: 'bourbon',
+          },
+          {
+            id: 'v2',
+            name: 'Washed',
+            species: 'Arabica',
+            category: 'processing',
+            origin: null,
+            cupProfile: null,
+            slug: 'washed',
+          },
+        ],
+        2,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -299,9 +316,7 @@ describe('CoffeeVarietiesPage', () => {
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('category=processing'),
-    );
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('category=processing'));
   });
 
   it('calls API with search filter in query string', async () => {
@@ -311,9 +326,7 @@ describe('CoffeeVarietiesPage', () => {
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('search=Bourbon'),
-    );
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('search=Bourbon'));
   });
 
   it('shows active filters and clear all when filter is applied', async () => {
@@ -328,17 +341,22 @@ describe('CoffeeVarietiesPage', () => {
   });
 
   it('shows pagination when multiple pages exist', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Bourbon',
-        species: 'Arabica',
-        category: 'variety',
-        origin: null,
-        cupProfile: null,
-        slug: 'bourbon',
-      },
-    ], 25));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Bourbon',
+            species: 'Arabica',
+            category: 'variety',
+            origin: null,
+            cupProfile: null,
+            slug: 'bourbon',
+          },
+        ],
+        25,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -349,17 +367,22 @@ describe('CoffeeVarietiesPage', () => {
 
   it('shows pagination in Turkish', async () => {
     mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr', t: trT });
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Bourbon',
-        species: 'Arabica',
-        category: 'variety',
-        origin: null,
-        cupProfile: null,
-        slug: 'bourbon',
-      },
-    ], 25));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Bourbon',
+            species: 'Arabica',
+            category: 'variety',
+            origin: null,
+            cupProfile: null,
+            slug: 'bourbon',
+          },
+        ],
+        25,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -369,17 +392,22 @@ describe('CoffeeVarietiesPage', () => {
   });
 
   it('paginated response with meta.pagination.total calculates correct totalPages', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Test',
-        species: null,
-        category: null,
-        origin: null,
-        cupProfile: null,
-        slug: 'test',
-      },
-    ], 30));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Test',
+            species: null,
+            category: null,
+            origin: null,
+            cupProfile: null,
+            slug: 'test',
+          },
+        ],
+        30,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -388,17 +416,22 @@ describe('CoffeeVarietiesPage', () => {
   });
 
   it('renders category badges on cards — variety type', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Geisha',
-        species: 'Arabica',
-        category: 'variety',
-        origin: 'Panama',
-        cupProfile: null,
-        slug: 'geisha',
-      },
-    ], 1));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Geisha',
+            species: 'Arabica',
+            category: 'variety',
+            origin: 'Panama',
+            cupProfile: null,
+            slug: 'geisha',
+          },
+        ],
+        1,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -407,17 +440,22 @@ describe('CoffeeVarietiesPage', () => {
   });
 
   it('renders category badges on cards — processing type', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Natural',
-        species: 'Arabica',
-        category: 'processing',
-        origin: null,
-        cupProfile: null,
-        slug: 'natural',
-      },
-    ], 1));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Natural',
+            species: 'Arabica',
+            category: 'processing',
+            origin: null,
+            cupProfile: null,
+            slug: 'natural',
+          },
+        ],
+        1,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -426,17 +464,22 @@ describe('CoffeeVarietiesPage', () => {
   });
 
   it('renders category badges on cards — market_name type', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Yirgacheffe',
-        species: 'Arabica',
-        category: 'market_name',
-        origin: null,
-        cupProfile: null,
-        slug: 'yirgacheffe',
-      },
-    ], 1));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Yirgacheffe',
+            species: 'Arabica',
+            category: 'market_name',
+            origin: null,
+            cupProfile: null,
+            slug: 'yirgacheffe',
+          },
+        ],
+        1,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -451,28 +494,28 @@ describe('CoffeeVarietiesPage', () => {
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith(
-      expect.stringContaining('page=3'),
-    );
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith(expect.stringContaining('page=3'));
   });
 
   it('navigates to next page when Next is clicked', async () => {
     const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([
-      new URLSearchParams({ page: '1' }),
-      setSearchParams,
-    ]);
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Bourbon',
-        species: 'Arabica',
-        category: 'variety',
-        origin: null,
-        cupProfile: null,
-        slug: 'bourbon',
-      },
-    ], 25));
+    mockUseSearchParams.mockReturnValue([new URLSearchParams({ page: '1' }), setSearchParams]);
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Bourbon',
+            species: 'Arabica',
+            category: 'variety',
+            origin: null,
+            cupProfile: null,
+            slug: 'bourbon',
+          },
+        ],
+        25,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -489,21 +532,23 @@ describe('CoffeeVarietiesPage', () => {
 
   it('navigates to previous page when Previous is clicked', async () => {
     const setSearchParams = vi.fn();
-    mockUseSearchParams.mockReturnValue([
-      new URLSearchParams({ page: '3' }),
-      setSearchParams,
-    ]);
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Bourbon',
-        species: 'Arabica',
-        category: 'variety',
-        origin: null,
-        cupProfile: null,
-        slug: 'bourbon',
-      },
-    ], 25));
+    mockUseSearchParams.mockReturnValue([new URLSearchParams({ page: '3' }), setSearchParams]);
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Bourbon',
+            species: 'Arabica',
+            category: 'variety',
+            origin: null,
+            cupProfile: null,
+            slug: 'bourbon',
+          },
+        ],
+        25,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());
@@ -517,17 +562,22 @@ describe('CoffeeVarietiesPage', () => {
   });
 
   it('links coffee variety cards to detail page', async () => {
-    mockApiGetWithMeta.mockResolvedValue(makePaginatedResponse([
-      {
-        id: 'v1',
-        name: 'Bourbon',
-        species: null,
-        category: null,
-        origin: null,
-        cupProfile: null,
-        slug: 'bourbon',
-      },
-    ], 1));
+    mockApiGetWithMeta.mockResolvedValue(
+      makePaginatedResponse(
+        [
+          {
+            id: 'v1',
+            name: 'Bourbon',
+            species: null,
+            category: null,
+            origin: null,
+            cupProfile: null,
+            slug: 'bourbon',
+          },
+        ],
+        1,
+      ),
+    );
     render(<CoffeeVarietiesPage />);
 
     await waitFor(() => expect(document.querySelector('.animate-pulse')).toBeFalsy());

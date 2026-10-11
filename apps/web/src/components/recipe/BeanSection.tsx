@@ -1,3 +1,5 @@
+import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatDate } from '../../utils/format.ts';
 import {
   daysBetween,
   grindDateResult,
@@ -5,8 +7,6 @@ import {
   type RelativeDateResult,
   roastDateResult,
 } from '../../utils/relative-date.ts';
-import { useTranslation } from '../../contexts/I18nContext.tsx';
-import { formatDate } from '../../utils/format.ts';
 
 interface BeanSectionProps {
   productName?: string | null;
@@ -116,7 +116,8 @@ export function BeanSection(props: BeanSectionProps) {
   // Subtitle: "Heart Roasters · Washed process"
   const roasterDisplay = coffeeBrand ?? bean?.roaster ?? null;
   const processingDisplay = coffeeProcessing
-    ? coffeeProcessing.charAt(0).toUpperCase() + coffeeProcessing.slice(1).toLowerCase() +
+    ? coffeeProcessing.charAt(0).toUpperCase() +
+      coffeeProcessing.slice(1).toLowerCase() +
       ' process'
     : null;
   const subtitle = [roasterDisplay, processingDisplay].filter(Boolean).join(' · ') || null;
@@ -124,17 +125,17 @@ export function BeanSection(props: BeanSectionProps) {
   const origin = bean?.origin ?? null;
 
   return (
-    <section className='card' aria-label={t('a11y.bean.section')}>
+    <section className="card" aria-label={t('a11y.bean.section')}>
       {/* Section header */}
-      <div className='flex items-center justify-between mb-4'>
-        <span className='text-xs uppercase tracking-widest font-semibold text-[color:var(--text-tertiary)]'>
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-xs uppercase tracking-widest font-semibold text-[color:var(--text-tertiary)]">
           {t('recipe.bean.title')}
         </span>
         {roastHeaderLabel && (
-          <span className='text-xs text-[color:var(--text-tertiary)]'>
+          <span className="text-xs text-[color:var(--text-tertiary)]">
             {roastHeaderLabel}
             {showPeakWindow && (
-              <span className='text-[color:var(--accent-primary)]'>
+              <span className="text-[color:var(--accent-primary)]">
                 · {t('recipe.bean.peakWindow')}
               </span>
             )}
@@ -143,34 +144,34 @@ export function BeanSection(props: BeanSectionProps) {
       </div>
 
       {/* Body */}
-      <div className='flex gap-4 items-start'>
+      <div className="flex gap-4 items-start">
         {/* Bean image placeholder */}
         <div
-          className='flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center w-[72px] h-[72px] bg-[color:var(--bg-tertiary)] text-[color:var(--text-tertiary)] text-2xl'
+          className="flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center w-[72px] h-[72px] bg-[color:var(--bg-tertiary)] text-[color:var(--text-tertiary)] text-2xl"
           aria-label={t('a11y.bean.imagePlaceholder')}
-          role='img'
+          role="img"
         >
           ☕
         </div>
 
         {/* Right side: name + subtitle + date grid */}
-        <div className='flex-1 min-w-0'>
+        <div className="flex-1 min-w-0">
           {/* Product name */}
           {productName && (
-            <span className='block text-xl font-bold leading-tight mb-0.5 text-[color:var(--text-primary)]'>
+            <span className="block text-xl font-bold leading-tight mb-0.5 text-[color:var(--text-primary)]">
               {productName}
             </span>
           )}
 
           {/* Subtitle: "Heart Roasters · Washed process" */}
           {subtitle && (
-            <span className='block text-sm mb-3 text-[color:var(--text-secondary)]'>
+            <span className="block text-sm mb-3 text-[color:var(--text-secondary)]">
               {subtitle}
             </span>
           )}
 
           {/* Date + origin grid: 2 columns */}
-          <div className='grid grid-cols-2 gap-x-6 gap-y-2'>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
             {roastDate && roastResult && (
               <DateField
                 label={t('recipe.bean.roasted')}
@@ -196,13 +197,11 @@ export function BeanSection(props: BeanSectionProps) {
               />
             )}
             {origin && (
-              <div className='flex flex-col gap-0.5'>
-                <span className='text-xs uppercase tracking-widest text-[color:var(--text-tertiary)]'>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs uppercase tracking-widest text-[color:var(--text-tertiary)]">
                   {t('recipe.bean.origin')}
                 </span>
-                <span className='text-sm font-bold text-[color:var(--text-primary)]'>
-                  {origin}
-                </span>
+                <span className="text-sm font-bold text-[color:var(--text-primary)]">{origin}</span>
               </div>
             )}
           </div>
@@ -221,18 +220,16 @@ interface DateFieldProps {
 
 function DateField({ label, date, relative, locale }: DateFieldProps) {
   return (
-    <div className='flex flex-col gap-0.5'>
-      <span className='text-xs uppercase tracking-widest text-[color:var(--text-tertiary)]'>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs uppercase tracking-widest text-[color:var(--text-tertiary)]">
         {label}
       </span>
       {/* Date + short relative on one line */}
-      <span className='flex items-baseline gap-1.5'>
-        <span className='text-sm font-bold text-[color:var(--text-primary)]'>
+      <span className="flex items-baseline gap-1.5">
+        <span className="text-sm font-bold text-[color:var(--text-primary)]">
           {formatDate(date, locale)}
         </span>
-        <span className='text-xs text-[color:var(--text-tertiary)]'>
-          {relative}
-        </span>
+        <span className="text-xs text-[color:var(--text-tertiary)]">{relative}</span>
       </span>
     </div>
   );

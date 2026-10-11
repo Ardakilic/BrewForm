@@ -12,9 +12,6 @@
  */
 
 import '../../test-setup.ts';
-import { afterEach, beforeEach, describe, it } from 'jsr:@std/testing/bdd';
-import { expect } from 'jsr:@std/expect';
-import { and, eq } from 'drizzle-orm';
 import { db } from '@brewform/db';
 import {
   auditLogs,
@@ -30,6 +27,8 @@ import {
   users,
   vendors,
 } from '@brewform/db/schema';
+import { and, eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
 import * as service from './service.ts';
 
@@ -38,9 +37,7 @@ import * as service from './service.ts';
 // ---------------------------------------------------------------------------
 
 /** Insert a user row with unique email/username. Returns the new user ID. */
-async function insertUser(
-  overrides: Partial<typeof users.$inferInsert> = {},
-): Promise<string> {
+async function insertUser(overrides: Partial<typeof users.$inferInsert> = {}): Promise<string> {
   const id = overrides.id ?? crypto.randomUUID();
   await db.insert(users).values({
     id,
@@ -160,13 +157,14 @@ async function insertDeleteRequest(
 
 /** Query audit log rows written by the given admin, optionally narrowed by action and entity ID. */
 function findAuditLogs(adminId: string, action: string, entityId?: string) {
-  const where = entityId !== undefined
-    ? and(
-      eq(auditLogs.adminId, adminId),
-      eq(auditLogs.action, action),
-      eq(auditLogs.entityId, entityId),
-    )
-    : and(eq(auditLogs.adminId, adminId), eq(auditLogs.action, action));
+  const where =
+    entityId !== undefined
+      ? and(
+          eq(auditLogs.adminId, adminId),
+          eq(auditLogs.action, action),
+          eq(auditLogs.entityId, entityId),
+        )
+      : and(eq(auditLogs.adminId, adminId), eq(auditLogs.action, action));
   return db.select().from(auditLogs).where(where);
 }
 
@@ -180,7 +178,7 @@ async function cleanupAdmin(adminId: string) {
 // Users
 // ---------------------------------------------------------------------------
 
-describe('listUsers', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listUsers', () => {
   let userIds: string[];
   let fragment: string;
 
@@ -219,7 +217,7 @@ describe('listUsers', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('getUserDetail', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getUserDetail', () => {
   let userId: string;
 
   beforeEach(async () => {
@@ -252,7 +250,7 @@ describe('getUserDetail', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 });
 
-describe('banUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('banUser', () => {
   let adminId: string;
   let targetId: string;
 
@@ -300,7 +298,7 @@ describe('banUser', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 });
 
-describe('unbanUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('unbanUser', () => {
   let adminId: string;
   let targetId: string;
 
@@ -325,13 +323,11 @@ describe('unbanUser', { sanitizeOps: false, sanitizeResources: false }, () => {
   });
 
   it('should throw USER_NOT_FOUND for a nonexistent user', async () => {
-    await expect(service.unbanUser(adminId, crypto.randomUUID())).rejects.toThrow(
-      'USER_NOT_FOUND',
-    );
+    await expect(service.unbanUser(adminId, crypto.randomUUID())).rejects.toThrow('USER_NOT_FOUND');
   });
 });
 
-describe('setUserAdminRole', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('setUserAdminRole', () => {
   let adminId: string;
   let targetId: string;
 
@@ -371,7 +367,7 @@ describe('setUserAdminRole', { sanitizeOps: false, sanitizeResources: false }, (
   });
 });
 
-describe('adminCreateUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('adminCreateUser', () => {
   let adminId: string;
   let existingUserId: string;
   let createdUserIds: string[];
@@ -411,9 +407,10 @@ describe('adminCreateUser', { sanitizeOps: false, sanitizeResources: false }, ()
     expect(result.passwordHash).not.toBe('SecurePass123!');
     expect(result.passwordHash.length).toBeGreaterThan(0);
 
-    const prefs = await db.select().from(userPreferences).where(
-      eq(userPreferences.userId, result.id),
-    );
+    const prefs = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, result.id));
     expect(prefs.length).toBe(1);
 
     const logs = await findAuditLogs(adminId, 'CREATE_USER', result.id);
@@ -448,7 +445,7 @@ describe('adminCreateUser', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('adminUpdateUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('adminUpdateUser', () => {
   let adminId: string;
   let targetId: string;
   let otherUserId: string;
@@ -497,9 +494,7 @@ describe('adminUpdateUser', { sanitizeOps: false, sanitizeResources: false }, ()
   it('should throw USER_NOT_FOUND when no update fields are provided', async () => {
     // The real model returns null for an empty update set; the service maps
     // that to USER_NOT_FOUND even though the user exists.
-    await expect(service.adminUpdateUser(adminId, targetId, {})).rejects.toThrow(
-      'USER_NOT_FOUND',
-    );
+    await expect(service.adminUpdateUser(adminId, targetId, {})).rejects.toThrow('USER_NOT_FOUND');
   });
 
   it('should propagate EMAIL_ALREADY_EXISTS from the model', async () => {
@@ -555,7 +550,7 @@ describe('adminUpdateUser', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('softDeleteUser', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('softDeleteUser', () => {
   let adminId: string;
   let targetId: string;
 
@@ -583,9 +578,7 @@ describe('softDeleteUser', { sanitizeOps: false, sanitizeResources: false }, () 
   });
 
   it('should throw SELF_DELETE_FORBIDDEN when the admin deletes themselves', async () => {
-    await expect(service.softDeleteUser(adminId, adminId)).rejects.toThrow(
-      'SELF_DELETE_FORBIDDEN',
-    );
+    await expect(service.softDeleteUser(adminId, adminId)).rejects.toThrow('SELF_DELETE_FORBIDDEN');
 
     const [row] = await db.select().from(users).where(eq(users.id, adminId));
     expect(row.deletedAt).toBeNull();
@@ -598,7 +591,7 @@ describe('softDeleteUser', { sanitizeOps: false, sanitizeResources: false }, () 
 // Recipes
 // ---------------------------------------------------------------------------
 
-describe('listAllRecipes', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listAllRecipes', () => {
   let userId: string;
   let publicId: string;
   let draftId: string;
@@ -643,7 +636,7 @@ describe('listAllRecipes', { sanitizeOps: false, sanitizeResources: false }, () 
   });
 });
 
-describe('updateRecipeVisibility', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateRecipeVisibility', () => {
   let adminId: string;
   let userId: string;
   let recipeId: string;
@@ -688,7 +681,7 @@ describe('updateRecipeVisibility', { sanitizeOps: false, sanitizeResources: fals
   });
 });
 
-describe('softDeleteRecipe', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('softDeleteRecipe', () => {
   let adminId: string;
   let userId: string;
   let recipeId: string;
@@ -721,7 +714,7 @@ describe('softDeleteRecipe', { sanitizeOps: false, sanitizeResources: false }, (
 // Equipment
 // ---------------------------------------------------------------------------
 
-describe('listEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listEquipment', () => {
   let activeId: string;
   let deletedId: string;
 
@@ -744,7 +737,7 @@ describe('listEquipment', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 });
 
-describe('createEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createEquipment', () => {
   let adminId: string;
   let createdIds: string[];
 
@@ -789,7 +782,7 @@ describe('createEquipment', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('updateEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateEquipment', () => {
   let adminId: string;
   let equipmentId: string;
 
@@ -816,7 +809,7 @@ describe('updateEquipment', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('deleteEquipment', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteEquipment', () => {
   let adminId: string;
   let equipmentId: string;
 
@@ -853,7 +846,7 @@ describe('deleteEquipment', { sanitizeOps: false, sanitizeResources: false }, ()
 // Vendors
 // ---------------------------------------------------------------------------
 
-describe('listVendors', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listVendors', () => {
   let adminId: string;
   let vendorId: string;
 
@@ -875,7 +868,7 @@ describe('listVendors', { sanitizeOps: false, sanitizeResources: false }, () => 
   });
 });
 
-describe('createVendor', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createVendor', () => {
   let adminId: string;
   let createdIds: string[];
 
@@ -908,7 +901,7 @@ describe('createVendor', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 });
 
-describe('updateVendor', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateVendor', () => {
   let adminId: string;
   let vendorId: string;
 
@@ -933,7 +926,7 @@ describe('updateVendor', { sanitizeOps: false, sanitizeResources: false }, () =>
   });
 });
 
-describe('deleteVendor', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteVendor', () => {
   let adminId: string;
   let vendorId: string;
 
@@ -970,7 +963,7 @@ describe('deleteVendor', { sanitizeOps: false, sanitizeResources: false }, () =>
 // Taste Notes (admin)
 // ---------------------------------------------------------------------------
 
-describe('listTasteNotes', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listTasteNotes', () => {
   it('should return the seeded taste note hierarchy', async () => {
     const cache = new InMemoryCacheProvider();
     const result = await service.listTasteNotes(cache);
@@ -988,7 +981,7 @@ describe('listTasteNotes', { sanitizeOps: false, sanitizeResources: false }, () 
   });
 });
 
-describe('createTasteNote', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createTasteNote', () => {
   let adminId: string;
   let createdIds: string[];
 
@@ -1025,7 +1018,7 @@ describe('createTasteNote', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('updateTasteNote', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateTasteNote', () => {
   let adminId: string;
   let noteId: string;
 
@@ -1057,7 +1050,7 @@ describe('updateTasteNote', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('deleteTasteNote', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteTasteNote', () => {
   let adminId: string;
   let noteId: string;
 
@@ -1093,7 +1086,7 @@ describe('deleteTasteNote', { sanitizeOps: false, sanitizeResources: false }, ()
 // Brew Method Compatibility Matrix
 // ---------------------------------------------------------------------------
 
-describe('listCompatibilityRules', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listCompatibilityRules', () => {
   it('should return the seeded compatibility rules', async () => {
     const result = await service.listCompatibilityRules();
     expect(result.length).toBeGreaterThan(0);
@@ -1105,7 +1098,7 @@ describe('listCompatibilityRules', { sanitizeOps: false, sanitizeResources: fals
   });
 });
 
-describe('updateCompatibilityRule', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateCompatibilityRule', () => {
   let adminId: string;
   let ruleId: string;
   let originalCompatible: boolean;
@@ -1121,7 +1114,8 @@ describe('updateCompatibilityRule', { sanitizeOps: false, sanitizeResources: fal
   });
 
   afterEach(async () => {
-    await db.update(brewMethodEquipmentRules)
+    await db
+      .update(brewMethodEquipmentRules)
       .set({ compatible: originalCompatible })
       .where(eq(brewMethodEquipmentRules.id, ruleId));
     await cleanupAdmin(adminId);
@@ -1145,7 +1139,7 @@ describe('updateCompatibilityRule', { sanitizeOps: false, sanitizeResources: fal
   });
 });
 
-describe('createCompatibilityRule', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createCompatibilityRule', () => {
   let adminId: string;
   let createdIds: string[];
   let cache: InMemoryCacheProvider;
@@ -1201,7 +1195,7 @@ describe('createCompatibilityRule', { sanitizeOps: false, sanitizeResources: fal
   });
 });
 
-describe('deleteCompatibilityRule', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteCompatibilityRule', () => {
   let adminId: string;
   let ruleId: string;
   let cache: InMemoryCacheProvider;
@@ -1227,9 +1221,10 @@ describe('deleteCompatibilityRule', { sanitizeOps: false, sanitizeResources: fal
   it('should hard-delete the rule, write an audit log, and invalidate the cache', async () => {
     await service.deleteCompatibilityRule(adminId, ruleId, cache);
 
-    const rows = await db.select().from(brewMethodEquipmentRules).where(
-      eq(brewMethodEquipmentRules.id, ruleId),
-    );
+    const rows = await db
+      .select()
+      .from(brewMethodEquipmentRules)
+      .where(eq(brewMethodEquipmentRules.id, ruleId));
     expect(rows.length).toBe(0);
 
     const logs = await findAuditLogs(adminId, 'DELETE_COMPATIBILITY_RULE', ruleId);
@@ -1244,7 +1239,7 @@ describe('deleteCompatibilityRule', { sanitizeOps: false, sanitizeResources: fal
 // Reports (admin)
 // ---------------------------------------------------------------------------
 
-describe('listReports', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listReports', () => {
   let reporterId: string;
   let pendingRecipeReportId: string;
   let resolvedRecipeReportId: string;
@@ -1304,7 +1299,7 @@ describe('listReports', { sanitizeOps: false, sanitizeResources: false }, () => 
   });
 });
 
-describe('resolveReport', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('resolveReport', () => {
   let adminId: string;
   let reporterId: string;
   let reportId: string;
@@ -1334,7 +1329,7 @@ describe('resolveReport', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 });
 
-describe('dismissReport', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('dismissReport', () => {
   let adminId: string;
   let reporterId: string;
   let reportId: string;
@@ -1368,7 +1363,7 @@ describe('dismissReport', { sanitizeOps: false, sanitizeResources: false }, () =
 // Audit Logs
 // ---------------------------------------------------------------------------
 
-describe('listAuditLogs', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listAuditLogs', () => {
   let adminId: string;
   let targetId: string;
   let equipmentId: string;
@@ -1409,7 +1404,7 @@ describe('listAuditLogs', { sanitizeOps: false, sanitizeResources: false }, () =
 // Cache Flush
 // ---------------------------------------------------------------------------
 
-describe('flushCache', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('flushCache', () => {
   let cache: InMemoryCacheProvider;
 
   beforeEach(async () => {
@@ -1472,7 +1467,7 @@ describe('flushCache', { sanitizeOps: false, sanitizeResources: false }, () => {
 // Analytics
 // ---------------------------------------------------------------------------
 
-describe('getDashboardStats', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getDashboardStats', () => {
   let userId: string;
   let recipeId: string;
   let reportId: string;
@@ -1501,7 +1496,7 @@ describe('getDashboardStats', { sanitizeOps: false, sanitizeResources: false }, 
   });
 });
 
-describe('getUserGrowth', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getUserGrowth', () => {
   let userIds: string[];
 
   beforeEach(() => {
@@ -1538,7 +1533,7 @@ describe('getUserGrowth', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 });
 
-describe('getRecipeGrowth', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getRecipeGrowth', () => {
   let userId: string;
   let recipeIds: string[];
 
@@ -1578,7 +1573,7 @@ describe('getRecipeGrowth', { sanitizeOps: false, sanitizeResources: false }, ()
   });
 });
 
-describe('getTopRecipes', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getTopRecipes', () => {
   let userId: string;
   let recipeIds: string[];
 
@@ -1612,7 +1607,7 @@ describe('getTopRecipes', { sanitizeOps: false, sanitizeResources: false }, () =
   });
 });
 
-describe('getTopUsers', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getTopUsers', () => {
   let userId: string;
   let recipeIds: string[];
 
@@ -1643,7 +1638,7 @@ describe('getTopUsers', { sanitizeOps: false, sanitizeResources: false }, () => 
 // Coffee Varieties (admin)
 // ---------------------------------------------------------------------------
 
-describe('listCoffeeVarieties', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listCoffeeVarieties', () => {
   let fragment: string;
   let varietyId: string;
   let processingId: string;
@@ -1681,7 +1676,7 @@ describe('listCoffeeVarieties', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('createCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('createCoffeeVariety', () => {
   let adminId: string;
   let createdIds: string[];
 
@@ -1717,7 +1712,7 @@ describe('createCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('updateCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('updateCoffeeVariety', () => {
   let adminId: string;
   let varietyId: string;
 
@@ -1749,7 +1744,7 @@ describe('updateCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('deleteCoffeeVariety', () => {
   let adminId: string;
   let varietyId: string;
 
@@ -1766,9 +1761,7 @@ describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
   it('should soft-delete the variety and write a DELETE_COFFEE_VARIETY audit log', async () => {
     await service.deleteCoffeeVariety(adminId, varietyId);
 
-    const [row] = await db.select().from(coffeeVarieties).where(
-      eq(coffeeVarieties.id, varietyId),
-    );
+    const [row] = await db.select().from(coffeeVarieties).where(eq(coffeeVarieties.id, varietyId));
     expect(row.deletedAt).not.toBeNull();
 
     const logs = await findAuditLogs(adminId, 'DELETE_COFFEE_VARIETY', varietyId);
@@ -1783,7 +1776,7 @@ describe('deleteCoffeeVariety', { sanitizeOps: false, sanitizeResources: false }
   });
 });
 
-describe('getVarietyRecipeCount', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('getVarietyRecipeCount', () => {
   let userId: string;
   let varietyId: string;
   let emptyVarietyId: string;
@@ -1814,9 +1807,7 @@ describe('getVarietyRecipeCount', { sanitizeOps: false, sanitizeResources: false
       preparationNotes: '',
       coffeeVarietyId: varietyId,
     });
-    await db.update(recipes).set({ currentVersionId: versionId }).where(
-      eq(recipes.id, recipeId),
-    );
+    await db.update(recipes).set({ currentVersionId: versionId }).where(eq(recipes.id, recipeId));
   });
 
   afterEach(async () => {
@@ -1840,7 +1831,7 @@ describe('getVarietyRecipeCount', { sanitizeOps: false, sanitizeResources: false
 // Equipment Delete Requests (admin)
 // ---------------------------------------------------------------------------
 
-describe('listEquipmentDeleteRequests', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('listEquipmentDeleteRequests', () => {
   let requesterId: string;
   let equipmentId: string;
   let pendingId: string;
@@ -1881,7 +1872,7 @@ describe('listEquipmentDeleteRequests', { sanitizeOps: false, sanitizeResources:
   });
 });
 
-describe('approveEquipmentDeleteRequest', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('approveEquipmentDeleteRequest', () => {
   let adminId: string;
   let requesterId: string;
   let equipmentId: string;
@@ -1923,7 +1914,7 @@ describe('approveEquipmentDeleteRequest', { sanitizeOps: false, sanitizeResource
   });
 });
 
-describe('rejectEquipmentDeleteRequest', { sanitizeOps: false, sanitizeResources: false }, () => {
+describe('rejectEquipmentDeleteRequest', () => {
   let adminId: string;
   let requesterId: string;
   let equipmentId: string;

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StarRating } from './StarRating.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -82,7 +82,7 @@ describe('StarRating', () => {
   it('does NOT call onRate in read-only mode on click', () => {
     const onRate = vi.fn();
     const { container } = render(<StarRating value={6} onRate={onRate} interactive={false} />);
-    const starDivs = container.querySelectorAll('.flex > div');
+    const starDivs = container.querySelectorAll('.flex > button');
     fireEvent.click(starDivs[0]);
     expect(onRate).not.toHaveBeenCalled();
   });
@@ -90,7 +90,7 @@ describe('StarRating', () => {
   it('calls onRate with the clicked star value in interactive mode (right half → full star)', () => {
     const onRate = vi.fn();
     const { container } = render(<StarRating value={6} onRate={onRate} interactive />);
-    const starDivs = container.querySelectorAll('.flex > div');
+    const starDivs = container.querySelectorAll('.flex > button');
     // Mock getBoundingClientRect so the click lands in the right half (x > width/2)
     const original = starDivs[2].getBoundingClientRect.bind(starDivs[2]);
     starDivs[2].getBoundingClientRect = () => ({
@@ -106,7 +106,7 @@ describe('StarRating', () => {
   it('calls onRate with the half-star value in interactive mode (left half → half star)', () => {
     const onRate = vi.fn();
     const { container } = render(<StarRating value={6} onRate={onRate} interactive />);
-    const starDivs = container.querySelectorAll('.flex > div');
+    const starDivs = container.querySelectorAll('.flex > button');
     const original = starDivs[1].getBoundingClientRect.bind(starDivs[1]);
     starDivs[1].getBoundingClientRect = () => ({
       ...original(),
