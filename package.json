@@ -47,7 +47,8 @@
     "ci": "pnpm run fmt-check && pnpm run lint && pnpm run check && pnpm run build && pnpm run test-coverage && pnpm run test:db && pnpm --filter @brewform/web run test"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@resvg/resvg-js": "^2.6.2",
-    "@biomejs/biome": "2.5.15"
+    "vitest": "4.1.10"
   }
 }

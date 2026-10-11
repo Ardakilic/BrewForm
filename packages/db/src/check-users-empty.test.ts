@@ -1,5 +1,5 @@
 /**
- * Unit tests for the first-boot seed sentinel `scripts/check-users-empty.ts`.
+ * Unit tests for the first-boot seed sentinel `packages/db/src/check-users-empty.ts`.
  *
  * The script's count logic is exposed as the dependency-injected `countUsers`
  * function, which lets these tests assert the returned integer for a known DB
@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { countUsers } from '../../../scripts/check-users-empty.ts';
+import { countUsers } from './check-users-empty.ts';
 
 /**
  * Builds a minimal Drizzle-shaped stub whose `$count(table)` resolves to the

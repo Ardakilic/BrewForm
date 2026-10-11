@@ -3,12 +3,12 @@
  * Run with: pnpm run email-build
  * Re-run whenever a .mjml template is modified.
  */
-import { ensureDir, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// MJML must be available as a build-time dependency via npm:
+// MJML must be available as a build-time dependency:
 const { default: mjml2html } = await import('mjml');
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));

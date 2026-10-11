@@ -45,7 +45,7 @@ Two separate Deno Deploy projects, both linked to the same GitHub repository:
 
 ### `brewform-api` (Dynamic)
 
-Configured in `apps/api/deno.json`:
+Configured in `apps/api/deno.json` (historical record — file deleted when Deno was removed):
 
 ```json
 {
@@ -127,7 +127,7 @@ TLS certificates are provisioned and auto-renewed via Let's Encrypt.
 | `APP_URL` | `https://api.brewform.cc` |
 | `APP_ENV` | `production` |
 | `LOG_LEVEL` | `info` |
-| `CACHE_DRIVER` | `deno-kv` |
+| `CACHE_DRIVER` | `deno-kv` (retired with Deno KV; now `memory` — see `deployment_coolify.md`) |
 | `SMTP_HOST` | Production SMTP host |
 | `SMTP_PORT` | Production SMTP port |
 | `SMTP_USER` | SMTP username |

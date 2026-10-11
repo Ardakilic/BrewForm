@@ -9,13 +9,14 @@ echo "Migrations complete."
 # @brewform/db-backed check script. The admin account is the first row the seed
 # inserts, so an empty `users` table means the database has never been seeded.
 #
-# The check script is TypeScript, so it runs via tsx (a devDependency of the
-# @brewform/api workspace, kept installed in the runner image). Its stdout is
-# the bare integer count, captured here. We do NOT mask a failed check to "0":
+# The check script lives in the @brewform/db workspace (it imports @brewform/db),
+# so it runs with that workspace as cwd — bare `tsx` resolves the workspace
+# package. Its stdout is the bare integer count, captured here. We do NOT mask
+# a failed check to "0":
 # with `set -e`, a genuine failure (DB unreachable, wrong DATABASE_URL, ...)
 # aborts the boot rather than silently re-seeding an already-populated
 # database on every restart.
-USER_COUNT=$(pnpm --filter @brewform/api exec tsx /app/scripts/check-users-empty.ts)
+USER_COUNT=$(pnpm --filter @brewform/db exec tsx src/check-users-empty.ts)
 
 if [ "$USER_COUNT" = "0" ]; then
   echo "Database is empty, running seed..."

@@ -6,7 +6,5 @@
     "types": ["node"]
   },
   "include": ["src/**/*"],
-  // check-users-empty.test.ts imports scripts/check-users-empty.ts, which lives
-  // outside rootDir (TS6059). Excluded from tsc only — vitest still runs it.
-  "exclude": ["node_modules", "dist", "src/check-users-empty.test.ts"]
+  "exclude": ["node_modules", "dist"]
 }

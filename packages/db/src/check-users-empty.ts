@@ -6,7 +6,7 @@
  * the one-time database seed:
  *
  * ```sh
- * USER_COUNT=$(pnpm --filter @brewform/api exec tsx /app/scripts/check-users-empty.ts)
+ * USER_COUNT=$(pnpm --filter @brewform/db exec tsx src/check-users-empty.ts)
  * [ "$USER_COUNT" = "0" ] && pnpm --filter @brewform/db run seed
  * ```
  *

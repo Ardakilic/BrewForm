@@ -39,7 +39,7 @@ RUN pnpm run check
 # --- Stage 3: Runtime (API only, with entrypoint) ---
 # Minimal production image — the entrypoint runs migrations + first-boot seed,
 # then execs the Hono API server. The full app tree copied from the builder
-# already includes repo-root scripts/ (e.g. scripts/check-users-empty.ts).
+# already includes the db workspace script (packages/db/src/check-users-empty.ts).
 #
 # The API runs from TypeScript sources via tsx (there is no tsc emit into
 # dist/ — `build` only compiles the email templates), so the runner keeps the
