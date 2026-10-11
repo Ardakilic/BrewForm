@@ -236,8 +236,8 @@ importers:
         specifier: 4.6.0
         version: 4.6.0
       nodemailer:
-        specifier: ^9.0.3
-        version: 9.1.1
+        specifier: ^10.0.0
+        version: 10.1.0
       pino:
         specifier: ^10.3.1
         version: 10.4.0
@@ -2684,9 +2684,9 @@ packages:
     resolution: {integrity: sha512-BdiKAgbfRlvfMq/XzO/AF9NPmaA8a+YpLAyAFTVFBj3gARrAIfWvNq7Q7NE4se3KgFu0KkrvQMxTS0XVnsGzHg==}
     engines: {node: '>=18'}
 
-  nodemailer@9.1.1:
-    resolution: {integrity: sha512-izw9mVKFix6YSnC9eLgV6g1opl9DUlRio9ZNcq+Wu9Ujn2UwF+8Nl0B8nz22kEC+CTZCvinkxwJ0DeFbb6NwcQ==}
-    engines: {node: '>=6.0.0'}
+  nodemailer@10.1.0:
+    resolution: {integrity: sha512-fXW8AulB25aOTuwfRYV6lqHyfz2VM4rr4SGXH03mE7x5znEUpzL5mu6anARUpZN7744Ziwkmr4AxSLPJsBQspg==}
+    engines: {node: '>=20.0.0'}
 
   nopt@10.0.1:
     resolution: {integrity: sha512-df3sBr/6ax9hSGuC3CspvLlbnX8cP5L5nZwXF8cGN8l0zSWR6BvzmQ6jPUKjvo6+/xdpkNvEcucBNUdBeeV13g==}
@@ -5531,7 +5531,7 @@ snapshots:
 
   node-releases@2.0.58: {}
 
-  nodemailer@9.1.1: {}
+  nodemailer@10.1.0: {}
 
   nopt@10.0.1:
     dependencies:
