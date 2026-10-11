@@ -163,7 +163,9 @@ describe('pnpm workspace wiring', () => {
     const pkg = await readJson('package.json');
     expect(pkg.packageManager).toMatch(/^pnpm@\d+\.\d+\.\d+$/);
     const devEngines = pkg.devEngines as Record<string, Record<string, string>>;
-    expect(devEngines?.runtime?.version, 'devEngines.runtime must pin Node 24').toMatch(/^24/);
+    expect(devEngines?.runtime?.version, 'devEngines.runtime must pin Node 24.15+').toMatch(
+      /^\^?24/,
+    );
     expect(devEngines?.packageManager?.name).toBe('pnpm');
   });
 
