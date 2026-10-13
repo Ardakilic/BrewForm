@@ -12,7 +12,7 @@
   "dependencies": {
     "@brewform/db": "workspace:*",
     "@brewform/shared": "workspace:*",
-    "@hono/node-server": "2.1.4",
+    "@hono/node-server": "2.1.5",
     "@hono/standard-validator": "^0.4.0",
     "@hono/zod-validator": "^0.9.1",
     "bcryptjs": "catalog:",
