@@ -11,7 +11,7 @@
 # Copies only manifest files, prefetches the pnpm store, then copies the full
 # source and installs offline. Identical to the API Dockerfile's `deps` stage
 # so both images share the same dependency graph and lockfile resolution.
-FROM node:24.21.0-bookworm-slim AS deps
+FROM node:24.22.0-bookworm-slim AS deps
 WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable && corepack prepare pnpm@12.11.2 --activate
