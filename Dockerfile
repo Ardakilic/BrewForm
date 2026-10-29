@@ -14,7 +14,7 @@
 # Copies only manifest files, prefetches the pnpm store, then copies the full
 # source and installs offline. Used as the base for the dev containers (source
 # is volume-mounted at runtime; node_modules survives via a named volume).
-FROM node:24.21.0-bookworm-slim AS deps
+FROM node:24.22.2-bookworm-slim AS deps
 WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable && corepack prepare pnpm@12.11.2 --activate
@@ -45,7 +45,7 @@ RUN pnpm run check
 # dist/ — `build` only compiles the email templates), so the runner keeps the
 # full install including devDependencies (tsx, drizzle-kit) instead of a pruned
 # production deploy.
-FROM node:24.21.0-bookworm-slim AS runner
+FROM node:24.22.2-bookworm-slim AS runner
 WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
   NODE_ENV=production
