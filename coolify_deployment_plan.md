@@ -116,7 +116,7 @@ written.
 
 | # | Change | File(s) | Status |
 |---|--------|---------|--------|
-| 1 | API Dockerfile: `node:24-bookworm-slim` stages (`pnpm fetch` + frozen offline install); `builder` runs `pnpm run email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL) with a `tsc` gate; `runner` keeps the full install (tsx, drizzle-kit) and uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]`, which execs `tsx src/main.ts` via pnpm (no `dist/` — root `noEmit:true`, api `build` = email-templates only) | `Dockerfile`, `docker-entrypoint.sh` | Done |
+| 1 | API Dockerfile: `node:26-bookworm-slim` stages (`pnpm fetch` + frozen offline install); `builder` runs `pnpm run email-build` (compiles MJML templates) + `drizzle-kit generate` (migration SQL) with a `tsc` gate; `runner` keeps the full install (tsx, drizzle-kit) and uses `ENTRYPOINT ["/app/docker-entrypoint.sh"]`, which execs `tsx src/main.ts` via pnpm (no `dist/` — root `noEmit:true`, api `build` = email-templates only) | `Dockerfile`, `docker-entrypoint.sh` | Done |
 | 2 | `docker-entrypoint.sh`: runs `drizzle-kit migrate` (always), checks `users` row count via a tsx script and runs seed only if empty (first boot), then `exec`s the API server | `docker-entrypoint.sh` | Done |
 | 3 | Web Dockerfile: 3-stage build (node deps → vite build with `VITE_*` ARGs → `caddy:2.11.7-alpine` serving `dist/` on port 80) | `Dockerfile.web` | Done |
 | 4 | `compose.yml` `prod` profile (`app-prod`, `web-prod` referencing GHCR images); no cache sidecar (`CACHE_DRIVER=memory`) | `compose.yml` | Done |
@@ -172,10 +172,10 @@ default to **private**, flip them to **public** once:
 
 ## Step 0 — Pre-flight (before any Coolify work)
 
-> **Pinned runtime:** BrewForm runs on **Node 24 LTS**. Both images build from
-> `node:24-bookworm-slim` (API `Dockerfile`, web `Dockerfile.web` deps/builder stages),
-> `.nvmrc` pins `24`, and CI installs pnpm via `pnpm/action-setup`. If you fork or rebuild
-> an image, keep the base on a pinned `node:24.x-bookworm-slim` tag.
+> **Pinned runtime:** BrewForm runs on **Node 26 LTS**. Both images build from
+> `node:26-bookworm-slim` (API `Dockerfile`, web `Dockerfile.web` deps/builder stages),
+> `.nvmrc` pins `26`, and CI installs pnpm via `pnpm/action-setup`. If you fork or rebuild
+> an image, keep the base on a pinned `node:26.x-bookworm-slim` tag.
 
 Do all of this **before** you touch the Coolify panel. The web image bakes its config at build
 time, so getting these wrong means rebuilding and republishing images later.

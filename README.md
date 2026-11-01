@@ -26,7 +26,7 @@ notes.
 
 | Layer      | Technology                                  |
 | ---------- | ------------------------------------------- |
-| Runtime    | Node 24 LTS                                   |
+| Runtime    | Node 26 LTS                                   |
 | Monorepo   | pnpm workspaces                               |
 | Backend    | Hono                                        |
 | Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |
@@ -157,7 +157,7 @@ apps/api ──┬──→ packages/shared
            └──→ packages/db ──→ packages/shared
 ```
 
-- **`apps/api/`** — Hono backend API (Node 24 + tsx)
+- **`apps/api/`** — Hono backend API (Node 26 + tsx)
 - **`apps/web/`** — React SPA frontend (static build served by Caddy)
 - **`packages/shared/`** — Types, Zod schemas, constants, utils, i18n
 - **`packages/db/`** — Drizzle schema, migrations, seed data, client

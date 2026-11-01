@@ -105,13 +105,11 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const { RecipeCreatePage } = await import('./pages/recipes/RecipeCreatePage.tsx');
           return {
-            Component: function RecipeCreatePageGuarded() {
-              return (
-                <RequireAuth>
-                  <RecipeCreatePage />
-                </RequireAuth>
-              );
-            },
+            element: (
+              <RequireAuth>
+                <RecipeCreatePage />
+              </RequireAuth>
+            ),
           };
         },
       },
@@ -213,13 +211,11 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const { RecipeEditPage } = await import('./pages/recipes/RecipeEditPage.tsx');
           return {
-            Component: function RecipeEditPageGuarded() {
-              return (
-                <RequireAuth>
-                  <RecipeEditPage />
-                </RequireAuth>
-              );
-            },
+            element: (
+              <RequireAuth>
+                <RecipeEditPage />
+              </RequireAuth>
+            ),
           };
         },
       },
@@ -228,13 +224,11 @@ export const router = createBrowserRouter([
         lazy: async () => {
           const { RecipeForkPage } = await import('./pages/recipes/RecipeForkPage.tsx');
           return {
-            Component: function RecipeForkPageGuarded() {
-              return (
-                <RequireAuth>
-                  <RecipeForkPage />
-                </RequireAuth>
-              );
-            },
+            element: (
+              <RequireAuth>
+                <RecipeForkPage />
+              </RequireAuth>
+            ),
           };
         },
       },
@@ -359,13 +353,11 @@ export const router = createBrowserRouter([
     lazy: async () => {
       const { AdminLayout } = await import('./pages/admin/AdminLayout.tsx');
       return {
-        Component: function AdminLayoutGuarded() {
-          return (
-            <RequireAuth requireAdmin>
-              <AdminLayout />
-            </RequireAuth>
-          );
-        },
+        element: (
+          <RequireAuth requireAdmin>
+            <AdminLayout />
+          </RequireAuth>
+        ),
       };
     },
     errorElement: <RootErrorBoundary />,

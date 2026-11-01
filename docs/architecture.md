@@ -14,7 +14,7 @@ BrewForm uses a pnpm workspaces monorepo (`pnpm-workspace.yaml`). Four packages:
 
 | Package           | Purpose                                       | Runtime                |
 | ----------------- | --------------------------------------------- | ---------------------- |
-| `apps/api`        | Hono backend API                              | Node 24 (tsx)          |
+| `apps/api`        | Hono backend API                              | Node 26 (tsx)          |
 | `apps/web`        | React SPA frontend                            | Browser (static SPA)   |
 | `packages/shared` | Types, Zod schemas, constants, utils, i18n    | Shared (api + web)     |
 | `packages/db`     | Drizzle schema, migrations, seed data, client | Server (api only)      |
