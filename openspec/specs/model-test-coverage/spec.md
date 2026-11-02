@@ -490,15 +490,17 @@ only duplicate the runner's own check.
 - **WHEN** every workspace's coverage meets its configured thresholds
 - **THEN** Vitest exits zero and CI proceeds
 
-### Requirement: Admin, recipe, and auth modules are backfilled to reach the gate
+### Requirement: Admin, recipe, and auth modules are backfilled to raise API coverage
 
-The measured path to ≥85% SHALL be executed in order: (1) the admin mock-mirror rewrite (real
+The measured backfill path SHALL be executed in order: (1) the admin mock-mirror rewrite (real
 tests over ~1,200 previously-mirrored lines), (2) recipe-module backfill (+~550 covered lines over
 the module's untested service/model paths), (3) auth backfill including a NEW
 `apps/api/src/modules/auth/model.test.ts` (+~250 lines — `auth/model.ts` is 194 lines at 12.5%
 incidental coverage with password-reset/verification-token persistence untested, and has no test
-file at all). If one stage lands short of its projection, the later stages absorb the slack — the
-gate threshold is only committed once the measured number reaches 85%.
+file at all). If one stage lands short of its projection, the later stages absorb the slack —
+thresholds are re-measured afterward and committed from the measured API line coverage, rounded
+down, and only ratcheted upward (see the per-workspace requirement above). The former combined
+API+shared 85% line-coverage target is not a gate: no combined threshold is enforced.
 
 **Reason:** These three modules are the measured gap. Auth is the only module with a completely
 untested model layer — token persistence is exactly where silent breakage hurts most.
@@ -509,10 +511,11 @@ untested model layer — token persistence is exactly where silent breakage hurt
 - **THEN** the file exists, imports `* as model from './model.ts'`, and covers password-reset and
   verification-token persistence paths
 
-#### Scenario: Measured coverage reaches the gate
+#### Scenario: Measured coverage meets the API threshold
 
 - **WHEN** `pnpm run test-coverage` runs after all three backfill stages
-- **THEN** each workspace meets its configured thresholds and the gate passes
+- **THEN** `apps/api` meets its configured line threshold and the gate passes; the gate is per
+  workspace, and no combined API+shared threshold is enforced
 
 ### Requirement: Web coverage counts untested files and enforces ratcheting thresholds
 
