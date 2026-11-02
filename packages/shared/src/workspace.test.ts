@@ -182,7 +182,7 @@ describe('pnpm workspace wiring', () => {
         expect(from, `${file} must use a Node 26 base image`).toMatch(/^FROM node:26\./);
       }
       expect(dockerfile, `${file} must install pnpm@${pnpmVersion}`).toContain(
-        `npm install -g pnpm@${pnpmVersion}`,
+        `npm install -g --allow-scripts=pnpm pnpm@${pnpmVersion}`,
       );
       expect(dockerfile, `${file} must not rely on corepack (dropped in Node 25+)`).not.toMatch(
         /^RUN .*corepack/m,

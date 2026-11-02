@@ -6,7 +6,7 @@
 #   builder — full build + type check (used by CI)
 #   runner  — production runtime (API only, used by `make preview` / production)
 #
-# Base image is pinned to node:26.13.0-bookworm-slim (Node 26 LTS, see .nvmrc).
+# Base image is pinned to node:26.13.0-trixie-slim (Node 26 LTS, see .nvmrc).
 # Node 25+ no longer bundles corepack, so pnpm is installed globally via npm;
 # keep its version in sync with `packageManager` in package.json.
 # ============================================================
@@ -15,9 +15,9 @@
 # Copies only manifest files, prefetches the pnpm store, then copies the full
 # source and installs offline. Used as the base for the dev containers (source
 # is volume-mounted at runtime; node_modules survives via a named volume).
-FROM node:26.13.0-bookworm-slim AS deps
+FROM node:26.13.0-trixie-slim AS deps
 WORKDIR /app
-RUN npm install -g pnpm@12.16.1
+RUN npm install -g --allow-scripts=pnpm pnpm@12.16.1
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
@@ -45,10 +45,10 @@ RUN pnpm run check
 # dist/ — `build` only compiles the email templates), so the runner keeps the
 # full install including devDependencies (tsx, drizzle-kit) instead of a pruned
 # production deploy.
-FROM node:26.13.0-bookworm-slim AS runner
+FROM node:26.13.0-trixie-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN npm install -g pnpm@12.16.1
+RUN npm install -g --allow-scripts=pnpm pnpm@12.16.1
 COPY --from=builder /app /app
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh

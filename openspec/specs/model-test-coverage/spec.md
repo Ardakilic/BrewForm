@@ -466,30 +466,29 @@ they manufacture false confidence and still cost maintenance (design.md Decision
 - **THEN** `apps/api/src/modules/admin/` line coverage reflects actual execution of the production
   module (up from 1,349 uncovered lines), and `make test-api` passes
 
-### Requirement: Deno-scope line coverage is at least 85 percent and CI-gated
+### Requirement: Per-workspace coverage is CI-gated by Vitest thresholds
 
-The deno scope (`apps/api/src` + `packages/shared/src`) SHALL hold ≥85% line coverage, enforced by
-a gate script: `deno coverage` has no built-in threshold flag, so `scripts/coverage-gate.ts` SHALL
-run after `deno task test-coverage`, parse the coverage report output, and exit non-zero when line
-coverage is below 85%. The gate SHALL be wired into `make ci` and the CI workflow (which today only
-uploads the report artifact, `ci.yml:104-108`). The threshold is set from the measured number,
-never aspirationally.
+Each workspace SHALL hold its measured coverage at or above the thresholds declared in its
+`vitest.config.ts`: `apps/api` lines 79, `packages/shared` lines/statements 97, functions 95,
+branches 93, `packages/db` lines 84, and `apps/web` lines 79. Vitest SHALL enforce them natively
+during `pnpm run test-coverage`, exiting non-zero when a workspace falls below a threshold. The
+command is wired into `make ci` and the `test` job in `ci.yml`. Thresholds are set from the measured
+number, rounded down, and are ratcheted upward only.
 
-**Reason:** Measured baseline is 72.21% lines (shared 99.42%, apps/api 65.38% — the entire gap),
-with no gate anywhere; coverage can only regress silently. The path to ≥85% is measured and
-concrete (admin ~+1,200 covered lines → ~80.4%, recipe +~550 → ~84.2%, auth +~250 → ~85.9%).
+**Reason:** The previous `scripts/coverage-gate.ts` parsed `deno coverage` output; it is gone with
+the Deno → Node migration. Vitest has native `coverage.thresholds`, so a custom gate script would
+only duplicate the runner's own check.
 
 #### Scenario: Gate fails below threshold
 
-- **WHEN** `scripts/coverage-gate.ts` parses a coverage report with deno-scope line coverage below
-  85%
-- **THEN** it exits non-zero with a message naming the measured and required percentages, failing
-  `make ci` and the CI job
+- **WHEN** `pnpm run test-coverage` runs and a workspace's coverage is below its configured
+  threshold
+- **THEN** Vitest exits non-zero, failing `make ci` and the CI `test` job
 
 #### Scenario: Gate passes at or above threshold
 
-- **WHEN** the deno-scope line coverage is ≥85%
-- **THEN** the gate exits zero and CI proceeds
+- **WHEN** every workspace's coverage meets its configured thresholds
+- **THEN** Vitest exits zero and CI proceeds
 
 ### Requirement: Admin, recipe, and auth modules are backfilled to reach the gate
 
@@ -512,9 +511,8 @@ untested model layer — token persistence is exactly where silent breakage hurt
 
 #### Scenario: Measured coverage reaches the gate
 
-- **WHEN** `deno task test-coverage` + `scripts/coverage-gate.ts` run after all three backfill
-  stages
-- **THEN** deno-scope line coverage is ≥85% and the gate passes
+- **WHEN** `pnpm run test-coverage` runs after all three backfill stages
+- **THEN** each workspace meets its configured thresholds and the gate passes
 
 ### Requirement: Web coverage counts untested files and enforces ratcheting thresholds
 

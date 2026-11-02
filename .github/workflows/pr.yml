@@ -125,7 +125,7 @@ jobs:
         run: pnpm --filter @brewform/db run seed
 
       - name: Run API tests
-        run: pnpm --filter @brewform/api run test -- --coverage
+        run: pnpm --filter @brewform/api run test --coverage
 
       - name: Upload coverage
         if: always()

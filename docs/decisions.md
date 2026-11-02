@@ -27,7 +27,7 @@ via `pnpm --filter` — no external task runner needed.
 
 **Trade-off.** A `tsc` type-check step and `tsx` for TS execution instead of run-direct; slower
 dev loop, but type-safe and free of strip-types limits. All relative imports use explicit `.ts`
-extensions. The Dockerfile uses only `node:26-bookworm-slim` (pnpm installed via `npm i -g`, as Node 25+ dropped corepack); the seed script is TypeScript and
+extensions. The Dockerfile uses only `node:26-trixie-slim` (pnpm installed via `npm i -g`, as Node 25+ dropped corepack); the seed script is TypeScript and
 runs via `tsx`.
 
 **Original Deno decision (historical).** Run on the Deno runtime, manage the monorepo with native
