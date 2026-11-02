@@ -21,3 +21,5 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - hono@4.13.16
+  - '@hono/node-server@2.1.6'
+  - '@vitejs/plugin-react@6.2.1'
