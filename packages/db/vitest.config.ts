@@ -13,7 +13,7 @@ export default defineConfig({
       // Test files, setup files and this config are always excluded by Vitest itself.
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts'],
-      // json-summary + json feed the PR coverage comment (vitest-coverage-report-action).
+      // json-summary + json feed the single PR coverage comment (.github/workflows/ci.yml).
       reporter: ['text', 'html', 'clover', 'json', 'json-summary'],
       reportOnFailure: true,
       // RATCHET RULE: honest measured line coverage, rounded DOWN; only ever raise it.

@@ -20,7 +20,7 @@ export default defineConfig({
         // Generated from MJML by `pnpm run email-build`
         'src/templates/email/generated/**',
       ],
-      // json-summary + json feed the PR coverage comment (vitest-coverage-report-action).
+      // json-summary + json feed the single PR coverage comment (.github/workflows/ci.yml).
       reporter: ['text', 'html', 'clover', 'json', 'json-summary'],
       reportOnFailure: true,
       // RATCHET RULE: honest measured line coverage, rounded DOWN; only ever raise it.
