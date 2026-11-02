@@ -545,7 +545,8 @@ ratchet gets there monotonically without ever being red on day one (design.md De
 #### Scenario: Thresholds fail on regression
 
 - **WHEN** a change drops web line coverage below the configured `coverage.thresholds.lines`
-- **THEN** `deno task --cwd apps/web test -- --coverage` (and the CI web-test job) fails
+- **THEN** `pnpm --filter @brewform/web run test --coverage` exits non-zero, failing the CI `test`
+  job that runs `pnpm run test-coverage`
 
 #### Scenario: Ratchet moves the floor up
 
