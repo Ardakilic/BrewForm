@@ -1,18 +1,18 @@
 {
   "name": "@brewform/root",
   "private": true,
-  "packageManager": "pnpm@12.11.2",
+  "packageManager": "pnpm@12.16.1",
   "engines": {
-    "node": "^24.15.0"
+    "node": "^26.13.0"
   },
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "^24.15.0"
+      "version": "^26.13.0"
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "12.11.2",
+      "version": "12.16.1",
       "onFail": "download"
     }
   },
@@ -36,8 +36,7 @@
     "test:api": "pnpm --filter @brewform/api run test",
     "test:shared": "pnpm --filter @brewform/shared run test",
     "test:db": "pnpm --filter @brewform/db run test",
-    "test-coverage": "pnpm --filter @brewform/api run test -- --coverage && pnpm --filter @brewform/shared run test -- --coverage && pnpm --filter @brewform/db run test -- --coverage && pnpm --filter @brewform/web run test -- --coverage",
-    "coverage-report": "pnpm --filter @brewform/api run test -- --coverage --coverage.reporter=text && pnpm --filter @brewform/shared run test -- --coverage --coverage.reporter=text && pnpm --filter @brewform/db run test -- --coverage --coverage.reporter=text && pnpm --filter @brewform/web run test -- --coverage --coverage.reporter=text",
+    "test-coverage": "pnpm --filter @brewform/api run test --coverage && pnpm --filter @brewform/shared run test --coverage && pnpm --filter @brewform/db run test --coverage && pnpm --filter @brewform/web run test --coverage",
     "db:generate": "pnpm --filter @brewform/db run generate",
     "db:migrate": "pnpm --filter @brewform/db run migrate",
     "db:push": "pnpm --filter @brewform/db run push",
@@ -47,8 +46,8 @@
     "ci": "pnpm run fmt-check && pnpm run lint && pnpm run check && pnpm run build && pnpm run test-coverage && pnpm run test:db && pnpm --filter @brewform/web run test"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.4",
     "@resvg/resvg-js": "^2.6.2",
-    "vitest": "5.0.3"
+    "vitest": "5.0.5"
   }
 }

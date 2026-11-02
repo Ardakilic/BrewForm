@@ -12,7 +12,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.11.2
+          version: 12.16.1
           run_install: false
 
       - uses: actions/setup-node@v7
@@ -49,7 +49,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.11.2
+          version: 12.16.1
           run_install: false
 
       - uses: actions/setup-node@v7
@@ -99,7 +99,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.11.2
+          version: 12.16.1
           run_install: false
 
       - uses: actions/setup-node@v7
@@ -125,7 +125,7 @@ jobs:
         run: pnpm --filter @brewform/db run seed
 
       - name: Run API tests
-        run: pnpm --filter @brewform/api run test -- --coverage
+        run: pnpm --filter @brewform/api run test --coverage
 
       - name: Upload coverage
         if: always()
@@ -143,7 +143,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.11.2
+          version: 12.16.1
           run_install: false
 
       - uses: actions/setup-node@v7

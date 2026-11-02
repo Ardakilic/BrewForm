@@ -53,15 +53,12 @@ export default defineConfig({
         // Type-only / declaration files
         'src/**/*.d.ts',
       ],
-      // RATCHET RULE: this threshold only moves UP. It is the honest measured
-      // line coverage (rounded DOWN to a whole percent) at the time of the last
-      // ratchet. Any PR whose changes raise measured coverage by ≥1 point MUST
-      // bump `thresholds.lines` to the new floor in the SAME PR. Never lower it.
-      // Baseline 78% measured 2026-07-27 (78.4% lines, 3185/4062) after making
-      // all src files visible and adding the router / routes / api / dropdown
-      // quick-win tests.
+      // json-summary + json feed the PR coverage comment (vitest-coverage-report-action).
+      reporter: ['text', 'html', 'clover', 'json', 'json-summary'],
+      reportOnFailure: true,
+      // RATCHET RULE: honest measured line coverage, rounded DOWN; only ever raise it.
       thresholds: {
-        lines: 78,
+        lines: 79,
       },
     },
   },

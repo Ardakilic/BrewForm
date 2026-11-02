@@ -107,26 +107,26 @@ describe('Modal', () => {
   });
 });
 
-describe('useConfirm', () => {
-  function ConfirmTrigger({ onResult }: { onResult: (v: boolean) => void }) {
-    const { confirm } = useConfirm();
-    return (
-      <button
-        type="button"
-        onClick={async () => {
-          const result = await confirm({
-            titleKey: 'common.confirmDelete',
-            bodyKey: 'admin.recipes.deleteConfirm',
-            danger: true,
-          });
-          onResult(result);
-        }}
-      >
-        trigger
-      </button>
-    );
-  }
+function ConfirmTrigger({ onResult }: { onResult: (v: boolean) => void }) {
+  const { confirm } = useConfirm();
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        const result = await confirm({
+          titleKey: 'common.confirmDelete',
+          bodyKey: 'admin.recipes.deleteConfirm',
+          danger: true,
+        });
+        onResult(result);
+      }}
+    >
+      trigger
+    </button>
+  );
+}
 
+describe('useConfirm', () => {
   it('resolves true when confirm button is clicked', async () => {
     let result: boolean | null = null;
     render(

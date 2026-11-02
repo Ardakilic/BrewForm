@@ -26,12 +26,12 @@
     "@brewform/shared": "workspace:*",
     "bcryptjs": "catalog:",
     "drizzle-orm": "catalog:",
-    "postgres": "^3.4.9"
+    "postgres": "^4.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
-    "@types/node": "^24.19.2",
-    "@vitest/coverage-v8": "5.0.3",
+    "@biomejs/biome": "2.6.4",
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "5.0.5",
     "drizzle-kit": "catalog:",
     "tsx": "4.23.15",
     "typescript": "catalog:",

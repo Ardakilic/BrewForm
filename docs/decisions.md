@@ -10,12 +10,12 @@ For the _what_ (file layout, schema, middleware order), see `architecture.md` an
 
 ---
 
-## ADR-001 — Node 24 + pnpm workspaces (instead of Deno)
+## ADR-001 — Node LTS (26) + pnpm workspaces (instead of Deno)
 
 > Supersedes the original Deno decision below (see `openspec/changes/remove-deno-node24-pnpm/`
 > for the migration). Retained verbatim for history.
 
-**Decision.** Run on the Node 24 LTS runtime, manage the monorepo with pnpm workspaces
+**Decision.** Run on the Node 26 LTS runtime (upgraded from Node 24), manage the monorepo with pnpm workspaces
 (`pnpm-workspace.yaml` `packages: ['apps/*', 'packages/*']`), with shared version pins in the
 pnpm `catalog:`.
 
@@ -27,7 +27,7 @@ via `pnpm --filter` — no external task runner needed.
 
 **Trade-off.** A `tsc` type-check step and `tsx` for TS execution instead of run-direct; slower
 dev loop, but type-safe and free of strip-types limits. All relative imports use explicit `.ts`
-extensions. The Dockerfile uses only `node:24-bookworm-slim`; the seed script is TypeScript and
+extensions. The Dockerfile uses only `node:26-trixie-slim` (pnpm installed via `npm i -g`, as Node 25+ dropped corepack); the seed script is TypeScript and
 runs via `tsx`.
 
 **Original Deno decision (historical).** Run on the Deno runtime, manage the monorepo with native

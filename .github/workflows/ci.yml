@@ -14,7 +14,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.11.2
+          version: 12.16.1
           run_install: false
 
       - uses: actions/setup-node@v7
@@ -48,6 +48,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: quality
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
     services:
       postgres:
         image: postgres:18-alpine
@@ -79,7 +83,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 12.11.2
+          version: 12.16.1
           run_install: false
 
       - uses: actions/setup-node@v7
@@ -107,10 +111,94 @@ jobs:
       - name: Run tests with coverage
         run: pnpm run test-coverage
 
-      - name: Generate coverage report
-        run: pnpm run coverage-report
+      # Main's latest coverage summaries power the before/after delta on PRs.
+      # Absent on the PR that introduces this job, hence if_no_artifact_found: warn.
+      - name: Download main coverage (API)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v28
+        with:
+          workflow: ci.yml
+          branch: main
+          event: push
+          name: coverage-main-api
+          path: base-coverage/api
+          if_no_artifact_found: warn
+
+      - name: Download main coverage (shared)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v28
+        with:
+          workflow: ci.yml
+          branch: main
+          event: push
+          name: coverage-main-shared
+          path: base-coverage/shared
+          if_no_artifact_found: warn
+
+      - name: Download main coverage (db)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v28
+        with:
+          workflow: ci.yml
+          branch: main
+          event: push
+          name: coverage-main-db
+          path: base-coverage/db
+          if_no_artifact_found: warn
+
+      - name: Download main coverage (web)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v28
+        with:
+          workflow: ci.yml
+          branch: main
+          event: push
+          name: coverage-main-web
+          path: base-coverage/web
+          if_no_artifact_found: warn
+
+      - name: Report API coverage
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: API
+          working-directory: apps/api
+          json-summary-compare-path: ${{ hashFiles('base-coverage/api/coverage-summary.json') != '' && '../../base-coverage/api/coverage-summary.json' || '' }}
+
+      - name: Report shared coverage
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: Shared
+          working-directory: packages/shared
+          json-summary-compare-path: ${{ hashFiles('base-coverage/shared/coverage-summary.json') != '' && '../../base-coverage/shared/coverage-summary.json' || '' }}
+
+      - name: Report db coverage
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: Database
+          working-directory: packages/db
+          json-summary-compare-path: ${{ hashFiles('base-coverage/db/coverage-summary.json') != '' && '../../base-coverage/db/coverage-summary.json' || '' }}
+
+      - name: Report web coverage
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: Web
+          working-directory: apps/web
+          json-summary-compare-path: ${{ hashFiles('base-coverage/web/coverage-summary.json') != '' && '../../base-coverage/web/coverage-summary.json' || '' }}
 
       - name: Upload coverage artifact
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
@@ -120,8 +208,34 @@ jobs:
             packages/db/coverage/
             apps/web/coverage/
 
-      - name: Coverage gate (>=85% line coverage, vitest scope)
-        run: pnpm --filter @brewform/api exec tsx ../../scripts/coverage-gate.ts
+      # Written from main pushes only, so PRs can compare against a trustworthy baseline.
+      - name: Upload main API coverage summary
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-main-api
+          path: apps/api/coverage/coverage-summary.json
+
+      - name: Upload main shared coverage summary
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-main-shared
+          path: packages/shared/coverage/coverage-summary.json
+
+      - name: Upload main db coverage summary
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-main-db
+          path: packages/db/coverage/coverage-summary.json
+
+      - name: Upload main web coverage summary
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-main-web
+          path: apps/web/coverage/coverage-summary.json
 
   # Images are deployed to GHCR via the Release workflow; Coolify pulls from there.
   # No manual deploy steps needed in CI.

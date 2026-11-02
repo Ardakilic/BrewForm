@@ -11,10 +11,9 @@
 # Copies only manifest files, prefetches the pnpm store, then copies the full
 # source and installs offline. Identical to the API Dockerfile's `deps` stage
 # so both images share the same dependency graph and lockfile resolution.
-FROM node:24.21.0-bookworm-slim AS deps
+FROM node:26.13.0-trixie-slim AS deps
 WORKDIR /app
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable && corepack prepare pnpm@12.11.2 --activate
+RUN npm install -g --allow-scripts=pnpm pnpm@12.16.1
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/

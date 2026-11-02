@@ -60,6 +60,36 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
   return nodes.length > 0 ? nodes : [text];
 }
 
+function getAuthorUsername(comment: CommentWithAuthorOutput): string | null {
+  return comment.author?.username || null;
+}
+
+function getAuthorName(comment: CommentWithAuthorOutput): string {
+  return comment.author?.displayName || comment.author?.username || 'Unknown';
+}
+
+function AuthorLink({
+  comment,
+  className,
+}: {
+  comment: CommentWithAuthorOutput;
+  className?: string;
+}) {
+  const username = getAuthorUsername(comment);
+  const name = getAuthorName(comment);
+  if (username) {
+    return (
+      <Link
+        to={`/u/${username}`}
+        className={`${className ?? ''} text-[color:var(--accent-primary)]`}
+      >
+        {name}
+      </Link>
+    );
+  }
+  return <span className={`${className ?? ''} text-[color:var(--text-primary)]`}>{name}</span>;
+}
+
 // ---------------------------------------------------------------------------
 // CommentSection
 // ---------------------------------------------------------------------------
@@ -259,36 +289,6 @@ export function CommentSection({ recipeId, recipeAuthorId, initialComments }: Pr
 
   function isRecipeAuthor(comment: CommentWithAuthorOutput) {
     return comment.authorId === recipeAuthorId;
-  }
-
-  function getAuthorUsername(comment: CommentWithAuthorOutput): string | null {
-    return comment.author?.username || null;
-  }
-
-  function getAuthorName(comment: CommentWithAuthorOutput): string {
-    return comment.author?.displayName || comment.author?.username || 'Unknown';
-  }
-
-  function AuthorLink({
-    comment,
-    className,
-  }: {
-    comment: CommentWithAuthorOutput;
-    className?: string;
-  }) {
-    const username = getAuthorUsername(comment);
-    const name = getAuthorName(comment);
-    if (username) {
-      return (
-        <Link
-          to={`/u/${username}`}
-          className={`${className ?? ''} text-[color:var(--accent-primary)]`}
-        >
-          {name}
-        </Link>
-      );
-    }
-    return <span className={`${className ?? ''} text-[color:var(--text-primary)]`}>{name}</span>;
   }
 
   function renderComment(comment: CommentWithRepliesOutput) {

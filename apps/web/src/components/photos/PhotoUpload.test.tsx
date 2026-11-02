@@ -43,33 +43,34 @@ function selectFile(container: HTMLElement, file: File) {
   fireEvent.change(input, { target: { files: [file] } });
 }
 
+// Stub Image so `new Image()` returns an element whose onload fires
+// asynchronously when `src` is assigned, with naturalWidth/Height set.
+function FakeImage(this: unknown) {
+  const el = {
+    naturalWidth: 100,
+    naturalHeight: 100,
+    onload: null as ((ev: Event) => void) | null,
+    onerror: null as ((ev: Event) => void) | null,
+    _src: '',
+    set src(value: string) {
+      this._src = value;
+      // Fire onload asynchronously so the awaiting promise resolves.
+      setTimeout(() => this.onload?.(new Event('load')), 0);
+    },
+    get src() {
+      return this._src;
+    },
+  };
+  return el;
+}
+
 /**
  * jsdom's `Image` never fires `onload` (no real image decoding), and
  * `URL.createObjectURL` is not implemented. Stub both so the
  * `createThumbnail` promise resolves and the upload loop can proceed.
  */
 function stubImageAndObjectUrls() {
-  // Stub Image so `new Image()` returns an element whose onload fires
-  // asynchronously when `src` is assigned, with naturalWidth/Height set.
   const originalImage = globalThis.Image;
-  function FakeImage(this: unknown) {
-    const el = {
-      naturalWidth: 100,
-      naturalHeight: 100,
-      onload: null as ((ev: Event) => void) | null,
-      onerror: null as ((ev: Event) => void) | null,
-      _src: '',
-      set src(value: string) {
-        this._src = value;
-        // Fire onload asynchronously so the awaiting promise resolves.
-        setTimeout(() => this.onload?.(new Event('load')), 0);
-      },
-      get src() {
-        return this._src;
-      },
-    };
-    return el;
-  }
   Object.defineProperty(globalThis, 'Image', {
     value: FakeImage,
     configurable: true,

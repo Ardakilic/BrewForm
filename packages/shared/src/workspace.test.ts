@@ -3,7 +3,7 @@
  * Workspace-integrity test: asserts the pnpm workspace wiring is coherent —
  * `pnpm-workspace.yaml` declares the member globs and shared `catalog:` pins,
  * the root `package.json` pins the package manager and runtimes, `.nvmrc`
- * tracks Node 24, and no Deno-era files remain. It additionally asserts
+ * tracks Node 26, and no Deno-era files remain. It additionally asserts
  * dependency currency: the adopted react-router (major 8) and zod-openapi
  * (major 6) floors are reflected in their member manifests.
  * Pure semver helpers are unit-tested below with inline fixtures.
@@ -163,14 +163,31 @@ describe('pnpm workspace wiring', () => {
     const pkg = await readJson('package.json');
     expect(pkg.packageManager).toMatch(/^pnpm@\d+\.\d+\.\d+$/);
     const devEngines = pkg.devEngines as Record<string, Record<string, string>>;
-    expect(devEngines?.runtime?.version, 'devEngines.runtime must pin Node 24.15+').toMatch(
-      /^\^?24/,
+    expect(devEngines?.runtime?.version, 'devEngines.runtime must pin Node 26.13+').toMatch(
+      /^\^?26/,
     );
     expect(devEngines?.packageManager?.name).toBe('pnpm');
   });
 
-  it('.nvmrc pins Node 24', async () => {
-    expect((await readText('.nvmrc')).trim()).toBe('24');
+  it('.nvmrc pins Node 26', async () => {
+    expect((await readText('.nvmrc')).trim()).toBe('26');
+  });
+
+  it('Docker images install the pinned pnpm on the pinned Node major', async () => {
+    const pkg = await readJson('package.json');
+    const pnpmVersion = String(pkg.packageManager).replace(/^pnpm@/, '');
+    for (const file of ['Dockerfile', 'Dockerfile.web']) {
+      const dockerfile = await readText(file);
+      for (const from of dockerfile.match(/^FROM node:\S+/gm) ?? []) {
+        expect(from, `${file} must use a Node 26 base image`).toMatch(/^FROM node:26\./);
+      }
+      expect(dockerfile, `${file} must install pnpm@${pnpmVersion}`).toContain(
+        `npm install -g --allow-scripts=pnpm pnpm@${pnpmVersion}`,
+      );
+      expect(dockerfile, `${file} must not rely on corepack (dropped in Node 25+)`).not.toMatch(
+        /^RUN .*corepack/m,
+      );
+    }
   });
 
   it('no Deno-era files remain', async () => {
