@@ -161,41 +161,70 @@ jobs:
           path: base-coverage/web
           if_no_artifact_found: warn
 
-      - name: Report API coverage
+      - name: Report coverage (single PR comment)
         if: always() && github.event_name == 'pull_request'
         continue-on-error: true
-        uses: davelosert/vitest-coverage-report-action@v2
+        uses: actions/github-script@v7
         with:
-          name: API
-          working-directory: apps/api
-          json-summary-compare-path: ${{ hashFiles('base-coverage/api/coverage-summary.json') != '' && '../../base-coverage/api/coverage-summary.json' || '' }}
-
-      - name: Report shared coverage
-        if: always() && github.event_name == 'pull_request'
-        continue-on-error: true
-        uses: davelosert/vitest-coverage-report-action@v2
-        with:
-          name: Shared
-          working-directory: packages/shared
-          json-summary-compare-path: ${{ hashFiles('base-coverage/shared/coverage-summary.json') != '' && '../../base-coverage/shared/coverage-summary.json' || '' }}
-
-      - name: Report db coverage
-        if: always() && github.event_name == 'pull_request'
-        continue-on-error: true
-        uses: davelosert/vitest-coverage-report-action@v2
-        with:
-          name: Database
-          working-directory: packages/db
-          json-summary-compare-path: ${{ hashFiles('base-coverage/db/coverage-summary.json') != '' && '../../base-coverage/db/coverage-summary.json' || '' }}
-
-      - name: Report web coverage
-        if: always() && github.event_name == 'pull_request'
-        continue-on-error: true
-        uses: davelosert/vitest-coverage-report-action@v2
-        with:
-          name: Web
-          working-directory: apps/web
-          json-summary-compare-path: ${{ hashFiles('base-coverage/web/coverage-summary.json') != '' && '../../base-coverage/web/coverage-summary.json' || '' }}
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- brewform-coverage-report -->';
+            // Targets mirror the `thresholds` in each package's vitest.config.ts.
+            const pkgs = [
+              { label: 'API', dir: 'apps/api', base: 'base-coverage/api', targets: { lines: 79 } },
+              { label: 'Shared', dir: 'packages/shared', base: 'base-coverage/shared', targets: { lines: 97, statements: 97, functions: 95, branches: 93 } },
+              { label: 'Database', dir: 'packages/db', base: 'base-coverage/db', targets: { lines: 84 } },
+              { label: 'Web', dir: 'apps/web', base: 'base-coverage/web', targets: { lines: 79 } },
+            ];
+            const read = (p) => {
+              try {
+                return JSON.parse(fs.readFileSync(p, 'utf8'));
+              } catch {
+                return null;
+              }
+            };
+            const cell = (pct, target, delta) => {
+              if (pct == null) return 'n/a';
+              let s = `${pct.toFixed(2)}%`;
+              if (target != null) s += ` (🎯 ${target}%)`;
+              if (delta != null) s += delta === 0 ? '<br/>🟰 ±0 pp' : `<br/>${delta > 0 ? '📈' : '📉'} ${delta >= 0 ? '+' : ''}${delta.toFixed(2)} pp`;
+              return s;
+            };
+            let allGreen = true;
+            const rows = pkgs
+              .map(({ label, dir, base, targets }) => {
+                const cur = read(`${dir}/coverage/coverage-summary.json`);
+                const ref = read(`${base}/coverage-summary.json`);
+                const t = cur?.total;
+                const b = ref?.total;
+                const d = (k) => (t?.[k]?.pct != null && b?.[k]?.pct != null ? t[k].pct - b[k].pct : null);
+                const ok = (k) => targets[k] == null || (t?.[k]?.pct ?? -1) >= targets[k];
+                const green = ['lines', 'statements', 'functions', 'branches'].every(ok);
+                if (!green) allGreen = false;
+                const pct = (k) => t?.[k]?.pct ?? null;
+                return `| ${green ? '🟢' : '🔴'} | ${label} | ${cell(pct('lines'), targets.lines, d('lines'))} | ${cell(pct('statements'), targets.statements, d('statements'))} | ${cell(pct('functions'), targets.functions, d('functions'))} | ${cell(pct('branches'), targets.branches, d('branches'))} |`;
+              })
+              .join('\n');
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request.number;
+            const body = [
+              `## Coverage Report ${allGreen ? '🟢' : '🔴'}`,
+              '',
+              '| Status | Package | Lines | Statements | Functions | Branches |',
+              '| :-: | --- | ---: | ---: | ---: | ---: |',
+              rows,
+              '',
+              `_Deltas vs main (n/a when no baseline yet). Generated in workflow [${context.runId}](https://github.com/${owner}/${repo}/actions/runs/${context.runId}) for commit ${context.sha.slice(0, 7)}._`,
+              '',
+              marker,
+            ].join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: pr, per_page: 100 });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
+            }
 
       - name: Upload coverage artifact
         if: always()
