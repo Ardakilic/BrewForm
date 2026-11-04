@@ -42,9 +42,9 @@
     "zod-openapi": "^6.0.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.4",
+    "@biomejs/biome": "2.6.5",
     "@types/node": "^26.6.6",
-    "@vitest/coverage-v8": "5.0.5",
+    "@vitest/coverage-v8": "5.1.0",
     "fast-check": "^4.10.2",
     "typescript": "catalog:",
     "vitest": "catalog:"
