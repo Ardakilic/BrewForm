@@ -104,6 +104,8 @@ function getSegmentWidths(
     const w = el.style.width;
     return parseFloat(w.replace('%', ''));
   };
+  // NOTE: widths round-trip through jsdom's CSS serializer (4 decimals), so
+  // assertions below use toBeCloseTo precision 3, not exact equality.
 
   return {
     preInfusionPct: parseWidth(segments[0]),
@@ -150,22 +152,22 @@ function getAxisMarkerValues(extractionTimeSeconds: number): number[] {
 describe('BrewTimeline — segment width unit tests', () => {
   it('pre-infusion 10s out of 30s total → 33.33% pre-infusion, 66.67% extraction', () => {
     const { preInfusionPct, extractionPct } = getSegmentWidths(30, 10);
-    expect(preInfusionPct).toBeCloseTo((10 / 30) * 100, 5);
-    expect(extractionPct).toBeCloseTo((20 / 30) * 100, 5);
-    expect(preInfusionPct + extractionPct).toBeCloseTo(100, 5);
+    expect(preInfusionPct).toBeCloseTo((10 / 30) * 100, 3);
+    expect(extractionPct).toBeCloseTo((20 / 30) * 100, 3);
+    expect(preInfusionPct + extractionPct).toBeCloseTo(100, 3);
   });
 
   it('pre-infusion 5s out of 25s total → 20% pre-infusion, 80% extraction', () => {
     const { preInfusionPct, extractionPct } = getSegmentWidths(25, 5);
-    expect(preInfusionPct).toBeCloseTo(20, 5);
-    expect(extractionPct).toBeCloseTo(80, 5);
-    expect(preInfusionPct + extractionPct).toBeCloseTo(100, 5);
+    expect(preInfusionPct).toBeCloseTo(20, 3);
+    expect(extractionPct).toBeCloseTo(80, 3);
+    expect(preInfusionPct + extractionPct).toBeCloseTo(100, 3);
   });
 
   it('pre-infusion 1s out of 2s total → 50% each', () => {
     const { preInfusionPct, extractionPct } = getSegmentWidths(2, 1);
-    expect(preInfusionPct).toBeCloseTo(50, 5);
-    expect(extractionPct).toBeCloseTo(50, 5);
+    expect(preInfusionPct).toBeCloseTo(50, 3);
+    expect(extractionPct).toBeCloseTo(50, 3);
   });
 });
 
@@ -227,13 +229,13 @@ describe('BrewTimeline — Property 4: Timeline segment proportional widths', ()
           expect(extractionPct).toBeGreaterThan(0);
 
           // Pre-infusion width must equal (preInfusion / extraction) * 100
-          expect(preInfusionPct).toBeCloseTo((preInfusion / extraction) * 100, 5);
+          expect(preInfusionPct).toBeCloseTo((preInfusion / extraction) * 100, 3);
 
           // Extraction width must equal ((extraction - preInfusion) / extraction) * 100
-          expect(extractionPct).toBeCloseTo(((extraction - preInfusion) / extraction) * 100, 5);
+          expect(extractionPct).toBeCloseTo(((extraction - preInfusion) / extraction) * 100, 3);
 
           // They must sum to 100
-          expect(preInfusionPct + extractionPct).toBeCloseTo(100, 5);
+          expect(preInfusionPct + extractionPct).toBeCloseTo(100, 3);
         },
       ),
       { numRuns: 200 },

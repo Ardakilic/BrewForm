@@ -216,11 +216,13 @@ describe('TasteAutocomplete', () => {
 
     // First item should be highlighted by default
     const options = screen.getAllByRole('option');
-    expect(options[0]).toHaveStyle({ backgroundColor: 'var(--bg-secondary)' });
+    // NOTE: jsdom 31 no longer echoes var() through computed style, so assert
+    // the inline style the component sets instead of toHaveStyle().
+    expect(options[0].style.backgroundColor).toBe('var(--bg-secondary)');
 
     // ArrowDown to second item
     await user.keyboard('{ArrowDown}');
-    expect(options[1]).toHaveStyle({ backgroundColor: 'var(--bg-secondary)' });
+    expect(options[1].style.backgroundColor).toBe('var(--bg-secondary)');
 
     // Enter selects second item
     await user.keyboard('{Enter}');
