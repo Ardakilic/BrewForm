@@ -17,7 +17,7 @@
 # is volume-mounted at runtime; node_modules survives via a named volume).
 FROM node:26.13.0-trixie-slim AS deps
 WORKDIR /app
-RUN npm install -g --allow-scripts=pnpm pnpm@12.16.1
+RUN npm install -g --allow-scripts=pnpm pnpm@12.18.0
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
@@ -48,7 +48,7 @@ RUN pnpm run check
 FROM node:26.13.0-trixie-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN npm install -g --allow-scripts=pnpm pnpm@12.16.1
+RUN npm install -g --allow-scripts=pnpm pnpm@12.18.0
 COPY --from=builder /app /app
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh

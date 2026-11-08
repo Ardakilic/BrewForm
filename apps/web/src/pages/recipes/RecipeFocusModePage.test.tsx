@@ -403,7 +403,9 @@ describe('RecipeFocusModePage — error state', () => {
     await waitFor(() => expect(screen.getByText('Failed to load recipe')).toBeInTheDocument());
 
     const errorDiv = screen.getByText('Failed to load recipe').closest('div');
-    expect(errorDiv).toHaveStyle({ color: 'var(--error)' });
+    // NOTE: jsdom 31 no longer echoes var() through computed style, so assert
+    // the inline style the component sets instead of toHaveStyle().
+    expect(errorDiv?.style.color).toBe('var(--error)');
   });
 });
 
