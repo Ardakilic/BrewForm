@@ -16,7 +16,7 @@
     "@hono/standard-validator": "^0.4.1",
     "@hono/zod-validator": "^0.9.1",
     "bcryptjs": "catalog:",
-    "dotenv": "18.0.9",
+    "dotenv": "18.0.10",
     "drizzle-orm": "catalog:",
     "hono": "^4.13.17",
     "hono-openapi": "^1.5.0",
