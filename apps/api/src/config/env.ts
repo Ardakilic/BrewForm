@@ -16,7 +16,8 @@ const envSchema = z
     DATABASE_URL: z.string().min(1),
     DATABASE_PROVIDER: z.enum(['postgresql', 'mysql', 'sqlite']).default('postgresql'),
 
-    CACHE_DRIVER: z.enum(['memory']).default('memory'),
+    CACHE_DRIVER: z.enum(['memory', 'valkey']).default('memory'),
+    VALKEY_URL: z.string().optional(),
 
     JWT_SECRET: z.string().min(16),
     JWT_ACCESS_EXPIRY: z
@@ -72,9 +73,18 @@ const envSchema = z
 
     ADMIN_EMAIL: z.string().default('admin@brewform.local'),
     ADMIN_USERNAME: z.string().default('admin'),
+    // First-install only: read by the DB seed when the users table is empty;
+    // changing it later has no effect (existing rows are never updated).
     ADMIN_PASSWORD: z.string().default('admin123456'),
   })
   .superRefine((obj, ctx) => {
+    if (obj.CACHE_DRIVER === 'valkey' && !obj.VALKEY_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['VALKEY_URL'],
+        message: 'VALKEY_URL is required when CACHE_DRIVER is valkey',
+      });
+    }
     if (obj.STORAGE_DRIVER !== 's3') return;
     const requiredS3Fields = [
       { key: 'S3_ENDPOINT', value: obj.S3_ENDPOINT },

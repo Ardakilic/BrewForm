@@ -20,6 +20,7 @@
     "drizzle-orm": "catalog:",
     "hono": "^4.13.17",
     "hono-openapi": "^1.5.0",
+    "iovalkey": "^0.4.0",
     "node-cron": "4.6.0",
     "nodemailer": "^10.4.0",
     "pino": "^10.4.0",

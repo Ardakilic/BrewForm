@@ -2,7 +2,7 @@
  * BrewForm API — Hono server entry point.
  *
  * Startup sequence:
- *   1. Initialize cache driver (in-memory)
+ *   1. Initialize cache driver (memory | valkey)
  *   2. Register node-cron jobs (hourly badge evaluation)
  *   3. Bind HTTP server via @hono/node-server
  *   4. Register SIGTERM/SIGINT handlers for graceful shutdown
@@ -10,7 +10,8 @@
  * Shutdown sequence (on SIGTERM/SIGINT):
  *   1. Shut down HTTP server
  *   2. Close postgres-js client
- *   3. Exit cleanly
+ *   3. Close email transporter and cache connection
+ *   4. Exit cleanly
  *
  * Middleware stack (applied in order):
  *   cors → requestId → secureHeaders → rateLimit(100/min) → bodyLimit(1MB, excl. /api/v1/photos) → cache injection → crawler → routes
@@ -128,8 +129,8 @@ app.route('/', routes);
 async function startup() {
   logger.info('Starting BrewForm API...');
 
-  setCacheProvider(createCacheProvider(config.CACHE_DRIVER));
-  logger.info('In-memory cache initialized');
+  setCacheProvider(createCacheProvider(config.CACHE_DRIVER, { valkeyUrl: config.VALKEY_URL }));
+  logger.info({ driver: config.CACHE_DRIVER }, 'Cache initialized');
 
   // Cron jobs are registered at module top-level via import above
 
@@ -150,6 +151,9 @@ async function startup() {
     const { closeTransporter } = await import('./utils/notify/index.ts');
     closeTransporter();
     logger.info('Email transporter closed');
+
+    await cacheProvider.close?.();
+    logger.info('Cache connection closed');
 
     logger.info('Graceful shutdown complete');
     process.exit(0);

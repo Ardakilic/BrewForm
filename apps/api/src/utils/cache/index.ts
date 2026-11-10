@@ -1,11 +1,13 @@
 /**
- * Abstraction over process-local key-value caching.
+ * Abstraction over key-value caching (process-local or shared).
  * Services never construct a cache backend directly — they receive a CacheProvider
  * via Hono context injection. This ensures testability and DB portability (§6.2).
  *
  * Keys are string arrays for hierarchical namespacing,
  * e.g. ["taste-notes", "hierarchy"] or ["taste-notes", "search", "fruit"].
  */
+import { createValkeyProvider } from './valkey.ts';
+
 export interface CacheProvider {
   /** Retrieve a cached value by key. Returns null if missing or expired. */
   get<T>(key: string[]): Promise<T | null>;
@@ -15,6 +17,8 @@ export interface CacheProvider {
   delete(key: string[]): Promise<void>;
   /** Delete all entries whose key starts with the given prefix. */
   deleteByPrefix(prefix: string[]): Promise<void>;
+  /** Release underlying resources (no-op for process-local drivers). */
+  close?(): Promise<void>;
 }
 
 /**
@@ -61,13 +65,21 @@ export class InMemoryCacheProvider implements CacheProvider {
 }
 
 /**
- * Factory selecting a CacheProvider by driver name ('memory').
- * Throws if the driver is unknown. Add new drivers here (e.g. redis).
+ * Factory selecting a CacheProvider by driver name ('memory' | 'valkey').
+ * Throws if the driver is unknown, or if 'valkey' is selected without a URL.
  */
-export function createCacheProvider(driver: string): CacheProvider {
+export function createCacheProvider(
+  driver: string,
+  options?: { valkeyUrl?: string },
+): CacheProvider {
   switch (driver) {
     case 'memory':
       return new InMemoryCacheProvider();
+    case 'valkey': {
+      if (!options?.valkeyUrl)
+        throw new Error('VALKEY_URL is required when CACHE_DRIVER is valkey');
+      return createValkeyProvider(options.valkeyUrl);
+    }
     default:
       throw new Error(`Unknown cache driver: ${driver}`);
   }

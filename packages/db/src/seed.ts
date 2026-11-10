@@ -199,6 +199,8 @@ async function seedBadges(tx: SeedTX) {
  * the unique `userId` column.
  */
 async function seedUsers(tx: SeedTX) {
+  // First-install only: the entrypoint runs the seed solely when the users
+  // table is empty, and onConflictDoNothing never updates existing rows.
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@brewform.local';
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';
   const adminPassword = hashPassword(process.env.ADMIN_PASSWORD || 'admin123456');
@@ -1150,9 +1152,8 @@ async function seedBrewLogs(
 /** Seed entrypoint: provisions all demo data inside a single transaction. */
 export async function main() {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@brewform.local';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123456';
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`  Admin: ${adminEmail} / ${adminPassword}`);
+  console.log(`  Admin: ${adminEmail} (password from ADMIN_PASSWORD, not logged)`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Seeding database...');
 
@@ -1188,7 +1189,7 @@ export async function main() {
   });
 
   console.log('Seeding complete!');
-  console.log(`Admin credentials: ${adminEmail} / ${adminPassword}`);
+  console.log(`Admin ready: ${adminEmail} (first install only; later ADMIN_* changes are ignored)`);
 }
 
 if (import.meta.main) {

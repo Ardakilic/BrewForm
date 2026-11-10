@@ -8,7 +8,7 @@ const envSchema = z.object({
   LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
   DATABASE_URL: z.string().min(1),
   DATABASE_PROVIDER: z.enum(['postgresql', 'mysql', 'sqlite']).default('postgresql'),
-  CACHE_DRIVER: z.enum(['memory']).default('memory'),
+  CACHE_DRIVER: z.enum(['memory', 'valkey']).default('memory'),
   JWT_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
@@ -105,7 +105,7 @@ describe('Environment Config Schema', () => {
   });
 
   it('should accept all valid cache drivers', () => {
-    for (const driver of ['memory'] as const) {
+    for (const driver of ['memory', 'valkey'] as const) {
       const result = envSchema.safeParse({
         DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
         JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
