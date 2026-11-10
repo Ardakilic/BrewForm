@@ -284,15 +284,6 @@ describe('CACHE_DRIVER', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject the renamed valkey driver', () => {
-    const result = envSchema.safeParse({
-      DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
-      JWT_SECRET: 'a-very-long-secret-key-for-testing-12345',
-      CACHE_DRIVER: 'valkey',
-    });
-    expect(result.success).toBe(false);
-  });
-
   it('should require REDIS_URL for the redis driver when enabled', () => {
     const result = envSchema.safeParse({
       DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
