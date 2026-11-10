@@ -19,7 +19,8 @@ echo "Migrations complete."
 USER_COUNT=$(pnpm --filter @brewform/db exec tsx src/check-users-empty.ts)
 
 if [ "$USER_COUNT" = "0" ]; then
-  # First install only: ADMIN_* is consumed here and ignored on later boots.
+  # First install only: ADMIN_* seeds the initial admin here; changing them
+  # later does not update the existing admin row.
   echo "Database is empty, running seed..."
   pnpm --filter @brewform/db run seed
   echo "Seeding complete."

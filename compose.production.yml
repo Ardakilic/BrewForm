@@ -22,12 +22,13 @@
 # Notes:
 # - JWT_SECRET (min 16 chars, e.g. `openssl rand -hex 32`) is also required.
 # - ADMIN_PASSWORD is first-install only: it seeds the admin account when the
-#   database is empty and is ignored on later restarts (existing rows are
-#   never updated). Change it afterwards via the app, not via this file.
+#   database is empty; changing it later does not update the existing admin
+#   row. Change it afterwards via the app, not via this file.
 # - If POSTGRES_PASSWORD contains special chars (#, @, :, /), URL-encode them
 #   in DATABASE_URL or the API will fail to connect.
 # - TLS terminates in front of this file (Cloudflare / Coolify / your proxy).
-#   The web container serves the SPA on :80; the API listens on :8000.
+#   The web container serves the SPA on :80; the API is reachable only on the
+#   Compose network (exposed as 8000, no host port published).
 # - Images are published by .github/workflows/release.yml (latest + sha + v*).
 #   Pin a release by replacing `:latest` with `:vX.Y.Z` or `:<sha>`.
 # ============================================================
@@ -85,7 +86,7 @@ services:
       CORS_ALLOWED_ORIGINS: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@brewform.local}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123456}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD before running}
       SMTP_HOST: ${SMTP_HOST:-localhost}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
@@ -104,8 +105,6 @@ services:
       UPLOAD_DIR: ${UPLOAD_DIR:-./uploads}
     expose:
       - "8000"
-    ports:
-      - "${API_PORT:-8000}:8000"
     volumes:
       - uploads:/app/uploads
     restart: unless-stopped

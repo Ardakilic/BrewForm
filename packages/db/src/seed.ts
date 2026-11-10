@@ -1151,9 +1151,15 @@ async function seedBrewLogs(
 
 /** Seed entrypoint: provisions all demo data inside a single transaction. */
 export async function main() {
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@brewform.local';
+  const adminPasswordConfigured = Boolean(process.env.ADMIN_PASSWORD);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`  Admin: ${adminEmail} (password from ADMIN_PASSWORD, not logged)`);
+  if (adminPasswordConfigured) {
+    console.log('  Admin account: password from ADMIN_PASSWORD (not logged)');
+  } else {
+    console.warn(
+      '  Warning: ADMIN_PASSWORD is unset; using the insecure default password (not logged)',
+    );
+  }
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Seeding database...');
 
@@ -1189,7 +1195,9 @@ export async function main() {
   });
 
   console.log('Seeding complete!');
-  console.log(`Admin ready: ${adminEmail} (first install only; later ADMIN_* changes are ignored)`);
+  console.log(
+    'Admin ready (first install only; changing ADMIN_* later does not update the existing admin row)',
+  );
 }
 
 if (import.meta.main) {
