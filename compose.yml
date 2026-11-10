@@ -25,8 +25,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
+      - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
-      - VALKEY_URL=valkey://valkey:6379
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -100,8 +101,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
+      - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
-      - VALKEY_URL=valkey://valkey:6379
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -131,12 +133,12 @@ services:
 
   # ── Infrastructure ──────────────────────────────────────────────────────────
 
-  valkey:
-    image: valkey/valkey:8
+  redis:
+    image: redis:8
     volumes:
-      - valkey_data:/data
+      - redis_data:/data
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -247,5 +249,5 @@ volumes:
   garage_data:
   garage_meta:
   node_modules:
-  valkey_data:
+  redis_data:
 

@@ -2,7 +2,7 @@
  * BrewForm API — Hono server entry point.
  *
  * Startup sequence:
- *   1. Initialize cache driver (memory | valkey)
+ *   1. Initialize cache driver (memory | redis, or disabled via CACHE_ENABLED)
  *   2. Register node-cron jobs (hourly badge evaluation)
  *   3. Bind HTTP server via @hono/node-server
  *   4. Register SIGTERM/SIGINT handlers for graceful shutdown
@@ -31,7 +31,7 @@ import { rateLimitMiddleware } from './middleware/rateLimit.ts';
 import { requestIdMiddleware } from './middleware/requestId.ts';
 import routes from './routes/index.ts';
 import type { AppEnv } from './types/hono.ts';
-import { createCacheProvider } from './utils/cache/index.ts';
+import { createCacheProvider, NullCacheProvider } from './utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import { createLogger } from './utils/logger/index.ts';
 import './utils/jobs/cron.ts';
@@ -129,8 +129,12 @@ app.route('/', routes);
 async function startup() {
   logger.info('Starting BrewForm API...');
 
-  setCacheProvider(createCacheProvider(config.CACHE_DRIVER, { valkeyUrl: config.VALKEY_URL }));
-  logger.info({ driver: config.CACHE_DRIVER }, 'Cache initialized');
+  if (config.CACHE_ENABLED) {
+    setCacheProvider(createCacheProvider(config.CACHE_DRIVER, { redisUrl: config.REDIS_URL }));
+  } else {
+    setCacheProvider(new NullCacheProvider());
+  }
+  logger.info({ enabled: config.CACHE_ENABLED, driver: config.CACHE_DRIVER }, 'Cache initialized');
 
   // Cron jobs are registered at module top-level via import above
 

@@ -54,9 +54,10 @@ External: **Cloudflare R2** (uploads, served via `cdn.brewform.cc`), **Mailtrap*
 - **Images are pulled from GHCR, not built by Coolify.** GitHub Actions (`release.yml`)
   builds + pushes `ghcr.io/ardakilic/brewform-{api,web}` on every `main` push; Coolify only
   pulls. The heavy Node/Vite build stays on GitHub runners.
-- **The API cache is in-memory (`CACHE_DRIVER=memory`) — no sidecar.** The cache is not a
-  source of truth (Postgres is), so losing it on restart is non-catastrophic. A
-  Redis/Valkey-backed provider is an explicit follow-up, not this change.
+- **The API cache is in-memory by default (`CACHE_ENABLED=true`, `CACHE_DRIVER=memory`) — no sidecar.** The cache is not a
+  source of truth (Postgres is), so losing it on restart is non-catastrophic. A shared
+  Redis backend is optional: set `CACHE_DRIVER=redis` plus `REDIS_URL` (any Redis-protocol
+  server, e.g. Redis or Valkey).
 - **The API holds no uploads on disk** — `STORAGE_DRIVER=s3` → R2.
 
 ---
@@ -128,12 +129,11 @@ accepts both `postgres://` and `postgresql://`.
 
 ## 5. Step 2 — Cache (in-memory default, no sidecar)
 
-There is **no cache resource to create**. The API runs with `CACHE_DRIVER=memory` (see
-[§6](#6-step-3--api-docker-image)): an in-process Map with TTL support. Cache is lost on
-restart, which is acceptable because the cache is never a source of truth — Postgres is.
-
-> A Redis/Valkey-backed `CacheProvider` is an explicit follow-up, not this change. When it
-> lands, this step will describe provisioning it; until then, do not add a sidecar.
+There is **no cache resource to create** for the default setup. The API runs with
+`CACHE_DRIVER=memory` (see [§6](#6-step-3--api-docker-image)): an in-process Map with TTL
+support. Cache is lost on restart, which is acceptable because the cache is never a source
+of truth — Postgres is. For a shared cache, set `CACHE_DRIVER=redis` plus `REDIS_URL` and
+provision any Redis-protocol server (Redis or Valkey); no code changes needed.
 
 ---
 
@@ -156,6 +156,7 @@ restart, which is acceptable because the cache is never a source of truth — Po
    DATABASE_URL=postgresql://postgres:<pw>@postgresql-<uuid>:5432/postgres
    DATABASE_PROVIDER=postgresql
 
+   CACHE_ENABLED=true
    CACHE_DRIVER=memory
 
    JWT_SECRET=<openssl-rand-hex-32>     # >= 16 chars (Zod-enforced)

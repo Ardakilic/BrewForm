@@ -16,8 +16,12 @@ const envSchema = z
     DATABASE_URL: z.string().min(1),
     DATABASE_PROVIDER: z.enum(['postgresql', 'mysql', 'sqlite']).default('postgresql'),
 
-    CACHE_DRIVER: z.enum(['memory', 'valkey']).default('memory'),
-    VALKEY_URL: z.string().optional(),
+    CACHE_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    CACHE_DRIVER: z.enum(['memory', 'redis']).default('memory'),
+    REDIS_URL: z.string().optional(),
 
     JWT_SECRET: z.string().min(16),
     JWT_ACCESS_EXPIRY: z
@@ -78,11 +82,11 @@ const envSchema = z
     ADMIN_PASSWORD: z.string().default('admin123456'),
   })
   .superRefine((obj, ctx) => {
-    if (obj.CACHE_DRIVER === 'valkey' && !obj.VALKEY_URL) {
+    if (obj.CACHE_ENABLED && obj.CACHE_DRIVER === 'redis' && !obj.REDIS_URL) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['VALKEY_URL'],
-        message: 'VALKEY_URL is required when CACHE_DRIVER is valkey',
+        path: ['REDIS_URL'],
+        message: 'REDIS_URL is required when CACHE_ENABLED is true and CACHE_DRIVER is redis',
       });
     }
     if (obj.STORAGE_DRIVER !== 's3') return;

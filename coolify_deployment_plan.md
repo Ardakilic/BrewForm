@@ -94,8 +94,9 @@
 **Key points:**
 - **Two Docker Image resources** in Coolify (API + web), each with its own env and domain.
 - **One Coolify-managed PostgreSQL**, shared via the internal Docker network.
-- **No cache sidecar** — the API runs with `CACHE_DRIVER=memory` (in-process). A
-  Redis/Valkey-backed provider is an explicit follow-up, not this change.
+- **No cache sidecar by default** — the API runs with `CACHE_DRIVER=memory` (in-process).
+  A shared Redis backend is optional via `CACHE_DRIVER=redis` + `REDIS_URL` (any
+  Redis-protocol server: Redis or Valkey).
 - **Cloudflare R2** for uploads (S3-compatible) — nothing stored on the Coolify server's disk.
 - **GitHub Actions** publishes images to GHCR; Coolify just pulls.
 
@@ -247,8 +248,8 @@ in-process Map with TTL support, wired at startup with no extra service to provi
 - Nothing to deploy, no internal hostname, no access token, no volume.
 - Cache is lost on every API restart. This is acceptable because the cache is never a source
   of truth — Postgres is; entries rebuild on access.
-- A Redis/Valkey-backed `CacheProvider` is an explicit follow-up, not this change. When it
-  lands, this step will describe provisioning it; until then, do not add a sidecar.
+- For a shared cache, set `CACHE_DRIVER=redis` + `REDIS_URL` (any Redis-protocol server)
+  and provision it as an internal resource; the API needs no code changes.
 
 ---
 
@@ -283,7 +284,8 @@ in-process Map with TTL support, wired at startup with no extra service to provi
    DATABASE_URL=postgresql://postgres:<DB_PASSWORD>@postgresql-<uuid>:5432/brewform
    DATABASE_PROVIDER=postgresql
 
-   # Cache — in-memory default (no sidecar; Redis/Valkey is a follow-up)
+   # Cache — in-memory default (no sidecar); optional shared Redis via CACHE_DRIVER=redis + REDIS_URL
+   CACHE_ENABLED=true
    CACHE_DRIVER=memory
 
    # Auth — generate a strong secret
@@ -637,7 +639,7 @@ The Zod env schema in `apps/api/src/config/env.ts` validates all env vars at sta
 missing or invalid required var causes an immediate exit with the field errors logged.
 - **Fix:** Check the API resource's Environment Variables tab for missing/empty values.
   Common culprits: `DATABASE_URL` (must be a valid postgresql:// URL), `JWT_SECRET` (min 16
-  chars), `CACHE_DRIVER` (must be `memory`).
+  chars), `CACHE_DRIVER` (must be `memory` or `redis`).
 
 ### API can't reach the database: connection refused / timeout
 - **Cause:** The API and Postgres are not on the same Docker destination, or the
@@ -715,11 +717,11 @@ alongside `:latest`. To roll back:
 2. **Redeploy** — Coolify pulls the pinned image.
 3. Once a fix ships, switch the tag back to `:latest`.
 
-### Cache backend follow-up
+### Cache backend (optional shared Redis)
 
-The API cache is in-memory (`CACHE_DRIVER=memory`) and needs no maintenance. If a
-Redis/Valkey-backed `CacheProvider` lands as a follow-up, this section will describe
-provisioning and upgrading it.
+The API cache is in-memory by default (`CACHE_DRIVER=memory`) and needs no maintenance.
+For a shared cache, set `CACHE_DRIVER=redis` + `REDIS_URL` pointing at any Redis-protocol
+server (Redis or Valkey).
 
 ### Backing up data
 - **Postgres:** Coolify has built-in backup for databases (Database resource → Backups tab).

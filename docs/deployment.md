@@ -127,7 +127,7 @@ TLS certificates are provisioned and auto-renewed via Let's Encrypt.
 | `APP_URL` | `https://api.brewform.cc` |
 | `APP_ENV` | `production` |
 | `LOG_LEVEL` | `info` |
-| `CACHE_DRIVER` | `deno-kv` (retired with Deno KV; now `memory` — see `deployment_coolify.md`) |
+| `CACHE_DRIVER` | `memory` (default, in-process) or `redis` (shared server via `REDIS_URL`); disabled entirely with `CACHE_ENABLED=false` |
 | `SMTP_HOST` | Production SMTP host |
 | `SMTP_PORT` | Production SMTP port |
 | `SMTP_USER` | SMTP username |

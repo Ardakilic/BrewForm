@@ -6,7 +6,7 @@
  * Keys are string arrays for hierarchical namespacing,
  * e.g. ["taste-notes", "hierarchy"] or ["taste-notes", "search", "fruit"].
  */
-import { createValkeyProvider } from './valkey.ts';
+import { createRedisProvider } from './redis.ts';
 
 export interface CacheProvider {
   /** Retrieve a cached value by key. Returns null if missing or expired. */
@@ -65,20 +65,41 @@ export class InMemoryCacheProvider implements CacheProvider {
 }
 
 /**
- * Factory selecting a CacheProvider by driver name ('memory' | 'valkey').
- * Throws if the driver is unknown, or if 'valkey' is selected without a URL.
+ * No-op CacheProvider used when caching is disabled (CACHE_ENABLED=false).
+ * All reads miss; all writes are dropped. Keeps consumers working unchanged.
+ */
+export class NullCacheProvider implements CacheProvider {
+  get<T>(_key: string[]): Promise<T | null> {
+    return Promise.resolve(null);
+  }
+
+  set<T>(_key: string[], _value: T, _options?: { ttlMs?: number }): Promise<void> {
+    return Promise.resolve();
+  }
+
+  delete(_key: string[]): Promise<void> {
+    return Promise.resolve();
+  }
+
+  deleteByPrefix(_prefix: string[]): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+/**
+ * Factory selecting a CacheProvider by driver name ('memory' | 'redis').
+ * Throws if the driver is unknown, or if 'redis' is selected without a URL.
  */
 export function createCacheProvider(
   driver: string,
-  options?: { valkeyUrl?: string },
+  options?: { redisUrl?: string },
 ): CacheProvider {
   switch (driver) {
     case 'memory':
       return new InMemoryCacheProvider();
-    case 'valkey': {
-      if (!options?.valkeyUrl)
-        throw new Error('VALKEY_URL is required when CACHE_DRIVER is valkey');
-      return createValkeyProvider(options.valkeyUrl);
+    case 'redis': {
+      if (!options?.redisUrl) throw new Error('REDIS_URL is required when CACHE_DRIVER is redis');
+      return createRedisProvider(options.redisUrl);
     }
     default:
       throw new Error(`Unknown cache driver: ${driver}`);

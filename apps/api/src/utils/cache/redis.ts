@@ -1,15 +1,16 @@
 /**
- * Valkey-backed CacheProvider (shared service, e.g. multi-replica production).
+ * Redis-backed CacheProvider (shared service, e.g. multi-replica production).
  *
- * Uses iovalkey (Valkey-native fork of ioredis). Values are JSON-serialized so
- * complex objects survive the round-trip; TTL maps 1:1 to Valkey PX (ms).
- * Prefix deletes use SCAN (never KEYS — it blocks the server).
+ * Uses ioredis and only standard Redis commands (GET, SET with PX, DEL, SCAN),
+ * so it works against Redis and any protocol-compatible server (e.g. Valkey).
+ * Values are JSON-serialized so complex objects survive the round-trip;
+ * TTL maps 1:1 to PX (ms). Prefix deletes use SCAN (never KEYS — it blocks).
  */
-import { Valkey } from 'iovalkey';
+import { Redis } from 'ioredis';
 import type { CacheProvider } from './index.ts';
 
-/** Minimal Valkey command surface used by the provider (real client or test fake). */
-export interface ValkeyClient {
+/** Minimal Redis command surface used by the provider (real client or test fake). */
+export interface RedisClient {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ...args: (string | number)[]): Promise<unknown>;
   del(...keys: string[]): Promise<unknown>;
@@ -17,10 +18,10 @@ export interface ValkeyClient {
   disconnect(): void;
 }
 
-export class ValkeyCacheProvider implements CacheProvider {
-  private readonly client: ValkeyClient;
+export class RedisCacheProvider implements CacheProvider {
+  private readonly client: RedisClient;
 
-  constructor(client: ValkeyClient) {
+  constructor(client: RedisClient) {
     this.client = client;
   }
 
@@ -53,7 +54,7 @@ export class ValkeyCacheProvider implements CacheProvider {
   }
 }
 
-/** Build a Valkey-backed provider from a URL (e.g. valkey://valkey:6379). */
-export function createValkeyProvider(url: string): ValkeyCacheProvider {
-  return new ValkeyCacheProvider(new Valkey(url) as unknown as ValkeyClient);
+/** Build a Redis-backed provider from a URL (e.g. redis://redis:6379). */
+export function createRedisProvider(url: string): RedisCacheProvider {
+  return new RedisCacheProvider(new Redis(url) as unknown as RedisClient);
 }

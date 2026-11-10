@@ -87,14 +87,17 @@ interface CacheProvider {
 }
 ```
 
-Two implementations:
+Three implementations:
 
 - **`InMemoryCacheProvider`** — default (and test), uses an in-process Map with TTL support.
   Cache does not survive restarts.
+- **`RedisCacheProvider`** — shared Redis-protocol server (Redis or Valkey) via `REDIS_URL`,
+  selected with `CACHE_DRIVER=redis`. Uses only standard commands (GET, SET with PX, DEL,
+  SCAN), so no consumer changes were needed.
+- **`NullCacheProvider`** — used when `CACHE_ENABLED=false`; all reads miss, all writes drop.
 
-The active provider is chosen at startup based on `CACHE_DRIVER` env variable (default
-`memory`) and injected into Hono context. The interface keeps a Redis/Valkey-backed provider
-a localized follow-up that touches no consumers.
+The active provider is chosen at startup based on `CACHE_ENABLED` (default `true`) and the
+`CACHE_DRIVER` env variable (default `memory`) and injected into Hono context.
 
 ## Validation
 

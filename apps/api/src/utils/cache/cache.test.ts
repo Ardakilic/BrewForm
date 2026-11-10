@@ -1,26 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCacheProvider, InMemoryCacheProvider } from './index.ts';
-import { ValkeyCacheProvider } from './valkey.ts';
+import { createCacheProvider, InMemoryCacheProvider, NullCacheProvider } from './index.ts';
+import { RedisCacheProvider } from './redis.ts';
 
-// Hermetic stand-in for the real iovalkey client (no server in unit tests).
-vi.mock('iovalkey', () => {
-  class MockValkey {
+// Hermetic stand-in for the real ioredis client (no server in unit tests).
+vi.mock('ioredis', () => {
+  class MockRedis {
     static lastUrl: string | undefined;
     disconnected = false;
     constructor(url?: string) {
-      MockValkey.lastUrl = url;
+      MockRedis.lastUrl = url;
     }
     disconnect(): void {
       this.disconnected = true;
     }
   }
-  return { Valkey: MockValkey };
+  return { Redis: MockRedis };
 });
 
-import type { ValkeyClient } from './valkey.ts';
+import type { RedisClient } from './redis.ts';
 
-/** In-memory fake of the Valkey command surface — no server needed. */
-function createFakeValkeyClient(): ValkeyClient & { store: Map<string, string> } {
+/** In-memory fake of the Redis command surface — no server needed. */
+function createFakeRedisClient(): RedisClient & { store: Map<string, string> } {
   const store = new Map<string, string>();
   return {
     store,
@@ -120,21 +120,21 @@ describe('CacheProvider', () => {
   });
 });
 
-describe('ValkeyCacheProvider', () => {
+describe('RedisCacheProvider', () => {
   it('should set and get values via JSON round-trip', async () => {
-    const cache = new ValkeyCacheProvider(createFakeValkeyClient());
+    const cache = new RedisCacheProvider(createFakeRedisClient());
     await cache.set(['test', 'key'], { id: '1', tags: ['a', 'b'] });
     expect(await cache.get(['test', 'key'])).toEqual({ id: '1', tags: ['a', 'b'] });
   });
 
   it('should return null for non-existent keys', async () => {
-    const cache = new ValkeyCacheProvider(createFakeValkeyClient());
+    const cache = new RedisCacheProvider(createFakeRedisClient());
     expect(await cache.get(['missing'])).toBeNull();
   });
 
   it('should delete keys and prefixes', async () => {
-    const client = createFakeValkeyClient();
-    const cache = new ValkeyCacheProvider(client);
+    const client = createFakeRedisClient();
+    const cache = new RedisCacheProvider(client);
     await cache.set(['cache', 'a'], 1);
     await cache.set(['cache', 'b'], 2);
     await cache.set(['other'], 3);
@@ -146,7 +146,7 @@ describe('ValkeyCacheProvider', () => {
   });
 
   it('should pass TTL through as PX milliseconds', async () => {
-    const client = createFakeValkeyClient();
+    const client = createFakeRedisClient();
     const seen: (string | number)[][] = [];
     const spying = {
       ...client,
@@ -155,9 +155,20 @@ describe('ValkeyCacheProvider', () => {
         return client.set(key, value);
       },
     };
-    const cache = new ValkeyCacheProvider(spying);
+    const cache = new RedisCacheProvider(spying);
     await cache.set(['ttl'], 'v', { ttlMs: 60_000 });
     expect(seen).toEqual([['ttl', '"v"', 'PX', 60_000]]);
+  });
+});
+
+describe('NullCacheProvider', () => {
+  it('should always miss and drop writes', async () => {
+    const cache = new NullCacheProvider();
+    await cache.set(['a'], 1);
+    expect(await cache.get(['a'])).toBeNull();
+    await cache.delete(['a']);
+    await cache.deleteByPrefix(['a']);
+    expect(await cache.get(['a'])).toBeNull();
   });
 });
 
@@ -170,19 +181,19 @@ describe('createCacheProvider', () => {
 
   it('should throw for unknown driver', async () => {
     const { createCacheProvider } = await import('./index.ts');
-    expect(() => createCacheProvider('redis')).toThrow('Unknown cache driver');
+    expect(() => createCacheProvider('memcached')).toThrow('Unknown cache driver');
   });
 
-  it('should create ValkeyCacheProvider when a URL is given', async () => {
-    const { Valkey } = await import('iovalkey');
-    const provider = createCacheProvider('valkey', { valkeyUrl: 'valkey://localhost:6379' });
-    expect(provider).toBeInstanceOf(ValkeyCacheProvider);
-    expect((Valkey as unknown as { lastUrl: string }).lastUrl).toBe('valkey://localhost:6379');
+  it('should create RedisCacheProvider when a URL is given', async () => {
+    const { Redis } = await import('ioredis');
+    const provider = createCacheProvider('redis', { redisUrl: 'redis://localhost:6379' });
+    expect(provider).toBeInstanceOf(RedisCacheProvider);
+    expect((Redis as unknown as { lastUrl: string }).lastUrl).toBe('redis://localhost:6379');
     await provider.close?.();
   });
 
-  it('should throw for valkey driver without a URL', async () => {
-    expect(() => createCacheProvider('valkey')).toThrow('VALKEY_URL is required');
+  it('should throw for redis driver without a URL', async () => {
+    expect(() => createCacheProvider('redis')).toThrow('REDIS_URL is required');
   });
 
   it('should reject the removed deno-kv driver', async () => {
