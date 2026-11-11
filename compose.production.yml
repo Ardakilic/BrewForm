@@ -25,9 +25,14 @@
 # - ADMIN_PASSWORD is first-install only: it seeds the admin account when the
 #   database is empty; changing it later does not update the existing admin
 #   row. Change it afterwards via the app, not via this file.
-# - If POSTGRES_PASSWORD or VALKEY_PASSWORD contains special chars (#, @, :, /),
-#   URL-encode them in DATABASE_URL or REDIS_URL or the API will fail to connect.
-#   Prefer `openssl rand -hex 32` passwords (URL-safe).
+# - Upgrading from the old redis service: if your .env.production sets an
+#   explicit REDIS_URL=redis://redis:6379 override, remove it (the default now
+#   targets valkey with auth) or point it at valkey with credentials.
+# - DATABASE_URL embeds POSTGRES_PASSWORD: URL-encode special chars (#, @, :, /)
+#   or the API will fail to connect.
+# - VALKEY_PASSWORD is interpolated raw into the default REDIS_URL (compose has
+#   no URL-encoding step), so it must be URL-safe — use `openssl rand -hex 32`.
+#   Only an explicitly supplied REDIS_URL override can carry encoded credentials.
 # - TLS terminates in front of this file (Cloudflare / Coolify / your proxy).
 #   The web container serves the SPA on :80; the API is reachable only on the
 #   Compose network (exposed as 8000, no host port published).
