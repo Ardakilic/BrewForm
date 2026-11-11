@@ -32,7 +32,7 @@ notes.
 | Frontend   | React 19 + Vite + Tailwind CSS v4 + Base UI |
 | ORM        | Drizzle ORM (postgres-js driver)            |
 | Database   | PostgreSQL                                  |
-| Cache      | In-memory (Redis/Valkey planned follow-up)   |
+| Cache      | In-memory default, Redis-backed optional (`CACHE_ENABLED`/`CACHE_DRIVER`) |
 | Storage    | Local filesystem or S3-compatible (Garage)  |
 | Email      | MJML (pre-compiled at build time)           |
 | Validation | Zod (shared between frontend and backend)   |

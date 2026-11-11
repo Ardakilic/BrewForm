@@ -1,0 +1,127 @@
+# ============================================================
+# BrewForm — Production Compose (pre-built GHCR images)
+# ============================================================
+# Runs the published images — no local build needed:
+#   api: ghcr.io/ardakilic/brewform-api:latest
+#   web: ghcr.io/ardakilic/brewform-web:latest
+# plus postgres + redis services.
+#
+# --- Required: set these three before the first run ---
+#   POSTGRES_PASSWORD — strong password for the Postgres superuser
+#   API_DOMAIN        — e.g. api.brewform.example.com
+#   WEB_DOMAIN        — e.g. brewform.example.com
+#
+#   cp .env.production.example .env.production  # then edit the values
+#   docker compose --env-file .env.production -f compose.production.yml up -d
+#
+# IMPORTANT: always pass --env-file. The repo's .env holds LOCAL DEV defaults
+# and compose auto-loads it — without --env-file, dev values (e.g.
+# POSTGRES_PASSWORD=brewform) would silently leak into production.
+# (Shell `export`s also work: exported vars take precedence over .env.)
+#
+# Notes:
+# - JWT_SECRET (min 16 chars, e.g. `openssl rand -hex 32`) is also required.
+# - ADMIN_PASSWORD is first-install only: it seeds the admin account when the
+#   database is empty; changing it later does not update the existing admin
+#   row. Change it afterwards via the app, not via this file.
+# - If POSTGRES_PASSWORD contains special chars (#, @, :, /), URL-encode them
+#   in DATABASE_URL or the API will fail to connect.
+# - TLS terminates in front of this file (Cloudflare / Coolify / your proxy).
+#   The web container serves the SPA on :80; the API is reachable only on the
+#   Compose network (exposed as 8000, no host port published).
+# - Images are published by .github/workflows/release.yml (latest + sha + v*).
+#   Pin a release by replacing `:latest` with `:vX.Y.Z` or `:<sha>`.
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:18-trixie
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-brewform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD before running}
+      POSTGRES_DB: ${POSTGRES_DB:-brewform}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-brewform}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:8
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/ardakilic/brewform-api:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      APP_PORT: 8000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: json
+      DATABASE_URL: postgresql://${POSTGRES_USER:-brewform}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD before running}@postgres:5432/${POSTGRES_DB:-brewform}
+      DATABASE_PROVIDER: postgresql
+      CACHE_ENABLED: ${CACHE_ENABLED:-true}
+      CACHE_DRIVER: ${CACHE_DRIVER:-redis}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (min 16 chars, e.g. openssl rand -hex 32)}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
+      JWT_REMEMBER_ME_EXPIRY: ${JWT_REMEMBER_ME_EXPIRY:-180d}
+      APP_URL: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
+      PUBLIC_APP_URL: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
+      CORS_ALLOWED_ORIGINS: https://${WEB_DOMAIN:?set WEB_DOMAIN before running}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@brewform.local}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD before running}
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@${WEB_DOMAIN:?set WEB_DOMAIN before running}}
+      OPENAPI_ENABLED: ${OPENAPI_ENABLED:-false}
+      ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-true}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-auto}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+      UPLOAD_DIR: ${UPLOAD_DIR:-./uploads}
+    expose:
+      - "8000"
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/ardakilic/brewform-web:latest
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      # Runtime override for the baked-in VITE_API_URL (via /config.js).
+      VITE_API_URL: ${VITE_API_URL:-https://${API_DOMAIN:?set API_DOMAIN before running}/api/v1}
+    ports:
+      - "${WEB_PORT:-80}:80"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:

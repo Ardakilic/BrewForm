@@ -25,7 +25,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
+      - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -99,7 +101,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://brewform:brewform@postgres:5432/brewform
       - DATABASE_PROVIDER=postgresql
+      - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -128,6 +132,16 @@ services:
       - preview
 
   # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  redis:
+    image: redis:8
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   postgres:
     image: postgres:18-trixie
@@ -235,4 +249,5 @@ volumes:
   garage_data:
   garage_meta:
   node_modules:
+  redis_data:
 

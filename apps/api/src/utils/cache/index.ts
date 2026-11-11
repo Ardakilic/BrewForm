@@ -1,11 +1,13 @@
 /**
- * Abstraction over process-local key-value caching.
+ * Abstraction over key-value caching (process-local or shared).
  * Services never construct a cache backend directly — they receive a CacheProvider
  * via Hono context injection. This ensures testability and DB portability (§6.2).
  *
  * Keys are string arrays for hierarchical namespacing,
  * e.g. ["taste-notes", "hierarchy"] or ["taste-notes", "search", "fruit"].
  */
+import { createRedisProvider } from './redis.ts';
+
 export interface CacheProvider {
   /** Retrieve a cached value by key. Returns null if missing or expired. */
   get<T>(key: string[]): Promise<T | null>;
@@ -15,6 +17,8 @@ export interface CacheProvider {
   delete(key: string[]): Promise<void>;
   /** Delete all entries whose key starts with the given prefix. */
   deleteByPrefix(prefix: string[]): Promise<void>;
+  /** Release underlying resources (no-op for process-local drivers). */
+  close?(): Promise<void>;
 }
 
 /**
@@ -24,6 +28,7 @@ export interface CacheProvider {
 export class InMemoryCacheProvider implements CacheProvider {
   private store = new Map<string, { value: unknown; expiresAt: number | null }>();
 
+  /** Read a key; returns null when missing or expired (lazy eviction). */
   get<T>(key: string[]): Promise<T | null> {
     const k = key.join(':');
     const entry = this.store.get(k);
@@ -35,6 +40,7 @@ export class InMemoryCacheProvider implements CacheProvider {
     return Promise.resolve(entry.value as T);
   }
 
+  /** Write a key with optional millisecond TTL; overwrites existing entries. */
   set<T>(key: string[], value: T, options?: { ttlMs?: number }): Promise<void> {
     const k = key.join(':');
     this.store.set(k, {
@@ -44,11 +50,13 @@ export class InMemoryCacheProvider implements CacheProvider {
     return Promise.resolve();
   }
 
+  /** Delete a single key. */
   delete(key: string[]): Promise<void> {
     this.store.delete(key.join(':'));
     return Promise.resolve();
   }
 
+  /** Delete all keys whose joined form starts with the joined prefix. */
   deleteByPrefix(prefix: string[]): Promise<void> {
     const p = prefix.join(':');
     for (const k of this.store.keys()) {
@@ -61,13 +69,46 @@ export class InMemoryCacheProvider implements CacheProvider {
 }
 
 /**
- * Factory selecting a CacheProvider by driver name ('memory').
- * Throws if the driver is unknown. Add new drivers here (e.g. redis).
+ * No-op CacheProvider used when caching is disabled (CACHE_ENABLED=false).
+ * All reads miss; all writes are dropped. Keeps consumers working unchanged.
  */
-export function createCacheProvider(driver: string): CacheProvider {
+export class NullCacheProvider implements CacheProvider {
+  /** Always miss (caching disabled). */
+  get<T>(_key: string[]): Promise<T | null> {
+    return Promise.resolve(null);
+  }
+
+  /** Drop the write (caching disabled). */
+  set<T>(_key: string[], _value: T, _options?: { ttlMs?: number }): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /** No-op (caching disabled). */
+  delete(_key: string[]): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /** No-op (caching disabled). */
+  deleteByPrefix(_prefix: string[]): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+/**
+ * Factory selecting a CacheProvider by driver name ('memory' | 'redis').
+ * Throws if the driver is unknown, or if 'redis' is selected without a URL.
+ */
+export function createCacheProvider(
+  driver: string,
+  options?: { redisUrl?: string },
+): CacheProvider {
   switch (driver) {
     case 'memory':
       return new InMemoryCacheProvider();
+    case 'redis': {
+      if (!options?.redisUrl) throw new Error('REDIS_URL is required when CACHE_DRIVER is redis');
+      return createRedisProvider(options.redisUrl);
+    }
     default:
       throw new Error(`Unknown cache driver: ${driver}`);
   }
