@@ -28,6 +28,7 @@ export interface CacheProvider {
 export class InMemoryCacheProvider implements CacheProvider {
   private store = new Map<string, { value: unknown; expiresAt: number | null }>();
 
+  /** Read a key; returns null when missing or expired (lazy eviction). */
   get<T>(key: string[]): Promise<T | null> {
     const k = key.join(':');
     const entry = this.store.get(k);
@@ -39,6 +40,7 @@ export class InMemoryCacheProvider implements CacheProvider {
     return Promise.resolve(entry.value as T);
   }
 
+  /** Write a key with optional millisecond TTL; overwrites existing entries. */
   set<T>(key: string[], value: T, options?: { ttlMs?: number }): Promise<void> {
     const k = key.join(':');
     this.store.set(k, {
@@ -48,11 +50,13 @@ export class InMemoryCacheProvider implements CacheProvider {
     return Promise.resolve();
   }
 
+  /** Delete a single key. */
   delete(key: string[]): Promise<void> {
     this.store.delete(key.join(':'));
     return Promise.resolve();
   }
 
+  /** Delete all keys whose joined form starts with the joined prefix. */
   deleteByPrefix(prefix: string[]): Promise<void> {
     const p = prefix.join(':');
     for (const k of this.store.keys()) {

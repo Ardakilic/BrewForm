@@ -19,6 +19,46 @@ vi.mock('ioredis', () => {
 
 import type { RedisClient } from './redis.ts';
 
+/** Escape a literal for use in a RegExp. */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Simplified Redis GLOB matcher (`*`, `?`, `[...]` classes, backslash escapes).
+ * Keeps the fake client's SCAN honest so glob-handling regressions are caught.
+ */
+function globToRegExp(glob: string): RegExp {
+  let re = '^';
+  let i = 0;
+  while (i < glob.length) {
+    const c = glob[i];
+    if (c === '\\' && i + 1 < glob.length) {
+      re += escapeRegExp(glob[i + 1]);
+      i += 2;
+    } else if (c === '*') {
+      re += '.*';
+      i += 1;
+    } else if (c === '?') {
+      re += '.';
+      i += 1;
+    } else if (c === '[') {
+      const j = glob.indexOf(']', i + 1);
+      if (j === -1) {
+        re += '\\[';
+        i += 1;
+      } else {
+        re += glob.slice(i, j + 1);
+        i = j + 1;
+      }
+    } else {
+      re += escapeRegExp(c);
+      i += 1;
+    }
+  }
+  return new RegExp(`${re}$`);
+}
+
 /** In-memory fake of the Redis command surface — no server needed. */
 function createFakeRedisClient(): RedisClient & { store: Map<string, string> } {
   const store = new Map<string, string>();
@@ -34,8 +74,8 @@ function createFakeRedisClient(): RedisClient & { store: Map<string, string> } {
       return Promise.resolve(keys.length);
     },
     scanStream: ({ match }: { match: string; count: number }) => {
-      const prefix = match.endsWith('*') ? match.slice(0, -1) : match;
-      const keys = [...store.keys()].filter((k) => k.startsWith(prefix));
+      const pattern = globToRegExp(match);
+      const keys = [...store.keys()].filter((k) => pattern.test(k));
       return (async function* () {
         if (keys.length > 0) yield keys;
       })();
@@ -168,6 +208,16 @@ describe('RedisCacheProvider', () => {
     await cache.deleteByPrefix([]);
     expect(await cache.get(['own'])).toBeNull();
     expect(await client.get('other-app:key')).toBe('"foreign"');
+  });
+
+  it('should match bracket-containing prefixes literally, not as a glob class', async () => {
+    const client = createFakeRedisClient();
+    const cache = new RedisCacheProvider(client);
+    await cache.set(['weird[idx]'], 1);
+    await cache.set(['weirdi'], 2);
+    await cache.deleteByPrefix(['weird[idx]']);
+    expect(await cache.get(['weird[idx]'])).toBeNull();
+    expect(await cache.get(['weirdi'])).toBe(2);
   });
 });
 

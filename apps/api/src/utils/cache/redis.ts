@@ -73,7 +73,15 @@ function namespacedKey(key: string[]): string {
 
 /** SCAN pattern scoped to the app namespace (`brewform:*` for an empty prefix). */
 function namespacedPattern(prefix: string[]): string {
-  return `brewform:${prefix.join(':')}*`;
+  return `brewform:${escapeGlob(prefix.join(':'))}*`;
+}
+
+/**
+ * Escape Redis glob metacharacters (`*`, `?`, `[`, `]`, `\`) so a key prefix is
+ * matched literally. The trailing `*` wildcard is appended separately, unescaped.
+ */
+function escapeGlob(value: string): string {
+  return value.replace(/[*?[\]\\]/g, (c) => `\\${c}`);
 }
 
 /** Build a Redis-backed provider from a URL (e.g. redis://redis:6379). */
