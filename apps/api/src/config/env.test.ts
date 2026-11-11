@@ -1,53 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
 
-const envSchema = z
-  .object({
-    APP_PORT: z.coerce.number().default(8000),
-    APP_ENV: z.enum(['development', 'production', 'test']).default('development'),
-    LOG_LEVEL: z.string().default('info'),
-    LOG_FORMAT: z.enum(['json', 'pretty']).default('json'),
-    DATABASE_URL: z.string().min(1),
-    DATABASE_PROVIDER: z.enum(['postgresql', 'mysql', 'sqlite']).default('postgresql'),
-    CACHE_ENABLED: z
-      .enum(['true', 'false'])
-      .default('true')
-      .transform((v) => v === 'true'),
-    CACHE_DRIVER: z.enum(['memory', 'redis']).default('memory'),
-    REDIS_URL: z.string().optional(),
-    JWT_SECRET: z.string().min(16),
-    JWT_ACCESS_EXPIRY: z.string().default('15m'),
-    JWT_REFRESH_EXPIRY: z.string().default('7d'),
-    JWT_REMEMBER_ME_EXPIRY: z.string().default('180d'),
-    CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://localhost:8000'),
-    SMTP_HOST: z.string().default('localhost'),
-    SMTP_PORT: z.coerce.number().default(1025),
-    SMTP_USER: z.string().default(''),
-    SMTP_PASS: z.string().default(''),
-    SMTP_SECURE: z.coerce.boolean().default(false),
-    EMAIL_FROM: z.string().default('noreply@brewform.local'),
-    OPENAPI_ENABLED: z.coerce.boolean().default(true),
-    ENABLE_REGISTRATION: z
-      .enum(['true', 'false'])
-      .default('true')
-      .transform((v) => v === 'true'),
-    UPLOAD_DIR: z.string().default('./uploads'),
-    UPLOAD_MAX_SIZE_BYTES: z.coerce.number().default(10 * 1024 * 1024),
-    UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
-    APP_URL: z.string().default('http://localhost:8000'),
-    ADMIN_EMAIL: z.string().default('admin@brewform.local'),
-    ADMIN_USERNAME: z.string().default('admin'),
-    ADMIN_PASSWORD: z.string().default('admin123456'),
-  })
-  .superRefine((obj, ctx) => {
-    if (obj.CACHE_ENABLED && obj.CACHE_DRIVER === 'redis' && !obj.REDIS_URL) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['REDIS_URL'],
-        message: 'REDIS_URL is required when CACHE_ENABLED is true and CACHE_DRIVER is redis',
-      });
-    }
-  });
+// Validate the production schema (not a copy) so refinement tests cover real behavior.
+// Importing env.ts initializes config, so stub the required vars first.
+process.env.DATABASE_URL ??= 'postgresql://test:test@localhost:5432/test';
+process.env.JWT_SECRET ??= 'a-very-long-secret-key-for-testing-12345';
+const { envSchema } = await import('./env.ts');
 
 describe('Environment Config Schema', () => {
   it('should apply defaults for optional fields', () => {

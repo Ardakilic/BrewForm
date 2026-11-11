@@ -84,6 +84,7 @@ interface CacheProvider {
   set<T>(key: string[], value: T, options?: { ttlMs?: number }): Promise<void>;
   delete(key: string[]): Promise<void>;
   deleteByPrefix(prefix: string[]): Promise<void>;
+  close?(): Promise<void>;
 }
 ```
 

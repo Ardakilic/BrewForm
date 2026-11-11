@@ -69,18 +69,22 @@ export class InMemoryCacheProvider implements CacheProvider {
  * All reads miss; all writes are dropped. Keeps consumers working unchanged.
  */
 export class NullCacheProvider implements CacheProvider {
+  /** Always miss (caching disabled). */
   get<T>(_key: string[]): Promise<T | null> {
     return Promise.resolve(null);
   }
 
+  /** Drop the write (caching disabled). */
   set<T>(_key: string[], _value: T, _options?: { ttlMs?: number }): Promise<void> {
     return Promise.resolve();
   }
 
+  /** No-op (caching disabled). */
   delete(_key: string[]): Promise<void> {
     return Promise.resolve();
   }
 
+  /** No-op (caching disabled). */
   deleteByPrefix(_prefix: string[]): Promise<void> {
     return Promise.resolve();
   }

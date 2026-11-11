@@ -133,7 +133,9 @@ There is **no cache resource to create** for the default setup. The API runs wit
 `CACHE_DRIVER=memory` (see [§6](#6-step-3--api-docker-image)): an in-process Map with TTL
 support. Cache is lost on restart, which is acceptable because the cache is never a source
 of truth — Postgres is. For a shared cache, set `CACHE_DRIVER=redis` plus `REDIS_URL` and
-provision any Redis-protocol server (Redis or Valkey); no code changes needed.
+provision any Redis-protocol server (Redis or Valkey); no code changes needed. Note the
+split defaults: `compose.production.yml` ships `CACHE_DRIVER=redis` (with its own `redis`
+service), while the env schema and this Coolify setup default to `memory`.
 
 ---
 
@@ -211,7 +213,7 @@ provision any Redis-protocol server (Redis or Valkey); no code changes needed.
    Database is empty, running seed...
    Seeding complete.
    Starting BrewForm API...
-   In-memory cache initialized
+   Cache initialized (enabled=true, driver=memory)
    BrewForm API running on http://localhost:8000
    ```
 

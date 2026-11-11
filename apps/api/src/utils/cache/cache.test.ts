@@ -157,7 +157,17 @@ describe('RedisCacheProvider', () => {
     };
     const cache = new RedisCacheProvider(spying);
     await cache.set(['ttl'], 'v', { ttlMs: 60_000 });
-    expect(seen).toEqual([['ttl', '"v"', 'PX', 60_000]]);
+    expect(seen).toEqual([['brewform:ttl', '"v"', 'PX', 60_000]]);
+  });
+
+  it('should scope an empty prefix delete to the app namespace', async () => {
+    const client = createFakeRedisClient();
+    await client.set('other-app:key', '"foreign"');
+    const cache = new RedisCacheProvider(client);
+    await cache.set(['own'], 1);
+    await cache.deleteByPrefix([]);
+    expect(await cache.get(['own'])).toBeNull();
+    expect(await client.get('other-app:key')).toBe('"foreign"');
   });
 });
 

@@ -354,7 +354,7 @@ in-process Map with TTL support, wired at startup with no extra service to provi
    Migrations complete.
    Database is empty, running seed...
    Seeding complete!
-   Admin credentials: admin@yourdomain.com / <password>
+   Admin ready (first install only; changing ADMIN_* later does not update the existing admin row)
    Starting BrewForm API...
    ```
    followed by the API's own structured logs (JSON or pretty per `LOG_FORMAT`). The

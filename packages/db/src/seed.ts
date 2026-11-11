@@ -1154,10 +1154,10 @@ export async function main() {
   const adminPasswordConfigured = Boolean(process.env.ADMIN_PASSWORD);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   if (adminPasswordConfigured) {
-    console.log('  Admin account: password from ADMIN_PASSWORD (not logged)');
+    console.log('  Admin account: ADMIN_PASSWORD is set (used only if the admin row is created)');
   } else {
     console.warn(
-      '  Warning: ADMIN_PASSWORD is unset; using the insecure default password (not logged)',
+      '  Warning: ADMIN_PASSWORD is unset; the default password applies only if the admin row is created (not logged)',
     );
   }
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

@@ -6,7 +6,8 @@
  */
 import { z } from 'zod';
 
-const envSchema = z
+/** Zod schema for the API environment. Exported for tests; see {@link config}. */
+export const envSchema = z
   .object({
     APP_PORT: z.coerce.number().default(8000),
     APP_ENV: z.enum(['development', 'production', 'test']).default('development'),
