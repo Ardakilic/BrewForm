@@ -134,7 +134,7 @@ services:
   # ── Infrastructure ──────────────────────────────────────────────────────────
 
   valkey:
-    image: valkey/valkey:9.1-alpine
+    image: valkey/valkey:9.2-alpine
     command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:-dev-valkey-password}", "--appendonly", "yes"]
     volumes:
       - valkey_data:/data
