@@ -4,10 +4,11 @@
 # Runs the published images — no local build needed:
 #   api: ghcr.io/ardakilic/brewform-api:latest
 #   web: ghcr.io/ardakilic/brewform-web:latest
-# plus postgres + redis services.
+# plus postgres + valkey services.
 #
-# --- Required: set these three before the first run ---
+# --- Required: set these four before the first run ---
 #   POSTGRES_PASSWORD — strong password for the Postgres superuser
+#   VALKEY_PASSWORD   — strong password for the Valkey cache (e.g. `openssl rand -hex 32`)
 #   API_DOMAIN        — e.g. api.brewform.example.com
 #   WEB_DOMAIN        — e.g. brewform.example.com
 #
@@ -24,8 +25,9 @@
 # - ADMIN_PASSWORD is first-install only: it seeds the admin account when the
 #   database is empty; changing it later does not update the existing admin
 #   row. Change it afterwards via the app, not via this file.
-# - If POSTGRES_PASSWORD contains special chars (#, @, :, /), URL-encode them
-#   in DATABASE_URL or the API will fail to connect.
+# - If POSTGRES_PASSWORD or VALKEY_PASSWORD contains special chars (#, @, :, /),
+#   URL-encode them in DATABASE_URL or REDIS_URL or the API will fail to connect.
+#   Prefer `openssl rand -hex 32` passwords (URL-safe).
 # - TLS terminates in front of this file (Cloudflare / Coolify / your proxy).
 #   The web container serves the SPA on :80; the API is reachable only on the
 #   Compose network (exposed as 8000, no host port published).
@@ -49,12 +51,13 @@ services:
       retries: 5
     restart: unless-stopped
 
-  redis:
-    image: redis:8
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}", "--appendonly", "yes"]
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -65,7 +68,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
     environment:
       APP_ENV: production
@@ -76,7 +79,7 @@ services:
       DATABASE_PROVIDER: postgresql
       CACHE_ENABLED: ${CACHE_ENABLED:-true}
       CACHE_DRIVER: ${CACHE_DRIVER:-redis}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      REDIS_URL: ${REDIS_URL:-redis://:${VALKEY_PASSWORD:?set VALKEY_PASSWORD before running}@valkey:6379}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (min 16 chars, e.g. openssl rand -hex 32)}
       JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
       JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
@@ -123,5 +126,5 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
+  valkey_data:
   uploads:
