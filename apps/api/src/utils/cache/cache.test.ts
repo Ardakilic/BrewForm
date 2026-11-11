@@ -252,6 +252,15 @@ describe('createCacheProvider', () => {
     await provider.close?.();
   });
 
+  it('should pass a password-authenticated URL through to ioredis unmodified', async () => {
+    const { Redis } = await import('ioredis');
+    const url = 'redis://:s3cret@valkey:6379';
+    const provider = createCacheProvider('redis', { redisUrl: url });
+    expect(provider).toBeInstanceOf(RedisCacheProvider);
+    expect((Redis as unknown as { lastUrl: string }).lastUrl).toBe(url);
+    await provider.close?.();
+  });
+
   it('should throw for redis driver without a URL', async () => {
     expect(() => createCacheProvider('redis')).toThrow('REDIS_URL is required');
   });

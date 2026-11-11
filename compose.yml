@@ -27,7 +27,7 @@ services:
       - DATABASE_PROVIDER=postgresql
       - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=${REDIS_URL:-redis://:${VALKEY_PASSWORD:-dev-valkey-password}@valkey:6379}
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -103,7 +103,7 @@ services:
       - DATABASE_PROVIDER=postgresql
       - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=${REDIS_URL:-redis://:${VALKEY_PASSWORD:-dev-valkey-password}@valkey:6379}
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
@@ -133,12 +133,13 @@ services:
 
   # ── Infrastructure ──────────────────────────────────────────────────────────
 
-  redis:
-    image: redis:8
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD:-dev-valkey-password}", "--appendonly", "yes"]
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD:-dev-valkey-password}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -249,5 +250,5 @@ volumes:
   garage_data:
   garage_meta:
   node_modules:
-  redis_data:
+  valkey_data:
 
