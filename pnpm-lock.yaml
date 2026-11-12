@@ -209,8 +209,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
       '@hono/node-server':
-        specifier: 2.1.6
-        version: 2.1.6(hono@4.13.17)
+        specifier: 2.1.8
+        version: 2.1.8(hono@4.13.17)
       '@hono/standard-validator':
         specifier: ^0.4.1
         version: 0.4.1(@standard-schema/spec@1.1.0)(hono@4.13.17)
@@ -1026,8 +1026,8 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@hono/node-server@2.1.6':
-    resolution: {integrity: sha512-p/KH9MnfNcsm3sR6x4lNgm5j+QN4Et8srKredl9DZfXiyZ1UQ3aQ2YVpFLbqktYN5JI+DB+VZFKM2PqE5hLKjQ==}
+  '@hono/node-server@2.1.8':
+    resolution: {integrity: sha512-jdf7FHh6A1lzjpHHQUgxsg2GeER2vMetnAOfeActzcoli6jamlK+NAwL6Dsr5Fl3BS3tYUQzCdtZjU8Qxv7bEA==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4 || ^5.0.0-0
@@ -3625,7 +3625,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@hono/node-server@2.1.6(hono@4.13.17)':
+  '@hono/node-server@2.1.8(hono@4.13.17)':
     dependencies:
       hono: 4.13.17
 
