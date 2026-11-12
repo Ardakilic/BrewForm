@@ -15,7 +15,7 @@
 # Copies only manifest files, prefetches the pnpm store, then copies the full
 # source and installs offline. Used as the base for the dev containers (source
 # is volume-mounted at runtime; node_modules survives via a named volume).
-FROM node:26.13.0-trixie-slim AS deps
+FROM node:26.13.1-trixie-slim AS deps
 WORKDIR /app
 RUN npm install -g --allow-scripts=pnpm pnpm@12.18.0
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
@@ -45,7 +45,7 @@ RUN pnpm run check
 # dist/ — `build` only compiles the email templates), so the runner keeps the
 # full install including devDependencies (tsx, drizzle-kit) instead of a pruned
 # production deploy.
-FROM node:26.13.0-trixie-slim AS runner
+FROM node:26.13.1-trixie-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN npm install -g --allow-scripts=pnpm pnpm@12.18.0
