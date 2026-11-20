@@ -47,7 +47,8 @@ vi.mock('../../api/static-cache.ts', () => ({
   getTasteNotesCached: vi.fn(),
 }));
 
-vi.mock('../../utils/recipe-filters.ts', () => ({
+vi.mock('../../utils/recipe-filters.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../utils/recipe-filters.ts')>()),
   extractListParams: vi.fn().mockReturnValue({}),
 }));
 

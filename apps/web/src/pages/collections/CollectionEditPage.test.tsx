@@ -8,15 +8,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../api/index.ts', () => ({
   collectionApi: { get: vi.fn(), update: vi.fn() },
-  ApiError: class extends Error {
-    code: string;
-    status: number;
-    constructor(code: string, message: string, status = 500) {
-      super(message);
-      this.code = code;
-      this.status = status;
-    }
-  },
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
@@ -43,7 +34,8 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import type { CollectionDetailOutput } from '@brewform/shared/schemas';
-import { ApiError, collectionApi } from '../../api/index.ts';
+import { ApiError } from '../../api/errors.ts';
+import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { CollectionEditPage, loader } from './CollectionEditPage.tsx';
 
@@ -189,22 +181,15 @@ describe('CollectionEditPage', () => {
 });
 
 describe('CollectionEditPage loader', () => {
-  // The mocked ApiError (see vi.mock above) has the runtime signature
-  // (code, message, status) — different from the real client's
-  // (code, message, details?, status). Cast once so the mocked constructor
-  // can be called with its runtime signature in a type-safe way.
-  const MockApiError = ApiError as unknown as new (
-    code: string,
-    message: string,
-    status?: number,
-  ) => ApiError;
-
   it('throws a 404 Response when the API rejects with ApiError(404)', async () => {
-    mockGet.mockRejectedValue(new MockApiError('COLLECTION_NOT_FOUND', 'Not found', 404));
+    mockGet.mockRejectedValue(new ApiError('COLLECTION_NOT_FOUND', 'Not found', undefined, 404));
 
     let caught: unknown;
     try {
-      await loader({ params: { id: 'missing' } });
+      await loader({
+        params: { id: 'missing' },
+        request: new Request('http://localhost/collections/missing/edit'),
+      });
     } catch (err) {
       caught = err;
     }
@@ -216,7 +201,7 @@ describe('CollectionEditPage loader', () => {
   it('throws a 404 Response when the id param is missing', async () => {
     let caught: unknown;
     try {
-      await loader({ params: {} });
+      await loader({ params: {}, request: new Request('http://localhost/collections//edit') });
     } catch (err) {
       caught = err;
     }
@@ -224,5 +209,21 @@ describe('CollectionEditPage loader', () => {
     expect(caught).toBeInstanceOf(Response);
     expect((caught as Response).status).toBe(404);
     expect(mockGet).not.toHaveBeenCalled();
+  });
+});
+
+describe('CollectionEditPage loader — auth guard', () => {
+  it('redirects a final 401 to /login with the encoded return path', async () => {
+    mockGet.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const thrown = await loader({
+      params: { id: 'c1' },
+      request: new Request('http://localhost/collections/c1/edit'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe(
+      '/login?next=%2Fcollections%2Fc1%2Fedit',
+    );
   });
 });

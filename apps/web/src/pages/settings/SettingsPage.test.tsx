@@ -5,12 +5,8 @@ vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: vi.fn(),
 }));
 
-vi.mock('../../contexts/AuthContext.tsx', () => ({
-  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useAuth: vi.fn(),
-}));
-
 vi.mock('../../contexts/ThemeContext.tsx', () => ({
+  ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTheme: vi.fn(),
 }));
 
@@ -33,21 +29,20 @@ vi.mock('../../components/seo/SEOHead.tsx', () => ({
 
 // ── Imports (after all vi.mock calls) ──
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type React from 'react';
-import { createMemoryRouter } from 'react-router';
-import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../../api/client.ts';
-import { useAuth } from '../../contexts/AuthContext.tsx';
+import { ApiError } from '../../api/errors.ts';
+import type { AuthContextType } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { loader, SettingsPage } from './SettingsPage.tsx';
 
 // ── Typed mock references ──
 
-const mockUseAuth = vi.mocked(useAuth);
 const mockUseTranslation = vi.mocked(useTranslation);
 const mockUseTheme = vi.mocked(useTheme);
 const mockApi = vi.mocked(api);
@@ -126,6 +121,8 @@ const enT = (key: string) => {
     'theme.light': 'Light Roast',
     'theme.dark': 'Dark Roast',
     'theme.coffee': 'Medium Roast',
+    'common.delete': 'Delete',
+    'common.cancel': 'Cancel',
   };
   return map[key] ?? key;
 };
@@ -145,47 +142,21 @@ const trT = (key: string) => {
     'settings.dangerZoneDesc':
       'Hesabınızı ve tüm verilerinizi kalıcı olarak silin. Bu geri alınamaz.',
     'preferences.title': 'Tercihler',
+    'common.delete': 'Sil',
+    'common.cancel': 'İptal',
   };
   return map[key] ?? key;
 };
 
 function renderSettingsPage(
-  options: { locale?: 'en' | 'tr'; auth?: Partial<ReturnType<typeof useAuth>> } = {},
+  options: { locale?: 'en' | 'tr'; auth?: Partial<AuthContextType> } = {},
 ) {
-  const router = createMemoryRouter(
-    [
-      {
-        path: '/',
-        element: <div data-testid="home-page">Home Page</div>,
-      },
-      {
-        path: '/settings',
-        element: <SettingsPage />,
-        loader,
-      },
-    ],
-    { initialEntries: ['/settings'] },
-  );
-
   const t = options.locale === 'tr' ? trT : enT;
   mockUseTranslation.mockReturnValue({
     locale: options.locale ?? 'en',
     setLocale: vi.fn(),
     t,
     availableLocales: ['en', 'tr'],
-  });
-
-  mockUseAuth.mockReturnValue({
-    user: authenticatedUser,
-    isAuthenticated: true,
-    isLoading: false,
-    sessionError: null,
-    login: vi.fn(),
-    register: vi.fn(),
-    logout: mockLogout,
-    refreshUser: vi.fn(),
-    clearSessionError: vi.fn(),
-    ...options.auth,
   });
 
   mockUseTheme.mockReturnValue({
@@ -197,9 +168,35 @@ function renderSettingsPage(
   mockApi.patch.mockResolvedValue({});
   mockApi.delete.mockResolvedValue({});
 
-  const renderResult = render(<RouterProvider router={router} />);
+  return renderWithAppProviders(
+    [
+      {
+        path: '/',
+        element: <div data-testid="home-page">Home Page</div>,
+      },
+      {
+        path: '/settings',
+        element: <SettingsPage />,
+        loader,
+      },
+    ],
+    {
+      initialEntries: ['/settings'],
+      auth: { user: authenticatedUser, logout: mockLogout, ...options.auth },
+    },
+  );
+}
 
-  return { ...renderResult, router };
+/** Answers the shared ConfirmProvider dialog (rendered by AppProviders). */
+async function answerConfirm(choice: 'confirm' | 'cancel', locale: 'en' | 'tr' = 'en') {
+  const dialog = await screen.findByRole('dialog');
+  const labels = {
+    en: { confirm: 'Delete', cancel: 'Cancel' },
+    tr: { confirm: 'Sil', cancel: 'İptal' },
+  };
+  await userEvent
+    .setup()
+    .click(within(dialog).getByRole('button', { name: labels[locale][choice] }));
 }
 
 describe('SettingsPage', () => {
@@ -217,7 +214,6 @@ describe('SettingsPage', () => {
   describe('Delete Account', () => {
     it('logs out and navigates home on successful deletion', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
       const { router } = renderSettingsPage();
 
       await waitFor(() => {
@@ -225,19 +221,17 @@ describe('SettingsPage', () => {
       });
 
       await user.click(screen.getByText('Delete Account'));
+      await answerConfirm('confirm');
 
       await waitFor(() => {
         expect(mockApi.delete).toHaveBeenCalledWith('/users/me');
         expect(mockLogout).toHaveBeenCalledOnce();
         expect(router.state.location.pathname).toBe('/');
       });
-
-      confirmSpy.mockRestore();
     });
 
     it('does nothing when dialog is cancelled', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(false);
       renderSettingsPage();
 
       await waitFor(() => {
@@ -245,16 +239,14 @@ describe('SettingsPage', () => {
       });
 
       await user.click(screen.getByText('Delete Account'));
+      await answerConfirm('cancel');
 
       expect(mockApi.delete).not.toHaveBeenCalled();
       expect(mockLogout).not.toHaveBeenCalled();
-
-      confirmSpy.mockRestore();
     });
 
     it('shows error banner on failure in English', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
       mockApi.delete.mockRejectedValueOnce(new Error('Network error'));
 
       renderSettingsPage({ locale: 'en' });
@@ -264,19 +256,17 @@ describe('SettingsPage', () => {
       });
 
       await user.click(screen.getByText('Delete Account'));
+      await answerConfirm('confirm');
 
       await waitFor(() => {
         expect(screen.getByText('Account deletion failed.')).toBeInTheDocument();
       });
 
       expect(mockLogout).not.toHaveBeenCalled();
-
-      confirmSpy.mockRestore();
     });
 
     it('shows error banner on failure in Turkish', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
       mockApi.delete.mockRejectedValueOnce(new Error('Network error'));
 
       renderSettingsPage({ locale: 'tr' });
@@ -286,6 +276,7 @@ describe('SettingsPage', () => {
       });
 
       await user.click(screen.getByText('Hesabı Sil'));
+      await answerConfirm('confirm', 'tr');
 
       await waitFor(() => {
         const banner = screen
@@ -296,8 +287,6 @@ describe('SettingsPage', () => {
       });
 
       expect(mockLogout).not.toHaveBeenCalled();
-
-      confirmSpy.mockRestore();
     });
   });
 
@@ -374,7 +363,6 @@ describe('SettingsPage', () => {
   describe('Deletion error banner styling', () => {
     it('renders deletion error with red background', async () => {
       const user = userEvent.setup();
-      const confirmSpy = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
       mockApi.delete.mockRejectedValueOnce(new Error('Server error'));
 
       renderSettingsPage({ locale: 'en' });
@@ -384,6 +372,7 @@ describe('SettingsPage', () => {
       });
 
       await user.click(screen.getByText('Delete Account'));
+      await answerConfirm('confirm');
 
       await waitFor(() => {
         const banner = screen
@@ -392,8 +381,19 @@ describe('SettingsPage', () => {
         expect(banner).toBeInTheDocument();
         expect(banner!.style.backgroundColor).toBe('var(--error-bg)');
       });
-
-      confirmSpy.mockRestore();
     });
+  });
+});
+
+describe('SettingsPage loader — auth guard', () => {
+  it('redirects a final 401 to /login with the encoded return path', async () => {
+    mockApi.get.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const thrown = await loader({ request: new Request('http://localhost/settings') }).catch(
+      (err: unknown) => err,
+    );
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe('/login?next=%2Fsettings');
   });
 });

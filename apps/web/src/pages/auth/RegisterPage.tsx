@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
 import { authApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
@@ -7,16 +7,19 @@ import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { getSafeNext } from '../../utils/safe-next.ts';
 
 const log = createLogger('RegisterPage');
 
 /**
  * Registration form with client-side password checks; hidden behind a
- * server-side registration-enabled flag. Navigates home on success.
+ * server-side registration-enabled flag. On success it replaces the history
+ * entry with the safe `?next=` return path (`getSafeNext`), else `/`.
  */
 export function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -68,7 +71,7 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register({ email, username, password, displayName: displayName || undefined });
-      navigate('/');
+      navigate(getSafeNext(searchParams) ?? '/', { replace: true });
     } catch (err: unknown) {
       log.error({ err }, 'RegisterPage registration failed');
       const message = err instanceof Error ? err.message : t('auth.register.error.failed');

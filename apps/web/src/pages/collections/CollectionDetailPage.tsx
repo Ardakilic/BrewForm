@@ -1,7 +1,8 @@
 import type { CollectionDetailOutput } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData } from 'react-router';
-import { ApiError, collectionApi } from '../../api/index.ts';
+import { ApiError } from '../../api/errors.ts';
+import { collectionApi } from '../../api/index.ts';
 import { CollectionRecipeList } from '../../components/collections/CollectionRecipeList.tsx';
 import { CollectionVisibilityBadge } from '../../components/collections/CollectionVisibilityBadge.tsx';
 import { Breadcrumb } from '../../components/ui/Breadcrumb.tsx';

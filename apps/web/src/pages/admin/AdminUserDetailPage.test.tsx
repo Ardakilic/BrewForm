@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -22,21 +22,8 @@ vi.mock('../../components/admin/BanDialog.tsx', () => ({
   BanDialog: () => null,
 }));
 
-vi.mock('../../contexts/AuthContext.tsx', () => ({
-  useAuth: () => ({
-    user: { id: 'current-user', username: 'admin', displayName: 'Admin' },
-    isLoading: false,
-    isAuthenticated: true,
-    sessionError: null,
-    login: vi.fn(),
-    register: vi.fn(),
-    logout: vi.fn(),
-    refreshUser: vi.fn(),
-    clearSessionError: vi.fn(),
-  }),
-}));
-
 vi.mock('../../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
   useTranslation: () => ({
     t: (k: string) => {
       const map: Record<string, string> = {
@@ -77,21 +64,10 @@ describe('AdminUserDetailPage — tr locale spot-check', () => {
     const err = Object.assign(new Error('Not found'), { response: { status: 404 } });
     mockAdminApi.getUserDetail.mockRejectedValue(err);
 
-    const router = createMemoryRouter(
-      [
-        {
-          path: '/admin/users/:id',
-          element: (
-            <ToastProvider>
-              <AdminUserDetailPage />
-            </ToastProvider>
-          ),
-        },
-      ],
-      { initialEntries: ['/admin/users/missing-id'] },
-    );
-
-    render(<RouterProvider router={router} />);
+    renderWithAppProviders([{ path: '/admin/users/:id', element: <AdminUserDetailPage /> }], {
+      initialEntries: ['/admin/users/missing-id'],
+      auth: 'admin',
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Kullanıcı Bulunamadı')).toBeInTheDocument();

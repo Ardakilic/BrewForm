@@ -11,7 +11,7 @@ vi.mock('@/utils/logger.ts', () => ({
   }),
 }));
 
-import { router } from './router.tsx';
+import { createAppRouter, routes } from './router.tsx';
 import { favouriteAction } from './routes/favourite.ts';
 import { followAction } from './routes/follow.ts';
 import { likeAction } from './routes/like.ts';
@@ -42,11 +42,16 @@ function flatten(
   return acc;
 }
 
-const top = router.routes as RouteNode[];
+const top = routes as RouteNode[];
 const root = top.find((r) => r.path === '/');
 const byPath = flatten(root?.children ?? []);
 
 describe('router route config', () => {
+  it('exports the route tree and a router factory instead of a module-scope router', () => {
+    expect(Array.isArray(routes)).toBe(true);
+    expect(createAppRouter).toBeTypeOf('function');
+  });
+
   it('declares exactly two top-level routes: the app shell and /admin', () => {
     expect(top).toHaveLength(2);
     expect(top.map((r) => r.path).sort()).toEqual(['/', '/admin']);

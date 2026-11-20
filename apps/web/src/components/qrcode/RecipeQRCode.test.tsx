@@ -1,12 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { RecipeQRCode } from './RecipeQRCode.tsx';
 
+/** Renders the QR card inside the shared app providers (toast, confirm, router). */
 function renderQR(ui: ReactElement) {
-  return render(<ToastProvider>{ui}</ToastProvider>);
+  return renderWithAppProviders(ui);
 }
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -23,6 +24,7 @@ vi.mock('@/utils/logger.ts', () => ({
 vi.mock('../../contexts/I18nContext.tsx', async () => {
   const { t: translate } = await import('@brewform/shared/i18n');
   return {
+    I18nProvider: ({ children }: { children: ReactNode }) => children,
     useTranslation: () => ({
       t: (key: string) => translate(key, 'en'),
       locale: 'en',

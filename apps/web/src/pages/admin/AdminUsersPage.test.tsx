@@ -68,14 +68,24 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
-import { adminApi } from '../../api/index.ts';
+import type { PaginatedResponse } from '@brewform/shared/schemas';
+import { type AdminUser, adminApi } from '../../api/index.ts';
 import { AdminUsersPage } from './AdminUsersPage.tsx';
 
 const mockAdminApi = vi.mocked(adminApi);
 
+/** Builds the paginated envelope `GET /admin/users` returns. */
+function usersPage(users: AdminUser[], total = users.length): PaginatedResponse<AdminUser> {
+  return {
+    success: true,
+    data: users,
+    meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total, totalPages: 1 } },
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAdminApi.getUsers.mockResolvedValue({ users: [], total: 0 });
+  mockAdminApi.getUsers.mockResolvedValue(usersPage([], 0));
 });
 
 describe('AdminUsersPage — tr locale spot-check', () => {
@@ -120,7 +130,7 @@ describe('AdminUsersPage — ban/unban flow', () => {
   }
 
   it('opens ban dialog when ban button is clicked', async () => {
-    mockAdminApi.getUsers.mockResolvedValue({ users: mockUsers, total: 1 });
+    mockAdminApi.getUsers.mockResolvedValue(usersPage(mockUsers, 1));
 
     renderPage();
 
@@ -137,7 +147,7 @@ describe('AdminUsersPage — ban/unban flow', () => {
 
   it('calls unbanUser when unban button is clicked on a banned user', async () => {
     const bannedUser = { ...mockUsers[0], isBanned: true };
-    mockAdminApi.getUsers.mockResolvedValue({ users: [bannedUser], total: 1 });
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([bannedUser], 1));
 
     renderPage();
 

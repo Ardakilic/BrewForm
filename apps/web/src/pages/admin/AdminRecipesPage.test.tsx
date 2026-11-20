@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: {
@@ -15,6 +16,7 @@ const { mockLogger } = vi.hoisted(() => ({
 vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
   useTranslation: () => ({
     t: (k: string) => {
       const map: Record<string, string> = {
@@ -52,11 +54,7 @@ import { AdminRecipesPage } from './AdminRecipesPage.tsx';
 const mockApi = vi.mocked(api);
 
 function renderPage() {
-  return render(
-    <ToastProvider>
-      <AdminRecipesPage />
-    </ToastProvider>,
-  );
+  return renderWithAppProviders(<AdminRecipesPage />, { auth: 'admin' });
 }
 
 beforeEach(() => {
@@ -91,12 +89,14 @@ describe('AdminRecipesPage — tr locale spot-check', () => {
       },
     ]);
     mockApi.delete.mockRejectedValue(new Error('Network error'));
-    vi.stubGlobal('confirm', () => true);
 
     renderPage();
     await waitFor(() => expect(screen.getByText('Test Recipe')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: 'Sil' }));
+    // The shared ConfirmProvider (from AppProviders) asks first; confirm inside the dialog.
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sil' }));
 
     await waitFor(() => {
       expect(screen.getByText('Tarif silinemedi.')).toBeInTheDocument();

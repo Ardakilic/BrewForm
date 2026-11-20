@@ -1,12 +1,13 @@
 import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
-import { Link, redirect, useLoaderData, useSearchParams } from 'react-router';
-import { ApiError, brewLogApi } from '../../api/index.ts';
+import { Link, useLoaderData, useSearchParams } from 'react-router';
+import { brewLogApi } from '../../api/index.ts';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { requireAuth } from '../../routes/auth-guards.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('BrewLogListPage');
@@ -21,22 +22,23 @@ export interface BrewLogListLoaderData {
  * user's brew journal for the requested `?page` (newest first, paginated).
  * Only positive finite integers are accepted as a page; anything else
  * (negative, fractional, infinite, zero, missing, non-numeric) defaults to 1.
- * Redirects to `/login` on a 401.
+ * Wrapped in `requireAuth`, so a final 401 redirects to `/login?next=…`.
  */
-export const loader = async ({ request }: { request: Request }): Promise<BrewLogListLoaderData> => {
-  const rawPage = Number(new URL(request.url).searchParams.get('page'));
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
-  log.debug({ page }, 'BrewLogListPage loader started');
-  try {
-    const logsResponse = await brewLogApi.list({ page });
-    log.debug({ page }, 'BrewLogListPage loader completed');
-    return { logsResponse };
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) throw redirect('/login');
-    log.error({ err, page }, 'BrewLogListPage loader failed');
-    throw err;
-  }
-};
+export const loader = requireAuth(
+  async ({ request }: { request: Request }): Promise<BrewLogListLoaderData> => {
+    const rawPage = Number(new URL(request.url).searchParams.get('page'));
+    const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+    log.debug({ page }, 'BrewLogListPage loader started');
+    try {
+      const logsResponse = await brewLogApi.list({ page });
+      log.debug({ page }, 'BrewLogListPage loader completed');
+      return { logsResponse };
+    } catch (err) {
+      log.error({ err, page }, 'BrewLogListPage loader failed');
+      throw err;
+    }
+  },
+);
 
 /**
  * Page component for `/brew-logs` — the user's brew journal: a newest-first

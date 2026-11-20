@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 
 vi.mock('@/utils/logger.ts', () => ({
   createLogger: () => ({
@@ -14,6 +15,7 @@ vi.mock('@/utils/logger.ts', () => ({
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
   useTranslation: () => ({
     t: (k: string) => {
       const map: Record<string, string> = {
@@ -69,11 +71,7 @@ beforeEach(() => {
 
 describe('AdminCoffeeVarietiesPage — tr locale spot-check', () => {
   it('renders the Turkish coffee varieties heading', async () => {
-    render(
-      <ToastProvider>
-        <AdminCoffeeVarietiesPage />
-      </ToastProvider>,
-    );
+    renderWithAppProviders(<AdminCoffeeVarietiesPage />, { auth: 'admin' });
 
     await waitFor(() => {
       expect(screen.getByText('Kahve Çeşitleri')).toBeInTheDocument();

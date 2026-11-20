@@ -1,7 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter } from 'react-router';
-import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -9,17 +7,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../api/index.ts', () => ({
   brewLogApi: { create: vi.fn(), update: vi.fn(), get: vi.fn() },
   recipeApi: { get: vi.fn() },
-  ApiError: class extends Error {
-    status: number;
-    constructor(code: string, message: string, _details?: unknown, status: number = 500) {
-      super(message);
-      this.name = code;
-      this.status = status;
-    }
-  },
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
   useTranslation: vi.fn(),
 }));
 
@@ -37,9 +28,11 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import type { BrewLogOutput, RecipeDetailOutput } from '@brewform/shared/schemas';
-import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
+import type { ReactNode } from 'react';
+import { ApiError } from '../../api/errors.ts';
+import { brewLogApi, recipeApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { BrewLogFormPage, loader } from './BrewLogFormPage.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -112,25 +105,23 @@ const sampleLog: BrewLogOutput = {
 const HydrateFallback = () => null;
 
 function renderCreatePage(initialEntry = '/brew-logs/new?recipeId=r1&recipeVersionId=v2') {
-  const router = createMemoryRouter(
+  return renderWithAppProviders(
     [
       { path: '/brew-logs/new', element: <BrewLogFormPage />, loader, HydrateFallback },
       { path: '/brew-logs', element: <div>journal page</div> },
     ],
-    { initialEntries: [initialEntry] },
+    { initialEntries: [initialEntry], auth: 'user' },
   );
-  return render(<RouterProvider router={router} />, { wrapper: ToastProvider });
 }
 
 function renderEditPage() {
-  const router = createMemoryRouter(
+  return renderWithAppProviders(
     [
       { path: '/brew-logs/:id/edit', element: <BrewLogFormPage />, loader, HydrateFallback },
       { path: '/brew-logs', element: <div>journal page</div> },
     ],
-    { initialEntries: [{ pathname: '/brew-logs/bl1/edit' }] },
+    { initialEntries: ['/brew-logs/bl1/edit'], auth: 'user' },
   );
-  return render(<RouterProvider router={router} />, { wrapper: ToastProvider });
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
@@ -173,15 +164,29 @@ describe('BrewLogFormPage — loader', () => {
     expect(mockRecipeGet).not.toHaveBeenCalled();
   });
 
-  it('redirects to /brew-logs when the edit log fetch fails with 401/404', async () => {
+  it('redirects to /brew-logs when the edit log fetch fails with 404', async () => {
     mockGetLog.mockRejectedValue(new ApiError('NOT_FOUND', 'not found', undefined, 404));
 
-    await expect(
-      loader({
-        params: { id: 'missing' },
-        request: new Request('http://localhost/brew-logs/missing/edit'),
-      }),
-    ).rejects.toMatchObject({ status: 302 });
+    const thrown = await loader({
+      params: { id: 'missing' },
+      request: new Request('http://localhost/brew-logs/missing/edit'),
+    }).catch((err: unknown) => err);
+
+    expect((thrown as Response).status).toBe(302);
+    expect((thrown as Response).headers.get('Location')).toBe('/brew-logs');
+  });
+
+  it('redirects a final 401 to /login with the encoded return path (requireAuth)', async () => {
+    mockGetLog.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const thrown = await loader({
+      params: { id: 'bl1' },
+      request: new Request('http://localhost/brew-logs/bl1/edit'),
+    }).catch((err: unknown) => err);
+
+    expect((thrown as Response).headers.get('Location')).toBe(
+      '/login?next=%2Fbrew-logs%2Fbl1%2Fedit',
+    );
   });
 
   it('rethrows unexpected edit loader errors for the error boundary', async () => {

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { ConfirmProvider, Modal, useConfirm } from './Modal.tsx';
 
@@ -127,6 +127,22 @@ function ConfirmTrigger({ onResult }: { onResult: (v: boolean) => void }) {
 }
 
 describe('useConfirm', () => {
+  it('throws when no ConfirmProvider is mounted (no native confirm fallback)', () => {
+    const nativeConfirm = vi.fn(() => true);
+    vi.stubGlobal('confirm', nativeConfirm);
+    // React logs the render error to console.error before it rethrows; silence that noise.
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(() => render(<ConfirmTrigger onResult={() => {}} />)).toThrow(
+        'useConfirm must be used within ConfirmProvider',
+      );
+      expect(nativeConfirm).not.toHaveBeenCalled();
+    } finally {
+      consoleSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('resolves true when confirm button is clicked', async () => {
     let result: boolean | null = null;
     render(

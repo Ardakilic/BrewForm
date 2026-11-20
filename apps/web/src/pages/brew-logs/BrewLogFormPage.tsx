@@ -6,11 +6,13 @@ import type {
 } from '@brewform/shared/schemas';
 import { useEffect, useMemo } from 'react';
 import { redirect, useLoaderData, useNavigate } from 'react-router';
-import { ApiError, brewLogApi, recipeApi } from '../../api/index.ts';
+import { ApiError } from '../../api/errors.ts';
+import { brewLogApi, recipeApi } from '../../api/index.ts';
 import { BrewLogForm, type BrewLogFormValues } from '../../components/brew-log/BrewLogForm.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useToast } from '../../components/ui/Toast.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { requireAuth } from '../../routes/auth-guards.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('BrewLogFormPage');
@@ -29,51 +31,54 @@ export interface BrewLogFormLoaderData {
  * React Router data loader for `/brew-logs/new` and `/brew-logs/:id/edit`.
  * Create mode requires `?recipeId` (redirects to `/brew-logs` without it) and
  * fetches the recipe to prefill dose/yield from the version. Edit mode fetches
- * the existing log (the API rejects non-owners with 404); a 401/404 ApiError
- * redirects to `/brew-logs`, any other error propagates to the error boundary.
+ * the existing log (the API rejects non-owners with 404); a 404 ApiError
+ * redirects to `/brew-logs`, a final 401 redirects to `/login?next=…`
+ * (`requireAuth`), and any other error propagates to the error boundary.
  */
-export const loader = async ({
-  params,
-  request,
-}: {
-  params: Record<string, string | undefined>;
-  request: Request;
-}): Promise<BrewLogFormLoaderData> => {
-  if (params.id) {
-    log.debug({ logId: params.id }, 'BrewLogFormPage edit loader started');
-    try {
-      const editLog = await brewLogApi.get(params.id);
-      log.debug({ logId: params.id }, 'BrewLogFormPage edit loader completed');
-      return { mode: 'edit', logId: params.id, editLog };
-    } catch (err) {
-      if (err instanceof ApiError && (err.status === 401 || err.status === 404)) {
-        log.debug(
-          { logId: params.id, status: err.status },
-          'BrewLogFormPage edit loader redirecting',
-        );
-        throw redirect('/brew-logs');
+export const loader = requireAuth(
+  async ({
+    params,
+    request,
+  }: {
+    params: Record<string, string | undefined>;
+    request: Request;
+  }): Promise<BrewLogFormLoaderData> => {
+    if (params.id) {
+      log.debug({ logId: params.id }, 'BrewLogFormPage edit loader started');
+      try {
+        const editLog = await brewLogApi.get(params.id);
+        log.debug({ logId: params.id }, 'BrewLogFormPage edit loader completed');
+        return { mode: 'edit', logId: params.id, editLog };
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          log.debug(
+            { logId: params.id, status: err.status },
+            'BrewLogFormPage edit loader redirecting',
+          );
+          throw redirect('/brew-logs');
+        }
+        log.error({ err, logId: params.id }, 'BrewLogFormPage edit loader failed');
+        throw err;
       }
-      log.error({ err, logId: params.id }, 'BrewLogFormPage edit loader failed');
+    }
+    const url = new URL(request.url);
+    const recipeId = url.searchParams.get('recipeId');
+    if (!recipeId) {
+      log.debug({}, 'BrewLogFormPage create loader missing recipeId, redirecting');
+      throw redirect('/brew-logs');
+    }
+    const recipeVersionId = url.searchParams.get('recipeVersionId') ?? undefined;
+    log.debug({ recipeId, recipeVersionId }, 'BrewLogFormPage create loader started');
+    try {
+      const recipe = await recipeApi.get(recipeId);
+      log.debug({ recipeId }, 'BrewLogFormPage create loader completed');
+      return { mode: 'create', recipe, recipeId, recipeVersionId };
+    } catch (err) {
+      log.error({ err, recipeId }, 'BrewLogFormPage create loader failed');
       throw err;
     }
-  }
-  const url = new URL(request.url);
-  const recipeId = url.searchParams.get('recipeId');
-  if (!recipeId) {
-    log.debug({}, 'BrewLogFormPage create loader missing recipeId, redirecting');
-    throw redirect('/brew-logs');
-  }
-  const recipeVersionId = url.searchParams.get('recipeVersionId') ?? undefined;
-  log.debug({ recipeId, recipeVersionId }, 'BrewLogFormPage create loader started');
-  try {
-    const recipe = await recipeApi.get(recipeId);
-    log.debug({ recipeId }, 'BrewLogFormPage create loader completed');
-    return { mode: 'create', recipe, recipeId, recipeVersionId };
-  } catch (err) {
-    log.error({ err, recipeId }, 'BrewLogFormPage create loader failed');
-    throw err;
-  }
-};
+  },
+);
 
 /**
  * Page component for `/brew-logs/new` (create) and `/brew-logs/:id/edit`

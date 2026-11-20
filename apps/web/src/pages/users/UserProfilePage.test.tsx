@@ -26,15 +26,6 @@ vi.mock('../../contexts/AuthContext.tsx', () => ({
 
 vi.mock('../../api/client.ts', () => ({
   api: { get: vi.fn(), getWithMeta: vi.fn() },
-  ApiError: class extends Error {
-    code: string;
-    status: number;
-    constructor(code: string, message: string, _details?: unknown, status: number = 500) {
-      super(message);
-      this.code = code;
-      this.status = status;
-    }
-  },
 }));
 
 vi.mock('../../components/seo/SEOHead.tsx', () => ({
@@ -59,7 +50,8 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import { useSearchParams } from 'react-router';
-import { ApiError, api } from '../../api/client.ts';
+import { api } from '../../api/client.ts';
+import { ApiError } from '../../api/errors.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { loader, UserProfilePage } from './UserProfilePage.tsx';
@@ -437,7 +429,7 @@ describe('UserProfilePage — brews loader (F02)', () => {
 
     await loader(loaderArgs('http://localhost/u/diana?tab=brews&brewsPage=2'));
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=2');
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=2', undefined);
   });
 
   it('defaults an invalid ?brewsPage to 1', async () => {
@@ -450,7 +442,7 @@ describe('UserProfilePage — brews loader (F02)', () => {
 
     await loader(loaderArgs('http://localhost/u/diana?tab=brews&brewsPage=-3'));
 
-    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1');
+    expect(mockApiGetWithMeta).toHaveBeenCalledWith('/brew-logs?page=1', undefined);
   });
 
   it('skips the brew-log fetch when logged out (brewsData stays null)', async () => {
@@ -479,5 +471,28 @@ describe('UserProfilePage — brews loader (F02)', () => {
     await expect(loader(loaderArgs('http://localhost/u/diana?tab=brews'))).rejects.toBe(
       serverError,
     );
+  });
+});
+
+describe('UserProfilePage — loader not-found mapping', () => {
+  it('throws a 404 Response (not-found page) when the profile request returns 404', async () => {
+    mockApiGet.mockRejectedValue(new ApiError('NOT_FOUND', 'User not found', undefined, 404));
+
+    const thrown = await loader({
+      params: { username: 'ghost' },
+      request: new Request('http://localhost/u/ghost'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).status).toBe(404);
+  });
+
+  it('rethrows non-404 profile errors unchanged', async () => {
+    const serverError = new ApiError('INTERNAL', 'boom', undefined, 500);
+    mockApiGet.mockRejectedValue(serverError);
+
+    await expect(
+      loader({ params: { username: 'ghost' }, request: new Request('http://localhost/u/ghost') }),
+    ).rejects.toBe(serverError);
   });
 });

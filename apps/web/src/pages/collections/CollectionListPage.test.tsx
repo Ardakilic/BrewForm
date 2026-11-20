@@ -33,6 +33,7 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import type { CollectionListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import { ApiError } from '../../api/errors.ts';
 import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { CollectionListPage, loader } from './CollectionListPage.tsx';
@@ -152,5 +153,20 @@ describe('CollectionListPage', () => {
     expect(betaLink).not.toBeNull();
     expect(alphaLink!.getAttribute('href')).toBe('/collections/c1');
     expect(betaLink!.getAttribute('href')).toBe('/collections/c2');
+  });
+});
+
+describe('CollectionListPage loader — auth guard', () => {
+  it('redirects a final 401 to /login with the encoded return path', async () => {
+    mockList.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const thrown = await loader({
+      request: new Request('http://localhost/collections?page=2'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe(
+      '/login?next=%2Fcollections%3Fpage%3D2',
+    );
   });
 });

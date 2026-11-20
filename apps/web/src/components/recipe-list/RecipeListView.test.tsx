@@ -1,5 +1,5 @@
 import type { EquipmentOutput, RecipeListItemOutput } from '@brewform/shared/schemas';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -351,5 +351,51 @@ describe('RecipeListView', () => {
     expect(setSearchParams).toHaveBeenCalledTimes(1);
     const passed = setSearchParams.mock.calls[0][0] as URLSearchParams;
     expect(passed.get('author')).toBeNull();
+  });
+});
+
+/** Data-router hydrate fallback for the real-router pagination test (renders nothing). */
+const HydrateFallback = () => null;
+
+describe('RecipeListView — pagination under a real router (regression)', () => {
+  it('clicking Next on a 2-page result sets page=2 and the loader receives it with filters intact', async () => {
+    const actualRouter = await vi.importActual<typeof import('react-router')>('react-router');
+    // Use the real URL-backed hook for this test instead of the module-level stub.
+    mockUseSearchParams.mockImplementation(actualRouter.useSearchParams);
+    const { extractListParams } = await import('../../utils/recipe-filters.ts');
+    const loaderCalls: Record<string, string>[] = [];
+    const loader = vi.fn(({ request }: { request: Request }) => {
+      loaderCalls.push(extractListParams(new URL(request.url).searchParams));
+      return null;
+    });
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/recipes',
+          loader,
+          HydrateFallback,
+          element: (
+            <RecipeListView
+              source="all"
+              recipesResponse={{ data: [makeRecipe()], meta: { pagination: { total: 20 } } }}
+              equipment={[]}
+              tasteNotes={[]}
+              pageTitle="Recipes"
+              seoDescription="Browse recipes"
+            />
+          ),
+        },
+      ],
+      { initialEntries: ['/recipes?brewMethod=v60&sortBy=rating'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByText('Next'));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?brewMethod=v60&sortBy=rating&page=2');
+    });
+    await waitFor(() => expect(loaderCalls).toHaveLength(2));
+    expect(loaderCalls[1]).toMatchObject({ page: '2', brewMethod: 'v60', sortBy: 'rating' });
   });
 });

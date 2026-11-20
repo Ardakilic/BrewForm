@@ -1,10 +1,12 @@
 import type { CollectionDetailOutput, CollectionUpdate } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
 import { useLoaderData, useNavigate } from 'react-router';
-import { ApiError, collectionApi } from '../../api/index.ts';
+import { ApiError } from '../../api/errors.ts';
+import { collectionApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { requireAuth } from '../../routes/auth-guards.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('CollectionEditPage');
@@ -17,28 +19,32 @@ export interface CollectionEditLoaderData {
 /**
  * React Router data loader for `/collections/:id/edit` — fetches the collection.
  * A 404 is mapped to `throw new Response('Not Found', { status: 404 })`.
+ * Wrapped in `requireAuth`, so a final 401 redirects to `/login?next=…`.
  */
-export const loader = async ({
-  params,
-}: {
-  params: Record<string, string | undefined>;
-}): Promise<CollectionEditLoaderData> => {
-  const id = params.id;
-  if (!id) throw new Response('Not Found', { status: 404 });
-  log.debug({ collectionId: id }, 'CollectionEditPage loader started');
-  let collection: CollectionDetailOutput;
-  try {
-    collection = await collectionApi.get(id);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      throw new Response('Not Found', { status: 404 });
+export const loader = requireAuth(
+  async ({
+    params,
+  }: {
+    params: Record<string, string | undefined>;
+    request: Request;
+  }): Promise<CollectionEditLoaderData> => {
+    const id = params.id;
+    if (!id) throw new Response('Not Found', { status: 404 });
+    log.debug({ collectionId: id }, 'CollectionEditPage loader started');
+    let collection: CollectionDetailOutput;
+    try {
+      collection = await collectionApi.get(id);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        throw new Response('Not Found', { status: 404 });
+      }
+      log.error({ err, collectionId: id }, 'CollectionEditPage loader failed');
+      throw err;
     }
-    log.error({ err, collectionId: id }, 'CollectionEditPage loader failed');
-    throw err;
-  }
-  log.debug({ collectionId: id }, 'CollectionEditPage loader completed');
-  return { collection };
-};
+    log.debug({ collectionId: id }, 'CollectionEditPage loader completed');
+    return { collection };
+  },
+);
 
 /**
  * Page component for `/collections/:id/edit` — form to edit a collection.

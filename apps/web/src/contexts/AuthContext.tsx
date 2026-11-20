@@ -1,11 +1,13 @@
 import type { AuthUser } from '@brewform/shared/types';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { createLogger } from '@/utils/logger.ts';
-import { ApiError, authApi, userApi } from '../api/index.ts';
+import { ApiError } from '../api/errors.ts';
+import { authApi, userApi } from '../api/index.ts';
 
 const log = createLogger('AuthContext');
 
-interface AuthContextType {
+/** Value exposed by {@link AuthProvider} through {@link useAuth}. */
+export interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -24,7 +26,11 @@ interface AuthContextType {
   clearSessionError: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+/**
+ * The auth context object. Rendered by {@link AuthProvider}; `AppProviders` can also render it
+ * with a fixed value (its `auth` prop) so test harnesses get a deterministic session.
+ */
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 /** Pure classifier: banned-account failures resolve to a logged-out state. */
 function isBannedError(err: unknown): boolean {

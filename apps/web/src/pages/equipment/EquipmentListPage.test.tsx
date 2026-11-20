@@ -1,6 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { EquipmentListPage } from './EquipmentListPage.tsx';
 
 // ── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -16,6 +18,7 @@ vi.mock('../../api/client.ts', () => ({
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
   useTranslation: vi.fn(),
 }));
 
@@ -85,7 +88,7 @@ afterEach(() => {
 describe('EquipmentListPage', () => {
   it('renders loading state on initial mount', () => {
     mockApi.get.mockReturnValue(new Promise(() => {}));
-    render(<EquipmentListPage />);
+    renderWithAppProviders(<EquipmentListPage />, { auth: 'user' });
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
@@ -101,7 +104,7 @@ describe('EquipmentListPage', () => {
       },
     ]);
 
-    render(<EquipmentListPage />);
+    renderWithAppProviders(<EquipmentListPage />, { auth: 'user' });
 
     await waitFor(() => {
       expect(screen.getByText('Acaia Lunar')).toBeInTheDocument();
@@ -120,7 +123,7 @@ describe('EquipmentListPage', () => {
     };
     mockApi.post.mockResolvedValue(newEq);
 
-    render(<EquipmentListPage />);
+    renderWithAppProviders(<EquipmentListPage />, { auth: 'user' });
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
     await userEvent.click(screen.getByRole('button', { name: 'Add Equipment' }));
@@ -144,7 +147,7 @@ describe('EquipmentListPage', () => {
     mockApi.get.mockResolvedValue([]);
     mockApi.post.mockRejectedValue(new Error('Network error'));
 
-    render(<EquipmentListPage />);
+    renderWithAppProviders(<EquipmentListPage />, { auth: 'user' });
     await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
 
     await userEvent.click(screen.getByRole('button', { name: 'Add Equipment' }));
@@ -175,12 +178,14 @@ describe('EquipmentListPage', () => {
       },
     ]);
     mockApi.delete.mockResolvedValue({});
-    vi.stubGlobal('confirm', () => true);
 
-    render(<EquipmentListPage />);
+    renderWithAppProviders(<EquipmentListPage />, { auth: 'user' });
     await waitFor(() => expect(screen.getByText('Acaia Lunar')).toBeInTheDocument());
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    // The shared ConfirmProvider (from AppProviders) asks first; confirm inside the dialog.
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     await waitFor(() => {
       expect(mockApi.delete).toHaveBeenCalledTimes(1);
@@ -201,12 +206,14 @@ describe('EquipmentListPage', () => {
       },
     ]);
     mockApi.delete.mockRejectedValue(new Error('Network error'));
-    vi.stubGlobal('confirm', () => true);
 
-    render(<EquipmentListPage />);
+    renderWithAppProviders(<EquipmentListPage />, { auth: 'user' });
     await waitFor(() => expect(screen.getByText('Acaia Lunar')).toBeInTheDocument());
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    // The shared ConfirmProvider (from AppProviders) asks first; confirm inside the dialog.
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     await waitFor(() => {
       expect(mockApi.delete).toHaveBeenCalledTimes(1);

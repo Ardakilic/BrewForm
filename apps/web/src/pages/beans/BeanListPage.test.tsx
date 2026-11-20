@@ -1,9 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
-import { AuthProvider } from '../../contexts/AuthContext.tsx';
-import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { BeanListPage } from './BeanListPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -57,17 +54,7 @@ vi.mock('../../api/index.ts', () => ({
 import { beanApi } from '../../api/index.ts';
 
 function renderPage() {
-  return render(
-    <MemoryRouter>
-      <I18nProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <BeanListPage />
-          </AuthProvider>
-        </ToastProvider>
-      </I18nProvider>
-    </MemoryRouter>,
-  );
+  return renderWithAppProviders(<BeanListPage />, { auth: 'user', locale: 'en' });
 }
 
 const mockBeans = [
@@ -147,11 +134,13 @@ describe('BeanListPage', () => {
   it('shows an error toast when delete fails', async () => {
     vi.mocked(beanApi.list).mockResolvedValue(mockBeans);
     vi.mocked(beanApi.delete).mockRejectedValue(new Error('Network error'));
-    vi.stubGlobal('confirm', () => true);
     renderPage();
     await waitFor(() => expect(screen.getByText('Ethiopian Yirgacheffe')).toBeInTheDocument());
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
+    // The shared ConfirmProvider (from AppProviders) asks first; confirm inside the dialog.
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     await waitFor(() => {
       expect(screen.getByText('Failed to delete bean.')).toBeInTheDocument();

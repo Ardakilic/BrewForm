@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractListParams } from './recipe-filters.ts';
+import { extractListParams, parsePageParam } from './recipe-filters.ts';
 
 /**
  * recipe-filters — extractListParams parses sanitised recipe-list query
@@ -162,5 +162,15 @@ describe('extractListParams', () => {
     }
     const second = extractListParams(reSerialized);
     expect(second).toEqual(first);
+  });
+});
+
+describe('parsePageParam', () => {
+  it('keeps a positive integer', () => {
+    expect(parsePageParam('3')).toBe(3);
+  });
+
+  it.each([null, '', 'abc', '0', '-3'])('normalises %s to page 1', (raw) => {
+    expect(parsePageParam(raw)).toBe(1);
   });
 });

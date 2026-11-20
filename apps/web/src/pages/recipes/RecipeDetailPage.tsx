@@ -17,7 +17,8 @@ import {
   useParams,
 } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { ApiError, collectionApi, commentApi, recipeApi } from '../../api/index.ts';
+import { ApiError } from '../../api/errors.ts';
+import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
 import { BrewHistorySection } from '../../components/brew-log/BrewHistorySection.tsx';
 import { RecipeBrewStats } from '../../components/brew-log/RecipeBrewStats.tsx';

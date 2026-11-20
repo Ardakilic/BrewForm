@@ -100,6 +100,7 @@ export function RecipeListView({
     minRating,
     maxRating,
     updateFilter,
+    setPage,
     clearAllFilters,
   } = useRecipeFilters();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -428,7 +429,7 @@ export function RecipeListView({
                 <PaginationControls
                   page={page}
                   totalPages={totalPages}
-                  onPageChange={(p) => updateFilter('page', String(p))}
+                  onPageChange={setPage}
                   pageLabel={t('recipe.list.page')}
                 />
               )}

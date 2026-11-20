@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router';
+import { parsePageParam } from '../../utils/recipe-filters.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -25,29 +26,34 @@ export interface UseRecipeFiltersResult {
   minRating: string;
   maxRating: string;
   updateFilter: (key: string, value: string | string[]) => void;
+  setPage: (page: number) => void;
   clearAllFilters: () => void;
 }
 
 /**
  * Reads and writes recipe-list filter state from the URL search params.
  *
- * - Parses scalar filters (page, brewMethod, drinkType, etc.) with safe
- *   defaults.
+ * - Parses scalar filters (brewMethod, drinkType, etc.) with safe defaults,
+ *   and `page` with the loader's rules (`parsePageParam`: a positive integer,
+ *   otherwise 1).
  * - Parses `tasteNoteIds` as a comma-separated UUID list, dropping any
  *   non-UUID entry.
  * - Exposes `updateFilter(key, value)` which sets the param (joining
- *   arrays with `,`) or deletes it when empty, and always resets the
- *   `page` param so the user lands on page 1 after any filter change.
+ *   arrays with `,`) or deletes it when empty. A filter change (any key
+ *   other than `page`) removes `page` so the user lands on page 1;
+ *   `updateFilter('page', n)` keeps every filter.
+ * - Exposes `setPage(n)` which sets only `page`, keeping every filter, and
+ *   omits it for page 1 (the default is never written to the URL).
  * - Exposes `clearAllFilters()` which removes every URL search param.
  *
- * The hook keeps a self-contained UUID regex (not re-imported from
- * `apps/web/src/utils/recipe-filters.ts`) so it stays independent of
- * the loader's parameter-extraction layer.
+ * The hook keeps a self-contained UUID regex for `tasteNoteIds`, and shares
+ * only the `page` parser with the loader's parameter-extraction layer
+ * (`apps/web/src/utils/recipe-filters.ts`), so both read the same page.
  */
 export function useRecipeFilters(): UseRecipeFiltersResult {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const page = Number(searchParams.get('page')) || 1;
+  const page = parsePageParam(searchParams.get('page'));
   const brewMethod = searchParams.get('brewMethod') ?? '';
   const drinkType = searchParams.get('drinkType') ?? '';
   const visibility = searchParams.get('visibility') ?? '';
@@ -72,8 +78,8 @@ export function useRecipeFilters(): UseRecipeFiltersResult {
 
   /**
    * Set or delete a URL search-param. Arrays are joined with `,`;
-   * empty values delete the key. The `page` param is always cleared
-   * so the user is returned to page 1 on any filter change.
+   * empty values delete the key. Changing any key other than `page`
+   * clears `page` so the user is returned to page 1.
    */
   function updateFilter(key: string, value: string | string[]): void {
     const params = new URLSearchParams(searchParams);
@@ -88,7 +94,18 @@ export function useRecipeFilters(): UseRecipeFiltersResult {
     } else {
       params.delete(key);
     }
-    params.delete('page');
+    if (key !== 'page') params.delete('page');
+    setSearchParams(params);
+  }
+
+  /** Go to page `n`, keeping every filter; page 1 removes the `page` param. */
+  function setPage(n: number): void {
+    const params = new URLSearchParams(searchParams);
+    if (n > 1) {
+      params.set('page', String(n));
+    } else {
+      params.delete('page');
+    }
     setSearchParams(params);
   }
 
@@ -116,6 +133,7 @@ export function useRecipeFilters(): UseRecipeFiltersResult {
     minRating,
     maxRating,
     updateFilter,
+    setPage,
     clearAllFilters,
   };
 }

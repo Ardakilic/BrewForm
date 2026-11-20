@@ -27,25 +27,10 @@ vi.mock('../api/index', () => ({
     delete: vi.fn(),
     upload: vi.fn(),
   },
-  ApiError: class extends Error {
-    code: string;
-    status: number;
-    details?: Array<{ field: string; message: string }>;
-    constructor(
-      code: string,
-      message: string,
-      details?: Array<{ field: string; message: string }>,
-      status: number = 500,
-    ) {
-      super(message);
-      this.code = code;
-      this.status = status;
-      this.details = details;
-    }
-  },
 }));
 
-import { ApiError, userApi } from '../api/index.ts';
+import { ApiError } from '../api/errors.ts';
+import { userApi } from '../api/index.ts';
 
 const VALID_USER: AuthUser = {
   id: 'u1',

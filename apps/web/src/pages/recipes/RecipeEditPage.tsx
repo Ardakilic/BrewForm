@@ -9,7 +9,7 @@ import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { ApiError } from '../../api/client.ts';
+import { ApiError } from '../../api/errors.ts';
 import { recipeApi } from '../../api/index.ts';
 import { Field, Section } from '../../components/form/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';

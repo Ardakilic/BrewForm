@@ -1,12 +1,13 @@
 import type { NotificationOutput, PaginatedResponse } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { redirect, useLoaderData, useSearchParams } from 'react-router';
-import { ApiError, notificationApi } from '../../api/index.ts';
+import { useLoaderData, useSearchParams } from 'react-router';
+import { notificationApi } from '../../api/index.ts';
 import { NotificationItem } from '../../components/layout/NotificationItem.tsx';
 import { PaginationControls } from '../../components/recipe-list/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { requireAuth } from '../../routes/auth-guards.ts';
 import { createLogger } from '../../utils/logger.ts';
 import { notifyNotificationsChanged } from '../../utils/notification-events.ts';
 
@@ -20,28 +21,24 @@ export interface NotificationListLoaderData {
 /**
  * React Router data loader for `/notifications` — fetches the authenticated
  * user's notifications for the requested `?page` (newest first, paginated).
- * Redirects to `/login` on a 401, mirroring the other `RequireAuth`'d
- * paginated list loaders.
+ * Wrapped in `requireAuth`, so a final 401 redirects to `/login?next=…`.
  */
-export const loader = async ({
-  request,
-}: {
-  request: Request;
-}): Promise<NotificationListLoaderData> => {
-  log.debug({}, 'NotificationListPage loader started');
-  const url = new URL(request.url);
-  const page = Number(url.searchParams.get('page')) || 1;
-  const unreadOnly = url.searchParams.get('unreadOnly') === 'true';
-  try {
-    const notificationsResponse = await notificationApi.list(page, unreadOnly);
-    log.debug({ page, unreadOnly }, 'NotificationListPage loader completed');
-    return { notificationsResponse };
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) throw redirect('/login');
-    log.error({ err }, 'NotificationListPage loader failed');
-    throw err;
-  }
-};
+export const loader = requireAuth(
+  async ({ request }: { request: Request }): Promise<NotificationListLoaderData> => {
+    log.debug({}, 'NotificationListPage loader started');
+    const url = new URL(request.url);
+    const page = Number(url.searchParams.get('page')) || 1;
+    const unreadOnly = url.searchParams.get('unreadOnly') === 'true';
+    try {
+      const notificationsResponse = await notificationApi.list(page, unreadOnly);
+      log.debug({ page, unreadOnly }, 'NotificationListPage loader completed');
+      return { notificationsResponse };
+    } catch (err) {
+      log.error({ err }, 'NotificationListPage loader failed');
+      throw err;
+    }
+  },
+);
 
 /**
  * Full-page notification list for `/notifications`: a paginated feed of the

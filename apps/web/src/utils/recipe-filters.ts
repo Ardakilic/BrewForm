@@ -21,21 +21,23 @@ export interface ListFilterParams {
 }
 
 /**
+ * Parses a raw `page` search-param value: a positive integer is kept (`parseInt` rules, so
+ * `"2abc"` is 2), anything else (missing, non-numeric, zero, negative) is page 1.
+ */
+export function parsePageParam(raw: string | null): number {
+  if (raw === null) return 1;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+/**
  * Extracts sanitised recipe-list query params from the URL: clamps
  * `page` to a positive integer, defaults `perPage`/`sortBy`, drops
  * empty filters, and rejects non-UUID equipment/variety ids.
  */
 export function extractListParams(sp: URLSearchParams): Record<string, string> {
-  const rawPage = sp.get('page');
-  let page = '1';
-  if (rawPage !== null) {
-    const parsed = Number.parseInt(rawPage, 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      page = String(parsed);
-    }
-  }
   const params: Record<string, string> = {
-    page,
+    page: String(parsePageParam(sp.get('page'))),
     perPage: '12',
     sortBy: sp.get('sortBy') ?? 'createdAt',
   };

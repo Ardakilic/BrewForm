@@ -58,13 +58,14 @@ export function AdminUsersPage() {
     if (q) params.q = q;
     adminApi
       .getUsers(params)
-      .then((data) => {
-        setUsers(data.users);
+      .then((res) => {
+        const total = res.meta.pagination.total;
+        setUsers(res.data);
         setPagination((prev) => ({
           ...prev,
           page,
-          total: data.total,
-          totalPages: Math.ceil(data.total / prev.perPage),
+          total,
+          totalPages: Math.ceil(total / prev.perPage),
         }));
       })
       .catch((err) => {

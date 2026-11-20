@@ -11,6 +11,7 @@ import { useConfirm } from '../../components/ui/Modal.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
+import { requireAuth } from '../../routes/auth-guards.ts';
 
 /**
  * Convert the flat GET response to the form state. F05 flatten: the request
@@ -35,11 +36,14 @@ function toUserPreferences(out: UserPreferencesOutput): UserPreferences {
 
 const log = createLogger('SettingsPage');
 
-/** Fetches the current user's stored preferences; returns `{ preferences }`. */
-export const loader = async () => {
+/**
+ * Fetches the current user's stored preferences; returns `{ preferences }`. Wrapped in
+ * `requireAuth`, so a final 401 redirects to `/login?next=%2Fsettings`.
+ */
+export const loader = requireAuth(async () => {
   const out = await api.get<UserPreferencesOutput>('/preferences');
   return { preferences: toUserPreferences(out) };
-};
+});
 
 /**
  * Account settings page: read-only profile info, theme/locale pickers,

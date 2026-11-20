@@ -13,7 +13,7 @@ import type {
 import type { BrewMethod, DrinkType, Visibility } from '@brewform/shared/types';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { ApiError } from '../../api/client.ts';
+import { ApiError } from '../../api/errors.ts';
 import { beanApi, equipmentApi, recipeApi, setupApi } from '../../api/index.ts';
 import { Field, Section } from '../../components/form/index.ts';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';

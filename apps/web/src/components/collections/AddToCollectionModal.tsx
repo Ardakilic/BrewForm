@@ -1,6 +1,7 @@
 import type { CollectionListItemOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { ApiError, collectionApi } from '../../api/index.ts';
+import { ApiError } from '../../api/errors.ts';
+import { collectionApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { createLogger } from '../../utils/logger.ts';
 import { Modal } from '../ui/Modal.tsx';

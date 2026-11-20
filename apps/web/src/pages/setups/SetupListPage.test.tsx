@@ -1,9 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../../components/ui/Toast.tsx';
-import { AuthProvider } from '../../contexts/AuthContext.tsx';
-import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
 import { SetupListPage } from './SetupListPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -57,17 +54,7 @@ vi.mock('../../api/index.ts', () => ({
 import { setupApi } from '../../api/index.ts';
 
 function renderPage() {
-  return render(
-    <MemoryRouter>
-      <I18nProvider>
-        <ToastProvider>
-          <AuthProvider>
-            <SetupListPage />
-          </AuthProvider>
-        </ToastProvider>
-      </I18nProvider>
-    </MemoryRouter>,
-  );
+  return renderWithAppProviders(<SetupListPage />, { auth: 'user', locale: 'en' });
 }
 
 const mockSetups = [

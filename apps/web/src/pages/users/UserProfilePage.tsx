@@ -8,6 +8,7 @@ import type {
 } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
 import { Link, useLoaderData, useParams, useSearchParams } from 'react-router';
+import { ApiError } from '../../api/errors.ts';
 import { brewLogApi, collectionApi, followApi, userApi } from '../../api/index.ts';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
 import { CollectionCard } from '../../components/collections/CollectionCard.tsx';
@@ -41,7 +42,8 @@ export interface ProfileLoaderData {
  * that the viewer IS the profile being viewed (a URL-forced `?tab=brews` on
  * another profile, or while logged out, skips the request and leaves
  * `brewsData` null). Once ownership is established, list errors propagate to
- * the error boundary rather than rendering a misleading empty journal.
+ * the error boundary rather than rendering a misleading empty journal. An
+ * unknown username (API 404) throws a 404 `Response` so the not-found page renders.
  */
 export const loader = async ({
   params,
@@ -52,7 +54,16 @@ export const loader = async ({
 }): Promise<ProfileLoaderData> => {
   const username = params.username;
   if (!username) throw new Response('Not Found', { status: 404 });
-  const profile = await userApi.getProfile(username);
+  let profile: PublicUserOutput;
+  try {
+    profile = await userApi.getProfile(username);
+  } catch (err) {
+    // An unknown username renders the not-found page, not the generic error boundary.
+    if (err instanceof ApiError && err.status === 404) {
+      throw new Response('Not Found', { status: 404 });
+    }
+    throw err;
+  }
   const url = new URL(request.url);
   const tab = url.searchParams.get('tab') ?? 'recipes';
   let followData: FollowRecord[] | null = null;

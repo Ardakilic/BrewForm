@@ -11,15 +11,6 @@ vi.mock('../../api/index.ts', () => ({
     markRead: vi.fn(),
     unreadCount: vi.fn(),
   },
-  ApiError: class extends Error {
-    code: string;
-    status: number;
-    constructor(code: string, message: string, status = 500) {
-      super(message);
-      this.code = code;
-      this.status = status;
-    }
-  },
 }));
 
 vi.mock('../../utils/logger.ts', () => ({
@@ -59,6 +50,7 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../../api/errors.ts';
 import { notificationApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { loader, NotificationListPage } from './NotificationListPage.tsx';
@@ -228,5 +220,20 @@ describe('NotificationListPage', () => {
     await waitFor(() => {
       expect(mockList).toHaveBeenLastCalledWith(1, false);
     });
+  });
+});
+
+describe('NotificationListPage loader — auth guard', () => {
+  it('redirects a final 401 to /login with the encoded return path', async () => {
+    mockList.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const thrown = await loader({
+      request: new Request('http://localhost/notifications?unreadOnly=true'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe(
+      '/login?next=%2Fnotifications%3FunreadOnly%3Dtrue',
+    );
   });
 });

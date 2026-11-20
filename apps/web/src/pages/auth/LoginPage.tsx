@@ -3,19 +3,23 @@ import { createLogger } from '@/utils/logger.ts';
 
 const log = createLogger('LoginPage');
 
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { getSafeNext } from '../../utils/safe-next.ts';
 
 /**
  * Login form (email/password with remember-me) driven by the auth
- * context; navigates home on success and surfaces API errors inline.
+ * context. On success it replaces the history entry with the `?next=` return
+ * path when that is a safe same-origin path (`getSafeNext`), else `/`; API
+ * errors are surfaced inline.
  */
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +40,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password, rememberMe);
-      navigate('/');
+      navigate(getSafeNext(searchParams) ?? '/', { replace: true });
     } catch (err: unknown) {
       log.error({ err }, 'LoginPage login failed');
       const message = err instanceof Error ? err.message : t('auth.login.error.failed');

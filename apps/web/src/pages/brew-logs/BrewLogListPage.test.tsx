@@ -7,13 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../api/index.ts', () => ({
   brewLogApi: { list: vi.fn() },
-  ApiError: class extends Error {
-    status: number;
-    constructor(status: number) {
-      super('api error');
-      this.status = status;
-    }
-  },
 }));
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
@@ -34,6 +27,7 @@ vi.mock('@/utils/logger.ts', () => ({
 // ── Imports after mocks ────────────────────────────────────────────────────
 
 import type { BrewLogListItemOutput, PaginatedResponse } from '@brewform/shared/schemas';
+import { ApiError } from '../../api/errors.ts';
 import { brewLogApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { BrewLogListPage, loader } from './BrewLogListPage.tsx';
@@ -189,5 +183,20 @@ describe('BrewLogListPage — loader page parsing', () => {
     mockList.mockClear();
     await loader({ request: new Request('http://localhost/brew-logs?page=4') });
     expect(mockList).toHaveBeenCalledWith({ page: 4 });
+  });
+});
+
+describe('BrewLogListPage loader — auth guard', () => {
+  it('redirects a final 401 to /login with the encoded return path', async () => {
+    mockList.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
+
+    const thrown = await loader({
+      request: new Request('http://localhost/brew-logs?page=2'),
+    }).catch((err: unknown) => err);
+
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe(
+      '/login?next=%2Fbrew-logs%3Fpage%3D2',
+    );
   });
 });

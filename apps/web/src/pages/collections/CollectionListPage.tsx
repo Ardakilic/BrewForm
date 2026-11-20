@@ -6,6 +6,7 @@ import { CollectionCard } from '../../components/collections/CollectionCard.tsx'
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { requireAuth } from '../../routes/auth-guards.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('CollectionListPage');
@@ -17,9 +18,10 @@ export interface CollectionListLoaderData {
 
 /**
  * React Router data loader for `/collections` — fetches the authenticated
- * user's collections (all visibilities), paginated.
+ * user's collections (all visibilities), paginated. Wrapped in `requireAuth`,
+ * so a final 401 redirects to `/login?next=…`.
  */
-export const loader = async (): Promise<CollectionListLoaderData> => {
+export const loader = requireAuth(async (): Promise<CollectionListLoaderData> => {
   log.debug({}, 'CollectionListPage loader started');
   try {
     const collectionsResponse = await collectionApi.list();
@@ -29,7 +31,7 @@ export const loader = async (): Promise<CollectionListLoaderData> => {
     log.error({ err }, 'CollectionListPage loader failed');
     throw err;
   }
-};
+});
 
 /**
  * Page component for `/collections` — displays a grid of the user's

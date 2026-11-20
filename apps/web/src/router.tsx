@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { RequireAuth } from './components/auth/RequireAuth.tsx';
 import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
 import { Layout } from './components/layout/Layout.tsx';
@@ -65,8 +65,12 @@ import { followAction } from './routes/follow.ts';
 import { likeAction } from './routes/like.ts';
 import { rateAction } from './routes/rate.ts';
 
-/** Application browser router — declares all routes, loaders, and resource-route actions. */
-export const router = createBrowserRouter([
+/**
+ * The application route tree: every page route, loader and resource-route action.
+ * Exported as plain data so tests (the router smoke test) can render it through
+ * `createMemoryRouter`; importing this module does not start a router.
+ */
+export const routes: RouteObject[] = [
   {
     path: '/',
     element: <Layout />,
@@ -466,4 +470,12 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]);
+];
+
+/**
+ * Creates the browser router for the running app from {@link routes}. Called once by
+ * `App.tsx`; kept as a factory so module import has no side effects (no loaders start).
+ */
+export function createAppRouter() {
+  return createBrowserRouter(routes);
+}
