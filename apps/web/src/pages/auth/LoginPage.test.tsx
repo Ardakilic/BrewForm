@@ -46,6 +46,7 @@ vi.mock('../../api/index', () => ({
   },
 }));
 
+import { ApiError } from '../../api/errors.ts';
 import { authApi } from '../../api/index.ts';
 
 async function renderLoginPage() {
@@ -369,5 +370,48 @@ describe('LoginPage', () => {
       { err: expect.any(Error) },
       'LoginPage login failed',
     );
+  });
+});
+
+describe('LoginPage — rate limiting', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('shows the Turkish error.rateLimited text with the Retry-After seconds on a 429', async () => {
+    localStorage.setItem('brewform_locale', 'tr');
+    try {
+      vi.mocked(authApi.login).mockRejectedValue(
+        new ApiError(
+          'RATE_LIMITED',
+          'Too many login attempts, please try again later',
+          undefined,
+          429,
+          120,
+        ),
+      );
+      render(
+        <MemoryRouter>
+          <I18nProvider>
+            <AuthProvider>
+              <LoginPage />
+            </AuthProvider>
+          </I18nProvider>
+        </MemoryRouter>,
+      );
+      const submit = await screen.findByRole('button', { name: 'Giriş Yap' });
+      await userEvent.type(screen.getByLabelText('E-posta'), 'test@test.com');
+      await userEvent.type(screen.getByLabelText('Şifre'), 'password123');
+      await userEvent.click(submit);
+
+      expect(
+        await screen.findByText(
+          'Çok fazla deneme yapıldı. Lütfen 120 saniye sonra tekrar deneyin.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Too many login attempts/)).not.toBeInTheDocument();
+    } finally {
+      localStorage.removeItem('brewform_locale');
+    }
   });
 });

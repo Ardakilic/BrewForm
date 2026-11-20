@@ -5,6 +5,7 @@ import { authApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { getApiErrorMessage } from '../../utils/apiErrorMessage.ts';
 
 const log = createLogger('ResetPasswordPage');
 
@@ -49,8 +50,7 @@ export function ResetPasswordPage() {
       setSuccess(true);
     } catch (err: unknown) {
       log.error({ err }, 'ResetPasswordPage resetPassword failed');
-      const message = err instanceof Error ? err.message : t('auth.resetPassword.error.failed');
-      setError(message);
+      setError(getApiErrorMessage(err, t, 'auth.resetPassword.error.failed'));
     } finally {
       setLoading(false);
     }

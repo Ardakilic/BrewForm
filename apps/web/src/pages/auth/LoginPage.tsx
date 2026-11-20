@@ -8,6 +8,7 @@ import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { getApiErrorMessage } from '../../utils/apiErrorMessage.ts';
 import { getSafeNext } from '../../utils/safe-next.ts';
 
 /**
@@ -43,8 +44,7 @@ export function LoginPage() {
       navigate(getSafeNext(searchParams) ?? '/', { replace: true });
     } catch (err: unknown) {
       log.error({ err }, 'LoginPage login failed');
-      const message = err instanceof Error ? err.message : t('auth.login.error.failed');
-      setError(message);
+      setError(getApiErrorMessage(err, t, 'auth.login.error.failed'));
     } finally {
       setLoading(false);
     }

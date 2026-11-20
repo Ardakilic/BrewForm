@@ -3,6 +3,7 @@ import { api } from '../api/client.ts';
 import { SEOHead } from '../components/seo/SEOHead.tsx';
 import { ErrorState } from '../components/ui/ErrorState.tsx';
 import { useTranslation } from '../contexts/I18nContext.tsx';
+import { getApiErrorMessage } from '../utils/apiErrorMessage.ts';
 
 interface ContactFormData {
   name: string;
@@ -39,8 +40,7 @@ export function ContactPage() {
       await api.post<{ message: string }>('/contact', data);
       setSent(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t('error.500');
-      setError(msg);
+      setError(getApiErrorMessage(err, t, 'error.500'));
     } finally {
       setLoading(false);
     }

@@ -197,3 +197,46 @@ describe('api client', () => {
     expect((error as ApiError).status).toBe(503);
   });
 });
+
+describe('rate-limited responses', () => {
+  /** A 429 envelope response with an optional `Retry-After` header. */
+  function tooMany(retryAfter?: string): Response {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (retryAfter !== undefined) headers['Retry-After'] = retryAfter;
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: { code: 'RATE_LIMITED', message: 'Too many login attempts', requestId: 'r1' },
+      }),
+      { status: 429, headers },
+    );
+  }
+
+  it('exposes Retry-After (delta-seconds) as retryAfterSeconds on a 429 ApiError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(tooMany('120')));
+
+    const error = await api.post('/auth/login', {}).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).code).toBe('RATE_LIMITED');
+    expect((error as ApiError).status).toBe(429);
+    expect((error as ApiError).retryAfterSeconds).toBe(120);
+  });
+
+  it('leaves retryAfterSeconds undefined when Retry-After is missing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(tooMany()));
+
+    const error = await api.post('/auth/login', {}).catch((err: unknown) => err);
+
+    expect((error as ApiError).code).toBe('RATE_LIMITED');
+    expect((error as ApiError).retryAfterSeconds).toBeUndefined();
+  });
+
+  it('leaves retryAfterSeconds undefined for an invalid or HTTP-date Retry-After', async () => {
+    for (const value of ['soon', '-5', '1.5', 'Wed, 21 Oct 2026 07:28:00 GMT']) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(tooMany(value)));
+      const error = await api.post('/auth/login', {}).catch((err: unknown) => err);
+      expect((error as ApiError).retryAfterSeconds).toBeUndefined();
+    }
+  });
+});

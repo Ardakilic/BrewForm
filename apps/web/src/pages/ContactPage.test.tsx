@@ -13,6 +13,7 @@ vi.mock('../contexts/I18nContext.tsx', () => ({
 }));
 
 import { api } from '../api/client.ts';
+import { ApiError } from '../api/errors.ts';
 import { useTranslation } from '../contexts/I18nContext.tsx';
 
 const mockUseTranslation = vi.mocked(useTranslation);
@@ -31,6 +32,7 @@ const enT = (key: string) => {
     'contact.success.title': 'Message Sent',
     'contact.success.message': "We'll get back to you soon.",
     'error.500': 'Something went wrong',
+    'error.rateLimited': 'Too many attempts. Please try again in {seconds} seconds.',
   };
   return map[key] ?? key;
 };
@@ -121,5 +123,35 @@ describe('ContactPage', () => {
     });
 
     expect(screen.queryByText('Message Sent')).not.toBeInTheDocument();
+  });
+
+  it('shows the localised rate-limit message with the Retry-After seconds on a 429', async () => {
+    mockApiPost.mockRejectedValueOnce(
+      new ApiError('RATE_LIMITED', 'Too many contact messages', undefined, 429, 120),
+    );
+
+    const { container } = render(<ContactPage />);
+
+    fireEvent.change(container.querySelector('input[name="name"]')!, {
+      target: { value: 'Carol' },
+    });
+    fireEvent.change(container.querySelector('input[name="email"]')!, {
+      target: { value: 'carol@example.com' },
+    });
+    fireEvent.change(container.querySelector('input[name="subject"]')!, {
+      target: { value: 'Rate limit' },
+    });
+    fireEvent.change(container.querySelector('textarea[name="message"]')!, {
+      target: { value: 'This one is throttled.' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Too many attempts. Please try again in 120 seconds.'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Too many contact messages')).not.toBeInTheDocument();
   });
 });

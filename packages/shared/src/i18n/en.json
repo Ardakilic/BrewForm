@@ -284,6 +284,7 @@
   "error.boundary.reload": "Reload Page",
   "error.boundary.genericMessage": "Something went wrong.",
   "error.route.loadFailed": "This page could not be loaded. Please try again.",
+  "error.rateLimited": "Too many attempts. Please try again in {seconds} seconds.",
   "common.save": "Save",
   "common.today": "today",
   "common.cancel": "Cancel",

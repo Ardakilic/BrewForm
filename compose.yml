@@ -28,6 +28,10 @@ services:
       - CACHE_ENABLED=true
       - CACHE_DRIVER=memory
       - REDIS_URL=${REDIS_URL:-redis://:${VALKEY_PASSWORD:-dev-valkey-password}@valkey:6379}
+      # No proxy in front of the dev API: trust only the TCP peer. Override
+      # RATE_LIMIT_STORE=redis (with `docker compose up -d valkey`) to share counters.
+      - TRUST_PROXY=none
+      - RATE_LIMIT_STORE=${RATE_LIMIT_STORE:-memory}
       - JWT_SECRET=dev-secret-change-me
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d

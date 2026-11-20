@@ -4,6 +4,7 @@ import { createLogger } from '@/utils/logger.ts';
 import { authApi } from '../../api/index.ts';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { getApiErrorMessage, isRateLimitedError } from '../../utils/apiErrorMessage.ts';
 
 const log = createLogger('VerifyEmailPage');
 
@@ -42,7 +43,13 @@ export function VerifyEmailPage() {
       .catch((err) => {
         log.error({ err }, 'VerifyEmailPage verifyEmail failed');
         setStatus('error');
-        setErrorMessage(t('verifyEmail.failed'));
+        // A rate limit gets the localised "try again in N seconds"; any other
+        // failure keeps the generic localised message.
+        setErrorMessage(
+          isRateLimitedError(err)
+            ? getApiErrorMessage(err, t, 'verifyEmail.failed')
+            : t('verifyEmail.failed'),
+        );
       });
   }, [token, refreshUser, t]);
 

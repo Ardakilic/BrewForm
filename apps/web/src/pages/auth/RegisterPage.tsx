@@ -7,6 +7,7 @@ import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { getApiErrorMessage } from '../../utils/apiErrorMessage.ts';
 import { getSafeNext } from '../../utils/safe-next.ts';
 
 const log = createLogger('RegisterPage');
@@ -74,8 +75,7 @@ export function RegisterPage() {
       navigate(getSafeNext(searchParams) ?? '/', { replace: true });
     } catch (err: unknown) {
       log.error({ err }, 'RegisterPage registration failed');
-      const message = err instanceof Error ? err.message : t('auth.register.error.failed');
-      setError(message);
+      setError(getApiErrorMessage(err, t, 'auth.register.error.failed'));
     } finally {
       setLoading(false);
     }

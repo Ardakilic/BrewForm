@@ -105,6 +105,21 @@ async function parseEnvelope(response: Response): Promise<ResponseEnvelope | nul
 }
 
 /**
+ * Parse a `Retry-After` header in its delta-seconds form (a non-negative integer).
+ * The HTTP-date form and anything else yield `undefined`.
+ *
+ * @param value - The raw header value, or `null` when absent.
+ * @returns Whole seconds to wait, or `undefined` when missing or invalid.
+ */
+export function parseRetryAfter(value: string | null): number | undefined {
+  if (value === null) return undefined;
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return undefined;
+  const seconds = Number(trimmed);
+  return Number.isSafeInteger(seconds) ? seconds : undefined;
+}
+
+/**
  * Sends one API request: adds the base URL, cookies, `X-Request-ID` and a JSON content type,
  * retries once after the shared session refresh on a 401 from a non-auth endpoint, parses the
  * body defensively, and maps failures to {@link ApiError}. An aborted request rethrows the
@@ -154,6 +169,7 @@ async function requestInternal(endpoint: string, options: RequestInit): Promise<
         data.error.message || 'Request failed',
         data.error.details,
         response.status,
+        parseRetryAfter(response.headers.get('Retry-After')),
       );
     }
 

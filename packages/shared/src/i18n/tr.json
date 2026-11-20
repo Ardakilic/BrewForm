@@ -284,6 +284,7 @@
   "error.boundary.reload": "Sayfayı Yeniden Yükle",
   "error.boundary.genericMessage": "Bir şeyler ters gitti.",
   "error.route.loadFailed": "Bu sayfa yüklenemedi. Lütfen tekrar deneyin.",
+  "error.rateLimited": "Çok fazla deneme yapıldı. Lütfen {seconds} saniye sonra tekrar deneyin.",
   "common.save": "Kaydet",
   "common.today": "bugün",
   "common.cancel": "İptal",
