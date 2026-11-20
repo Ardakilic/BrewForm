@@ -112,6 +112,45 @@ function stubImageAndObjectUrls() {
   };
 }
 
+/**
+ * jsdom has no 2D canvas, so `createThumbnail` would give up (no thumbnail).
+ * Stub `getContext` and `toBlob` so a JPEG thumbnail blob is produced.
+ */
+function stubCanvas() {
+  const proto = HTMLCanvasElement.prototype;
+  const originalGetContext = proto.getContext;
+  const originalToBlob = proto.toBlob;
+  Object.defineProperty(proto, 'getContext', {
+    value: () => ({ drawImage: () => {} }),
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(proto, 'toBlob', {
+    value(callback: BlobCallback) {
+      callback(new Blob(['thumb'], { type: 'image/jpeg' }));
+    },
+    configurable: true,
+    writable: true,
+  });
+  return () => {
+    Object.defineProperty(proto, 'getContext', {
+      value: originalGetContext,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(proto, 'toBlob', {
+      value: originalToBlob,
+      configurable: true,
+      writable: true,
+    });
+  };
+}
+
+/** A rejection shaped like the API client's `ApiError` (server error `code`). */
+function apiError(code: string): Error {
+  return Object.assign(new Error(code), { name: 'ApiError', code, status: 400 });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockApi.upload.mockResolvedValue({ id: 'p1', url: '/uploads/p1.jpg' } as unknown as Awaited<
@@ -164,6 +203,47 @@ describe('PhotoUpload', () => {
         expect(mockApi.upload).toHaveBeenCalledWith('/photos', expect.any(FormData));
       });
       expect(onUploadComplete).toHaveBeenCalledWith([{ id: 'p1', url: '/uploads/p1.jpg' }]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('sends fixed multipart filenames instead of the local filenames', async () => {
+    const restoreImage = stubImageAndObjectUrls();
+    const restoreCanvas = stubCanvas();
+    try {
+      const { container } = render(<PhotoUpload recipeId="r1" />);
+      selectFile(container, makeFile('my holiday at home.png', 'image/png', 2048));
+      await waitFor(() => {
+        expect(mockApi.upload).toHaveBeenCalledTimes(1);
+      });
+      const form = mockApi.upload.mock.calls[0][1] as FormData;
+      expect((form.get('file') as File).name).toBe('photo.png');
+      expect((form.get('thumbnail') as File).name).toBe('thumbnail.jpg');
+      for (const [, value] of form.entries()) {
+        if (value instanceof File) expect(value.name).not.toContain('holiday');
+      }
+    } finally {
+      restoreCanvas();
+      restoreImage();
+    }
+  });
+
+  it.each([
+    ['FILE_TOO_LARGE', /photo\.jpg: File too large/i],
+    ['PAYLOAD_TOO_LARGE', /photo\.jpg: File too large/i],
+    ['UNSUPPORTED_MEDIA_TYPE', /photo\.jpg: Unsupported file type/i],
+    ['INVALID_IMAGE', /photo\.jpg: Unsupported file type/i],
+    ['INTERNAL_ERROR', /Failed to upload photo\.jpg/i],
+  ])('maps a server %s rejection to its message', async (code, message) => {
+    mockApi.upload.mockRejectedValueOnce(apiError(code));
+    const restore = stubImageAndObjectUrls();
+    try {
+      const { container } = render(<PhotoUpload recipeId="r1" />);
+      selectFile(container, makeFile('photo.jpg', 'image/jpeg', 1024));
+      await waitFor(() => {
+        expect(screen.getByText(message)).toBeInTheDocument();
+      });
     } finally {
       restore();
     }
