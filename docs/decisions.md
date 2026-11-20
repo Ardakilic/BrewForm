@@ -254,3 +254,44 @@ don't use it; the per-feature docs in this directory are the user-facing referen
 **Trade-off.** The listener prevents default only for `href` values starting with `/`, so external links and non-link clicks are unaffected. Navigation never actually worked in jsdom anyway, so no test behaviour changes — the warning was purely cosmetic. If we ever switch to `happy-dom` or a real browser runner, this listener becomes harmless (`preventDefault` on a non-navigating click is a no-op).
 
 **Reference.** See `apps/web/src/test-setup.ts` for the implementation.
+
+---
+
+## ADR-019 — Server-generated upload keys and built-in magic-byte sniffing
+
+**Decision.** Photo uploads are stored under keys generated entirely on the server:
+`crypto.randomUUID()` plus an extension from a fixed MIME table (`<uuid>.jpg|png|webp`, and
+`<uuid>_medium.<ext>` for the thumbnail). Each part's type is detected from its bytes by a small
+built-in sniffer (`apps/api/src/utils/upload/sniff.ts`: JPEG marker walk to SOF0–SOF15, PNG `IHDR`,
+WebP `VP8 `/`VP8L`/`VP8X`), which also reads the header dimensions for the size and
+decompression-bomb limits. The client filename is never read, the declared Content-Type is only a
+hint, and every storage driver re-checks keys (`assertSafeStorageKey`) before any I/O. The S3 driver
+URI-encodes and signs the exact `/<bucket>/<key>` path with an empty query and a signed
+`content-type`; the local driver creates files exclusively (`wx`). The photo routes get their own
+body cap (`UPLOAD_MAX_SIZE_BYTES` + thumbnail cap + 64 KiB) instead of skipping the 1 MB limit.
+
+**Why.** The old key was `<timestamp>-<uuid8>.<client extension>`, built from the raw multipart
+filename and concatenated into an unencoded S3 URL. A filename like
+`a.x/%2e%2e/%2e%2e/other-bucket/payload` was signed and sent as a write to another bucket, and
+`a.x/%2e%2e?policy=` produced a signed bucket-configuration `PUT`. Removing client input from keys
+removes that whole class of bugs. Detecting the type from bytes stops HTML/SVG uploads disguised as
+images and stores every object with a correct Content-Type.
+
+**Alternatives rejected.**
+
+- `file-type`: ESM-only with four transitive dependencies, described by its own README as "a
+  best-effort hint", unbounded buffer by default, and it returns no dimensions.
+- `image-size`: a reasonable zero-dependency fallback, but the allowlist has only three formats and
+  the built-in parser (about 100 lines, every read bounds-checked) covers them.
+- `sharp`: a native dependency that decodes and can re-encode; it belongs to image optimisation
+  (F23), not to this security fix.
+- `busboy` (streaming multipart): a new dependency and a handler rewrite; the bounded body cap keeps
+  the buffered `formData()` within about 11 MiB, which is enough.
+- Sanitising the client extension, content-hash keys, or keeping the timestamp: each still trusts
+  input, shares objects between uploads, or leaks the upload time.
+
+**Trade-off.** Dimension limits (16,384 px per side, 50 MP; 1,200 px for thumbnails) are code
+constants, not env vars. No EXIF/GPS stripping happens yet, because doing it without re-encoding
+loses the orientation (follow-up with F23). Builds on ADR-009: thumbnails are still made in the
+browser, and the server now validates them like the original instead of storing any bytes. Old
+photo rows keep their URLs (rows store full URLs, so no migration is needed).

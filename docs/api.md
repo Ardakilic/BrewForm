@@ -491,10 +491,47 @@ recipe's public URL.
 | GET    | `/photos/recipe/:recipeId` | none     | List photos for a recipe             |
 | DELETE | `/photos/:id`              | required | Delete a photo (owner only)          |
 
+`POST /photos` takes `multipart/form-data` with a `file` part (the photo; `photo` is accepted as
+an alias), an optional `thumbnail` part, `recipeId`, and the optional `alt` and `sortOrder` fields.
+Only the recipe's author can upload.
+
 Upload constraints:
 
-- Max size: 10 MB (configurable via `UPLOAD_MAX_SIZE_BYTES`)
-- Allowed types: `image/jpeg`, `image/png`, `image/webp`
+- **Type, by content.** The server detects the type from the file's leading bytes (JPEG, PNG or
+  WebP). The allowed set is the intersection of those three with `UPLOAD_ALLOWED_TYPES` (default
+  all three). The declared part Content-Type is only a hint: it is rejected when it is non-empty,
+  not `application/octet-stream` and not allowed; otherwise the detected type wins.
+- **Original size.** At most `UPLOAD_MAX_SIZE_BYTES` (default 10 MiB).
+- **Original dimensions.** At most 16,384 px on either side and 50 megapixels in total (read from
+  the image header; pixels are never decoded).
+- **Thumbnail.** Optional (an absent or empty part means "no thumbnail", and `thumbnailUrl` then
+  equals `url`). It is validated like the original: at most 1,200 px per side and
+  `min(1 MiB, UPLOAD_MAX_SIZE_BYTES)`. An invalid thumbnail fails the whole upload and nothing is
+  stored.
+- **Request body cap.** Every `/photos` route accepts a body of at most
+  `UPLOAD_MAX_SIZE_BYTES` + `min(1 MiB, UPLOAD_MAX_SIZE_BYTES)` + 64 KiB (about 11.06 MiB by
+  default); every other route keeps the 1 MB limit.
+- **Storage keys.** Keys are generated on the server: `<uuid>.<ext>` for the original and
+  `<uuid>_medium.<ext>` for the thumbnail (same UUID), with `<ext>` `jpg`, `png` or `webp` taken
+  from each part's detected type. The multipart filename is never read, so it cannot influence the
+  key, the URL or any storage request. Stored objects get the detected type as their Content-Type.
+  Photos uploaded before this change keep their old `<timestamp>-<hex>.<ext>` URLs.
+
+Error codes (`error.details[0].field` is `file` or `thumbnail` for part errors):
+
+| Status | Code                     | When                                                                    |
+| ------ | ------------------------ | ----------------------------------------------------------------------- |
+| 400    | `VALIDATION_ERROR`       | Missing `file` part or invalid form fields (`recipeId`, `alt`, …)       |
+| 400    | `FILE_TOO_LARGE`         | A part is over its size limit while the body is within the cap          |
+| 400    | `INVALID_IMAGE`          | Malformed image header, zero dimensions, or dimensions over the limits  |
+| 403    | `FORBIDDEN`              | The caller is not the recipe's author                                   |
+| 404    | `NOT_FOUND`              | The recipe does not exist                                               |
+| 413    | `PAYLOAD_TOO_LARGE`      | The request body is over the photo body cap (rejected before parsing)   |
+| 415    | `UNSUPPORTED_MEDIA_TYPE` | Unknown or disallowed content, or a disallowed declared type            |
+| 500    | `INTERNAL_ERROR`         | Storage, filesystem or database failure (message hidden in production)  |
+
+Error messages are fixed server strings; they never echo the declared type or the filename. The
+old `UPLOAD_ERROR` catch-all, which returned internal error text, was removed.
 
 ---
 
