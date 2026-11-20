@@ -8,6 +8,7 @@ import {
   recipeVersions,
   reports,
   tasteNotes,
+  userRecipeNotes,
   userRecipeRatings,
   users,
 } from './schema.ts';
@@ -72,6 +73,7 @@ describe('Schema CHECK constraints', () => {
    */
   afterEach(async () => {
     await db.delete(brewLogs).where(eq(brewLogs.userId, userId));
+    await db.delete(userRecipeNotes).where(eq(userRecipeNotes.recipeId, recipeId));
     await db.delete(recipeTasteNotes).where(eq(recipeTasteNotes.recipeVersionId, recipeVersionId));
     await db.delete(userRecipeRatings).where(eq(userRecipeRatings.recipeId, recipeId));
     await db.delete(tasteNotes).where(eq(tasteNotes.id, tasteNoteId));
@@ -210,6 +212,63 @@ describe('Schema CHECK constraints', () => {
           .set({ rating: null })
           .where(eq(recipeVersions.id, recipeVersionId)),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('user_recipe_note_notes_length_check', () => {
+    it('should reject notes longer than 10000 characters', async () => {
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'a'.repeat(10001) }),
+      ).rejects.toThrow();
+    });
+
+    it('should accept notes of exactly 10000 characters', async () => {
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'a'.repeat(10000) }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should accept an empty (scrubbed) note', async () => {
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: '', deletedAt: new Date() }),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('user_recipe_note_user_id_recipe_id_unique', () => {
+    it('should reject a second row for the same (user, recipe) pair', async () => {
+      await db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'first' });
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'second' }),
+      ).rejects.toThrow();
+    });
+
+    it('should reject a second row even when the first one is soft-deleted', async () => {
+      await db
+        .insert(userRecipeNotes)
+        .values({ userId, recipeId, notes: '', deletedAt: new Date() });
+      await expect(
+        db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'again' }),
+      ).rejects.toThrow();
+    });
+
+    it("should accept another user's row for the same recipe", async () => {
+      const otherUserId = crypto.randomUUID();
+      await db.insert(users).values({
+        id: otherUserId,
+        email: `test-${otherUserId}@example.com`,
+        username: `testuser-${otherUserId}`,
+        passwordHash: 'hash',
+      });
+      try {
+        await db.insert(userRecipeNotes).values({ userId, recipeId, notes: 'mine' });
+        await expect(
+          db.insert(userRecipeNotes).values({ userId: otherUserId, recipeId, notes: 'theirs' }),
+        ).resolves.toBeDefined();
+      } finally {
+        await db.delete(userRecipeNotes).where(eq(userRecipeNotes.userId, otherUserId));
+        await db.delete(users).where(eq(users.id, otherUserId));
+      }
     });
   });
 

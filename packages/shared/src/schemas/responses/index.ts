@@ -60,6 +60,7 @@ export {
   VersionDiffOutputSchema,
   VersionMetaSchema,
 } from './recipe.ts';
+export { RecipeUserNoteOutputSchema } from './recipe-note.ts';
 export { ReportOutputSchema } from './report.ts';
 export { SetupOutputSchema } from './setup.ts';
 export { TasteNoteNodeOutputSchema, TasteNoteOutputSchema } from './taste.ts';

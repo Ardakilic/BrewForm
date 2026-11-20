@@ -147,6 +147,7 @@ export type {
   VersionDiffOutput,
   VersionMeta,
 } from './responses/recipe.ts';
+export type { RecipeUserNoteOutput } from './responses/recipe-note.ts';
 export type { ReportOutput } from './responses/report.ts';
 export type { SetupOutput } from './responses/setup.ts';
 export type { TasteNoteNodeOutput, TasteNoteOutput } from './responses/taste.ts';

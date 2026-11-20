@@ -207,8 +207,10 @@ export const RecipeRateSchema = z.object({
 });
 
 /**
- * Validates personal recipe notes payloads.
- * Used by POST /api/v1/recipes/:id/notes.
+ * Validates the caller's private recipe note payload: trimmed, 1–10,000 characters.
+ * Used by `PUT /api/v1/recipes/:id/notes`, which creates or replaces only the
+ * authenticated caller's own note (`user_recipe_note`); it never touches the
+ * author's public brewer notes (`recipe_version.personal_notes`).
  */
 export const RecipeNotesSchema = z.object({
   notes: z.string().trim().min(1).max(10000),

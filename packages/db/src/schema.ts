@@ -796,6 +796,44 @@ export const userRecipeRatings = pgTable(
   ],
 );
 
+/**
+ * Private per-user recipe notes ("My private notes"); unique on (`userId`, `recipeId`).
+ *
+ * Separate from the author's PUBLIC brewer notes (`recipe_version.personal_notes`):
+ * a row is readable and writable only by its owner through the caller-scoped
+ * `GET|PUT|DELETE /api/v1/recipes/:id/notes` endpoints (`recipe-note` module) and
+ * never appears on any other surface (detail, search, feeds, crawler, cache).
+ * Notes belong to the recipe, not to a version, so they survive version bumps.
+ *
+ * Soft delete sets `deletedAt` AND scrubs `notes` to `''`; a later save revives
+ * the same row (upsert on the unique pair clears `deletedAt`). Text is capped at
+ * 10,000 characters by `user_recipe_note_notes_length_check`, matching
+ * `RecipeNotesSchema`.
+ */
+export const userRecipeNotes = pgTable(
+  'user_recipe_note',
+  {
+    id: varchar('id', { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: varchar('user_id', { length: 36 })
+      .notNull()
+      .references(() => users.id),
+    recipeId: varchar('recipe_id', { length: 36 })
+      .notNull()
+      .references(() => recipes.id),
+    notes: text('notes').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('user_recipe_note_user_id_recipe_id_unique').on(table.userId, table.recipeId),
+    index('user_recipe_note_recipe_id_idx').on(table.recipeId),
+    check('user_recipe_note_notes_length_check', sql`char_length(${table.notes}) <= 10000`),
+  ],
+);
+
 /** Badge definitions; unique on `rule`. */
 export const badges = pgTable(
   'badge',
@@ -1175,7 +1213,7 @@ export const notifications = pgTable(
 // Relations
 // ============================================================
 
-/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections, notifications, brew logs. */
+/** Drizzle relations for users: preferences, recipes, comments, badges, follows (both directions), likes, favourites, private recipe notes, setups, equipment, beans, vendors, audit logs, password resets, email verifications, reports, collections, notifications, brew logs. */
 export const usersRelations = relations(users, ({ one, many }) => ({
   preferences: one(userPreferences, {
     fields: [users.id],
@@ -1188,6 +1226,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   followsAsFollowing: many(userFollows, { relationName: 'UserFollowing' }),
   likes: many(userRecipeLikes),
   favourites: many(userRecipeFavourites),
+  recipeNotes: many(userRecipeNotes),
   collections: many(collections),
   setups: many(setups),
   equipment: many(equipment),
@@ -1209,7 +1248,7 @@ export const userPreferencesRelations = relations(userPreferences, ({ one }) => 
   }),
 }));
 
-/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, and fork lineage (forkedFrom/forks), collection items, and brew logs. */
+/** Drizzle relations for recipes: author, versions, photos, comments, likes, favourites, users' private notes, and fork lineage (forkedFrom/forks), collection items, and brew logs. */
 export const recipesRelations = relations(recipes, ({ one, many }) => ({
   author: one(users, {
     fields: [recipes.authorId],
@@ -1220,6 +1259,7 @@ export const recipesRelations = relations(recipes, ({ one, many }) => ({
   comments: many(comments),
   likes: many(userRecipeLikes),
   favourites: many(userRecipeFavourites),
+  userNotes: many(userRecipeNotes),
   collectionItems: many(collectionItems),
   brewLogs: many(brewLogs),
   forkedFrom: one(recipes, {
@@ -1452,6 +1492,18 @@ export const userRecipeRatingsRelations = relations(userRecipeRatings, ({ one })
   }),
   recipe: one(recipes, {
     fields: [userRecipeRatings.recipeId],
+    references: [recipes.id],
+  }),
+}));
+
+/** Drizzle relations for the user_recipe_note table (private per-user notes): owner and recipe. */
+export const userRecipeNotesRelations = relations(userRecipeNotes, ({ one }) => ({
+  user: one(users, {
+    fields: [userRecipeNotes.userId],
+    references: [users.id],
+  }),
+  recipe: one(recipes, {
+    fields: [userRecipeNotes.recipeId],
     references: [recipes.id],
   }),
 }));
