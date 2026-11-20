@@ -26,6 +26,7 @@ import photo from '../modules/photo/index.ts';
 import preference from '../modules/preference/index.ts';
 import qrcode from '../modules/qrcode/index.ts';
 import recipe from '../modules/recipe/index.ts';
+import recipeNote from '../modules/recipe-note/index.ts';
 import report from '../modules/report/index.ts';
 import setup from '../modules/setup/index.ts';
 import taste from '../modules/taste/index.ts';
@@ -48,6 +49,8 @@ routes.route('/api/v1/auth', auth);
 routes.route('/api/v1/users', user);
 routes.route('/api/v1/users', userCollections);
 routes.route('/api/v1/recipes', recipe);
+// Caller-scoped private notes (GET/PUT/DELETE /:id/notes only; no POST — see recipe-note/index.ts).
+routes.route('/api/v1/recipes', recipeNote);
 routes.route('/api/v1/equipment', equipment);
 routes.route('/api/v1/beans', bean);
 routes.route('/api/v1/coffee-varieties', coffeeVariety);

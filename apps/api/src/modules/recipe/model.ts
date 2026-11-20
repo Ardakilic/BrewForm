@@ -1021,14 +1021,6 @@ export function getVersionsByRecipeId(recipeId: string) {
     .orderBy(desc(recipeVersions.versionNumber));
 }
 
-/** Update the `personalNotes` field on a specific recipe version. */
-export async function updateVersionNotes(versionId: string, notes: string) {
-  await db
-    .update(recipeVersions)
-    .set({ personalNotes: notes })
-    .where(eq(recipeVersions.id, versionId));
-}
-
 /** Result shape returned by cursor-based pagination queries. */
 export interface CursorResult<T> {
   /** Recipes on the current page. */

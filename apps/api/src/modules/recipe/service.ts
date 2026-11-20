@@ -707,16 +707,6 @@ export async function toggleFeature(recipeId: string, authorId: string) {
   return result;
 }
 
-/** Save custom notes on the current version of a recipe. Throws `RECIPE_NOT_FOUND` if there is no current version. */
-export async function saveNotes(recipeId: string, notes: string) {
-  logger.debug({ recipeId }, 'saveNotes started');
-  const recipe = await model.findById(recipeId);
-  if (!recipe) throw new Error('RECIPE_NOT_FOUND');
-  if (!recipe.currentVersionId) throw new Error('RECIPE_NOT_FOUND');
-  await model.updateVersionNotes(recipe.currentVersionId, notes);
-  logger.debug({ recipeId }, 'saveNotes completed');
-}
-
 /**
  * Return lightweight metadata for a recipe by slug.
  *

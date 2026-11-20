@@ -903,29 +903,6 @@ describe('Recipe routes — detail, mutations and toggles', () => {
     });
   });
 
-  describe('POST /:id/notes', () => {
-    it('returns 200 and saves notes', async () => {
-      const recipe = await makeRecipe(author.id, 'Notes Route');
-      const app = createApp(author.id);
-      const res = await app.request(`/api/v1/recipes/${recipe.id}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: 'Tasted bright' }),
-      });
-      expect(res.status).toBe(200);
-    });
-
-    it('returns 404 for a nonexistent recipe', async () => {
-      const app = createApp(author.id);
-      const res = await app.request(`/api/v1/recipes/${crypto.randomUUID()}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: 'x' }),
-      });
-      expect(res.status).toBe(404);
-    });
-  });
-
   describe('GET /starred', () => {
     it('returns 200 with a paginated envelope for an authenticated user', async () => {
       const recipe = await makeRecipe(author.id, 'Starred Route');

@@ -9,7 +9,6 @@ import {
   RecipeFilterSchema,
   RecipeForkSchema,
   RecipeMergeSchema,
-  RecipeNotesSchema,
   RecipeRateSchema,
   RecipeUpdateSchema,
   successEnvelope,
@@ -835,35 +834,6 @@ recipe.post(
       const result = await service.upsertUserRating(userId, recipeId, rating);
       const stats = await service.getRecipeRatingStats(recipeId);
       return success(c, { ...result, ...stats });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);
-      throw err;
-    }
-  },
-);
-
-recipe.post(
-  '/:id/notes',
-  describeRoute({
-    tags: ['Recipes'],
-    summary: 'Save personal notes for a recipe',
-    description: 'Saves personal notes to the current version of the recipe.',
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: { description: 'Notes saved' },
-      401: { description: 'Unauthorized' },
-      404: { description: 'Recipe not found' },
-    },
-  }),
-  authGuard,
-  zValidator('json', RecipeNotesSchema, zodValidationHook),
-  async (c) => {
-    const recipeId = c.req.param('id')!;
-    const { notes } = c.req.valid('json');
-    try {
-      await service.saveNotes(recipeId, notes);
-      return success(c, { message: 'Notes saved' });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       if (message === 'RECIPE_NOT_FOUND') return error(c, 'NOT_FOUND', 'Recipe not found', 404);

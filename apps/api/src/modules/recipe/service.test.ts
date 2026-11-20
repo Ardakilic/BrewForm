@@ -555,7 +555,7 @@ describe('canViewRecipe', () => {
  *
  * Exercises the real service functions against the PostgreSQL test database:
  * lookup (slug vs id), authorization errors (FORBIDDEN / RECIPE_NOT_FOUND),
- * the like/favourite/feature toggles, notes, metadata, forking, and updates.
+ * the like/favourite/feature toggles, metadata, forking, and updates.
  */
 describe('Recipe Service — DB integration', () => {
   let author: typeof users.$inferSelect;
@@ -607,23 +607,6 @@ describe('Recipe Service — DB integration', () => {
       })
       .returning();
     await db.update(recipes).set({ currentVersionId: version.id }).where(eq(recipes.id, recipe.id));
-    return recipe;
-  }
-
-  /** Insert a recipe with no version (currentVersionId stays null). */
-  async function makeBareRecipe(authorId: string, title: string) {
-    const recipeId = crypto.randomUUID();
-    const [recipe] = await db
-      .insert(recipes)
-      .values({
-        id: recipeId,
-        slug: `slug-${recipeId.slice(0, 8)}`,
-        title,
-        authorId,
-        visibility: 'public',
-      })
-      .returning();
-    createdRecipes.push(recipe.id);
     return recipe;
   }
 
@@ -842,24 +825,6 @@ describe('Recipe Service — DB integration', () => {
       await expect(service.toggleFeature(crypto.randomUUID(), author.id)).rejects.toThrow(
         'RECIPE_NOT_FOUND',
       );
-    });
-  });
-
-  describe('saveNotes', () => {
-    it('should save notes on the current version', async () => {
-      const recipe = await makeRecipe(author.id, 'Notes OK');
-      await service.saveNotes(recipe.id, 'My personal notes');
-      const reloaded = await model.findById(recipe.id);
-      expect(reloaded?.versions?.[0]?.personalNotes).toBe('My personal notes');
-    });
-
-    it('should throw RECIPE_NOT_FOUND for an unknown recipe', async () => {
-      await expect(service.saveNotes(crypto.randomUUID(), 'x')).rejects.toThrow('RECIPE_NOT_FOUND');
-    });
-
-    it('should throw RECIPE_NOT_FOUND when there is no current version', async () => {
-      const recipe = await makeBareRecipe(author.id, 'Notes No Version');
-      await expect(service.saveNotes(recipe.id, 'x')).rejects.toThrow('RECIPE_NOT_FOUND');
     });
   });
 
