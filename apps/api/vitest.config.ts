@@ -17,6 +17,7 @@ export default defineConfig({
         // Test-only support code (imported manually by tests, not via setupFiles)
         'src/test-setup.ts',
         'src/**/test-helpers.ts',
+        'src/test-fixtures/**',
         // Generated from MJML by `pnpm run email-build`
         'src/templates/email/generated/**',
       ],

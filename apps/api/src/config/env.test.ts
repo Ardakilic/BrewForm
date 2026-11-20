@@ -392,6 +392,59 @@ describe('port and size range checks', () => {
   });
 });
 
+describe('upload limits and allowlist', () => {
+  /** The issues reported for UPLOAD_ALLOWED_TYPES when parsing `value`. */
+  function allowlistIssues(value: string): string[] {
+    const result = envSchema.safeParse({ ...REQUIRED, UPLOAD_ALLOWED_TYPES: value });
+    if (result.success) return [];
+    return result.error.issues
+      .filter((issue) => issue.path.join('.') === 'UPLOAD_ALLOWED_TYPES')
+      .map((issue) => issue.message);
+  }
+
+  it('should reject an unsupported allowlist entry with a message naming it', () => {
+    const messages = allowlistIssues('image/jpeg,image/gif');
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('UPLOAD_ALLOWED_TYPES');
+    expect(messages[0]).toContain('image/gif');
+  });
+
+  it('should trim and lower-case allowlist entries and ignore empty ones', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      UPLOAD_ALLOWED_TYPES: 'image/jpeg, image/png',
+    });
+    expect(result.success).toBe(true);
+    if (result.success)
+      expect(result.data.UPLOAD_ALLOWED_TYPES).toEqual(['image/jpeg', 'image/png']);
+
+    const messy = envSchema.safeParse({ ...REQUIRED, UPLOAD_ALLOWED_TYPES: ' IMAGE/WEBP ,, ' });
+    expect(messy.success).toBe(true);
+    if (messy.success) expect(messy.data.UPLOAD_ALLOWED_TYPES).toEqual(['image/webp']);
+  });
+
+  it('should reject an allowlist with no entries', () => {
+    expect(allowlistIssues(',')).toEqual([
+      'UPLOAD_ALLOWED_TYPES must list at least one image type',
+    ]);
+  });
+
+  it.each(['0', '-5', '1.5'])('should reject UPLOAD_MAX_SIZE_BYTES=%s', (value) => {
+    expect(failedKeys({ ...REQUIRED, UPLOAD_MAX_SIZE_BYTES: value })).toContain(
+      'UPLOAD_MAX_SIZE_BYTES',
+    );
+  });
+
+  it('should default to 10485760 bytes and the three supported types', () => {
+    const result = envSchema.safeParse(REQUIRED);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.UPLOAD_MAX_SIZE_BYTES).toBe(10485760);
+      expect(result.data.UPLOAD_ALLOWED_TYPES).toEqual(['image/jpeg', 'image/png', 'image/webp']);
+    }
+  });
+});
+
 describe('UPLOAD_DIR', () => {
   it('should resolve a relative value against the working directory', () => {
     const result = envSchema.safeParse({ ...REQUIRED, UPLOAD_DIR: './uploads' });

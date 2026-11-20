@@ -11,6 +11,11 @@
  */
 import * as path from 'node:path';
 import { z } from 'zod';
+import {
+  isSupportedImageMime,
+  SUPPORTED_IMAGE_MIME_TYPES,
+  type SupportedImageMime,
+} from '../utils/upload/mime.ts';
 
 /**
  * Copy the raw environment and drop every key whose value is a string that
@@ -31,6 +36,40 @@ function dropBlankValues(input: unknown): unknown {
 
 /** A TCP port: an integer between 1 and 65535 (coerced from the env string). */
 const portSchema = z.coerce.number().int().min(1).max(65535);
+
+/**
+ * `UPLOAD_ALLOWED_TYPES`: a comma-separated list, split, trimmed, lower-cased
+ * and stripped of empty entries, that must be a non-empty subset of
+ * {@link SUPPORTED_IMAGE_MIME_TYPES} (the types the upload detector can
+ * recognise). The error names the variable and the unsupported entries.
+ */
+const uploadAllowedTypesSchema = z
+  .string()
+  .default(SUPPORTED_IMAGE_MIME_TYPES.join(','))
+  .transform((value, ctx): SupportedImageMime[] => {
+    const entries = value
+      .split(',')
+      .map((entry) => entry.trim().toLowerCase())
+      .filter((entry) => entry !== '');
+    const unsupported = entries.filter((entry) => !isSupportedImageMime(entry));
+    if (unsupported.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        input: value,
+        message: `UPLOAD_ALLOWED_TYPES contains unsupported types: ${unsupported.join(', ')} (supported: ${SUPPORTED_IMAGE_MIME_TYPES.join(', ')})`,
+      });
+      return z.NEVER;
+    }
+    if (entries.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        input: value,
+        message: 'UPLOAD_ALLOWED_TYPES must list at least one image type',
+      });
+      return z.NEVER;
+    }
+    return entries.filter(isSupportedImageMime);
+  });
 
 /** The validated environment object, before the blank-value preprocessing step. */
 const envObjectSchema = z
@@ -106,7 +145,7 @@ const envObjectSchema = z
       .int()
       .positive()
       .default(10 * 1024 * 1024),
-    UPLOAD_ALLOWED_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
+    UPLOAD_ALLOWED_TYPES: uploadAllowedTypesSchema,
 
     APP_URL: z.string().default('http://localhost:8000'),
     PUBLIC_APP_URL: z.url().optional(),
