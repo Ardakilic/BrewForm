@@ -2,6 +2,7 @@ import type { RecipeBrewStatsOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
 import { brewLogApi } from '../../api/index.ts';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatDecimal } from '../../utils/format.ts';
 
 /** Props for {@link RecipeBrewStats}. */
 interface RecipeBrewStatsProps {
@@ -10,11 +11,12 @@ interface RecipeBrewStatsProps {
 
 /**
  * Inline brew stats for one recipe: the viewer's brew count and average
- * personal rating (one decimal, "/10"; rating hidden when null). Renders
- * nothing while loading, on error, or before the first brew.
+ * personal rating (one locale-formatted decimal plus "/10" — the ten-point
+ * scale carries no star glyph; rating hidden when null). Renders nothing
+ * while loading, on error, or before the first brew.
  */
 export function RecipeBrewStats({ recipeId }: RecipeBrewStatsProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [stats, setStats] = useState<RecipeBrewStatsOutput | null>(null);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export function RecipeBrewStats({ recipeId }: RecipeBrewStatsProps) {
             {t('brewLog.stats.avgRating')}
           </p>
           <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            {stats.avgBrewRating.toFixed(1)}/10
+            {formatDecimal(stats.avgBrewRating, locale, 1)}/10
           </p>
         </>
       )}

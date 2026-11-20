@@ -4,6 +4,7 @@ import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatNumber } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('AdminDashboard');
@@ -19,7 +20,7 @@ interface DashboardStats {
 
 /** Admin landing page: stat cards for user/recipe/comment/photo totals and recent activity. */
 export function AdminDashboard() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
 
@@ -56,19 +57,38 @@ export function AdminDashboard() {
         <ErrorState message={t('admin.dashboard.loadError')} />
       ) : stats ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard label={t('admin.dashboard.totalUsers')} value={stats.totalUsers} />
-          <StatCard label={t('admin.dashboard.totalRecipes')} value={stats.totalRecipes} />
-          <StatCard label={t('admin.dashboard.totalComments')} value={stats.totalComments} />
-          <StatCard label={t('admin.dashboard.totalPhotos')} value={stats.totalPhotos} />
-          <StatCard label={t('admin.dashboard.recentSignups')} value={stats.recentSignups} />
-          <StatCard label={t('admin.dashboard.recentRecipes')} value={stats.recentRecipes} />
+          <StatCard
+            label={t('admin.dashboard.totalUsers')}
+            value={formatNumber(stats.totalUsers, locale)}
+          />
+          <StatCard
+            label={t('admin.dashboard.totalRecipes')}
+            value={formatNumber(stats.totalRecipes, locale)}
+          />
+          <StatCard
+            label={t('admin.dashboard.totalComments')}
+            value={formatNumber(stats.totalComments, locale)}
+          />
+          <StatCard
+            label={t('admin.dashboard.totalPhotos')}
+            value={formatNumber(stats.totalPhotos, locale)}
+          />
+          <StatCard
+            label={t('admin.dashboard.recentSignups')}
+            value={formatNumber(stats.recentSignups, locale)}
+          />
+          <StatCard
+            label={t('admin.dashboard.recentRecipes')}
+            value={formatNumber(stats.recentRecipes, locale)}
+          />
         </div>
       ) : null}
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+/** One dashboard tile: a locale-formatted value above its label. */
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="card text-center">
       <div className="text-3xl font-bold" style={{ color: 'var(--accent-primary)' }}>

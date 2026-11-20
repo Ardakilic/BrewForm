@@ -33,6 +33,7 @@
     "src/**/*.preservation.test.tsx",
     "src/**/__tests__/*.integration.test.ts",
     "src/**/__tests__/*.integration.test.tsx",
-    "src/i18n-literals.test.ts"
+    "src/i18n-literals.test.ts",
+    "src/utils/chart/contrast.test.ts"
   ]
 }

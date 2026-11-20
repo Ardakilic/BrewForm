@@ -15,7 +15,7 @@ vi.mock('@/utils/logger.ts', () => ({
 
 vi.mock('../../contexts/I18nContext.tsx', () => ({
   useTranslation: () => ({
-    t: (k: string) => k,
+    t: (k: string) => (k === 'recipe.brewTimeline.flowRate' ? '{value} ml/s' : k),
     locale: 'en',
     setLocale: vi.fn(),
     availableLocales: ['en', 'tr'],
@@ -98,5 +98,26 @@ describe('VersionDiffPage', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noResults')).toBeInTheDocument();
     });
+  });
+
+  it('formats durations, the ratio and the flow rate with the shared formatters', async () => {
+    mockRecipeApi.diffVersions.mockResolvedValue({
+      ...mockDiff,
+      fields: [
+        { field: 'extractionTimeSeconds', value1: 28, value2: 43200, status: 'modified' },
+        { field: 'brewRatio', value1: 2, value2: 2.2222223, status: 'modified' },
+        { field: 'flowRate', value1: null, value2: 1.2857143, status: 'added' },
+      ],
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('12h')).toBeInTheDocument();
+    });
+    expect(screen.getByText('28s')).toBeInTheDocument();
+    expect(screen.getByText('1:2')).toBeInTheDocument();
+    expect(screen.getByText('1:2.2')).toBeInTheDocument();
+    expect(screen.getByText('1.3 ml/s')).toBeInTheDocument();
+    expect(screen.queryByText('43200s')).not.toBeInTheDocument();
+    expect(screen.queryByText(/2\.2222/)).not.toBeInTheDocument();
   });
 });

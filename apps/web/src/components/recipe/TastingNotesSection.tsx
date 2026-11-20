@@ -3,6 +3,7 @@ import { useTranslation } from '../../contexts/I18nContext.tsx';
 import {
   aggregateByCategory,
   resolveRootCategory,
+  scaaCategoryLabelKey,
   type TasteNoteForChart,
 } from '../../utils/radar-chart-data.ts';
 import { IntensityDots } from './IntensityDots.tsx';
@@ -53,9 +54,14 @@ function getRootCategoryName(
 }
 
 /**
- * Tasting-notes card: SCAA radar chart (when every note resolves to a
+ * Tasting-notes card: one SCAA radar chart (when every note resolves to a
  * root category) plus intensity chips grouped by category, each linking
  * to the filtered recipe list. Also shows optional personal notes.
+ *
+ * The card is a container-query `@container`: the chart sits beside the chip
+ * groups only when the card is at least 520px wide, and above them otherwise.
+ * Chip-group headings that name an SCAA category use the translated
+ * `taste.category.*` label; other root names are shown as-is.
  */
 export function TastingNotesSection({
   tasteNotes,
@@ -65,6 +71,12 @@ export function TastingNotesSection({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const hasTasteNotes = tasteNotes.length > 0;
+
+  /** Translated heading for an SCAA category name, or the raw root name. */
+  const categoryHeading = (name: string): string => {
+    const key = scaaCategoryLabelKey(name);
+    return key ? t(key) : name;
+  };
 
   // Enrich notes with resolved root category names
   const enrichedNotes: TasteNoteForChart[] = tasteNotes.map((note) => ({
@@ -98,7 +110,7 @@ export function TastingNotesSection({
   }
 
   return (
-    <section className="card" aria-label={t('a11y.tastingNotes.section')}>
+    <section className="card @container" aria-label={t('a11y.tastingNotes.section')}>
       {/* Section header */}
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-tertiary)]">
@@ -107,27 +119,25 @@ export function TastingNotesSection({
       </div>
 
       {hasTasteNotes && (
-        /* Radar chart + grouped chips side by side */
-        <div className="flex flex-col sm:flex-row gap-6 mb-4 items-start">
-          {/* Left: Radar chart — only show when all categories are resolved */}
+        /* Radar chart + grouped chips: stacked in a narrow card, side by side from 520px */
+        <div
+          data-testid="tasting-notes-layout"
+          className="flex flex-col @min-[520px]:flex-row gap-6 mb-4 items-start"
+        >
+          {/* Radar chart — a single responsive instance, only when all categories resolve */}
           {showChart && (
-            <div className="flex-shrink-0 flex justify-center sm:justify-start">
-              <div className="hidden sm:block">
-                <ScaaRadarChart categoryValues={aggregation.values} size={200} />
-              </div>
-              <div className="block sm:hidden">
-                <ScaaRadarChart categoryValues={aggregation.values} size={160} />
-              </div>
+            <div className="w-full max-w-[280px] shrink-0 self-center @min-[520px]:w-[280px] @min-[520px]:self-start">
+              <ScaaRadarChart categoryValues={aggregation.values} />
             </div>
           )}
 
-          {/* Right: Grouped chip columns */}
-          <div className="flex-1 flex flex-wrap gap-4">
+          {/* Grouped chip columns */}
+          <div className="flex-1 min-w-0 flex flex-wrap gap-4">
             {Array.from(groupedNotes.entries()).map(([category, notes]) => (
               <div key={category} className="flex flex-col gap-2 min-w-0">
-                {/* Category label */}
+                {/* Category label — translated when it names an SCAA category */}
                 <span className="text-xs uppercase tracking-widest font-semibold text-[color:var(--text-tertiary)]">
-                  {category}
+                  {categoryHeading(category)}
                 </span>
                 {/* Chips */}
                 <div className="flex flex-wrap gap-2">

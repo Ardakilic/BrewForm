@@ -13,6 +13,7 @@ import {
   formatDate,
   formatDecimal,
   formatDuration,
+  formatDurationParts,
   formatDurationTick,
   formatNumber,
 } from './format.ts';
@@ -128,6 +129,21 @@ describe('formatDuration', () => {
 
   it('defaults to the en locale', () => {
     expect(formatDuration(90)).toBe('1m 30s');
+  });
+});
+
+describe('formatDurationParts', () => {
+  it('returns one or two localized unit parts, largest first', () => {
+    expect(formatDurationParts(270, 'en')).toEqual(['4m', '30s']);
+    expect(formatDurationParts(270, 'tr')).toEqual(['4 dk', '30 sn']);
+    expect(formatDurationParts(43200, 'tr')).toEqual(['12 sa']);
+    expect(formatDurationParts(45, 'en')).toEqual(['45s']);
+  });
+
+  it('joins to formatDuration', () => {
+    for (const seconds of [0, 45, 270, 3599, 5400, 43200]) {
+      expect(formatDurationParts(seconds, 'tr').join(' ')).toBe(formatDuration(seconds, 'tr'));
+    }
   });
 });
 

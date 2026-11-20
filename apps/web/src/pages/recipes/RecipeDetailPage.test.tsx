@@ -59,7 +59,7 @@ vi.mock('../../components/seo/JsonLd.tsx', () => ({ RecipeJsonLd: () => null }))
 vi.mock('../../components/recipe/LikeButton.tsx', () => ({ LikeButton: () => null }));
 vi.mock('../../components/recipe/FavouriteButton.tsx', () => ({ FavouriteButton: () => null }));
 vi.mock('../../components/recipe/CommentSection.tsx', () => ({ CommentSection: () => null }));
-vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: () => null }));
+vi.mock('../../components/recipe/StarRating.tsx', () => ({ StarRating: vi.fn(() => null) }));
 vi.mock('../../components/recipe/ForkCard.tsx', () => ({
   ForkCard: () => <div data-testid="fork-card">ForkCard</div>,
 }));
@@ -118,6 +118,7 @@ import type {
 } from '@brewform/shared/schemas';
 import { collectionApi, commentApi, recipeApi } from '../../api/index.ts';
 import { getTasteNotesCached } from '../../api/static-cache.ts';
+import { StarRating } from '../../components/recipe/StarRating.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
@@ -129,6 +130,7 @@ const mockCommentApiList = vi.mocked(commentApi.list);
 const mockCollectionApiListByRecipe = vi.mocked(collectionApi.listByRecipe);
 const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
 const mockSEOHead = vi.mocked(SEOHead);
+const mockStarRating = vi.mocked(StarRating);
 
 // ── Translation helpers ────────────────────────────────────────────────────
 
@@ -872,5 +874,37 @@ describe('RecipeDetailPage — In collections section (D99.5)', () => {
 
     expect(screen.queryByTestId('in-collections-card')).toBeNull();
     expect(screen.getByText('My Espresso')).toBeInTheDocument();
+  });
+});
+
+describe('RecipeDetailPage — rating form (wave-6 t6, task 19.17)', () => {
+  it('passes busy (not a toggled interactive flag) to the rating slider so focus survives submit', async () => {
+    mockUseAuth.mockReturnValue(nonOwnerAuth as ReturnType<typeof useAuth>);
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(mockStarRating.mock.calls.some(([props]) => props.onRate !== undefined)).toBe(true);
+    });
+
+    const sliderProps = mockStarRating.mock.calls
+      .map(([props]) => props)
+      .filter((props) => props.onRate !== undefined)
+      .at(-1);
+    expect(sliderProps?.busy).toBe(false);
+    expect(sliderProps?.interactive).toBeUndefined();
+    expect(sliderProps?.label).toBe(enT('recipe.rateThis'));
+    expect(sliderProps?.value).toBeNull();
+  });
+
+  it('renders the author and community ratings read-only', async () => {
+    renderDetailPage();
+
+    await waitFor(() => {
+      expect(mockStarRating).toHaveBeenCalled();
+    });
+
+    const readOnly = mockStarRating.mock.calls.map(([props]) => props).filter((p) => !p.onRate);
+    expect(readOnly.length).toBeGreaterThan(0);
+    for (const props of readOnly) expect(props.interactive).toBe(false);
   });
 });

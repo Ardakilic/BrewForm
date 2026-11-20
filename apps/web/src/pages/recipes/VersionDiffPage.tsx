@@ -11,7 +11,7 @@ import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
-import { formatDate } from '../../utils/format.ts';
+import { formatDate, formatDecimal, formatDuration } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('VersionDiffPage');
@@ -136,7 +136,20 @@ export function VersionDiffPage() {
           : '-';
     }
     if (field === 'extractionTimeSeconds' || field === 'preInfusionTimeSeconds') {
-      return (v: string | number | null) => (v != null ? `${v}s` : '-');
+      return (v: string | number | null) => (v != null ? formatDuration(Number(v), locale) : '-');
+    }
+    if (field === 'brewRatio') {
+      return (v: string | number | null) =>
+        v != null ? `1:${formatDecimal(Number(v), locale, 1)}` : '-';
+    }
+    if (field === 'flowRate') {
+      return (v: string | number | null) =>
+        v != null
+          ? t('recipe.brewTimeline.flowRate').replace(
+              '{value}',
+              formatDecimal(Number(v), locale, 1),
+            )
+          : '-';
     }
     return undefined;
   };

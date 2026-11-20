@@ -59,6 +59,7 @@
     --diff-removed-text: #b91c1c;
     --diff-modified-bg: rgba(217, 119, 6, 0.1);
     --diff-modified-text: #92400e;
+    --rating-star: #b45309;
   }
 
   .dark {
@@ -85,6 +86,7 @@
     --diff-removed-text: #ef4444;
     --diff-modified-bg: rgba(245, 158, 11, 0.15);
     --diff-modified-text: #f59e0b;
+    --rating-star: #f59e0b;
   }
 
   .coffee {
@@ -111,6 +113,7 @@
     --diff-removed-text: #fca5a5;
     --diff-modified-bg: rgba(251, 191, 36, 0.12);
     --diff-modified-text: #fbbf24;
+    --rating-star: #fbbf24;
   }
 
   body {

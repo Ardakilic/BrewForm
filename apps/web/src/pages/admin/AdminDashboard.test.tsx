@@ -69,4 +69,24 @@ describe('AdminDashboard — tr locale spot-check', () => {
       expect(screen.getByText('Panel')).toBeInTheDocument();
     });
   });
+
+  it('groups stat tile values with the locale separator (tr 12.345)', async () => {
+    mockApi.get.mockResolvedValue({
+      totalUsers: 12345,
+      totalRecipes: 1500,
+      totalComments: 42,
+      totalPhotos: 0,
+      recentSignups: 7,
+      recentRecipes: 3,
+    });
+
+    render(<AdminDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('12.345')).toBeInTheDocument();
+    });
+    expect(screen.getByText('1.500')).toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.queryByText('12345')).not.toBeInTheDocument();
+  });
 });

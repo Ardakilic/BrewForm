@@ -1,9 +1,14 @@
+import { t } from '@brewform/shared/i18n';
 import {
   computeExtractionYieldFromTds,
   formatTemperature,
   formatVolume,
   formatWeight,
 } from '@brewform/shared/utils';
+import { formatDecimal, formatDurationParts } from './format.ts';
+
+/** No-break space: keeps a number and its unit on one line inside a stat card. */
+const NBSP = '\u00A0';
 
 /** A single label/value pair rendered as a recipe stat card. */
 export interface StatCardItem {
@@ -26,10 +31,25 @@ function getUnitPlaceholder(
 }
 
 /**
+ * Formats the brew time for a stat card: the compact two-unit duration with a
+ * no-break space inside each number+unit pair, so a narrow card wraps only
+ * between units (`4 dk` / `30 sn`) and never splits a number from its unit.
+ */
+function formatCardDuration(seconds: number, locale: string): string {
+  return formatDurationParts(seconds, locale)
+    .map((part) => part.replaceAll(' ', NBSP))
+    .join(' ');
+}
+
+/**
  * Builds the label/value pairs for the recipe stat cards (dose, yield,
  * time, ratio, temperature) in the given unit system, using an em-dash
  * placeholder for missing values; appends extraction yield when TDS,
  * volume, and dose are all present.
+ *
+ * Time, ratio and extraction yield are localized for `locale`: the time is a
+ * compact duration (`12h` / `12 sa`), the ratio is `1:` plus one decimal
+ * (`1:2.2` / `1:2,2`) and the extraction yield has one decimal.
  */
 export function buildStatCards(
   version: {
@@ -41,6 +61,7 @@ export function buildStatCards(
     tds?: string | null;
   } | null,
   unitSystem: 'metric' | 'imperial' = 'metric',
+  locale: string = 'en',
 ): StatCardItem[] {
   const v = version ?? {};
   const dose: StatCardItem = {
@@ -61,12 +82,15 @@ export function buildStatCards(
 
   const time: StatCardItem = {
     label: 'recipe.stat.time',
-    value: v.extractionTimeSeconds != null ? `${v.extractionTimeSeconds}s` : '—s',
+    value:
+      v.extractionTimeSeconds != null
+        ? formatCardDuration(v.extractionTimeSeconds, locale)
+        : t('chart.duration.seconds', locale).replace('{n}', '—'),
   };
 
   const ratio: StatCardItem = {
     label: 'recipe.stat.ratio',
-    value: v.brewRatio != null ? `1:${v.brewRatio}` : '1:—',
+    value: v.brewRatio != null ? `1:${formatDecimal(v.brewRatio, locale, 1)}` : '1:—',
   };
 
   const temp: StatCardItem = {
@@ -91,7 +115,7 @@ export function buildStatCards(
       if (ey !== null) {
         cards.push({
           label: 'recipe.stat.extractionYield',
-          value: `${ey.toFixed(1)}%`,
+          value: `${formatDecimal(ey, locale, 1)}%`,
         });
       }
     }

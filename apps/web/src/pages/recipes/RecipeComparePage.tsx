@@ -7,6 +7,7 @@ import { DiffHighlighter } from '../../components/recipe/DiffHighlighter.tsx';
 import { MergeSelector } from '../../components/recipe/MergeSelector.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { formatDecimal, formatDuration } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('RecipeComparePage');
@@ -217,9 +218,13 @@ function CompareTable({
   equipment1: string | null;
   equipment2: string | null;
 }) {
+  const { locale } = useTranslation();
   const grams = unitFormatter('g');
   const ml = unitFormatter('ml');
-  const seconds = unitFormatter('s');
+  const duration = (val: string | number | null) =>
+    val != null ? formatDuration(Number(val), locale) : '-';
+  const ratio = (val: string | number | null) =>
+    val != null ? `1:${formatDecimal(Number(val), locale, 1)}` : '-';
   const celsius = unitFormatter('°C');
   return (
     <div>
@@ -252,7 +257,7 @@ function CompareTable({
         labelKey="recipe.time"
         value1={v1.extractionTimeSeconds}
         value2={v2.extractionTimeSeconds}
-        formatter={seconds}
+        formatter={duration}
       />
       <DiffHighlighter
         labelKey="recipe.temperature"
@@ -264,7 +269,7 @@ function CompareTable({
         labelKey="recipe.ratio"
         value1={v1.brewRatio}
         value2={v2.brewRatio}
-        formatter={(val) => (val != null ? `1:${val}` : '-')}
+        formatter={ratio}
       />
       <DiffHighlighter
         labelKey="recipe.rating"

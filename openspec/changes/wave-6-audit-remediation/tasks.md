@@ -61,24 +61,24 @@ How to use this task list
 
 ## 4. Security: private recipe notes — database, shared schema and API; legacy POST removed (t1, refine D1, OQ3)
 
-- [ ] 4.1 Add a failing test file `apps/api/src/routes/recipe-notes-post-removed.test.ts` that mounts the composed `routes` app from `apps/api/src/routes/index.ts` with `app.onError(errorHandler)`, seeds users A and B and A's public recipe R through `@brewform/db`, authenticates with `signAccessToken` Bearer tokens, and cleans up in `afterEach`. Assert that B's `POST /api/v1/recipes/R/notes` with `{ "notes": "x" }` returns 404, that every `recipe_version.personal_notes` of R is byte-identical afterwards, and that no `user_recipe_note` row exists for (B, R). It fails today (200 and an overwrite).
-- [ ] 4.2 In the same file, assert that B's `POST /:id/notes` on A's `private` recipe returns 404 and writes nothing, and that an anonymous `POST /:id/notes` returns 404 (not 401). After task 4.16 mounts the `recipe-note` router with only GET, PUT and DELETE, the file must still pass (Hono returns 404 for an unmatched method; the app does not use `methodNotAllowed`).
-- [ ] 4.3 Delete the obsolete `describe('saveNotes')` block in `apps/api/src/modules/recipe/service.test.ts:848-864` and the `POST /:id/notes` block in `apps/api/src/modules/recipe/index.test.ts:906-927`; they are replaced by the removal test (tasks 4.1-4.2) and the `recipe-note` module tests below.
-- [ ] 4.4 Update `RecipeNotesSchema`'s docblock in `packages/shared/src/schemas/recipe.ts` (now for `PUT /api/v1/recipes/:id/notes`, caller-scoped private notes). Keep `{ notes: string().trim().min(1).max(10000) }`.
-- [ ] 4.5 Add `RecipeUserNoteOutputSchema` (`{ recipeId: string, notes: string | null, updatedAt: string | null }`) and its inferred type in `packages/shared/src/schemas/responses/recipe-note.ts`. Export it from `packages/shared/src/schemas/responses/index.ts`, add a round-trip test in `responses/recipe-note.test.ts`, and register it in the `cases` array of `responses/output-schema-acceptance.pbt.test.ts`.
-- [ ] 4.6 Add `userRecipeNotes` (`user_recipe_note`) to `packages/db/src/schema.ts` with columns `id`, `userId`, `recipeId`, `notes` (text not null), `createdAt`, `updatedAt` and `deletedAt`; unique `user_recipe_note_user_id_recipe_id_unique`; index `user_recipe_note_recipe_id_idx`; check `user_recipe_note_notes_length_check` (`char_length(notes) <= 10000`); and a docblock. Add `userRecipeNotesRelations`, and add `many(userRecipeNotes)` to `usersRelations` and `recipesRelations`.
-- [ ] 4.7 Run `make db-generate`, then `make db-migrate`. Rerun `make db-generate` and assert "No schema changes, nothing to migrate". Commit the generated SQL, snapshot and journal unedited. On a numbering collision with another track, delete the local files and regenerate.
-- [ ] 4.8 Run `make test-db-provision` to apply the migration to `brewform_test`.
-- [ ] 4.9 Extend `packages/db/src/schema-columns.test.ts`, `schema-constraints.test.ts` and `schema-indexes.test.ts` to assert the new table's columns, its unique and check constraints, and the `recipe_id` index. Add an assertion that the generated migration SQL contains no statement on `recipe_version.personal_notes`.
-- [ ] 4.10 Create `apps/api/src/modules/recipe-note/model.ts`:
+- [x] 4.1 Add a failing test file `apps/api/src/routes/recipe-notes-post-removed.test.ts` that mounts the composed `routes` app from `apps/api/src/routes/index.ts` with `app.onError(errorHandler)`, seeds users A and B and A's public recipe R through `@brewform/db`, authenticates with `signAccessToken` Bearer tokens, and cleans up in `afterEach`. Assert that B's `POST /api/v1/recipes/R/notes` with `{ "notes": "x" }` returns 404, that every `recipe_version.personal_notes` of R is byte-identical afterwards, and that no `user_recipe_note` row exists for (B, R). It fails today (200 and an overwrite).
+- [x] 4.2 In the same file, assert that B's `POST /:id/notes` on A's `private` recipe returns 404 and writes nothing, and that an anonymous `POST /:id/notes` returns 404 (not 401). After task 4.16 mounts the `recipe-note` router with only GET, PUT and DELETE, the file must still pass (Hono returns 404 for an unmatched method; the app does not use `methodNotAllowed`).
+- [x] 4.3 Delete the obsolete `describe('saveNotes')` block in `apps/api/src/modules/recipe/service.test.ts:848-864` and the `POST /:id/notes` block in `apps/api/src/modules/recipe/index.test.ts:906-927`; they are replaced by the removal test (tasks 4.1-4.2) and the `recipe-note` module tests below.
+- [x] 4.4 Update `RecipeNotesSchema`'s docblock in `packages/shared/src/schemas/recipe.ts` (now for `PUT /api/v1/recipes/:id/notes`, caller-scoped private notes). Keep `{ notes: string().trim().min(1).max(10000) }`.
+- [x] 4.5 Add `RecipeUserNoteOutputSchema` (`{ recipeId: string, notes: string | null, updatedAt: string | null }`) and its inferred type in `packages/shared/src/schemas/responses/recipe-note.ts`. Export it from `packages/shared/src/schemas/responses/index.ts`, add a round-trip test in `responses/recipe-note.test.ts`, and register it in the `cases` array of `responses/output-schema-acceptance.pbt.test.ts`.
+- [x] 4.6 Add `userRecipeNotes` (`user_recipe_note`) to `packages/db/src/schema.ts` with columns `id`, `userId`, `recipeId`, `notes` (text not null), `createdAt`, `updatedAt` and `deletedAt`; unique `user_recipe_note_user_id_recipe_id_unique`; index `user_recipe_note_recipe_id_idx`; check `user_recipe_note_notes_length_check` (`char_length(notes) <= 10000`); and a docblock. Add `userRecipeNotesRelations`, and add `many(userRecipeNotes)` to `usersRelations` and `recipesRelations`.
+- [x] 4.7 Run `make db-generate`, then `make db-migrate`. Rerun `make db-generate` and assert "No schema changes, nothing to migrate". Commit the generated SQL, snapshot and journal unedited. On a numbering collision with another track, delete the local files and regenerate.
+- [x] 4.8 Run `make test-db-provision` to apply the migration to `brewform_test`.
+- [x] 4.9 Extend `packages/db/src/schema-columns.test.ts`, `schema-constraints.test.ts` and `schema-indexes.test.ts` to assert the new table's columns, its unique and check constraints, and the `recipe_id` index. Add an assertion that the generated migration SQL contains no statement on `recipe_version.personal_notes`.
+- [x] 4.10 Create `apps/api/src/modules/recipe-note/model.ts`:
   - `findRecipeForNotes(recipeId)`: `id`, `authorId`, `visibility`, `isNull(deletedAt)`.
   - `findNote(userId, recipeId)`: `isNull(userRecipeNotes.deletedAt)`.
   - `upsertNote(userId, recipeId, notes)`: `onConflictDoUpdate` on `[userId, recipeId]` setting `notes`, `updatedAt` and `deletedAt: null`.
   - `softDeleteNote(userId, recipeId)`: sets `deletedAt` and `notes: ''`.
   - `softDeleteAllNotesForUser(userId)`.
   - Add JSDoc throughout.
-- [ ] 4.11 Add `apps/api/src/modules/recipe-note/model.test.ts`: upsert creates, then replaces the same row; soft delete scrubs; revive reuses the row id; `findNote` ignores deleted rows; per-user isolation.
-- [ ] 4.12 Create `apps/api/src/modules/recipe-note/service.ts`:
+- [x] 4.11 Add `apps/api/src/modules/recipe-note/model.test.ts`: upsert creates, then replaces the same row; soft delete scrubs; revive reuses the row id; `findNote` ignores deleted rows; per-user isolation.
+- [x] 4.12 Create `apps/api/src/modules/recipe-note/service.ts`:
   - `getMyNote`, `saveMyNote` and `deleteMyNote(userId, recipeId, isAdmin)`. Each throws `RECIPE_NOT_FOUND` unless the recipe exists, is not deleted and passes `canViewRecipe` imported from `../recipe/service.ts`.
   - `saveMyNote` applies `sanitizeText` and throws `VALIDATION_ERROR: notes` when the result is empty.
   - `deleteAllNotesForUser(userId)`.
@@ -86,14 +86,14 @@ How to use this task list
   - No `drizzle-orm` imports.
 
   Throw t3's typed `NotFoundError`/`ValidationError` from `apps/api/src/utils/errors.ts` (task 2.2) rather than new string codes.
-- [ ] 4.13 Add `apps/api/src/modules/recipe-note/service.test.ts`: cross-user isolation; 404 rules for private, draft, deleted and unknown recipes; sanitization; empty-after-sanitize rejection; admin cannot read another user's note; a log spy proves no note text is logged.
-- [ ] 4.14 Create `apps/api/src/modules/recipe-note/index.ts` (Hono `<AppEnv>` router) with `GET`, `PUT` and `DELETE /:id/notes` only (no `POST` handler):
+- [x] 4.13 Add `apps/api/src/modules/recipe-note/service.test.ts`: cross-user isolation; 404 rules for private, draft, deleted and unknown recipes; sanitization; empty-after-sanitize rejection; admin cannot read another user's note; a log spy proves no note text is logged.
+- [x] 4.14 Create `apps/api/src/modules/recipe-note/index.ts` (Hono `<AppEnv>` router) with `GET`, `PUT` and `DELETE /:id/notes` only (no `POST` handler):
   - `authGuard` via a `deps` proxy, as in `recipe/index.ts`.
   - `zValidator('param', z.object({ id: z.uuid() }))`, and `zValidator('json', RecipeNotesSchema, zodValidationHook)` on PUT.
   - `Cache-Control: private, no-store` on every response.
   - Map `RECIPE_NOT_FOUND`→404 and `VALIDATION_ERROR`→400.
-- [ ] 4.15 Add full `describeRoute()` metadata to the GET, PUT and DELETE notes routes: tag `Recipes`, summary, description, `security`, the `id` parameter, `jsonRequestBody(RecipeNotesSchema)` on PUT, 200 as `resolver(successEnvelope(RecipeUserNoteOutputSchema))`, and 400/401/404 as `resolver(ErrorEnvelopeSchema)`.
-- [ ] 4.16 Mount the router in `apps/api/src/routes/index.ts` with `routes.route('/api/v1/recipes', recipeNote)`. Delete the old `POST /:id/notes` route and its `describeRoute()` entry (`apps/api/src/modules/recipe/index.ts:846-873`) and the `RecipeNotesSchema` import there. Delete `saveNotes` from `recipe/service.ts` and `updateVersionNotes` from `recipe/model.ts`. No module registers a `POST` on `/:id/notes`. Run `make test-specific filter=src/routes/recipe-notes-post-removed.test.ts` and confirm it now passes.
+- [x] 4.15 Add full `describeRoute()` metadata to the GET, PUT and DELETE notes routes: tag `Recipes`, summary, description, `security`, the `id` parameter, `jsonRequestBody(RecipeNotesSchema)` on PUT, 200 as `resolver(successEnvelope(RecipeUserNoteOutputSchema))`, and 400/401/404 as `resolver(ErrorEnvelopeSchema)`.
+- [x] 4.16 Mount the router in `apps/api/src/routes/index.ts` with `routes.route('/api/v1/recipes', recipeNote)`. Delete the old `POST /:id/notes` route and its `describeRoute()` entry (`apps/api/src/modules/recipe/index.ts:846-873`) and the `RecipeNotesSchema` import there. Delete `saveNotes` from `recipe/service.ts` and `updateVersionNotes` from `recipe/model.ts`. No module registers a `POST` on `/:id/notes`. Run `make test-specific filter=src/routes/recipe-notes-post-removed.test.ts` and confirm it now passes.
 - [ ] 4.17 Add `apps/api/src/modules/recipe-note/index.test.ts`:
   - The IDOR regression: B cannot change A's brewer note or A's private note via `PUT`, and `PUT`/`DELETE` by A or B never change any `recipe_version.personal_notes`.
   - Status codes: 401 anonymous, 404 on non-viewable recipes, 400 on a malformed id, empty or over-long text.
@@ -987,30 +987,30 @@ How to use this task list
 - [x] 19.12 Verify `apps/web/src/pages/recipes/RecipeFocusModePage.tsx` and `RecipeDetailPage.tsx` need no prop changes, and that `RecipeFocusModePage.test.tsx` and `RecipeDetailPage.test.tsx` still pass.
 - [x] 19.13 Add `--rating-star` to `:root`, `.dark` and `.coffee` in `apps/web/src/styles/globals.css` (`#b45309` / `#f59e0b` / `#fbbf24`).
 - [x] 19.14 Add a contrast test `apps/web/src/utils/chart/contrast.test.ts` that parses the three theme blocks in `globals.css` and asserts chart text pairs ≥ 4.5:1 (`--text-secondary` on `--bg-secondary`) and mark pairs ≥ 3:1 (`--accent-primary` and `--rating-star` on `--bg-secondary`).
-- [ ] 19.15 Write failing tests in `apps/web/src/components/recipe/StarRating.test.tsx`:
+- [x] 19.15 Write failing tests in `apps/web/src/components/recipe/StarRating.test.tsx`:
   - Read-only: a single `role="img"` named "Rated 3.5 out of 5 stars", no buttons, tr "3,5"; 7.9 → 4 stars and label 4; 11 → 5; −1 and `NaN` → "Not rated".
   - Interactive keys: ArrowRight×3 + Enter → `onRate(6)`; Shift+ArrowRight → odd values; digit keys 1–5; Home/End; Escape revert; blur commits once.
   - Pointer: the left half of star 3 → 5.
   - Busy state: `aria-disabled` and focus retained.
   - `aria-valuetext` and `aria-describedby` hint.
-- [ ] 19.16 Rewrite `apps/web/src/components/recipe/StarRating.tsx`:
+- [x] 19.16 Rewrite `apps/web/src/components/recipe/StarRating.tsx`:
   - Read-only branch is `role="img"`; interactive branch is `role="slider"` with keyboard and pointer handling.
   - New `busy` prop.
   - Fill uses `var(--rating-star)`; drop the `overflow-visible` class on the star SVG.
   - Numeric label via `formatDecimal`.
-- [ ] 19.17 Update the rating form in `apps/web/src/pages/recipes/RecipeDetailPage.tsx` to pass `busy={ratingFetcher.state !== 'idle'}` instead of toggling `interactive`; keep the hidden `rating` input and `requestSubmit` flow.
-- [ ] 19.18 Update `apps/web/src/components/recipe-list/RecipeCard.tsx` to show `★ {formatDecimal(rating / 2, locale, 1)}`. Update `RecipeCard.test.tsx:149` and `pages/coffee-varieties/__tests__/CoffeeVarietyDetailPage.test.tsx:311` (expect `★ 2` for rating 4) and add a 7 → `★ 3.5` case.
-- [ ] 19.19 Clamp and round `intensity` to `[0,3]` in `apps/web/src/components/recipe/IntensityDots.tsx`, for both the fill and the label. Add 5, `NaN` and 2.4 cases to `IntensityDots.test.tsx`.
-- [ ] 19.20 Format `avgBrewRating` with `formatDecimal(…, 1)` + `/10` in `apps/web/src/components/brew-log/RecipeBrewStats.tsx`, and update `RecipeBrewStats.test.tsx` (en `7.5/10`, tr `7,5/10`).
-- [ ] 19.21 Update `apps/web/src/utils/stat-cards.ts` (`buildStatCards(version, unitSystem, locale)`): time via `formatDuration`; ratio `1:` + `formatDecimal(ratio, 1)`; EY via `formatDecimal(ey, 1)`.
-- [ ] 19.22 Update `stat-cards.test.ts` and `StatCards.test.tsx`: 43200 → `12h`/`12 sa`; 2.2222223 → `1:2.2`/`1:2,2`. Add a geometry assertion that every formatted card value at 24px bold estimates ≤ 100px.
-- [ ] 19.23 Update `apps/web/src/pages/recipes/RecipeComparePage.tsx` (ratio and duration formatters), `VersionDiffPage.tsx` (duration, ratio and flow-rate formatters) and `RecipeVersionsPage.tsx:141` (duration) to use the shared formatters, and extend their tests with one rounded-ratio and one long-duration case each.
-- [ ] 19.24 Render `apps/web/src/pages/admin/AdminDashboard.tsx` stat tile values via `formatNumber(value, locale)`, and update its test.
-- [ ] 19.25 Add `apps/web/src/utils/chart/chart-guards.test.ts`. It reads `ScaaRadarChart.tsx`, `BrewTimeline.tsx`, `StarRating.tsx`, `IntensityDots.tsx` and `apps/web/src/components/charts/**/*.tsx`, and asserts:
+- [x] 19.17 Update the rating form in `apps/web/src/pages/recipes/RecipeDetailPage.tsx` to pass `busy={ratingFetcher.state !== 'idle'}` instead of toggling `interactive`; keep the hidden `rating` input and `requestSubmit` flow.
+- [x] 19.18 Update `apps/web/src/components/recipe-list/RecipeCard.tsx` to show `★ {formatDecimal(rating / 2, locale, 1)}`. Update `RecipeCard.test.tsx:149` and `pages/coffee-varieties/__tests__/CoffeeVarietyDetailPage.test.tsx:311` (expect `★ 2` for rating 4) and add a 7 → `★ 3.5` case.
+- [x] 19.19 Clamp and round `intensity` to `[0,3]` in `apps/web/src/components/recipe/IntensityDots.tsx`, for both the fill and the label. Add 5, `NaN` and 2.4 cases to `IntensityDots.test.tsx`.
+- [x] 19.20 Format `avgBrewRating` with `formatDecimal(…, 1)` + `/10` in `apps/web/src/components/brew-log/RecipeBrewStats.tsx`, and update `RecipeBrewStats.test.tsx` (en `7.5/10`, tr `7,5/10`).
+- [x] 19.21 Update `apps/web/src/utils/stat-cards.ts` (`buildStatCards(version, unitSystem, locale)`): time via `formatDuration`; ratio `1:` + `formatDecimal(ratio, 1)`; EY via `formatDecimal(ey, 1)`.
+- [x] 19.22 Update `stat-cards.test.ts` and `StatCards.test.tsx`: 43200 → `12h`/`12 sa`; 2.2222223 → `1:2.2`/`1:2,2`. Add a geometry assertion that every formatted card value at 24px bold estimates ≤ 100px.
+- [x] 19.23 Update `apps/web/src/pages/recipes/RecipeComparePage.tsx` (ratio and duration formatters), `VersionDiffPage.tsx` (duration, ratio and flow-rate formatters) and `RecipeVersionsPage.tsx:141` (duration) to use the shared formatters, and extend their tests with one rounded-ratio and one long-duration case each.
+- [x] 19.24 Render `apps/web/src/pages/admin/AdminDashboard.tsx` stat tile values via `formatNumber(value, locale)`, and update its test.
+- [x] 19.25 Add `apps/web/src/utils/chart/chart-guards.test.ts`. It reads `ScaaRadarChart.tsx`, `BrewTimeline.tsx`, `StarRating.tsx`, `IntensityDots.tsx` and `apps/web/src/components/charts/**/*.tsx`, and asserts:
   - no `overflow: 'visible'`, `overflow-visible` or `overflow="visible"`;
   - no `<text`/`<tspan` inside an `<svg` that has `preserveAspectRatio="none"`;
   - no hex colour literals.
-- [ ] 19.26 Group check: run `make check-web`, `make lint`, `make test-web` and `make test-shared` (for i18n parity), then `make fmt` and confirm `make fmt-check` is clean.
+- [x] 19.26 Group check: run `make check-web`, `make lint`, `make test-web` and `make test-shared` (for i18n parity), then `make fmt` and confirm `make fmt-check` is clean.
 - [ ] 19.27 Manual visual check on `make dev` (seeded DB) at viewports 320, 375, 768, 1024 and 1280px × themes light, dark and coffee × locales en and tr:
   - `/recipes/blue-mountain-cold-brew`: axis ≤ 8 labels, `12h` stat card, no stretched text.
   - The espresso recipes with 28s/5s and 27s/6s pre-infusion: phase labels inside their phase or in the caption.

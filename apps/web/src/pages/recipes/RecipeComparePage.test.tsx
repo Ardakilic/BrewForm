@@ -62,6 +62,8 @@ function makeRecipe(overrides: {
   title?: string;
   versionId?: string;
   grams?: number;
+  seconds?: number;
+  ratio?: number;
 }): RecipeDetailOutput {
   return {
     id: overrides.id ?? 'r1',
@@ -73,9 +75,9 @@ function makeRecipe(overrides: {
       drinkType: 'espresso',
       groundWeightGrams: overrides.grams ?? 18,
       extractionVolumeMl: 36,
-      extractionTimeSeconds: 28,
+      extractionTimeSeconds: overrides.seconds ?? 28,
       temperatureCelsius: 93,
-      brewRatio: 2,
+      brewRatio: overrides.ratio ?? 2,
       rating: 8,
       grindSize: null,
       grinder: null,
@@ -186,5 +188,24 @@ describe('RecipeComparePage', () => {
     await waitFor(() => {
       expect(screen.getByText('merge failed')).toBeInTheDocument();
     });
+  });
+
+  it('formats the ratio rounded to one decimal and long durations compactly (tr)', async () => {
+    mockRecipeApi.get.mockImplementation((slug: string) =>
+      Promise.resolve(
+        slug === 'recipe-1'
+          ? makeRecipe({ id: 'r1', versionId: 'ver-1', ratio: 2.2222223, seconds: 43200 })
+          : makeRecipe({ id: 'r2', slug: 'recipe-2', versionId: 'ver-2', ratio: 2, seconds: 28 }),
+      ),
+    );
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('1:2,2')).toBeInTheDocument();
+    });
+    expect(screen.getByText('1:2')).toBeInTheDocument();
+    expect(screen.getByText('12 sa')).toBeInTheDocument();
+    expect(screen.getByText('28 sn')).toBeInTheDocument();
+    expect(screen.queryByText(/2[.,]2222/)).not.toBeInTheDocument();
+    expect(screen.queryByText('43200s')).not.toBeInTheDocument();
   });
 });

@@ -7,6 +7,7 @@
  * **Validates: Requirements 8.1, 8.2**
  */
 
+import { en, tr } from '@brewform/shared/i18n';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
@@ -14,6 +15,8 @@ import {
   mapToScaaCategory,
   resolveRootCategory,
   SCAA_CATEGORIES,
+  SCAA_CATEGORY_SLUGS,
+  scaaCategoryLabelKey,
   type TasteNoteForChart,
 } from './radar-chart-data.ts';
 
@@ -76,6 +79,55 @@ describe('mapToScaaCategory — unit tests', () => {
 
   it('"unknown" → "Other"', () => {
     expect(mapToScaaCategory('unknown')).toBe('Other');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Unit tests — SCAA_CATEGORY_SLUGS / scaaCategoryLabelKey (wave-6 t6, task 19.1)
+// ---------------------------------------------------------------------------
+
+describe('SCAA_CATEGORY_SLUGS', () => {
+  it('has exactly one slug per SCAA category', () => {
+    expect(Object.keys(SCAA_CATEGORY_SLUGS).sort()).toEqual([...SCAA_CATEGORIES].sort());
+  });
+
+  it('maps the 9 categories 1:1 (no two categories share a slug)', () => {
+    const slugs = Object.values(SCAA_CATEGORY_SLUGS);
+    expect(new Set(slugs).size).toBe(9);
+  });
+
+  it('every slug has a taste.category.<slug> key in en.json and tr.json', () => {
+    for (const slug of Object.values(SCAA_CATEGORY_SLUGS)) {
+      const key = `taste.category.${slug}`;
+      expect(en[key as keyof typeof en], key).toBeTypeOf('string');
+      expect(tr[key as keyof typeof tr], key).toBeTypeOf('string');
+    }
+  });
+});
+
+describe('scaaCategoryLabelKey', () => {
+  it.each([
+    ['Floral', 'taste.category.floral'],
+    ['Fruity', 'taste.category.fruity'],
+    ['Sweet', 'taste.category.sweet'],
+    ['Nutty/Cocoa', 'taste.category.nuttyCocoa'],
+    ['Spices', 'taste.category.spices'],
+    ['Roasted', 'taste.category.roasted'],
+    ['Green/Vegetative', 'taste.category.greenVegetative'],
+    ['Sour/Fermented', 'taste.category.sourFermented'],
+    ['Other', 'taste.category.other'],
+  ])('%s → %s', (category, key) => {
+    expect(scaaCategoryLabelKey(category)).toBe(key);
+  });
+
+  it('matches case-insensitively and ignores surrounding whitespace', () => {
+    expect(scaaCategoryLabelKey('  green/vegetative ')).toBe('taste.category.greenVegetative');
+  });
+
+  it('returns null for unknown names (no fallback to Other)', () => {
+    expect(scaaCategoryLabelKey('Chocolate')).toBeNull();
+    expect(scaaCategoryLabelKey('Nutty')).toBeNull();
+    expect(scaaCategoryLabelKey('')).toBeNull();
   });
 });
 

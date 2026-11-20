@@ -140,4 +140,19 @@ describe('RecipeVersionsPage', () => {
     const link = screen.getByText('versionDiff.compareSelected').closest('a');
     expect(link).toHaveAttribute('href', '/recipes/test-recipe/versions/diff?v1=v1-id&v2=v2-id');
   });
+
+  it('formats extraction times compactly (150s → 2m 30s, 43200s → 12h)', async () => {
+    mockApiGet.mockResolvedValue({
+      title: 'Test Recipe',
+      slug: 'test-recipe',
+      versions: [{ ...mockVersions[0], extractionTimeSeconds: 43200 }, ...mockVersions.slice(1)],
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('12h')).toBeInTheDocument();
+    });
+    expect(screen.getByText('2m 20s')).toBeInTheDocument();
+    expect(screen.getByText('4m')).toBeInTheDocument();
+    expect(screen.queryByText('43200s')).not.toBeInTheDocument();
+  });
 });

@@ -146,7 +146,41 @@ describe('RecipeCard', () => {
     );
     expect(screen.getByText('pour over')).toBeInTheDocument();
     expect(screen.getByText('filter coffee')).toBeInTheDocument();
-    expect(screen.getByText(/★ 4/)).toBeInTheDocument();
+    // The stored 1–10 rating is shown on the five-star scale next to the star (4 → ★ 2).
+    expect(screen.getByText('• ★ 2')).toBeInTheDocument();
+    expect(screen.queryByText(/★ 4/)).not.toBeInTheDocument();
+  });
+
+  it('shows a half-star rating with one decimal (7 → ★ 3.5)', () => {
+    renderWithRouter(
+      <RecipeCard
+        recipe={makeRecipe()}
+        version={{ brewMethod: 'v60', drinkType: 'filter', rating: 7 }}
+      />,
+    );
+    expect(screen.getByText('• ★ 3.5')).toBeInTheDocument();
+  });
+
+  it('uses the locale decimal separator for the rating (tr: 7 → ★ 3,5)', () => {
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr' as const });
+    renderWithRouter(
+      <RecipeCard
+        recipe={makeRecipe()}
+        version={{ brewMethod: 'v60', drinkType: 'filter', rating: 7 }}
+      />,
+    );
+    expect(screen.getByText('• ★ 3,5')).toBeInTheDocument();
+  });
+
+  it('omits the rating from the version strip when rating is 0', () => {
+    renderWithRouter(
+      <RecipeCard
+        recipe={makeRecipe()}
+        version={{ brewMethod: 'v60', drinkType: 'filter', rating: 0 }}
+      />,
+    );
+    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
   it('omits the rating from the version strip when rating is null', () => {

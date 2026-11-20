@@ -16,11 +16,11 @@ interface StatCardsProps {
 /**
  * Horizontal strip of brew-stat cards (dose, yield, time, ratio,
  * temperature, TDS) built by `buildStatCards` and formatted for the
- * given unit system.
+ * given unit system and the active locale.
  */
 export function StatCards({ version, unitSystem = 'metric' }: StatCardsProps) {
-  const { t } = useTranslation();
-  const cards = buildStatCards(version, unitSystem);
+  const { t, locale } = useTranslation();
+  const cards = buildStatCards(version, unitSystem, locale);
 
   return (
     <div className="flex flex-row overflow-x-auto gap-3 md:grid md:grid-cols-5 lg:grid-cols-6 md:overflow-visible">

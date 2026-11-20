@@ -10,7 +10,7 @@ import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { PageContainer } from '../../components/ui/PageContainer.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useUnitSystem } from '../../hooks/useUnitSystem.ts';
-import { formatDate } from '../../utils/format.ts';
+import { formatDate, formatDuration } from '../../utils/format.ts';
 import { createLogger } from '../../utils/logger.ts';
 
 const log = createLogger('RecipeVersionsPage');
@@ -138,7 +138,9 @@ export function RecipeVersionsPage() {
                 {v.extractionVolumeMl != null && (
                   <span>{formatVolume(v.extractionVolumeMl, unitSystem)}</span>
                 )}
-                {v.extractionTimeSeconds != null && <span>{v.extractionTimeSeconds}s</span>}
+                {v.extractionTimeSeconds != null && (
+                  <span>{formatDuration(v.extractionTimeSeconds, locale)}</span>
+                )}
                 {v.temperatureCelsius != null && (
                   <span>
                     {formatTemperature(

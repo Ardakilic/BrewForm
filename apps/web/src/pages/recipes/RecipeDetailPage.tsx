@@ -383,7 +383,8 @@ export function RecipeDetailPage() {
                     <input type="hidden" name="rating" value={recipe.userRating ?? ''} />
                     <StarRating
                       value={recipe.userRating ?? null}
-                      interactive={ratingFetcher.state === 'idle'}
+                      busy={ratingFetcher.state !== 'idle'}
+                      label={recipe.userRating ? t('recipe.yourRating') : t('recipe.rateThis')}
                       onRate={(rating) => {
                         const input = ratingFormRef.current?.querySelector(
                           'input[name="rating"]',

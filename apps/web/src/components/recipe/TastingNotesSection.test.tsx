@@ -14,13 +14,19 @@
 import { render, screen, within } from '@testing-library/react';
 import fc from 'fast-check';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
 import { SCAA_CATEGORIES } from '../../utils/radar-chart-data.ts';
 import { TastingNotesSection } from './TastingNotesSection.tsx';
 
 function withI18n(ui: ReactNode) {
   return <I18nProvider>{ui}</I18nProvider>;
+}
+
+/** Renders inside an I18nProvider with a stored tr locale. */
+function withTurkish(ui: ReactNode) {
+  localStorage.setItem('brewform_locale', 'tr');
+  return withI18n(ui);
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +91,10 @@ function makeNote(
 // ---------------------------------------------------------------------------
 
 describe('TastingNotesSection — unit tests', () => {
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   it('renders empty state message when no taste notes and no personalNotes', () => {
     render(withI18n(<TastingNotesSection tasteNotes={[]} personalNotes={null} />));
     expect(screen.getByText('No tasting notes recorded.')).toBeInTheDocument();
@@ -103,14 +113,48 @@ describe('TastingNotesSection — unit tests', () => {
     expect(screen.queryAllByTestId('scaa-radar-chart')).toHaveLength(0);
   });
 
-  it('shows radar chart when taste notes are present', () => {
+  it('renders exactly one radar chart when taste notes are present (no CSS-toggled duplicate)', () => {
     const notes: TasteNote[] = [
       makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
     ];
     render(withI18n(<TastingNotesSection tasteNotes={notes} />));
-    // The component renders two radar charts (one for sm:block, one for block sm:hidden)
-    const charts = screen.getAllByTestId('scaa-radar-chart');
-    expect(charts.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByTestId('scaa-radar-chart')).toHaveLength(1);
+  });
+
+  it('makes the card a container query that stacks below 520px and goes side by side above', () => {
+    const notes: TasteNote[] = [
+      makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
+    ];
+    render(withI18n(<TastingNotesSection tasteNotes={notes} />));
+    const section = screen.getByRole('region', { name: 'Tasting notes' });
+    expect(section).toHaveClass('card', '@container');
+    const layout = screen.getByTestId('tasting-notes-layout');
+    expect(layout).toHaveClass('flex-col', '@min-[520px]:flex-row');
+    expect(layout.className).not.toMatch(/(^|\s)sm:/);
+  });
+
+  it('translates chip-group headings that map to an SCAA category (tr)', () => {
+    const notes: TasteNote[] = [
+      makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Jasmine', rootCategoryName: 'Floral' }),
+      makeNote({
+        id: '2',
+        tasteNoteId: 'tn2',
+        name: 'Grass',
+        rootCategoryName: 'Green/Vegetative',
+      }),
+    ];
+    render(withTurkish(<TastingNotesSection tasteNotes={notes} />));
+    expect(screen.getByText('Çiçeksi')).toBeInTheDocument();
+    expect(screen.getByText('Yeşil/Bitkisel')).toBeInTheDocument();
+    expect(screen.queryByText('Floral')).toBeNull();
+  });
+
+  it('falls back to the raw root name for headings that are not SCAA categories', () => {
+    const notes: TasteNote[] = [
+      makeNote({ id: '1', tasteNoteId: 'tn1', name: 'Mystery note', rootCategoryName: 'Mystery' }),
+    ];
+    render(withTurkish(<TastingNotesSection tasteNotes={notes} />));
+    expect(screen.getByText('Mystery')).toBeInTheDocument();
   });
 
   it('shows grouped chips by category', () => {
@@ -157,9 +201,8 @@ describe('TastingNotesSection — unit tests', () => {
     const blockquote = document.querySelector('blockquote');
     expect(blockquote).not.toBeNull();
     expect(screen.getByText('Very floral and delicate.')).toBeInTheDocument();
-    // Radar chart also present (rendered twice for responsive breakpoints)
-    const charts = screen.getAllByTestId('scaa-radar-chart');
-    expect(charts.length).toBeGreaterThanOrEqual(1);
+    // Radar chart also present, as a single responsive instance
+    expect(screen.getAllByTestId('scaa-radar-chart')).toHaveLength(1);
   });
 });
 

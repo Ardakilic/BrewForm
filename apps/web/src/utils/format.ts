@@ -58,32 +58,45 @@ function durationUnit(unit: DurationUnit, n: number, locale: string): string {
 }
 
 /**
- * Formats a duration compactly with at most two units, taking the unit text
- * from the `chart.duration.*` i18n keys: `45s`, `4m 30s`, `12h`, `1h 30m` (en);
- * `45 sn`, `4 dk 30 sn`, `12 sa` (tr).
+ * Splits a duration into at most two localized unit parts, taking the unit
+ * text from the `chart.duration.*` i18n keys: `['4m', '30s']` (en),
+ * `['4 dk', '30 sn']` (tr), `['12h']`.
  *
  * The input is rounded to whole seconds; at one hour or more the seconds are
  * rounded into the minutes. Hours are never rolled up into days. Negative and
- * non-finite input renders as zero seconds, so no label shows a minus sign.
+ * non-finite input yields zero seconds, so no part carries a minus sign.
+ *
+ * @param seconds - The duration in seconds.
+ * @param locale - The active locale (default `en`).
+ * @returns One or two unit parts, largest unit first.
+ */
+export function formatDurationParts(seconds: number, locale: string = 'en'): string[] {
+  const total = Math.max(0, Math.round(sanitizeNumber(seconds)));
+  if (total < 60) return [durationUnit('seconds', total, locale)];
+  if (total < 3600) {
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    const minutes = durationUnit('minutes', m, locale);
+    return s > 0 ? [minutes, durationUnit('seconds', s, locale)] : [minutes];
+  }
+  const totalMinutes = Math.round(total / 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  const hours = durationUnit('hours', h, locale);
+  return m > 0 ? [hours, durationUnit('minutes', m, locale)] : [hours];
+}
+
+/**
+ * Formats a duration compactly with at most two units: `45s`, `4m 30s`,
+ * `12h`, `1h 30m` (en); `45 sn`, `4 dk 30 sn`, `12 sa` (tr). See
+ * {@link formatDurationParts} for rounding and sanitizing.
  *
  * @param seconds - The duration in seconds.
  * @param locale - The active locale (default `en`).
  * @returns The compact duration string.
  */
 export function formatDuration(seconds: number, locale: string = 'en'): string {
-  const total = Math.max(0, Math.round(sanitizeNumber(seconds)));
-  if (total < 60) return durationUnit('seconds', total, locale);
-  if (total < 3600) {
-    const m = Math.floor(total / 60);
-    const s = total % 60;
-    const minutes = durationUnit('minutes', m, locale);
-    return s > 0 ? `${minutes} ${durationUnit('seconds', s, locale)}` : minutes;
-  }
-  const totalMinutes = Math.round(total / 60);
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  const hours = durationUnit('hours', h, locale);
-  return m > 0 ? `${hours} ${durationUnit('minutes', m, locale)}` : hours;
+  return formatDurationParts(seconds, locale).join(' ');
 }
 
 /**

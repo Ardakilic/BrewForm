@@ -61,6 +61,23 @@ describe('RecipeBrewStats', () => {
     expect(screen.getByText('8.3/10')).toBeInTheDocument();
   });
 
+  it('formats the average with the locale decimal separator (en 7.5/10, tr 7,5/10)', async () => {
+    mockGetRecipeStats.mockResolvedValue({ recipeId: 'r1', brewCount: 2, avgBrewRating: 7.5 });
+
+    const { unmount } = render(<RecipeBrewStats recipeId="r1" />);
+    await waitFor(() => {
+      expect(screen.getByText('7.5/10')).toBeInTheDocument();
+    });
+    unmount();
+
+    mockUseTranslation.mockReturnValue({ ...defaultTranslation, locale: 'tr' as const });
+    render(<RecipeBrewStats recipeId="r1" />);
+    await waitFor(() => {
+      expect(screen.getByText('7,5/10')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+  });
+
   it('renders only the count when avgBrewRating is null', async () => {
     mockGetRecipeStats.mockResolvedValue({ recipeId: 'r1', brewCount: 3, avgBrewRating: null });
 

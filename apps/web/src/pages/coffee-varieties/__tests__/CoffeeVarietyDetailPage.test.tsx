@@ -306,9 +306,9 @@ describe('CoffeeVarietyDetailPage', () => {
 
     await waitFor(() => expect(screen.getByText('My Espresso')).toBeInTheDocument());
 
-    // r1 version: espresso / espresso / ★ 4
+    // r1 version: espresso / espresso / rating 4 on the 1–10 scale → ★ 2 on the five-star scale
     expect(screen.getAllByText('espresso').length).toBeGreaterThan(0);
-    expect(screen.getByText(/★ 4/)).toBeInTheDocument();
+    expect(screen.getByText('• ★ 2')).toBeInTheDocument();
     // r2 version: v60 / filter / no rating
     expect(screen.getByText('v60')).toBeInTheDocument();
     expect(screen.getByText('filter')).toBeInTheDocument();
