@@ -76,6 +76,25 @@ export function ensureMatchMedia(): void {
   });
 }
 
+/** Hydration fallback for test routes with loaders (renders nothing while loaders run). */
+const NullHydrateFallback = () => null;
+
+/** Adds a null `HydrateFallback` to routes with a loader that lack one (avoids router warnings). */
+function withHydrateFallback(routes: RouteObject[]): RouteObject[] {
+  return routes.map((route) => {
+    const children = route.children ? withHydrateFallback(route.children) : undefined;
+    const needsFallback =
+      (route.loader || route.lazy) &&
+      !route.HydrateFallback &&
+      route.hydrateFallbackElement === undefined;
+    return {
+      ...route,
+      ...(needsFallback ? { HydrateFallback: NullHydrateFallback } : {}),
+      ...(children ? { children } : {}),
+    } as RouteObject;
+  });
+}
+
 /** Options for {@link renderWithAppProviders}. */
 export interface RenderWithAppProvidersOptions {
   /** Memory-router history entries; defaults to `['/']`. */
@@ -107,7 +126,7 @@ export function renderWithAppProviders(
   ensureMatchMedia();
   if (options.locale) localStorage.setItem('brewform_locale', options.locale);
   const routes: RouteObject[] = Array.isArray(uiOrRoutes)
-    ? uiOrRoutes
+    ? withHydrateFallback(uiOrRoutes)
     : [{ path: options.path ?? '*', element: uiOrRoutes }];
   const router = createMemoryRouter(routes, { initialEntries: options.initialEntries ?? ['/'] });
   const auth = makeAuth(options.auth);

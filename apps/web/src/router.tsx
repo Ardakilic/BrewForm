@@ -3,6 +3,7 @@ import { RequireAuth } from './components/auth/RequireAuth.tsx';
 import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
 import { Layout } from './components/layout/Layout.tsx';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard.tsx';
+import { RouteErrorState } from './components/RouteErrorState.tsx';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.tsx';
 import { LoginPage } from './pages/auth/LoginPage.tsx';
 import { RegisterPage } from './pages/auth/RegisterPage.tsx';
@@ -368,10 +369,11 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        lazy: async () => {
-          const { AdminDashboard } = await import('./pages/admin/AdminDashboard.tsx');
-          return { Component: AdminDashboard };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminDashboard.data.ts')).loader,
+          Component: async () => (await import('./pages/admin/AdminDashboard.tsx')).AdminDashboard,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'users',
@@ -440,26 +442,31 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'compatibility',
-        lazy: async () => {
-          const { AdminCompatibilityPage } = await import(
-            './pages/admin/AdminCompatibilityPage.tsx'
-          );
-          return { Component: AdminCompatibilityPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminCompatibilityPage.data.ts')).loader,
+          action: async () => (await import('./pages/admin/AdminCompatibilityPage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminCompatibilityPage.tsx')).AdminCompatibilityPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'badges',
-        lazy: async () => {
-          const { AdminBadgesPage } = await import('./pages/admin/AdminBadgesPage.tsx');
-          return { Component: AdminBadgesPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminBadgesPage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/admin/AdminBadgesPage.tsx')).AdminBadgesPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'audit-log',
-        lazy: async () => {
-          const { AdminAuditLogPage } = await import('./pages/admin/AdminAuditLogPage.tsx');
-          return { Component: AdminAuditLogPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminAuditLogPage.data.ts')).loader,
+          Component: async () =>
+            (await import('./pages/admin/AdminAuditLogPage.tsx')).AdminAuditLogPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'cache',

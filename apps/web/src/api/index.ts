@@ -35,7 +35,6 @@ import type {
   RecipeMerge,
   RecipeNotes,
   RecipeUpdate,
-  RecipeVersionRow,
   RecipeWithAuthorOutput,
   RecipeWithVersionsOutput,
   SetupCreate,
@@ -45,7 +44,6 @@ import type {
   TasteNoteOutput,
   UnreadCountOutput,
   UserBrewStatsOutput,
-  UserPreferences,
   UserPreferencesOutput,
   UserProfileUpdate,
   VendorOutput,
@@ -55,7 +53,39 @@ import type { AuthUser } from '@brewform/shared/types';
 import { createLogger } from '@/utils/logger.ts';
 import { api, type RequestOptions } from './client.ts';
 import { ApiError, isAbortError, isApiError } from './errors.ts';
+import type {
+  AdminDashboardStats,
+  AdminRecipe,
+  AdminUser,
+  AdminUserCreate,
+  AdminUserDetail,
+  AdminUserUpdate,
+  AdminVendorInput,
+  AuditLogEntry,
+  CoffeeVarietySearchResult,
+  CompatibilityRule,
+  ContactMessage,
+  PreferencesPatch,
+  RateResponse,
+  RecipeVersionsResponse,
+} from './types.ts';
 
+export type {
+  AdminDashboardStats,
+  AdminRecipe,
+  AdminUser,
+  AdminUserCreate,
+  AdminUserDetail,
+  AdminUserUpdate,
+  AdminVendorInput,
+  AuditLogEntry,
+  CoffeeVarietySearchResult,
+  CompatibilityRule,
+  ContactMessage,
+  PreferencesPatch,
+  RateResponse,
+  RecipeVersionsResponse,
+} from './types.ts';
 export type { RequestOptions };
 export { ApiError, api, isAbortError, isApiError };
 
@@ -66,20 +96,6 @@ function toQuery(params?: Record<string, string>): string {
   if (!params) return '';
   const qs = new URLSearchParams(params).toString();
   return qs ? `?${qs}` : '';
-}
-
-/** Rate-route response: `{ rating, avgRating, ratingCount }` returned by POST /recipes/:id/rate. */
-export type RateResponse = {
-  rating: number;
-  avgRating: number | null;
-  ratingCount: number;
-};
-
-/** `GET /recipes/:slug/versions` payload: the recipe title/slug plus its version rows. */
-export interface RecipeVersionsResponse {
-  title: string;
-  slug: string;
-  versions: RecipeVersionRow[];
 }
 
 /**
@@ -120,23 +136,12 @@ export const userApi = {
     api.get<PublicUserOutput>(`/users/${username}`, opts),
 };
 
-/** Preferences patch body: any subset of the preference fields, plus the onboarding flag. */
-export type PreferencesPatch = Partial<UserPreferences> & { onboardingCompleted?: boolean };
-
 /** Preferences API client — read and patch the signed-in user's preferences. */
 export const preferencesApi = {
   get: (opts?: RequestOptions) => api.get<UserPreferencesOutput>('/preferences', opts),
   update: (data: PreferencesPatch, opts?: RequestOptions) =>
     api.patch<UserPreferencesOutput>('/preferences', data, opts),
 };
-
-/** Contact-form payload posted to `POST /contact`. */
-export interface ContactMessage {
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-}
 
 /** Contact API client — sends the public contact form. */
 export const contactApi = {
@@ -266,20 +271,6 @@ export const coffeeVarietyApi = {
 export const badgeApi = {
   list: (opts?: RequestOptions) => api.get<BadgeOutput[]>('/badges', opts),
 };
-
-/** Admin user-management payload for create (`POST /admin/users`). */
-export interface AdminUserCreate {
-  email: string;
-  username: string;
-  password: string;
-  displayName?: string;
-  bio?: string;
-  isAdmin?: boolean;
-  isBanned?: boolean;
-}
-
-/** Admin user-management payload for update (`PATCH /admin/users/:id`). */
-export type AdminUserUpdate = Partial<AdminUserCreate>;
 
 /**
  * Admin API client — dashboard stats, user management (list, detail, create, update,
@@ -523,80 +514,3 @@ export const brewLogApi = {
   remove: (id: string, opts?: RequestOptions) =>
     api.delete<{ message: string }>(`/brew-logs/${id}`, opts),
 };
-
-/** Admin user-list row — the core account fields surfaced in the admin users table. */
-export interface AdminUser {
-  id: string;
-  email: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  isAdmin: boolean;
-  isBanned: boolean;
-  createdAt: string;
-}
-
-/** Admin user-detail projection — {@link AdminUser} plus bio, `updatedAt`, and profile counts. */
-export interface AdminUserDetail extends AdminUser {
-  bio: string | null;
-  updatedAt: string;
-  recipeCount?: number;
-  followerCount?: number;
-  followingCount?: number;
-}
-
-/** Admin dashboard totals returned by `GET /admin/stats`. */
-export interface AdminDashboardStats {
-  totalUsers: number;
-  totalRecipes: number;
-  totalComments: number;
-  totalPhotos: number;
-  recentSignups: number;
-  recentRecipes: number;
-}
-
-/** Admin recipe-moderation row returned by `GET /admin/recipes`. */
-export interface AdminRecipe {
-  id: string;
-  title: string;
-  slug: string;
-  visibility: string;
-  author: { username: string };
-  likeCount: number;
-  commentCount: number;
-  createdAt: string;
-}
-
-/** Admin vendor create/update body. */
-export interface AdminVendorInput {
-  name: string;
-  website?: string;
-  description?: string;
-}
-
-/** Brew-method × equipment-type compatibility rule managed at `/admin/compatibility`. */
-export interface CompatibilityRule {
-  id: string;
-  brewMethod: string;
-  equipmentType: string;
-  isCompatible: boolean;
-}
-
-/** Admin audit-log row returned by `GET /admin/audit-log`. */
-export interface AuditLogEntry {
-  id: string;
-  adminId: string;
-  action: string;
-  entityType: string;
-  entityId: string;
-  details: string | null;
-  createdAt: string;
-  admin?: { username: string };
-}
-
-/** Coffee-variety typeahead result — `id`, `name`, and `category` for the search dropdown. */
-export interface CoffeeVarietySearchResult {
-  id: string;
-  name: string;
-  category: string;
-}

@@ -58,6 +58,37 @@
           "suspicious": { "noArrayIndexKey": "warn" }
         }
       }
+    },
+    {
+      "includes": [
+        "apps/web/src/**",
+        "!apps/web/src/api/**",
+        "!apps/web/src/routes/**",
+        "!apps/web/src/**/*.data.ts",
+        "!apps/web/src/contexts/AuthContext.tsx",
+        "!apps/web/src/hooks/useStaticCacheSync.ts",
+        "!apps/web/src/**/*.test.ts",
+        "!apps/web/src/**/*.test.tsx",
+        "!apps/web/src/test-utils/**",
+        "!apps/web/src/test-setup.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "warn",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/api/client.ts", "**/api/index.ts", "**/api/static-cache.ts"],
+                    "message": "Pages and components must not import the API client: read data in a route loader (<Page>.data.ts), write through a route action, or use a fetcher against a resources/* route (ADR-018). Types live in api/types.ts and ApiError in api/errors.ts."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

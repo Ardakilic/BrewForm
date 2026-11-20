@@ -83,3 +83,25 @@ export interface TasteNotesParams {
 export function parseTasteNotesParams(sp: URLSearchParams): TasteNotesParams {
   return { q: readText(sp, 'q') };
 }
+
+/** Audit-log entity-type filter values (`''` = all). */
+export const AUDIT_ENTITY_TYPES = [
+  '',
+  'user',
+  'recipe',
+  'equipment',
+  'vendor',
+  'taste_note',
+  'report',
+] as const;
+
+/** `/admin/audit-log` URL state: `page` and the `entityType` filter. */
+export interface AuditLogParams {
+  page: number;
+  entityType: (typeof AUDIT_ENTITY_TYPES)[number];
+}
+
+/** Parses the `/admin/audit-log` URL. */
+export function parseAuditLogParams(sp: URLSearchParams): AuditLogParams {
+  return { page: readPage(sp), entityType: readEnum(sp, 'entityType', AUDIT_ENTITY_TYPES, '') };
+}
