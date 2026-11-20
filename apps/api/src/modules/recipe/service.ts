@@ -20,10 +20,12 @@ import {
   computeBrewRatio,
   computeFlowRate,
   decodeCursor,
-  ensureUniqueSlug,
-  generateSlug,
+  randomSlugSuffix,
+  SLUG_SUFFIX_ATTEMPTS,
+  slugCandidates,
 } from '@brewform/shared/utils';
 import type { z } from 'zod';
+import { ConflictError, ValidationError } from '../../utils/errors.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { notifyFollowersOfNewRecipe } from '../../utils/notify/index.ts';
 import { sanitizeText } from '../../utils/sanitize.ts';
@@ -54,12 +56,42 @@ type RecipeUpdateInput = z.infer<typeof RecipeUpdateSchema> & {
 
 const logger = createLogger('recipe-service');
 
-/** Generate a URL-safe slug from the title, ensuring uniqueness against existing recipes. */
-async function generateUniqueSlug(title: string): Promise<string> {
-  const slug = generateSlug(title);
-  const existing = await model.findBySlug(slug);
-  if (!existing) return slug;
-  return ensureUniqueSlug(slug, []);
+/**
+ * Build the ordered slug candidates for a (sanitized) title: the bare base when it is usable,
+ * then `<base>-<suffix>` for {@link SLUG_SUFFIX_ATTEMPTS} fresh random suffixes. No pre-check
+ * query runs; the model claims the first free candidate inside the creation transaction.
+ * `randomSlugSuffix` is imported from `@brewform/shared/utils` so tests can replace it via `vi.mock`.
+ *
+ * @param title - The sanitized recipe title.
+ * @returns At most `1 + SLUG_SUFFIX_ATTEMPTS` distinct candidates.
+ */
+function buildRecipeSlugCandidates(title: string): string[] {
+  return slugCandidates(
+    title,
+    Array.from({ length: SLUG_SUFFIX_ATTEMPTS }, () => randomSlugSuffix()),
+  );
+}
+
+/**
+ * Log and build the `409 SLUG_CONFLICT` error for a create/fork whose slug candidates were all
+ * taken (practically unreachable with 27^6 suffixes; reached by tests that pin the suffix).
+ *
+ * @param authorId - The author whose create/fork failed.
+ * @param attempts - How many candidates were tried.
+ */
+function slugExhausted(authorId: string, attempts: number): ConflictError {
+  logger.warn(
+    { authorId, attempts, constraint: 'recipe_slug_unique' },
+    'recipe slug candidates exhausted',
+  );
+  return new ConflictError('SLUG_CONFLICT', 'Could not allocate a unique recipe slug');
+}
+
+/** The `400 VALIDATION_ERROR` thrown when a title is empty after sanitization. */
+function emptyTitleError(): ValidationError {
+  return new ValidationError('Title cannot be empty', [
+    { field: 'title', message: 'Title cannot be empty' },
+  ]);
 }
 
 /** Retrieve a recipe by slug or UUID. Throws `RECIPE_NOT_FOUND` if neither matches. */
@@ -151,26 +183,30 @@ async function validateEquipmentCompatibility(
  *
  * Orchestration steps:
  * 1. Validate equipment compatibility against the selected brew method
- * 2. Generate a unique slug from the sanitized title
+ * 2. Sanitize the title and build the slug candidates (bare base, then random
+ *    suffixes; reserved, UUID-shaped and non-Latin bases are always suffixed)
  * 3. Inherit `grinder` and `brewerDetails` from the user's setup when `setupId`
  *    is provided (falling back to explicitly supplied values)
  * 4. Compute derived metrics (`brewRatio`, `flowRate`) from raw measurements
- * 5. Insert recipe, version, taste notes, equipment, additional preparations,
- *    and version photos inside a single transaction
+ * 5. Claim the first free slug and insert recipe, version, taste notes,
+ *    equipment, additional preparations, and version photos inside a single
+ *    transaction (concurrent creates with the same title get distinct slugs)
  * 6. If visibility is `'public'`, asynchronously notify the author's followers
  * 7. Asynchronously evaluate badge eligibility for the author
  *
  * @param authorId - UUID of the authenticated user creating the recipe.
  * @param data     - Creation payload (validated Zod schema from `@brewform/shared`).
  * @returns The complete recipe object with version, relations, and author summary.
+ * @throws {ValidationError} `400 VALIDATION_ERROR` when the title is empty after sanitization.
+ * @throws {ConflictError} `409 SLUG_CONFLICT` when every slug candidate is taken.
  */
 export async function createRecipe(authorId: string, data: RecipeCreateInput) {
   logger.debug({ authorId }, 'createRecipe started');
   await validateEquipmentCompatibility(data.brewMethod, data.equipmentIds ?? []);
 
   const safeTitle = sanitizeText(data.title);
-  if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
-  const slug = await generateUniqueSlug(safeTitle);
+  if (!safeTitle.trim()) throw emptyTitleError();
+  const candidates = buildRecipeSlugCandidates(safeTitle);
 
   let grinder: string | null | undefined = data.grinder;
   let brewerDetails: string | null | undefined = data.brewerDetails;
@@ -193,7 +229,7 @@ export async function createRecipe(authorId: string, data: RecipeCreateInput) {
 
   const finalRecipe = await model.createRecipeWithRelations({
     authorId,
-    slug,
+    slugCandidates: candidates,
     title: safeTitle,
     visibility: data.visibility || 'draft',
     productName: data.productName,
@@ -228,6 +264,7 @@ export async function createRecipe(authorId: string, data: RecipeCreateInput) {
     additionalPreparations: data.additionalPreparations,
     photoIds: data.photoIds,
   });
+  if (finalRecipe === null) throw slugExhausted(authorId, candidates.length);
 
   if (finalRecipe?.visibility === 'public') {
     (async () => {
@@ -330,7 +367,7 @@ export async function updateRecipe(recipeId: string, authorId: string, data: Rec
     });
 
     const safeTitle = sanitizeText(data.title ?? recipe.title);
-    if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
+    if (!safeTitle.trim()) throw emptyTitleError();
 
     if (data.photoIds?.length) {
       await model.insertVersionPhotos(version.id, data.photoIds);
@@ -351,7 +388,7 @@ export async function updateRecipe(recipeId: string, authorId: string, data: Rec
     });
   } else {
     const safeTitle = sanitizeText(data.title ?? recipe.title);
-    if (!safeTitle.trim()) throw new Error('VALIDATION_ERROR: Title cannot be empty');
+    if (!safeTitle.trim()) throw emptyTitleError();
     await model.update(recipe.id, {
       title: safeTitle,
       visibility: data.visibility ?? recipe.visibility,
@@ -376,14 +413,18 @@ export async function deleteRecipe(recipeId: string, authorId: string) {
  * Fork an existing recipe into the caller's account.
  *
  * Only public/unlisted recipes can be freely forked; draft/private recipes
- * require the caller to be the original author. A unique slug is generated
- * from the fork title (defaults to `"Fork of <original title>"`).
+ * require the caller to be the original author. The supplied title is
+ * sanitized with `sanitizeText` (like `createRecipe`) and falls back to
+ * `"Fork of <original title>"` when absent or empty after sanitization. The
+ * fork's slug goes through the same pipeline as creation (candidates claimed
+ * inside the fork transaction), so a recipe can be forked any number of times.
  * Badge eligibility is re-evaluated for the forking user after creation.
  *
  * @param sourceId - UUID of the recipe to fork.
  * @param authorId - UUID of the user performing the fork.
  * @param title    - Optional custom title for the forked recipe.
  * @returns The newly created forked recipe.
+ * @throws {ConflictError} `409 SLUG_CONFLICT` when every slug candidate is taken.
  */
 export async function forkRecipe(sourceId: string, authorId: string, title?: string) {
   logger.debug({ sourceId, authorId }, 'forkRecipe started');
@@ -393,11 +434,11 @@ export async function forkRecipe(sourceId: string, authorId: string, title?: str
     if (source.authorId !== authorId) throw new Error('FORBIDDEN');
   }
 
-  const forkTitle = title || `Fork of ${source.title}`;
-  const slug = generateSlug(forkTitle);
-  const uniqueSlug = await ensureUniqueSlug(slug, []);
+  const forkTitle = sanitizeText(title) || `Fork of ${source.title}`;
+  const candidates = buildRecipeSlugCandidates(forkTitle);
 
-  const forked = await model.forkRecipe(sourceId, authorId, forkTitle, uniqueSlug);
+  const forked = await model.forkRecipe(sourceId, authorId, forkTitle, candidates);
+  if (forked === null) throw slugExhausted(authorId, candidates.length);
 
   evaluateBadges(authorId).catch((err) => logger.error({ err }, 'evaluateBadges failed'));
 
@@ -830,6 +871,12 @@ export function getMergedPreparations(
 
 /**
  * Merge two recipe versions into a new draft recipe.
+ *
+ * Delegates the write to {@link createRecipe}, so the merged recipe gets its
+ * slug from the same pipeline (sanitized title, candidates claimed in the
+ * creation transaction): merging twice with the same title yields distinct
+ * slugs, and exhausted candidates surface as `409 SLUG_CONFLICT`.
+ *
  * @param authorId - UUID of the user performing the merge.
  * @param data - Validated merge selection payload.
  * @returns The newly created draft recipe.

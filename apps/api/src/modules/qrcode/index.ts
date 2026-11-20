@@ -1,4 +1,8 @@
-import { ErrorEnvelopeSchema, QrCodeFilenameSchema } from '@brewform/shared/schemas';
+import {
+  ErrorEnvelopeSchema,
+  QR_CODE_FILENAME_PATTERN,
+  QrCodeFilenameSchema,
+} from '@brewform/shared/schemas';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { describeRoute, resolver } from 'hono-openapi';
@@ -53,7 +57,7 @@ qrcode.get(
   zValidator('param', FilenameParamSchema, zodValidationHook),
   async (c) => {
     const { filename } = c.req.valid('param');
-    const match = filename.match(/^([a-z0-9]+(?:-[a-z0-9]+)*)\.(png|svg)$/i);
+    const match = filename.match(QR_CODE_FILENAME_PATTERN);
     const slug = match![1];
     const format = match![2].toLowerCase() as 'png' | 'svg';
 

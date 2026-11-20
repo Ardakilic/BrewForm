@@ -16,12 +16,21 @@ export const UuidSchema = z.uuid();
 export const SlugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 /**
- * Validates QR code filename format (slug + extension).
- * Used by GET /api/v1/recipe/:filename.
+ * QR code filename pattern: `<slug>.png` or `<slug>.svg` (case-insensitive). Group 1 is the slug,
+ * group 2 the format. Segments may contain `_` because legacy slugs (from the pre-wave-6 `\w`-based
+ * generator) can; newly issued slugs never do (see {@link SlugSchema}). Hyphens cannot lead, trail
+ * or repeat, and `.`/`/` are never accepted, so the filename cannot traverse paths.
+ */
+export const QR_CODE_FILENAME_PATTERN = /^([a-z0-9_]+(?:-[a-z0-9_]+)*)\.(png|svg)$/i;
+
+/**
+ * Validates QR code filename format (slug + extension) with {@link QR_CODE_FILENAME_PATTERN}.
+ * Legacy slugs may contain `_`; new slugs never do.
+ * Used by GET /api/v1/qrcode/recipe/:filename.
  */
 export const QrCodeFilenameSchema = z
   .string()
-  .regex(/^([a-z0-9]+(?:-[a-z0-9]+)*)\.(png|svg)$/i, 'Filename must be in format {slug}.{png|svg}');
+  .regex(QR_CODE_FILENAME_PATTERN, 'Filename must be in format {slug}.{png|svg}');
 
 /**
  * Validates search query parameters.

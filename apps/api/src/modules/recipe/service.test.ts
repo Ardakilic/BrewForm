@@ -19,7 +19,6 @@ import {
   computeExtractionYield,
   computeFlowRate,
   encodeCursor,
-  ensureUniqueSlug,
   generateSlug,
 } from '@brewform/shared/utils';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -41,18 +40,6 @@ describe('Recipe Service Logic', () => {
       const title = 'Coffee & Tea #1!';
       const slug = generateSlug(title);
       expect(slug).toMatch(/^[a-z0-9-]+$/);
-    });
-  });
-
-  describe('Unique slug generation', () => {
-    it('should find unique slug when none exist', () => {
-      const slug = ensureUniqueSlug('my-recipe', []);
-      expect(slug).toBe('my-recipe');
-    });
-
-    it('should append counter for duplicate slugs', () => {
-      const slug = ensureUniqueSlug('my-recipe', ['my-recipe']);
-      expect(slug).toBe('my-recipe-1');
     });
   });
 

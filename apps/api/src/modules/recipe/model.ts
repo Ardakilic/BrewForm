@@ -453,22 +453,74 @@ export async function createVersion(data: typeof recipeVersions.$inferInsert) {
   return result;
 }
 
+/** A Drizzle transaction handle, as passed to the `db.transaction` callback. */
+type RecipeTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Columns of a new `recipe` row other than the slug, as written by {@link claimRecipeSlug}. */
+type RecipeRowWithoutSlug = Omit<typeof recipes.$inferInsert, 'slug'>;
+
+/**
+ * Claim the first free slug candidate by inserting the recipe row with
+ * `INSERT … ON CONFLICT ("slug") DO NOTHING RETURNING *`, one candidate at a time.
+ *
+ * This must be the FIRST write of the surrounding transaction. A unique violation (`23505`)
+ * inside a Postgres transaction aborts it (every later statement fails with `25P02`), so the
+ * claim never lets the insert raise: `ON CONFLICT DO NOTHING` returns an empty array for a taken
+ * slug (soft-deleted holders included, because `recipe_slug_unique` is global) and the loop moves
+ * on. Under READ COMMITTED, a concurrent uncommitted holder of the same slug makes the insert
+ * wait, then skip (holder committed) or insert (holder rolled back), so concurrent creates always
+ * end with distinct slugs. Only the `slug` conflict target is absorbed; any other unique
+ * violation still raises.
+ *
+ * @param tx - The open creation/fork transaction.
+ * @param row - The recipe row to insert, without its slug.
+ * @param slugCandidates - Slugs to try, in order (from `slugCandidates()` in `@brewform/shared/utils`).
+ * @returns The inserted recipe row, or `null` when every candidate is taken.
+ */
+async function claimRecipeSlug(
+  tx: RecipeTx,
+  row: RecipeRowWithoutSlug,
+  slugCandidates: readonly string[],
+): Promise<typeof recipes.$inferSelect | null> {
+  for (const [attempt, slug] of slugCandidates.entries()) {
+    const [inserted] = await tx
+      .insert(recipes)
+      .values({ ...row, slug })
+      .onConflictDoNothing({ target: recipes.slug })
+      .returning();
+    if (inserted) return inserted;
+    modelLog.debug({ authorId: row.authorId, attempt }, 'recipe slug candidate taken');
+  }
+  return null;
+}
+
 /**
  * Deep-copy a recipe for a new author inside a single database transaction.
  *
- * Creates a new recipe linked to the source via `forkedFromId`, then copies
- * the latest version including taste notes, equipment, additional preparations,
- * and version photos. Also increments the source recipe's `forkCount`.
+ * The first write claims the fork's slug through {@link claimRecipeSlug}
+ * (`ON CONFLICT ("slug") DO NOTHING`, trying each candidate in order), so the
+ * transaction never aborts on a taken slug and holds no other lock while it
+ * waits on a concurrent holder. There is deliberately no savepoint and no
+ * `23505` catch: the claim cannot raise on the slug. Only after a slug is
+ * claimed does it copy the latest version (taste notes, equipment, additional
+ * preparations, version photos) and increment the source recipe's `forkCount`.
  *
- * @param sourceId - UUID of the recipe to fork
- * @param authorId - UUID of the user creating the fork
- * @param title    - Title for the forked recipe
- * @param slug     - Pre-generated unique slug for the fork
- * @returns The new recipe row with its first version and all copied relations
+ * @param sourceId       - UUID of the recipe to fork
+ * @param authorId       - UUID of the user creating the fork
+ * @param title          - Title for the forked recipe (already sanitized)
+ * @param slugCandidates - Slugs to try, in order
+ * @returns The new recipe row with its first version and all copied relations,
+ *          or `null` when every slug candidate is taken (nothing is written and
+ *          `forkCount` is unchanged)
  * @throws {Error} `RECIPE_NOT_FOUND` if sourceId does not exist or is soft-deleted
  * @throws {Error} `RECIPE_NO_VERSIONS` if the source recipe has no published versions
  */
-export async function forkRecipe(sourceId: string, authorId: string, title: string, slug: string) {
+export async function forkRecipe(
+  sourceId: string,
+  authorId: string,
+  title: string,
+  slugCandidates: readonly string[],
+) {
   const source = await findById(sourceId);
   if (!source) throw new Error('RECIPE_NOT_FOUND');
 
@@ -476,16 +528,12 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
   if (!latestVersion) throw new Error('RECIPE_NO_VERSIONS');
 
   return db.transaction(async (tx) => {
-    const [newRecipe] = await tx
-      .insert(recipes)
-      .values({
-        slug,
-        title,
-        authorId,
-        visibility: 'draft',
-        forkedFromId: sourceId,
-      })
-      .returning();
+    const newRecipe = await claimRecipeSlug(
+      tx,
+      { title, authorId, visibility: 'draft', forkedFromId: sourceId },
+      slugCandidates,
+    );
+    if (!newRecipe) return null;
 
     const [newVersion] = await tx
       .insert(recipeVersions)
@@ -624,13 +672,14 @@ export async function forkRecipe(sourceId: string, authorId: string, title: stri
 /**
  * Input for {@link createRecipeWithRelations}. Carries the pre-resolved
  * recipe + first-version fields and the child-relation arrays. The
- * service is responsible for slug generation, sanitization, setup
- * inheritance, and derived-metric computation before calling the helper.
+ * service is responsible for building the slug candidates, sanitization,
+ * setup inheritance, and derived-metric computation before calling the helper.
  */
 export interface CreateRecipeWithRelationsInput {
   // recipe-level
   authorId: string;
-  slug: string;
+  /** Slugs to claim, in order; the first free one wins (see {@link claimRecipeSlug}). */
+  slugCandidates: readonly string[];
   title: string;
   visibility: Visibility;
   // version-level (exhaustive — mirrors service.ts:218-247)
@@ -677,31 +726,38 @@ export interface CreateRecipeWithRelationsInput {
  * Create a recipe with its first version and all child relations in a
  * single transaction, then return the full relational row.
  *
- * Inserts the recipe row (with `currentVersionId = null`), the first
+ * The first write claims the slug through {@link claimRecipeSlug}: it inserts
+ * the recipe row (with `currentVersionId = null`) with
+ * `ON CONFLICT ("slug") DO NOTHING`, trying each candidate in order, so a taken
+ * slug (soft-deleted holders included) never aborts the transaction and a
+ * concurrent create with the same title simply gets the next candidate. There
+ * is deliberately no savepoint and no `23505` catch. Then it inserts the first
  * version row (versionNumber 1), and optionally taste notes, equipment,
- * additional preparations, and version photos. Finally updates
+ * additional preparations, and version photos. Finally it updates
  * `recipes.currentVersionId` and reloads via {@link findById} so the
  * returned shape matches every other read path.
  *
  * @param input - Pre-resolved recipe + version + relation fields.
  * @returns The inserted recipe with author, versions (with nested
  *          relations), photos, and forkedFrom — identical to
- *          {@link findById}'s shape.
+ *          {@link findById}'s shape — or `null` when every slug candidate is
+ *          taken (nothing is written and no reload runs).
  */
 export async function createRecipeWithRelations(input: CreateRecipeWithRelationsInput) {
   modelLog.debug({ authorId: input.authorId }, 'createRecipeWithRelations started');
 
-  const { id } = await db.transaction(async (tx) => {
-    const [r] = await tx
-      .insert(recipes)
-      .values({
-        slug: input.slug,
+  const created = await db.transaction(async (tx) => {
+    const r = await claimRecipeSlug(
+      tx,
+      {
         title: input.title,
         authorId: input.authorId,
         visibility: input.visibility,
         currentVersionId: null,
-      })
-      .returning();
+      },
+      input.slugCandidates,
+    );
+    if (!r) return null;
 
     const [version] = await tx
       .insert(recipeVersions)
@@ -784,8 +840,19 @@ export async function createRecipeWithRelations(input: CreateRecipeWithRelations
     return r;
   });
 
-  modelLog.debug({ authorId: input.authorId, recipeId: id }, 'createRecipeWithRelations completed');
-  return findById(id);
+  if (!created) {
+    modelLog.debug(
+      { authorId: input.authorId, attempts: input.slugCandidates.length },
+      'createRecipeWithRelations completed: no free slug candidate',
+    );
+    return null;
+  }
+
+  modelLog.debug(
+    { authorId: input.authorId, recipeId: created.id },
+    'createRecipeWithRelations completed',
+  );
+  return findById(created.id);
 }
 
 /** Atomically increment a recipe's `likeCount` by 1. Returns the updated row or null. */

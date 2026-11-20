@@ -12,7 +12,7 @@ import {
   tasteNotes,
   users,
 } from '@brewform/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { count, eq, inArray } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as model from './model.ts';
 
@@ -102,7 +102,7 @@ describe('createRecipeWithRelations', () => {
   ): model.CreateRecipeWithRelationsInput {
     return {
       authorId: user.id,
-      slug: `test-recipe-${crypto.randomUUID().slice(0, 8)}`,
+      slugCandidates: [`test-recipe-${crypto.randomUUID().slice(0, 8)}`],
       title: 'Test Recipe',
       visibility: 'draft',
       roastDate: null,
@@ -131,7 +131,7 @@ describe('createRecipeWithRelations', () => {
 
     const [recipeRow] = await db.select().from(recipes).where(eq(recipes.id, result!.id));
     expect(recipeRow).toBeDefined();
-    expect(recipeRow.slug).toBe(input.slug);
+    expect(recipeRow.slug).toBe(input.slugCandidates[0]);
     expect(recipeRow.title).toBe(input.title);
     expect(recipeRow.authorId).toBe(input.authorId);
     expect(recipeRow.visibility).toBe(input.visibility);
@@ -482,5 +482,159 @@ describe('createRecipeWithRelations', () => {
 
     expect(result!.forkedFrom).toBeNull();
     expect(result!.currentVersionId).toBe(firstVersion.id);
+  });
+});
+
+describe('slug claim (createRecipeWithRelations / forkRecipe)', () => {
+  let user: { id: string };
+  /** Recipes to delete after each test, children (forks) before their sources. */
+  const recipeIds: string[] = [];
+
+  beforeEach(async () => {
+    const userId = crypto.randomUUID();
+    await db.insert(users).values({
+      id: userId,
+      email: `slugclaim-${userId}@example.com`,
+      username: `slugclaim-${userId.slice(0, 8)}`,
+      passwordHash: 'hash',
+    });
+    user = { id: userId };
+  });
+
+  afterEach(async () => {
+    for (const recipeId of recipeIds) {
+      await db.update(recipes).set({ currentVersionId: null }).where(eq(recipes.id, recipeId));
+      await db.delete(recipeVersions).where(eq(recipeVersions.recipeId, recipeId));
+      await db.delete(recipes).where(eq(recipes.id, recipeId));
+    }
+    recipeIds.length = 0;
+    await db.delete(users).where(eq(users.id, user.id));
+  });
+
+  /** A unique slug for this test run. */
+  function freshSlug(label: string): string {
+    return `claim-${label}-${crypto.randomUUID().slice(0, 8)}`;
+  }
+
+  /** Insert a bare recipe row holding `slug` (optionally soft-deleted) and track it. */
+  async function holdSlug(slug: string, deleted = false): Promise<string> {
+    const [row] = await db
+      .insert(recipes)
+      .values({
+        slug,
+        title: `Holder ${slug}`,
+        authorId: user.id,
+        visibility: 'public',
+        deletedAt: deleted ? new Date() : null,
+      })
+      .returning({ id: recipes.id });
+    recipeIds.push(row.id);
+    return row.id;
+  }
+
+  /** Count the author's recipe rows (soft-deleted included) and their version rows. */
+  async function authorRowCounts(): Promise<{ recipes: number; versions: number }> {
+    const [recipeCount] = await db
+      .select({ n: count() })
+      .from(recipes)
+      .where(eq(recipes.authorId, user.id));
+    const [versionCount] = await db
+      .select({ n: count() })
+      .from(recipeVersions)
+      .innerJoin(recipes, eq(recipes.id, recipeVersions.recipeId))
+      .where(eq(recipes.authorId, user.id));
+    return { recipes: recipeCount.n, versions: versionCount.n };
+  }
+
+  function buildInput(slugCandidates: string[]): model.CreateRecipeWithRelationsInput {
+    return {
+      authorId: user.id,
+      slugCandidates,
+      title: 'Slug Claim Recipe',
+      visibility: 'public',
+      roastDate: null,
+      packageOpenDate: null,
+      grindDate: null,
+      brewDate: new Date(),
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      brewerDetails: null,
+      grinder: null,
+      personalNotes: '',
+      preparationNotes: 'Bloom 45s',
+      isFavourite: false,
+      preInfusionTimeSeconds: null,
+      beanId: null,
+      brewRatio: null,
+      flowRate: null,
+    };
+  }
+
+  it('falls through a slug held by a soft-deleted recipe to the next candidate', async () => {
+    const taken = freshSlug('taken');
+    const free = freshSlug('free');
+    await holdSlug(taken, true);
+
+    const result = await model.createRecipeWithRelations(buildInput([taken, free]));
+    expect(result).not.toBeNull();
+    recipeIds.unshift(result!.id);
+    expect(result!.slug).toBe(free);
+
+    const versions = await db
+      .select({ id: recipeVersions.id })
+      .from(recipeVersions)
+      .where(eq(recipeVersions.recipeId, result!.id));
+    expect(versions).toHaveLength(1);
+  });
+
+  it('returns null and writes nothing when every candidate is taken', async () => {
+    const a = freshSlug('a');
+    const b = freshSlug('b');
+    await holdSlug(a);
+    await holdSlug(b, true);
+    const before = await authorRowCounts();
+
+    const result = await model.createRecipeWithRelations(buildInput([a, b]));
+    expect(result).toBeNull();
+    expect(await authorRowCounts()).toEqual(before);
+  });
+
+  it('forkRecipe claims the next free candidate and bumps the source forkCount once', async () => {
+    const source = await model.createRecipeWithRelations(buildInput([freshSlug('source')]));
+    recipeIds.push(source!.id);
+    const taken = freshSlug('fork-taken');
+    const free = freshSlug('fork-free');
+    await holdSlug(taken);
+
+    const fork = await model.forkRecipe(source!.id, user.id, 'Fork of X', [taken, free]);
+    expect(fork).not.toBeNull();
+    recipeIds.unshift(fork!.id);
+    expect(fork!.slug).toBe(free);
+
+    const [sourceRow] = await db
+      .select({ forkCount: recipes.forkCount })
+      .from(recipes)
+      .where(eq(recipes.id, source!.id));
+    expect(sourceRow.forkCount).toBe(1);
+  });
+
+  it('forkRecipe returns null and leaves forkCount unchanged when every candidate is taken', async () => {
+    const source = await model.createRecipeWithRelations(buildInput([freshSlug('source')]));
+    recipeIds.push(source!.id);
+    const a = freshSlug('fork-a');
+    const b = freshSlug('fork-b');
+    await holdSlug(a);
+    await holdSlug(b, true);
+    const before = await authorRowCounts();
+
+    const fork = await model.forkRecipe(source!.id, user.id, 'Fork of X', [a, b]);
+    expect(fork).toBeNull();
+
+    const [sourceRow] = await db
+      .select({ forkCount: recipes.forkCount })
+      .from(recipes)
+      .where(eq(recipes.id, source!.id));
+    expect(sourceRow.forkCount).toBe(0);
+    expect(await authorRowCounts()).toEqual(before);
   });
 });

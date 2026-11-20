@@ -359,40 +359,40 @@ How to use this task list
 
 ## 7. Recipe slugs and identifier uniqueness (t3)
 
-- [ ] 7.1 Write failing tests first in `packages/shared/src/utils/slug.test.ts` (delete the `ensureUniqueSlug` block):
+- [x] 7.1 Write failing tests first in `packages/shared/src/utils/slug.test.ts` (delete the `ensureUniqueSlug` block):
   - `generateSlug`: `Türk Kahvesi` → `turk-kahvesi`, `İSTANBUL Şehir Rehberi` → `istanbul-sehir-rehberi`, `Iğdır Usulü` → `igdir-usulu`, `ŞEKERSİZ ÇAY` → `sekersiz-cay`, `Bob's V60_Pour Over` → `bobs-v60-pour-over`, `Crème brûlée ﬁlter ①` → `creme-brulee-filter-1`, `Straße Æble` → `strasse-aeble`; `東京コーヒー`, `Кофе` and `!!!` → `''`; a 200-character word title → at most 93 characters, no trailing `-`, ends on a word boundary; every non-empty output matches `SlugSchema`.
   - `randomSlugSuffix`: 1,000 calls all match `^<sfx>$` and at least 995 are distinct. With `vi.spyOn(globalThis.crypto, 'getRandomValues')` filling byte `250` on the first call and `5` afterwards, the result is `777777` (restore the spy in `afterEach`).
   - `slugCandidates`: `('Morning V60', ['bbbbbb','cccccc'])` → `['morning-v60','morning-v60-bbbbbb','morning-v60-cccccc']`; `('New', ['bbbbbb'])` → `['new-bbbbbb']`; a UUID title → `['<uuid>-bbbbbb']`; `('東京コーヒー', ['bbbbbb'])` → `['recipe-bbbbbb']`; `('Espresso', ['bbbbbb','bbbbbb'])` → `['espresso','espresso-bbbbbb']`.
   - `isReservedRecipeSlug`: `true` for every `RESERVED_RECIPE_SLUGS` entry and for `123e4567-e89b-12d3-a456-426614174000`; `false` for `morning-v60`.
   - Run `make test-shared` and confirm the new cases fail.
-- [ ] 7.2 Rewrite `packages/shared/src/utils/slug.ts`:
+- [x] 7.2 Rewrite `packages/shared/src/utils/slug.ts`:
   - `generateSlug`: apostrophe strip → `toLowerCase()` → the 9-entry map (`ı ß æ œ ø đ ð ł þ`) → `normalize('NFKD')` + `/\p{M}+/gu` strip → `[^a-z0-9]+` → `-` → trim → 93-character cap at a hyphen boundary.
   - `SLUG_SUFFIX_ALPHABET = '23456789bcdfghjkmnpqrstvwxz'`, `SLUG_SUFFIX_LENGTH = 6` and `SLUG_SUFFIX_ATTEMPTS = 5`.
   - `randomSlugSuffix(length = SLUG_SUFFIX_LENGTH)`: `globalThis.crypto.getRandomValues` on a `Uint8Array`; discard bytes `>= 243`; map `SLUG_SUFFIX_ALPHABET[b % 27]`; refill until `length` characters.
   - `RESERVED_RECIPE_SLUGS` (the 16 words in the recipe-slug spec, `as const`), `isReservedRecipeSlug(base)` (list or UUID regex) and `slugCandidates(title, suffixes)`.
   - No `node:` import. JSDoc on every export: state the 27^6 space and the no-vowel, no-look-alike rationale.
   - Re-run `make test-shared` until green.
-- [ ] 7.3 Remove `ensureUniqueSlug`:
+- [x] 7.3 Remove `ensureUniqueSlug`:
   - Delete it from `slug.ts`. Set the export line in `packages/shared/src/utils/index.ts` to `export { generateSlug, isReservedRecipeSlug, RESERVED_RECIPE_SLUGS, randomSlugSuffix, SLUG_SUFFIX_ALPHABET, SLUG_SUFFIX_ATTEMPTS, SLUG_SUFFIX_LENGTH, slugCandidates } from './slug.ts';`.
   - Delete its cases and imports in `apps/api/src/utils/qrcode/qrcode.test.ts` (`:1`, `:15`) and `apps/api/src/modules/recipe/service.test.ts` (`:22`, `:49-54`).
   - Confirm `grep -rn ensureUniqueSlug apps packages` prints nothing.
-- [ ] 7.4 Verify that no slug or transliteration package was added: `grep -n "slugify\|transliterat\|limax" package.json apps/*/package.json packages/*/package.json` prints nothing.
-- [ ] 7.5 Legacy slugs and QR codes:
+- [x] 7.4 Verify that no slug or transliteration package was added: `grep -n "slugify\|transliterat\|limax" package.json apps/*/package.json packages/*/package.json` prints nothing.
+- [x] 7.5 Legacy slugs and QR codes:
   - Add failing cases to `packages/shared/src/schemas/common.test.ts`: `QrCodeFilenameSchema` accepts `cold_brew.png` and `cold-brew.svg`, and rejects `../x.png`, `a--b.png`, `-a.png` and `a.gif`.
   - Export `QR_CODE_FILENAME_PATTERN = /^([a-z0-9_]+(?:-[a-z0-9_]+)*)\.(png|svg)$/i` from `common.ts` and build `QrCodeFilenameSchema` from it. Its docblock says legacy slugs may contain `_` and new slugs never do. Keep `SlugSchema` unchanged.
   - Replace the inline regex at `apps/api/src/modules/qrcode/index.ts:56` with `QR_CODE_FILENAME_PATTERN`.
   - Add a DB-backed case to `apps/api/src/modules/qrcode/index.test.ts`: a public recipe inserted with slug `cold_brew_<m>` returns `200 image/png` from `GET /api/v1/qrcode/recipe/cold_brew_<m>.png`.
-- [ ] 7.6 Write failing DB-backed model tests in `apps/api/src/modules/recipe/model.create.test.ts`:
+- [x] 7.6 Write failing DB-backed model tests in `apps/api/src/modules/recipe/model.create.test.ts`:
   - (a) `createRecipeWithRelations({ …, slugCandidates: [taken, free] })`, where `taken` belongs to a soft-deleted recipe, returns slug `free` with exactly one `recipe_version` row.
   - (b) With every candidate taken, it returns `null`. The `recipe` and `recipe_version` row counts for that author are unchanged.
   - (c) `forkRecipe(sourceId, authorId, 'Fork of X', [taken, free])` returns slug `free` and the source `forkCount` goes up by 1. With every candidate taken, it returns `null` and `forkCount` is unchanged.
-- [ ] 7.7 In `apps/api/src/modules/recipe/model.ts`:
+- [x] 7.7 In `apps/api/src/modules/recipe/model.ts`:
   - Add a private `claimRecipeSlug(tx, row, slugCandidates)`. For each candidate, it runs `tx.insert(recipes).values({ ...row, slug }).onConflictDoNothing({ target: recipes.slug }).returning()`. It returns the first inserted row, or `null`, and logs `modelLog.debug({ authorId, attempt }, 'recipe slug candidate taken')` for each taken candidate.
   - Replace `CreateRecipeWithRelationsInput.slug` with `slugCandidates: readonly string[]`. Run the claim as the first write in `createRecipeWithRelations`. When it returns `null`, return `null` from the transaction callback and the function, and skip the `findById` reload.
   - Change `forkRecipe(sourceId, authorId, title, slugCandidates)` the same way. The claim replaces the bare insert at `:479-488` and runs before the version insert and the `forkCount` update.
   - Update both docblocks: the `ON CONFLICT` semantics, and why there is no savepoint and no `23505` catch.
   - Run the 7.6 tests until green.
-- [ ] 7.8 Write failing DB-backed tests in a new `apps/api/src/modules/recipe/service.slug.test.ts`. Every title carries `<m>`.
+- [x] 7.8 Write failing DB-backed tests in a new `apps/api/src/modules/recipe/service.slug.test.ts`. Every title carries `<m>`.
   - The same title twice: the second slug is `^<base>-<sfx>$`.
   - The title of a soft-deleted recipe (deleted via `deleteRecipe`): the new slug is suffixed and the deleted row keeps its slug.
   - `New`, `Starred` and a UUID title: suffixed.
@@ -402,12 +402,12 @@ How to use this task list
   - Two merges with the same title: distinct slugs.
   - `Promise.all` of two `createRecipe` calls with the same new title: both resolve, distinct slugs, one version row each.
   - `updateRecipe` with a new title (amend and bump) keeps the slug.
-- [ ] 7.9 Write failing exhaustion tests in a new `apps/api/src/modules/recipe/service.slug-exhaustion.test.ts`, using `vi.mock('@brewform/shared/utils', async (importOriginal) => ({ ...(await importOriginal()), randomSlugSuffix: () => 'bbbbbb' }))`:
+- [x] 7.9 Write failing exhaustion tests in a new `apps/api/src/modules/recipe/service.slug-exhaustion.test.ts`, using `vi.mock('@brewform/shared/utils', async (importOriginal) => ({ ...(await importOriginal()), randomSlugSuffix: () => 'bbbbbb' }))`:
   - Create title `Exhaust <m>` twice (taking `<base>` and `<base>-bbbbbb`). A third `createRecipe` rejects with `ConflictError` whose code is `SLUG_CONFLICT`.
   - Through `app.request`, the third `POST /api/v1/recipes` returns `409` with `error.code === 'SLUG_CONFLICT'` and `error.message === 'Could not allocate a unique recipe slug'`.
   - A third untitled fork of the same recipe returns `409 SLUG_CONFLICT`.
   - No `Unhandled error` log line (spy on the error-handler logger).
-- [ ] 7.10 In `apps/api/src/modules/recipe/service.ts`:
+- [x] 7.10 In `apps/api/src/modules/recipe/service.ts`:
   - Replace `generateUniqueSlug` with `buildRecipeSlugCandidates(title)`, which returns `slugCandidates(title, Array.from({ length: SLUG_SUFFIX_ATTEMPTS }, () => randomSlugSuffix()))`. Import both from `@brewform/shared/utils`, which keeps the 7.9 mock effective.
   - `createRecipe` passes `slugCandidates`.
   - `forkRecipe` sanitizes the supplied title with `sanitizeText`, falls back to `Fork of ${source.title}` when the result is empty, and passes `buildRecipeSlugCandidates(forkTitle)`.
@@ -415,9 +415,9 @@ How to use this task list
   - `mergeRecipes` keeps delegating to `createRecipe`.
   - Remove the `ensureUniqueSlug` import. Update the docblocks of `createRecipe`, `forkRecipe` and `mergeRecipes`, and keep the entry/exit debug logs.
   - Run 7.6–7.9 until green.
-- [ ] 7.11 Replace the three `throw new Error('VALIDATION_ERROR: Title cannot be empty')` sites in `recipe/service.ts` with `throw new ValidationError('Title cannot be empty', [{ field: 'title', message: 'Title cannot be empty' }])`. Add a route test that `POST /api/v1/recipes` with `title: '<b></b>'` returns `400 VALIDATION_ERROR`.
-- [ ] 7.12 Add a route test to `apps/api/src/modules/recipe/index.test.ts` that posts the same create payload twice and asserts `201` both times with different slugs.
-- [ ] 7.13 Add drift guards:
+- [x] 7.11 Replace the three `throw new Error('VALIDATION_ERROR: Title cannot be empty')` sites in `recipe/service.ts` with `throw new ValidationError('Title cannot be empty', [{ field: 'title', message: 'Title cannot be empty' }])`. Add a route test that `POST /api/v1/recipes` with `title: '<b></b>'` returns `400 VALIDATION_ERROR`.
+- [x] 7.12 Add a route test to `apps/api/src/modules/recipe/index.test.ts` that posts the same create payload twice and asserts `201` both times with different slugs.
+- [x] 7.13 Add drift guards:
   - `apps/api/src/modules/recipe/reserved-slugs.test.ts` iterates `recipe.routes` (the default export of `apps/api/src/modules/recipe/index.ts`). It asserts that every first path segment that is not a `:param` is in `RESERVED_RECIPE_SLUGS`.
   - `apps/web/src/router.reserved-slugs.test.ts` reads `apps/web/src/router.tsx` with `node:fs`. It asserts that every `path: 'recipes/<segment>…'` whose `<segment>` is not a `:param` is in `RESERVED_RECIPE_SLUGS`.
   - Both name the missing word on failure.

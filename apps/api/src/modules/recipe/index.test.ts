@@ -28,6 +28,7 @@ import { eq, inArray } from 'drizzle-orm';
 import type { Context, Next } from 'hono';
 import { Hono } from 'hono';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { errorHandler } from '../../middleware/errorHandler.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { signAccessToken } from '../auth/jwt.ts';
 import recipeRouter, { deps } from './index.ts';
@@ -109,6 +110,7 @@ function createTestApp(userId: string | null, emailVerified = true) {
     await next();
   });
   app.route('/api/v1/recipes', recipeRouter);
+  app.onError(errorHandler);
   return app;
 }
 
@@ -409,6 +411,64 @@ describe('POST /api/v1/recipes — create', () => {
 
     expect(res.status).toBe(400);
     expect(body.success).toBe(false);
+  });
+
+  it('returns 400 VALIDATION_ERROR when the title is empty after sanitization', async () => {
+    const app = createTestApp(user.id);
+    const res = await app.request('/api/v1/recipes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: '<b></b>',
+        visibility: 'draft',
+        brewMethod: 'v60',
+        drinkType: 'pour_over',
+        preparationNotes: 'Bloom 45s, then pour in stages',
+      }),
+    });
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const body = (await res.json()) as any;
+
+    expect(res.status).toBe(400);
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.details).toEqual([{ field: 'title', message: 'Title cannot be empty' }]);
+  });
+
+  it('returns 201 twice with different slugs for the same payload', async () => {
+    const app = createTestApp(user.id);
+    const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 8);
+    const payload = JSON.stringify({
+      title: `Same Payload ${marker}`,
+      visibility: 'draft',
+      brewMethod: 'v60',
+      drinkType: 'pour_over',
+      preparationNotes: 'Bloom 45s, then pour in stages',
+    });
+    const post = () =>
+      app.request('/api/v1/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+      });
+
+    const first = await post();
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const firstBody = (await first.json()) as any;
+    expect(first.status).toBe(201);
+    createdRecipeIds.push(firstBody.data.id);
+
+    const second = await post();
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion cast
+    const secondBody = (await second.json()) as any;
+    expect(second.status).toBe(201);
+    createdRecipeIds.push(secondBody.data.id);
+
+    expect(firstBody.data.slug).toBe(`same-payload-${marker}`);
+    expect(secondBody.data.slug).not.toBe(firstBody.data.slug);
+    expect(secondBody.data.slug).toMatch(
+      new RegExp(`^same-payload-${marker}-[23456789bcdfghjkmnpqrstvwxz]{6}$`),
+    );
   });
 });
 

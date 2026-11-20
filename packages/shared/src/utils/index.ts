@@ -25,7 +25,16 @@ export {
   computeExtractionYieldFromTds,
   computeFlowRate,
 } from './metrics.ts';
-export { ensureUniqueSlug, generateSlug } from './slug.ts';
+export {
+  generateSlug,
+  isReservedRecipeSlug,
+  RESERVED_RECIPE_SLUGS,
+  randomSlugSuffix,
+  SLUG_SUFFIX_ALPHABET,
+  SLUG_SUFFIX_ATTEMPTS,
+  SLUG_SUFFIX_LENGTH,
+  slugCandidates,
+} from './slug.ts';
 export { generateUniqueUsername } from './username.ts';
 /** Recipe validation: hard (blocks save) and soft (warnings only) checks. */
 export {

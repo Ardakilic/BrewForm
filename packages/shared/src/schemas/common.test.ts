@@ -51,6 +51,17 @@ describe('QrCodeFilenameSchema', () => {
     const result = QrCodeFilenameSchema.safeParse('');
     expect(result.success).toBe(false);
   });
+
+  it('should accept legacy underscore slugs', () => {
+    expect(QrCodeFilenameSchema.safeParse('cold_brew.png').success).toBe(true);
+    expect(QrCodeFilenameSchema.safeParse('cold-brew.svg').success).toBe(true);
+  });
+
+  it('should reject unsafe or malformed filenames', () => {
+    for (const filename of ['../x.png', 'a--b.png', '-a.png', 'a.gif']) {
+      expect(QrCodeFilenameSchema.safeParse(filename).success).toBe(false);
+    }
+  });
 });
 
 describe('SearchQuerySchema', () => {
