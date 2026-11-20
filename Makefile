@@ -155,6 +155,9 @@ db-push: up ## Push schema changes
 db-seed: up ## Seed the database
 	docker compose run --rm app pnpm --filter @brewform/db run seed
 
+db-check-identifiers: up ## Report data that breaks the wave-6 identifier indexes (args=--fix-deleted-duplicates|--fix-setup-defaults|--fix-empty-slugs)
+	docker compose run --rm app pnpm --filter @brewform/db run check-identifiers -- $(args)
+
 db-studio: up ## Open Drizzle Studio
 	docker compose run --rm -p 5555:5555 app pnpm --filter @brewform/db run studio
 
@@ -246,4 +249,4 @@ prod-down: ## Stop production profile
 
 release: images images-push ## Build and push both images (local CI equivalent)
 
-.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons images images-push prod-up prod-up-build prod-down release
+.PHONY: help up down build logs restart setup-hooks install lockfile-update email-build lint fmt fmt-check check check-tests test-db-provision test test-coverage test-api test-shared test-web test-specific db-migrate db-generate db-push db-seed db-check-identifiers db-studio flush-db flush-cache flush-contents db-reset setup dev dev-api web-dev web-build preview ci generate-icons images images-push prod-up prod-up-build prod-down release

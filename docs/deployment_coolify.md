@@ -483,6 +483,44 @@ endpoint, which pulls `:latest` and recreates each container — no server-side 
 - **Backups:** Postgres via Coolify's Database → Backups. The API cache is in-memory
   (rebuildable, nothing to back up). R2 has its own durability.
 
+### Before upgrading to wave 6 (identifier check)
+
+Wave 6 adds three unique indexes: case-insensitive `user.email` and `user.username`
+(`user_email_lower_unique`, `user_username_lower_unique`) and one active default setup per user
+(`setup_user_default_unique`). Existing data can violate them, for example `Foo@x.io` and
+`foo@x.io` as two accounts. Check the data **before** redeploying:
+
+1. On the server, run the check from the **new** image as a one-off container on the API's
+   network, with the API's `DATABASE_URL` value:
+
+   ```sh
+   docker run --rm --network <API network> -e DATABASE_URL=<API value> \
+     --entrypoint node ghcr.io/ardakilic/brewform-api:<new tag> \
+     /app/packages/db/src/check-identifiers.ts
+   ```
+
+   `<API network>` is the Docker network the API resource runs on (`coolify` for the setup in
+   [§2](#2-networking-model-read-this--its-the-1-source-of-failures)). The report prints counts,
+   user ids and usernames, never email addresses. It exits `0` when nothing blocks the upgrade
+   and `1` otherwise. On a Docker Compose install the equivalent is
+   `docker compose -f compose.production.yml run --rm -w /app/packages/db --entrypoint node api src/check-identifiers.ts`.
+2. Fix what it reports:
+   - append `--fix-deleted-duplicates` to rewrite the email and username of **soft-deleted**
+     accounts in a duplicate group;
+   - append `--fix-setup-defaults` to keep each user's most recently updated default setup;
+   - append `--fix-empty-slugs` to give legacy recipes with an empty slug a `recipe-<suffix>`
+     slug (a warning only; it does not block the upgrade);
+   - for two or more **active** accounts that differ only in letter case, contact the owners,
+     then change all but one account's username (or email) as an admin through
+     `PATCH /api/v1/admin/users/:id`.
+
+   Re-run the check until it exits `0`.
+3. Redeploy the API.
+
+If you skip the check and the data conflicts, the migration rolls back as a whole (Drizzle applies
+all pending migrations in one transaction), so the database is left unchanged. The new container
+never becomes healthy, and the old one keeps serving until you fix the data and redeploy.
+
 ---
 
 ## 14. Troubleshooting (real issues hit during rollout)

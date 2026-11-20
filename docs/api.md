@@ -80,6 +80,18 @@ See [docs/auth.md](auth.md) for the full authentication flow.
 | POST   | `/auth/forgot-password` | none | Request a password reset email        |
 | POST   | `/auth/reset-password`  | none | Confirm password reset with token     |
 
+### Account identifiers
+
+- Emails are trimmed and lower-cased before they are validated, stored or looked up, so
+  `  Mixed.Case@Example.COM ` registers and signs in as `mixed.case@example.com`.
+- Emails and usernames are unique case-insensitively (`Arda` and `arda` cannot both exist).
+  Usernames keep the display case the user chose; profile URLs and `@mentions` resolve any case.
+- The email and username of a deleted account stay reserved: registering with them answers
+  `409` (`Email already registered` / `Username already taken`).
+- Reserved usernames (for example `admin`, `support` or `brewform`, and anything starting with
+  `deleted-`) are refused at self-registration as `409 Username already taken`. Admin-created
+  accounts are exempt.
+
 ### POST /auth/register
 
 ```json

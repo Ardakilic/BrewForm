@@ -482,10 +482,10 @@ How to use this task list
   - `apps/api/src/modules/recipe/index.test.ts`: `POST /:id/like` three times (like, unlike, like) leaves one `user_recipe_like` row. The same for `POST /:id/favourite`.
   - `apps/api/src/modules/follow/index.test.ts`: follow, unfollow, follow leaves one `user_follow` row.
   - `apps/api/src/modules/collection/service.test.ts`: add, remove, add leaves one `collection_item` row.
-- [ ] 7.26 Write failing tests in a new `packages/db/src/check-identifiers.test.ts`:
+- [x] 7.26 Write failing tests in a new `packages/db/src/check-identifiers.test.ts`:
   - Pure cases: `groupCaseInsensitiveDuplicates` over `A@x.io` (active), `a@x.io` (soft-deleted) and `b@x.io` returns one group with both ids, the deleted member marked fixable. `findMultipleDefaults` lists the older default for clearing. `formatReport` output contains no email address. `hasBlockingIssues` is `true` for any email, username or default group and `false` for empty slugs only.
   - DB-backed cases against `brewform_test`: `runCheck(db, {})` reports zero blocking issues. A recipe inserted with `slug = ''` is reported by id (skip when one already exists; delete it in `finally`), and `runCheck(db, { fixEmptySlugs: true })` gives it a slug matching `^recipe-<sfx>$`.
-- [ ] 7.27 Implement `packages/db/src/check-identifiers.ts`:
+- [x] 7.27 Implement `packages/db/src/check-identifiers.ts`:
   - Module docblock modelled on `check-users-empty.ts`: purpose, invocation, output contract and the "never prints emails" rule.
   - Exported pure functions plus `runCheck(database, { fixDeletedDuplicates?, fixSetupDefaults?, fixEmptySlugs? })`.
   - It loads only the columns listed in the unique-identifiers spec.
@@ -497,11 +497,11 @@ How to use this task list
   - For active-account groups, print the manual admin-rename instructions.
   - Add `"check-identifiers": "tsx src/check-identifiers.ts"` to `packages/db/package.json`.
   - Run `make test-specific filter=src/check-identifiers.test.ts`.
-- [ ] 7.28 Add a `db-check-identifiers` target to the `Makefile`: `docker compose run --rm app pnpm --filter @brewform/db run check-identifiers -- $(args)`, with a `##` help line and a `.PHONY` entry. Verify `make db-check-identifiers` exits `0` on the dev DB and `make db-check-identifiers args=--fix-setup-defaults` runs.
-- [ ] 7.29 Docs:
+- [x] 7.28 Add a `db-check-identifiers` target to the `Makefile`: `docker compose run --rm app pnpm --filter @brewform/db run check-identifiers -- $(args)`, with a `##` help line and a `.PHONY` entry. Verify `make db-check-identifiers` exits `0` on the dev DB and `make db-check-identifiers args=--fix-setup-defaults` runs.
+- [x] 7.29 Docs:
   - `docs/api.md` gets an "Account identifiers" note: emails are trimmed and lower-cased; emails and usernames are unique case-insensitively, and usernames keep their display case; identifiers of deleted accounts stay reserved (`409`); reserved usernames are refused as taken.
   - `docs/deployment_coolify.md` upgrade notes add a "Before upgrading to wave 6" step: on the server, run the check from the new image as a one-off container on the API's network, `docker run --rm --network <API network> -e DATABASE_URL=<API value> --entrypoint node ghcr.io/ardakilic/brewform-api:<new tag> /app/packages/db/src/check-identifiers.ts`, fix what it reports (the opt-in flags, or the admin rename path), and then redeploy. If the step is skipped and data conflicts, the migration rolls back, the new container never becomes healthy and the old one keeps serving. `docs/deployment_compose.md` gets the compose equivalent (`make prod-check-identifiers`) in task 22.9.
-- [ ] 7.30 Group check: run `make check`, `make lint`, `make test-shared`, `make test-api` (after `make test-db-provision`), `make test-web`, `make test-specific filter=src/check-identifiers.test.ts`, `make db-check-identifiers` (exit `0`) and `make db-generate` (`No schema changes, nothing to migrate`), then `make fmt` and `make fmt-check`. All must be green.
+- [x] 7.30 Group check: run `make check`, `make lint`, `make test-shared`, `make test-api` (after `make test-db-provision`), `make test-web`, `make test-specific filter=src/check-identifiers.test.ts`, `make db-check-identifiers` (exit `0`) and `make db-generate` (`No schema changes, nothing to migrate`), then `make fmt` and `make fmt-check`. All must be green.
 
 ## 8. Recipe write integrity — shared schemas, model, service and route (t1, refine D2a)
 
