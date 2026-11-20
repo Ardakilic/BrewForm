@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { t } from '@brewform/shared/i18n';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -13,51 +13,7 @@ vi.mock('@/utils/logger.ts', () => ({
   }),
 }));
 
-vi.mock('../../contexts/AuthContext.tsx', () => ({
-  useAuth: () => ({
-    user: { id: 'current-admin', username: 'admin', displayName: 'Admin' },
-    isLoading: false,
-    isAuthenticated: true,
-    sessionError: null,
-    login: vi.fn(),
-    register: vi.fn(),
-    logout: vi.fn(),
-    refreshUser: vi.fn(),
-    clearSessionError: vi.fn(),
-  }),
-}));
-
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: () => ({
-    t: (k: string) => {
-      const map: Record<string, string> = {
-        'admin.users.editUserTitle': 'Kullanıcıyı Düzenle:',
-        'admin.users.backToUser': '← Kullanıcıya Dön',
-        'admin.users.passwordHint': 'Mevcut şifreyi korumak için şifreyi boş bırakın.',
-        'admin.users.adminBadge': 'Yönetici',
-        'admin.users.banned': 'Yasaklı',
-        'admin.users.notFoundTitle': 'Kullanıcı Bulunamadı',
-        'admin.users.notFoundMessage': 'İstenen kullanıcı bulunamadı.',
-        'admin.users.backToUsers': 'Kullanıcılara Dön',
-        'admin.users.loadDetailError': 'Kullanıcı detayları yüklenemedi.',
-        'auth.email': 'E-posta',
-        'auth.username': 'Kullanıcı Adı',
-        'auth.resetPassword.newPassword': 'Yeni Şifre',
-        'auth.password': 'Şifre',
-        'settings.displayName': 'Görünen Ad',
-        'common.bio': 'Biyografi',
-        'common.saveChanges': 'Değişiklikleri Kaydet',
-        'common.saving': 'Kaydediliyor...',
-        'common.cancel': 'İptal',
-        'admin.users.passwordPlaceholder': 'Mevcutu korumak için boş bırakın',
-      };
-      return map[k] ?? k;
-    },
-    locale: 'tr',
-    setLocale: vi.fn(),
-    availableLocales: ['en', 'tr'],
-  }),
-}));
+vi.mock('../../components/seo/SEOHead.tsx', () => ({ SEOHead: () => null }));
 
 vi.mock('../../api/index.ts', () => ({
   adminApi: {
@@ -66,43 +22,123 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
+import { ApiError } from '../../api/errors.ts';
 import { adminApi } from '../../api/index.ts';
+import type { AdminUserDetail } from '../../api/types.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders, TEST_ADMIN } from '../../test-utils/render.tsx';
+import { action, loader } from './AdminUserEditPage.data.ts';
 import { AdminUserEditPage } from './AdminUserEditPage.tsx';
 
 const mockAdminApi = vi.mocked(adminApi);
 
+const EDITED: AdminUserDetail = {
+  id: 'user-to-edit',
+  email: 'edit@example.com',
+  username: 'edituser',
+  displayName: 'Edit User',
+  avatarUrl: null,
+  isAdmin: false,
+  isBanned: false,
+  createdAt: '2024-01-01T00:00:00Z',
+  bio: '',
+  updatedAt: '2024-01-01T00:00:00Z',
+};
+
+/** Stub for the routes the edit page navigates to. */
+const DestinationStub = () => <p>destination</p>;
+
+/** Renders `/admin/users/:id/edit` for `id` through its real loader and action. */
+function renderEdit(id = 'user-to-edit') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/admin/users/:id/edit',
+        loader,
+        action,
+        Component: AdminUserEditPage,
+        errorElement: <RouteErrorState />,
+      },
+      { path: '/admin/users/:id', Component: DestinationStub },
+      { path: '/admin/users', Component: DestinationStub },
+    ],
+    { initialEntries: [`/admin/users/${id}/edit`], auth: 'admin', locale: 'tr' },
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAdminApi.getUserDetail.mockResolvedValue({
-    id: 'user-to-edit',
-    email: 'edit@example.com',
-    username: 'edituser',
-    displayName: 'Edit User',
-    avatarUrl: null,
-    isAdmin: false,
-    isBanned: false,
-    createdAt: '2024-01-01T00:00:00Z',
-    bio: '',
-    updatedAt: '2024-01-01T00:00:00Z',
-  });
+  localStorage.clear();
+  mockAdminApi.getUserDetail.mockResolvedValue(EDITED);
 });
 
-describe('AdminUserEditPage — tr locale spot-check', () => {
-  it('renders the Turkish edit-user title', async () => {
-    const router = createMemoryRouter(
-      [
-        {
-          path: '/admin/users/:id/edit',
-          element: <AdminUserEditPage />,
-        },
-      ],
-      { initialEntries: ['/admin/users/user-to-edit/edit'] },
+describe('AdminUserEditPage', () => {
+  it('renders the Turkish edit-user title with the loaded user', async () => {
+    renderEdit();
+
+    expect(
+      await screen.findByText(`${t('admin.users.editUserTitle', 'tr')} Edit User`),
+    ).toBeInTheDocument();
+    expect((screen.getByLabelText(t('auth.email', 'tr')) as HTMLInputElement).value).toBe(
+      'edit@example.com',
     );
+  });
 
-    render(<RouterProvider router={router} />);
+  it('renders the not-found page when the user does not exist', async () => {
+    mockAdminApi.getUserDetail.mockRejectedValue(
+      new ApiError('NOT_FOUND', 'missing', undefined, 404),
+    );
+    renderEdit('missing');
 
-    await waitFor(() => {
-      expect(screen.getByText(/Kullanıcıyı Düzenle/)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(t('error.404', 'tr'))).toBeInTheDocument();
+  });
+
+  it('submits only the changed fields through the update action', async () => {
+    mockAdminApi.updateUser.mockResolvedValue({ ...EDITED, username: 'renamed' });
+    renderEdit();
+    const username = (await screen.findByLabelText(t('auth.username', 'tr'))) as HTMLInputElement;
+
+    fireEvent.change(username, { target: { value: 'renamed' } });
+    fireEvent.click(screen.getByRole('button', { name: t('common.saveChanges', 'tr') }));
+
+    await waitFor(() =>
+      expect(mockAdminApi.updateUser).toHaveBeenCalledWith(
+        'user-to-edit',
+        { username: 'renamed' },
+        { signal: expect.any(AbortSignal) },
+      ),
+    );
+    expect(await screen.findByText(t('admin.users.updateSuccess', 'tr'))).toBeInTheDocument();
+  });
+
+  it('shows the server error inline when the update fails with a conflict', async () => {
+    mockAdminApi.updateUser.mockRejectedValue(
+      new ApiError('CONFLICT', 'Username taken', undefined, 409),
+    );
+    renderEdit();
+    const username = (await screen.findByLabelText(t('auth.username', 'tr'))) as HTMLInputElement;
+
+    fireEvent.change(username, { target: { value: 'taken' } });
+    fireEvent.click(screen.getByRole('button', { name: t('common.saveChanges', 'tr') }));
+
+    expect(await screen.findByText('Username taken')).toBeInTheDocument();
+    expect(screen.queryByText(t('admin.users.updateSuccess', 'tr'))).not.toBeInTheDocument();
+  });
+
+  it('reports no changes without submitting', async () => {
+    renderEdit();
+    await screen.findByLabelText(t('auth.username', 'tr'));
+
+    fireEvent.click(screen.getByRole('button', { name: t('common.saveChanges', 'tr') }));
+
+    expect(await screen.findByText(t('admin.users.noChanges', 'tr'))).toBeInTheDocument();
+    expect(mockAdminApi.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('redirects an admin away from editing their own account', async () => {
+    mockAdminApi.getUserDetail.mockResolvedValue({ ...EDITED, id: TEST_ADMIN.id });
+    const { router } = renderEdit(TEST_ADMIN.id);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin/users'));
   });
 });

@@ -1,11 +1,11 @@
 import { Select } from '@base-ui/react/select';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, NavLink } from 'react-router';
-import { authApi } from '../../api/index.ts';
+import { Link, NavLink, useRouteLoaderData } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { useMediaQuery } from '../../hooks/useMediaQuery.ts';
+import type { rootLoader } from '../../routes/root.ts';
 import { NotificationBell } from './NotificationBell.tsx';
 
 const FOCUSABLE_SELECTOR =
@@ -179,26 +179,20 @@ const NAV_ITEMS = [
 /**
  * Top navigation bar with auth-aware links, theme toggle, and a
  * focus-trapped mobile hamburger menu. Hides the register link when
- * registration is disabled server-side.
+ * registration is disabled server-side (read once by the root route loader
+ * via `useRouteLoaderData('root')`; outside the root route it defaults to shown).
  */
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+  const registrationEnabled =
+    useRouteLoaderData<typeof rootLoader>('root')?.registrationEnabled ?? true;
   // Tailwind `md` breakpoint (768px — default theme, not overridden in globals.css).
   // Coordinates which single NotificationBell instance is mounted (desktop nav vs
   // mobile drawer) so duplicate unread-count requests/listeners never occur.
   const isDesktop = useMediaQuery('(min-width: 768px)');
-
-  useEffect(() => {
-    if (user) return;
-    authApi
-      .registrationStatus()
-      .then(({ enabled }) => setRegistrationEnabled(enabled))
-      .catch(() => setRegistrationEnabled(true));
-  }, [user]);
 
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);

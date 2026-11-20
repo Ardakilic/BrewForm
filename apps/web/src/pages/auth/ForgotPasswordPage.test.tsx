@@ -1,9 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AuthProvider } from '../../contexts/AuthContext.tsx';
-import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action } from './ForgotPasswordPage.data.ts';
 import { ForgotPasswordPage } from './ForgotPasswordPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -48,15 +47,11 @@ vi.mock('../../api/index.ts', () => ({
 
 import { authApi } from '../../api/index.ts';
 
+/** Renders `/forgot-password` with its real route action inside the app providers. */
 function renderPage() {
-  return render(
-    <MemoryRouter>
-      <I18nProvider>
-        <AuthProvider>
-          <ForgotPasswordPage />
-        </AuthProvider>
-      </I18nProvider>
-    </MemoryRouter>,
+  return renderWithAppProviders(
+    [{ path: '/forgot-password', element: <ForgotPasswordPage />, action }],
+    { initialEntries: ['/forgot-password'], locale: 'en' },
   );
 }
 
@@ -97,7 +92,10 @@ describe('ForgotPasswordPage', () => {
     await userEvent.type(screen.getByPlaceholderText('you@example.com'), 'test@test.com');
     await userEvent.click(screen.getByRole('button', { name: /send reset link/i }));
     await waitFor(() => {
-      expect(authApi.forgotPassword).toHaveBeenCalledWith({ email: 'test@test.com' });
+      expect(authApi.forgotPassword).toHaveBeenCalledWith(
+        { email: 'test@test.com' },
+        { signal: expect.any(AbortSignal) },
+      );
     });
   });
 

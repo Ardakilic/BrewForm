@@ -1,24 +1,31 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useFetcher } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { authApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { failureToError } from '../../routes/action-result.ts';
 import { getApiErrorMessage } from '../../utils/apiErrorMessage.ts';
+import type { action } from './ForgotPasswordPage.data.ts';
 
 const log = createLogger('ForgotPasswordPage');
 
 /**
- * Forgot-password form: submits the email for a reset link and swaps to
- * a "check your email" confirmation on success.
+ * Forgot-password form: submits the email to the `/forgot-password` route action
+ * (`ForgotPasswordPage.data.ts`) through a fetcher and swaps to a "check your email"
+ * confirmation on success.
  */
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
+  const fetcher = useFetcher<typeof action>();
+  const loading = fetcher.state !== 'idle';
+  const result = fetcher.state === 'idle' ? fetcher.data : undefined;
+  const success = result?.ok === true;
+  const error =
+    result && !result.ok
+      ? getApiErrorMessage(failureToError(result), t, 'auth.forgotPassword.error.failed')
+      : '';
 
   useEffect(() => {
     log.debug({}, 'ForgotPasswordPage mounted');
@@ -27,19 +34,10 @@ export function ForgotPasswordPage() {
     };
   }, []);
 
-  async function handleSubmit(e: FormEvent) {
+  /** Submits the email to the route action. */
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await authApi.forgotPassword({ email });
-      setSuccess(true);
-    } catch (err: unknown) {
-      log.error({ err }, 'ForgotPasswordPage sendResetEmail failed');
-      setError(getApiErrorMessage(err, t, 'auth.forgotPassword.error.failed'));
-    } finally {
-      setLoading(false);
-    }
+    fetcher.submit({ email }, { method: 'post' });
   }
 
   if (success) {

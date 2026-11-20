@@ -78,7 +78,6 @@ const TARGET_USER = {
 /** Endpoints whose success payload is an object rather than a list. */
 const OBJECT_FIXTURES: Record<string, unknown> = {
   [`/admin/users/${FIXTURE_UUID}`]: TARGET_USER,
-  '/admin/users': { users: [], total: 0 },
   '/admin/stats': {
     totalUsers: 0,
     totalRecipes: 0,
@@ -86,6 +85,20 @@ const OBJECT_FIXTURES: Record<string, unknown> = {
     totalPhotos: 0,
     recentSignups: 0,
     recentRecipes: 0,
+  },
+  '/auth/registration-status': { enabled: true },
+  '/preferences': {
+    unitSystem: 'metric',
+    temperatureUnit: 'celsius',
+    theme: 'light',
+    locale: 'en',
+    timezone: 'UTC',
+    dateFormat: 'YYYY_MM_DD',
+    notifyNewFollower: true,
+    notifyRecipeLiked: true,
+    notifyRecipeCommented: true,
+    notifyFollowedUserPosted: true,
+    notifyMentionedInComment: true,
   },
 };
 

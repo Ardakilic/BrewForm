@@ -1,10 +1,28 @@
 import { ApiError, isAbortError } from '../api/errors.ts';
 
-/** An action's expected-failure result: the error message and, for API errors, its code. */
+/**
+ * An action's expected-failure result: the error message and, for API errors, its code and
+ * (for a rate limit) the `Retry-After` seconds.
+ */
 export interface ActionFailure {
   ok: false;
   error: string;
   code?: string;
+  retryAfterSeconds?: number;
+}
+
+/**
+ * Rebuilds an error from an action failure so components can reuse the error-message helpers
+ * (`getApiErrorMessage`): an `ApiError` (with code and `retryAfterSeconds`) when the failure
+ * carried an API code, otherwise a plain `Error`.
+ */
+export function failureToError(
+  failure: Pick<ActionFailure, 'error' | 'code' | 'retryAfterSeconds'>,
+): Error {
+  if (failure.code) {
+    return new ApiError(failure.code, failure.error, undefined, 0, failure.retryAfterSeconds);
+  }
+  return new Error(failure.error);
 }
 
 /**
@@ -21,7 +39,9 @@ export function toActionFailure(
   if (isAbortError(err)) throw err;
   if (err instanceof ApiError) {
     if (rethrowStatuses.includes(err.status)) throw err;
-    return { ok: false, error: err.message, code: err.code };
+    return err.retryAfterSeconds === undefined
+      ? { ok: false, error: err.message, code: err.code }
+      : { ok: false, error: err.message, code: err.code, retryAfterSeconds: err.retryAfterSeconds };
   }
   return { ok: false, error: err instanceof Error ? err.message : 'Request failed' };
 }

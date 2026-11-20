@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/errors.ts';
-import { formString, toActionFailure } from './action-result.ts';
+import { failureToError, formString, toActionFailure } from './action-result.ts';
 
 describe('toActionFailure', () => {
   it('maps an API error to { ok: false, error, code }', () => {
@@ -38,5 +38,29 @@ describe('formString', () => {
     expect(formString(form, 'intent')).toBe('ban');
     expect(formString(form, 'missing')).toBe('');
     expect(formString(form, 'file')).toBe('');
+  });
+});
+
+describe('rate-limit failures', () => {
+  it('keep retryAfterSeconds and round-trip to an ApiError through failureToError', () => {
+    const failure = toActionFailure(
+      new ApiError('RATE_LIMITED', 'Too many', undefined, 429, 42),
+      [],
+    );
+    expect(failure).toEqual({
+      ok: false,
+      error: 'Too many',
+      code: 'RATE_LIMITED',
+      retryAfterSeconds: 42,
+    });
+    const err = failureToError(failure);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({ code: 'RATE_LIMITED', message: 'Too many', retryAfterSeconds: 42 });
+  });
+
+  it('failureToError returns a plain Error when there is no API code', () => {
+    const err = failureToError({ error: 'offline' });
+    expect(err).not.toBeInstanceOf(ApiError);
+    expect(err.message).toBe('offline');
   });
 });

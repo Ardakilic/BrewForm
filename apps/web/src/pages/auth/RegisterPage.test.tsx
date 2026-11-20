@@ -1,9 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { authApi, userApi } from '../../api/index.ts';
 import { AuthProvider } from '../../contexts/AuthContext.tsx';
 import { I18nProvider } from '../../contexts/I18nContext.tsx';
+import { ROOT_ROUTE_ID, rootLoader } from '../../routes/root.ts';
 import { RegisterPage } from './RegisterPage.tsx';
 
 const { mockLogger } = vi.hoisted(() => ({
@@ -46,16 +47,32 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
+/** Renders `/register` under the real root route, whose loader reads the registration flag. */
 function renderRegisterPage() {
-  return render(
-    <MemoryRouter>
-      <I18nProvider>
-        <AuthProvider>
-          <RegisterPage />
-        </AuthProvider>
-      </I18nProvider>
-    </MemoryRouter>,
+  const router = createMemoryRouter(
+    [
+      {
+        id: ROOT_ROUTE_ID,
+        path: '/',
+        loader: rootLoader,
+        HydrateFallback: RootHydrateFallback,
+        children: [{ path: 'register', element: <RegisterPage /> }],
+      },
+    ],
+    { initialEntries: ['/register'] },
   );
+  return render(
+    <I18nProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </I18nProvider>,
+  );
+}
+
+/** Rendered while the root loader is pending. */
+function RootHydrateFallback() {
+  return <p>root loading</p>;
 }
 
 describe('RegisterPage', () => {
@@ -77,11 +94,20 @@ describe('RegisterPage', () => {
     );
   });
 
-  it('should show loading state while checking registration status', () => {
+  it('waits for the root loader before rendering the form', () => {
     vi.mocked(authApi.registrationStatus).mockReturnValue(new Promise(() => {}));
     vi.mocked(userApi.me).mockReturnValue(new Promise(() => {}));
     renderRegisterPage();
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('root loading')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('you@example.com')).not.toBeInTheDocument();
+  });
+
+  it('reads the flag from the root loader with one status request', async () => {
+    vi.mocked(authApi.registrationStatus).mockResolvedValue({ enabled: true });
+    renderRegisterPage();
+    await screen.findByPlaceholderText('you@example.com');
+    expect(authApi.registrationStatus).toHaveBeenCalledTimes(1);
+    expect(authApi.registrationStatus).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
   });
 
   it('should show registration form when enabled', async () => {
@@ -118,7 +144,7 @@ describe('RegisterPage', () => {
     });
     expect(mockLogger.error).toHaveBeenCalledWith(
       { err: expect.any(Error) },
-      'RegisterPage registration status check failed',
+      'rootLoader registrationStatus failed',
     );
   });
 

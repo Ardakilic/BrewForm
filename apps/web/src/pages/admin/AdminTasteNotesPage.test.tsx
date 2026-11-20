@@ -1,170 +1,142 @@
+import { t } from '@brewform/shared/i18n';
+import type { TasteNoteOutput } from '@brewform/shared/schemas';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderWithAppProviders } from '../../test-utils/render.tsx';
-import { AdminTasteNotesPage } from './AdminTasteNotesPage.tsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// ── Module mocks (hoisted) ─────────────────────────────────────────────────
-
-vi.mock('../../api/static-cache.ts', () => ({
-  getEquipmentCached: vi.fn(),
-  getTasteNotesCached: vi.fn(),
-  invalidateStaticCache: vi.fn(),
-}));
-
-vi.mock('../../api/client.ts', () => ({
-  api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
-}));
-
-vi.mock('../../utils/logger.ts', () => ({
-  createLogger: () => ({
+const { mockLogger } = vi.hoisted(() => ({
+  mockLogger: {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-  }),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  },
+}));
+vi.mock('@/utils/logger.ts', () => ({ createLogger: () => mockLogger }));
+
+vi.mock('../../api/static-cache.ts', () => ({
+  getTasteNotesCached: vi.fn(),
+  invalidateStaticCache: vi.fn(),
 }));
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  I18nProvider: ({ children }: { children: ReactNode }) => children,
-  useTranslation: () => ({
-    t: (k: string) => {
-      const map: Record<string, string> = {
-        'admin.tasteNotes': 'Taste Notes',
-        'admin.tasteNotes.add': '+ Add Taste Note',
-        'admin.tasteNotes.addTitle': 'Add Taste Note',
-        'admin.tasteNotes.deleteConfirm': 'Delete this taste note?',
-        'admin.tasteNotes.parent': 'Parent (optional)',
-        'admin.tasteNotes.noneTopLevel': 'None (top-level)',
-        'admin.tasteNotes.cacheWarning':
-          'Note: Creating taste notes will flush the taste note cache.',
-        'common.cancel': 'Cancel',
-        'common.create': 'Create',
-        'common.creating': 'Creating...',
-        'common.delete': 'Delete',
-        'common.loading': 'Loading...',
-        'common.name': 'Name',
-      };
-      return map[k] ?? k;
-    },
-    locale: 'en',
-    setLocale: vi.fn(),
-    availableLocales: ['en', 'tr'],
-  }),
+vi.mock('../../api/index.ts', () => ({
+  adminApi: { createTasteNote: vi.fn(), deleteTasteNote: vi.fn() },
 }));
 
-// ── Imports after mocks ────────────────────────────────────────────────────
+import { adminApi } from '../../api/index.ts';
+import { getTasteNotesCached, invalidateStaticCache } from '../../api/static-cache.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action, loader } from './AdminTasteNotesPage.data.ts';
+import { AdminTasteNotesPage } from './AdminTasteNotesPage.tsx';
 
-import { api } from '../../api/index.ts';
-import { invalidateStaticCache } from '../../api/static-cache.ts';
-
-const mockApi = vi.mocked(api);
+const mockApi = vi.mocked(adminApi);
+const mockGetTasteNotesCached = vi.mocked(getTasteNotesCached);
 const mockInvalidateStaticCache = vi.mocked(invalidateStaticCache);
 
-// ── Setup ──────────────────────────────────────────────────────────────────
+const FRUITY = { id: 'tn-1', name: 'Fruity', depth: 0, parentId: null } as TasteNoteOutput;
+
+/** Renders `/admin/taste-notes` through its real loader and action. */
+function renderPage(locale: 'en' | 'tr' = 'en') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/admin/taste-notes',
+        loader,
+        action,
+        Component: AdminTasteNotesPage,
+        errorElement: <RouteErrorState />,
+      },
+    ],
+    { initialEntries: ['/admin/taste-notes'], auth: 'admin', locale },
+  );
+}
+
+/** Opens the add form, types a name and submits it. */
+async function createBerry() {
+  await userEvent.click(screen.getByRole('button', { name: t('admin.tasteNotes.add') }));
+  await userEvent.type(screen.getByLabelText(/Name \*/), 'Berry');
+  await userEvent.click(screen.getByRole('button', { name: t('common.create') }));
+}
+
+/** Clicks Delete and confirms in the shared dialog. */
+async function confirmDelete(locale: 'en' | 'tr' = 'en') {
+  await userEvent.click(screen.getByRole('button', { name: t('common.delete', locale) }));
+  const dialog = await screen.findByRole('dialog');
+  await userEvent.click(within(dialog).getByRole('button', { name: t('common.delete', locale) }));
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  mockGetTasteNotesCached.mockResolvedValue([FRUITY]);
 });
-
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
-
-// ── Tests ──────────────────────────────────────────────────────────────────
 
 describe('AdminTasteNotesPage', () => {
-  it('renders the taste notes list after initial fetch', async () => {
-    mockApi.get.mockResolvedValue([{ id: 'tn-1', name: 'Fruity', depth: 0, parentId: null }]);
+  it('renders the taste notes from the loader (through the static cache)', async () => {
+    renderPage();
 
-    renderWithAppProviders(<AdminTasteNotesPage />, { auth: 'admin' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Fruity')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Fruity')).toBeInTheDocument();
+    expect(mockGetTasteNotesCached).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
   });
 
-  it('create flow: post + invalidateStaticCache called once', async () => {
-    mockApi.get.mockResolvedValue([]);
-    const created = { id: 'tn-2', name: 'Berry', depth: 0, parentId: null };
-    mockApi.post.mockResolvedValue(created);
+  it('create flow: action creates, invalidates the static cache once and revalidates', async () => {
+    const berry = { id: 'tn-2', name: 'Berry', depth: 0, parentId: null } as TasteNoteOutput;
+    mockApi.createTasteNote.mockResolvedValue(berry);
+    renderPage();
+    await screen.findByText('Fruity');
 
-    renderWithAppProviders(<AdminTasteNotesPage />, { auth: 'admin' });
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    mockGetTasteNotesCached.mockResolvedValue([FRUITY, berry]);
+    await createBerry();
 
-    await userEvent.click(screen.getByRole('button', { name: /Add Taste Note/i }));
-
-    const nameInput = screen.getByLabelText(/Name \*/i);
-    await userEvent.type(nameInput, 'Berry');
-
-    await userEvent.click(screen.getByRole('button', { name: /Create/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Berry')).toBeInTheDocument();
-    });
-
-    expect(mockApi.post).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Berry')).toBeInTheDocument();
+    expect(mockApi.createTasteNote).toHaveBeenCalledWith(
+      { name: 'Berry', parentId: undefined },
+      { signal: expect.any(AbortSignal) },
+    );
     expect(mockInvalidateStaticCache).toHaveBeenCalledTimes(1);
   });
 
-  it('delete flow: confirm, api.delete + invalidateStaticCache called once', async () => {
-    mockApi.get.mockResolvedValue([{ id: 'tn-1', name: 'Fruity', depth: 0, parentId: null }]);
-    mockApi.delete.mockResolvedValue({});
+  it('delete flow: confirm, action deletes and invalidates the static cache once', async () => {
+    mockApi.deleteTasteNote.mockResolvedValue({ message: 'ok' });
+    renderPage();
+    await screen.findByText('Fruity');
 
-    renderWithAppProviders(<AdminTasteNotesPage />, { auth: 'admin' });
-    await waitFor(() => expect(screen.getByText('Fruity')).toBeInTheDocument());
+    await confirmDelete();
 
-    await userEvent.click(screen.getByRole('button', { name: /Delete/i }));
-    // The shared ConfirmProvider (from AppProviders) asks first; confirm inside the dialog.
-    const dialog = await screen.findByRole('dialog');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
-
-    await waitFor(() => {
-      expect(mockApi.delete).toHaveBeenCalledTimes(1);
-    });
-
+    await waitFor(() => expect(mockApi.deleteTasteNote).toHaveBeenCalledTimes(1));
     expect(mockInvalidateStaticCache).toHaveBeenCalledTimes(1);
   });
 
-  it('failed create does NOT call invalidateStaticCache', async () => {
-    mockApi.get.mockResolvedValue([]);
-    mockApi.post.mockRejectedValue(new Error('Network error'));
+  it('a failed create toasts and does NOT invalidate the static cache', async () => {
+    mockApi.createTasteNote.mockRejectedValue(new Error('Network error'));
+    renderPage();
+    await screen.findByText('Fruity');
 
-    renderWithAppProviders(<AdminTasteNotesPage />, { auth: 'admin' });
-    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    await createBerry();
 
-    await userEvent.click(screen.getByRole('button', { name: /Add Taste Note/i }));
+    expect(await screen.findByText(t('admin.tasteNotes.createError'))).toBeInTheDocument();
+    expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
 
-    const nameInput = screen.getByLabelText(/Name \*/i);
-    await userEvent.type(nameInput, 'Berry');
+  it('a failed delete toasts (Turkish) and does NOT invalidate the static cache', async () => {
+    mockApi.deleteTasteNote.mockRejectedValue(new Error('Network error'));
+    renderPage('tr');
+    await screen.findByText('Fruity');
 
-    await userEvent.click(screen.getByRole('button', { name: /Create/i }));
+    await confirmDelete('tr');
 
-    await waitFor(() => {
-      expect(mockApi.post).toHaveBeenCalledTimes(1);
-    });
-
+    expect(await screen.findByText(t('admin.tasteNotes.deleteFailed', 'tr'))).toBeInTheDocument();
     expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
   });
 
-  it('failed delete does NOT call invalidateStaticCache', async () => {
-    mockApi.get.mockResolvedValue([{ id: 'tn-1', name: 'Fruity', depth: 0, parentId: null }]);
-    mockApi.delete.mockRejectedValue(new Error('Network error'));
+  it('renders the route error state when the loader fails', async () => {
+    mockGetTasteNotesCached.mockRejectedValue(new Error('boom'));
+    renderPage();
 
-    renderWithAppProviders(<AdminTasteNotesPage />, { auth: 'admin' });
-    await waitFor(() => expect(screen.getByText('Fruity')).toBeInTheDocument());
-
-    await userEvent.click(screen.getByRole('button', { name: /Delete/i }));
-    // The shared ConfirmProvider (from AppProviders) asks first; confirm inside the dialog.
-    const dialog = await screen.findByRole('dialog');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
-
-    await waitFor(() => {
-      expect(mockApi.delete).toHaveBeenCalledTimes(1);
-    });
-
-    expect(mockInvalidateStaticCache).not.toHaveBeenCalled();
+    expect(await screen.findByText(t('error.route.loadFailed'))).toBeInTheDocument();
   });
 });

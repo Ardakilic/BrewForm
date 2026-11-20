@@ -1,25 +1,38 @@
-import type { TasteNoteOutput } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { api } from '../../api/client.ts';
-import { invalidateStaticCache } from '../../api/static-cache.ts';
+import { useFetcher, useLoaderData } from 'react-router';
 import { Field } from '../../components/form/Field.tsx';
-import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useConfirm } from '../../components/ui/Modal.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './AdminTasteNotesPage.data.ts';
 
 const log = createLogger('AdminTasteNotesPage');
 
-/** Admin page: taste-note hierarchy management (create/delete); invalidates the static cache on changes. */
+/**
+ * Admin page: taste-note hierarchy management (create/delete). Notes come from the
+ * `/admin/taste-notes` route loader; create and delete submit `intent`s to the route action
+ * (`AdminTasteNotesPage.data.ts`), which invalidates the static cache on success. Failures
+ * toast (`admin.tasteNotes.createError` / `admin.tasteNotes.deleteFailed`).
+ */
 export function AdminTasteNotesPage() {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
-  const [notes, setNotes] = useState<TasteNoteOutput[]>([]);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
+  const { notes } = useLoaderData<typeof loader>();
+  const createFetcher = useFetcher<typeof action>();
+  const deleteFetcher = useFetcher<typeof action>();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', parentId: '' });
-  const [saving, setSaving] = useState(false);
+  const saving = createFetcher.state !== 'idle';
+
+  useActionFeedback(createFetcher, {
+    errorKey: 'admin.tasteNotes.createError',
+    onSuccess: () => {
+      setForm({ name: '', parentId: '' });
+      setShowForm(false);
+    },
+  });
+  useActionFeedback(deleteFetcher, { errorKey: 'admin.tasteNotes.deleteFailed' });
 
   useEffect(() => {
     log.debug({}, 'AdminTasteNotesPage mounted');
@@ -28,49 +41,14 @@ export function AdminTasteNotesPage() {
     };
   }, []);
 
-  useEffect(() => {
-    api
-      .get<TasteNoteOutput[]>('/taste-notes/flat')
-      .then((data) => {
-        setNotes(data);
-        setStatus('ready');
-      })
-      .catch((err) => {
-        log.error({ err }, 'taste notes fetch failed');
-        setStatus('error');
-      });
-  }, []);
-
-  /**
-   * POST `/admin/taste-notes`, append the created item to local state, and
-   * invalidate the static cache so the next loader run re-fetches.
-   */
-  async function handleCreate(e: React.FormEvent) {
+  /** Submits the `create` intent with the trimmed name and optional parent. */
+  function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim() || saving) return;
-    setSaving(true);
-    log.debug({}, 'handleCreate started');
-    try {
-      const created = await api.post<TasteNoteOutput>('/admin/taste-notes', {
-        name: form.name.trim(),
-        parentId: form.parentId || undefined,
-      });
-      setNotes((prev) => [...prev, created]);
-      log.debug({ tasteNoteId: created.id }, 'handleCreate completed');
-      setForm({ name: '', parentId: '' });
-      setShowForm(false);
-      invalidateStaticCache();
-    } catch (err) {
-      log.error({ err, name: form.name, parentId: form.parentId }, 'handleCreate failed');
-    } finally {
-      setSaving(false);
-    }
+    createFetcher.submit({ intent: 'create', ...form }, { method: 'post' });
   }
 
-  /**
-   * DELETE `/admin/taste-notes/:id`, remove the item from local state, and
-   * invalidate the static cache so the next loader run re-fetches.
-   */
+  /** Asks for confirmation, then submits the `delete` intent. */
   async function handleDelete(id: string) {
     if (
       !(await confirm({
@@ -80,15 +58,7 @@ export function AdminTasteNotesPage() {
       }))
     )
       return;
-    log.debug({ tasteNoteId: id }, 'handleDelete started');
-    try {
-      await api.delete(`/admin/taste-notes/${id}`);
-      setNotes((prev) => prev.filter((n) => n.id !== id));
-      log.debug({ tasteNoteId: id }, 'handleDelete completed');
-      invalidateStaticCache();
-    } catch (err) {
-      log.error({ err, tasteNoteId: id }, 'handleDelete failed');
-    }
+    deleteFetcher.submit({ intent: 'delete', id }, { method: 'post' });
   }
 
   return (
@@ -143,30 +113,24 @@ export function AdminTasteNotesPage() {
         </form>
       )}
 
-      {status === 'loading' ? (
-        <LoadingState />
-      ) : status === 'error' ? (
-        <ErrorState message={t('admin.tasteNotes.loadError')} />
-      ) : (
-        <div className="space-y-1">
-          {notes.map((note) => (
-            <div
-              key={note.id}
-              className="flex items-center justify-between py-2 px-3 rounded hover:opacity-80"
-              style={{ paddingLeft: `${note.depth * 1.5 + 0.75}rem` }}
+      <div className="space-y-1">
+        {notes.map((note) => (
+          <div
+            key={note.id}
+            className="flex items-center justify-between py-2 px-3 rounded hover:opacity-80"
+            style={{ paddingLeft: `${note.depth * 1.5 + 0.75}rem` }}
+          >
+            <span style={{ color: 'var(--text-primary)' }}>{note.name}</span>
+            <button
+              type="button"
+              onClick={() => handleDelete(note.id)}
+              className="btn-danger-text text-xs"
             >
-              <span style={{ color: 'var(--text-primary)' }}>{note.name}</span>
-              <button
-                type="button"
-                onClick={() => handleDelete(note.id)}
-                className="btn-danger-text text-xs"
-              >
-                {t('common.delete')}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+              {t('common.delete')}
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

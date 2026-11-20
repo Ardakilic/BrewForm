@@ -1,6 +1,31 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SEND_VERIFICATION_PATH, sendVerificationAction } from '../routes/resources/auth.ts';
 import { EmailVerificationBanner } from './EmailVerificationBanner.tsx';
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
+
+/** Renders the banner under a data router that has the send-verification resource route. */
+function renderBanner() {
+  const router = createMemoryRouter(
+    [
+      { path: '/', element: <EmailVerificationBanner /> },
+      { path: SEND_VERIFICATION_PATH, action: sendVerificationAction },
+    ],
+    { initialEntries: ['/'] },
+  );
+  return render(<RouterProvider router={router} />);
+}
 
 vi.mock('../api/index.ts', () => ({
   authApi: { sendVerification: vi.fn() },
@@ -35,7 +60,7 @@ describe('EmailVerificationBanner', () => {
     vi.mocked(authApi.sendVerification).mockRejectedValueOnce(
       new ApiError('RATE_LIMITED', 'Too many verification emails', undefined, 429, 42),
     );
-    render(<EmailVerificationBanner />);
+    renderBanner();
 
     fireEvent.click(screen.getByRole('button', { name: 'Resend' }));
 
@@ -46,7 +71,7 @@ describe('EmailVerificationBanner', () => {
 
   it('stays silent on other failures', async () => {
     vi.mocked(authApi.sendVerification).mockRejectedValueOnce(new Error('Network error'));
-    render(<EmailVerificationBanner />);
+    renderBanner();
 
     fireEvent.click(screen.getByRole('button', { name: 'Resend' }));
 
@@ -56,10 +81,11 @@ describe('EmailVerificationBanner', () => {
 
   it('shows the sent state after a successful resend', async () => {
     vi.mocked(authApi.sendVerification).mockResolvedValueOnce(undefined as never);
-    render(<EmailVerificationBanner />);
+    renderBanner();
 
     fireEvent.click(screen.getByRole('button', { name: 'Resend' }));
 
     expect(await screen.findByRole('button', { name: 'Sent' })).toBeDisabled();
+    expect(authApi.sendVerification).toHaveBeenCalledWith({ signal: expect.any(AbortSignal) });
   });
 });

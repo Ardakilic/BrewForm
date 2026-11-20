@@ -2,13 +2,23 @@ import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { RequireAuth } from './components/auth/RequireAuth.tsx';
 import { RootErrorBoundary } from './components/ErrorBoundary.tsx';
 import { Layout } from './components/layout/Layout.tsx';
+import {
+  action as onboardingAction,
+  loader as onboardingLoader,
+} from './components/onboarding/OnboardingWizard.data.ts';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard.tsx';
 import { RouteErrorState } from './components/RouteErrorState.tsx';
+import { action as forgotPasswordAction } from './pages/auth/ForgotPasswordPage.data.ts';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage.tsx';
 import { LoginPage } from './pages/auth/LoginPage.tsx';
 import { RegisterPage } from './pages/auth/RegisterPage.tsx';
+import { action as resetPasswordAction } from './pages/auth/ResetPasswordPage.data.ts';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage.tsx';
-import { VerifyEmailPage } from './pages/auth/VerifyEmailPage.tsx';
+import {
+  shouldRevalidate as shouldRevalidateVerifyEmail,
+  loader as verifyEmailLoader,
+} from './pages/auth/VerifyEmailPage.data.ts';
+import { VerifyEmailPage, VerifyEmailPending } from './pages/auth/VerifyEmailPage.tsx';
 import { BeanListPage } from './pages/beans/BeanListPage.tsx';
 import {
   BrewLogFormPage,
@@ -18,6 +28,7 @@ import {
   BrewLogListPage,
   loader as brewLogListLoader,
 } from './pages/brew-logs/BrewLogListPage.tsx';
+import { action as contactAction } from './pages/ContactPage.data.ts';
 import { ContactPage } from './pages/ContactPage.tsx';
 import { CollectionCreatePage } from './pages/collections/CollectionCreatePage.tsx';
 import {
@@ -54,7 +65,11 @@ import {
   StarredRecipesPage,
   loader as starredLoader,
 } from './pages/recipes/StarredRecipesPage.tsx';
-import { SettingsPage, loader as settingsLoader } from './pages/settings/SettingsPage.tsx';
+import {
+  action as settingsAction,
+  loader as settingsLoader,
+} from './pages/settings/SettingsPage.data.ts';
+import { SettingsPage } from './pages/settings/SettingsPage.tsx';
 import { SetupListPage } from './pages/setups/SetupListPage.tsx';
 import { TasteNotesPage } from './pages/TasteNotesPage.tsx';
 import { TermsPage } from './pages/TermsPage.tsx';
@@ -65,6 +80,8 @@ import { followAction } from './routes/follow.ts';
 // Resource route actions
 import { likeAction } from './routes/like.ts';
 import { rateAction } from './routes/rate.ts';
+import { sendVerificationAction } from './routes/resources/auth.ts';
+import { ROOT_ROUTE_ID, rootLoader, shouldRevalidateRoot } from './routes/root.ts';
 
 /**
  * The application route tree: every page route, loader and resource-route action.
@@ -73,8 +90,11 @@ import { rateAction } from './routes/rate.ts';
  */
 export const routes: RouteObject[] = [
   {
+    id: ROOT_ROUTE_ID,
     path: '/',
     element: <Layout />,
+    loader: rootLoader,
+    shouldRevalidate: shouldRevalidateRoot,
     errorElement: <RootErrorBoundary />,
     children: [
       {
@@ -85,9 +105,16 @@ export const routes: RouteObject[] = [
       },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
-      { path: 'forgot-password', element: <ForgotPasswordPage /> },
-      { path: 'reset-password', element: <ResetPasswordPage /> },
-      { path: 'verify-email', element: <VerifyEmailPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage />, action: forgotPasswordAction },
+      { path: 'reset-password', element: <ResetPasswordPage />, action: resetPasswordAction },
+      {
+        path: 'verify-email',
+        element: <VerifyEmailPage />,
+        loader: verifyEmailLoader,
+        shouldRevalidate: shouldRevalidateVerifyEmail,
+        HydrateFallback: VerifyEmailPending,
+        errorElement: <RouteErrorState />,
+      },
       {
         path: 'recipes',
         loader: recipeListLoader,
@@ -251,7 +278,8 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         loader: settingsLoader,
-        errorElement: <RootErrorBoundary />,
+        action: settingsAction,
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'notifications',
@@ -333,8 +361,11 @@ export const routes: RouteObject[] = [
             <OnboardingWizard />
           </RequireAuth>
         ),
+        loader: onboardingLoader,
+        action: onboardingAction,
+        errorElement: <RouteErrorState />,
       },
-      { path: 'contact', element: <ContactPage /> },
+      { path: 'contact', element: <ContactPage />, action: contactAction },
       { path: 'privacy', element: <PrivacyPage /> },
       { path: 'terms', element: <TermsPage /> },
 
@@ -349,6 +380,7 @@ export const routes: RouteObject[] = [
         action: createCommentAction,
       },
       { path: 'comments/:id', action: deleteCommentAction },
+      { path: 'resources/auth/send-verification', action: sendVerificationAction },
 
       { path: '*', element: <NotFoundPage /> },
     ],
@@ -377,68 +409,93 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'users',
-        lazy: async () => {
-          const { AdminUsersPage } = await import('./pages/admin/AdminUsersPage.tsx');
-          return { Component: AdminUsersPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminUsersPage.data.ts')).loader,
+          action: async () => (await import('./pages/admin/AdminUsersPage.data.ts')).action,
+          Component: async () => (await import('./pages/admin/AdminUsersPage.tsx')).AdminUsersPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'users/new',
-        lazy: async () => {
-          const { AdminUserCreatePage } = await import('./pages/admin/AdminUserCreatePage.tsx');
-          return { Component: AdminUserCreatePage };
+        lazy: {
+          action: async () => (await import('./pages/admin/AdminUserCreatePage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminUserCreatePage.tsx')).AdminUserCreatePage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'users/:id',
-        lazy: async () => {
-          const { AdminUserDetailPage } = await import('./pages/admin/AdminUserDetailPage.tsx');
-          return { Component: AdminUserDetailPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminUserDetailPage.data.ts')).loader,
+          action: async () => (await import('./pages/admin/AdminUserDetailPage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminUserDetailPage.tsx')).AdminUserDetailPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'users/:id/edit',
-        lazy: async () => {
-          const { AdminUserEditPage } = await import('./pages/admin/AdminUserEditPage.tsx');
-          return { Component: AdminUserEditPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminUserEditPage.data.ts')).loader,
+          action: async () => (await import('./pages/admin/AdminUserEditPage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminUserEditPage.tsx')).AdminUserEditPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'recipes',
-        lazy: async () => {
-          const { AdminRecipesPage } = await import('./pages/admin/AdminRecipesPage.tsx');
-          return { Component: AdminRecipesPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminRecipesPage.data.ts')).loader,
+          action: async () => (await import('./pages/admin/AdminRecipesPage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminRecipesPage.tsx')).AdminRecipesPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'equipment',
-        lazy: async () => {
-          const { AdminEquipmentPage } = await import('./pages/admin/AdminEquipmentPage.tsx');
-          return { Component: AdminEquipmentPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminEquipmentPage.data.ts')).loader,
+          action: async () => (await import('./pages/admin/AdminEquipmentPage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminEquipmentPage.tsx')).AdminEquipmentPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'vendors',
-        lazy: async () => {
-          const { AdminVendorsPage } = await import('./pages/admin/AdminVendorsPage.tsx');
-          return { Component: AdminVendorsPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminVendorsPage.data.ts')).loader,
+          action: async () => (await import('./pages/admin/AdminVendorsPage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminVendorsPage.tsx')).AdminVendorsPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'taste-notes',
-        lazy: async () => {
-          const { AdminTasteNotesPage } = await import('./pages/admin/AdminTasteNotesPage.tsx');
-          return { Component: AdminTasteNotesPage };
+        lazy: {
+          loader: async () => (await import('./pages/admin/AdminTasteNotesPage.data.ts')).loader,
+          action: async () => (await import('./pages/admin/AdminTasteNotesPage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminTasteNotesPage.tsx')).AdminTasteNotesPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'coffee-varieties',
-        lazy: async () => {
-          const { AdminCoffeeVarietiesPage } = await import(
-            './pages/admin/AdminCoffeeVarietiesPage.tsx'
-          );
-          return { Component: AdminCoffeeVarietiesPage };
+        lazy: {
+          loader: async () =>
+            (await import('./pages/admin/AdminCoffeeVarietiesPage.data.ts')).loader,
+          action: async () =>
+            (await import('./pages/admin/AdminCoffeeVarietiesPage.data.ts')).action,
+          Component: async () =>
+            (await import('./pages/admin/AdminCoffeeVarietiesPage.tsx')).AdminCoffeeVarietiesPage,
         },
+        errorElement: <RouteErrorState />,
       },
       {
         path: 'compatibility',
@@ -470,10 +527,11 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'cache',
-        lazy: async () => {
-          const { AdminCachePage } = await import('./pages/admin/AdminCachePage.tsx');
-          return { Component: AdminCachePage };
+        lazy: {
+          action: async () => (await import('./pages/admin/AdminCachePage.data.ts')).action,
+          Component: async () => (await import('./pages/admin/AdminCachePage.tsx')).AdminCachePage,
         },
+        errorElement: <RouteErrorState />,
       },
     ],
   },

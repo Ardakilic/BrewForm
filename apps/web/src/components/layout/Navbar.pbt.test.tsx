@@ -19,11 +19,16 @@ import { Navbar } from './Navbar.tsx';
 // ---------------------------------------------------------------------------
 
 const { mockNavState } = vi.hoisted(() => {
-  const mockNavState = { activePath: '/' };
+  const mockNavState: {
+    activePath: string;
+    rootData: { registrationEnabled: boolean } | undefined;
+  } = { activePath: '/', rootData: { registrationEnabled: true } };
   return { mockNavState };
 });
 
 vi.mock('react-router', () => ({
+  // The root route loader's data (`{ registrationEnabled }`), controlled per test.
+  useRouteLoaderData: () => mockNavState.rootData,
   Link: ({
     to,
     children,
@@ -90,10 +95,6 @@ vi.mock('../../api/index.ts', () => ({
   ApiError: class extends Error {
     code = '';
     status = 500;
-  },
-  authApi: {
-    registrationStatus: vi.fn().mockResolvedValue({ enabled: true }),
-    logout: vi.fn().mockResolvedValue({}),
   },
   notificationApi: {
     unreadCount: vi.fn().mockResolvedValue({ count: 0 }),

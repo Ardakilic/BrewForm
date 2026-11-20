@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router';
+import { t } from '@brewform/shared/i18n';
+import type { PaginatedResponse } from '@brewform/shared/schemas';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/utils/logger.ts', () => ({
@@ -13,52 +14,6 @@ vi.mock('@/utils/logger.ts', () => ({
   }),
 }));
 
-vi.mock('../../contexts/I18nContext.tsx', () => ({
-  useTranslation: () => ({
-    t: (k: string) => {
-      const map: Record<string, string> = {
-        'admin.users.management': 'Kullanıcı Yönetimi',
-        'admin.users.new': '+ Yeni Kullanıcı',
-        'admin.users.searchPlaceholder': 'Kullanıcı ara...',
-        'admin.users.noSearchResults': 'Aramanızla eşleşen kullanıcı yok.',
-        'admin.users.noUsers': 'Kullanıcı bulunamadı.',
-        'admin.users.role': 'Rol',
-        'admin.users.status': 'Durum',
-        'admin.users.joined': 'Katıldı',
-        'admin.users.adminBadge': 'Yönetici',
-        'admin.users.userRole': 'Kullanıcı',
-        'admin.users.banned': 'Yasaklı',
-        'admin.users.active': 'Aktif',
-        'admin.users.unban': 'Yasağı Kaldır',
-        'admin.users.ban': 'Yasakla',
-        'admin.users.removeAdmin': 'Yöneticiliği Kaldır',
-        'admin.users.makeAdmin': 'Yönetici Yap',
-        'admin.users.removeAdminError': 'Yönetici ayrıcalıkları kaldırılamadı.',
-        'admin.users.makeAdminError': 'Yönetici ayrıcalıkları verilemedi.',
-        'admin.users.loadError': 'Kullanıcılar yüklenemedi.',
-        'admin.users.banDialogTitle': 'Kullanıcıyı Yasakla',
-        'admin.users.banReason': 'Yasaklama Sebebi',
-        'admin.users.banReasonPlaceholder': 'Sebep girin...',
-        'admin.users.confirmBan': 'Yasakla',
-        'admin.users.banning': 'Yasaklanıyor...',
-        'common.cancel': 'İptal',
-        'common.search': 'Ara',
-        'common.view': 'Görüntüle',
-        'common.edit': 'Düzenle',
-        'common.actions': 'Eylemler',
-        'common.previous': 'Önceki',
-        'common.next': 'İleri',
-        'auth.username': 'Kullanıcı Adı',
-        'auth.email': 'E-posta',
-      };
-      return map[k] ?? k;
-    },
-    locale: 'tr',
-    setLocale: vi.fn(),
-    availableLocales: ['en', 'tr'],
-  }),
-}));
-
 vi.mock('../../api/index.ts', () => ({
   adminApi: {
     getUsers: vi.fn(),
@@ -68,97 +23,190 @@ vi.mock('../../api/index.ts', () => ({
   },
 }));
 
-import type { PaginatedResponse } from '@brewform/shared/schemas';
-import { type AdminUser, adminApi } from '../../api/index.ts';
+import { ApiError } from '../../api/errors.ts';
+import { adminApi } from '../../api/index.ts';
+import type { AdminUser } from '../../api/types.ts';
+import { RouteErrorState } from '../../components/RouteErrorState.tsx';
+import { renderWithAppProviders } from '../../test-utils/render.tsx';
+import { action as userAction } from './AdminUserDetailPage.data.ts';
+import { action, loader } from './AdminUsersPage.data.ts';
 import { AdminUsersPage } from './AdminUsersPage.tsx';
 
 const mockAdminApi = vi.mocked(adminApi);
 
+const ALICE: AdminUser = {
+  id: 'u1',
+  username: 'alice',
+  email: 'alice@test.com',
+  displayName: null,
+  avatarUrl: null,
+  isAdmin: false,
+  isBanned: false,
+  createdAt: '2024-01-01T00:00:00Z',
+};
+
 /** Builds the paginated envelope `GET /admin/users` returns. */
-function usersPage(users: AdminUser[], total = users.length): PaginatedResponse<AdminUser> {
+function usersPage(
+  users: AdminUser[],
+  { page = 1, totalPages = 1 }: { page?: number; totalPages?: number } = {},
+): PaginatedResponse<AdminUser> {
   return {
     success: true,
     data: users,
-    meta: { requestId: 'test', pagination: { page: 1, perPage: 20, total, totalPages: 1 } },
+    meta: { requestId: 'test', pagination: { page, perPage: 20, total: users.length, totalPages } },
   };
+}
+
+/** Renders `/admin/users` (at `entry`) with its real loader/action and the user action. */
+function renderPage(entry = '/admin/users') {
+  return renderWithAppProviders(
+    [
+      {
+        path: '/admin/users',
+        loader,
+        action,
+        Component: AdminUsersPage,
+        errorElement: <RouteErrorState />,
+      },
+      { path: '/admin/users/:id', action: userAction },
+    ],
+    { initialEntries: [entry], auth: 'admin', locale: 'tr' },
+  );
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAdminApi.getUsers.mockResolvedValue(usersPage([], 0));
+  localStorage.clear();
+  mockAdminApi.getUsers.mockResolvedValue(usersPage([]));
 });
 
-describe('AdminUsersPage — tr locale spot-check', () => {
-  it('renders the Turkish user management heading', async () => {
-    const router = createMemoryRouter(
-      [
-        {
-          path: '/admin/users',
-          element: <AdminUsersPage />,
-        },
-      ],
-      { initialEntries: ['/admin/users'] },
+describe('AdminUsersPage — loader and URL state', () => {
+  it('renders the Turkish heading and the users from the loader', async () => {
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([ALICE]));
+    renderPage();
+
+    expect(await screen.findByText('alice')).toBeInTheDocument();
+    expect(screen.getByText(t('admin.users.management', 'tr'))).toBeInTheDocument();
+  });
+
+  it('reads q and page from the URL for the API call and fills the search box', async () => {
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([ALICE], { page: 2, totalPages: 3 }));
+    renderPage('/admin/users?q=ali&page=2');
+
+    await screen.findByText('alice');
+    expect(mockAdminApi.getUsers).toHaveBeenCalledWith(
+      { page: '2', perPage: '20', q: 'ali' },
+      { signal: expect.any(AbortSignal) },
     );
+    expect(
+      (screen.getByPlaceholderText(t('admin.users.searchPlaceholder', 'tr')) as HTMLInputElement)
+        .value,
+    ).toBe('ali');
+  });
 
-    render(<RouterProvider router={router} />);
+  it('typing a search commits ?q= after the pause (replace) and resets the page', async () => {
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([ALICE], { page: 2, totalPages: 3 }));
+    const { router } = renderPage('/admin/users?page=2');
+    await screen.findByText('alice');
 
-    await waitFor(() => {
-      expect(screen.getByText('Kullanıcı Yönetimi')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(t('admin.users.searchPlaceholder', 'tr')), {
+      target: { value: 'ali' },
     });
+
+    await waitFor(() => expect(router.state.location.search).toBe('?q=ali'));
+    expect(router.state.historyAction).toBe('REPLACE');
+    await waitFor(() =>
+      expect(mockAdminApi.getUsers).toHaveBeenLastCalledWith(
+        { page: '1', perPage: '20', q: 'ali' },
+        { signal: expect.any(AbortSignal) },
+      ),
+    );
+  });
+
+  it('paging keeps the search', async () => {
+    mockAdminApi.getUsers.mockImplementation(async (params) =>
+      usersPage([ALICE], { page: Number(params?.page ?? 1), totalPages: 3 }),
+    );
+    const { router } = renderPage('/admin/users?q=ali');
+    await screen.findByText('alice');
+
+    fireEvent.click(screen.getByRole('button', { name: t('common.next', 'tr') }));
+
+    await waitFor(() => expect(router.state.location.search).toBe('?q=ali&page=2'));
+  });
+
+  it('shows the no-search-results empty state for a search with no matches', async () => {
+    renderPage('/admin/users?q=zzz');
+
+    expect(await screen.findByText(t('admin.users.noSearchResults', 'tr'))).toBeInTheDocument();
+  });
+
+  it('renders the route error state when the loader fails', async () => {
+    mockAdminApi.getUsers.mockRejectedValue(new Error('boom'));
+    renderPage();
+
+    expect(await screen.findByText(t('error.route.loadFailed', 'tr'))).toBeInTheDocument();
   });
 });
 
-describe('AdminUsersPage — ban/unban flow', () => {
-  const mockUsers = [
-    {
-      id: 'u1',
-      username: 'alice',
-      email: 'alice@test.com',
-      displayName: null,
-      avatarUrl: null,
-      isAdmin: false,
-      isBanned: false,
-      createdAt: '2024-01-01T00:00:00Z',
-    },
-  ];
-
-  function renderPage() {
-    const router = createMemoryRouter([{ path: '/admin/users', element: <AdminUsersPage /> }], {
-      initialEntries: ['/admin/users'],
-    });
-    return render(<RouterProvider router={router} />);
-  }
-
-  it('opens ban dialog when ban button is clicked', async () => {
-    mockAdminApi.getUsers.mockResolvedValue(usersPage(mockUsers, 1));
-
+describe('AdminUsersPage — mutations', () => {
+  it('toggleAdmin submits the intent to the action and revalidates the list', async () => {
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([ALICE]));
+    mockAdminApi.toggleAdmin.mockResolvedValue({ ...ALICE, isAdmin: true } as never);
     renderPage();
+    await screen.findByText('alice');
 
-    await waitFor(() => {
-      expect(screen.getByText('alice')).toBeInTheDocument();
-    });
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([{ ...ALICE, isAdmin: true }]));
+    fireEvent.click(screen.getByRole('button', { name: t('admin.users.makeAdmin', 'tr') }));
 
-    fireEvent.click(screen.getByText('Yasakla'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Kullanıcıyı Yasakla: alice')).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(mockAdminApi.toggleAdmin).toHaveBeenCalledWith('u1', true, {
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(
+      await screen.findByRole('button', { name: t('admin.users.removeAdmin', 'tr') }),
+    ).toBeInTheDocument();
   });
 
-  it('calls unbanUser when unban button is clicked on a banned user', async () => {
-    const bannedUser = { ...mockUsers[0], isBanned: true };
-    mockAdminApi.getUsers.mockResolvedValue(usersPage([bannedUser], 1));
-
+  it('shows an error toast when toggleAdmin fails', async () => {
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([ALICE]));
+    mockAdminApi.toggleAdmin.mockRejectedValue(new ApiError('INTERNAL', 'boom', undefined, 500));
     renderPage();
+    await screen.findByText('alice');
 
-    await waitFor(() => {
-      expect(screen.getByText('alice')).toBeInTheDocument();
-    });
+    fireEvent.click(screen.getByRole('button', { name: t('admin.users.makeAdmin', 'tr') }));
 
-    fireEvent.click(screen.getByText('Yasağı Kaldır'));
+    expect(await screen.findByText(t('admin.users.makeAdminError', 'tr'))).toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(mockAdminApi.unbanUser).toHaveBeenCalledWith('u1');
-    });
+  it('opens the ban dialog when the ban button is clicked', async () => {
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([ALICE]));
+    renderPage();
+    await screen.findByText('alice');
+
+    fireEvent.click(screen.getByRole('button', { name: t('admin.users.ban', 'tr') }));
+
+    expect(
+      await screen.findByText(`${t('admin.users.banDialogTitle', 'tr')}: alice`),
+    ).toBeInTheDocument();
+  });
+
+  it('unban submits to the /admin/users/:id action and patches the row without re-fetching', async () => {
+    mockAdminApi.getUsers.mockResolvedValue(usersPage([{ ...ALICE, isBanned: true }]));
+    mockAdminApi.unbanUser.mockResolvedValue({} as never);
+    renderPage();
+    await screen.findByText('alice');
+    const loadsBefore = mockAdminApi.getUsers.mock.calls.length;
+
+    fireEvent.click(screen.getByRole('button', { name: t('admin.users.unban', 'tr') }));
+
+    await waitFor(() =>
+      expect(mockAdminApi.unbanUser).toHaveBeenCalledWith('u1', {
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(await screen.findByText(t('admin.users.active', 'tr'))).toBeInTheDocument();
+    expect(mockAdminApi.getUsers.mock.calls.length).toBe(loadsBefore);
   });
 });

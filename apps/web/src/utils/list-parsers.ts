@@ -105,3 +105,14 @@ export interface AuditLogParams {
 export function parseAuditLogParams(sp: URLSearchParams): AuditLogParams {
   return { page: readPage(sp), entityType: readEnum(sp, 'entityType', AUDIT_ENTITY_TYPES, '') };
 }
+
+/** `/admin/users` URL state: `page` and the free-text user search `q`. */
+export interface AdminUsersParams {
+  page: number;
+  q: string;
+}
+
+/** Parses the `/admin/users` URL. */
+export function parseAdminUsersParams(sp: URLSearchParams): AdminUsersParams {
+  return { page: readPage(sp), q: readText(sp, 'q') };
+}

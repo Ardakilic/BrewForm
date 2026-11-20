@@ -138,3 +138,40 @@ describe('AuthContext refreshUser error handling', () => {
     expect(mockLogger.error).not.toHaveBeenCalled();
   });
 });
+
+describe('AuthContext session bootstrap abort', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('passes an AbortSignal to userApi.me and aborts it on unmount without logging an error', async () => {
+    let captured: AbortSignal | undefined;
+    vi.mocked(userApi.me).mockImplementation(
+      (opts?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          captured = opts?.signal;
+          opts?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    );
+    const { unmount } = render(
+      <MemoryRouter>
+        <I18nProvider>
+          <AuthProvider>
+            <TestConsumer />
+          </AuthProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(captured).toBeInstanceOf(AbortSignal));
+    expect(captured?.aborted).toBe(false);
+
+    unmount();
+
+    expect(captured?.aborted).toBe(true);
+    await Promise.resolve();
+    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(mockLogger.debug).toHaveBeenCalledWith({}, 'AuthContext token refresh aborted');
+  });
+});

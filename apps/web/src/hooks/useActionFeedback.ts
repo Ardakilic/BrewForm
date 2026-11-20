@@ -30,14 +30,18 @@ export function useActionFeedback<D extends { ok: boolean }>(
   options: ActionFeedbackOptions<D>,
 ): void {
   const toast = useToast();
-  const previousState = useRef(fetcher.state);
+  // Each completed submission yields a new `data` object; tracking its identity (rather than a
+  // submitting → idle transition) also catches submissions that settle within one render batch,
+  // e.g. a submit issued from a promise continuation after a confirm dialog.
+  const handledData = useRef(fetcher.data);
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
+  // Runs after every commit (no dependency list): a dependency list on `fetcher.data` missed a
+  // result that arrived within one render batch, and the identity check makes this cheap.
   useEffect(() => {
-    const settled = previousState.current !== 'idle' && fetcher.state === 'idle';
-    previousState.current = fetcher.state;
-    if (!settled || !fetcher.data) return;
+    if (fetcher.state !== 'idle' || !fetcher.data || fetcher.data === handledData.current) return;
+    handledData.current = fetcher.data;
     const { errorKey, successKey, onSuccess, onError } = optionsRef.current;
     const data = fetcher.data;
     if (data.ok) {
@@ -48,5 +52,5 @@ export function useActionFeedback<D extends { ok: boolean }>(
       if (errorKey) toast.error(typeof errorKey === 'function' ? errorKey(data) : errorKey);
       onError?.(data);
     }
-  }, [fetcher.state, fetcher.data, toast]);
+  });
 }

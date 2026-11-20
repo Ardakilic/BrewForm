@@ -1,8 +1,7 @@
-import type { UserPreferences, UserPreferencesOutput } from '@brewform/shared/schemas';
+import type { UserPreferences } from '@brewform/shared/schemas';
 import { useEffect, useState } from 'react';
-import { useLoaderData, useNavigate } from 'react-router';
+import { useFetcher, useLoaderData, useNavigate } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { api } from '../../api/client.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { Section } from '../../components/form/Section.tsx';
 import { SEOHead } from '../../components/seo/SEOHead.tsx';
@@ -11,44 +10,17 @@ import { useConfirm } from '../../components/ui/Modal.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
-import { requireAuth } from '../../routes/auth-guards.ts';
-
-/**
- * Convert the flat GET response to the form state. F05 flatten: the request
- * and response share the same flat `notify*` shape (no `emailNotifications`
- * re-nest step anymore).
- */
-function toUserPreferences(out: UserPreferencesOutput): UserPreferences {
-  return {
-    unitSystem: out.unitSystem as UserPreferences['unitSystem'],
-    temperatureUnit: out.temperatureUnit as UserPreferences['temperatureUnit'],
-    theme: out.theme as UserPreferences['theme'],
-    locale: out.locale,
-    timezone: out.timezone,
-    dateFormat: out.dateFormat as UserPreferences['dateFormat'],
-    notifyNewFollower: out.notifyNewFollower,
-    notifyRecipeLiked: out.notifyRecipeLiked,
-    notifyRecipeCommented: out.notifyRecipeCommented,
-    notifyFollowedUserPosted: out.notifyFollowedUserPosted,
-    notifyMentionedInComment: out.notifyMentionedInComment,
-  };
-}
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
+import type { action, loader, SettingsActionInput } from './SettingsPage.data.ts';
 
 const log = createLogger('SettingsPage');
 
 /**
- * Fetches the current user's stored preferences; returns `{ preferences }`. Wrapped in
- * `requireAuth`, so a final 401 redirects to `/login?next=%2Fsettings`.
- */
-export const loader = requireAuth(async () => {
-  const out = await api.get<UserPreferencesOutput>('/preferences');
-  return { preferences: toUserPreferences(out) };
-});
-
-/**
  * Account settings page: read-only profile info, theme/locale pickers,
- * unit/timezone/date-format and email-notification preferences saved via
- * PATCH `/preferences`, plus account deletion.
+ * unit/timezone/date-format and email-notification preferences, plus account deletion.
+ * Preferences come from the route loader; saving and deleting submit the `save-preferences`
+ * and `delete-account` intents to the route action (`SettingsPage.data.ts`) through a fetcher
+ * that does not revalidate the page, and the result drives the shared banner.
  */
 export function SettingsPage() {
   const { user, refreshUser, logout } = useAuth();
@@ -57,10 +29,12 @@ export function SettingsPage() {
   const { confirm } = useConfirm();
   const navigate = useNavigate();
   const { preferences } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher<typeof action>();
   const [prefs, setPrefs] = useState<UserPreferences>(preferences);
-  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
+  const submittedIntent = (fetcher.json as SettingsActionInput | undefined)?.intent;
+  const saving = fetcher.state !== 'idle' && submittedIntent === 'save-preferences';
 
   useEffect(() => {
     log.debug({}, 'SettingsPage mounted');
@@ -69,43 +43,33 @@ export function SettingsPage() {
     };
   }, []);
 
-  /**
-   * Persist preferences to the server and refresh the local user state.
-   *
-   * The PATCH save and the `refreshUser()` call are decoupled:
-   * - Preferences are committed to the DB regardless of refresh success
-   * - A failed refresh does not log the user out or affect the save UI
-   */
-  async function savePreferences() {
-    if (!prefs) return;
-    setSaving(true);
-    setMessage('');
-    setMessageType(null);
-    try {
-      // F05: flat `notify*` flags sent directly (no `emailNotifications` nest).
-      await api.patch('/preferences', {
-        unitSystem: prefs.unitSystem,
-        temperatureUnit: prefs.temperatureUnit,
-        locale: prefs.locale,
-        timezone: prefs.timezone,
-        dateFormat: prefs.dateFormat,
-        notifyNewFollower: prefs.notifyNewFollower,
-        notifyRecipeLiked: prefs.notifyRecipeLiked,
-        notifyRecipeCommented: prefs.notifyRecipeCommented,
-        notifyFollowedUserPosted: prefs.notifyFollowedUserPosted,
-        notifyMentionedInComment: prefs.notifyMentionedInComment,
-      });
-      setMessage(t('settings.savedMsg'));
-      setMessageType('success');
-    } catch {
-      setMessage(t('settings.failedMsg'));
+  useActionFeedback(fetcher, {
+    onSuccess: (data) => {
+      if (data.intent === 'save-preferences') {
+        setMessage(t('settings.savedMsg'));
+        setMessageType('success');
+        void refreshAfterSave();
+      } else {
+        void finishDeletion();
+      }
+    },
+    onError: (data) => {
+      if (data.intent === 'save-preferences') {
+        setMessage(t('settings.failedMsg'));
+        void refreshAfterSave();
+      } else {
+        setMessage(t('settings.deleteFailed'));
+      }
       setMessageType('error');
-    } finally {
-      setSaving(false);
-    }
-    // Refresh user state independently from save success/failure.
-    // Preferences are already persisted in the DB — a failed read-after-write
-    // refresh should not log the user out or affect the save UI message.
+    },
+  });
+
+  /**
+   * Refresh the local user state after a save attempt, independently of the save result:
+   * the preferences are already persisted, so a failed read-after-write refresh must not log
+   * the user out or change the save banner.
+   */
+  async function refreshAfterSave() {
     try {
       await refreshUser();
     } catch (err) {
@@ -114,15 +78,29 @@ export function SettingsPage() {
   }
 
   /**
-   * Delete the current user's account and clean up frontend state.
-   *
-   * Calls {@link logout} to clear {@link AuthContext} (sets user to {@code null}, then
-   * attempts the server-side logout endpoint — expected to fail since the account is
-   * already deleted, but the local state cleanup always runs). Then calls
-   * {@link navigate} to redirect to the public home page ({@code /}).
-   *
-   * On failure the error is logged and a user-facing error message is displayed via the
-   * shared banner. The auth state is preserved so the user can retry.
+   * After the account is deleted: clear the auth state ({@link logout} sets the user to null,
+   * then attempts the server-side logout, which is expected to fail) and go to the public home
+   * page.
+   */
+  async function finishDeletion() {
+    await logout();
+    navigate('/');
+  }
+
+  /** Submit the `save-preferences` intent with the current form state. */
+  function savePreferences() {
+    if (!prefs) return;
+    setMessage('');
+    setMessageType(null);
+    fetcher.submit(
+      { intent: 'save-preferences', preferences: prefs },
+      { method: 'post', encType: 'application/json', defaultShouldRevalidate: false },
+    );
+  }
+
+  /**
+   * Confirm, then submit the `delete-account` intent. A failure keeps the user signed in and
+   * shows the shared error banner so they can retry.
    */
   async function handleDeleteAccount() {
     if (
@@ -135,15 +113,10 @@ export function SettingsPage() {
       return;
     setMessage('');
     setMessageType(null);
-    try {
-      await api.delete('/users/me');
-      await logout();
-      navigate('/');
-    } catch (err) {
-      log.error({ err }, 'Account deletion failed');
-      setMessage(t('settings.deleteFailed'));
-      setMessageType('error');
-    }
+    fetcher.submit(
+      { intent: 'delete-account' },
+      { method: 'post', encType: 'application/json', defaultShouldRevalidate: false },
+    );
   }
 
   if (!user) return null;
@@ -332,6 +305,7 @@ export function SettingsPage() {
   );
 }
 
+/** One labelled notification checkbox. */
 function NotificationToggle({
   label,
   checked,

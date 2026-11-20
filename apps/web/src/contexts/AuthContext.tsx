@@ -1,7 +1,7 @@
 import type { AuthUser } from '@brewform/shared/types';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { createLogger } from '@/utils/logger.ts';
-import { ApiError } from '../api/errors.ts';
+import { ApiError, isAbortError } from '../api/errors.ts';
 import { authApi, userApi } from '../api/index.ts';
 
 const log = createLogger('AuthContext');
@@ -53,14 +53,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Clear `sessionError` to null without retrying — for the banner's dismiss action. */
   const clearSessionError = useCallback(() => setSessionError(null), []);
 
-  const refreshUser = useCallback(async () => {
+  /**
+   * Loads the current user (`userApi.me`) and maps failures to the session state. With a
+   * `signal` (the bootstrap effect), an aborted request returns without touching any state.
+   */
+  const loadUser = useCallback(async (signal?: AbortSignal) => {
     log.debug({}, 'AuthContext token refresh started');
     try {
       setSessionError(null);
-      const userData = await userApi.me();
+      const userData = await userApi.me({ signal });
       log.debug({}, 'AuthContext token refresh completed');
       setUser(userData);
     } catch (err) {
+      if (isAbortError(err)) {
+        log.debug({}, 'AuthContext token refresh aborted');
+        return;
+      }
       if (isBannedError(err)) {
         log.warn({ err }, 'AuthContext user account is banned');
         setUser(null);
@@ -83,14 +91,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setSessionError(null);
       }
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }, []);
 
+  /** Re-reads the current user (after login-affecting changes such as verifying an email). */
+  const refreshUser = useCallback(() => loadUser(), [loadUser]);
+
+  // Session bootstrap (the one allowlisted effect fetch): aborted on unmount, so StrictMode's
+  // throwaway mount does not race the real one.
   useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
+    const controller = new AbortController();
+    void loadUser(controller.signal);
+    return () => controller.abort();
+  }, [loadUser]);
 
   async function login(email: string, password: string, rememberMe = false) {
     try {

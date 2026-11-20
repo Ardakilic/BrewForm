@@ -39,7 +39,8 @@ import type { AuthContextType } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
 import { useTheme } from '../../contexts/ThemeContext.tsx';
 import { renderWithAppProviders } from '../../test-utils/render.tsx';
-import { loader, SettingsPage } from './SettingsPage.tsx';
+import { action, loader } from './SettingsPage.data.ts';
+import { SettingsPage } from './SettingsPage.tsx';
 
 // ── Typed mock references ──
 
@@ -178,6 +179,7 @@ function renderSettingsPage(
         path: '/settings',
         element: <SettingsPage />,
         loader,
+        action,
       },
     ],
     {
@@ -224,7 +226,9 @@ describe('SettingsPage', () => {
       await answerConfirm('confirm');
 
       await waitFor(() => {
-        expect(mockApi.delete).toHaveBeenCalledWith('/users/me');
+        expect(mockApi.delete).toHaveBeenCalledWith('/users/me', {
+          signal: expect.any(AbortSignal),
+        });
         expect(mockLogout).toHaveBeenCalledOnce();
         expect(router.state.location.pathname).toBe('/');
       });
@@ -355,6 +359,7 @@ describe('SettingsPage', () => {
           expect.objectContaining({
             notifyMentionedInComment: false,
           }),
+          { signal: expect.any(AbortSignal) },
         );
       });
     });
@@ -389,11 +394,51 @@ describe('SettingsPage loader — auth guard', () => {
   it('redirects a final 401 to /login with the encoded return path', async () => {
     mockApi.get.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no session', undefined, 401));
 
-    const thrown = await loader({ request: new Request('http://localhost/settings') }).catch(
-      (err: unknown) => err,
-    );
+    const thrown = await loader({
+      request: new Request('http://localhost/settings'),
+    } as never).catch((err: unknown) => err);
 
     expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response).headers.get('Location')).toBe('/login?next=%2Fsettings');
+  });
+});
+
+describe('SettingsPage action', () => {
+  /** Calls the action with a JSON body. */
+  function callAction(body: unknown) {
+    return action({
+      request: new Request('http://localhost/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      params: {},
+      context: undefined,
+    } as never);
+  }
+
+  it('save-preferences PATCHes the preference fields without the theme', async () => {
+    mockApi.patch.mockResolvedValue({});
+    await expect(
+      callAction({ intent: 'save-preferences', preferences: { ...mockPreferences } }),
+    ).resolves.toEqual({ ok: true, intent: 'save-preferences' });
+    const body = mockApi.patch.mock.calls[0][1] as Record<string, unknown>;
+    expect(body).toMatchObject({ unitSystem: 'metric', notifyMentionedInComment: true });
+    expect(body).not.toHaveProperty('theme');
+  });
+
+  it('delete-account returns { ok: false, error } when the API fails', async () => {
+    mockApi.delete.mockRejectedValue(new ApiError('INTERNAL', 'boom', undefined, 500));
+    await expect(callAction({ intent: 'delete-account' })).resolves.toMatchObject({
+      ok: false,
+      intent: 'delete-account',
+      error: 'boom',
+    });
+  });
+
+  it('rethrows a 401 so requireAuth redirects to login', async () => {
+    mockApi.delete.mockRejectedValue(new ApiError('UNAUTHORIZED', 'no', undefined, 401));
+    const thrown = await callAction({ intent: 'delete-account' }).catch((err: unknown) => err);
     expect((thrown as Response).headers.get('Location')).toBe('/login?next=%2Fsettings');
   });
 });

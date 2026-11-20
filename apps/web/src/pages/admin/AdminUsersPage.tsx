@@ -1,37 +1,45 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
-import { type AdminUser, adminApi } from '../../api/index.ts';
+import { Link, useFetcher, useLoaderData, useLocation, useNavigation } from 'react-router';
+import type { AdminUser } from '../../api/types.ts';
 import { BanDialog } from '../../components/admin/BanDialog.tsx';
 import { EmptyState } from '../../components/ui/EmptyState.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
+import { PaginationControls } from '../../components/ui/PaginationControls.tsx';
 import { Skeleton } from '../../components/ui/Skeleton.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import { useActionFeedback } from '../../hooks/useActionFeedback.ts';
 import { useBanUser } from '../../hooks/useBanUser.ts';
+import { useDebouncedUrlText, useListUrlState } from '../../hooks/useListUrlState.ts';
 import { formatDate } from '../../utils/format.ts';
+import { parseAdminUsersParams } from '../../utils/list-parsers.ts';
 import { createLogger } from '../../utils/logger.ts';
+import type { action, loader } from './AdminUsersPage.data.ts';
 
 const log = createLogger('AdminUsersPage');
 
-interface PaginationState {
-  page: number;
-  perPage: number;
-  total: number;
-  totalPages: number;
-}
-
-/** Admin page: paginated, searchable user list with ban dialog and links to detail/edit/create. */
+/**
+ * Admin page: paginated, searchable user list with ban dialog and links to detail/edit/create.
+ * The search (`?q=`, debounced, replacing history) and page (`?page=`) live in the URL and the
+ * rows come from the route loader (`AdminUsersPage.data.ts`). Admin-role changes submit the
+ * `toggleAdmin` intent to the route action; ban/unban go through {@link useBanUser}, which
+ * patches the row locally without re-fetching.
+ */
 export function AdminUsersPage() {
   const { t, locale } = useTranslation();
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [pagination, setPagination] = useState<PaginationState>({
-    page: 1,
-    perPage: 20,
-    total: 0,
-    totalPages: 0,
-  });
-  const [error, setError] = useState('');
+  const { users: loadedUsers, pagination } = useLoaderData<typeof loader>();
+  const {
+    state: { q },
+    setPage,
+  } = useListUrlState(parseAdminUsersParams);
+  const searchInput = useDebouncedUrlText('q');
+  const navigation = useNavigation();
+  const location = useLocation();
+  const loading =
+    navigation.state === 'loading' && navigation.location?.pathname === location.pathname;
+  const [banOverrides, setBanOverrides] = useState<Record<string, boolean>>({});
+  const users = loadedUsers.map((u) =>
+    u.id in banOverrides ? { ...u, isBanned: banOverrides[u.id] } : u,
+  );
   const {
     banDialogUser,
     processing: banProcessing,
@@ -41,7 +49,7 @@ export function AdminUsersPage() {
     unban,
     closeDialog,
   } = useBanUser((userId, isBanned) => {
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isBanned } : u)));
+    setBanOverrides((prev) => ({ ...prev, [userId]: isBanned }));
   });
 
   useEffect(() => {
@@ -50,41 +58,6 @@ export function AdminUsersPage() {
       log.debug({}, 'AdminUsersPage unmounted');
     };
   }, []);
-
-  function fetchUsers(page: number, q: string) {
-    setLoading(true);
-    setError('');
-    const params: Record<string, string> = { page: String(page), perPage: '20' };
-    if (q) params.q = q;
-    adminApi
-      .getUsers(params)
-      .then((res) => {
-        const total = res.meta.pagination.total;
-        setUsers(res.data);
-        setPagination((prev) => ({
-          ...prev,
-          page,
-          total,
-          totalPages: Math.ceil(total / prev.perPage),
-        }));
-      })
-      .catch((err) => {
-        log.error({ err }, 'AdminUsersPage fetchUsers failed');
-        setError((err as { message?: string })?.message || t('admin.users.loadError'));
-        setUsers([]);
-        setPagination((prev) => ({ ...prev, page: 1, total: 0, totalPages: 0 }));
-      })
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(() => {
-    fetchUsers(1, search);
-  }, []);
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    fetchUsers(1, search);
-  }
 
   return (
     <div>
@@ -97,22 +70,18 @@ export function AdminUsersPage() {
         </Link>
       </div>
 
-      {error && <ErrorState message={error} className="mb-4" />}
-
       {banError && <ErrorState message={t(banError)} className="mb-4" />}
 
-      <form onSubmit={handleSearch} className="mb-4 flex gap-2">
+      <div className="mb-4 flex gap-2">
         <input
-          type="text"
+          type="search"
           placeholder={t('admin.users.searchPlaceholder')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          aria-label={t('admin.users.searchPlaceholder')}
+          value={searchInput.value}
+          onChange={(e) => searchInput.setValue(e.target.value)}
           className="input-field flex-1"
         />
-        <button type="submit" className="btn-secondary">
-          {t('common.search')}
-        </button>
-      </form>
+      </div>
 
       {loading ? (
         <div className="space-y-4">
@@ -121,9 +90,7 @@ export function AdminUsersPage() {
           ))}
         </div>
       ) : users.length === 0 ? (
-        <EmptyState
-          message={search ? t('admin.users.noSearchResults') : t('admin.users.noUsers')}
-        />
+        <EmptyState message={q ? t('admin.users.noSearchResults') : t('admin.users.noUsers')} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -214,49 +181,7 @@ export function AdminUsersPage() {
                           {t('admin.users.ban')}
                         </button>
                       )}
-                      {user.isAdmin ? (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              await adminApi.toggleAdmin(user.id, false);
-                              setUsers((prev) =>
-                                prev.map((u) => (u.id === user.id ? { ...u, isAdmin: false } : u)),
-                              );
-                            } catch (err) {
-                              setError(
-                                (err as { message?: string })?.message ||
-                                  t('admin.users.removeAdminError'),
-                              );
-                            }
-                          }}
-                          className="text-xs"
-                          style={{ color: 'var(--warning)' }}
-                        >
-                          {t('admin.users.removeAdmin')}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              await adminApi.toggleAdmin(user.id, true);
-                              setUsers((prev) =>
-                                prev.map((u) => (u.id === user.id ? { ...u, isAdmin: true } : u)),
-                              );
-                            } catch (err) {
-                              setError(
-                                (err as { message?: string })?.message ||
-                                  t('admin.users.makeAdminError'),
-                              );
-                            }
-                          }}
-                          className="text-xs"
-                          style={{ color: 'var(--accent-primary)' }}
-                        >
-                          {t('admin.users.makeAdmin')}
-                        </button>
-                      )}
+                      <AdminRoleToggle user={user} />
                     </div>
                   </td>
                 </tr>
@@ -267,43 +192,11 @@ export function AdminUsersPage() {
       )}
 
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <button
-            type="button"
-            onClick={() => fetchUsers(pagination.page - 1, search)}
-            disabled={pagination.page <= 1}
-            className="btn-secondary"
-          >
-            {t('common.previous')}
-          </button>
-          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
-            <button
-              key={pageNum}
-              type="button"
-              onClick={() => fetchUsers(pageNum, search)}
-              className={pageNum === pagination.page ? 'btn-primary' : 'btn-secondary'}
-              style={
-                pageNum === pagination.page
-                  ? {}
-                  : {
-                      backgroundColor: 'var(--bg-tertiary)',
-                      color: 'var(--text-primary)',
-                      border: '1px solid var(--border-primary)',
-                    }
-              }
-            >
-              {pageNum}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => fetchUsers(pagination.page + 1, search)}
-            disabled={pagination.page >= pagination.totalPages}
-            className="btn-secondary"
-          >
-            {t('common.next')}
-          </button>
-        </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
       )}
 
       {banDialogUser && (
@@ -316,5 +209,38 @@ export function AdminUsersPage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Grant/remove admin rights for one row through the route action's `toggleAdmin` intent
+ * (its own fetcher, so rows can change independently). The list revalidates on success; a
+ * failure toasts the matching i18n error.
+ */
+function AdminRoleToggle({ user }: { user: AdminUser }) {
+  const { t } = useTranslation();
+  const fetcher = useFetcher<typeof action>();
+  useActionFeedback(fetcher, {
+    errorKey: (data) =>
+      data.isAdmin ? 'admin.users.makeAdminError' : 'admin.users.removeAdminError',
+  });
+  const pending = fetcher.formData?.get('isAdmin');
+  const isAdmin = typeof pending === 'string' ? pending === 'true' : user.isAdmin;
+
+  return (
+    <button
+      type="button"
+      disabled={fetcher.state !== 'idle'}
+      onClick={() =>
+        fetcher.submit(
+          { intent: 'toggleAdmin', userId: user.id, isAdmin: String(!isAdmin) },
+          { method: 'post' },
+        )
+      }
+      className="text-xs"
+      style={{ color: isAdmin ? 'var(--warning)' : 'var(--accent-primary)' }}
+    >
+      {isAdmin ? t('admin.users.removeAdmin') : t('admin.users.makeAdmin')}
+    </button>
   );
 }

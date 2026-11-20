@@ -1,20 +1,20 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useRouteLoaderData, useSearchParams } from 'react-router';
 import { createLogger } from '@/utils/logger.ts';
-import { authApi } from '../../api/index.ts';
 import { Field } from '../../components/form/Field.tsx';
 import { ErrorState } from '../../components/ui/ErrorState.tsx';
-import { LoadingState } from '../../components/ui/LoadingState.tsx';
 import { useAuth } from '../../contexts/AuthContext.tsx';
 import { useTranslation } from '../../contexts/I18nContext.tsx';
+import type { rootLoader } from '../../routes/root.ts';
 import { getApiErrorMessage } from '../../utils/apiErrorMessage.ts';
 import { getSafeNext } from '../../utils/safe-next.ts';
 
 const log = createLogger('RegisterPage');
 
 /**
- * Registration form with client-side password checks; hidden behind a
- * server-side registration-enabled flag. On success it replaces the history
+ * Registration form with client-side password checks; hidden behind the
+ * server-side registration-enabled flag, read once by the root route loader
+ * (`useRouteLoaderData('root')`, default open). On success it replaces the history
  * entry with the safe `?next=` return path (`getSafeNext`), else `/`.
  */
 export function RegisterPage() {
@@ -30,29 +30,14 @@ export function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [statusLoading, setStatusLoading] = useState(true);
-  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+  const registrationEnabled =
+    useRouteLoaderData<typeof rootLoader>('root')?.registrationEnabled ?? true;
 
   useEffect(() => {
     log.debug({}, 'RegisterPage mounted');
     return () => {
       log.debug({}, 'RegisterPage unmounted');
     };
-  }, []);
-
-  useEffect(() => {
-    async function checkStatus() {
-      try {
-        const { enabled } = await authApi.registrationStatus();
-        setRegistrationEnabled(enabled);
-      } catch (err: unknown) {
-        log.error({ err }, 'RegisterPage registration status check failed');
-        setRegistrationEnabled(true);
-      } finally {
-        setStatusLoading(false);
-      }
-    }
-    checkStatus();
   }, []);
 
   async function handleSubmit(e: FormEvent) {
@@ -79,10 +64,6 @@ export function RegisterPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  if (statusLoading) {
-    return <LoadingState className="mx-auto max-w-md px-6" />;
   }
 
   if (!registrationEnabled) {

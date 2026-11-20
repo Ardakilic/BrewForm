@@ -1,6 +1,20 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithAppProviders } from '../test-utils/render.tsx';
+import { action } from './ContactPage.data.ts';
 import { ContactPage } from './ContactPage.tsx';
+
+vi.mock('@/utils/logger.ts', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    trace: vi.fn(),
+    fatal: vi.fn(),
+  }),
+}));
 
 vi.mock('../api/client.ts', () => ({
   api: {
@@ -9,6 +23,7 @@ vi.mock('../api/client.ts', () => ({
 }));
 
 vi.mock('../contexts/I18nContext.tsx', () => ({
+  I18nProvider: ({ children }: { children: ReactNode }) => children,
   useTranslation: vi.fn(),
 }));
 
@@ -49,9 +64,16 @@ beforeEach(() => {
   mockUseTranslation.mockReturnValue(defaultTranslation);
 });
 
+/** Renders `/contact` with its real route action inside the app providers. */
+function renderContact() {
+  return renderWithAppProviders([{ path: '/contact', element: <ContactPage />, action }], {
+    initialEntries: ['/contact'],
+  });
+}
+
 describe('ContactPage', () => {
   it('renders all form fields', () => {
-    const { container } = render(<ContactPage />);
+    const { container } = renderContact();
 
     expect(screen.getByText('Contact Us')).toBeInTheDocument();
     expect(screen.getByText('Send us a message')).toBeInTheDocument();
@@ -66,7 +88,7 @@ describe('ContactPage', () => {
   it('submits form and shows success message', async () => {
     mockApiPost.mockResolvedValueOnce({ message: 'ok' });
 
-    const { container } = render(<ContactPage />);
+    const { container } = renderContact();
 
     fireEvent.change(container.querySelector('input[name="name"]')!, {
       target: { value: 'Alice' },
@@ -84,12 +106,16 @@ describe('ContactPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith('/contact', {
-        name: 'Alice',
-        email: 'alice@example.com',
-        subject: 'Test Subject',
-        message: 'This is a test message.',
-      });
+      expect(mockApiPost).toHaveBeenCalledWith(
+        '/contact',
+        {
+          name: 'Alice',
+          email: 'alice@example.com',
+          subject: 'Test Subject',
+          message: 'This is a test message.',
+        },
+        { signal: expect.any(AbortSignal) },
+      );
     });
 
     await waitFor(() => {
@@ -101,7 +127,7 @@ describe('ContactPage', () => {
   it('shows error message on API failure', async () => {
     mockApiPost.mockRejectedValueOnce(new Error('Network error'));
 
-    const { container } = render(<ContactPage />);
+    const { container } = renderContact();
 
     fireEvent.change(container.querySelector('input[name="name"]')!, {
       target: { value: 'Bob' },
@@ -130,7 +156,7 @@ describe('ContactPage', () => {
       new ApiError('RATE_LIMITED', 'Too many contact messages', undefined, 429, 120),
     );
 
-    const { container } = render(<ContactPage />);
+    const { container } = renderContact();
 
     fireEvent.change(container.querySelector('input[name="name"]')!, {
       target: { value: 'Carol' },
