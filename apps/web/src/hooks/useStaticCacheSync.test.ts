@@ -1,17 +1,22 @@
 import { renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useStaticCacheSync } from './useStaticCacheSync.ts';
 
 vi.mock('../api/static-cache.ts', () => ({
   CACHE_BUST_KEY: 'brewform-static-cache-bust',
+  clearStaticCache: vi.fn(),
   invalidateStaticCache: vi.fn(),
 }));
 
-// Re-import the mocked function so we can assert on it after the mock.
-import { invalidateStaticCache } from '../api/static-cache.ts';
+// Re-import the mocked functions so we can assert on them after the mock.
+import { clearStaticCache, invalidateStaticCache } from '../api/static-cache.ts';
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('useStaticCacheSync', () => {
@@ -22,8 +27,6 @@ describe('useStaticCacheSync', () => {
     const calls = addSpy.mock.calls.filter((call) => call[0] === 'storage');
     expect(calls.length).toBe(1);
     expect(typeof calls[0][1]).toBe('function');
-
-    addSpy.mockRestore();
   });
 
   it('removes the storage listener on unmount', () => {
@@ -40,32 +43,33 @@ describe('useStaticCacheSync', () => {
     const removeCalls = removeSpy.mock.calls.filter((call) => call[0] === 'storage');
     expect(removeCalls.length).toBe(1);
     expect(removeCalls[0][1]).toBe(addedHandler);
-
-    addSpy.mockRestore();
-    removeSpy.mockRestore();
   });
 
-  it('calls invalidateStaticCache when a matching storage event fires', () => {
-    renderHook(() => useStaticCacheSync());
+  it('clears the local cache once on a bust event, without re-broadcasting it', () => {
+    const setItemSpy = vi.spyOn(globalThis.localStorage, 'setItem');
+    const { unmount } = renderHook(() => useStaticCacheSync());
 
-    const event = new StorageEvent('storage', {
-      key: 'brewform-static-cache-bust',
-      newValue: '123',
-    });
-    globalThis.dispatchEvent(event);
+    globalThis.dispatchEvent(
+      new StorageEvent('storage', { key: 'brewform-static-cache-bust', newValue: '123' }),
+    );
 
-    expect(invalidateStaticCache).toHaveBeenCalledTimes(1);
+    expect(clearStaticCache).toHaveBeenCalledTimes(1);
+    expect(invalidateStaticCache).not.toHaveBeenCalled();
+    expect(setItemSpy.mock.calls.some(([key]) => key === 'brewform-static-cache-bust')).toBe(
+      false,
+    );
+    unmount();
   });
 
   it('ignores storage events with a different key', () => {
-    renderHook(() => useStaticCacheSync());
+    const { unmount } = renderHook(() => useStaticCacheSync());
 
-    const event = new StorageEvent('storage', {
-      key: 'brewform-preferences',
-      newValue: 'dark',
-    });
-    globalThis.dispatchEvent(event);
+    globalThis.dispatchEvent(
+      new StorageEvent('storage', { key: 'brewform-preferences', newValue: 'dark' }),
+    );
 
+    expect(clearStaticCache).not.toHaveBeenCalled();
     expect(invalidateStaticCache).not.toHaveBeenCalled();
+    unmount();
   });
 });

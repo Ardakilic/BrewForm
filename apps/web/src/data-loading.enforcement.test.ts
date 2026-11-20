@@ -107,8 +107,7 @@ function format(v: Violation): string {
 
 /**
  * Modules that still violate a rule while the wave-6 migration is in progress (the 65-module
- * inventory of `audit/_refine/coverage.md` §1.6, plus `hooks/useStaticCacheSync.ts`, which
- * still imports `invalidateStaticCache` until task 16.5). Shrink-only: each migration task
+ * inventory of `audit/_refine/coverage.md` §1.6). Shrink-only: each migration task
  * removes its files, and a listed file that no longer violates fails the test. Must be empty
  * (and removed) before the change is archived.
  */
@@ -158,8 +157,6 @@ const PENDING = new Set<string>([
   // raw fetch( QR downloads (2)
   'components/qrcode/RecipeQRCode.tsx',
   'components/recipe/ShareSection.tsx',
-  // not in the 65: imports invalidateStaticCache until task 16.5 switches it to clearStaticCache
-  'hooks/useStaticCacheSync.ts',
 ]);
 
 describe('data-loading enforcement — self-check', () => {

@@ -7,13 +7,13 @@ export const CACHE_BUST_KEY = 'brewform-static-cache-bust';
 
 /**
  * Module-level cache slot for the equipment lookup: the in-flight or settled request promise
- * (single-flight). Nulled by {@link invalidateStaticCache} and when the request rejects.
+ * (single-flight). Nulled by {@link clearStaticCache} and when the request rejects.
  */
 let _equipment: Promise<EquipmentOutput[]> | null = null;
 
 /**
  * Module-level cache slot for the flat taste-note list: the in-flight or settled request
- * promise (single-flight). Nulled by {@link invalidateStaticCache} and when the request rejects.
+ * promise (single-flight). Nulled by {@link clearStaticCache} and when the request rejects.
  */
 let _tasteNotes: Promise<TasteNoteOutput[]> | null = null;
 
@@ -38,8 +38,9 @@ function singleFlight<T>(
 
 /**
  * Returns the equipment lookup list, sharing one `equipmentApi.list()` request among all
- * concurrent and later callers until {@link invalidateStaticCache} runs. A failed request is
- * not cached. `opts.signal` only stops this caller's wait; it never cancels the shared request.
+ * concurrent and later callers until the cache is cleared ({@link clearStaticCache} or
+ * {@link invalidateStaticCache}). A failed request is not cached. `opts.signal` only stops
+ * this caller's wait; it never cancels the shared request.
  */
 export function getEquipmentCached(opts?: RequestOptions): Promise<EquipmentOutput[]> {
   const pending = singleFlight(
@@ -55,8 +56,9 @@ export function getEquipmentCached(opts?: RequestOptions): Promise<EquipmentOutp
 
 /**
  * Returns the flat taste-note list, sharing one `tasteApi.flat()` request among all
- * concurrent and later callers until {@link invalidateStaticCache} runs. A failed request is
- * not cached. `opts.signal` only stops this caller's wait; it never cancels the shared request.
+ * concurrent and later callers until the cache is cleared ({@link clearStaticCache} or
+ * {@link invalidateStaticCache}). A failed request is not cached. `opts.signal` only stops
+ * this caller's wait; it never cancels the shared request.
  */
 export function getTasteNotesCached(opts?: RequestOptions): Promise<TasteNoteOutput[]> {
   const pending = singleFlight(
@@ -71,15 +73,25 @@ export function getTasteNotesCached(opts?: RequestOptions): Promise<TasteNoteOut
 }
 
 /**
- * Null both cache slots (including in-flight requests) so the next get*Cached() call
- * re-fetches, and broadcast a cache-bust marker to other browser tabs via
- * localStorage. Same-tab consumers are unaffected by the
- * `storage` event (it fires only in other tabs). The setItem is
- * wrapped in try/catch to tolerate private-mode browsers.
+ * Clears this tab's cache slots only: nulls both slots, dropping any in-flight lookup promise,
+ * so the next `get*Cached()` call starts a new request. Never touches `localStorage`, so it
+ * never broadcasts: the cross-tab listener (`useStaticCacheSync`) calls this when another tab
+ * busts the cache, which keeps two open tabs from ping-ponging `storage` events.
  */
-export function invalidateStaticCache(): void {
+export function clearStaticCache(): void {
   _equipment = null;
   _tasteNotes = null;
+}
+
+/**
+ * Invalidates the cache after a mutation: {@link clearStaticCache} (so the next get*Cached()
+ * call re-fetches, including when a request was in flight) plus a cache-bust marker written to
+ * `localStorage` under {@link CACHE_BUST_KEY}, which other tabs receive as a `storage` event.
+ * Same-tab consumers are unaffected by that event (it fires only in other tabs). The setItem
+ * is wrapped in try/catch to tolerate private-mode browsers.
+ */
+export function invalidateStaticCache(): void {
+  clearStaticCache();
   try {
     localStorage.setItem(CACHE_BUST_KEY, String(Date.now()));
   } catch {

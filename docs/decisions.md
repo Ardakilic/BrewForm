@@ -257,6 +257,77 @@ don't use it; the per-feature docs in this directory are the user-facing referen
 
 ---
 
+## ADR-018 — Web data loading on React Router data APIs (instead of TanStack Query)
+
+**Decision.** The web app loads and writes server data only through React Router data APIs:
+
+- **Route reads** run in route `loader`s, co-located in a `<Page>.data.ts` module next to the page
+  (or under `apps/web/src/routes/`). Lazy routes use the object form
+  `lazy: { loader, action, Component }`, so the data and the page code load in parallel.
+- **Writes** run in route `action`s, submitted with `<Form>`, `useSubmit()` or
+  `useFetcher().submit()`. Every action returns `{ ok: true, ... }` or `{ ok: false, error }` for
+  expected failures; it does not throw. Pages with several mutations use one action keyed by
+  `intent`, and the UI toasts or rolls back on `ok: false`.
+- **Component-level reads** (typeaheads, the notification badge and dropdown, the add-to-collection
+  list, brew history and stats, taste-note lookups, the QR download) use `useFetcher().load()`
+  against `resources/*` resource routes. A fetcher's new `load()` cancels its previous one.
+- Every loader and action passes `request.signal` to each API client call. Auth-guarded routes wrap
+  them in `requireAuth`/`requireAdmin` (`routes/auth-guards.ts`), which turn a final 401 into
+  `/login?next=…` and an admin 403 into `/`.
+- `shouldRevalidate` and `defaultShouldRevalidate: false` scope revalidation to the data an action
+  changed (social toggles and comments do not re-run the recipe detail loader).
+- Static lookups (equipment, flat taste notes) go through the single-flight cache in
+  `api/static-cache.ts`. Mutations call `invalidateStaticCache()`; the cross-tab listener calls
+  the local-only `clearStaticCache()`.
+
+`useEffect` is allowed only for non-fetch work (logging, subscriptions, focus handling) and for
+triggering `fetcher.load()` or `revalidator.revalidate()` on mount or an external event (window
+focus, `brewform:notifications-changed`). The single exception that calls the API client outside a
+loader, action or resource route is the session store `contexts/AuthContext.tsx`, which sits above
+the router and bootstraps the session with `userApi.me()`.
+
+**Why.** React Router (already the app's router) provides, at no extra cost:
+
+- request cancellation through `request.signal`, and stale responses are discarded;
+- data that starts loading before render, in parallel with lazy page code (no waterfalls);
+- pending state (`useNavigation()`, `fetcher.state`) and route `errorElement`s, so a failed load
+  renders an error state instead of "no results";
+- revalidation after mutations;
+- the URL as the natural loader input, which the shareable list URLs need;
+- auth redirects before anything renders.
+
+Loaders and actions are plain async functions and easy to unit-test. The wave-6 audit counted 42
+`useEffect` fetch blocks in 39 files. None of them aborted and only 4 had a stale-response guard,
+and many rendered a failed load as an empty list. Mixing effect fetching with loaders carried the
+costs of both. Because `apps/web` is one app, it can adopt one paradigm everywhere.
+
+**Alternatives rejected.**
+
+- **TanStack Query:** a new dependency, and a second cache to invalidate next to router
+  revalidation. The D10 analysis (`plans/D10-tanstack-query-migration.md`) had already chosen the
+  router's data APIs over it.
+- **A homemade `useApiQuery` hook:** still two paradigms, and it loses the router's pending, error
+  and revalidation integration.
+- **`useEffect` + `useState` fetching:** familiar and co-located, but every effect needs its own
+  abort and stale guard, loading/error/refetch state is hand-rolled per page, URL state has to be
+  mirrored into component state, and auth redirects flash.
+- **v8 route middleware for auth:** the session store lives above the router, and loaders start
+  before it resolves, so the guards are loader wrappers instead.
+
+**Enforcement.** A Biome `style/noRestrictedImports` override bans `api/client.ts`, `api/index.ts`
+and `api/static-cache.ts` outside `api/**`, `routes/**`, `*.data.ts`, `AuthContext` and tests
+(types live in `api/types.ts`, `ApiError` in `api/errors.ts`). `apps/web/src/architecture.test.ts`
+fails on any `useEffect` that calls the API. `apps/web/src/data-loading.enforcement.test.ts` is a
+lint-independent source scan of client imports, raw `fetch(`, loader placement and data-module
+imports.
+
+**Trade-off.** Each page needs route-config wiring and a `*.data.ts` module, and revalidation needs
+thought (`shouldRevalidate`). There is no cache across navigations beyond the small static-lookup
+cache. That is acceptable for this app, because loaders refetch cheaply and the lookups that are
+read everywhere are cached.
+
+---
+
 ## ADR-019 — Server-generated upload keys and built-in magic-byte sniffing
 
 **Decision.** Photo uploads are stored under keys generated entirely on the server:

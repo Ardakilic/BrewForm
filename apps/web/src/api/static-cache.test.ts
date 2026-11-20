@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { equipmentApi, tasteApi } from './index.ts';
-import { getEquipmentCached, getTasteNotesCached, invalidateStaticCache } from './static-cache.ts';
+import {
+  clearStaticCache,
+  getEquipmentCached,
+  getTasteNotesCached,
+  invalidateStaticCache,
+} from './static-cache.ts';
 
 beforeEach(() => {
   invalidateStaticCache();
@@ -238,6 +243,47 @@ describe('static-cache', () => {
       invalidateStaticCache();
       await expect(getTasteNotesCached()).resolves.toEqual([]);
       expect(spy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('clearStaticCache', () => {
+    it('nulls both slots, including in-flight requests, so the next calls re-fetch', async () => {
+      const equipmentSpy = vi
+        .spyOn(equipmentApi, 'list')
+        .mockReturnValueOnce(new Promise(() => {}))
+        .mockResolvedValueOnce([]);
+      const tasteSpy = vi.spyOn(tasteApi, 'flat').mockResolvedValue([]);
+
+      void getEquipmentCached();
+      await getTasteNotesCached();
+      clearStaticCache();
+      await expect(getEquipmentCached()).resolves.toEqual([]);
+      await expect(getTasteNotesCached()).resolves.toEqual([]);
+
+      expect(equipmentSpy).toHaveBeenCalledTimes(2);
+      expect(tasteSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not touch localStorage (a received bust is never re-broadcast)', () => {
+      const setItemSpy = vi.spyOn(globalThis.localStorage, 'setItem');
+      const removeItemSpy = vi.spyOn(globalThis.localStorage, 'removeItem');
+
+      clearStaticCache();
+
+      expect(setItemSpy).not.toHaveBeenCalled();
+      expect(removeItemSpy).not.toHaveBeenCalled();
+    });
+
+    it('invalidateStaticCache still clears locally and writes the bust marker', async () => {
+      const setItemSpy = vi.spyOn(globalThis.localStorage, 'setItem');
+      const spy = vi.spyOn(tasteApi, 'flat').mockResolvedValue([]);
+
+      await getTasteNotesCached();
+      invalidateStaticCache();
+      await getTasteNotesCached();
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(setItemSpy).toHaveBeenCalledWith('brewform-static-cache-bust', expect.any(String));
     });
   });
 });
