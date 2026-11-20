@@ -8,6 +8,7 @@
  */
 
 import type { User, UserPreferences } from '@brewform/shared/types';
+import { isReservedUsername } from '@brewform/shared/utils';
 import { config } from '../../config/env.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { sendPasswordResetEmail, sendVerificationEmail } from './email.ts';
@@ -80,14 +81,21 @@ async function createUserOrThrowConflict(data: Parameters<typeof model.createUse
 /**
  * Register a new user account.
  *
- * @param data.email - User's email address (must be unique)
- * @param data.username - Chosen username (must be unique)
+ * Availability is decided before the insert: the email and username checks
+ * compare case-insensitively and count soft-deleted accounts (their
+ * identifiers stay reserved), and a reserved username (`isReservedUsername`)
+ * is refused as if it were taken, so the response does not reveal the list.
+ * A unique violation from the insert itself is only the race fallback
+ * (`USER_EMAIL_CONSTRAINTS` / `USER_USERNAME_CONSTRAINTS`).
+ *
+ * @param data.email - User's email address (already trimmed and lower-cased by `EmailSchema`)
+ * @param data.username - Chosen username (unique ignoring case; display case kept)
  * @param data.password - Plaintext password (hashed via model.createUser)
  * @param data.displayName - Optional display name
  * @returns Created user object, access token, and refresh token
  * @throws {Error} REGISTRATION_DISABLED if ENABLE_REGISTRATION env var is false
  * @throws {Error} EMAIL_ALREADY_EXISTS if the email is taken
- * @throws {Error} USERNAME_ALREADY_EXISTS if the username is taken
+ * @throws {Error} USERNAME_ALREADY_EXISTS if the username is reserved or taken
  */
 export async function register(data: {
   email: string;
@@ -103,6 +111,10 @@ export async function register(data: {
   const emailTaken = await model.isEmailTaken(data.email);
   if (emailTaken) {
     throw new Error('EMAIL_ALREADY_EXISTS');
+  }
+
+  if (isReservedUsername(data.username)) {
+    throw new Error('USERNAME_ALREADY_EXISTS');
   }
 
   const usernameTaken = await model.isUsernameTaken(data.username);

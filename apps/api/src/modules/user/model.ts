@@ -6,7 +6,14 @@
  * with latest version metadata, and full-text username/displayName search.
  */
 import { db } from '@brewform/db';
-import { recipes, recipeVersions, userFollows, userPreferences, users } from '@brewform/db/schema';
+import {
+  lower,
+  recipes,
+  recipeVersions,
+  userFollows,
+  userPreferences,
+  users,
+} from '@brewform/db/schema';
 import { and, asc, count, desc, eq, gt, isNull, like, or } from 'drizzle-orm';
 
 /**
@@ -48,12 +55,15 @@ export async function findById(id: string) {
   };
 }
 
-/** Find a user by username. Returns null if deleted or not found. */
+/**
+ * Find a user by username, case-insensitively (served by `user_username_lower_unique`), so
+ * `/users/ARDA` resolves `Arda`. Returns null if deleted or not found.
+ */
 export async function findByUsername(username: string) {
   const result = await db
     .select()
     .from(users)
-    .where(and(eq(users.username, username), isNull(users.deletedAt)))
+    .where(and(eq(lower(users.username), username.toLowerCase()), isNull(users.deletedAt)))
     .limit(1);
   return result[0] ?? null;
 }

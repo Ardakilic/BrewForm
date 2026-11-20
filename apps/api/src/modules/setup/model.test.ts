@@ -188,7 +188,7 @@ describe('update', () => {
   });
 
   it('should update an active setup record', async () => {
-    const result = await model.update(setupId, { name: 'Updated Setup' });
+    const result = await model.update(setupId, { name: 'Updated Setup' }, userId);
     expect(result).not.toBeNull();
     expect(result!.name).toBe('Updated Setup');
     const [row] = await db.select().from(setups).where(eq(setups.id, setupId));
@@ -202,7 +202,7 @@ describe('update', () => {
    */
   it('should mutate a soft-deleted setup record (regression baseline)', async () => {
     await db.update(setups).set({ deletedAt: new Date() }).where(eq(setups.id, setupId));
-    const result = await model.update(setupId, { name: 'Mutated' });
+    const result = await model.update(setupId, { name: 'Mutated' }, userId);
     expect(result).not.toBeNull();
     expect(result!.name).toBe('Mutated');
     const [row] = await db.select().from(setups).where(eq(setups.id, setupId));
@@ -210,8 +210,30 @@ describe('update', () => {
   });
 
   it('should return null for a non-existent setup ID', async () => {
-    const result = await model.update('nonexistent-uuid', { name: 'Nope' });
+    const result = await model.update('nonexistent-uuid', { name: 'Nope' }, userId);
     expect(result).toBeNull();
+  });
+
+  it("should return null and leave the row unchanged for another owner's id", async () => {
+    const result = await model.update(setupId, { name: 'Hijack' }, crypto.randomUUID());
+    expect(result).toBeNull();
+    const [row] = await db.select().from(setups).where(eq(setups.id, setupId));
+    expect(row.name).toBe('Original Setup');
+  });
+
+  it('should switch the default in one transaction when isDefault is true', async () => {
+    const [previous] = await db
+      .insert(setups)
+      .values({ name: 'Previous Default', userId, isDefault: true })
+      .returning();
+    try {
+      const result = await model.update(setupId, { isDefault: true }, userId);
+      expect(result?.isDefault).toBe(true);
+      const [previousRow] = await db.select().from(setups).where(eq(setups.id, previous.id));
+      expect(previousRow.isDefault).toBe(false);
+    } finally {
+      await db.delete(setups).where(eq(setups.id, previous.id));
+    }
   });
 });
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { PaginationSchema, QrCodeFilenameSchema, SearchQuerySchema, SlugSchema } from './common.ts';
+import {
+  EmailSchema,
+  PaginationSchema,
+  QrCodeFilenameSchema,
+  SearchQuerySchema,
+  SlugSchema,
+} from './common.ts';
 
 describe('QrCodeFilenameSchema', () => {
   it('should validate valid slug.png', () => {
@@ -137,5 +143,19 @@ describe('SlugSchema', () => {
   it('should reject slug starting with dash', () => {
     const result = SlugSchema.safeParse('-brew');
     expect(result.success).toBe(false);
+  });
+});
+
+describe('EmailSchema', () => {
+  it('trims and lower-cases before validating', () => {
+    expect(EmailSchema.parse('  Mixed.Case@Example.COM ')).toBe('mixed.case@example.com');
+  });
+
+  it('rejects a non-email', () => {
+    expect(EmailSchema.safeParse('not-an-email').success).toBe(false);
+  });
+
+  it('rejects an email longer than 255 characters', () => {
+    expect(EmailSchema.safeParse(`${'a'.repeat(251)}@x.io`).success).toBe(false);
   });
 });

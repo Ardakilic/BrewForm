@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { normalizeAdminEmail } from './seed.ts';
 import { coffeeVarietySeedData } from './seed-coffee-varieties.ts';
 import { equipmentCatalogSeedData } from './seed-equipment-catalog.ts';
 import {
@@ -472,5 +473,15 @@ describe('Seed Data Integrity', () => {
         expect(uuidRegex.test(entry.id)).toBe(true);
       }
     });
+  });
+});
+
+describe('normalizeAdminEmail', () => {
+  it('trims and lower-cases the configured admin email', () => {
+    expect(normalizeAdminEmail(' Admin@BrewForm.Local ')).toBe('admin@brewform.local');
+  });
+
+  it('falls back to the default admin email when unset', () => {
+    expect(normalizeAdminEmail(undefined)).toBe('admin@brewform.local');
   });
 });

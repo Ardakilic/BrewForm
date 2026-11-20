@@ -37,6 +37,7 @@ export {
 export type { CommentCreate } from './comment.ts';
 export { CommentCreateSchema } from './comment.ts';
 export {
+  EmailSchema,
   PaginationSchema,
   QR_CODE_FILENAME_PATTERN,
   QrCodeFilenameSchema,

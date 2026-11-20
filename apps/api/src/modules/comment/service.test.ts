@@ -12,8 +12,13 @@
  */
 
 import '../../test-setup.ts';
+import { db } from '@brewform/db';
+import { comments, notifications, users } from '@brewform/db/schema';
+import { and, eq } from 'drizzle-orm';
 import fc from 'fast-check';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { reloadConfig } from '../../config/env.ts';
+import { NoteFixtures } from '../recipe-note/test-helpers.ts';
 import {
   deps,
   listComments,
@@ -1088,5 +1093,66 @@ describe('D99.9 — comment visibility gate', () => {
     stubGateDeps(null);
     await expect(listComments(RECIPE_ID, 1, 20, STRANGER)).rejects.toThrow('RECIPE_NOT_FOUND');
     expect(findByRecipeCalls.length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// unique-identifiers: mentions resolve usernames case-insensitively (DB-backed)
+// ---------------------------------------------------------------------------
+describe('mention notifications resolve usernames case-insensitively (DB-backed)', () => {
+  const fixtures = new NoteFixtures();
+  const commentIds: string[] = [];
+  let originalAppEnv: string | undefined;
+
+  beforeAll(() => {
+    // APP_ENV=test suppresses the mention email.
+    originalAppEnv = process.env.APP_ENV;
+    process.env.APP_ENV = 'test';
+    reloadConfig();
+  });
+
+  afterAll(async () => {
+    for (const id of commentIds) {
+      await db.delete(notifications).where(eq(notifications.referenceId, id));
+      await db.delete(comments).where(eq(comments.id, id));
+    }
+    await fixtures.cleanup();
+    if (originalAppEnv === undefined) {
+      delete process.env.APP_ENV;
+    } else {
+      process.env.APP_ENV = originalAppEnv;
+    }
+    reloadConfig();
+  });
+
+  it('creates exactly one mention notification for Arda<m> from "@arda<m>"', async () => {
+    const m = crypto.randomUUID().replaceAll('-', '').slice(0, 8);
+    const target = await fixtures.user('mention-target');
+    await db
+      .update(users)
+      .set({ username: `Arda${m}` })
+      .where(eq(users.id, target.id));
+    // The commenter is the recipe author, so only the mention flow writes a notification.
+    const author = await fixtures.user('mention-author');
+    const { recipe } = await fixtures.recipe(author.id);
+    const content = `@arda${m} try this, @ARDA${m}!`;
+    const [comment] = await db
+      .insert(comments)
+      .values({ recipeId: recipe.id, authorId: author.id, content })
+      .returning({ id: comments.id });
+    commentIds.push(comment.id);
+
+    await runCommentNotificationSideEffects({
+      userId: author.id,
+      recipeId: recipe.id,
+      commentId: comment.id,
+      effectiveContent: content,
+    });
+
+    const rows = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(and(eq(notifications.userId, target.id), eq(notifications.type, 'mention')));
+    expect(rows).toHaveLength(1);
   });
 });

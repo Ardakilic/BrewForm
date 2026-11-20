@@ -584,10 +584,15 @@ describe('isEmailTaken', () => {
     expect(result).toBe(false);
   });
 
-  it('should return false for a soft-deleted user email', async () => {
+  it('should return true for a soft-deleted user email (identifiers stay reserved)', async () => {
     await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
     const result = await model.isEmailTaken(`taken-${userId}@example.com`);
-    expect(result).toBe(false);
+    expect(result).toBe(true);
+  });
+
+  it('should compare emails case-insensitively', async () => {
+    const result = await model.isEmailTaken(`TAKEN-${userId}@EXAMPLE.COM`);
+    expect(result).toBe(true);
   });
 });
 
@@ -621,6 +626,15 @@ describe('isUsernameTaken', () => {
   it('should exclude the given user id', async () => {
     const result = await model.isUsernameTaken(`unameuser-${userId}`, userId);
     expect(result).toBe(false);
+  });
+
+  it('should return true for a soft-deleted user username (usernames stay reserved)', async () => {
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+    expect(await model.isUsernameTaken(`unameuser-${userId}`)).toBe(true);
+  });
+
+  it('should compare usernames case-insensitively', async () => {
+    expect(await model.isUsernameTaken(`UNAMEUSER-${userId}`)).toBe(true);
   });
 });
 

@@ -190,6 +190,19 @@ async function seedBadges(tx: SeedTX) {
 }
 
 /**
+ * Normalize the configured admin email the same way the API's shared `EmailSchema` does
+ * (trim, then lower-case), so the seeded admin can sign in with the address as typed and the row
+ * matches the case-insensitive `user_email_lower_unique` index. Falls back to the default admin
+ * address when `ADMIN_EMAIL` is unset or blank.
+ *
+ * @param raw - The raw `ADMIN_EMAIL` value (may be `undefined`, padded or mixed-case).
+ * @returns The normalized admin email.
+ */
+export function normalizeAdminEmail(raw: string | undefined): string {
+  return (raw || 'admin@brewform.local').trim().toLowerCase();
+}
+
+/**
  * Seed the admin and seed users idempotently.
  *
  * Uses `onConflictDoNothing` on the unique `email` and `username` columns,
@@ -201,7 +214,7 @@ async function seedBadges(tx: SeedTX) {
 async function seedUsers(tx: SeedTX) {
   // First-install only: the entrypoint runs the seed solely when the users
   // table is empty, and onConflictDoNothing never updates existing rows.
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@brewform.local';
+  const adminEmail = normalizeAdminEmail(process.env.ADMIN_EMAIL);
   const adminUsername = process.env.ADMIN_USERNAME || 'admin';
   const adminPassword = hashPassword(process.env.ADMIN_PASSWORD || 'admin123456');
 

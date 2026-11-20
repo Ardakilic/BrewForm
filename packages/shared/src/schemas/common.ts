@@ -12,6 +12,19 @@ export const SortOrderSchema = z.enum(['asc', 'desc']).default('desc');
 /** Validates a UUID string; shared building block for id path params and payload fields. */
 export const UuidSchema = z.uuid();
 
+/**
+ * Normalizes and validates an account email: trims, lower-cases, caps at 255 characters (the
+ * `user.email` column size) and only then checks the email format.
+ *
+ * The format check sits after `.pipe()` on purpose: Zod 4 runs a format schema's own check before
+ * any chained transform, so `z.email().trim()` would reject `' a@b.co '`. Lower-casing is safe
+ * because Zod's email pattern accepts only ASCII, where JavaScript `toLowerCase()` and Postgres
+ * `lower()` agree. `z.toJSONSchema` resolves the pipe to its output side, so OpenAPI still documents
+ * an email string. Used by register, login, forgot-password and admin create/update (not the
+ * contact form, whose email is not an account identifier).
+ */
+export const EmailSchema = z.string().trim().toLowerCase().max(255).pipe(z.email());
+
 /** Validates a lowercase kebab-case slug (e.g. recipe slugs in path params). */
 export const SlugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 

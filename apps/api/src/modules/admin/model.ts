@@ -19,6 +19,7 @@ import {
   equipment,
   equipmentDeleteRequests,
   equipmentTypeEnum,
+  lower,
   type RecipeVisibility,
   recipes,
   recipeVersions,
@@ -65,9 +66,13 @@ export async function listUsers(page: number, perPage: number, query?: string) {
   return { users: data, total: totalResult[0].count };
 }
 
-/** Check whether an email is already taken by a non-deleted user, excluding an optional user ID. */
+/**
+ * Check whether an email is already taken, case-insensitively, by any user row
+ * (soft-deleted ones included, matching the unique indexes), excluding an
+ * optional user ID. Deliberately skips the soft-delete filter.
+ */
 export async function isEmailTaken(email: string, excludeId?: string) {
-  const conditions = [eq(users.email, email), isNull(users.deletedAt)];
+  const conditions = [eq(lower(users.email), email.toLowerCase())];
   if (excludeId) conditions.push(ne(users.id, excludeId));
   const [result] = await db
     .select({ id: users.id })
@@ -77,9 +82,13 @@ export async function isEmailTaken(email: string, excludeId?: string) {
   return !!result;
 }
 
-/** Check whether a username is already taken by a non-deleted user, excluding an optional user ID. */
+/**
+ * Check whether a username is already taken, case-insensitively, by any user
+ * row (soft-deleted ones included, so deleted usernames stay reserved),
+ * excluding an optional user ID. Deliberately skips the soft-delete filter.
+ */
 export async function isUsernameTaken(username: string, excludeId?: string) {
-  const conditions = [eq(users.username, username), isNull(users.deletedAt)];
+  const conditions = [eq(lower(users.username), username.toLowerCase())];
   if (excludeId) conditions.push(ne(users.id, excludeId));
   const [result] = await db
     .select({ id: users.id })

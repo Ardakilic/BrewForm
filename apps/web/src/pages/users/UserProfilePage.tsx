@@ -7,7 +7,7 @@ import type {
   PublicUserOutput,
 } from '@brewform/shared/schemas';
 import { useEffect } from 'react';
-import { Link, useLoaderData, useParams, useSearchParams } from 'react-router';
+import { Link, useLoaderData, useSearchParams } from 'react-router';
 import { ApiError } from '../../api/errors.ts';
 import { brewLogApi, collectionApi, followApi, userApi } from '../../api/index.ts';
 import { BrewLogCard } from '../../components/brew-log/BrewLogCard.tsx';
@@ -86,12 +86,14 @@ export const loader = async ({
     });
   } else if (tab === 'brews') {
     // The brew journal is owner-private: fetch it only when the viewer IS the
-    // profile being viewed. A URL-forced `?tab=brews` on another user's
-    // profile (or while logged out) skips the request and leaves
-    // `brewsData` null. Once ownership is established the list errors
-    // propagate to the error boundary instead of rendering an empty journal.
+    // profile being viewed. Ownership compares ids, not the URL username:
+    // profile URLs resolve case-insensitively (`/u/arda` opens `Arda`). A
+    // URL-forced `?tab=brews` on another user's profile (or while logged out)
+    // skips the request and leaves `brewsData` null. Once ownership is
+    // established the list errors propagate to the error boundary instead of
+    // rendering an empty journal.
     const viewer = await userApi.me().catch(() => null);
-    if (viewer?.username === username) {
+    if (viewer?.id === profile.id) {
       const brewsPage = readPage(url.searchParams, 'brewsPage');
       brewsData = await brewLogApi.list({ page: brewsPage });
     }
@@ -133,13 +135,13 @@ function FollowList({ data, emptyMsg }: { data: FollowRecord[]; emptyMsg: string
  * header from loader data.
  */
 export function UserProfilePage() {
-  const { username } = useParams();
   const { user } = useAuth();
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { profile, followData, collectionsData, brewsData } = useLoaderData() as ProfileLoaderData;
 
-  const isSelf = user?.username === username;
+  // Compare ids: the URL username may differ in case from the stored one (`/u/arda` → `Arda`).
+  const isSelf = user != null && user.id === profile?.id;
   const ALLOWED_TABS: readonly Tab[] = [
     'recipes',
     'badges',

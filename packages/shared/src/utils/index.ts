@@ -35,7 +35,7 @@ export {
   SLUG_SUFFIX_LENGTH,
   slugCandidates,
 } from './slug.ts';
-export { generateUniqueUsername } from './username.ts';
+export { generateUniqueUsername, isReservedUsername, RESERVED_USERNAMES } from './username.ts';
 /** Recipe validation: hard (blocks save) and soft (warnings only) checks. */
 export {
   validateBrewMethodCompatibility,

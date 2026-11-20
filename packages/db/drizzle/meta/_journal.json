@@ -120,6 +120,13 @@
       "when": 1795211828759,
       "tag": "0016_talented_dragon_lord",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795217289285,
+      "tag": "0017_acoustic_lockheed",
+      "breakpoints": true
     }
   ]
 }

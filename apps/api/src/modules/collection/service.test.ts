@@ -506,6 +506,20 @@ describe('collection service — removeRecipeFromCollection', () => {
     const items = await model.getItems(col.id);
     expect(items.length).toBe(0);
   });
+
+  it('add, remove, add leaves exactly one collection_item row (join rows are re-creatable)', async () => {
+    const reAddCol = await createCollectionRow(userA.id, 'ReAddCol', 'public');
+    colIds.push(reAddCol.id);
+    await service.addRecipeToCollection(userA.id, reAddCol.id, r1.id);
+    await service.removeRecipeFromCollection(userA.id, reAddCol.id, r1.id);
+    await service.addRecipeToCollection(userA.id, reAddCol.id, r1.id);
+
+    const rows = await db
+      .select({ id: collectionItems.id })
+      .from(collectionItems)
+      .where(eq(collectionItems.collectionId, reAddCol.id));
+    expect(rows).toHaveLength(1);
+  });
 });
 
 describe('collection service — listMyCollections', () => {

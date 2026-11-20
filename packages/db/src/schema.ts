@@ -14,7 +14,7 @@ import {
   UNIT_SYSTEM_VALUES,
   VISIBILITY_VALUES,
 } from '@brewform/shared/constants';
-import { relations, sql } from 'drizzle-orm';
+import { relations, type SQL, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
   boolean,
@@ -29,8 +29,23 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
+
+/**
+ * `lower(<column>)` as a Drizzle SQL expression, for the case-insensitive unique indexes on
+ * `user.email` / `user.username` and the matching lookups
+ * (`eq(lower(users.email), value.toLowerCase())`), which the expression indexes serve.
+ * Models import it from `@brewform/db/schema`; services never do.
+ *
+ * @param column - The text column to lower-case.
+ * @returns The `lower(<column>)` SQL fragment.
+ */
+export function lower(column: AnyPgColumn): SQL {
+  // D03 raw-SQL exception: Drizzle has no lower() builder; used by the case-insensitive unique indexes and the matching lookups.
+  return sql`lower(${column})`;
+}
 
 /**
  * Enums — values imported from @brewform/shared/constants
@@ -70,7 +85,16 @@ export const reportStatusEnum = pgEnum('report_status', [...REPORT_STATUS_VALUES
 
 /** Tables — Drizzle pgTable definitions for all BrewForm entities. */
 
-/** User accounts; unique on `email` and `username`, soft-deleted via `deletedAt`. */
+/**
+ * User accounts, soft-deleted via `deletedAt`.
+ *
+ * `email` and `username` are unique twice over: the exact `user_email_unique` /
+ * `user_username_unique` constraints (kept so the seed's `onConflictDoNothing({ target:
+ * users.email })` still infers a constraint) and the case-insensitive expression indexes
+ * `user_email_lower_unique` / `user_username_lower_unique` on `lower(<col>)`. Both cover
+ * soft-deleted rows, so identifiers of deleted accounts stay reserved. Emails are stored
+ * lower-cased by the shared `EmailSchema`; usernames keep the display case the user chose.
+ */
 export const users = pgTable(
   'user',
   {
@@ -96,6 +120,8 @@ export const users = pgTable(
     index('user_username_idx').on(table.username),
     index('user_created_at_idx').on(table.createdAt),
     index('user_deleted_at_idx').on(table.deletedAt),
+    uniqueIndex('user_email_lower_unique').on(lower(table.email)),
+    uniqueIndex('user_username_lower_unique').on(lower(table.username)),
   ],
 );
 
@@ -602,7 +628,13 @@ export const tasteNotes = pgTable(
   ],
 );
 
-/** User brewing setups with five equipment slots; soft-deleted via `deletedAt`. */
+/**
+ * User brewing setups with five equipment slots; soft-deleted via `deletedAt`.
+ *
+ * At most one active default per user: the partial unique index `setup_user_default_unique`
+ * covers `user_id` where `is_default = true and deleted_at is null`, and the setup model switches
+ * the default (clear the old one, write the new one) inside one transaction.
+ */
 export const setups = pgTable(
   'setup',
   {
@@ -636,6 +668,9 @@ export const setups = pgTable(
      * sorts by createdAt DESC.
      */
     index('setup_user_created_idx').on(table.userId, table.createdAt),
+    uniqueIndex('setup_user_default_unique')
+      .on(table.userId)
+      .where(sql`${table.isDefault} = true and ${table.deletedAt} is null`),
   ],
 );
 

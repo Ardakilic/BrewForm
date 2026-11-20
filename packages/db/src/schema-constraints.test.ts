@@ -7,6 +7,7 @@ import {
   recipeTasteNotes,
   recipeVersions,
   reports,
+  setups,
   tasteNotes,
   userRecipeNotes,
   userRecipeRatings,
@@ -406,5 +407,83 @@ describe('Schema enum constraints', () => {
         ),
       ).rejects.toThrow();
     });
+  });
+});
+
+/**
+ * Await a promise that must reject and return the postgres-js error on its `cause` (drizzle-orm
+ * wraps driver errors in `DrizzleQueryError`).
+ *
+ * @param promise - The failing query.
+ */
+async function postgresCause(
+  promise: PromiseLike<unknown>,
+): Promise<{ code?: string; constraint_name?: string }> {
+  try {
+    await promise;
+  } catch (err) {
+    return ((err as { cause?: unknown }).cause ?? err) as {
+      code?: string;
+      constraint_name?: string;
+    };
+  }
+  throw new Error('expected the query to fail');
+}
+
+describe('Identifier unique indexes (wave-6 unique-identifiers)', () => {
+  const userIds: string[] = [];
+
+  /** Insert a user with the given email and username and track it for cleanup. */
+  function insertUser(email: string, username: string) {
+    const id = crypto.randomUUID();
+    userIds.push(id);
+    return db.insert(users).values({ id, email, username, passwordHash: 'hash' });
+  }
+
+  afterEach(async () => {
+    if (userIds.length === 0) return;
+    await db.delete(setups).where(inArray(setups.userId, userIds));
+    await db.delete(users).where(inArray(users.id, userIds));
+    userIds.length = 0;
+  });
+
+  it('rejects an email that differs only in case on user_email_lower_unique', async () => {
+    const m = crypto.randomUUID().slice(0, 8);
+    await insertUser(`Case${m}@example.com`, `case-a-${m}`);
+    const cause = await postgresCause(insertUser(`case${m}@example.com`, `case-b-${m}`));
+    expect(cause.code).toBe('23505');
+    expect(cause.constraint_name).toBe('user_email_lower_unique');
+  });
+
+  it('rejects a username that differs only in case on user_username_lower_unique', async () => {
+    const m = crypto.randomUUID().slice(0, 8);
+    await insertUser(`arda-a-${m}@example.com`, `Arda${m}`);
+    const cause = await postgresCause(insertUser(`arda-b-${m}@example.com`, `arda${m}`));
+    expect(cause.code).toBe('23505');
+    expect(cause.constraint_name).toBe('user_username_lower_unique');
+  });
+
+  it('rejects a second active default setup on setup_user_default_unique', async () => {
+    const m = crypto.randomUUID().slice(0, 8);
+    await insertUser(`setup-${m}@example.com`, `setup-${m}`);
+    const userId = userIds[0];
+    await db.insert(setups).values({ userId, name: 'First', isDefault: true });
+    const cause = await postgresCause(
+      db.insert(setups).values({ userId, name: 'Second', isDefault: true }),
+    );
+    expect(cause.code).toBe('23505');
+    expect(cause.constraint_name).toBe('setup_user_default_unique');
+  });
+
+  it('accepts a soft-deleted default setup plus an active default', async () => {
+    const m = crypto.randomUUID().slice(0, 8);
+    await insertUser(`setup-del-${m}@example.com`, `setup-del-${m}`);
+    const userId = userIds[0];
+    await db
+      .insert(setups)
+      .values({ userId, name: 'Deleted', isDefault: true, deletedAt: new Date() });
+    await expect(
+      db.insert(setups).values({ userId, name: 'Active', isDefault: true }),
+    ).resolves.toBeDefined();
   });
 });

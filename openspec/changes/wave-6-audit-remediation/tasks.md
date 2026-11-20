@@ -421,10 +421,10 @@ How to use this task list
   - `apps/api/src/modules/recipe/reserved-slugs.test.ts` iterates `recipe.routes` (the default export of `apps/api/src/modules/recipe/index.ts`). It asserts that every first path segment that is not a `:param` is in `RESERVED_RECIPE_SLUGS`.
   - `apps/web/src/router.reserved-slugs.test.ts` reads `apps/web/src/router.tsx` with `node:fs`. It asserts that every `path: 'recipes/<segment>…'` whose `<segment>` is not a `:param` is in `RESERVED_RECIPE_SLUGS`.
   - Both name the missing word on failure.
-- [ ] 7.14 Write failing schema tests:
+- [x] 7.14 Write failing schema tests:
   - `packages/db/src/schema-indexes.test.ts`, via `getTableConfig`: `users` has indexes `user_email_lower_unique` and `user_username_lower_unique` with `config.unique === true`, and `setups` has `setup_user_default_unique` with `config.unique === true` and a defined `config.where`.
   - `packages/db/src/schema-constraints.test.ts` (DB-backed): inserting emails `Case<m>@example.com` and `case<m>@example.com` fails on the second with `cause.code === '23505'` and `cause.constraint_name === 'user_email_lower_unique'`. Usernames `Arda<m>`/`arda<m>` fail the same way on `user_username_lower_unique`. Two active default setups for one user fail on `setup_user_default_unique`. A soft-deleted default plus an active default succeed.
-- [ ] 7.15 Edit `packages/db/src/schema.ts`:
+- [x] 7.15 Edit `packages/db/src/schema.ts`:
   - Export `lower(column: AnyPgColumn): SQL`, returning `` sql`lower(${column})` ``, with the comment `// D03 raw-SQL exception: Drizzle has no lower() builder; used by the case-insensitive unique indexes and the matching lookups.` Import `SQL` from `drizzle-orm` and `uniqueIndex` from `drizzle-orm/pg-core`.
   - Add `uniqueIndex('user_email_lower_unique').on(lower(table.email))` and `uniqueIndex('user_username_lower_unique').on(lower(table.username))` to `users`. Keep `.unique()` on both columns and the existing plain indexes.
   - Add ``uniqueIndex('setup_user_default_unique').on(table.userId).where(sql`${table.isDefault} = true and ${table.deletedAt} is null`)`` to `setups`.
@@ -432,20 +432,20 @@ How to use this task list
   - Run `make db-generate`. Inspect, without editing, the new SQL: two `CREATE UNIQUE INDEX … USING btree (lower(…))` statements and `CREATE UNIQUE INDEX "setup_user_default_unique" ON "setup" USING btree ("user_id") WHERE …`.
   - Run `make db-migrate` and `make test-db-provision`. Run `make db-generate` again and confirm `No schema changes, nothing to migrate`.
   - Run `make test-specific filter=src/schema-indexes.test.ts` and `make test-specific filter=src/schema-constraints.test.ts`.
-- [ ] 7.16 Write failing shared tests:
+- [x] 7.16 Write failing shared tests:
   - `packages/shared/src/schemas/common.test.ts`: `EmailSchema.parse('  Mixed.Case@Example.COM ') === 'mixed.case@example.com'`, and `'not-an-email'` fails.
   - `auth.test.ts`: `AuthRegisterSchema`, `AuthLoginSchema` and `PasswordResetSchema` lower-case and trim the email. A register username `' Arda '` parses to `'Arda'`.
   - `admin.test.ts`: the same for admin create/update email.
   - `packages/shared/src/utils/username.test.ts`: `isReservedUsername('Support')`, `('ADMIN')` and `('deleted-abc123')` are `true`; `('arda')` is `false`.
   - `mention.test.ts`: `parseMentions('@Arda @arda @bob')` → `['Arda', 'bob']`.
-- [ ] 7.17 Implement the shared changes:
+- [x] 7.17 Implement the shared changes:
   - `EmailSchema = z.string().trim().toLowerCase().max(255).pipe(z.email())` in `packages/shared/src/schemas/common.ts`. Its JSDoc explains why the email check comes after the pipe (Zod 4 runs format checks before chained transforms). Export it from `schemas/index.ts`.
   - Use it in place of `z.email()` at `auth.ts:25,40,59` and `admin.ts:11,30` (`.optional()` on update). Leave the contact schema untouched.
   - Put `.trim()` first on the register and admin username schemas.
   - Add `RESERVED_USERNAMES` (the 17 names in the unique-identifiers spec) and `isReservedUsername` to `packages/shared/src/utils/username.ts`, and export them from `utils/index.ts`.
   - Make `parseMentions` de-duplicate by `toLowerCase()` key, keeping the first spelling.
   - JSDoc on every new export. Run `make test-shared` until green.
-- [ ] 7.18 Write failing API tests in `apps/api/src/modules/auth/index.test.ts`:
+- [x] 7.18 Write failing API tests in `apps/api/src/modules/auth/index.test.ts`:
   - Register `Mixed<m>@Example.com`: the stored email is `mixed<m>@example.com`. Registering `MIXED<m>@example.com` again gives `409 Email already registered`.
   - Login with `MIXED<m>@EXAMPLE.COM` gives `200`.
   - A legacy row inserted directly with `Legacy<m>@Example.com` logs in with `legacy<m>@example.com`, and forgot-password with `LEGACY<m>@example.com` creates a `password_reset` row.
@@ -454,7 +454,7 @@ How to use this task list
   - `Support` and `deleted-abc<m>` give `409 Username already taken`.
   - Concurrent `Race<m>`/`race<m>` registrations give one `201` and one `409`.
   - In `apps/api/src/modules/admin/index.test.ts`: renaming user B to `ARDA<m>` while A holds `Arda<m>` gives `409 Username is already taken by another user.` Creating a user with the reserved username `brewform` through `POST /api/v1/admin/users` returns `201`. Before the request, the test hard-deletes any leftover `brewform` row through `db`, and it hard-deletes the created row in `finally` (`user_preferences` cascades).
-- [ ] 7.19 Change the models:
+- [x] 7.19 Change the models:
   - `apps/api/src/modules/auth/model.ts`:
     - `findUserByEmail`, `findUserByUsername`, `isEmailTaken` and `isUsernameTaken` compare with `eq(lower(users.<col>), value.toLowerCase())`.
     - The two `is…Taken` functions drop `isNull(users.deletedAt)`. Their docblocks and the module docblock state the exception (the unique indexes cover soft-deleted rows, and deleted usernames stay reserved).
@@ -463,22 +463,22 @@ How to use this task list
   - `apps/api/src/modules/user/model.ts`: `findByUsername` uses `eq(lower(users.username), username.toLowerCase())`.
   - `apps/api/src/modules/notification/model.ts`: `findMentionTargets` uses `inArray(lower(users.username), usernames.map((u) => u.toLowerCase()))`.
   - Import `lower` from `@brewform/db/schema`. Services never import it.
-- [ ] 7.20 In `apps/api/src/modules/auth/service.ts`, `register` throws `USERNAME_ALREADY_EXISTS` when `isReservedUsername(data.username)` (before `isUsernameTaken`). The `23505` race mapping from task 2.11 uses `USER_EMAIL_CONSTRAINTS`/`USER_USERNAME_CONSTRAINTS`. Keep the existing `register started/completed` debug logs (no identifiers in logs). Run `make test-specific filter=src/modules/auth` and `make test-specific filter=src/modules/admin`.
-- [ ] 7.21 Write case-insensitive lookup tests:
+- [x] 7.20 In `apps/api/src/modules/auth/service.ts`, `register` throws `USERNAME_ALREADY_EXISTS` when `isReservedUsername(data.username)` (before `isUsernameTaken`). The `23505` race mapping from task 2.11 uses `USER_EMAIL_CONSTRAINTS`/`USER_USERNAME_CONSTRAINTS`. Keep the existing `register started/completed` debug logs (no identifiers in logs). Run `make test-specific filter=src/modules/auth` and `make test-specific filter=src/modules/admin`.
+- [x] 7.21 Write case-insensitive lookup tests:
   - `apps/api/src/modules/user/index.test.ts`: `GET /api/v1/users/ARDA<m>` for user `Arda<m>` returns `200` with `username === 'Arda<m>'`.
   - `apps/api/src/modules/comment/service.test.ts`: a comment containing `@arda<m>` creates exactly one `mention` notification for `Arda<m>`.
-- [ ] 7.22 Fix the own-profile check:
+- [x] 7.22 Fix the own-profile check:
   - In `apps/web/src/pages/users/UserProfilePage.tsx`, compare ids instead of usernames: the loader's brews-tab check (`:74`) becomes `viewer?.id === profile.id`, and `isSelf` (`:123`) becomes `user?.id === profile.id`.
   - Add a case to `UserProfilePage.test.tsx`: viewer `{ id: 'u1', username: 'Arda' }` at `/u/arda` with profile `{ id: 'u1', username: 'Arda' }` renders the own-profile UI (no follow button) and requests the brew journal for `?tab=brews`.
   - Run `make test-web`.
-- [ ] 7.23 In `packages/db/src/seed.ts`, add an exported pure `normalizeAdminEmail(raw: string | undefined): string` (`(raw || 'admin@brewform.local').trim().toLowerCase()`) and use it for the admin insert and the fallback select. Unit-test it in `packages/db/src/seed.test.ts` (`' Admin@BrewForm.Local '` → `'admin@brewform.local'`; `undefined` → the default). Confirm `packages/db/src/seed.idempotent.test.ts` still passes.
-- [ ] 7.24 Make the default-setup switch transactional:
+- [x] 7.23 In `packages/db/src/seed.ts`, add an exported pure `normalizeAdminEmail(raw: string | undefined): string` (`(raw || 'admin@brewform.local').trim().toLowerCase()`) and use it for the admin insert and the fallback select. Unit-test it in `packages/db/src/seed.test.ts` (`' Admin@BrewForm.Local '` → `'admin@brewform.local'`; `undefined` → the default). Confirm `packages/db/src/seed.idempotent.test.ts` still passes.
+- [x] 7.24 Make the default-setup switch transactional:
   - Write failing tests first. In `apps/api/src/modules/setup/service.test.ts`: `Promise.all` of `setDefault` on two setups of one user leaves exactly one active default, and each call resolves or rejects with an error that the route maps to `409`. `createSetup({ isDefault: true })` clears the previous default.
   - In `apps/api/src/modules/setup/index.test.ts`: the concurrent route calls return `200`/`409`, never `500`.
   - Then in `apps/api/src/modules/setup/model.ts`, `create(data)` and `update(id, data, ownerId)` run "clear the owner's other active default + write" in one `db.transaction` when `data.isDefault === true`. Remove `clearDefaultForUser`.
   - In `service.ts`, `createSetup`, `updateSetup` and `setDefault` stop calling it, and `setDefault` calls `model.update(id, { isDefault: true }, userId)`.
   - Update the docblocks and keep the entry/exit logs.
-- [ ] 7.25 Add join-row re-add regression tests:
+- [x] 7.25 Add join-row re-add regression tests:
   - `apps/api/src/modules/recipe/index.test.ts`: `POST /:id/like` three times (like, unlike, like) leaves one `user_recipe_like` row. The same for `POST /:id/favourite`.
   - `apps/api/src/modules/follow/index.test.ts`: follow, unfollow, follow leaves one `user_follow` row.
   - `apps/api/src/modules/collection/service.test.ts`: add, remove, add leaves one `collection_item` row.

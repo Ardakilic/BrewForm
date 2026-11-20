@@ -9,13 +9,14 @@
 
 import '../../test-setup.ts';
 import { db } from '@brewform/db';
-import { recipes, userFollows, users } from '@brewform/db/schema';
+import { notifications, recipes, userBadges, userFollows, users } from '@brewform/db/schema';
 import { encodeCursor } from '@brewform/shared/utils';
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { AppEnv } from '../../types/hono.ts';
 import { signAccessToken } from '../auth/jwt.ts';
+import { evaluateBadges } from '../badge/service.ts';
 import followRouter from './index.ts';
 
 async function createUser(prefix: string) {
@@ -189,5 +190,40 @@ describe('Follow routes — feed cursor pagination', () => {
     expect(body.meta.pagination.total).toBe(0);
     expect(Array.isArray(body.data)).toBe(true);
     expect(body.data).toEqual([]);
+  });
+});
+
+describe('Follow routes — re-follow after unfollow (join rows are re-creatable)', () => {
+  let follower: typeof users.$inferSelect;
+  let target: typeof users.$inferSelect;
+
+  beforeAll(async () => {
+    follower = await createUser('refollow-follower');
+    target = await createUser('refollow-target');
+  });
+
+  afterAll(async () => {
+    const ids = [follower.id, target.id];
+    // Following fires badge evaluation and the follow notification without awaiting them.
+    await evaluateBadges(follower.id);
+    await db.delete(userBadges).where(inArray(userBadges.userId, ids));
+    await db.delete(notifications).where(inArray(notifications.userId, ids));
+    await db.delete(userFollows).where(inArray(userFollows.followerId, ids));
+    await db.delete(users).where(inArray(users.id, ids));
+  });
+
+  it('follow, unfollow, follow leaves exactly one user_follow row', async () => {
+    const app = createTestApp(follower.id);
+    const path = `/api/v1/follow/${target.id}`;
+
+    expect((await authedRequest(app, path, follower.id, { method: 'POST' })).status).toBe(201);
+    expect((await authedRequest(app, path, follower.id, { method: 'DELETE' })).status).toBe(200);
+    expect((await authedRequest(app, path, follower.id, { method: 'POST' })).status).toBe(201);
+
+    const rows = await db
+      .select({ id: userFollows.id })
+      .from(userFollows)
+      .where(and(eq(userFollows.followerId, follower.id), eq(userFollows.followingId, target.id)));
+    expect(rows).toHaveLength(1);
   });
 });

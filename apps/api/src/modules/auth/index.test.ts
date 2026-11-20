@@ -722,6 +722,226 @@ describe('Auth Routes — registration conflicts (DB integration)', () => {
 });
 
 /**
+ * Case-insensitive account identifiers (unique-identifiers): emails are trimmed and lower-cased
+ * by `EmailSchema`, lookups compare `lower()`, availability checks cover soft-deleted accounts and
+ * reserved usernames are refused. Every identifier carries a per-run marker `<m>`.
+ */
+describe('Auth Routes — case-insensitive identifiers (DB integration)', () => {
+  const createdUsers: string[] = [];
+  let originalAppEnv: string | undefined;
+
+  /** Auth router behind the production error handler. */
+  function createAppWithErrorHandler() {
+    const app = new Hono();
+    app.onError(errorHandler);
+    app.route('/auth', auth);
+    return app;
+  }
+
+  /** POST JSON from a fresh simulated client IP (its own rate-limit buckets). */
+  function postJson(app: Hono, path: string, body: unknown) {
+    return app.request(
+      path,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      peerEnv(uniqueTestIp()),
+    );
+  }
+
+  /** Track created users from 201 responses for cleanup. */
+  async function trackCreated(res: Response) {
+    if (res.status !== 201) return;
+    const body = await res.clone().json();
+    createdUsers.push(body.data.user.id);
+  }
+
+  /** A per-run lowercase marker. */
+  function marker() {
+    return crypto.randomUUID().replaceAll('-', '').slice(0, 8);
+  }
+
+  const password = 'Test12345!';
+
+  beforeAll(() => {
+    originalAppEnv = process.env.APP_ENV;
+    process.env.APP_ENV = 'test';
+    reloadConfig();
+  });
+
+  beforeEach(() => {
+    resetRateLimitBackend();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterAll(async () => {
+    if (originalAppEnv === undefined) {
+      delete process.env.APP_ENV;
+    } else {
+      process.env.APP_ENV = originalAppEnv;
+    }
+    reloadConfig();
+    if (createdUsers.length) {
+      await db.delete(passwordResets).where(inArray(passwordResets.userId, createdUsers));
+      await db
+        .delete(emailVerificationTokens)
+        .where(inArray(emailVerificationTokens.userId, createdUsers));
+      await db.delete(userPreferences).where(inArray(userPreferences.userId, createdUsers));
+      await db.delete(users).where(inArray(users.id, createdUsers));
+    }
+  });
+
+  it('stores a normalized email, refuses a case variant and logs in with any case', async () => {
+    const m = marker();
+    const app = createAppWithErrorHandler();
+    const first = await postJson(app, '/auth/register', {
+      email: `Mixed${m}@Example.com`,
+      username: `mixed-a-${m}`,
+      password,
+    });
+    await trackCreated(first);
+    expect(first.status).toBe(201);
+    const [stored] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.username, `mixed-a-${m}`));
+    expect(stored.email).toBe(`mixed${m}@example.com`);
+
+    const again = await postJson(app, '/auth/register', {
+      email: `MIXED${m}@example.com`,
+      username: `mixed-b-${m}`,
+      password,
+    });
+    await trackCreated(again);
+    const againBody = await again.json();
+    expect(again.status).toBe(409);
+    expect(againBody.error.message).toBe('Email already registered');
+
+    const login = await postJson(app, '/auth/login', { email: `MIXED${m}@EXAMPLE.COM`, password });
+    expect(login.status).toBe(200);
+  });
+
+  it('finds a legacy mixed-case email row for login and forgot-password', async () => {
+    const m = marker();
+    const legacy = await model.createUser({
+      email: `Legacy${m}@Example.com`,
+      username: `legacy-${m}`,
+      password,
+    });
+    createdUsers.push(legacy.id);
+    const app = createAppWithErrorHandler();
+
+    const login = await postJson(app, '/auth/login', { email: `legacy${m}@example.com`, password });
+    expect(login.status).toBe(200);
+
+    const forgot = await postJson(app, '/auth/forgot-password', {
+      email: `LEGACY${m}@example.com`,
+    });
+    expect(forgot.status).toBe(200);
+    const resets = await db
+      .select({ id: passwordResets.id })
+      .from(passwordResets)
+      .where(eq(passwordResets.userId, legacy.id));
+    expect(resets).toHaveLength(1);
+  });
+
+  it('refuses a username that differs only in case', async () => {
+    const m = marker();
+    const app = createAppWithErrorHandler();
+    const first = await postJson(app, '/auth/register', {
+      email: `arda-a-${m}@example.com`,
+      username: `Arda${m}`,
+      password,
+    });
+    await trackCreated(first);
+    expect(first.status).toBe(201);
+
+    const second = await postJson(app, '/auth/register', {
+      email: `arda-b-${m}@example.com`,
+      username: `arda${m}`,
+      password,
+    });
+    await trackCreated(second);
+    const body = await second.json();
+    expect(second.status).toBe(409);
+    expect(body.error.message).toBe('Username already taken');
+  });
+
+  it("keeps a soft-deleted account's identifiers reserved without reaching the insert", async () => {
+    const m = marker();
+    const deleted = await model.createUser({
+      email: `del${m}@example.com`,
+      username: `Del${m}`,
+      password,
+    });
+    createdUsers.push(deleted.id);
+    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, deleted.id));
+    const warnSpies = [vi.spyOn(errorHandlerLog, 'warn'), vi.spyOn(authServiceLog, 'warn')];
+    const app = createAppWithErrorHandler();
+
+    const byEmail = await postJson(app, '/auth/register', {
+      email: `DEL${m}@Example.com`,
+      username: `del-new-${m}`,
+      password,
+    });
+    await trackCreated(byEmail);
+    expect(byEmail.status).toBe(409);
+    expect((await byEmail.json()).error.message).toBe('Email already registered');
+
+    const byUsername = await postJson(app, '/auth/register', {
+      email: `del-new-${m}@example.com`,
+      username: `del${m}`,
+      password,
+    });
+    await trackCreated(byUsername);
+    expect(byUsername.status).toBe(409);
+    expect((await byUsername.json()).error.message).toBe('Username already taken');
+
+    const messages = warnSpies.flatMap((spy) => spy.mock.calls.map((call) => call[1]));
+    expect(messages).not.toContain('Database constraint violation');
+    expect(messages).not.toContain('register hit a unique violation after the pre-checks');
+  });
+
+  it('refuses reserved usernames as taken', async () => {
+    const m = marker();
+    const app = createAppWithErrorHandler();
+    for (const username of ['Support', `deleted-abc${m}`]) {
+      const res = await postJson(app, '/auth/register', {
+        email: `reserved-${username.toLowerCase()}-${m}@example.com`,
+        username,
+        password,
+      });
+      await trackCreated(res);
+      expect(res.status).toBe(409);
+      expect((await res.json()).error.message).toBe('Username already taken');
+    }
+  });
+
+  it('answers concurrent registrations differing only in username case with one 201 and one 409', async () => {
+    const m = marker();
+    const app = createAppWithErrorHandler();
+    const responses = await Promise.all(
+      [`Race${m}`, `race${m}`].map((username, i) =>
+        postJson(app, '/auth/register', {
+          email: `race-${i}-${m}@example.com`,
+          username,
+          password,
+        }),
+      ),
+    );
+    for (const res of responses) await trackCreated(res);
+    expect(responses.map((res) => res.status).sort()).toEqual([201, 409]);
+    const loser = responses.find((res) => res.status === 409) as Response;
+    expect((await loser.json()).error.message).toBe('Username already taken');
+  });
+});
+
+/**
  * Auth rate-limit policies (api-rate-limiting: "Login is protected per IP and
  * per account", "Registration, password-reset and verification emails are
  * throttled"). Each simulated client is a distinct TCP peer (`peerEnv`), and

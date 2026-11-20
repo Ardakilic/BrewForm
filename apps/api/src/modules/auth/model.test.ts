@@ -281,9 +281,14 @@ describe('Auth model', () => {
       expect(await model.isEmailTaken(user.email, user.id)).toBe(false);
     });
 
-    it('should not count a soft-deleted user as taken', async () => {
+    it('should count a soft-deleted user as taken (identifiers stay reserved)', async () => {
       const user = await insertUser('email-deleted', { deletedAt: new Date() });
-      expect(await model.isEmailTaken(user.email)).toBe(false);
+      expect(await model.isEmailTaken(user.email)).toBe(true);
+    });
+
+    it('should compare case-insensitively', async () => {
+      const user = await insertUser('email-case');
+      expect(await model.isEmailTaken(user.email.toUpperCase())).toBe(true);
     });
   });
 
@@ -302,9 +307,14 @@ describe('Auth model', () => {
       expect(await model.isUsernameTaken(user.username, user.id)).toBe(false);
     });
 
-    it('should not count a soft-deleted user as taken', async () => {
+    it('should count a soft-deleted user as taken (usernames stay reserved)', async () => {
       const user = await insertUser('username-deleted', { deletedAt: new Date() });
-      expect(await model.isUsernameTaken(user.username)).toBe(false);
+      expect(await model.isUsernameTaken(user.username)).toBe(true);
+    });
+
+    it('should compare case-insensitively', async () => {
+      const user = await insertUser('username-case');
+      expect(await model.isUsernameTaken(user.username.toUpperCase())).toBe(true);
     });
   });
 

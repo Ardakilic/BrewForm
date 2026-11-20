@@ -892,6 +892,44 @@ describe('Recipe routes — detail, mutations and toggles', () => {
     });
   });
 
+  describe('join rows are re-creatable (like / favourite)', () => {
+    it('like, unlike, like leaves exactly one user_recipe_like row', async () => {
+      const recipe = await makeRecipe(author.id, 'Relike Route');
+      const app = createApp(other.id);
+      const toggles = [];
+      for (let i = 0; i < 3; i++) {
+        const res = await app.request(`/api/v1/recipes/${recipe.id}/like`, { method: 'POST' });
+        expect(res.status).toBe(200);
+        toggles.push((await res.json()).data.liked);
+      }
+      expect(toggles).toEqual([true, false, true]);
+      const rows = await db
+        .select({ id: userRecipeLikes.id })
+        .from(userRecipeLikes)
+        .where(eq(userRecipeLikes.recipeId, recipe.id));
+      expect(rows).toHaveLength(1);
+    });
+
+    it('favourite, unfavourite, favourite leaves exactly one user_recipe_favourite row', async () => {
+      const recipe = await makeRecipe(author.id, 'Refav Route');
+      const app = createApp(other.id);
+      const toggles = [];
+      for (let i = 0; i < 3; i++) {
+        const res = await app.request(`/api/v1/recipes/${recipe.id}/favourite`, {
+          method: 'POST',
+        });
+        expect(res.status).toBe(200);
+        toggles.push((await res.json()).data.favourited);
+      }
+      expect(toggles).toEqual([true, false, true]);
+      const rows = await db
+        .select({ id: userRecipeFavourites.id })
+        .from(userRecipeFavourites)
+        .where(eq(userRecipeFavourites.recipeId, recipe.id));
+      expect(rows).toHaveLength(1);
+    });
+  });
+
   describe('POST /:id/favourite', () => {
     it('returns 200 and toggles the favourite state', async () => {
       const recipe = await makeRecipe(author.id, 'Fav Route');

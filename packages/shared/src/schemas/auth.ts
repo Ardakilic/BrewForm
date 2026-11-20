@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EmailSchema } from './common.ts';
 
 /**
  * Password complexity requirements:
@@ -18,13 +19,15 @@ const passwordSchema = z
   .regex(/[^a-zA-Z0-9]/, 'password.needsSpecial');
 
 /**
- * Validates registration payloads (email, username, complex password).
+ * Validates registration payloads (email, username, complex password). The email is trimmed and
+ * lower-cased ({@link EmailSchema}); the username is trimmed but keeps its display case.
  * Used by POST /api/v1/auth/register.
  */
 export const AuthRegisterSchema = z.object({
-  email: z.email(),
+  email: EmailSchema,
   username: z
     .string()
+    .trim()
     .min(3)
     .max(30)
     .regex(/^[a-zA-Z0-9_-]+$/),
@@ -33,11 +36,11 @@ export const AuthRegisterSchema = z.object({
 });
 
 /**
- * Validates login payloads.
+ * Validates login payloads; the email is trimmed and lower-cased ({@link EmailSchema}).
  * Used by POST /api/v1/auth/login.
  */
 export const AuthLoginSchema = z.object({
-  email: z.email(),
+  email: EmailSchema,
   password: z.string().min(1, 'password.required'),
   rememberMe: z.boolean().optional().default(false),
 });
@@ -52,11 +55,11 @@ export const AuthRefreshSchema = z.object({
 });
 
 /**
- * Validates password-reset request payloads (email only).
+ * Validates password-reset request payloads (email only, trimmed and lower-cased).
  * Used by POST /api/v1/auth/forgot-password.
  */
 export const PasswordResetSchema = z.object({
-  email: z.email(),
+  email: EmailSchema,
 });
 
 /**

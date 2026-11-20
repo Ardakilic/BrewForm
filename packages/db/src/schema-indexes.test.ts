@@ -15,6 +15,8 @@
  *    single-column parity index on tasteNotes.deletedAt
  *  - `user_recipe_note` (wave-6 private notes): the `recipe_id` index, the
  *    (`user_id`, `recipe_id`) unique constraint and the notes length CHECK
+ *  - wave-6 identifier uniqueness: the `lower()` expression unique indexes on
+ *    `user.email` / `user.username` and the partial `setup_user_default_unique`
  */
 
 import type { IndexedColumn, PgTableWithColumns } from 'drizzle-orm/pg-core';
@@ -36,6 +38,7 @@ import {
   tasteNotes,
   userFollows,
   userRecipeNotes,
+  users,
 } from './schema.ts';
 
 /**
@@ -431,5 +434,30 @@ describe('User recipe notes table indexes and constraints', () => {
   it('declares the user_recipe_note_notes_length_check CHECK constraint', () => {
     const { checks } = getTableConfig(userRecipeNotes);
     expect(checks.map((c) => c.name)).toEqual(['user_recipe_note_notes_length_check']);
+  });
+});
+
+describe('Identifier unique indexes (wave-6 unique-identifiers)', () => {
+  it('users has case-insensitive unique indexes on email and username', () => {
+    const { indexes } = getTableConfig(users);
+    for (const name of ['user_email_lower_unique', 'user_username_lower_unique']) {
+      const idx = indexes.find((i) => i.config.name === name);
+      expect(idx, name).toBeDefined();
+      expect(idx?.config.unique).toBe(true);
+    }
+  });
+
+  it('users keeps the exact unique constraints the seed conflict target relies on', () => {
+    const { columns } = getTableConfig(users);
+    expect(columns.find((c) => c.name === 'email')?.isUnique).toBe(true);
+    expect(columns.find((c) => c.name === 'username')?.isUnique).toBe(true);
+  });
+
+  it('setups has the partial setup_user_default_unique index', () => {
+    const { indexes } = getTableConfig(setups);
+    const idx = indexes.find((i) => i.config.name === 'setup_user_default_unique');
+    expect(idx).toBeDefined();
+    expect(idx?.config.unique).toBe(true);
+    expect(idx?.config.where).toBeDefined();
   });
 });
