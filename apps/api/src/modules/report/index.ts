@@ -10,33 +10,28 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { describeRoute, resolver } from 'hono-openapi';
 import { adminMiddleware, authMiddleware } from '../../middleware/auth.ts';
-import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
+import { rateLimit } from '../../middleware/rateLimit.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { POLICIES } from '../../utils/rate-limit/policies.ts';
 import { error, paginated, success, zodValidationHook } from '../../utils/response/index.ts';
 import * as service from './service.ts';
 
 /** Hono sub-router for report endpoints, mounted at `/api/v1/reports`. */
 const report = new Hono<AppEnv>();
 
-/** Per-IP rate limit for report submission: 3 requests per 15 minutes. */
-const REPORT_RATE_LIMIT_WINDOW_MS = 15 * 60_000;
-const REPORT_RATE_LIMIT_MAX_REQUESTS = 3;
-const REPORT_RATE_LIMIT_KEY_PREFIX = 'report';
-
+// Report submission: `report-ip` (3 per 15 min per client IP) runs first, before
+// auth and validation; `report-user` (3 per 15 min per user) right after auth.
+// The admin GET / PATCH routes below are not throttled by either policy.
 report.post(
   '/',
-  rateLimitMiddleware({
-    windowMs: REPORT_RATE_LIMIT_WINDOW_MS,
-    maxRequests: REPORT_RATE_LIMIT_MAX_REQUESTS,
-    keyPrefix: REPORT_RATE_LIMIT_KEY_PREFIX,
-  }),
+  rateLimit(POLICIES.reportIp),
   describeRoute({
     tags: ['Reports'],
     summary: 'Create a report',
-    description: `Submits a moderation report against a recipe or comment. Rate-limited to ${REPORT_RATE_LIMIT_MAX_REQUESTS} requests per ${
-      REPORT_RATE_LIMIT_WINDOW_MS / 60_000
-    } minutes per IP.`,
+    description:
+      'Submits a moderation report against a recipe or comment. ' +
+      'Rate-limited to 3 requests per 15 minutes per client IP and per user.',
     security: [{ bearerAuth: [] }],
     requestBody: jsonRequestBody(ReportCreateSchema),
     responses: {
@@ -51,14 +46,13 @@ report.post(
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       429: {
-        description: `Rate limit exceeded (${REPORT_RATE_LIMIT_MAX_REQUESTS} requests per ${
-          REPORT_RATE_LIMIT_WINDOW_MS / 60_000
-        } minutes)`,
+        description: 'Rate limit exceeded (3 requests per 15 minutes)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },
   }),
   authMiddleware,
+  rateLimit(POLICIES.reportUser),
   zValidator('json', ReportCreateSchema, zodValidationHook),
   async (c) => {
     const userId = c.get('userId') as string;

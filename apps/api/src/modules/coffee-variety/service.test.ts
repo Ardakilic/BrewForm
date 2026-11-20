@@ -1,7 +1,8 @@
 import '../../test-setup.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type CacheProvider, InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import type { CacheProvider } from '../../utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from '../../utils/cache/singleton.ts';
+import { closeTestCaches, testCache } from '../../utils/cache/test-helpers.ts';
 import * as model from './model.ts';
 import {
   createCoffeeVariety,
@@ -12,6 +13,9 @@ import {
   log,
   updateCoffeeVariety,
 } from './service.ts';
+
+// Close every provider created with testCache() so no sweep timer leaks.
+afterEach(closeTestCaches);
 
 function createMockModel(overrides: Partial<typeof model> = {}): typeof model {
   return { ...model, ...overrides } as typeof model;
@@ -68,7 +72,7 @@ describe('Coffee Variety Service', () => {
     it('should return variety from cache and log cache hit', async () => {
       // biome-ignore lint/suspicious/noExplicitAny: test cast
       const variety = { id: 'var-1', name: 'Arabica', category: 'variety' } as any;
-      const cache = new InMemoryCacheProvider();
+      const cache = testCache();
       await cache.set(['coffee-variety', 'var-1'], variety);
 
       const result = await getCoffeeVarietyById('var-1', { model: createMockModel(), cache });
@@ -87,7 +91,7 @@ describe('Coffee Variety Service', () => {
     it('should return variety from model, cache it, and log cache miss', async () => {
       // biome-ignore lint/suspicious/noExplicitAny: test cast
       const variety = { id: 'var-1', name: 'Arabica', category: 'variety' } as any;
-      const cache = new InMemoryCacheProvider();
+      const cache = testCache();
       const mockModel = createMockModel({
         findById: () => Promise.resolve(variety),
       });

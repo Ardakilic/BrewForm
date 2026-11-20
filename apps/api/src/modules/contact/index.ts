@@ -8,11 +8,12 @@ import { Hono } from 'hono';
 import { describeRoute, resolver } from 'hono-openapi';
 import { z } from 'zod';
 import { config } from '../../config/index.ts';
-import { rateLimitMiddleware } from '../../middleware/rateLimit.ts';
+import { rateLimit } from '../../middleware/rateLimit.ts';
 import type { AppEnv } from '../../types/hono.ts';
 import { createLogger } from '../../utils/logger/index.ts';
 import { getTransporter } from '../../utils/notify/index.ts';
 import { jsonRequestBody } from '../../utils/openapi/index.ts';
+import { POLICIES } from '../../utils/rate-limit/policies.ts';
 import { error, success } from '../../utils/response/index.ts';
 
 const logger = createLogger('contact');
@@ -27,21 +28,15 @@ const contactSchema = z.object({
 /** Hono sub-router for contact endpoints, mounted at `/api/v1/contact`. */
 const contact = new Hono<AppEnv>();
 
-contact.use(
-  '*',
-  rateLimitMiddleware({
-    windowMs: 15 * 60_000,
-    maxRequests: 3,
-    keyPrefix: 'contact',
-  }),
-);
-
 contact.post(
   '/',
+  // IP-keyed policy `contact-ip` (3 per 15 min), before body validation.
+  rateLimit(POLICIES.contactIp),
   describeRoute({
     tags: ['Contact'],
     summary: 'Submit a contact message',
-    description: 'Submits a contact-form message. Rate-limited to 3 requests per 15 minutes.',
+    description:
+      'Submits a contact-form message. Rate-limited to 3 requests per 15 minutes per client IP.',
     requestBody: jsonRequestBody(contactSchema),
     responses: {
       200: {
@@ -55,7 +50,7 @@ contact.post(
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
       429: {
-        description: 'Rate limit exceeded (3 requests per 15 minutes)',
+        description: 'Rate limit exceeded (3 requests per 15 minutes per client IP)',
         content: { 'application/json': { schema: resolver(ErrorEnvelopeSchema) } },
       },
     },

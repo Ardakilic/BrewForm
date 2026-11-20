@@ -491,3 +491,99 @@ describe('loadEnv failure output', () => {
     }
   });
 });
+
+describe('rate limiting, trusted proxy and cache cap settings', () => {
+  it('should apply the documented defaults', () => {
+    const result = envSchema.safeParse({ ...REQUIRED });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.TRUST_PROXY).toBe('none');
+      expect(result.data.TRUST_PROXY_HOPS).toBe(1);
+      expect(result.data.TRUST_PROXY_CIDRS).toEqual([]);
+      expect(result.data.RATE_LIMIT_ENABLED).toBe(true);
+      expect(result.data.RATE_LIMIT_STORE).toBe('memory');
+      expect(result.data.RATE_LIMIT_GLOBAL_MAX).toBe(100);
+      expect(result.data.CACHE_MEMORY_MAX_ENTRIES).toBe(10000);
+    }
+  });
+
+  it('should reject an unknown TRUST_PROXY mode', () => {
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY: 'xff' })).toContain('TRUST_PROXY');
+  });
+
+  it('should reject TRUST_PROXY_HOPS outside 1-5', () => {
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_HOPS: '0' })).toContain('TRUST_PROXY_HOPS');
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_HOPS: '6' })).toContain('TRUST_PROXY_HOPS');
+  });
+
+  it('should reject an out-of-range prefix and a malformed CIDR', () => {
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_CIDRS: '10.0.0.0/33' })).toContain(
+      'TRUST_PROXY_CIDRS',
+    );
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_CIDRS: 'not-a-cidr' })).toContain(
+      'TRUST_PROXY_CIDRS',
+    );
+    expect(failedKeys({ ...REQUIRED, TRUST_PROXY_CIDRS: '2001:db8::/129' })).toContain(
+      'TRUST_PROXY_CIDRS',
+    );
+  });
+
+  it('should accept IPv4 and IPv6 CIDRs and expose them as a trimmed list', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      TRUST_PROXY_CIDRS: '10.0.0.0/8, 2001:db8::/32',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.TRUST_PROXY_CIDRS).toEqual(['10.0.0.0/8', '2001:db8::/32']);
+    }
+  });
+
+  it('should reject a CACHE_MEMORY_MAX_ENTRIES below 100', () => {
+    expect(failedKeys({ ...REQUIRED, CACHE_MEMORY_MAX_ENTRIES: '10' })).toContain(
+      'CACHE_MEMORY_MAX_ENTRIES',
+    );
+  });
+
+  it('should require REDIS_URL for the redis rate-limit store even with the cache disabled', () => {
+    expect(
+      failedKeys({ ...REQUIRED, CACHE_ENABLED: 'false', RATE_LIMIT_STORE: 'redis' }),
+    ).toContain('REDIS_URL');
+  });
+
+  it('should parse RATE_LIMIT_ENABLED=false and a custom global limit', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      RATE_LIMIT_ENABLED: 'false',
+      RATE_LIMIT_GLOBAL_MAX: '250',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.RATE_LIMIT_ENABLED).toBe(false);
+      expect(result.data.RATE_LIMIT_GLOBAL_MAX).toBe(250);
+    }
+  });
+
+  it('should treat blank values of the new variables as unset', () => {
+    const result = envSchema.safeParse({
+      ...REQUIRED,
+      TRUST_PROXY: '',
+      TRUST_PROXY_HOPS: ' ',
+      TRUST_PROXY_CIDRS: '',
+      RATE_LIMIT_ENABLED: '',
+      RATE_LIMIT_STORE: '',
+      RATE_LIMIT_GLOBAL_MAX: '',
+      CACHE_MEMORY_MAX_ENTRIES: '',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.TRUST_PROXY).toBe('none');
+      expect(result.data.TRUST_PROXY_HOPS).toBe(1);
+      expect(result.data.TRUST_PROXY_CIDRS).toEqual([]);
+      expect(result.data.RATE_LIMIT_ENABLED).toBe(true);
+      expect(result.data.RATE_LIMIT_STORE).toBe('memory');
+      expect(result.data.RATE_LIMIT_GLOBAL_MAX).toBe(100);
+      expect(result.data.CACHE_MEMORY_MAX_ENTRIES).toBe(10000);
+    }
+  });
+});

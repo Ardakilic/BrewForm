@@ -11,6 +11,10 @@ import { Hono } from 'hono';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { reloadConfig } from '../../config/env.ts';
 import { errorHandler, log as errorHandlerLog } from '../../middleware/errorHandler.ts';
+import { log as rateLimitLog } from '../../middleware/rateLimit.ts';
+import { peerEnv, uniqueTestIp } from '../../utils/client-ip/test-helpers.ts';
+import { getTransporter } from '../../utils/notify/index.ts';
+import { resetRateLimitBackend } from '../../utils/rate-limit/registry.ts';
 import auth, { log as authRouteLog } from './index.ts';
 import { signAccessToken, signRefreshToken } from './jwt.ts';
 import * as model from './model.ts';
@@ -23,6 +27,10 @@ function createTestApp() {
 }
 
 describe('Auth Routes', () => {
+  beforeEach(() => {
+    resetRateLimitBackend();
+  });
+
   describe('GET /auth/registration-status', () => {
     it('should return enabled status', async () => {
       const app = createTestApp();
@@ -152,8 +160,9 @@ describe('Auth Routes', () => {
 /**
  * DB-backed route tests covering the auth route error/success branches.
  *
- * Each request carries a unique `x-forwarded-for` so the per-IP auth rate
- * limiter never collides across tests. `APP_ENV` is forced to `test` so
+ * Each request comes from its own simulated TCP peer (`peerEnv(uniqueTestIp())`)
+ * and limiter state is reset per test, so the per-IP auth policies never
+ * collide across tests. `APP_ENV` is forced to `test` so
  * outbound email is a no-op (see `email.ts`), keeping the reset/verification
  * routes deterministic.
  */
@@ -172,18 +181,22 @@ describe('Auth Routes — DB integration', () => {
     return { user, password };
   }
 
-  /** POST JSON with a unique rate-limit bucket key. */
+  /** POST JSON from a fresh simulated client IP (its own rate-limit buckets). */
   function postJson(app: Hono, path: string, body: unknown, headers: Record<string, string> = {}) {
-    return app.request(path, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-forwarded-for': `test-${crypto.randomUUID()}`,
-        ...headers,
+    return app.request(
+      path,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+      peerEnv(uniqueTestIp()),
+    );
   }
+
+  beforeEach(() => {
+    resetRateLimitBackend();
+  });
 
   beforeAll(() => {
     originalAppEnv = process.env.APP_ENV;
@@ -303,10 +316,7 @@ describe('Auth Routes — DB integration', () => {
 
     it('should return 401 when no refresh token is provided', async () => {
       const app = createTestApp();
-      const res = await app.request('/auth/refresh', {
-        method: 'POST',
-        headers: { 'x-forwarded-for': `test-${crypto.randomUUID()}` },
-      });
+      const res = await app.request('/auth/refresh', { method: 'POST' }, peerEnv(uniqueTestIp()));
       const body = await res.json();
       expect(res.status).toBe(401);
       expect(body.error.code).toBe('INVALID_REFRESH_TOKEN');
@@ -562,16 +572,17 @@ describe('Auth Routes — registration conflicts (DB integration)', () => {
     return app;
   }
 
-  /** POST a registration with its own rate-limit bucket. */
+  /** POST a registration from a fresh simulated client IP (its own rate-limit buckets). */
   function register(app: Hono, body: { email: string; username: string; password: string }) {
-    return app.request('/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-forwarded-for': `test-${crypto.randomUUID()}`,
+    return app.request(
+      '/auth/register',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+      peerEnv(uniqueTestIp()),
+    );
   }
 
   /** Every argument passed to a captured logger or `console.error`, as one string. */
@@ -629,6 +640,7 @@ describe('Auth Routes — registration conflicts (DB integration)', () => {
   });
 
   beforeEach(() => {
+    resetRateLimitBackend();
     logSpies = [errorHandlerLog, authRouteLog, authServiceLog].flatMap((logger) => [
       vi.spyOn(logger, 'debug'),
       vi.spyOn(logger, 'info'),
@@ -706,5 +718,287 @@ describe('Auth Routes — registration conflicts (DB integration)', () => {
     expect(body.error.code).toBe('CONFLICT');
     expect(body.error.message).toBe('Username already taken');
     expectNoPiiInLogs(username, ...emails);
+  });
+});
+
+/**
+ * Auth rate-limit policies (api-rate-limiting: "Login is protected per IP and
+ * per account", "Registration, password-reset and verification emails are
+ * throttled"). Each simulated client is a distinct TCP peer (`peerEnv`), and
+ * limiter state is reset before every test.
+ */
+describe('Auth Routes — rate limiting (DB integration)', () => {
+  const createdUsers: string[] = [];
+  let originalAppEnv: string | undefined;
+
+  /** Create a user with a known password and track it for cleanup. */
+  async function makeUser(prefix: string, password = 'TestPassword1!') {
+    const id = crypto.randomUUID();
+    const user = await model.createUser({
+      email: `${prefix}-${id}@example.com`,
+      username: `${prefix}-${id.slice(0, 8)}`,
+      password,
+    });
+    createdUsers.push(user.id);
+    return { user, password };
+  }
+
+  /** POST JSON from the simulated client `ip`. */
+  function postFrom(
+    app: Hono,
+    ip: string,
+    path: string,
+    body: unknown,
+    headers: Record<string, string> = {},
+  ) {
+    return app.request(
+      path,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+      },
+      peerEnv(ip),
+    );
+  }
+
+  /** Header names and values of a 429, with the seconds-to-reset values masked. */
+  function comparableHeaders(res: Response) {
+    return {
+      policy: res.headers.get('RateLimit-Policy'),
+      rateLimit: (res.headers.get('RateLimit') ?? '').replace(/;t=\d+/g, ';t=*'),
+      limit: res.headers.get('X-RateLimit-Limit'),
+      remaining: res.headers.get('X-RateLimit-Remaining'),
+      hasRetryAfter: res.headers.has('Retry-After'),
+      hasReset: res.headers.has('X-RateLimit-Reset'),
+    };
+  }
+
+  beforeAll(() => {
+    originalAppEnv = process.env.APP_ENV;
+    process.env.APP_ENV = 'test';
+    reloadConfig();
+  });
+
+  afterAll(async () => {
+    if (originalAppEnv === undefined) {
+      delete process.env.APP_ENV;
+    } else {
+      process.env.APP_ENV = originalAppEnv;
+    }
+    reloadConfig();
+    if (createdUsers.length) {
+      await db.delete(passwordResets).where(inArray(passwordResets.userId, createdUsers));
+      await db
+        .delete(emailVerificationTokens)
+        .where(inArray(emailVerificationTokens.userId, createdUsers));
+      await db.delete(userPreferences).where(inArray(userPreferences.userId, createdUsers));
+      await db.delete(users).where(inArray(users.id, createdUsers));
+    }
+  });
+
+  beforeEach(() => {
+    resetRateLimitBackend();
+    vi.spyOn(rateLimitLog, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('lets one client register, log in twice and request a reset without a 429', async () => {
+    const app = createTestApp();
+    const ip = uniqueTestIp();
+    const id = crypto.randomUUID();
+    const email = `rl-flow-${id}@example.com`;
+    const password = 'Test12345!';
+    const reg = await postFrom(app, ip, '/auth/register', {
+      email,
+      username: `rl-flow-${id.slice(0, 8)}`,
+      password,
+    });
+    expect(reg.status).toBe(201);
+    createdUsers.push((await reg.json()).data.user.id);
+
+    const statuses = [
+      (await postFrom(app, ip, '/auth/login', { email, password })).status,
+      (await postFrom(app, ip, '/auth/login', { email, password })).status,
+      (await postFrom(app, ip, '/auth/forgot-password', { email })).status,
+    ];
+    expect(statuses).toEqual([200, 200, 200]);
+  });
+
+  it('answers the 6th login after 5 wrong passwords with 429, Retry-After and no cookies', async () => {
+    const { user, password } = await makeUser('rl-lock');
+    const app = createTestApp();
+    const ip = uniqueTestIp();
+    for (let i = 0; i < 5; i++) {
+      const res = await postFrom(app, ip, '/auth/login', { email: user.email, password: 'wrong' });
+      expect(res.status).toBe(401);
+    }
+    const res = await postFrom(app, ip, '/auth/login', { email: user.email, password });
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get('Retry-After'))).toBeGreaterThanOrEqual(1);
+    expect(res.headers.get('set-cookie')).toBeNull();
+    const body = await res.json();
+    expect(body.error.code).toBe('RATE_LIMITED');
+    expect(body.error.message).toBe('Too many login attempts, please try again later');
+
+    // A different IP with the correct password is not locked by the (email, IP) counter.
+    const other = await postFrom(app, uniqueTestIp(), '/auth/login', {
+      email: user.email,
+      password,
+    });
+    expect(other.status).toBe(200);
+  });
+
+  it('resets the consecutive-failure counter on a successful login', async () => {
+    const { user, password } = await makeUser('rl-reset');
+    const app = createTestApp();
+    const ip = uniqueTestIp();
+    const statuses: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      statuses.push(
+        (await postFrom(app, ip, '/auth/login', { email: user.email, password: 'x' })).status,
+      );
+    }
+    statuses.push((await postFrom(app, ip, '/auth/login', { email: user.email, password })).status);
+    for (let i = 0; i < 4; i++) {
+      statuses.push(
+        (await postFrom(app, ip, '/auth/login', { email: user.email, password: 'x' })).status,
+      );
+    }
+    expect(statuses).toEqual([401, 401, 401, 401, 200, 401, 401, 401, 401]);
+  });
+
+  it('caps a distributed attack: 20 failures from 20 IPs make the 21st attempt 429', async () => {
+    const { user, password } = await makeUser('rl-distributed');
+    const app = createTestApp();
+    for (let i = 0; i < 20; i++) {
+      const res = await postFrom(app, uniqueTestIp(), '/auth/login', {
+        email: user.email,
+        password: 'wrong',
+      });
+      expect(res.status).toBe(401);
+    }
+    const res = await postFrom(app, uniqueTestIp(), '/auth/login', { email: user.email, password });
+    expect(res.status).toBe(429);
+  });
+
+  it('answers an unknown email exactly like a known one once it is locked', async () => {
+    const { user } = await makeUser('rl-known');
+    const app = createTestApp();
+    /** Fail 5 logins for `email` from a fresh IP, then return the 6th response. */
+    const lockOut = async (email: string) => {
+      const ip = uniqueTestIp();
+      for (let i = 0; i < 5; i++) await postFrom(app, ip, '/auth/login', { email, password: 'x' });
+      return postFrom(app, ip, '/auth/login', { email, password: 'x' });
+    };
+    const known = await lockOut(user.email);
+    const unknown = await lockOut(`rl-ghost-${crypto.randomUUID()}@nowhere.example.com`);
+    expect(known.status).toBe(429);
+    expect(unknown.status).toBe(429);
+    expect(await unknown.json()).toEqual(await known.json());
+    expect(comparableHeaders(unknown)).toEqual(comparableHeaders(known));
+  });
+
+  it('allows one verification email per minute (200 then 429) and sends exactly one email', async () => {
+    const { user } = await makeUser('rl-verify-send');
+    const accessToken = await signAccessToken({
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      isAdmin: false,
+    });
+    // Let the email path reach the SMTP transporter so the send can be counted.
+    process.env.APP_ENV = 'development';
+    reloadConfig();
+    const sendMail = vi
+      .spyOn(getTransporter(), 'sendMail')
+      .mockImplementation(() => Promise.resolve({} as never));
+    try {
+      const app = createTestApp();
+      const ip = uniqueTestIp();
+      const auth = { Authorization: `Bearer ${accessToken}` };
+      const first = await postFrom(app, ip, '/auth/send-verification', {}, auth);
+      const second = await postFrom(app, ip, '/auth/send-verification', {}, auth);
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(429);
+      expect(Number(second.headers.get('Retry-After'))).toBeLessThanOrEqual(60);
+      expect(sendMail).toHaveBeenCalledTimes(1);
+    } finally {
+      process.env.APP_ENV = 'test';
+      reloadConfig();
+    }
+  });
+
+  it('caps reset emails to one address at 3 per hour across IPs', async () => {
+    const app = createTestApp();
+    const email = `rl-victim-${crypto.randomUUID()}@example.com`;
+    const statuses: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      statuses.push(
+        (await postFrom(app, uniqueTestIp(), '/auth/forgot-password', { email })).status,
+      );
+    }
+    expect(statuses).toEqual([200, 200, 200, 429]);
+  });
+
+  it('unlocks a locked account after a successful password reset', async () => {
+    const { user } = await makeUser('rl-unlock');
+    const app = createTestApp();
+    const ip = uniqueTestIp();
+    // 5 failures from `ip` (locks the email+IP counter) and 15 from elsewhere
+    // (20 in total: locks the per-account counter).
+    for (let i = 0; i < 5; i++) {
+      await postFrom(app, ip, '/auth/login', { email: user.email, password: 'wrong' });
+    }
+    for (let i = 0; i < 15; i++) {
+      await postFrom(app, uniqueTestIp(), '/auth/login', { email: user.email, password: 'wrong' });
+    }
+    const locked = await postFrom(app, uniqueTestIp(), '/auth/login', {
+      email: user.email,
+      password: 'TestPassword1!',
+    });
+    expect(locked.status).toBe(429);
+
+    const token = crypto.randomUUID();
+    await model.createPasswordReset(user.id, token, new Date(Date.now() + 3600 * 1000));
+    const reset = await postFrom(app, ip, '/auth/reset-password', {
+      token,
+      newPassword: 'BrandNewPassword1!',
+    });
+    expect(reset.status).toBe(200);
+
+    const login = await postFrom(app, ip, '/auth/login', {
+      email: user.email,
+      password: 'BrandNewPassword1!',
+    });
+    expect(login.status).toBe(200);
+  });
+
+  it('logs the registration-disabled warning without an ip field', async () => {
+    const original = process.env.ENABLE_REGISTRATION;
+    const warn = vi.spyOn(authRouteLog, 'warn').mockImplementation(() => {});
+    try {
+      process.env.ENABLE_REGISTRATION = 'false';
+      reloadConfig();
+      const id = crypto.randomUUID();
+      const res = await postFrom(createTestApp(), uniqueTestIp(), '/auth/register', {
+        email: `rl-disabled-${id}@example.com`,
+        username: `rl-dis-${id.slice(0, 8)}`,
+        password: 'Test12345!',
+      });
+      expect(res.status).toBe(403);
+      const call = warn.mock.calls.find(
+        (args) => args[1] === 'Registration attempt while disabled',
+      );
+      expect(call).toBeDefined();
+      expect(Object.keys((call?.[0] ?? {}) as object)).not.toContain('ip');
+    } finally {
+      if (original === undefined) delete process.env.ENABLE_REGISTRATION;
+      else process.env.ENABLE_REGISTRATION = original;
+      reloadConfig();
+    }
   });
 });

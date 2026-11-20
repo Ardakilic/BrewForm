@@ -9,6 +9,7 @@
  * leave in a `.env` file or a Coolify variable) is dropped before validation,
  * so optional variables fall back to their default and required ones still fail.
  */
+import { isIP } from 'node:net';
 import * as path from 'node:path';
 import { z } from 'zod';
 import {
@@ -71,6 +72,51 @@ const uploadAllowedTypesSchema = z
     return entries.filter(isSupportedImageMime);
   });
 
+/**
+ * Check one CIDR string: a valid IPv4 or IPv6 address (`node:net` `isIP`)
+ * followed by `/<prefix>`, where the prefix is a whole number of at most 32
+ * bits for IPv4 and 128 bits for IPv6.
+ *
+ * @param cidr - A trimmed entry such as `10.0.0.0/8` or `2001:db8::/32`.
+ * @returns `true` when the entry is a well-formed CIDR.
+ */
+export function isValidCidr(cidr: string): boolean {
+  const slash = cidr.lastIndexOf('/');
+  if (slash <= 0) return false;
+  const address = cidr.slice(0, slash);
+  const prefix = cidr.slice(slash + 1);
+  if (!/^\d{1,3}$/.test(prefix)) return false;
+  const family = isIP(address);
+  if (family === 0) return false;
+  return Number(prefix) <= (family === 4 ? 32 : 128);
+}
+
+/**
+ * `TRUST_PROXY_CIDRS`: optional comma-separated IPv4/IPv6 CIDRs of extra
+ * trusted edges for `TRUST_PROXY=cloudflare`. Entries are trimmed, empty ones
+ * dropped, and each one validated by {@link isValidCidr}; the output is the
+ * parsed `string[]` (empty when unset).
+ */
+const trustProxyCidrsSchema = z
+  .string()
+  .default('')
+  .transform((value, ctx): string[] => {
+    const entries = value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry !== '');
+    const invalid = entries.filter((entry) => !isValidCidr(entry));
+    if (invalid.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        input: value,
+        message: `TRUST_PROXY_CIDRS contains ${invalid.length} invalid CIDR(s); expected comma-separated IPv4/IPv6 CIDRs such as 10.0.0.0/8, 2001:db8::/32`,
+      });
+      return z.NEVER;
+    }
+    return entries;
+  });
+
 /** The validated environment object, before the blank-value preprocessing step. */
 const envObjectSchema = z
   .object({
@@ -88,6 +134,25 @@ const envObjectSchema = z
       .transform((v) => v === 'true'),
     CACHE_DRIVER: z.enum(['memory', 'redis']).default('memory'),
     REDIS_URL: z.string().optional(),
+    // Entry cap of the memory cache driver (LRU eviction above it).
+    CACHE_MEMORY_MAX_ENTRIES: z.coerce.number().int().min(100).max(1_000_000).default(10_000),
+
+    // Client identity for rate limiting: which forwarding headers to trust.
+    // none = TCP peer only (secure default); hops = right-most X-Forwarded-For
+    // entry after TRUST_PROXY_HOPS trusted proxies; cloudflare = CF-Connecting-IP
+    // only when the hop is a Cloudflare (or TRUST_PROXY_CIDRS) address.
+    TRUST_PROXY: z.enum(['none', 'hops', 'cloudflare']).default('none'),
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
+    TRUST_PROXY_CIDRS: trustProxyCidrsSchema,
+
+    // Rate limiting is independent of the cache: only RATE_LIMIT_ENABLED turns it
+    // off, and RATE_LIMIT_STORE=redis reuses REDIS_URL for a dedicated client.
+    RATE_LIMIT_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    RATE_LIMIT_STORE: z.enum(['memory', 'redis']).default('memory'),
+    RATE_LIMIT_GLOBAL_MAX: z.coerce.number().int().positive().default(100),
 
     JWT_SECRET: z.string().min(16),
     JWT_ACCESS_EXPIRY: z
@@ -162,6 +227,14 @@ const envObjectSchema = z
         code: z.ZodIssueCode.custom,
         path: ['REDIS_URL'],
         message: 'REDIS_URL is required when CACHE_ENABLED is true and CACHE_DRIVER is redis',
+      });
+    }
+    // Independent of CACHE_ENABLED/CACHE_DRIVER: the limiter has its own client.
+    if (obj.RATE_LIMIT_STORE === 'redis' && !obj.REDIS_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['REDIS_URL'],
+        message: 'REDIS_URL is required when RATE_LIMIT_STORE is redis',
       });
     }
     if (obj.STORAGE_DRIVER !== 's3') return;

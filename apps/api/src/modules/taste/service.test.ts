@@ -3,7 +3,8 @@ import { db } from '@brewform/db';
 import { tasteNotes } from '@brewform/db/schema';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import type { InMemoryCacheProvider } from '../../utils/cache/index.ts';
+import { closeTestCaches, testCache } from '../../utils/cache/test-helpers.ts';
 import {
   createTasteNote,
   deleteTasteNote,
@@ -14,6 +15,9 @@ import {
   searchTasteNotes,
   updateTasteNote,
 } from './service.ts';
+
+// Close every provider created with testCache() so no sweep timer leaks.
+afterEach(closeTestCaches);
 
 const TASTE_CACHE_KEY = ['cache', 'taste-notes'];
 const TASTE_FLAT_CACHE_KEY = ['cache', 'taste-notes-flat'];
@@ -26,7 +30,7 @@ describe('Taste Service', () => {
   const createdNoteIds: string[] = [];
 
   beforeEach(() => {
-    cache = new InMemoryCacheProvider();
+    cache = testCache();
     debugSpy = vi.spyOn(log, 'debug');
     warnSpy = vi.spyOn(log, 'warn');
     createdNoteIds.length = 0;

@@ -18,10 +18,10 @@ import { comments, notifications, recipes, userBadges, users } from '@brewform/d
 import { inArray } from 'drizzle-orm';
 import type { Context, Next } from 'hono';
 import { Hono } from 'hono';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { AppEnv, ContextUser } from '../../types/hono.ts';
-import { InMemoryCacheProvider } from '../../utils/cache/index.ts';
-import { setCacheProvider } from '../../utils/cache/singleton.ts';
+import { peerEnv } from '../../utils/client-ip/test-helpers.ts';
+import { resetRateLimitBackend } from '../../utils/rate-limit/registry.ts';
 import comment, { deps as routeDeps } from './index.ts';
 
 // ---------------------------------------------------------------------------
@@ -195,17 +195,17 @@ describe('Comment_Router — isAdmin extraction and forwarding', () => {
  *
  * Unlike the isAdmin-extraction tests above (which use self-contained Hono apps
  * that replicate router logic), these mount the REAL `comment` router so the
- * actual `rateLimitMiddleware` chain is exercised. The rate-limit middleware is
- * the FIRST middleware on the POST route (before `authMiddleware` and
- * `zValidator`), so the 429 fires regardless of body or auth validity: the
- * limiter keys by IP, not auth state, so the 6th POST from the same IP returns
- * 429 no matter what. This mirrors the report rate-limit test
- * (`report/index.test.ts:37-93`) and avoids JWT-minting complexity.
+ * actual rate-limit chain is exercised. The IP-keyed `comment-ip` policy is the
+ * FIRST middleware on the POST route (before `authMiddleware` and `zValidator`),
+ * so the 429 fires regardless of body or auth validity: the 6th POST from the
+ * same simulated client (`peerEnv`) returns 429 no matter what. The user-keyed
+ * `comment-user` policy runs right after auth. Limiter state is reset per test
+ * with `resetRateLimitBackend()`.
  *
- * The GET list route on the same router is NOT throttled by the
- * `keyPrefix: 'comment'` limiter (it is applied to POST only, not via
- * `comment.use('*', ...)`) — the second test asserts that exhausting the POST
- * budget does not produce 429 on `GET /api/v1/comments/recipe/:recipeId`.
+ * The GET list route on the same router is NOT throttled by the comment
+ * policies (they are applied to POST only, not via `comment.use('*', ...)`) —
+ * the second test asserts that exhausting the POST budget does not produce 429
+ * on `GET /api/v1/comments/recipe/:recipeId`.
  */
 function createRateLimitTestApp() {
   const app = new Hono<AppEnv>();
@@ -218,14 +218,11 @@ function createRateLimitTestApp() {
 }
 
 describe('POST /api/v1/comments/recipe/:recipeId — rate limit', () => {
-  beforeEach(() => {
-    // Fresh cache per test so the rate-limit counter does not leak between tests
-    // (pattern from report/index.test.ts:41-49).
-    setCacheProvider(new InMemoryCacheProvider());
-  });
+  const ip = '203.0.113.60';
 
-  afterEach(() => {
-    setCacheProvider(new InMemoryCacheProvider());
+  beforeEach(() => {
+    // Fresh limiter counters per test.
+    resetRateLimitBackend();
   });
 
   it('returns 429 on the 6th POST within the rate-limit window', async () => {
@@ -235,22 +232,32 @@ describe('POST /api/v1/comments/recipe/:recipeId — rate limit', () => {
     // header is present, but the limiter counter increments regardless — it
     // runs before authMiddleware and zValidator).
     for (let i = 0; i < 5; i++) {
-      await app.request(`/api/v1/comments/recipe/${recipeId}`, {
+      await app.request(
+        `/api/v1/comments/recipe/${recipeId}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: 'hello' }),
+        },
+        peerEnv(ip),
+      );
+    }
+    // The 6th POST in the same 1-minute window from the same IP returns 429.
+    const res = await app.request(
+      `/api/v1/comments/recipe/${recipeId}`,
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: 'hello' }),
-      });
-    }
-    // The 6th POST in the same 1-minute window from the same IP returns 429.
-    const res = await app.request(`/api/v1/comments/recipe/${recipeId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: 'hello' }),
-    });
+      },
+      peerEnv(ip),
+    );
     expect(res.status).toBe(429);
+    expect(Number(res.headers.get('Retry-After'))).toBeGreaterThanOrEqual(1);
     const body = await res.json();
     expect(body.success).toBe(false);
     expect(body.error.code).toBe('RATE_LIMITED');
+    expect(body.error.message).toBe('Too many comments, please try again later');
   });
 
   it('does not throttle the GET list route (comment limiter is POST-only)', async () => {
@@ -258,16 +265,24 @@ describe('POST /api/v1/comments/recipe/:recipeId — rate limit', () => {
     const recipeId = crypto.randomUUID();
     // Exhaust the POST budget first.
     for (let i = 0; i < 6; i++) {
-      await app.request(`/api/v1/comments/recipe/${recipeId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: 'hello' }),
-      });
+      await app.request(
+        `/api/v1/comments/recipe/${recipeId}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: 'hello' }),
+        },
+        peerEnv(ip),
+      );
     }
     // A GET on the same router must NOT be 429 (the comment-specific limiter is
     // applied to POST only, not via `comment.use('*', ...)`). The assertion is
     // simply that the GET is not throttled by the comment limiter.
-    const res = await app.request(`/api/v1/comments/recipe/${recipeId}`, { method: 'GET' });
+    const res = await app.request(
+      `/api/v1/comments/recipe/${recipeId}`,
+      { method: 'GET' },
+      peerEnv(ip),
+    );
     expect(res.status).not.toBe(429);
   });
 });
@@ -357,12 +372,8 @@ describe('D99.9 — comment visibility gate (routes)', () => {
   });
 
   beforeEach(() => {
-    // Fresh in-memory cache per test — isolates the POST rate-limit counter.
-    setCacheProvider(new InMemoryCacheProvider());
-  });
-
-  afterEach(() => {
-    setCacheProvider(new InMemoryCacheProvider());
+    // Fresh limiter counters per test — isolates the POST rate-limit policies.
+    resetRateLimitBackend();
   });
 
   afterAll(async () => {

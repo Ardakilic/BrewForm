@@ -250,6 +250,9 @@ importers:
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
+      rate-limiter-flexible:
+        specifier: 11.5.0
+        version: 11.5.0
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -2867,6 +2870,9 @@ packages:
 
   quick-format-unescaped@4.0.4:
     resolution: {integrity: sha512-tYC1Q1hgyRuHgloV/YXs2w15unPVh8qfu/qCTfhTYamaw7fyhumKa2yGpdSo87vY32rIclj+4fWYQXUMs9EHvg==}
+
+  rate-limiter-flexible@11.5.0:
+    resolution: {integrity: sha512-i4+ReS4/nJ+MQgpXLZQH8S5DDRQ8gCI+fJ+jgAExlbJgIP94zczX/1t26XfVVnUoSav+DW2u8lWAMfGnkYot4w==}
 
   react-dom@19.3.1:
     resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==}
@@ -5560,6 +5566,8 @@ snapshots:
   quansync@0.2.11: {}
 
   quick-format-unescaped@4.0.4: {}
+
+  rate-limiter-flexible@11.5.0: {}
 
   react-dom@19.3.1(react@19.3.1):
     dependencies:

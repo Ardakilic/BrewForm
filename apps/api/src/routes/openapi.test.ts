@@ -6,6 +6,7 @@
  * `paths` map. Confirms the dependency is installed and wired correctly,
  * without requiring a database or a running server.
  */
+import '../test-setup.ts';
 import { Hono } from 'hono';
 import { describeRoute, openAPIRouteHandler } from 'hono-openapi';
 import { describe, expect, it } from 'vitest';
@@ -57,5 +58,32 @@ describe('OpenAPI integration', () => {
     expect(paths['/sample']).toBeDefined();
     expect(paths['/sample']?.get).toBeDefined();
     expect(paths['/sample']?.post).toBeDefined();
+  });
+
+  it('documents 429 with the error envelope on rate-limited auth routes', async () => {
+    process.env.OPENAPI_ENABLED = 'true';
+    const { default: routes } = await import('./index.ts');
+    const res = await routes.request('/api/v1/openapi.json');
+    expect(res.status).toBe(200);
+    const spec = (await res.json()) as {
+      paths: Record<string, Record<string, { responses?: Record<string, unknown> }>>;
+    };
+    for (const path of [
+      '/api/v1/auth/send-verification',
+      '/api/v1/auth/login',
+      '/api/v1/auth/register',
+      '/api/v1/auth/forgot-password',
+      '/api/v1/auth/reset-password',
+      '/api/v1/auth/verify-email',
+    ]) {
+      const tooMany = spec.paths[path]?.post?.responses?.['429'] as
+        | { content?: Record<string, { schema?: { properties?: Record<string, unknown> } }> }
+        | undefined;
+      expect(tooMany, path).toBeDefined();
+      const schema = tooMany?.content?.['application/json']?.schema;
+      // resolver(ErrorEnvelopeSchema): { success: false, error: { code, message, ... } }
+      expect(schema?.properties?.success, path).toBeDefined();
+      expect(schema?.properties?.error, path).toBeDefined();
+    }
   });
 });

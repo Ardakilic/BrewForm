@@ -6,7 +6,7 @@
  * Values are JSON-serialized so complex objects survive the round-trip;
  * TTL maps 1:1 to PX (ms). Prefix deletes use SCAN (never KEYS — it blocks).
  */
-import { Redis } from 'ioredis';
+import { createRedisClient } from '../redis/client.ts';
 import type { CacheProvider } from './index.ts';
 
 /** Minimal Redis command surface used by the provider (real client or test fake). */
@@ -84,7 +84,18 @@ function escapeGlob(value: string): string {
   return value.replace(/[*?[\]\\]/g, (c) => `\\${c}`);
 }
 
-/** Build a Redis-backed provider from a URL (e.g. redis://redis:6379). */
+/**
+ * Build a Redis-backed provider from a URL (e.g. `redis://:password@valkey:6379`)
+ * on its own connection from the shared {@link createRedisClient} factory, so
+ * it inherits the fast-fail options (no offline queue, one retry, 500 ms
+ * command timeout, 2 s connect timeout, background reconnects). Callers wrap
+ * it in `FailSoftCacheProvider` (see `createCacheProvider('redis')`) so a
+ * backend failure degrades to a cache miss. The URL is never logged.
+ *
+ * @param url - Redis-protocol URL of the shared cache server.
+ * @returns A provider over a new `brewform-cache` connection.
+ */
 export function createRedisProvider(url: string): RedisCacheProvider {
-  return new RedisCacheProvider(new Redis(url) as unknown as RedisClient);
+  const client = createRedisClient(url, { connectionName: 'brewform-cache' });
+  return new RedisCacheProvider(client as unknown as RedisClient);
 }

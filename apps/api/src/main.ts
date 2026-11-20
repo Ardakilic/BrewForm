@@ -3,44 +3,65 @@
  *
  * Startup sequence:
  *   1. Initialize cache driver (memory | redis, or disabled via CACHE_ENABLED)
- *   2. Register node-cron jobs (hourly badge evaluation)
- *   3. Verify storage (`verifyStorage`): for the local driver create UPLOAD_DIR
+ *   2. Install the rate-limit backend (RATE_LIMIT_STORE: memory | redis, on its
+ *      own Redis connection; independent of the cache) and log its settings
+ *   3. Register node-cron jobs (hourly badge evaluation)
+ *   4. Verify storage (`verifyStorage`): for the local driver create UPLOAD_DIR
  *      and prove it is writable; on failure log one error (directory, UID/GID,
  *      ownership fix) and exit with status 1 before listening
- *   4. Bind HTTP server via @hono/node-server
- *   5. Register SIGTERM/SIGINT handlers for graceful shutdown
+ *   5. Bind HTTP server via @hono/node-server
+ *   6. Register SIGTERM/SIGINT handlers for graceful shutdown
  *
  * Shutdown sequence (on SIGTERM/SIGINT):
  *   1. Shut down HTTP server
  *   2. Close postgres-js client
- *   3. Close email transporter and cache connection
+ *   3. Close email transporter, cache connection and rate-limit store connection
  *   4. Exit cleanly
  *
  * Middleware stack (applied in order):
- *   cors → requestId → secureHeaders → rateLimit(100/min) → bodyLimit(1MB, excl. /api/v1/photos) → cache injection → crawler → routes
+ *   cors → requestId → secureHeaders → rateLimit(POLICIES.global: RATE_LIMIT_GLOBAL_MAX/min per
+ *   client IP, skipping /health, /ready and GET /uploads/*) → bodyLimit(1MB, excl. /api/v1/photos)
+ *   → cache injection → crawler → routes (GET /uploads/* has its own POLICIES.uploads limit)
  */
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { serve } from '@hono/node-server';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { secureHeaders } from 'hono/secure-headers';
 import { config } from './config/index.ts';
 import { bodyLimitMiddleware } from './middleware/bodyLimit.ts';
 import { corsMiddleware } from './middleware/cors.ts';
 import { crawlerMiddleware } from './middleware/crawler.ts';
 import { errorHandler } from './middleware/errorHandler.ts';
-import { rateLimitMiddleware } from './middleware/rateLimit.ts';
+import { rateLimit } from './middleware/rateLimit.ts';
 import { requestIdMiddleware } from './middleware/requestId.ts';
 import routes from './routes/index.ts';
 import type { AppEnv } from './types/hono.ts';
 import { createCacheProvider, NullCacheProvider } from './utils/cache/index.ts';
 import { cacheProvider, setCacheProvider } from './utils/cache/singleton.ts';
 import { createLogger } from './utils/logger/index.ts';
+import { createRedisBackend } from './utils/rate-limit/backend.ts';
+import { POLICIES } from './utils/rate-limit/policies.ts';
+import { getRateLimitBackend, setRateLimitBackend } from './utils/rate-limit/registry.ts';
+import { createRedisClient } from './utils/redis/client.ts';
 import { StorageStartupError, verifyStorage } from './utils/storage/index.ts';
 import './utils/jobs/cron.ts';
 
 const logger = createLogger('main');
+
+/**
+ * Requests the global limiter never counts: the health probes and local
+ * upload reads (which have their own `uploads` policy).
+ *
+ * @param c - The request context.
+ * @returns `true` for `/health`, `/ready` and `GET`/`HEAD` `/uploads/*`.
+ */
+export function skipGlobalRateLimit(c: Context): boolean {
+  const path = c.req.path;
+  if (path === '/health' || path === '/ready') return true;
+  return (c.req.method === 'GET' || c.req.method === 'HEAD') && path.startsWith('/uploads/');
+}
 
 /**
  * Root Hono application. Applies the middleware stack and mounts {@link routes};
@@ -76,7 +97,7 @@ app.use(
     },
   }),
 );
-app.use('*', rateLimitMiddleware({ windowMs: 60_000, maxRequests: 100 }));
+app.use('*', rateLimit(POLICIES.global, { skip: skipGlobalRateLimit }));
 app.use('*', bodyLimitMiddleware);
 app.use('*', async (c, next) => {
   c.set('cache', cacheProvider);
@@ -89,7 +110,7 @@ app.onError(errorHandler);
 // a named regex param: Hono's bare `*` wildcard is not readable through
 // `c.req.param('*')` (it always returned undefined, so every request got 400).
 if (config.STORAGE_DRIVER === 'local') {
-  app.get('/uploads/:path{.+}', async (c) => {
+  app.get('/uploads/:path{.+}', rateLimit(POLICIES.uploads), async (c) => {
     const userPath = c.req.param('path');
     if (!userPath) {
       return c.text('Bad Request', 400);
@@ -149,6 +170,27 @@ async function startup() {
   }
   logger.info({ enabled: config.CACHE_ENABLED, driver: config.CACHE_DRIVER }, 'Cache initialized');
 
+  // The limiter has its own connection and never goes through the cache.
+  if (config.RATE_LIMIT_STORE === 'redis') {
+    setRateLimitBackend(
+      createRedisBackend(
+        createRedisClient(config.REDIS_URL as string, { connectionName: 'brewform-rate-limit' }),
+      ),
+    );
+  }
+  logger.info(
+    {
+      enabled: config.RATE_LIMIT_ENABLED,
+      store: config.RATE_LIMIT_STORE,
+      trustProxy: config.TRUST_PROXY,
+      hops: config.TRUST_PROXY_HOPS,
+    },
+    'Rate limiting initialized',
+  );
+  if (!config.RATE_LIMIT_ENABLED) {
+    logger.warn({}, 'Rate limiting is disabled (RATE_LIMIT_ENABLED=false)');
+  }
+
   // Cron jobs are registered at module top-level via import above
 
   try {
@@ -189,6 +231,9 @@ async function startup() {
 
     await cacheProvider.close?.();
     logger.info('Cache connection closed');
+
+    await getRateLimitBackend().close();
+    logger.info('Rate-limit store closed');
 
     logger.info('Graceful shutdown complete');
     process.exit(0);

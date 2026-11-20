@@ -249,8 +249,14 @@ export async function requestPasswordReset(email: string) {
  * @throws {Error} INVALID_RESET_TOKEN if the token does not exist
  * @throws {Error} TOKEN_ALREADY_USED if the token has been consumed
  * @throws {Error} TOKEN_EXPIRED if the token has passed its expiry
+ * @returns The account's normalised (trimmed, lower-cased) email, so the route
+ *   can clear its login-failure rate-limit counters; `null` if the reset row
+ *   has no user.
  */
-export async function confirmPasswordReset(token: string, newPassword: string) {
+export async function confirmPasswordReset(
+  token: string,
+  newPassword: string,
+): Promise<string | null> {
   logger.debug({}, 'confirmPasswordReset started');
   const reset = await model.findPasswordResetByToken(token);
   if (!reset) {
@@ -266,6 +272,8 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
   await model.updateUserPassword(reset.userId, newPassword);
   await model.markPasswordResetUsed(reset.id);
   logger.debug({}, 'confirmPasswordReset completed');
+  // The route clears this account's login-failure counters with it.
+  return reset.user?.email ? reset.user.email.trim().toLowerCase() : null;
 }
 
 /** Fetch the currently authenticated user by ID. */
